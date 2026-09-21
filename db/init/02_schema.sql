@@ -161,6 +161,7 @@ CREATE TABLE grants (
   end_date date,
   status text NOT NULL CHECK (status IN ('active', 'concluded', 'unconfirmed', 'dormant')),
   outcomes jsonb NOT NULL DEFAULT '{}'::jsonb,    -- e.g. {"families_reached": 24765}
+  notes text,
   valid_from timestamptz NOT NULL DEFAULT now(),
   valid_to timestamptz,
   source_url text,

@@ -1,15 +1,22 @@
-"""Idempotent seed script: darpan orgs, hand-vetted funders, rubrics, KABIL fit
-scores + adjustment audit log, and GDELT news mentions.
+"""Idempotent seed script (schema v2): vocabularies, darpan orgs, hand-vetted
+funders, programs, grants, rubrics, KABIL fit scores + adjustments, GDELT news.
 
 Run inside the backend container (or any env with DATABASE_URL set):
     python -m seed.seed
-Re-running is safe: upserts on natural keys (slug, darpan_id, url, rubric version).
+Re-running is safe: upserts on natural keys.
+
+ORDER INVARIANT (do not reorder): darpan orgs from the sorted glob first, then
+orgs_extra.json in file order, then funders.json in file order. Restored
+`documents` rows reference orgs 1-10 / funders 1-4 by these seed-order ids;
+changing insertion order silently mislinks them (make db-upgrade diffs the
+linkage projection to catch this).
 """
 
 import csv
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,11 +25,18 @@ import psycopg
 
 DATA = Path(__file__).parent / "data"
 DEV_USER_ID = "00000000-0000-0000-0000-000000000001"
-EXTRACTOR_VERSION = "seed-v1"
+EXTRACTOR_VERSION = "seed-v2"
+
+# Geography names appearing in seed data that are not districts of Assam.
+LOCATION_KINDS = {"India": "country", "Northeast India": "region", "Assam": "state"}
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def slugify(label: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")
 
 
 def as_list(value) -> list[str]:
@@ -33,27 +47,167 @@ def as_list(value) -> list[str]:
     return [part.strip() for part in str(value).replace(";", ",").split(",") if part.strip()]
 
 
-def seed_darpan_orgs(cur) -> int:
-    count = 0
+def parse_date(value) -> str | None:
+    if not value:
+        return None
+    value = str(value).strip()
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(value, fmt).date().isoformat()
+        except ValueError:
+            continue
+    return None
+
+
+# --- Phase 1: vocabularies -------------------------------------------------
+
+
+def _upsert_location(cur, kind: str, name: str, parent_id=None) -> int:
+    cur.execute(
+        """
+        INSERT INTO locations (kind, name, parent_id) VALUES (%s, %s, %s)
+        ON CONFLICT DO NOTHING
+        """,
+        (kind, name, parent_id),
+    )
+    cur.execute(
+        "SELECT id FROM locations WHERE kind = %s AND name = %s AND parent_id IS NOT DISTINCT FROM %s",
+        (kind, name, parent_id),
+    )
+    return cur.fetchone()[0]
+
+
+def seed_vocabularies(cur) -> tuple[dict[str, int], dict[str, int]]:
+    """Upsert the locations hierarchy and tag vocabulary; return lookup maps."""
+    india = _upsert_location(cur, "country", "India")
+    assam = _upsert_location(cur, "state", "Assam", india)
+    ne = _upsert_location(cur, "region", "Northeast India", india)
+    locations = {"India": india, "Assam": assam, "Northeast India": ne}
+
+    district_names: set[str] = set()
+    tag_labels: set[str] = set()
+
     for path in sorted((DATA / "darpan").glob("*.json")):
         raw = json.loads(path.read_text())
         sections = raw.get("sections", {})
-        reg = sections.get("registration_details", {})
-        contact = sections.get("contact_details", {})
-        working = sections.get("working_sectors", {})
-        sectors = as_list(working.get("primary_sectors")) + as_list(working.get("secondary_sectors"))
-        slug = path.stem.removeprefix("ngo-darpan-")
+        city = (sections.get("registration_details", {}) or {}).get("city_of_registration")
+        if city:
+            district_names.add(str(city).strip())  # preserve source casing (e.g. CHIRANG)
+        working = sections.get("working_sectors", {}) or {}
+        tag_labels.update(as_list(working.get("primary_sectors")))
+        tag_labels.update(as_list(working.get("secondary_sectors")))
+
+    for org in json.loads((DATA / "rubrics" / "orgs_extra.json").read_text()):
+        if org.get("district"):
+            district_names.add(org["district"])
+        tag_labels.update(org.get("sectors", []))
+
+    for funder in json.loads((DATA / "rubrics" / "funders.json").read_text()):
+        tag_labels.update(funder.get("focus_sectors", []))
+        for geo in funder.get("geographies", []):
+            if geo not in LOCATION_KINDS:
+                district_names.add(geo)
+
+    for name in sorted(district_names):
+        locations[name] = _upsert_location(cur, "district", name, assam)
+
+    tags: dict[str, int] = {}
+    for label in sorted(tag_labels):
+        slug = slugify(label)
         cur.execute(
             """
-            INSERT INTO orgs (slug, name, darpan_id, cohort, state, district,
-                              registration, contact, sectors, sections,
+            INSERT INTO tags (slug, label, kind) VALUES (%s, %s, 'sector')
+            ON CONFLICT (slug) DO UPDATE SET label = EXCLUDED.label
+            RETURNING id
+            """,
+            (slug, label),
+        )
+        tags[slug] = cur.fetchone()[0]
+    return locations, tags
+
+
+# --- Shared helpers ---------------------------------------------------------
+
+
+def _upsert_org_identifiers(cur, org_id: int, identifiers: dict[str, str], source_url: str | None):
+    for id_type, id_value in identifiers.items():
+        if not id_value:
+            continue
+        cur.execute(
+            """
+            INSERT INTO org_identifiers (org_id, id_type, id_value, verified, source_url)
+            VALUES (%s, %s, %s, true, %s)
+            ON CONFLICT (id_type, id_value) DO NOTHING
+            """,
+            (org_id, id_type, str(id_value), source_url),
+        )
+
+
+def _upsert_org_tags(cur, org_id: int, tags: dict[str, int], labels_by_role: dict[str, str]):
+    """labels_by_role: {label: role}; primary wins if a label appears twice upstream."""
+    for label, role in labels_by_role.items():
+        tag_id = tags.get(slugify(label))
+        if tag_id is None:
+            continue
+        cur.execute(
+            """
+            INSERT INTO org_tags (org_id, tag_id, role) VALUES (%s, %s, %s)
+            ON CONFLICT (org_id, tag_id) DO UPDATE SET role = EXCLUDED.role
+            """,
+            (org_id, tag_id, role),
+        )
+
+
+def _upsert_org_location(cur, org_id: int, location_id: int | None, role: str = "operates"):
+    if location_id is None:
+        return
+    cur.execute(
+        """
+        INSERT INTO org_locations (org_id, location_id, role) VALUES (%s, %s, %s)
+        ON CONFLICT (org_id, location_id) DO UPDATE SET role = EXCLUDED.role
+        """,
+        (org_id, location_id, role),
+    )
+
+
+def _upsert_contact(cur, *, org_id=None, funder_id=None, name, role, kind, email=None,
+                    phone=None, source_name=None, source_url=None):
+    owner_col = "org_id" if org_id is not None else "funder_id"
+    cur.execute(
+        f"""
+        INSERT INTO contacts ({owner_col}, name, role, kind, email, phone, source_name, source_url, fetched_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, now())
+        ON CONFLICT ({owner_col}, name, role) WHERE {owner_col} IS NOT NULL DO NOTHING
+        """,
+        (org_id if org_id is not None else funder_id, name, role, kind, email, phone,
+         source_name, source_url),
+    )
+
+
+# --- Phase 2/3: orgs --------------------------------------------------------
+
+
+def seed_darpan_orgs(cur, locations, tags) -> int:
+    count = 0
+    for path in sorted((DATA / "darpan").glob("*.json")):  # ORDER INVARIANT
+        raw = json.loads(path.read_text())
+        sections = raw.get("sections", {})
+        reg = sections.get("registration_details", {}) or {}
+        contact = sections.get("contact_details", {}) or {}
+        working = sections.get("working_sectors", {}) or {}
+        slug = path.stem.removeprefix("ngo-darpan-")
+        district_id = locations.get(str(reg.get("city_of_registration", "")).strip())
+        cur.execute(
+            """
+            INSERT INTO orgs (slug, name, org_kind, cohort, legal_form, registration_date,
+                              registered_location_id, contact, sections,
                               source_url, source_name, content_hash, extractor_version)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, 'cso', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (slug) DO UPDATE SET
-              name = EXCLUDED.name, darpan_id = EXCLUDED.darpan_id,
-              cohort = EXCLUDED.cohort, state = EXCLUDED.state, district = EXCLUDED.district,
-              registration = EXCLUDED.registration, contact = EXCLUDED.contact,
-              sectors = EXCLUDED.sectors, sections = EXCLUDED.sections,
+              name = EXCLUDED.name, cohort = EXCLUDED.cohort,
+              legal_form = EXCLUDED.legal_form, registration_date = EXCLUDED.registration_date,
+              registered_location_id = EXCLUDED.registered_location_id,
+              contact = EXCLUDED.contact, sections = EXCLUDED.sections,
               source_url = EXCLUDED.source_url, source_name = EXCLUDED.source_name,
               content_hash = EXCLUDED.content_hash, extractor_version = EXCLUDED.extractor_version
             RETURNING id
@@ -61,13 +215,11 @@ def seed_darpan_orgs(cur) -> int:
             (
                 slug,
                 raw.get("entity_name") or slug,
-                raw.get("darpan_id"),
                 raw.get("cohort"),
-                reg.get("state_of_registration"),
-                reg.get("city_of_registration"),
-                json.dumps(reg),
+                reg.get("type_of_npo"),
+                parse_date(reg.get("date_of_registration_society_trust_entity")),
+                district_id,
                 json.dumps(contact),
-                sectors,
                 json.dumps(sections),
                 raw.get("source_url"),
                 raw.get("source", "darpan-portal"),
@@ -76,87 +228,202 @@ def seed_darpan_orgs(cur) -> int:
             ),
         )
         org_id = cur.fetchone()[0]
-        for bearer in sections.get("office_bearers", []):
+        _upsert_org_identifiers(
+            cur, org_id,
+            {"darpan": raw.get("darpan_id"), "reg_no": reg.get("registration_no")},
+            raw.get("source_url"),
+        )
+        labels: dict[str, str] = {}
+        for label in as_list(working.get("secondary_sectors")):
+            labels[label] = "secondary"
+        for label in as_list(working.get("primary_sectors")):
+            labels[label] = "primary"  # primary wins on overlap
+        _upsert_org_tags(cur, org_id, tags, labels)
+        _upsert_org_location(cur, org_id, district_id, "operates")
+        for bearer in sections.get("office_bearers", []) or []:
             if bearer.get("name"):
-                cur.execute(
-                    """
-                    INSERT INTO org_office_bearers (org_id, name, designation)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (org_id, name, designation) DO NOTHING
-                    """,
-                    (org_id, bearer["name"], bearer.get("designation")),
+                _upsert_contact(
+                    cur, org_id=org_id, name=bearer["name"], role=bearer.get("designation"),
+                    kind="office_bearer", source_name=raw.get("source", "darpan-portal"),
+                    source_url=raw.get("source_url"),
                 )
         count += 1
     return count
 
 
-def seed_extra_orgs(cur) -> int:
-    extras = json.loads((DATA / "rubrics" / "orgs_extra.json").read_text())
+def seed_extra_orgs(cur, locations, tags) -> int:
+    extras = json.loads((DATA / "rubrics" / "orgs_extra.json").read_text())  # ORDER INVARIANT
     for org in extras:
+        reg = org.get("registration", {}) or {}
+        district_id = locations.get(org.get("district"))
         cur.execute(
             """
-            INSERT INTO orgs (slug, name, cohort, state, district,
-                              registration, contact, sectors,
+            INSERT INTO orgs (slug, name, org_kind, cohort, legal_form, registration_date,
+                              registered_location_id, contact,
                               source_url, source_name, fetched_at, extractor_version)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, 'cso', %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (slug) DO UPDATE SET
               name = EXCLUDED.name, cohort = EXCLUDED.cohort,
-              state = EXCLUDED.state, district = EXCLUDED.district,
-              registration = EXCLUDED.registration, contact = EXCLUDED.contact,
-              sectors = EXCLUDED.sectors, source_url = EXCLUDED.source_url,
+              legal_form = EXCLUDED.legal_form, registration_date = EXCLUDED.registration_date,
+              registered_location_id = EXCLUDED.registered_location_id,
+              contact = EXCLUDED.contact, source_url = EXCLUDED.source_url,
               source_name = EXCLUDED.source_name, fetched_at = EXCLUDED.fetched_at,
-              extractor_version = EXCLUDED.extractor_version
-            """,
-            (
-                org["slug"], org["name"], org.get("cohort"), org.get("state"),
-                org.get("district"), json.dumps(org.get("registration", {})),
-                json.dumps(org.get("contact", {})), org.get("sectors", []),
-                org.get("source_url"), org.get("source_name"),
-                org.get("fetched_at"), EXTRACTOR_VERSION,
-            ),
-        )
-    return len(extras)
-
-
-def seed_funders(cur) -> int:
-    funders = json.loads((DATA / "rubrics" / "funders.json").read_text())
-    for funder in funders:
-        cur.execute(
-            """
-            INSERT INTO funders (slug, name, funder_type, website, focus_sectors,
-                                 geographies, profile, source_url, source_name, extractor_version)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (slug) DO UPDATE SET
-              name = EXCLUDED.name, funder_type = EXCLUDED.funder_type,
-              website = EXCLUDED.website, focus_sectors = EXCLUDED.focus_sectors,
-              geographies = EXCLUDED.geographies, profile = EXCLUDED.profile,
-              source_url = EXCLUDED.source_url, source_name = EXCLUDED.source_name,
               extractor_version = EXCLUDED.extractor_version
             RETURNING id
             """,
             (
-                funder["slug"], funder["name"], funder.get("funder_type"),
-                funder.get("website"), funder.get("focus_sectors", []),
-                funder.get("geographies", []), json.dumps(funder.get("profile", {})),
+                org["slug"], org["name"], org.get("cohort"),
+                reg.get("legal_form"), parse_date(reg.get("registration_date")),
+                district_id, json.dumps(org.get("contact", {})),
+                org.get("source_url"), org.get("source_name"),
+                org.get("fetched_at"), EXTRACTOR_VERSION,
+            ),
+        )
+        org_id = cur.fetchone()[0]
+        _upsert_org_identifiers(
+            cur, org_id,
+            {
+                "pan": reg.get("pan"), "12a": reg.get("12a"), "80g": reg.get("80g"),
+                "fcra": reg.get("fcra"), "reg_no": reg.get("registration_no"),
+                # csr1 deliberately skipped: 'Not Available' is a finding, not an identifier
+            },
+            org.get("source_url"),
+        )
+        _upsert_org_tags(cur, org_id, tags, {label: "primary" for label in org.get("sectors", [])})
+        _upsert_org_location(cur, org_id, district_id, "operates")
+    return len(extras)
+
+
+# --- Phase 4: funders -------------------------------------------------------
+
+
+def seed_funders(cur, locations, tags) -> int:
+    funders = json.loads((DATA / "rubrics" / "funders.json").read_text())  # ORDER INVARIANT
+    for funder in funders:
+        profile = dict(funder.get("profile", {}))
+        section_135 = profile.pop("section_135_bound", None)
+        cur.execute(
+            """
+            INSERT INTO funders (slug, name, funder_type, section_135_bound, website,
+                                 profile, source_url, source_name, extractor_version)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (slug) DO UPDATE SET
+              name = EXCLUDED.name, funder_type = EXCLUDED.funder_type,
+              section_135_bound = EXCLUDED.section_135_bound, website = EXCLUDED.website,
+              profile = EXCLUDED.profile, source_url = EXCLUDED.source_url,
+              source_name = EXCLUDED.source_name, extractor_version = EXCLUDED.extractor_version
+            RETURNING id
+            """,
+            (
+                funder["slug"], funder["name"], funder.get("funder_type"), section_135,
+                funder.get("website"), json.dumps(profile),
                 funder.get("source_url"), funder.get("source_name"), EXTRACTOR_VERSION,
             ),
         )
         funder_id = cur.fetchone()[0]
+        for label in funder.get("focus_sectors", []):
+            tag_id = tags.get(slugify(label))
+            if tag_id is not None:
+                cur.execute(
+                    """
+                    INSERT INTO funder_tags (funder_id, tag_id, role) VALUES (%s, %s, 'primary')
+                    ON CONFLICT (funder_id, tag_id) DO NOTHING
+                    """,
+                    (funder_id, tag_id),
+                )
+        for geo in funder.get("geographies", []):
+            loc_id = locations.get(geo)
+            if loc_id is not None:
+                cur.execute(
+                    """
+                    INSERT INTO funder_locations (funder_id, location_id, role)
+                    VALUES (%s, %s, 'funds')
+                    ON CONFLICT (funder_id, location_id) DO NOTHING
+                    """,
+                    (funder_id, loc_id),
+                )
         if funder.get("website"):
             domain = funder["website"].split("//")[-1].split("/")[0].removeprefix("www.")
             cur.execute(
                 """
-                INSERT INTO funder_aliases (funder_id, alias_type, alias_value)
+                INSERT INTO funder_identifiers (funder_id, id_type, id_value)
                 VALUES (%s, 'domain', %s)
-                ON CONFLICT (alias_type, alias_value) DO NOTHING
+                ON CONFLICT (id_type, id_value) DO NOTHING
                 """,
                 (funder_id, domain),
             )
     return len(funders)
 
 
+# --- Phase 5/6: programs + grants ------------------------------------------
+
+
+def lookup_id(cur, table: str, key: str, value: str) -> int:
+    cur.execute(f"SELECT id FROM {table} WHERE {key} = %s", (value,))  # noqa: S608 - fixed identifiers
+    row = cur.fetchone()
+    if row is None:
+        sys.exit(f"seed error: no {table} row with {key}={value!r}")
+    return row[0]
+
+
+def seed_programs(cur) -> dict[tuple[int, str], int]:
+    programs = json.loads((DATA / "programs.json").read_text())
+    ids: dict[tuple[int, str], int] = {}
+    for program in programs:
+        funder_id = lookup_id(cur, "funders", "slug", program["owner_funder"])
+        cur.execute(
+            """
+            INSERT INTO programs (funder_id, name, description, status, details,
+                                  source_url, source_name, extractor_version)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (funder_id, name) WHERE funder_id IS NOT NULL DO UPDATE SET
+              description = EXCLUDED.description, status = EXCLUDED.status,
+              details = EXCLUDED.details, source_url = EXCLUDED.source_url
+            RETURNING id
+            """,
+            (
+                funder_id, program["name"], program.get("description"), program.get("status"),
+                json.dumps(program.get("details", {})),
+                program.get("source_url"), program.get("source_name"), EXTRACTOR_VERSION,
+            ),
+        )
+        ids[(funder_id, program["name"])] = cur.fetchone()[0]
+    return ids
+
+
+def seed_grants(cur, program_ids) -> int:
+    grants = json.loads((DATA / "grants.json").read_text())
+    for grant in grants:
+        funder_id = lookup_id(cur, "funders", "slug", grant["funder"])
+        org_id = lookup_id(cur, "orgs", "slug", grant["org"])
+        program_id = program_ids.get((funder_id, grant["program"])) if grant.get("program") else None
+        cur.execute(
+            """
+            INSERT INTO grants (funder_id, org_id, program_id, title, start_date, end_date,
+                                status, outcomes, notes, source_url, source_name,
+                                fetched_at, extractor_version)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (funder_id, org_id, title) DO UPDATE SET
+              program_id = EXCLUDED.program_id, start_date = EXCLUDED.start_date,
+              end_date = EXCLUDED.end_date, status = EXCLUDED.status,
+              outcomes = EXCLUDED.outcomes, notes = EXCLUDED.notes,
+              source_url = EXCLUDED.source_url, fetched_at = EXCLUDED.fetched_at
+            """,
+            (
+                funder_id, org_id, program_id, grant["title"],
+                grant.get("start_date"), grant.get("end_date"), grant["status"],
+                json.dumps(grant.get("outcomes", {})), grant.get("notes"),
+                grant.get("source_url"), grant.get("source_name"),
+                grant.get("fetched_at"), EXTRACTOR_VERSION,
+            ),
+        )
+    return len(grants)
+
+
+# --- Phase 7: rubrics / scores / news (unchanged from v1) -------------------
+
+
 def seed_rubrics(cur) -> dict[tuple[str, str], int]:
-    """Insert rubrics + criteria; return {(version, code): criterion_id}."""
     criterion_ids: dict[tuple[str, str], int] = {}
     for version_file in ("v1.json", "v2.json"):
         rubric = json.loads((DATA / "rubrics" / version_file).read_text())
@@ -171,7 +438,6 @@ def seed_rubrics(cur) -> dict[tuple[str, str], int]:
             (rubric["version"], rubric["name"], rubric["total_points"], rubric.get("notes")),
         )
         rubric_id = cur.fetchone()[0]
-        # Two passes so parents exist before children reference them.
         criteria = rubric["criteria"]
         for criterion in [c for c in criteria if not c.get("parent")] + [c for c in criteria if c.get("parent")]:
             parent_id = criterion_ids.get((rubric["version"], criterion["parent"])) if criterion.get("parent") else None
@@ -189,14 +455,6 @@ def seed_rubrics(cur) -> dict[tuple[str, str], int]:
             )
             criterion_ids[(rubric["version"], criterion["code"])] = cur.fetchone()[0]
     return criterion_ids
-
-
-def lookup_id(cur, table: str, key: str, value: str) -> int:
-    cur.execute(f"SELECT id FROM {table} WHERE {key} = %s", (value,))  # noqa: S608 - fixed identifiers
-    row = cur.fetchone()
-    if row is None:
-        sys.exit(f"seed error: no {table} row with {key}={value!r}")
-    return row[0]
 
 
 def seed_scores(cur, criterion_ids) -> tuple[int, int]:
@@ -286,17 +544,21 @@ def main() -> None:
     if not database_url:
         sys.exit("DATABASE_URL is not set")
     with psycopg.connect(database_url) as conn, conn.cursor() as cur:
-        n_darpan = seed_darpan_orgs(cur)
-        n_extra = seed_extra_orgs(cur)
-        n_funders = seed_funders(cur)
+        locations, tags = seed_vocabularies(cur)
+        n_darpan = seed_darpan_orgs(cur, locations, tags)
+        n_extra = seed_extra_orgs(cur, locations, tags)
+        n_funders = seed_funders(cur, locations, tags)
+        program_ids = seed_programs(cur)
+        n_grants = seed_grants(cur, program_ids)
         criterion_ids = seed_rubrics(cur)
         n_scores, n_items = seed_scores(cur, criterion_ids)
         n_news = seed_news(cur)
         conn.commit()
     print(
-        f"seeded: {n_darpan} darpan orgs + {n_extra} extra orgs, {n_funders} funders, "
-        f"{len(criterion_ids)} rubric criteria, {n_scores} fit scores ({n_items} items), "
-        f"{n_news} news mentions"
+        f"seeded: {len(locations)} locations, {len(tags)} tags, "
+        f"{n_darpan}+{n_extra} orgs, {n_funders} funders, {len(program_ids)} programs, "
+        f"{n_grants} grants, {len(criterion_ids)} rubric criteria, "
+        f"{n_scores} fit scores ({n_items} items), {n_news} news mentions"
     )
 
 

@@ -1,0 +1,58 @@
+[
+  {
+    "funder": "axis-bank-foundation",
+    "org": "kabil",
+    "program": "Sustainable Livelihoods Programme",
+    "title": "Sustainable livelihoods project, Udalguri (with ASRLM)",
+    "start_date": "2018-04-01",
+    "end_date": "2022-03-31",
+    "status": "concluded",
+    "outcomes": { "families_reached": 24765, "families_target": 15000 },
+    "notes": "4-year project; KABIL Annual Report 2022-23 lists it as concluded. Over-delivered ~65% against target.",
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/ngos/KABIL/KABIL_Funder_Fit_Scores_v1.md",
+    "fetched_at": "2026-09-10"
+  },
+  {
+    "funder": "azim-premji-foundation",
+    "org": "kabil",
+    "program": "Livelihoods",
+    "title": "Livelihoods project, Mazbat Block, Udalguri",
+    "start_date": null,
+    "end_date": null,
+    "status": "active",
+    "outcomes": {},
+    "notes": "Active; APF evaluation visit 11-12 Feb 2026. Exact start date/duration not publicly documented.",
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_AzimPremjiFoundation.md",
+    "fetched_at": "2026-09-10"
+  },
+  {
+    "funder": "sbi-foundation",
+    "org": "kabil",
+    "program": "Jaldhara",
+    "title": "SBIF-CONSERW Jaldhara water conservation grant",
+    "start_date": null,
+    "end_date": null,
+    "status": "active",
+    "outcomes": {},
+    "notes": "Freshest live grant of the four: KABIL field training under SBIF-CONSERW Jaldhara documented 11 June 2026.",
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_SBIFoundation.md",
+    "fetched_at": "2026-09-10"
+  },
+  {
+    "funder": "tata-trusts",
+    "org": "kabil",
+    "program": null,
+    "title": "Legacy grant via Sir Dorabji Tata Trust (founding period)",
+    "start_date": "2013-04-01",
+    "end_date": "2014-03-31",
+    "status": "unconfirmed",
+    "outcomes": {},
+    "notes": "Only evidence is a cached snippet from a now-404 page naming Sir Dorabji Tata Trust, dated to KABIL's 2013-14 founding year. Not confirmed currently active; treat as dormant pending direct clarification with KABIL.",
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_TataTrusts.md",
+    "fetched_at": "2026-09-10"
+  }
+]

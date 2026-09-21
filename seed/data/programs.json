@@ -1,0 +1,36 @@
+[
+  {
+    "owner_funder": "axis-bank-foundation",
+    "name": "Sustainable Livelihoods Programme",
+    "description": "ABF's flagship programme: natural resource management, agriculture, livestock, SHG collectivisation, and skill development for rural households.",
+    "status": "active",
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_AxisBankFoundation.md"
+  },
+  {
+    "owner_funder": "sbi-foundation",
+    "name": "CONSERW",
+    "description": "SBI Foundation's environment and water-conservation vertical.",
+    "status": "active",
+    "details": { "verticals": ["Jaldhara"] },
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_SBIFoundation.md"
+  },
+  {
+    "owner_funder": "sbi-foundation",
+    "name": "Jaldhara",
+    "description": "Water-conservation programme under SBIF's CONSERW vertical; funds KABIL's work on traditional irrigation systems.",
+    "status": "active",
+    "details": { "parent_vertical": "CONSERW" },
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_SBIFoundation.md"
+  },
+  {
+    "owner_funder": "azim-premji-foundation",
+    "name": "Livelihoods",
+    "description": "APF's livelihoods grant-making vertical (secondary to its flagship school-education focus); explicitly funds Northeast India.",
+    "status": "active",
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_AzimPremjiFoundation.md"
+  }
+]
