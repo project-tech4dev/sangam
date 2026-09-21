@@ -26,6 +26,22 @@ dependencies = [
     "pypdf>=5.0",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = ["integration: needs the compose Postgres on localhost:5433"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
