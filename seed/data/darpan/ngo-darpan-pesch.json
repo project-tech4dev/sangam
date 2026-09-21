@@ -1,0 +1,73 @@
+{
+  "entity_type": "ngo",
+  "entity_name": "PEOPLES ENDEAVOUR FOR SOCIAL CHANGES PESCH",
+  "darpan_id": "MN/2016/0103243",
+  "cohort": "core-cohort-2026",
+  "source": "darpan-portal",
+  "source_url": "https://ngodarpan.gov.in/#/search-ngo",
+  "sections": {
+    "npo_details": {
+      "darpan_id": "MN/2016/0103243",
+      "darpan_registration_date": "16-01-2019"
+    },
+    "registration_details": {
+      "registered_with": "Registrar of Societies",
+      "type_of_npo": "Society",
+      "registration_no": "218/SR/TD/97",
+      "act_name": "Manipur Society Registration act. 1989",
+      "city_of_registration": "TAMENGLONG",
+      "state_of_registration": "Manipur",
+      "date_of_registration_society_trust_entity": "03-03-1997"
+    },
+    "office_bearers": [
+      {
+        "name": "Keigapou Rongmei",
+        "designation": "Chairman"
+      },
+      {
+        "name": "Namkhinlung Pamei",
+        "designation": "Secretary"
+      },
+      {
+        "name": "Dangmei Athui",
+        "designation": "Treasurer"
+      },
+      {
+        "name": "Dinaliu Rongmei",
+        "designation": "Board Member"
+      },
+      {
+        "name": "Amiu Kamei",
+        "designation": "Board Member"
+      },
+      {
+        "name": "Chikama Panmei",
+        "designation": "Board Member"
+      },
+      {
+        "name": "Kazaigailiu Rongmei",
+        "designation": "Board Member"
+      },
+      {
+        "name": "Gangmei Isaac",
+        "designation": "Board Member"
+      },
+      {
+        "name": "G Kabidim",
+        "designation": "Board Member"
+      }
+    ],
+    "contact_details": {
+      "address": "Peoples Endeavour for Social Changes PESCH Church road Tamenglong Headquarter Tamenglong District Manipur 795141 , Tamenglong, TAMENGLONG (Manipur) - 795141",
+      "npo_contact_email": "peschoffice@gmail.com",
+      "npo_contact_mobile_no": "87**04**04",
+      "website_url": "https://www.pesch.org.in"
+    },
+    "working_sectors": {
+      "primary_sectors": "Agriculture, Children, Disaster Management, Education & Literacy, Environment & Forests",
+      "secondary_sectors": "Art & Culture, Dalit Upliftment, Food Processing, Minority Issues, Nutrition, Tribal Affairs, Vocational Training, Women's Development & Empowerment, Youth Affairs, Skill Development, Animal Welfare",
+      "operational_area_states": "Manipur",
+      "operational_area_district": "TAMENGLONG"
+    }
+  }
+}

@@ -1,0 +1,70 @@
+[
+  {
+    "slug": "axis-bank-foundation",
+    "name": "Axis Bank Foundation",
+    "funder_type": "corporate_csr",
+    "website": "https://www.axisbankfoundation.org",
+    "focus_sectors": ["sustainable livelihoods", "natural resource management", "agriculture", "skill development"],
+    "geographies": ["India", "Assam", "Udalguri"],
+    "profile": {
+      "section_135_bound": true,
+      "flagship_program": "Sustainable Livelihoods Programme",
+      "funding_trend": "CSR spend ~₹91 cr (FY20-21) → ~₹427 cr (FY24-25), ~4.7x in four years",
+      "kabil_grant_status": "Concluded (2018–22); delivered 24,765 families against a 15,000 target"
+    },
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_AxisBankFoundation.md"
+  },
+  {
+    "slug": "azim-premji-foundation",
+    "name": "Azim Premji Foundation",
+    "funder_type": "private_foundation",
+    "website": "https://azimpremjifoundation.org",
+    "focus_sectors": ["school education", "livelihoods"],
+    "geographies": ["India", "Northeast India", "Assam", "Udalguri"],
+    "profile": {
+      "section_135_bound": false,
+      "flagship_program": "School education; livelihoods is an actively funded secondary vertical",
+      "funding_trend": "Total spend roughly doubled in two years (₹1,528 cr → ₹3,206 cr)",
+      "grant_terms": "1–10 year grants (most 3–4 years), few lakh to tens of crores; makes corpus/core grants",
+      "kabil_grant_status": "Active (evaluation visit Feb 2026, Mazbat Block, Udalguri)"
+    },
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_AzimPremjiFoundation.md"
+  },
+  {
+    "slug": "sbi-foundation",
+    "name": "SBI Foundation",
+    "funder_type": "corporate_csr",
+    "website": "https://www.sbifoundation.in",
+    "focus_sectors": ["health", "environment", "water conservation", "rural development"],
+    "geographies": ["India", "Assam", "Udalguri", "Baksa"],
+    "profile": {
+      "section_135_bound": true,
+      "flagship_program": "Health (~40% of spend); CONSERW/Jaldhara environment & water vertical funds KABIL",
+      "funding_trend": "Funding ~3x in three years; share of SBI CSR routed through the Foundation grew ~50%→~60%",
+      "grant_terms": "₹50 lakh – ₹5 crore, 1–3 years, project-based; publishes eligibility checklist (12AA/80G/FCRA + 3-year track record)",
+      "leadership_note": "MD & CEO transition: Swapan Dhar took over 1 Jan 2026, succeeding Sanjay Prakash",
+      "kabil_grant_status": "Active (field training under SBIF-CONSERW Jaldhara documented 11 June 2026)"
+    },
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_SBIFoundation.md"
+  },
+  {
+    "slug": "tata-trusts",
+    "name": "Tata Trusts",
+    "funder_type": "family_trust_network",
+    "website": "https://www.tatatrusts.org",
+    "focus_sectors": ["health", "nutrition", "education", "livelihoods"],
+    "geographies": ["India", "Northeast India", "Assam"],
+    "profile": {
+      "section_135_bound": false,
+      "flagship_program": "Health/nutrition and education dominant; livelihoods/NRM secondary (NEIDA covers Nagaland/Arunachal/Mizoram, not Assam)",
+      "funding_trend": "Disbursements on track to roughly 3.5x from ₹575 cr (FY23-24) to ₹2,000 cr target (FY26-27); shifting from direct implementation toward grant-making",
+      "governance_note": "Chairmanship transition (Oct 2024), reported trustee disputes, Maharashtra Charity Commissioner inquiry into Sir Ratan Tata Trust board composition",
+      "kabil_grant_status": "Unconfirmed / likely dormant (only a legacy 2013-14 link via Sir Dorabji Tata Trust; source page now 404)"
+    },
+    "source_name": "hand-vetting",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Funder_TataTrusts.md"
+  }
+]

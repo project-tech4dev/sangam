@@ -1,0 +1,50 @@
+{
+  "version": "v1",
+  "name": "Funder–NGO Fit Rubric v1 (7 criteria, 100 points)",
+  "total_points": 100,
+  "notes": "Research-backed rubric built on FundRobin, GrantAssistant.ai, L-I-A prospect model, and the India CSR due-diligence checklist. Source: hand-vetting/Funder_NGO_Fit_Rubric_KABIL.md (org-grant-intelligence repo).",
+  "criteria": [
+    {
+      "code": "1",
+      "label": "Thematic / Sector Alignment",
+      "points": 25,
+      "guiding_question": "Do the funder's stated priority areas match the NGO's actual programme work?"
+    },
+    {
+      "code": "2",
+      "label": "Eligibility & Compliance",
+      "points": 20,
+      "guiding_question": "Does the NGO hold the registrations this funder type legally requires (12A, 80G, FCRA, CSR-1 where the funder is Section-135-bound), and meet track-record and documentation requirements?"
+    },
+    {
+      "code": "3",
+      "label": "Geography",
+      "points": 15,
+      "guiding_question": "Does the funder fund in the NGO's state/region — ideally the specific district, ideally for this kind of work?"
+    },
+    {
+      "code": "4",
+      "label": "Target Population",
+      "points": 15,
+      "guiding_question": "Does the funder's stated beneficiary group match the NGO's actual beneficiaries?"
+    },
+    {
+      "code": "5",
+      "label": "Relationship / Warmth (Linkage)",
+      "points": 10,
+      "guiding_question": "Is there an existing, active, or recent funded relationship?"
+    },
+    {
+      "code": "6",
+      "label": "Funding Size & Type Fit",
+      "points": 10,
+      "guiding_question": "Do grant size, duration and structure match the NGO's need and scale?"
+    },
+    {
+      "code": "7",
+      "label": "Funder Capacity & Trend",
+      "points": 5,
+      "guiding_question": "Is the funder's giving growing, flat, or shrinking?"
+    }
+  ]
+}

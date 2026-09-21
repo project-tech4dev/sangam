@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: sangam
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sangam}
+      POSTGRES_DB: sangam
+    ports:
+      - "5433:5432"   # host 5433: 5432 is taken by dalgo-postgres on this machine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sangam -d sangam"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  falkordb:
+    image: falkordb/falkordb:latest
+    ports:
+      - "6380:6379"   # graph DB (Redis protocol); host 6380 — 6379 attracts Dalgo's Celery traffic
+      - "3010:3000"   # FalkorDB browser UI (host 3010; 3000 is Next.js, 3001 taken on this machine)
+    volumes:
+      - falkordata:/var/lib/falkordb/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://sangam:${POSTGRES_PASSWORD:-sangam}@postgres:5432/sangam
+      MODEL: ${MODEL:-anthropic:claude-sonnet-5}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      ALLOWED_ORIGINS: http://localhost:3000
+      FALKORDB_HOST: falkordb
+      FALKORDB_PORT: "6379"
+      # Existing graph data was embedded at 768 dims — all ingestion/search must match.
+      EMBEDDING_DIM: "768"
+    ports:
+      - "8010:8000"   # host 8010: 8000 is taken by airbyte-proxy on this machine
+    depends_on:
+      postgres:
+        condition: service_healthy
+      falkordb:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/srv/app
+      - ./seed:/srv/seed:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      AGENT_URL: http://backend:8000/agent
+      NEXT_PUBLIC_API_URL: http://localhost:8010
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
+
+volumes:
+  pgdata:
+  falkordata:
+  frontend_node_modules:
+  frontend_next:

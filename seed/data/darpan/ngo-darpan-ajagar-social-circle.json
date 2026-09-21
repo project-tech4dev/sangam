@@ -1,0 +1,73 @@
+{
+  "entity_type": "ngo",
+  "entity_name": "AJAGAR SOCIAL CIRCLE",
+  "darpan_id": "AS/2009/0001092",
+  "cohort": "core-cohort-2026",
+  "source": "darpan-portal",
+  "source_url": "https://ngodarpan.gov.in/#/search-ngo",
+  "sections": {
+    "npo_details": {
+      "darpan_id": "AS/2009/0001092",
+      "darpan_registration_date": "--"
+    },
+    "registration_details": {
+      "registered_with": "Registrar of Societies",
+      "type_of_npo": "Society",
+      "registration_no": "26",
+      "act_name": "Societies Registration Act 1860",
+      "city_of_registration": "GOALPARA",
+      "state_of_registration": "Assam",
+      "date_of_registration_society_trust_entity": "05-09-2001"
+    },
+    "office_bearers": [
+      {
+        "name": "Sadhana Barman",
+        "designation": "Executive Member"
+      },
+      {
+        "name": "Bipul Chandra Das",
+        "designation": "Executive Member"
+      },
+      {
+        "name": "Sabita Das",
+        "designation": "Executive Member"
+      },
+      {
+        "name": "Juli Sarkar",
+        "designation": "Executive Member"
+      },
+      {
+        "name": "Sri Ashok Nath",
+        "designation": "Executive Member"
+      },
+      {
+        "name": "Sri Prabin Das",
+        "designation": "President"
+      },
+      {
+        "name": "Chaitanya Das",
+        "designation": "Executive Member"
+      },
+      {
+        "name": "Sri Hiren Kalita",
+        "designation": "Secretary"
+      },
+      {
+        "name": "Dibakar Nath",
+        "designation": "Treasurer"
+      }
+    ],
+    "contact_details": {
+      "address": "Ajagar Social Circle Agia Bazar P.O.- Agia P.S.- Goalpara Dist.- Goalpara ( Assam) Pincode- 783120 , Goalpara, GOALPARA (Assam) - 783120",
+      "npo_contact_email": "ajagarsocialcircle@yahoo.co.in",
+      "npo_contact_mobile_no": "94**72**38",
+      "website_url": "http://www.ajagarsocialcircle.org"
+    },
+    "working_sectors": {
+      "primary_sectors": "Agriculture, Disaster Management, Drinking Water, Education & Literacy, Rural Development & Poverty Alleviation",
+      "secondary_sectors": "Skill Development",
+      "operational_area_states": "Assam",
+      "operational_area_district": "ALL"
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "entity_type": "ngo",
+  "entity_name": "SOCIETY FOR NORTH EAST HANDMADE PAPER DEVELOPMENT",
+  "darpan_id": "AS/2019/0232564",
+  "cohort": "core-cohort-2026",
+  "source": "darpan-portal",
+  "source_url": "https://ngodarpan.gov.in/#/search-ngo",
+  "sections": {
+    "npo_details": {
+      "darpan_id": "AS/2019/0232564",
+      "darpan_registration_date": "22-07-2019"
+    },
+    "registration_details": {
+      "registered_with": "Registrar of Societies",
+      "type_of_npo": "Society",
+      "registration_no": "RS/JOR/238/B/67",
+      "act_name": "SR ACT XXI OF 1860",
+      "city_of_registration": "JORHAT",
+      "state_of_registration": "Assam",
+      "date_of_registration_society_trust_entity": "18-02-2005"
+    },
+    "office_bearers": [
+      {
+        "name": "Gakul Chandra Sharma",
+        "designation": "President"
+      },
+      {
+        "name": "Jiban Chandra Gohain",
+        "designation": "Vice President"
+      },
+      {
+        "name": "Manju Dutta Das",
+        "designation": "Vice President"
+      },
+      {
+        "name": "Prakash Thakur",
+        "designation": "Secretary"
+      },
+      {
+        "name": "Bontimala Sonowal Gogoi",
+        "designation": "Treasurer"
+      },
+      {
+        "name": "Tridip Dutta",
+        "designation": "Board Member"
+      },
+      {
+        "name": "Anjali Borah",
+        "designation": "Board Member"
+      },
+      {
+        "name": "Amor Jyoti Borthakur",
+        "designation": "Board Member"
+      },
+      {
+        "name": "Rajarishi Bhattacharyya",
+        "designation": "Board Member"
+      }
+    ],
+    "contact_details": {
+      "address": "JORHAT DEVELOPMENT BLOCK CAMPUS BAGHCHUNG JORHAT 785011 ASSAM , JORHAT, JORHAT (Assam) - 785011",
+      "npo_contact_email": "handmadepaperassam@yahoo.co.in",
+      "npo_contact_mobile_no": "86**41**50",
+      "website_url": "HTTPS://WWW.SNEHPAD.ORG"
+    },
+    "details_of_achievements": [
+      {
+        "year": "2025",
+        "working_sector": "Environment & Forests",
+        "achievement": "Two Year SGP program was successfully completed in July 2025. The program focused on women upliftment, biodiversity management, and skill development, with key interventions such as solar light and solar water pump installations. These initiatives supported farmers by improving access to clean energy and irrigation, contributing to sustainable livelihoods and community development in Bongaigaon.",
+        "best_practices": "Integrated focus on women upliftment, biodiversity, and skill development. Promotion of renewable energy through solar light and solar pump installations. Support to farmers with sustainable irrigation solutions. Environment-friendly interventions promoting clean energy use. Community-based implementation for sustainable livelihoods."
+      },
+      {
+        "year": "2025",
+        "working_sector": "Rural Development & Poverty Alleviation",
+        "achievement": "Under the Mission Samriddhi CDP Project, multiple activities were carried out to support women farmers and help them become self-reliant. These activities included capacity-building trainings, provision of raw materials, and continuous handholding support. Key interventions focused on promoting organic farming practices, mushroom cultivation, development of nutrition gardens, integrated education, cultural preservation, and handloom training. Through these initiatives, women farmers were able to",
+        "best_practices": "Support women to become self reliant , youths to develop holistically and helping the people to upgrade themselves by providing training on different aspects etc."
+      },
+      {
+        "year": "2025",
+        "working_sector": "Women's Development & Empowerment",
+        "achievement": "Under the CDP project implemented under Mission Samriddhi in Bongaigaon, women farmers were trained in the preparation of vermicompost. The initiative has shown very positive outcomes. More than hundred number of women actively participated in this activity and are now producing vermicompost in substantial quantities. They are selling it in the local market, which is helping them generate income and become financially independent.",
+        "best_practices": "Adoption of eco-friendly and low-cost vermicompost preparation methods using locally available organic waste and farm residues. Active participation of a large number of women farmers through group-based and collective work practices. Regular hands-on training and practical demonstrations to ensure proper composting techniques and quality control. Peer learning and knowledge sharing among women farmers, which improved skills and confidence. Maintenance of hygiene, moisture levels, and proper"
+      },
+      {
+        "year": "2025",
+        "working_sector": "Skill Development",
+        "achievement": "Every month, SNEHPAD provides yarn to different centres located at Bekajan, Torani, and Uttar Negheri. Women artisans working under SNEHPAD use this yarn to produce a variety of handloom products, including traditional Assamese gamusa and home furnishing items such as table runners, cushion covers, curtains, and other cloth materials. These handloom products are produced on a regular monthly basis, ensuring continuous livelihood support and skill utilization for the women artisans.",
+        "best_practices": "Regular monthly supply of yarn to handloom centres to ensure uninterrupted production. Decentralized production through multiple centres Bekajan, Torani, and Uttar Negheri Active involvement of women artisans in handloom and weaving activities. Production of traditional Assamese textiles, including gamusa, promoting local culture. Diversification of products such as runners, cushion covers, curtains, and cloth materials. Consistent monthly production cycle ensuring regular income opportunities."
+      }
+    ],
+    "working_sectors": {
+      "primary_sectors": "Art & Culture, Rural Development & Poverty Alleviation, Women's Development & Empowerment, Youth Affairs, Skill Development",
+      "secondary_sectors": "Agriculture, Education & Literacy, Food Processing, Health & Family Welfare",
+      "operational_area_states": "Assam",
+      "operational_area_district": "JORHAT"
+    }
+  }
+}

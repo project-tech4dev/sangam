@@ -1,0 +1,28 @@
+{
+  "org": "kabil",
+  "rubric": "v1",
+  "adjusted_at": "2026-09-10",
+  "notes": "Hand-vetting pass, 10 September 2026, single rater, desk verification. Of 28 criterion scores, 23 confirmed and 5 revised. All four original totals were arithmetically correct — errors were in reading the evidence. Ranking order unaffected.",
+  "adjustments": [
+    {
+      "funder": "axis-bank-foundation", "code": "5", "old_score": 10, "new_score": 7,
+      "reason": "Scored as an 'active, ongoing' partnership. The project was 4 years from April 2018 — it ended ~March 2022, and KABIL's own Annual Report 2022-23 lists it as concluded. Recently lapsed, not live."
+    },
+    {
+      "funder": "sbi-foundation", "code": "5", "old_score": 9, "new_score": 10,
+      "reason": "The freshest live grant of the four — KABIL ran field training under SBIF-CONSERW Jaldhara on 11 June 2026, against APF's February 2026 evaluation visit."
+    },
+    {
+      "funder": "tata-trusts", "code": "2", "old_score": 12, "new_score": 15,
+      "reason": "Conflated compliance with whether the application route is open. Tata Trusts is not Section-135-bound, so the CSR-1 gap does not apply here at all — KABIL's compliance position is stronger here than with ABF, not weaker."
+    },
+    {
+      "funder": "tata-trusts", "code": "3", "old_score": 12, "new_score": 10,
+      "reason": "NEIDA, Tata's nodal North East livelihoods agency, covers Nagaland, Arunachal and Mizoram — not Assam. Tata's Assam work is education (in Baksa, Bongaigaon, Goalpara, Nalbari — not Udalguri) and cancer care."
+    },
+    {
+      "funder": "tata-trusts", "code": "6", "old_score": 6, "new_score": 5,
+      "reason": "SDTT small grants cover only 80–90% of project cost (NGO co-finances the rest), and Tata's scale-up is explicitly going to fewer, much larger flagship projects."
+    }
+  ]
+}

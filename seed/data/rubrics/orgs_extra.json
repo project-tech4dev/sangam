@@ -1,0 +1,39 @@
+[
+  {
+    "slug": "kabil",
+    "name": "KABIL",
+    "cohort": "core-cohort-2026",
+    "state": "Assam",
+    "district": "Udalguri",
+    "sectors": ["livelihoods", "natural resource management", "agriculture", "SHG collectivisation"],
+    "registration": {
+      "legal_form": "Registered Society (Societies Registration Act)",
+      "registration_date": "2012-12-21",
+      "registration_no": "SOCIETY/WEST/2012/8900710",
+      "pan": "AACTK0965G",
+      "12a": "AACTK0965GE20171",
+      "80g": "AACTK0965GF20138",
+      "fcra": "231661741",
+      "csr1": "Not Available (per give.do, single source, not checked against MCA register)",
+      "darpan_id": null,
+      "audited_financials_public": false
+    },
+    "contact": { "email": "kabil.ho@gmail.com" },
+    "source_name": "hand-vetting fact-check",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Fact_Check_Verified.md",
+    "fetched_at": "2026-09-10"
+  },
+  {
+    "slug": "bdf",
+    "name": "Bodoland Development Foundation (BDF)",
+    "cohort": "core-cohort-2026",
+    "state": "Assam",
+    "district": "Udalguri",
+    "sectors": ["community development"],
+    "registration": {},
+    "contact": {},
+    "source_name": "hand-vetting profile",
+    "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/BDF_Organization_Profile.md",
+    "fetched_at": "2026-09-10"
+  }
+]

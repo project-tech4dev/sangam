@@ -1,0 +1,61 @@
+{
+  "entity_type": "ngo",
+  "entity_name": "BETTER LIFE FOUNDATION",
+  "darpan_id": "NL/2019/0245515",
+  "cohort": "core-cohort-2026",
+  "source": "darpan-portal",
+  "source_url": "https://ngodarpan.gov.in/#/search-ngo",
+  "sections": {
+    "npo_details": {
+      "darpan_id": "NL/2019/0245515",
+      "darpan_registration_date": "01-03-2021"
+    },
+    "registration_details": {
+      "registered_with": "Registrar of Societies",
+      "type_of_npo": "Society",
+      "registration_no": "Regd. No. Home/SRC-6284/2009",
+      "act_name": "Societies Registration Act (Nagaland First-Amendment), 1969",
+      "city_of_registration": "DIMAPUR",
+      "state_of_registration": "Nagaland",
+      "date_of_registration_society_trust_entity": "12-05-2009"
+    },
+    "office_bearers": [
+      {
+        "name": "Dilip Kanti Chakma",
+        "designation": "Legal Expert"
+      },
+      {
+        "name": "Yukhaba Sangtam",
+        "designation": "President"
+      },
+      {
+        "name": "Tronglichem Sangtam",
+        "designation": "Secretary"
+      },
+      {
+        "name": "Kumjunglila Sangtam",
+        "designation": "Treasurer"
+      },
+      {
+        "name": "Krishna Sharma",
+        "designation": "Board Member"
+      },
+      {
+        "name": "B Therise Sangtam",
+        "designation": "Board Member"
+      }
+    ],
+    "contact_details": {
+      "address": "House No. 23-A, Sangtamtilla Village, Dimapur, Nagaland. PIN-797112 , Dimapur, DIMAPUR (Nagaland) - 797112",
+      "npo_contact_email": "sethri@betterlifefoundation.net",
+      "npo_contact_mobile_no": "94**43**81",
+      "website_url": "https://www.betterlifefoundation.net/"
+    },
+    "working_sectors": {
+      "primary_sectors": "Agriculture, Animal Husbandry, Dairying & Fisheries, Art & Culture, Food Processing, Micro Finance (SHGs)",
+      "secondary_sectors": "Rural Development & Poverty Alleviation, Science & Technology, Tourism, Tribal Affairs, Vocational Training, Women's Development & Empowerment",
+      "operational_area_states": "Nagaland",
+      "operational_area_district": "ALL"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "entity_type": "ngo",
+  "entity_name": "DIYA FOUNDATION",
+  "darpan_id": "AS/2018/0206049",
+  "cohort": "core-cohort-2026",
+  "source": "darpan-portal",
+  "source_url": "https://ngodarpan.gov.in/#/search-ngo",
+  "sections": {
+    "npo_details": {
+      "darpan_id": "AS/2018/0206049",
+      "darpan_registration_date": "27-08-2018"
+    },
+    "registration_details": {
+      "registered_with": "Registrar of Societies",
+      "type_of_npo": "Society",
+      "registration_no": "SR/DF-4/19 of 2019",
+      "act_name": "Meghalaya Societies registration Act, XII of 1983",
+      "city_of_registration": "KAMRUP",
+      "state_of_registration": "Assam",
+      "date_of_registration_society_trust_entity": "29-07-2011"
+    },
+    "office_bearers": [
+      {
+        "name": "Banteilut Lyngdoh Nongbri",
+        "designation": "Chairman"
+      },
+      {
+        "name": "Dilip Chandra Deka",
+        "designation": "Member"
+      },
+      {
+        "name": "Sarat Chandra Das",
+        "designation": "Member"
+      },
+      {
+        "name": "Kripaljyoti Mazumdar",
+        "designation": "Member"
+      },
+      {
+        "name": "Eliza Boro",
+        "designation": "Member"
+      },
+      {
+        "name": "Martin Rabha",
+        "designation": "Secretary"
+      },
+      {
+        "name": "Lumlang Nengnong",
+        "designation": "Treasurer"
+      }
+    ],
+    "contact_details": {
+      "address": "Loharghat , Guwahati, KAMRUP (Assam) - 781120",
+      "npo_contact_email": "diyafound@gmail.com",
+      "npo_contact_mobile_no": "99**57**41",
+      "website_url": "http://www.diyafoundation.org.in"
+    },
+    "working_sectors": {
+      "primary_sectors": "Agriculture, Animal Husbandry, Dairying & Fisheries, Drinking Water, Education & Literacy, Health & Family Welfare",
+      "secondary_sectors": "Rural Development & Poverty Alleviation, Women's Development & Empowerment",
+      "operational_area_states": "Assam",
+      "operational_area_district": "ALL"
+    }
+  }
+}

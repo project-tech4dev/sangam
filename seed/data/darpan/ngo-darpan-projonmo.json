@@ -1,0 +1,61 @@
+{
+  "entity_type": "ngo",
+  "entity_name": "PROJONMO",
+  "darpan_id": "AS/2019/0226023",
+  "cohort": "core-cohort-2026",
+  "source": "darpan-portal",
+  "source_url": "https://ngodarpan.gov.in/#/search-ngo",
+  "sections": {
+    "npo_details": {
+      "darpan_id": "AS/2019/0226023",
+      "darpan_registration_date": "08-04-2019"
+    },
+    "registration_details": {
+      "registered_with": "Registrar of Societies",
+      "type_of_npo": "Society",
+      "registration_no": "KAM(M)/263/G/809/of 2013-2014",
+      "act_name": "Societies Registration Act. XXI of 1860",
+      "city_of_registration": "KAMRUP METRO",
+      "state_of_registration": "Assam",
+      "date_of_registration_society_trust_entity": "24-03-2014"
+    },
+    "office_bearers": [
+      {
+        "name": "Anjana Kashyap",
+        "designation": "Member"
+      },
+      {
+        "name": "Nimi Borgohain",
+        "designation": "President"
+      },
+      {
+        "name": "Ashoka Sarma",
+        "designation": "Secretary"
+      },
+      {
+        "name": "Rumi Sarma",
+        "designation": "Treasurer"
+      },
+      {
+        "name": "Manjari Borthakur",
+        "designation": "Board Member"
+      },
+      {
+        "name": "Dhriti Mohan Deka",
+        "designation": "Board Member"
+      }
+    ],
+    "contact_details": {
+      "address": "Syndicate Regalia, Flat2B, Sonali Path, Beltola, Guwahati – 28 , Guwahati, KAMRUP METRO (Assam) - 781028",
+      "npo_contact_email": "projonmo334@gmail.com",
+      "npo_contact_mobile_no": "98**12**12",
+      "website_url": "http://projonmo.org.in"
+    },
+    "working_sectors": {
+      "primary_sectors": "Children, Differently Abled, Education & Literacy, Vocational Training",
+      "secondary_sectors": "Health & Family Welfare",
+      "operational_area_states": "Assam",
+      "operational_area_district": "KAMRUP METRO"
+    }
+  }
+}
