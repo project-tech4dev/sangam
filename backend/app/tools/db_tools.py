@@ -1,9 +1,9 @@
-"""Agent tools over the sangam Postgres database.
+"""Agent tools over the sangam Postgres database (schema v2).
 
 Discipline (from deep-agent-app): tools NEVER raise — a raised exception aborts
 the whole agent run, while an error string lets the model see and adapt. Every
-row is rendered with a citation marker ([org:N] / [funder:N] / [score:N]) that
-the system prompt requires the model to repeat inline.
+row is rendered with a citation marker ([org:N] / [funder:N] / [score:N] /
+[grant:N]) that the system prompt requires the model to repeat inline.
 """
 
 from __future__ import annotations
@@ -19,10 +19,11 @@ def _fmt_date(value) -> str:
 
 @tool
 async def search_orgs(query: str) -> str:
-    """Search CSOs/NGOs by name, sector, state, or district.
+    """Search CSOs/NGOs by name, sector, state, district, or registration ID
+    (PAN/FCRA/Darpan etc.).
 
-    Returns matching organisations with [org:ID] citation markers, registration
-    status, and data provenance. Use an empty query to list all organisations.
+    Returns matching organisations with [org:ID] citation markers, compliance
+    identifiers, and data provenance. Use an empty query to list all organisations.
     """
     try:
         pool = get_pool()
@@ -30,17 +31,34 @@ async def search_orgs(query: str) -> str:
             rows = await (
                 await conn.execute(
                     """
-                    SELECT id, name, slug, darpan_id, state, district, sectors,
-                           registration, source_name, source_url, fetched_at
-                    FROM orgs
+                    SELECT o.id, o.name, o.slug, o.legal_form, o.registration_date,
+                           o.source_name, o.source_url, o.fetched_at,
+                           dl.name AS district, sl.name AS state,
+                           COALESCE(t.sectors, '{}') AS sectors,
+                           COALESCE(i.ids, '') AS ids
+                    FROM orgs o
+                    LEFT JOIN locations dl ON dl.id = o.registered_location_id
+                    LEFT JOIN locations sl ON sl.id = dl.parent_id
+                    LEFT JOIN LATERAL (
+                      SELECT array_agg(tg.label ORDER BY ot.role, tg.label) AS sectors
+                      FROM org_tags ot JOIN tags tg ON tg.id = ot.tag_id WHERE ot.org_id = o.id
+                    ) t ON true
+                    LEFT JOIN LATERAL (
+                      SELECT string_agg(upper(oi.id_type) || ': ' || oi.id_value, ', '
+                                        ORDER BY oi.id_type) AS ids
+                      FROM org_identifiers oi WHERE oi.org_id = o.id
+                    ) i ON true
                     WHERE %(q)s = ''
-                       OR name ILIKE '%%' || %(q)s || '%%'
-                       OR slug ILIKE '%%' || %(q)s || '%%'
-                       OR state ILIKE '%%' || %(q)s || '%%'
-                       OR district ILIKE '%%' || %(q)s || '%%'
-                       OR EXISTS (SELECT 1 FROM unnest(sectors) s WHERE s ILIKE '%%' || %(q)s || '%%')
-                       OR similarity(name, %(q)s) > 0.3
-                    ORDER BY similarity(name, %(q)s) DESC NULLS LAST, name
+                       OR o.name ILIKE '%%' || %(q)s || '%%'
+                       OR o.slug ILIKE '%%' || %(q)s || '%%'
+                       OR sl.name ILIKE '%%' || %(q)s || '%%'
+                       OR dl.name ILIKE '%%' || %(q)s || '%%'
+                       OR similarity(o.name, %(q)s) > 0.3
+                       OR EXISTS (SELECT 1 FROM org_tags ot2 JOIN tags tg2 ON tg2.id = ot2.tag_id
+                                  WHERE ot2.org_id = o.id AND tg2.label ILIKE '%%' || %(q)s || '%%')
+                       OR EXISTS (SELECT 1 FROM org_identifiers oi2
+                                  WHERE oi2.org_id = o.id AND oi2.id_value ILIKE %(q)s)
+                    ORDER BY similarity(o.name, %(q)s) DESC NULLS LAST, o.name
                     LIMIT 15
                     """,
                     {"q": query.strip()},
@@ -50,17 +68,12 @@ async def search_orgs(query: str) -> str:
             return f"No organisations found matching {query!r}."
         lines = []
         for r in rows:
-            reg = r["registration"] or {}
-            reg_bits = ", ".join(
-                f"{k.upper()}: {v}" for k, v in reg.items()
-                if k in ("pan", "12a", "80g", "fcra", "csr1") and v
-            )
             lines.append(
                 f"[org:{r['id']}] {r['name']} ({r['slug']})"
-                + (f" — Darpan {r['darpan_id']}" if r["darpan_id"] else "")
+                + (f" — {r['legal_form']}" if r["legal_form"] else "")
                 + f" — {r['district'] or '?'}, {r['state'] or '?'}"
                 + (f" — sectors: {', '.join(r['sectors'])}" if r["sectors"] else "")
-                + (f" — {reg_bits}" if reg_bits else "")
+                + (f" — {r['ids']}" if r["ids"] else "")
                 + f" — source: {r['source_name'] or 'unknown'}, fetched {_fmt_date(r['fetched_at'])}"
             )
         return "\n".join(lines)
@@ -72,8 +85,9 @@ async def search_orgs(query: str) -> str:
 async def get_funder(name: str) -> str:
     """Look up a funder's profile by name or slug.
 
-    Returns the funder's type, focus sectors, geographies, funding trend and
-    other profile facts with a [funder:ID] citation marker, plus any contacts.
+    Returns funder type, Section-135 status, focus sectors, geographies, profile
+    facts, contacts, and a summary of its known grants — with [funder:ID] and
+    [grant:ID] citation markers.
     """
     try:
         pool = get_pool()
@@ -81,13 +95,24 @@ async def get_funder(name: str) -> str:
             rows = await (
                 await conn.execute(
                     """
-                    SELECT id, name, slug, funder_type, website, focus_sectors,
-                           geographies, profile, source_name, source_url, fetched_at
-                    FROM funders
-                    WHERE name ILIKE '%%' || %(q)s || '%%'
-                       OR slug ILIKE '%%' || %(q)s || '%%'
-                       OR similarity(name, %(q)s) > 0.3
-                    ORDER BY similarity(name, %(q)s) DESC NULLS LAST
+                    SELECT f.id, f.name, f.slug, f.funder_type, f.section_135_bound,
+                           f.website, f.profile, f.source_name, f.source_url, f.fetched_at,
+                           COALESCE(t.sectors, '{}') AS focus_sectors,
+                           COALESCE(l.geos, '{}') AS geographies
+                    FROM funders f
+                    LEFT JOIN LATERAL (
+                      SELECT array_agg(tg.label ORDER BY ft.role, tg.label) AS sectors
+                      FROM funder_tags ft JOIN tags tg ON tg.id = ft.tag_id WHERE ft.funder_id = f.id
+                    ) t ON true
+                    LEFT JOIN LATERAL (
+                      SELECT array_agg(lo.name ORDER BY lo.kind, lo.name) AS geos
+                      FROM funder_locations fl JOIN locations lo ON lo.id = fl.location_id
+                      WHERE fl.funder_id = f.id
+                    ) l ON true
+                    WHERE f.name ILIKE '%%' || %(q)s || '%%'
+                       OR f.slug ILIKE '%%' || %(q)s || '%%'
+                       OR similarity(f.name, %(q)s) > 0.3
+                    ORDER BY similarity(f.name, %(q)s) DESC NULLS LAST
                     LIMIT 5
                     """,
                     {"q": name.strip()},
@@ -101,26 +126,99 @@ async def get_funder(name: str) -> str:
                 profile_bits = "\n".join(f"  - {k}: {v}" for k, v in profile.items())
                 contacts = await (
                     await conn.execute(
-                        "SELECT name, role, email, verified FROM funder_contacts WHERE funder_id = %s",
+                        "SELECT name, role, kind, verified FROM contacts WHERE funder_id = %s",
                         (r["id"],),
                     )
                 ).fetchall()
                 contact_bits = "\n".join(
-                    f"  - {c['name']} ({c['role']}){' [verified]' if c['verified'] else ''}"
+                    f"  - {c['name']} ({c['role'] or c['kind']}){' [verified]' if c['verified'] else ''}"
                     for c in contacts
                 )
+                grants = await (
+                    await conn.execute(
+                        """
+                        SELECT g.id, o.name AS org_name, g.title, g.status,
+                               g.start_date, g.end_date
+                        FROM grants g JOIN orgs o ON o.id = g.org_id
+                        WHERE g.funder_id = %s ORDER BY g.start_date DESC NULLS LAST
+                        """,
+                        (r["id"],),
+                    )
+                ).fetchall()
+                grant_bits = "\n".join(
+                    f"  - [grant:{g['id']}] → {g['org_name']}: {g['title']} "
+                    f"({g['status']}, {_fmt_date(g['start_date'])} – {_fmt_date(g['end_date'])})"
+                    for g in grants
+                )
+                section = ("Section-135-bound CSR" if r["section_135_bound"]
+                           else "not Section-135-bound" if r["section_135_bound"] is False
+                           else "Section-135 status unknown")
                 out.append(
-                    f"[funder:{r['id']}] {r['name']} ({r['slug']}) — {r['funder_type']}\n"
+                    f"[funder:{r['id']}] {r['name']} ({r['slug']}) — {r['funder_type']}, {section}\n"
                     f"  website: {r['website']}\n"
                     f"  focus: {', '.join(r['focus_sectors'])}\n"
                     f"  geographies: {', '.join(r['geographies'])}\n"
                     + (profile_bits + "\n" if profile_bits else "")
                     + (f"  contacts:\n{contact_bits}\n" if contact_bits else "")
+                    + (f"  known grants:\n{grant_bits}\n" if grant_bits else "")
                     + f"  source: {r['source_name'] or 'unknown'}"
                 )
             return "\n\n".join(out)
     except Exception as exc:  # noqa: BLE001
         return f"get_funder failed: {exc}"
+
+
+@tool
+async def get_grants(org: str = "", funder: str = "", status: str = "") -> str:
+    """Look up actual funding relationships (grants) between funders and orgs.
+
+    Args:
+        org: optional organisation name/slug filter.
+        funder: optional funder name/slug filter.
+        status: optional status filter — active | concluded | unconfirmed | dormant.
+
+    Returns grants with [grant:ID] markers, dates, program, outcomes, and source.
+    """
+    try:
+        pool = get_pool()
+        async with pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    """
+                    SELECT g.*, f.name AS funder_name, f.id AS f_id,
+                           o.name AS org_name, o.id AS o_id, p.name AS program_name
+                    FROM grants g
+                    JOIN funders f ON f.id = g.funder_id
+                    JOIN orgs o ON o.id = g.org_id
+                    LEFT JOIN programs p ON p.id = g.program_id
+                    WHERE (%(org)s = '' OR o.name ILIKE '%%' || %(org)s || '%%' OR o.slug ILIKE '%%' || %(org)s || '%%')
+                      AND (%(funder)s = '' OR f.name ILIKE '%%' || %(funder)s || '%%' OR f.slug ILIKE '%%' || %(funder)s || '%%')
+                      AND (%(status)s = '' OR g.status = %(status)s)
+                    ORDER BY g.start_date DESC NULLS LAST
+                    LIMIT 20
+                    """,
+                    {"org": org.strip(), "funder": funder.strip(), "status": status.strip()},
+                )
+            ).fetchall()
+        if not rows:
+            return ("No grants found for the given filters. Note: only researched "
+                    "relationships are recorded; absence here is not proof no grant exists.")
+        lines = []
+        for g in rows:
+            outcomes = ", ".join(f"{k}: {v}" for k, v in (g["outcomes"] or {}).items())
+            amount = f"₹{g['amount']:,.0f}" if g["amount"] is not None else "amount not public"
+            lines.append(
+                f"[grant:{g['id']}] {g['funder_name']} [funder:{g['f_id']}] → "
+                f"{g['org_name']} [org:{g['o_id']}] — {g['title']} "
+                f"({g['status']}, {_fmt_date(g['start_date'])} – {_fmt_date(g['end_date'])}, {amount})"
+                + (f" — program: {g['program_name']}" if g["program_name"] else "")
+                + (f" — outcomes: {outcomes}" if outcomes else "")
+                + (f" — note: {g['notes']}" if g["notes"] else "")
+                + f" — source: {g['source_name'] or 'unknown'}, as of {_fmt_date(g['fetched_at'])}"
+            )
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001
+        return f"get_grants failed: {exc}"
 
 
 @tool
