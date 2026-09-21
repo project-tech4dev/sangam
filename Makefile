@@ -2,7 +2,10 @@
 
 SHELL := /bin/bash
 
-BACKUP_DIR ?= db/backups/$(shell date +%Y%m%d-%H%M%S)
+# := so the timestamp is evaluated once per make invocation (a lazy ?= would
+# re-run `date` on every reference and split the backup across directories).
+# Command-line override still works: make db-upgrade BACKUP_DIR=...
+BACKUP_DIR := db/backups/$(shell date +%Y%m%d-%H%M%S)
 
 up:
 	docker compose up --build -d
