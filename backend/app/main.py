@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import db, graph
 from app.agent.graph import build_agent
-from app.api.rest import router as rest_router
+from app.api import contacts, funders, grants, meta, orgs, programs, rfps, scores
 from app.config import get_settings
 from app.persistence import make_pool, open_checkpointer
 
@@ -49,7 +49,18 @@ async def lifespan(app: FastAPI):
         db.pool = None
 
 
-app = FastAPI(title="Sangam API", lifespan=lifespan)
+OPENAPI_TAGS = [
+    {"name": "orgs", "description": "CSO/NGO registry: profiles, identifiers, sectors, locations"},
+    {"name": "funders", "description": "Funder profiles and their fit scores"},
+    {"name": "grants", "description": "Actual funding relationships between funders and orgs"},
+    {"name": "programs", "description": "Programs run by orgs or funders"},
+    {"name": "rfps", "description": "Funding opportunities and org matches (RFP Watch)"},
+    {"name": "contacts", "description": "People at orgs and funders"},
+    {"name": "scores", "description": "Rubric-based funder-fit assessments and adjustment audit log"},
+    {"name": "meta", "description": "Shared vocabularies: tags and locations"},
+]
+
+app = FastAPI(title="Sangam API", lifespan=lifespan, openapi_tags=OPENAPI_TAGS)
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,7 +69,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(rest_router, prefix="/api")
+for resource_router in (orgs.router, funders.router, grants.router, programs.router,
+                        rfps.router, contacts.router, scores.router, meta.router):
+    app.include_router(resource_router, prefix="/api")
 
 
 @app.get("/health")
