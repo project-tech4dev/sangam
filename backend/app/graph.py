@@ -21,7 +21,10 @@ graphiti = None
 
 
 def graph_status(settings: Settings) -> str:
-    if not settings.falkordb_host:
+    if settings.graph_backend == "neo4j":
+        if not settings.neo4j_uri:
+            return "NEO4J_URI is not set"
+    elif not settings.falkordb_host:
         return "FALKORDB_HOST is not set"
     if not settings.openai_api_key:
         return "OPENAI_API_KEY is not set (Graphiti needs it for embeddings/extraction)"
@@ -37,19 +40,23 @@ async def open_graph(settings: Settings):
         return None
     # Imported lazily so the app still boots if graph deps are missing.
     from graphiti_core import Graphiti
-    from graphiti_core.driver.falkordb_driver import FalkorDriver
 
-    driver = FalkorDriver(
-        host=settings.falkordb_host,
-        port=settings.falkordb_port,
-        database="sangam",
-    )
-    client = Graphiti(graph_driver=driver)
+    if settings.graph_backend == "neo4j":
+        client = Graphiti(settings.neo4j_uri, settings.neo4j_user, settings.neo4j_password)
+        backend_desc = f"neo4j={settings.neo4j_uri}"
+    else:
+        from graphiti_core.driver.falkordb_driver import FalkorDriver
+
+        driver = FalkorDriver(
+            host=settings.falkordb_host,
+            port=settings.falkordb_port,
+            database="sangam",
+        )
+        client = Graphiti(graph_driver=driver)
+        backend_desc = f"falkordb={settings.falkordb_host}:{settings.falkordb_port}"
     await client.build_indices_and_constraints()
     graphiti = client
-    logger.info(
-        "Knowledge graph ready: falkordb=%s:%s", settings.falkordb_host, settings.falkordb_port
-    )
+    logger.info("Knowledge graph ready: %s", backend_desc)
     return client
 
 

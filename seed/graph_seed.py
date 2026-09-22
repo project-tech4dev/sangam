@@ -25,15 +25,31 @@ def collect_episodes(database_url: str) -> list[dict]:
     episodes: list[dict] = []
     with psycopg.connect(database_url, row_factory=dict_row) as conn:
         funders = conn.execute(
-            "SELECT name, funder_type, focus_sectors, geographies, profile FROM funders"
+            """
+            SELECT f.name, f.funder_type, f.section_135_bound, f.profile,
+                   COALESCE(t.sectors, '{}') AS focus_sectors,
+                   COALESCE(l.geos, '{}') AS geographies
+            FROM funders f
+            LEFT JOIN LATERAL (
+              SELECT array_agg(tg.label) AS sectors FROM funder_tags ft
+              JOIN tags tg ON tg.id = ft.tag_id WHERE ft.funder_id = f.id
+            ) t ON true
+            LEFT JOIN LATERAL (
+              SELECT array_agg(lo.name) AS geos FROM funder_locations fl
+              JOIN locations lo ON lo.id = fl.location_id WHERE fl.funder_id = f.id
+            ) l ON true
+            ORDER BY f.id
+            """
         ).fetchall()
         for f in funders:
             profile_lines = "\n".join(f"{k}: {v}" for k, v in (f["profile"] or {}).items())
+            section = ("It is a Section-135-bound CSR funder." if f["section_135_bound"]
+                       else "It is not Section-135-bound." if f["section_135_bound"] is False else "")
             episodes.append(
                 {
                     "name": f"funder-profile-{f['name']}",
                     "body": (
-                        f"{f['name']} is a {f['funder_type']} funder. "
+                        f"{f['name']} is a {f['funder_type']} funder. {section} "
                         f"Focus sectors: {', '.join(f['focus_sectors'])}. "
                         f"Geographies: {', '.join(f['geographies'])}.\n{profile_lines}"
                     ),
@@ -43,21 +59,64 @@ def collect_episodes(database_url: str) -> list[dict]:
 
         orgs = conn.execute(
             """
-            SELECT name, state, district, sectors, registration
-            FROM orgs WHERE slug IN ('kabil', 'bdf')
+            SELECT o.name, o.legal_form, o.registration_date,
+                   dl.name AS district, sl.name AS state,
+                   COALESCE(t.sectors, '{}') AS sectors,
+                   COALESCE(i.ids, '') AS ids
+            FROM orgs o
+            LEFT JOIN locations dl ON dl.id = o.registered_location_id
+            LEFT JOIN locations sl ON sl.id = dl.parent_id
+            LEFT JOIN LATERAL (
+              SELECT array_agg(tg.label) AS sectors FROM org_tags ot
+              JOIN tags tg ON tg.id = ot.tag_id WHERE ot.org_id = o.id
+            ) t ON true
+            LEFT JOIN LATERAL (
+              SELECT string_agg(upper(oi.id_type) || ' ' || oi.id_value, ', ') AS ids
+              FROM org_identifiers oi WHERE oi.org_id = o.id
+            ) i ON true
+            WHERE o.slug IN ('kabil', 'bdf')
+            ORDER BY o.id
             """
         ).fetchall()
         for o in orgs:
-            reg_lines = "\n".join(f"{k}: {v}" for k, v in (o["registration"] or {}).items())
             episodes.append(
                 {
                     "name": f"org-profile-{o['name']}",
                     "body": (
-                        f"{o['name']} is a civil-society organisation based in "
-                        f"{o['district']}, {o['state']}. "
-                        f"Sectors: {', '.join(o['sectors'])}.\n{reg_lines}"
+                        f"{o['name']} is a civil-society organisation ({o['legal_form']}, "
+                        f"registered {o['registration_date']}) based in {o['district']}, {o['state']}. "
+                        f"Sectors: {', '.join(o['sectors'])}. Registrations: {o['ids']}."
                     ),
                     "description": "organisation profile (hand-vetting fact-check)",
+                }
+            )
+
+        grants = conn.execute(
+            """
+            SELECT g.title, g.status, g.start_date, g.end_date, g.outcomes, g.notes,
+                   f.name AS funder_name, o.name AS org_name, p.name AS program_name
+            FROM grants g
+            JOIN funders f ON f.id = g.funder_id
+            JOIN orgs o ON o.id = g.org_id
+            LEFT JOIN programs p ON p.id = g.program_id
+            ORDER BY g.id
+            """
+        ).fetchall()
+        for g in grants:
+            outcomes = ", ".join(f"{k}: {v}" for k, v in (g["outcomes"] or {}).items())
+            dates = (f" from {g['start_date']} to {g['end_date']}"
+                     if g["start_date"] else "")
+            episodes.append(
+                {
+                    "name": f"grant-{g['funder_name']}-{g['org_name']}-{g['title'][:30]}",
+                    "body": (
+                        f"{g['funder_name']} funded {g['org_name']}: {g['title']}"
+                        + (f" under the {g['program_name']} program" if g["program_name"] else "")
+                        + f"{dates}. Status: {g['status']}."
+                        + (f" Outcomes: {outcomes}." if outcomes else "")
+                        + (f" {g['notes']}" if g["notes"] else "")
+                    ),
+                    "description": "funding relationship (grants table)",
                 }
             )
 

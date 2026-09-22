@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # embeddings default to OpenAI; Anthropic has no embedding models).
     falkordb_host: str = ""
     falkordb_port: int = 6379
+    # Comparison experiment: which graph DB Graphiti writes to / the agent reads.
+    graph_backend: str = "falkordb"   # falkordb | neo4j
+    neo4j_uri: str = ""
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = ""
     openai_api_key: str = ""
 
     # Optional tool integrations — all disabled when empty.
