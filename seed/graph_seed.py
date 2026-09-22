@@ -7,7 +7,7 @@ deterministically, and the graph can always be dropped and rebuilt from here.
 
 Run inside the backend container:
     python -m seed.graph_seed
-Requires FALKORDB_HOST and OPENAI_API_KEY (Graphiti extraction + embeddings).
+Requires NEO4J_URI and OPENAI_API_KEY (Graphiti extraction + embeddings).
 """
 
 from __future__ import annotations

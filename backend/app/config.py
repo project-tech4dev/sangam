@@ -33,13 +33,9 @@ class Settings(BaseSettings):
     # Postgres connection string; holds app data AND LangGraph checkpoints.
     database_url: str = "postgresql://sangam:sangam@localhost:5433/sangam"
 
-    # Knowledge graph (Graphiti + FalkorDB). Graph features activate only when
-    # FALKORDB_HOST is set AND an OpenAI key exists (Graphiti's extraction and
+    # Knowledge graph (Graphiti + Neo4j). Graph features activate only when
+    # NEO4J_URI is set AND an OpenAI key exists (Graphiti's extraction and
     # embeddings default to OpenAI; Anthropic has no embedding models).
-    falkordb_host: str = ""
-    falkordb_port: int = 6379
-    # Comparison experiment: which graph DB Graphiti writes to / the agent reads.
-    graph_backend: str = "falkordb"   # falkordb | neo4j
     neo4j_uri: str = ""
     neo4j_user: str = "neo4j"
     neo4j_password: str = ""
@@ -66,7 +62,7 @@ class Settings(BaseSettings):
 
     @property
     def graph_enabled(self) -> bool:
-        return bool(self.falkordb_host and self.openai_api_key)
+        return bool(self.neo4j_uri and self.openai_api_key)
 
     @property
     def origins(self) -> list[str]:

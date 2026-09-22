@@ -52,17 +52,20 @@ frontend/       # Next.js App Router + CopilotKit
 Useful targets: `make logs`, `make psql`, `make db-reset` (drop volume, recreate, re-seed),
 `make dev-backend` / `make dev-frontend` (run either outside docker against compose Postgres).
 
-## Knowledge graph (Graphiti + FalkorDB)
+## Knowledge graph (Graphiti + Neo4j)
 
-Relationship facts extracted from source text live in a temporal graph (FalkorDB, one small
-Redis-based container; browser UI at http://localhost:3010). The agent's `search_graph` tool
-answers connection questions — "what links KABIL to Tata Trusts?" — with time-bounded facts.
+Relationship facts extracted from source text live in a temporal graph (Neo4j; browser at
+http://localhost:7474, login `neo4j` / `sangamneo4j`, bolt on 7687). The agent's
+`search_graph` tool answers connection questions — "what links KABIL to Tata Trusts?" —
+with time-bounded facts.
 
 - Requires `OPENAI_API_KEY` in `.env` (Graphiti's extraction LLM + embeddings; Anthropic has
   no embedding models). Without it the stack runs fine and the tool reports the graph as off.
-- `make graph-seed` builds the graph **from Postgres** (funder profiles, org registrations,
-  the hand-vetting adjustment log). Postgres stays the system of record; the graph is derived
+- `make graph-seed` builds the graph **from Postgres** (funder/org profiles, grants, the
+  hand-vetting adjustment log). Postgres stays the system of record; the graph is derived
   and rebuildable — safe to wipe (`docker compose down -v` clears it along with everything else).
+- Embeddings are pinned at 768 dims (`EMBEDDING_DIM` in compose) — keep any external
+  ingestion tooling on the same value.
 
 ## Design notes
 
