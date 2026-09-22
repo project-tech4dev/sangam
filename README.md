@@ -55,6 +55,60 @@ frontend/       # Next.js App Router + CopilotKit
 Useful targets: `make logs`, `make psql`, `make db-reset` (drop volume, recreate, re-seed),
 `make dev-backend` / `make dev-frontend` (run either outside docker against compose Postgres).
 
+## Architecture (high level)
+
+```mermaid
+flowchart TD
+  U["User<br/><small>FFRH staff / CSO cohort</small>"]
+
+  subgraph FE["Frontend — Next.js :3000"]
+    PAGES["Registry pages<br/><small>/orgs · /funders</small>"]
+    CHAT["Ask Sangam chat<br/><small>CopilotKit runtime</small>"]
+  end
+
+  subgraph BE["Backend — FastAPI :8010"]
+    REST["REST API<br/><small>orgs · funders · grants · programs<br/>rfps · contacts · scores · meta</small>"]
+    AGENT["LangGraph deep agent<br/><small>Claude · 6 tools · cited answers</small>"]
+    GRT["Graphiti<br/><small>extraction · embeddings · dedup</small>"]
+  end
+
+  PG[("Postgres + pgvector :5433<br/><small>SYSTEM OF RECORD<br/>records · scores · documents · chat threads</small>")]
+  NEO[("Neo4j :7474 / :7687<br/><small>DERIVED temporal knowledge graph</small>")]
+
+  ANT["Anthropic API<br/><small>agent reasoning</small>"]
+  OAI["OpenAI API<br/><small>graph extraction + embeddings (768-dim)</small>"]
+
+  U --> PAGES & CHAT
+  PAGES --> REST
+  CHAT -- "AG-UI (SSE)" --> AGENT
+  REST --> PG
+  AGENT -- "SQL tools" --> PG
+  AGENT -- "search_graph" --> GRT
+  GRT -- Cypher --> NEO
+  PG -- "make graph-seed (derive episodes)" --> GRT
+  AGENT -.-> ANT
+  GRT -.-> OAI
+
+  style PG stroke:#0d6b60,stroke-width:2px
+  style NEO stroke:#a9622f,stroke-width:2px
+```
+
+**The one rule that holds it together: data flows left to right.** Postgres is the source of
+truth; the Neo4j graph is *derived* from it (episodes generated from Postgres rows, entities
+and time-bounded relationship facts extracted by an LLM) and can be wiped and rebuilt at any
+time without losing anything. If the two ever disagree, Postgres wins.
+
+| Store | Holds | Ask it |
+|---|---|---|
+| Postgres (typed tables) | registrations, identifiers, contacts, programs, **grants**, rubric scores + audit log, news | facts, filters, joins, "what's the score and why" |
+| Postgres (`documents`/`chunks`) | full document text; tsvector + pgvector indexes (chunks pipeline pending) | "what does the report actually say" |
+| Neo4j (via Graphiti) | entities + temporal relationship edges with validity windows | "what *connects* X to Y", multi-hop paths |
+
+External services are deliberately narrow: **Anthropic** powers the agent's reasoning
+(`MODEL`, provider-agnostic), **OpenAI** powers only the graph's extraction/embeddings
+(`OPENAI_API_KEY`). Auth is a dev-stub pending Supabase JWT; everything runs locally via
+docker compose (`make up`).
+
 ## Agentic layer (how the chat actually works)
 
 The "intelligence" is one LangGraph **deep agent** (`deepagents` + Claude, built in
