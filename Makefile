@@ -65,6 +65,11 @@ db-upgrade: db-backup
 	  && echo "LINKAGE OK: restored documents attach to identical org/funder slugs" \
 	  || (echo "LINKAGE MISMATCH — investigate before proceeding" && exit 1)
 
+# End-to-end smoke test of the running stack (backend, frontend, chat wire).
+# SMOKE_SKIP_LLM=1 make smoke  → skips the one real agent call.
+smoke:
+	bash scripts/smoke.sh
+
 psql:
 	docker compose exec postgres psql -U sangam -d sangam
 
