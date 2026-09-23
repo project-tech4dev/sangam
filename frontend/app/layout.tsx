@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Public_Sans } from "next/font/google";
-import "@copilotkit/react-ui/styles.css";
 import "./globals.css";
 import { NavBar } from "./components/NavBar";
 import { Providers } from "./providers";

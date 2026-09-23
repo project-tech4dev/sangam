@@ -1,0 +1,72 @@
+"use client";
+
+import { useState } from "react";
+import { HIDDEN_TOOLS, humanizeTool } from "../lib/toolLabels";
+import type { TraceStep } from "../lib/useSangamChat";
+
+export function TraceCard({ steps, streaming }: { steps: TraceStep[]; streaming: boolean }) {
+  const visible = steps.filter((s) => !HIDDEN_TOOLS.has(s.tool));
+  const [open, setOpen] = useState(false);
+  const expanded = streaming || open;
+  if (visible.length === 0 && !streaming) return null;
+
+  return (
+    <div
+      className="ask-in"
+      style={{
+        background: "var(--color-accent-2-100)",
+        borderRadius: "var(--radius-md)",
+        padding: "12px 16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-accent-2-900)" }}>
+          {streaming ? "Working…" : `How this answer was made — ${visible.length} step${visible.length === 1 ? "" : "s"}`}
+        </span>
+        {!streaming && visible.length > 0 && (
+          <button
+            className="btn btn-ghost"
+            style={{ padding: 0, fontSize: 12, marginLeft: "auto" }}
+            onClick={() => setOpen(!open)}
+          >
+            {open ? "Hide steps" : "Show steps"}
+          </button>
+        )}
+      </div>
+      {expanded &&
+        visible.map((step) => {
+          const label = humanizeTool(step.tool);
+          return (
+            <div key={step.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span
+                className={step.running ? "ask-pulse" : undefined}
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 11,
+                  color: "#fff",
+                  background: step.running ? "var(--color-accent-500)" : "var(--color-accent-2-600)",
+                }}
+              >
+                {step.running ? "" : "✓"}
+              </span>
+              <div style={{ fontSize: 12.5 }}>
+                <strong>{label.label}</strong>
+                <span className="muted" style={{ marginLeft: 8, fontSize: 11.5 }}>
+                  {label.detail(step.args)}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+    </div>
+  );
+}

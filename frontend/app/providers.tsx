@@ -1,18 +1,18 @@
 "use client";
 
-import { CopilotKit } from "@copilotkit/react-core";
+import { CopilotKitProvider } from "@copilotkit/react-core/v2";
 import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <CopilotKit
+    <CopilotKitProvider
       runtimeUrl="/api/copilotkit"
-      agent="sangam_agent"
+      agentId="sangam_agent"
       useSingleEndpoint={false}
       // Auth stub: same wire shape as the future Supabase JWT.
       headers={{ Authorization: "Bearer dev" }}
     >
       {children}
-    </CopilotKit>
+    </CopilotKitProvider>
   );
 }
