@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import db, graph
 from app.agent.graph import build_agent
-from app.api import contacts, funders, grants, meta, orgs, programs, rfps, scores
+from app.api import contacts, documents, funders, grants, meta, news, orgs, programs, rfps, scores
 from app.config import get_settings
 from app.persistence import make_pool, open_checkpointer
 
@@ -70,7 +70,8 @@ app.add_middleware(
 )
 
 for resource_router in (orgs.router, funders.router, grants.router, programs.router,
-                        rfps.router, contacts.router, scores.router, meta.router):
+                        rfps.router, contacts.router, scores.router, meta.router,
+                        news.router, documents.router):
     app.include_router(resource_router, prefix="/api")
 
 

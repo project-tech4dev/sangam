@@ -8,10 +8,17 @@ from app.api.deps import PageParams
 from app.auth import get_current_user
 from app.db import get_pool
 from app.repositories import meta as repo
+from app.repositories import news as news_repo
 from app.schemas.common import Page
 from app.schemas.meta import LocationOut, TagOut
+from app.schemas.news import StatsOut
 
 router = APIRouter(prefix="/meta", tags=["meta"])
+
+
+@router.get("/stats", response_model=StatsOut, summary="Base coverage counts")
+async def get_stats(user_id: UUID = Depends(get_current_user)) -> StatsOut:
+    return StatsOut.model_validate(await news_repo.stats(get_pool()))
 
 
 @router.get("/tags", response_model=Page[TagOut], summary="Tag vocabulary")
