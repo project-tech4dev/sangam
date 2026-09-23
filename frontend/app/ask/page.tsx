@@ -40,12 +40,9 @@ export default async function AskPage() {
     stats,
   };
 
+  // Full-bleed app shell: the workspace owns everything below the nav.
   return (
-    <div className="page" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <div className="eyebrow">Ask Sangam</div>
-        <h1 style={{ fontSize: 26 }}>Ask the base, get a cited answer</h1>
-      </div>
+    <div style={{ height: "calc(100vh - 67px)", display: "flex", flexDirection: "column" }}>
       <AskWorkspace payload={payload} />
     </div>
   );

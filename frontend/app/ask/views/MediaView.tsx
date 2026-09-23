@@ -32,7 +32,7 @@ export function MediaView({ onDiscuss }: { onDiscuss: (seed: string) => void }) 
   }, []);
 
   return (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <div className="eyebrow">Media & signals</div>
         <h2 style={{ fontSize: 20 }}>Collected signals — all pending human review</h2>

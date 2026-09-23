@@ -2,7 +2,7 @@
 
 export function RfpWatchView() {
   return (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <div className="eyebrow">RFP watch</div>
         <h2 style={{ fontSize: 20 }}>Funding opportunities matched to the cohort</h2>

@@ -28,7 +28,7 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
   }, [orgSlug]);
 
   return (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <div className="eyebrow">Doc vault</div>
         <h2 style={{ fontSize: 20 }}>Documents in the base, per organisation</h2>

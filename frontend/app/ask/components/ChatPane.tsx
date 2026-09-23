@@ -53,7 +53,21 @@ export function ChatPane({
   }
 
   return (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
+    <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 18,
+          paddingRight: 6,
+          maxWidth: 860,
+          width: "100%",
+          margin: "0 auto",
+        }}
+      >
       {turns.length === 0 && (
         <>
           <div className="card" style={{ gap: 8 }}>
@@ -93,8 +107,9 @@ export function ChatPane({
         ))}
         <div ref={bottomRef} />
       </div>
+      </div>
 
-      <div className="card elev-sm" style={{ gap: 10, marginTop: "auto", position: "sticky", bottom: 16 }}>
+      <div className="card elev-sm" style={{ gap: 10, maxWidth: 860, width: "100%", margin: "0 auto", flexShrink: 0 }}>
         <textarea
           className="input"
           style={{ border: "none", padding: 4, minHeight: 48 }}

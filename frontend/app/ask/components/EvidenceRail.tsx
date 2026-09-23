@@ -42,7 +42,7 @@ export function EvidenceRail({
   const steps = latest?.steps.filter((s) => !HIDDEN_TOOLS.has(s.tool) && s.result) ?? [];
 
   return (
-    <aside style={{ width: 340, flexShrink: 0, position: "sticky", top: 84, alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: 12 }}>
+    <aside style={{ width: 340, flexShrink: 0, height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
       {steps.length === 0 ? (
         <IndexCard stats={stats} />
       ) : (

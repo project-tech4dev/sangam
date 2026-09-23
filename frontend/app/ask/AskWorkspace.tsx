@@ -50,8 +50,14 @@ export function AskWorkspace({ payload }: { payload: IndexPayload }) {
 
   return (
     <div
-      className="card elev-sm"
-      style={{ padding: 0, flexDirection: "row", minHeight: 720, overflow: "hidden", gap: 0 }}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        background: "var(--color-surface)",
+        borderTop: "1px solid var(--color-divider)",
+        overflow: "hidden",
+      }}
     >
       <Sidebar
         collapsed={collapsed}
@@ -69,7 +75,7 @@ export function AskWorkspace({ payload }: { payload: IndexPayload }) {
         onNewChat={() => newChat()}
       />
 
-      <div style={{ flex: 1, minWidth: 0, padding: 22, display: "flex", gap: 20 }}>
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: "22px 26px", display: "flex", gap: 24 }}>
         {view === "ask" && (
           <>
             <ChatPane
