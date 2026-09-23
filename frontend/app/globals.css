@@ -1,116 +1,257 @@
+/* Sangam design system — reconstructed from the design prototype.
+   Terracotta accent · olive accent-2 · warm neutrals · Public Sans. */
+
 :root {
-  --border: #e2e2e2;
-  --muted: #666;
-  --accent: #0f5132;
+  /* Terracotta accent ramp (anchors observed: 100 #ffe1d0, 600 #c67139, 700 #b2622d, 900 #8c491a) */
+  --color-accent-100: #ffe1d0;
+  --color-accent-200: #f8cbae;
+  --color-accent-300: #eeb289;
+  --color-accent-400: #e29a67;
+  --color-accent-500: #d4854f;
+  --color-accent-600: #c67139;
+  --color-accent-700: #b2622d;
+  --color-accent-800: #9e5523;
+  --color-accent-900: #8c491a;
+  --color-accent: var(--color-accent-600);
+
+  /* Olive accent-2 ramp (anchors: 100 #e1eecc, 600 #728157, 900 #3d472b) */
+  --color-accent-2-100: #e1eecc;
+  --color-accent-2-200: #cfe0af;
+  --color-accent-2-300: #b7c98f;
+  --color-accent-2-400: #9cb076;
+  --color-accent-2-500: #7a8a5e;
+  --color-accent-2-600: #728157;
+  --color-accent-2-700: #5e6c47;
+  --color-accent-2-800: #4d5939;
+  --color-accent-2-900: #3d472b;
+
+  /* Warm neutrals */
+  --color-bg: #f9f4ed;
+  --color-surface: #fffdf9;
+  --color-text: #201e1d;
+  --color-neutral-100: #f4eee4;
+  --color-neutral-200: #eae2d4;
+  --color-neutral-300: #ddd2c1;
+  --color-neutral-400: #c4b8a5;
+  --color-neutral-500: #a19786;
+  --color-neutral-600: #877d6d;
+  --color-neutral-700: #645c50;
+  --color-neutral-800: #47413a;
+  --color-neutral-900: #2e2a26;
+  --color-divider: #e7ddcf;
+
+  /* One-offs tokenized from the prototype */
+  --color-track-bg: #f3ded5;   /* occupation-track chip */
+  --color-track-fg: #8c3a22;
+  --color-bad: #a33f22;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --shadow-sm: 0 1px 3px rgba(32, 30, 29, 0.07);
+  --shadow-md: 0 4px 16px rgba(32, 30, 29, 0.09);
+
+  --font-body: var(--font-public-sans), -apple-system, system-ui, sans-serif;
+  --font-heading: var(--font-public-sans), -apple-system, system-ui, sans-serif;
+
+  --page-max: 1160px;
+  --page-pad: 32px;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #1a1a1a;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
-.topnav {
-  display: flex;
-  gap: 1.25rem;
-  align-items: center;
-  padding: 0.75rem 1.5rem;
-  border-bottom: 1px solid var(--border);
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
 }
 
-.topnav a {
-  color: var(--muted);
-  text-decoration: none;
-  font-size: 0.95rem;
-}
-
-.topnav a.brand {
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 1.1rem;
-}
-
-main {
-  padding: 0;
-}
+a { color: var(--color-accent-700); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
 .page {
-  max-width: 1080px;
+  max-width: var(--page-max);
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 28px var(--page-pad) 72px;
 }
 
-.page h1 {
-  font-size: 1.4rem;
-}
-
-table.data {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-table.data th,
-table.data td {
-  text-align: left;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
-
-table.data th {
-  color: var(--muted);
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
   font-weight: 600;
-  white-space: nowrap;
 }
 
-.pill {
-  display: inline-block;
-  background: #f0f4f1;
-  color: var(--accent);
-  border-radius: 999px;
-  padding: 0.1rem 0.6rem;
-  margin: 0 0.25rem 0.25rem 0;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
+.muted { color: var(--color-neutral-700); }
+.muted-2 { color: var(--color-neutral-500); }
 
-.muted {
-  color: var(--muted);
-}
-
-.chat-shell {
-  height: calc(100vh - 53px);
+/* --- Cards --------------------------------------------------------------- */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: 22px;
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
-
-.chat-shell > div {
-  flex: 1;
-  min-height: 0;
+.card-kicker {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+  font-weight: 600;
 }
+.card-title { font-family: var(--font-heading); font-size: 17px; font-weight: 600; }
+.card-body { font-size: 13.5px; color: color-mix(in srgb, var(--color-text) 78%, transparent); }
+.elev-sm { box-shadow: var(--shadow-sm); }
+.elev-md { box-shadow: var(--shadow-md); }
 
-details.tool-call {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.4rem 0.7rem;
-  margin: 0.4rem 0;
-  font-size: 0.85rem;
-  background: #fafafa;
+/* --- Tags / chips --------------------------------------------------------- */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid transparent;
 }
+.tag-accent   { background: var(--color-accent-100); color: var(--color-accent-800); }
+.tag-accent-2 { background: var(--color-accent-2-100); color: var(--color-accent-2-800); }
+.tag-neutral  { background: var(--color-neutral-200); color: var(--color-neutral-800); }
+.tag-outline  { background: transparent; border-color: var(--color-divider); color: var(--color-neutral-700); }
+.tag-track    { background: var(--color-track-bg); color: var(--color-track-fg); }
+.tag-ondark   { background: rgba(255, 255, 255, 0.14); color: #fff; border-color: rgba(255, 255, 255, 0.25); }
 
-details.tool-call summary {
+/* --- Buttons --------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
   cursor: pointer;
-  color: var(--muted);
+  text-decoration: none;
+  transition: filter 0.12s ease, background 0.12s ease;
+}
+.btn:hover { text-decoration: none; filter: brightness(0.96); }
+.btn-primary   { background: var(--color-accent-600); color: var(--color-bg); }
+.btn-secondary { background: transparent; border-color: var(--color-accent-2-600); color: var(--color-accent-2-800); }
+.btn-ghost     { background: transparent; color: var(--color-accent-700); }
+.btn-block     { width: 100%; }
+.btn-icon {
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: transparent;
+  border-color: var(--color-divider);
+  color: var(--color-neutral-700);
 }
 
-details.tool-call pre {
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 0.5rem 0 0;
-  font-size: 0.8rem;
+/* --- Inputs ---------------------------------------------------------------- */
+.input {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  outline: none;
+  width: 100%;
+}
+.input:focus { border-color: var(--color-accent-2-600); }
+textarea.input { resize: vertical; min-height: 64px; }
+
+/* --- Segmented control ----------------------------------------------------- */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--color-divider);
+  border-radius: 999px;
+  padding: 3px;
+  background: var(--color-surface);
+  gap: 2px;
+}
+.seg-opt {
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  padding: 6px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.seg-opt[data-active="true"] { background: var(--color-accent-2-600); color: #fff; }
+
+/* --- Pills (place filters etc.) -------------------------------------------- */
+.pill {
+  border: 1px solid var(--color-divider);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.pill[data-active="true"] { background: var(--color-accent-2-600); border-color: var(--color-accent-2-600); color: #fff; }
+
+/* --- Dialog ----------------------------------------------------------------- */
+.dialog-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(32, 30, 29, 0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.dialog {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  max-width: 420px;
+  width: calc(100% - 48px);
+  box-shadow: var(--shadow-md);
+}
+.dialog-title { font-family: var(--font-heading); font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+/* --- Progress --------------------------------------------------------------- */
+.progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-neutral-200);
+  overflow: hidden;
+}
+.progress-fill { height: 100%; border-radius: 999px; background: var(--color-accent-600); }
+
+/* --- Animations (Ask Sangam) ------------------------------------------------ */
+@keyframes ask-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ask-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.ask-in { animation: ask-in 0.3s ease both; }
+.ask-pulse { animation: ask-pulse 1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ask-in { animation: none; }
+  .ask-pulse { animation: none; opacity: 1; }
 }
