@@ -27,7 +27,11 @@ export function AskWorkspace({ payload }: { payload: IndexPayload }) {
   const [latestTurn, setLatestTurn] = useState<Turn | null>(null);
   const [seed, setSeed] = useState<string | null>(null);
 
-  useEffect(() => setThreads(loadThreads()), []);
+  useEffect(() => {
+    setThreads(loadThreads());
+    // Phones/small tablets: start with the workspace rail collapsed.
+    if (window.matchMedia("(max-width: 768px)").matches) setCollapsed(true);
+  }, []);
 
   const index: RegistryIndex = useMemo(
     () => ({
@@ -55,8 +59,8 @@ export function AskWorkspace({ payload }: { payload: IndexPayload }) {
         minHeight: 0,
         display: "flex",
         background: "var(--color-surface)",
-        borderTop: "1px solid var(--color-divider)",
         overflow: "hidden",
+        position: "relative",
       }}
     >
       <Sidebar
@@ -75,7 +79,7 @@ export function AskWorkspace({ payload }: { payload: IndexPayload }) {
         onNewChat={() => newChat()}
       />
 
-      <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: "22px 26px", display: "flex", gap: 24 }}>
+      <div className="ask-main" style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", gap: 24 }}>
         {view === "ask" && (
           <>
             <ChatPane

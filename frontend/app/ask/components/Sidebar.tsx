@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ThreadMeta } from "../lib/threads";
 
 export type WorkspaceView = "ask" | "vault" | "media" | "rfpwatch";
@@ -31,10 +32,17 @@ export function Sidebar({
 }) {
   if (collapsed) {
     return (
-      <div style={{ width: 32, flexShrink: 0, borderRight: "1px solid var(--color-divider)", display: "flex", justifyContent: "center", paddingTop: 14 }}>
+      <div style={{ width: 40, flexShrink: 0, borderRight: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 14, gap: 10 }}>
         <button className="btn btn-ghost" style={{ padding: 2 }} onClick={onToggle} title="Open workspace">
           ⟩
         </button>
+        <Link
+          href="/registry"
+          title="Back to Sangam"
+          style={{ writingMode: "vertical-rl", fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 14, color: "var(--color-accent-2-900)", textDecoration: "none" }}
+        >
+          sangam
+        </Link>
       </div>
     );
   }
@@ -57,6 +65,7 @@ export function Sidebar({
 
   return (
     <div
+      className="ask-sidebar"
       style={{
         width: 250,
         flexShrink: 0,
@@ -65,14 +74,24 @@ export function Sidebar({
         display: "flex",
         flexDirection: "column",
         gap: 14,
-        transition: "width 0.15s ease",
+        background: "var(--color-surface)",
+        overflowY: "auto",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <span className="eyebrow">Workspace</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Link
+          href="/registry"
+          style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 18, color: "var(--color-accent-2-900)", textDecoration: "none" }}
+        >
+          sangam
+        </Link>
         <button className="btn btn-ghost" style={{ padding: 2, marginLeft: "auto" }} onClick={onToggle} title="Collapse">
           ⟨
         </button>
+      </div>
+      <div style={{ display: "flex", gap: 10, fontSize: 12 }}>
+        <Link href="/registry">Registry</Link>
+        <Link href="/resources">Resources</Link>
       </div>
 
       <button

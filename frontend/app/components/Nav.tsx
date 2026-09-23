@@ -26,7 +26,8 @@ export function Nav({ current }: { current: "home" | "registry" | "ask" | "resou
           padding: "14px var(--page-pad)",
           display: "flex",
           alignItems: "center",
-          gap: 24,
+          gap: "12px 20px",
+          flexWrap: "wrap",
         }}
       >
         <Link

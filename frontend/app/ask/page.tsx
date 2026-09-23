@@ -40,9 +40,9 @@ export default async function AskPage() {
     stats,
   };
 
-  // Full-bleed app shell: the workspace owns everything below the nav.
+  // Full-viewport app shell: the global nav is hidden on /ask.
   return (
-    <div style={{ height: "calc(100vh - 67px)", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <AskWorkspace payload={payload} />
     </div>
   );
