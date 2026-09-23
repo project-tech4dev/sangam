@@ -15,10 +15,18 @@ from app.tools.web import fetch_url
 
 
 def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
-    return create_deep_agent(
+    agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=[search_orgs, get_funder, get_grants, get_fit_scores, search_graph, fetch_url],
         middleware=[CopilotKitMiddleware()],
         system_prompt=SYSTEM_PROMPT,
         checkpointer=checkpointer,
     )
+    if settings.langfuse_enabled:
+        # Langfuse v3 reads LANGFUSE_PUBLIC_KEY/SECRET_KEY/HOST from the env;
+        # attaching the handler at graph level traces every run, tool call,
+        # and generation without touching the AG-UI endpoint.
+        from langfuse.langchain import CallbackHandler
+
+        agent = agent.with_config({"callbacks": [CallbackHandler()]})
+    return agent

@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     neo4j_password: str = ""
     openai_api_key: str = ""
 
+    # Langfuse tracing (agent runs → traces/generations/costs). Enabled only
+    # when both keys are set; the SDK reads LANGFUSE_* from the environment.
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "https://cloud.langfuse.com"
+
     # Optional tool integrations — all disabled when empty.
     tavily_api_key: str = ""
     github_pat: str = ""
@@ -63,6 +69,10 @@ class Settings(BaseSettings):
     @property
     def graph_enabled(self) -> bool:
         return bool(self.neo4j_uri and self.openai_api_key)
+
+    @property
+    def langfuse_enabled(self) -> bool:
+        return bool(self.langfuse_public_key and self.langfuse_secret_key)
 
     @property
     def origins(self) -> list[str]:

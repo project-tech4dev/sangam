@@ -44,8 +44,19 @@ async def lifespan(app: FastAPI):
             ),
             path="/agent",
         )
+        if settings.langfuse_enabled:
+            logger.info("Langfuse tracing enabled: host=%s", settings.langfuse_host)
+        else:
+            logger.info("Langfuse tracing disabled (set LANGFUSE_PUBLIC_KEY/SECRET_KEY to enable)")
         logger.info("Sangam agent ready: model=%s", settings.model)
         yield
+        if settings.langfuse_enabled:
+            try:
+                from langfuse import get_client
+
+                get_client().shutdown()  # flush pending trace batches
+            except Exception:  # noqa: BLE001 - never block shutdown on telemetry
+                logger.warning("Langfuse flush on shutdown failed", exc_info=True)
         db.pool = None
 
 
