@@ -1,0 +1,16 @@
+# Overlay that points the local tooling at the STAGING database.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml run --rm --no-deps backend ...
+#   make migrate ENV=staging        # same thing, shorter
+#
+# This is for one-off operations from your machine — migrations, seeding, psql.
+# It does NOT deploy anything: the staging frontend runs on Vercel and the
+# staging backend on its own host, both configured in their own dashboards.
+#
+# The :? guards fail fast with a readable message when the staging block in
+# .env is still empty, instead of silently connecting to localhost.
+
+services:
+  backend:
+    environment:
+      DATABASE_URL: ${STAGING_DATABASE_URL:-host=${STAGING_DB_HOST:?set STAGING_DB_HOST in .env (or STAGING_DATABASE_URL)} port=${STAGING_DB_PORT:-5432} user=${STAGING_DB_USER:?set STAGING_DB_USER in .env} password=${STAGING_DB_PASSWORD:?set STAGING_DB_PASSWORD in .env} dbname=${STAGING_DB_NAME:-postgres} sslmode=${STAGING_DB_SSLMODE:-require}}

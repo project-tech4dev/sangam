@@ -1,17 +1,22 @@
 services:
+  # Bundled Postgres — only started when the "localdb" profile is active
+  # (COMPOSE_PROFILES=localdb, which .env.example ships by default).
+  # Point DATABASE_URL at a managed instance and drop the profile to skip it.
   postgres:
+    profiles: ["localdb"]
     image: pgvector/pgvector:pg17
     environment:
-      POSTGRES_USER: sangam
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sangam}
-      POSTGRES_DB: sangam
+      POSTGRES_USER: ${LOCAL_DB_USER:-sangam}
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:-${POSTGRES_PASSWORD:-sangam}}
+      POSTGRES_DB: ${LOCAL_DB_NAME:-sangam}
     ports:
       - "5433:5432"   # host 5433: 5432 is taken by dalgo-postgres on this machine
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sangam -d sangam"]
+      # $$ so compose passes the literal $ through to the container's shell.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 3s
       timeout: 3s
       retries: 15
@@ -38,7 +43,14 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql://sangam:${POSTGRES_PASSWORD:-sangam}@postgres:5432/sangam
+      # Built from the LOCAL_DB_* parts in .env; LOCAL_DATABASE_URL overrides them.
+      # Keyword/value form rather than a URL on purpose: psycopg, psql and
+      # pg_restore all accept it, and a password containing @ : / ? # needs no
+      # percent-encoding. POSTGRES_PASSWORD is still honoured so .env files
+      # written before this split keep working.
+      # `make <target> ENV=staging` layers docker-compose.staging.yml over this
+      # to point the same tooling at the managed database.
+      DATABASE_URL: ${LOCAL_DATABASE_URL:-host=${LOCAL_DB_HOST:-postgres} port=${LOCAL_DB_PORT:-5432} user=${LOCAL_DB_USER:-sangam} password=${LOCAL_DB_PASSWORD:-${POSTGRES_PASSWORD:-sangam}} dbname=${LOCAL_DB_NAME:-sangam} sslmode=${LOCAL_DB_SSLMODE:-prefer}}
       MODEL: ${MODEL:-anthropic:claude-sonnet-5}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -58,11 +70,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+        # required:false so the backend still boots when the bundled Postgres
+        # is switched off in favour of a managed one.
+        required: false
       neo4j:
         condition: service_healthy
     volumes:
       - ./backend/app:/srv/app
       - ./seed:/srv/seed:ro
+      - ./db:/srv/db:ro          # migration runner reads db/migrations from here
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
