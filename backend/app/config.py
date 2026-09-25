@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     downloads_dir: str = "downloads"
     recursion_limit: int = 100
     allowed_origins: str = "http://localhost:3000"
+    # Vercel gives every preview deployment a fresh hostname, so an exact-match
+    # list cannot cover them. Set a regex to admit them, e.g.
+    #   ^https://sangam-[a-z0-9-]+\.vercel\.app$
+    # Anchor it: an unanchored pattern matches any origin that merely contains
+    # the text, which would let evil-sangam.vercel.app.attacker.com through.
+    allowed_origin_regex: str = ""
 
     @property
     def github_allowlist(self) -> list[str]:
