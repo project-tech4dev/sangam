@@ -76,6 +76,8 @@ app = FastAPI(title="Sangam API", lifespan=lifespan, openapi_tags=OPENAPI_TAGS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().origins,
+    # None rather than "" — an empty pattern matches every origin.
+    allow_origin_regex=get_settings().allowed_origin_regex or None,
     allow_methods=["*"],
     allow_headers=["*"],
 )
