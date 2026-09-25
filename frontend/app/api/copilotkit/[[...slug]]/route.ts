@@ -18,6 +18,11 @@ const runtime = new CopilotRuntime({
 
 const handler = createCopilotRuntimeHandler({ runtime, basePath: "/api/copilotkit" });
 
+// An agent turn streams SSE through this route for as long as the turn runs, so
+// the platform default (short, and it kills the stream mid-answer) is too low.
+// The ceiling is plan-dependent — if a deploy rejects this value, lower it.
+export const maxDuration = 300;
+
 export const GET = handler;
 export const POST = handler;
 export const PATCH = handler;
