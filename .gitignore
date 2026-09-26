@@ -1,4 +1,5 @@
 .env
+.memory/
 node_modules/
 .next/
 __pycache__/
