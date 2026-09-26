@@ -13,8 +13,8 @@ Contract:
     runner carries every change made after that baseline.
 
 Usage (both work against the bundled *and* an external DATABASE_URL):
-    python -m app.migrate --status
-    python -m app.migrate
+    python -m app.db.migrate --status
+    python -m app.db.migrate
 """
 
 from __future__ import annotations

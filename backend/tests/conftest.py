@@ -12,8 +12,8 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
-from app.auth import DEV_USER_ID, get_current_user
-from app.db import get_pool
+from app.core.security import DEV_USER_ID, get_current_user
+from app.db.pool import get_pool
 
 TEST_USER = UUID("00000000-0000-0000-0000-000000000001")
 

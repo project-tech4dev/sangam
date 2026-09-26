@@ -5,8 +5,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import LegacyPageParams
-from app.auth import get_current_user
-from app.db import PoolDep
+from app.core.security import get_current_user
+from app.db.pool import PoolDep
 from app.repositories import funders as repo
 from app.schemas.funders import FunderDetail, FunderListItem, FunderScoreRow
 

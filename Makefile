@@ -73,10 +73,10 @@ smoke:
 # carries every change after it. See db/migrations/README.md.
 # Works against any ENV: make migrate ENV=staging
 migrate:
-	$(COMPOSE) run --rm --no-deps backend python -m app.migrate
+	$(COMPOSE) run --rm --no-deps backend python -m app.db.migrate
 
 migrate-status:
-	$(COMPOSE) run --rm --no-deps backend python -m app.migrate --status
+	$(COMPOSE) run --rm --no-deps backend python -m app.db.migrate --status
 
 # Print the resolved connection string (password included — do not paste it
 # into a ticket). Useful for confirming which database a target would hit.

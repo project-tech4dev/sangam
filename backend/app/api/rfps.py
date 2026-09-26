@@ -6,8 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import PageParams
-from app.auth import get_current_user
-from app.db import PoolDep
+from app.core.security import get_current_user
+from app.db.pool import PoolDep
 from app.repositories import rfps as repo
 from app.schemas.common import Page
 from app.schemas.rfps import RfpMatchOut, RfpMatchUpdate, RfpOut

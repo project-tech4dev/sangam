@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from app import graph
-from app.config import get_settings
 from langchain_core.tools import tool
+
+from app.core.config import get_settings
+from app.integrations import graphiti
 
 
 @tool
@@ -19,15 +20,15 @@ async def search_graph(query: str) -> str:
     facts with [graph:ID] citation markers and validity dates.
     """
     try:
-        if graph.graphiti is None:
-            reason = graph.graph_status(get_settings())
+        if graphiti.client is None:
+            reason = graphiti.graph_status(get_settings())
             return (
                 "The knowledge graph is not available"
                 + (f" ({reason})" if reason != "ok" else "")
                 + ". Answer from the database tools instead, and say the "
                 "relationship graph is not configured."
             )
-        results = await graph.graphiti.search(query, num_results=10)
+        results = await graphiti.client.search(query, num_results=10)
         if not results:
             return f"No graph facts found for {query!r}."
         lines = []

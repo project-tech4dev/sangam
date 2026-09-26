@@ -10,11 +10,12 @@ from copilotkit import LangGraphAGUIAgent
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import db, graph
 from app.agent.graph import build_agent
 from app.api import contacts, documents, funders, grants, meta, news, orgs, programs, rfps, scores
-from app.config import get_settings
-from app.persistence import make_pool, open_checkpointer
+from app.core.config import get_settings
+from app.db import pool as db_pool
+from app.db.checkpointer import make_pool, open_checkpointer
+from app.integrations import graphiti
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -27,10 +28,10 @@ async def lifespan(app: FastAPI):
         pool = make_pool(settings.database_url)
         await pool.open()
         stack.push_async_callback(pool.close)
-        db.pool = pool  # shared by agent tools and REST endpoints
+        db_pool.pool = pool  # shared by agent tools and REST endpoints
 
-        await graph.open_graph(settings)  # no-op (logged) when graph is not configured
-        stack.push_async_callback(graph.close_graph)
+        await graphiti.open_graph(settings)  # no-op (logged) when graph is not configured
+        stack.push_async_callback(graphiti.close_graph)
 
         checkpointer = await stack.enter_async_context(open_checkpointer(pool))
         agent = build_agent(settings, checkpointer)
@@ -57,7 +58,7 @@ async def lifespan(app: FastAPI):
                 get_client().shutdown()  # flush pending trace batches
             except Exception:  # noqa: BLE001 - never block shutdown on telemetry
                 logger.warning("Langfuse flush on shutdown failed", exc_info=True)
-        db.pool = None
+        db_pool.pool = None
 
 
 OPENAPI_TAGS = [

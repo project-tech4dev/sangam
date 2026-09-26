@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import logging
 
-from app.config import Settings
+from app.core.config import Settings
 
 logger = logging.getLogger(__name__)
 
 # Set by the lifespan (like app.db.pool); None means graph features are off.
-graphiti = None
+client = None
 
 
 def graph_status(settings: Settings) -> str:
@@ -30,7 +30,7 @@ def graph_status(settings: Settings) -> str:
 
 async def open_graph(settings: Settings):
     """Initialise the Graphiti client, or return None with a logged reason."""
-    global graphiti
+    global client
     status = graph_status(settings)
     if status != "ok":
         logger.warning("Knowledge graph disabled: %s", status)
@@ -38,15 +38,15 @@ async def open_graph(settings: Settings):
     # Imported lazily so the app still boots if graph deps are missing.
     from graphiti_core import Graphiti
 
-    client = Graphiti(settings.neo4j_uri, settings.neo4j_user, settings.neo4j_password)
-    await client.build_indices_and_constraints()
-    graphiti = client
+    graphiti = Graphiti(settings.neo4j_uri, settings.neo4j_user, settings.neo4j_password)
+    await graphiti.build_indices_and_constraints()
+    client = graphiti
     logger.info("Knowledge graph ready: neo4j=%s", settings.neo4j_uri)
-    return client
+    return graphiti
 
 
 async def close_graph() -> None:
-    global graphiti
-    if graphiti is not None:
-        await graphiti.close()
-        graphiti = None
+    global client
+    if client is not None:
+        await client.close()
+        client = None
