@@ -53,11 +53,12 @@ ruff check .                        # line-length 110, target py312
 ```
 
 `asyncio_mode = "auto"` — async tests need no `@pytest.mark.asyncio`. **Unit tests never
-touch a database**: `tests/conftest.py` has an autouse `stub_pool` fixture that swaps in a
-`_SentinelPool` which raises on any attribute access, so monkeypatch the `repositories/`
-function rather than the pool. `client_for(*routers)` builds a router-only FastAPI app with
-no lifespan (no pool, no agent, no model) and overrides `get_current_user`. Only
-`tests/test_migration_integrity.py` carries the `integration` mark.
+touch a database**: `client_for(*routers)` builds a router-only FastAPI app with no lifespan
+(no pool, no agent, no model) and overrides two dependencies — `get_current_user`, and
+`get_pool` with a `_SentinelPool` that raises on any attribute access. Routers take the pool
+as `PoolDep`, so that one override covers every router; monkeypatch the `repositories/`
+function rather than the pool. Only `tests/test_migration_integrity.py` carries the
+`integration` mark.
 
 Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaults to the
 container path `/srv/db/migrations`.
@@ -75,7 +76,7 @@ source of truth; `scripts/db-url.sh` surfaces its error when a staging variable 
 `ENV=staging` deploys nothing. It points local tooling at the managed database.
 
 **`STAGING_DB_*` are local-tooling variables only.** The backend itself reads
-`DATABASE_URL` (`backend/app/config.py`). Setting `STAGING_DB_*` on a deployed host does
+`DATABASE_URL` (`backend/app/core/config.py`). Setting `STAGING_DB_*` on a deployed host does
 nothing.
 
 ## Architecture
@@ -91,6 +92,32 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
               Postgres + pgvector        Neo4j (optional)
 ```
 
+### Layout
+
+```
+backend/app/
+  main.py          create_app() + `app = create_app()` — the ASGI entrypoint, wiring only
+  core/            config.py (Settings) · security.py (auth stub) · lifespan.py · logging.py
+  db/              pool.py (PoolDep) · checkpointer.py (LangGraph) · migrate.py (runner)
+  api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
+  repositories/    hand-written SQL, one module per resource
+  schemas/         Pydantic, one module per resource
+  agent/           graph.py (builds the deep agent) · models.py · prompt.py
+  tools/           the agent's tools
+  integrations/    graphiti.py (Neo4j client lifecycle)
+
+frontend/
+  app/             routes ONLY — pages, layouts, route handlers
+  features/        one folder per screen: ask/, registry/
+  components/      ui/ (display primitives) · layout/ (site chrome)
+  lib/             api/ (client + types) · format.ts
+```
+
+Two rules keep this from eroding: **nothing that is not a route goes under
+`frontend/app/`** (a `_private` folder is the smell that something belongs in
+`features/`), and **no new module goes flat at the top of `backend/app/`** — it belongs in
+one of the groups above. Cross-folder frontend imports use the `@/` alias, not `../../..`.
+
 Things worth knowing before changing anything:
 
 **Postgres is the system of record.** The Neo4j graph stores relationship facts *extracted*
@@ -98,29 +125,35 @@ from source text and is rebuildable from Postgres (`seed/graph_seed.py`). Keep t
 property — nothing should live only in the graph.
 
 **The agent reaches the database through tools, not the API.** `backend/app/tools/db_tools.py`
-queries repositories directly. `backend/app/api/` serves the frontend's REST calls. They
+queries repositories directly. `backend/app/api/routes/` serves the frontend's REST calls. They
 share `repositories/` but are separate paths; changing one does not change the other.
 
 **The frontend talks to the backend two ways.** Server components use
-`frontend/app/lib/api.ts` (reads `AGENT_URL`, strips the `/agent` suffix to derive the REST
+`frontend/lib/api/client.ts` (reads `AGENT_URL`, strips the `/agent` suffix to derive the REST
 base). The chat UI posts to `/api/copilotkit/[[...slug]]/route.ts`, which proxies to the
 backend's `/agent` over AG-UI. `AGENT_URL` therefore ends in `/agent` while
 `NEXT_PUBLIC_API_URL` does not — the asymmetry is deliberate.
 
-**REST resources come in a three-file set**: `app/api/<r>.py` (router) → `app/repositories/<r>.py`
-(hand-written SQL over raw psycopg) → `app/schemas/<r>.py` (Pydantic). There is no ORM, which
-is also why there is no Alembic — `app/migrate.py` explains the reasoning. Adding a resource
-means all three, plus registering the router in `app/main.py` and adding its module to the
-hardcoded list in `tests/conftest.py::stub_pool` (otherwise its unit tests hit a real pool).
+**REST resources come in a three-file set**: `app/api/routes/<r>.py` (router) →
+`app/repositories/<r>.py` (hand-written SQL over raw psycopg) → `app/schemas/<r>.py`
+(Pydantic). There is no ORM, which is also why there is no Alembic — `app/db/migrate.py`
+explains the reasoning. Adding a resource means all three, plus one line in
+`app/api/router.py`. Nothing else: `main.py` includes that one aggregate router, and the
+tests' pool override is dependency-based, so neither needs editing.
 
-**Three different files are called `graph`** and they are unrelated — check which one a
-traceback means:
+Routers take the pool as `pool: PoolDep` (from `app/db/pool.py`) rather than calling
+`get_pool()` in the body — that is what makes it overridable per-app. Agent tools, which run
+outside any request, still call `get_pool()` directly.
+
+**Two files are called `graph`** — check which one a traceback means:
 
 | File | Is |
 |---|---|
-| `app/graph.py` | Graphiti/Neo4j client lifecycle (`open_graph`, `graph_status`) |
 | `app/agent/graph.py` | builds the deep agent (`create_deep_agent`) |
 | `app/tools/graph_tools.py` | the `search_graph` agent tool |
+
+The Graphiti/Neo4j client lifecycle (`open_graph`, `graph_status`, `client`) lives in
+`app/integrations/graphiti.py` — it used to be a third `graph.py`.
 
 **`deepagents` is LangGraph, not an alternative to it.** `create_deep_agent()` is a preset
 middleware stack over `langchain.agents.create_agent` and returns a compiled LangGraph
@@ -157,7 +190,7 @@ product depends on and that a new tool silently breaks:
 
 Adding a tool: write the async function in `app/tools/` with both conventions, register it
 in `app/agent/graph.py`, describe its marker in `app/agent/prompt.py`, and add a label to
-`frontend/app/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name;
+`frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name;
 `HIDDEN_TOOLS` there suppresses the `deepagents` filesystem built-ins from the trace).
 
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
@@ -170,7 +203,7 @@ imported lazily inside `open_graph()` so the app boots without it, and `search_g
 returns a message telling the agent to use the database tools instead. Langfuse follows
 the same pattern. Preserve this when adding integrations.
 
-**Auth is a deliberate stub.** `backend/app/auth.py::get_current_user` resolves every
+**Auth is a deliberate stub.** `backend/app/core/security.py::get_current_user` resolves every
 request to one seeded user. Every route already does `Depends(get_current_user)`, so
 swapping in Supabase JWT verification changes only that function. The frontend sends a
 hardcoded `Authorization: Bearer dev` from five call sites.

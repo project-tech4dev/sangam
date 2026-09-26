@@ -97,7 +97,7 @@ Without `^…$`, that third row would be allowed.
 
 ## ⚠️ Before you expose a public URL: there is no authentication
 
-`backend/app/auth.py::get_current_user` returns a hardcoded UUID regardless of
+`backend/app/core/security.py::get_current_user` returns a hardcoded UUID regardless of
 the token presented, and the frontend sends the literal string `Bearer dev`.
 Consequences of a public deployment as it stands:
 
