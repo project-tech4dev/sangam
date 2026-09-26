@@ -24,6 +24,7 @@ converging in one turn and burning the attempt budget.
 from __future__ import annotations
 
 import difflib
+import logging
 from dataclasses import dataclass
 
 import sqlglot
@@ -39,6 +40,14 @@ from app.agent.tools.sql.catalog import (
     STAR_COLUMNS,
     TABLE_NAMES,
 )
+
+# sqlglot logs a WARNING to the root logger for every statement it cannot model
+# ("RESET ROLE contains unsupported syntax. Falling back to parsing as a
+# 'Command'"). That fires on exactly the inputs we reject, so it is duplicate
+# noise — the rejection is already returned to the model and recorded on the
+# trace — and a model probing with non-SELECT statements would spam production
+# logs with it.
+logging.getLogger("sqlglot").setLevel(logging.ERROR)
 
 DEFAULT_MAX_ROWS = 50
 HARD_MAX_ROWS = 200

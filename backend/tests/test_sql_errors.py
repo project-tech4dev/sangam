@@ -7,6 +7,10 @@ no database — because the mapper duck-types .sqlstate and .diag.
 
 from __future__ import annotations
 
+import psycopg
+import psycopg_pool
+import pytest
+
 from app.agent.tools.sql.errors import FAILED_PREFIX, MAX_MESSAGE_CHARS, explain_db_error
 
 
@@ -69,17 +73,28 @@ def test_insufficient_privilege_does_not_blame_the_sql():
 
 class TestConnectionErrorsNeverLeakTheDsn:
     """psycopg puts host and user into OperationalError. That must not reach a
-    model provider or a chat transcript."""
+    model provider or a chat transcript.
 
-    class FakeOperationalError(Exception):
-        sqlstate = None
-        diag = None
+    These use REAL driver exceptions, not fakes with a doctored __name__: the
+    guard tests for an absent SQLSTATE precisely so it covers the classes nobody
+    thought to enumerate.
+    """
 
-    def test_dsn_is_not_in_the_message(self):
-        exc = self.FakeOperationalError(
-            'connection failed: host="db.prod.internal" user="sangam" password supplied'
-        )
-        exc.__class__.__name__ = "OperationalError"
+    DSN_TEXT = 'connection failed: host="db.prod.internal" user="sangam" password supplied'
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            psycopg.OperationalError(DSN_TEXT),
+            psycopg.InterfaceError(DSN_TEXT),
+            psycopg_pool.PoolTimeout(DSN_TEXT),
+            TimeoutError(DSN_TEXT),
+            ConnectionRefusedError(DSN_TEXT),
+            OSError(DSN_TEXT),
+        ],
+        ids=lambda e: type(e).__name__,
+    )
+    def test_nothing_from_the_dsn_reaches_the_model(self, exc):
         message = explain_db_error(exc, executed_sql=SQL, tables=["orgs"])
         for secret in ("db.prod.internal", "sangam", "password"):
             assert secret not in message
@@ -87,8 +102,9 @@ class TestConnectionErrorsNeverLeakTheDsn:
         assert "do not retry" in message
 
     def test_a_server_side_error_is_not_mistaken_for_a_connection_error(self):
-        message = explain_db_error(FakePgError("42703", "no such column"),
-                                   executed_sql=SQL, tables=["orgs"])
+        message = explain_db_error(
+            FakePgError("42703", "no such column"), executed_sql=SQL, tables=["orgs"]
+        )
         assert "unreachable" not in message
 
 

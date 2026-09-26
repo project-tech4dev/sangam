@@ -153,8 +153,14 @@ def _guidance(sqlstate: str, exc: Any, executed_sql: str, tables: Sequence[str])
 
 
 def _is_connection_error(exc: Exception) -> bool:
-    """True for driver-level failures, whose text can carry the DSN."""
-    if getattr(exc, "sqlstate", None):
-        return False  # the server answered, so it is a SQL problem
-    name = type(exc).__name__
-    return name in {"OperationalError", "InterfaceError", "PoolTimeout", "ConnectionTimeout"}
+    """True when the server never answered, so the text may carry the DSN.
+
+    Tested by presence of a SQLSTATE, not by exception class name. A server-side
+    SQL error always carries one. Everything without one — psycopg's
+    OperationalError and PoolTimeout, asyncio.TimeoutError, ConnectionRefusedError,
+    a bare OSError — came from the driver or the network, and any of those can
+    render the host and user we connected with. Matching on class names would
+    have to enumerate that list correctly forever; this asks the question that
+    actually matters and fails safe for anything unanticipated.
+    """
+    return getattr(exc, "sqlstate", None) is None
