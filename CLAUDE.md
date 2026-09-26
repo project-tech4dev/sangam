@@ -4,6 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+First run, from a clean checkout (needs Docker and an `ANTHROPIC_API_KEY`):
+
+```bash
+cp .env.example .env     # set ANTHROPIC_API_KEY, or another provider's key + MODEL
+make up                  # build and start everything
+make seed                # load the cohort data — the app is empty without it
+make smoke               # confirm the stack is wired end to end
+```
+
+Then http://localhost:3000 for the app and http://localhost:8010/docs for the API.
+`OPENAI_API_KEY` and `make graph-seed` are optional — the graph disables itself cleanly.
+
+Everyday targets:
+
 ```bash
 make up                  # start the whole stack (Postgres, Neo4j, backend, frontend)
 make down / make logs
@@ -22,6 +36,11 @@ make dev-backend         # uvicorn --reload against localhost:5433
 make dev-frontend        # next dev with AGENT_URL pointed at localhost:8000
 ```
 
+Ports: frontend `3000`, backend `8010` (published from the container's `8000`), Postgres
+`5433` (from `5432`), Neo4j `7474`/`7687`. Outside Docker, `make dev-backend` serves uvicorn
+on `8000` directly — which is why `dev-frontend` points there while `make smoke` defaults to
+`8010`.
+
 Tests and lint (backend):
 
 ```bash
@@ -32,6 +51,16 @@ pytest -k "score"                   # one pattern
 pytest -m "not integration"         # skip tests needing the compose Postgres on :5433
 ruff check .                        # line-length 110, target py312
 ```
+
+`asyncio_mode = "auto"` — async tests need no `@pytest.mark.asyncio`. **Unit tests never
+touch a database**: `tests/conftest.py` has an autouse `stub_pool` fixture that swaps in a
+`_SentinelPool` which raises on any attribute access, so monkeypatch the `repositories/`
+function rather than the pool. `client_for(*routers)` builds a router-only FastAPI app with
+no lifespan (no pool, no agent, no model) and overrides `get_current_user`. Only
+`tests/test_migration_integrity.py` carries the `integration` mark.
+
+Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaults to the
+container path `/srv/db/migrations`.
 
 Frontend: `npm run lint`, `npm run build`. Run `next build` before pushing — type errors
 surface there and never in `next dev`.
@@ -62,7 +91,7 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
               Postgres + pgvector        Neo4j (optional)
 ```
 
-Three things worth knowing before changing anything:
+Things worth knowing before changing anything:
 
 **Postgres is the system of record.** The Neo4j graph stores relationship facts *extracted*
 from source text and is rebuildable from Postgres (`seed/graph_seed.py`). Keep that
@@ -78,11 +107,58 @@ base). The chat UI posts to `/api/copilotkit/[[...slug]]/route.ts`, which proxie
 backend's `/agent` over AG-UI. `AGENT_URL` therefore ends in `/agent` while
 `NEXT_PUBLIC_API_URL` does not — the asymmetry is deliberate.
 
+**REST resources come in a three-file set**: `app/api/<r>.py` (router) → `app/repositories/<r>.py`
+(hand-written SQL over raw psycopg) → `app/schemas/<r>.py` (Pydantic). There is no ORM, which
+is also why there is no Alembic — `app/migrate.py` explains the reasoning. Adding a resource
+means all three, plus registering the router in `app/main.py` and adding its module to the
+hardcoded list in `tests/conftest.py::stub_pool` (otherwise its unit tests hit a real pool).
+
+**Three different files are called `graph`** and they are unrelated — check which one a
+traceback means:
+
+| File | Is |
+|---|---|
+| `app/graph.py` | Graphiti/Neo4j client lifecycle (`open_graph`, `graph_status`) |
+| `app/agent/graph.py` | builds the deep agent (`create_deep_agent`) |
+| `app/tools/graph_tools.py` | the `search_graph` agent tool |
+
+**`deepagents` is LangGraph, not an alternative to it.** `create_deep_agent()` is a preset
+middleware stack over `langchain.agents.create_agent` and returns a compiled LangGraph
+graph — which is exactly what `AsyncPostgresSaver` checkpointing and
+`add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
+
+**The agent has exactly six tools, and some config implies more than is wired.**
+`app/agent/graph.py` registers `search_orgs`, `get_funder`, `get_grants`, `get_fit_scores`,
+`search_graph`, `fetch_url` — nothing else. `app/tools/mcp.py` (GitHub and Playwright MCP
+servers), `app/tools/files.py` (`download_file`, `read_pdf`) and `web.make_web_search`
+(Tavily) are complete but imported nowhere, and the `Settings` fields that feed them —
+`tavily_api_key`, `github_pat`, `github_mcp_url`, `playwright_mcp_url`, `mcp_servers` —
+therefore do nothing until those tools are registered. Setting them changes no behaviour.
+
 ## Conventions
 
 **Schema changes go in `db/migrations/*.sql`, never in `db/init/02_schema.sql`.** The
 baseline is what a brand-new database gets; migrations carry everything after it. See
-`db/migrations/README.md`.
+`db/migrations/README.md`. `db/migrations/` currently holds only that README — the baseline
+is still the entire schema, and `make migrate` creates `schema_migrations` but applies
+nothing until the first `0001_*.sql` lands. (`README.md` says migrations live in `db/init/`;
+it is stale, this rule wins.)
+
+**Agent tools never raise, and every row they return is cited.** Two conventions that the
+product depends on and that a new tool silently breaks:
+
+- *Errors are return values.* A raised exception aborts the entire agent run; a returned
+  error string lets the model see the failure and adapt. Every tool body in `app/tools/` is
+  wrapped in `try/except` returning `f"<tool> failed: {exc}"`.
+- *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
+  `[grant:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/prompt.py` requires the
+  model to repeat it inline next to each fact. A tool that returns uncited rows produces
+  uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
+
+Adding a tool: write the async function in `app/tools/` with both conventions, register it
+in `app/agent/graph.py`, describe its marker in `app/agent/prompt.py`, and add a label to
+`frontend/app/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name;
+`HIDDEN_TOOLS` there suppresses the `deepagents` filesystem built-ins from the trace).
 
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is
@@ -100,6 +176,12 @@ swapping in Supabase JWT verification changes only that function. The frontend s
 hardcoded `Authorization: Bearer dev` from five call sites.
 
 ## Deployment
+
+> **Two other files describe a hosting setup that is not the live one — ignore them.**
+> `docs/DEPLOY.md` argues the backend cannot run on Vercel and belongs on a container host,
+> and the tracked `vercel.json` describes a single project with the backend as a
+> `runtime: "container"` build of `backend/Dockerfile`. Neither is what is deployed. **This
+> table is authoritative.**
 
 Docker is local development only. Deployed, the stack splits across three hosts — see
 `docs/DEPLOY.md`:
