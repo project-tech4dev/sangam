@@ -7,8 +7,6 @@ no database — because the mapper duck-types .sqlstate and .diag.
 
 from __future__ import annotations
 
-import pytest
-
 from app.agent.tools.sql.errors import FAILED_PREFIX, MAX_MESSAGE_CHARS, explain_db_error
 
 

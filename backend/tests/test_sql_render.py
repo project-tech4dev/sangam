@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from app.agent.tools.sql.render import (
@@ -24,7 +24,7 @@ class TestCells:
 
     def test_dates_are_iso(self):
         assert render_cell(date(2026, 9, 27)) == "2026-09-27"
-        assert render_cell(datetime(2026, 9, 27, 14, 30)).startswith("2026-09-27T14:30")
+        assert render_cell(datetime(2026, 9, 27, 14, 30, tzinfo=UTC)).startswith("2026-09-27T14:30")
 
     def test_decimals_do_not_render_as_decimal_repr(self):
         assert render_cell(Decimal("1500000.00")) == "1500000"
