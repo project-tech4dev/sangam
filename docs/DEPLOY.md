@@ -49,7 +49,7 @@ Point the host at `backend/Dockerfile`. Environment:
 | `OPENAI_API_KEY` | Only for Graphiti extraction/embeddings. Omit to run without the graph |
 | `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | Omit to disable the graph |
 | `EMBEDDING_DIM` | **`768`** if you reuse the existing graph — mixing dimensions fails |
-| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST` | Optional tracing. Note `LANGFUSE_HOST`, not `LANGFUSE_BASE_URL` |
+| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST` | Optional tracing. `LANGFUSE_BASE_URL` is also read, and wins over `LANGFUSE_HOST` |
 | `LANGFUSE_TRACING_ENVIRONMENT` | Trace bucket, e.g. `production`. Unset means deployed traces land beside local ones |
 | `LANGFUSE_RELEASE` | Optional build stamp on each trace, e.g. the git sha |
 | `ALLOWED_ORIGINS` | Comma-separated exact origins, e.g. your production Vercel domain |
