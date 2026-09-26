@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { PillTabs } from "../../components/PillTabs";
-import { EntityMark, ProgressBar, StatRail, Tag } from "../../components/ui";
+import { EntityMark, PillTabs, ProgressBar, StatRail, Tag } from "@/components/ui";
 import type {
   Contact, FunderDetail, GrantRow, NewsRow, OrgDetail, ProgramRow, ScoreRow,
 } from "@/lib/api";

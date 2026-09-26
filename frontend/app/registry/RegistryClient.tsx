@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { EntityMark, StatusChip, Tag } from "../components/ui";
+import { EntityMark, StatusChip, Tag } from "@/components/ui";
 import type { RegistryEntry } from "@/features/registry/entries";
 
 export function RegistryClient({

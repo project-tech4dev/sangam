@@ -1,4 +1,4 @@
-import { Breadcrumbs, Tag } from "../components/ui";
+import { Breadcrumbs, Tag } from "@/components/ui";
 
 export const metadata = { title: "Methodology — Sangam" };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Tag } from "../../components/ui";
+import { Tag } from "@/components/ui";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 

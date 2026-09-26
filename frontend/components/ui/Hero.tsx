@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { EntityMark } from "./ui";
+import { EntityMark } from "./primitives";
 
 const HERO_BG: Record<string, string> = {
   "org-full": "var(--color-accent-2-800)",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Breadcrumbs, Tag } from "../components/ui";
+import { Breadcrumbs, Tag } from "@/components/ui";
 
 const SECTORS = [
   { num: "01", name: "Agritech & allied ecosystem", note: "Agriculture, horticulture, livestock, sericulture, NRM-linked livelihoods — the cohort's largest footprint." },

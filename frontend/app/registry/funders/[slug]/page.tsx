@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Breadcrumbs, Tag } from "../../../components/ui";
-import { Hero } from "../../../components/Hero";
+import { Breadcrumbs, Hero, Tag } from "@/components/ui";
 import {
   apiGet, NotFoundError,
   type FunderDetail, type GrantRow, type NewsRow, type PageOf, type ScoreRow,
