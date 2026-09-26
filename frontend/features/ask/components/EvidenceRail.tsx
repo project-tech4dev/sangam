@@ -2,7 +2,7 @@
 
 import { extractCitations, citationTarget, type RegistryIndex } from "../lib/citations";
 import { HIDDEN_TOOLS, humanizeTool } from "../lib/toolLabels";
-import type { Turn } from "../lib/useSangamChat";
+import type { TraceStep, Turn } from "../lib/useSangamChat";
 import { CitationChip } from "./AnswerCard";
 
 type Stats = Record<string, number>;
@@ -28,6 +28,20 @@ function IndexCard({ stats }: { stats: Stats | null }) {
       ))}
     </div>
   );
+}
+
+/** The SQL a db_query step actually ran.
+ *
+ * Read from the RESULT, not from the step's arguments: the validator regenerates
+ * the statement from its parse tree, so what executed is not what the model wrote
+ * — clamped limits, expanded stars and quoted identifiers all differ. Showing the
+ * model's draft instead would make the trace a plausible lie, which is worse than
+ * showing nothing.
+ */
+function executedSql(step: TraceStep): string | null {
+  if (step.tool !== "db_query" || !step.result) return null;
+  const match = step.result.match(/^executed: (.+)$/m);
+  return match ? match[1] : null;
 }
 
 export function EvidenceRail({

@@ -407,20 +407,28 @@ Next: fix the column name and call db_query again.
 failure** (otherwise the model diffs against text that never ran), and **never surface
 `psycopg.OperationalError` text**, which can contain the DSN host and user.
 
-### 5b. Tool return shape: `content_and_artifact`
+### 5b. Tool return shape — plain strings, and why not `content_and_artifact`
 
-Adopt LangChain's two-channel tool return (`@tool(response_format="content_and_artifact")`):
+**The plan called for LangChain's two-channel tool return. Measured in M4: it cannot
+work over this transport.** The AG-UI wire `ToolMessage`
+(`ag_ui.core.types.ToolMessage`) has fields `id / role / content / tool_call_id /
+subagent_run_id / error / encrypted_value / metadata` — no `artifact` — and
+`ag_ui_langgraph/agent.py:4510` constructs it from the first four. An artifact
+attached to a `ToolMessage` is dropped at the boundary and never reaches the browser.
 
-- **content** — the compact cited text rendering the model reads.
-- **artifact** — `{"sql", "status", "row_count", "columns", "rows"}` carried on the
-  `ToolMessage`, which **never enters the model's context** and is what the UI renders.
+Dalgo can use the pattern because their transport is their own WebSocket consumer,
+which reads `ToolMessage.artifact` server-side before emitting its own event shape
+(`messages/artifacts.py`). Ours is AG-UI, which we do not control.
 
-This also closes a gap already present in this repo: `EvidenceRail.tsx:42,51-67` uses `step.result` only to extract citation markers and
-**renders no tool output as text anywhere**. The artifact gives the frontend a real result
-table without spending context on it.
+So the tools return plain strings, and the string carries everything: markers,
+caveats, the executed SQL, and the rendered rows. The two budgets in `render.py`
+matter more because of this — with no side channel, every byte the UI shows is a byte
+the model paid for.
 
-Follow Dalgo's one-interpreter rule (`messages/artifacts.py`): a single module reads artifacts,
-so the live stream, any audit, and history replay can never disagree about what a turn did.
+**What it would take to do properly**, if the result grid is wanted as structured data
+later: populate AG-UI's `metadata` field from the artifact (it exists on the wire type
+and is currently unused), or move the chat transport off AG-UI. Both are larger than
+this feature and neither is needed for the tool to work.
 
 ### 5c. Retry budget and context, as middleware
 

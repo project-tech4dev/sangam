@@ -16,6 +16,7 @@ from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 from fastapi import FastAPI
 
 from app.agent.build import build_agent
+from app.agent.tools.sql import catalog as sql_catalog
 from app.core.config import Settings, get_settings
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
@@ -36,7 +37,7 @@ def _flush_telemetry() -> None:
         from langfuse import get_client
 
         get_client().shutdown()
-    except Exception:  # noqa: BLE001 - never block shutdown on telemetry
+    except Exception:
         logger.warning("Langfuse flush on shutdown failed", exc_info=True)
 
 
@@ -51,6 +52,8 @@ def build_lifespan(settings: Settings | None = None):
             await pool.open()
             stack.push_async_callback(pool.close)
             db_pool.pool = pool  # shared by agent tools and REST endpoints
+
+            await _verify_sql_catalog(pool, resolved)
 
             await graphiti.open_graph(resolved)  # no-op (logged) when graph is not configured
             stack.push_async_callback(graphiti.close_graph)
@@ -83,3 +86,55 @@ def build_lifespan(settings: Settings | None = None):
             db_pool.pool = None
 
     return lifespan
+
+
+async def _verify_sql_catalog(pool, settings: Settings) -> None:
+    """Fail the boot if the SQL tool's allowlist disagrees with the database.
+
+    Deliberately NOT the "optional subsystems degrade" rule that governs Neo4j
+    and Langfuse. Those are external integrations we can run without; this is an
+    internal contract, and a catalog describing a column the database dropped
+    produces confidently wrong answers — worse than not starting.
+
+    A missing reader role is only a warning: a fresh database has no
+    sangam_reader until `make migrate` runs, and db_query fails closed with a
+    message saying so rather than quietly running as the owner.
+    """
+    async with pool.connection() as conn:
+        problems = await sql_catalog.verify_against_db(conn)
+        if problems:
+            for problem in problems:
+                logger.error("SQL catalog drift: %s", problem)
+            raise RuntimeError(
+                f"SQL catalog is out of sync with the database ({len(problems)} problem(s)); "
+                "see the errors above"
+            )
+
+        rows = await (
+            await conn.execute(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+            )
+        ).fetchall()
+        undeclared = sql_catalog.undeclared_tables({r["table_name"] for r in rows})
+        if undeclared:
+            # Not an error: a new table stays invisible to the agent until
+            # someone adds it to the catalog or to KNOWN_EXCLUDED. Logged so the
+            # decision actually gets made.
+            logger.info(
+                "tables not readable by the SQL tool and not declared as excluded: %s",
+                ", ".join(undeclared),
+            )
+
+        if settings.sql_reader_role:
+            exists = await (
+                await conn.execute(
+                    "SELECT 1 FROM pg_roles WHERE rolname = %s", (settings.sql_reader_role,)
+                )
+            ).fetchone()
+            if not exists:
+                logger.warning(
+                    "SQL reader role %r does not exist; db_query will refuse to run until "
+                    "`make migrate` applies db/migrations/0001_sql_reader_role.sql",
+                    settings.sql_reader_role,
+                )

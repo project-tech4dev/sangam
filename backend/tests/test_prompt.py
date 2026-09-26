@@ -52,10 +52,20 @@ def test_prompt_is_loaded_not_empty():
     assert "Sangam" in SYSTEM_PROMPT
 
 
-def test_prompt_names_each_registered_tool_it_routes_to():
-    """Routing rules reference tools by their exact Python identifier; a renamed
-    tool leaves the prompt pointing at something that no longer exists."""
-    from app.agent import build  # noqa: F401  — import check only
+def test_prompt_names_every_registered_tool():
+    """Routing rules reference tools by their exact Python identifier, so a
+    renamed or newly added tool leaves the prompt pointing at nothing — or
+    silently never being used."""
+    from app.agent.build import TOOLS
 
-    for tool_name in ("get_grants", "search_graph"):
-        assert tool_name in SYSTEM_PROMPT
+    missing = [t.name for t in TOOLS if t.name not in SYSTEM_PROMPT]
+    assert not missing, f"registered but never mentioned in instructions.md: {missing}"
+
+
+def test_retry_budget_in_the_prompt_matches_the_middleware():
+    """The prompt asks the model to stop after N attempts and the middleware
+    enforces N. If they drift, the model either gives up early or is cut off
+    mid-explanation."""
+    from app.agent.middleware import MAX_SQL_ATTEMPTS
+
+    assert f"After {MAX_SQL_ATTEMPTS} failed attempts" in SYSTEM_PROMPT
