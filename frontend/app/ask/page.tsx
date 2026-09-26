@@ -7,7 +7,7 @@ import type {
   PageOf,
   ScoreRow,
 } from "@/lib/api";
-import { AskWorkspace, type IndexPayload } from "./AskWorkspace";
+import { AskWorkspace, type IndexPayload } from "@/features/ask/AskWorkspace";
 
 export const metadata = { title: "Ask Sangam" };
 
