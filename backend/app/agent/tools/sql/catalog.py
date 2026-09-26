@@ -546,11 +546,12 @@ COLUMNS: Mapping[str, Mapping[str, Column]] = MappingProxyType(
     {name: MappingProxyType({c.name: c for c in t.columns}) for name, t in CATALOG.items()}
 )
 
-# What sqlglot's qualify() needs. Built from non-heavy columns ONLY, which is what
-# makes `SELECT *` expand to something that fits in a context window; a heavy
-# column is still selectable by name, and the validator reports the difference.
+# What sqlglot's qualify() needs: EVERY column, including heavy ones. A reduced
+# schema here would make a heavy column unresolvable when asked for by name,
+# which is not the intent — `*` should omit them, naming one should work. The
+# trimming of `*` happens after qualify, against STAR_COLUMNS.
 SQLGLOT_SCHEMA: dict[str, dict[str, str]] = {
-    name: {c.name: c.type for c in t.columns if not c.heavy} for name, t in CATALOG.items()
+    name: {c.name: c.type for c in t.columns} for name, t in CATALOG.items()
 }
 
 STAR_COLUMNS: Mapping[str, tuple[str, ...]] = MappingProxyType(

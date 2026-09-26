@@ -58,10 +58,12 @@ class TestDerivedIndexes:
         assert heavy == {"contact", "sections", "profile"}
         assert set(cat.STAR_COLUMNS["orgs"]) == set(cat.COLUMNS["orgs"]) - heavy
 
-    def test_heavy_columns_are_still_selectable_by_name(self):
-        """`*` omits them; asking for one explicitly is allowed."""
+    def test_heavy_columns_are_resolvable_but_not_starred(self):
+        """qualify() needs the full schema so naming a heavy column works;
+        STAR_COLUMNS is what gives `*` its narrower meaning."""
         assert "profile" in cat.COLUMNS["orgs"]
-        assert "profile" not in cat.SQLGLOT_SCHEMA["orgs"]
+        assert "profile" in cat.SQLGLOT_SCHEMA["orgs"]
+        assert "profile" not in cat.STAR_COLUMNS["orgs"]
 
     def test_sqlglot_schema_covers_every_table(self):
         assert set(cat.SQLGLOT_SCHEMA) == cat.TABLE_NAMES
