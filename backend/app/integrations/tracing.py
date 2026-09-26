@@ -19,6 +19,8 @@ rule: tracing that cannot start logs loudly and the app runs untraced.
 from __future__ import annotations
 
 import logging
+from contextlib import contextmanager
+from textwrap import dedent
 from typing import Any
 
 from ag_ui.core.types import RunAgentInput
@@ -53,7 +55,7 @@ def trace_config(settings: Settings) -> dict[str, Any]:
             "callbacks": [CallbackHandler(update_trace=True)],
             "metadata": {"langfuse_tags": ["sangam", settings.model]},
         }
-    except Exception:  # noqa: BLE001 - telemetry must never take the app down
+    except Exception:  # telemetry must never take the app down
         logger.warning(
             "Langfuse keys are set but tracing could not be enabled — continuing without it",
             exc_info=True,
@@ -93,3 +95,44 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
         return await super().prepare_stream(
             input=input, agent_state=agent_state, config=config
         )
+
+
+@contextmanager
+def sql_span(name: str, sql: str, params: Any = None):
+    """Record one SQL statement as a child of the span that is current.
+
+    Langfuse's LangChain handler attaches the tool's span to the OpenTelemetry
+    context for the duration of the tool body (`on_tool_start` attaches,
+    `on_tool_end` detaches), so a span opened here nests under the tool call
+    instead of starting a new trace.
+
+    Yields the span, or None when tracing is off — callers must tolerate None.
+    """
+    try:
+        from langfuse import get_client
+
+        cm = get_client().start_as_current_span(
+            name=name,
+            input={"sql": dedent(sql).strip(), "params": params},
+        )
+    except Exception:  # never fail a query over telemetry
+        logger.debug("SQL span could not be started", exc_info=True)
+        yield None
+        return
+
+    with cm as span:
+        yield span
+
+
+async def traced_fetch(conn: Any, sql: str, params: Any = None, *, name: str) -> list[Any]:
+    """`conn.execute(...).fetchall()`, with the statement recorded on the trace.
+
+    Without this the trace shows a tool's arguments and its formatted output but
+    not the query in between, which is the part you need when a tool returns
+    the wrong rows.
+    """
+    with sql_span(name, sql, params) as span:
+        rows = await (await conn.execute(sql, params)).fetchall()
+        if span is not None:
+            span.update(output={"row_count": len(rows)})
+        return rows

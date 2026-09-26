@@ -121,3 +121,61 @@ async def test_graph_and_request_metadata_both_survive():
     assert seen["name"] == TRACE_NAME  # not "LangGraph"
     assert seen["metadata"]["langfuse_tags"] == ["sangam"]
     assert seen["metadata"]["langfuse_session_id"] == "thread-42"
+
+
+class _FakeCursor:
+    def __init__(self, rows): self._rows = rows
+    async def fetchall(self): return self._rows
+
+
+class _FakeConn:
+    def __init__(self, rows): self._rows = rows; self.calls = []
+    async def execute(self, sql, params=None):
+        self.calls.append((sql, params))
+        return _FakeCursor(self._rows)
+
+
+async def test_traced_fetch_returns_rows_without_tracing():
+    """No Langfuse in the process must not stop a query from running."""
+    from app.integrations.tracing import traced_fetch
+
+    conn = _FakeConn([{"id": 1}, {"id": 2}])
+    rows = await traced_fetch(conn, "SELECT 1", {"q": "x"}, name="t.q")
+    assert rows == [{"id": 1}, {"id": 2}]
+    assert conn.calls == [("SELECT 1", {"q": "x"})]
+
+
+async def test_traced_fetch_records_sql_and_row_count(monkeypatch):
+    """The trace has to carry the statement — a tool's args and its formatted
+    output do not tell you which query produced the rows."""
+    import contextlib
+    import types
+
+    from app.integrations import tracing
+
+    recorded: dict = {}
+
+    class FakeSpan:
+        def update(self, **kw): recorded.update(kw)
+
+    class FakeClient:
+        @contextlib.contextmanager
+        def start_as_current_span(self, *, name, input):
+            recorded["name"] = name
+            recorded["input"] = input
+            yield FakeSpan()
+
+    mod = types.ModuleType("langfuse")
+    mod.get_client = lambda: FakeClient()
+    monkeypatch.setitem(sys.modules, "langfuse", mod)
+
+    conn = _FakeConn([{"id": 1}])
+    await tracing.traced_fetch(
+        conn, "\n    SELECT o.id\n    FROM orgs o\n    ", {"q": "kabil"}, name="orgs.search"
+    )
+
+    assert recorded["name"] == "orgs.search"
+    # dedented, so the SQL reads as SQL rather than as indented Python
+    assert recorded["input"]["sql"] == "SELECT o.id\nFROM orgs o"
+    assert recorded["input"]["params"] == {"q": "kabil"}
+    assert recorded["output"] == {"row_count": 1}
