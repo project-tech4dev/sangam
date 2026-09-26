@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.agent.graph import build_agent
-from app.api import contacts, documents, funders, grants, meta, news, orgs, programs, rfps, scores
+from app.api.router import api_router
 from app.core.config import get_settings
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
@@ -83,10 +83,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for resource_router in (orgs.router, funders.router, grants.router, programs.router,
-                        rfps.router, contacts.router, scores.router, meta.router,
-                        news.router, documents.router):
-    app.include_router(resource_router, prefix="/api")
+app.include_router(api_router)
 
 
 @app.get("/health")

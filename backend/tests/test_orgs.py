@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.api import orgs as orgs_api
+from app.api.routes import orgs as orgs_api
 
 ROW = {
     "id": 1, "slug": "the-ant", "name": "THE ANT", "darpan_id": "AS/2017/0165645",
@@ -17,7 +17,7 @@ async def test_list_is_legacy_array_shape(client_for, monkeypatch):
     async def fake_list(pool, **kwargs):
         return [ROW], 1
 
-    monkeypatch.setattr("app.api.orgs.repo.list_orgs", fake_list)
+    monkeypatch.setattr("app.api.routes.orgs.repo.list_orgs", fake_list)
     async with client_for(orgs_api.router) as client:
         response = await client.get("/api/orgs")
     assert response.status_code == 200
@@ -34,7 +34,7 @@ async def test_filters_forwarded(client_for, monkeypatch):
         captured.update(kwargs)
         return [], 0
 
-    monkeypatch.setattr("app.api.orgs.repo.list_orgs", fake_list)
+    monkeypatch.setattr("app.api.routes.orgs.repo.list_orgs", fake_list)
     async with client_for(orgs_api.router) as client:
         await client.get("/api/orgs", params={"tag": "agriculture", "state": "Assam", "q": "ant"})
     assert captured["tag"] == "agriculture"
@@ -47,7 +47,7 @@ async def test_detail_404(client_for, monkeypatch):
     async def fake_get(pool, slug_or_id):
         return None
 
-    monkeypatch.setattr("app.api.orgs.repo.get_org", fake_get)
+    monkeypatch.setattr("app.api.routes.orgs.repo.get_org", fake_get)
     async with client_for(orgs_api.router) as client:
         response = await client.get("/api/orgs/nope")
     assert response.status_code == 404
