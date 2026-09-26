@@ -93,6 +93,7 @@ async def test_run_is_tagged_with_its_conversation(monkeypatch):
 
     assert captured["metadata"]["langfuse_session_id"] == "thread-42"
     assert captured["metadata"]["langfuse_user_id"] == str(DEV_USER_ID)
+    assert captured["metadata"]["agui_run_id"] == "run-1"
     # existing metadata survives the merge
     assert captured["metadata"]["langfuse_tags"] == ["sangam"]
 
@@ -160,8 +161,9 @@ async def test_traced_fetch_records_sql_and_row_count(monkeypatch):
 
     class FakeClient:
         @contextlib.contextmanager
-        def start_as_current_span(self, *, name, input):
+        def start_as_current_observation(self, *, name, as_type, input):
             recorded["name"] = name
+            recorded["as_type"] = as_type
             recorded["input"] = input
             yield FakeSpan()
 
@@ -171,10 +173,12 @@ async def test_traced_fetch_records_sql_and_row_count(monkeypatch):
 
     conn = _FakeConn([{"id": 1}])
     await tracing.traced_fetch(
-        conn, "\n    SELECT o.id\n    FROM orgs o\n    ", {"q": "kabil"}, name="orgs.search"
+        conn, "\n    SELECT o.id\n    FROM orgs o\n    ", {"q": "kabil"}, name="query-orgs"
     )
 
-    assert recorded["name"] == "orgs.search"
+    assert recorded["name"] == "query-orgs"
+    # retrieval-typed so Langfuse's retrieval evaluators can see these
+    assert recorded["as_type"] == "retriever"
     # dedented, so the SQL reads as SQL rather than as indented Python
     assert recorded["input"]["sql"] == "SELECT o.id\nFROM orgs o"
     assert recorded["input"]["params"] == {"q": "kabil"}

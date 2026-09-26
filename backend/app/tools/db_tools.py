@@ -63,7 +63,7 @@ async def search_orgs(query: str) -> str:
                 LIMIT 15
                 """,
                 {"q": query.strip()},
-                name="orgs.search",
+                name="query-orgs",
             )
         if not rows:
             return f"No organisations found matching {query!r}."
@@ -117,7 +117,7 @@ async def get_funder(name: str) -> str:
                 LIMIT 5
                 """,
                 {"q": name.strip()},
-                name="funders.lookup",
+                name="query-funders",
             )
             if not rows:
                 return f"No funder found matching {name!r}."
@@ -129,7 +129,7 @@ async def get_funder(name: str) -> str:
                     conn,
                     "SELECT name, role, kind, verified FROM contacts WHERE funder_id = %s",
                     (r["id"],),
-                    name="funder.contacts",
+                    name="fetch-funder-contacts",
                 )
                 contact_bits = "\n".join(
                     f"  - {c['name']} ({c['role'] or c['kind']}){' [verified]' if c['verified'] else ''}"
@@ -144,7 +144,7 @@ async def get_funder(name: str) -> str:
                     WHERE g.funder_id = %s ORDER BY g.start_date DESC NULLS LAST
                     """,
                     (r["id"],),
-                    name="funder.grants",
+                    name="fetch-funder-grants",
                 )
                 grant_bits = "\n".join(
                     f"  - [grant:{g['id']}] → {g['org_name']}: {g['title']} "
@@ -199,7 +199,7 @@ async def get_grants(org: str = "", funder: str = "", status: str = "") -> str:
                 LIMIT 20
                 """,
                 {"org": org.strip(), "funder": funder.strip(), "status": status.strip()},
-                name="grants.list",
+                name="query-grants",
             )
         if not rows:
             return ("No grants found for the given filters. Note: only researched "
@@ -254,7 +254,7 @@ async def get_fit_scores(org: str, funder: str = "", rubric_version: str = "") -
                 ORDER BY r.version, fs.total_score DESC
                 """,
                 {"org": org.strip(), "funder": funder.strip(), "rubric": rubric_version.strip()},
-                name="fit_scores.list",
+                name="query-fit-scores",
             )
             if not scores:
                 return f"No fit scores found for org {org!r}" + (f" and funder {funder!r}" if funder else "") + "."
@@ -270,7 +270,7 @@ async def get_fit_scores(org: str, funder: str = "", rubric_version: str = "") -
                     ORDER BY rc.code
                     """,
                     (s["id"],),
-                    name="fit_score.criteria",
+                    name="fetch-score-criteria",
                 )
                 adjustments = await traced_fetch(
                     conn,
@@ -282,7 +282,7 @@ async def get_fit_scores(org: str, funder: str = "", rubric_version: str = "") -
                     ORDER BY rc.code
                     """,
                     (s["id"],),
-                    name="fit_score.adjustments",
+                    name="fetch-score-adjustments",
                 )
                 block = [
                     f"[score:{s['id']}] {s['org_name']} × {s['funder_name']} — "

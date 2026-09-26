@@ -90,6 +90,9 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
                 **(config.get("metadata") or {}),
                 "langfuse_session_id": input.thread_id,
                 "langfuse_user_id": str(DEV_USER_ID),
+                # Request context, per Langfuse's metadata guidance: lets a
+                # trace be tied back to the AG-UI run that produced it.
+                "agui_run_id": input.run_id,
             },
         }
         return await super().prepare_stream(
@@ -106,13 +109,19 @@ def sql_span(name: str, sql: str, params: Any = None):
     `on_tool_end` detaches), so a span opened here nests under the tool call
     instead of starting a new trace.
 
-    Yields the span, or None when tracing is off — callers must tolerate None.
+    Typed `retriever` rather than a plain span: these statements are how the
+    agent retrieves the context it answers from, which is what Langfuse's
+    retrieval-oriented evaluators expect to find.
+
+    Yields the observation, or None when tracing is off — callers must
+    tolerate None.
     """
     try:
         from langfuse import get_client
 
-        cm = get_client().start_as_current_span(
+        cm = get_client().start_as_current_observation(
             name=name,
+            as_type="retriever",
             input={"sql": dedent(sql).strip(), "params": params},
         )
     except Exception:  # never fail a query over telemetry
