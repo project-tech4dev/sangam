@@ -56,6 +56,15 @@ class Settings(BaseSettings):
     mcp_servers: dict[str, Any] = {}
     github_tool_allowlist: str = ""
 
+    # Text-to-SQL tool (db_query). See docs/SQL_AGENT.md.
+    # sql_reader_role is the NOLOGIN role the query runs as via SET LOCAL ROLE;
+    # empty disables that guard and leaves only the validator and the read-only
+    # transaction, so it should be set wherever migration 0001 has been applied.
+    sql_reader_role: str = "sangam_reader"
+    sql_timeout_ms: int = 5_000
+    sql_max_rows: int = 50
+    sql_max_attempts: int = 5
+
     downloads_dir: str = "downloads"
     recursion_limit: int = 100
     allowed_origins: str = "http://localhost:3000"

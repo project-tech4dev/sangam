@@ -133,15 +133,31 @@ def sql_span(name: str, sql: str, params: Any = None):
         yield span
 
 
-async def traced_fetch(conn: Any, sql: str, params: Any = None, *, name: str) -> list[Any]:
+async def traced_fetch(
+    conn: Any,
+    sql: str,
+    params: Any = None,
+    *,
+    name: str,
+    prepare: bool | None = None,
+) -> list[Any]:
     """`conn.execute(...).fetchall()`, with the statement recorded on the trace.
 
     Without this the trace shows a tool's arguments and its formatted output but
     not the query in between, which is the part you need when a tool returns
     the wrong rows.
+
+    `prepare` is forwarded to psycopg. It matters for model-written SQL:
+    prepare=True forces the extended query protocol, and the SERVER then refuses
+    multiple commands in one statement ("cannot insert multiple commands into a
+    prepared statement"). With the simple protocol, `SELECT 1; RESET ROLE`
+    executes. Callers that need that guarantee must pass it explicitly rather
+    than rely on the pool's prepare_threshold, which is a setting someone could
+    change without knowing it was load-bearing.
     """
     with sql_span(name, sql, params) as span:
-        rows = await (await conn.execute(sql, params)).fetchall()
+        kwargs = {} if prepare is None else {"prepare": prepare}
+        rows = await (await conn.execute(sql, params, **kwargs)).fetchall()
         if span is not None:
             span.update(output={"row_count": len(rows)})
         return rows
