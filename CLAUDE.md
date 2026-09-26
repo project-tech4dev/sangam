@@ -145,15 +145,10 @@ Routers take the pool as `pool: PoolDep` (from `app/db/pool.py`) rather than cal
 `get_pool()` in the body — that is what makes it overridable per-app. Agent tools, which run
 outside any request, still call `get_pool()` directly.
 
-**Two files are called `graph`** — check which one a traceback means:
-
-| File | Is |
-|---|---|
-| `app/agent/graph.py` | builds the deep agent (`create_deep_agent`) |
-| `app/tools/graph_tools.py` | the `search_graph` agent tool |
-
-The Graphiti/Neo4j client lifecycle (`open_graph`, `graph_status`, `client`) lives in
-`app/integrations/graphiti.py` — it used to be a third `graph.py`.
+**Only one file is called `graph`**: `app/tools/graph_tools.py`, the `search_graph` agent
+tool. The deep agent is built in `app/agent/build.py`, and the Graphiti/Neo4j client lifecycle
+(`open_graph`, `graph_status`, `client`) lives in `app/integrations/graphiti.py`. Both used to
+be called `graph.py` too, which made tracebacks ambiguous.
 
 **`deepagents` is LangGraph, not an alternative to it.** `create_deep_agent()` is a preset
 middleware stack over `langchain.agents.create_agent` and returns a compiled LangGraph
@@ -161,7 +156,7 @@ graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 `add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
 
 **The agent has exactly six tools, and some config implies more than is wired.**
-`app/agent/graph.py` registers `search_orgs`, `get_funder`, `get_grants`, `get_fit_scores`,
+`app/agent/build.py` registers `search_orgs`, `get_funder`, `get_grants`, `get_fit_scores`,
 `search_graph`, `fetch_url` — nothing else. `app/tools/mcp.py` (GitHub and Playwright MCP
 servers), `app/tools/files.py` (`download_file`, `read_pdf`) and `web.make_web_search`
 (Tavily) are complete but imported nowhere, and the `Settings` fields that feed them —
@@ -189,7 +184,7 @@ product depends on and that a new tool silently breaks:
   uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
 
 Adding a tool: write the async function in `app/tools/` with both conventions, register it
-in `app/agent/graph.py`, describe its marker in `app/agent/prompt.py`, and add a label to
+in `app/agent/build.py`, describe its marker in `app/agent/prompt.py`, and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name;
 `HIDDEN_TOOLS` there suppresses the `deepagents` filesystem built-ins from the trace).
 

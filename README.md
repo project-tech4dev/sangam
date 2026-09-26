@@ -112,7 +112,7 @@ docker compose (`make up`).
 ## Agentic layer (how the chat actually works)
 
 The "intelligence" is one LangGraph **deep agent** (`deepagents` + Claude, built in
-`backend/app/agent/graph.py`), exposed to the frontend over the **AG-UI protocol**
+`backend/app/agent/build.py`), exposed to the frontend over the **AG-UI protocol**
 (`add_langgraph_fastapi_endpoint` at `/agent`; the Next.js CopilotKit runtime proxies it).
 Design principles, in priority order:
 
@@ -139,7 +139,7 @@ Design principles, in priority order:
 5. **Conversations persist.** Threads checkpoint into Postgres (`AsyncPostgresSaver` on the
    shared connection pool, `backend/app/db/checkpointer.py`) — refresh mid-chat and continue.
 6. **Adding a tool** = write an async function with the citation-marker + error-as-string
-   conventions in `backend/app/tools/`, register it in `agent/graph.py`, and mention its marker
+   conventions in `backend/app/tools/`, register it in `agent/build.py`, and mention its marker
    in `agent/prompt.py`. The chat UI renders new tool calls automatically (wildcard renderer
    in `frontend/app/page.tsx`).
 

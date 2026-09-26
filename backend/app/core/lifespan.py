@@ -15,7 +15,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
 from fastapi import FastAPI
 
-from app.agent.graph import build_agent
+from app.agent.build import build_agent
 from app.core.config import Settings, get_settings
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
