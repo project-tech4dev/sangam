@@ -5,7 +5,7 @@ import {
   apiGet, NotFoundError,
   type FunderDetail, type GrantRow, type NewsRow, type PageOf, type ScoreRow,
 } from "@/lib/api";
-import { FunderProfileTabs } from "../../_profile/ProfileTabs";
+import { FunderProfileTabs } from "@/features/registry/ProfileTabs";
 
 export default async function FunderProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

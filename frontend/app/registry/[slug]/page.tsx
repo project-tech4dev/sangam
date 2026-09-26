@@ -6,7 +6,7 @@ import {
   type GrantRow, type NewsRow, type OrgDetail, type PageOf, type ProgramRow, type ScoreRow,
 } from "@/lib/api";
 import { titleCase } from "@/lib/format";
-import { OrgProfileTabs } from "../_profile/ProfileTabs";
+import { OrgProfileTabs } from "@/features/registry/ProfileTabs";
 
 export default async function OrgProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
