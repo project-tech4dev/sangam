@@ -203,6 +203,20 @@ imported lazily inside `open_graph()` so the app boots without it, and `search_g
 returns a message telling the agent to use the database tools instead. Langfuse follows
 the same pattern. Preserve this when adding integrations.
 
+**Tracing config lives in `app/integrations/tracing.py`**, and two of its settings are
+load-bearing in ways the Langfuse docs do not advertise:
+
+- `CallbackHandler(update_trace=True)` is what puts a name, the question, and the answer
+  on the *trace*. Built bare, every trace is called `LangGraph` with empty input/output and
+  you have to open a nested span to see anything.
+- The handler groups turns by `metadata.langfuse_session_id` and **ignores LangGraph's
+  `thread_id` entirely**. `SessionScopedAGUIAgent` overrides `prepare_stream` — the one hook
+  that sees both the per-request `RunAgentInput` and the graph's config — to map one onto
+  the other. Without it a six-turn conversation is six unrelated traces.
+
+`LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, they share
+a bucket.
+
 **Auth is a deliberate stub.** `backend/app/core/security.py::get_current_user` resolves every
 request to one seeded user. Every route already does `Depends(get_current_user)`, so
 swapping in Supabase JWT verification changes only that function. The frontend sends a

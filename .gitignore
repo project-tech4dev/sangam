@@ -11,3 +11,7 @@ db/backups/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Editor swap files
+*.swp
+*.swo
