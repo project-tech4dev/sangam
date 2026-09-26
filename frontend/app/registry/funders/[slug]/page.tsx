@@ -5,7 +5,7 @@ import { Hero } from "../../../components/Hero";
 import {
   apiGet, NotFoundError,
   type FunderDetail, type GrantRow, type NewsRow, type PageOf, type ScoreRow,
-} from "../../../lib/api";
+} from "@/lib/api";
 import { FunderProfileTabs } from "../../_profile/ProfileTabs";
 
 export default async function FunderProfilePage({ params }: { params: Promise<{ slug: string }> }) {

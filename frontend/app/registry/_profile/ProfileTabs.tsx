@@ -6,7 +6,7 @@ import { PillTabs } from "../../components/PillTabs";
 import { EntityMark, ProgressBar, StatRail, Tag } from "../../components/ui";
 import type {
   Contact, FunderDetail, GrantRow, NewsRow, OrgDetail, ProgramRow, ScoreRow,
-} from "../../lib/api";
+} from "@/lib/api";
 import { ScoreCard } from "./ScoreCard";
 
 const ID_LABELS: Record<string, string> = {

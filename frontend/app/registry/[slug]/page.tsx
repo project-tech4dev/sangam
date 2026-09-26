@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs, Tag } from "../../components/ui";
 import { Hero } from "../../components/Hero";
 import {
-  apiGet, NotFoundError, titleCase,
+  apiGet, NotFoundError,
   type GrantRow, type NewsRow, type OrgDetail, type PageOf, type ProgramRow, type ScoreRow,
-} from "../../lib/api";
+} from "@/lib/api";
+import { titleCase } from "@/lib/format";
 import { OrgProfileTabs } from "../_profile/ProfileTabs";
 
 export default async function OrgProfilePage({ params }: { params: Promise<{ slug: string }> }) {

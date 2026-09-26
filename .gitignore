@@ -8,3 +8,6 @@ __pycache__/
 backend/downloads/
 .DS_Store
 db/backups/
+
+# TypeScript incremental build cache
+*.tsbuildinfo

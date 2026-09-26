@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { EntityMark, ProgressBar } from "../../components/ui";
-import type { ScoreRow } from "../../lib/api";
+import type { ScoreRow } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 
