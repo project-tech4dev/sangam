@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from copilotkit import CopilotKitMiddleware
 from deepagents import create_deep_agent
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -11,6 +9,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.models import resolve_model
 from app.agent.prompt import SYSTEM_PROMPT
 from app.core.config import Settings
+from app.integrations.tracing import trace_config
 from app.tools.db_tools import get_fit_scores, get_funder, get_grants, search_orgs
 from app.tools.graph_tools import search_graph
 from app.tools.web import fetch_url
@@ -24,19 +23,8 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         system_prompt=SYSTEM_PROMPT,
         checkpointer=checkpointer,
     )
-    if settings.langfuse_enabled:
-        # Langfuse v3 reads LANGFUSE_PUBLIC_KEY/SECRET_KEY/HOST from the env;
-        # attaching the handler at graph level traces every run, tool call,
-        # and generation without touching the AG-UI endpoint.
-        # Telemetry must never take the app down: a missing/broken langfuse
-        # install degrades to "tracing off", loudly.
-        try:
-            from langfuse.langchain import CallbackHandler
-
-            agent = agent.with_config({"callbacks": [CallbackHandler()]})
-        except Exception:  # noqa: BLE001
-            logging.getLogger(__name__).warning(
-                "Langfuse keys are set but tracing could not be enabled — continuing without it",
-                exc_info=True,
-            )
-    return agent
+    # Langfuse v3 reads LANGFUSE_PUBLIC_KEY/SECRET_KEY/HOST from the env;
+    # attaching the handler at graph level traces every run, tool call, and
+    # generation without touching the AG-UI endpoint. trace_config() returns
+    # just a run name when tracing is off or the SDK cannot load.
+    return agent.with_config(trace_config(settings))

@@ -11,6 +11,7 @@ from __future__ import annotations
 from langchain_core.tools import tool
 
 from app.db.pool import get_pool
+from app.integrations.tracing import traced_fetch
 
 
 def _fmt_date(value) -> str:
@@ -28,42 +29,42 @@ async def search_orgs(query: str) -> str:
     try:
         pool = get_pool()
         async with pool.connection() as conn:
-            rows = await (
-                await conn.execute(
-                    """
-                    SELECT o.id, o.name, o.slug, o.legal_form, o.registration_date,
-                           o.source_name, o.source_url, o.fetched_at,
-                           dl.name AS district, sl.name AS state,
-                           COALESCE(t.sectors, '{}') AS sectors,
-                           COALESCE(i.ids, '') AS ids
-                    FROM orgs o
-                    LEFT JOIN locations dl ON dl.id = o.registered_location_id
-                    LEFT JOIN locations sl ON sl.id = dl.parent_id
-                    LEFT JOIN LATERAL (
-                      SELECT array_agg(tg.label ORDER BY ot.role, tg.label) AS sectors
-                      FROM org_tags ot JOIN tags tg ON tg.id = ot.tag_id WHERE ot.org_id = o.id
-                    ) t ON true
-                    LEFT JOIN LATERAL (
-                      SELECT string_agg(upper(oi.id_type) || ': ' || oi.id_value, ', '
-                                        ORDER BY oi.id_type) AS ids
-                      FROM org_identifiers oi WHERE oi.org_id = o.id
-                    ) i ON true
-                    WHERE %(q)s = ''
-                       OR o.name ILIKE '%%' || %(q)s || '%%'
-                       OR o.slug ILIKE '%%' || %(q)s || '%%'
-                       OR sl.name ILIKE '%%' || %(q)s || '%%'
-                       OR dl.name ILIKE '%%' || %(q)s || '%%'
-                       OR similarity(o.name, %(q)s) > 0.3
-                       OR EXISTS (SELECT 1 FROM org_tags ot2 JOIN tags tg2 ON tg2.id = ot2.tag_id
-                                  WHERE ot2.org_id = o.id AND tg2.label ILIKE '%%' || %(q)s || '%%')
-                       OR EXISTS (SELECT 1 FROM org_identifiers oi2
-                                  WHERE oi2.org_id = o.id AND oi2.id_value ILIKE %(q)s)
-                    ORDER BY similarity(o.name, %(q)s) DESC NULLS LAST, o.name
-                    LIMIT 15
-                    """,
-                    {"q": query.strip()},
-                )
-            ).fetchall()
+            rows = await traced_fetch(
+                conn,
+                """
+                SELECT o.id, o.name, o.slug, o.legal_form, o.registration_date,
+                       o.source_name, o.source_url, o.fetched_at,
+                       dl.name AS district, sl.name AS state,
+                       COALESCE(t.sectors, '{}') AS sectors,
+                       COALESCE(i.ids, '') AS ids
+                FROM orgs o
+                LEFT JOIN locations dl ON dl.id = o.registered_location_id
+                LEFT JOIN locations sl ON sl.id = dl.parent_id
+                LEFT JOIN LATERAL (
+                  SELECT array_agg(tg.label ORDER BY ot.role, tg.label) AS sectors
+                  FROM org_tags ot JOIN tags tg ON tg.id = ot.tag_id WHERE ot.org_id = o.id
+                ) t ON true
+                LEFT JOIN LATERAL (
+                  SELECT string_agg(upper(oi.id_type) || ': ' || oi.id_value, ', '
+                                    ORDER BY oi.id_type) AS ids
+                  FROM org_identifiers oi WHERE oi.org_id = o.id
+                ) i ON true
+                WHERE %(q)s = ''
+                   OR o.name ILIKE '%%' || %(q)s || '%%'
+                   OR o.slug ILIKE '%%' || %(q)s || '%%'
+                   OR sl.name ILIKE '%%' || %(q)s || '%%'
+                   OR dl.name ILIKE '%%' || %(q)s || '%%'
+                   OR similarity(o.name, %(q)s) > 0.3
+                   OR EXISTS (SELECT 1 FROM org_tags ot2 JOIN tags tg2 ON tg2.id = ot2.tag_id
+                              WHERE ot2.org_id = o.id AND tg2.label ILIKE '%%' || %(q)s || '%%')
+                   OR EXISTS (SELECT 1 FROM org_identifiers oi2
+                              WHERE oi2.org_id = o.id AND oi2.id_value ILIKE %(q)s)
+                ORDER BY similarity(o.name, %(q)s) DESC NULLS LAST, o.name
+                LIMIT 15
+                """,
+                {"q": query.strip()},
+                name="query-orgs",
+            )
         if not rows:
             return f"No organisations found matching {query!r}."
         lines = []
@@ -92,59 +93,59 @@ async def get_funder(name: str) -> str:
     try:
         pool = get_pool()
         async with pool.connection() as conn:
-            rows = await (
-                await conn.execute(
-                    """
-                    SELECT f.id, f.name, f.slug, f.funder_type, f.section_135_bound,
-                           f.website, f.profile, f.source_name, f.source_url, f.fetched_at,
-                           COALESCE(t.sectors, '{}') AS focus_sectors,
-                           COALESCE(l.geos, '{}') AS geographies
-                    FROM funders f
-                    LEFT JOIN LATERAL (
-                      SELECT array_agg(tg.label ORDER BY ft.role, tg.label) AS sectors
-                      FROM funder_tags ft JOIN tags tg ON tg.id = ft.tag_id WHERE ft.funder_id = f.id
-                    ) t ON true
-                    LEFT JOIN LATERAL (
-                      SELECT array_agg(lo.name ORDER BY lo.kind, lo.name) AS geos
-                      FROM funder_locations fl JOIN locations lo ON lo.id = fl.location_id
-                      WHERE fl.funder_id = f.id
-                    ) l ON true
-                    WHERE f.name ILIKE '%%' || %(q)s || '%%'
-                       OR f.slug ILIKE '%%' || %(q)s || '%%'
-                       OR similarity(f.name, %(q)s) > 0.3
-                    ORDER BY similarity(f.name, %(q)s) DESC NULLS LAST
-                    LIMIT 5
-                    """,
-                    {"q": name.strip()},
-                )
-            ).fetchall()
+            rows = await traced_fetch(
+                conn,
+                """
+                SELECT f.id, f.name, f.slug, f.funder_type, f.section_135_bound,
+                       f.website, f.profile, f.source_name, f.source_url, f.fetched_at,
+                       COALESCE(t.sectors, '{}') AS focus_sectors,
+                       COALESCE(l.geos, '{}') AS geographies
+                FROM funders f
+                LEFT JOIN LATERAL (
+                  SELECT array_agg(tg.label ORDER BY ft.role, tg.label) AS sectors
+                  FROM funder_tags ft JOIN tags tg ON tg.id = ft.tag_id WHERE ft.funder_id = f.id
+                ) t ON true
+                LEFT JOIN LATERAL (
+                  SELECT array_agg(lo.name ORDER BY lo.kind, lo.name) AS geos
+                  FROM funder_locations fl JOIN locations lo ON lo.id = fl.location_id
+                  WHERE fl.funder_id = f.id
+                ) l ON true
+                WHERE f.name ILIKE '%%' || %(q)s || '%%'
+                   OR f.slug ILIKE '%%' || %(q)s || '%%'
+                   OR similarity(f.name, %(q)s) > 0.3
+                ORDER BY similarity(f.name, %(q)s) DESC NULLS LAST
+                LIMIT 5
+                """,
+                {"q": name.strip()},
+                name="query-funders",
+            )
             if not rows:
                 return f"No funder found matching {name!r}."
             out = []
             for r in rows:
                 profile = r["profile"] or {}
                 profile_bits = "\n".join(f"  - {k}: {v}" for k, v in profile.items())
-                contacts = await (
-                    await conn.execute(
-                        "SELECT name, role, kind, verified FROM contacts WHERE funder_id = %s",
-                        (r["id"],),
-                    )
-                ).fetchall()
+                contacts = await traced_fetch(
+                    conn,
+                    "SELECT name, role, kind, verified FROM contacts WHERE funder_id = %s",
+                    (r["id"],),
+                    name="fetch-funder-contacts",
+                )
                 contact_bits = "\n".join(
                     f"  - {c['name']} ({c['role'] or c['kind']}){' [verified]' if c['verified'] else ''}"
                     for c in contacts
                 )
-                grants = await (
-                    await conn.execute(
-                        """
-                        SELECT g.id, o.name AS org_name, g.title, g.status,
-                               g.start_date, g.end_date
-                        FROM grants g JOIN orgs o ON o.id = g.org_id
-                        WHERE g.funder_id = %s ORDER BY g.start_date DESC NULLS LAST
-                        """,
-                        (r["id"],),
-                    )
-                ).fetchall()
+                grants = await traced_fetch(
+                    conn,
+                    """
+                    SELECT g.id, o.name AS org_name, g.title, g.status,
+                           g.start_date, g.end_date
+                    FROM grants g JOIN orgs o ON o.id = g.org_id
+                    WHERE g.funder_id = %s ORDER BY g.start_date DESC NULLS LAST
+                    """,
+                    (r["id"],),
+                    name="fetch-funder-grants",
+                )
                 grant_bits = "\n".join(
                     f"  - [grant:{g['id']}] → {g['org_name']}: {g['title']} "
                     f"({g['status']}, {_fmt_date(g['start_date'])} – {_fmt_date(g['end_date'])})"
@@ -182,24 +183,24 @@ async def get_grants(org: str = "", funder: str = "", status: str = "") -> str:
     try:
         pool = get_pool()
         async with pool.connection() as conn:
-            rows = await (
-                await conn.execute(
-                    """
-                    SELECT g.*, f.name AS funder_name, f.id AS f_id,
-                           o.name AS org_name, o.id AS o_id, p.name AS program_name
-                    FROM grants g
-                    JOIN funders f ON f.id = g.funder_id
-                    JOIN orgs o ON o.id = g.org_id
-                    LEFT JOIN programs p ON p.id = g.program_id
-                    WHERE (%(org)s = '' OR o.name ILIKE '%%' || %(org)s || '%%' OR o.slug ILIKE '%%' || %(org)s || '%%')
-                      AND (%(funder)s = '' OR f.name ILIKE '%%' || %(funder)s || '%%' OR f.slug ILIKE '%%' || %(funder)s || '%%')
-                      AND (%(status)s = '' OR g.status = %(status)s)
-                    ORDER BY g.start_date DESC NULLS LAST
-                    LIMIT 20
-                    """,
-                    {"org": org.strip(), "funder": funder.strip(), "status": status.strip()},
-                )
-            ).fetchall()
+            rows = await traced_fetch(
+                conn,
+                """
+                SELECT g.*, f.name AS funder_name, f.id AS f_id,
+                       o.name AS org_name, o.id AS o_id, p.name AS program_name
+                FROM grants g
+                JOIN funders f ON f.id = g.funder_id
+                JOIN orgs o ON o.id = g.org_id
+                LEFT JOIN programs p ON p.id = g.program_id
+                WHERE (%(org)s = '' OR o.name ILIKE '%%' || %(org)s || '%%' OR o.slug ILIKE '%%' || %(org)s || '%%')
+                  AND (%(funder)s = '' OR f.name ILIKE '%%' || %(funder)s || '%%' OR f.slug ILIKE '%%' || %(funder)s || '%%')
+                  AND (%(status)s = '' OR g.status = %(status)s)
+                ORDER BY g.start_date DESC NULLS LAST
+                LIMIT 20
+                """,
+                {"org": org.strip(), "funder": funder.strip(), "status": status.strip()},
+                name="query-grants",
+            )
         if not rows:
             return ("No grants found for the given filters. Note: only researched "
                     "relationships are recorded; absence here is not proof no grant exists.")
@@ -236,53 +237,53 @@ async def get_fit_scores(org: str, funder: str = "", rubric_version: str = "") -
     try:
         pool = get_pool()
         async with pool.connection() as conn:
-            scores = await (
-                await conn.execute(
-                    """
-                    SELECT fs.id, fs.total_score, fs.max_score, fs.scored_by, fs.scored_at,
-                           fs.notes, o.name AS org_name, o.id AS org_id,
-                           f.name AS funder_name, f.id AS funder_id, r.version, r.name AS rubric_name
-                    FROM fit_scores fs
-                    JOIN orgs o ON o.id = fs.org_id
-                    JOIN funders f ON f.id = fs.funder_id
-                    JOIN rubrics r ON r.id = fs.rubric_id
-                    WHERE (o.name ILIKE '%%' || %(org)s || '%%' OR o.slug ILIKE '%%' || %(org)s || '%%')
-                      AND (%(funder)s = '' OR f.name ILIKE '%%' || %(funder)s || '%%'
-                           OR f.slug ILIKE '%%' || %(funder)s || '%%')
-                      AND (%(rubric)s = '' OR r.version = %(rubric)s)
-                    ORDER BY r.version, fs.total_score DESC
-                    """,
-                    {"org": org.strip(), "funder": funder.strip(), "rubric": rubric_version.strip()},
-                )
-            ).fetchall()
+            scores = await traced_fetch(
+                conn,
+                """
+                SELECT fs.id, fs.total_score, fs.max_score, fs.scored_by, fs.scored_at,
+                       fs.notes, o.name AS org_name, o.id AS org_id,
+                       f.name AS funder_name, f.id AS funder_id, r.version, r.name AS rubric_name
+                FROM fit_scores fs
+                JOIN orgs o ON o.id = fs.org_id
+                JOIN funders f ON f.id = fs.funder_id
+                JOIN rubrics r ON r.id = fs.rubric_id
+                WHERE (o.name ILIKE '%%' || %(org)s || '%%' OR o.slug ILIKE '%%' || %(org)s || '%%')
+                  AND (%(funder)s = '' OR f.name ILIKE '%%' || %(funder)s || '%%'
+                       OR f.slug ILIKE '%%' || %(funder)s || '%%')
+                  AND (%(rubric)s = '' OR r.version = %(rubric)s)
+                ORDER BY r.version, fs.total_score DESC
+                """,
+                {"org": org.strip(), "funder": funder.strip(), "rubric": rubric_version.strip()},
+                name="query-fit-scores",
+            )
             if not scores:
                 return f"No fit scores found for org {org!r}" + (f" and funder {funder!r}" if funder else "") + "."
             out = []
             for s in scores:
-                items = await (
-                    await conn.execute(
-                        """
-                        SELECT rc.code, rc.label, rc.points, fsi.score, fsi.justification
-                        FROM fit_score_items fsi
-                        JOIN rubric_criteria rc ON rc.id = fsi.criterion_id
-                        WHERE fsi.fit_score_id = %s
-                        ORDER BY rc.code
-                        """,
-                        (s["id"],),
-                    )
-                ).fetchall()
-                adjustments = await (
-                    await conn.execute(
-                        """
-                        SELECT rc.code, sa.old_score, sa.new_score, sa.reason, sa.adjusted_at
-                        FROM score_adjustments sa
-                        JOIN rubric_criteria rc ON rc.id = sa.criterion_id
-                        WHERE sa.fit_score_id = %s
-                        ORDER BY rc.code
-                        """,
-                        (s["id"],),
-                    )
-                ).fetchall()
+                items = await traced_fetch(
+                    conn,
+                    """
+                    SELECT rc.code, rc.label, rc.points, fsi.score, fsi.justification
+                    FROM fit_score_items fsi
+                    JOIN rubric_criteria rc ON rc.id = fsi.criterion_id
+                    WHERE fsi.fit_score_id = %s
+                    ORDER BY rc.code
+                    """,
+                    (s["id"],),
+                    name="fetch-score-criteria",
+                )
+                adjustments = await traced_fetch(
+                    conn,
+                    """
+                    SELECT rc.code, sa.old_score, sa.new_score, sa.reason, sa.adjusted_at
+                    FROM score_adjustments sa
+                    JOIN rubric_criteria rc ON rc.id = sa.criterion_id
+                    WHERE sa.fit_score_id = %s
+                    ORDER BY rc.code
+                    """,
+                    (s["id"],),
+                    name="fetch-score-adjustments",
+                )
                 block = [
                     f"[score:{s['id']}] {s['org_name']} × {s['funder_name']} — "
                     f"{s['total_score']}/{s['max_score']} on rubric {s['version']} "

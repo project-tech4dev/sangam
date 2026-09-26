@@ -9,10 +9,10 @@ manifest rather than a lifecycle implementation.
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import AsyncExitStack, asynccontextmanager
 
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
-from copilotkit import LangGraphAGUIAgent
 from fastapi import FastAPI
 
 from app.agent.graph import build_agent
@@ -20,6 +20,7 @@ from app.core.config import Settings, get_settings
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
 from app.integrations import graphiti
+from app.integrations.tracing import SessionScopedAGUIAgent
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ def build_lifespan(settings: Settings | None = None):
             checkpointer = await stack.enter_async_context(open_checkpointer(pool))
             add_langgraph_fastapi_endpoint(
                 app=app,
-                agent=LangGraphAGUIAgent(
+                agent=SessionScopedAGUIAgent(
                     name="sangam_agent",
                     description=AGENT_DESCRIPTION,
                     graph=build_agent(resolved, checkpointer),
@@ -66,7 +67,11 @@ def build_lifespan(settings: Settings | None = None):
             )
 
             if resolved.langfuse_enabled:
-                logger.info("Langfuse tracing enabled: host=%s", resolved.langfuse_host)
+                logger.info(
+                    "Langfuse tracing enabled: host=%s env=%s",
+                    resolved.langfuse_host,
+                    os.environ.get("LANGFUSE_TRACING_ENVIRONMENT", "default"),
+                )
             else:
                 logger.info("Langfuse tracing disabled (set LANGFUSE_PUBLIC_KEY/SECRET_KEY to enable)")
             logger.info("Sangam agent ready: model=%s", resolved.model)
