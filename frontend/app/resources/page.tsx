@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Breadcrumbs } from "../components/ui";
+import { Breadcrumbs } from "@/components/ui";
 
 export const metadata = { title: "Resources — Sangam" };
 

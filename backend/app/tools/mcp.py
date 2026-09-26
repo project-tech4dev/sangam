@@ -30,7 +30,7 @@ SERVER_DENYLIST: dict[str, set[str]] = {
     "playwright": {"browser_run_code_unsafe"},
 }
 
-from app.config import Settings
+from app.core.config import Settings
 
 logger = logging.getLogger(__name__)
 

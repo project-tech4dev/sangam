@@ -137,7 +137,7 @@ Design principles, in priority order:
    (`backend/app/tools/db_tools.py` / `graph_tools.py`). If the graph is unconfigured, the agent
    is told so and falls back to SQL tools, disclosing the limitation in its answer.
 5. **Conversations persist.** Threads checkpoint into Postgres (`AsyncPostgresSaver` on the
-   shared connection pool, `backend/app/persistence.py`) — refresh mid-chat and continue.
+   shared connection pool, `backend/app/db/checkpointer.py`) — refresh mid-chat and continue.
 6. **Adding a tool** = write an async function with the citation-marker + error-as-string
    conventions in `backend/app/tools/`, register it in `agent/graph.py`, and mention its marker
    in `agent/prompt.py`. The chat UI renders new tool calls automatically (wildcard renderer
@@ -165,7 +165,7 @@ with time-bounded facts.
 
 ## Design notes
 
-- **Auth is a stub** (`backend/app/auth.py` returns a seeded dev user; the frontend already
+- **Auth is a stub** (`backend/app/core/security.py` returns a seeded dev user; the frontend already
   sends `Authorization: Bearer dev`). Swapping to Supabase JWT later changes only that function.
 - **Provenance discipline**: every scraped-fact table carries `source_url/source_name/fetched_at/
   content_hash/extractor_version`; scores carry `scored_by/scored_at` and a manual-override audit

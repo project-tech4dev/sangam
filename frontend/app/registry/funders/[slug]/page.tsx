@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Breadcrumbs, Tag } from "../../../components/ui";
-import { Hero } from "../../../components/Hero";
+import { Breadcrumbs, Hero, Tag } from "@/components/ui";
 import {
   apiGet, NotFoundError,
   type FunderDetail, type GrantRow, type NewsRow, type PageOf, type ScoreRow,
-} from "../../../lib/api";
-import { FunderProfileTabs } from "../../_profile/ProfileTabs";
+} from "@/lib/api";
+import { FunderProfileTabs } from "@/features/registry/ProfileTabs";
 
 export default async function FunderProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

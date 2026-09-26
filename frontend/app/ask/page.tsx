@@ -1,13 +1,13 @@
-import {
-  apiGet,
-  titleCase,
-  type FunderListItem,
-  type GrantRow,
-  type OrgListItem,
-  type PageOf,
-  type ScoreRow,
-} from "../lib/api";
-import { AskWorkspace, type IndexPayload } from "./AskWorkspace";
+import { apiGet } from "@/lib/api";
+import { titleCase } from "@/lib/format";
+import type {
+  FunderListItem,
+  GrantRow,
+  OrgListItem,
+  PageOf,
+  ScoreRow,
+} from "@/lib/api";
+import { AskWorkspace, type IndexPayload } from "@/features/ask/AskWorkspace";
 
 export const metadata = { title: "Ask Sangam" };
 

@@ -1,4 +1,4 @@
-from app.api import scores as scores_api
+from app.api.routes import scores as scores_api
 from tests.conftest import TEST_USER
 
 ADJUSTMENT = {
@@ -15,7 +15,7 @@ async def test_create_adjustment_stamps_user(client_for, monkeypatch):
         captured["adjusted_by"] = adjusted_by
         return ADJUSTMENT
 
-    monkeypatch.setattr("app.api.scores.repo.create_adjustment", fake_create)
+    monkeypatch.setattr("app.api.routes.scores.repo.create_adjustment", fake_create)
     async with client_for(scores_api.router) as client:
         response = await client.post("/api/scores/1/adjustments", json={
             "criterion_id": 5, "old_score": 10, "new_score": 7,
@@ -29,7 +29,7 @@ async def test_create_adjustment_unknown_score_404(client_for, monkeypatch):
     async def fake_create(pool, fit_score_id, data, adjusted_by):
         return None
 
-    monkeypatch.setattr("app.api.scores.repo.create_adjustment", fake_create)
+    monkeypatch.setattr("app.api.routes.scores.repo.create_adjustment", fake_create)
     async with client_for(scores_api.router) as client:
         response = await client.post("/api/scores/999/adjustments", json={
             "criterion_id": 5, "new_score": 7, "reason": "x",
@@ -52,7 +52,7 @@ async def test_page_envelope_and_limit_clamp(client_for, monkeypatch):
         captured.update(kwargs)
         return [], 0
 
-    monkeypatch.setattr("app.api.scores.repo.list_scores", fake_list)
+    monkeypatch.setattr("app.api.routes.scores.repo.list_scores", fake_list)
     async with client_for(scores_api.router) as client:
         ok = await client.get("/api/scores", params={"limit": 5, "offset": 10})
         too_big = await client.get("/api/scores", params={"limit": 1000})

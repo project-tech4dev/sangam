@@ -9,7 +9,7 @@ import httpx
 from langchain_core.tools import tool
 from pypdf import PdfReader
 
-from app.config import get_settings
+from app.core.config import get_settings
 
 MAX_DOWNLOAD_MB = 100
 MAX_DOWNLOAD_BYTES = MAX_DOWNLOAD_MB * 1024 * 1024

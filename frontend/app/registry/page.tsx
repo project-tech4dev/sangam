@@ -1,5 +1,6 @@
-import { apiGet, toRegistryEntries, type FunderListItem, type OrgListItem } from "../lib/api";
-import { RegistryClient } from "./RegistryClient";
+import { apiGet, type FunderListItem, type OrgListItem } from "@/lib/api";
+import { toRegistryEntries } from "@/features/registry/entries";
+import { RegistryClient } from "@/features/registry/RegistryClient";
 
 export const metadata = { title: "Registry — Sangam" };
 

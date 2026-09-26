@@ -148,8 +148,8 @@ def collect_episodes(database_url: str) -> list[dict]:
 async def ingest(episodes: list[dict]) -> None:
     from graphiti_core.nodes import EpisodeType
 
-    from app.config import get_settings
-    from app.graph import graph_status, open_graph
+    from app.core.config import get_settings
+    from app.integrations.graphiti import graph_status, open_graph
 
     settings = get_settings()
     status = graph_status(settings)

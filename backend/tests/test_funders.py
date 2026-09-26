@@ -1,4 +1,4 @@
-from app.api import funders as funders_api
+from app.api.routes import funders as funders_api
 
 ROW = {
     "id": 1, "slug": "axis-bank-foundation", "name": "Axis Bank Foundation",
@@ -16,7 +16,7 @@ async def test_list_is_legacy_array_shape(client_for, monkeypatch):
     async def fake_list(pool, **kwargs):
         return [ROW], 1
 
-    monkeypatch.setattr("app.api.funders.repo.list_funders", fake_list)
+    monkeypatch.setattr("app.api.routes.funders.repo.list_funders", fake_list)
     async with client_for(funders_api.router) as client:
         response = await client.get("/api/funders")
     body = response.json()
@@ -33,7 +33,7 @@ async def test_section_135_filter_forwarded(client_for, monkeypatch):
         captured.update(kwargs)
         return [], 0
 
-    monkeypatch.setattr("app.api.funders.repo.list_funders", fake_list)
+    monkeypatch.setattr("app.api.routes.funders.repo.list_funders", fake_list)
     async with client_for(funders_api.router) as client:
         await client.get("/api/funders", params={"section_135": "true"})
     assert captured["section_135"] is True
@@ -43,7 +43,7 @@ async def test_scores_404_when_empty(client_for, monkeypatch):
     async def fake_scores(pool, funder_id):
         return []
 
-    monkeypatch.setattr("app.api.funders.repo.funder_scores", fake_scores)
+    monkeypatch.setattr("app.api.routes.funders.repo.funder_scores", fake_scores)
     async with client_for(funders_api.router) as client:
         response = await client.get("/api/funders/99/scores")
     assert response.status_code == 404

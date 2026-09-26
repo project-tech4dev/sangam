@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
-from app.db import get_pool
+from app.db.pool import get_pool
 
 
 def _fmt_date(value) -> str:
