@@ -118,7 +118,7 @@ Design principles, in priority order:
 
 1. **Tools are the only source of truth.** The agent answers exclusively from tool results —
    never from the model's own knowledge of an org or funder. No data → it says so.
-   The system prompt enforcing this lives in `backend/app/agent/prompt.py`.
+   The system prompt enforcing this lives in `backend/app/agent/instructions.md`.
 2. **Every fact is cited.** Tool results embed markers — `[org:9]`, `[funder:1]`, `[grant:2]`,
    `[score:1]`, `[graph:ab12cd34]` — and the agent must repeat them inline next to each claim,
    so every sentence traces to a Postgres row or a graph edge.
@@ -140,7 +140,7 @@ Design principles, in priority order:
    shared connection pool, `backend/app/db/checkpointer.py`) — refresh mid-chat and continue.
 6. **Adding a tool** = write an async function with the citation-marker + error-as-string
    conventions in `backend/app/agent/tools/`, register it in `agent/build.py`, and mention its marker
-   in `agent/prompt.py`. The chat UI renders new tool calls automatically (wildcard renderer
+   in `agent/instructions.md`. The chat UI renders new tool calls automatically (wildcard renderer
    in `frontend/app/page.tsx`).
 
 Model and keys: the agent's reasoning model is `MODEL` (default `anthropic:claude-sonnet-5`,

@@ -102,7 +102,8 @@ backend/app/
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
   schemas/         Pydantic, one module per resource
-  agent/           build.py (builds the deep agent) · models.py · prompt.py · tools/
+  agent/           build.py (builds the deep agent) · models.py · tools/
+                   instructions.md (the system prompt) · prompt.py (loads it)
   integrations/    graphiti.py (Neo4j client lifecycle)
 
 frontend/
@@ -178,12 +179,12 @@ product depends on and that a new tool silently breaks:
   error string lets the model see the failure and adapt. Every tool body in `app/agent/tools/` is
   wrapped in `try/except` returning `f"<tool> failed: {exc}"`.
 - *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
-  `[grant:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/prompt.py` requires the
+  `[grant:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces
   uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
 
 Adding a tool: write the async function in `app/agent/tools/` with both conventions, register it
-in `app/agent/build.py`, describe its marker in `app/agent/prompt.py`, and add a label to
+in `app/agent/build.py`, describe its marker in `app/agent/instructions.md`, and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name;
 `HIDDEN_TOOLS` there suppresses the `deepagents` filesystem built-ins from the trace).
 
