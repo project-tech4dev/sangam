@@ -134,12 +134,12 @@ Design principles, in priority order:
    | Fetch a page the user links | `fetch_url` | live web |
 
 4. **Tools never raise.** Errors return as strings so the agent can see the failure and adapt
-   (`backend/app/tools/db_tools.py` / `graph_tools.py`). If the graph is unconfigured, the agent
+   (`backend/app/agent/tools/db_tools.py` / `graph_tools.py`). If the graph is unconfigured, the agent
    is told so and falls back to SQL tools, disclosing the limitation in its answer.
 5. **Conversations persist.** Threads checkpoint into Postgres (`AsyncPostgresSaver` on the
    shared connection pool, `backend/app/db/checkpointer.py`) — refresh mid-chat and continue.
 6. **Adding a tool** = write an async function with the citation-marker + error-as-string
-   conventions in `backend/app/tools/`, register it in `agent/build.py`, and mention its marker
+   conventions in `backend/app/agent/tools/`, register it in `agent/build.py`, and mention its marker
    in `agent/prompt.py`. The chat UI renders new tool calls automatically (wildcard renderer
    in `frontend/app/page.tsx`).
 

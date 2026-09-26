@@ -8,11 +8,11 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from app.agent.models import resolve_model
 from app.agent.prompt import SYSTEM_PROMPT
+from app.agent.tools.db_tools import get_fit_scores, get_funder, get_grants, search_orgs
+from app.agent.tools.graph_tools import search_graph
+from app.agent.tools.web import fetch_url
 from app.core.config import Settings
 from app.integrations.tracing import trace_config
-from app.tools.db_tools import get_fit_scores, get_funder, get_grants, search_orgs
-from app.tools.graph_tools import search_graph
-from app.tools.web import fetch_url
 
 
 def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):

@@ -102,8 +102,7 @@ backend/app/
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
   schemas/         Pydantic, one module per resource
-  agent/           graph.py (builds the deep agent) · models.py · prompt.py
-  tools/           the agent's tools
+  agent/           build.py (builds the deep agent) · models.py · prompt.py · tools/
   integrations/    graphiti.py (Neo4j client lifecycle)
 
 frontend/
@@ -124,7 +123,7 @@ Things worth knowing before changing anything:
 from source text and is rebuildable from Postgres (`seed/graph_seed.py`). Keep that
 property — nothing should live only in the graph.
 
-**The agent reaches the database through tools, not the API.** `backend/app/tools/db_tools.py`
+**The agent reaches the database through tools, not the API.** `backend/app/agent/tools/db_tools.py`
 queries repositories directly. `backend/app/api/routes/` serves the frontend's REST calls. They
 share `repositories/` but are separate paths; changing one does not change the other.
 
@@ -145,7 +144,7 @@ Routers take the pool as `pool: PoolDep` (from `app/db/pool.py`) rather than cal
 `get_pool()` in the body — that is what makes it overridable per-app. Agent tools, which run
 outside any request, still call `get_pool()` directly.
 
-**Only one file is called `graph`**: `app/tools/graph_tools.py`, the `search_graph` agent
+**Only one file is called `graph`**: `app/agent/tools/graph_tools.py`, the `search_graph` agent
 tool. The deep agent is built in `app/agent/build.py`, and the Graphiti/Neo4j client lifecycle
 (`open_graph`, `graph_status`, `client`) lives in `app/integrations/graphiti.py`. Both used to
 be called `graph.py` too, which made tracebacks ambiguous.
@@ -157,8 +156,8 @@ graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 
 **The agent has exactly six tools, and some config implies more than is wired.**
 `app/agent/build.py` registers `search_orgs`, `get_funder`, `get_grants`, `get_fit_scores`,
-`search_graph`, `fetch_url` — nothing else. `app/tools/mcp.py` (GitHub and Playwright MCP
-servers), `app/tools/files.py` (`download_file`, `read_pdf`) and `web.make_web_search`
+`search_graph`, `fetch_url` — nothing else. `app/agent/tools/mcp.py` (GitHub and Playwright MCP
+servers), `app/agent/tools/files.py` (`download_file`, `read_pdf`) and `web.make_web_search`
 (Tavily) are complete but imported nowhere, and the `Settings` fields that feed them —
 `tavily_api_key`, `github_pat`, `github_mcp_url`, `playwright_mcp_url`, `mcp_servers` —
 therefore do nothing until those tools are registered. Setting them changes no behaviour.
@@ -176,14 +175,14 @@ it is stale, this rule wins.)
 product depends on and that a new tool silently breaks:
 
 - *Errors are return values.* A raised exception aborts the entire agent run; a returned
-  error string lets the model see the failure and adapt. Every tool body in `app/tools/` is
+  error string lets the model see the failure and adapt. Every tool body in `app/agent/tools/` is
   wrapped in `try/except` returning `f"<tool> failed: {exc}"`.
 - *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
   `[grant:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/prompt.py` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces
   uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
 
-Adding a tool: write the async function in `app/tools/` with both conventions, register it
+Adding a tool: write the async function in `app/agent/tools/` with both conventions, register it
 in `app/agent/build.py`, describe its marker in `app/agent/prompt.py`, and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name;
 `HIDDEN_TOOLS` there suppresses the `deepagents` filesystem built-ins from the trace).
