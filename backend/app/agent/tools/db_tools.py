@@ -10,12 +10,26 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
+from app.agent.tools.sql.catalog import DEFECTS
 from app.db.pool import get_pool
 from app.integrations.tracing import traced_fetch
 
 
 def _fmt_date(value) -> str:
     return value.strftime("%d %b %Y") if value else "date unknown"
+
+
+def _caveats(*tables: str) -> str:
+    """Known data problems for the tables a curated query read.
+
+    The catalog is the single source of truth for these, but it was reachable
+    only from the SQL tools — so the same broken rows came back uncaveated
+    through the curated path, and the model fell back on its own world
+    knowledge to spot them. It catches most and misses some, which is worse
+    than either extreme because the misses look like confirmations.
+    """
+    lines = [d for table in tables for d in DEFECTS.get(table, ())]
+    return ("\n\nCAVEAT: " + " ".join(lines)) if lines else ""
 
 
 @tool
@@ -66,7 +80,7 @@ async def search_orgs(query: str) -> str:
                 name="query-orgs",
             )
         if not rows:
-            return f"No organisations found matching {query!r}."
+            return f"No organisations found matching {query!r}." + _caveats("locations")
         lines = []
         for r in rows:
             lines.append(
@@ -77,7 +91,7 @@ async def search_orgs(query: str) -> str:
                 + (f" — {r['ids']}" if r["ids"] else "")
                 + f" — source: {r['source_name'] or 'unknown'}, fetched {_fmt_date(r['fetched_at'])}"
             )
-        return "\n".join(lines)
+        return "\n".join(lines) + _caveats("locations")
     except Exception as exc:  # noqa: BLE001 - error-as-string tool discipline
         return f"search_orgs failed: {exc}"
 
