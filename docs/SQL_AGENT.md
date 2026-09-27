@@ -574,6 +574,26 @@ which measures how far the judge can be trusted instead of assuming.
 
 Gating: a `--run-evals` conftest flag, **not** `addopts`. A CLI `-m` *replaces* addopts' `-m`,
 so the documented `pytest -m integration` workflow would silently start billing model calls.
+Verified both ways: `pytest -m integration` runs 29 tests and no evals; `pytest -m eval` without
+the flag skips all of them.
+
+**`make evals` runs on the host venv, not in the container.** `backend/Dockerfile` does
+`uv pip install --system -r pyproject.toml`, which installs the runtime dependencies only — the
+image has no pytest. The recipe is `@`-prefixed and sources `.env` quietly, because it carries
+the provider API key and an echoed recipe line would leave it in terminal scrollback.
+
+Three harness bugs worth knowing about, because each one scored a *correct* agent as wrong:
+
+- **A module-scoped async fixture runs on a different event loop than the tests.** An
+  `AsyncConnectionPool` bound to a dead loop fails every checkout, which surfaces as the agent
+  politely reporting "the database is unreachable" and every case failing for a reason that has
+  nothing to do with the agent. Function-scoped.
+- **Anthropic returns message content as a list of blocks, not a string**, and which shape
+  arrives varies between runs. Handling only `str` yields an empty answer, indistinguishable
+  from the agent saying nothing.
+- **Gating on "did it run db_query" is the wrong question.** Asked what legal forms exist, the
+  agent answered correctly from `db_profile_column` alone — which is what the prompt tells it to
+  do. When no SQL ran, the gate falls back to checking the answer states every gold value.
 
 Seed cases — the first two fail today, and both are **data bugs, not agent bugs** (say so in
 the file docstring or someone will try to fix them with prompt engineering):

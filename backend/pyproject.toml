@@ -38,7 +38,10 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-markers = ["integration: needs the compose Postgres on localhost:5433"]
+markers = [
+    "integration: needs the compose Postgres on localhost:5433",
+    "eval: calls a real model and costs money; needs --run-evals and the compose Postgres",
+]
 
 [tool.ruff]
 line-length = 110
