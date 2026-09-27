@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     sql_timeout_ms: int = 5_000
     sql_max_rows: int = 50
     sql_max_attempts: int = 5
+    # A cheap second opinion on each SQL answer (grain, filters, false zeros,
+    # numbers). Empty disables it; it is a real extra model call per SQL turn,
+    # so point it at the cheapest model of a provider you already have a key for,
+    # e.g. "anthropic:claude-haiku-4-5".
+    sql_audit_model: str = ""
 
     downloads_dir: str = "downloads"
     recursion_limit: int = 100

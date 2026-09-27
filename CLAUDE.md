@@ -52,13 +52,27 @@ pytest -m "not integration"         # skip tests needing the compose Postgres on
 ruff check .                        # line-length 110, target py312
 ```
 
+```bash
+make evals                          # golden questions through the real agent (COSTS MONEY)
+make evals TAG=canary               # the cheap subset
+```
+
 `asyncio_mode = "auto"` — async tests need no `@pytest.mark.asyncio`. **Unit tests never
 touch a database**: `client_for(*routers)` builds a router-only FastAPI app with no lifespan
 (no pool, no agent, no model) and overrides two dependencies — `get_current_user`, and
 `get_pool` with a `_SentinelPool` that raises on any attribute access. Routers take the pool
 as `PoolDep`, so that one override covers every router; monkeypatch the `repositories/`
-function rather than the pool. Only `tests/test_migration_integrity.py` carries the
-`integration` mark.
+function rather than the pool. `tests/test_migration_integrity.py` and
+`tests/test_sql_integration.py` carry the `integration` mark.
+
+`tests/evals/` is a third tier: golden questions run through the **real agent**, so they cost
+money. They carry the `eval` mark and are skipped unless `--run-evals` is passed. That is a
+conftest flag rather than an `addopts` filter on purpose — a command-line `-m` *replaces*
+addopts' `-m`, so `pytest -m integration` would otherwise start billing model calls. `make
+evals` runs them on the host venv, because the image installs runtime dependencies only and
+has no pytest. A case with `expected_failure` is `xfail(strict=True)`: when the underlying
+data bug is fixed the case passes, pytest reports XPASS as a failure, and the marker gets
+deleted.
 
 Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaults to the
 container path `/srv/db/migrations`.
@@ -155,21 +169,54 @@ middleware stack over `langchain.agents.create_agent` and returns a compiled Lan
 graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 `add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
 
-**The agent has exactly six tools, and some config implies more than is wired.**
-`app/agent/build.py` registers `search_orgs`, `get_funder`, `get_grants`, `get_fit_scores`,
-`search_graph`, `fetch_url` — nothing else. `app/agent/tools/mcp.py` (GitHub and Playwright MCP
-servers), `app/agent/tools/files.py` (`download_file`, `read_pdf`) and `web.make_web_search`
-(Tavily) are complete but imported nowhere, and the `Settings` fields that feed them —
-`tavily_api_key`, `github_pat`, `github_mcp_url`, `playwright_mcp_url`, `mcp_servers` —
-therefore do nothing until those tools are registered. Setting them changes no behaviour.
+**The agent has exactly ten tools, and some config implies more than is wired.**
+`app/agent/build.py` registers six curated tools — `search_orgs`, `get_funder`, `get_grants`,
+`get_fit_scores`, `search_graph`, `fetch_url` — and four SQL tools: `db_list_tables`,
+`db_describe_table`, `db_profile_column`, `db_query`. Nothing else.
+`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers), `app/agent/tools/files.py`
+(`download_file`, `read_pdf`) and `web.make_web_search` (Tavily) are complete but imported
+nowhere, and the `Settings` fields that feed them — `tavily_api_key`, `github_pat`,
+`github_mcp_url`, `playwright_mcp_url`, `mcp_servers` — therefore do nothing until those
+tools are registered. Setting them changes no behaviour.
+
+**The SQL tools let the model write its own SELECT, behind four layers.** Full design in
+`docs/SQL_AGENT.md`; the parts you need before touching them:
+
+- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 28 tables, and a column not
+  listed there does not exist as far as the tool is concerned. It also carries `defects`:
+  evidence-backed caveats about the *data* that get injected into every result touching the
+  table, so the model cannot report "0 rows" as "none exist". Delete a defect line when a
+  migration fixes the underlying data. `verify_against_db()` runs at boot and **raises** on
+  drift — deliberately not the degrade-quietly rule, because a catalog that disagrees with the
+  schema produces confidently wrong answers.
+- `validator.py` is pure: no pool, no async, no settings. **The model's SQL string never
+  executes** — what runs is the regenerated sqlglot AST, which is what actually kills
+  multi-statement injection and comment smuggling.
+- `executor.py` wraps every query in a read-only transaction with `SET LOCAL statement_timeout`
+  and `SET LOCAL ROLE sangam_reader`, and passes `prepare=True` so the *server* refuses
+  multi-command statements. All transaction-scoped, because this pool is shared with the
+  LangGraph checkpointer, which writes.
+- `db/migrations/0001_sql_reader_role.sql` creates that NOLOGIN role. Its GRANT list is
+  generated from the catalog and an integration test asserts the two still agree, column for
+  column. Without the migration `db_query` refuses to run rather than falling back to the
+  database owner.
+
+`SQL_AUDIT_MODEL` turns on a post-answer audit (`app/agent/audit.py`): a cheap second model
+checks grain, missing filters, false zeros and whether the figures in the prose match the rows,
+then appends a caveat. It never blocks and never edits — by the time it runs the answer has
+already streamed. Off by default because it is a real extra model call per SQL turn.
+
+Adding a table to the catalog is a **security decision**, not bookkeeping: a new table is
+invisible to the agent until someone puts it there, and boot logs any live table that is
+neither catalogued nor in `KNOWN_EXCLUDED`.
 
 ## Conventions
 
 **Schema changes go in `db/migrations/*.sql`, never in `db/init/02_schema.sql`.** The
 baseline is what a brand-new database gets; migrations carry everything after it. See
-`db/migrations/README.md`. `db/migrations/` currently holds only that README — the baseline
-is still the entire schema, and `make migrate` creates `schema_migrations` but applies
-nothing until the first `0001_*.sql` lands. (`README.md` says migrations live in `db/init/`;
+`db/migrations/README.md`. The first migration (`0001_sql_reader_role.sql`) has landed, so
+`make migrate` now has something to apply; the baseline in `db/init/02_schema.sql` is still
+every table. (`README.md` says migrations live in `db/init/`;
 it is stale, this rule wins.)
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
@@ -184,7 +231,8 @@ product depends on and that a new tool silently breaks:
   uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
 
 Adding a tool: write the async function in `app/agent/tools/` with both conventions, register it
-in `app/agent/build.py`, describe its marker in `app/agent/instructions.md`, and add a label to
+in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asserts every
+registered tool is named there), and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name;
 `HIDDEN_TOOLS` there suppresses the `deepagents` filesystem built-ins from the trace).
 

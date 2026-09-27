@@ -1,3 +1,24 @@
+### 5d. Post-answer audit — built, off by default
+
+`app/agent/audit.py`, wired as `after_agent` middleware. Four checks the guard cannot make
+because they are about meaning rather than safety: **grain** (does the SQL count the entity the
+question asked about?), **filters** (is every condition in the question present?), **false zero**
+(could an empty result mean a wrong filter *value*?), **numbers** (do the figures in the prose
+match the rows?). It appends a caveat and never blocks.
+
+`after_agent`, not `after_model` — it must run once on the finished answer, not after every
+model call in the loop. It appends rather than edits because by then the answer has already
+streamed to the user; there is nothing left to correct in place, only something to add.
+
+**Off unless `SQL_AUDIT_MODEL` is set**, because it is a real extra model call on every SQL
+turn. Everything in it fails open: a turn must not break because a second opinion could not be
+obtained.
+
+Measured live against `anthropic:claude-haiku-4-5` on four planted turns — a sound answer
+(`ok`), a dropped Assam filter, a number that contradicts the rows, and a false zero. It caught
+all three faults, and on the false zero it identified the actual defect: the query joined
+`news_mentions` to `orgs` but never filtered by KABIL.
+
 # Safe Text-to-SQL agent for Sangam
 
 > **Status: planned, not implemented.** Written 2026-09-27. This is the design of record for

@@ -10,10 +10,12 @@ import logging
 from langchain.agents.middleware import (
     ClearToolUsesEdit,
     ContextEditingMiddleware,
+    after_agent,
     before_model,
 )
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
+from app.agent.audit import audit_turn
 from app.agent.tools.sql.errors import FAILED_PREFIX, REJECTED_PREFIX
 
 logger = logging.getLogger(__name__)
@@ -88,3 +90,23 @@ def clear_old_tool_results() -> ContextEditingMiddleware:
             )
         ]
     )
+
+
+def answer_audit(model_spec: str):
+    """Append a caveat when a cheap second opinion finds a problem with the answer.
+
+    after_agent, not after_model: this must run once, on the finished answer, not
+    after every model call in the loop. It appends rather than edits because by
+    the time it runs the answer has already streamed to the user — there is
+    nothing left to correct in place, only something to add.
+    """
+
+    @after_agent(name="answer_audit")
+    def _audit(state, runtime):
+        verdict = audit_turn(state["messages"], model_spec)
+        if verdict is None or verdict.verdict != "warn" or not verdict.caveat:
+            return None
+        logger.info("answer audit raised a caveat: %s", verdict.caveat)
+        return {"messages": [AIMessage(content=f"⚠️ {verdict.caveat}")]}
+
+    return _audit
