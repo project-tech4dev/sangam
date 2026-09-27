@@ -6,8 +6,8 @@ from langchain_core.tools import tool
 
 from app.agent.tools.sql import render
 from app.agent.tools.sql.catalog import CATALOG, COLUMNS, DEFECTS, TABLE_NAMES
-from app.agent.tools.sql.errors import FAILED_PREFIX, REJECTED_PREFIX, explain_db_error
-from app.agent.tools.sql.executor import PsycopgExecutor, ReaderRoleMissing
+from app.agent.tools.sql.errors import REJECTED_PREFIX, explain_db_error
+from app.agent.tools.sql.executor import PsycopgExecutor
 from app.agent.tools.sql.validator import SqlRejected, ValidatedQuery, validate
 from app.core.config import get_settings
 
@@ -16,10 +16,7 @@ MAX_PROFILE_VALUES = 20
 
 def _executor() -> PsycopgExecutor:
     settings = get_settings()
-    return PsycopgExecutor(
-        timeout_ms=settings.sql_timeout_ms,
-        reader_role=settings.sql_reader_role,
-    )
+    return PsycopgExecutor(timeout_ms=settings.sql_timeout_ms)
 
 
 def _caveats_for(tables) -> str:
@@ -140,8 +137,6 @@ async def db_profile_column(table: str, column: str) -> str:
         if caveats:
             lines.append(caveats)
         return "\n".join(lines)
-    except ReaderRoleMissing as exc:
-        return f"{FAILED_PREFIX} {exc}"
     except Exception as exc:  # noqa: BLE001 - error-as-string tool discipline
         return f"db_profile_column failed: {exc}"
 
@@ -173,8 +168,6 @@ async def db_query(sql: str, purpose: str) -> str:
 
     try:
         rows = await _executor().run(query)
-    except ReaderRoleMissing as exc:
-        return f"{FAILED_PREFIX} {exc}"
     except Exception as exc:  # noqa: BLE001 - error-as-string tool discipline
         return explain_db_error(exc, executed_sql=query.sql, tables=query.tables)
 

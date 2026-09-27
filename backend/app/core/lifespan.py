@@ -47,7 +47,7 @@ def build_lifespan(settings: Settings | None = None):
             stack.push_async_callback(pool.close)
             db_pool.pool = pool  # shared by agent tools and REST endpoints
 
-            await _verify_sql_catalog(pool, resolved)
+            await _verify_sql_catalog(pool)
 
             await graphiti.open_graph(resolved)  # no-op (logged) when graph is not configured
             stack.push_async_callback(graphiti.close_graph)
@@ -89,7 +89,7 @@ def build_lifespan(settings: Settings | None = None):
     return lifespan
 
 
-async def _verify_sql_catalog(pool, settings: Settings) -> None:
+async def _verify_sql_catalog(pool) -> None:
     """Fail the boot if the SQL tool's allowlist disagrees with the database."""
     async with pool.connection() as conn:
         problems = await sql_catalog.verify_against_db(conn)
@@ -115,16 +115,3 @@ async def _verify_sql_catalog(pool, settings: Settings) -> None:
                 "tables not readable by the SQL tool and not declared as excluded: %s",
                 ", ".join(undeclared),
             )
-
-        if settings.sql_reader_role:
-            exists = await (
-                await conn.execute(
-                    "SELECT 1 FROM pg_roles WHERE rolname = %s", (settings.sql_reader_role,)
-                )
-            ).fetchone()
-            if not exists:
-                logger.warning(
-                    "SQL reader role %r does not exist; db_query will refuse to run until "
-                    "`make migrate` applies db/migrations/0001_sql_reader_role.sql",
-                    settings.sql_reader_role,
-                )

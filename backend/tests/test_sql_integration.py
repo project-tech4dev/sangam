@@ -13,7 +13,6 @@ from app.agent.tools.sql.executor import MAX_CONCURRENT_QUERIES, PsycopgExecutor
 from app.agent.tools.sql.validator import validate
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
-READER_ROLE = "sangam_reader"
 
 pytestmark = pytest.mark.integration
 
@@ -30,14 +29,6 @@ def conn():
         pytest.skip("compose Postgres not reachable on localhost:5433")
 
 
-@pytest.fixture
-def as_reader(conn):
-    """The reader role ALONE — deliberately without the read-only transaction."""
-    if not conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (READER_ROLE,)).fetchone():
-        pytest.skip(f"{READER_ROLE} missing — run `make migrate`")
-    with conn.transaction(force_rollback=True):
-        conn.execute(f"SET LOCAL ROLE {READER_ROLE}")
-        yield conn
 
 
 class TestCatalogMatchesReality:
@@ -77,7 +68,7 @@ class TestCatalogMatchesReality:
 class TestReadOnlyTransaction:
     """Layer 1, with the validator bypassed entirely."""
 
-    def test_a_write_is_refused_even_though_the_role_could_do_it(self, conn):
+    def test_a_write_is_refused_even_though_the_connection_could_do_it(self, conn):
         with conn.transaction(force_rollback=True):
             conn.execute("SET TRANSACTION READ ONLY")
             with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
@@ -95,85 +86,18 @@ class TestReadOnlyTransaction:
                 ).fetchall()
 
 
-class TestReaderRole:
-    """Layer 3 — the one that holds when the validator has a hole."""
-
-    def test_superuser_is_dropped(self, as_reader):
-        row = as_reader.execute(
-            "SELECT current_user AS u, "
-            "(SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS super"
-        ).fetchone()
-        assert row["u"] == READER_ROLE
-        assert row["super"] is False
-
-    @pytest.mark.parametrize(
-        "table", ["checkpoints", "checkpoint_writes", "checkpoint_blobs", "users", "threads"]
-    )
-    def test_withheld_tables_are_refused_by_the_server(self, as_reader, table):
-        with pytest.raises(psycopg.errors.InsufficientPrivilege):
-            as_reader.execute(f"SELECT count(*) FROM {table}")
-
-    def test_pg_read_file_is_refused(self, as_reader):
-        """Valid single-statement SELECT, and it SUCCEEDS as the owner."""
-        with pytest.raises(psycopg.errors.InsufficientPrivilege):
-            as_reader.execute("SELECT pg_read_file('/etc/passwd')")
-
-    @pytest.mark.parametrize(
-        "table,column", [("contacts", "email"), ("contacts", "phone"),
-                         ("score_adjustments", "adjusted_by"), ("chunks", "embedding")]
-    )
-    def test_withheld_columns_are_refused_by_the_server(self, as_reader, table, column):
-        with pytest.raises(psycopg.errors.InsufficientPrivilege):
-            as_reader.execute(f"SELECT {column} FROM {table} LIMIT 1")
-
-    def test_granted_columns_on_a_restricted_table_still_work(self, as_reader):
-        as_reader.execute("SELECT name, role FROM contacts LIMIT 1").fetchall()
-
-    def test_writes_are_refused_by_the_role_alone(self, as_reader):
-        """No read-only transaction here: this is the role refusing, not the txn."""
-        with pytest.raises(psycopg.errors.InsufficientPrivilege):
-            as_reader.execute("UPDATE orgs SET name = name")
-
-    def test_read_only_wins_the_race_when_both_guards_are_on(self, conn):
-        """Documents the order the executor actually produces: Postgres checks
-        read-only before privileges, so this is the error the model will see."""
-        with conn.transaction(force_rollback=True):
-            conn.execute("SET TRANSACTION READ ONLY")
-            conn.execute(f"SET LOCAL ROLE {READER_ROLE}")
-            with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
-                conn.execute("UPDATE orgs SET name = name")
-
-    def test_grants_match_the_catalog_column_for_column(self, conn):
-        """The migration's GRANT list and the catalog must not drift apart."""
-        if not conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (READER_ROLE,)).fetchone():
-            pytest.skip(f"{READER_ROLE} missing — run `make migrate`")
-        rows = conn.execute(
-            "SELECT table_name, column_name FROM information_schema.column_privileges "
-            "WHERE grantee = %s AND privilege_type = 'SELECT' AND table_schema = 'public'",
-            (READER_ROLE,),
-        ).fetchall()
-        granted: dict[str, set[str]] = {}
-        for row in rows:
-            granted.setdefault(row["table_name"], set()).add(row["column_name"])
-
-        catalogued = {name: {c.name for c in t.columns} for name, t in cat.CATALOG.items()}
-        assert set(granted) == set(catalogued), "granted tables differ from the catalog"
-        for table, columns in catalogued.items():
-            assert granted[table] == columns, f"{table}: GRANT and catalog disagree"
-
 
 class TestNothingLeaksOntoThePool:
     """This pool is shared with the LangGraph checkpointer, which WRITES on every
     graph step. A guard that outlives its transaction would break chat."""
 
-    def test_read_only_and_role_both_revert_at_commit(self, conn):
+    def test_read_only_reverts_at_commit(self, conn):
         with conn.transaction():
             conn.execute("SET TRANSACTION READ ONLY")
-            conn.execute(f"SET LOCAL ROLE {READER_ROLE}")
-            assert conn.execute("SELECT current_user AS u").fetchone()["u"] == READER_ROLE
+            with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+                conn.execute("INSERT INTO orgs (slug, name) VALUES ('x', 'x')")
 
-        assert conn.execute("SELECT current_user AS u").fetchone()["u"] != READER_ROLE
-        # and the connection can write again
+        # the same pooled connection must still be writable for the checkpointer
         with conn.transaction(force_rollback=True):
             conn.execute("INSERT INTO orgs (slug, name) VALUES ('leak-probe', 'leak probe')")
 
@@ -205,4 +129,4 @@ class TestWireProtocol:
 def test_executor_concurrency_is_capped_below_the_pool_size():
     """pool max_size=5, shared with the checkpointer."""
     assert MAX_CONCURRENT_QUERIES < 5
-    PsycopgExecutor(timeout_ms=5000, reader_role=READER_ROLE)
+    PsycopgExecutor(timeout_ms=5000)

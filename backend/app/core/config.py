@@ -57,7 +57,6 @@ class Settings(BaseSettings):
 
     # Text-to-SQL tool (db_query). See docs/SQL_AGENT.md. sql_reader_role is the NOLOGIN role the query runs
     # as via SET LOCAL ROLE; empty disables that guard and leaves only the validator and the read-only.
-    sql_reader_role: str = "sangam_reader"
     sql_timeout_ms: int = 5_000
     sql_max_rows: int = 50
     sql_max_attempts: int = 5

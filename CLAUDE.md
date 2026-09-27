@@ -201,14 +201,13 @@ those tools are registered. Setting them changes no behaviour.
 - `validator.py` is pure: no pool, no async, no settings. **The model's SQL string never
   executes** — what runs is the regenerated sqlglot AST, which is what actually kills
   multi-statement injection and comment smuggling.
-- `executor.py` wraps every query in a read-only transaction with `SET LOCAL statement_timeout`
-  and `SET LOCAL ROLE sangam_reader`, and passes `prepare=True` so the *server* refuses
-  multi-command statements. All transaction-scoped, because this pool is shared with the
-  LangGraph checkpointer, which writes.
-- `db/migrations/0001_sql_reader_role.sql` creates that NOLOGIN role. Its GRANT list is
-  generated from the catalog and an integration test asserts the two still agree, column for
-  column. Without the migration `db_query` refuses to run rather than falling back to the
-  database owner.
+- `executor.py` wraps every query in a read-only transaction with `SET LOCAL statement_timeout`,
+  and passes `prepare=True` so the *server* refuses multi-command statements. All
+  transaction-scoped, because this pool is shared with the LangGraph checkpointer, which writes.
+  **The app connects as the database owner, which is a superuser**, so the catalog is what keeps
+  the checkpoint tables and `pg_read_file` out of reach — there is no second line of defence. A
+  SELECT-only role was built and dropped as too much deploy surface for a first cut; see
+  `docs/SQL_AGENT.md`.
 
 `SQL_AUDIT_MODEL` turns on a post-answer audit (`app/agent/audit.py`): a cheap second model
 checks grain, missing filters, false zeros and whether the figures in the prose match the rows,
@@ -223,9 +222,9 @@ neither catalogued nor in `KNOWN_EXCLUDED`.
 
 **Schema changes go in `db/migrations/*.sql`, never in `db/init/02_schema.sql`.** The
 baseline is what a brand-new database gets; migrations carry everything after it. See
-`db/migrations/README.md`. The first migration (`0001_sql_reader_role.sql`) has landed, so
-`make migrate` now has something to apply; the baseline in `db/init/02_schema.sql` is still
-every table. (`README.md` says migrations live in `db/init/`;
+`db/migrations/README.md`. `db/migrations/` currently holds only that README — the baseline
+is still the entire schema, and `make migrate` creates `schema_migrations` but applies nothing
+until the first `0001_*.sql` lands. (`README.md` says migrations live in `db/init/`;
 it is stale, this rule wins.)
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the

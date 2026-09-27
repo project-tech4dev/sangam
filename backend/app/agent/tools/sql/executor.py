@@ -6,25 +6,16 @@ import asyncio
 import logging
 from typing import Any, Protocol
 
-from psycopg import sql as pgsql
-
 from app.agent.tools.sql.validator import ValidatedQuery
 from app.db.pool import get_pool
 from app.integrations.tracing import traced_fetch
 
 logger = logging.getLogger(__name__)
 
-# Postgres: undefined_object. What SET LOCAL ROLE raises when the reader role
-# does not exist because migration 0001 has not been applied.
-UNDEFINED_OBJECT = "42704"
 
 # The pool is max_size=5 and shared with the checkpointer, which writes on every
 # graph step, so tool concurrency is capped well below the pool size.
 MAX_CONCURRENT_QUERIES = 2
-
-
-class ReaderRoleMissing(RuntimeError):
-    """The reader role is configured but absent from the database."""
 
 
 class Executor(Protocol):
@@ -34,15 +25,10 @@ class Executor(Protocol):
 class PsycopgExecutor:
     """Executes against the app's shared psycopg pool."""
 
-    def __init__(self, *, timeout_ms: int = 5_000, reader_role: str = "") -> None:
+    def __init__(self, *, timeout_ms: int = 5_000) -> None:
         self._timeout_ms = int(timeout_ms)
         if self._timeout_ms <= 0:
             raise ValueError(f"timeout_ms must be positive, got {timeout_ms}")
-        # Interpolated into SQL below because Postgres SET takes no bind parameters. It comes from Settings
-        # and never from the model, and the int() above is what makes that safe.
-        if reader_role and not reader_role.replace("_", "").isalnum():
-            raise ValueError(f"invalid reader role name: {reader_role!r}")
-        self._reader_role = reader_role
         self._gate: asyncio.Semaphore | None = None
 
     def _semaphore(self) -> asyncio.Semaphore:
@@ -80,18 +66,3 @@ class PsycopgExecutor:
         await conn.execute("SET LOCAL lock_timeout = 1000")
         await conn.execute("SET LOCAL idle_in_transaction_session_timeout = 10000")
 
-        if not self._reader_role:
-            return
-        try:
-            await conn.execute(
-                pgsql.SQL("SET LOCAL ROLE {}").format(pgsql.Identifier(self._reader_role))
-            )
-        except Exception as exc:
-            # Fail CLOSED. Falling through would run the query as the database owner, which is a superuser —
-            # the precise thing the role exists to prevent. Caught here rather than left to errors.py.
-            if getattr(exc, "sqlstate", None) == UNDEFINED_OBJECT:
-                raise ReaderRoleMissing(
-                    f"the {self._reader_role!r} role does not exist in this database; "
-                    "run `make migrate` to apply db/migrations/0001_sql_reader_role.sql"
-                ) from exc
-            raise

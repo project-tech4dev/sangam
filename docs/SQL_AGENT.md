@@ -94,7 +94,7 @@ db_describe_table ┤─→ catalog.py   data: tables · columns · enums · FKs
 db_query ─────────┘         ↓
                       validator.py  pure, sqlglot only, no I/O → ValidatedQuery
                             ↓
-                      executor.py   READ ONLY txn + SET LOCAL statement_timeout + SET LOCAL ROLE
+                      executor.py   READ ONLY txn + SET LOCAL statement_timeout + prepare=True
                             ↓
                       render.py / errors.py   rows → cited text · psycopg error → fix instruction
 ```
@@ -121,7 +121,6 @@ backend/app/agent/tools/sql/executor.py    Executor Protocol + PsycopgExecutor
 backend/app/agent/tools/sql/errors.py      psycopg error → model-facing fix instruction
 backend/app/agent/tools/sql/render.py      rows → compact cited string
 backend/app/agent/tools/sql_tools.py       the four @tool functions
-db/migrations/0001_sql_reader_role.sql     NOLOGIN reader role (first migration in the repo)
 backend/tests/test_sql_{validator,errors,render,tools}.py   pure unit
 backend/tests/test_sql_integration.py      @pytest.mark.integration
 backend/tests/evals/                       golden cases (see below)
@@ -276,7 +275,6 @@ async with conn.transaction():                     # autocommit=True → emits B
     await conn.execute("SET LOCAL lock_timeout = 1000")
     await conn.execute("SET LOCAL idle_in_transaction_session_timeout = 10000")
     if self._reader_role:
-        await conn.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(self._reader_role)))
     return await traced_fetch(conn, query.sql, None, name="agent-sql")
 ```
 
@@ -305,66 +303,28 @@ async with conn.transaction():                     # autocommit=True → emits B
   checkpointing app-wide. This is the most likely production incident from this feature — an
   operational constraint, not a detail.
 
-### 4. Tier (c): a `NOLOGIN` reader role — no second secret, no second pool
+### 4. A SELECT-only role — built, then dropped
 
-The cheap version of the strongest guard:
+A `NOLOGIN` `sangam_reader` role reached by `SET LOCAL ROLE` inside the transaction the
+executor already opens. It worked, and it was removed before the first cut.
 
-```sql
--- db/migrations/0001_sql_reader_role.sql   (the repo's first migration)
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sangam_reader') THEN
-    CREATE ROLE sangam_reader NOLOGIN;
-  END IF;
-END $$;
-GRANT USAGE ON SCHEMA public TO sangam_reader;
-GRANT SELECT ON orgs, funders, grants, /* …the 28 catalog tables… */ TO sangam_reader;
--- Column-level where the catalog excludes columns, so a hole in column validation still
--- cannot reach the PII. This is the whole point of the tier; a table-level GRANT on
--- contacts would hand over email and phone anyway.
-GRANT SELECT (id, org_id, funder_id, name, role, kind, verified, notes,
-              source_url, source_name, fetched_at, content_hash, extractor_version)
-  ON contacts TO sangam_reader;
-GRANT SELECT (id, document_id, chunk_index, content) ON chunks TO sangam_reader;
-GRANT sangam_reader TO CURRENT_USER;   -- not a hardcoded 'sangam'/'postgres' → Supabase too
-```
+**What it bought**, measured on the live database. As `sangam` (the owner, a superuser):
+`SELECT count(*) FROM checkpoints` returned **1,077 rows of chat history**,
+`pg_read_file('/etc/hostname')` worked, `SELECT email FROM contacts` worked. Under
+`SET LOCAL ROLE sangam_reader` all three were refused by the server and `orgs` still read fine.
 
-- `NOLOGIN` ⇒ **no password, no `.env` entry, no second DSN, no second pool.**
-- `SET LOCAL ROLE` reverts at COMMIT, so nothing leaks onto the shared pool.
-- **Verified in M0**, against the live database in a rolled-back transaction: after
-  `SET LOCAL ROLE`, `current_user` is `spike_reader` and `rolsuper` flips `t` → `f`.
-  `SELECT * FROM checkpoints` → *permission denied*. `pg_read_file('/etc/passwd')` →
-  *permission denied for function*. `INSERT INTO orgs` → *permission denied*. Column-level
-  GRANT behaves as designed: `SELECT name FROM contacts` works, `SELECT email FROM contacts`
-  and bare `SELECT * FROM contacts` are both denied.
-- **Honest limit: `RESET ROLE` restores the superuser session**, so the role is a boundary for
-  *single statements only*. It is not the unconditional server-side guarantee a LOGIN role with
-  its own connection would be. That matters only if an attacker can execute a second statement,
-  which is blocked three independent ways — the parser's single-statement check, AST
-  regeneration, and the extended wire protocol (below). The role still does the job it was
-  added for: a hole in the *function allowlist* stops being a data breach. It does not cover a
-  hole that permits multi-statement execution.
-- Deliberately **not** `ALL TABLES IN SCHEMA public` and **not** `ALTER DEFAULT PRIVILEGES`: a
-  table added tomorrow must be denied until someone decides it is safe. `test_grants_match_allowlist`
-  asserts the GRANT list ≡ the catalog, **at column granularity for the two column-level tables**.
-- **Fail closed when the role is absent.** Gating on `Settings.sql_reader_role` being non-empty
-  does not detect an *unmigrated* database: `SET LOCAL ROLE sangam_reader` then fails with
-  `42704` on every query, and the `42501` mapping would misdiagnose a `SET ROLE` denial as
-  "table not readable". So: check `pg_roles` at boot alongside `verify_against_db`, and if the
-  role is configured but missing, `db_query` returns
-  *"SQL tool unavailable: reader role not present — run `make migrate`"* — the same shape as
-  `search_graph` when Neo4j is off. It must **not** silently fall back to running as superuser.
-- **`GRANT … TO CURRENT_USER` assumes the migration user and the runtime user are the same
-  role.** Locally that is trivially true. On Supabase, `make migrate ENV=staging` runs as
-  `STAGING_DB_USER` while the Vercel backend connects as whoever is in *its* `DATABASE_URL`.
-  If they differ, `SET ROLE` is denied. M3 verifies they match, or GRANTs to both.
-- **Why this is worth doing now, not later:** tiers (a) and (b) close `pg_read_file` and
-  `SELECT * FROM checkpoints` only through a denylist that must stay complete forever. The
-  GRANT closes them structurally — a hole in the function allowlist stops being a data breach.
-  Verify `SET LOCAL ROLE` to a non-superuser genuinely drops superuser privilege before
-  relying on it (M0).
-- `make migrate` runs each file in one transaction; `CREATE ROLE` is transactional, so this
-  is safe. Supabase's `postgres` role has `CREATEROLE`, and `GRANT … TO CURRENT_USER` avoids
-  naming the role, so `make migrate ENV=staging` is the whole deployed story.
+**Why it went anyway.** The validator already blocks all three — the catalog excludes
+`checkpoints` and `contacts.email`, the function allowlist excludes `pg_read_file`. The role only
+changed what a *validator bug* costs. Against that: it was the one piece with a deploy step that
+fails closed, because `GRANT sangam_reader TO CURRENT_USER` assumes the migration user and the
+runtime user are the same role. On Supabase they need not be, and `db_query` would then refuse
+every query in production — an outage risk for a guard that only pays out if this validator is
+wrong.
+
+**What that leaves.** The app connects as a superuser and the catalog is the only thing keeping
+the checkpoint tables and file-reading functions out of reach. Worth revisiting when this ships
+somewhere the blast radius is larger, or alongside Supabase Auth — the honest framing has always
+been that the unauthenticated backend is the bigger exposure.
 
 ### 5. The four tools
 
@@ -714,7 +674,7 @@ changed the design; all are folded into the sections above.
 | 4 | Round-trip of the 8 real curated queries | **8/8 stable — fallback not needed.** But the test must assert *idempotence of generated SQL*, not `repr` equality: sqlglot upper-cases function names, so a repr test false-fails on every `similarity()` call (§2). |
 | 5 | `qualify()` kwargs, star expansion, `build_scope()` | as designed; unknown column raises `OptimizeError: Column '"sector"' could not be resolved` |
 | 6 | `Query.limit()` on a `UNION` root | applies at top level ✓ |
-| 7 | `SET LOCAL ROLE` drops superuser | ✓ `rolsuper` `t`→`f`; checkpoints, `pg_read_file`, INSERT and ungranted columns all denied (§4) |
+| 7 | `SET LOCAL ROLE` drops superuser | ✓ measured, but the role was dropped before shipping — see §4 |
 | 8 | `RESET ROLE` | **escapes to superuser** — the role bounds single statements only (§4) |
 | 9 | `prepare=True` vs multi-statement | **load-bearing**: simple protocol runs `SELECT 1; RESET ROLE`; extended protocol blocks it server-side (§3) |
 
@@ -769,12 +729,9 @@ tests cost zero seconds and no container.
 The server-side boundary, complete and proven, still unreachable by the agent.
 
 - `executor.py` — the `Executor` Protocol and `PsycopgExecutor`: read-only transaction,
-  `SET LOCAL statement_timeout`, `SET LOCAL ROLE`, the `Semaphore(2)`, routed through
+  `SET LOCAL statement_timeout`, the `Semaphore(2)`, routed through
   `traced_fetch`.
-- `db/migrations/0001_sql_reader_role.sql` — the repo's first migration. Column-level GRANT on
-  `contacts` and `chunks`. **Verify the migration user and the runtime user are the same role**
-  before merging; on Supabase they may not be.
-- `Settings.sql_timeout_ms / sql_max_rows / sql_reader_role / sql_max_attempts`.
+- `Settings.sql_timeout_ms / sql_max_rows / sql_max_attempts`.
 - `test_sql_integration.py` — the tests that prove the tiers are independent, especially
   `test_nothing_leaks_onto_the_pooled_connection` (this pool also serves the checkpointer) and
   `test_reader_role_cannot_read_checkpoints`.
@@ -870,9 +827,7 @@ skip-if-no-DB fixture at `tests/test_migration_integrity.py:17-23`):
 - `test_read_only_transaction_blocks_write` — bypass the validator, run a raw `INSERT` inside the executor's transaction → `ReadOnlySqlTransaction`
 - `test_statement_timeout_fires` — slow cartesian join → `QueryCanceled` (57014)
 - `test_nothing_leaks_onto_the_pooled_connection` — query, then write on a connection from the same pool → must succeed (**this pool also serves the checkpointer**)
-- `test_reader_role_cannot_read_checkpoints` — under `SET LOCAL ROLE`, `SELECT * FROM checkpoints` → `InsufficientPrivilege`
 - `test_percent_literal_survives_params_none` — `ILIKE '%kabil%'` returns rows
-- `test_grants_match_allowlist` — the migration's GRANT list ≡ the catalog
 
 End-to-end: `make up && make seed && make smoke`, then ask the chat *"how many grants does each
 funder have?"* and *"which organisations work in Assam?"* — the second should surface the
@@ -883,16 +838,10 @@ funder have?"* and *"which organisations work in Assam?"* — the second should 
 ## Out of scope
 
 - The schema migrations from the earlier review (`0001_location_provenance` … `0004_drop_dead_joins`)
-  — this plan *records* those defects in the catalog rather than fixing them. Renumber
-  `0001_sql_reader_role.sql` if that work lands first; `migrate.py` orders by filename and
-  freezes each file's checksum once applied.
+  — this plan *records* those defects in the catalog rather than fixing them. `db/migrations/`
+  is still empty, so that work owns `0001_`.
 - Supabase Auth / thread-ownership checks — named above as the reason `identity.py` is deferred.
 
-**Deploy step that is not discoverable from the code:** `Settings.sql_reader_role` defaults to
-`"sangam_reader"`, so on Supabase `db_query` **fails closed** until two things are true —
-`make migrate ENV=staging` has run, *and* the role that migration granted to `CURRENT_USER` is
-the same role the deployed backend connects as. If `STAGING_DB_USER` differs from the user in
-the Vercel project's `DATABASE_URL`, `SET LOCAL ROLE` is denied and every query refuses. Either
-match them or `GRANT sangam_reader` to both.
-- `db/migrations/README.md:3` still points at `backend/app/migrate.py` (moved to
-  `app/db/migrate.py` in PR #52). One-line fix; fold into M1's CLAUDE.md commit.
+**No deploy step.** The SELECT-only role was the one piece that needed `make migrate` before
+`db_query` would run anywhere; with it gone there is nothing to provision. The tool works as
+soon as the code ships.
