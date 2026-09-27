@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from copilotkit import CopilotKitMiddleware
 from deepagents import create_deep_agent
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
@@ -40,7 +39,12 @@ TOOLS = [
 
 
 def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
-    middleware = [sql_retry_limiter, CopilotKitMiddleware(), clear_old_tool_results()]
+    # CopilotKitMiddleware was here. It exists for frontend-declared tools,
+    # frontend agent.setState and generative UI; this app registers none of
+    # those, and removing it produced identical answers and identical AG-UI
+    # events while costing four fewer graph nodes per turn. Add it back the day
+    # a useCopilotAction or a useCoAgent appears in the frontend.
+    middleware = [sql_retry_limiter, clear_old_tool_results()]
     if settings.sql_audit_model:
         # Off unless configured: a real extra model call per SQL turn.
         middleware.append(answer_audit(settings.sql_audit_model))

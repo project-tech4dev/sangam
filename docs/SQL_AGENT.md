@@ -455,8 +455,7 @@ this feature and neither is needed for the tool to work.
 
 ### 5c. Retry budget and context, as middleware
 
-`create_deep_agent` accepts `middleware=[…]` (it already carries `CopilotKitMiddleware`), so
-this is additive.
+`create_deep_agent` accepts `middleware=[…]`, so this is additive.
 
 - **`sql_retry_limiter`** — port of `middleware.py:19-74`. `MAX_SQL_ATTEMPTS = 5`, counting
   `ToolMessage`s whose content starts with the failure prefixes, **resetting at each
