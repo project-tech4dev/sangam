@@ -22,6 +22,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
+from app.agent.audit import CAVEAT_PREFIX
 from app.agent.build import build_agent
 from app.core.config import Settings
 from tests.evals.sql_compare import answer_contains_value, gold_satisfied
@@ -94,7 +95,10 @@ async def run_agent(question: str, settings: Settings) -> tuple[str, list[str], 
                 sqls.extend(EXECUTED.findall(message.content))
         elif isinstance(message, AIMessage) and not message.tool_calls:
             text = message_text(message)
-            if text.strip():
+            # Skip the audit's appended caveat: it is a second AIMessage, so
+            # "the last one" would score the caveat as the answer whenever
+            # SQL_AUDIT_MODEL is set.
+            if text.strip() and not text.startswith(CAVEAT_PREFIX):
                 answer = text
     cites = {f"{k}:{v}" for k, v in CITATION.findall(answer)}
     return answer, sqls, cites

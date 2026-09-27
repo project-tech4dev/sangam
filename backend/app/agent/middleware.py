@@ -15,7 +15,7 @@ from langchain.agents.middleware import (
 )
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
-from app.agent.audit import audit_turn
+from app.agent.audit import CAVEAT_PREFIX, audit_turn
 from app.agent.tools.sql.errors import FAILED_PREFIX, REJECTED_PREFIX
 
 logger = logging.getLogger(__name__)
@@ -107,6 +107,6 @@ def answer_audit(model_spec: str):
         if verdict is None or verdict.verdict != "warn" or not verdict.caveat:
             return None
         logger.info("answer audit raised a caveat: %s", verdict.caveat)
-        return {"messages": [AIMessage(content=f"⚠️ {verdict.caveat}")]}
+        return {"messages": [AIMessage(content=f"{CAVEAT_PREFIX} {verdict.caveat}")]}
 
     return _audit

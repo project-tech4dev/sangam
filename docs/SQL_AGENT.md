@@ -500,11 +500,20 @@ query with a `42803` the model never wrote, which is exactly the non-convergent 
 design exists to avoid. Instead the result header says:
 `no citable id column projected — add orgs.id to the SELECT list so these rows can be cited.`
 
-Genuinely uncitable results (`count(*)`, grouping by `tags.label`, `locations`, `rubrics`) get
-one header marker `[sql:<sha8-of-executed-sql>]`, mirroring `[graph:<uuid8>]`. **Safe to ship
-server-side alone:** `citations.ts:10`'s regex is a closed union, so an unknown kind stays
-literal text — no broken links, no crash. Extending the frontend is an optional 3-line
-follow-up (union at `:1`, regex at `:10`, a `case "sql"` at `:61` parallel to `graph`).
+**Genuinely uncitable results — `count(*)`, anything grouped by `tags.label`, rows from
+`locations` or `rubrics` — get no marker, and the result says so in words:**
+
+```
+No citable id column was projected, so these rows carry no citation markers. Add the
+table's id column (e.g. orgs.id) to the SELECT list if the answer needs to cite
+specific rows.
+```
+
+*The plan proposed a synthetic `[sql:<sha8>]` header marker here, mirroring `[graph:<uuid8>]`.
+It was not built.* A marker that points at a query rather than a row cannot be clicked through,
+so it would render as an inert chip or, without the frontend change, as literal text — decoration
+that looks like provenance. The sentence above is more useful: it tells the model what to do
+differently next time, which the marker would not.
 
 ### 7. Agent layout (`backend/app/agent/`)
 
@@ -780,7 +789,7 @@ The first milestone that changes what a user sees.
   `clear_old_tool_results()`.
 - Registration in `build.py`; catalog + `pg_roles` verification in `lifespan.py`.
 - `instructions.md`: when to prefer SQL over the curated tools, the profile-before-filter rule,
-  the `MAX_SQL_ATTEMPTS` number, and what `[sql:…]` means.
+  the `MAX_SQL_ATTEMPTS` number, and that aggregates cannot be cited.
 - Frontend: `toolLabels.ts` entries, and artifact rendering in `EvidenceRail` — which is new
   capability, since `step.result` is currently rendered nowhere.
 
@@ -812,7 +821,8 @@ schema migrations fix them.
 ### M6 — Audit & polish
 
 - Post-answer audit (§5d) and its Langfuse score. Fail-open.
-- Frontend `[sql:]` citation kind — 3 lines in `citations.ts`.
+- ~~Frontend `[sql:]` citation kind~~ — dropped; see §6 for why a query-level marker
+  would be decoration rather than provenance.
 - `trim_history` if context pressure has actually appeared by now; skip it if not.
 
 **Exit:** the final gate below.
@@ -871,5 +881,12 @@ funder have?"* and *"which organisations work in Assam?"* — the second should 
   `0001_sql_reader_role.sql` if that work lands first; `migrate.py` orders by filename and
   freezes each file's checksum once applied.
 - Supabase Auth / thread-ownership checks — named above as the reason `identity.py` is deferred.
+
+**Deploy step that is not discoverable from the code:** `Settings.sql_reader_role` defaults to
+`"sangam_reader"`, so on Supabase `db_query` **fails closed** until two things are true —
+`make migrate ENV=staging` has run, *and* the role that migration granted to `CURRENT_USER` is
+the same role the deployed backend connects as. If `STAGING_DB_USER` differs from the user in
+the Vercel project's `DATABASE_URL`, `SET LOCAL ROLE` is denied and every query refuses. Either
+match them or `GRANT sangam_reader` to both.
 - `db/migrations/README.md:3` still points at `backend/app/migrate.py` (moved to
   `app/db/migrate.py` in PR #52). One-line fix; fold into M1's CLAUDE.md commit.

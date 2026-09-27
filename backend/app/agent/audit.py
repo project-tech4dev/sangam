@@ -29,6 +29,12 @@ from app.agent.models import resolve_model
 logger = logging.getLogger(__name__)
 
 MAX_TOKENS = 400
+
+# Prefix on the appended caveat. Anything reading a turn's final answer must skip
+# these: the caveat is a SECOND AIMessage, so "the last AI message" would read the
+# caveat as the answer — which would make a re-audit audit itself, and made the
+# eval harness score the caveat instead of the answer.
+CAVEAT_PREFIX = "\u26a0\ufe0f"
 _EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
 _JSON = re.compile(r"\{.*\}", re.DOTALL)
 
@@ -77,7 +83,7 @@ def collect_turn(messages: list[BaseMessage]) -> tuple[str, list[str], str, str]
                 result = message.content
         elif isinstance(message, AIMessage) and not message.tool_calls:
             text = message.content if isinstance(message.content, str) else ""
-            if text.strip():
+            if text.strip() and not text.startswith(CAVEAT_PREFIX):
                 answer = text
     return question, sql, result, answer
 

@@ -127,3 +127,14 @@ class TestFailsOpen:
     def test_malformed_json(self, fake_model):
         fake_model('{"verdict": "warn", caveat: unquoted}')
         assert audit_turn(turn(), MODEL) is None
+
+
+def test_an_appended_caveat_is_not_mistaken_for_the_answer():
+    """The caveat is a second AIMessage. Anything reading 'the last AI message'
+    would audit the caveat instead of the answer — and the eval harness would
+    score it."""
+    from app.agent.audit import CAVEAT_PREFIX
+
+    messages = turn() + [AIMessage(content=f"{CAVEAT_PREFIX} the SQL has no state filter")]
+    _, _, _, answer = collect_turn(messages)
+    assert answer == "KABIL has the highest score, 93."
