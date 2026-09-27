@@ -1,0 +1,1230 @@
+{
+  "domain": "education",
+  "label": "Education",
+  "version": "0.1",
+  "status": "draft",
+  "tree_name": "Education programme areas",
+  "source": "Starting point drafted from ISCED 2011, SDG 4 and India's NEP 2020 school structure and national schemes; for FFRH review before activation",
+  "sources": [
+    {
+      "id": "sdg",
+      "name": "UN Global indicator framework for the SDGs and targets (Goal 4, and linked targets)",
+      "publisher": "UN Statistics Division",
+      "url": "https://unstats.un.org/sdgs/indicators/indicators-list/",
+      "used_for": "sdgs and sdg_targets on every node"
+    },
+    {
+      "id": "isced",
+      "name": "International Standard Classification of Education (ISCED 2011, levels 0 to 8)",
+      "publisher": "UNESCO Institute for Statistics",
+      "url": "https://uis.unesco.org/en/topic/international-standard-classification-education-isced",
+      "used_for": "isced levels on each node"
+    },
+    {
+      "id": "crs",
+      "name": "OECD DAC Creditor Reporting System purpose codes, sector 110 (Education)",
+      "publisher": "OECD",
+      "url": null,
+      "used_for": "crs codes; how international donors classify education funding. Check against the current CRS code list before relying on a code"
+    },
+    {
+      "id": "inee",
+      "name": "INEE Minimum Standards for Education: Preparedness, Response, Recovery",
+      "publisher": "Inter-agency Network for Education in Emergencies",
+      "url": "https://inee.org/minimum-standards",
+      "used_for": "04.D"
+    },
+    {
+      "id": "nep",
+      "name": "National Education Policy 2020 (5+3+3+4 school structure: Foundational, Preparatory, Middle, Secondary)",
+      "publisher": "Ministry of Education, Government of India",
+      "url": "https://www.education.gov.in/sites/upload_files/mhrd/files/NEP_Final_English_0.pdf",
+      "used_for": "stage structure of areas 01 to 03"
+    },
+    {
+      "id": "rte",
+      "name": "Right of Children to Free and Compulsory Education Act 2009",
+      "publisher": "Government of India",
+      "url": null,
+      "used_for": "03.A and 03.D (ages 6 to 14)"
+    },
+    {
+      "id": "nipun",
+      "name": "NIPUN Bharat: National Initiative for Proficiency in Reading with Understanding and Numeracy (2021)",
+      "publisher": "Ministry of Education",
+      "url": null,
+      "used_for": "area 02"
+    },
+    {
+      "id": "samagra",
+      "name": "Samagra Shiksha (integrated scheme for school education)",
+      "publisher": "Ministry of Education",
+      "url": null,
+      "used_for": "areas 03 to 05; includes KGBV, inclusive education and vocational education in schools"
+    },
+    {
+      "id": "udise",
+      "name": "Unified District Information System for Education Plus (UDISE+)",
+      "publisher": "Ministry of Education",
+      "url": "https://udiseplus.gov.in/",
+      "used_for": "08.B; school-level data a CSO can cite"
+    },
+    {
+      "id": "diksha",
+      "name": "DIKSHA and PM eVIDYA",
+      "publisher": "Ministry of Education / NCERT",
+      "url": "https://diksha.gov.in/",
+      "used_for": "08.A"
+    },
+    {
+      "id": "emrs",
+      "name": "Eklavya Model Residential Schools",
+      "publisher": "Ministry of Tribal Affairs",
+      "url": null,
+      "used_for": "04.C"
+    },
+    {
+      "id": "nsqf",
+      "name": "National Skills Qualifications Framework",
+      "publisher": "National Council for Vocational Education and Training (NCVET)",
+      "url": null,
+      "used_for": "area 05"
+    },
+    {
+      "id": "ullas",
+      "name": "ULLAS: Nav Bharat Saaksharta Karyakram (New India Literacy Programme, 2022-27)",
+      "publisher": "Ministry of Education",
+      "url": null,
+      "used_for": "07.A"
+    },
+    {
+      "id": "nsp",
+      "name": "National Scholarship Portal",
+      "publisher": "Government of India",
+      "url": "https://scholarships.gov.in/",
+      "used_for": "06.A"
+    },
+    {
+      "id": "nios",
+      "name": "National Institute of Open Schooling",
+      "publisher": "Ministry of Education",
+      "url": "https://nios.ac.in/",
+      "used_for": "03.D and 07"
+    },
+    {
+      "id": "rpwd",
+      "name": "Rights of Persons with Disabilities Act 2016",
+      "publisher": "Government of India",
+      "url": null,
+      "used_for": "04.A"
+    },
+    {
+      "id": "icds",
+      "name": "Anganwadi services (ECCE) and Poshan Bhi Padhai Bhi",
+      "publisher": "Ministry of Women and Child Development",
+      "url": "https://wcd.gov.in/",
+      "used_for": "01.A"
+    },
+    {
+      "id": "csr7",
+      "name": "Schedule VII, Companies Act 2013 (see seed/data/reference/csr_schedule_vii.json)",
+      "publisher": "Ministry of Corporate Affairs",
+      "url": null,
+      "used_for": "csr refs, which match csr_sector tags"
+    },
+    {
+      "id": "iris",
+      "name": "IRIS+ impact themes (Education)",
+      "publisher": "Global Impact Investing Network",
+      "url": "https://iris.thegiin.org/",
+      "used_for": "cross-check of theme coverage for impact funders"
+    }
+  ],
+  "levels": [
+    "area",
+    "sub_area"
+  ],
+  "variants": null,
+  "modifiers": [
+    {
+      "code": "girls_focused",
+      "label": "Girls-focused"
+    },
+    {
+      "code": "tribal_areas",
+      "label": "Tribal areas"
+    },
+    {
+      "code": "digital",
+      "label": "Uses digital tools"
+    }
+  ],
+  "enabler_kinds": [
+    "school_management_committees",
+    "community_mobilisation",
+    "policy_advocacy",
+    "research_and_evaluation"
+  ],
+  "notes": [
+    "Status is draft: the loader stores it hidden until FFRH reviews it.",
+    "Areas 01 to 03 follow the learner's stage (NEP 2020 and ISCED); area 04 is an equity lens to tag alongside a stage area.",
+    "No variants: whether a programme works in government schools, private schools or community settings is recorded on the programme, not as a cell.",
+    "crs codes are OECD DAC purpose codes; verify against the current CRS list before using them for reporting.",
+    "csr refs are slugs of csr_sector tags loaded from reference_data.sql."
+  ],
+  "nodes": [
+    {
+      "code": "01",
+      "label": "Early childhood care and education (ages 0 to 8)",
+      "note": "NEP 2020 Foundational stage covers ages 3 to 8: three years of pre-school or Balvatika, then Grades 1 and 2.",
+      "refs": {
+        "sources": [
+          "nep",
+          "isced"
+        ],
+        "isced": [
+          "0"
+        ]
+      },
+      "children": [
+        {
+          "code": "A",
+          "label": "Pre-school and Anganwadi ECCE (ages 3 to 6)",
+          "sdgs": [
+            "4"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "nep",
+              "icds",
+              "isced",
+              "crs",
+              "sdg"
+            ],
+            "isced": [
+              "0"
+            ],
+            "sdg_targets": [
+              "4.2"
+            ],
+            "crs": [
+              "11240"
+            ],
+            "india_programmes": [
+              "Anganwadi pre-school education",
+              "Balvatika",
+              "Poshan Bhi Padhai Bhi",
+              "NCF for the Foundational Stage 2022"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "B",
+          "label": "Early stimulation and parenting (ages 0 to 3)",
+          "sdgs": [
+            "4",
+            "3"
+          ],
+          "sectors": [
+            "education",
+            "health"
+          ],
+          "refs": {
+            "sources": [
+              "nep",
+              "sdg"
+            ],
+            "isced": [
+              "0"
+            ],
+            "sdg_targets": [
+              "4.2"
+            ],
+            "india_programmes": [
+              "Navchetana framework for early stimulation (2024)"
+            ],
+            "csr": [
+              "csr-education",
+              "csr-health-care"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "code": "02",
+      "label": "Foundational literacy and numeracy",
+      "note": "Reading with understanding and basic numeracy by the end of Grade 3.",
+      "refs": {
+        "sources": [
+          "nipun",
+          "nep"
+        ],
+        "isced": [
+          "1"
+        ]
+      },
+      "children": [
+        {
+          "code": "A",
+          "label": "FLN in school classrooms",
+          "sdgs": [
+            "4"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "nipun",
+              "sdg",
+              "crs"
+            ],
+            "isced": [
+              "1"
+            ],
+            "sdg_targets": [
+              "4.1"
+            ],
+            "crs": [
+              "11220"
+            ],
+            "india_programmes": [
+              "NIPUN Bharat"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "B",
+          "label": "Community and remedial learning (camps, libraries, learning centres)",
+          "sdgs": [
+            "4"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "note": "Community libraries also fit the CSR heritage, art and culture group.",
+          "refs": {
+            "sources": [
+              "nipun",
+              "sdg",
+              "crs"
+            ],
+            "isced": [
+              "1"
+            ],
+            "sdg_targets": [
+              "4.1",
+              "4.6"
+            ],
+            "crs": [
+              "11220"
+            ],
+            "csr": [
+              "csr-education",
+              "csr-heritage-art-culture"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "code": "03",
+      "label": "School education",
+      "refs": {
+        "sources": [
+          "nep",
+          "rte",
+          "samagra"
+        ]
+      },
+      "children": [
+        {
+          "code": "A",
+          "label": "Elementary education (Grades 1 to 8)",
+          "sdgs": [
+            "4"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "rte",
+              "samagra",
+              "isced",
+              "crs",
+              "sdg"
+            ],
+            "isced": [
+              "1",
+              "2"
+            ],
+            "sdg_targets": [
+              "4.1"
+            ],
+            "crs": [
+              "11220",
+              "11260"
+            ],
+            "india_programmes": [
+              "Samagra Shiksha",
+              "PM SHRI schools"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "B",
+          "label": "Secondary and senior secondary (Grades 9 to 12)",
+          "sdgs": [
+            "4"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "samagra",
+              "isced",
+              "crs",
+              "sdg"
+            ],
+            "isced": [
+              "2",
+              "3"
+            ],
+            "sdg_targets": [
+              "4.1"
+            ],
+            "crs": [
+              "11260",
+              "11320"
+            ],
+            "india_programmes": [
+              "Samagra Shiksha"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "C",
+          "label": "Teachers and school leadership",
+          "sdgs": [
+            "4"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "nep",
+              "sdg",
+              "crs"
+            ],
+            "sdg_targets": [
+              "4.c"
+            ],
+            "crs": [
+              "11130"
+            ],
+            "india_programmes": [
+              "NISHTHA teacher training",
+              "District Institutes of Education and Training (DIETs)"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "D",
+          "label": "Out-of-school children and re-enrolment",
+          "sdgs": [
+            "4",
+            "10"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "rte",
+              "nios",
+              "sdg"
+            ],
+            "isced": [
+              "1",
+              "2"
+            ],
+            "sdg_targets": [
+              "4.1",
+              "4.5"
+            ],
+            "india_programmes": [
+              "Special training for out-of-school children (Samagra Shiksha)",
+              "NIOS open schooling"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "E",
+          "label": "School infrastructure, WASH and safety",
+          "sdgs": [
+            "4",
+            "6"
+          ],
+          "sectors": [
+            "education",
+            "water-sanitation",
+            "infrastructure"
+          ],
+          "refs": {
+            "sources": [
+              "samagra",
+              "sdg",
+              "crs"
+            ],
+            "sdg_targets": [
+              "4.a",
+              "6.2"
+            ],
+            "crs": [
+              "11120"
+            ],
+            "india_programmes": [
+              "Samagra Shiksha infrastructure",
+              "Swachh Vidyalaya"
+            ],
+            "csr": [
+              "csr-education",
+              "csr-sanitation"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "F",
+          "label": "School meals",
+          "sdgs": [
+            "2",
+            "4"
+          ],
+          "sectors": [
+            "education",
+            "nutrition"
+          ],
+          "note": "The same programme also fits health cell 02.C.",
+          "refs": {
+            "sources": [
+              "sdg",
+              "crs"
+            ],
+            "sdg_targets": [
+              "2.1",
+              "4.1"
+            ],
+            "crs": [
+              "11250"
+            ],
+            "india_programmes": [
+              "PM POSHAN"
+            ],
+            "csr": [
+              "csr-poverty-hunger-malnutrition"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "code": "04",
+      "label": "Inclusive and equitable education",
+      "note": "Equity focus; tag together with the stage area the programme works in.",
+      "refs": {
+        "sources": [
+          "samagra",
+          "sdg"
+        ]
+      },
+      "children": [
+        {
+          "code": "A",
+          "label": "Children with disabilities and special education",
+          "sdgs": [
+            "4",
+            "10"
+          ],
+          "sectors": [
+            "education",
+            "disability-inclusion"
+          ],
+          "refs": {
+            "sources": [
+              "rpwd",
+              "samagra",
+              "sdg"
+            ],
+            "sdg_targets": [
+              "4.5",
+              "4.a"
+            ],
+            "india_programmes": [
+              "Inclusive Education for Children with Special Needs (Samagra Shiksha)"
+            ],
+            "csr": [
+              "csr-special-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "B",
+          "label": "Girls' education",
+          "sdgs": [
+            "4",
+            "5"
+          ],
+          "sectors": [
+            "education",
+            "gender"
+          ],
+          "refs": {
+            "sources": [
+              "samagra",
+              "sdg"
+            ],
+            "sdg_targets": [
+              "4.5",
+              "5.1"
+            ],
+            "india_programmes": [
+              "Kasturba Gandhi Balika Vidyalaya"
+            ],
+            "csr": [
+              "csr-education",
+              "csr-gender-equality"
+            ]
+          },
+          "adds": {
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "C",
+          "label": "Tribal, remote and residential schooling",
+          "sdgs": [
+            "4",
+            "10"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "note": "Relevant to hill and tribal districts of the North East.",
+          "refs": {
+            "sources": [
+              "emrs",
+              "sdg"
+            ],
+            "sdg_targets": [
+              "4.5"
+            ],
+            "india_programmes": [
+              "Eklavya Model Residential Schools",
+              "Ashram schools"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "D",
+          "label": "Education in emergencies and conflict-affected areas",
+          "sdgs": [
+            "4",
+            "16"
+          ],
+          "sectors": [
+            "education",
+            "disaster-management"
+          ],
+          "note": "Covers displacement camps and continuity of learning, e.g. in Manipur.",
+          "refs": {
+            "sources": [
+              "inee",
+              "sdg"
+            ],
+            "sdg_targets": [
+              "4.5",
+              "4.a"
+            ],
+            "csr": [
+              "csr-education",
+              "csr-disaster-management"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "code": "05",
+      "label": "Vocational education and skills",
+      "note": "Where training leads to a job or enterprise, also tag the livelihoods cell for that occupation.",
+      "refs": {
+        "sources": [
+          "nsqf",
+          "samagra"
+        ]
+      },
+      "children": [
+        {
+          "code": "A",
+          "label": "Vocational education in schools",
+          "sdgs": [
+            "4",
+            "8"
+          ],
+          "sectors": [
+            "education",
+            "skilling"
+          ],
+          "refs": {
+            "sources": [
+              "samagra",
+              "nsqf",
+              "isced",
+              "crs",
+              "sdg"
+            ],
+            "isced": [
+              "2",
+              "3"
+            ],
+            "sdg_targets": [
+              "4.4"
+            ],
+            "crs": [
+              "11330"
+            ],
+            "india_programmes": [
+              "Vocationalisation of school education (Samagra Shiksha)"
+            ],
+            "csr": [
+              "csr-vocational-skills"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "B",
+          "label": "Youth skills and employability outside school (TVET)",
+          "sdgs": [
+            "4",
+            "8"
+          ],
+          "sectors": [
+            "skilling",
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "nsqf",
+              "isced",
+              "crs",
+              "sdg"
+            ],
+            "isced": [
+              "3",
+              "4",
+              "5"
+            ],
+            "sdg_targets": [
+              "4.4",
+              "8.6"
+            ],
+            "crs": [
+              "11330",
+              "11231"
+            ],
+            "india_programmes": [
+              "Pradhan Mantri Kaushal Vikas Yojana",
+              "DDU-GKY",
+              "Industrial Training Institutes"
+            ],
+            "csr": [
+              "csr-vocational-skills"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "code": "06",
+      "label": "Higher education",
+      "refs": {
+        "sources": [
+          "isced",
+          "sdg"
+        ],
+        "isced": [
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "children": [
+        {
+          "code": "A",
+          "label": "Access and scholarships",
+          "sdgs": [
+            "4",
+            "10"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "nsp",
+              "sdg",
+              "crs"
+            ],
+            "isced": [
+              "6"
+            ],
+            "sdg_targets": [
+              "4.3",
+              "4.b"
+            ],
+            "crs": [
+              "11420"
+            ],
+            "india_programmes": [
+              "National Scholarship Portal schemes",
+              "Post-matric scholarships for SC, ST and OBC students"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "B",
+          "label": "Colleges, universities and research",
+          "sdgs": [
+            "4",
+            "9"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "note": "CSR to public universities falls under Schedule VII item (ix)(b), which NGOs cannot receive.",
+          "refs": {
+            "sources": [
+              "isced",
+              "sdg",
+              "crs"
+            ],
+            "isced": [
+              "6",
+              "7",
+              "8"
+            ],
+            "sdg_targets": [
+              "4.3",
+              "9.5"
+            ],
+            "crs": [
+              "11420",
+              "11430"
+            ],
+            "csr": [
+              "csr-education",
+              "csr-any-other-fund"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "code": "07",
+      "label": "Adult and lifelong learning",
+      "refs": {
+        "sources": [
+          "ullas",
+          "sdg"
+        ]
+      },
+      "children": [
+        {
+          "code": "A",
+          "label": "Adult literacy and basic education",
+          "sdgs": [
+            "4"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "ullas",
+              "nios",
+              "sdg",
+              "crs"
+            ],
+            "sdg_targets": [
+              "4.6"
+            ],
+            "crs": [
+              "11232"
+            ],
+            "india_programmes": [
+              "ULLAS: Nav Bharat Saaksharta Karyakram"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        },
+        {
+          "code": "B",
+          "label": "Digital, financial and life-skills literacy",
+          "sdgs": [
+            "4",
+            "8"
+          ],
+          "sectors": [
+            "education",
+            "financial-inclusion"
+          ],
+          "note": "Financial literacy programmes also carry the SANGAM Financial Inclusion sector.",
+          "refs": {
+            "sources": [
+              "sdg",
+              "crs"
+            ],
+            "sdg_targets": [
+              "4.4",
+              "4.6"
+            ],
+            "crs": [
+              "11231"
+            ],
+            "india_programmes": [
+              "PMGDISHA (digital literacy)",
+              "Financial literacy centres"
+            ],
+            "csr": [
+              "csr-education",
+              "csr-livelihood-enhancement"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "code": "08",
+      "label": "Education technology and data",
+      "refs": {
+        "sources": [
+          "diksha",
+          "udise"
+        ]
+      },
+      "children": [
+        {
+          "code": "A",
+          "label": "Digital learning content and EdTech",
+          "sdgs": [
+            "4",
+            "9"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "diksha",
+              "sdg"
+            ],
+            "sdg_targets": [
+              "4.4",
+              "4.a"
+            ],
+            "india_programmes": [
+              "DIKSHA",
+              "PM eVIDYA"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ]
+          }
+        },
+        {
+          "code": "B",
+          "label": "Assessment and education data",
+          "sdgs": [
+            "4"
+          ],
+          "sectors": [
+            "education"
+          ],
+          "refs": {
+            "sources": [
+              "udise",
+              "sdg",
+              "crs"
+            ],
+            "sdg_targets": [
+              "4.1"
+            ],
+            "crs": [
+              "11110"
+            ],
+            "india_programmes": [
+              "UDISE+",
+              "PARAKH national assessment",
+              "National Achievement Survey"
+            ],
+            "csr": [
+              "csr-education"
+            ]
+          },
+          "adds": {
+            "girls_focused": [
+              "5"
+            ],
+            "tribal_areas": [
+              "10"
+            ],
+            "digital": [
+              "9"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

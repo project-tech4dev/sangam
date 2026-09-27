@@ -1,0 +1,276 @@
+{
+  "version": "2026.1",
+  "_help": "Cross-domain vocabularies. SDGs, formal sector labels and population groups apply to every domain. darpan_map maps NGO Darpan sector labels to sector-* and pop-* slugs.",
+  "sdgs": [
+    [
+      "1",
+      "No Poverty"
+    ],
+    [
+      "2",
+      "Zero Hunger"
+    ],
+    [
+      "3",
+      "Good Health and Well-being"
+    ],
+    [
+      "4",
+      "Quality Education"
+    ],
+    [
+      "5",
+      "Gender Equality"
+    ],
+    [
+      "6",
+      "Clean Water and Sanitation"
+    ],
+    [
+      "7",
+      "Affordable and Clean Energy"
+    ],
+    [
+      "8",
+      "Decent Work and Economic Growth"
+    ],
+    [
+      "9",
+      "Industry, Innovation and Infrastructure"
+    ],
+    [
+      "10",
+      "Reduced Inequalities"
+    ],
+    [
+      "11",
+      "Sustainable Cities and Communities"
+    ],
+    [
+      "12",
+      "Responsible Consumption and Production"
+    ],
+    [
+      "13",
+      "Climate Action"
+    ],
+    [
+      "14",
+      "Life Below Water"
+    ],
+    [
+      "15",
+      "Life on Land"
+    ],
+    [
+      "16",
+      "Peace, Justice and Strong Institutions"
+    ],
+    [
+      "17",
+      "Partnerships for the Goals"
+    ]
+  ],
+  "sectors": [
+    [
+      "agriculture-livelihoods",
+      "Agriculture & Livelihoods"
+    ],
+    [
+      "food-processing",
+      "Food Processing"
+    ],
+    [
+      "skilling-livelihoods",
+      "Skilling & Livelihoods"
+    ],
+    [
+      "infrastructure",
+      "Infrastructure"
+    ],
+    [
+      "livelihoods",
+      "Livelihoods"
+    ],
+    [
+      "urban-mobility",
+      "Urban Mobility"
+    ],
+    [
+      "msme",
+      "MSME"
+    ],
+    [
+      "culture-craft",
+      "Culture & Craft"
+    ],
+    [
+      "skilling",
+      "Skilling"
+    ],
+    [
+      "digital-economy",
+      "Digital Economy"
+    ],
+    [
+      "health",
+      "Health"
+    ],
+    [
+      "care-economy",
+      "Care Economy"
+    ],
+    [
+      "manufacturing",
+      "Manufacturing"
+    ],
+    [
+      "governance-entitlements",
+      "Governance & Entitlements"
+    ],
+    [
+      "financial-inclusion",
+      "Financial Inclusion"
+    ],
+    [
+      "gender",
+      "Gender"
+    ],
+    [
+      "institutional-support",
+      "Institutional Support"
+    ],
+    [
+      "education",
+      "Education"
+    ],
+    [
+      "nutrition",
+      "Nutrition"
+    ],
+    [
+      "disability-inclusion",
+      "Disability Inclusion"
+    ],
+    [
+      "environment-nrm",
+      "Environment & Natural Resources"
+    ],
+    [
+      "water-sanitation",
+      "Water & Sanitation"
+    ],
+    [
+      "sports",
+      "Sports"
+    ],
+    [
+      "disaster-management",
+      "Disaster Management"
+    ]
+  ],
+  "population": [
+    [
+      "women",
+      "Women"
+    ],
+    [
+      "tribal-communities",
+      "Tribal communities"
+    ],
+    [
+      "persons-with-disabilities",
+      "Persons with disabilities"
+    ],
+    [
+      "shg-members",
+      "SHG members"
+    ],
+    [
+      "small-marginal-farmers",
+      "Small & marginal farmers"
+    ],
+    [
+      "landless-labourers",
+      "Landless labourers"
+    ],
+    [
+      "children",
+      "Children"
+    ],
+    [
+      "youth",
+      "Youth"
+    ],
+    [
+      "migrant-workers",
+      "Migrant workers"
+    ],
+    [
+      "elderly",
+      "Elderly / senior citizens"
+    ]
+  ],
+  "darpan_map": {
+    "Agriculture": [
+      "sector-agriculture-livelihoods"
+    ],
+    "Animal Husbandry": [
+      "sector-agriculture-livelihoods"
+    ],
+    "Dairying & Fisheries": [
+      "sector-agriculture-livelihoods"
+    ],
+    "Food Processing": [
+      "sector-food-processing"
+    ],
+    "Health & Family Welfare": [
+      "sector-health"
+    ],
+    "Education & Literacy": [
+      "sector-education"
+    ],
+    "Vocational Training": [
+      "sector-skilling"
+    ],
+    "Micro Finance (SHGs)": [
+      "sector-financial-inclusion",
+      "pop-shg-members"
+    ],
+    "Rural Development & Poverty Alleviation": [
+      "sector-livelihoods"
+    ],
+    "Women's Development & Empowerment": [
+      "sector-gender",
+      "pop-women"
+    ],
+    "Differently Abled": [
+      "sector-disability-inclusion",
+      "pop-persons-with-disabilities"
+    ],
+    "Art & Culture": [
+      "sector-culture-craft"
+    ],
+    "Environment & Forests": [
+      "sector-environment-nrm"
+    ],
+    "Land Resources": [
+      "sector-environment-nrm"
+    ],
+    "Water Resources": [
+      "sector-environment-nrm"
+    ],
+    "Tribal Affairs": [
+      "pop-tribal-communities"
+    ],
+    "Children": [
+      "pop-children"
+    ],
+    "Youth Affairs": [
+      "pop-youth"
+    ],
+    "Civic Issues": [
+      "sector-governance-entitlements"
+    ]
+  }
+}
