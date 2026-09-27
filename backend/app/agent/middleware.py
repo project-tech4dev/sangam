@@ -17,6 +17,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 
 from app.agent.audit import CAVEAT_PREFIX, audit_turn
 from app.agent.tools.sql.errors import FAILED_PREFIX, REJECTED_PREFIX
+from app.integrations.tracing import score_answer
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,16 @@ def answer_audit(model_spec: str):
     @after_agent(name="answer_audit")
     def _audit(state, runtime):
         verdict = audit_turn(state["messages"], model_spec)
-        if verdict is None or verdict.verdict != "warn" or not verdict.caveat:
+        if verdict is None:
+            return None
+        # Scored either way: a dashboard showing only the failures cannot tell
+        # you whether the rate is improving.
+        score_answer(
+            "answer_audit",
+            1.0 if verdict.verdict == "ok" else 0.0,
+            comment=verdict.caveat,
+        )
+        if verdict.verdict != "warn" or not verdict.caveat:
             return None
         logger.info("answer audit raised a caveat: %s", verdict.caveat)
         return {"messages": [AIMessage(content=f"{CAVEAT_PREFIX} {verdict.caveat}")]}

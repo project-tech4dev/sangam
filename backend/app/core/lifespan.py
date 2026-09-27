@@ -21,7 +21,7 @@ from app.core.config import Settings, get_settings
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
 from app.integrations import graphiti
-from app.integrations.tracing import SessionScopedAGUIAgent
+from app.integrations.tracing import SessionScopedAGUIAgent, configure_langfuse, masking_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,10 @@ def build_lifespan(settings: Settings | None = None):
             await graphiti.open_graph(resolved)  # no-op (logged) when graph is not configured
             stack.push_async_callback(graphiti.close_graph)
 
+            # Before build_agent: building the client is what registers the
+            # mask, and a handler created first would bind to an unmasked one.
+            configure_langfuse(resolved)
+
             checkpointer = await stack.enter_async_context(open_checkpointer(pool))
             add_langgraph_fastapi_endpoint(
                 app=app,
@@ -71,9 +75,10 @@ def build_lifespan(settings: Settings | None = None):
 
             if resolved.langfuse_enabled:
                 logger.info(
-                    "Langfuse tracing enabled: host=%s env=%s",
+                    "Langfuse tracing enabled: host=%s env=%s query-results=%s",
                     resolved.langfuse_host,
                     os.environ.get("LANGFUSE_TRACING_ENVIRONMENT", "default"),
+                    "masked" if masking_enabled() else "IN TRACES",
                 )
             else:
                 logger.info("Langfuse tracing disabled (set LANGFUSE_PUBLIC_KEY/SECRET_KEY to enable)")

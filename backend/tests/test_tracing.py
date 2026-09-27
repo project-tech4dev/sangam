@@ -51,7 +51,16 @@ def test_attaches_handler_with_update_trace(fake_langfuse):
     assert config["run_name"] == TRACE_NAME
     assert len(config["callbacks"]) == 1
     # update_trace is what lifts name/input/output onto the trace itself.
-    assert fake_langfuse == {"update_trace": True}
+    assert fake_langfuse["update_trace"] is True
+
+
+def test_handler_is_bound_to_the_configured_client(fake_langfuse):
+    """The mask lives on the client configure_langfuse() registered under our
+    public key. A handler built without that key makes its own client from the
+    environment, and every payload goes out unmasked — the one way to silently
+    lose masking."""
+    trace_config(Settings(**ENABLED))
+    assert fake_langfuse["public_key"] == "pk"
 
 
 def test_tags_carry_the_model(fake_langfuse):
@@ -208,3 +217,131 @@ def test_recursion_limit_leaves_room_for_a_real_sql_turn():
     model-then-tool cycle costs several graph steps because every middleware hook
     is its own node."""
     assert Settings().recursion_limit >= 150
+
+
+class TestMasking:
+    """Tool outputs carry real warehouse rows — org records, contact names,
+    grant amounts. A trace holding those is only acceptable on a Langfuse
+    inside the deployment, so masking has to be provable, not assumed."""
+
+    RESULT = (
+        "3 row(s).\n"
+        "adjusted: no LIMIT was given, so LIMIT 50 was applied.\n"
+        "caveats: All 10 districts currently parent to Assam.\n"
+        'executed: SELECT "o"."id", "o"."name" FROM "orgs" AS "o" LIMIT 51\n'
+        "columns: name\n"
+        "[org:9] KABIL\n"
+        "[org:1] AJAGAR SOCIAL CIRCLE\n"
+        "[org:8] THE ANT"
+    )
+
+    def test_off_by_default(self, monkeypatch):
+        monkeypatch.delenv("LANGFUSE_MASK_TOOL_RESULTS", raising=False)
+        from app.integrations.tracing import mask_payload, masking_enabled
+
+        assert masking_enabled() is False
+        assert mask_payload(data=self.RESULT) == self.RESULT
+
+    def test_rows_are_redacted_when_on(self, monkeypatch):
+        monkeypatch.setenv("LANGFUSE_MASK_TOOL_RESULTS", "true")
+        from app.integrations.tracing import mask_payload
+
+        out = mask_payload(data=self.RESULT)
+        for row in ("KABIL", "AJAGAR SOCIAL CIRCLE", "THE ANT"):
+            assert row not in out, f"{row} reached the trace"
+        assert "3 row(s) redacted" in out
+
+    def test_what_you_debug_with_survives(self, monkeypatch):
+        """Redacting the SQL too would make the trace useless — the query is
+        the thing you read a trace to see."""
+        monkeypatch.setenv("LANGFUSE_MASK_TOOL_RESULTS", "true")
+        from app.integrations.tracing import mask_payload
+
+        out = mask_payload(data=self.RESULT)
+        assert "SELECT" in out and "orgs" in out
+        assert "3 row(s)." in out
+        assert "caveats:" in out
+
+    def test_nested_payloads_are_masked(self, monkeypatch):
+        """The handler sends dicts and lists, not just strings."""
+        monkeypatch.setenv("LANGFUSE_MASK_TOOL_RESULTS", "true")
+        from app.integrations.tracing import mask_payload
+
+        out = mask_payload(data={"output": [self.RESULT], "sql": "SELECT 1"})
+        assert "KABIL" not in str(out)
+        assert out["sql"] == "SELECT 1"
+
+    def test_long_payloads_are_clipped_regardless(self, monkeypatch):
+        monkeypatch.delenv("LANGFUSE_MASK_TOOL_RESULTS", raising=False)
+        from app.integrations.tracing import MAX_IO_CHARS, mask_payload
+
+        assert len(mask_payload(data="x" * 50_000)) == MAX_IO_CHARS
+
+    def test_a_broken_mask_does_not_drop_the_batch(self, monkeypatch):
+        from app.integrations import tracing
+
+        monkeypatch.setattr(
+            tracing, "masking_enabled", lambda: (_ for _ in ()).throw(RuntimeError("boom"))
+        )
+        assert tracing.mask_payload(data="payload") == "payload"
+
+
+async def test_a_cancelled_turn_is_not_an_error(fake_langfuse):
+    """A browser disconnect cancels the streaming task mid-turn. The SDK exempts
+    LangGraph's GraphBubbleUp but not asyncio.CancelledError, so every
+    disconnected user would otherwise inflate the error rate."""
+    import asyncio
+
+    from app.integrations.tracing import _build_handler
+
+    handler = _build_handler(Settings(**ENABLED))
+    ended: dict = {}
+
+    class FakeObservation:
+        def update(self, **kw):
+            ended.update(kw)
+            return self
+
+        def end(self):
+            ended["ended"] = True
+
+    handler._detach_observation = lambda run_id: FakeObservation()
+    handler.on_chain_error(asyncio.CancelledError(), run_id="r1")
+
+    assert ended.get("ended") is True
+    assert "cancelled" in ended.get("status_message", "")
+    assert ended.get("level") != "ERROR"
+
+
+class TestRedactionIsShapeAware:
+    """Redaction must recognise DATA, not guess at not-metadata. An earlier
+    version stubbed every line that did not look like metadata, which destroyed
+    the SQL in sql_span's input — a bare SELECT is not metadata."""
+
+    def test_bare_sql_survives(self, monkeypatch):
+        monkeypatch.setenv("LANGFUSE_MASK_TOOL_RESULTS", "true")
+        from app.integrations.tracing import mask_payload
+
+        sql = 'SELECT "o"."id" FROM "orgs" AS "o" LIMIT 51'
+        assert mask_payload(data={"sql": sql, "params": None})["sql"] == sql
+
+    def test_prose_survives(self, monkeypatch):
+        """Model inputs and answers have no grid header and must pass through."""
+        monkeypatch.setenv("LANGFUSE_MASK_TOOL_RESULTS", "true")
+        from app.integrations.tracing import mask_payload
+
+        prose = "Which organisations work in Assam?\nSeven, per org_locations."
+        assert mask_payload(data=prose) == prose
+
+    def test_profile_values_are_redacted(self, monkeypatch):
+        """db_profile_column prints real stored values, which are data too."""
+        monkeypatch.setenv("LANGFUSE_MASK_TOOL_RESULTS", "true")
+        from app.integrations.tracing import mask_payload
+
+        out = mask_payload(
+            data="orgs.legal_form — 3 most common value(s), as stored:\n"
+            "  Society  (7)\n  Trust  (1)"
+        )
+        assert "Society" not in out and "Trust" not in out
+        assert "as stored:" in out
+        assert "2 row(s) redacted" in out

@@ -63,6 +63,8 @@ services:
       LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
       LANGFUSE_TRACING_ENVIRONMENT: ${LANGFUSE_TRACING_ENVIRONMENT:-local}
       LANGFUSE_RELEASE: ${LANGFUSE_RELEASE:-}
+      # Keeps warehouse rows out of traces; the SQL and row counts still show.
+      LANGFUSE_MASK_TOOL_RESULTS: ${LANGFUSE_MASK_TOOL_RESULTS:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       ALLOWED_ORIGIN_REGEX: ${ALLOWED_ORIGIN_REGEX:-}
       # Graph data is embedded at 768 dims — all ingestion/search must match.
