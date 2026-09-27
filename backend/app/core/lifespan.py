@@ -54,7 +54,7 @@ def build_lifespan(settings: Settings | None = None):
 
             # Before build_agent: building the client is what registers the
             # mask, and a handler created first would bind to an unmasked one.
-            configure_langfuse(resolved)
+            tracing_live = configure_langfuse(resolved)
 
             checkpointer = await stack.enter_async_context(open_checkpointer(pool))
             add_langgraph_fastapi_endpoint(
@@ -67,13 +67,15 @@ def build_lifespan(settings: Settings | None = None):
                 path="/agent",
             )
 
-            if resolved.langfuse_enabled:
+            if tracing_live:
                 logger.info(
                     "Langfuse tracing enabled: host=%s env=%s query-results=%s",
                     resolved.langfuse_host,
                     os.environ.get("LANGFUSE_TRACING_ENVIRONMENT", "default"),
                     "masked" if masking_enabled() else "IN TRACES",
                 )
+            elif resolved.langfuse_enabled:
+                logger.warning("Langfuse is configured but NOT tracing — see the error above")
             else:
                 logger.info("Langfuse tracing disabled (set LANGFUSE_PUBLIC_KEY/SECRET_KEY to enable)")
             logger.info("Sangam agent ready: model=%s", resolved.model)

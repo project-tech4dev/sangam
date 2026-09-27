@@ -96,6 +96,20 @@ def configure_langfuse(settings: Settings) -> bool:
                 "anything else touches langfuse."
             )
             return False
+
+        # Wrong keys for this host fail silently: spans are exported on a
+        # background thread and rejected with a 401 nobody reads.
+        try:
+            if not client.auth_check():
+                raise ValueError("credentials rejected")
+        except Exception as exc:  # noqa: BLE001 - any failure here means traces are lost
+            logger.error(
+                "Langfuse credentials are not valid for %s (%s). Traces will be DROPPED — "
+                "check LANGFUSE_HOST matches the instance the keys belong to.",
+                settings.langfuse_host,
+                exc,
+            )
+            return False
         return True
     except Exception:  # telemetry must never take the app down
         logger.warning("Langfuse client could not be built — continuing untraced", exc_info=True)

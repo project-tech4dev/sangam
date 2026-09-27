@@ -327,3 +327,26 @@ class TestRedactionIsShapeAware:
         assert "Society" not in out and "Trust" not in out
         assert "as stored:" in out
         assert "2 row(s) redacted" in out
+
+
+def test_bad_credentials_report_instead_of_failing_silently(monkeypatch, caplog):
+    """Wrong keys for the configured host produce a 401 on a background thread
+    that nobody reads — which cost five separate debugging sessions."""
+    import types
+
+    from app.integrations import tracing
+
+    class Client:
+        _mask = staticmethod(tracing.mask_payload)
+
+        def auth_check(self):
+            raise RuntimeError("status_code: 401")
+
+    mod = types.ModuleType("langfuse")
+    mod.Langfuse = lambda **kwargs: Client()
+    monkeypatch.setitem(sys.modules, "langfuse", mod)
+
+    with caplog.at_level("ERROR"):
+        assert tracing.configure_langfuse(Settings(**ENABLED)) is False
+    assert "DROPPED" in caplog.text
+    assert "LANGFUSE_HOST" in caplog.text
