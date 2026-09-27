@@ -1,25 +1,4 @@
-"""Validate model-written SQL before it may reach Postgres.
-
-Pure: no pool, no async, no settings. That is what lets the adversarial suite run
-in milliseconds with no container, and it is why every decision here is a
-function of the SQL text and the catalog alone.
-
-The load-bearing idea is that **the model's SQL string never executes**. What
-executes is `ValidatedQuery.sql`, regenerated from the parse tree. Regeneration —
-not a check — is what actually kills multi-statement injection and comment
-smuggling, because anything the parser did not understand simply is not in the
-output. It also makes the projection-to-citation map exact, since every
-projection has been resolved and aliased by then.
-
-Checks are structural (node types on the parse tree), never keyword matching:
-`SELECT deleted_at FROM orgs` is fine and `WITH x AS (DELETE ...) SELECT` is not,
-and no regex tells those apart reliably.
-
-Every rejection message is written for the model to read and fix. That is the
-whole retry loop — deepagents feeds a tool's returned string back to the model,
-so a message naming the problem and the next step is the difference between
-converging in one turn and burning the attempt budget.
-"""
+"""Validate model-written SQL before it may reach Postgres."""
 
 from __future__ import annotations
 
@@ -41,12 +20,8 @@ from app.agent.tools.sql.catalog import (
     TABLE_NAMES,
 )
 
-# sqlglot logs a WARNING to the root logger for every statement it cannot model
-# ("RESET ROLE contains unsupported syntax. Falling back to parsing as a
-# 'Command'"). That fires on exactly the inputs we reject, so it is duplicate
-# noise — the rejection is already returned to the model and recorded on the
-# trace — and a model probing with non-SELECT statements would spam production
-# logs with it.
+# sqlglot logs a WARNING to the root logger for every statement it cannot model ("RESET ROLE contains
+# unsupported syntax. Falling back to parsing as a 'Command'"). That fires on exactly the inputs we reject.
 logging.getLogger("sqlglot").setLevel(logging.ERROR)
 
 DEFAULT_MAX_ROWS = 50
@@ -58,9 +33,8 @@ MAX_SQL_CHARS = 8_000
 
 DIALECT = "postgres"
 
-# Statements that write or change state, wherever they appear in the tree — a
-# DELETE inside a CTE is still a DELETE. Verified present in sqlglot 27.x; note
-# COPY/TRUNCATE/GRANT are their own node types, NOT exp.Command.
+# Statements that write or change state, wherever they appear in the tree — a DELETE inside a CTE is still a
+# DELETE. Verified present in sqlglot 27.x; note COPY/TRUNCATE/GRANT are their own node types, NOT.
 _WRITE_NODE_NAMES = (
     "Insert",
     "Update",
@@ -83,13 +57,7 @@ _WRITE_NODE_NAMES = (
 
 
 def _nodes(*names: str) -> tuple[type[exp.Expression], ...]:
-    """Resolve node classes by name, failing LOUDLY if one has gone.
-
-    sqlglot renames classes between majors. Resolving with getattr(..., None)
-    and filtering would let a security list silently shrink on upgrade — the
-    check would still run, just over fewer node types. An ImportError naming
-    the missing class is the only acceptable failure mode for an allowlist.
-    """
+    """Resolve node classes by name, failing LOUDLY if one has gone."""
     missing = [n for n in names if not hasattr(exp, n)]
     if missing:
         raise ImportError(
@@ -101,12 +69,8 @@ def _nodes(*names: str) -> tuple[type[exp.Expression], ...]:
 
 _WRITE_NODES = _nodes(*_WRITE_NODE_NAMES)
 
-# Non-standard functions the model may call. An allowlist rather than a denylist
-# because the connecting role is a superuser until the reader role lands, and
-# `SELECT pg_read_file('/etc/passwd')` is a perfectly valid single-statement
-# SELECT over no tables. Everything sqlglot models as a typed node (count, sum,
-# lower, date_trunc, string_agg, ...) is covered by its node type and needs no
-# entry here; only functions that parse as exp.Anonymous do.
+# Non-standard functions the model may call. An allowlist rather than a denylist because the connecting role
+# is a superuser until the reader role lands, and `SELECT pg_read_file('/etc/passwd')` is a perfectly valid.
 ALLOWED_FUNCTIONS = frozenset(
     {
         "similarity",  # pg_trgm, used by the curated tools for fuzzy name match
@@ -347,12 +311,7 @@ def _check_functions(root: exp.Query) -> None:
 
 
 def _qualify(root: exp.Query, *, root_tables: set[str], dialect: str) -> exp.Query:
-    """Expand `*`, resolve every column, and quote identifiers.
-
-    The schema handed to qualify contains only non-heavy columns, so `SELECT *`
-    expands to something that fits in a context window; a heavy column asked for
-    by name is still resolvable because it is a real column in Postgres.
-    """
+    """Expand `*`, resolve every column, and quote identifiers."""
     try:
         return qualify(
             root.copy(),
@@ -366,9 +325,8 @@ def _qualify(root: exp.Query, *, root_tables: set[str], dialect: str) -> exp.Que
     except OptimizeError as exc:
         _reject(_column_error(str(exc), root_tables))
     except Exception as exc:  # noqa: BLE001 - unknown analyser failure must fail CLOSED
-        # qualify() raises different types for different query shapes (lateral
-        # joins especially). Letting one through unvalidated is the one outcome
-        # that must never happen, so anything unrecognised is a rejection.
+        # qualify() raises different types for different query shapes, and letting one
+        # through unvalidated is what must never happen, so anything unrecognised fails.
         _reject(
             f"the query could not be analysed ({type(exc).__name__}: {exc}). "
             "Simplify it — split a complex join into steps — and retry."
@@ -391,12 +349,7 @@ def _column_error(message: str, tables: set[str]) -> str:
 
 
 def _recheck_columns(qualified: exp.Query) -> None:
-    """Conservative second pass over resolved scopes.
-
-    qualify() already validates, but it has query shapes it handles loosely
-    (lateral joins in particular). Re-walking the scope tree means a sqlglot
-    quirk can never silently widen what is readable.
-    """
+    """Conservative second pass over resolved scopes."""
     root_scope = build_scope(qualified)
     if root_scope is None:
         return
@@ -411,11 +364,7 @@ def _recheck_columns(qualified: exp.Query) -> None:
 
 
 def _dedupe_output_names(qualified: exp.Query, rewrites: list[str]) -> None:
-    """`SELECT o.id, f.id` would collapse to one key under psycopg's dict_row.
-
-    Silent data loss, and it breaks citation extraction, so collisions are
-    aliased to <table>_<column> instead.
-    """
+    """`SELECT o.id, f.id` would collapse to one key under psycopg's dict_row."""
     seen: dict[str, int] = {}
     for projection in qualified.expressions:
         name = projection.alias_or_name
@@ -446,10 +395,7 @@ def _dedupe_output_names(qualified: exp.Query, rewrites: list[str]) -> None:
 
 
 def _has_star_projection(root: exp.Query) -> bool:
-    """Did the model write `*` or `alias.*` at the top level?
-
-    Checked before qualify, because qualify replaces the star with real columns.
-    """
+    """Did the model write `*` or `alias.*` at the top level?"""
     selects = [root] if isinstance(root, exp.Select) else list(root.find_all(exp.Select))
     for select in selects:
         for projection in select.expressions:
@@ -461,12 +407,7 @@ def _has_star_projection(root: exp.Query) -> bool:
 
 
 def _trim_expanded_star(qualified: exp.Query, rewrites: list[str]) -> None:
-    """Drop heavy columns that only appeared because `*` expanded to them.
-
-    qualify() runs against the full schema so that naming a heavy column works;
-    this is where `*` gets its narrower meaning. A row of orgs.sections is the
-    entire Darpan payload — one `SELECT *` would fill the context window.
-    """
+    """Drop heavy columns that only appeared because `*` expanded to them."""
     root_scope = build_scope(qualified)
     if root_scope is None:
         return
@@ -494,12 +435,7 @@ def _trim_expanded_star(qualified: exp.Query, rewrites: list[str]) -> None:
 
 
 def _apply_limit(qualified: exp.Query, max_rows: int, rewrites: list[str]) -> int:
-    """Clamp or inject a row limit, then ask for one extra row to detect truncation.
-
-    `args["limit"]` holds either exp.Limit or exp.Fetch — `FETCH FIRST n ROWS ONLY`
-    does not get its own slot. Query.limit() replaces either, and does so at the
-    top level of a UNION.
-    """
+    """Clamp or inject a row limit, then ask for one extra row to detect truncation."""
     existing = qualified.args.get("limit")
     requested: int | None = None
 
@@ -529,13 +465,7 @@ def _apply_limit(qualified: exp.Query, max_rows: int, rewrites: list[str]) -> in
 
 
 def _plan_citations(qualified: exp.Query) -> list[CitationPlan]:
-    """Map each projected column to the citation kind its value yields.
-
-    Projections reference the FROM alias ("o"), not the table ("orgs"), so the
-    alias has to be resolved through the scope's sources first — looking up
-    ("o", "id") in the catalog would silently find nothing and produce a result
-    with no markers at all.
-    """
+    """Map each projected column to the citation kind its value yields."""
     root_scope = build_scope(qualified)
     if root_scope is None:
         return []

@@ -1,10 +1,4 @@
-"""The eval comparator, tested with no model calls and no database.
-
-Each rule here exists because a plausible agent answer would otherwise be scored
-wrong. Dalgo's first run went 8/14 to 13/14 purely by fixing the comparator and
-the case wording, so these are the tests that stop an eval suite from measuring
-itself instead of the agent.
-"""
+"""The eval comparator, tested with no model calls and no database."""
 
 from __future__ import annotations
 

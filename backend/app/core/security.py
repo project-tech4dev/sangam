@@ -1,9 +1,4 @@
-"""Auth stub for local dev.
-
-Every route already depends on get_current_user so the later swap to Supabase
-JWT verification (decode the Bearer token against SUPABASE_JWKS_URL, return the
-`sub` claim) changes only this function — no route rework.
-"""
+"""Auth stub for local dev."""
 
 from __future__ import annotations
 

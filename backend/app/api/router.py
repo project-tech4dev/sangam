@@ -1,8 +1,4 @@
-"""The single mount point for the REST API.
-
-`main.py` includes this one router, so adding a resource means adding its
-module to `routes/` and one line here — the app module stays untouched.
-"""
+"""The single mount point for the REST API."""
 
 from __future__ import annotations
 

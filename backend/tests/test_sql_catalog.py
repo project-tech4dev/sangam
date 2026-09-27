@@ -1,9 +1,4 @@
-"""The catalog is a security control, so these tests assert what it must NOT contain.
-
-The import-time _self_check() already covers internal consistency (every PK and FK
-resolves). What is left is intent: the columns and tables deliberately withheld,
-and the derived indexes the validator depends on.
-"""
+"""The catalog is a security control, so these tests assert what it must NOT contain."""
 
 from __future__ import annotations
 

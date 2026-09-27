@@ -1,8 +1,4 @@
-"""MCP tool loading via langchain-mcp-adapters.
-
-GitHub is configured from GITHUB_PAT; arbitrary extra servers come from the
-MCP_SERVERS setting so new integrations need zero code changes.
-"""
+"""MCP tool loading via langchain-mcp-adapters."""
 
 from __future__ import annotations
 
@@ -17,15 +13,12 @@ from langchain_mcp_adapters.tools import load_mcp_tools as tools_from_session
 CONNECT_ATTEMPTS = 3
 CONNECT_RETRY_SECONDS = 3
 
-# Servers whose tools share state between calls (an open browser, a logged-in
-# session). These need ONE persistent MCP session for the app's lifetime;
-# the default get_tools() path opens a fresh session per tool call, which
-# would give the browser amnesia between navigate and snapshot.
+# Servers whose tools share state between calls (an open browser, a logged-in session). These need ONE
+# persistent MCP session for the app's lifetime; the default get_tools() path opens a fresh session per tool.
 STATEFUL_SERVERS = {"playwright"}
 
-# Tools excluded per server regardless of other settings. run_code_unsafe
-# executes arbitrary code in the playwright container — far more power than
-# the agent needs to browse.
+# Tools excluded per server regardless of other settings. run_code_unsafe executes arbitrary code in the
+# playwright container — far more power than the agent needs to browse.
 SERVER_DENYLIST: dict[str, set[str]] = {
     "playwright": {"browser_run_code_unsafe"},
 }
@@ -53,11 +46,7 @@ def build_server_config(settings: Settings) -> dict[str, dict[str, Any]]:
 
 
 async def load_mcp_tools(settings: Settings, stack: AsyncExitStack) -> list[Any]:
-    """Load tools from all configured MCP servers.
-
-    Persistent sessions for stateful servers are opened on `stack`, which the
-    caller (the FastAPI lifespan) keeps alive for the life of the app.
-    """
+    """Load tools from all configured MCP servers."""
     servers = build_server_config(settings)
     if not servers:
         return []

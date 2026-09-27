@@ -1,6 +1,5 @@
-"""Org queries. Legacy-compat computed fields: darpan_id from org_identifiers,
-state/district from the registered location's parent chain, sectors from
-org_tags (primary before secondary — 'primary' < 'secondary' lexically)."""
+"""Org queries. Legacy-compat computed fields: darpan_id from org_identifiers, state/district from the
+registered location's parent chain, sectors from"""
 
 from __future__ import annotations
 

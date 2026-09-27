@@ -1,10 +1,4 @@
-"""Render query rows for the model: compact, cited, and honest about truncation.
-
-Two budgets, because they fail differently. A single 40 KB JSONB cell blows the
-context window on one row, so cells are capped individually; fifty ordinary rows
-also blow it, so the whole block is capped too. Exceeding either is reported —
-an LLM handed a silently truncated top-50 will report it as the whole table.
-"""
+"""Render query rows for the model: compact, cited, and honest about truncation."""
 
 from __future__ import annotations
 
@@ -50,11 +44,7 @@ def render_rows(
     limit: int | None = None,
     truncated: bool = False,
 ) -> str:
-    """Rows as a pipe-separated block, each prefixed with its citation markers.
-
-    The columns that produced a marker are not repeated in the row body — the
-    marker already carries the value, and repeating it wastes context on every row.
-    """
+    """Rows as a pipe-separated block, each prefixed with its citation markers."""
     if not rows:
         return NO_ROWS
 

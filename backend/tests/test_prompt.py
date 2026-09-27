@@ -1,14 +1,4 @@
-"""The system prompt's contract with the tools.
-
-CLAUDE.md: "Every database and graph row carries a citation marker ... because
-app/agent/prompt.py requires the model to repeat it inline next to each fact. A
-tool that returns uncited rows produces uncitable answers."
-
-That contract is only kept if the prompt actually names every marker the tools
-emit, so these tests derive the marker set from the tool sources rather than
-hardcoding it — adding a tool that emits a new marker fails here, which is the
-point.
-"""
+"""The system prompt's contract with the tools."""
 
 from __future__ import annotations
 
@@ -24,13 +14,7 @@ _LITERAL = re.compile(r"\[([a-z_]+):\{")
 
 
 def emitted_markers() -> set[str]:
-    """Every citation kind a tool can put in front of a row.
-
-    Two sources, because the tools produce them two ways. graph_tools writes its
-    marker as a literal f-string. db_query derives its markers from the catalog
-    at runtime, so there is no literal to scan for — CITE_COLUMNS is the
-    authoritative list, and scanning alone would silently report none.
-    """
+    """Every citation kind a tool can put in front of a row."""
     from app.agent.tools.sql.catalog import CITE_COLUMNS
 
     literal = {
@@ -64,9 +48,8 @@ def test_prompt_is_loaded_not_empty():
 
 
 def test_prompt_names_every_registered_tool():
-    """Routing rules reference tools by their exact Python identifier, so a
-    renamed or newly added tool leaves the prompt pointing at nothing — or
-    silently never being used."""
+    """Routing rules reference tools by their exact Python identifier, so a renamed or newly added tool
+    leaves the prompt pointing at nothing — or"""
     from app.agent.build import TOOLS
 
     missing = [t.name for t in TOOLS if t.name not in SYSTEM_PROMPT]
@@ -74,9 +57,8 @@ def test_prompt_names_every_registered_tool():
 
 
 def test_retry_budget_in_the_prompt_matches_the_middleware():
-    """The prompt asks the model to stop after N attempts and the middleware
-    enforces N. If they drift, the model either gives up early or is cut off
-    mid-explanation."""
+    """The prompt asks the model to stop after N attempts and the middleware enforces N. If they drift,
+    the model either gives up early or is cut off"""
     from app.agent.middleware import MAX_SQL_ATTEMPTS
 
     assert f"After {MAX_SQL_ATTEMPTS} failed attempts" in SYSTEM_PROMPT

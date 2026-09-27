@@ -18,7 +18,6 @@ def get_pool() -> AsyncConnectionPool:
     return pool
 
 
-# Routers declare `pool: PoolDep` rather than calling get_pool() in the body.
-# That makes the pool overridable per-app via dependency_overrides[get_pool],
-# which is how the unit tests keep a real database out of reach.
+# Routers declare `pool: PoolDep` rather than calling get_pool() in the body. That makes the pool
+# overridable per-app via dependency_overrides[get_pool], which is how the unit tests keep a real database.
 PoolDep = Annotated[AsyncConnectionPool, Depends(get_pool)]

@@ -33,9 +33,8 @@ class Settings(BaseSettings):
     # Postgres connection string; holds app data AND LangGraph checkpoints.
     database_url: str = "postgresql://sangam:sangam@localhost:5433/sangam"
 
-    # Knowledge graph (Graphiti + Neo4j). Graph features activate only when
-    # NEO4J_URI is set AND an OpenAI key exists (Graphiti's extraction and
-    # embeddings default to OpenAI; Anthropic has no embedding models).
+    # Knowledge graph (Graphiti + Neo4j). Graph features activate only when NEO4J_URI is set AND an OpenAI
+    # key exists (Graphiti's extraction and embeddings default to OpenAI; Anthropic has no embedding.
     neo4j_uri: str = ""
     neo4j_user: str = "neo4j"
     neo4j_password: str = ""
@@ -56,31 +55,22 @@ class Settings(BaseSettings):
     mcp_servers: dict[str, Any] = {}
     github_tool_allowlist: str = ""
 
-    # Text-to-SQL tool (db_query). See docs/SQL_AGENT.md.
-    # sql_reader_role is the NOLOGIN role the query runs as via SET LOCAL ROLE;
-    # empty disables that guard and leaves only the validator and the read-only
-    # transaction, so it should be set wherever migration 0001 has been applied.
+    # Text-to-SQL tool (db_query). See docs/SQL_AGENT.md. sql_reader_role is the NOLOGIN role the query runs
+    # as via SET LOCAL ROLE; empty disables that guard and leaves only the validator and the read-only.
     sql_reader_role: str = "sangam_reader"
     sql_timeout_ms: int = 5_000
     sql_max_rows: int = 50
     sql_max_attempts: int = 5
-    # A cheap second opinion on each SQL answer (grain, filters, false zeros,
-    # numbers). Empty disables it; it is a real extra model call per SQL turn,
-    # so point it at the cheapest model of a provider you already have a key for,
-    # e.g. "anthropic:claude-haiku-4-5".
+    # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). Empty disables it;
+    # it is a real extra model call per SQL turn, so point it at the cheapest model of a provider you.
     sql_audit_model: str = ""
 
-    # Graph steps per turn, not tool calls: every middleware hook is its own
-    # node, so one model-then-tool cycle costs several. Bound in build_agent();
-    # LangGraph's own default is 25, which a SQL turn exceeds on about the
-    # seventh tool call. The real runaway guard is sql_retry_limiter.
+    # Graph steps per turn, not tool calls: every middleware hook is its own node, so one model-then-tool
+    # cycle costs several. Bound in build_agent(); LangGraph's own default is 25, which a SQL turn exceeds.
     recursion_limit: int = 200
     allowed_origins: str = "http://localhost:3000"
-    # Vercel gives every preview deployment a fresh hostname, so an exact-match
-    # list cannot cover them. Set a regex to admit them, e.g.
-    #   ^https://sangam-[a-z0-9-]+\.vercel\.app$
-    # Anchor it: an unanchored pattern matches any origin that merely contains
-    # the text, which would let evil-sangam.vercel.app.attacker.com through.
+    # Vercel gives every preview deployment a fresh hostname, so an exact-match list cannot cover them. Set
+    # a regex to admit them, e.g. ^https://sangam-[a-z0-9-]+\.vercel\.app$ Anchor it: an unanchored pattern.
     allowed_origin_regex: str = ""
 
     @property

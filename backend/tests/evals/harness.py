@@ -1,16 +1,4 @@
-"""Run one golden case through the real agent and score it.
-
-Scoring is deterministic — regex over citation markers, and executing both the
-gold SQL and the agent's SQL to compare result sets. No LLM judge: the
-assertions here gate a merge, and a judge that cannot run a query can only
-squint at one. (Dalgo measured their SQL judge disagreeing with execution on 8
-of 11 items, all 8 judge false-failures.)
-
-The agent's SQL is recovered from the `executed:` line of its db_query result
-and re-run, rather than parsed out of prose. That line carries the REGENERATED
-statement — what actually touched the database — so the comparison is against
-what ran, not what the model drafted.
-"""
+"""Run one golden case through the real agent and score it."""
 
 from __future__ import annotations
 
@@ -33,9 +21,8 @@ CITATION = re.compile(r"\[(org|funder|grant|score|graph):([a-zA-Z0-9]+)\]")
 # Bounds a runaway case so one bad item cannot burn the whole budget.
 RECURSION_LIMIT = 60
 
-# Wall-clock bound per case. Without it a model request that never returns
-# blocks the whole suite indefinitely — observed once, 7 hours elapsed against
-# 2 seconds of CPU. A case that needs longer than this is a finding either way.
+# Wall-clock bound per case: a model request that never returns once blocked the
+# suite for 7 hours against 2 seconds of CPU.
 CASE_TIMEOUT_SECONDS = 180
 
 
@@ -53,13 +40,7 @@ class CaseResult:
 
 
 def message_text(message: Any) -> str:
-    """The text of a model message, whatever shape the provider used.
-
-    Anthropic returns content as a list of blocks, not a string, and which shape
-    arrives varies between runs. Handling only str silently yields an empty
-    answer — which scores as "the agent said nothing" and is indistinguishable
-    from a real failure.
-    """
+    """The text of a model message, whatever shape the provider used."""
     content = getattr(message, "content", "")
     if isinstance(content, str):
         return content
@@ -95,9 +76,8 @@ async def run_agent(question: str, settings: Settings) -> tuple[str, list[str], 
                 sqls.extend(EXECUTED.findall(message.content))
         elif isinstance(message, AIMessage) and not message.tool_calls:
             text = message_text(message)
-            # Skip the audit's appended caveat: it is a second AIMessage, so
-            # "the last one" would score the caveat as the answer whenever
-            # SQL_AUDIT_MODEL is set.
+            # Skip the audit's appended caveat: it is a second AIMessage, so "the last one" would score the
+            # caveat as the answer whenever SQL_AUDIT_MODEL is set.
             if text.strip() and not text.startswith(CAVEAT_PREFIX):
                 answer = text
     cites = {f"{k}:{v}" for k, v in CITATION.findall(answer)}
@@ -115,11 +95,8 @@ def score(case: dict[str, Any], result: CaseResult, *, gold_rows, agent_rows) ->
                     f"result mismatch\n    gold : {gold_rows[:4]}\n    agent: {agent_rows[:4]}"
                 )
         else:
-            # The agent answered without db_query — db_profile_column alone is
-            # enough for some questions, and the prompt actively tells it to
-            # profile before filtering. The gate is whether the ANSWER is right,
-            # not which tool produced it, so fall back to checking that every
-            # gold value is stated.
+            # The agent answered without db_query — db_profile_column alone is enough for some questions,
+            # and the prompt actively tells it to profile before filtering. The gate is whether the ANSWER.
             missing = [
                 cell
                 for row in gold_rows
@@ -162,10 +139,8 @@ def score(case: dict[str, Any], result: CaseResult, *, gold_rows, agent_rows) ->
     return result
 
 
-# Phrases that signal explicit non-possession. Deliberately narrow: a loose
-# marker like a bare "no " matches almost any sentence, which would make every
-# must_decline case pass whatever the agent said — a false negative in an eval
-# hides the regression it exists to catch.
+# Phrases that signal explicit non-possession. Deliberately narrow: a loose marker like a bare "no " matches
+# almost any sentence, which would make every must_decline case pass whatever the agent said — a false.
 _DECLINE_MARKERS = (
     "don't have",
     "do not have",

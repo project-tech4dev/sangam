@@ -1,9 +1,4 @@
-"""What a failed query tells the model.
-
-The retry loop is the agent's, so the only thing under our control is whether
-the error string carries enough to converge. These tests use a fake exception —
-no database — because the mapper duck-types .sqlstate and .diag.
-"""
+"""What a failed query tells the model."""
 
 from __future__ import annotations
 
@@ -72,13 +67,8 @@ def test_insufficient_privilege_does_not_blame_the_sql():
 
 
 class TestConnectionErrorsNeverLeakTheDsn:
-    """psycopg puts host and user into OperationalError. That must not reach a
-    model provider or a chat transcript.
-
-    These use REAL driver exceptions, not fakes with a doctored __name__: the
-    guard tests for an absent SQLSTATE precisely so it covers the classes nobody
-    thought to enumerate.
-    """
+    """psycopg puts host and user into OperationalError. That must not reach a model provider or a chat
+    transcript."""
 
     DSN_TEXT = 'connection failed: host="db.prod.internal" user="sangam" password supplied'
 

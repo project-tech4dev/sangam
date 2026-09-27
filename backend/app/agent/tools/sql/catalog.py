@@ -1,28 +1,4 @@
-"""The tables and columns the SQL tool may read — the allowlist, as data.
-
-This is a security control, so it is Python rather than YAML: it shows up in a
-diff, it is type-checked, pure unit tests can import it with no database and no
-parse step, and nothing can hot-reload it.
-
-Three rules keep it honest:
-
-  * A column that is not listed here does not exist as far as the tool is
-    concerned. There is no second denylist to keep in sync — `contacts.email`
-    is absent, so it fails as "unknown column" through the same code path as a
-    typo, and the reader role's column-level GRANT enforces the same line
-    server-side.
-  * `defects` are evidence-backed caveats about the DATA, not the schema. They
-    are injected into every result that touches the table, because a model that
-    cannot see them reports "0 rows" as "none exist". Delete a line here when a
-    migration fixes the underlying data — that is the seam between this work and
-    the schema review.
-  * `verify_against_db()` runs at boot and fails loudly on drift. A catalog that
-    disagrees with the database produces confidently wrong answers, which is
-    worse than not starting.
-
-This module holds no logic beyond the import-time self-check and that verify.
-Everything that reasons about the catalog lives in validator.py.
-"""
+"""The tables and columns the SQL tool may read — the allowlist, as data."""
 
 from __future__ import annotations
 
@@ -546,10 +522,8 @@ COLUMNS: Mapping[str, Mapping[str, Column]] = MappingProxyType(
     {name: MappingProxyType({c.name: c for c in t.columns}) for name, t in CATALOG.items()}
 )
 
-# What sqlglot's qualify() needs: EVERY column, including heavy ones. A reduced
-# schema here would make a heavy column unresolvable when asked for by name,
-# which is not the intent — `*` should omit them, naming one should work. The
-# trimming of `*` happens after qualify, against STAR_COLUMNS.
+# What sqlglot's qualify() needs: EVERY column, including heavy ones. A reduced schema here would make a
+# heavy column unresolvable when asked for by name, which is not the intent — `*` should omit them, naming.
 SQLGLOT_SCHEMA: dict[str, dict[str, str]] = {
     name: {c.name: c.type for c in t.columns} for name, t in CATALOG.items()
 }
@@ -558,9 +532,8 @@ STAR_COLUMNS: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {name: tuple(c.name for c in t.columns if not c.heavy) for name, t in CATALOG.items()}
 )
 
-# (table, column) -> citation kind. Set on primary keys AND on every foreign key
-# pointing at one, so a row from programs or contacts is citable through the
-# org_id/funder_id it already carries.
+# (table, column) -> citation kind. Set on primary keys AND on every foreign key pointing at one, so a row
+# from programs or contacts is citable through the org_id/funder_id it already carries.
 CITE_COLUMNS: Mapping[tuple[str, str], str] = MappingProxyType(
     {(name, c.name): c.cites for name, t in CATALOG.items() for c in t.columns if c.cites}
 )
@@ -569,9 +542,8 @@ DEFECTS: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {name: t.defects for name, t in CATALOG.items() if t.defects}
 )
 
-# Tables that exist in the database and are deliberately NOT in the catalog.
-# Named so verify_against_db() can stay quiet about them while still reporting a
-# genuinely new table that nobody has made a decision about.
+# Tables that exist in the database and are deliberately NOT in the catalog. Named so verify_against_db()
+# can stay quiet about them while still reporting a genuinely new table that nobody has made a decision.
 KNOWN_EXCLUDED: frozenset[str] = frozenset(
     {
         # Serialized conversation history — every user's full chat, in this same
@@ -591,11 +563,7 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
 
 
 def _self_check() -> None:
-    """Fail at import if the catalog contradicts itself.
-
-    Cheap, and it turns a typo in a column name from a confusing runtime
-    rejection ("unknown column id") into an ImportError naming the table.
-    """
+    """Fail at import if the catalog contradicts itself."""
     for name, table in CATALOG.items():
         cols = COLUMNS[name]
         if not table.columns:
@@ -625,16 +593,7 @@ _self_check()
 
 
 async def verify_against_db(conn: Any) -> list[str]:
-    """Problems found comparing the catalog to the live schema; empty when clean.
-
-    Names only. Types are deliberately not compared: information_schema reports
-    vector(1536) as USER-DEFINED and text[] as ARRAY, so a type check would
-    produce false drift on exactly the columns that are hardest to reason about.
-
-    Uses conn.execute directly rather than traced_fetch: this runs once at boot,
-    and importing the tracing module here would pull copilotkit and ag_ui into
-    the dependency graph of every pure catalog unit test.
-    """
+    """Problems found comparing the catalog to the live schema; empty when clean."""
     rows = await (
         await conn.execute(
             "SELECT table_name, column_name FROM information_schema.columns "
@@ -658,9 +617,5 @@ async def verify_against_db(conn: Any) -> list[str]:
 
 
 def undeclared_tables(live_table_names: set[str]) -> list[str]:
-    """Live tables that are neither in the catalog nor knowingly excluded.
-
-    Not an error — a new table should be invisible to the agent until someone
-    decides it is safe — but it is logged at boot so the decision gets made.
-    """
+    """Live tables that are neither in the catalog nor knowingly excluded."""
     return sorted(live_table_names - TABLE_NAMES - KNOWN_EXCLUDED)

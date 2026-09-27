@@ -1,19 +1,4 @@
-"""A cheap second opinion on the answer, after it has been given.
-
-Four checks that the guard cannot make, because they are about meaning rather
-than safety: does the SQL count the entity the question asked about, is every
-condition in the question present, could a zero mean a wrong filter VALUE rather
-than absent data, and do the figures in the prose match the rows.
-
-It never blocks and never edits the answer. It appends a caveat, which is the
-only honest shape: by the time it runs, the answer has already streamed to the
-user. Everything here fails open — a turn must not break because a second
-opinion could not be obtained.
-
-Off unless `SQL_AUDIT_MODEL` is set. It is a real extra model call per SQL turn,
-so enabling it is a cost decision; point it at the cheapest model of whichever
-provider you already have a key for.
-"""
+"""A cheap second opinion on the answer, after it has been given."""
 
 from __future__ import annotations
 
@@ -30,10 +15,8 @@ logger = logging.getLogger(__name__)
 
 MAX_TOKENS = 400
 
-# Prefix on the appended caveat. Anything reading a turn's final answer must skip
-# these: the caveat is a SECOND AIMessage, so "the last AI message" would read the
-# caveat as the answer — which would make a re-audit audit itself, and made the
-# eval harness score the caveat instead of the answer.
+# Prefix on the appended caveat. Anything reading a turn's final answer must skip these: the caveat is a
+# SECOND AIMessage, so "the last AI message" would read the caveat as the answer — which would make a re-.
 CAVEAT_PREFIX = "\u26a0\ufe0f"
 _EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
 _JSON = re.compile(r"\{.*\}", re.DOTALL)

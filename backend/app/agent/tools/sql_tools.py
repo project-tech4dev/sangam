@@ -1,14 +1,4 @@
-"""The agent's SQL tools: discover the schema, then query it.
-
-Four tools, splitting on one line that matters: `db_list_tables` and
-`db_describe_table` read the catalog and never touch the database, so they can
-return NO row values at all. Only `db_profile_column` and `db_query` return cell
-values, which means the column-withholding rules have exactly two surfaces to
-cover rather than four.
-
-Conventions from db_tools.py apply unchanged — tools never raise, and every row
-carries a citation marker where one exists.
-"""
+"""The agent's SQL tools: discover the schema, then query it."""
 
 from __future__ import annotations
 
@@ -133,9 +123,8 @@ async def db_profile_column(table: str, column: str) -> str:
                 f"Columns of {table}: {', '.join(sorted(COLUMNS[table]))}."
             )
 
-        # Server-constructed, but still routed through validate() so it inherits
-        # the same limit clamp and regeneration as anything else, and through the
-        # executor so it inherits the read-only transaction, timeout and role.
+        # Server-constructed, but still routed through validate() so it inherits the same limit clamp and
+        # regeneration as anything else, and through the executor so it inherits the read-only transaction.
         query = validate(
             f"SELECT {column} AS value, count(*) AS n FROM {table} "
             f"GROUP BY {column} ORDER BY n DESC, {column} LIMIT {MAX_PROFILE_VALUES}",

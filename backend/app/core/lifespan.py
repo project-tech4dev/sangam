@@ -1,10 +1,4 @@
-"""Application lifespan: everything with a startup and a shutdown.
-
-Opens the connection pool, the optional knowledge graph, the LangGraph
-checkpointer, and mounts the AG-UI agent endpoint; unwinds all of it in reverse
-on shutdown. Kept out of `main.py` so the application module stays a wiring
-manifest rather than a lifecycle implementation.
-"""
+"""Application lifespan: everything with a startup and a shutdown."""
 
 from __future__ import annotations
 
@@ -94,17 +88,7 @@ def build_lifespan(settings: Settings | None = None):
 
 
 async def _verify_sql_catalog(pool, settings: Settings) -> None:
-    """Fail the boot if the SQL tool's allowlist disagrees with the database.
-
-    Deliberately NOT the "optional subsystems degrade" rule that governs Neo4j
-    and Langfuse. Those are external integrations we can run without; this is an
-    internal contract, and a catalog describing a column the database dropped
-    produces confidently wrong answers — worse than not starting.
-
-    A missing reader role is only a warning: a fresh database has no
-    sangam_reader until `make migrate` runs, and db_query fails closed with a
-    message saying so rather than quietly running as the owner.
-    """
+    """Fail the boot if the SQL tool's allowlist disagrees with the database."""
     async with pool.connection() as conn:
         problems = await sql_catalog.verify_against_db(conn)
         if problems:
@@ -123,9 +107,8 @@ async def _verify_sql_catalog(pool, settings: Settings) -> None:
         ).fetchall()
         undeclared = sql_catalog.undeclared_tables({r["table_name"] for r in rows})
         if undeclared:
-            # Not an error: a new table stays invisible to the agent until
-            # someone adds it to the catalog or to KNOWN_EXCLUDED. Logged so the
-            # decision actually gets made.
+            # Not an error: a new table stays invisible to the agent until someone adds it to the catalog or
+            # to KNOWN_EXCLUDED. Logged so the decision actually gets made.
             logger.info(
                 "tables not readable by the SQL tool and not declared as excluded: %s",
                 ", ".join(undeclared),

@@ -19,15 +19,8 @@ from app.agent.tools.web import fetch_url
 from app.core.config import Settings
 from app.integrations.tracing import trace_config
 
-# The agent reaches the database ONE way: it discovers the schema, then writes a
-# SELECT. There used to be four hand-written tools alongside these (search_orgs,
-# get_funder, get_grants, get_fit_scores) wrapping fixed queries. They were
-# removed because they were a cached query plan rather than a capability, and a
-# worse one: asked which organisations work in Assam, search_orgs read only
-# orgs.registered_location_id and returned all ten, while the model writing its
-# own SQL found org_locations, cross-checked both relationships, and answered
-# seven. Two paths to the same rows also meant two places to keep correct — a
-# data caveat added to one of them did not reach the other.
+# The agent reaches the database ONE way: it discovers the schema, then writes a SELECT. There used to be
+# four hand-written tools alongside these (search_orgs, get_funder, get_grants, get_fit_scores) wrapping.
 TOOLS = [
     db_list_tables,
     db_describe_table,
@@ -39,11 +32,8 @@ TOOLS = [
 
 
 def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
-    # CopilotKitMiddleware was here. It exists for frontend-declared tools,
-    # frontend agent.setState and generative UI; this app registers none of
-    # those, and removing it produced identical answers and identical AG-UI
-    # events while costing four fewer graph nodes per turn. Add it back the day
-    # a useCopilotAction or a useCoAgent appears in the frontend.
+    # CopilotKitMiddleware was here: it serves frontend-declared tools, setState and
+    # generative UI, none of which this app uses. Removing it cost 4 fewer graph nodes.
     middleware = [sql_retry_limiter, clear_old_tool_results()]
     if settings.sql_audit_model:
         # Off unless configured: a real extra model call per SQL turn.
@@ -58,13 +48,6 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         system_prompt=SYSTEM_PROMPT,
         checkpointer=checkpointer,
     )
-    # Langfuse v3 reads LANGFUSE_PUBLIC_KEY/SECRET_KEY/HOST from the env;
-    # attaching the handler at graph level traces every run, tool call, and
-    # generation without touching the AG-UI endpoint. trace_config() returns
-    # just a run name when tracing is off or the SDK cannot load.
-    #
-    # recursion_limit has to be bound here or LangGraph uses its default of 25.
-    # Settings carried the value but nothing passed it, which went unnoticed while
-    # a question cost one curated tool call; writing SQL costs five to twelve, and
-    # every middleware hook is its own graph node on top of that.
+    # Langfuse v3 reads LANGFUSE_PUBLIC_KEY/SECRET_KEY/HOST from the env; attaching the handler at graph
+    # level traces every run, tool call, and generation without touching the AG-UI endpoint. trace_config().
     return agent.with_config({**trace_config(settings), "recursion_limit": settings.recursion_limit})

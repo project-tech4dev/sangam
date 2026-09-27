@@ -1,24 +1,4 @@
-"""Does the agent's result answer what the gold SQL answers?
-
-Comparing generated SQL as TEXT does not work: the same question has many
-correct queries, so a text comparison fails on every valid rephrasing and passes
-a query that returns nothing. Dalgo measured this — on their first judged run an
-LLM SQL judge disagreed with execution on 8 of 11 items, and all 8 were the judge
-false-failing queries that provably return identical results.
-
-So both queries are EXECUTED and their results compared. The comparison is
-deliberately forgiving of presentation and strict on substance:
-
-  forgiving   extra context columns, a full ranking answering a LIMIT-1 gold,
-              column order, int/Decimal/str of the same number, a label the
-              agent worded differently
-  strict      wrong numbers, wrong rows, missing rows, extra rows, an empty
-              result, a claim in the answer the rows do not support
-
-Column order within a row still matters — comparing {state, count} against
-{count, state} positionally is the pragmatic middle between strictness and
-alias noise.
-"""
+"""Does the agent's result answer what the gold SQL answers?"""
 
 from __future__ import annotations
 
@@ -84,11 +64,7 @@ def result_sets_match(gold: list[tuple], agent: list[tuple]) -> bool:
 
 
 def answer_contains_value(answer: str, value: Any) -> bool:
-    """Is a value asserted in the narrated answer?
-
-    Numbers are matched with and without thousands separators, because the
-    prompt asks for '1,284' and the database says 1284.
-    """
+    """Is a value asserted in the narrated answer?"""
     text = (answer or "").lower()
     normalized = _normalize(value)
     if isinstance(normalized, float):
@@ -124,9 +100,8 @@ def gold_satisfied(gold_rows: Sequence[Any], agent_rows: Sequence[Any], answer: 
         labels = [c for c in gold_row if isinstance(_normalize(c), str)]
         return present and all(answer_contains_value(answer, lbl) for lbl in labels)
 
-    # Otherwise: some selection of the agent's columns must equal the gold rows
-    # as a multiset. Extra COLUMNS are fine (agents enrich); extra or missing
-    # ROWS are not.
+    # Otherwise: some selection of the agent's columns must equal the gold rows as a multiset. Extra COLUMNS
+    # are fine (agents enrich); extra or missing ROWS are not.
     if agent and len(agent[0]) <= MAX_PROJECTION_WIDTH:
         width = len(gold[0])
         for picks in permutations(range(len(agent[0])), width):
@@ -150,13 +125,7 @@ def _row_contains(agent_row: tuple, gold_row: tuple) -> bool:
 
 
 def _label_tolerant_match(gold: list[tuple], agent: list[tuple], answer: str) -> bool:
-    """The agent invented its own category labels ('Oct-Dec 2025' for gold 'Q3').
-
-    Numbers can carry row identity instead — but only when every gold row's
-    numeric part is distinct, otherwise the labels are what distinguishes the
-    rows and we stay strict. Every gold label must still appear in the answer.
-    Which label pairs with which number is not re-verified here.
-    """
+    """The agent invented its own category labels ('Oct-Dec 2025' for gold 'Q3')."""
     numeric_gold = [tuple(c for c in row if isinstance(_normalize(c), float)) for row in gold]
     labels = [c for row in gold for c in row if isinstance(_normalize(c), str)]
     if not labels or not all(numeric_gold):

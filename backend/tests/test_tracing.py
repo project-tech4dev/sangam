@@ -1,9 +1,4 @@
-"""Tracing wiring: what reaches Langfuse, and what happens when it can't load.
-
-These are the first tests over agent construction, so they deliberately cover
-the degradation path as well as the happy one — tracing that raises would take
-the whole app down at boot.
-"""
+"""Tracing wiring: what reaches Langfuse, and what happens when it can't load."""
 
 from __future__ import annotations
 
@@ -55,10 +50,8 @@ def test_attaches_handler_with_update_trace(fake_langfuse):
 
 
 def test_handler_is_bound_to_the_configured_client(fake_langfuse):
-    """The mask lives on the client configure_langfuse() registered under our
-    public key. A handler built without that key makes its own client from the
-    environment, and every payload goes out unmasked — the one way to silently
-    lose masking."""
+    """The mask lives on the client configure_langfuse() registered under our public key. A handler
+    built without that key makes its own client from the"""
     trace_config(Settings(**ENABLED))
     assert fake_langfuse["public_key"] == "pk"
 
@@ -108,9 +101,8 @@ async def test_run_is_tagged_with_its_conversation(monkeypatch):
 
 
 async def test_graph_and_request_metadata_both_survive():
-    """The design splits trace attributes across two layers: static tags are
-    bound to the graph, session/user are added per request. LangChain has to
-    merge them or one set is silently dropped — this pins that behaviour."""
+    """The design splits trace attributes across two layers: static tags are bound to the graph,
+    session/user are added per request. LangChain has to"""
     from langchain_core.callbacks import AsyncCallbackHandler
     from langchain_core.runnables import RunnableLambda
 
@@ -195,14 +187,8 @@ async def test_traced_fetch_records_sql_and_row_count(monkeypatch):
 
 
 def test_recursion_limit_reaches_the_graph():
-    """Settings.recursion_limit existed for months without being bound to the
-    graph, so LangGraph silently used its default of 25. Nothing caught it while
-    a question cost one curated tool call; writing SQL costs five to twelve and
-    the turn died mid-answer with GraphRecursionError.
-
-    A setting that is read but never applied is worse than no setting: it reads
-    as configured behaviour in code review.
-    """
+    """Settings.recursion_limit existed for months without being bound to the graph, so LangGraph
+    silently used its default of 25. Nothing caught it while"""
     from langgraph.checkpoint.memory import InMemorySaver
 
     from app.agent.build import build_agent
@@ -213,16 +199,14 @@ def test_recursion_limit_reaches_the_graph():
 
 
 def test_recursion_limit_leaves_room_for_a_real_sql_turn():
-    """Twelve tool calls was the worst observed (a full funder profile), and each
-    model-then-tool cycle costs several graph steps because every middleware hook
-    is its own node."""
+    """Twelve tool calls was the worst observed (a full funder profile), and each model-then-tool cycle
+    costs several graph steps because every middleware hook"""
     assert Settings().recursion_limit >= 150
 
 
 class TestMasking:
-    """Tool outputs carry real warehouse rows — org records, contact names,
-    grant amounts. A trace holding those is only acceptable on a Langfuse
-    inside the deployment, so masking has to be provable, not assumed."""
+    """Tool outputs carry real warehouse rows — org records, contact names, grant amounts. A trace
+    holding those is only acceptable on a Langfuse"""
 
     RESULT = (
         "3 row(s).\n"
@@ -287,9 +271,8 @@ class TestMasking:
 
 
 async def test_a_cancelled_turn_is_not_an_error(fake_langfuse):
-    """A browser disconnect cancels the streaming task mid-turn. The SDK exempts
-    LangGraph's GraphBubbleUp but not asyncio.CancelledError, so every
-    disconnected user would otherwise inflate the error rate."""
+    """A browser disconnect cancels the streaming task mid-turn. The SDK exempts LangGraph's
+    GraphBubbleUp but not asyncio.CancelledError, so every"""
     import asyncio
 
     from app.integrations.tracing import _build_handler
@@ -314,9 +297,8 @@ async def test_a_cancelled_turn_is_not_an_error(fake_langfuse):
 
 
 class TestRedactionIsShapeAware:
-    """Redaction must recognise DATA, not guess at not-metadata. An earlier
-    version stubbed every line that did not look like metadata, which destroyed
-    the SQL in sql_span's input — a bare SELECT is not metadata."""
+    """Redaction must recognise DATA, not guess at not-metadata. An earlier version stubbed every line
+    that did not look like metadata, which destroyed"""
 
     def test_bare_sql_survives(self, monkeypatch):
         monkeypatch.setenv("LANGFUSE_MASK_TOOL_RESULTS", "true")

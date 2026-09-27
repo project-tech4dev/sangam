@@ -1,8 +1,4 @@
-"""The post-answer audit: what it looks at, and that it never breaks a turn.
-
-No API calls — resolve_model is monkeypatched, so every path including the
-failure paths is exercised for free.
-"""
+"""The post-answer audit: what it looks at, and that it never breaks a turn."""
 
 from __future__ import annotations
 
@@ -130,9 +126,8 @@ class TestFailsOpen:
 
 
 def test_an_appended_caveat_is_not_mistaken_for_the_answer():
-    """The caveat is a second AIMessage. Anything reading 'the last AI message'
-    would audit the caveat instead of the answer — and the eval harness would
-    score it."""
+    """The caveat is a second AIMessage. Anything reading 'the last AI message' would audit the caveat
+    instead of the answer — and the eval harness would"""
     from app.agent.audit import CAVEAT_PREFIX
 
     messages = turn() + [AIMessage(content=f"{CAVEAT_PREFIX} the SQL has no state filter")]

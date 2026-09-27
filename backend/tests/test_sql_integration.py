@@ -1,13 +1,4 @@
-"""The server-side guards, proved independently against a real Postgres.
-
-Each layer is tested with the ones above it BYPASSED, because a stack of guards
-where only the first is load-bearing looks identical to a working stack right up
-until the first one has a hole. The validator is deliberately skipped in most of
-these: they assert what the DATABASE refuses.
-
-Run with:  pytest -m integration   (needs the compose stack on localhost:5433
-and `make migrate` for the reader role)
-"""
+"""The server-side guards, proved independently against a real Postgres."""
 
 from __future__ import annotations
 
@@ -29,14 +20,7 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture(scope="module")
 def conn():
-    """autocommit=True to match the app's pool exactly.
-
-    This is not incidental. On a non-autocommit connection psycopg has already
-    opened a transaction, so conn.transaction() creates a SAVEPOINT instead —
-    and SET LOCAL then scopes to the outer transaction that never commits.
-    The leak tests below would pass or fail for reasons unrelated to the code
-    they are meant to cover.
-    """
+    """autocommit=True to match the app's pool exactly."""
     try:
         with psycopg.connect(
             DSN, connect_timeout=3, row_factory=dict_row, autocommit=True
@@ -48,13 +32,7 @@ def conn():
 
 @pytest.fixture
 def as_reader(conn):
-    """The reader role ALONE — deliberately without the read-only transaction.
-
-    Layering both would hide what this fixture exists to prove: Postgres checks
-    read-only before privileges, so a write would raise ReadOnlySqlTransaction
-    and the role's own refusal would never be exercised. Isolating the layer is
-    the whole point of these tests.
-    """
+    """The reader role ALONE — deliberately without the read-only transaction."""
     if not conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (READER_ROLE,)).fetchone():
         pytest.skip(f"{READER_ROLE} missing — run `make migrate`")
     with conn.transaction(force_rollback=True):

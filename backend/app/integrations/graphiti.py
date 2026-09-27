@@ -1,12 +1,4 @@
-"""Graphiti temporal knowledge graph over Neo4j.
-
-The graph stores relationship facts EXTRACTED from source text (episodes) —
-Postgres remains the system of record, and the graph is rebuildable from it
-(see seed/graph_seed.py). Graph features are optional: they activate only when
-NEO4J_URI is set and an OpenAI key is available (Graphiti's default extraction
-LLM, embedder, and reranker are all OpenAI; Anthropic offers no embedding
-models).
-"""
+"""Graphiti temporal knowledge graph over Neo4j."""
 
 from __future__ import annotations
 

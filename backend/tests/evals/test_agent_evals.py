@@ -1,16 +1,4 @@
-"""Golden questions through the real agent.
-
-    make evals                      every case
-    make evals TAG=canary           the cheap subset
-    pytest tests/evals --run-evals  directly
-
-These cost money. Without --run-evals they skip.
-
-Two cases are EXPECTED TO FAIL today, and both are data bugs rather than agent
-bugs — see their `note`. Do not try to fix them with prompt engineering; they
-pass when the schema migrations land, and until then they are the regression
-test proving the agent discloses the problem instead of reporting it as truth.
-"""
+"""Golden questions through the real agent."""
 
 from __future__ import annotations
 
@@ -34,10 +22,8 @@ def pytest_generate_tests(metafunc):
     for case in cases:
         marks = []
         if case.get("expected_failure"):
-            # strict: when the underlying data is fixed the case starts passing,
-            # pytest reports XPASS as a failure, and someone deletes the marker.
-            # A permanently-red suite gets ignored; a suite that goes red when a
-            # bug is FIXED gets read.
+            # strict: fixing the data makes the case pass, XPASS fails the suite, and the
+            # marker gets deleted. A permanently-red suite gets ignored.
             marks.append(pytest.mark.xfail(reason=case["expected_failure"], strict=True))
         params.append(pytest.param(case, id=case["id"], marks=marks))
     metafunc.parametrize("case", params)
@@ -45,15 +31,8 @@ def pytest_generate_tests(metafunc):
 
 @pytest.fixture
 async def agent_pool():
-    """The agent's tools reach the database through the module-level pool, the
-    same way they do in the app — there is no per-request injection for them.
-
-    Function-scoped on purpose. A module-scoped async fixture is created on a
-    different event loop than the tests that use it, and an AsyncConnectionPool
-    bound to a dead loop fails every checkout — which surfaces as the agent
-    politely reporting "the database is unreachable" and every case failing for
-    a reason that has nothing to do with the agent.
-    """
+    """The agent's tools reach the database through the module-level pool, the same way they do in the
+    app — there is no per-request injection for them."""
     pool = psycopg_pool.AsyncConnectionPool(
         DSN,
         min_size=1,
@@ -106,11 +85,8 @@ async def test_case(case, eval_settings, slug_ids, db, agent_pool):
     if case.get("gold_sql"):
         gold_rows = [tuple(r.values()) for r in db.execute(case["gold_sql"]).fetchall()]
         if agent_sql:
-            # Every query the agent ran, not just the last one. Agents work in
-            # steps — asked for the top fit score, one ran the ranking query and
-            # then a follow-up for the adjustment log, and scoring the LAST query
-            # compared the gold against the adjustment rows and failed a correct
-            # answer. Any query satisfying the gold means it retrieved the data.
+            # Every query the agent ran, not just the last: agents work in steps, and
+            # scoring only the final one failed a correct answer.
             agent_rows = _best_match(db, agent_sql, gold_rows, answer, result)
 
     score(resolved, result, gold_rows=gold_rows, agent_rows=agent_rows)

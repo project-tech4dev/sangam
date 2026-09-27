@@ -1,19 +1,4 @@
-"""Turn a Postgres error into something the model can act on.
-
-The retry loop already exists — deepagents feeds a tool's returned string back
-to the model — so the only question is whether the string carries enough to
-converge. Two rules, both learned the hard way:
-
-  * **Echo the SQL that actually ran.** The model sent one string and the
-    executor ran the regenerated one. Without the echo it diffs against text
-    that never existed and re-sends the same mistake.
-  * **Never surface the driver's connection errors verbatim.** psycopg puts the
-    DSN — host, user, sometimes more — into OperationalError. That must not
-    reach a model provider or a chat transcript.
-
-Duck-typed on `.sqlstate` and `.diag` so it can be unit-tested with a fake
-exception and no database.
-"""
+"""Turn a Postgres error into something the model can act on."""
 
 from __future__ import annotations
 
@@ -153,14 +138,5 @@ def _guidance(sqlstate: str, exc: Any, executed_sql: str, tables: Sequence[str])
 
 
 def _is_connection_error(exc: Exception) -> bool:
-    """True when the server never answered, so the text may carry the DSN.
-
-    Tested by presence of a SQLSTATE, not by exception class name. A server-side
-    SQL error always carries one. Everything without one — psycopg's
-    OperationalError and PoolTimeout, asyncio.TimeoutError, ConnectionRefusedError,
-    a bare OSError — came from the driver or the network, and any of those can
-    render the host and user we connected with. Matching on class names would
-    have to enumerate that list correctly forever; this asks the question that
-    actually matters and fails safe for anything unanticipated.
-    """
+    """True when the server never answered, so the text may carry the DSN."""
     return getattr(exc, "sqlstate", None) is None

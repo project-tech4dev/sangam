@@ -30,14 +30,8 @@ function IndexCard({ stats }: { stats: Stats | null }) {
   );
 }
 
-/** The SQL a db_query step actually ran.
- *
- * Read from the RESULT, not from the step's arguments: the validator regenerates
- * the statement from its parse tree, so what executed is not what the model wrote
- * — clamped limits, expanded stars and quoted identifiers all differ. Showing the
- * model's draft instead would make the trace a plausible lie, which is worse than
- * showing nothing.
- */
+/** The SQL a db_query step actually ran — read from the RESULT, not the step's
+ *  arguments, because the validator regenerates the statement before executing it. */
 function executedSql(step: TraceStep): string | null {
   if (step.tool !== "db_query" || !step.result) return null;
   const match = step.result.match(/^executed: (.+)$/m);

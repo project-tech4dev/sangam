@@ -1,12 +1,4 @@
-"""What the SQL validator must refuse, and what it must let through.
-
-Each rejection asserts on the *message*, not merely that something raised. The
-message is the interface: deepagents feeds it back to the model as the tool
-result, so a rejection that does not name the problem burns an attempt from the
-retry budget and teaches the model nothing.
-
-These tests touch no database and no network.
-"""
+"""What the SQL validator must refuse, and what it must let through."""
 
 from __future__ import annotations
 
@@ -291,11 +283,7 @@ class TestCitations:
 
 
 class TestRealQueriesStillParse:
-    """The seven queries the curated tools already run, with placeholders made literal.
-
-    Asserts idempotence of generation, not AST equality: sqlglot upper-cases
-    unknown function names, so a repr comparison false-fails on similarity().
-    """
+    """The seven queries the curated tools already run, with placeholders made literal."""
 
     CORPUS = (
         """SELECT o.id, o.name, dl.name AS district, sl.name AS state

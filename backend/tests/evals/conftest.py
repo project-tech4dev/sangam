@@ -1,9 +1,4 @@
-"""Gating for the agent evals: real model calls, so never by accident.
-
-A conftest FLAG rather than `addopts = "-m 'not eval'"`. A command-line `-m`
-REPLACES addopts' `-m`, so the documented `pytest -m integration` workflow would
-silently start billing model calls. The flag cannot be defeated that way.
-"""
+"""Gating for the agent evals: real model calls, so never by accident."""
 
 from __future__ import annotations
 
@@ -74,12 +69,7 @@ def eval_settings() -> Settings:
 
 @pytest.fixture(scope="session")
 def slug_ids() -> dict[str, str]:
-    """slug -> id, for every citable entity.
-
-    Cases name entities by slug because ids are GENERATED ALWAYS AS IDENTITY and
-    differ between a fresh local seed and the deployed database. Hardcoding
-    [org:7] would make the suite pass or fail on seed order.
-    """
+    """slug -> id, for every citable entity."""
     try:
         with psycopg.connect(DSN, connect_timeout=3, row_factory=dict_row) as conn:
             mapping = {}

@@ -1,7 +1,4 @@
-"""Middleware for the deep agent.
-
-Two concerns, both about what happens when a turn goes wrong rather than right.
-"""
+"""Middleware for the deep agent."""
 
 from __future__ import annotations
 
@@ -21,14 +18,8 @@ from app.integrations.tracing import score_answer
 
 logger = logging.getLogger(__name__)
 
-# Failed db_query attempts allowed per user question. The system prompt is told
-# the same number so the model stops gracefully first; this is the deterministic
-# backstop for when it does not.
-#
-# Only db_query counts. Discovery calls (db_describe_table, db_profile_column)
-# routinely take two or three tries against an unfamiliar schema, and spending
-# the SQL budget on them is what forced Dalgo to raise theirs from 3 to 5. The
-# graph's recursion_limit is the backstop for a model looping on discovery.
+# Failed db_query attempts allowed per user question. The system prompt is told the same number so the model
+# stops gracefully first; this is the deterministic backstop for when it does not.  Only db_query counts.
 MAX_SQL_ATTEMPTS = 5
 
 COUNTED_TOOL = "db_query"
@@ -47,12 +38,7 @@ _GIVE_UP = (
 
 
 def count_failed_sql_attempts(messages: list[BaseMessage]) -> int:
-    """Failed db_query calls since the user's most recent message.
-
-    The reset at each HumanMessage is the point: the budget is per question, not
-    per conversation, or a long session would arrive at its sixth question with
-    nothing left.
-    """
+    """Failed db_query calls since the user's most recent message."""
     failures = 0
     for message in reversed(messages):
         if isinstance(message, HumanMessage):
@@ -69,11 +55,7 @@ def count_failed_sql_attempts(messages: list[BaseMessage]) -> int:
 
 @before_model(can_jump_to=["end"])
 def sql_retry_limiter(state, runtime):
-    """Stop the loop after MAX_SQL_ATTEMPTS failed queries for one question.
-
-    Must run first in the middleware list: it can jump to the end, and a hook
-    that jumps has to get there before the ones that do work.
-    """
+    """Stop the loop after MAX_SQL_ATTEMPTS failed queries for one question."""
     failures = count_failed_sql_attempts(state["messages"])
     if failures < MAX_SQL_ATTEMPTS:
         return None
@@ -94,13 +76,7 @@ def clear_old_tool_results() -> ContextEditingMiddleware:
 
 
 def answer_audit(model_spec: str):
-    """Append a caveat when a cheap second opinion finds a problem with the answer.
-
-    after_agent, not after_model: this must run once, on the finished answer, not
-    after every model call in the loop. It appends rather than edits because by
-    the time it runs the answer has already streamed to the user — there is
-    nothing left to correct in place, only something to add.
-    """
+    """Append a caveat when a cheap second opinion finds a problem with the answer."""
 
     @after_agent(name="answer_audit")
     def _audit(state, runtime):
