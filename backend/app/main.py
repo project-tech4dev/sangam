@@ -1,8 +1,4 @@
-"""Application factory and the ASGI entrypoint (`app.main:app`).
-
-This module wires pieces together and does nothing else: lifecycle lives in
-`app.core.lifespan`, routes in `app.api.router`, settings in `app.core.config`.
-"""
+"""Application factory and the ASGI entrypoint (`app.main:app`)."""
 
 from __future__ import annotations
 

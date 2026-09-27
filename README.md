@@ -10,8 +10,9 @@ browser ── Next.js (:3000) ── /api/copilotkit (CopilotKit v2 runtime)
                 │                    │ AG-UI (SSE)
                 │ REST               ▼
                 └────────── FastAPI (:8010) ── LangGraph deep agent
-                                     │           │ tools: search_orgs · get_funder · get_grants
-                                     │           │        get_fit_scores · search_graph · fetch_url
+                                     │           │ tools: db_list_tables · db_describe_table
+                                     │           │        db_profile_column · db_query
+                                     │           │        search_graph · fetch_url
                                      ▼           ▼
                     Postgres + pgvector (:5433)   Neo4j (:7474/:7687)
                     records · scores · documents  temporal knowledge graph
@@ -37,9 +38,9 @@ Open:
 
 Prove the agent → Postgres → citation loop in the chat:
 
-1. *“Which NGOs in our database work in Assam?”* → visible `search_orgs` call, answer cites `[org:N]`.
+1. *“Which NGOs in our database work in Assam?”* → visible `db_query` call, answer cites `[org:N]`.
 2. *“How well does KABIL fit Axis Bank Foundation, and why did Eligibility lose points?”*
-   → `get_fit_scores` call; the answer should cite the CSR-1 gap (16/20 on criterion 2, rubric v1)
+   → `db_query` over the rubric tables; the answer should cite the CSR-1 gap (16/20 on criterion 2, rubric v1)
    and mention the hand-vetting adjustment (Relationship 10 → 7, grant concluded ~March 2022).
 3. Refresh mid-conversation and continue — threads persist in Postgres (LangGraph checkpointer).
 
@@ -112,13 +113,13 @@ docker compose (`make up`).
 ## Agentic layer (how the chat actually works)
 
 The "intelligence" is one LangGraph **deep agent** (`deepagents` + Claude, built in
-`backend/app/agent/graph.py`), exposed to the frontend over the **AG-UI protocol**
+`backend/app/agent/build.py`), exposed to the frontend over the **AG-UI protocol**
 (`add_langgraph_fastapi_endpoint` at `/agent`; the Next.js CopilotKit runtime proxies it).
 Design principles, in priority order:
 
 1. **Tools are the only source of truth.** The agent answers exclusively from tool results —
    never from the model's own knowledge of an org or funder. No data → it says so.
-   The system prompt enforcing this lives in `backend/app/agent/prompt.py`.
+   The system prompt enforcing this lives in `backend/app/agent/instructions.md`.
 2. **Every fact is cited.** Tool results embed markers — `[org:9]`, `[funder:1]`, `[grant:2]`,
    `[score:1]`, `[graph:ab12cd34]` — and the agent must repeat them inline next to each claim,
    so every sentence traces to a Postgres row or a graph edge.
@@ -126,21 +127,21 @@ Design principles, in priority order:
 
    | Question | Tool | Backing store |
    |---|---|---|
-   | "Which NGOs work in Assam?" | `search_orgs` | Postgres (orgs + identifiers/tags/locations) |
+   | "Which NGOs work in Assam?" | `db_query` | Postgres (orgs + tags/locations) |
    | "Tell me about SBI Foundation" | `get_funder` | Postgres (funders + contacts + grants summary) |
-   | "Who has funded KABIL?" | `get_grants` | Postgres `grants` (authoritative record) |
-   | "How well does KABIL fit ABF, and why?" | `get_fit_scores` | Postgres rubric family + adjustment audit log |
+   | "Who has funded KABIL?" | `db_query` | Postgres `grants` (authoritative record) |
+   | "How well does KABIL fit ABF, and why?" | `db_query` | Postgres rubric family + adjustment audit log |
    | "What *connects* KABIL to Tata Trusts?" | `search_graph` | Neo4j via Graphiti (temporal facts) |
    | Fetch a page the user links | `fetch_url` | live web |
 
 4. **Tools never raise.** Errors return as strings so the agent can see the failure and adapt
-   (`backend/app/tools/db_tools.py` / `graph_tools.py`). If the graph is unconfigured, the agent
+   (`backend/app/agent/tools/sql_tools.py` / `graph_tools.py`). If the graph is unconfigured, the agent
    is told so and falls back to SQL tools, disclosing the limitation in its answer.
 5. **Conversations persist.** Threads checkpoint into Postgres (`AsyncPostgresSaver` on the
    shared connection pool, `backend/app/db/checkpointer.py`) — refresh mid-chat and continue.
 6. **Adding a tool** = write an async function with the citation-marker + error-as-string
-   conventions in `backend/app/tools/`, register it in `agent/graph.py`, and mention its marker
-   in `agent/prompt.py`. The chat UI renders new tool calls automatically (wildcard renderer
+   conventions in `backend/app/agent/tools/`, register it in `agent/build.py`, and mention its marker
+   in `agent/instructions.md`. The chat UI renders new tool calls automatically (wildcard renderer
    in `frontend/app/page.tsx`).
 
 Model and keys: the agent's reasoning model is `MODEL` (default `anthropic:claude-sonnet-5`,

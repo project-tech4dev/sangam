@@ -1,6 +1,6 @@
 # Migrations
 
-Forward-only SQL migrations, applied by `backend/app/migrate.py`.
+Forward-only SQL migrations, applied by `backend/app/db/migrate.py`.
 
 ```
 make migrate-status     # what would run

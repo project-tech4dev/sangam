@@ -48,8 +48,7 @@ async def fetch_url(url: str) -> str:
     if "pdf" in content_type or url.lower().split("?")[0].endswith(".pdf"):
         return (
             f"{url} is a PDF ({len(response.content):,} bytes), which fetch_url cannot "
-            f"read directly. Use download_file to save it, then read_pdf to extract "
-            f"its text."
+            f"read. Tell the user the link is a PDF and what you would need from it."
         )
 
     text = trafilatura.extract(response.text, url=url) or ""

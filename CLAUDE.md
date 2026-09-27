@@ -52,13 +52,27 @@ pytest -m "not integration"         # skip tests needing the compose Postgres on
 ruff check .                        # line-length 110, target py312
 ```
 
+```bash
+make evals                          # golden questions through the real agent (COSTS MONEY)
+make evals TAG=canary               # the cheap subset
+```
+
 `asyncio_mode = "auto"` — async tests need no `@pytest.mark.asyncio`. **Unit tests never
 touch a database**: `client_for(*routers)` builds a router-only FastAPI app with no lifespan
 (no pool, no agent, no model) and overrides two dependencies — `get_current_user`, and
 `get_pool` with a `_SentinelPool` that raises on any attribute access. Routers take the pool
 as `PoolDep`, so that one override covers every router; monkeypatch the `repositories/`
-function rather than the pool. Only `tests/test_migration_integrity.py` carries the
-`integration` mark.
+function rather than the pool. `tests/test_migration_integrity.py` and
+`tests/test_sql_integration.py` carry the `integration` mark.
+
+`tests/evals/` is a third tier: golden questions run through the **real agent**, so they cost
+money. They carry the `eval` mark and are skipped unless `--run-evals` is passed. That is a
+conftest flag rather than an `addopts` filter on purpose — a command-line `-m` *replaces*
+addopts' `-m`, so `pytest -m integration` would otherwise start billing model calls. `make
+evals` runs them on the host venv, because the image installs runtime dependencies only and
+has no pytest. A case with `expected_failure` is `xfail(strict=True)`: when the underlying
+data bug is fixed the case passes, pytest reports XPASS as a failure, and the marker gets
+deleted.
 
 Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaults to the
 container path `/srv/db/migrations`.
@@ -86,8 +100,9 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
               │             │ AG-UI (SSE)
               │ REST        ▼
               └────── FastAPI ── LangGraph deep agent
-                          │          tools: search_orgs · get_funder · get_grants
-                          │                 get_fit_scores · search_graph · fetch_url
+                          │          tools: db_list_tables · db_describe_table
+                          │                 db_profile_column · db_query
+                          │                 search_graph · fetch_url
                           ▼
               Postgres + pgvector        Neo4j (optional)
 ```
@@ -102,8 +117,8 @@ backend/app/
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
   schemas/         Pydantic, one module per resource
-  agent/           graph.py (builds the deep agent) · models.py · prompt.py
-  tools/           the agent's tools
+  agent/           build.py (builds the deep agent) · models.py · tools/
+                   instructions.md (the system prompt) · prompt.py (loads it)
   integrations/    graphiti.py (Neo4j client lifecycle)
 
 frontend/
@@ -124,8 +139,8 @@ Things worth knowing before changing anything:
 from source text and is rebuildable from Postgres (`seed/graph_seed.py`). Keep that
 property — nothing should live only in the graph.
 
-**The agent reaches the database through tools, not the API.** `backend/app/tools/db_tools.py`
-queries repositories directly. `backend/app/api/routes/` serves the frontend's REST calls. They
+**The agent reaches the database through tools, not the API.** `backend/app/agent/tools/sql_tools.py`
+runs model-written SELECTs against it directly. `backend/app/api/routes/` serves the frontend's REST calls. They
 share `repositories/` but are separate paths; changing one does not change the other.
 
 **The frontend talks to the backend two ways.** Server components use
@@ -145,51 +160,87 @@ Routers take the pool as `pool: PoolDep` (from `app/db/pool.py`) rather than cal
 `get_pool()` in the body — that is what makes it overridable per-app. Agent tools, which run
 outside any request, still call `get_pool()` directly.
 
-**Two files are called `graph`** — check which one a traceback means:
-
-| File | Is |
-|---|---|
-| `app/agent/graph.py` | builds the deep agent (`create_deep_agent`) |
-| `app/tools/graph_tools.py` | the `search_graph` agent tool |
-
-The Graphiti/Neo4j client lifecycle (`open_graph`, `graph_status`, `client`) lives in
-`app/integrations/graphiti.py` — it used to be a third `graph.py`.
+**Only one file is called `graph`**: `app/agent/tools/graph_tools.py`, the `search_graph` agent
+tool. The deep agent is built in `app/agent/build.py`, and the Graphiti/Neo4j client lifecycle
+(`open_graph`, `graph_status`, `client`) lives in `app/integrations/graphiti.py`. Both used to
+be called `graph.py` too, which made tracebacks ambiguous.
 
 **`deepagents` is LangGraph, not an alternative to it.** `create_deep_agent()` is a preset
 middleware stack over `langchain.agents.create_agent` and returns a compiled LangGraph
 graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 `add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
 
-**The agent has exactly six tools, and some config implies more than is wired.**
-`app/agent/graph.py` registers `search_orgs`, `get_funder`, `get_grants`, `get_fit_scores`,
-`search_graph`, `fetch_url` — nothing else. `app/tools/mcp.py` (GitHub and Playwright MCP
-servers), `app/tools/files.py` (`download_file`, `read_pdf`) and `web.make_web_search`
-(Tavily) are complete but imported nowhere, and the `Settings` fields that feed them —
-`tavily_api_key`, `github_pat`, `github_mcp_url`, `playwright_mcp_url`, `mcp_servers` —
-therefore do nothing until those tools are registered. Setting them changes no behaviour.
+**The agent has exactly six tools, and there is ONE path to the database.**
+`app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
+`db_query`, `search_graph`, `fetch_url`. Nothing else.
+
+There used to be four hand-written tools wrapping fixed queries (`search_orgs`, `get_funder`,
+`get_grants`, `get_fit_scores`). They were removed, and it is worth knowing why before
+proposing another: they were a cached query plan rather than a capability, and a worse one.
+Asked which organisations work in Assam, `search_orgs` read only `orgs.registered_location_id`
+and returned all ten; the model writing its own SQL found `org_locations`, cross-checked both
+relationships and answered seven. Two paths to the same rows also meant two places to keep
+correct — a data caveat added to the catalog reached `db_query` and not `search_orgs`. The cost
+is latency: a curated lookup was one tool call, the same question in SQL is three to five.
+
+`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) and `web.make_web_search` (Tavily)
+are complete but imported nowhere, and the `Settings` fields that feed them — `tavily_api_key`,
+`github_pat`, `github_mcp_url`, `playwright_mcp_url`, `mcp_servers` — therefore do nothing until
+those tools are registered. Setting them changes no behaviour.
+
+**The SQL tools let the model write its own SELECT, behind four layers.** Full design in
+`docs/SQL_AGENT.md`; the parts you need before touching them:
+
+- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 28 tables, and a column not
+  listed there does not exist as far as the tool is concerned. It also carries `defects`:
+  evidence-backed caveats about the *data* that get injected into every result touching the
+  table, so the model cannot report "0 rows" as "none exist". Delete a defect line when a
+  migration fixes the underlying data. `verify_against_db()` runs at boot and **raises** on
+  drift — deliberately not the degrade-quietly rule, because a catalog that disagrees with the
+  schema produces confidently wrong answers.
+- `validator.py` is pure: no pool, no async, no settings. **The model's SQL string never
+  executes** — what runs is the regenerated sqlglot AST, which is what actually kills
+  multi-statement injection and comment smuggling.
+- `executor.py` wraps every query in a read-only transaction with `SET LOCAL statement_timeout`,
+  and passes `prepare=True` so the *server* refuses multi-command statements. All
+  transaction-scoped, because this pool is shared with the LangGraph checkpointer, which writes.
+  **The app connects as the database owner, which is a superuser**, so the catalog is what keeps
+  the checkpoint tables and `pg_read_file` out of reach — there is no second line of defence. A
+  SELECT-only role was built and dropped as too much deploy surface for a first cut; see
+  `docs/SQL_AGENT.md`.
+
+`SQL_AUDIT_MODEL` turns on a post-answer audit (`app/agent/audit.py`): a cheap second model
+checks grain, missing filters, false zeros and whether the figures in the prose match the rows,
+then appends a caveat. It never blocks and never edits — by the time it runs the answer has
+already streamed. Off by default because it is a real extra model call per SQL turn.
+
+Adding a table to the catalog is a **security decision**, not bookkeeping: a new table is
+invisible to the agent until someone puts it there, and boot logs any live table that is
+neither catalogued nor in `KNOWN_EXCLUDED`.
 
 ## Conventions
 
 **Schema changes go in `db/migrations/*.sql`, never in `db/init/02_schema.sql`.** The
 baseline is what a brand-new database gets; migrations carry everything after it. See
 `db/migrations/README.md`. `db/migrations/` currently holds only that README — the baseline
-is still the entire schema, and `make migrate` creates `schema_migrations` but applies
-nothing until the first `0001_*.sql` lands. (`README.md` says migrations live in `db/init/`;
+is still the entire schema, and `make migrate` creates `schema_migrations` but applies nothing
+until the first `0001_*.sql` lands. (`README.md` says migrations live in `db/init/`;
 it is stale, this rule wins.)
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:
 
 - *Errors are return values.* A raised exception aborts the entire agent run; a returned
-  error string lets the model see the failure and adapt. Every tool body in `app/tools/` is
+  error string lets the model see the failure and adapt. Every tool body in `app/agent/tools/` is
   wrapped in `try/except` returning `f"<tool> failed: {exc}"`.
 - *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
-  `[grant:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/prompt.py` requires the
+  `[grant:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces
   uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
 
-Adding a tool: write the async function in `app/tools/` with both conventions, register it
-in `app/agent/graph.py`, describe its marker in `app/agent/prompt.py`, and add a label to
+Adding a tool: write the async function in `app/agent/tools/` with both conventions, register it
+in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asserts every
+registered tool is named there), and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name;
 `HIDDEN_TOOLS` there suppresses the `deepagents` filesystem built-ins from the trace).
 
@@ -250,8 +301,6 @@ Non-obvious constraints:
   just an env edit.
 - **Vercel's Python bundle limit is 500 MB.** The backend's dependency tree is ~256 MB and
   fits with no trimming.
-- The backend runs as a Vercel Function, so the filesystem is ephemeral — anything written
-  to `downloads_dir` disappears between invocations.
 
 ## Working state
 

@@ -56,11 +56,15 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      # Post-answer audit of SQL answers; empty = off. See docs/SQL_AGENT.md.
+      SQL_AUDIT_MODEL: ${SQL_AUDIT_MODEL:-}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
       LANGFUSE_TRACING_ENVIRONMENT: ${LANGFUSE_TRACING_ENVIRONMENT:-local}
       LANGFUSE_RELEASE: ${LANGFUSE_RELEASE:-}
+      # Keeps warehouse rows out of traces; the SQL and row counts still show.
+      LANGFUSE_MASK_TOOL_RESULTS: ${LANGFUSE_MASK_TOOL_RESULTS:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       ALLOWED_ORIGIN_REGEX: ${ALLOWED_ORIGIN_REGEX:-}
       # Graph data is embedded at 768 dims — all ingestion/search must match.

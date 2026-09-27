@@ -1,21 +1,4 @@
-"""Forward-only SQL migration runner.
-
-Why not Alembic: this codebase deliberately uses raw psycopg with hand-written
-SQL and no ORM, so there are no models for Alembic to autogenerate from. What
-remains of Alembic in that setup is a version table and an ordered file list,
-which is what this module is.
-
-Contract:
-  - db/migrations/NNNN_name.sql, applied in filename order, one transaction each.
-  - Each applied file is recorded in schema_migrations with a checksum. Editing
-    an already-applied file is reported as drift rather than silently ignored.
-  - db/init/02_schema.sql remains the baseline for a brand-new database; this
-    runner carries every change made after that baseline.
-
-Usage (both work against the bundled *and* an external DATABASE_URL):
-    python -m app.db.migrate --status
-    python -m app.db.migrate
-"""
+"""Forward-only SQL migration runner."""
 
 from __future__ import annotations
 
@@ -76,9 +59,8 @@ def main() -> int:
             digest = _checksum(sql)
             if version in applied:
                 if applied[version] != digest:
-                    # Loud, but not fatal: the DB is already in the edited
-                    # file's intended end state only if someone applied it by
-                    # hand. Surfacing it beats pretending the file is current.
+                    # Loud, but not fatal: the DB is already in the edited file's intended end state only if
+                    # someone applied it by hand. Surfacing it beats pretending the file is current.
                     say(f"  ! {version} — DRIFT: file changed after it was applied")
                 else:
                     say(f"  = {version} (applied {'' if status_only else 'earlier'})")

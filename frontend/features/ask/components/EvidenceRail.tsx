@@ -2,7 +2,7 @@
 
 import { extractCitations, citationTarget, type RegistryIndex } from "../lib/citations";
 import { HIDDEN_TOOLS, humanizeTool } from "../lib/toolLabels";
-import type { Turn } from "../lib/useSangamChat";
+import type { TraceStep, Turn } from "../lib/useSangamChat";
 import { CitationChip } from "./AnswerCard";
 
 type Stats = Record<string, number>;
@@ -28,6 +28,14 @@ function IndexCard({ stats }: { stats: Stats | null }) {
       ))}
     </div>
   );
+}
+
+/** The SQL a db_query step actually ran — read from the RESULT, not the step's
+ *  arguments, because the validator regenerates the statement before executing it. */
+function executedSql(step: TraceStep): string | null {
+  if (step.tool !== "db_query" || !step.result) return null;
+  const match = step.result.match(/^executed: (.+)$/m);
+  return match ? match[1] : null;
 }
 
 export function EvidenceRail({

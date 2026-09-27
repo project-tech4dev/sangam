@@ -1,8 +1,4 @@
-"""Test scaffolding: stub apps per router (no lifespan → no pool/agent/model).
-
-Unit tests monkeypatch repository functions, so no database is required.
-Integration tests (marked) hit the compose Postgres on localhost:5433.
-"""
+"""Test scaffolding: stub apps per router (no lifespan → no pool/agent/model)."""
 
 from __future__ import annotations
 

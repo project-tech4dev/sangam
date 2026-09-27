@@ -1,6 +1,6 @@
 .PHONY: up down logs seed graph-seed smoke db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
-        dev-backend dev-frontend
+        dev-backend dev-frontend evals
 
 SHELL := /bin/bash
 
@@ -74,6 +74,19 @@ smoke:
 # Works against any ENV: make migrate ENV=staging
 migrate:
 	$(COMPOSE) run --rm --no-deps backend python -m app.db.migrate
+
+# Golden-question evals through the real agent. Real model calls: ~10c/case.
+#   make evals             every case
+#   make evals TAG=canary  the cheap subset
+#
+# Runs on the HOST venv, not in the container: the image installs only the
+# runtime dependencies from pyproject.toml, so it has no pytest. The recipe is
+# @-prefixed and sources .env quietly — it carries the provider API key, and an
+# echoed recipe line would put it in the terminal scrollback.
+evals:
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+	cd backend && TEST_DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
+	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) -q
 
 migrate-status:
 	$(COMPOSE) run --rm --no-deps backend python -m app.db.migrate --status

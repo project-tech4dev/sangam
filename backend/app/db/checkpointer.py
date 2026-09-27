@@ -1,11 +1,4 @@
-"""Pooled Postgres LangGraph checkpointer.
-
-Unlike AsyncPostgresSaver.from_conn_string (a single connection that serializes
-concurrent streams), this opens an AsyncConnectionPool. The pool kwargs are the
-documented requirements for the saver: autocommit so setup() DDL commits,
-prepare_threshold=0 to stay compatible with transaction poolers, and dict_row
-because the saver reads rows by column name.
-"""
+"""Pooled Postgres LangGraph checkpointer."""
 
 from __future__ import annotations
 

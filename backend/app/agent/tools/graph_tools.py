@@ -15,9 +15,9 @@ async def search_graph(query: str) -> str:
     Tata Trusts?" or "which intermediaries co-implement with Axis Bank
     Foundation?".
 
-    Use this for connection/relationship questions; use search_orgs /
-    get_funder / get_fit_scores for factual record lookups. Returns temporal
-    facts with [graph:ID] citation markers and validity dates.
+    Use this for connection/relationship questions; use db_query for factual
+    record lookups. Returns temporal facts with [graph:ID] citation markers and
+    validity dates.
     """
     try:
         if graphiti.client is None:

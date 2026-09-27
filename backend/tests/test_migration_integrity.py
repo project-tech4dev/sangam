@@ -1,8 +1,4 @@
-"""Post-migration integrity checks against the live compose Postgres.
-
-Run with:  pytest -m integration
-Requires the compose stack (localhost:5433) after `make db-upgrade`.
-"""
+"""Post-migration integrity checks against the live compose Postgres."""
 
 import os
 

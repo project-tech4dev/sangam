@@ -1,20 +1,22 @@
 type ToolLabel = { label: string; detail: (args: any) => string };
 
 const TOOL_LABELS: Record<string, ToolLabel> = {
-  search_orgs: { label: "Searching the registry", detail: (a) => `search_orgs · “${a?.query ?? ""}”` },
-  get_funder: { label: "Reading the funder profile", detail: (a) => `get_funder · ${a?.name ?? ""}` },
-  get_grants: {
-    label: "Pulling funding relationships",
-    detail: (a) => `get_grants · ${[a?.org, a?.funder, a?.status].filter(Boolean).join(" × ") || "all"}`,
-  },
-  get_fit_scores: {
-    label: "Reading rubric fit scores",
-    detail: (a) => `get_fit_scores · ${[a?.org, a?.funder].filter(Boolean).join(" × ")}`,
-  },
   search_graph: { label: "Querying the knowledge graph", detail: (a) => `search_graph · “${a?.query ?? ""}”` },
   fetch_url: { label: "Fetching a web page", detail: (a) => a?.url ?? "" },
   write_todos: { label: "Planning the approach", detail: () => "write_todos" },
   task: { label: "Delegating a sub-task", detail: () => "task" },
+  db_list_tables: { label: "Checking what data exists", detail: () => "db_list_tables" },
+  db_describe_table: {
+    label: "Reading the table structure",
+    detail: (a) => `db_describe_table · ${a?.tables ?? ""}`,
+  },
+  db_profile_column: {
+    label: "Checking how values are stored",
+    detail: (a) => `db_profile_column · ${[a?.table, a?.column].filter(Boolean).join(".")}`,
+  },
+  // `purpose` reads better than raw SQL in a one-line label; the query itself is
+  // shown in full by the evidence rail, which is what makes the answer auditable.
+  db_query: { label: "Running a query", detail: (a) => a?.purpose ?? a?.sql ?? "" },
 };
 
 /** deepagents filesystem built-ins — noise in a trace, hidden by default. */
