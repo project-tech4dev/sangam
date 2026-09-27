@@ -10,8 +10,9 @@ browser ── Next.js (:3000) ── /api/copilotkit (CopilotKit v2 runtime)
                 │                    │ AG-UI (SSE)
                 │ REST               ▼
                 └────────── FastAPI (:8010) ── LangGraph deep agent
-                                     │           │ tools: search_orgs · get_funder · get_grants
-                                     │           │        get_fit_scores · search_graph · fetch_url
+                                     │           │ tools: db_list_tables · db_describe_table
+                                     │           │        db_profile_column · db_query
+                                     │           │        search_graph · fetch_url
                                      ▼           ▼
                     Postgres + pgvector (:5433)   Neo4j (:7474/:7687)
                     records · scores · documents  temporal knowledge graph
@@ -37,9 +38,9 @@ Open:
 
 Prove the agent → Postgres → citation loop in the chat:
 
-1. *“Which NGOs in our database work in Assam?”* → visible `search_orgs` call, answer cites `[org:N]`.
+1. *“Which NGOs in our database work in Assam?”* → visible `db_query` call, answer cites `[org:N]`.
 2. *“How well does KABIL fit Axis Bank Foundation, and why did Eligibility lose points?”*
-   → `get_fit_scores` call; the answer should cite the CSR-1 gap (16/20 on criterion 2, rubric v1)
+   → `db_query` over the rubric tables; the answer should cite the CSR-1 gap (16/20 on criterion 2, rubric v1)
    and mention the hand-vetting adjustment (Relationship 10 → 7, grant concluded ~March 2022).
 3. Refresh mid-conversation and continue — threads persist in Postgres (LangGraph checkpointer).
 
@@ -126,15 +127,15 @@ Design principles, in priority order:
 
    | Question | Tool | Backing store |
    |---|---|---|
-   | "Which NGOs work in Assam?" | `search_orgs` | Postgres (orgs + identifiers/tags/locations) |
+   | "Which NGOs work in Assam?" | `db_query` | Postgres (orgs + tags/locations) |
    | "Tell me about SBI Foundation" | `get_funder` | Postgres (funders + contacts + grants summary) |
-   | "Who has funded KABIL?" | `get_grants` | Postgres `grants` (authoritative record) |
-   | "How well does KABIL fit ABF, and why?" | `get_fit_scores` | Postgres rubric family + adjustment audit log |
+   | "Who has funded KABIL?" | `db_query` | Postgres `grants` (authoritative record) |
+   | "How well does KABIL fit ABF, and why?" | `db_query` | Postgres rubric family + adjustment audit log |
    | "What *connects* KABIL to Tata Trusts?" | `search_graph` | Neo4j via Graphiti (temporal facts) |
    | Fetch a page the user links | `fetch_url` | live web |
 
 4. **Tools never raise.** Errors return as strings so the agent can see the failure and adapt
-   (`backend/app/agent/tools/db_tools.py` / `graph_tools.py`). If the graph is unconfigured, the agent
+   (`backend/app/agent/tools/sql_tools.py` / `graph_tools.py`). If the graph is unconfigured, the agent
    is told so and falls back to SQL tools, disclosing the limitation in its answer.
 5. **Conversations persist.** Threads checkpoint into Postgres (`AsyncPostgresSaver` on the
    shared connection pool, `backend/app/db/checkpointer.py`) — refresh mid-chat and continue.

@@ -183,3 +183,28 @@ async def test_traced_fetch_records_sql_and_row_count(monkeypatch):
     assert recorded["input"]["sql"] == "SELECT o.id\nFROM orgs o"
     assert recorded["input"]["params"] == {"q": "kabil"}
     assert recorded["output"] == {"row_count": 1}
+
+
+def test_recursion_limit_reaches_the_graph():
+    """Settings.recursion_limit existed for months without being bound to the
+    graph, so LangGraph silently used its default of 25. Nothing caught it while
+    a question cost one curated tool call; writing SQL costs five to twelve and
+    the turn died mid-answer with GraphRecursionError.
+
+    A setting that is read but never applied is worse than no setting: it reads
+    as configured behaviour in code review.
+    """
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.agent.build import build_agent
+
+    settings = Settings(recursion_limit=137)
+    graph = build_agent(settings, InMemorySaver())
+    assert graph.config["recursion_limit"] == 137
+
+
+def test_recursion_limit_leaves_room_for_a_real_sql_turn():
+    """Twelve tool calls was the worst observed (a full funder profile), and each
+    model-then-tool cycle costs several graph steps because every middleware hook
+    is its own node."""
+    assert Settings().recursion_limit >= 150

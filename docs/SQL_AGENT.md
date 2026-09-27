@@ -21,7 +21,10 @@ all three faults, and on the false zero it identified the actual defect: the que
 
 # Safe Text-to-SQL agent for Sangam
 
-> **Status: planned, not implemented.** Written 2026-09-27. This is the design of record for
+> **Status: implemented.** Written 2026-09-27, updated the same day after the curated tools
+> were removed — `db_query` is now the *only* path to the database, not an escape hatch beside
+> `search_orgs`/`get_funder`/`get_grants`/`get_fit_scores`. Sections that weigh SQL against
+> those tools are kept as the reasoning that led here. This is the design of record for
 > the `db_query` agent tool and the read-only boundary it runs behind. Jump to
 > [Milestones](#milestones) for the build order; each milestone is one PR.
 
@@ -75,7 +78,7 @@ The request named SQLAlchemy. It cannot provide the guards asked for — `text()
 runtime deps, ~5 MB, dialect-aware). For *execution*, SQLAlchemy would add a second
 connection abstraction beside the psycopg pool the whole app already shares, for a database
 we cannot leave anyway (`pgvector`, `pg_trgm similarity()`, jsonb operators and
-`LATERAL ... ON true` are load-bearing across `repositories/` and `db_tools.py`).
+`LATERAL ... ON true` are load-bearing across `repositories/` and the agent's SQL).
 
 Portability is instead delivered by `validate(sql, dialect=...)` plus an `Executor` Protocol.
 A second database means one new `Executor` class and one config value; the validator does not
@@ -167,7 +170,7 @@ column" with the allowed list attached; one code path, no second denylist):
 
 | Excluded | Why |
 |---|---|
-| `contacts.email`, `contacts.phone` | `get_funder` already projects only name/role/kind/verified. A general tool would newly put personal contact details into chat transcripts — which are themselves stored in `checkpoints`. |
+| `contacts.email`, `contacts.phone` | Personal contact details would otherwise land in chat transcripts, which are themselves stored in `checkpoints`. Names and roles stay readable. |
 | `chunks.embedding` | 1536 floats ≈ 20 KB of text per row. |
 | `chunks.content_tsv` | machine-only. |
 | all of `users` | one seeded dev user; `email` is the only interesting column and it is PII. **This deviates from the brief's "users" entity** — re-adding `display_name` only is one `Table(...)` entry. |
@@ -241,7 +244,7 @@ Passes, in order:
 
 **Round-trip risk, and the corpus that already exists.** Executing the regenerated AST trades
 a fidelity risk for every other guarantee. The proof corpus is already in the repo: the seven
-queries in `app/agent/tools/db_tools.py` cover `LEFT JOIN LATERAL (…) ON true`,
+queries the curated tools used to run cover `LEFT JOIN LATERAL (…) ON true`,
 `array_agg(x ORDER BY y)`, `string_agg`, `similarity()`, `ILIKE '%' || x || '%'`,
 `COALESCE(…, '{}')`, `ORDER BY … DESC NULLS LAST`.
 
@@ -366,9 +369,8 @@ GRANT sangam_reader TO CURRENT_USER;   -- not a hardcoded 'sangam'/'postgres' �
 ### 5. The four tools
 
 `db_list_tables()` · `db_describe_table(tables: str)` · `db_profile_column(table, column)` ·
-`db_query(sql: str, purpose: str)`. Registered in `app/agent/build.py` after the curated tools.
-Conventions from `app/agent/tools/db_tools.py:1-7` apply unchanged — never raise, return error
-strings.
+`db_query(sql: str, purpose: str)`. Registered in `app/agent/build.py`. The repo's tool
+conventions apply unchanged — never raise, return error strings, cite every row.
 
 **No `check_sql` tool.** Validation is folded into `db_query` so it cannot be skipped, and a
 rejection already tells the model everything a dry run would.
@@ -647,11 +649,16 @@ against the installed `langfuse>=3,<4` — the shape changed from v2.
 
 ## Risks
 
-- **Tool-selection regression.** Adding four tools to a six-tool agent will pull traffic from
-  `get_grants` toward `db_query`, losing the tuned trigram search, provenance formatting, and
-  the "absence here is not proof no grant exists" caveat (`db_tools.py:205-206`). Mitigate in
-  `instructions.md` and the first line of the `db_query` docstring; watch it in Langfuse. If it
-  regresses, describe `db_query` as an escalation path rather than a peer.
+- ~~**Tool-selection regression.**~~ **This happened, and the curated tools were removed
+  because of it.** The risk was that `db_query` would pull traffic from `get_grants` and lose
+  its tuned trigram search. What actually happened was the reverse: asked which organisations
+  work in Assam, the model chose `search_orgs`, whose fixed query reads only
+  `orgs.registered_location_id` — so it returned all ten and needed a data caveat bolted on,
+  while the model writing its own SQL found `org_locations`, cross-checked both relationships
+  and answered seven. The curated tools were a cached query plan, and the cache was worse than
+  what the model derives. Removing them also removed a whole bug class: a caveat added to the
+  catalog reached `db_query` and not `search_orgs`. The measured cost is latency — one tool
+  call became three to five, roughly 10s to 25s on common lookups.
 - **Unbounded retry.** Only `recursion_limit: 100` bounds it today, so a stuck model can burn
   ~40 turns on one malformed query. The `sql_retry_limiter` middleware (§5c) is what bounds it.
 - **Pool contention.** See the `Semaphore(2)` note above.
@@ -705,7 +712,7 @@ changed the design; all are folded into the sections above.
 | 1 | Node classes, root typing, arg slots | 13/14 as designed |
 | 2 | `FETCH FIRST` | **Correction** — occupies `args["limit"]` as `exp.Fetch`, not `args["fetch"]`. Clamp it, don't reject it (§2). |
 | 3 | Forbidden-node names | **Correction** — `COPY`→`exp.Copy`, `TRUNCATE`→`exp.TruncateTable`, `GRANT`→`exp.Grant`, and `LISTEN`→`exp.Alias` (caught by the root-type check, not the node scan). |
-| 4 | Round-trip of the 8 real `db_tools.py` queries | **8/8 stable — fallback not needed.** But the test must assert *idempotence of generated SQL*, not `repr` equality: sqlglot upper-cases function names, so a repr test false-fails on every `similarity()` call (§2). |
+| 4 | Round-trip of the 8 real curated queries | **8/8 stable — fallback not needed.** But the test must assert *idempotence of generated SQL*, not `repr` equality: sqlglot upper-cases function names, so a repr test false-fails on every `similarity()` call (§2). |
 | 5 | `qualify()` kwargs, star expansion, `build_scope()` | as designed; unknown column raises `OptimizeError: Column '"sector"' could not be resolved` |
 | 6 | `Query.limit()` on a `UNION` root | applies at top level ✓ |
 | 7 | `SET LOCAL ROLE` drops superuser | ✓ `rolsuper` `t`→`f`; checkpoints, `pg_read_file`, INSERT and ungranted columns all denied (§4) |
@@ -750,7 +757,7 @@ tests cost zero seconds and no container.
 - `validator.py` — every pass in §2, returning `ValidatedQuery`.
 - `errors.py`, `render.py` — the model-facing error strings and the row rendering.
 - `test_sql_validator.py` written **alongside**, not after: the ~45 rejections, the acceptance
-  table, and the `db_tools.py` round-trip corpus. Each rejection asserts on the *message*,
+  table, and the curated-query round-trip corpus. Each rejection asserts on the *message*,
   because the message is the feature.
 
 **Exit:** `pytest tests/test_sql_{validator,errors,render}.py -q && ruff check .`, and
@@ -788,7 +795,7 @@ The first milestone that changes what a user sees.
 - `sql_retry_limiter` (**first** in the middleware list — it can jump) and
   `clear_old_tool_results()`.
 - Registration in `build.py`; catalog + `pg_roles` verification in `lifespan.py`.
-- `instructions.md`: when to prefer SQL over the curated tools, the profile-before-filter rule,
+- `instructions.md`: the profile-before-filter rule,
   the `MAX_SQL_ATTEMPTS` number, and that aggregates cannot be cited.
 - Frontend: `toolLabels.ts` entries, and artifact rendering in `EvidenceRail` — which is new
   capability, since `step.result` is currently rendered nowhere.

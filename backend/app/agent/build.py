@@ -9,7 +9,6 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry_limiter
 from app.agent.models import resolve_model
 from app.agent.prompt import SYSTEM_PROMPT
-from app.agent.tools.db_tools import get_fit_scores, get_funder, get_grants, search_orgs
 from app.agent.tools.graph_tools import search_graph
 from app.agent.tools.sql_tools import (
     db_describe_table,
@@ -21,21 +20,22 @@ from app.agent.tools.web import fetch_url
 from app.core.config import Settings
 from app.integrations.tracing import trace_config
 
-# The curated tools first: they are tuned, they carry provenance, and they are
-# what the prompt tells the model to reach for. The SQL tools are the escape
-# hatch for questions their fixed shapes cannot answer — counts, aggregates,
-# rankings, cross-entity joins.
+# The agent reaches the database ONE way: it discovers the schema, then writes a
+# SELECT. There used to be four hand-written tools alongside these (search_orgs,
+# get_funder, get_grants, get_fit_scores) wrapping fixed queries. They were
+# removed because they were a cached query plan rather than a capability, and a
+# worse one: asked which organisations work in Assam, search_orgs read only
+# orgs.registered_location_id and returned all ten, while the model writing its
+# own SQL found org_locations, cross-checked both relationships, and answered
+# seven. Two paths to the same rows also meant two places to keep correct — a
+# data caveat added to one of them did not reach the other.
 TOOLS = [
-    search_orgs,
-    get_funder,
-    get_grants,
-    get_fit_scores,
-    search_graph,
-    fetch_url,
     db_list_tables,
     db_describe_table,
     db_profile_column,
     db_query,
+    search_graph,
+    fetch_url,
 ]
 
 
@@ -58,4 +58,9 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # attaching the handler at graph level traces every run, tool call, and
     # generation without touching the AG-UI endpoint. trace_config() returns
     # just a run name when tracing is off or the SDK cannot load.
-    return agent.with_config(trace_config(settings))
+    #
+    # recursion_limit has to be bound here or LangGraph uses its default of 25.
+    # Settings carried the value but nothing passed it, which went unnoticed while
+    # a question cost one curated tool call; writing SQL costs five to twelve, and
+    # every middleware hook is its own graph node on top of that.
+    return agent.with_config({**trace_config(settings), "recursion_limit": settings.recursion_limit})

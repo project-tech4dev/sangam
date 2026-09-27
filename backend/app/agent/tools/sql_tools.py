@@ -43,10 +43,9 @@ def _caveats_for(tables) -> str:
 async def db_list_tables() -> str:
     """List every database table the SQL tools may read, with a one-line description.
 
-    Start here when no other tool fits the question. Prefer search_orgs,
-    get_funder, get_grants and get_fit_scores for ordinary lookups — they are
-    tuned and return provenance. Use SQL for counts, aggregates, rankings,
-    cross-entity joins, and filters the other tools do not expose.
+    Start here for any question about the data. Then db_describe_table for the
+    tables that look relevant, db_profile_column before filtering on a text
+    column, and db_query to run the SELECT.
     """
     try:
         lines = [f"{len(CATALOG)} tables are readable:"]

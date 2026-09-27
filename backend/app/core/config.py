@@ -70,8 +70,11 @@ class Settings(BaseSettings):
     # e.g. "anthropic:claude-haiku-4-5".
     sql_audit_model: str = ""
 
-    downloads_dir: str = "downloads"
-    recursion_limit: int = 100
+    # Graph steps per turn, not tool calls: every middleware hook is its own
+    # node, so one model-then-tool cycle costs several. Bound in build_agent();
+    # LangGraph's own default is 25, which a SQL turn exceeds on about the
+    # seventh tool call. The real runaway guard is sql_retry_limiter.
+    recursion_limit: int = 200
     allowed_origins: str = "http://localhost:3000"
     # Vercel gives every preview deployment a fresh hostname, so an exact-match
     # list cannot cover them. Set a regex to admit them, e.g.

@@ -19,20 +19,31 @@ from app.agent.prompt import SYSTEM_PROMPT
 
 TOOLS_DIR = Path(__file__).resolve().parents[1] / "app" / "agent" / "tools"
 
-# Markers are emitted from f-strings, e.g. f"[org:{r['id']}] {r['name']}".
-_EMITTED = re.compile(r"\[([a-z_]+):\{")
+# Markers written as literal f-strings, e.g. f"[graph:{edge.uuid[:8]}]".
+_LITERAL = re.compile(r"\[([a-z_]+):\{")
 
 
 def emitted_markers() -> set[str]:
-    return {
+    """Every citation kind a tool can put in front of a row.
+
+    Two sources, because the tools produce them two ways. graph_tools writes its
+    marker as a literal f-string. db_query derives its markers from the catalog
+    at runtime, so there is no literal to scan for — CITE_COLUMNS is the
+    authoritative list, and scanning alone would silently report none.
+    """
+    from app.agent.tools.sql.catalog import CITE_COLUMNS
+
+    literal = {
         kind
         for path in TOOLS_DIR.glob("*.py")
-        for kind in _EMITTED.findall(path.read_text(encoding="utf-8"))
+        for kind in _LITERAL.findall(path.read_text(encoding="utf-8"))
     }
+    return literal | set(CITE_COLUMNS.values())
 
 
 def test_tools_emit_the_markers_we_think_they_do():
-    """Guards the guard: if the regex stops matching, the test below passes vacuously."""
+    """Guards the guard: if either source stops producing kinds, the test below
+    passes vacuously."""
     assert emitted_markers() == {"org", "funder", "grant", "score", "graph"}
 
 

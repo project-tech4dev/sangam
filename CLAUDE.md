@@ -100,8 +100,9 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
               │             │ AG-UI (SSE)
               │ REST        ▼
               └────── FastAPI ── LangGraph deep agent
-                          │          tools: search_orgs · get_funder · get_grants
-                          │                 get_fit_scores · search_graph · fetch_url
+                          │          tools: db_list_tables · db_describe_table
+                          │                 db_profile_column · db_query
+                          │                 search_graph · fetch_url
                           ▼
               Postgres + pgvector        Neo4j (optional)
 ```
@@ -138,8 +139,8 @@ Things worth knowing before changing anything:
 from source text and is rebuildable from Postgres (`seed/graph_seed.py`). Keep that
 property — nothing should live only in the graph.
 
-**The agent reaches the database through tools, not the API.** `backend/app/agent/tools/db_tools.py`
-queries repositories directly. `backend/app/api/routes/` serves the frontend's REST calls. They
+**The agent reaches the database through tools, not the API.** `backend/app/agent/tools/sql_tools.py`
+runs model-written SELECTs against it directly. `backend/app/api/routes/` serves the frontend's REST calls. They
 share `repositories/` but are separate paths; changing one does not change the other.
 
 **The frontend talks to the backend two ways.** Server components use
@@ -169,15 +170,23 @@ middleware stack over `langchain.agents.create_agent` and returns a compiled Lan
 graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 `add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
 
-**The agent has exactly ten tools, and some config implies more than is wired.**
-`app/agent/build.py` registers six curated tools — `search_orgs`, `get_funder`, `get_grants`,
-`get_fit_scores`, `search_graph`, `fetch_url` — and four SQL tools: `db_list_tables`,
-`db_describe_table`, `db_profile_column`, `db_query`. Nothing else.
-`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers), `app/agent/tools/files.py`
-(`download_file`, `read_pdf`) and `web.make_web_search` (Tavily) are complete but imported
-nowhere, and the `Settings` fields that feed them — `tavily_api_key`, `github_pat`,
-`github_mcp_url`, `playwright_mcp_url`, `mcp_servers` — therefore do nothing until those
-tools are registered. Setting them changes no behaviour.
+**The agent has exactly six tools, and there is ONE path to the database.**
+`app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
+`db_query`, `search_graph`, `fetch_url`. Nothing else.
+
+There used to be four hand-written tools wrapping fixed queries (`search_orgs`, `get_funder`,
+`get_grants`, `get_fit_scores`). They were removed, and it is worth knowing why before
+proposing another: they were a cached query plan rather than a capability, and a worse one.
+Asked which organisations work in Assam, `search_orgs` read only `orgs.registered_location_id`
+and returned all ten; the model writing its own SQL found `org_locations`, cross-checked both
+relationships and answered seven. Two paths to the same rows also meant two places to keep
+correct — a data caveat added to the catalog reached `db_query` and not `search_orgs`. The cost
+is latency: a curated lookup was one tool call, the same question in SQL is three to five.
+
+`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) and `web.make_web_search` (Tavily)
+are complete but imported nowhere, and the `Settings` fields that feed them — `tavily_api_key`,
+`github_pat`, `github_mcp_url`, `playwright_mcp_url`, `mcp_servers` — therefore do nothing until
+those tools are registered. Setting them changes no behaviour.
 
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
@@ -293,8 +302,6 @@ Non-obvious constraints:
   just an env edit.
 - **Vercel's Python bundle limit is 500 MB.** The backend's dependency tree is ~256 MB and
   fits with no trimming.
-- The backend runs as a Vercel Function, so the filesystem is ephemeral — anything written
-  to `downloads_dir` disappears between invocations.
 
 ## Working state
 
