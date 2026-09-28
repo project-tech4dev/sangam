@@ -191,7 +191,7 @@ those tools are registered. Setting them changes no behaviour.
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
 
-- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 28 tables, and a column not
+- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 40 tables, and a column not
   listed there does not exist as far as the tool is concerned. It also carries `defects`:
   evidence-backed caveats about the *data* that get injected into every result touching the
   table, so the model cannot report "0 rows" as "none exist". Delete a defect line when a
@@ -222,9 +222,11 @@ neither catalogued nor in `KNOWN_EXCLUDED`.
 
 **Schema changes go in `db/migrations/*.sql`, never in `db/init/02_schema.sql`.** The
 baseline is what a brand-new database gets; migrations carry everything after it. See
-`db/migrations/README.md`. `db/migrations/` currently holds only that README — the baseline
-is still the entire schema, and `make migrate` creates `schema_migrations` but applies nothing
-until the first `0001_*.sql` lands. (`README.md` says migrations live in `db/init/`;
+`db/migrations/README.md`. `0001_`–`0010_` carry the v3 data model on top of the v2 baseline:
+provenance columns, the taxonomy, geography, identity, credentials, funder activity, org facts,
+proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
+dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. The design and the
+before/after are in `docs/DATA_PLATFORM.md`. (`README.md` says migrations live in `db/init/`;
 it is stale, this rule wins.)
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
