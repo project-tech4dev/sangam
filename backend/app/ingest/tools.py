@@ -101,18 +101,20 @@ def _full_entry(s) -> str:
 
 
 @tool
-async def plan_import(sources: str = "", limit: int = 10) -> str:
+async def plan_import(funders: str = "", sources: str = "", limit: int = 10) -> str:
     """Say what a run WOULD pull, from where, and against what the catalog already holds.
 
     Read-only: this writes nothing. Call it before every run and show the user the
     plan, so the goal and the reach of the run are agreed before anything changes.
 
     Args:
+        funders: comma-separated funder names the run would research.
         sources: comma-separated source keys, or empty for every registered source.
         limit: items per source the run would request.
     """
     try:
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
+        names = [n.strip() for n in funders.split(",") if n.strip()]
         requested, unknown = resolve(keys)
         baseline = await catalog_baseline()
 
@@ -121,7 +123,18 @@ async def plan_import(sources: str = "", limit: int = 10) -> str:
         no_adapter = [s for s in requested if s.dispatchable and s.key not in adapters]
         held = [s for s in requested if not s.dispatchable]
 
-        lines = ["PLAN — nothing is written by this step.", "", "Will pull:"]
+        lines = ["PLAN — nothing is written by this step."]
+        if names:
+            lines.append(
+                f"\nResearching {len(names)} name(s), concurrently: {', '.join(names)}. "
+                f"Each is searched in every source below: {len(names)} x {len(will_run)} searches."
+            )
+        else:
+            lines.append(
+                "\nNo funder named, so this pulls whatever the sources published most recently. "
+                "If the user asked about particular funders, pass their names instead."
+            )
+        lines += ["", "Will pull:"]
         if not will_run:
             lines.append("  nothing: no requested source both may be read and has an adapter.")
         for s in will_run:
@@ -159,7 +172,7 @@ async def plan_import(sources: str = "", limit: int = 10) -> str:
 
 
 @tool
-async def run_import_now(goal: str, sources: str = "", limit: int = 10) -> str:
+async def run_import_now(goal: str, funders: str = "", sources: str = "", limit: int = 10) -> str:
     """Run an import and return the full summary. This WRITES to the database.
 
     Call plan_import first and show the user the plan. The goal is stored on the
@@ -168,6 +181,11 @@ async def run_import_now(goal: str, sources: str = "", limit: int = 10) -> str:
     Args:
         goal: one sentence on what this run is for, in the user's terms, e.g.
             "FY2025-26 CSR figures for Indian corporate funders". Required.
+        funders: comma-separated funder names to research, e.g.
+            "Axis Bank Foundation, SBI Foundation". Each name is searched in every
+            runnable source, and the names run CONCURRENTLY. Leaving this empty
+            asks a different question — "whatever these sources published most
+            recently" — so when the user names funders, pass them.
         sources: comma-separated source keys (e.g. "india_csr,gdelt"). Empty means
             every registered source — the ones that may not be crawled are reported
             as refused rather than skipped silently.
@@ -183,8 +201,10 @@ async def run_import_now(goal: str, sources: str = "", limit: int = 10) -> str:
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
         if not goal.strip():
             return "run_import_now needs a goal: one sentence on what this run is for."
+        names = [n.strip() for n in funders.split(",") if n.strip()] or None
         summary = await run_import(
-            keys, goal=goal.strip(), model=resolve_model(settings.model), limit=limit
+            keys, goal=goal.strip(), funders=names,
+            model=resolve_model(settings.model), limit=limit,
         )
         return format_summary(summary)
     except Exception as exc:
@@ -253,6 +273,7 @@ def format_summary(s: dict[str, Any]) -> str:
     head = (
         f"Import run #{s['run_id']} — {s['status']} in {s['duration_seconds']}s\n"
         f"  goal:      {s.get('goal') or 'not recorded'}\n"
+        f"  names:     {', '.join(s.get('subjects') or []) or 'none — latest from each source'}\n"
         f"  processed: {', '.join(s['sources_processed']) or 'none'}\n"
         # A count, not 51 keys: the rules behind them are listed below.
         f"  refused:   {len(s['sources_refused'])} held by their access rule\n"

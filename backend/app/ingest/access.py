@@ -109,5 +109,5 @@ async def _note_proposal(host: str, url: str, *, robots_result: str) -> None:
                 "times_seen = ingest_source_proposals.times_seen + 1",
                 (host, url, robots_result),
             )
-    except Exception:  # noqa: BLE001 - never let bookkeeping break a read
+    except Exception:
         logger.debug("could not record a source proposal for %s", host, exc_info=True)

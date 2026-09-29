@@ -60,6 +60,17 @@ host nobody has classified, `ingest_source_proposals` records it with what robot
 it has been seen. That is a note, never a permission: promoting it means adding it to the JSON with
 a basis and a robots check, in a pull request.
 
+## Naming what to research
+
+A run is either source-first — "pull the latest from India CSR" — or subject-first:
+`run_import_now(funders="Axis Bank Foundation, SBI Foundation, Tata Trusts")`. A named run
+searches every runnable source for each name, and the names run concurrently under the same
+`Semaphore(2)` that bounds everything else, because each task holds a pooled connection.
+
+Both are honest questions and they are not the same one. A named run can still come back empty:
+the sources are general feeds, so "searched and found nothing" is a real result and the report
+says so rather than implying the funder has no CSR spend.
+
 ## Matching, and what "could not be processed" means
 
 Four steps, in order: **fixed identifier** (CIN, CSR-1, PAN) → **exact name or alias**,

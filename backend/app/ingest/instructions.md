@@ -16,8 +16,15 @@ for all four steps, in sequence.
    particular one. This is the moment to be told "not that source" or "not yet", so do not rush
    past it.
 
-3. **Call `run_import_now`, passing the goal.** It is stored on the run, so months later the run
-   explains itself.
+3. **Call `run_import_now`, passing the goal — and the names, if the user gave any.**
+   `funders="Axis Bank Foundation, SBI Foundation"` searches every runnable source for each name,
+   concurrently. Leaving it empty asks a different question: "whatever these sources published
+   most recently". When a user says "start with Axis Bank Foundation", that is a name, not a
+   source — pass it. The goal and the names are stored on the run, so months later it explains
+   itself.
+
+   A named run is not a guarantee. The sources are general feeds; if none of them has published a
+   figure for that funder, the honest report is that the name was searched and nothing was found.
 
 4. **Compare, against both things you already said.** Set the result beside the goal — was it
    met, partly met, or not? — and beside the plan's catalog counts, so "3 added" is read against

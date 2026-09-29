@@ -54,6 +54,7 @@ async def run_import(
     source_keys: list[str] | None = None,
     *,
     goal: str,
+    funders: list[str] | None = None,
     model: Any = None,
     limit: int = 10,
     started_by: str | None = None,
@@ -65,9 +66,9 @@ async def run_import(
     async with pool.connection() as conn, conn.transaction():
         row = await (
             await conn.execute(
-                "INSERT INTO ingest_runs (requested_sources, started_by, notes) "
-                "VALUES (%s, %s, %s) RETURNING id",
-                (source_keys or [], started_by, goal),
+                "INSERT INTO ingest_runs (requested_sources, subjects, started_by, notes) "
+                "VALUES (%s, %s, %s, %s) RETURNING id",
+                (source_keys or [], funders or [], started_by, goal),
             )
         ).fetchone()
         run_id = row["id"]
@@ -87,10 +88,14 @@ async def run_import(
             )
 
     gate = asyncio.Semaphore(MAX_CONCURRENT_SOURCES)
+    runnable = [s for s in requested if s.dispatchable and s.key in ADAPTERS]
+    # One task per source, or per (source, funder) pair when names are given, all
+    # started together. The semaphore bounds them: each task holds a pooled
+    # connection, and the pool is shared with the LangGraph checkpointer.
     tasks = [
-        _run_source(src, run_id, model=model, limit=limit, gate=gate)
-        for src in requested
-        if src.dispatchable and src.key in ADAPTERS
+        _run_source(src, run_id, model=model, limit=limit, gate=gate, subject=name)
+        for src in runnable
+        for name in (funders or [None])
     ]
     await asyncio.gather(*tasks)
 
@@ -101,27 +106,40 @@ async def run_import(
     return await summarise(run_id)
 
 
-async def _run_source(src: Source, run_id: int, *, model: Any, limit: int, gate: asyncio.Semaphore):
+async def _run_source(
+    src: Source, run_id: int, *, model: Any, limit: int, gate: asyncio.Semaphore,
+    subject: str | None = None,
+):
     async with gate:
         pool = get_pool()
+        label = f"{src.name} for {subject!r}" if subject else src.name
         try:
             async with pool.connection() as conn:
-                await ADAPTERS[src.key](conn, run_id, model=model, limit=limit)
+                await ADAPTERS[src.key](conn, run_id, model=model, limit=limit, subject=subject)
         except SourceUnavailable as exc:
-            await _fail(run_id, src, str(exc))
+            await _fail(run_id, src, str(exc), label=label)
         except Exception as exc:
-            logger.exception("source %s failed", src.key)
-            await _fail(run_id, src, f"{type(exc).__name__}: {exc}")
+            logger.exception("source %s failed for %s", src.key, subject)
+            await _fail(run_id, src, f"{type(exc).__name__}: {exc}", label=label)
 
 
-async def _fail(run_id: int, src: Source, reason: str) -> None:
+async def _fail(run_id: int, src: Source, reason: str, *, label: str | None = None) -> None:
     pool = get_pool()
     async with pool.connection() as conn, conn.transaction():
-        await _item(conn, run_id, src.key, "source", "failed", reason=reason, subject=src.name)
+        await _item(conn, run_id, src.key, "source", "failed", reason=reason,
+                    subject=label or src.name)
 
 
-async def _ingest_india_csr(conn: Any, run_id: int, *, model: Any, limit: int) -> None:
-    items = await india_csr.fetch(limit=limit)
+async def _ingest_india_csr(
+    conn: Any, run_id: int, *, model: Any, limit: int, subject: str | None = None
+) -> None:
+    # A subject narrows the search to that funder; without one the source's own
+    # default query returns whatever it published most recently.
+    items = (
+        await india_csr.fetch(f"{subject} CSR", limit=limit)
+        if subject
+        else await india_csr.fetch(limit=limit)
+    )
     if model is None:
         raise SourceUnavailable("no model configured for extraction; set MODEL or pass one in")
     for item in items:
@@ -179,8 +197,12 @@ def _queue_reason(match: Any) -> str:
     return "No funder in the catalog matches this name, and nothing is close enough to propose."
 
 
-async def _ingest_gdelt(conn: Any, run_id: int, *, limit: int, model: Any = None) -> None:
-    records = await gdelt.fetch(limit=limit)
+async def _ingest_gdelt(
+    conn: Any, run_id: int, *, limit: int, model: Any = None, subject: str | None = None
+) -> None:
+    records = (
+        await gdelt.fetch(f'"{subject}"', limit=limit) if subject else await gdelt.fetch(limit=limit)
+    )
     funders = await (await conn.execute("SELECT id, name FROM funders")).fetchall()
     for rec in records:
         funder_id = _named_in(rec.title or "", funders)
@@ -232,7 +254,7 @@ async def summarise(run_id: int) -> dict[str, Any]:
     async with pool.connection() as conn:
         run = await (
             await conn.execute(
-                "SELECT id, started_at, finished_at, status, requested_sources, notes "
+                "SELECT id, started_at, finished_at, status, requested_sources, subjects, notes "
                 "FROM ingest_runs WHERE id = %s",
                 (run_id,),
             )
@@ -285,6 +307,7 @@ async def summarise(run_id: int) -> dict[str, Any]:
     finished = run["finished_at"] or datetime.now(UTC)
     return {
         "run_id": run["id"],
+        "subjects": list(run["subjects"]),
         "goal": run["notes"],
         "status": run["status"],
         "started_at": run["started_at"].isoformat(),
