@@ -83,19 +83,20 @@ class TestDerivedIndexes:
 class TestDefects:
     """Defect strings are injected into results. They must stay specific enough to act on."""
 
-    def test_the_three_verified_data_bugs_are_recorded(self):
+    def test_the_verified_data_bugs_are_recorded(self):
         assert "news_mentions" in cat.DEFECTS
         assert "documents" in cat.DEFECTS
-        assert "locations" in cat.DEFECTS
 
     def test_news_defect_says_zero_means_unlinked_not_absent(self):
         text = " ".join(cat.DEFECTS["news_mentions"]).lower()
         assert "never" in text and "no news exists" in text
 
-    def test_locations_defect_names_the_wrongly_parented_districts(self):
-        text = " ".join(cat.DEFECTS["locations"])
-        for district in ("DIMAPUR", "BISHNUPUR", "TAMENGLONG"):
-            assert district in text
+    def test_the_locations_defect_went_when_the_data_was_fixed(self):
+        # seed.py parented every district to Assam regardless of what Darpan
+        # said, which made DIMAPUR a district of Assam. It now reads
+        # state_of_registration, so the caveat would be a lie.
+        # test_geography_is_parented_correctly proves it against real rows.
+        assert "locations" not in cat.DEFECTS
 
     def test_every_defect_is_a_sentence_not_a_label(self):
         for table, defects in cat.DEFECTS.items():

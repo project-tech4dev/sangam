@@ -84,32 +84,41 @@ def seed_vocabularies(cur) -> tuple[dict[str, int], dict[str, int]]:
     ne = _upsert_location(cur, "region", "Northeast India", india)
     locations = {"India": india, "Assam": assam, "Northeast India": ne}
 
-    district_names: set[str] = set()
+    # (district, state) — the state matters: DIMAPUR is in Nagaland, and
+    # parenting it to Assam made every state-level rollup through parent_id
+    # wrong for it. Darpan states the state; this used to ignore it.
+    district_names: set[tuple[str, str]] = set()
     tag_labels: set[str] = set()
 
     for path in sorted((DATA / "darpan").glob("*.json")):
         raw = json.loads(path.read_text())
         sections = raw.get("sections", {})
-        city = (sections.get("registration_details", {}) or {}).get("city_of_registration")
+        registration = sections.get("registration_details", {}) or {}
+        city = registration.get("city_of_registration")
         if city:
-            district_names.add(str(city).strip())  # preserve source casing (e.g. CHIRANG)
+            state_name = str(registration.get("state_of_registration") or "Assam").strip()
+            # preserve source casing (e.g. CHIRANG)
+            district_names.add((str(city).strip(), state_name))
         working = sections.get("working_sectors", {}) or {}
         tag_labels.update(as_list(working.get("primary_sectors")))
         tag_labels.update(as_list(working.get("secondary_sectors")))
 
     for org in json.loads((DATA / "rubrics" / "orgs_extra.json").read_text()):
         if org.get("district"):
-            district_names.add(org["district"])
+            district_names.add((org["district"], org.get("state") or "Assam"))
         tag_labels.update(org.get("sectors", []))
 
     for funder in json.loads((DATA / "rubrics" / "funders.json").read_text()):
         tag_labels.update(funder.get("focus_sectors", []))
         for geo in funder.get("geographies", []):
             if geo not in LOCATION_KINDS:
-                district_names.add(geo)
+                district_names.add((geo, "Assam"))
 
-    for name in sorted(district_names):
-        locations[name] = _upsert_location(cur, "district", name, assam)
+    for name, state_name in sorted(district_names):
+        parent = locations.get(state_name)
+        if parent is None:
+            parent = locations[state_name] = _upsert_location(cur, "state", state_name, india)
+        locations[name] = _upsert_location(cur, "district", name, parent)
 
     tags: dict[str, int] = {}
     for label in sorted(tag_labels):

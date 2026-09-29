@@ -611,14 +611,20 @@ async def promote_research(slug: str = "") -> str:
                     f"  {r['funder']['name']}: funder {r['funder']['status']} "
                     f"[funder:{r['funder']['id']}]" + (f" · CSR years {years}" if years else "")
                 )
+            for table, counts in sorted(r.get("written", {}).items()):
+                tally = ", ".join(f"{n} {status}" for status, n in sorted(counts.items()))
+                lines.append(f"    {table}: {tally}")
             for reason in r["reasons"]:
                 lines.append(f"  {r['slug']}: not promoted — {reason}")
+            for held in r.get("held", []):
+                lines.append(f"    held back: {held}")
             if r["skipped"]:
-                held = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
-                lines.append(f"    still research only (no writer): {held}")
+                skipped = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
+                lines.append(f"    still research only (no writer): {skipped}")
         lines.append(
-            "\nWhat stayed research is not lost — it is on file and in docs/entities/. "
-            "It has no catalog table to go to yet."
+            "\nA grant needs a recipient in orgs, which has no writer yet, so grant findings "
+            "stay research — they are on file and in docs/entities/. Anything held back is "
+            "named above: it is a decision waiting for a person, not a silent loss."
         )
         return "\n".join(lines)
     except Exception as exc:

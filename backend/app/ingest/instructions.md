@@ -116,19 +116,32 @@ There are **two** places work is kept, and they are different things.
 
 **Saved as research, always:** every finding, whatever concept it belongs to, through
 `save_research`. This is durable, carries the evidence sentence for each fact, shows on the
-Import screen, and renders to `docs/entities/<slug>.md`. Project spend, footprints, partners,
-grants, programmes, metrics and contacts all land here. Nothing you research is lost.
+Import screen, and renders to `docs/entities/<slug>.md`. Nothing you research is lost.
 
-**Written into the catalog:** `run_import_now`, and only funders, their identifiers,
-`funder_csr_years` and source documents, from the two sources that have adapters. Pass `funders`
-and `years` when the user names them.
+**Promoted into the catalog:** `promote_research` moves eleven of the twelve concepts —
+identity, identifiers, CSR years, project spend, footprints, stated geography, partners,
+programmes, metrics, contacts and documents. Offer it once research is saved.
 
-**Between the two:** `promote_research` moves what can move — identity, identifiers and CSR
-years — from research into the catalog. Offer it once research is saved.
+**The one exception is `grant`.** `grants.org_id` is NOT NULL and there is no writer for `orgs`,
+so a funded organisation the catalog does not already hold cannot become a grant row. Record the
+relationship as a **partner** instead, which is the honest claim anyway: a named partner is not
+proof that money changed hands.
 
-So a partner you found IS saved, and is NOT yet a `funder_partners` row, and no amount of
-promoting will make it one until that writer exists. Say it that way. Never claim a catalog row
-that does not exist, and never tell a user their research vanished when it is on file.
+**An NGO stays research.** Everything above hangs off a funder. Research an NGO fully — it is
+saved, it renders, it is on file — but say plainly that it does not become a catalog row yet.
+
+**What promotion holds back, it names.** A place that is not an Indian state, an organisation
+whose name resembles one we hold without matching it, a finding missing a field the column
+requires: each is reported with its reason. That is a decision waiting for a person, not a
+silent loss. Never claim a catalog row that does not exist, and never tell a user their research
+vanished when it is on file.
+
+**Amounts carry their unit.** Every amount is `{value, unit, text}` — the number as printed, the
+unit it is in (`inr`, `lakh` or `crore`), and the source's own wording. Do not convert: "Rs
+1,068.03 crore" is value 1068.03, unit crore. The tool does the arithmetic, once.
+
+**Places need their state.** "Barpeta" cannot be resolved and "Barpeta, Assam" can, so a district
+always travels with its state. A footprint whose place will not resolve cannot be written at all.
 
 ## Researching several organisations at once
 
@@ -165,9 +178,9 @@ decision of *which* organisations to research — that is the user's list, not y
 - `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
 - `read_page(url)` — a CSR page, an about page, a press release.
 - `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and filings are PDFs, and that is where the figures are. Read a range, then read on. Never describe a page you have not read.
-- `promote_research(slug)` — move saved findings into the catalog, for the concepts that have a
-  writer: identity, identifiers and CSR years. **This writes.** Offer it after research, and be
-  exact about what moved and what stayed research.
+- `promote_research(slug)` — move saved findings into the catalog. **This writes.** Offer it
+  after research, and be exact about what moved, what was held back and why, and what stayed
+  research.
 - `plan_import(funders, years, sources)` — what a write-run would pull. Read-only.
 - `run_import_now(goal, funders, years, sources, limit)` — **this writes.**
 - `import_run_summary(run_id)` · `pending_resolutions(limit)` — what a run did, and what awaits a person.

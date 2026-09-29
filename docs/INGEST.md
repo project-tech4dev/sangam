@@ -176,7 +176,8 @@ India. The NGO's own website and its annual report are `crawl_allowed_check_each
 So NGO research is **research-tool driven, not adapter driven**: `search_public_sources` to find
 the site and the annual report, `read_page` and `fetch_document` to read them, with the robots
 check happening per host at fetch time. No new adapters are needed. What *is* needed is the data
-path, which does not exist: there is no `OrgRecord`, no `resolve_org`, and no `write_org`.
+path, which still does not exist: there is no `OrgRecord`, no `resolve_org`, and no `write_org`,
+so NGO research is saved and rendered but never becomes a row in `orgs`.
 
 ## Not breaking in between
 
@@ -207,19 +208,72 @@ Invert it. The research produces **typed records**, the writer persists them, an
   that v2 was never vetted, that the highest-scoring funder is the inactive one. A generator
   cannot write those and should not overwrite them.
 
+## From a finding to a row
+
+A finding used to be a label and a value, both strings, and promotion bridged the gap to a
+relational row with regular expressions — sniffing for the word "crore" to decide a scale,
+grepping a label for a fiscal year. That is how a figure becomes wrong by a factor of ten
+million, which has happened here twice. So the shape is fixed at the source:
+
+1. **`app/ingest/expectations.py`** derives, per concept, the columns a source could state — from
+   `app/agent/tools/sql/catalog.py`, the same data the SQL tool allowlists and that
+   `verify_against_db()` checks against the live schema at boot. There is no second list to keep.
+2. **`research_goals(name, years, entity_kind)`** diffs that against what the catalog already
+   holds and returns the gaps. It is the first call of any research run.
+3. **`app/ingest/research_records.py`** has one typed model per concept, its fields named for
+   that table's columns. A test fails when the two drift.
+4. **`save_research`** validates and persists, as `entity_research` with `schema_version = 2`.
+5. **`promote_research`** maps fields to columns and writes.
+
+### What promotion writes, and what it will not
+
+Eleven of the twelve concepts have a writer: identity, identifier, csr_year, document, program,
+csr_spend, footprint, stated_geography, partner, metric, contact.
+
+**`grant` does not**, and it is not an oversight. `grants.org_id` is `NOT NULL` and there is no
+`OrgRecord`, `resolve_org` or `write_org`, so a funded organisation the catalog does not hold
+cannot become a grant row. `funder_partners.org_id` is nullable, which is why a named partner
+belongs there — and which is the more honest claim anyway, since a partner is not proof that
+money changed hands.
+
+**An NGO stays research.** Every table above hangs off `funders`. Promoting an org row would
+write an NGO into `funders`, which is worse than not promoting it: a wrong answer wearing a
+catalog citation. It is refused with a reason.
+
+Three other refusals, all reported rather than logged:
+
+- **A place that is not an Indian state.** `app/ingest/geography.py` holds the 28 states and 8
+  union territories with the spellings reports actually print (Orissa, NCT of Delhi, Pondicherry).
+  Districts are created on first sight under their stated state, because there is no offline list
+  of 780 to check against; states are not, because a typo that becomes a state row is wrong for
+  good. A district always travels with its state: several states have a Bishnupur.
+- **A name that resembles one we hold without matching it.** Never merged; a person decides.
+- **A v1 finding.** Flat label/value rows still render, with a note, and are re-researched rather
+  than migrated.
+
+### Amounts
+
+Every amount is `{value, unit, text}` — the number as printed, the unit, and the source's own
+wording kept beside it. `Money.inr` is the only conversion in the codebase, and `to_inr()` reads
+the same table for findings that have been through jsonb. The unit is a field, not something
+inferred from the text, because inference is exactly what got it wrong before.
+
+### Ordering
+
+Documents are written first, so every fact can cite the report it was read from. Programmes
+next, parents before children, because six concepts resolve a `program_name` to a `program_id`
+and a programme written afterwards leaves nulls behind it.
+
 ## Milestones
 
-**M1 — the org data path.** `OrgRecord`, `resolve_org` (identifiers → exact → boilerplate →
-trigram → queue, reusing the funder matcher's rules), `write_org`, and identifier and credential
-writing. *Exit: an NGO researched by hand can be written, read back through `funder_dossier`'s
-org equivalent, and re-run without duplicating.*
+**Done.** Schema-derived goals, typed findings, and the funder-side writers, in
+`d94dac8`, `bf1dbdb` and what follows them.
 
-**M2 — the batch.** One isolated subagent per NGO, deterministic fan-out, the six guards above.
+**Next — the org data path.** `OrgRecord`, `resolve_org` (identifiers → exact → boilerplate →
+trigram → queue, reusing the funder matcher's rules), `write_org`, identifier and credential
+writing, and then the `grants` writer that depends on it. *Exit: an NGO researched by hand can be
+written, read back, and re-run without duplicating.*
+
+**Then — the batch.** One isolated subagent per NGO, deterministic fan-out, the six guards above.
 *Exit: six NGOs where one is deliberately broken — the batch finishes, five are written, the
 report names the sixth and why, and a re-run does only the sixth.*
-
-**M3 — render the file.** A `make client-docs` target that refreshes the generated blocks for
-every NGO in the catalog. *Exit: re-rendering with no data change produces an empty diff.*
-
-M1 is the prerequisite for both of the others: without a writer for orgs, a batch of NGO research
-produces conversation and nothing else.

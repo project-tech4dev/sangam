@@ -6,35 +6,90 @@ questions from. This is the deliberate step between them, and it only moves
 what there is somewhere to move — the rest is reported, not silently dropped.
 
 Findings arrive typed (app/ingest/research_records.py), so this file maps
-fields to columns. It does not parse: the last version read free text with
+fields to columns. It does not parse. The version before it read free text with
 regular expressions and refused a real figure because it could not tell crore
-from rupees, which is the good half of that failure mode.
+from rupees, which was the good half of that failure mode.
 """
 
 from __future__ import annotations
 
+import collections
 import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import ValidationError
+
+from app.ingest.geography import resolve_location
 from app.ingest.matcher import resolve_funder
-from app.ingest.records import FunderCsrYearRecord, FunderRecord
-from app.ingest.research_records import SCHEMA_VERSION, to_inr
-from app.ingest.writer import write_csr_year, write_funder
+from app.ingest.records import (
+    ContactRecord,
+    FunderCsrSpendRecord,
+    FunderCsrYearRecord,
+    FunderFootprintRecord,
+    FunderLocationRecord,
+    FunderPartnerRecord,
+    FunderRecord,
+    MetricRecord,
+    ProgramRecord,
+)
+from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
+from app.ingest.writer import (
+    ensure_document,
+    write_contact,
+    write_csr_spend,
+    write_csr_year,
+    write_footprint,
+    write_funder,
+    write_funder_location,
+    write_metric,
+    write_partner,
+    write_program,
+)
 
 logger = logging.getLogger(__name__)
 
-# identity/identifier → funders, csr_year → funder_csr_years. Everything else
-# has no writer yet: see docs/INGEST.md.
-PROMOTABLE = ("identity", "identifier", "csr_year")
+# Eleven of the twelve concepts. 'grant' is the exception: grants.org_id is NOT
+# NULL and orgs has no writer, so a funded organisation we do not hold cannot
+# become a grant row. It belongs in funder_partners. See docs/INGEST.md.
+PROMOTABLE = (
+    "identity", "identifier", "csr_year", "document", "program", "csr_spend",
+    "footprint", "stated_geography", "partner", "metric", "contact",
+)
+
+# Documents first, so every other fact can cite the report it was read from.
+# Programmes next, because every remaining concept can name one and a spend row
+# whose program_id is null for want of ordering is a quietly weaker row.
+WRITE_ORDER = ("csr_spend", "footprint", "stated_geography", "partner", "metric", "contact")
 
 
-def _provenance(finding: dict[str, Any], fetched: datetime) -> dict[str, Any]:
+def _provenance(finding: dict[str, Any] | Any, fetched: datetime) -> dict[str, Any]:
+    get = finding.get if isinstance(finding, dict) else lambda k: getattr(finding, k, None)
     return {
-        "source_url": finding["source_url"],
-        "source_name": finding.get("source_name") or "research",
+        "source_url": get("source_url"),
+        "source_name": get("source_name") or "research",
         "fetched_at": fetched,
     }
+
+
+def _validated(findings: list[dict[str, Any]], concept: str) -> list[Any]:
+    """Findings come back out of jsonb as plain dicts. Re-validating each one
+    through its own model is what lets the writers map instead of parse, and
+    catches a row stored before a field became required."""
+    out = []
+    for f in findings:
+        if f.get("concept") != concept:
+            continue
+        try:
+            out.append(FINDING_MODELS[concept].model_validate(f))
+        except ValidationError as exc:
+            logger.info("finding refused (%s): %s", concept, exc.errors()[0].get("msg"))
+    return out
+
+
+def _count(report: dict[str, Any], table: str, status: str) -> None:
+    if status in ("added", "updated"):
+        report["written"].setdefault(table, collections.Counter())[status] += 1
 
 
 def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRecord | None:
@@ -85,11 +140,193 @@ def csr_years_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> list[
     return out
 
 
+async def _place(conn: Any, f: Any, report: dict[str, Any]) -> tuple[int | None, int | None]:
+    """(state_id, district_id). A place that will not resolve is reported, not
+    guessed at — funder_footprints.location_id is NOT NULL, so the alternative
+    to naming the problem is a missing row nobody hears about."""
+    state = getattr(f, "state", None)
+    if not state:
+        return None, None
+    state_id, reason = await resolve_location(conn, state)
+    if reason:
+        report["held"].append(reason)
+        return None, None
+    district = getattr(f, "district", None)
+    if not district:
+        return state_id, None
+    district_id, reason = await resolve_location(conn, state, district)
+    if reason:
+        report["held"].append(reason)
+    return state_id, district_id
+
+
+async def _write_documents(
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], funder_id: int,
+    report: dict[str, Any],
+) -> dict[str, int]:
+    """Returns source_url -> document id, so many facts can cite one report."""
+    by_url: dict[str, int] = {}
+    for f in _validated(findings, "document"):
+        shim = type("Doc", (), {
+            "source_url": f.source_url, "title": f.title,
+            "source_name": f.source_name or "research",
+            "fetched_at": row["researched_at"], "as_of": f.as_of,
+        })()
+        # ensure_document returns an id either way, so ask first: reporting
+        # "1 added" on every re-run would overstate what the run did.
+        seen = await (
+            await conn.execute("SELECT 1 FROM documents WHERE source_url = %s", (f.source_url,))
+        ).fetchone()
+        by_url[f.source_url] = await ensure_document(
+            conn, shim, funder_id=funder_id, doc_type=f.doc_type
+        )
+        _count(report, "documents", "matched" if seen else "added")
+    return by_url
+
+
+async def _write_programs(
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], funder_id: int,
+    docs: dict[str, int], report: dict[str, Any],
+) -> dict[str, int]:
+    """Returns programme name -> id, so later concepts can resolve program_name."""
+    # A theme has to exist before a phase can point at it, so shallowest first.
+    depth = {"theme": 0, "programme": 1, "phase": 2, "project": 3}
+    ids: dict[str, int] = {}
+    for f in sorted(_validated(findings, "program"), key=lambda f: depth.get(f.kind, 9)):
+        try:
+            rec = ProgramRecord(
+                funder_name=row["canonical_name"] or row["entity_name"], name=f.name,
+                program_kind=f.kind, description=f.description, status=f.status,
+                start_date=f.start_date, end_date=f.end_date, is_enabler=f.is_enabler,
+                as_of=None, **_provenance(f, row["researched_at"]),
+            )
+        except ValidationError as exc:
+            report["held"].append(f"programme {f.name!r}: {exc.errors()[0]['msg']}")
+            continue
+        status, program_id, _ = await write_program(
+            conn, rec, funder_id, parent_id=ids.get(f.parent_name or ""),
+            document_id=docs.get(f.source_url),
+        )
+        ids[f.name] = program_id
+        _count(report, "programs", status)
+    return ids
+
+
+async def _write_facts(
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], funder_id: int,
+    programs: dict[str, int], docs: dict[str, int], report: dict[str, Any],
+) -> None:
+    """Every remaining concept, in dependency order."""
+    name = row["canonical_name"] or row["entity_name"]
+    fetched = row["researched_at"]
+
+    for concept in WRITE_ORDER:
+        for f in _validated(findings, concept):
+            program_id = programs.get(getattr(f, "program_name", None) or "")
+            document_id = docs.get(f.source_url)
+            state_id, district_id = await _place(conn, f, report)
+            base = {"funder_name": name, **_provenance(f, fetched)}
+            try:
+                if concept == "csr_spend":
+                    rec = FunderCsrSpendRecord(
+                        fiscal_year=f.fiscal_year, amount=f.amount.inr,
+                        project_name=f.project_name, project_count=f.project_count,
+                        designation=f.designation, implementing_agency=f.implementing_agency,
+                        agency_csr1=f.agency_csr1, via_agency=f.via_agency,
+                        is_ongoing=f.is_ongoing, as_of=f.fiscal_year,
+                        notes=_with_sector(f), **base,
+                    )
+                    status, _ = await write_csr_spend(
+                        conn, rec, funder_id, program_id=program_id, state_id=state_id,
+                        district_id=district_id, document_id=document_id,
+                    )
+                    _count(report, "funder_csr_spend", status)
+
+                elif concept == "footprint":
+                    location_id = district_id or state_id
+                    if location_id is None:
+                        report["held"].append(
+                            f"footprint {f.state!r}: no place to attach it to, and "
+                            f"funder_footprints requires one"
+                        )
+                        continue
+                    rec = FunderFootprintRecord(
+                        fiscal_year=f.fiscal_year, state=f.state, district=f.district,
+                        name_as_printed=f.name_as_printed or f.district or f.state,
+                        notes=f.notes, as_of=f.fiscal_year, **base,
+                    )
+                    status, _ = await write_footprint(
+                        conn, rec, funder_id, program_id=program_id,
+                        location_id=location_id, document_id=document_id,
+                    )
+                    _count(report, "funder_footprints", status)
+
+                elif concept == "stated_geography":
+                    location_id = district_id or state_id
+                    if location_id is None:
+                        continue
+                    rec = FunderLocationRecord(
+                        state=f.state, district=f.district, role=f.role, note=f.note,
+                        as_of=None, **base,
+                    )
+                    status, _ = await write_funder_location(
+                        conn, rec, funder_id, location_id=location_id, document_id=document_id
+                    )
+                    _count(report, "funder_locations", status)
+
+                elif concept == "partner":
+                    rec = FunderPartnerRecord(
+                        fiscal_year=f.fiscal_year, partner_name=f.partner_name,
+                        partner_canonical=f.partner_canonical, partner_kind=f.partner_kind,
+                        partner_csr1=f.partner_csr1, notes=f.notes, as_of=f.fiscal_year, **base,
+                    )
+                    status, _ = await write_partner(
+                        conn, rec, funder_id, program_id=program_id, document_id=document_id
+                    )
+                    _count(report, "funder_partners", status)
+
+                elif concept == "metric":
+                    rec = MetricRecord(
+                        name=f.name, value=f.value, target=f.target, unit=f.unit,
+                        period=f.period, stage=f.stage, method=f.method,
+                        is_self_reported=f.is_self_reported, baseline=f.baseline,
+                        comparison_value=f.comparison_value, chain_key=f.chain_key,
+                        sequence=f.sequence, notes=f.notes, as_of=f.period, **base,
+                    )
+                    status, _ = await write_metric(
+                        conn, rec, funder_id, program_id=program_id,
+                        location_id=district_id or state_id, document_id=document_id,
+                    )
+                    _count(report, "metrics", status)
+
+                elif concept == "contact":
+                    rec = ContactRecord(
+                        name=f.name, contact_kind=f.kind, role=f.role, notes=f.notes,
+                        as_of=None, **base,
+                    )
+                    status, _ = await write_contact(
+                        conn, rec, funder_id, document_id=document_id
+                    )
+                    _count(report, "contacts", status)
+
+            except ValidationError as exc:
+                report["held"].append(f"{concept}: {exc.errors()[0]['msg']}")
+
+
+def _with_sector(f: Any) -> str | None:
+    """The funder's own words for a theme. tags.kind allows 'csr_sector' but
+    nothing seeds that taxonomy, so normalising here would invent the mapping
+    — "Building Human Capital" is not Education until someone decides it is."""
+    bits = [b for b in (f.sector, f.notes) if b]
+    return " · ".join(bits) or None
+
+
 async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
     """Write what can be written from one research row. Returns a report."""
     findings = row["findings"] if isinstance(row["findings"], list) else []
     report: dict[str, Any] = {
-        "slug": row["slug"], "funder": None, "csr_years": [], "skipped": {}, "reasons": []
+        "slug": row["slug"], "funder": None, "csr_years": [],
+        "written": {}, "held": [], "skipped": {}, "reasons": [],
     }
     for concept in sorted({f["concept"] for f in findings}):
         if concept not in PROMOTABLE:
@@ -130,9 +367,16 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
     status, funder_id, _ = await write_funder(conn, record, match)
     report["funder"] = {"status": status, "id": funder_id, "name": record.name}
 
+    docs = await _write_documents(conn, row, findings, funder_id, report)
     for year_record in csr_years_from(row, findings):
-        state, _ = await write_csr_year(conn, year_record, funder_id, None)
+        state, _ = await write_csr_year(
+            conn, year_record, funder_id, docs.get(year_record.source_url)
+        )
         report["csr_years"].append({"fiscal_year": year_record.fiscal_year, "status": state})
+    programs = await _write_programs(conn, row, findings, funder_id, docs, report)
+    await _write_facts(conn, row, findings, funder_id, programs, docs, report)
+    # Ten findings citing the same unresolvable state is one problem, not ten.
+    report["held"] = list(dict.fromkeys(report["held"]))
     return report
 
 

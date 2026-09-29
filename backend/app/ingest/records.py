@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -49,6 +49,12 @@ def reject_if_aggregate(name: str) -> str:
             f"is not a funder's spend; report it, do not record it as an entity."
         )
     return name
+
+
+def _fiscal_year(v: str) -> str:
+    if not FISCAL_YEAR.match(v):
+        raise ValueError(f"fiscal_year must look like 'FY2023-24', got {v!r}")
+    return v
 
 
 class FunderRecord(Provenance):
@@ -120,4 +126,138 @@ class NewsMentionRecord(Provenance):
     topic: str | None = None
 
 
-Record = FunderRecord | FunderCsrYearRecord | NewsMentionRecord
+# --- The funder-side fact tables -------------------------------------------
+#
+# One class per table, fields named for its columns. Amounts are INR: the
+# researcher states a unit, Money.inr converts once, and what arrives here is
+# already converted. Place names arrive as words and app/ingest/geography.py
+# turns them into a locations id, because a report says "Barpeta, Assam" and
+# the column is a foreign key.
+
+
+class FunderCsrSpendRecord(Provenance):
+    """A project, or an aggregate of several. Never both, and never divided."""
+
+    kind: Literal["funder_csr_spend"] = "funder_csr_spend"
+    funder_name: str = Field(min_length=2)
+    fiscal_year: str
+    amount: float = Field(ge=0, description="INR")
+    project_name: str | None = None
+    project_count: int | None = None
+    state: str | None = None
+    district: str | None = None
+    program_name: str | None = None
+    designation: str | None = None
+    implementing_agency: str | None = None
+    agency_csr1: str | None = None
+    via_agency: bool | None = None
+    is_ongoing: bool | None = None
+    notes: str | None = None
+
+    _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
+class FunderFootprintRecord(Provenance):
+    """Where a theme actually ran. location_id is NOT NULL, so a place that
+    will not resolve is a row that cannot be written — say so, do not guess."""
+
+    kind: Literal["funder_footprint"] = "funder_footprint"
+    funder_name: str = Field(min_length=2)
+    fiscal_year: str
+    state: str = Field(min_length=2)
+    district: str | None = None
+    program_name: str | None = None
+    name_as_printed: str | None = None
+    notes: str | None = None
+
+    _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
+class FunderLocationRecord(Provenance):
+    """A STATED priority. Not evidence that money went there."""
+
+    kind: Literal["funder_location"] = "funder_location"
+    funder_name: str = Field(min_length=2)
+    state: str = Field(min_length=2)
+    district: str | None = None
+    role: Literal["registered", "operates", "funds", "priority"] = "priority"
+    note: str | None = None
+
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
+class FunderPartnerRecord(Provenance):
+    """A named partner. NOT proof that money changed hands — that is a grant."""
+
+    kind: Literal["funder_partner"] = "funder_partner"
+    funder_name: str = Field(min_length=2)
+    fiscal_year: str
+    partner_name: str = Field(min_length=2)
+    partner_canonical: str | None = None
+    partner_kind: str | None = None
+    partner_csr1: str | None = None
+    program_name: str | None = None
+    notes: str | None = None
+
+    _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
+class ProgramRecord(Provenance):
+    kind: Literal["program"] = "program"
+    funder_name: str = Field(min_length=2)
+    name: str = Field(min_length=2)
+    program_kind: Literal["theme", "programme", "phase", "project"] = "programme"
+    parent_name: str | None = None
+    description: str | None = None
+    status: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    is_enabler: bool | None = None
+
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
+class MetricRecord(Provenance):
+    kind: Literal["metric"] = "metric"
+    funder_name: str = Field(min_length=2)
+    name: str = Field(min_length=2)
+    value: float | None = None
+    target: float | None = None
+    unit: str | None = None
+    period: str | None = None
+    stage: str | None = None
+    method: str | None = None
+    is_self_reported: bool = True
+    baseline: float | None = None
+    comparison_value: float | None = None
+    chain_key: str | None = None
+    sequence: int | None = None
+    program_name: str | None = None
+    state: str | None = None
+    district: str | None = None
+    notes: str | None = None
+
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
+class ContactRecord(Provenance):
+    """Publicly disclosed roles only. Email and phone are deliberately absent."""
+
+    kind: Literal["contact"] = "contact"
+    funder_name: str = Field(min_length=2)
+    name: str = Field(min_length=2)
+    contact_kind: Literal["office_bearer", "programme", "grants", "other"] = "other"
+    role: str | None = None
+    notes: str | None = None
+
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
+Record = (
+    FunderRecord | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
+    | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | ProgramRecord
+    | MetricRecord | ContactRecord
+)

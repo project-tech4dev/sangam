@@ -13,6 +13,7 @@ from app.ingest.expectations import (
     expected_fields,
     recent_fiscal_years,
 )
+from app.ingest.geography import _STATES, canonical_state
 from app.ingest.matcher import (
     CORE_FLOOR,
     Match,
@@ -20,8 +21,18 @@ from app.ingest.matcher import (
     core_similarity,
     same_but_for_boilerplate,
 )
-from app.ingest.promote import promote
-from app.ingest.records import FunderCsrYearRecord, FunderRecord, NewsMentionRecord
+from app.ingest.promote import PROMOTABLE, WRITE_ORDER, promote
+from app.ingest.records import (
+    ContactRecord,
+    FunderCsrSpendRecord,
+    FunderCsrYearRecord,
+    FunderFootprintRecord,
+    FunderPartnerRecord,
+    FunderRecord,
+    MetricRecord,
+    NewsMentionRecord,
+    ProgramRecord,
+)
 from app.ingest.research_records import (
     CONCEPTS,
     FINDING_MODELS,
@@ -594,3 +605,73 @@ class TestTheSummaryCannotUnderreport:
     def test_fact_count_is_required(self):
         with pytest.raises(ValidationError):
             ResearchSummary(slug="acme", entity_name="Acme Ltd", status="complete")
+
+
+class TestPlaceNamesResolveOrAreRefused:
+    """A state list is closed and a district list is not, so they differ."""
+
+    @pytest.mark.parametrize(
+        ("printed", "canonical"),
+        [
+            ("Assam", "Assam"), ("assam", "Assam"), ("ASSAM", "Assam"),
+            # Names annual reports still print years after they changed.
+            ("Orissa", "Odisha"), ("Pondicherry", "Puducherry"), ("Uttaranchal", "Uttarakhand"),
+            ("NCT of Delhi", "Delhi"), ("Jammu & Kashmir", "Jammu and Kashmir"),
+            ("Tamilnadu", "Tamil Nadu"), ("Assam State", "Assam"),
+        ],
+    )
+    def test_one_spelling_per_state(self, printed, canonical):
+        assert canonical_state(printed) == canonical
+
+    @pytest.mark.parametrize("not_a_state", ["Barpeta", "Atlantis", "Northeast", "Assam Pradesh"])
+    def test_anything_else_is_refused_rather_than_created(self, not_a_state):
+        # A typo that becomes a state row is wrong for good, and nothing in the
+        # schema would ever flag it.
+        assert canonical_state(not_a_state) is None
+
+    def test_there_are_thirty_six_states_and_union_territories(self):
+        assert len(_STATES) == 36
+
+
+class TestTheWriterSideRecords:
+    """Seven new record types, all refusing what the writer cannot store."""
+
+    def base(self, **kw):
+        return {"funder_name": "Oil India Limited", **prov(), **kw}
+
+    def test_a_market_is_not_a_funder_on_any_of_them(self):
+        for model, extra in (
+            (FunderCsrSpendRecord, {"fiscal_year": "FY2024-25", "amount": 1.0}),
+            (FunderFootprintRecord, {"fiscal_year": "FY2024-25", "state": "Assam"}),
+            (FunderPartnerRecord, {"fiscal_year": "FY2024-25", "partner_name": "Harsha Trust"}),
+            (ProgramRecord, {"name": "Rural Health"}),
+            (MetricRecord, {"name": "beneficiaries"}),
+            (ContactRecord, {"name": "A. Borgohain"}),
+        ):
+            with pytest.raises(ValidationError, match="group of companies"):
+                model(**{**self.base(funder_name="NSE-listed companies"), **extra})
+
+    def test_fiscal_year_format_is_enforced_on_every_yearly_record(self):
+        for model, extra in (
+            (FunderCsrSpendRecord, {"amount": 1.0}),
+            (FunderFootprintRecord, {"state": "Assam"}),
+            (FunderPartnerRecord, {"partner_name": "Harsha Trust"}),
+        ):
+            with pytest.raises(ValidationError, match="FY2023-24"):
+                model(**{**self.base(fiscal_year="FY25"), **extra})
+
+    def test_an_amount_is_inr_and_cannot_be_negative(self):
+        with pytest.raises(ValidationError):
+            FunderCsrSpendRecord(**self.base(fiscal_year="FY2024-25", amount=-1.0))
+
+
+class TestPromotionCoversEveryConceptWithAWriter:
+    def test_only_grant_is_left_out(self):
+        # Eleven of twelve. grants.org_id is NOT NULL and orgs has no writer.
+        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == {"grant"}
+
+    def test_programmes_are_written_before_anything_that_names_one(self):
+        # csr_spend, footprint, partner and metric all resolve program_name to
+        # a program_id, so a programme written after them would leave nulls.
+        assert "program" not in WRITE_ORDER
+        assert {"csr_spend", "footprint", "partner", "metric"} <= set(WRITE_ORDER)

@@ -42,6 +42,13 @@ async def catalog_baseline() -> dict[str, int]:
             await conn.execute(
                 "SELECT (SELECT count(*) FROM funders) AS funders, "
                 "(SELECT count(*) FROM funder_csr_years) AS funder_csr_years, "
+                "(SELECT count(*) FROM funder_csr_spend) AS funder_csr_spend, "
+                "(SELECT count(*) FROM funder_footprints) AS funder_footprints, "
+                "(SELECT count(*) FROM funder_locations) AS funder_locations, "
+                "(SELECT count(*) FROM funder_partners) AS funder_partners, "
+                "(SELECT count(*) FROM programs) AS programs, "
+                "(SELECT count(*) FROM metrics) AS metrics, "
+                "(SELECT count(*) FROM contacts) AS contacts, "
                 "(SELECT count(*) FROM news_mentions) AS news_mentions, "
                 "(SELECT count(*) FROM documents) AS documents, "
                 "(SELECT count(*) FROM resolution_queue WHERE status = 'pending') AS pending_review"
