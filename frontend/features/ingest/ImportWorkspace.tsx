@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
+import { RunStatus } from "./components/RunStatus";
 import { SubagentBoard } from "./components/SubagentBoard";
 import { HIDDEN_TOOLS, humanizeTool, stepNote } from "./lib/toolLabels";
 
@@ -89,6 +90,11 @@ export function ImportWorkspace() {
           </article>
         ))}
       </div>
+
+      <RunStatus
+        running={isRunning}
+        steps={turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : []}
+      />
 
       <form
         onSubmit={(e) => {

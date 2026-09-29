@@ -50,4 +50,9 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     )
     # Langfuse v3 reads LANGFUSE_PUBLIC_KEY/SECRET_KEY/HOST from the env; attaching the handler at graph
     # level traces every run, tool call, and generation without touching the AG-UI endpoint. trace_config().
-    return agent.with_config({**trace_config(settings), "recursion_limit": settings.recursion_limit})
+    return agent.with_config(
+        {
+            **trace_config(settings, name="sangam_ask", tags=("ask",)),
+            "recursion_limit": settings.recursion_limit,
+        }
+    )

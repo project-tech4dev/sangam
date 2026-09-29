@@ -281,3 +281,9 @@ textarea.input { resize: vertical; min-height: 64px; }
     box-shadow: var(--shadow-md);
   }
 }
+
+/* The Import screen's running indicator. */
+@keyframes sangamPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.72); }
+}

@@ -106,4 +106,12 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         system_prompt=INSTRUCTIONS,
         checkpointer=checkpointer,
     )
-    return agent.with_config({**trace_config(settings), "recursion_limit": settings.recursion_limit})
+    # Its own trace name: Ask and Import are different graphs doing different
+    # work, and sharing "sangam_agent" made an import indistinguishable from a
+    # question in Langfuse.
+    return agent.with_config(
+        {
+            **trace_config(settings, name="sangam_import", tags=("import", "research")),
+            "recursion_limit": settings.recursion_limit,
+        }
+    )

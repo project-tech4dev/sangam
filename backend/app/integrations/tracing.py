@@ -164,16 +164,23 @@ def _build_handler(settings: Settings):
     )
 
 
-def trace_config(settings: Settings) -> dict[str, Any]:
-    """Config fragment attaching Langfuse to the agent graph."""
-    base: dict[str, Any] = {"run_name": TRACE_NAME}
+def trace_config(
+    settings: Settings, *, name: str = TRACE_NAME, tags: tuple[str, ...] = ()
+) -> dict[str, Any]:
+    """Config fragment attaching Langfuse to the agent graph.
+
+    `name` is what a trace is called in Langfuse. Every agent passes its own:
+    two graphs sharing one name makes the two indistinguishable in the UI, and
+    a run's name is the only thing shown before you open it.
+    """
+    base: dict[str, Any] = {"run_name": name}
     if not settings.langfuse_enabled:
         return base
     try:
         return {
             **base,
             "callbacks": [_build_handler(settings)],
-            "metadata": {"langfuse_tags": ["sangam", settings.model]},
+            "metadata": {"langfuse_tags": ["sangam", *tags, settings.model]},
         }
     except Exception:  # telemetry must never take the app down
         logger.warning(
