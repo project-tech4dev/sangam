@@ -20,7 +20,7 @@ from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.ingest.access import check_url
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
-from app.ingest.research_records import EntityResearch
+from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
 from app.ingest.writer import slugify
 
 logger = logging.getLogger(__name__)
@@ -205,7 +205,7 @@ async def save_research(findings: EntityResearch) -> str:
                         stopped_reason, summary, findings, not_found, sources_read, fact_count,
                         goals, schema_version)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s,
-                            %s::jsonb, 1)
+                            %s::jsonb, %s)
                     ON CONFLICT (slug, researched_on) DO UPDATE SET
                         entity_name = EXCLUDED.entity_name,
                         canonical_name = EXCLUDED.canonical_name,
@@ -229,14 +229,16 @@ async def save_research(findings: EntityResearch) -> str:
                         findings.summary,
                         json.dumps([f.model_dump(mode="json") for f in findings.findings]),
                         findings.not_found, findings.sources_read, len(findings.findings),
-                        json.dumps(findings.goals),
+                        json.dumps(findings.goals), SCHEMA_VERSION,
                     ),
                 )
             ).fetchone()
+        found = ", ".join(findings.concepts_found()) or "nothing"
         return (
-            f"Saved as entity_research #{row['id']} ({slug}): {len(findings.findings)} findings, "
-            f"status {findings.status}. It will appear in docs/entities/{slug}.md on the next "
-            f"`make client-docs`."
+            f"Saved as entity_research #{row['id']} ({slug}): {len(findings.findings)} findings "
+            f"across {found}; status {findings.status}. Report back with slug={slug!r} and "
+            f"saved=true. It appears in docs/entities/{slug}.md on the next `make client-docs`, "
+            f"and promote_research moves what has a writer into the catalog."
         )
     except Exception as exc:
         logger.exception("save_research failed for %s", findings.entity_name)

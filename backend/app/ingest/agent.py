@@ -17,7 +17,7 @@ from app.ingest.research import (
     save_research,
     search_public_sources,
 )
-from app.ingest.research_records import EntityResearch
+from app.ingest.research_records import ResearchSummary
 from app.ingest.tools import (
     funder_dossier,
     import_run_summary,
@@ -79,8 +79,11 @@ ENTITY_RESEARCHER = {
     "mode": "isolated",
     "tools": RESEARCHER_TOOLS,
     # With a response_format the task tool returns the model's JSON instead of
-    # its last message, so the parent and the screen both get structure.
-    "response_format": EntityResearch,
+    # its last message, so the parent and the screen both get structure. It is
+    # a SUMMARY, not the findings: those reach the database through
+    # save_research, and emitting the whole payload twice is both wasteful and
+    # a hard failure when a schema this large is imposed on the final call.
+    "response_format": ResearchSummary,
     "system_prompt": (
         "You research exactly ONE organisation and report back.\n\n"
         "START WITH research_goals. It reads the database's own columns and tells you which "
@@ -111,7 +114,15 @@ ENTITY_RESEARCHER = {
         "finding carries the sentence that states it and the URL it came from; a figure "
         "without its sentence is not a finding and the tool will refuse it. Name the "
         "concepts you looked for and did not find — 'not found' is a result, and so is "
-        "'ran out of budget'. Research that is only spoken disappears with the conversation."
+        "'ran out of budget'. Research that is only spoken disappears with the conversation.\n\n"
+        "EVERY AMOUNT CARRIES ITS UNIT. An amount is {value, unit, text}: the number as "
+        "printed, the unit it is in ('inr', 'lakh' or 'crore'), and the source's own wording. "
+        "Do not convert — 'Rs 1,068.03 crore' is value 1068.03, unit 'crore', and saying 1068 "
+        "in rupees is an error of ten million. The tool does the arithmetic, once.\n\n"
+        "If save_research refuses a finding, it says why: fix that finding and call it again. "
+        "A rejected payload is not a reason to give up on the rest.\n\n"
+        "Then report back the summary only — slug, status, counts, what you found and what you "
+        "did not. The findings are already saved; do not repeat them."
     ),
 }
 

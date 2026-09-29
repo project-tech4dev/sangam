@@ -4,62 +4,41 @@ Research and catalog are different things. A finding is what a source said,
 with the sentence that says it; a catalog row is a fact the product answers
 questions from. This is the deliberate step between them, and it only moves
 what there is somewhere to move — the rest is reported, not silently dropped.
+
+Findings arrive typed (app/ingest/research_records.py), so this file maps
+fields to columns. It does not parse: the last version read free text with
+regular expressions and refused a real figure because it could not tell crore
+from rupees, which is the good half of that failure mode.
 """
 
 from __future__ import annotations
 
 import logging
-import re
 from datetime import UTC, datetime
 from typing import Any
 
 from app.ingest.matcher import resolve_funder
 from app.ingest.records import FunderCsrYearRecord, FunderRecord
+from app.ingest.research_records import SCHEMA_VERSION
 from app.ingest.writer import write_csr_year, write_funder
 
 logger = logging.getLogger(__name__)
 
 # identity/identifier → funders, csr_year → funder_csr_years. Everything else
-# has no writer: see docs/INGEST.md.
+# has no writer yet: see docs/INGEST.md.
 PROMOTABLE = ("identity", "identifier", "csr_year")
-_FY = re.compile(r"FY\d{4}-\d{2}")
-_NUMBER = re.compile(r"-?\d[\d,]*\.?\d*")
-_SPENT = ("spent", "expenditure", "spend")
-_OBLIGATION = ("prescribed", "obligation", "2%", "required")
 
 
-def amount(value: str) -> float | None:
-    """The first bare number in a value, or None when it is not a clean figure.
-
-    Findings carry free text — "INR 3,100,000,000,000 (₹3,10,000 crore)" as
-    readily as "4270000000". A figure that cannot be read without guessing is
-    not promoted; guessing is how a wrong number gets into the catalog.
-    """
-    match = _NUMBER.search(value.replace(" ", ""))
-    if not match:
+def _inr(money: dict[str, Any] | None) -> float | None:
+    """A Money finding as INR. The conversion lives in Money.inr; this is its
+    dict form, because findings come back out of jsonb."""
+    if not money:
         return None
-    try:
-        n = float(match.group(0).replace(",", ""))
-    except ValueError:
+    units = {"inr": 1, "lakh": 1_00_000, "crore": 1_00_00_000}
+    unit = money.get("unit")
+    if unit not in units:
         return None
-    # Scale matters more than the digits. "Rs 1,068.03 crore" read as 1068 is
-    # the same ten-million-fold error the extractor had, so a small number is
-    # only accepted when the text says what unit it is in.
-    if n >= 1_00_00_000:
-        return n
-    lowered = value.lower()
-    if "crore" in lowered:
-        return n * 1_00_00_000
-    if "lakh" in lowered:
-        return n * 1_00_000
-    return None
-
-
-def _fiscal_year(finding: dict[str, Any]) -> str | None:
-    if finding.get("fiscal_year"):
-        return finding["fiscal_year"]
-    found = _FY.search(finding.get("label", ""))
-    return found.group(0) if found else None
+    return float(money["value"]) * units[unit]
 
 
 def _provenance(finding: dict[str, Any], fetched: datetime) -> dict[str, Any]:
@@ -71,24 +50,18 @@ def _provenance(finding: dict[str, Any], fetched: datetime) -> dict[str, Any]:
 
 
 def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRecord | None:
-    """One funder record, built from the identity and identifier findings."""
-    anchor = next((f for f in findings if f["concept"] in ("identity", "identifier")), None)
+    """One funder record, from the identity finding and any identifiers."""
+    identity = next((f for f in findings if f["concept"] == "identity"), None)
+    identifiers = [f for f in findings if f["concept"] == "identifier"]
+    anchor = identity or (identifiers[0] if identifiers else None)
     if anchor is None:
         return None
-    identifiers: dict[str, str] = {}
-    for f in findings:
-        if f["concept"] != "identifier":
-            continue
-        label = f.get("label", "").lower()
-        for key in ("cin", "pan", "csr1", "darpan", "reg_no"):
-            if key in label.replace("-", "").replace(" ", ""):
-                identifiers[key] = f["value"]
-                break
     try:
         return FunderRecord(
-            name=row["canonical_name"] or row["entity_name"],
-            website=row.get("website"),
-            identifiers=identifiers,
+            name=(identity or {}).get("name") or row["canonical_name"] or row["entity_name"],
+            funder_type=(identity or {}).get("funder_type"),
+            website=(identity or {}).get("website") or row.get("website"),
+            identifiers={f["id_type"]: f["id_value"] for f in identifiers},
             as_of=None,
             **_provenance(anchor, row["researched_at"]),
         )
@@ -98,41 +71,29 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
 
 
 def csr_years_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> list[FunderCsrYearRecord]:
-    """One record per fiscal year, merging the spent and obligation findings."""
+    """One record per fiscal year. Each finding already names its own columns."""
     name = row["canonical_name"] or row["entity_name"]
-    by_year: dict[str, dict[str, Any]] = {}
+    out = []
     for f in findings:
         if f["concept"] != "csr_year":
-            continue
-        year = _fiscal_year(f)
-        value = amount(f["value"])
-        if not year or value is None:
-            continue
-        label = f.get("label", "").lower()
-        slot = by_year.setdefault(year, {"finding": f})
-        if any(w in label for w in _OBLIGATION):
-            slot["prescribed_csr"] = value
-        elif any(w in label for w in _SPENT):
-            slot["total_spent"] = value
-
-    out = []
-    for year, slot in by_year.items():
-        if "prescribed_csr" not in slot and "total_spent" not in slot:
             continue
         try:
             out.append(
                 FunderCsrYearRecord(
                     funder_name=name,
-                    fiscal_year=year,
-                    prescribed_csr=slot.get("prescribed_csr"),
-                    total_spent=slot.get("total_spent"),
-                    as_of=year,
-                    notes=f"Promoted from research: {slot['finding'].get('evidence', '')[:200]}",
-                    **_provenance(slot["finding"], row["researched_at"]),
+                    fiscal_year=f["fiscal_year"],
+                    prescribed_csr=_inr(f.get("prescribed_csr")),
+                    total_spent=_inr(f.get("total_spent")),
+                    average_net_profit=_inr(f.get("average_net_profit")),
+                    unspent_transferred=_inr(f.get("unspent_transferred")),
+                    section_135_applicable=f.get("section_135_applicable"),
+                    notes=f.get("notes") or f"Promoted from research: {f.get('evidence', '')[:200]}",
+                    as_of=f["fiscal_year"],
+                    **_provenance(f, row["researched_at"]),
                 )
             )
         except ValueError as exc:
-            logger.info("csr year refused for %s %s: %s", row["slug"], year, exc)
+            logger.info("csr year refused for %s %s: %s", row["slug"], f.get("fiscal_year"), exc)
     return out
 
 
@@ -154,6 +115,15 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
             "researched as an organisation, not a funder. orgs has no writer yet "
             "(no OrgRecord, no resolve_org, no write_org), so this stays research. "
             "See docs/INGEST.md."
+        )
+        return report
+
+    # Flat label/value findings cannot be mapped to columns without the
+    # guessing this file was rewritten to remove. Re-research, do not migrate.
+    if findings and row.get("schema_version", 1) < SCHEMA_VERSION:
+        report["reasons"].append(
+            f"researched under finding shape v{row.get('schema_version', 1)}, which has no typed "
+            f"fields to map. Re-run the research for {row['slug']} and promote that."
         )
         return report
 

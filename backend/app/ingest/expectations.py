@@ -43,10 +43,12 @@ PROVENANCE = frozenset({
 
 # Foreign keys a source does state, in words. The writer resolves each name to
 # an id; the researcher only ever reports what the report printed.
+# A single location_id is deliberately absent: a table with one place column
+# still needs both halves from the researcher, because "Barpeta" alone cannot
+# be resolved and "Barpeta, Assam" can. It is added as a pair in EXTRA.
 NAMED_AS: dict[str, str] = {
     "state_location_id": "state",
     "district_location_id": "district",
-    "location_id": "place",
     "program_id": "program_name",
     "parent_id": "parent_name",
 }
@@ -58,6 +60,12 @@ INTERNAL = frozenset({
     "created_at", "uploaded_by", "is_ai_generated", "storage_path", "content_md",
     "profile", "sections", "contact", "details", "outcomes", "valid_from", "valid_to",
 })
+
+
+# Columns that are a research target on most tables but ours on one. A
+# document's status is our reading workflow, not something a source states;
+# a grant's and a programme's status are facts about the world.
+OURS: dict[str, frozenset[str]] = {"document": frozenset({"status"})}
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,28 +87,75 @@ class Expected:
         return " — ".join(bits)
 
 
-# Columns the DDL declares NOT NULL, minus the ids the writer supplies. A row
-# cannot be written without these, so research that misses one is research that
-# cannot land. Checked against the live schema by test_expectations_match_ddl.
+# What a researcher must state for the row to be writable: NOT NULL, and with
+# nobody else to supply it. A NOT NULL column that carries a DDL default is not
+# here — programs.kind defaults to 'programme' and contacts.kind to 'other' —
+# and neither is grants.status, which has no default but whose 'unconfirmed'
+# value exists precisely so the writer can say "the source did not say".
+# Demanding those would make the model guess, which is the failure this file
+# exists to prevent.
 REQUIRED: dict[str, frozenset[str]] = {
     "identity": frozenset({"name"}),
     "identifier": frozenset({"id_type", "id_value"}),
     "csr_year": frozenset({"fiscal_year"}),
     "csr_spend": frozenset({"fiscal_year", "amount"}),
-    "footprint": frozenset({"fiscal_year", "place"}),
-    "stated_geography": frozenset({"place"}),
+    "footprint": frozenset({"fiscal_year", "state"}),
+    "stated_geography": frozenset({"state"}),
     "partner": frozenset({"fiscal_year", "partner_name"}),
-    "program": frozenset({"name", "kind"}),
-    "grant": frozenset({"title", "status"}),
+    "program": frozenset({"name"}),
+    "grant": frozenset({"title", "recipient_name"}),
     "metric": frozenset({"name"}),
-    "contact": frozenset({"name", "kind"}),
+    "contact": frozenset({"name"}),
     "document": frozenset({"title", "doc_type"}),
 }
 
 
 # Facts worth researching that have no column of their own yet. Surfacing them
 # here is what stops "we never asked" from looking like "the source never said".
+_STATE = Expected(
+    name="state",
+    type="text",
+    note="the state as the source names it",
+    values=(),
+    required=True,
+)
+_DISTRICT = Expected(
+    name="district",
+    type="text",
+    note="the district, when the source is that precise. Never invent one from a city or a "
+         "programme name",
+    values=(),
+    required=False,
+)
+
 EXTRA: dict[str, tuple[Expected, ...]] = {
+    "footprint": (_STATE, _DISTRICT),
+    "stated_geography": (_STATE, _DISTRICT),
+    "metric": (
+        Expected(name="state", type="text", note="the state, when the figure is for one place",
+                 values=(), required=False),
+        _DISTRICT,
+    ),
+    "grant": (
+        Expected(
+            name="recipient_name",
+            type="text",
+            note="the organisation that received the money, as printed. grants.org_id is NOT "
+                 "NULL, so a recipient not in orgs belongs in funder_partners instead",
+            values=(),
+            required=True,
+        ),
+    ),
+    "document": (
+        Expected(
+            name="as_of",
+            type="text",
+            note="the period the document describes, e.g. 'FY2023-24'. NOT when you read it — "
+                 "fetched_at is that, and the two are different",
+            values=(),
+            required=False,
+        ),
+    ),
     "csr_spend": (
         Expected(
             name="sector",
@@ -124,6 +179,8 @@ def expected_fields(concept: str) -> tuple[Expected, ...]:
     for column in table.columns:
         name = column.name
         if name == "id" or name in PROVENANCE or name in INTERNAL or column.heavy:
+            continue
+        if name in OURS.get(concept, frozenset()):
             continue
         if name.endswith("_id"):
             if name not in NAMED_AS:

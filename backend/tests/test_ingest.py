@@ -22,7 +22,18 @@ from app.ingest.matcher import (
 )
 from app.ingest.promote import promote
 from app.ingest.records import FunderCsrYearRecord, FunderRecord, NewsMentionRecord
-from app.ingest.research_records import CONCEPTS, EntityResearch, Finding
+from app.ingest.research_records import (
+    CONCEPTS,
+    FINDING_MODELS,
+    SCHEMA_VERSION,
+    CsrSpendFinding,
+    CsrYearFinding,
+    EntityResearch,
+    FootprintFinding,
+    MetricFinding,
+    Money,
+    PartnerFinding,
+)
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.writer import _diff, slugify
 
@@ -283,12 +294,13 @@ class TestResearchRecords:
     """Every finding carries the sentence behind it, or it is not a finding."""
 
     def finding(self, **kw):
-        base = dict(
-            concept="csr_year", label="FY2024-25 total spent", value="4270000000",
-            evidence="The Bank spent Rs 427 crore on CSR activities during FY2024-25.",
-            source_url="https://axis.bank.in/report.pdf", confidence="high",
-        )
-        return Finding(**{**base, **kw})
+        base = {
+            "concept": "csr_year", "fiscal_year": "FY2024-25",
+            "total_spent": {"value": 427.0, "unit": "crore", "text": "Rs 427 crore"},
+            "evidence": "The Bank spent Rs 427 crore on CSR activities during FY2024-25.",
+            "source_url": "https://axis.bank.in/report.pdf", "confidence": "high",
+        }
+        return CsrYearFinding(**{**base, **kw})
 
     def test_a_finding_needs_a_real_sentence(self):
         with pytest.raises(ValidationError):
@@ -325,10 +337,18 @@ class TestResearchRecords:
     def test_findings_are_reachable_by_concept(self):
         r = EntityResearch(
             entity_name="Acme Ltd", status="complete", summary="A" * 25,
-            findings=[self.finding(), self.finding(concept="partner", label="Harsha Trust")],
+            findings=[
+                self.finding(),
+                PartnerFinding(
+                    fiscal_year="FY2024-25", partner_name="Harsha Trust", partner_kind="ngo",
+                    evidence="Harsha Trust implemented the livelihoods programme in FY2024-25.",
+                    source_url="https://axis.bank.in/report.pdf", confidence="high",
+                ),
+            ],
         )
         assert len(r.by_concept("csr_year")) == 1
         assert r.by_concept("grant") == []
+        assert r.concepts_found() == ["csr_year", "partner"]
 
 
 class TestDocRendering:
@@ -435,11 +455,122 @@ class TestPromotionRefusesWhatItCannotWrite:
         # funder table, which is a wrong answer carrying a catalog citation.
         row = {
             "slug": "the-ant", "entity_name": "The ANT", "canonical_name": None,
-            "entity_kind": "org", "researched_at": NOW,
-            "findings": [{"concept": "identity", "label": "name", "value": "The ANT",
-                          "source_url": "https://theant.org", "evidence": "x" * 20,
+            "entity_kind": "org", "researched_at": NOW, "schema_version": 2,
+            "findings": [{"concept": "identity", "name": "The Ant",
+                          "source_url": "https://theant.org",
+                          "evidence": "The Ant is a registered society working in Assam.",
                           "confidence": "high"}],
         }
         report = await promote(None, row)
         assert report["funder"] is None
         assert any("no writer" in r for r in report["reasons"])
+
+
+class TestFindingsAreShapedLikeTheRowsTheyBecome:
+    """The models and the schema are held together mechanically, not by memory.
+
+    A migration that adds a column changes expected_fields() the next time it
+    runs, and these fail until someone decides whether a researcher can find it.
+    """
+
+    EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis"})
+
+    def fields_of(self, concept: str) -> set[str]:
+        return set(FINDING_MODELS[concept].model_fields) - self.EVIDENCE
+
+    def test_every_concept_has_a_model(self):
+        assert set(FINDING_MODELS) == set(CONCEPT_TABLES)
+
+    @pytest.mark.parametrize("concept", sorted(CONCEPT_TABLES))
+    def test_the_model_carries_exactly_what_the_table_expects(self, concept):
+        want = {f.name for f in expected_fields(concept)}
+        assert self.fields_of(concept) == want
+
+    @pytest.mark.parametrize("concept", sorted(CONCEPT_TABLES))
+    def test_a_required_column_is_a_required_field(self, concept):
+        model = FINDING_MODELS[concept]
+        for expected in expected_fields(concept):
+            if not expected.required:
+                continue
+            field = model.model_fields[expected.name]
+            assert field.is_required(), (
+                f"{concept}.{expected.name} is NOT NULL in the schema but optional on the model, "
+                f"so a finding can be saved that no writer can ever store"
+            )
+
+    def test_every_finding_still_needs_its_sentence(self):
+        with pytest.raises(ValidationError):
+            CsrSpendFinding(
+                fiscal_year="FY2024-25",
+                amount={"value": 8.0, "unit": "crore", "text": "Rs 8 crore"},
+                evidence="too short", source_url="https://a.b/c", confidence="high",
+            )
+
+
+class TestMoneyCarriesItsUnit:
+    """The crore bug, closed at the source. It has cost this codebase twice."""
+
+    def test_the_source_wording_is_kept_beside_the_number(self):
+        m = Money(value=1068.03, unit="crore", text="Rs 1,068.03 crore")
+        assert m.inr == 10_680_300_000
+        assert m.text == "Rs 1,068.03 crore"
+
+    @pytest.mark.parametrize(
+        ("value", "unit", "inr"),
+        [(1.0, "crore", 10_000_000), (1.0, "lakh", 100_000), (4_270_000_000.0, "inr", 4_270_000_000)],
+    )
+    def test_each_unit_converts_once(self, value, unit, inr):
+        assert Money(value=value, unit=unit, text="x").inr == inr
+
+    def test_a_unit_cannot_be_left_to_inference(self):
+        # This is the whole point: the old code read "Rs 1,068.03 crore" as
+        # 1068.03 because nothing forced the scale to be stated.
+        with pytest.raises(ValidationError):
+            Money(value=1068.03, text="Rs 1,068.03 crore")
+
+    def test_an_unknown_unit_is_refused(self):
+        with pytest.raises(ValidationError):
+            Money(value=5, unit="million", text="5 million")
+
+
+class TestFindingsRefuseContradictions:
+    def test_a_row_is_a_project_or_an_aggregate_but_not_both(self):
+        with pytest.raises(ValidationError, match="aggregate"):
+            CsrSpendFinding(
+                fiscal_year="FY2024-25", project_name="Thalassemia Bal Sewa Yojana",
+                project_count=12, amount={"value": 8.0, "unit": "crore", "text": "Rs 8 crore"},
+                evidence="The company spent Rs 8 crore across 12 education projects in FY2024-25.",
+                source_url="https://a.b/c", confidence="high",
+            )
+
+    def test_a_metric_with_no_number_is_not_a_metric(self):
+        with pytest.raises(ValidationError, match="neither a value nor a target"):
+            MetricFinding(
+                name="beneficiaries",
+                evidence="The programme reached communities across the district last year.",
+                source_url="https://a.b/c", confidence="high",
+            )
+
+    def test_a_district_cannot_float_without_its_state(self):
+        # "Barpeta" alone cannot be resolved to a locations row; with Assam it can.
+        with pytest.raises(ValidationError):
+            FootprintFinding(
+                fiscal_year="FY2024-25", district="Barpeta",
+                evidence="The programme ran in Barpeta district during the year under review.",
+                source_url="https://a.b/c", confidence="high",
+            )
+
+
+class TestOldFindingsAreNotPromoted:
+    async def test_a_v1_row_is_reported_rather_than_guessed_at(self):
+        row = {
+            "slug": "acme", "entity_name": "Acme Ltd", "canonical_name": None,
+            "entity_kind": "funder", "researched_at": NOW, "schema_version": 1,
+            "findings": [{"concept": "csr_year", "label": "FY2024-25 spent", "value": "427",
+                          "source_url": "https://a.b/c", "evidence": "x" * 20,
+                          "confidence": "high"}],
+        }
+        report = await promote(None, row)
+        assert report["funder"] is None
+        assert any("Re-run the research" in r for r in report["reasons"])
+        assert SCHEMA_VERSION == 2

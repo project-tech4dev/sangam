@@ -17,6 +17,12 @@ function briefOf(args: any): string {
   return (parts.length > 1 ? parts.slice(1).join(" — ") : description).trim();
 }
 
+/** A count, from either the summary's number or an older result's array. */
+function numberOr(count: unknown, list: unknown): number | undefined {
+  if (typeof count === "number") return count;
+  return Array.isArray(list) ? list.length : undefined;
+}
+
 type Outcome = {
   state: "working" | "done" | "stopped";
   status?: string;
@@ -39,8 +45,11 @@ function outcomeOf(step: TraceStep): Outcome {
   }
   try {
     const parsed = JSON.parse(step.result);
-    const facts = Array.isArray(parsed.findings) ? parsed.findings.length : undefined;
-    const sources = Array.isArray(parsed.sources_read) ? parsed.sources_read.length : undefined;
+    // The researcher returns a ResearchSummary: counts, not the findings
+    // themselves, which went to the database through save_research. Older
+    // results carried the arrays, so both shapes are read.
+    const facts = numberOr(parsed.fact_count, parsed.findings);
+    const sources = numberOr(parsed.source_count, parsed.sources_read);
     const status: string | undefined = parsed.status;
     const slug = parsed.canonical_name ?? parsed.entity_name;
     if (status === "not_found" || status === "wrong_entity") {

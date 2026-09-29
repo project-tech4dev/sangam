@@ -8,75 +8,77 @@ ONGC is a Maharatna Central Public Sector Undertaking under the Ministry of Petr
 
 Website: https://ongcindia.com (CSR portal: https://ongccsr.co.in)
 
+> Researched under an earlier finding shape, which has no typed fields to map to columns. It is readable here but cannot be promoted — re-run the research to put it in the catalog.
+
 ## Identity
 
-- **Corporate identity and sector**: Central Public Sector Undertaking (Maharatna), Ministry of Petroleum and Natural Gas; funder_type corporate_csr
+- **Corporate identity and sector · Central Public Sector Undertaking (Maharatna), Ministry of Petroleum and Natural Gas; funder_type corporate_csr**
   > The Oil and Natural Gas Corporation Limited (ONGC) is an Indian central public sector undertaking which is the largest government-owned oil and gas explorer and producer in the country... under the ownership of the Government of India and administration of Ministry of Petroleum and Natural Gas.
   <sub>Wikipedia · https://en.wikipedia.org/wiki/Oil_and_Natural_Gas_Corporation · confidence high</sub>
 
 ## Registrations and identifiers
 
-- **ISIN (Section 135 applies as a listed PSU; formal CIN not located in sources read)**: INE213A01029
+- **ISIN (Section 135 applies as a listed PSU; formal CIN not located in sources read) · INE213A01029**
   > Type | Central public sector enterprise | ISIN | INE213A01029 | Industry | Energy: Oil and gas
   <sub>Wikipedia · https://en.wikipedia.org/wiki/Oil_and_Natural_Gas_Corporation · confidence medium</sub>
 
 ## Project and sector spend
 
-- **FY24 CSR obligation vs expenditure** (FY2023-24): FY24 CSR obligation Rs 604.19 crore; actual spend Rs 634 crore
+- **FY24 CSR obligation vs expenditure · FY24 CSR obligation Rs 604.19 crore; actual spend Rs 634 crore** (FY2023-24)
   > In FY24, ONGC registered highest-ever CSR expenditure of Rs 634 crore including highest-ever expenditure of Rs 81 crore in Company's Aspirational Districts. This was way more than the company's total CSR obligation for the financial year — Rs 604.19 crore.
   <sub>The CSR Journal · https://thecsrjournal.in/ultimate-csr-report-oil-and-natural-gas-corporation-ltd-ongc · confidence medium</sub>
 
 ## Where the work ran
 
-- **Northeast India as CSR geography**: Not stated as an explicit named CSR priority geography in the sources read; Assam appears repeatedly as an 'operational area' (historic oil/gas fields at Sivasagar, Silchar) rather than via a formal Northeast-specific policy designation _inferred_
+- **Northeast India as CSR geography · Not stated as an explicit named CSR priority geography in the sources read; Assam appears repeatedly as an 'operational area' (historic oil/gas fields at Sivasagar, Silchar) rather than via a formal Northeast-specific policy designation** _inferred_
   > ONGC has taken up a mega CSR initiative towards addressing the health care concerns of people in the Northeast by setting up a Multi-Speciality Hospital in Sivasagar, Assam.
   <sub>The CSR Journal · https://thecsrjournal.in/ultimate-csr-report-oil-and-natural-gas-corporation-ltd-ongc · confidence medium</sub>
 
 ## Programmes
 
-- **CSR focus areas as stated by ONGC (Schedule VII aligned)**: Education (incl. vocational), healthcare, entrepreneurship/livelihood, infrastructure near operational areas, environment protection, heritage protection, promotion of artisans/art & culture, women's empowerment, water management, disability initiatives, sports promotion
+- **CSR focus areas as stated by ONGC (Schedule VII aligned) · Education (incl. vocational), healthcare, entrepreneurship/livelihood, infrastructure near operational areas, environment protection, heritage protection, promotion of artisans/art & culture, women's empowerment, water management, disability initiatives, sports promotion**
   > CSR focus areas of ONGC: 1.Education including vocational courses 2.Health Care 3.Entrepreneurship (self-help & livelihood generation) schemes 4.Infrastructure support near ONGC operational areas 5.Environment protection... 9.Water Management including ground water recharge... 12.Promoting Sports/sports persons.
   <sub>SlideShare (ONGC CSR Activity deck, secondary/undated ~2012 data) · https://www.slideshare.net/slideshow/ongc-csr-activity/59525699 · confidence low</sub>
-- **Vocational training in Silchar/Hailakandi, Assam**: 100 unemployed youth trained in telecommunication-sector skills, Hailakandi District, Assam (via Silchar)
+- **Vocational training in Silchar/Hailakandi, Assam · 100 unemployed youth trained in telecommunication-sector skills, Hailakandi District, Assam (via Silchar)**
   > In Silchar, Assam, ONGC provided vocational training programme to 100 unemployed youth in the Hailakandi District, equipping them with the necessary skillsets to secure gainful employment in the telecommunication sector.
   <sub>The CSR Journal · https://thecsrjournal.in/ultimate-csr-report-oil-and-natural-gas-corporation-ltd-ongc · confidence medium</sub>
-- **[Low confidence, dated] Eastern Swamp Deer Conservation Project, Kaziranga National Park, Assam** (FY2011-12): Species/habitat conservation project for Eastern Swamp Deer in Kaziranga NP, first phase (information gathering) as of the cited deck
+- **[Low confidence, dated] Eastern Swamp Deer Conservation Project, Kaziranga National Park, Assam · Species/habitat conservation project for Eastern Swamp Deer in Kaziranga NP, first phase (information gathering) as of the cited deck** (FY2011-12)
   > ONGC-Eastern Swamp Deer Conservation Project in Kaziranga National Park: The project aims at successfully conserving the species of the Eastern Swamp Deer... The project is in the first phase which consists of gathering information on the species.
   <sub>SlideShare (secondary, undated compilation, data cited for FY2011-12) · https://www.slideshare.net/slideshow/ongc-csr-activity/59525699 · confidence low</sub>
-- **[Low confidence, dated] ONGC-NSTFDC Hathkargha Prashikshan — tribal handloom artisan training, Assam** (FY2011-12): ~100 tribal handloom artisans trained (2011-12), aimed at economically empowering women tribal handloom artisans in Assam for cluster development
+- **[Low confidence, dated] ONGC-NSTFDC Hathkargha Prashikshan — tribal handloom artisan training, Assam · ~100 tribal handloom artisans trained (2011-12), aimed at economically empowering women tribal handloom artisans in Assam for cluster development** (FY2011-12)
   > ONGC-NSTFDC Hathkargha Prashikshan: The CSR project was aimed at economically empowering the women tribal handloom artisans in Assam to facilitate cluster development for economically marginalized tribal populations. In 2011-12, around 100 tribal handloom artisans were provided on-the-job training.
   <sub>SlideShare (secondary, undated compilation, data cited for FY2011-12) · https://www.slideshare.net/slideshow/ongc-csr-activity/59525699 · confidence low</sub>
-- **[Low confidence, dated] Project Utkarsh — livelihood project, Sibsagar (Sivasagar), Assam** (FY2011-12): Livelihood expansion for 400 households via women's tailoring/soft-toy-making training and elderly vocational training (goatery, piggery, mushroom cultivation), initiated 2011-12
+- **[Low confidence, dated] Project Utkarsh — livelihood project, Sibsagar (Sivasagar), Assam · Livelihood expansion for 400 households via women's tailoring/soft-toy-making training and elderly vocational training (goatery, piggery, mushroom cultivation), initiated 2011-12** (FY2011-12)
   > Project Utkarsh-Livelihood Project in Sibasagar: Initiated in 2011-12, this project seeks to expand livelihood opportunities for 400 households in one year through training of women in skills like tailoring, soft toy making etc.
   <sub>SlideShare (secondary, undated compilation, data cited for FY2011-12) · https://www.slideshare.net/slideshow/ongc-csr-activity/59525699 · confidence low</sub>
-- **CSR approach — onshore vs offshore focus, geographic framing** (FY2023-24): ONGC focuses CSR on education, healthcare, nutrition, drinking water in onshore operational areas, and coastal community/marine ecology in offshore areas; also has 20 Niti Aayog Aspirational Districts as a priority
+- **CSR approach — onshore vs offshore focus, geographic framing · ONGC focuses CSR on education, healthcare, nutrition, drinking water in onshore operational areas, and coastal community/marine ecology in offshore areas; also has 20 Niti Aayog Aspirational Districts as a priority** (FY2023-24)
   > tries to focus its CSR efforts towards improving the lives of its surrounding communities by broadly addressing the focus areas of education, healthcare, nutrition and drinking water in its onshore areas of operation and development of coastal community and marine and coastal ecology in offshore areas of operation. As per directives of Niti Ayog, ONGC has identified 20 Aspiration districts and is committed to raising the social and economic condition of these districts.
   <sub>The CSR Journal (FY24 CSR report summary) · https://thecsrjournal.in/ultimate-csr-report-oil-and-natural-gas-corporation-ltd-ongc · confidence medium</sub>
 
 ## Grants
 
-- **Siu Ka Pha Multi-Specialty Hospital, Sivasagar, Assam** (FY2018-19): Rs 483 crore (INR 4,830,000,000) capital cost, CSR-funded by ONGC; 300-bed hospital operated by Dr Babasaheb Ambedkar Vaidyakiya Pratisthan (BAVP)
+- **Siu Ka Pha Multi-Specialty Hospital, Sivasagar, Assam · Rs 483 crore (INR 4,830,000,000) capital cost, CSR-funded by ONGC; 300-bed hospital operated by Dr Babasaheb Ambedkar Vaidyakiya Pratisthan (BAVP)** (FY2018-19)
   > The hospital has been built at a cost of Rs 483 crore. The Hospital has been funded by ONGC under CSR and will be managed and operated by Aurangabad-based Dr Babasaheb Ambedkar Vaidyakiya Pratisthan (BAVP).
   <sub>The CSR Journal · https://thecsrjournal.in/ultimate-csr-report-oil-and-natural-gas-corporation-ltd-ongc · confidence medium</sub>
-- **[NOT Northeast-specific — flagged] ONGC-NSTFDC MoU for Eklavya Model Residential Schools infrastructure** (FY2025-26): Rs 28 crore sanctioned for 144 EMRS across 11 states/UTs (Andhra Pradesh, Dadra & Nagar Haveli and Daman & Diu, Gujarat, Himachal Pradesh, J&K, Kerala, Rajasthan, Tamil Nadu, Uttar Pradesh, Uttarakhand) — Tripura/Assam NOT among the listed states despite the reporting outlet being Tripura-based
+- **[NOT Northeast-specific — flagged] ONGC-NSTFDC MoU for Eklavya Model Residential Schools infrastructure · Rs 28 crore sanctioned for 144 EMRS across 11 states/UTs (Andhra Pradesh, Dadra & Nagar Haveli and Daman & Diu, Gujarat, Himachal Pradesh, J&K, Kerala, Rajasthan, Tamil Nadu, Uttar Pradesh, Uttarakhand) — Tripura/Assam NOT among the listed states despite the reporting outlet being Tripura-based** (FY2025-26)
   > ONGC has sanctioned Rs. 28 crores towards strengthening of digital learning infrastructure, health and hygiene interventions for girl students... in 144 EMRS located in 11 States & UTs (Andhra Pradesh, Dadra & Nagar Haveli and Daman & Diu, Gujarat, Himachal Pradesh, J&K, Kerala, Rajasthan, Tamil Nadu, Uttar Pradesh and Uttarakhand).
   <sub>Tripura Star News · https://www.tripurastarnews.com/ongc-ltd-signed-mou-with-nstfdc-for-execution-of-csr-funded-infrastructure-development-of-eklavya-model-residential-schools · confidence medium</sub>
 
 ## Reach and outcomes
 
-- **Siu Ka Pha Hospital beneficiary reach / service area** (FY2022-23): 300-bed hospital serving Sivasagar and neighbouring Assam districts (Jorhat, Dibrugarh, Golaghat) and neighbouring states (Nagaland, Arunachal Pradesh, Mizoram); 5,800+ dialysis patients treated in FY23
+- **Siu Ka Pha Hospital beneficiary reach / service area · 300-bed hospital serving Sivasagar and neighbouring Assam districts (Jorhat, Dibrugarh, Golaghat) and neighbouring states (Nagaland, Arunachal Pradesh, Mizoram); 5,800+ dialysis patients treated in FY23** (FY2022-23)
   > The project has improved access to multi-specialty care in terms of treatment, diagnostics, and intensive care for critically ill patients in Sivasagar as well as neighbouring districts such as Jorhat, Dibrugarh, Golaghat and neighbouring states such as Nagaland, Arunachal Pradesh, and Mizoram.
   <sub>The CSR Journal · https://thecsrjournal.in/ultimate-csr-report-oil-and-natural-gas-corporation-ltd-ongc · confidence medium</sub>
 
 ## Source documents
 
-- **BRSR filing (given URL) — inaccessible**: Could not be fetched after 4 attempts (ReadTimeout / RemoteProtocolError)
+- **BRSR filing (given URL) — inaccessible · Could not be fetched after 4 attempts (ReadTimeout / RemoteProtocolError)**
   > Download of https://nsearchives.nseindia.com/corporate/ONGC_07082024235412_BRSRSD.pdf failed repeatedly with a ReadTimeout error, so the BRSR CSR/community-development sections could not be checked.
   <sub>NSE Archives (BRSR filing) · https://nsearchives.nseindia.com/corporate/ONGC_07082024235412_BRSRSD.pdf · confidence low</sub>
-- **ONGC CSR portal (ongccsr.co.in) — no project data reachable**: Portal is a login-gated system; the public page only shows a fraud-warning notice about impersonators demanding money for CSR facilitation, with no project or fund disclosures visible without login
+- **ONGC CSR portal (ongccsr.co.in) — no project data reachable · Portal is a login-gated system; the public page only shows a fraud-warning notice about impersonators demanding money for CSR facilitation, with no project or fund disclosures visible without login**
   > It has come to the notice of ONGC that certain unscrupulous individuals and entities are approaching beneficiary organizations and implementing agencies, falsely claiming that CSR funds from ONGC can be facilitated in exchange for commissions, fees, or other forms of economic gratification.
   <sub>ONGC-CSR portal · https://ongccsr.co.in · confidence high</sub>
-- **Prime Infobase CSR report FY2020-21 — licence/paid access, not read**: HELD: licence_or_paid_access_needed, correctly not accessed per policy
+- **Prime Infobase CSR report FY2020-21 — licence/paid access, not read · HELD: licence_or_paid_access_needed, correctly not accessed per policy**
   > Prime Infobase CSR database (primeinfobase.com) is registered as licence_or_paid_access_needed and must not be read automatically. A commercial subscription product, so it was not fetched.
   <sub>Prime Infobase (HELD) · https://www.primeinfobase.com/ir_download/CSRReports/CSR0000931202021_CSR_ONGC_2020-21.pdf · confidence low</sub>
 

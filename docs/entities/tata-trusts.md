@@ -8,84 +8,86 @@ Tata Trusts is confirmed as the entity researched (not Tata Sons or a single Tat
 
 Website: https://www.tatatrusts.org
 
+> Researched under an earlier finding shape, which has no typed fields to map to columns. It is readable here but cannot be promoted — re-run the research to put it in the catalog.
+
 ## Identity
 
-- **Legal structure of Tata Trusts**: Group of 15 charitable trusts (non-profit), distinct from but linked to Tata Sons via a 66% shareholding
+- **Legal structure of Tata Trusts · Group of 15 charitable trusts (non-profit), distinct from but linked to Tata Sons via a 66% shareholding**
   > Tata Trusts is a group of 15 charitable trusts in India established by members of the Tata family... The Tata Trusts collectively hold a 66% stake in Tata Sons, which is the principal investment holding company and promoter of the Tata Group.
   <sub>Wikipedia · https://en.wikipedia.org/wiki/Tata_Trusts · confidence medium</sub>
-- **Tata Trusts self-description**: Non-sectarian philanthropic organisation, one of India's oldest
+- **Tata Trusts self-description · Non-sectarian philanthropic organisation, one of India's oldest**
   > Tata Trusts are amongst India's oldest, non-sectarian philanthropic organisations that work in several areas of community development.
   <sub>Tata Trusts press release · https://www.tatatrusts.org/media/press-releases/tata-trusts-and-government-of-nagaland-to-collaborate-towards-improving-the-quality-of-lives-of-10000-households · confidence high</sub>
 
 ## Registrations and identifiers
 
-- **NEIDA founding year - conflicting dates across Tata Trusts' own sources**: 2008 (per Horizons 2019) vs 2012 (per Our Associates page)
+- **NEIDA founding year - conflicting dates across Tata Trusts' own sources · 2008 (per Horizons 2019) vs 2012 (per Our Associates page)**
   > The setting up, in 2008, of two associate organisations signalled a shift in thinking at the Trusts. The Northeast Initiative Development Agency (NEIDA) was established to look after projects in Mizoram, Nagaland and Arunachal Pradesh and the Centre for Microfinance & Livelihoods (CML) in Assam, Manipur, Tripura and Meghalaya.
   <sub>Tata Trusts Horizons · https://horizons.tatatrusts.org/2019/march/tata-trusts-northeast-social-development.html · confidence medium</sub>
 
 ## Project and sector spend
 
-- **Prior Tata Trusts investment in Arunachal Pradesh (pre-MoU)**: INR 14300000 (Rs 1.43 crore, till March 2015)
+- **Prior Tata Trusts investment in Arunachal Pradesh (pre-MoU) · INR 14300000 (Rs 1.43 crore, till March 2015)**
   > "The Trusts have invested an amount of Rs. 1.43 crore in the state till March 2015 in the sectors of agriculture, natural resource management, etc."
   <sub>Tata Trusts press release · https://www.tatatrusts.org/media/press-releases/tata-trusts-arunachal-pradesh-government-mou · confidence high</sub>
 
 ## Where the work ran
 
-- **Arunachal Pradesh MoU coverage**: 6,000 households, Papum Pare and Lower Subansiri districts
+- **Arunachal Pradesh MoU coverage · 6,000 households, Papum Pare and Lower Subansiri districts**
   > Tata Trusts' associate organisation, the North East Initiative Development Agency (NEIDA) will implement this programme, which will benefit 6,000 households located in Papum Pare and Lower Subansiri districts.
   <sub>Tata Trusts press release · https://www.tatatrusts.org/media/press-releases/tata-trusts-arunachal-pradesh-government-mou · confidence high</sub>
-- **Centre for Microfinance & Livelihoods (CML) geography - distinct from NEIDA**: Assam, Tripura, Manipur, and regions of Meghalaya
+- **Centre for Microfinance & Livelihoods (CML) geography - distinct from NEIDA · Assam, Tripura, Manipur, and regions of Meghalaya**
   > Centre for Microfinance & Livelihood (CML) is towards community empowerment and improving the quality of life through multi-thematic interventions - education, WaSH, livelihood, craft, skill development, sports and healthcare in the north eastern states of Assam, Tripura, Manipur, and regions of Meghalaya.
   <sub>Tata Trusts - Our Associates · https://www.tatatrusts.org/our-associates · confidence high</sub>
-- **Mizoram livelihoods coverage**: 13,000+ households, 4 districts
+- **Mizoram livelihoods coverage · 13,000+ households, 4 districts**
   > In Mizoram, there are 13,000-plus households from four districts in the fold and in Arunachal Pradesh the number is 6,000-plus from three districts.
   <sub>Tata group newsroom / Tata Trusts Horizons · https://www.tata.com/newsroom/community/tata-trusts-neida-northeast-livelihoods · confidence high</sub>
-- **NEIDA office locations**: Kohima (Nagaland), Aizawl (Mizoram), Papum Pare (Arunachal Pradesh)
+- **NEIDA office locations · Kohima (Nagaland), Aizawl (Mizoram), Papum Pare (Arunachal Pradesh)**
   > NEIDA operates in three states and has its offices in Kohima, Aizawal and Papumpare.
   <sub>Tata Trusts press release · https://www.tatatrusts.org/media/press-releases/tata-trusts-and-government-of-nagaland-to-collaborate-towards-improving-the-quality-of-lives-of-10000-households · confidence high</sub>
-- **Nagaland MoU coverage**: 10,000 households, 8 blocks, 3 districts (Phek, Kiphire, Tuensang)
+- **Nagaland MoU coverage · 10,000 households, 8 blocks, 3 districts (Phek, Kiphire, Tuensang)**
   > A landmark Memorandum of Understanding (MoU) was signed between the government of Nagaland (GoN) and the Tata Trusts to collaborate towards sustainable development and improvement of the overall quality of life of 10,000 households of eight blocks in three districts Phek, Kiphire and Tuensang.
   <sub>Tata Trusts press release · https://www.tatatrusts.org/media/press-releases/tata-trusts-and-government-of-nagaland-to-collaborate-towards-improving-the-quality-of-lives-of-10000-households · confidence high</sub>
-- **Nagaland livelihoods coverage (updated)**: 14,000+ households, 90 villages, districts Kiphire, Phek, Tuensang
+- **Nagaland livelihoods coverage (updated) · 14,000+ households, 90 villages, districts Kiphire, Phek, Tuensang**
   > In Nagaland, 14,000-plus households from 90 villages in the Kiphire, Phek and Tuensang districts are covered through different livelihood projects.
   <sub>Tata Trusts Horizons · https://horizons.tatatrusts.org/2023/january/tata-trusts-horizons-lively-tidings.html · confidence high</sub>
 
 ## Implementing partners
 
-- **Nagaland programme partners**: Government of Nagaland (lead govt partner); local NGOs: NEPED, NBHM, Prodigals Home, ECS, Entrepreneurs Associate, Rongmei Baptist Association, Christian Institute of Health Sciences & Research, Agency for Porcine Foundation and Development of Nagaland
+- **Nagaland programme partners · Government of Nagaland (lead govt partner); local NGOs: NEPED, NBHM, Prodigals Home, ECS, Entrepreneurs Associate, Rongmei Baptist Association, Christian Institute of Health Sciences & Research, Agency for Porcine Foundation and Development of Nagaland**
   > The Tata Trusts has been supporting development initiatives in the state since 2009. They have funded community development projects through its local partners like the Nagaland Empowerment of People through Economic Development (NEPED), Nagaland Beekeeping and Honey Mission (NBHM), Prodigals Home, Eleutheros Christian Society (ECS), Entrepreneurs Associate, Rongmei Baptist Association, Christian Institute of Health Sciences & Research, Agency for Porcine Foundation and Development of Nagaland.
   <sub>Tata Trusts press release · https://www.tatatrusts.org/media/press-releases/tata-trusts-and-government-of-nagaland-to-collaborate-towards-improving-the-quality-of-lives-of-10000-households · confidence high</sub>
 
 ## Programmes
 
-- **General focus areas of Tata Trusts**: Natural Resources Management, Education, Healthcare & Nutrition, Rural Livelihoods, Enhancing Civil Society & Governance, Arts Crafts & Culture, Diversified Employment
+- **General focus areas of Tata Trusts · Natural Resources Management, Education, Healthcare & Nutrition, Rural Livelihoods, Enhancing Civil Society & Governance, Arts Crafts & Culture, Diversified Employment**
   > Through a grant-making, direct implementation and co-partnership strategy, the Trusts support and drive innovation in areas of Natural Resources Management, Education, Healthcare & Nutrition, Rural Livelihoods, Enhancing Civil Society & Governance, Arts, Crafts & Culture and Diversified Employment.
   <sub>Tata Trusts press release · https://www.tatatrusts.org/media/press-releases/tata-trusts-and-government-of-nagaland-to-collaborate-towards-improving-the-quality-of-lives-of-10000-households · confidence high</sub>
-- **NEIDA mandate and focus areas**: Livelihoods (agriculture, piggery, eco-tourism), Sports, Skill building, WaSH, Education, in Nagaland, Arunachal Pradesh, Mizoram
+- **NEIDA mandate and focus areas · Livelihoods (agriculture, piggery, eco-tourism), Sports, Skill building, WaSH, Education, in Nagaland, Arunachal Pradesh, Mizoram**
   > NEIDA is the Tata Trusts' nodal agency for the North East Initiative in the states of Nagaland, Arunachal Pradesh and Mizoram. It strives to design and implement innovative solutions that are environmentally sustainable to improve quality of life focusing on low income households with an emphasis on human resource development in North-eastern region of India. The focus areas are livelihoods (agriculture, piggery, and eco-tourism), Sports, Skill building, WaSH, and education.
   <sub>Tata Trusts - Our Associates · https://www.tatatrusts.org/our-associates · confidence high</sub>
-- **Nature of Northeast engagement (long-term, no single formula)**: Programmes began roughly 12 years before the 2019 article (~2007), intensified from 2014; not framed by Trusts in the sources read as a formally-named top 'priority geography', but treated as a distinctive long-term regional commitment with two dedicated nodal agencies (NEIDA, CML) covering all seven NE states _inferred_
+- **Nature of Northeast engagement (long-term, no single formula) · Programmes began roughly 12 years before the 2019 article (~2007), intensified from 2014; not framed by Trusts in the sources read as a formally-named top 'priority geography', but treated as a distinctive long-term regional commitment with two dedicated nodal agencies (NEIDA, CML) covering all seven NE states** _inferred_
   > The interventions of the Trusts in the Northeast commenced about 12 years back... By 2007, with a better understanding of the region's requirements and realities on the ground, the basic foundation to create a meaningful impact was in place.
   <sub>Tata Trusts Horizons · https://horizons.tatatrusts.org/2019/march/tata-trusts-northeast-social-development.html · confidence medium</sub>
-- **Piggery Enterprise Development (NEIDA)**: 4,600 households across Nagaland, Arunachal Pradesh and Mizoram set up managed piggery units; partner Dept of Veterinary and Animal Husbandry, Nagaland
+- **Piggery Enterprise Development (NEIDA) · 4,600 households across Nagaland, Arunachal Pradesh and Mizoram set up managed piggery units; partner Dept of Veterinary and Animal Husbandry, Nagaland**
   > Through the Trusts' Piggery Enterprise Development initiative, NEIDA has helped 4,600 households set up properly managed piggery units... With infrastructural aid from the Department of Veterinary and Animal Husbandry, Nagaland, NEIDA also produced and supplied the feed to the project beneficiaries.
   <sub>Tata Trusts - Our Work · https://www.tatatrusts.org/our-work/livelihood/livestock-fisheries-management/piggery-enterprise-development · confidence high</sub>
-- **Springshed management, Nagaland**: 11 districts, 100 villages; para-hydrogeologists trained
+- **Springshed management, Nagaland · 11 districts, 100 villages; para-hydrogeologists trained**
   > The aim of the project is to revive and conserve springs, and provide water security by adopting scientific methods on springshed management in 11 districts of the state covering 100 villages.
   <sub>Tata Trusts - Our Work · https://www.tatatrusts.org/our-work/water-sanitation-and-hygiene/water-security/springshed-management-in-the-north-east · confidence high</sub>
 
 ## Grants
 
-- **Arunachal Pradesh NEIDA programme funding**: INR 60000000 (Rs 6 crore grant from Tata Trusts; total programme outlay Rs 14 crore)
+- **Arunachal Pradesh NEIDA programme funding · INR 60000000 (Rs 6 crore grant from Tata Trusts; total programme outlay Rs 14 crore)**
   > While the total outlay of the programme is Rs. 14 crore, Tata Trusts will contribute grants totaling to Rs. 6 crore.
   <sub>Tata Trusts press release · https://www.tatatrusts.org/media/press-releases/tata-trusts-arunachal-pradesh-government-mou · confidence high</sub>
-- **Nagaland NEIDA programme funding**: INR 300000000 (Rs 30 crore grant from Tata Trusts; total programme outlay Rs 134 crore)
+- **Nagaland NEIDA programme funding · INR 300000000 (Rs 30 crore grant from Tata Trusts; total programme outlay Rs 134 crore)**
   > The total outlay of the programme is Rs. 134 Crores. The Trust will give a grant amount of INR Thirty Crores to NEIDA for implementing the programme.
   <sub>Tata Trusts press release · https://www.tatatrusts.org/media/press-releases/tata-trusts-and-government-of-nagaland-to-collaborate-towards-improving-the-quality-of-lives-of-10000-households · confidence high</sub>
 
 ## Reach and outcomes
 
-- **Scale of Northeast programme (2019 snapshot)**: ~400 professionals; target to reach 1 million people by 2022
+- **Scale of Northeast programme (2019 snapshot) · ~400 professionals; target to reach 1 million people by 2022**
   > The Trusts have some 400 professionals working in their programmes in the Northeast and they hope to touch the lives of at least 1 million people by 2022.
   <sub>Tata Trusts Horizons · https://horizons.tatatrusts.org/2019/march/tata-trusts-northeast-social-development.html · confidence medium</sub>
 

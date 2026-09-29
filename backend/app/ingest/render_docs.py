@@ -26,6 +26,8 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from app.ingest.research_records import SCHEMA_VERSION
+
 REPO = Path(__file__).resolve().parents[3]
 ENTITIES = REPO / "docs" / "entities"
 CLIENTS = REPO / "docs" / "clients"
@@ -36,6 +38,7 @@ CONCEPT_TITLES = {
     "csr_year": "CSR position by year",
     "csr_spend": "Project and sector spend",
     "footprint": "Where the work ran",
+    "stated_geography": "Where it says it prioritises",
     "partner": "Implementing partners",
     "program": "Programmes",
     "grant": "Grants",
@@ -60,13 +63,82 @@ def replace_block(text: str, name: str, body: str) -> str:
     return text.rstrip() + "\n\n" + block + "\n"
 
 
-def _crore(value: str) -> str:
+def _crore(value: Any) -> str:
     """INR is what we store; crore is what a reader thinks in."""
     try:
         n = float(value)
-    except ValueError:
-        return value
+    except (TypeError, ValueError):
+        return str(value)
     return f"₹{n / 10_000_000:,.2f} cr" if n >= 10_000_000 else f"₹{n:,.0f}"
+
+
+def _money(m: dict[str, Any] | None) -> str | None:
+    """A Money finding, printed as the source wrote it and as INR."""
+    if not m:
+        return None
+    units = {"inr": 1, "lakh": 1_00_000, "crore": 1_00_00_000}
+    inr = float(m["value"]) * units.get(m.get("unit", "inr"), 1)
+    return f"{_crore(inr)} ({m['text']})"
+
+
+def _place(f: dict[str, Any]) -> str | None:
+    bits = [b for b in (f.get("district"), f.get("state")) if b]
+    return ", ".join(bits) or None
+
+
+_EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis"})
+
+
+def _join(*bits: Any) -> str:
+    return " · ".join(str(b) for b in bits if b)
+
+
+def headline(f: dict[str, Any]) -> str:
+    """One line per finding, from the typed fields of its concept."""
+    # A v1 finding is a flat label/value pair and has no typed fields to read.
+    # extra="forbid" means a v2 finding can never carry a label, so this is an
+    # exact test of which shape arrived, not a guess.
+    if "label" in f:
+        return _join(f.get("label"), f.get("value"))
+    concept = f.get("concept")
+    if concept == "identity":
+        return _join(f.get("name"), f.get("funder_type"), f.get("website"),
+                     f"part of {f['parent_name']}" if f.get("parent_name") else None)
+    if concept == "identifier":
+        return f"{f['id_type'].upper()} {f['id_value']}"
+    if concept == "csr_year":
+        money = {k: _money(f.get(k)) for k in
+                 ("prescribed_csr", "total_spent", "spent_on_projects", "average_net_profit",
+                  "unspent_transferred", "excess_spent", "admin_overheads",
+                  "impact_assessment_cost")}
+        return _join(*(f"{k.replace('_', ' ')} {v}" for k, v in money.items() if v)) or "recorded"
+    if concept == "csr_spend":
+        what = f.get("project_name") or f.get("sector") or "aggregate"
+        count = f"{f['project_count']} projects" if f.get("project_count") else None
+        return _join(what, _money(f.get("amount")), _place(f), count,
+                     f.get("implementing_agency"))
+    if concept == "footprint":
+        return _join(_place(f) or f.get("name_as_printed"), f.get("program_name"))
+    if concept == "stated_geography":
+        return _join(_place(f), f.get("role"))
+    if concept == "partner":
+        return _join(f.get("partner_name"), f.get("partner_kind"), f.get("program_name"))
+    if concept == "program":
+        return _join(f.get("name"), f.get("kind"),
+                     f"under {f['parent_name']}" if f.get("parent_name") else None)
+    if concept == "grant":
+        return _join(f.get("recipient_name"), f.get("title"), _money(f.get("amount")),
+                     f.get("status"))
+    if concept == "metric":
+        value = _join(f.get("value") if f.get("value") is not None else None, f.get("unit"))
+        return _join(f.get("name"), value,
+                     f"target {f['target']}" if f.get("target") is not None else None,
+                     f.get("stage"), f.get("period"), _place(f))
+    if concept == "contact":
+        return _join(f.get("name"), f.get("role"), f.get("kind"))
+    if concept == "document":
+        return _join(f.get("title"), f.get("doc_type"), f.get("as_of"))
+    return _join(*(v for k, v in f.items() if k not in _EVIDENCE and v is not None))
 
 
 def entity_markdown(row: dict[str, Any]) -> str:
@@ -84,17 +156,29 @@ def entity_markdown(row: dict[str, Any]) -> str:
     ]
     if row["website"]:
         out += [f"Website: {row['website']}", ""]
+    if row.get("goals"):
+        goals = row["goals"] if isinstance(row["goals"], list) else json.loads(row["goals"])
+        if goals:
+            out += ["## What it set out to find", ""]
+            out += [f"- {g}" for g in goals]
+            out.append("")
+    if findings and row.get("schema_version", 1) < SCHEMA_VERSION:
+        out += [
+            ("> Researched under an earlier finding shape, which has no typed fields to map "
+             "to columns. It is readable here but cannot be promoted — re-run the research "
+             "to put it in the catalog."),
+            "",
+        ]
 
     for concept, title in CONCEPT_TITLES.items():
         group = [f for f in findings if f.get("concept") == concept]
         if not group:
             continue
         out += [f"## {title}", ""]
-        for f in sorted(group, key=lambda f: (f.get("fiscal_year") or "", f.get("label", ""))):
-            value = _crore(f["value"]) if concept in ("csr_year", "csr_spend") else f["value"]
+        for f in sorted(group, key=lambda f: (f.get("fiscal_year") or "", headline(f))):
             year = f" ({f['fiscal_year']})" if f.get("fiscal_year") else ""
             flag = "" if f.get("basis", "explicit") == "explicit" else f" _{f['basis']}_"
-            out.append(f"- **{f['label']}**{year}: {value}{flag}")
+            out.append(f"- **{headline(f)}**{year}{flag}")
             out.append(f"  > {f['evidence']}")
             out.append(
                 f"  <sub>{f.get('source_name') or 'source'} · {f['source_url']} · "
