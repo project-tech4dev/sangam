@@ -33,6 +33,8 @@ from app.ingest.research_records import (
     MetricFinding,
     Money,
     PartnerFinding,
+    ResearchSummary,
+    to_inr,
 )
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.writer import _diff, slugify
@@ -574,3 +576,21 @@ class TestOldFindingsAreNotPromoted:
         assert report["funder"] is None
         assert any("Re-run the research" in r for r in report["reasons"])
         assert SCHEMA_VERSION == 2
+
+
+class TestOneConversionTable:
+    def test_a_stored_money_finding_converts_through_the_same_table(self):
+        # The unit table lived in three places at one point, which is how the
+        # crore bug came back. to_inr is the only reader of it now.
+        stored = Money(value=94.18, unit="crore", text="Rs 94.18 crore").model_dump(mode="json")
+        assert to_inr(stored) == Money(value=94.18, unit="crore", text="x").inr
+
+    @pytest.mark.parametrize("bad", [None, {}, {"value": 5, "unit": "million"}])
+    def test_an_unreadable_amount_is_none_not_a_guess(self, bad):
+        assert to_inr(bad) is None
+
+
+class TestTheSummaryCannotUnderreport:
+    def test_fact_count_is_required(self):
+        with pytest.raises(ValidationError):
+            ResearchSummary(slug="acme", entity_name="Acme Ltd", status="complete")

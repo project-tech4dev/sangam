@@ -19,7 +19,7 @@ from typing import Any
 
 from app.ingest.matcher import resolve_funder
 from app.ingest.records import FunderCsrYearRecord, FunderRecord
-from app.ingest.research_records import SCHEMA_VERSION
+from app.ingest.research_records import SCHEMA_VERSION, to_inr
 from app.ingest.writer import write_csr_year, write_funder
 
 logger = logging.getLogger(__name__)
@@ -27,18 +27,6 @@ logger = logging.getLogger(__name__)
 # identity/identifier → funders, csr_year → funder_csr_years. Everything else
 # has no writer yet: see docs/INGEST.md.
 PROMOTABLE = ("identity", "identifier", "csr_year")
-
-
-def _inr(money: dict[str, Any] | None) -> float | None:
-    """A Money finding as INR. The conversion lives in Money.inr; this is its
-    dict form, because findings come back out of jsonb."""
-    if not money:
-        return None
-    units = {"inr": 1, "lakh": 1_00_000, "crore": 1_00_00_000}
-    unit = money.get("unit")
-    if unit not in units:
-        return None
-    return float(money["value"]) * units[unit]
 
 
 def _provenance(finding: dict[str, Any], fetched: datetime) -> dict[str, Any]:
@@ -82,10 +70,10 @@ def csr_years_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> list[
                 FunderCsrYearRecord(
                     funder_name=name,
                     fiscal_year=f["fiscal_year"],
-                    prescribed_csr=_inr(f.get("prescribed_csr")),
-                    total_spent=_inr(f.get("total_spent")),
-                    average_net_profit=_inr(f.get("average_net_profit")),
-                    unspent_transferred=_inr(f.get("unspent_transferred")),
+                    prescribed_csr=to_inr(f.get("prescribed_csr")),
+                    total_spent=to_inr(f.get("total_spent")),
+                    average_net_profit=to_inr(f.get("average_net_profit")),
+                    unspent_transferred=to_inr(f.get("unspent_transferred")),
                     section_135_applicable=f.get("section_135_applicable"),
                     notes=f.get("notes") or f"Promoted from research: {f.get('evidence', '')[:200]}",
                     as_of=f["fiscal_year"],

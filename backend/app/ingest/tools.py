@@ -12,7 +12,12 @@ from app.agent.models import resolve_model
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.config import get_settings
 from app.db.pool import get_pool
-from app.ingest.expectations import CONCEPT_TABLES, expected_fields, recent_fiscal_years
+from app.ingest.expectations import (
+    CONCEPT_TABLES,
+    concepts_for,
+    expected_fields,
+    recent_fiscal_years,
+)
 from app.ingest.promote import promote
 from app.ingest.runner import catalog_baseline, run_import, summarise
 from app.ingest.sources import SOURCES, Category, resolve
@@ -472,7 +477,7 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
 
 
 @tool
-async def research_goals(name: str, years: str = "") -> str:
+async def research_goals(name: str, years: str = "", entity_kind: str = "funder") -> str:
     """What to look for, derived from what the database expects. Call this FIRST.
 
     The catalog has a column for every fact worth finding, and this reads that
@@ -484,6 +489,9 @@ async def research_goals(name: str, years: str = "") -> str:
         name: the organisation, as the user asked for it.
         years: comma-separated fiscal years, e.g. 'FY2024-25,FY2023-24'.
                Empty means the three most recent reportable years.
+        entity_kind: 'funder' for a company or foundation, 'org' for an NGO.
+               An NGO's facts hang off tables that have no writer, so the list
+               is shorter and says so.
     """
     try:
         wanted = [y.strip() for y in years.split(",") if y.strip()] or list(recent_fiscal_years())
@@ -511,7 +519,15 @@ async def research_goals(name: str, years: str = "") -> str:
             f"That is not evidence the funder is absent from the sector."
         )
 
-        for concept, table in CONCEPT_TABLES.items():
+        wanted_concepts = concepts_for(entity_kind)
+        if entity_kind == "org":
+            out.append(
+                "\nThis is an NGO. Everything below hangs off funders in the schema, and orgs "
+                "has no writer yet — so research it fully, but expect it to stay research "
+                "rather than become catalog rows. Saying that plainly is part of the job."
+            )
+        for concept in wanted_concepts:
+            table = CONCEPT_TABLES[concept]
             fields = expected_fields(concept)
             count, seen_years = held.get(concept, (0, []))
             state = f"{count} row(s) held" if count else "NOT RECORDED"

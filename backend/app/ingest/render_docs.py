@@ -26,7 +26,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-from app.ingest.research_records import SCHEMA_VERSION
+from app.ingest.research_records import SCHEMA_VERSION, to_inr
 
 REPO = Path(__file__).resolve().parents[3]
 ENTITIES = REPO / "docs" / "entities"
@@ -74,10 +74,9 @@ def _crore(value: Any) -> str:
 
 def _money(m: dict[str, Any] | None) -> str | None:
     """A Money finding, printed as the source wrote it and as INR."""
-    if not m:
+    inr = to_inr(m)
+    if inr is None:
         return None
-    units = {"inr": 1, "lakh": 1_00_000, "crore": 1_00_00_000}
-    inr = float(m["value"]) * units.get(m.get("unit", "inr"), 1)
     return f"{_crore(inr)} ({m['text']})"
 
 

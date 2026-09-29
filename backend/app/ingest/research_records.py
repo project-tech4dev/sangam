@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -59,6 +59,17 @@ class Money(BaseModel):
     def inr(self) -> float:
         """The only conversion. Column contract for every amount here is INR."""
         return self.value * _UNITS[self.unit]
+
+
+def to_inr(money: dict[str, Any] | None) -> float | None:
+    """A Money finding in its stored jsonb form, as INR.
+
+    Findings come back out of jsonb as plain dicts, and every caller that
+    needed a number was re-deriving the unit table. There is one table.
+    """
+    if not money or money.get("unit") not in _UNITS:
+        return None
+    return float(money["value"]) * _UNITS[money["unit"]]
 
 
 class FindingBase(BaseModel):
@@ -378,7 +389,9 @@ class ResearchSummary(BaseModel):
     canonical_name: str | None = None
     status: Literal["complete", "partial", "not_found", "wrong_entity"]
     stopped_reason: str | None = None
-    fact_count: int = 0
+    # Required, not defaulted: a model that omits it would put "0 facts" on
+    # the board next to a researcher that found thirty.
+    fact_count: int
     source_count: int = 0
     concepts_found: list[str] = Field(default_factory=list)
     not_found: list[str] = Field(default_factory=list)
