@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
-import { HIDDEN_TOOLS, humanizeTool } from "./lib/toolLabels";
+import { HIDDEN_TOOLS, humanizeTool, stepNote } from "./lib/toolLabels";
 
 const SUGGESTIONS = [
   "Which sources can you read, and which are held back?",
@@ -51,6 +51,7 @@ export function ImportWorkspace() {
               .filter((step) => !HIDDEN_TOOLS.has(step.tool))
               .map((step) => {
                 const { label, detail } = humanizeTool(step.tool);
+                const note = stepNote(step.result);
                 return (
                   <div
                     key={step.id}
@@ -60,29 +61,18 @@ export function ImportWorkspace() {
                       fontSize: "var(--fs-sm)",
                     }}
                   >
-                    <div style={{ fontWeight: 600 }}>
-                      {label}
-                      {step.running ? " …" : ""}
+                    <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                      <span style={{ fontWeight: 600 }}>{label}</span>
+                      <span style={{ color: "var(--color-muted)" }}>{detail(step.args)}</span>
+                      {step.running && <span style={{ color: "var(--color-muted)" }}>…</span>}
                     </div>
-                    <div style={{ color: "var(--color-muted)", fontSize: "var(--fs-xs)" }}>
-                      {detail(step.args)}
-                    </div>
-                    {step.result && (
-                      <pre
-                        style={{
-                          margin: "8px 0 0",
-                          padding: 10,
-                          background: "var(--color-surface)",
-                          border: "1px solid var(--color-divider)",
-                          borderRadius: 8,
-                          fontSize: "var(--fs-xs)",
-                          whiteSpace: "pre-wrap",
-                          maxHeight: 320,
-                          overflow: "auto",
-                        }}
-                      >
-                        {step.result}
-                      </pre>
+                    {/* The findings belong in the answer, not the trace. Only a
+                        refusal or an error is surfaced here, because those change
+                        what the answer can claim. */}
+                    {note && (
+                      <div style={{ color: "#b3261e", fontSize: "var(--fs-xs)", marginTop: 2 }}>
+                        {note}
+                      </div>
                     )}
                   </div>
                 );
