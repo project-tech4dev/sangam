@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Any, Literal
 
-Method = Literal["identifier", "exact", "alias", "trigram", "none"]
+Method = Literal["identifier", "exact", "alias", "boilerplate", "trigram", "none"]
 
 # A wide net in SQL, then a strict re-rank on the distinctive part of the name.
 TRIGRAM_FLOOR = 0.35
@@ -36,6 +36,19 @@ def core_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, core(a), core(b)).ratio()
 
 
+def same_but_for_boilerplate(a: str, b: str) -> bool:
+    """True when two names differ only by corporate boilerplate.
+
+    'Axis Bank' and 'Axis Bank Limited' are one funder, and queueing them as a
+    near-miss fragments its years across two rows. But a single-token core is
+    not enough: 'Tata Trusts' and 'Tata Foundation' both reduce to 'tata' and
+    are different organisations, so there the boilerplate is doing the work of
+    telling them apart. Two tokens or more, and it is not.
+    """
+    tokens_a, tokens_b = core(a).split(), core(b).split()
+    return tokens_a == tokens_b and len(tokens_a) >= 2
+
+
 @dataclass(frozen=True, slots=True)
 class Match:
     method: Method
@@ -45,7 +58,7 @@ class Match:
 
     @property
     def resolved(self) -> bool:
-        """Only steps 1 and 2 resolve. A trigram hit proposes; a person accepts."""
+        """A trigram hit proposes; a person accepts. Everything else resolves."""
         return self.funder_id is not None
 
 
@@ -77,6 +90,18 @@ async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | Non
     ).fetchone()
     if row:
         return Match("alias", row["funder_id"])
+
+    # Same name plus "Limited" or "Trust" is the same funder, so it resolves
+    # rather than waiting for a person. Only names that genuinely differ queue.
+    rows = await (
+        await conn.execute(
+            "SELECT id, name FROM funders WHERE similarity(name, %s) >= %s",
+            (name, TRIGRAM_FLOOR),
+        )
+    ).fetchall()
+    for row in rows:
+        if same_but_for_boilerplate(name, row["name"]):
+            return Match("boilerplate", row["id"], 1.0)
 
     rows = await (
         await conn.execute(

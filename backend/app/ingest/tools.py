@@ -101,7 +101,7 @@ def _full_entry(s) -> str:
 
 
 @tool
-async def plan_import(funders: str = "", sources: str = "", limit: int = 10) -> str:
+async def plan_import(funders: str = "", years: str = "", sources: str = "", limit: int = 10) -> str:
     """Say what a run WOULD pull, from where, and against what the catalog already holds.
 
     Read-only: this writes nothing. Call it before every run and show the user the
@@ -109,12 +109,14 @@ async def plan_import(funders: str = "", sources: str = "", limit: int = 10) -> 
 
     Args:
         funders: comma-separated funder names the run would research.
+        years: comma-separated fiscal years, e.g. "FY2023-24,FY2024-25".
         sources: comma-separated source keys, or empty for every registered source.
         limit: items per source the run would request.
     """
     try:
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
         names = [n.strip() for n in funders.split(",") if n.strip()]
+        fys = [y.strip() for y in years.split(",") if y.strip()]
         requested, unknown = resolve(keys)
         baseline = await catalog_baseline()
 
@@ -125,9 +127,13 @@ async def plan_import(funders: str = "", sources: str = "", limit: int = 10) -> 
 
         lines = ["PLAN — nothing is written by this step."]
         if names:
+            searches = len(names) * len(will_run) * max(len(fys), 1)
+            scope = f"{len(names)} name(s), concurrently: {', '.join(names)}"
+            if fys:
+                scope += f"\nAcross {len(fys)} year(s): {', '.join(fys)}"
             lines.append(
-                f"\nResearching {len(names)} name(s), concurrently: {', '.join(names)}. "
-                f"Each is searched in every source below: {len(names)} x {len(will_run)} searches."
+                f"\nResearching {scope}.\n"
+                f"That is {searches} searches, each costing a model call per article read."
             )
         else:
             lines.append(
@@ -172,7 +178,9 @@ async def plan_import(funders: str = "", sources: str = "", limit: int = 10) -> 
 
 
 @tool
-async def run_import_now(goal: str, funders: str = "", sources: str = "", limit: int = 10) -> str:
+async def run_import_now(
+    goal: str, funders: str = "", years: str = "", sources: str = "", limit: int = 10
+) -> str:
     """Run an import and return the full summary. This WRITES to the database.
 
     Call plan_import first and show the user the plan. The goal is stored on the
@@ -186,6 +194,11 @@ async def run_import_now(goal: str, funders: str = "", sources: str = "", limit:
             runnable source, and the names run CONCURRENTLY. Leaving this empty
             asks a different question — "whatever these sources published most
             recently" — so when the user names funders, pass them.
+        years: comma-separated fiscal years, "FY2023-24,FY2024-25,FY2025-26". Each
+            year is searched separately, so three years of three funders is nine
+            searches — say so before running it. Empty searches without a year,
+            which in practice returns the most recent one. Years only aim the
+            SEARCH: whatever years an article turns out to state are all written.
         sources: comma-separated source keys (e.g. "india_csr,gdelt"). Empty means
             every registered source — the ones that may not be crawled are reported
             as refused rather than skipped silently.
@@ -202,8 +215,9 @@ async def run_import_now(goal: str, funders: str = "", sources: str = "", limit:
         if not goal.strip():
             return "run_import_now needs a goal: one sentence on what this run is for."
         names = [n.strip() for n in funders.split(",") if n.strip()] or None
+        fys = [y.strip() for y in years.split(",") if y.strip()] or None
         summary = await run_import(
-            keys, goal=goal.strip(), funders=names,
+            keys, goal=goal.strip(), funders=names, years=fys,
             model=resolve_model(settings.model), limit=limit,
         )
         return format_summary(summary)
@@ -274,6 +288,7 @@ def format_summary(s: dict[str, Any]) -> str:
         f"Import run #{s['run_id']} — {s['status']} in {s['duration_seconds']}s\n"
         f"  goal:      {s.get('goal') or 'not recorded'}\n"
         f"  names:     {', '.join(s.get('subjects') or []) or 'none — latest from each source'}\n"
+        f"  years:     {', '.join(s.get('fiscal_years') or []) or 'not narrowed by year'}\n"
         f"  processed: {', '.join(s['sources_processed']) or 'none'}\n"
         # A count, not 51 keys: the rules behind them are listed below.
         f"  refused:   {len(s['sources_refused'])} held by their access rule\n"

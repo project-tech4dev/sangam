@@ -20,6 +20,10 @@ EXTRACT_PROMPT = """You read one Indian CSR news article and report only what it
 Return the CSR figures the article gives for a named company or foundation. Rules:
 - Only figures the article actually states. Never infer, convert or carry a number over from
   another year. If the article gives no rupee figure for a named funder, return nothing.
+- Report EVERY year the article states, not just the most recent one. A piece comparing
+  "₹427 crore in FY25, up from ₹269 crore in FY24" carries two years: return both.
+- Report every named funder the article gives figures for, not only the one you were
+  looking for. A comparison piece often carries several.
 - Amounts in INR crore, as printed. '₹530.11 crore' is 530.11.
 - fiscal_year is 'FYyyyy-yy'. 'FY26', 'FY2026' and 'FY 2025-26' all mean FY2025-26;
   'FY 2025' in Indian CSR reporting means FY2024-25. If the year is ambiguous, return nothing.

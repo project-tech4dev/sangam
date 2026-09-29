@@ -7,7 +7,13 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from app.ingest.matcher import CORE_FLOOR, Match, core, core_similarity
+from app.ingest.matcher import (
+    CORE_FLOOR,
+    Match,
+    core,
+    core_similarity,
+    same_but_for_boilerplate,
+)
 from app.ingest.records import FunderCsrYearRecord, FunderRecord, NewsMentionRecord
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.writer import _diff, slugify
@@ -136,6 +142,26 @@ class TestMatchingOnTheDistinctivePartOfAName:
     def test_a_foundation_is_not_its_parent_company(self):
         # They are separate rows linked by funders.parent_id, so this must NOT match.
         assert core_similarity("Reliance Foundation", "Reliance Industries Limited") < CORE_FLOOR
+
+    @pytest.mark.parametrize(
+        ("a", "b"),
+        [("Axis Bank", "Axis Bank Limited"), ("Axis Bank Ltd", "Axis Bank Limited"),
+         ("Azim Premji Foundation", "Azim Premji Trust")],
+    )
+    def test_the_same_name_plus_boilerplate_resolves_rather_than_queueing(self, a, b):
+        """Queueing these fragments one funder's years across two rows."""
+        assert same_but_for_boilerplate(a, b)
+
+    @pytest.mark.parametrize(
+        ("a", "b"),
+        [("Tata Trusts", "Tata Foundation"),      # both reduce to 'tata'
+         ("SBI Foundation", "SBI Trust"),
+         ("Reliance Foundation", "Reliance Industries Limited")],
+    )
+    def test_a_one_word_core_still_needs_a_person(self, a, b):
+        """With a single distinctive token the boilerplate is what tells two
+        organisations apart, so it cannot be discarded."""
+        assert not same_but_for_boilerplate(a, b)
 
     def test_only_identifier_and_exact_matches_resolve(self):
         assert Match("identifier", 3).resolved

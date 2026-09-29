@@ -56,6 +56,6 @@ async def update_contact(pool: AsyncConnectionPool, contact_id: int, fields: dic
     sets = [f"{col} = %({col})s" for col in UPDATABLE if col in fields]
     if not sets:
         return await get_contact(pool, contact_id)
-    sql = f"UPDATE contacts SET {', '.join(sets)} WHERE id = %(id)s RETURNING *"  # noqa: S608
+    sql = f"UPDATE contacts SET {', '.join(sets)} WHERE id = %(id)s RETURNING *"
     async with pool.connection() as conn:
         return await (await conn.execute(sql, {**fields, "id": contact_id})).fetchone()

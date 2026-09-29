@@ -55,6 +55,7 @@ async def run_import(
     *,
     goal: str,
     funders: list[str] | None = None,
+    years: list[str] | None = None,
     model: Any = None,
     limit: int = 10,
     started_by: str | None = None,
@@ -66,9 +67,9 @@ async def run_import(
     async with pool.connection() as conn, conn.transaction():
         row = await (
             await conn.execute(
-                "INSERT INTO ingest_runs (requested_sources, subjects, started_by, notes) "
-                "VALUES (%s, %s, %s, %s) RETURNING id",
-                (source_keys or [], funders or [], started_by, goal),
+                "INSERT INTO ingest_runs (requested_sources, subjects, fiscal_years, "
+                "started_by, notes) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                (source_keys or [], funders or [], years or [], started_by, goal),
             )
         ).fetchone()
         run_id = row["id"]
@@ -93,9 +94,10 @@ async def run_import(
     # started together. The semaphore bounds them: each task holds a pooled
     # connection, and the pool is shared with the LangGraph checkpointer.
     tasks = [
-        _run_source(src, run_id, model=model, limit=limit, gate=gate, subject=name)
+        _run_source(src, run_id, model=model, limit=limit, gate=gate, subject=name, fiscal_year=year)
         for src in runnable
         for name in (funders or [None])
+        for year in (years or [None])
     ]
     await asyncio.gather(*tasks)
 
@@ -108,14 +110,16 @@ async def run_import(
 
 async def _run_source(
     src: Source, run_id: int, *, model: Any, limit: int, gate: asyncio.Semaphore,
-    subject: str | None = None,
+    subject: str | None = None, fiscal_year: str | None = None,
 ):
     async with gate:
         pool = get_pool()
-        label = f"{src.name} for {subject!r}" if subject else src.name
+        label = " ".join(x for x in (src.name, subject and f"for {subject!r}", fiscal_year) if x)
         try:
             async with pool.connection() as conn:
-                await ADAPTERS[src.key](conn, run_id, model=model, limit=limit, subject=subject)
+                await ADAPTERS[src.key](
+                    conn, run_id, model=model, limit=limit, subject=subject, fiscal_year=fiscal_year
+                )
         except SourceUnavailable as exc:
             await _fail(run_id, src, str(exc), label=label)
         except Exception as exc:
@@ -131,15 +135,13 @@ async def _fail(run_id: int, src: Source, reason: str, *, label: str | None = No
 
 
 async def _ingest_india_csr(
-    conn: Any, run_id: int, *, model: Any, limit: int, subject: str | None = None
+    conn: Any, run_id: int, *, model: Any, limit: int, subject: str | None = None,
+    fiscal_year: str | None = None,
 ) -> None:
-    # A subject narrows the search to that funder; without one the source's own
-    # default query returns whatever it published most recently.
-    items = (
-        await india_csr.fetch(f"{subject} CSR", limit=limit)
-        if subject
-        else await india_csr.fetch(limit=limit)
-    )
+    # Subject and year only aim the SEARCH. Whatever years the article turns out
+    # to state are all extracted and written — narrowing the search is not a
+    # reason to throw away a figure for a neighbouring year.
+    items = await india_csr.fetch(_query(subject, fiscal_year), limit=limit)
     if model is None:
         raise SourceUnavailable("no model configured for extraction; set MODEL or pass one in")
     for item in items:
@@ -198,7 +200,8 @@ def _queue_reason(match: Any) -> str:
 
 
 async def _ingest_gdelt(
-    conn: Any, run_id: int, *, limit: int, model: Any = None, subject: str | None = None
+    conn: Any, run_id: int, *, limit: int, model: Any = None, subject: str | None = None,
+    fiscal_year: str | None = None,
 ) -> None:
     records = (
         await gdelt.fetch(f'"{subject}"', limit=limit) if subject else await gdelt.fetch(limit=limit)
@@ -222,6 +225,13 @@ ADAPTERS: dict[str, Any] = {
     "india_csr": _ingest_india_csr,
     "gdelt": _ingest_gdelt,
 }
+
+
+def _query(subject: str | None, fiscal_year: str | None) -> str:
+    """Aim the search. 'FY2023-24' reads as '2023-24' in an article's own words."""
+    parts = [subject, "CSR", fiscal_year.removeprefix("FY") if fiscal_year else None]
+    narrowed = " ".join(p for p in parts if p)
+    return narrowed if subject else india_csr.DEFAULT_QUERY
 
 
 def _named_in(title: str, funders: list[Any]) -> int | None:
@@ -254,7 +264,8 @@ async def summarise(run_id: int) -> dict[str, Any]:
     async with pool.connection() as conn:
         run = await (
             await conn.execute(
-                "SELECT id, started_at, finished_at, status, requested_sources, subjects, notes "
+                "SELECT id, started_at, finished_at, status, requested_sources, subjects, "
+                "fiscal_years, notes "
                 "FROM ingest_runs WHERE id = %s",
                 (run_id,),
             )
@@ -308,6 +319,7 @@ async def summarise(run_id: int) -> dict[str, Any]:
     return {
         "run_id": run["id"],
         "subjects": list(run["subjects"]),
+        "fiscal_years": list(run["fiscal_years"]),
         "goal": run["notes"],
         "status": run["status"],
         "started_at": run["started_at"].isoformat(),

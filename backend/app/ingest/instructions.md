@@ -23,6 +23,11 @@ for all four steps, in sequence.
    source — pass it. The goal and the names are stored on the run, so months later it explains
    itself.
 
+   **Ask for the years the user needs, not just this one.** A funder's CSR history is the
+   point: `years="FY2023-24,FY2024-25,FY2025-26"` searches each year separately. Three funders
+   across three years is nine searches, so say what it will cost in the plan and let the user
+   cut it down. If the user asks about a funder without saying when, offer the last three years.
+
    A named run is not a guarantee. The sources are general feeds; if none of them has published a
    figure for that funder, the honest report is that the name was searched and nothing was found.
 
