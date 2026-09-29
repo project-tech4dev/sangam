@@ -63,3 +63,18 @@ class QueueItemOut(ReadModel):
     candidates: list[dict] = []
     source_url: str | None = None
     created_at: datetime
+
+
+class ResearchOut(ReadModel):
+    id: int
+    entity_name: str
+    canonical_name: str | None = None
+    entity_kind: str
+    slug: str
+    status: str
+    stopped_reason: str | None = None
+    summary: str
+    fact_count: int
+    sources_read: list[str] = []
+    not_found: list[str] = []
+    researched_at: datetime

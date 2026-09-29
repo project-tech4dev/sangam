@@ -5,10 +5,12 @@ import { RunHistory } from "@/features/ingest/components/RunHistory";
 import { ReviewQueue } from "@/features/ingest/components/ReviewQueue";
 import { SourcePanel } from "@/features/ingest/components/SourcePanel";
 import { ProposalList } from "@/features/ingest/components/ProposalList";
+import { ResearchShelf } from "@/features/ingest/components/ResearchShelf";
 import type {
   ImportRun,
   ImportSource,
   QueueItem,
+  ResearchRecord,
   SourceProposal,
 } from "@/features/ingest/lib/types";
 
@@ -17,11 +19,12 @@ export const dynamic = "force-dynamic";
 
 // The nav comes from the root layout; this page renders only its own content.
 export default async function ImportPage() {
-  const [sources, runs, queue, proposals] = await Promise.all([
+  const [sources, runs, queue, proposals, research] = await Promise.all([
     apiGet<ImportSource[]>("/api/ingest/sources"),
     apiGet<ImportRun[]>("/api/ingest/runs?limit=8"),
     apiGet<QueueItem[]>("/api/ingest/queue?limit=20"),
     apiGet<SourceProposal[]>("/api/ingest/proposals?limit=20"),
+    apiGet<ResearchRecord[]>("/api/ingest/research?limit=25"),
   ]);
 
   return (
@@ -45,6 +48,7 @@ export default async function ImportPage() {
       >
         <ImportWorkspace />
         <aside style={{ display: "grid", gap: 24 }}>
+          <ResearchShelf items={research} />
           <RunHistory runs={runs} />
           <ReviewQueue items={queue} />
           <ProposalList items={proposals} />

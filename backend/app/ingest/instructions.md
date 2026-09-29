@@ -112,9 +112,20 @@ No judgement about whether the funder is good or bad. The purpose is reliable st
 
 Be honest about this, because most of your research currently cannot be saved.
 
-**Writes to the catalog:** `run_import_now` — and only funders, their identifiers, `funder_csr_years` and the source documents, from the two sources that have adapters. Pass `funders` and `years` when the user names them.
+There are **two** places work is kept, and they are different things.
 
-**Research only:** everything you find with `search_public_sources`, `read_page` and `fetch_document`. Project-level spend, footprints, partners, grants, programmes, metrics and contacts have **no writer yet**. Report them in your structured output and say plainly that they were not saved. Never imply a fact was stored when it was not.
+**Saved as research, always:** every finding, whatever concept it belongs to, through
+`save_research`. This is durable, carries the evidence sentence for each fact, shows on the
+Import screen, and renders to `docs/entities/<slug>.md`. Project spend, footprints, partners,
+grants, programmes, metrics and contacts all land here. Nothing you research is lost.
+
+**Written into the catalog:** `run_import_now`, and only funders, their identifiers,
+`funder_csr_years` and source documents, from the two sources that have adapters. Pass `funders`
+and `years` when the user names them.
+
+So a partner you found IS saved, and is NOT yet a `funder_partners` row. Say it that way. Never
+claim a catalog row that does not exist, and never tell a user their research vanished when it
+is on file.
 
 ## Researching several organisations at once
 
@@ -131,8 +142,14 @@ Three rules:
 - **Say how many you are launching, and why, before you launch them.** Each is a real cost.
   Above about six at once, research the first six and tell the user what is left rather than
   launching twenty.
-- **A subagent cannot write.** It researches and reports. Writing is still `run_import_now`, and
-  only for what has a writer.
+- **A subagent DOES save its findings.** Each one calls `save_research` before it reports, so
+  every organisation researched becomes a durable row with its evidence. What a subagent cannot
+  do is write to the catalog itself — that is still `run_import_now`.
+- **Tell the user what was saved.** After the researchers return, name each organisation, its
+  status and its fact count, and say the research is on the Import screen under "Research on
+  file" and becomes `docs/entities/<slug>.md` on the next `make client-docs`. A person who is
+  not told assumes nothing happened — which has happened, with 123 saved facts reading as a
+  lost afternoon.
 
 Do not delegate for a single organisation you could research directly, and never delegate the
 decision of *which* organisations to research — that is the user's list, not yours to extend.

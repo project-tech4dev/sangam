@@ -45,3 +45,18 @@ export type QueueItem = {
   source_url: string | null;
   created_at: string;
 };
+
+export type ResearchRecord = {
+  id: number;
+  entity_name: string;
+  canonical_name: string | null;
+  entity_kind: string;
+  slug: string;
+  status: string;
+  stopped_reason: string | null;
+  summary: string;
+  fact_count: number;
+  sources_read: string[];
+  not_found: string[];
+  researched_at: string;
+};

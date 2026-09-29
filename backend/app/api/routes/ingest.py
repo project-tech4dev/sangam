@@ -10,6 +10,7 @@ from app.ingest.sources import SOURCES
 from app.repositories import ingest as repo
 from app.schemas.ingest import (
     QueueItemOut,
+    ResearchOut,
     RunItemOut,
     RunOut,
     SourceOut,
@@ -70,3 +71,10 @@ async def run_items(run_id: int, pool: PoolDep,
 async def queue(pool: PoolDep, limit: int = 50,
                 user_id: UUID = Depends(get_current_user)) -> list[QueueItemOut]:
     return [QueueItemOut.model_validate(r) for r in await repo.list_queue(pool, limit=limit)]
+
+
+@router.get("/research", response_model=list[ResearchOut],
+            summary="What the researchers have found and saved")
+async def list_research(pool: PoolDep, limit: int = 50,
+                        user_id: UUID = Depends(get_current_user)) -> list[ResearchOut]:
+    return [ResearchOut.model_validate(r) for r in await repo.list_research(pool, limit=limit)]

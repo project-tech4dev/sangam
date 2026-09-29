@@ -69,3 +69,23 @@ async def list_proposals(pool: AsyncConnectionPool, *, limit: int = 50) -> list[
             )
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+async def list_research(pool: AsyncConnectionPool, *, limit: int = 50) -> list[dict]:
+    """The newest row per entity: re-researching supersedes, it does not stack."""
+    async with pool.connection() as conn:
+        rows = await (
+            await conn.execute(
+                """
+                SELECT DISTINCT ON (slug)
+                       id, entity_name, canonical_name, entity_kind, slug, status,
+                       stopped_reason, summary, fact_count, sources_read, not_found,
+                       researched_at
+                FROM entity_research
+                ORDER BY slug, researched_at DESC
+                """
+            )
+        ).fetchall()
+    return sorted(
+        (dict(r) for r in rows), key=lambda r: r["researched_at"], reverse=True
+    )[:limit]
