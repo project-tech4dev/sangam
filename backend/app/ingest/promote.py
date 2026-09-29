@@ -53,6 +53,10 @@ logger = logging.getLogger(__name__)
 # Eleven of the twelve concepts. 'grant' is the exception: grants.org_id is NOT
 # NULL and orgs has no writer, so a funded organisation we do not hold cannot
 # become a grant row. It belongs in funder_partners. See docs/INGEST.md.
+# The matcher methods that mean "this is the same organisation". 'trigram'
+# proposes and a person accepts; 'none' is a new entity.
+MERGEABLE = ("identifier", "exact", "alias", "boilerplate")
+
 PROMOTABLE = (
     "identity", "identifier", "csr_year", "document", "program", "csr_spend",
     "footprint", "stated_geography", "partner", "metric", "contact",
@@ -403,8 +407,19 @@ async def _parent(conn: Any, record: FunderRecord, report: dict[str, Any]) -> in
     if not record.parent_name:
         return None
     match = await resolve_funder(conn, record.parent_name)
-    if match.resolved:
+    # Explicit about the methods rather than relying on Match.resolved: a
+    # trigram hit happens to carry funder_id=None, so this was safe by accident
+    # of the dataclass. A near-miss parent — ITC Limited against ITC Infotech —
+    # is precisely the link that must not be stored quietly.
+    if match.method in MERGEABLE:
         return match.funder_id
+    if match.method == "trigram":
+        names = ", ".join(c["name"] for c in match.candidates)
+        report["held"].append(
+            f"parent {record.parent_name!r} of {record.name!r} resembles {names} without "
+            f"matching. Not linked — a person decides which, if either, it is."
+        )
+        return None
     report["held"].append(
         f"parent {record.parent_name!r} of {record.name!r} is not in the catalog, so the link "
         f"is not stored. Research the parent and promote it first."

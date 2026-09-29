@@ -25,6 +25,7 @@ from app.ingest.matcher import (
 )
 from app.ingest.promote import (
     CONCEPT_RECORDS,
+    MERGEABLE,
     NOT_WRITTEN,
     PROMOTABLE,
     RENAMED,
@@ -797,3 +798,12 @@ class TestNothingResearchedIsSilentlyDropped:
         }
         assert items <= set(FunderCsrYearRecord.model_fields)
         assert items <= set(CSR_YEAR_UPDATABLE)
+
+
+class TestAParentIsLinkedOnlyWhenTheMatcherWouldMerge:
+    def test_only_the_merging_methods_count(self):
+        # Match.resolved happens to be False for a trigram hit because its
+        # funder_id is None. Relying on that made the policy accidental.
+        assert set(MERGEABLE) == {"identifier", "exact", "alias", "boilerplate"}
+        assert "trigram" not in MERGEABLE
+        assert "none" not in MERGEABLE
