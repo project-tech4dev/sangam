@@ -14,6 +14,7 @@ from rupees, which was the good half of that failure mode.
 from __future__ import annotations
 
 import collections
+import hashlib
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -63,12 +64,75 @@ PROMOTABLE = (
 WRITE_ORDER = ("csr_spend", "footprint", "stated_geography", "partner", "metric", "contact")
 
 
+# The provenance convention in CLAUDE.md asks for content_hash and
+# extractor_version on every extracted row. Nothing in the ingest path wrote
+# either. The hash is over the sentence and the URL, so re-reading the same
+# claim from the same page is recognisably the same fact.
+EXTRACTOR_VERSION = f"research/v{SCHEMA_VERSION}"
+
+
+# Which record type carries each concept into the writer. A finding field with
+# no matching record field is a field that gets researched and thrown away —
+# seven of them were, until test_every_finding_field_reaches_a_record caught it.
+CONCEPT_RECORDS: dict[str, type] = {
+    "identity": FunderRecord,
+    "identifier": FunderRecord,
+    "csr_year": FunderCsrYearRecord,
+    "csr_spend": FunderCsrSpendRecord,
+    "footprint": FunderFootprintRecord,
+    "stated_geography": FunderLocationRecord,
+    "partner": FunderPartnerRecord,
+    "program": ProgramRecord,
+    "metric": MetricRecord,
+    "contact": ContactRecord,
+}
+
+# A finding field whose record field has a different name. `kind` collides
+# with the records' own discriminator, hence the prefixes.
+RENAMED: dict[tuple[str, str], str] = {
+    ("program", "kind"): "program_kind",
+    ("contact", "kind"): "contact_kind",
+    ("identifier", "id_type"): "identifiers",
+    ("identifier", "id_value"): "identifiers",
+}
+
+# Researched deliberately and deliberately not stored as its own column. Each
+# entry is a decision; an undocumented gap is a bug.
+NOT_WRITTEN: dict[str, dict[str, str]] = {
+    "csr_spend": {
+        "sector": "kept in funder_csr_spend.notes: tags.kind allows 'csr_sector' but no "
+                  "Schedule VII taxonomy is seeded to normalise against",
+    },
+    "document": {
+        "title": "written by ensure_document, which takes a shim rather than a record",
+        "doc_type": "written by ensure_document",
+        "as_of": "written by ensure_document",
+    },
+    # The whole concept. grants.org_id is NOT NULL and there is no writer for
+    # orgs, so a funded organisation the catalog does not hold cannot become a
+    # grant row at all. Such a relationship goes to funder_partners, whose
+    # org_id is nullable — and which is the more honest claim anyway, since a
+    # named partner is not proof that money changed hands.
+    "grant": dict.fromkeys(
+        (
+            "recipient_name", "title", "status", "amount", "currency",
+            "start_date", "end_date", "program_name", "notes",
+        ),
+        "grants.org_id is NOT NULL and orgs has no writer; recorded as a partner instead",
+    ),
+}
+
+
 def _provenance(finding: dict[str, Any] | Any, fetched: datetime) -> dict[str, Any]:
     get = finding.get if isinstance(finding, dict) else lambda k: getattr(finding, k, None)
+    url = get("source_url") or ""
+    evidence = get("evidence") or ""
     return {
-        "source_url": get("source_url"),
+        "source_url": url,
         "source_name": get("source_name") or "research",
         "fetched_at": fetched,
+        "content_hash": hashlib.sha256(f"{url}\n{evidence}".encode()).hexdigest(),
+        "extractor_version": EXTRACTOR_VERSION,
     }
 
 
@@ -104,6 +168,8 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
             name=(identity or {}).get("name") or row["canonical_name"] or row["entity_name"],
             funder_type=(identity or {}).get("funder_type"),
             website=(identity or {}).get("website") or row.get("website"),
+            section_135_bound=(identity or {}).get("section_135_bound"),
+            parent_name=(identity or {}).get("parent_name"),
             identifiers={f["id_type"]: f["id_value"] for f in identifiers},
             as_of=None,
             **_provenance(anchor, row["researched_at"]),
@@ -129,6 +195,11 @@ def csr_years_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> list[
                     total_spent=to_inr(f.get("total_spent")),
                     average_net_profit=to_inr(f.get("average_net_profit")),
                     unspent_transferred=to_inr(f.get("unspent_transferred")),
+                    spent_on_projects=to_inr(f.get("spent_on_projects")),
+                    admin_overheads=to_inr(f.get("admin_overheads")),
+                    impact_assessment_cost=to_inr(f.get("impact_assessment_cost")),
+                    excess_spent=to_inr(f.get("excess_spent")),
+                    impact_assessment_done=f.get("impact_assessment_done"),
                     section_135_applicable=f.get("section_135_applicable"),
                     notes=f.get("notes") or f"Promoted from research: {f.get('evidence', '')[:200]}",
                     as_of=f["fiscal_year"],
@@ -321,6 +392,26 @@ def _with_sector(f: Any) -> str | None:
     return " · ".join(bits) or None
 
 
+async def _parent(conn: Any, record: FunderRecord, report: dict[str, Any]) -> int | None:
+    """The parent company's funder id, when it is already in the catalog.
+
+    A parent that does not resolve is reported, never created. "Never merge a
+    company with its foundation" cuts both ways: inventing Axis Bank Limited
+    because Axis Bank Foundation mentioned it puts a row in the catalog that no
+    source was read for.
+    """
+    if not record.parent_name:
+        return None
+    match = await resolve_funder(conn, record.parent_name)
+    if match.resolved:
+        return match.funder_id
+    report["held"].append(
+        f"parent {record.parent_name!r} of {record.name!r} is not in the catalog, so the link "
+        f"is not stored. Research the parent and promote it first."
+    )
+    return None
+
+
 async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
     """Write what can be written from one research row. Returns a report."""
     findings = row["findings"] if isinstance(row["findings"], list) else []
@@ -364,7 +455,8 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
             f"{record.name!r} resembles {names} without matching. Not merged — a person decides."
         )
         return report
-    status, funder_id, _ = await write_funder(conn, record, match)
+    parent_id = await _parent(conn, record, report)
+    status, funder_id, _ = await write_funder(conn, record, match, parent_id=parent_id)
     report["funder"] = {"status": status, "id": funder_id, "name": record.name}
 
     docs = await _write_documents(conn, row, findings, funder_id, report)

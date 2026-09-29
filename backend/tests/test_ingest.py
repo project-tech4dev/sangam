@@ -23,7 +23,14 @@ from app.ingest.matcher import (
     core_similarity,
     same_but_for_boilerplate,
 )
-from app.ingest.promote import PROMOTABLE, WRITE_ORDER, promote
+from app.ingest.promote import (
+    CONCEPT_RECORDS,
+    NOT_WRITTEN,
+    PROMOTABLE,
+    RENAMED,
+    WRITE_ORDER,
+    promote,
+)
 from app.ingest.records import (
     ContactRecord,
     FunderCsrSpendRecord,
@@ -52,7 +59,7 @@ from app.ingest.research_records import (
     to_inr,
 )
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
-from app.ingest.writer import _diff, slugify
+from app.ingest.writer import CSR_YEAR_UPDATABLE, _diff, slugify
 
 NOW = datetime(2026, 9, 29, tzinfo=UTC)
 
@@ -739,3 +746,54 @@ class TestSavingCannotQuietlyShrinkAResult:
 
     def test_the_docstring_says_what_replace_costs(self):
         assert "overwrite" in (save_research.description or "").lower()
+
+
+class TestNothingResearchedIsSilentlyDropped:
+    """A finding field with no record field is a fact that gets found,
+    evidenced, saved — and thrown away on promotion without a word.
+
+    Seven were: five of the ten statutory CSR items, the parent-company link
+    and section_135_bound. That is the "pulled the information but nothing got
+    saved" complaint in miniature, and nothing in the code would have said so.
+    """
+
+    EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis"})
+
+    @pytest.mark.parametrize("concept", sorted(CONCEPT_TABLES))
+    def test_every_finding_field_reaches_a_record(self, concept):
+        fields = set(FINDING_MODELS[concept].model_fields) - self.EVIDENCE
+        record = CONCEPT_RECORDS.get(concept)
+        carried = set(record.model_fields) if record else set()
+        excused = set(NOT_WRITTEN.get(concept, {}))
+        dropped = sorted(
+            f for f in fields
+            if RENAMED.get((concept, f), f) not in carried and f not in excused
+        )
+        assert not dropped, (
+            f"{concept}: researched and never written — {dropped}. Add the field to its "
+            f"record and writer, or name it in promote.NOT_WRITTEN with a reason."
+        )
+
+    def test_the_excuses_are_reasons_not_labels(self):
+        for concept, fields in NOT_WRITTEN.items():
+            for field, reason in fields.items():
+                assert len(reason) > 12, f"{concept}.{field}: {reason!r} explains nothing"
+
+    def test_nothing_is_excused_that_is_actually_written(self):
+        # An excuse left behind after the field was wired up would hide the
+        # next real drop on that concept.
+        for concept, fields in NOT_WRITTEN.items():
+            record = CONCEPT_RECORDS.get(concept)
+            if record is None:
+                continue
+            stale = sorted(set(fields) & set(record.model_fields))
+            assert not stale, f"{concept}: {stale} are written now — drop the NOT_WRITTEN entry"
+
+    def test_all_ten_statutory_items_are_carried(self):
+        items = {
+            "average_net_profit", "prescribed_csr", "spent_on_projects", "admin_overheads",
+            "impact_assessment_cost", "total_spent", "unspent_transferred", "excess_spent",
+            "impact_assessment_done", "section_135_applicable",
+        }
+        assert items <= set(FunderCsrYearRecord.model_fields)
+        assert items <= set(CSR_YEAR_UPDATABLE)

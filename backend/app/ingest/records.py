@@ -21,6 +21,10 @@ class Provenance(BaseModel):
     fetched_at: datetime
     as_of: str | None = None
     archive_url: str | None = None
+    # Only the baseline tables have these two columns; the writers that target
+    # a table without them simply do not pass them.
+    content_hash: str | None = None
+    extractor_version: str | None = None
 
     @field_validator("source_url")
     @classmethod
@@ -62,6 +66,12 @@ class FunderRecord(Provenance):
     name: str = Field(min_length=2)
     funder_type: str | None = None
     website: str | None = None
+    section_135_bound: bool | None = None
+    parent_name: str | None = None
+    """The company a foundation belongs to. Resolved to funders.parent_id by the
+    caller, which reports it rather than inventing a row when it will not
+    resolve: Axis Bank Foundation and Axis Bank Limited are two rows and a link,
+    never one row, and a placeholder parent is a fact nobody sourced."""
     identifiers: dict[str, str] = Field(default_factory=dict)
     """Deterministic keys: cin, pan, csr1, darpan, reg_no, domain."""
 
@@ -92,6 +102,13 @@ class FunderCsrYearRecord(Provenance):
     total_spent: float | None = None
     average_net_profit: float | None = None
     unspent_transferred: float | None = None
+    # Items 6(a)-(c) and 6(f) of the statutory annexure. The researcher has
+    # always collected these; until now the writer dropped them silently.
+    spent_on_projects: float | None = None
+    admin_overheads: float | None = None
+    impact_assessment_cost: float | None = None
+    excess_spent: float | None = None
+    impact_assessment_done: bool | None = None
     section_135_applicable: bool | None = None
     notes: str | None = None
 
@@ -107,7 +124,10 @@ class FunderCsrYearRecord(Provenance):
             raise ValueError(f"fiscal_year must look like 'FY2023-24', got {v!r}")
         return v
 
-    @field_validator("prescribed_csr", "total_spent", "average_net_profit", "unspent_transferred")
+    @field_validator(
+        "prescribed_csr", "total_spent", "average_net_profit", "unspent_transferred",
+        "spent_on_projects", "admin_overheads", "impact_assessment_cost", "excess_spent",
+    )
     @classmethod
     def _non_negative(cls, v: float | None) -> float | None:
         if v is not None and v < 0:

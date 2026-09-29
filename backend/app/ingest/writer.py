@@ -10,10 +10,17 @@ from app.ingest.records import FunderCsrYearRecord, FunderRecord, NewsMentionRec
 
 # Columns a re-import may overwrite on an existing funder. Everything else on the
 # row was either hand-vetted or set by a different source, so an importer leaves it.
-FUNDER_UPDATABLE = ("funder_type", "website", "source_url", "source_name", "fetched_at", "as_of")
+FUNDER_UPDATABLE = (
+    "funder_type", "website", "section_135_bound", "parent_id",
+    "source_url", "source_name", "fetched_at", "as_of", "content_hash", "extractor_version",
+)
+# All ten statutory items, not the four this used to carry. The researcher
+# collected the other six and promotion dropped them without a word.
 CSR_YEAR_UPDATABLE = (
     "prescribed_csr", "total_spent", "average_net_profit", "unspent_transferred",
-    "section_135_applicable", "notes", "source_url", "source_name", "fetched_at", "as_of",
+    "spent_on_projects", "admin_overheads", "impact_assessment_cost", "excess_spent",
+    "impact_assessment_done", "section_135_applicable", "notes",
+    "source_url", "source_name", "fetched_at", "as_of",
 )
 
 
@@ -62,11 +69,20 @@ async def ensure_document(conn: Any, rec: Any, *, funder_id: int | None, doc_typ
     return row["id"]
 
 
-async def write_funder(conn: Any, rec: FunderRecord, match: Match) -> tuple[str, int, dict]:
-    """Returns (status, funder_id, changes). Status is added | updated | matched."""
+async def write_funder(
+    conn: Any, rec: FunderRecord, match: Match, *, parent_id: int | None = None
+) -> tuple[str, int, dict]:
+    """Returns (status, funder_id, changes). Status is added | updated | matched.
+
+    parent_id is resolved by the caller, which can report a parent it could not
+    find; this writer only stores what it is given.
+    """
     proposed = {
-        "funder_type": rec.funder_type, "website": rec.website, "source_url": rec.source_url,
-        "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+        "funder_type": rec.funder_type, "website": rec.website,
+        "section_135_bound": rec.section_135_bound, "parent_id": parent_id,
+        "source_url": rec.source_url, "source_name": rec.source_name,
+        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+        "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
     }
     if match.resolved:
         existing = await (
@@ -88,11 +104,13 @@ async def write_funder(conn: Any, rec: FunderRecord, match: Match) -> tuple[str,
     slug = await _free_slug(conn, slugify(rec.name))
     row = await (
         await conn.execute(
-            "INSERT INTO funders (slug, name, funder_type, website, registry_status, "
-            "source_url, source_name, fetched_at, as_of) "
-            "VALUES (%s, %s, %s, %s, 'placeholder', %s, %s, %s, %s) RETURNING id",
-            (slug, rec.name, rec.funder_type, rec.website, rec.source_url,
-             rec.source_name, rec.fetched_at, rec.as_of),
+            "INSERT INTO funders (slug, name, funder_type, website, section_135_bound, "
+            "parent_id, registry_status, source_url, source_name, fetched_at, as_of, "
+            "content_hash, extractor_version) "
+            "VALUES (%s, %s, %s, %s, %s, %s, 'placeholder', %s, %s, %s, %s, %s, %s) RETURNING id",
+            (slug, rec.name, rec.funder_type, rec.website, rec.section_135_bound, parent_id,
+             rec.source_url, rec.source_name, rec.fetched_at, rec.as_of,
+             rec.content_hash, rec.extractor_version),
         )
     ).fetchone()
     await _write_identifiers(conn, row["id"], rec)
@@ -121,6 +139,9 @@ async def write_csr_year(
     proposed = {
         "prescribed_csr": rec.prescribed_csr, "total_spent": rec.total_spent,
         "average_net_profit": rec.average_net_profit, "unspent_transferred": rec.unspent_transferred,
+        "spent_on_projects": rec.spent_on_projects, "admin_overheads": rec.admin_overheads,
+        "impact_assessment_cost": rec.impact_assessment_cost, "excess_spent": rec.excess_spent,
+        "impact_assessment_done": rec.impact_assessment_done,
         "section_135_applicable": rec.section_135_applicable, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
@@ -221,13 +242,15 @@ PARTNER_UPDATABLE = ("partner_canonical", "partner_kind", "partner_csr1", "notes
                      "source_url", "source_name", "fetched_at", "as_of")
 PROGRAM_KEY = ("funder_id", "name")
 PROGRAM_UPDATABLE = ("description", "status", "start_date", "end_date", "parent_id", "kind",
-                     "is_enabler", "source_url", "source_name", "fetched_at", "as_of")
+                     "is_enabler", "source_url", "source_name", "fetched_at", "as_of",
+                     "content_hash", "extractor_version")
 METRIC_KEY = ("funder_id", "name", "period", "program_id")
 METRIC_UPDATABLE = ("value", "target", "unit", "stage", "method", "is_self_reported",
                     "baseline", "comparison_value", "chain_key", "sequence", "location_id",
                     "notes", "source_url", "source_name", "fetched_at", "as_of")
 CONTACT_KEY = ("funder_id", "name", "role")
-CONTACT_UPDATABLE = ("kind", "notes", "source_url", "source_name", "fetched_at", "as_of")
+CONTACT_UPDATABLE = ("kind", "notes", "source_url", "source_name", "fetched_at", "as_of",
+                     "content_hash", "extractor_version")
 
 
 async def _upsert(
@@ -340,6 +363,7 @@ async def write_program(
         "end_date": rec.end_date, "parent_id": parent_id, "kind": rec.program_kind,
         "is_enabler": rec.is_enabler, "source_url": rec.source_url,
         "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+        "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
     }
     status, changes = await _upsert(
         conn, "programs", key, PROGRAM_UPDATABLE, proposed, document_id
@@ -376,5 +400,6 @@ async def write_contact(
     proposed = {
         "kind": rec.contact_kind, "notes": rec.notes, "source_url": rec.source_url,
         "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+        "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
     }
     return await _upsert(conn, "contacts", key, CONTACT_UPDATABLE, proposed, document_id)
