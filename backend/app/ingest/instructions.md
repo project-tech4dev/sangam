@@ -20,9 +20,9 @@ A CSR policy is not spending. A priority geography is not a footprint. A named p
 
 ## Every run: dossier → plan → research → compare
 
-**1. `funder_dossier(name)` first.** Read what the catalog already holds. Research fills gaps; it does not rediscover. A missing section means **NOT RECORDED** — never zero spending, no partners, no impact or no geography.
+**1. `research_goals(name)` first, then `funder_dossier(name)`.** The goals tool reads the database's own columns and returns, per concept, the fields a source could state, which of them a row cannot be written without, and what is already held. Research toward that list. The dossier then gives you the detail behind it. A missing section means **NOT RECORDED** — never zero spending, no partners, no impact or no geography.
 
-**2. Say what you will look for.** Name the gaps and the years. Three years where possible: the latest FY, the one before, the one before that. Recurrence is the signal — repeated sectors, repeated districts, renewed partners, discontinued relationships.
+**2. Say what you will look for, before you look.** Name the gaps and the years. Three years where possible: the latest FY, the one before, the one before that. Recurrence is the signal — repeated sectors, repeated districts, renewed partners, discontinued relationships. Pass those goals to `save_research` so a partial result reads as "eight of fourteen fields" rather than an unexplained stop.
 
 **3. Research, strongest source first** (see the tiers below).
 
@@ -60,7 +60,7 @@ Research toward these concepts. `funder_dossier` shows the same list, so you can
 3. **funder_csr_years** — per FY: `section_135_applicable`, `average_net_profit`, `prescribed_csr`, `spent_on_projects`, `admin_overheads`, `impact_assessment_cost`, `total_spent`, `unspent_transferred`, `excess_spent`, `impact_assessment_done`. Obligation, budget, allocation, actual spend, overhead and unspent are **not interchangeable**.
 4. **funder_csr_spend** — the highest-value target. Per project *or* per aggregate: FY, project name, sector, state, district, designation, implementing agency, CSR-1, via-agency, ongoing, amount, project count. An aggregate ("Education in Maharashtra: ₹8 crore across 12 projects") has `project_name = null` and `project_count = 12`. **Never divide an aggregate across projects** unless the source gives the split.
 5. **funder_footprints** — where a theme actually ran, by FY, at the most precise level the source states. "Barpeta and Kamrup districts of Assam" is two districts, not one state. **Never invent a district from a city or a programme name.**
-6. **funder_locations** — stated geography, role `priority` meaning the funder *says* it prioritises there. Not proof of spending.
+6. **funder_locations** (concept `stated_geography`) — where the funder *says* it prioritises, role `priority`. Not proof of spending. Keep it apart from `footprint`, which is where money demonstrably went.
 7. **funder_partners** — per FY and programme: partner name as printed, a canonical spelling, kind (`ngo`, `foundation`, `university`, `research`, `government`, `armed_forces`, `hospital`, `network`, `company`, `other`), CSR-1 if stated. Search both directions: `"<company>" "<NGO>"` and `"<NGO>" "<company>"`. Keep the year — repeated appearances mean renewal, and collapsing them destroys that.
 8. **grants** — funder, recipient, title, amount, dates, status (`active`, `concluded`, `unconfirmed`, `dormant`). **`amount = null` means not public. It never means zero.**
 9. **programs** — theme → programme → phase → project, with dates and status. Do not invent a hierarchy the source does not support.
@@ -159,7 +159,8 @@ decision of *which* organisations to research — that is the user's list, not y
 
 ## Tools
 
-- `funder_dossier(name)` — what the catalog holds. First call of any research run.
+- `research_goals(name, years)` — what the database expects, per concept, against what is already held. **First call of any research run.**
+- `funder_dossier(name)` — what the catalog holds, in detail.
 - `list_import_sources(category, detail)` — the registry, as counts; pass `detail` for a source's basis.
 - `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
 - `read_page(url)` — a CSR page, an about page, a press release.

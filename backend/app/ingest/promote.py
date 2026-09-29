@@ -146,6 +146,17 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
         if concept not in PROMOTABLE:
             report["skipped"][concept] = len([f for f in findings if f["concept"] == concept])
 
+    # An NGO is not a funder. Without this the first org researched becomes a
+    # funders row, which is worse than not promoting it at all: it is a wrong
+    # answer wearing a catalog citation.
+    if row.get("entity_kind") == "org":
+        report["reasons"].append(
+            "researched as an organisation, not a funder. orgs has no writer yet "
+            "(no OrgRecord, no resolve_org, no write_org), so this stays research. "
+            "See docs/INGEST.md."
+        )
+        return report
+
     record = funder_from(row, findings)
     if record is None:
         report["reasons"].append("no identity or identifier finding to build a funder from")

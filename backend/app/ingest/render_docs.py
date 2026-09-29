@@ -111,8 +111,8 @@ def entity_markdown(row: dict[str, Any]) -> str:
         out += [f"- {u}" for u in row["sources_read"]]
         out.append("")
     out += ["---", "",
-            "_Findings, not catalog rows. A fact here is something a source said, with the "
-            "sentence that says it; putting it in the catalog is a separate step._"]
+            ("_Findings, not catalog rows. A fact here is something a source said, with the "
+             "sentence that says it; putting it in the catalog is a separate step._")]
     return "\n".join(out) + "\n"
 
 

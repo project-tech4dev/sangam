@@ -25,6 +25,7 @@ from app.ingest.tools import (
     pending_resolutions,
     plan_import,
     promote_research,
+    research_goals,
     run_import_now,
 )
 from app.integrations.tracing import trace_config
@@ -43,6 +44,7 @@ TOOLS = [
     # open the report, read the pages carrying the figures. Each checks the
     # registry and robots.txt before it fetches, so capability does not widen access.
     funder_dossier,
+    research_goals,
     search_public_sources,
     read_page,
     fetch_document,
@@ -57,6 +59,7 @@ TOOLS = [
 # reading. The main agent decides how many to launch.
 RESEARCH_TOOLS = [
     funder_dossier,
+    research_goals,
     search_public_sources,
     read_page,
     fetch_document,
@@ -79,9 +82,13 @@ ENTITY_RESEARCHER = {
     # its last message, so the parent and the screen both get structure.
     "response_format": EntityResearch,
     "system_prompt": (
-        "You research exactly ONE organisation and report back. Begin by reading the dossier "
-        "for what the catalog already holds, then search, then read the strongest sources you "
-        "can reach — a statutory filing or annual report before a news article.\n\n"
+        "You research exactly ONE organisation and report back.\n\n"
+        "START WITH research_goals. It reads the database's own columns and tells you which "
+        "fields a fact needs to be storable, which are REQUIRED, and what is already held — so "
+        "you research toward the schema instead of writing a profile. State your goals in your "
+        "first message, then read funder_dossier for the detail, then search, then read the "
+        "strongest sources you can reach: a statutory filing or annual report before a news "
+        "article. A field you chase is a field the catalog has somewhere to put.\n\n"
         "CONFIRM THE ENTITY BEFORE SPENDING ANY BUDGET. A name can belong to more than one "
         "organisation: KABIL is a livelihoods NGO in Assam and also Khanij Bidesh India "
         "Limited, a Ministry of Mines joint venture. Check that what you found matches what "
@@ -99,7 +106,8 @@ ENTITY_RESEARCHER = {
         "Finish by calling save_research exactly once — ALWAYS, including when you found "
         "nothing and when you found the wrong organisation. An absence that was looked for "
         "is a result worth keeping, and the next person should not repeat the search to "
-        "learn it. Pass everything you found. Each "
+        "learn it. Pass everything you found, and pass your goals as `goals` so a partial "
+        "run reads as 'eight of fourteen fields' rather than an unexplained stop. Each "
         "finding carries the sentence that states it and the URL it came from; a figure "
         "without its sentence is not a finding and the tool will refuse it. Name the "
         "concepts you looked for and did not find — 'not found' is a result, and so is "

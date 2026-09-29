@@ -9,8 +9,10 @@ from typing import Any
 from langchain_core.tools import tool
 
 from app.agent.models import resolve_model
+from app.agent.tools.sql.catalog import CATALOG
 from app.core.config import get_settings
 from app.db.pool import get_pool
+from app.ingest.expectations import CONCEPT_TABLES, expected_fields, recent_fiscal_years
 from app.ingest.promote import promote
 from app.ingest.runner import catalog_baseline, run_import, summarise
 from app.ingest.sources import SOURCES, Category, resolve
@@ -385,10 +387,6 @@ def _row(r: Any) -> str:
     return " ".join(f"{k}={v}" for k, v in r.items() if v is not None and k != "id")
 
 
-# Read-only, fixed SQL, one query per concept the research spec targets.
-# contacts deliberately omits email and phone: the catalog withholds them.
-
-
 # Read-only, fixed SQL, one query per concept the research brief targets.
 # contacts deliberately omits email and phone: the catalog withholds them.
 _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
@@ -471,6 +469,87 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
 )
+
+
+@tool
+async def research_goals(name: str, years: str = "") -> str:
+    """What to look for, derived from what the database expects. Call this FIRST.
+
+    The catalog has a column for every fact worth finding, and this reads that
+    list rather than repeating it: per concept, the fields a source could state,
+    which of them the row cannot be written without, and what is already held
+    for this funder. Research the gaps.
+
+    Args:
+        name: the organisation, as the user asked for it.
+        years: comma-separated fiscal years, e.g. 'FY2024-25,FY2023-24'.
+               Empty means the three most recent reportable years.
+    """
+    try:
+        wanted = [y.strip() for y in years.split(",") if y.strip()] or list(recent_fiscal_years())
+        pool = get_pool()
+        async with pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    "SELECT id, name FROM funders WHERE name ILIKE %s OR similarity(name, %s) >= 0.4 "
+                    "ORDER BY similarity(name, %s) DESC LIMIT 1",
+                    (f"%{name}%", name, name),
+                )
+            ).fetchone()
+            held = await _held_per_concept(conn, row["id"]) if row else {}
+
+        out = [
+            (f"Research goals for {name!r}. These are the database's columns, not a wish list — "
+             f"a field marked REQUIRED is one the row cannot be written without."),
+            (f"\nYears to cover: {', '.join(wanted)}. Recurrence is the signal, so ask each year "
+             f"separately and never mix them in one record."),
+        ]
+        out.append(
+            f"\nIn the catalog as [funder:{row['id']}] {row['name']}."
+            if row
+            else f"\nNothing in the catalog matches {name!r}. Everything you find is a NEW RECORD. "
+            f"That is not evidence the funder is absent from the sector."
+        )
+
+        for concept, table in CONCEPT_TABLES.items():
+            fields = expected_fields(concept)
+            count, seen_years = held.get(concept, (0, []))
+            state = f"{count} row(s) held" if count else "NOT RECORDED"
+            if seen_years:
+                missing = [y for y in wanted if y not in seen_years]
+                state += f", years {', '.join(sorted(seen_years))}"
+                state += f" — still missing {', '.join(missing)}" if missing else " — years covered"
+            out.append(f"\n{concept} -> {table}: {state}")
+            out += [f"    {f.describe()}" for f in fields]
+
+        out.append(
+            "\nFields nothing can fill are as useful as fields you fill: say which you looked "
+            "for and did not find, and pass them to save_research as not_found."
+        )
+        return "\n".join(out)
+    except Exception as exc:
+        logger.exception("research_goals failed")
+        return f"research_goals failed: {type(exc).__name__}: {exc}"
+
+
+async def _held_per_concept(conn: Any, funder_id: int) -> dict[str, tuple[int, list[str]]]:
+    """Row counts, and the fiscal years already covered, per concept."""
+    out: dict[str, tuple[int, list[str]]] = {}
+    for concept, table in CONCEPT_TABLES.items():
+        if concept == "identity":
+            out[concept] = (1, [])
+            continue
+        # Table names come from CONCEPT_TABLES, a module constant, never a caller.
+        has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
+        years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
+        found = await (
+            await conn.execute(
+                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE funder_id = %s",
+                (funder_id,),
+            )
+        ).fetchone()
+        out[concept] = (found["n"], [y for y in (found["years"] or []) if y])
+    return out
 
 
 @tool

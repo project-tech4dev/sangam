@@ -7,13 +7,16 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+# 'stated_geography' is where a funder SAYS it prioritises; 'footprint' is where
+# money demonstrably went. Keeping them apart is the distinction the whole agent
+# runs on, so they are two concepts and two tables, never one.
 CONCEPTS = (
-    "identity", "identifier", "csr_year", "csr_spend", "footprint", "partner",
-    "program", "grant", "metric", "contact", "document",
+    "identity", "identifier", "csr_year", "csr_spend", "footprint", "stated_geography",
+    "partner", "program", "grant", "metric", "contact", "document",
 )
 Concept = Literal[
-    "identity", "identifier", "csr_year", "csr_spend", "footprint", "partner",
-    "program", "grant", "metric", "contact", "document",
+    "identity", "identifier", "csr_year", "csr_spend", "footprint", "stated_geography",
+    "partner", "program", "grant", "metric", "contact", "document",
 ]
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
 
@@ -63,6 +66,10 @@ class EntityResearch(BaseModel):
         default=None, description="why research ended where it did, e.g. 'budget spent'"
     )
     summary: str = Field(min_length=20, description="a few sentences, factual, no judgement")
+    goals: list[str] = Field(
+        default_factory=list,
+        description="what you set out to find, from research_goals, one line each",
+    )
     findings: list[Finding] = Field(default_factory=list)
     not_found: list[str] = Field(
         default_factory=list, description="concepts looked for and not found"

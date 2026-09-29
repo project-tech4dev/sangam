@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from pydantic import ValidationError
 
+from app.ingest.expectations import (
+    CONCEPT_TABLES,
+    concepts_for,
+    expected_fields,
+    recent_fiscal_years,
+)
 from app.ingest.matcher import (
     CORE_FLOOR,
     Match,
@@ -14,8 +20,9 @@ from app.ingest.matcher import (
     core_similarity,
     same_but_for_boilerplate,
 )
+from app.ingest.promote import promote
 from app.ingest.records import FunderCsrYearRecord, FunderRecord, NewsMentionRecord
-from app.ingest.research_records import EntityResearch, Finding
+from app.ingest.research_records import CONCEPTS, EntityResearch, Finding
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.writer import _diff, slugify
 
@@ -359,3 +366,80 @@ class TestDocRendering:
         # reader thinks in crore.
         assert _crore("4270000000") == "₹427.00 cr"
         assert _crore("not a number") == "not a number"
+
+
+class TestExpectationsComeFromTheSchema:
+    """The research targets are derived from the SQL catalog, not a second list."""
+
+    def test_every_concept_maps_to_a_catalogued_table(self):
+        from app.agent.tools.sql.catalog import CATALOG
+
+        for concept, table in CONCEPT_TABLES.items():
+            assert table in CATALOG, f"{concept} targets {table}, which is not catalogued"
+
+    def test_the_concept_vocabulary_and_the_table_map_agree(self):
+        # Both lists are hand-written in different modules; a concept with no
+        # table is a finding with nowhere to go.
+        assert set(CONCEPTS) == set(CONCEPT_TABLES)
+
+    def test_stated_geography_and_footprint_are_different_concepts(self):
+        # A priority is not a spend. Collapsing them is the error the whole
+        # agent brief is built to prevent.
+        assert CONCEPT_TABLES["stated_geography"] == "funder_locations"
+        assert CONCEPT_TABLES["footprint"] == "funder_footprints"
+
+    def test_surrogate_keys_and_provenance_are_never_research_targets(self):
+        for concept in CONCEPT_TABLES:
+            names = {f.name for f in expected_fields(concept)}
+            assert "id" not in names
+            assert not names & {"source_url", "fetched_at", "document_id", "content_hash"}
+            # A raw foreign key is the writer's job; only the named forms survive.
+            assert not any(n.endswith("_id") for n in names), concept
+
+    def test_a_named_foreign_key_survives_as_a_name(self):
+        names = {f.name for f in expected_fields("csr_spend")}
+        assert {"state", "district"} <= names
+        assert "state_location_id" not in names
+
+    def test_required_fields_are_marked(self):
+        required = {f.name for f in expected_fields("csr_spend") if f.required}
+        assert required == {"fiscal_year", "amount"}
+
+    def test_enum_values_reach_the_researcher(self):
+        kind = next(f for f in expected_fields("partner") if f.name == "partner_kind")
+        assert "ngo" in kind.values and "armed_forces" in kind.values
+        assert "one of:" in kind.describe()
+
+    def test_an_ngo_is_not_offered_the_funder_only_concepts(self):
+        assert "csr_year" not in concepts_for("org")
+        assert "csr_year" in concepts_for("funder")
+
+    @pytest.mark.parametrize(
+        ("today", "expected"),
+        [
+            # April onwards, last April-to-March year has closed.
+            (date(2026, 9, 29), "FY2025-26"),
+            # Before April, it has not.
+            (date(2026, 2, 1), "FY2024-25"),
+        ],
+    )
+    def test_the_newest_year_asked_for_is_one_that_has_ended(self, today, expected):
+        years = recent_fiscal_years(today)
+        assert years[0] == expected
+        assert len(years) == 3
+
+
+class TestPromotionRefusesWhatItCannotWrite:
+    async def test_an_ngo_is_not_written_into_funders(self):
+        # orgs has no writer. Promoting an org row would put an NGO in the
+        # funder table, which is a wrong answer carrying a catalog citation.
+        row = {
+            "slug": "the-ant", "entity_name": "The ANT", "canonical_name": None,
+            "entity_kind": "org", "researched_at": NOW,
+            "findings": [{"concept": "identity", "label": "name", "value": "The ANT",
+                          "source_url": "https://theant.org", "evidence": "x" * 20,
+                          "confidence": "high"}],
+        }
+        report = await promote(None, row)
+        assert report["funder"] is None
+        assert any("no writer" in r for r in report["reasons"])
