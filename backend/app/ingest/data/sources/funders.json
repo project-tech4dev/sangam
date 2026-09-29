@@ -1,0 +1,421 @@
+{
+  "_comment": "Edit this file to add or change a source. A source is only crawled when its access_rule is open_api or crawl_allowed, so changing a rule is a security decision and must carry its evidence in `basis`.",
+  "sources": [
+    {
+      "key": "india_csr",
+      "name": "India CSR",
+      "host": "indiacsr.in",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "funder",
+        "media"
+      ],
+      "yields": [
+        "funder",
+        "funder_csr_year"
+      ],
+      "basis": "robots.txt disallows only /wp-admin/ and publishes a sitemap; read through the site's own WordPress REST API rather than by parsing pages.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "nse_brsr",
+      "name": "BRSR filings via NSE",
+      "host": "nseindia.com",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "robots.txt allows all but one test path. NSE blocks heavy bot traffic in practice and its terms were not read, so keep request rates low.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "nec_portals",
+      "name": "North Eastern Council portals",
+      "host": "necouncil.gov.in",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "funder",
+        "rfp"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "robots.txt limits only core asset paths in the part read. Read the full file before a crawler runs against it.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "assam_csr_policy",
+      "name": "Assam CSR Policy 2019 and CSRAA",
+      "host": "industries.assam.gov.in",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "No robots.txt is served (404), so no crawl rules are declared, and the CSR policy documents are published for public use.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "samhita",
+      "name": "Samhita reports",
+      "host": "samhita.org",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "funder",
+        "rfp"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "robots.txt allows everything except /admin/, /private/ and /api/. Terms of use were not read, so check them before production use.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "dasra",
+      "name": "Dasra research and portfolio",
+      "host": "dasra.org",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "funder",
+        "ngo"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "robots.txt allows all paths. Used for landscape reports rather than entity records; terms of use were not read.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "india_philanthropy_report",
+      "name": "India Philanthropy Report (Bain and Dasra)",
+      "host": "bain.com",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "robots.txt blocks only noindex, alumni, secure and mailing paths. The report itself is published for public download.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "funder_websites",
+      "name": "CSR and funder official websites",
+      "host": "",
+      "access_rule": "crawl_allowed_check_each_site",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder",
+        "funder_csr_year"
+      ],
+      "basis": "A class of sites, not one host: each funder's robots.txt and terms must be read before that host is crawled. Sites cleared this way get their own entry.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "csr_annual_report_annexure",
+      "name": "Annual Report on CSR Activities (Board's report annexure)",
+      "host": "",
+      "access_rule": "crawl_allowed_check_each_site",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "A public statutory filing published on each company's own site, so the rule is that company's robots.txt. Download politely, one host at a time.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "csr_annual_action_plan",
+      "name": "Board-approved CSR Annual Action Plan",
+      "host": "",
+      "access_rule": "crawl_allowed_check_each_site",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "A public board document published on each company's own site; the governing rule is that host's robots.txt, checked per site.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "csr_impact_assessment",
+      "name": "CSR impact assessment reports",
+      "host": "",
+      "access_rule": "crawl_allowed_check_each_site",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "Published by funders on their own sites, so each host's robots.txt governs. These carry outcomes, baselines, geographies and partners.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "company_annual_reports",
+      "name": "Company annual reports",
+      "host": "",
+      "access_rule": "crawl_allowed_check_each_site",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "Public statutory filings on each company's investor pages; the rule is that host's robots.txt. Carries the CSR chapter and the BRSR link.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "mca_csr",
+      "name": "MCA CSR Data (MCA CDM)",
+      "host": "mcacdm.nic.in",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder",
+        "funder_csr_year"
+      ],
+      "basis": "robots.txt disallows automated access; the site also answers 503 outside India. Manual export from an Indian network, or Dataful's licensed mirror.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "mca_dynamic_csr_report",
+      "name": "Dynamic CSR Report export (MCA CDM)",
+      "host": "mcacdm.nic.in",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "Same host rule as MCA CSR Data: robots.txt disallows automated access. The Assam extract already held was scraped and should be re-pulled by manual export.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "mca_csr_mis",
+      "name": "CSR MIS reports (MCA CDM)",
+      "host": "mcacdm.nic.in",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "Same host rule as MCA CSR Data: robots.txt disallows automated access, and the portal answers 503 to requests from outside India.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "give",
+      "name": "Give (funder and NGO profiles)",
+      "host": "give.do",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "funder",
+        "ngo"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "Give's terms bar data mining and limit content to non-commercial use. Manual entry with a source link stays allowed; a crawler needs Give's written permission.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "dataful_csr_insights",
+      "name": "Dataful CSR Insights",
+      "host": "csr.dataful.in",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "robots.txt redirects rather than serving rules, so automated reading is not established. Treat it as a manual query surface over National CSR Portal data.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "csr_gov_portal",
+      "name": "National CSR Portal",
+      "host": "csr.gov.in",
+      "access_rule": "manual_entry_only_automation_blocked",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "The portal answers HTTP 403 to requests from outside India, including for robots.txt, so its rules are unknown from here. Manual lookup from an Indian network is allowed.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "csr2_project_data",
+      "name": "Form CSR-2 project data",
+      "host": "csr.gov.in",
+      "access_rule": "manual_entry_only_automation_blocked",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "Reached through the National CSR Portal, which answers 403 outside India. Carries project spend, implementing agency and CSR-1 number when accessible.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "prime_infobase",
+      "name": "Prime Infobase CSR database",
+      "host": "primeinfobase.com",
+      "access_rule": "licence_or_paid_access_needed",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "A commercial subscription product. Any use in Sangam needs a paid plan, and republishing its data in the open layer needs a written licence.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "dataful_csr",
+      "name": "Dataful CSR datasets",
+      "host": "dataful.in",
+      "access_rule": "licence_or_paid_access_needed",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "robots.txt allows /datasets, but downloads need a login and a paid plan, and republishing in the open layer needs a licence agreed with Dataful.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "csrbox",
+      "name": "CSRBOX",
+      "host": "csrbox.org",
+      "access_rule": "crawl_only_with_permission",
+      "categories": [
+        "funder",
+        "rfp",
+        "media"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "No robots.txt is served and no scraping clause was found, but the listings are the operator's curated product. Ask for permission or a feed before crawling.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "free_resource_hub",
+      "name": "Free Resource Hub CSR Analytics",
+      "host": "freeresourcehub.org",
+      "access_rule": "crawl_only_with_permission",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "robots.txt blocks /api/ and /wp-content/, and the site states its contact data was scraped from elsewhere, so provenance is unclear. Cross-check only.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "ffrh_funder_datasets",
+      "name": "FFRH funder datasets",
+      "host": "",
+      "access_rule": "partner_permission_internal",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "Shared by FFRH for this project through Drive. Use follows the FFRH agreement, and funder-CSO links need CSO consent before any public display.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "scale_funder_dataset",
+      "name": "SCALE funder dataset and tool assessment",
+      "host": "",
+      "access_rule": "partner_permission_internal",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "Partner data from the SCALE collaboration, shared on request. Use only as the SCALE agreement allows; it carries funder data gathered from interviews.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "india_csr_navigator",
+      "name": "India CSR Navigator",
+      "host": "india-csr-navigator.vercel.app",
+      "access_rule": "reference_only",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "Terms were not read and its data comes partly from Prime Infobase under licence, so Sangam reads it to learn shape rather than taking data from it.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "undp_india",
+      "name": "UNDP India research",
+      "host": "",
+      "access_rule": "not_checked",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "Neither robots.txt nor terms of use have been read for this publisher. Manual reading is fine; check before anything automated touches it.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "bse_brsr",
+      "name": "BRSR filings via BSE",
+      "host": "bseindia.com",
+      "access_rule": "not_checked",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder_csr_year"
+      ],
+      "basis": "robots.txt returned no readable rules when checked, so whether it permits automated access is unknown. Carries the same filings as the NSE route.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "niti_aspirational_districts",
+      "name": "NITI Aayog Aspirational Districts and Champions of Change",
+      "host": "niti.gov.in",
+      "access_rule": "not_checked",
+      "categories": [
+        "funder"
+      ],
+      "yields": [
+        "funder"
+      ],
+      "basis": "robots.txt redirected rather than serving rules, so automated access is unestablished. The district list itself is published and can be downloaded by hand.",
+      "robots_checked_at": "2026-09-28"
+    }
+  ]
+}

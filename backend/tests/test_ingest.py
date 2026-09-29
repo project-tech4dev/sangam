@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from app.ingest.matcher import CORE_FLOOR, Match, core, core_similarity
 from app.ingest.records import FunderCsrYearRecord, FunderRecord, NewsMentionRecord
-from app.ingest.sources import SOURCES, AccessRule, dispatchable, resolve
+from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.writer import _diff, slugify
 
 NOW = datetime(2026, 9, 29, tzinfo=UTC)
@@ -21,7 +21,45 @@ def prov(**kw):
 
 class TestSourcesGateOnAccessRules:
     def test_only_open_api_and_crawl_allowed_are_dispatchable(self):
-        assert {s.key for s in dispatchable()} == {"india_csr", "gdelt"}
+        # A rule, not a fixed set: the registry grows, the rule must not.
+        allowed = {AccessRule.OPEN_API, AccessRule.CRAWL_ALLOWED}
+        assert {s.access_rule for s in dispatchable()} <= allowed
+        assert all(s.access_rule in allowed for s in SOURCES.values() if s.dispatchable)
+
+    def test_only_sources_with_an_adapter_are_actually_fetched(self):
+        """Permitted and built are different things, and the run report says which."""
+        from app.ingest.runner import ADAPTERS
+
+        assert set(ADAPTERS) == {"india_csr", "gdelt"}
+        assert set(ADAPTERS) <= {s.key for s in dispatchable()}, "an adapter for a held source"
+
+    def test_a_dispatchable_source_names_a_host_and_a_robots_check(self):
+        # Something a crawler will visit has to say where, and when someone looked.
+        for source in dispatchable():
+            assert source.host, f"{source.key} is dispatchable with no host"
+            assert source.robots_checked_at, f"{source.key} has no recorded robots check"
+
+    def test_the_strictest_rule_on_a_host_wins(self):
+        """mcacdm.nic.in carries four products. First-match-wins would let
+        declaration order decide whether a crawler runs."""
+        from app.ingest.sources import rule_for_host, sources_on_host
+
+        assert len(sources_on_host("mcacdm.nic.in")) > 1
+        rule, _ = rule_for_host("mcacdm.nic.in")
+        assert rule == AccessRule.NO_SCRAPING
+        assert rule_for_host("example.invalid") is None
+
+    def test_every_source_belongs_to_a_category(self):
+        for source in SOURCES.values():
+            assert source.categories, f"{source.key} belongs to no category"
+            assert all(isinstance(c, Category) for c in source.categories)
+
+    def test_the_registry_self_checks_at_import(self):
+        """The JSON is loaded, so a malformed entry must fail loudly rather than
+        producing a registry that is quietly wrong."""
+        from app.ingest import sources as module
+
+        assert module._self_check() is None
 
     @pytest.mark.parametrize("key", ["give", "mca_csr", "csrbox"])
     def test_a_restricted_source_is_registered_but_never_dispatched(self, key):
@@ -146,6 +184,33 @@ class TestIngestAgentIsSelfDescribing:
 
         assert len(INSTRUCTIONS.strip()) > 500
         assert "Sangam Import" in INSTRUCTIONS
+
+    def test_every_tool_defined_is_also_registered(self):
+        """The reverse of the rule above, and the one that actually bit: plan_import
+        was written, documented and unreachable, because nothing added it to TOOLS."""
+        import inspect
+
+        from langchain_core.tools import BaseTool
+
+        from app.ingest import research, tools
+        from app.ingest.agent import TOOLS
+
+        # Both modules: the importing tools live in tools.py and the reading
+        # tools in research.py, so equality on one module would be wrong.
+        defined = {
+            obj.name
+            for module in (tools, research)
+            for _, obj in inspect.getmembers(module)
+            if isinstance(obj, BaseTool)
+        }
+        registered = {t.name for t in TOOLS}
+        assert not defined - registered, f"defined but never registered: {sorted(defined - registered)}"
+
+    def test_planning_comes_before_writing(self):
+        from app.ingest.agent import TOOLS
+
+        names = [t.name for t in TOOLS]
+        assert names.index("plan_import") < names.index("run_import_now")
 
     def test_the_importer_has_no_sql_tool(self):
         # The whole safety argument: this agent proposes typed records and the

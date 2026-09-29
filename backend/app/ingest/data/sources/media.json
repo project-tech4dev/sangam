@@ -1,0 +1,317 @@
+{
+  "_comment": "Edit this file to add or change a source. A source is only crawled when its access_rule is open_api or crawl_allowed, so changing a rule is a security decision and must carry its evidence in `basis`.",
+  "sources": [
+    {
+      "key": "gdelt",
+      "name": "GDELT DOC 2.0",
+      "host": "api.gdeltproject.org",
+      "access_rule": "open_api",
+      "categories": [
+        "funder",
+        "ngo",
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "A free public API offered for reuse, within its rate limits. GDELT is cited on every row it produces; the query is an adapter setting, not a separate source.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "eastmojo",
+      "name": "EastMojo",
+      "host": "eastmojo.com",
+      "access_rule": "open_api",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "Publishes a public RSS feed, and robots.txt blocks only /wp-json/. Covers news across all eight North East states.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "youtube_api",
+      "name": "YouTube Data API",
+      "host": "googleapis.com",
+      "access_rule": "open_api",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "An official API used under Google's terms and quota, with a key. Gives channel and video metadata rather than page scraping.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "morung_express",
+      "name": "The Morung Express",
+      "host": "morungexpress.com",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt allows all paths and no RSS feed was found, so the pages themselves are the route. Nagaland coverage.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "sentinel_assam",
+      "name": "The Sentinel (Assam)",
+      "host": "sentinelassam.com",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt allows all paths and no RSS feed was found. Assam coverage; terms of use were not read.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "northeast_now",
+      "name": "Northeast Now",
+      "host": "nenow.in",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt allows all paths and a feed is likely at /feed. Covers news across the North East region.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "shillong_times",
+      "name": "The Shillong Times",
+      "host": "theshillongtimes.com",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt blocks only /wp-admin/, so the article pages and the likely /feed route are permitted. Meghalaya coverage.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "nagaland_post",
+      "name": "Nagaland Post",
+      "host": "nagalandpost.com",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt explicitly allows the feed paths, which is the cleanest route into it. Nagaland coverage.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "eastern_mirror",
+      "name": "Eastern Mirror",
+      "host": "easternmirrornagaland.com",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt allows everything except /em-admin, and no RSS feed was found. Nagaland coverage.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "imphal_free_press",
+      "name": "Imphal Free Press",
+      "host": "ifp.co.in",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt allows articles and blocks search and /wp-json/. A Cloudflare bot check may still stop a crawler in practice. Manipur coverage.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "arunachal_times",
+      "name": "The Arunachal Times",
+      "host": "arunachaltimes.in",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt allows all paths and a feed is likely at /index.php/feed/. Arunachal Pradesh coverage.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "csr_journal",
+      "name": "The CSR Journal",
+      "host": "thecsrjournal.in",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt allows all paths. Carries CSR sector news; terms of use were not read, so check them before production use.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "idr",
+      "name": "India Development Review",
+      "host": "idronline.org",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt allows articles but disallows the feed paths, so the RSS route must not be polled. Sector analysis rather than entity records.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "mha_fcra_notifications",
+      "name": "MHA FCRA notifications",
+      "host": "fcraonline.nic.in",
+      "access_rule": "manual_entry_only_automation_blocked",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt answered 503 from outside India, so automated access is unestablished. A person may read the notices and enter what matters.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "assam_tribune",
+      "name": "The Assam Tribune",
+      "host": "assamtribune.com",
+      "access_rule": "not_checked",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt returned no readable rules when checked, so whether automated access is permitted is unknown. Check again before crawling.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "tripura_times",
+      "name": "Tripura Times",
+      "host": "tripuratimes.com",
+      "access_rule": "not_checked",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt answered 503 when checked, so its rules could not be read and automated access is unestablished. Tripura coverage.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "alliance_magazine",
+      "name": "Alliance Magazine",
+      "host": "alliancemagazine.org",
+      "access_rule": "not_checked",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt returned no readable rules, so whether it permits automated reading is unknown. Philanthropy sector news.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "devex",
+      "name": "Devex",
+      "host": "devex.com",
+      "access_rule": "licence_or_paid_access_needed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "The site answered 403 including for robots.txt, and its content sits behind a paid subscription. A licence is needed before any use.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "x_api",
+      "name": "X (Twitter) API",
+      "host": "x.com",
+      "access_rule": "licence_or_paid_access_needed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "Access is a paid, pay-per-use API. Ruled out for continuous monitoring on cost, so items are checked by hand when they matter.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "linkedin",
+      "name": "LinkedIn",
+      "host": "linkedin.com",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "funder",
+        "ngo",
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "LinkedIn's robots.txt permits crawling only under its written whitelist approval, and posts about people are personal data under the DPDP Act.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "meta_graph",
+      "name": "Instagram and Facebook (Meta Graph API)",
+      "host": "facebook.com",
+      "access_rule": "crawl_only_with_permission",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "Meta's terms bar scraping, and the Graph API needs app review before it returns public page posts. Manual checking only until that is approved.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "node_sesta_news",
+      "name": "Node/SeSTA news and newsletters",
+      "host": "node.sesta.org",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_mention"
+      ],
+      "basis": "robots.txt allows all paths. Carries cohort news and partner events; Node is a project partner, so confirm reuse as a courtesy.",
+      "robots_checked_at": "2026-09-28"
+    }
+  ]
+}
