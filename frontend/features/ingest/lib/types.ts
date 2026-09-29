@@ -4,9 +4,23 @@ export type ImportSource = {
   host: string;
   access_rule: string;
   basis: string;
+  categories: string[];
   yields: string[];
   dispatchable: boolean;
+  /** Permitted and built are different things; only these are actually fetched. */
+  has_adapter: boolean;
   robots_checked_at: string | null;
+};
+
+export type SourceProposal = {
+  id: number;
+  host: string;
+  first_seen_url: string | null;
+  robots_result: string | null;
+  times_seen: number;
+  status: string;
+  first_seen_at: string;
+  last_seen_at: string;
 };
 
 export type ImportRun = {

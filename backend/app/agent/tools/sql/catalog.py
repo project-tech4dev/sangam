@@ -1001,6 +1001,7 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         # Sangam Import has its own tools for these; Ask Sangam has no use for them.
         "ingest_runs",
         "ingest_run_items",
+        "ingest_source_proposals",
         "resolution_queue",
         # Infrastructure.
         "schema_migrations",

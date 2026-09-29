@@ -3,9 +3,13 @@ type ToolLabel = { label: string; detail: (args: any) => string };
 /** Sangam Import's own trace labels; Ask Sangam has a separate map. */
 const TOOL_LABELS: Record<string, ToolLabel> = {
   list_import_sources: { label: "Reading the source registry", detail: () => "list_import_sources" },
+  plan_import: {
+    label: "Planning the run",
+    detail: (a) => `plan_import · ${a?.sources || "every source"}`,
+  },
   run_import_now: {
     label: "Importing",
-    detail: (a) => `run_import_now · ${a?.sources || "every source"}${a?.limit ? ` · limit ${a.limit}` : ""}`,
+    detail: (a) => a?.goal || `run_import_now · ${a?.sources || "every source"}`,
   },
   import_run_summary: {
     label: "Reading a run report",

@@ -56,3 +56,16 @@ async def list_queue(pool: AsyncConnectionPool, *, limit: int = 50) -> list[dict
             )
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+async def list_proposals(pool: AsyncConnectionPool, *, limit: int = 50) -> list[dict]:
+    async with pool.connection() as conn:
+        rows = await (
+            await conn.execute(
+                "SELECT id, host, first_seen_url, robots_result, times_seen, status, "
+                "first_seen_at, last_seen_at FROM ingest_source_proposals "
+                "WHERE status = 'proposed' ORDER BY last_seen_at DESC LIMIT %s",
+                (limit,),
+            )
+        ).fetchall()
+    return [dict(r) for r in rows]

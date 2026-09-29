@@ -9,9 +9,23 @@ class SourceOut(ReadModel):
     host: str
     access_rule: str
     basis: str
+    categories: list[str]
     yields: list[str]
     dispatchable: bool
+    has_adapter: bool
+    """Permitted and built are different things: only these are actually fetched."""
     robots_checked_at: str | None = None
+
+
+class SourceProposalOut(ReadModel):
+    id: int
+    host: str
+    first_seen_url: str | None = None
+    robots_result: str | None = None
+    times_seen: int
+    status: str
+    first_seen_at: datetime
+    last_seen_at: datetime
 
 
 class RunOut(ReadModel):
