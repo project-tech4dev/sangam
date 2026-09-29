@@ -134,7 +134,7 @@ ENTITY_RESEARCHER = {
 # promote_research directly is the check — promote, read the catalog back,
 # report the difference — and a box on the screen saying which organisation is
 # being written and what landed.
-CATALOG_WRITER = {
+CATALOG_WRITER: dict = {
     "name": "catalog-writer",
     "description": (
         "Moves ONE organisation's saved research into the catalog and reports exactly what "
@@ -168,12 +168,19 @@ CATALOG_WRITER = {
 def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Before create_deep_agent: the profile is read while the graph is built.
     install_harness()
+    # The writer calls two tools and formats what they return; it needs no
+    # reasoning about sources, so it does not need the model that reads
+    # forty-page annual reports. Unset, this is the same model as everything
+    # else and nothing changes.
+    writer = {**CATALOG_WRITER}
+    if settings.utility_model:
+        writer["model"] = resolve_model(settings.utility_model)
     # No SQL tools by design: this agent proposes typed records, and app/ingest/writer.py
     # is the only thing that writes. Ask Sangam reads; this one imports.
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,
-        subagents=[ENTITY_RESEARCHER, CATALOG_WRITER],
+        subagents=[ENTITY_RESEARCHER, writer],
         middleware=[clear_old_tool_results()],
         system_prompt=INSTRUCTIONS,
         checkpointer=checkpointer,

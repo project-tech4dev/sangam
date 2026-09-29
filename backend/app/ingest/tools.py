@@ -226,7 +226,7 @@ async def run_import_now(
         fys = [y.strip() for y in years.split(",") if y.strip()] or None
         summary = await run_import(
             keys, goal=goal.strip(), funders=names, years=fys,
-            model=resolve_model(settings.model), limit=limit,
+            model=resolve_model(settings.utility_model or settings.model), limit=limit,
         )
         return format_summary(summary)
     except Exception as exc:

@@ -105,3 +105,30 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         assert "entity-researcher" in advertised
         assert "catalog-writer" in advertised
         assert "general-purpose" not in advertised
+
+
+class TestTheUtilityModelIsOptional:
+    """Cheaper models for work that needs no reasoning — and unset, nothing
+    changes, because a performance setting that alters behaviour by default is
+    a behaviour change wearing a performance setting's name."""
+
+    def test_unset_means_the_main_model(self):
+        from app.core.config import Settings
+
+        s = Settings(utility_model="")
+        assert (s.utility_model or s.model) == s.model
+
+    def test_set_means_that_model(self):
+        from app.core.config import Settings
+
+        s = Settings(utility_model="anthropic:claude-haiku-4-5")
+        assert (s.utility_model or s.model) == "anthropic:claude-haiku-4-5"
+
+    def test_the_writer_subagent_is_not_mutated_in_place(self):
+        # build_ingest_agent copies CATALOG_WRITER before adding a model, so
+        # building twice with different settings cannot leak between them.
+        from app.core.config import get_settings
+        from app.ingest.agent import CATALOG_WRITER, build_ingest_agent
+
+        build_ingest_agent(get_settings(), None)
+        assert "model" not in CATALOG_WRITER
