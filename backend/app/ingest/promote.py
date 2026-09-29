@@ -45,6 +45,7 @@ from app.ingest.writer import (
     write_footprint,
     write_funder,
     write_funder_location,
+    write_funder_tag,
     write_metric,
     write_partner,
     write_program,
@@ -338,6 +339,7 @@ async def _write_facts(
     name = row["canonical_name"] or row["entity_name"]
     fetched = row["researched_at"]
     seen: set[tuple] = set()
+    themes: dict[int, str] = {}
 
     for concept in WRITE_ORDER:
         for f in _validated(findings, concept):
@@ -345,6 +347,8 @@ async def _write_facts(
             document_id = docs.get(f.source_url)
             state_id, district_id = await _place(conn, f, report)
             sector_id = await resolve_csr_sector(conn, getattr(f, "sector", None))
+            if sector_id is not None:
+                themes.setdefault(sector_id, getattr(f, "sector", "") or "")
             base = {"funder_name": name, **_provenance(f, fetched)}
 
             # Two findings can be distinct and still resolve to one row:
@@ -464,6 +468,13 @@ async def _write_facts(
 
             except ValidationError as exc:
                 report["held"].append(f"{concept}: {exc.errors()[0]['msg']}")
+
+    # Every Schedule VII clause this funder's spending touched, recorded once
+    # against the funder with the wording that placed it there.
+    for tag_id, wording in themes.items():
+        await write_funder_tag(
+            conn, funder_id, tag_id, note=f"from research: {wording}" if wording else None
+        )
 
 
 def _with_sector(f: Any) -> str | None:

@@ -66,8 +66,9 @@ Research toward these concepts. `funder_dossier` shows the same list, so you can
 9. **programs** — theme → programme → phase → project, with dates and status. Do not invent a hierarchy the source does not support.
 10. **tags** — themes. Keep the company's wording separately from the normalised tag; "Building Human Capital" is not Education unless the underlying activity is. Mark any classification needing interpretation as **inferred**.
 11. **metrics** — beneficiaries, outputs, outcomes, SROI, with value, unit, period, stage (`input`, `output`, `adoption`, `outcome`, `sustained_outcome`, `impact`, `sroi`) and method. **Never describe a self-reported figure as independently verified.**
-12. **contacts** — publicly disclosed CSR roles only, with name, role, kind. No private personal data.
+12. **contacts** — publicly disclosed CSR roles only, with name, role, kind. A **shared mailbox** the organisation publishes for enquiries — `csr@`, `grants@`, `csrhelpdesk@` — may be recorded; set `is_role_mailbox` and let the evidence show the page presents it as a contact point for the organisation. **Never an individual's address, even a published one**, and never a phone number. The tool refuses both.
 13. **documents** — every important source: title, type, URL, source name, the period it describes (`as_of`) and when you read it (`fetched_at`). These two are different.
+14. **rfps** — an open call for proposals: title, URL, deadline, the grant band, and each eligibility rule on its own line. This is the one concept an NGO can act on this week, so look for it explicitly — a "Partner with us", "Grants", "Apply" or "Opportunities" page, not only the annual report.
 
 ---
 
@@ -118,9 +119,9 @@ There are **two** places work is kept, and they are different things.
 `save_research`. This is durable, carries the evidence sentence for each fact, shows on the
 Import screen, and renders to `docs/entities/<slug>.md`. Nothing you research is lost.
 
-**Promoted into the catalog:** `promote_research` moves eleven of the twelve concepts —
+**Promoted into the catalog:** `promote_research` moves twelve of the thirteen concepts —
 identity, identifiers, CSR years, project spend, footprints, stated geography, partners,
-programmes, metrics, contacts and documents. Offer it once research is saved.
+programmes, metrics, contacts, documents and RFPs. Offer it once research is saved.
 
 **The one exception is `grant`.** `grants.org_id` is NOT NULL and there is no writer for `orgs`,
 so a funded organisation the catalog does not already hold cannot become a grant row. Record the
@@ -142,6 +143,11 @@ unit it is in (`inr`, `lakh` or `crore`), and the source's own wording. Do not c
 
 **Places need their state.** "Barpeta" cannot be resolved and "Barpeta, Assam" can, so a district
 always travels with its state. A footprint whose place will not resolve cannot be written at all.
+
+**Two findings can collide.** A row is identified by its resolved ids, so "Healthcare" and
+"Sanitation" are both Schedule VII clause (i) and land on the same spend row. When that happens
+the first is written and the second is reported — two sources disagreeing is a finding, not an
+edit. Keep them apart where you can: a different project name or district makes them two rows.
 
 ## Researching several organisations at once
 

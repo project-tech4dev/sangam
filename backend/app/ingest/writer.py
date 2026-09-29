@@ -469,3 +469,19 @@ async def write_rfp(
             (rfp_id, tag_id, EXTRACTOR_TAGGER),
         )
     return status, rfp_id, changes
+
+
+async def write_funder_tag(conn: Any, funder_id: int, tag_id: int, *, note: str | None) -> None:
+    """A theme this funder actually spends on, so field-8 questions can be
+    answered from one place instead of aggregated over spend rows.
+
+    is_inferred is always true: the clause was chosen from the funder's own
+    wording by a keyword table, and the row should say that rather than read
+    as the funder's own classification.
+    """
+    await conn.execute(
+        "INSERT INTO funder_tags (funder_id, tag_id, role, is_inferred, tagged_by, note) "
+        "VALUES (%s, %s, 'primary', true, %s, %s) "
+        "ON CONFLICT (funder_id, tag_id) DO NOTHING",
+        (funder_id, tag_id, EXTRACTOR_TAGGER, note),
+    )
