@@ -15,6 +15,7 @@ from app.ingest.matcher import (
     same_but_for_boilerplate,
 )
 from app.ingest.records import FunderCsrYearRecord, FunderRecord, NewsMentionRecord
+from app.ingest.research_records import EntityResearch, Finding
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.writer import _diff, slugify
 
@@ -229,7 +230,11 @@ class TestIngestAgentIsSelfDescribing:
             for _, obj in inspect.getmembers(module)
             if isinstance(obj, BaseTool)
         }
-        registered = {t.name for t in TOOLS}
+        # A subagent's tools are registered too — reachable through `task`,
+        # not on the main agent. save_research is the researcher's, by design.
+        from app.ingest.agent import ENTITY_RESEARCHER
+
+        registered = {t.name for t in TOOLS} | {t.name for t in ENTITY_RESEARCHER["tools"]}
         assert not defined - registered, f"defined but never registered: {sorted(defined - registered)}"
 
     def test_planning_comes_before_writing(self):
@@ -265,3 +270,92 @@ class TestAMarketIsNotAFunder:
     )
     def test_a_real_organisation_is_kept(self, name):
         assert FunderCsrYearRecord(funder_name=name, fiscal_year="FY2024-25", **prov())
+
+
+class TestResearchRecords:
+    """Every finding carries the sentence behind it, or it is not a finding."""
+
+    def finding(self, **kw):
+        base = dict(
+            concept="csr_year", label="FY2024-25 total spent", value="4270000000",
+            evidence="The Bank spent Rs 427 crore on CSR activities during FY2024-25.",
+            source_url="https://axis.bank.in/report.pdf", confidence="high",
+        )
+        return Finding(**{**base, **kw})
+
+    def test_a_finding_needs_a_real_sentence(self):
+        with pytest.raises(ValidationError):
+            self.finding(evidence="spent 427cr")
+
+    def test_a_finding_needs_a_reachable_source(self):
+        with pytest.raises(ValidationError, match="http"):
+            self.finding(source_url="the annual report")
+
+    def test_fiscal_year_format_is_enforced_here_too(self):
+        with pytest.raises(ValidationError, match="FY2023-24"):
+            self.finding(fiscal_year="FY25")
+
+    def test_complete_with_nothing_found_is_a_contradiction(self):
+        with pytest.raises(ValidationError, match="complete"):
+            EntityResearch(entity_name="Acme Ltd", status="complete", summary="A" * 25)
+
+    @pytest.mark.parametrize("status", ["partial", "wrong_entity"])
+    def test_stopping_early_has_to_say_why(self, status):
+        with pytest.raises(ValidationError, match="stopped_reason"):
+            EntityResearch(entity_name="Acme Ltd", status=status, summary="A" * 25)
+
+    def test_not_found_stands_on_its_own(self):
+        # The one status that needs neither findings nor a reason.
+        assert EntityResearch(entity_name="Acme Ltd", status="not_found", summary="A" * 25)
+
+    def test_unknown_concepts_are_refused(self):
+        with pytest.raises(ValidationError, match="unknown concepts"):
+            EntityResearch(
+                entity_name="Acme Ltd", status="not_found", summary="A" * 25,
+                not_found=["csr_year", "vibes"],
+            )
+
+    def test_findings_are_reachable_by_concept(self):
+        r = EntityResearch(
+            entity_name="Acme Ltd", status="complete", summary="A" * 25,
+            findings=[self.finding(), self.finding(concept="partner", label="Harsha Trust")],
+        )
+        assert len(r.by_concept("csr_year")) == 1
+        assert r.by_concept("grant") == []
+
+
+class TestDocRendering:
+    """Generated blocks refresh; everything around them is left alone."""
+
+    def test_only_the_marked_block_is_replaced(self):
+        from app.ingest.render_docs import replace_block
+
+        text = (
+            "# KABIL\n\nHand-written analysis above.\n\n"
+            "<!-- generated:funders -->\nOLD TABLE\n<!-- /generated -->\n\n"
+            "Hand-written analysis below.\n"
+        )
+        out = replace_block(text, "funders", "NEW TABLE")
+        assert "NEW TABLE" in out and "OLD TABLE" not in out
+        assert "Hand-written analysis above." in out
+        assert "Hand-written analysis below." in out
+
+    def test_a_missing_block_is_appended_not_lost(self):
+        from app.ingest.render_docs import replace_block
+
+        out = replace_block("# KABIL\n\nJust prose.\n", "funders", "TABLE")
+        assert "Just prose." in out and "TABLE" in out
+
+    def test_rendering_twice_changes_nothing(self):
+        from app.ingest.render_docs import replace_block
+
+        once = replace_block("# X\n\nprose\n", "funders", "TABLE")
+        assert replace_block(once, "funders", "TABLE") == once
+
+    def test_amounts_read_as_crore(self):
+        from app.ingest.render_docs import _crore
+
+        # Stored in INR because the column says so; shown in crore because a
+        # reader thinks in crore.
+        assert _crore("4270000000") == "₹427.00 cr"
+        assert _crore("not a number") == "not a number"

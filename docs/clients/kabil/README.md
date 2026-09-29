@@ -80,6 +80,16 @@ Four results chains are recorded. Every one of them stops at **output**:
 surface: the data stops at "we trained" and "we reached", which is exactly what a funder asking
 for evidence of change will push back on.
 
+## Organisations researched for KABIL
+
+<!-- generated:funders -->
+| Organisation | Researched | Status | Facts | Detail |
+|---|---|---|---|---|
+| Axis Bank Foundation | 2026-09-29 | partial | 2 | [entity file](../../entities/axis-bank-foundation.md) |
+<!-- /generated -->
+
+Everything below is hand-written analysis and is never overwritten by the generator.
+
 ## Funder-side research, and what it found
 
 Sangam Import was pointed at Axis Bank's public disclosures on 29 Sep 2026. It reached the Tier-1

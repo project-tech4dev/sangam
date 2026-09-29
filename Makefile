@@ -1,4 +1,4 @@
-.PHONY: up down logs seed graph-seed smoke db-clean db-reset db-backup db-upgrade \
+.PHONY: up down logs seed graph-seed smoke client-docs db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend evals
 
@@ -87,6 +87,14 @@ evals:
 	@set -a; [ -f .env ] && . ./.env; set +a; \
 	cd backend && TEST_DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
 	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) -q
+
+# Render docs/entities and the generated blocks of docs/clients from the
+# research table. Host venv, like `make evals`: the backend image mounts only
+# app/, seed/ and db/, so nothing inside it can write a repo file.
+client-docs:
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+	cd backend && DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
+	.venv/bin/python -m app.ingest.render_docs
 
 migrate-status:
 	$(COMPOSE) run --rm --no-deps backend python -m app.db.migrate --status

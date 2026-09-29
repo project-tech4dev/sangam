@@ -1002,6 +1002,7 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         "ingest_runs",
         "ingest_run_items",
         "ingest_source_proposals",
+        "entity_research",
         "resolution_queue",
         # Infrastructure.
         "schema_migrations",

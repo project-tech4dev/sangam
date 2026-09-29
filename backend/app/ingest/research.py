@@ -7,6 +7,9 @@ the pages that carry the figures, quote the sentence.
 
 from __future__ import annotations
 
+import json
+import logging
+
 import httpx
 import trafilatura
 from langchain_core.tools import tool
@@ -14,8 +17,13 @@ from langchain_core.tools import tool
 from app.agent.tools.files import _safe_name, downloads_dir, extract_pdf_text
 from app.agent.tools.web import make_web_search
 from app.core.config import get_settings
+from app.db.pool import get_pool
 from app.ingest.access import check_url
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
+from app.ingest.research_records import EntityResearch
+from app.ingest.writer import slugify
+
+logger = logging.getLogger(__name__)
 
 MAX_CONTENT_CHARS = 8_000
 MAX_DOWNLOAD_MB = 60
@@ -169,3 +177,62 @@ def read_document_pages(filename: str, start_page: int = 1, end_page: int | None
             f"\n\n[truncated — {total_pages} pages in total; call again with a later start_page]"
         )
     return f"[{filename}: {total_pages} pages]\n\n{text}"
+
+
+@tool
+async def save_research(findings: EntityResearch) -> str:
+    """Save what you found. Call this LAST, once, before you report back.
+
+    Research that is only spoken disappears when the conversation does. This is
+    what makes it durable, and what the client and entity documents are rendered
+    from. Every finding needs the sentence that states it and the URL it came
+    from — the tool refuses anything else, so do not summarise the evidence away.
+
+    Report `status` honestly: 'complete' only if you answered the questions,
+    'partial' with a reason if the budget ran out, 'not_found' if the sources
+    have nothing, 'wrong_entity' if what you found is a different organisation
+    from the one asked about.
+    """
+    try:
+        slug = slugify(findings.canonical_name or findings.entity_name)
+        pool = get_pool()
+        async with pool.connection() as conn, conn.transaction():
+            row = await (
+                await conn.execute(
+                    """
+                    INSERT INTO entity_research (
+                        entity_name, canonical_name, entity_kind, slug, website, status,
+                        stopped_reason, summary, findings, not_found, sources_read, fact_count)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s)
+                    ON CONFLICT (slug, researched_on) DO UPDATE SET
+                        entity_name = EXCLUDED.entity_name,
+                        canonical_name = EXCLUDED.canonical_name,
+                        entity_kind = EXCLUDED.entity_kind,
+                        website = EXCLUDED.website,
+                        status = EXCLUDED.status,
+                        stopped_reason = EXCLUDED.stopped_reason,
+                        summary = EXCLUDED.summary,
+                        findings = EXCLUDED.findings,
+                        not_found = EXCLUDED.not_found,
+                        sources_read = EXCLUDED.sources_read,
+                        fact_count = EXCLUDED.fact_count,
+                        researched_at = now()
+                    RETURNING id
+                    """,
+                    (
+                        findings.entity_name, findings.canonical_name, findings.entity_kind, slug,
+                        findings.website, findings.status, findings.stopped_reason,
+                        findings.summary,
+                        json.dumps([f.model_dump(mode="json") for f in findings.findings]),
+                        findings.not_found, findings.sources_read, len(findings.findings),
+                    ),
+                )
+            ).fetchone()
+        return (
+            f"Saved as entity_research #{row['id']} ({slug}): {len(findings.findings)} findings, "
+            f"status {findings.status}. It will appear in docs/entities/{slug}.md on the next "
+            f"`make client-docs`."
+        )
+    except Exception as exc:
+        logger.exception("save_research failed for %s", findings.entity_name)
+        return f"save_research failed: {type(exc).__name__}: {exc}. Report your findings in text."

@@ -8,9 +8,11 @@ These are not org profiles. The profile of an organisation is data, and it belon
 catalog. This is the read on top of it: fit, evidence quality, eligibility gaps, and the next
 actions that follow.
 
+<!-- generated:index -->
 | Client | Status |
 |---|---|
-| [KABIL](kabil/README.md) | Four funders assessed, hand-vetted rubric v1. The worked example. |
+| [Kabil](kabil/README.md) | 1 funders researched |
+<!-- /generated -->
 
 Two conventions, both borrowed from the hand-vetting sheets these files summarise:
 

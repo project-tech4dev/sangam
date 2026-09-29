@@ -14,8 +14,10 @@ from app.ingest.research import (
     fetch_document,
     read_document_pages,
     read_page,
+    save_research,
     search_public_sources,
 )
+from app.ingest.research_records import EntityResearch
 from app.ingest.tools import (
     funder_dossier,
     import_run_summary,
@@ -59,6 +61,9 @@ RESEARCH_TOOLS = [
     read_document_pages,
 ]
 
+# The researcher saves its own findings; the parent never copies JSON around.
+RESEARCHER_TOOLS = [*RESEARCH_TOOLS, save_research]
+
 ENTITY_RESEARCHER = {
     "name": "entity-researcher",
     "description": (
@@ -67,7 +72,10 @@ ENTITY_RESEARCHER = {
         "in a single message, when several are asked about. It cannot write to the catalog."
     ),
     "mode": "isolated",
-    "tools": RESEARCH_TOOLS,
+    "tools": RESEARCHER_TOOLS,
+    # With a response_format the task tool returns the model's JSON instead of
+    # its last message, so the parent and the screen both get structure.
+    "response_format": EntityResearch,
     "system_prompt": (
         "You research exactly ONE organisation and report back. Begin by reading the dossier "
         "for what the catalog already holds, then search, then read the strongest sources you "
@@ -86,11 +94,11 @@ ENTITY_RESEARCHER = {
         "what you have. Research is not finished when nothing is left to find — it is finished "
         "when the budget is gone or the questions are answered, and a partial answer delivered "
         "is worth more than a complete one the user never sees.\n\n"
-        "Return a compact structured summary — identity, identifiers, CSR position by year, "
-        "projects, geographies, partners, programmes, metrics, documents — and say plainly "
-        "which of those you could not find, and where you stopped. 'Not found' is a result, "
-        "and so is 'ran out of budget'. Do not pad either into prose, and never report "
-        "anything you did not read."
+        "Finish by calling save_research exactly once, with everything you found. Each "
+        "finding carries the sentence that states it and the URL it came from; a figure "
+        "without its sentence is not a finding and the tool will refuse it. Name the "
+        "concepts you looked for and did not find — 'not found' is a result, and so is "
+        "'ran out of budget'. Research that is only spoken disappears with the conversation."
     ),
 }
 
