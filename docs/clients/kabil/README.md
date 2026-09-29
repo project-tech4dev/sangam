@@ -85,7 +85,7 @@ for evidence of change will push back on.
 <!-- generated:funders -->
 | Organisation | Researched | Status | Facts | Detail |
 |---|---|---|---|---|
-| Axis Bank Foundation | 2026-09-29 | partial | 2 | [entity file](../../entities/axis-bank-foundation.md) |
+| Azim Premji Foundation | 2026-09-29 | complete | 24 | [entity file](../../entities/azim-premji-foundation.md) |
 <!-- /generated -->
 
 Everything below is hand-written analysis and is never overwritten by the generator.
