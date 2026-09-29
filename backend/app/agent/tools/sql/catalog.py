@@ -997,6 +997,11 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         # Private org data with no per-caller filter yet: every org's drafts,
         # amounts and decisions. Catalogue it when queries run as the caller.
         "proposals",
+        # Importer bookkeeping, not catalog data: run history and the review queue.
+        # Sangam Import has its own tools for these; Ask Sangam has no use for them.
+        "ingest_runs",
+        "ingest_run_items",
+        "resolution_queue",
         # Infrastructure.
         "schema_migrations",
         "graph_ingest_log",
