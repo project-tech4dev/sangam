@@ -15,3 +15,8 @@ db/backups/
 # Editor swap files
 *.swp
 *.swo
+
+# Agent skills installed with `npx skills` — tooling, not application code.
+.agents/
+.claude/skills/
+skills-lock.json

@@ -16,7 +16,12 @@ from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
 from app.ingest.agent import build_ingest_agent
 from app.integrations import graphiti
-from app.integrations.tracing import SessionScopedAGUIAgent, configure_langfuse, masking_enabled
+from app.integrations.tracing import (
+    SessionScopedAGUIAgent,
+    configure_langfuse,
+    langsmith_status,
+    masking_enabled,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +100,12 @@ def build_lifespan(settings: Settings | None = None):
                 logger.warning("Langfuse is configured but NOT tracing — see the error above")
             else:
                 logger.info("Langfuse tracing disabled (set LANGFUSE_PUBLIC_KEY/SECRET_KEY to enable)")
+
+            # LangSmith needs no wiring for a LangGraph app: env vars switch the
+            # tracer on. It is logged for the same reason Langfuse is — a tracing
+            # backend that is quietly off looks exactly like one that is working.
+            status = langsmith_status()
+            (logger.warning if "DROPPED" in status or "OFF" in status else logger.info)(status)
             logger.info("Sangam agent ready: model=%s", resolved.model)
 
             yield
