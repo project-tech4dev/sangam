@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
+import { SubagentBoard } from "./components/SubagentBoard";
 import { HIDDEN_TOOLS, humanizeTool, stepNote } from "./lib/toolLabels";
 
 const SUGGESTIONS = [
@@ -47,8 +48,12 @@ export function ImportWorkspace() {
           <article key={turn.id} style={{ display: "grid", gap: 10 }}>
             <p style={{ fontWeight: 700, margin: 0 }}>{turn.question}</p>
 
+            {/* Subagents get their own board: several run at once and a flat
+                list of "Delegating a sub-task" hides that entirely. */}
+            <SubagentBoard steps={turn.steps.filter((s) => s.tool === "task")} />
+
             {turn.steps
-              .filter((step) => !HIDDEN_TOOLS.has(step.tool))
+              .filter((step) => !HIDDEN_TOOLS.has(step.tool) && step.tool !== "task")
               .map((step) => {
                 const { label, detail } = humanizeTool(step.tool);
                 const note = stepNote(step.result);

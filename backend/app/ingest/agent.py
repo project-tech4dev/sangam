@@ -46,12 +46,50 @@ TOOLS = [
 ]
 
 
+# One entity per subagent, each with its own context window. The reason is
+# context, not speed: a single broad research turn read three PDFs across twenty
+# tool calls and never reached its report, because each document displaced the
+# last one's findings. An isolated subagent returns its conclusion, not its
+# reading. The main agent decides how many to launch.
+RESEARCH_TOOLS = [
+    funder_dossier,
+    search_public_sources,
+    read_page,
+    fetch_document,
+    read_document_pages,
+]
+
+ENTITY_RESEARCHER = {
+    "name": "entity-researcher",
+    "description": (
+        "Researches ONE organisation — a funder or an NGO — from public sources and returns "
+        "structured findings with the sentence behind each fact. Launch one per organisation, "
+        "in a single message, when several are asked about. It cannot write to the catalog."
+    ),
+    "mode": "isolated",
+    "tools": RESEARCH_TOOLS,
+    "system_prompt": (
+        "You research exactly ONE organisation and report back. Begin by reading the dossier "
+        "for what the catalog already holds, then search, then read the strongest sources you "
+        "can reach — a statutory filing or annual report before a news article.\n\n"
+        "Every figure you report carries the sentence that states it and the URL it came from. "
+        "Amounts in INR. Fiscal years as FY2024-25. A source marked HELD or a REFUSED reply is "
+        "a final answer: report it and move on, never look for another route to it.\n\n"
+        "Return a compact structured summary — identity, identifiers, CSR position by year, "
+        "projects, geographies, partners, programmes, metrics, documents — and say plainly "
+        "which of those you could not find. 'Not found' is a result. Do not pad it into prose, "
+        "and do not report anything you did not read."
+    ),
+}
+
+
 def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # No SQL tools by design: this agent proposes typed records, and app/ingest/writer.py
     # is the only thing that writes. Ask Sangam reads; this one imports.
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,
+        subagents=[ENTITY_RESEARCHER],
         middleware=[clear_old_tool_results()],
         system_prompt=INSTRUCTIONS,
         checkpointer=checkpointer,
