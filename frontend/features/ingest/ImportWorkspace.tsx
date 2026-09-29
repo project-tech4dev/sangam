@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
 import { RunStatus } from "./components/RunStatus";
 import { SubagentBoard } from "./components/SubagentBoard";
-import { HIDDEN_TOOLS, humanizeTool, stepNote } from "./lib/toolLabels";
+import { humanizeTool, stepNote } from "./lib/toolLabels";
 
 const SUGGESTIONS = [
   "Which sources can you read, and which are held back?",
@@ -54,7 +54,7 @@ export function ImportWorkspace() {
             <SubagentBoard steps={turn.steps.filter((s) => s.tool === "task")} />
 
             {turn.steps
-              .filter((step) => !HIDDEN_TOOLS.has(step.tool) && step.tool !== "task")
+              .filter((step) => step.tool !== "task")
               .map((step) => {
                 const { label, detail } = humanizeTool(step.tool);
                 const note = stepNote(step.result);

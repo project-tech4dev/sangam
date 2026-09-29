@@ -69,7 +69,6 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
   task: { label: "Delegating a sub-task", detail: () => "" },
 };
 
-export const HIDDEN_TOOLS = new Set(["ls", "read_file", "write_file", "edit_file", "glob", "grep"]);
 
 /** Refusals and failures are the one thing worth surfacing from a result. */
 export function stepNote(result: string | null): string | null {

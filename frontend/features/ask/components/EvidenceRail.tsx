@@ -1,7 +1,7 @@
 "use client";
 
 import { extractCitations, citationTarget, type RegistryIndex } from "../lib/citations";
-import { HIDDEN_TOOLS, humanizeTool } from "../lib/toolLabels";
+import { humanizeTool } from "../lib/toolLabels";
 import type { TraceStep, Turn } from "../lib/useSangamChat";
 import { CitationChip } from "./AnswerCard";
 
@@ -47,7 +47,7 @@ export function EvidenceRail({
   stats: Stats | null;
   index: RegistryIndex | null;
 }) {
-  const steps = latest?.steps.filter((s) => !HIDDEN_TOOLS.has(s.tool) && s.result) ?? [];
+  const steps = latest?.steps.filter((s) => s.result) ?? [];
 
   return (
     <aside style={{ width: 340, flexShrink: 0, height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>

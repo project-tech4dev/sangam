@@ -7,6 +7,7 @@ from importlib.resources import files
 from deepagents import create_deep_agent
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from app.agent.harness import install as install_harness
 from app.agent.middleware import clear_old_tool_results
 from app.agent.models import resolve_model
 from app.core.config import Settings
@@ -165,6 +166,8 @@ CATALOG_WRITER = {
 
 
 def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
+    # Before create_deep_agent: the profile is read while the graph is built.
+    install_harness()
     # No SQL tools by design: this agent proposes typed records, and app/ingest/writer.py
     # is the only thing that writes. Ask Sangam reads; this one imports.
     agent = create_deep_agent(

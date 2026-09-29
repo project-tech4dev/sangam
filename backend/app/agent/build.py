@@ -5,6 +5,7 @@ from __future__ import annotations
 from deepagents import create_deep_agent
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from app.agent.harness import install as install_harness
 from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry_limiter
 from app.agent.models import resolve_model
 from app.agent.prompt import SYSTEM_PROMPT
@@ -32,6 +33,9 @@ TOOLS = [
 
 
 def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
+    # Before create_deep_agent: the profile is read while the graph is built,
+    # so registering afterwards would leave this agent with the preset's tools.
+    install_harness()
     # CopilotKitMiddleware was here: it serves frontend-declared tools, setState and
     # generative UI, none of which this app uses. Removing it cost 4 fewer graph nodes.
     middleware = [sql_retry_limiter, clear_old_tool_results()]
