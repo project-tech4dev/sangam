@@ -11,6 +11,7 @@ from langchain_core.tools import tool
 from app.agent.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
+from app.ingest.promote import promote
 from app.ingest.runner import catalog_baseline, run_import, summarise
 from app.ingest.sources import SOURCES, Category, resolve
 
@@ -470,3 +471,61 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
 )
+
+
+@tool
+async def promote_research(slug: str = "") -> str:
+    """Move saved research into the catalog, where a writer exists for it.
+
+    Research and the catalog are different: a finding is what a source said,
+    a catalog row is what the product answers from. This is the step between.
+
+    Only identity, identifier and csr_year findings can move — those are the
+    concepts with writers. Everything else stays research and is reported as
+    such, never silently dropped. A name that resembles an existing funder
+    without matching it is NOT merged; it is reported for a person.
+
+    Args:
+        slug: one entity, or empty for every researched entity not yet promoted.
+    """
+    try:
+        pool = get_pool()
+        async with pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    "SELECT DISTINCT ON (slug) * FROM entity_research "
+                    + ("WHERE slug = %s " if slug else "")
+                    + "ORDER BY slug, researched_at DESC",
+                    (slug,) if slug else (),
+                )
+            ).fetchall()
+        if not rows:
+            return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
+
+        reports = []
+        async with pool.connection() as conn:
+            for row in rows:
+                async with conn.transaction():
+                    reports.append(await promote(conn, dict(row)))
+
+        lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
+        for r in reports:
+            if r["funder"]:
+                years = ", ".join(f"{y['fiscal_year']} {y['status']}" for y in r["csr_years"])
+                lines.append(
+                    f"  {r['funder']['name']}: funder {r['funder']['status']} "
+                    f"[funder:{r['funder']['id']}]" + (f" · CSR years {years}" if years else "")
+                )
+            for reason in r["reasons"]:
+                lines.append(f"  {r['slug']}: not promoted — {reason}")
+            if r["skipped"]:
+                held = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
+                lines.append(f"    still research only (no writer): {held}")
+        lines.append(
+            "\nWhat stayed research is not lost — it is on file and in docs/entities/. "
+            "It has no catalog table to go to yet."
+        )
+        return "\n".join(lines)
+    except Exception as exc:
+        logger.exception("promote_research failed")
+        return f"promote_research failed: {type(exc).__name__}: {exc}"

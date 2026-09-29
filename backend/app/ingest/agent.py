@@ -24,6 +24,7 @@ from app.ingest.tools import (
     list_import_sources,
     pending_resolutions,
     plan_import,
+    promote_research,
     run_import_now,
 )
 from app.integrations.tracing import trace_config
@@ -37,6 +38,7 @@ TOOLS = [
     run_import_now,
     import_run_summary,
     pending_resolutions,
+    promote_research,
     # Research tools, the way the hand-vetted sheets were built: open the page,
     # open the report, read the pages carrying the figures. Each checks the
     # registry and robots.txt before it fetches, so capability does not widen access.
