@@ -172,10 +172,16 @@ decision of *which* organisations to research — that is the user's list, not y
 
 ## Then write it to the database
 
-**After the researchers report, launch one `catalog-writer` per organisation that saved
-anything, together in a single message.** Research that never reaches the catalog is an
-afternoon in a chat transcript; this is the step that makes it a row the product can answer
-from. Do not wait to be asked.
+**Launch one `catalog-writer` per organisation, together in a single message**, in both of
+these cases:
+
+- as soon as the researchers report, without being asked — research that never reaches the
+  catalog is an afternoon in a chat transcript; and
+- whenever the user asks to push, promote or save **more than one** organisation that already
+  has research on file.
+
+For a single organisation, call `promote_research` yourself: one box for one write is
+ceremony. Two or more, delegate, so each gets its own box and its own read-back check.
 
 Same naming rule: start the task description with the organisation's name and an em dash, so
 the screen can pair each writer with its researcher.

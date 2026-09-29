@@ -180,7 +180,7 @@ def read_document_pages(filename: str, start_page: int = 1, end_page: int | None
 
 
 @tool
-async def save_research(findings: EntityResearch) -> str:
+async def save_research(findings: EntityResearch, replace: bool = False) -> str:
     """Save what you found. Call this LAST, once, before you report back.
 
     Research that is only spoken disappears when the conversation does. This is
@@ -192,10 +192,32 @@ async def save_research(findings: EntityResearch) -> str:
     'partial' with a reason if the budget ran out, 'not_found' if the sources
     have nothing, 'wrong_entity' if what you found is a different organisation
     from the one asked about.
+
+    Args:
+        findings: everything you found, with the evidence for each fact.
+        replace: set only when you mean to discard a fuller result saved for
+            this organisation earlier today. Saving is an upsert keyed on
+            (slug, date), so without this a short re-run can quietly overwrite
+            a long one — which has happened, and cost fifteen findings.
     """
     try:
         slug = slugify(findings.canonical_name or findings.entity_name)
         pool = get_pool()
+        async with pool.connection() as conn:
+            prior = await (
+                await conn.execute(
+                    "SELECT fact_count FROM entity_research "
+                    "WHERE slug = %s AND researched_on = current_date",
+                    (slug,),
+                )
+            ).fetchone()
+        if prior and prior["fact_count"] > len(findings.findings) and not replace:
+            return (
+                f"REFUSED: {slug} already has {prior['fact_count']} findings saved today and "
+                f"you are offering {len(findings.findings)}. Saving would replace the fuller "
+                f"result. If you meant to, call again with replace=true; otherwise report what "
+                f"you found and say the earlier research is already on file."
+            )
         async with pool.connection() as conn, conn.transaction():
             row = await (
                 await conn.execute(
@@ -234,11 +256,15 @@ async def save_research(findings: EntityResearch) -> str:
                 )
             ).fetchone()
         found = ", ".join(findings.concepts_found()) or "nothing"
+        replaced = (
+            f" Replaced {prior['fact_count']} findings saved earlier today."
+            if prior else ""
+        )
         return (
             f"Saved as entity_research #{row['id']} ({slug}): {len(findings.findings)} findings "
             f"across {found}; status {findings.status}. Report back with slug={slug!r} and "
             f"saved=true. It appears in docs/entities/{slug}.md on the next `make client-docs`, "
-            f"and promote_research moves what has a writer into the catalog."
+            f"and promote_research moves what has a writer into the catalog.{replaced}"
         )
     except Exception as exc:
         logger.exception("save_research failed for %s", findings.entity_name)

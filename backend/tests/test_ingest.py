@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, date, datetime
 
 import pytest
@@ -34,6 +35,7 @@ from app.ingest.records import (
     NewsMentionRecord,
     ProgramRecord,
 )
+from app.ingest.research import save_research
 from app.ingest.research_records import (
     CONCEPTS,
     FINDING_MODELS,
@@ -719,3 +721,21 @@ class TestTheCatalogWriterCannotResearch:
             held_back=["researched as an organisation, not a funder"],
         )
         assert report.rows_written == 0 and report.held_back
+
+
+class TestSavingCannotQuietlyShrinkAResult:
+    """save_research upserts on (slug, date). A short re-run replacing a long
+    one is how fifteen findings were lost; it now has to be deliberate."""
+
+    def test_the_tool_takes_an_explicit_replace_flag(self):
+        assert "replace" in save_research.args_schema.model_fields
+
+    def test_the_refusal_explains_itself(self):
+        # @tool wraps the function, so read the module rather than the object.
+        from app.ingest import research
+
+        source = inspect.getsource(research)
+        assert "REFUSED" in source and "replace=true" in source
+
+    def test_the_docstring_says_what_replace_costs(self):
+        assert "overwrite" in (save_research.description or "").lower()
