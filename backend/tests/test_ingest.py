@@ -244,3 +244,24 @@ class TestIngestAgentIsSelfDescribing:
         from app.ingest.agent import TOOLS
 
         assert not [t for t in TOOLS if "query" in t.name or "sql" in t.name]
+
+
+class TestAMarketIsNotAFunder:
+    """A real sentence with a real number and no organisation in it."""
+
+    @pytest.mark.parametrize(
+        "name",
+        ["NSE-listed companies", "India Inc", "Top 100 companies", "Indian corporates",
+         "the IT sector", "Listed PSUs"],
+    )
+    def test_an_aggregate_is_refused(self, name):
+        with pytest.raises(ValidationError, match="not one organisation"):
+            FunderCsrYearRecord(funder_name=name, fiscal_year="FY2024-25", **prov())
+
+    @pytest.mark.parametrize(
+        "name",
+        ["Axis Bank Limited", "State Bank of India", "Infosys Ltd.", "Tata Steel Ltd.",
+         "Azim Premji Foundation"],
+    )
+    def test_a_real_organisation_is_kept(self, name):
+        assert FunderCsrYearRecord(funder_name=name, fiscal_year="FY2024-25", **prov())

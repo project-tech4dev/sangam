@@ -30,6 +30,27 @@ class Provenance(BaseModel):
         return v
 
 
+# An article's subject is often a market, not an organisation. "NSE-listed
+# companies spent Rs 22,212 crore" is a real sentence with a real number and no
+# funder in it, and writing it as one puts a fictional entity in the catalog.
+_AGGREGATE = re.compile(
+    r"\b(companies|corporates|firms|enterprises|psus|organisations|organizations"
+    r"|conglomerates|entities|listed|india inc|corporate india|sector|industry"
+    r"|top\s+\d+|nifty|sensex|bse|nse)\b",
+    re.IGNORECASE,
+)
+
+
+def reject_if_aggregate(name: str) -> str:
+    """A class of companies is not a funder. Raises so no path can write one."""
+    if _AGGREGATE.search(name):
+        raise ValueError(
+            f"{name!r} names a group of companies, not one organisation. A market total "
+            f"is not a funder's spend; report it, do not record it as an entity."
+        )
+    return name
+
+
 class FunderRecord(Provenance):
     kind: Literal["funder"] = "funder"
     name: str = Field(min_length=2)
@@ -37,6 +58,11 @@ class FunderRecord(Provenance):
     website: str | None = None
     identifiers: dict[str, str] = Field(default_factory=dict)
     """Deterministic keys: cin, pan, csr1, darpan, reg_no, domain."""
+
+    @field_validator("name")
+    @classmethod
+    def _one_organisation(cls, v: str) -> str:
+        return reject_if_aggregate(v)
 
     @field_validator("identifiers")
     @classmethod
@@ -62,6 +88,11 @@ class FunderCsrYearRecord(Provenance):
     unspent_transferred: float | None = None
     section_135_applicable: bool | None = None
     notes: str | None = None
+
+    @field_validator("funder_name")
+    @classmethod
+    def _one_organisation(cls, v: str) -> str:
+        return reject_if_aggregate(v)
 
     @field_validator("fiscal_year")
     @classmethod
