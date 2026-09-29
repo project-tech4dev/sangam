@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import re
 import sys
 import types
+from pathlib import Path
 
 import pytest
 from ag_ui.core.types import RunAgentInput
@@ -350,3 +352,43 @@ def test_bad_credentials_report_instead_of_failing_silently(monkeypatch, caplog)
         assert tracing.configure_langfuse(Settings(**ENABLED)) is False
     assert "DROPPED" in caplog.text
     assert "LANGFUSE_HOST" in caplog.text
+
+
+class TestComposeForwardsTheTracingEnvironment:
+    """LangSmith is configured by environment variable and nothing else, so a
+    variable compose does not forward is a variable that silently does nothing.
+
+    That is exactly what happened: .env.example documented LANGSMITH_TRACING,
+    LANGSMITH_API_KEY and LANGSMITH_PROJECT, the code read them, and the
+    backend service never passed them in. Setting them looked correct and
+    changed nothing.
+    """
+
+    ROOT = Path(__file__).resolve().parents[2]
+
+    def documented(self) -> set[str]:
+        example = self.ROOT / ".env.example"
+        if not example.exists():
+            pytest.skip(".env.example not reachable from here")
+        return {
+            line.split("=", 1)[0].strip()
+            for line in example.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.startswith("#") and "=" in line
+        }
+
+    def forwarded(self) -> set[str]:
+        compose = self.ROOT / "docker-compose.yml"
+        if not compose.exists():
+            pytest.skip("docker-compose.yml not reachable from here")
+        backend = compose.read_text(encoding="utf-8").split("  frontend:")[0]
+        return set(re.findall(r"^\s{6}([A-Z][A-Z0-9_]+):", backend, re.MULTILINE))
+
+    @pytest.mark.parametrize("prefix", ["LANGSMITH_", "LANGFUSE_"])
+    def test_every_documented_tracing_variable_reaches_the_container(self, prefix):
+        documented = {v for v in self.documented() if v.startswith(prefix)}
+        assert documented, f"no {prefix}* variables in .env.example — did it move?"
+        missing = sorted(documented - self.forwarded())
+        assert not missing, (
+            f"documented in .env.example but not forwarded to the backend container: "
+            f"{missing}. Setting them would do nothing."
+        )

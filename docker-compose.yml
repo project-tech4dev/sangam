@@ -65,6 +65,13 @@ services:
       LANGFUSE_RELEASE: ${LANGFUSE_RELEASE:-}
       # Keeps warehouse rows out of traces; the SQL and row counts still show.
       LANGFUSE_MASK_TOOL_RESULTS: ${LANGFUSE_MASK_TOOL_RESULTS:-}
+      # LangSmith reads these from the environment itself — no code wires them,
+      # which is exactly why they have to be forwarded here or setting them in
+      # .env does nothing at all inside the container.
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-}
+      LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       ALLOWED_ORIGIN_REGEX: ${ALLOWED_ORIGIN_REGEX:-}
       # Graph data is embedded at 768 dims — all ingestion/search must match.
