@@ -17,7 +17,7 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
   const [, tick] = useState(0);
 
   useEffect(() => {
-    setStartedAt(running ? Date.now() : null);
+    if (running) setStartedAt(Date.now());
   }, [running]);
 
   useEffect(() => {
@@ -26,7 +26,11 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
     return () => clearInterval(id);
   }, [running]);
 
-  if (!running) return null;
+  // Not `return null` when the run ends: the last thing a person wants to see
+  // is what it did, and the indicator taking the tally with it is why a
+  // finished run looked like nothing had happened.
+  const finished = !running && steps.length > 0;
+  if (!running && !finished) return null;
 
   const researchers = steps.filter((s) => s.tool === "task");
   const active = steps.filter((s) => s.running);
@@ -54,17 +58,17 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
     >
       <span
         aria-hidden
+        className={running ? "sangam-pulse" : undefined}
         style={{
           width: 9,
           height: 9,
           borderRadius: "50%",
-          background: "var(--color-accent-900)",
-          animation: "sangamPulse 1.1s ease-in-out infinite",
+          background: running ? "var(--color-accent-900)" : "var(--color-accent-2-900)",
           flexShrink: 0,
         }}
       />
-      <span style={{ fontWeight: 600 }}>Running</span>
-      <span style={{ color: "var(--color-muted)" }}>{doing}</span>
+      <span style={{ fontWeight: 600 }}>{running ? "Running" : "Finished"}</span>
+      <span style={{ color: "var(--color-muted)" }}>{running ? doing : "nothing in flight"}</span>
       <span style={{ marginLeft: "auto", color: "var(--color-muted)", fontSize: "var(--fs-xs)" }}>
         {steps.length} step{steps.length === 1 ? "" : "s"}
         {researchers.length > 0 &&

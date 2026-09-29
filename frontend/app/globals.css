@@ -44,6 +44,17 @@
   --color-track-bg: #f3ded5;   /* occupation-track chip */
   --color-track-fg: #8c3a22;
   --color-bad: #a33f22;
+  /* What .muted resolves to, as a variable, so inline styles can use it too. */
+  --color-muted: var(--color-neutral-700);
+
+  /* The six-step scale the prototype specifies. Import uses these; the older
+     screens still use literal px. */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 24px;
+  --fs-2xl: 36px;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -251,9 +262,13 @@ textarea.input { resize: vertical; min-height: 64px; }
 @keyframes ask-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 .ask-in { animation: ask-in 0.3s ease both; }
 .ask-pulse { animation: ask-pulse 1s ease-in-out infinite; }
+/* Paired with sangamPulse so the guard below can switch it off. */
+.sangam-pulse { animation: sangamPulse 1.1s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .ask-in { animation: none; }
   .ask-pulse { animation: none; opacity: 1; }
+  .sangam-pulse { animation: none; }
 }
 
 /* Ask Sangam responsive: hide the evidence rail on narrow screens. */

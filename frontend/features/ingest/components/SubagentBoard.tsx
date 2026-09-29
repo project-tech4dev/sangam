@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { TraceStep } from "@/lib/useAgentChat";
 
 /** The name the main agent put before the em dash, e.g. "KABIL — find …". */
@@ -5,8 +8,7 @@ function subjectOf(args: any): string {
   const description: string = args?.description ?? "";
   const [head] = description.split(/\s[—–-]\s/, 1);
   const subject = (head ?? "").trim();
-  if (subject && subject.length <= 60) return subject;
-  return description.slice(0, 60) || "a task";
+  return subject && subject.length <= 60 ? subject : description.slice(0, 60) || "a task";
 }
 
 function briefOf(args: any): string {
@@ -15,70 +17,163 @@ function briefOf(args: any): string {
   return (parts.length > 1 ? parts.slice(1).join(" — ") : description).trim();
 }
 
-/** One box per subagent, so it is visible that several are working at once. */
+type Outcome = {
+  state: "working" | "done" | "stopped";
+  status?: string;
+  facts?: number;
+  sources?: number;
+  slug?: string;
+  note?: string;
+};
+
+/**
+ * A researcher is finished when its RESULT arrives — not when `running` goes
+ * false. `running` is run-wide, so at the end of a run every unfinished
+ * researcher would otherwise read as "done".
+ */
+function outcomeOf(step: TraceStep): Outcome {
+  if (step.result === null) {
+    return step.running
+      ? { state: "working" }
+      : { state: "stopped", note: "the run ended before this one reported" };
+  }
+  try {
+    const parsed = JSON.parse(step.result);
+    const facts = Array.isArray(parsed.findings) ? parsed.findings.length : undefined;
+    const sources = Array.isArray(parsed.sources_read) ? parsed.sources_read.length : undefined;
+    const status: string | undefined = parsed.status;
+    const slug = parsed.canonical_name ?? parsed.entity_name;
+    if (status === "not_found" || status === "wrong_entity") {
+      return { state: "stopped", status, facts, sources, note: parsed.stopped_reason };
+    }
+    return { state: "done", status, facts, sources, slug, note: parsed.stopped_reason };
+  } catch {
+    // A researcher without a response_format returns prose, which is still a
+    // finished result — just one we cannot count.
+    return { state: "done", note: step.result.slice(0, 90) };
+  }
+}
+
+const TONE: Record<Outcome["state"], string> = {
+  working: "var(--color-accent-900)",
+  done: "var(--color-accent-2-900)",
+  stopped: "var(--color-bad)",
+};
+
+/** One box per researcher, collapsing to a single line once they have all reported. */
 export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
+  const [openId, setOpenId] = useState<string | null>(null);
   if (steps.length === 0) return null;
-  const running = steps.filter((s) => s.running).length;
+
+  const outcomes = steps.map((s) => [s, outcomeOf(s)] as const);
+  const working = outcomes.filter(([, o]) => o.state === "working").length;
+  const done = outcomes.filter(([, o]) => o.state === "done").length;
+  const stopped = outcomes.filter(([, o]) => o.state === "stopped").length;
+  // Expanded while anything is working, a summary line once they have finished.
+  const expanded = working > 0;
+
+  const tally = [
+    `${steps.length} researcher${steps.length === 1 ? "" : "s"}`,
+    working > 0 ? `${working} working` : null,
+    done > 0 ? `${done} done` : null,
+    stopped > 0 ? `${stopped} stopped` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <section
       style={{
         border: "1px solid var(--color-divider)",
         borderRadius: 10,
-        padding: "12px 14px",
+        padding: "11px 13px",
         background: "var(--color-surface)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
-        <strong style={{ fontSize: "var(--fs-sm)" }}>
-          {steps.length} researcher{steps.length === 1 ? "" : "s"}
-        </strong>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+        <strong style={{ fontSize: "var(--fs-sm)" }}>{tally}</strong>
         <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-muted)" }}>
-          {running > 0 ? `${running} still working` : "all finished"} · one organisation each,
-          separate context
+          one organisation each, separate context
         </span>
       </div>
+
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
-          gap: 10,
+          gridTemplateColumns: expanded ? "repeat(auto-fill, minmax(230px, 1fr))" : "1fr",
+          gap: expanded ? 10 : 6,
+          marginTop: 10,
         }}
       >
-        {steps.map((step) => (
-          <article
-            key={step.id}
-            style={{
-              border: "1px solid var(--color-divider)",
-              borderLeft: `3px solid ${step.running ? "var(--color-accent-900)" : "var(--color-divider)"}`,
-              borderRadius: 8,
-              padding: "9px 11px",
-              background: "var(--color-bg, transparent)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              <strong style={{ fontSize: "var(--fs-sm)" }}>{subjectOf(step.args)}</strong>
-              <span
-                style={{
-                  marginLeft: "auto",
-                  fontSize: "var(--fs-xs)",
-                  color: step.running ? "var(--color-accent-900)" : "var(--color-muted)",
-                }}
-              >
-                {step.running ? "researching…" : "done"}
-              </span>
-            </div>
-            <p
+        {outcomes.map(([step, o]) => {
+          const isOpen = expanded || openId === step.id;
+          return (
+            <article
+              key={step.id}
               style={{
-                margin: "5px 0 0",
-                fontSize: "var(--fs-xs)",
-                color: "var(--color-muted)",
-                lineHeight: 1.45,
+                border: "1px solid var(--color-divider)",
+                borderLeft: `3px solid ${TONE[o.state]}`,
+                borderRadius: 8,
+                padding: isOpen ? "9px 11px" : "6px 11px",
               }}
             >
-              {briefOf(step.args).slice(0, 130)}
-            </p>
-          </article>
-        ))}
+              <button
+                type="button"
+                onClick={() => setOpenId(openId === step.id ? null : step.id)}
+                disabled={expanded}
+                style={{
+                  all: "unset",
+                  cursor: expanded ? "default" : "pointer",
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 8,
+                  width: "100%",
+                }}
+                aria-expanded={isOpen}
+              >
+                {o.state === "working" && (
+                  <span
+                    aria-hidden
+                    className="sangam-pulse"
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: TONE.working,
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
+                <strong style={{ fontSize: "var(--fs-sm)" }}>{subjectOf(step.args)}</strong>
+                <span
+                  style={{ marginLeft: "auto", fontSize: "var(--fs-xs)", color: TONE[o.state] }}
+                >
+                  {o.state === "working"
+                    ? "researching…"
+                    : o.state === "stopped"
+                      ? (o.status ?? "stopped")
+                      : `✓ ${o.facts ?? 0} facts`}
+                </span>
+              </button>
+
+              {isOpen && (
+                <div style={{ marginTop: 5, fontSize: "var(--fs-xs)", lineHeight: 1.45 }}>
+                  <p style={{ margin: 0, color: "var(--color-muted)" }}>
+                    {o.state === "working"
+                      ? briefOf(step.args).slice(0, 130)
+                      : (o.note ?? briefOf(step.args).slice(0, 130))}
+                  </p>
+                  {o.state === "done" && o.sources !== undefined && (
+                    <p style={{ margin: "3px 0 0", color: "var(--color-muted)" }}>
+                      {o.sources} source{o.sources === 1 ? "" : "s"} read
+                      {o.status && o.status !== "complete" ? ` · ${o.status}` : ""}
+                    </p>
+                  )}
+                </div>
+              )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

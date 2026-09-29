@@ -76,7 +76,7 @@ export function ImportWorkspace() {
                         refusal or an error is surfaced here, because those change
                         what the answer can claim. */}
                     {note && (
-                      <div style={{ color: "#b3261e", fontSize: "var(--fs-xs)", marginTop: 2 }}>
+                      <div style={{ color: "var(--color-bad)", fontSize: "var(--fs-xs)", marginTop: 2 }}>
                         {note}
                       </div>
                     )}

@@ -39,7 +39,7 @@ export function RunHistory({ runs }: { runs: ImportRun[] }) {
               <span style={{ color: r.queued ? "var(--color-accent-900)" : undefined }}>
                 {r.queued} queued
               </span>
-              <span style={{ color: r.failed ? "#b3261e" : undefined }}>{r.failed} failed</span>
+              <span style={{ color: r.failed ? "var(--color-bad)" : undefined }}>{r.failed} failed</span>
               <span style={{ color: "var(--color-muted)" }}>{r.refused} refused</span>
             </span>
           </div>
