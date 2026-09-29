@@ -9,12 +9,15 @@ library upgrade cannot quietly restore them.
 
 from __future__ import annotations
 
-from typing import ClassVar
-
 import pytest
 from langchain_core.tools import tool
 
-from app.agent.harness import FILESYSTEM_TOOLS, install
+from app.agent.harness import (
+    FILESYSTEM_TOOLS,
+    REQUIRED_MINIMUM,
+    SKILL_READING_TOOLS,
+    install,
+)
 
 
 @tool
@@ -42,9 +45,22 @@ class TestTheProfileIsInstalled:
 
         install()
         profile = _harness_profile_for_model(resolve_model(get_settings().model), None)
-        assert profile.excluded_tools == FILESYSTEM_TOOLS
         assert profile.general_purpose_subagent is not None
         assert profile.general_purpose_subagent.enabled is False
+
+    def test_the_profile_does_not_decide_tools(self):
+        # A profile is registered per PROVIDER, so it is global to every agent
+        # sharing a model. Sangam Import needs read_file to load a skill and
+        # Ask Sangam must not have it, so the tool surface is per-agent
+        # middleware instead.
+        from deepagents.profiles.harness.harness_profiles import _harness_profile_for_model
+
+        from app.agent.models import resolve_model
+        from app.core.config import get_settings
+
+        install()
+        profile = _harness_profile_for_model(resolve_model(get_settings().model), None)
+        assert not profile.excluded_tools
 
     @pytest.mark.parametrize("name", sorted(FILESYSTEM_TOOLS))
     def test_every_filesystem_tool_is_named(self, name):
@@ -57,26 +73,24 @@ class TestTheProfileIsInstalled:
         assert "execute" in FILESYSTEM_TOOLS
 
 
-class TestExclusionReachesTheModel:
-    """Excluded tools stay in the dispatch table and are filtered out of the
-    model request, so asserting on `tools_by_name` proves nothing."""
+class TestTheFilesystemMiddlewareIsReplaced:
+    """Our FilesystemMiddleware takes the default one's place by name, so an
+    unwanted tool is never registered rather than merely hidden."""
 
-    def test_the_model_is_not_offered_an_excluded_tool(self):
-        from deepagents.middleware._tool_exclusion import _ToolExclusionMiddleware
+    def test_only_the_named_tools_exist(self):
+        from deepagents.backends.state import StateBackend
 
-        offered: dict[str, list] = {}
+        from app.agent.harness import filesystem
 
-        class Request:
-            tools: ClassVar[list] = [read_file, db_query]
+        assert [t.name for t in filesystem(StateBackend()).tools] == ["read_file"]
+        kept = {t.name for t in filesystem(StateBackend(), keep=SKILL_READING_TOOLS).tools}
+        assert kept == {"read_file", "ls"}
 
-            def override(self, tools):
-                offered["tools"] = tools
-                return self
-
-        _ToolExclusionMiddleware(excluded=FILESYSTEM_TOOLS).wrap_model_call(
-            Request(), lambda r: None
-        )
-        assert [t.name for t in offered["tools"]] == ["db_query"]
+    def test_nothing_that_writes_is_ever_kept(self):
+        # read_file is the floor: FilesystemMiddleware refuses to be built
+        # without it. Everything that mutates is gone from both agents.
+        assert not set(SKILL_READING_TOOLS) & {"write_file", "edit_file", "delete", "execute"}
+        assert not set(REQUIRED_MINIMUM) & {"write_file", "edit_file", "delete", "execute"}
 
 
 class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
@@ -88,6 +102,26 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         # It declares none, so the task tool should not exist at all. It did,
         # because a general-purpose subagent was inserted carrying db_query.
         assert "task" not in tools
+
+    def test_ask_sangam_holds_its_six_tools_and_the_mandatory_one(self):
+        from app.agent.build import build_agent
+        from app.core.config import get_settings
+
+        tools = set(build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name)
+        assert tools == {
+            "db_list_tables", "db_describe_table", "db_profile_column", "db_query",
+            "search_graph", "fetch_url", "read_file",
+        }
+
+    def test_neither_agent_can_write_a_file_or_run_a_command(self):
+        from app.agent.build import build_agent
+        from app.core.config import get_settings
+        from app.ingest.agent import build_ingest_agent
+
+        forbidden = {"write_file", "edit_file", "delete", "execute", "glob", "grep"}
+        for build in (build_agent, build_ingest_agent):
+            tools = set(build(get_settings(), None).nodes["tools"].bound.tools_by_name)
+            assert not tools & forbidden, f"{build.__name__}: {sorted(tools & forbidden)}"
 
     def test_import_advertises_exactly_its_two_subagents(self):
         from app.core.config import get_settings
@@ -132,3 +166,62 @@ class TestTheUtilityModelIsOptional:
 
         build_ingest_agent(get_settings(), None)
         assert "model" not in CATALOG_WRITER
+
+
+class TestTheSkillIsFoundAndIsProgressive:
+    """A skill the model cannot reach is dead weight in the prompt; a skill it
+    loads on every turn is the prompt with extra steps."""
+
+    def test_the_skills_directory_ships_inside_the_package(self):
+        from app.ingest.agent import SKILLS_DIR
+
+        # Inside app/, so it rides the ./backend/app mount and the image's
+        # `COPY app/ app/`. Outside it, a skill would exist on neither.
+        assert SKILLS_DIR.is_dir()
+        assert "app/ingest/skills" in SKILLS_DIR.as_posix()
+
+    def test_every_skill_is_one_directory_deep_with_matching_frontmatter(self):
+        import yaml
+
+        from app.ingest.agent import SKILLS_DIR
+
+        # Discovery is exactly one level: ls the source, then look for
+        # <dir>/SKILL.md. A nested one is never found, and neither is a
+        # SKILL.md at the root.
+        found = list(SKILLS_DIR.glob("*/SKILL.md"))
+        assert found, "no skills discovered where the middleware will look"
+        for path in found:
+            head = path.read_text(encoding="utf-8").split("---")[1]
+            meta = yaml.safe_load(head)
+            assert meta["name"] == path.parent.name, (
+                f"{path}: name {meta['name']!r} must equal its directory"
+            )
+            assert len(meta["description"]) <= 1024, "truncated in the prompt above 1024"
+            # The description is all the model sees before deciding to load,
+            # so it says WHEN to use the skill, not what it is.
+            assert "use when" in meta["description"].lower()
+
+    def test_the_route_round_trips(self):
+        from app.ingest.agent import SKILLS_ROUTE, _backend
+
+        # ls strips the prefix, the routed backend lists its own root, and the
+        # composite prepends it back — so the path printed in the prompt is
+        # the path the model's read_file resolves.
+        backend = _backend()
+        listed = backend.ls(SKILLS_ROUTE)
+        assert listed.error is None
+        paths = [e["path"] for e in (listed.entries or [])]
+        assert paths and all(p.startswith(SKILLS_ROUTE) for p in paths)
+
+        target = f"{paths[0].rstrip('/')}/SKILL.md"
+        downloaded = backend.download_files([target])[0]
+        assert downloaded.error is None
+        content = downloaded.content or b""
+        text = content if isinstance(content, str) else content.decode("utf-8")
+        assert "name:" in text
+
+    def test_the_researcher_declares_its_own_sources(self):
+        from app.ingest.agent import ENTITY_RESEARCHER, SKILLS_ROUTE
+
+        # An isolated subagent inherits none of the parent's skills.
+        assert ENTITY_RESEARCHER["skills"] == [SKILLS_ROUTE]

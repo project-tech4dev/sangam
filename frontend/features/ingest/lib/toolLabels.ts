@@ -66,6 +66,11 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Writing research into the catalog",
     detail: (a) => a?.slug || "everything not yet promoted",
   },
+  read_file: {
+    label: "Reading a skill",
+    detail: (a) => (a?.file_path ?? "").split("/").at(-2) ?? "",
+  },
+  ls: { label: "Listing skills", detail: () => "" },
   task: { label: "Delegating a sub-task", detail: () => "" },
 };
 

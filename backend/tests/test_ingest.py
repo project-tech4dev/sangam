@@ -253,6 +253,19 @@ class TestIngestAgentIsSelfDescribing:
         missing = [t.name for t in TOOLS if t.name not in INSTRUCTIONS]
         assert not missing, f"registered but never mentioned in instructions.md: {missing}"
 
+    def test_a_tool_is_never_reachable_only_through_a_skill(self):
+        """The rule this test exists for — "a tool the instructions never name
+        is a tool the model will not reach for" — applies just as much to a
+        skill the model may decide not to load. So the always-on prompt has to
+        name every tool, and a skill may only add detail."""
+        from app.ingest.agent import INSTRUCTIONS, TOOLS
+
+        for tool in TOOLS:
+            assert tool.name in INSTRUCTIONS, (
+                f"{tool.name} is not in instructions.md. Naming it only in a SKILL.md "
+                f"makes it invisible whenever that skill is not loaded."
+            )
+
     def test_instructions_are_loaded_not_empty(self):
         from app.ingest.agent import INSTRUCTIONS
 

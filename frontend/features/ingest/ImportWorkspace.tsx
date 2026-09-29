@@ -7,6 +7,9 @@ import { SubagentBoard } from "./components/SubagentBoard";
 import { humanizeTool, stepNote } from "./lib/toolLabels";
 
 const SUGGESTIONS = [
+  // Loads the funder-scan skill, which supplies the 28-field brief so nobody
+  // has to paste it.
+  "Funding profile for SBI Foundation and Infosys Foundation",
   "Which sources can you read, and which are held back?",
   "Run an import from India CSR, 5 articles",
   "Summarise the last run",

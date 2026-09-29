@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from deepagents import create_deep_agent
+from deepagents.backends.state import StateBackend
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
 from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry_limiter
 from app.agent.models import resolve_model
@@ -38,7 +40,9 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     install_harness()
     # CopilotKitMiddleware was here: it serves frontend-declared tools, setState and
     # generative UI, none of which this app uses. Removing it cost 4 fewer graph nodes.
-    middleware = [sql_retry_limiter, clear_old_tool_results()]
+    # Replaces the preset's FilesystemMiddleware, which brings eight tools
+    # bound to virtual state. read_file is the floor the library enforces.
+    middleware = [filesystem_tools(StateBackend()), sql_retry_limiter, clear_old_tool_results()]
     if settings.sql_audit_model:
         # Off unless configured: a real extra model call per SQL turn.
         middleware.append(answer_audit(settings.sql_audit_model))
