@@ -14,6 +14,7 @@ from app.agent.tools.sql import catalog as sql_catalog
 from app.core.config import Settings, get_settings
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
+from app.ingest.agent import build_ingest_agent
 from app.integrations import graphiti
 from app.integrations.tracing import SessionScopedAGUIAgent, configure_langfuse, masking_enabled
 
@@ -22,6 +23,10 @@ logger = logging.getLogger(__name__)
 AGENT_DESCRIPTION = (
     "Grant-intelligence agent over the sangam Postgres database: "
     "CSO/NGO registry, funder profiles, and rubric-based fit scores."
+)
+INGEST_DESCRIPTION = (
+    "Imports funder data from permitted external sources into the catalog, "
+    "matches it against what is already there, and reports what it could not process."
 )
 
 
@@ -65,6 +70,18 @@ def build_lifespan(settings: Settings | None = None):
                     graph=build_agent(resolved, checkpointer),
                 ),
                 path="/agent",
+            )
+            # Sangam Import: a separate graph and a separate conversation. It shares
+            # the checkpointer, so its threads live beside Ask Sangam's and are told
+            # apart by thread_id, not by table.
+            add_langgraph_fastapi_endpoint(
+                app=app,
+                agent=SessionScopedAGUIAgent(
+                    name="sangam_ingest",
+                    description=INGEST_DESCRIPTION,
+                    graph=build_ingest_agent(resolved, checkpointer),
+                ),
+                path="/ingest",
             )
 
             if tracing_live:
