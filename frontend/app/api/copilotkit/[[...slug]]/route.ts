@@ -7,11 +7,15 @@ import { HttpAgent } from "@ag-ui/client";
 
 // The backend's AG-UI endpoint (FastAPI + LangGraphAGUIAgent).
 // In docker compose this is http://backend:8000/agent.
+const AGENT_URL = process.env.AGENT_URL || "http://localhost:8000/agent";
+// Sangam Import is a second graph on the same backend. One env var still
+// configures both: the importer hangs off /ingest where Ask hangs off /agent.
+const INGEST_URL = AGENT_URL.replace(/\/agent$/, "/ingest");
+
 const runtime = new CopilotRuntime({
   agents: {
-    sangam_agent: new HttpAgent({
-      url: process.env.AGENT_URL || "http://localhost:8000/agent",
-    }),
+    sangam_agent: new HttpAgent({ url: AGENT_URL }),
+    sangam_ingest: new HttpAgent({ url: INGEST_URL }),
   },
   runner: new InMemoryAgentRunner(),
 });
