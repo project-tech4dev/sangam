@@ -1,4 +1,4 @@
-.PHONY: up down logs seed graph-seed smoke db-reset db-backup db-upgrade \
+.PHONY: up down logs seed graph-seed smoke db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend evals
 
@@ -136,6 +136,16 @@ psql:
 	$(COMPOSE) run --rm --no-deps --entrypoint psql postgres "$(DB_URL)"
 
 # --- Local-only maintenance --------------------------------------------------
+# Empty every table but keep the schema and the applied-migration ledger, so a
+# data run can start from nothing without re-applying migrations. Does NOT drop
+# volumes; `make seed` reloads the cohort. The 96 research documents are not in
+# the seed - back them up first if this database still has them.
+db-clean:
+	$(require_local)
+	docker compose exec -T postgres psql -U sangam -d sangam -v ON_ERROR_STOP=1 \
+	  < db/scripts/truncate_all.sql
+	@echo "every table emptied; schema and migrations intact"
+
 # Scorched earth: drops ALL volumes including the Neo4j graph and the
 # user-loaded documents/graph_ingest_log tables. Fresh installs only.
 db-reset:
