@@ -150,3 +150,76 @@ reason, and the report is comparable to the next funder's.
 **M3 — corroboration.** Two sources, two rows; agreement and disagreement surfaced. Exit: the same
 FY figure from two sources produces two rows and one "corroborated" line; conflicting figures
 produce a finding, not an overwrite.
+
+---
+
+# Researching many NGOs in one go
+
+## Can subagents do this — and what for
+
+Yes, and the reason is **context, not speed**. A single broad funder run read three PDFs across
+twenty tool calls and did not reach its final report; five NGOs in one conversation is strictly
+worse, because each one's annual report displaces the last one's findings. `create_deep_agent`
+takes `subagents=[…]` with `mode: "isolated"`, which gives each NGO its own context window. Only
+the structured result comes back.
+
+What subagents are **not** for: deciding which NGOs to research. That is a list, and a list is a
+`for` loop. The fan-out stays deterministic code — the same shape as today's
+`(source × funder × year)` — and the subagent is the worker that researches exactly one NGO.
+
+## Why NGO research looks different from funder research
+
+Of 21 registered NGO sources, **four are dispatchable and none has an adapter**. NGO Darpan is
+CAPTCHA-gated, Give bars data mining, FCRA / Income Tax / MCA all answer 403 or 503 from outside
+India. The NGO's own website and its annual report are `crawl_allowed_check_each_site`.
+
+So NGO research is **research-tool driven, not adapter driven**: `search_public_sources` to find
+the site and the annual report, `read_page` and `fetch_document` to read them, with the robots
+check happening per host at fetch time. No new adapters are needed. What *is* needed is the data
+path, which does not exist: there is no `OrgRecord`, no `resolve_org`, and no `write_org`.
+
+## Not breaking in between
+
+Six things, each answering a specific way a batch dies halfway:
+
+| Failure | Guard |
+|---|---|
+| One NGO's site 500s and the batch aborts | `return_exceptions=True` on the gather, and a per-NGO try/except that records the failure as a row |
+| One hung fetch stalls everything | `asyncio.wait_for` per NGO — the evals learned this when one request blocked a suite for hours |
+| The run dies at NGO 4 of 6 and loses 1–3 | Write results **per NGO**, not at the end. A batch is durable in pieces |
+| Re-running repeats work already done | Before researching, check the batch for a completed marker for that NGO and skip it. A re-run resumes |
+| Six concurrent researchers exhaust the pool | The existing `Semaphore(2)` — the pool is `max_size=5` and shared with the checkpointer, which writes on every graph step |
+| The report says "6 researched" when 2 failed | Per-NGO status in the summary: researched · partial · failed · skipped, each with its reason |
+
+## The markdown and the database
+
+The instinct is to write the file and then parse it back. **Don't.** Parsing prose into rows is
+lossy, and the moment someone edits the file the two disagree with no way to tell which is right.
+
+Invert it. The research produces **typed records**, the writer persists them, and the file is
+**rendered from the database** — so it cannot contradict the data, and re-rendering costs nothing.
+
+`docs/clients/<ngo>/README.md` therefore has two kinds of content:
+
+- **Generated blocks**, between `<!-- generated:funders -->` markers: the scores, the CSR figures,
+  the eligibility checks, the impact chains. Refreshed from the catalog; never hand-edited.
+- **Hand-written analysis** outside the markers: the reading that the data does not contain —
+  that v2 was never vetted, that the highest-scoring funder is the inactive one. A generator
+  cannot write those and should not overwrite them.
+
+## Milestones
+
+**M1 — the org data path.** `OrgRecord`, `resolve_org` (identifiers → exact → boilerplate →
+trigram → queue, reusing the funder matcher's rules), `write_org`, and identifier and credential
+writing. *Exit: an NGO researched by hand can be written, read back through `funder_dossier`'s
+org equivalent, and re-run without duplicating.*
+
+**M2 — the batch.** One isolated subagent per NGO, deterministic fan-out, the six guards above.
+*Exit: six NGOs where one is deliberately broken — the batch finishes, five are written, the
+report names the sixth and why, and a re-run does only the sixth.*
+
+**M3 — render the file.** A `make client-docs` target that refreshes the generated blocks for
+every NGO in the catalog. *Exit: re-rendering with no data change produces an empty diff.*
+
+M1 is the prerequisite for both of the others: without a writer for orgs, a batch of NGO research
+produces conversation and nothing else.
