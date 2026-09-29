@@ -1,51 +1,56 @@
 import { apiGet } from "@/lib/api";
-import { Nav } from "@/components/layout/Nav";
+import { Breadcrumbs } from "@/components/ui";
 import { ImportWorkspace } from "@/features/ingest/ImportWorkspace";
 import { RunHistory } from "@/features/ingest/components/RunHistory";
 import { ReviewQueue } from "@/features/ingest/components/ReviewQueue";
 import { SourcePanel } from "@/features/ingest/components/SourcePanel";
-import type { ImportRun, ImportSource, QueueItem } from "@/features/ingest/lib/types";
+import { ProposalList } from "@/features/ingest/components/ProposalList";
+import type {
+  ImportRun,
+  ImportSource,
+  QueueItem,
+  SourceProposal,
+} from "@/features/ingest/lib/types";
 
-export const metadata = { title: "Sangam Import" };
+export const metadata = { title: "Import — Sangam" };
 export const dynamic = "force-dynamic";
 
+// The nav comes from the root layout; this page renders only its own content.
 export default async function ImportPage() {
-  const [sources, runs, queue] = await Promise.all([
+  const [sources, runs, queue, proposals] = await Promise.all([
     apiGet<ImportSource[]>("/api/ingest/sources"),
     apiGet<ImportRun[]>("/api/ingest/runs?limit=8"),
     apiGet<QueueItem[]>("/api/ingest/queue?limit=20"),
+    apiGet<SourceProposal[]>("/api/ingest/proposals?limit=20"),
   ]);
 
   return (
-    <>
-      <Nav current="import" />
-      <main
+    <div className="page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <Breadcrumbs items={[{ label: "Sangam", href: "/registry" }, { label: "Import" }]} />
+      <div>
+        <div className="eyebrow">Import</div>
+        <h1 style={{ fontSize: 28 }}>Bring funder data in, and see what could not come in</h1>
+        <p style={{ color: "var(--color-muted)", margin: "6px 0 0", maxWidth: "62ch" }}>
+          Sangam Import reads the sources whose terms allow it, matches what it finds against the
+          catalog, and writes what is safe to write. It is not Ask Sangam — it changes the data.
+        </p>
+      </div>
+      <div
         style={{
-          maxWidth: "var(--page-max)",
-          margin: "0 auto",
-          padding: "28px var(--page-pad) 64px",
           display: "grid",
           gap: 28,
-          gridTemplateColumns: "minmax(0, 1fr) minmax(320px, 420px)",
+          gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 400px)",
           alignItems: "start",
         }}
       >
-        <div style={{ display: "grid", gap: 24 }}>
-          <header>
-            <h1 style={{ fontSize: 40, margin: "0 0 6px" }}>Sangam Import</h1>
-            <p style={{ color: "var(--color-muted)", margin: 0, maxWidth: "60ch" }}>
-              Bring funder data in from outside sources, match it against the catalog, and see what
-              could not be brought in. This is not Ask Sangam — it changes the data.
-            </p>
-          </header>
-          <ImportWorkspace />
-        </div>
+        <ImportWorkspace />
         <aside style={{ display: "grid", gap: 24 }}>
           <RunHistory runs={runs} />
           <ReviewQueue items={queue} />
-          <SourcePanel sources={sources} />
+          <ProposalList items={proposals} />
         </aside>
-      </main>
-    </>
+      </div>
+      <SourcePanel sources={sources} />
+    </div>
   );
 }
