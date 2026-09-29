@@ -25,11 +25,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # runs on, so they are two concepts and two tables, never one.
 CONCEPTS = (
     "identity", "identifier", "csr_year", "csr_spend", "footprint", "stated_geography",
-    "partner", "program", "grant", "metric", "contact", "document",
+    "partner", "program", "grant", "metric", "contact", "document", "rfp",
 )
 Concept = Literal[
     "identity", "identifier", "csr_year", "csr_spend", "footprint", "stated_geography",
-    "partner", "program", "grant", "metric", "contact", "document",
+    "partner", "program", "grant", "metric", "contact", "document", "rfp",
 ]
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
 
@@ -57,8 +57,13 @@ class Money(BaseModel):
 
     @property
     def inr(self) -> float:
-        """The only conversion. Column contract for every amount here is INR."""
-        return self.value * _UNITS[self.unit]
+        """The only conversion. Column contract for every amount here is INR.
+
+        Rounded to paise because binary floats cannot hold 4.73 exactly:
+        4.73 * 10_000_000 is 47300000.00000001, which is not a rupee amount,
+        and made every re-promote look like an edit.
+        """
+        return round(self.value * _UNITS[self.unit], 2)
 
 
 def to_inr(money: dict[str, Any] | None) -> float | None:
@@ -69,7 +74,7 @@ def to_inr(money: dict[str, Any] | None) -> float | None:
     """
     if not money or money.get("unit") not in _UNITS:
         return None
-    return float(money["value"]) * _UNITS[money["unit"]]
+    return round(float(money["value"]) * _UNITS[money["unit"]], 2)
 
 
 class FindingBase(BaseModel):
@@ -294,7 +299,42 @@ class ContactFinding(FindingBase):
     name: str = Field(min_length=2)
     kind: Literal["office_bearer", "programme", "grants", "other"] = "other"
     role: str | None = None
+    email: str | None = Field(
+        default=None,
+        description=(
+            "A SHARED mailbox the organisation publishes for enquiries — csr@, grants@, "
+            "csrhelpdesk@, contact.us@. Never an individual's address, even a published one. "
+            "Set is_role_mailbox and say in the evidence that the page presents it as a "
+            "contact point for the organisation."
+        ),
+    )
+    is_role_mailbox: bool = Field(
+        default=False,
+        description="true only when the address belongs to the organisation, not to a person",
+    )
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _only_shared_mailboxes(self) -> ContactFinding:
+        # An allowlist of role words would refuse csrhelpdesk@ and
+        # youthforindia@, which is most of what a fundraiser wants. Attestation
+        # plus one cheap check is more honest than a heuristic that catches
+        # r.sharma@ and misses rsharma@.
+        if self.email is None:
+            return self
+        if not self.is_role_mailbox:
+            raise ValueError(
+                f"{self.email!r} was not attested as a shared mailbox. Sangam records an "
+                f"organisation's published contact point, never an individual's address."
+            )
+        local = self.email.split("@")[0].lower()
+        surname = self.name.split()[-1].lower().strip(".")
+        if len(surname) > 2 and surname in local.replace(".", "").replace("-", ""):
+            raise ValueError(
+                f"{self.email!r} contains {surname!r} from the contact's own name, so it "
+                f"reads as a personal address rather than a shared one."
+            )
+        return self
 
 
 class DocumentFinding(FindingBase):
@@ -306,10 +346,36 @@ class DocumentFinding(FindingBase):
     )
 
 
+class RfpFinding(FindingBase):
+    """An open call for proposals: the thing a fundraiser can actually act on.
+
+    `rfps` has had `deadline`, `amount_min`, `amount_max` and `eligibility`
+    since the baseline schema, and no concept pointed at them — so nobody was
+    ever asked to look for one.
+    """
+
+    concept: Literal["rfp"] = "rfp"
+    title: str = Field(min_length=4, description="the call as the funder names it")
+    status: Literal["open", "closed", "removed"] = "open"
+    url: str | None = Field(default=None, description="where an NGO applies or reads more")
+    deadline: date | None = Field(
+        default=None, description="the application closing date, when one is published"
+    )
+    amount_min: Money | None = None
+    amount_max: Money | None = None
+    eligibility: list[str] = Field(
+        default_factory=list,
+        description="each stated requirement as its own line, e.g. '3 years of audited accounts'",
+    )
+    state: str | None = Field(default=None, description="when the call is limited to one state")
+    district: str | None = None
+    sector: str | None = Field(default=None, description="the theme the call is for, as printed")
+
+
 Finding = Annotated[
     IdentityFinding | IdentifierFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
     | StatedGeographyFinding | PartnerFinding | ProgramFinding | GrantFinding | MetricFinding
-    | ContactFinding | DocumentFinding,
+    | ContactFinding | DocumentFinding | RfpFinding,
     Field(discriminator="concept"),
 ]
 
@@ -318,7 +384,7 @@ FINDING_MODELS: dict[str, type[FindingBase]] = {
     "csr_spend": CsrSpendFinding, "footprint": FootprintFinding,
     "stated_geography": StatedGeographyFinding, "partner": PartnerFinding,
     "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,
-    "contact": ContactFinding, "document": DocumentFinding,
+    "contact": ContactFinding, "document": DocumentFinding, "rfp": RfpFinding,
 }
 
 

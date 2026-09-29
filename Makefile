@@ -1,4 +1,4 @@
-.PHONY: up down logs seed graph-seed smoke client-docs db-clean db-reset db-backup db-upgrade \
+.PHONY: up down logs seed taxonomy-seed graph-seed smoke client-docs db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend evals
 
@@ -58,6 +58,11 @@ logs:
 # running container's environment, which always points at the local database).
 seed:
 	$(COMPOSE) run --rm --no-deps backend python -m seed.seed
+	$(COMPOSE) run --rm --no-deps backend python -m seed.taxonomy_seed
+
+# Schedule VII on its own. Idempotent; `make seed` already runs it.
+taxonomy-seed:
+	$(COMPOSE) run --rm --no-deps backend python -m seed.taxonomy_seed
 
 # Build the Neo4j knowledge graph from Postgres (needs OPENAI_API_KEY in .env).
 graph-seed:

@@ -1,0 +1,18 @@
+{
+  "note": "Schedule VII of the Companies Act 2013, the statutory list of activities a CSR spend may fall under. Clause numbering is the Act's own; wording is condensed from the Act and the MCA's later amendments. This is the vocabulary funder_csr_spend.csr_sector_id points at, so a funder's own words for a theme can be normalised without inventing a category.",
+  "source_url": "https://www.mca.gov.in/content/mca/global/en/acts-rules/ebooks/acts.html?act=NTk2MQ==",
+  "categories": [
+    {"code": "i", "slug": "hunger-poverty-health", "label": "Hunger, poverty, malnutrition, health, sanitation and safe drinking water"},
+    {"code": "ii", "slug": "education-and-livelihoods", "label": "Education, special education, vocational skills and livelihood enhancement"},
+    {"code": "iii", "slug": "gender-equality-and-inequality", "label": "Gender equality, women's empowerment, orphanages, old age homes and reducing inequalities"},
+    {"code": "iv", "slug": "environment-and-animal-welfare", "label": "Environmental sustainability, ecological balance, animal welfare, agroforestry and conservation"},
+    {"code": "v", "slug": "national-heritage-art-culture", "label": "Protection of national heritage, art and culture"},
+    {"code": "vi", "slug": "armed-forces-veterans", "label": "Armed forces veterans, war widows and their dependents"},
+    {"code": "vii", "slug": "sports", "label": "Training to promote rural, nationally recognised, Paralympic and Olympic sports"},
+    {"code": "viii", "slug": "central-government-funds", "label": "PM National Relief Fund, PM CARES and other Central Government funds"},
+    {"code": "ix", "slug": "technology-incubators-and-rnd", "label": "Technology incubators and research and development projects"},
+    {"code": "x", "slug": "rural-development", "label": "Rural development projects"},
+    {"code": "xi", "slug": "slum-area-development", "label": "Slum area development"},
+    {"code": "xii", "slug": "disaster-management", "label": "Disaster management, including relief, rehabilitation and reconstruction"}
+  ]
+}

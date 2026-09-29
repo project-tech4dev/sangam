@@ -33,6 +33,7 @@ CONCEPT_TABLES: dict[str, str] = {
     "metric": "metrics",
     "contact": "contacts",
     "document": "documents",
+    "rfp": "rfps",
 }
 
 # Filled in by the tool from the finding's own evidence, never researched as a field.
@@ -65,7 +66,11 @@ INTERNAL = frozenset({
 # Columns that are a research target on most tables but ours on one. A
 # document's status is our reading workflow, not something a source states;
 # a grant's and a programme's status are facts about the world.
-OURS: dict[str, frozenset[str]] = {"document": frozenset({"status"})}
+OURS: dict[str, frozenset[str]] = {
+    "document": frozenset({"status"}),
+    # `details` is our own catch-all, not something a call publishes.
+    "rfp": frozenset({"details"}),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +112,7 @@ REQUIRED: dict[str, frozenset[str]] = {
     "metric": frozenset({"name"}),
     "contact": frozenset({"name"}),
     "document": frozenset({"title", "doc_type"}),
+    "rfp": frozenset({"title"}),
 }
 
 
@@ -152,6 +158,52 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
             type="text",
             note="the period the document describes, e.g. 'FY2023-24'. NOT when you read it — "
                  "fetched_at is that, and the two are different",
+            values=(),
+            required=False,
+        ),
+    ),
+    # contacts.email exists in the schema but is deliberately absent from the
+    # SQL catalog, so the derivation cannot see it. Asked for explicitly, under
+    # the rule that only a shared mailbox is ever recorded.
+    "contact": (
+        Expected(
+            name="email",
+            type="text",
+            note="a SHARED mailbox only (csr@, grants@, csrhelpdesk@) — never an individual's",
+            values=(),
+            required=False,
+        ),
+        Expected(
+            name="is_role_mailbox",
+            type="boolean",
+            note="attest that the address belongs to the organisation, not to a person",
+            values=(),
+            required=False,
+        ),
+    ),
+    "rfp": (
+        # heavy in the catalog (jsonb), so the derivation drops it — but a
+        # call's eligibility rules are the single thing a fundraiser reads it
+        # for, so it is asked for explicitly.
+        Expected(
+            name="eligibility",
+            type="text[]",
+            note="each stated requirement on its own line, e.g. '3 years of audited accounts'",
+            values=(),
+            required=False,
+        ),
+        Expected(
+            name="state",
+            type="text",
+            note="when the call is limited to one state",
+            values=(),
+            required=False,
+        ),
+        _DISTRICT,
+        Expected(
+            name="sector",
+            type="text",
+            note="the theme the call is for, as printed",
             values=(),
             required=False,
         ),

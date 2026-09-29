@@ -6,7 +6,7 @@ import re
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
 
@@ -264,20 +264,56 @@ class MetricRecord(Provenance):
 
 
 class ContactRecord(Provenance):
-    """Publicly disclosed roles only. Email and phone are deliberately absent."""
+    """Publicly disclosed roles, and a shared mailbox when one is published.
+
+    Phone is still deliberately absent, and `email` reaches this record only
+    after ContactFinding refused anything that reads as an individual's
+    address. The SQL catalog still omits both columns, so Ask Sangam cannot
+    select them.
+    """
 
     kind: Literal["contact"] = "contact"
     funder_name: str = Field(min_length=2)
     name: str = Field(min_length=2)
     contact_kind: Literal["office_bearer", "programme", "grants", "other"] = "other"
     role: str | None = None
+    email: str | None = None
+    is_role_mailbox: bool = False
     notes: str | None = None
 
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
 
 
+class RfpRecord(Provenance):
+    """An open call for proposals. The one concept an NGO can act on today."""
+
+    kind: Literal["rfp"] = "rfp"
+    funder_name: str = Field(min_length=2)
+    title: str = Field(min_length=4)
+    status: Literal["open", "closed", "removed"] = "open"
+    url: str | None = None
+    deadline: date | None = None
+    amount_min: float | None = Field(default=None, ge=0, description="INR")
+    amount_max: float | None = Field(default=None, ge=0, description="INR")
+    eligibility: list[str] = Field(default_factory=list)
+    state: str | None = None
+    district: str | None = None
+    sector: str | None = None
+
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+    @model_validator(mode="after")
+    def _band_is_the_right_way_round(self) -> RfpRecord:
+        both = self.amount_min is not None and self.amount_max is not None
+        if both and self.amount_max < self.amount_min:
+            raise ValueError(
+                f"grant band is inverted: min {self.amount_min} above max {self.amount_max}"
+            )
+        return self
+
+
 Record = (
     FunderRecord | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
     | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | ProgramRecord
-    | MetricRecord | ContactRecord
+    | MetricRecord | ContactRecord | RfpRecord
 )

@@ -30,6 +30,7 @@ from app.ingest.promote import (
     PROMOTABLE,
     RENAMED,
     WRITE_ORDER,
+    _row_identity,
     promote,
 )
 from app.ingest.records import (
@@ -42,12 +43,14 @@ from app.ingest.records import (
     MetricRecord,
     NewsMentionRecord,
     ProgramRecord,
+    RfpRecord,
 )
 from app.ingest.research import save_research
 from app.ingest.research_records import (
     CONCEPTS,
     FINDING_MODELS,
     SCHEMA_VERSION,
+    ContactFinding,
     CsrSpendFinding,
     CsrYearFinding,
     EntityResearch,
@@ -60,6 +63,7 @@ from app.ingest.research_records import (
     to_inr,
 )
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
+from app.ingest.taxonomy import clause_for
 from app.ingest.writer import CSR_YEAR_UPDATABLE, _diff, slugify
 
 NOW = datetime(2026, 9, 29, tzinfo=UTC)
@@ -807,3 +811,117 @@ class TestAParentIsLinkedOnlyWhenTheMatcherWouldMerge:
         assert set(MERGEABLE) == {"identifier", "exact", "alias", "boilerplate"}
         assert "trigram" not in MERGEABLE
         assert "none" not in MERGEABLE
+
+
+class TestScheduleVIIIsAShelfNotAGuess:
+    """A closed statutory list is safe to normalise against; a funder's own
+    wording is not. Anything that does not place leaves csr_sector_id NULL."""
+
+    @pytest.mark.parametrize(
+        ("theme", "slug"),
+        [
+            ("Healthcare", "csr-hunger-poverty-health"),
+            ("Education & Skilling", "csr-education-and-livelihoods"),
+            ("Swachh Bharat sanitation drive", "csr-hunger-poverty-health"),
+            ("Women empowerment", "csr-gender-equality-and-inequality"),
+            ("Tree plantation", "csr-environment-and-animal-welfare"),
+            ("Rural Development", "csr-rural-development"),
+            ("Disaster relief", "csr-disaster-management"),
+        ],
+    )
+    def test_a_recognisable_theme_is_placed(self, theme, slug):
+        assert clause_for(theme) == slug
+
+    @pytest.mark.parametrize("theme", ["Building Human Capital", "Project Unnati", "", None])
+    def test_anything_needing_interpretation_is_left_alone(self, theme):
+        # "Building Human Capital" is not Education until a person decides so.
+        assert clause_for(theme) is None
+
+    def test_skilling_reaches_education_before_rural_reaches_rural_development(self):
+        # Ordering in CLAUSES is load-bearing: many themes mention "rural".
+        assert clause_for("rural skill development centre") == "csr-education-and-livelihoods"
+
+
+class TestOnlySharedMailboxesAreRecorded:
+    def contact(self, **kw):
+        return ContactFinding(
+            name="R. Sharma", kind="grants",
+            evidence="The CSR page lists this address for partnership enquiries from NGOs.",
+            source_url="https://a.b/c", confidence="high", **kw,
+        )
+
+    @pytest.mark.parametrize(
+        "email",
+        # An allowlist of role words would have refused the last two, which is
+        # most of what a fundraiser actually wants.
+        ["csr@sbifoundation.in", "grants@itc.in", "csrhelpdesk@itc.in", "youthforindia@sbi.co.in"],
+    )
+    def test_a_shared_mailbox_is_kept(self, email):
+        assert self.contact(email=email, is_role_mailbox=True).email == email
+
+    @pytest.mark.parametrize("email", ["r.sharma@sbi.co.in", "rsharma@sbi.co.in", "sharma@x.org"])
+    def test_an_individuals_address_is_refused_even_when_attested(self, email):
+        with pytest.raises(ValidationError, match="personal address"):
+            self.contact(email=email, is_role_mailbox=True)
+
+    def test_an_address_with_no_attestation_is_refused(self):
+        with pytest.raises(ValidationError, match="shared mailbox"):
+            self.contact(email="csr@sbifoundation.in")
+
+    def test_no_email_is_always_fine(self):
+        assert self.contact().email is None
+
+
+class TestRfpIsNowAConcept:
+    def test_it_has_a_table_a_model_and_a_writer(self):
+        assert CONCEPT_TABLES["rfp"] == "rfps"
+        assert "rfp" in FINDING_MODELS
+        assert "rfp" in PROMOTABLE
+        assert "rfp" in WRITE_ORDER
+
+    def test_the_grant_band_cannot_be_inverted(self):
+        with pytest.raises(ValidationError, match="inverted"):
+            RfpRecord(
+                funder_name="SBI Foundation", title="A call", amount_min=100.0, amount_max=10.0,
+                source_url="https://a.b/c", source_name="x", fetched_at=NOW,
+            )
+
+    def test_eligibility_survives_as_separate_lines(self):
+        rec = RfpRecord(
+            funder_name="SBI Foundation", title="Youth for India 2026",
+            eligibility=["80G registration", "3 years of audited accounts"],
+            source_url="https://a.b/c", source_name="x", fetched_at=NOW,
+        )
+        assert len(rec.eligibility) == 2
+
+
+class TestPromotingTwiceChangesNothing:
+    """Re-promotion used to churn six rows a run with no duplicate to show for
+    it: two findings resolving to one row, and a float artifact."""
+
+    def test_a_crore_amount_is_a_whole_number_of_rupees(self):
+        # 4.73 * 10_000_000 is 47300000.00000001 in binary floating point.
+        assert Money(value=4.73, unit="crore", text="Rs 4.73 crore").inr == 47_300_000
+        assert to_inr({"value": 4.73, "unit": "crore", "text": "x"}) == 47_300_000
+
+    def test_the_diff_tolerance_scales_with_the_amount(self):
+        # An absolute 1e-9 epsilon is below float precision at crore scale, so
+        # every comparison read as a change.
+        assert _diff({"amount": 47_300_000}, {"amount": 47300000.00000001}) == {}
+        assert "amount" in _diff({"amount": 47_300_000}, {"amount": 47_400_000})
+
+    def test_two_findings_on_one_row_are_distinguished(self):
+        # Distinct findings can still resolve to one row: two sector wordings
+        # under the same Schedule VII clause, or two unresolved programme names
+        # that are both a NULL program_id.
+        spend = CsrSpendFinding(
+            fiscal_year="FY2024-25", sector="Healthcare",
+            amount={"value": 1.0, "unit": "crore", "text": "Rs 1 crore"},
+            evidence="The company spent Rs 1 crore on healthcare during the year.",
+            source_url="https://a.b/c", confidence="high",
+        )
+        first = _row_identity("csr_spend", spend, None, None, None, 7)
+        same = _row_identity("csr_spend", spend, None, None, None, 7)
+        other = _row_identity("csr_spend", spend, None, None, None, 9)
+        assert first == same
+        assert first != other

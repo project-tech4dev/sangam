@@ -33,8 +33,10 @@ from app.ingest.records import (
     FunderRecord,
     MetricRecord,
     ProgramRecord,
+    RfpRecord,
 )
 from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
+from app.ingest.taxonomy import resolve_csr_sector
 from app.ingest.writer import (
     ensure_document,
     write_contact,
@@ -46,6 +48,7 @@ from app.ingest.writer import (
     write_metric,
     write_partner,
     write_program,
+    write_rfp,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,13 +62,15 @@ MERGEABLE = ("identifier", "exact", "alias", "boilerplate")
 
 PROMOTABLE = (
     "identity", "identifier", "csr_year", "document", "program", "csr_spend",
-    "footprint", "stated_geography", "partner", "metric", "contact",
+    "footprint", "stated_geography", "partner", "metric", "contact", "rfp",
 )
 
 # Documents first, so every other fact can cite the report it was read from.
 # Programmes next, because every remaining concept can name one and a spend row
 # whose program_id is null for want of ordering is a quietly weaker row.
-WRITE_ORDER = ("csr_spend", "footprint", "stated_geography", "partner", "metric", "contact")
+WRITE_ORDER = (
+    "csr_spend", "footprint", "stated_geography", "partner", "metric", "contact", "rfp",
+)
 
 
 # The provenance convention in CLAUDE.md asks for content_hash and
@@ -89,6 +94,7 @@ CONCEPT_RECORDS: dict[str, type] = {
     "program": ProgramRecord,
     "metric": MetricRecord,
     "contact": ContactRecord,
+    "rfp": RfpRecord,
 }
 
 # A finding field whose record field has a different name. `kind` collides
@@ -287,6 +293,43 @@ async def _write_programs(
     return ids
 
 
+def _row_identity(
+    concept: str, f: Any, program_id: int | None, state_id: int | None,
+    district_id: int | None, sector_id: int | None,
+) -> tuple:
+    """The row a finding will occupy, after every name has been resolved to an id.
+
+    Mirrors each writer's natural key. It is deliberately computed here rather
+    than inside the writer: the collision is between two findings in one
+    payload, which the writer never sees together.
+    """
+    year = getattr(f, "fiscal_year", None)
+    if concept == "csr_spend":
+        return (concept, year, program_id, sector_id, state_id, district_id,
+                f.designation, f.project_name)
+    if concept == "footprint":
+        return (concept, program_id, year, district_id or state_id)
+    if concept == "stated_geography":
+        return (concept, district_id or state_id)
+    if concept == "partner":
+        return (concept, program_id, year, f.partner_name)
+    if concept == "metric":
+        return (concept, f.name, f.period, program_id)
+    if concept == "contact":
+        return (concept, f.name, f.role)
+    if concept == "rfp":
+        return (concept, f.title, f.deadline)
+    return (concept, id(f))
+
+
+def _describe(concept: str, f: Any) -> str:
+    for attr in ("project_name", "partner_name", "title", "name", "sector", "state"):
+        value = getattr(f, attr, None)
+        if value:
+            return f"{attr}={value!r}"
+    return getattr(f, "fiscal_year", None) or "no distinguishing field"
+
+
 async def _write_facts(
     conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], funder_id: int,
     programs: dict[str, int], docs: dict[str, int], report: dict[str, Any],
@@ -294,13 +337,32 @@ async def _write_facts(
     """Every remaining concept, in dependency order."""
     name = row["canonical_name"] or row["entity_name"]
     fetched = row["researched_at"]
+    seen: set[tuple] = set()
 
     for concept in WRITE_ORDER:
         for f in _validated(findings, concept):
             program_id = programs.get(getattr(f, "program_name", None) or "")
             document_id = docs.get(f.source_url)
             state_id, district_id = await _place(conn, f, report)
+            sector_id = await resolve_csr_sector(conn, getattr(f, "sector", None))
             base = {"funder_name": name, **_provenance(f, fetched)}
+
+            # Two findings can be distinct and still resolve to one row:
+            # "Healthcare" and "Sanitation" are both Schedule VII clause (i),
+            # and two programme names neither of which resolved are both a
+            # NULL program_id. Writing both made each promote overwrite the
+            # last — six rows churned on every run, forever, with no duplicate
+            # to show for it. Two sources that disagree is a finding, not an
+            # edit, so the second is reported and left alone.
+            identity = _row_identity(concept, f, program_id, state_id, district_id, sector_id)
+            if identity in seen:
+                report["held"].append(
+                    f"{concept}: two findings resolve to the same row "
+                    f"({_describe(concept, f)}). The first was written; the second is "
+                    f"reported rather than overwriting it."
+                )
+                continue
+            seen.add(identity)
             try:
                 if concept == "csr_spend":
                     rec = FunderCsrSpendRecord(
@@ -313,7 +375,8 @@ async def _write_facts(
                     )
                     status, _ = await write_csr_spend(
                         conn, rec, funder_id, program_id=program_id, state_id=state_id,
-                        district_id=district_id, document_id=document_id,
+                        district_id=district_id,
+                        csr_sector_id=sector_id, document_id=document_id,
                     )
                     _count(report, "funder_csr_spend", status)
 
@@ -374,10 +437,25 @@ async def _write_facts(
                     )
                     _count(report, "metrics", status)
 
+                elif concept == "rfp":
+                    rec = RfpRecord(
+                        title=f.title, status=f.status, url=f.url, deadline=f.deadline,
+                        amount_min=f.amount_min.inr if f.amount_min else None,
+                        amount_max=f.amount_max.inr if f.amount_max else None,
+                        eligibility=f.eligibility, state=f.state, district=f.district,
+                        sector=f.sector, as_of=None, **base,
+                    )
+                    status, _, _ = await write_rfp(
+                        conn, rec, funder_id,
+                        location_id=district_id or state_id,
+                        tag_id=sector_id, document_id=document_id,
+                    )
+                    _count(report, "rfps", status)
+
                 elif concept == "contact":
                     rec = ContactRecord(
-                        name=f.name, contact_kind=f.kind, role=f.role, notes=f.notes,
-                        as_of=None, **base,
+                        name=f.name, contact_kind=f.kind, role=f.role, email=f.email,
+                        is_role_mailbox=f.is_role_mailbox, notes=f.notes, as_of=None, **base,
                     )
                     status, _ = await write_contact(
                         conn, rec, funder_id, document_id=document_id

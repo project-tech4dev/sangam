@@ -24,6 +24,11 @@ CSR_YEAR_UPDATABLE = (
 )
 
 
+# Recorded on any tag we attach, because a Schedule VII clause chosen from a
+# funder's own wording is an inference and the row should say so.
+EXTRACTOR_TAGGER = "sangam-import"
+
+
 def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:80]
 
@@ -38,7 +43,11 @@ def _diff(existing: dict[str, Any], proposed: dict[str, Any]) -> dict[str, dict[
         if isinstance(old, str) and isinstance(new, str):
             same = old.strip() == new.strip()
         elif old is not None and isinstance(new, int | float) and not isinstance(new, bool):
-            same = abs(float(old) - float(new)) < 1e-9
+            # Relative, not absolute: an amount in crore is ~1e8, where a
+            # 1e-9 absolute epsilon is far below float precision and every
+            # comparison reads as a change.
+            old_f, new_f = float(old), float(new)
+            same = abs(old_f - new_f) <= 1e-9 * max(1.0, abs(old_f), abs(new_f))
         else:
             same = old == new
         if not same:
@@ -249,7 +258,8 @@ METRIC_UPDATABLE = ("value", "target", "unit", "stage", "method", "is_self_repor
                     "baseline", "comparison_value", "chain_key", "sequence", "location_id",
                     "notes", "source_url", "source_name", "fetched_at", "as_of")
 CONTACT_KEY = ("funder_id", "name", "role")
-CONTACT_UPDATABLE = ("kind", "notes", "source_url", "source_name", "fetched_at", "as_of",
+CONTACT_UPDATABLE = ("kind", "email", "is_public", "notes",
+                     "source_url", "source_name", "fetched_at", "as_of",
                      "content_hash", "extractor_version")
 
 
@@ -294,11 +304,12 @@ async def _upsert(
 
 async def write_csr_spend(
     conn: Any, rec: Any, funder_id: int, *, program_id: int | None,
-    state_id: int | None, district_id: int | None, document_id: int | None,
+    state_id: int | None, district_id: int | None, csr_sector_id: int | None,
+    document_id: int | None,
 ) -> tuple[str, dict]:
     key = {
         "funder_id": funder_id, "fiscal_year": rec.fiscal_year, "program_id": program_id,
-        "csr_sector_id": None, "state_location_id": state_id,
+        "csr_sector_id": csr_sector_id, "state_location_id": state_id,
         "district_location_id": district_id, "designation": rec.designation,
         "project_name": rec.project_name,
     }
@@ -398,8 +409,63 @@ async def write_contact(
 ) -> tuple[str, dict]:
     key = {"funder_id": funder_id, "name": rec.name, "role": rec.role}
     proposed = {
-        "kind": rec.contact_kind, "notes": rec.notes, "source_url": rec.source_url,
+        "kind": rec.contact_kind, "email": rec.email,
+        # A shared mailbox the funder published is public by definition; the
+        # column defaults to false and nothing else here sets it.
+        "is_public": True if rec.email else None,
+        "notes": rec.notes, "source_url": rec.source_url,
         "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
         "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
     }
     return await _upsert(conn, "contacts", key, CONTACT_UPDATABLE, proposed, document_id)
+
+
+RFP_KEY = ("funder_id", "title", "deadline")
+RFP_UPDATABLE = ("url", "status", "amount_min", "amount_max", "eligibility",
+                 "source_url", "source_name", "fetched_at", "as_of",
+                 "content_hash", "extractor_version")
+
+
+async def write_rfp(
+    conn: Any, rec: Any, funder_id: int, *, location_id: int | None,
+    tag_id: int | None, document_id: int | None,
+) -> tuple[str, int, dict]:
+    """A call for proposals, plus where it applies and what theme it is for.
+
+    Returns (status, rfp_id, changes). An RFP with no place attached cannot be
+    matched to a client, so rfp_locations and rfp_tags are written here rather
+    than left for later.
+    """
+    key = {"funder_id": funder_id, "title": rec.title, "deadline": rec.deadline}
+    proposed = {
+        "url": rec.url, "status": rec.status,
+        "amount_min": rec.amount_min, "amount_max": rec.amount_max,
+        "eligibility": _json({"requirements": rec.eligibility}),
+        "source_url": rec.source_url, "source_name": rec.source_name,
+        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+        "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
+    }
+    status, changes = await _upsert(conn, "rfps", key, RFP_UPDATABLE, proposed, document_id)
+    row = await (
+        await conn.execute(
+            "SELECT id FROM rfps WHERE funder_id = %s AND title = %s "
+            "AND deadline IS NOT DISTINCT FROM %s",
+            (funder_id, rec.title, rec.deadline),
+        )
+    ).fetchone()
+    rfp_id = row["id"]
+
+    if location_id is not None:
+        await conn.execute(
+            "INSERT INTO rfp_locations (rfp_id, location_id, role, source_url, source_name, "
+            "fetched_at) VALUES (%s, %s, 'funds', %s, %s, %s) "
+            "ON CONFLICT (rfp_id, location_id) DO NOTHING",
+            (rfp_id, location_id, rec.source_url, rec.source_name, rec.fetched_at),
+        )
+    if tag_id is not None:
+        await conn.execute(
+            "INSERT INTO rfp_tags (rfp_id, tag_id, role, is_inferred, tagged_by) "
+            "VALUES (%s, %s, 'primary', true, %s) ON CONFLICT (rfp_id, tag_id) DO NOTHING",
+            (rfp_id, tag_id, EXTRACTOR_TAGGER),
+        )
+    return status, rfp_id, changes
