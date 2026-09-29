@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -40,7 +41,15 @@ def _diff(existing: dict[str, Any], proposed: dict[str, Any]) -> dict[str, dict[
         if new is None:
             continue
         old = existing.get(col)
-        if isinstance(old, str) and isinstance(new, str):
+        # A jsonb column reads back as a dict or list while the proposed value
+        # is the JSON string we are about to send, so a direct comparison is
+        # always unequal and every re-run looks like an edit.
+        if isinstance(old, dict | list) and isinstance(new, str):
+            try:
+                same = old == json.loads(new)
+            except ValueError:
+                same = False
+        elif isinstance(old, str) and isinstance(new, str):
             same = old.strip() == new.strip()
         elif old is not None and isinstance(new, int | float) and not isinstance(new, bool):
             # Relative, not absolute: an amount in crore is ~1e8, where a
@@ -224,8 +233,6 @@ async def queue_resolution(
 
 
 def _json(v: Any) -> str:
-    import json
-
     return json.dumps(v, default=str)
 
 

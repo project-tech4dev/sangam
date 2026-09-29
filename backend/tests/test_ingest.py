@@ -938,3 +938,19 @@ class TestPromotingTwiceChangesNothing:
         other = _row_identity("csr_spend", spend, None, None, None, 9)
         assert first == same
         assert first != other
+
+
+class TestJsonbColumnsCompareByValue:
+    def test_a_jsonb_round_trip_is_not_a_change(self):
+        # Postgres returns jsonb as a dict; the proposed value is the JSON
+        # string about to be sent. Comparing them directly made every re-run
+        # of an RFP look like an edit.
+        stored = {"requirements": ["Registered under 80G"]}
+        proposed = '{"requirements": ["Registered under 80G"]}'
+        assert _diff({"eligibility": stored}, {"eligibility": proposed}) == {}
+
+    def test_a_real_jsonb_change_is_still_seen(self):
+        assert "eligibility" in _diff(
+            {"eligibility": {"requirements": ["80G"]}},
+            {"eligibility": '{"requirements": ["12A"]}'},
+        )
