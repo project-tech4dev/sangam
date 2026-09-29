@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import collections
 import json
 import logging
 from dataclasses import dataclass
@@ -33,9 +34,26 @@ class SourceOutcome:
     counts: dict[str, int] | None = None
 
 
+async def catalog_baseline() -> dict[str, int]:
+    """What the catalog holds now, so a run can be compared against it afterwards."""
+    pool = get_pool()
+    async with pool.connection() as conn:
+        row = await (
+            await conn.execute(
+                "SELECT (SELECT count(*) FROM funders) AS funders, "
+                "(SELECT count(*) FROM funder_csr_years) AS funder_csr_years, "
+                "(SELECT count(*) FROM news_mentions) AS news_mentions, "
+                "(SELECT count(*) FROM documents) AS documents, "
+                "(SELECT count(*) FROM resolution_queue WHERE status = 'pending') AS pending_review"
+            )
+        ).fetchone()
+    return dict(row)
+
+
 async def run_import(
     source_keys: list[str] | None = None,
     *,
+    goal: str,
     model: Any = None,
     limit: int = 10,
     started_by: str | None = None,
@@ -47,24 +65,32 @@ async def run_import(
     async with pool.connection() as conn, conn.transaction():
         row = await (
             await conn.execute(
-                "INSERT INTO ingest_runs (requested_sources, started_by) VALUES (%s, %s) RETURNING id",
-                (source_keys or [], started_by),
+                "INSERT INTO ingest_runs (requested_sources, started_by, notes) "
+                "VALUES (%s, %s, %s) RETURNING id",
+                (source_keys or [], started_by, goal),
             )
         ).fetchone()
         run_id = row["id"]
         for name in unknown:
             await _item(conn, run_id, name, "source", "refused",
                         reason=f"No source named {name!r} is registered.")
-        for src in requested:
-            if not src.dispatchable:
-                await _item(conn, run_id, src.key, "source", "refused",
-                            reason=f"{src.access_rule.value}: {src.basis}", subject=src.name)
+        # One row for the whole held set, not one per source. At 74 registered
+        # sources a per-source row meant ~50 inserts per default run, all saying
+        # what the registry already says. summarise() re-derives the detail.
+        held = [s for s in requested if not s.dispatchable]
+        if held:
+            by_rule = collections.Counter(s.access_rule.value for s in held)
+            await _item(
+                conn, run_id, "-", "run_scope", "refused",
+                subject=f"{len(held)} sources held by their access rule",
+                reason="; ".join(f"{rule}: {n}" for rule, n in sorted(by_rule.items())),
+            )
 
     gate = asyncio.Semaphore(MAX_CONCURRENT_SOURCES)
     tasks = [
         _run_source(src, run_id, model=model, limit=limit, gate=gate)
         for src in requested
-        if src.dispatchable
+        if src.dispatchable and src.key in ADAPTERS
     ]
     await asyncio.gather(*tasks)
 
@@ -80,12 +106,7 @@ async def _run_source(src: Source, run_id: int, *, model: Any, limit: int, gate:
         pool = get_pool()
         try:
             async with pool.connection() as conn:
-                if src.key == "india_csr":
-                    await _ingest_india_csr(conn, run_id, model=model, limit=limit)
-                elif src.key == "gdelt":
-                    await _ingest_gdelt(conn, run_id, limit=limit)
-                else:
-                    raise SourceUnavailable(f"{src.key} is dispatchable but has no adapter yet")
+                await ADAPTERS[src.key](conn, run_id, model=model, limit=limit)
         except SourceUnavailable as exc:
             await _fail(run_id, src, str(exc))
         except Exception as exc:
@@ -158,7 +179,7 @@ def _queue_reason(match: Any) -> str:
     return "No funder in the catalog matches this name, and nothing is close enough to propose."
 
 
-async def _ingest_gdelt(conn: Any, run_id: int, *, limit: int) -> None:
+async def _ingest_gdelt(conn: Any, run_id: int, *, limit: int, model: Any = None) -> None:
     records = await gdelt.fetch(limit=limit)
     funders = await (await conn.execute("SELECT id, name FROM funders")).fetchall()
     for rec in records:
@@ -170,6 +191,15 @@ async def _ingest_gdelt(conn: Any, run_id: int, *, limit: int) -> None:
                 target_table="news_mentions", target_id=rec.url, changes=changes,
                 match_method="exact" if funder_id else "none", source_url=rec.source_url,
             )
+
+
+# The sources this runner can actually fetch. A source may be legally readable
+# and still not be here: registering a source makes it visible and reportable,
+# writing an adapter is what makes it pull.
+ADAPTERS: dict[str, Any] = {
+    "india_csr": _ingest_india_csr,
+    "gdelt": _ingest_gdelt,
+}
 
 
 def _named_in(title: str, funders: list[Any]) -> int | None:
@@ -202,7 +232,8 @@ async def summarise(run_id: int) -> dict[str, Any]:
     async with pool.connection() as conn:
         run = await (
             await conn.execute(
-                "SELECT id, started_at, finished_at, status, requested_sources FROM ingest_runs WHERE id = %s",
+                "SELECT id, started_at, finished_at, status, requested_sources, notes "
+                "FROM ingest_runs WHERE id = %s",
                 (run_id,),
             )
         ).fetchone()
@@ -238,7 +269,12 @@ async def summarise(run_id: int) -> dict[str, Any]:
     # look like it never ran. Seed those keys with zero counts, so "read nothing
     # new" and "was not read" stay different statements.
     requested = list(run["requested_sources"]) or [s.key for s in SOURCES.values()]
-    attempted = {k for k in requested if k in SOURCES and SOURCES[k].dispatchable}
+    permitted = {k for k in requested if k in SOURCES and SOURCES[k].dispatchable}
+    # Permitted but unimplemented is not a failure. Reporting it as one would
+    # tell the user that 21 sources are broken when they are simply not built.
+    attempted = {k for k in permitted if k in ADAPTERS}
+    no_adapter = sorted(permitted - attempted)
+    held = sorted(k for k in requested if k in SOURCES and not SOURCES[k].dispatchable)
     for key in attempted:
         per_source.setdefault(key, {})
     totals: dict[str, int] = {}
@@ -249,11 +285,13 @@ async def summarise(run_id: int) -> dict[str, Any]:
     finished = run["finished_at"] or datetime.now(UTC)
     return {
         "run_id": run["id"],
+        "goal": run["notes"],
         "status": run["status"],
         "started_at": run["started_at"].isoformat(),
         "duration_seconds": round((finished - run["started_at"]).total_seconds(), 1),
         "sources_processed": sorted(k for k in attempted if "failed" not in per_source.get(k, {})),
-        "sources_refused": sorted(k for k, v in per_source.items() if set(v) == {"refused"}),
+        "sources_refused": held,
+        "sources_without_adapter": no_adapter,
         "sources_failed": sorted(k for k, v in per_source.items() if "failed" in v),
         "totals": totals,
         "by_source": per_source,

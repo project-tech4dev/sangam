@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import collections
 import logging
 from typing import Any
 
@@ -10,42 +11,163 @@ from langchain_core.tools import tool
 from app.agent.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
-from app.ingest.runner import run_import, summarise
-from app.ingest.sources import SOURCES
+from app.ingest.runner import catalog_baseline, run_import, summarise
+from app.ingest.sources import SOURCES, Category, resolve
 
 logger = logging.getLogger(__name__)
 
 
 @tool
-async def list_import_sources() -> str:
-    """List every registered data source, its access rule, and why that rule applies.
+async def list_import_sources(category: str = "", detail: str = "") -> str:
+    """Summarise the source registry: how many sources there are, and their access rules.
 
-    Use this before running an import, and whenever the user asks why a source was
-    skipped. A source is only crawled when its rule is open_api or crawl_allowed;
-    every other rule means a person must enter the data by hand or someone must get
-    permission first. The basis is the evidence for the rule — quote it to the user.
+    There are ~74 registered sources, so this returns COUNTS by default, not the
+    whole list. Narrow it to get detail:
+
+    Args:
+        category: one of funder, ngo, rfp, media — restricts the summary to that
+            category and lists the sources that can actually be read.
+        detail: a source key, or a rule name like "no_scraping_manual_entry_allowed",
+            to get full entries with the basis quoted. Use this when a user asks
+            why a particular source was skipped, and quote the basis back to them.
+
+    A source is only crawled when its rule is open_api or crawl_allowed. Every
+    other rule means a person must enter the data by hand, or someone must get
+    permission, buy a licence, or run an export from an Indian network first.
     """
     try:
-        lines = []
-        for s in SOURCES.values():
-            mark = "RUNS" if s.dispatchable else "HELD"
-            checked = s.robots_checked_at.isoformat() if s.robots_checked_at else "not checked"
+        chosen = list(SOURCES.values())
+        if category:
+            try:
+                wanted = Category(category.strip().lower())
+            except ValueError:
+                return f"Unknown category {category!r}. Use one of: {', '.join(c.value for c in Category)}."
+            chosen = [s for s in chosen if wanted in s.categories]
+
+        if detail:
+            needle = detail.strip().lower()
+            picked = [s for s in chosen if needle in (s.key, s.access_rule.value)]
+            if not picked:
+                return f"Nothing registered matches {detail!r}."
+            return "\n".join(_full_entry(s) for s in picked)
+
+        runs = [s for s in chosen if s.dispatchable and s.key in _adapter_keys()]
+        permitted = [s for s in chosen if s.dispatchable and s.key not in _adapter_keys()]
+        by_rule = collections.Counter(s.access_rule.value for s in chosen if not s.dispatchable)
+
+        scope = f" in {category}" if category else ""
+        lines = [f"{len(chosen)} sources registered{scope}."]
+        lines.append(f"\nCan be read AND have an adapter ({len(runs)}) — these actually pull:")
+        for s in runs:
+            lines.append(f"  {s.key} ({s.host}) → {', '.join(s.yields)}")
+        if permitted:
             lines.append(
-                f"[{mark}] {s.key} — {s.name} ({s.host})\n"
-                f"  rule: {s.access_rule.value} (checked {checked})\n"
-                f"  basis: {s.basis}\n"
-                f"  yields: {', '.join(s.yields)}"
+                f"\nPermitted but no adapter yet ({len(permitted)}): "
+                + ", ".join(s.key for s in permitted)
             )
+        if by_rule:
+            lines.append("\nHeld, by rule:")
+            for rule, n in sorted(by_rule.items(), key=lambda kv: -kv[1]):
+                lines.append(f"  {rule}: {n}")
+            lines.append(
+                '\nAsk again with detail="<source key or rule>" for the evidence behind any of these.'
+            )
+        if not category:
+            counts = ", ".join(
+                f"{c.value} {len([s for s in SOURCES.values() if c in s.categories])}" for c in Category
+            )
+            lines.append(f"\nBy category: {counts}")
         return "\n".join(lines)
     except Exception as exc:  # noqa: BLE001
         return f"list_import_sources failed: {exc}"
 
 
+def _adapter_keys() -> set[str]:
+    from app.ingest.runner import ADAPTERS
+
+    return set(ADAPTERS)
+
+
+def _full_entry(s) -> str:
+    mark = "RUNS" if s.dispatchable else "HELD"
+    checked = s.robots_checked_at.isoformat() if s.robots_checked_at else "not checked"
+    host = s.host or "a class of sites, checked per host"
+    return (
+        f"[{mark}] {s.key} — {s.name} ({host})\n"
+        f"  rule: {s.access_rule.value} (checked {checked})\n"
+        f"  basis: {s.basis}\n"
+        f"  yields: {', '.join(s.yields)}"
+    )
+
+
 @tool
-async def run_import_now(sources: str = "", limit: int = 10) -> str:
-    """Run an import and return the full summary. This WRITES to the database.
+async def plan_import(sources: str = "", limit: int = 10) -> str:
+    """Say what a run WOULD pull, from where, and against what the catalog already holds.
+
+    Read-only: this writes nothing. Call it before every run and show the user the
+    plan, so the goal and the reach of the run are agreed before anything changes.
 
     Args:
+        sources: comma-separated source keys, or empty for every registered source.
+        limit: items per source the run would request.
+    """
+    try:
+        keys = [s.strip() for s in sources.split(",") if s.strip()] or None
+        requested, unknown = resolve(keys)
+        baseline = await catalog_baseline()
+
+        adapters = _adapter_keys()
+        will_run = [s for s in requested if s.dispatchable and s.key in adapters]
+        no_adapter = [s for s in requested if s.dispatchable and s.key not in adapters]
+        held = [s for s in requested if not s.dispatchable]
+
+        lines = ["PLAN — nothing is written by this step.", "", "Will pull:"]
+        if not will_run:
+            lines.append("  nothing: no requested source both may be read and has an adapter.")
+        for s in will_run:
+            lines.append(
+                f"  {s.key} ({s.host}) — up to {limit} items → {', '.join(s.yields)}\n"
+                f"    permitted because: {s.basis}"
+            )
+        if no_adapter:
+            lines += ["", f"Permitted, but nothing reads them yet ({len(no_adapter)}): "
+                          + ", ".join(s.key for s in no_adapter)]
+        # Counts, not entries: naming all ~50 held sources here would put the
+        # whole registry into the prompt before every single run.
+        if held:
+            by_rule = collections.Counter(s.access_rule.value for s in held)
+            lines += ["", f"Will NOT pull ({len(held)} held by their access rule):"]
+            for rule, n in sorted(by_rule.items(), key=lambda kv: -kv[1]):
+                lines.append(f"  {rule}: {n}")
+            lines.append('  Ask list_import_sources(detail="<key or rule>") for the evidence.')
+        if unknown:
+            lines += ["", f"Unknown source names, ignored: {', '.join(unknown)}"]
+
+        lines += [
+            "",
+            "Catalog before the run:",
+            "  " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in baseline.items()),
+            "",
+            (
+                "New names are added. A name that resembles an existing funder without "
+                "matching it is queued for a person, never merged."
+            ),
+        ]
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001
+        return f"plan_import failed: {exc}"
+
+
+@tool
+async def run_import_now(goal: str, sources: str = "", limit: int = 10) -> str:
+    """Run an import and return the full summary. This WRITES to the database.
+
+    Call plan_import first and show the user the plan. The goal is stored on the
+    run, so months later the run says what it was for.
+
+    Args:
+        goal: one sentence on what this run is for, in the user's terms, e.g.
+            "FY2025-26 CSR figures for Indian corporate funders". Required.
         sources: comma-separated source keys (e.g. "india_csr,gdelt"). Empty means
             every registered source — the ones that may not be crawled are reported
             as refused rather than skipped silently.
@@ -59,7 +181,11 @@ async def run_import_now(sources: str = "", limit: int = 10) -> str:
     try:
         settings = get_settings()
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
-        summary = await run_import(keys, model=resolve_model(settings.model), limit=limit)
+        if not goal.strip():
+            return "run_import_now needs a goal: one sentence on what this run is for."
+        summary = await run_import(
+            keys, goal=goal.strip(), model=resolve_model(settings.model), limit=limit
+        )
         return format_summary(summary)
     except Exception as exc:
         logger.exception("run_import_now failed")
@@ -126,8 +252,10 @@ def format_summary(s: dict[str, Any]) -> str:
     t = s["totals"]
     head = (
         f"Import run #{s['run_id']} — {s['status']} in {s['duration_seconds']}s\n"
+        f"  goal:      {s.get('goal') or 'not recorded'}\n"
         f"  processed: {', '.join(s['sources_processed']) or 'none'}\n"
-        f"  refused:   {', '.join(s['sources_refused']) or 'none'}\n"
+        # A count, not 51 keys: the rules behind them are listed below.
+        f"  refused:   {len(s['sources_refused'])} held by their access rule\n"
         f"  failed:    {', '.join(s['sources_failed']) or 'none'}\n"
         f"  records:   {t.get('added', 0)} added, {t.get('updated', 0)} updated, "
         f"{t.get('matched', 0)} already current, {t.get('queued', 0)} queued for review"
@@ -143,8 +271,17 @@ def format_summary(s: dict[str, Any]) -> str:
         for w in s["written"]:
             changed = ", ".join(w["changes"]) if w["changes"] else ""
             parts.append(f"  {w['status']}: {w['subject']} → {w['target_table']} {changed}".rstrip())
+    if s.get("sources_without_adapter"):
+        names = ", ".join(s["sources_without_adapter"])
+        parts.append(
+            f"\nPermitted but not built yet ({len(s['sources_without_adapter'])}): {names}. "
+            f"These are legally readable; nothing reads them."
+        )
     if s["needs_attention"]:
         parts.append("\nCould not be processed:")
-        for p in s["needs_attention"]:
+        # Bounded: at 74 registered sources the held set alone was ~50 lines.
+        for p in s["needs_attention"][:15]:
             parts.append(f"  {p['status']}: {p['subject'] or p['source']} — {p['reason']}")
+        if len(s["needs_attention"]) > 15:
+            parts.append(f"  … and {len(s['needs_attention']) - 15} more; ask for the run detail.")
     return "\n".join(parts)
