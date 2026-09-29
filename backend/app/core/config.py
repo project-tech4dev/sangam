@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     langfuse_secret_key: str = ""
     langfuse_host: str = "https://cloud.langfuse.com"
 
+    # Where download_file saves what it fetches, and read_pdf reads from.
+    downloads_dir: str = "/tmp/sangam-downloads"
+
     # Optional tool integrations — all disabled when empty.
     tavily_api_key: str = ""
     github_pat: str = ""
