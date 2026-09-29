@@ -54,6 +54,18 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
   },
   pending_resolutions: { label: "Checking the review queue", detail: () => "" },
   write_todos: { label: "Planning", detail: () => "" },
+  research_goals: {
+    label: "Reading what the database expects",
+    detail: (a) => a?.name ?? "",
+  },
+  save_research: {
+    label: "Saving findings",
+    detail: (a) => a?.findings?.entity_name ?? "",
+  },
+  promote_research: {
+    label: "Writing research into the catalog",
+    detail: (a) => a?.slug || "everything not yet promoted",
+  },
   task: { label: "Delegating a sub-task", detail: () => "" },
 };
 

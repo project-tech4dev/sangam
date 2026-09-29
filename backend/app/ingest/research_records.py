@@ -396,3 +396,38 @@ class ResearchSummary(BaseModel):
     concepts_found: list[str] = Field(default_factory=list)
     not_found: list[str] = Field(default_factory=list)
     saved: bool = Field(default=False, description="true only if save_research returned success")
+
+
+class TableWrite(BaseModel):
+    """One catalog table, and how many rows of it a promotion produced."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    table: str
+    rows: int
+
+
+class PromotionReport(BaseModel):
+    """What the catalog-writer hands back: what landed, and what did not.
+
+    Deliberately not a place to put facts. Everything here is read back out of
+    the database after the write, so the report describes rows that exist
+    rather than rows a model believes it created.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    slug: str
+    funder_name: str | None = None
+    funder_id: int | None = None
+    tables_written: list[TableWrite] = Field(default_factory=list)
+    rows_written: int
+    held_back: list[str] = Field(
+        default_factory=list, description="verbatim reasons, each a decision for a person"
+    )
+    still_research: list[str] = Field(
+        default_factory=list, description="concepts with no writer, e.g. ['grant']"
+    )
+    verified: bool = Field(
+        default=False, description="true only if the dossier was read back and agreed"
+    )

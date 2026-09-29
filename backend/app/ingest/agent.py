@@ -17,7 +17,7 @@ from app.ingest.research import (
     save_research,
     search_public_sources,
 )
-from app.ingest.research_records import ResearchSummary
+from app.ingest.research_records import PromotionReport, ResearchSummary
 from app.ingest.tools import (
     funder_dossier,
     import_run_summary,
@@ -127,13 +127,50 @@ ENTITY_RESEARCHER = {
 }
 
 
+# The second kind of subagent. It researches nothing and cannot: its only
+# tools are the promoter and the dossier, so every value it writes came out of
+# a saved entity_research row through fixed SQL. What it adds over calling
+# promote_research directly is the check — promote, read the catalog back,
+# report the difference — and a box on the screen saying which organisation is
+# being written and what landed.
+CATALOG_WRITER = {
+    "name": "catalog-writer",
+    "description": (
+        "Moves ONE organisation's saved research into the catalog and reports exactly what "
+        "landed, what was held back and why. Launch one per organisation after its researcher "
+        "has reported. It cannot research and cannot invent a value."
+    ),
+    "mode": "isolated",
+    "tools": [promote_research, funder_dossier],
+    "response_format": PromotionReport,
+    "system_prompt": (
+        "You write ONE organisation's research into the catalog. You do not research: you have "
+        "no search or fetch tools, and every value you write comes out of the saved research "
+        "row through promote_research. Never state a fact the tools did not give you.\n\n"
+        "Three steps, in order:\n\n"
+        "1. Call promote_research with the slug you were given. This WRITES.\n"
+        "2. Call funder_dossier for the same organisation and read what is actually there now. "
+        "A promotion that reports six rows and a dossier that shows none is the failure worth "
+        "catching, and it is the only reason you exist rather than a direct tool call.\n"
+        "3. Report: the tables written and their row counts, every held-back reason VERBATIM, "
+        "and the concepts that stayed research. Set verified only if the dossier agreed.\n\n"
+        "Held back is not failure and not loss. A place that is not an Indian state, a name that "
+        "resembles an existing funder without matching it, a grant whose recipient is not in "
+        "orgs — each is a decision waiting for a person. Pass the reason through word for word "
+        "rather than summarising it, because the wording is what tells them what to do.\n\n"
+        "If nothing was promoted, say so plainly and say why. rows_written 0 with a reason is a "
+        "good report; rows_written 0 with no explanation is a useless one."
+    ),
+}
+
+
 def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # No SQL tools by design: this agent proposes typed records, and app/ingest/writer.py
     # is the only thing that writes. Ask Sangam reads; this one imports.
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,
-        subagents=[ENTITY_RESEARCHER],
+        subagents=[ENTITY_RESEARCHER, CATALOG_WRITER],
         middleware=[clear_old_tool_results()],
         system_prompt=INSTRUCTIONS,
         checkpointer=checkpointer,

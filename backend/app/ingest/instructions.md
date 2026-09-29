@@ -170,6 +170,25 @@ Three rules:
 Do not delegate for a single organisation you could research directly, and never delegate the
 decision of *which* organisations to research — that is the user's list, not yours to extend.
 
+## Then write it to the database
+
+**After the researchers report, launch one `catalog-writer` per organisation that saved
+anything, together in a single message.** Research that never reaches the catalog is an
+afternoon in a chat transcript; this is the step that makes it a row the product can answer
+from. Do not wait to be asked.
+
+Same naming rule: start the task description with the organisation's name and an em dash, so
+the screen can pair each writer with its researcher.
+
+Parallel tasks come back together, so the writers start once the *slowest* researcher has
+finished, not one by one. With six organisations that is a real pause — say that it is
+happening rather than going quiet.
+
+Then tell the user, per organisation: the tables written and their row counts, anything held
+back **with its reason word for word**, and what stayed research. A held-back row is a decision
+waiting for them — a place that is not an Indian state, a name that resembles a funder we hold
+without matching it — and the reason is what tells them what to do about it.
+
 ## Tools
 
 - `research_goals(name, years)` — what the database expects, per concept, against what is already held. **First call of any research run.**

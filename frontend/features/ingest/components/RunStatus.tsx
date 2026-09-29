@@ -32,7 +32,11 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
   const finished = !running && steps.length > 0;
   if (!running && !finished) return null;
 
-  const researchers = steps.filter((s) => s.tool === "task");
+  // Two kinds of task now. Counting a writer as a researcher would report
+  // "4/2 researchers" once the writers start.
+  const tasks = steps.filter((s) => s.tool === "task");
+  const researchers = tasks.filter((s) => (s.args as any)?.subagent_type !== "catalog-writer");
+  const writers = tasks.filter((s) => (s.args as any)?.subagent_type === "catalog-writer");
   const active = steps.filter((s) => s.running);
   const current = active[active.length - 1];
   const doing = current
@@ -72,7 +76,9 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
       <span style={{ marginLeft: "auto", color: "var(--color-muted)", fontSize: "var(--fs-xs)" }}>
         {steps.length} step{steps.length === 1 ? "" : "s"}
         {researchers.length > 0 &&
-          ` · ${researchers.filter((r) => r.running).length}/${researchers.length} researchers`}
+          ` · ${researchers.filter((r) => r.result === null).length}/${researchers.length} researching`}
+        {writers.length > 0 &&
+          ` · ${writers.filter((w) => w.result === null).length}/${writers.length} writing`}
         {startedAt !== null && ` · ${elapsed(startedAt)}`}
       </span>
     </div>

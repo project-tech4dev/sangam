@@ -23,6 +23,14 @@ function numberOr(count: unknown, list: unknown): number | undefined {
   return Array.isArray(list) ? list.length : undefined;
 }
 
+/** Which subagent this card is for. deepagents passes the type alongside the
+ *  description; before this the board assumed every task was a researcher. */
+type Kind = "researcher" | "writer";
+
+function kindOf(args: any): Kind {
+  return args?.subagent_type === "catalog-writer" ? "writer" : "researcher";
+}
+
 type Outcome = {
   state: "working" | "done" | "stopped";
   status?: string;
@@ -30,6 +38,10 @@ type Outcome = {
   sources?: number;
   slug?: string;
   note?: string;
+  /** Writer only. */
+  rows?: number;
+  tables?: number;
+  held?: string[];
 };
 
 /**
@@ -45,6 +57,22 @@ function outcomeOf(step: TraceStep): Outcome {
   }
   try {
     const parsed = JSON.parse(step.result);
+    if (kindOf(step.args) === "writer") {
+      const rows: number = parsed.rows_written ?? 0;
+      const held: string[] = Array.isArray(parsed.held_back) ? parsed.held_back : [];
+      const tables = Array.isArray(parsed.tables_written) ? parsed.tables_written.length : 0;
+      // Nothing written and nothing explaining it is the report that reads as
+      // success and is not one.
+      const state = rows === 0 && held.length === 0 ? "stopped" : "done";
+      return {
+        state,
+        rows,
+        tables,
+        held,
+        slug: parsed.funder_name ?? parsed.slug,
+        note: held[0] ?? (rows === 0 ? "nothing reached the catalog" : undefined),
+      };
+    }
     // The researcher returns a ResearchSummary: counts, not the findings
     // themselves, which went to the database through save_research. Older
     // results carried the arrays, so both shapes are read.
@@ -78,17 +106,24 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
   const working = outcomes.filter(([, o]) => o.state === "working").length;
   const done = outcomes.filter(([, o]) => o.state === "done").length;
   const stopped = outcomes.filter(([, o]) => o.state === "stopped").length;
+  const researchers = steps.filter((s) => kindOf(s.args) === "researcher").length;
+  const writers = steps.length - researchers;
   // Expanded while anything is working, a summary line once they have finished.
   const expanded = working > 0;
 
   const tally = [
-    `${steps.length} researcher${steps.length === 1 ? "" : "s"}`,
+    researchers > 0 ? `${researchers} researcher${researchers === 1 ? "" : "s"}` : null,
+    writers > 0 ? `${writers} writer${writers === 1 ? "" : "s"}` : null,
     working > 0 ? `${working} working` : null,
     done > 0 ? `${done} done` : null,
     stopped > 0 ? `${stopped} stopped` : null,
   ]
     .filter(Boolean)
     .join(" · ");
+
+  // Writers only start once every researcher has returned, because parallel
+  // tasks resolve together. Saying so beats looking idle.
+  const waiting = writers === 0 && working > 0 && done > 0;
 
   return (
     <section
@@ -102,7 +137,9 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
         <strong style={{ fontSize: "var(--fs-sm)" }}>{tally}</strong>
         <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-muted)" }}>
-          one organisation each, separate context
+          {waiting
+            ? "one organisation each · writing to the catalog starts once all have reported"
+            : "one organisation each, separate context"}
         </span>
       </div>
 
@@ -154,14 +191,23 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
                   />
                 )}
                 <strong style={{ fontSize: "var(--fs-sm)" }}>{subjectOf(step.args)}</strong>
+                {kindOf(step.args) === "writer" && (
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-muted)" }}>
+                    → catalog
+                  </span>
+                )}
                 <span
                   style={{ marginLeft: "auto", fontSize: "var(--fs-xs)", color: TONE[o.state] }}
                 >
                   {o.state === "working"
-                    ? "researching…"
+                    ? kindOf(step.args) === "writer"
+                      ? "writing…"
+                      : "researching…"
                     : o.state === "stopped"
                       ? (o.status ?? "stopped")
-                      : `✓ ${o.facts ?? 0} facts`}
+                      : kindOf(step.args) === "writer"
+                        ? `✓ ${o.rows ?? 0} row${o.rows === 1 ? "" : "s"} in ${o.tables ?? 0} table${o.tables === 1 ? "" : "s"}`
+                        : `✓ ${o.facts ?? 0} facts`}
                 </span>
               </button>
 
@@ -177,6 +223,15 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
                       {o.sources} source{o.sources === 1 ? "" : "s"} read
                       {o.status && o.status !== "complete" ? ` · ${o.status}` : ""}
                     </p>
+                  )}
+                  {/* Held back is a decision for a person, so it is shown in
+                      full rather than counted. */}
+                  {o.held !== undefined && o.held.length > 0 && (
+                    <ul style={{ margin: "4px 0 0", paddingLeft: 15, color: "var(--color-bad)" }}>
+                      {o.held.map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               )}

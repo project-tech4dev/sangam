@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 import pytest
 from pydantic import ValidationError
 
+from app.ingest.agent import CATALOG_WRITER
 from app.ingest.expectations import (
     CONCEPT_TABLES,
     concepts_for,
@@ -44,6 +45,7 @@ from app.ingest.research_records import (
     MetricFinding,
     Money,
     PartnerFinding,
+    PromotionReport,
     ResearchSummary,
     to_inr,
 )
@@ -675,3 +677,45 @@ class TestPromotionCoversEveryConceptWithAWriter:
         # a program_id, so a programme written after them would leave nulls.
         assert "program" not in WRITE_ORDER
         assert {"csr_spend", "footprint", "partner", "metric"} <= set(WRITE_ORDER)
+
+
+class TestTheCatalogWriterCannotResearch:
+    """The second subagent exists to check the write, not to add to it."""
+
+    def test_it_holds_no_research_tools(self):
+        names = {t.name for t in CATALOG_WRITER["tools"]}
+        assert names == {"promote_research", "funder_dossier"}
+        # No search, no fetch, no save: every value it writes came out of a
+        # saved research row through fixed SQL.
+        assert not names & {"search_public_sources", "read_page", "fetch_document",
+                            "read_document_pages", "save_research"}
+
+    def test_it_runs_in_its_own_context(self):
+        assert CATALOG_WRITER["mode"] == "isolated"
+        assert CATALOG_WRITER["response_format"] is PromotionReport
+
+    def test_both_subagents_are_registered(self):
+        # A subagent defined and not passed to create_deep_agent is a subagent
+        # the model cannot launch — the same bug plan_import had.
+        import inspect
+
+        from app.ingest import agent as agent_module
+
+        source = inspect.getsource(agent_module.build_ingest_agent)
+        assert "ENTITY_RESEARCHER" in source and "CATALOG_WRITER" in source
+
+    def test_the_instructions_tell_the_main_agent_to_launch_it(self):
+        from app.ingest.agent import INSTRUCTIONS
+
+        assert "catalog-writer" in INSTRUCTIONS
+
+    def test_a_report_must_say_how_many_rows_it_wrote(self):
+        with pytest.raises(ValidationError):
+            PromotionReport(slug="acme")
+
+    def test_nothing_written_is_a_valid_report_when_it_says_why(self):
+        report = PromotionReport(
+            slug="the-ant", rows_written=0,
+            held_back=["researched as an organisation, not a funder"],
+        )
+        assert report.rows_written == 0 and report.held_back
