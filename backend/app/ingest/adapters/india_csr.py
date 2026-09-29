@@ -21,13 +21,13 @@ def _text(html: str) -> str:
     return re.sub(r"\s+", " ", _TAGS.sub(" ", html or "")).strip()
 
 
-async def fetch(query: str = DEFAULT_QUERY, limit: int = 10) -> list[dict[str, Any]]:
+async def fetch(query: str = DEFAULT_QUERY, limit: int = 10000) -> list[dict[str, Any]]:
     """Raw articles. Extraction into typed records happens in extractor.py."""
     posts = await get_json(
         API,
         {
             "search": query,
-            "per_page": min(limit, 20),
+            "per_page": min(limit, 20000),
             "orderby": "date",
             "_fields": "id,date,link,title,excerpt,content",
         },

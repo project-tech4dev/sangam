@@ -49,6 +49,10 @@ class FunderRecord(Provenance):
 
 
 class FunderCsrYearRecord(Provenance):
+    """Amounts are INR, not crore. funder_csr_years declares INR, and an article
+    printing "Rs 530.11 crore" is 5_301_100_000 — the conversion happens once,
+    in the extractor."""
+
     kind: Literal["funder_csr_year"] = "funder_csr_year"
     funder_name: str = Field(min_length=2)
     fiscal_year: str

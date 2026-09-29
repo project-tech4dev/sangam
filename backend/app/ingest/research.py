@@ -12,6 +12,8 @@ import trafilatura
 from langchain_core.tools import tool
 
 from app.agent.tools.files import _safe_name, downloads_dir, extract_pdf_text
+from app.agent.tools.web import make_web_search
+from app.core.config import get_settings
 from app.ingest.access import check_url
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 
@@ -20,6 +22,53 @@ MAX_DOWNLOAD_MB = 60
 PDF_TEXT_CHARS = 12_000
 PAGE_HEADERS = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,*/*",
                 "Accept-Encoding": "gzip, deflate"}
+
+
+@tool
+async def search_public_sources(query: str, max_results: int = 6) -> str:
+    """Search the public web for a funder's disclosures, and say which hits may be read.
+
+    This is how you find a CSR report, an annual report or a BRSR filing before
+    reading it. Search widely — the search itself reads nothing — but note the
+    marker on each result: a hit on a HELD source is a dead end, not a target.
+    Never work around one by looking for a cache, a mirror or a republisher.
+
+    Good queries follow the source's own language:
+        "<company>" CSR annual report FY2024-25
+        "<company>" implementing agency
+        site:<company-domain> "impact assessment"
+        "<partner NGO>" "<company>"
+
+    Args:
+        query: the search string, quoted as you would type it.
+        max_results: 3-10. Keep it small and search again with a sharper query.
+    """
+    settings = get_settings()
+    if not settings.tavily_api_key:
+        return (
+            "SEARCH UNAVAILABLE: no TAVILY_API_KEY is configured, so nothing can be "
+            "discovered. Ask the user for a URL instead, and say why."
+        )
+    try:
+        # max_results is a constructor argument, not an invoke one: passing it in
+        # the payload is silently ignored and the default is used.
+        search = make_web_search(settings.tavily_api_key, max_results=max(3, min(max_results, 10)))
+        raw = await search.ainvoke({"query": query})
+    except Exception as exc:  # noqa: BLE001 - a failed search must not end the run
+        return f"search failed: {type(exc).__name__}: {exc}"
+
+    results = raw.get("results", []) if isinstance(raw, dict) else raw
+    if not results:
+        return f"No results for {query!r}. Try the funder's own domain, or different wording."
+    lines = [f"{len(results)} results for {query!r}:"]
+    for r in results[:max_results]:
+        url = r.get("url", "")
+        refusal = await check_url(url)
+        mark = "READABLE" if refusal is None else "HELD"
+        lines.append(f"\n[{mark}] {r.get('title', '(no title)')}\n  {url}")
+        if refusal:
+            lines.append(f"  why held: {refusal[:180]}")
+    return "\n".join(lines)
 
 
 @tool

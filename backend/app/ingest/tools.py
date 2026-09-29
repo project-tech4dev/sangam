@@ -321,3 +321,152 @@ def format_summary(s: dict[str, Any]) -> str:
         if len(s["needs_attention"]) > 15:
             parts.append(f"  … and {len(s['needs_attention']) - 15} more; ask for the run detail.")
     return "\n".join(parts)
+
+
+@tool
+async def funder_dossier(name: str) -> str:
+    """Everything the catalog already holds about a funder. Read this BEFORE researching.
+
+    Research fills gaps; it does not rediscover what is already recorded. This
+    also gives you the baseline for the comparison you report at the end: what
+    matches, what is new, what conflicts.
+
+    A missing section means NOT RECORDED. It never means zero spending, no
+    partners, no impact or no geography — say "not recorded", never "none".
+    """
+    try:
+        pool = get_pool()
+        async with pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    "SELECT id, name, slug, funder_type, website, registry_status, parent_id, "
+                    "section_135_bound FROM funders "
+                    "WHERE name ILIKE %s OR similarity(name, %s) >= 0.4 "
+                    "ORDER BY similarity(name, %s) DESC LIMIT 5",
+                    (f"%{name}%", name, name),
+                )
+            ).fetchall()
+            if not rows:
+                return (
+                    f"No funder in the catalog matches {name!r}. Everything you find is a NEW "
+                    f"RECORD. That is not evidence the funder is absent from the sector."
+                )
+            top = rows[0]
+            fid = top["id"]
+            out = [
+                f"funders [funder:{fid}] {top['name']} ({top['slug']})",
+                (
+                    f"  type={top['funder_type'] or 'not recorded'} "
+                    f"website={top['website'] or 'not recorded'} "
+                    f"section_135_bound={top['section_135_bound']} "
+                    f"registry_status={top['registry_status']} parent_id={top['parent_id']}"
+                ),
+            ]
+            if len(rows) > 1:
+                others = ", ".join(f"{r['name']} [funder:{r['id']}]" for r in rows[1:])
+                out.append(f"  other funders with a similar name: {others}")
+
+            for label, sql in _DOSSIER_SECTIONS:
+                found = await (await conn.execute(sql, (fid,))).fetchall()
+                if not found:
+                    out.append(f"\n{label}: NOT RECORDED")
+                    continue
+                out.append(f"\n{label} ({len(found)}):")
+                out += [f"  {_row(r)}" for r in found[:20]]
+                if len(found) > 20:
+                    out.append(f"  … and {len(found) - 20} more")
+        return "\n".join(out)
+    except Exception as exc:  # noqa: BLE001
+        return f"funder_dossier failed: {exc}"
+
+
+def _row(r: Any) -> str:
+    return " ".join(f"{k}={v}" for k, v in r.items() if v is not None and k != "id")
+
+
+# Read-only, fixed SQL, one query per concept the research spec targets.
+# contacts deliberately omits email and phone: the catalog withholds them.
+
+
+# Read-only, fixed SQL, one query per concept the research brief targets.
+# contacts deliberately omits email and phone: the catalog withholds them.
+_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
+    (
+        "funder_identifiers",
+        """
+        SELECT id_type, id_value, verified FROM funder_identifiers
+        WHERE funder_id = %s ORDER BY id_type
+        """,
+    ),
+    (
+        "funder_csr_years (amounts in INR)",
+        """
+        SELECT fiscal_year, prescribed_csr, total_spent, average_net_profit, unspent_transferred,
+               source_name
+        FROM funder_csr_years WHERE funder_id = %s ORDER BY fiscal_year
+        """,
+    ),
+    (
+        "funder_csr_spend",
+        """
+        SELECT fiscal_year, project_name, amount, implementing_agency, designation
+        FROM funder_csr_spend WHERE funder_id = %s ORDER BY fiscal_year
+        """,
+    ),
+    (
+        "funder_footprints",
+        """
+        SELECT f.fiscal_year, f.name_as_printed, l.name AS location
+        FROM funder_footprints f LEFT JOIN locations l ON l.id = f.location_id
+        WHERE f.funder_id = %s ORDER BY f.fiscal_year
+        """,
+    ),
+    (
+        "funder_locations (STATED, not proof of spending)",
+        """
+        SELECT fl.role, l.name AS location FROM funder_locations fl
+        JOIN locations l ON l.id = fl.location_id WHERE fl.funder_id = %s
+        """,
+    ),
+    (
+        "funder_partners",
+        """
+        SELECT fiscal_year, partner_name, partner_canonical, partner_kind
+        FROM funder_partners WHERE funder_id = %s ORDER BY fiscal_year
+        """,
+    ),
+    (
+        "programs",
+        """
+        SELECT name, kind, status, start_date, end_date FROM programs
+        WHERE funder_id = %s ORDER BY kind, name
+        """,
+    ),
+    (
+        "grants",
+        """
+        SELECT g.title, g.amount, g.status, g.start_date, o.name AS recipient
+        FROM grants g JOIN orgs o ON o.id = g.org_id WHERE g.funder_id = %s
+        """,
+    ),
+    (
+        "metrics",
+        """
+        SELECT name, value, unit, period, stage, method FROM metrics
+        WHERE funder_id = %s ORDER BY period
+        """,
+    ),
+    (
+        "contacts",
+        """
+        SELECT name, role, kind, verified FROM contacts WHERE funder_id = %s
+        """,
+    ),
+    (
+        "documents",
+        """
+        SELECT title, doc_type, as_of, source_url FROM documents
+        WHERE funder_id = %s ORDER BY as_of
+        """,
+    ),
+)

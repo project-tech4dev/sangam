@@ -36,8 +36,14 @@ Text: {text}
 """
 
 
+# Articles print crore; funder_csr_years stores INR, as its column comments say
+# and as the reference seed writes it. Converting in exactly one place is what
+# keeps a model reading "₹530.11 crore" from landing as 530.11 rupees.
+CRORE = 10_000_000
+
+
 class ExtractedYear(BaseModel):
-    """One funder-year of CSR figures, as the article states them."""
+    """One funder-year of CSR figures, as the article states them, in CRORE."""
 
     funder_name: str = Field(description="the company or foundation, as printed")
     fiscal_year: str = Field(description="FYyyyy-yy")
@@ -51,6 +57,10 @@ class Extraction(BaseModel):
     years: list[ExtractedYear] = Field(default_factory=list)
 
 
+def _inr(crore: float | None) -> float | None:
+    return None if crore is None else round(crore * CRORE, 2)
+
+
 async def extract_csr_years(model: Any, item: dict[str, Any]) -> list[FunderCsrYearRecord]:
     """Returns [] when the article carries no figure — that is the common case."""
     structured = model.with_structured_output(Extraction)
@@ -62,19 +72,31 @@ async def extract_csr_years(model: Any, item: dict[str, Any]) -> list[FunderCsrY
     records: list[FunderCsrYearRecord] = []
     for year in result.years:
         try:
+            printed = ", ".join(
+                f"{label} Rs {value} crore"
+                for label, value in (
+                    ("obligation", year.prescribed_csr),
+                    ("spent", year.total_spent),
+                    ("avg net profit", year.average_net_profit),
+                    ("unspent", year.unspent_transferred),
+                )
+                if value is not None
+            )
             records.append(
                 FunderCsrYearRecord(
                     funder_name=year.funder_name,
                     fiscal_year=year.fiscal_year,
-                    prescribed_csr=year.prescribed_csr,
-                    total_spent=year.total_spent,
-                    average_net_profit=year.average_net_profit,
-                    unspent_transferred=year.unspent_transferred,
+                    prescribed_csr=_inr(year.prescribed_csr),
+                    total_spent=_inr(year.total_spent),
+                    average_net_profit=_inr(year.average_net_profit),
+                    unspent_transferred=_inr(year.unspent_transferred),
                     source_url=item["url"],
                     source_name=item["source_name"],
                     fetched_at=item["fetched_at"],
                     as_of=year.fiscal_year,
-                    notes=f"Extracted from: {item['title'][:200]}",
+                    # The printed wording is kept: a figure read back as INR
+                    # should still be checkable against what the article said.
+                    notes=f"As printed: {printed}. From: {item['title'][:160]}",
                 )
             )
         except ValueError as exc:

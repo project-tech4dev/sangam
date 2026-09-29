@@ -10,8 +10,14 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.middleware import clear_old_tool_results
 from app.agent.models import resolve_model
 from app.core.config import Settings
-from app.ingest.research import fetch_document, read_document_pages, read_page
+from app.ingest.research import (
+    fetch_document,
+    read_document_pages,
+    read_page,
+    search_public_sources,
+)
 from app.ingest.tools import (
+    funder_dossier,
     import_run_summary,
     list_import_sources,
     pending_resolutions,
@@ -32,6 +38,8 @@ TOOLS = [
     # Research tools, the way the hand-vetted sheets were built: open the page,
     # open the report, read the pages carrying the figures. Each checks the
     # registry and robots.txt before it fetches, so capability does not widen access.
+    funder_dossier,
+    search_public_sources,
     read_page,
     fetch_document,
     read_document_pages,
