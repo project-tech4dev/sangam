@@ -16,6 +16,7 @@ import httpx
 import pytest
 
 from app.core.config import Settings
+from app.ingest import research
 from app.ingest.writer import ensure_document
 from app.integrations import storage
 
@@ -310,3 +311,90 @@ class TestEnsureDocumentRecordsTheArchive:
             "SELECT storage_path, content_hash FROM documents WHERE id = %s", (doc_id,)
         )).fetchone()
         assert row["storage_path"] is None and row["content_hash"] is None
+
+
+class TestFetchDocumentArchives:
+    """The seam between the research tool and the archive.
+
+    Everything above tests the client in isolation; this is the one place that
+    asserts fetch_document actually calls it, with the bytes it just wrote.
+    """
+
+    @pytest.fixture
+    def downloaded(self, monkeypatch, tmp_path):
+        """A fetch_document that downloads PDF_BYTES and records what it archived."""
+        monkeypatch.setattr(research, "check_url", lambda url: _none())
+        monkeypatch.setattr(research, "downloads_dir", lambda: tmp_path)
+        monkeypatch.setattr(
+            research.httpx, "AsyncClient",
+            lambda **kw: _FakeClient(b"%PDF-1.4 annual report", "application/pdf"),
+        )
+        archived: list[tuple] = []
+
+        async def fake_upload(bucket, key, data, content_type):
+            archived.append((bucket, key, data, content_type))
+            return key
+
+        monkeypatch.setattr(research.storage, "upload", fake_upload)
+        return archived
+
+    async def test_what_was_downloaded_is_what_was_archived(self, downloaded):
+        url = "https://funder.example/csr/report.pdf"
+        result = await research.fetch_document.ainvoke({"url": url})
+        assert "Saved report.pdf" in result
+
+        assert len(downloaded) == 1, "the download was not archived"
+        bucket, key, data, content_type = downloaded[0]
+        assert bucket == storage.SOURCE_ARCHIVE
+        assert data == b"%PDF-1.4 annual report"
+        assert content_type == "application/pdf"
+        assert key == storage.archive_key(url, data, "report.pdf")
+
+    async def test_a_refused_url_is_never_archived(self, monkeypatch):
+        monkeypatch.setattr(research, "check_url", lambda url: _text("held source"))
+        called = []
+        monkeypatch.setattr(research.storage, "upload", lambda *a: called.append(a))
+        result = await research.fetch_document.ainvoke({"url": "https://held.example/x.pdf"})
+        assert result.startswith("REFUSED:")
+        assert called == [], "the access gate must run before anything is stored"
+
+
+class _FakeClient:
+    """The two-level async context manager httpx.stream() presents."""
+
+    def __init__(self, body: bytes, content_type: str):
+        self._body, self._type = body, content_type
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    def stream(self, method, url):
+        return _FakeStream(self._body, self._type)
+
+
+class _FakeStream:
+    def __init__(self, body: bytes, content_type: str):
+        self._body, self.headers = body, {"content-type": content_type}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    def raise_for_status(self):
+        return None
+
+    async def aiter_bytes(self):
+        yield self._body
+
+
+async def _none():
+    return None
+
+
+async def _text(value):
+    return value
