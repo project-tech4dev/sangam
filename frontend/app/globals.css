@@ -1,304 +1,318 @@
 /* Sangam design system — reconstructed from the design prototype.
    Terracotta accent · olive accent-2 · warm neutrals · Public Sans. */
 
-:root {
-  /* Terracotta accent ramp (anchors observed: 100 #ffe1d0, 600 #c67139, 700 #b2622d, 900 #8c491a) */
-  --color-accent-100: #ffe1d0;
-  --color-accent-200: #f8cbae;
-  --color-accent-300: #eeb289;
-  --color-accent-400: #e29a67;
-  --color-accent-500: #d4854f;
-  --color-accent-600: #c67139;
-  --color-accent-700: #b2622d;
-  --color-accent-800: #9e5523;
-  --color-accent-900: #8c491a;
-  --color-accent: var(--color-accent-600);
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-  /* Olive accent-2 ramp (anchors: 100 #e1eecc, 600 #728157, 900 #3d472b) */
-  --color-accent-2-100: #e1eecc;
-  --color-accent-2-200: #cfe0af;
-  --color-accent-2-300: #b7c98f;
-  --color-accent-2-400: #9cb076;
-  --color-accent-2-500: #7a8a5e;
-  --color-accent-2-600: #728157;
-  --color-accent-2-700: #5e6c47;
-  --color-accent-2-800: #4d5939;
-  --color-accent-2-900: #3d472b;
+@custom-variant dark (&:is(.dark *));
 
-  /* Warm neutrals */
-  --color-bg: #f9f4ed;
-  --color-surface: #fffdf9;
-  --color-text: #201e1d;
-  --color-neutral-100: #f4eee4;
-  --color-neutral-200: #eae2d4;
-  --color-neutral-300: #ddd2c1;
-  --color-neutral-400: #c4b8a5;
-  --color-neutral-500: #a19786;
-  --color-neutral-600: #877d6d;
-  --color-neutral-700: #645c50;
-  --color-neutral-800: #47413a;
-  --color-neutral-900: #2e2a26;
-  --color-divider: #e7ddcf;
+/* Everything below is layered so it sits in Tailwind's cascade: element rules
+   after preflight in `base`, the legacy classes in `components`, and Tailwind
+   utilities (shadcn components) above both. Unlayered CSS would beat every
+   utility regardless of specificity. */
+@layer base {
+  :root {
+    /* Terracotta accent ramp (anchors observed: 100 #ffe1d0, 600 #c67139, 700 #b2622d, 900 #8c491a) */
+    --color-accent-100: #ffe1d0;
+    --color-accent-200: #f8cbae;
+    --color-accent-300: #eeb289;
+    --color-accent-400: #e29a67;
+    --color-accent-500: #d4854f;
+    --color-accent-600: #c67139;
+    --color-accent-700: #b2622d;
+    --color-accent-800: #9e5523;
+    --color-accent-900: #8c491a;
+    --color-accent: var(--color-accent-600);
 
-  /* One-offs tokenized from the prototype */
-  --color-track-bg: #f3ded5;   /* occupation-track chip */
-  --color-track-fg: #8c3a22;
-  --color-bad: #a33f22;
-  /* What .muted resolves to, as a variable, so inline styles can use it too. */
-  --color-muted: var(--color-neutral-700);
+    /* Olive accent-2 ramp (anchors: 100 #e1eecc, 600 #728157, 900 #3d472b) */
+    --color-accent-2-100: #e1eecc;
+    --color-accent-2-200: #cfe0af;
+    --color-accent-2-300: #b7c98f;
+    --color-accent-2-400: #9cb076;
+    --color-accent-2-500: #7a8a5e;
+    --color-accent-2-600: #728157;
+    --color-accent-2-700: #5e6c47;
+    --color-accent-2-800: #4d5939;
+    --color-accent-2-900: #3d472b;
 
-  /* The six-step scale the prototype specifies. Import uses these; the older
-     screens still use literal px. */
-  --fs-xs: 12px;
-  --fs-sm: 14px;
-  --fs-md: 16px;
-  --fs-lg: 20px;
-  --fs-xl: 24px;
-  --fs-2xl: 36px;
+    /* Warm neutrals */
+    --color-bg: #f9f4ed;
+    --color-surface: #fffdf9;
+    --color-text: #201e1d;
+    --color-neutral-100: #f4eee4;
+    --color-neutral-200: #eae2d4;
+    --color-neutral-300: #ddd2c1;
+    --color-neutral-400: #c4b8a5;
+    --color-neutral-500: #a19786;
+    --color-neutral-600: #877d6d;
+    --color-neutral-700: #645c50;
+    --color-neutral-800: #47413a;
+    --color-neutral-900: #2e2a26;
+    --color-divider: #e7ddcf;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --shadow-sm: 0 1px 3px rgba(32, 30, 29, 0.07);
-  --shadow-md: 0 4px 16px rgba(32, 30, 29, 0.09);
+    /* One-offs tokenized from the prototype */
+    --color-track-bg: #f3ded5;   /* occupation-track chip */
+    --color-track-fg: #8c3a22;
+    --color-bad: #a33f22;
+    /* What .muted resolves to, as a variable, so inline styles can use it too. */
+    --color-muted: var(--color-neutral-700);
 
-  --font-body: var(--font-public-sans), -apple-system, system-ui, sans-serif;
-  --font-heading: var(--font-public-sans), -apple-system, system-ui, sans-serif;
+    /* The six-step scale the prototype specifies. Import uses these; the older
+       screens still use literal px. */
+    --fs-xs: 12px;
+    --fs-sm: 14px;
+    --fs-md: 16px;
+    --fs-lg: 20px;
+    --fs-xl: 24px;
+    --fs-2xl: 36px;
 
-  --page-max: 1160px;
-  --page-pad: 32px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --shadow-sm: 0 1px 3px rgba(32, 30, 29, 0.07);
+    --shadow-md: 0 4px 16px rgba(32, 30, 29, 0.09);
+
+    --font-body: var(--font-public-sans), -apple-system, system-ui, sans-serif;
+    --font-heading: var(--font-public-sans), -apple-system, system-ui, sans-serif;
+
+    --page-max: 1160px;
+    --page-pad: 32px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  a { color: var(--color-accent-700); text-decoration: none; }
+  a:hover { text-decoration: underline; }
 }
 
-* { box-sizing: border-box; }
+@layer components {
+  .page {
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 28px var(--page-pad) 72px;
+  }
 
-body {
-  margin: 0;
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.55;
-}
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-neutral-700);
+    font-weight: 600;
+  }
 
-h1, h2, h3, h4 {
-  font-family: var(--font-heading);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
+  .muted { color: var(--color-neutral-700); }
+  .muted-2 { color: var(--color-neutral-500); }
 
-a { color: var(--color-accent-700); text-decoration: none; }
-a:hover { text-decoration: underline; }
+  /* --- Cards --------------------------------------------------------------- */
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .card-kicker {
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-neutral-700);
+    font-weight: 600;
+  }
+  .card-title { font-family: var(--font-heading); font-size: 17px; font-weight: 600; }
+  .card-body { font-size: 13.5px; color: color-mix(in srgb, var(--color-text) 78%, transparent); }
+  .elev-sm { box-shadow: var(--shadow-sm); }
+  .elev-md { box-shadow: var(--shadow-md); }
 
-.page {
-  max-width: var(--page-max);
-  margin: 0 auto;
-  padding: 28px var(--page-pad) 72px;
-}
+  /* --- Tags / chips --------------------------------------------------------- */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .tag-accent   { background: var(--color-accent-100); color: var(--color-accent-800); }
+  .tag-accent-2 { background: var(--color-accent-2-100); color: var(--color-accent-2-800); }
+  .tag-neutral  { background: var(--color-neutral-200); color: var(--color-neutral-800); }
+  .tag-outline  { background: transparent; border-color: var(--color-divider); color: var(--color-neutral-700); }
+  .tag-track    { background: var(--color-track-bg); color: var(--color-track-fg); }
+  .tag-ondark   { background: rgba(255, 255, 255, 0.14); color: #fff; border-color: rgba(255, 255, 255, 0.25); }
 
-.eyebrow {
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-neutral-700);
-  font-weight: 600;
-}
+  /* --- Buttons --------------------------------------------------------------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: filter 0.12s ease, background 0.12s ease;
+  }
+  .btn:hover { text-decoration: none; filter: brightness(0.96); }
+  .btn-primary   { background: var(--color-accent-600); color: var(--color-bg); }
+  .btn-secondary { background: transparent; border-color: var(--color-accent-2-600); color: var(--color-accent-2-800); }
+  .btn-ghost     { background: transparent; color: var(--color-accent-700); }
+  .btn-block     { width: 100%; }
+  .btn-icon {
+    padding: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: transparent;
+    border-color: var(--color-divider);
+    color: var(--color-neutral-700);
+  }
 
-.muted { color: var(--color-neutral-700); }
-.muted-2 { color: var(--color-neutral-500); }
+  /* --- Inputs ---------------------------------------------------------------- */
+  .input {
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+  }
+  .input:focus { border-color: var(--color-accent-2-600); }
+  textarea.input { resize: vertical; min-height: 64px; }
 
-/* --- Cards --------------------------------------------------------------- */
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-divider);
-  border-radius: var(--radius-lg);
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.card-kicker {
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-neutral-700);
-  font-weight: 600;
-}
-.card-title { font-family: var(--font-heading); font-size: 17px; font-weight: 600; }
-.card-body { font-size: 13.5px; color: color-mix(in srgb, var(--color-text) 78%, transparent); }
-.elev-sm { box-shadow: var(--shadow-sm); }
-.elev-md { box-shadow: var(--shadow-md); }
+  /* --- Segmented control ----------------------------------------------------- */
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--color-divider);
+    border-radius: 999px;
+    padding: 3px;
+    background: var(--color-surface);
+    gap: 2px;
+  }
+  .seg-opt {
+    border: none;
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-neutral-700);
+    padding: 6px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .seg-opt[data-active="true"] { background: var(--color-accent-2-600); color: #fff; }
 
-/* --- Tags / chips --------------------------------------------------------- */
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 999px;
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-.tag-accent   { background: var(--color-accent-100); color: var(--color-accent-800); }
-.tag-accent-2 { background: var(--color-accent-2-100); color: var(--color-accent-2-800); }
-.tag-neutral  { background: var(--color-neutral-200); color: var(--color-neutral-800); }
-.tag-outline  { background: transparent; border-color: var(--color-divider); color: var(--color-neutral-700); }
-.tag-track    { background: var(--color-track-bg); color: var(--color-track-fg); }
-.tag-ondark   { background: rgba(255, 255, 255, 0.14); color: #fff; border-color: rgba(255, 255, 255, 0.25); }
+  /* --- Pills (place filters etc.) -------------------------------------------- */
+  .pill {
+    border: 1px solid var(--color-divider);
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-neutral-700);
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .pill[data-active="true"] { background: var(--color-accent-2-600); border-color: var(--color-accent-2-600); color: #fff; }
 
-/* --- Buttons --------------------------------------------------------------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 9px 18px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  text-decoration: none;
-  transition: filter 0.12s ease, background 0.12s ease;
-}
-.btn:hover { text-decoration: none; filter: brightness(0.96); }
-.btn-primary   { background: var(--color-accent-600); color: var(--color-bg); }
-.btn-secondary { background: transparent; border-color: var(--color-accent-2-600); color: var(--color-accent-2-800); }
-.btn-ghost     { background: transparent; color: var(--color-accent-700); }
-.btn-block     { width: 100%; }
-.btn-icon {
-  padding: 8px;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  background: transparent;
-  border-color: var(--color-divider);
-  color: var(--color-neutral-700);
-}
-
-/* --- Inputs ---------------------------------------------------------------- */
-.input {
-  font-family: var(--font-body);
-  font-size: 13.5px;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-divider);
-  border-radius: var(--radius-md);
-  padding: 10px 14px;
-  outline: none;
-  width: 100%;
-}
-.input:focus { border-color: var(--color-accent-2-600); }
-textarea.input { resize: vertical; min-height: 64px; }
-
-/* --- Segmented control ----------------------------------------------------- */
-.seg {
-  display: inline-flex;
-  border: 1px solid var(--color-divider);
-  border-radius: 999px;
-  padding: 3px;
-  background: var(--color-surface);
-  gap: 2px;
-}
-.seg-opt {
-  border: none;
-  background: transparent;
-  font-family: var(--font-body);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--color-neutral-700);
-  padding: 6px 16px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.seg-opt[data-active="true"] { background: var(--color-accent-2-600); color: #fff; }
-
-/* --- Pills (place filters etc.) -------------------------------------------- */
-.pill {
-  border: 1px solid var(--color-divider);
-  background: transparent;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-neutral-700);
-  padding: 6px 14px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.pill[data-active="true"] { background: var(--color-accent-2-600); border-color: var(--color-accent-2-600); color: #fff; }
-
-/* --- Dialog ----------------------------------------------------------------- */
-.dialog-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(32, 30, 29, 0.4);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 100;
-}
-.dialog {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: 28px;
-  max-width: 420px;
-  width: calc(100% - 48px);
-  box-shadow: var(--shadow-md);
-}
-.dialog-title { font-family: var(--font-heading); font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-.dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
-
-/* --- Progress --------------------------------------------------------------- */
-.progress-track {
-  height: 10px;
-  border-radius: 999px;
-  background: var(--color-neutral-200);
-  overflow: hidden;
-}
-.progress-fill { height: 100%; border-radius: 999px; background: var(--color-accent-600); }
-
-/* --- Animations (Ask Sangam) ------------------------------------------------ */
-@keyframes ask-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes ask-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
-.ask-in { animation: ask-in 0.3s ease both; }
-.ask-pulse { animation: ask-pulse 1s ease-in-out infinite; }
-/* Paired with sangamPulse so the guard below can switch it off. */
-.sangam-pulse { animation: sangamPulse 1.1s ease-in-out infinite; }
-
-@media (prefers-reduced-motion: reduce) {
-  .ask-in { animation: none; }
-  .ask-pulse { animation: none; opacity: 1; }
-  .sangam-pulse { animation: none; }
-}
-
-/* Ask Sangam responsive: hide the evidence rail on narrow screens. */
-@media (max-width: 900px) {
-  .evidence-rail-slot { display: none; }
-}
-.answer-md p { margin: 0 0 10px; }
-.answer-md table { border-collapse: collapse; font-size: 13px; }
-.answer-md th, .answer-md td { border: 1px solid var(--color-divider); padding: 6px 10px; text-align: left; }
-
-/* --- Responsive ------------------------------------------------------------- */
-.ask-main { padding: 22px 26px; }
-
-@media (max-width: 768px) {
-  :root { --page-pad: 16px; }
-  .page { padding: 18px var(--page-pad) 48px; }
-  .ask-main { padding: 14px; }
-  /* Sidebar becomes a slide-over so the chat keeps the full width. */
-  .ask-sidebar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    z-index: 40;
+  /* --- Dialog ----------------------------------------------------------------- */
+  .dialog-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(32, 30, 29, 0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .dialog {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    max-width: 420px;
+    width: calc(100% - 48px);
     box-shadow: var(--shadow-md);
   }
-}
+  .dialog-title { font-family: var(--font-heading); font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
 
-/* The Import screen's running indicator. */
-@keyframes sangamPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(0.72); }
+  /* --- Progress --------------------------------------------------------------- */
+  .progress-track {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--color-neutral-200);
+    overflow: hidden;
+  }
+  .progress-fill { height: 100%; border-radius: 999px; background: var(--color-accent-600); }
+
+  /* --- Animations (Ask Sangam) ------------------------------------------------ */
+  @keyframes ask-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes ask-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+  .ask-in { animation: ask-in 0.3s ease both; }
+  .ask-pulse { animation: ask-pulse 1s ease-in-out infinite; }
+  /* Paired with sangamPulse so the guard below can switch it off. */
+  .sangam-pulse { animation: sangamPulse 1.1s ease-in-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ask-in { animation: none; }
+    .ask-pulse { animation: none; opacity: 1; }
+    .sangam-pulse { animation: none; }
+  }
+
+  /* Ask Sangam responsive: hide the evidence rail on narrow screens. */
+  @media (max-width: 900px) {
+    .evidence-rail-slot { display: none; }
+  }
+  .answer-md p { margin: 0 0 10px; }
+  .answer-md table { border-collapse: collapse; font-size: 13px; }
+  .answer-md th, .answer-md td { border: 1px solid var(--color-divider); padding: 6px 10px; text-align: left; }
+
+  /* --- Responsive ------------------------------------------------------------- */
+  .ask-main { padding: 22px 26px; }
+
+  @media (max-width: 768px) {
+    :root { --page-pad: 16px; }
+    .page { padding: 18px var(--page-pad) 48px; }
+    .ask-main { padding: 14px; }
+    /* Sidebar becomes a slide-over so the chat keeps the full width. */
+    .ask-sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      z-index: 40;
+      box-shadow: var(--shadow-md);
+    }
+  }
+
+  /* The Import screen's running indicator. */
+  @keyframes sangamPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.72); }
+  }
 }
