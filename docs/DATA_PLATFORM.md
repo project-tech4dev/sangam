@@ -63,15 +63,25 @@ lives in the agent code.
 
 | Bucket | Holds | Key |
 |---|---|---|
-| `source-archive` | what research downloaded — public documents, kept so a fact survives its source URL going 404 | `funders/<funder_id>/<sha256[:12]>-<name>` · `orgs/<org_id>/<sha256[:12]>-<name>` |
-| `org-vault` | what an organisation uploads about itself, private by default under DPDP consent | `<org_id>/<sha256[:12]>-<name>` |
+| `source-archive` | what research downloaded — public documents, kept so a fact survives its source URL going 404 | `<sha256(source_url)[:12]>/<sha256(bytes)>-<name>` |
+| `org-vault` | what an organisation uploads about itself, private by default under DPDP consent | `<org_id>/<sha256(bytes)>-<name>` |
 
 Two buckets rather than one per entity because a bucket separates **access rules** and a folder
-organises; bucket names are also immutable. The first path segment is an **id, not a slug** —
-`_free_slug` appends a suffix on collision, so a slug depends on insertion order, and
-`org_members` joins on `org_id`. The policy in "Six fixes" below reads
-`(storage.foldername(name))[1]::bigint`, which is why this convention is fixed before the
-policies exist. Design and milestones: `docs/features/2026-09-30-supabase-storage.md`.
+organises; bucket names are also immutable.
+
+They are keyed differently because they are written at different moments. An upload knows its
+org, so the vault leads with `<org_id>` — an **id, not a slug**, because `_free_slug` appends a
+suffix on collision and `org_members` joins on `org_id`. That segment is the eventual RLS
+predicate, read as `(storage.foldername(name))[1]::bigint`, which is why the convention is fixed
+before the policies exist.
+
+The archive cannot do the same: `fetch_document` runs during research and a `funder_id` does not
+exist until `resolve_funder` runs at promotion. It keys on the **URL**, known at both moments, so
+promotion can find the object again with no lookup table; and on the **content**, so a funder
+republishing at the same URL next year adds a version rather than overwriting the bytes a finding
+was read from. The content hash in the key is also what lets promotion fill
+`documents.content_hash` without re-downloading. The entity link lives in `documents.funder_id`,
+where it belongs. Design and milestones: `docs/features/2026-09-30-supabase-storage.md`.
 
 ## Which tables are new
 

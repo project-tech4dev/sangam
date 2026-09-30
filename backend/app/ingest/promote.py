@@ -51,6 +51,7 @@ from app.ingest.writer import (
     write_program,
     write_rfp,
 )
+from app.integrations import storage
 
 logger = logging.getLogger(__name__)
 
@@ -254,15 +255,17 @@ async def _write_documents(
             "source_name": f.source_name or "research",
             "fetched_at": row["researched_at"], "as_of": f.as_of,
         })()
-        # ensure_document returns an id either way, so ask first: reporting
-        # "1 added" on every re-run would overstate what the run did.
-        seen = await (
-            await conn.execute("SELECT 1 FROM documents WHERE source_url = %s", (f.source_url,))
-        ).fetchone()
-        by_url[f.source_url] = await ensure_document(
-            conn, shim, funder_id=funder_id, doc_type=f.doc_type
+        # Whether the research run managed to archive this URL. Looked up
+        # rather than assumed: a page read with read_page was never downloaded,
+        # and claiming a storage_path for it would be a lie about provenance.
+        # Storage being unreachable returns None here, never raises.
+        key = await storage.archived_key(storage.SOURCE_ARCHIVE, f.source_url)
+        document_id, status = await ensure_document(
+            conn, shim, funder_id=funder_id, doc_type=f.doc_type,
+            storage_path=key, content_hash=storage.hash_from_key(key) if key else None,
         )
-        _count(report, "documents", "matched" if seen else "added")
+        by_url[f.source_url] = document_id
+        _count(report, "documents", status)
     return by_url
 
 

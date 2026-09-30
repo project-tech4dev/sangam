@@ -22,6 +22,7 @@ from app.ingest.access import check_url
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
 from app.ingest.writer import slugify
+from app.integrations import storage
 
 logger = logging.getLogger(__name__)
 
@@ -146,8 +147,19 @@ async def fetch_document(url: str, filename: str | None = None) -> str:
                         destination.unlink(missing_ok=True)
                         return f"ERROR: {url} is larger than the {MAX_DOWNLOAD_MB} MB limit."
                     fh.write(chunk)
+            content_type = response.headers.get("content-type", "application/octet-stream")
     except httpx.HTTPError as exc:
         return f"ERROR: download of {url} failed ({type(exc).__name__}: {exc})."
+
+    # Archive it, so a fact outlives its source URL. Silent either way: the
+    # model cannot act on a storage failure, and downloads_dir is still where
+    # read_document_pages looks. A file too large for the bucket is still read
+    # here - refusing to read a 55 MB annual report because it cannot be
+    # archived would break the job to protect the record of it.
+    data = destination.read_bytes()
+    await storage.upload(
+        storage.SOURCE_ARCHIVE, storage.archive_key(url, data, name), data, content_type
+    )
     return f"Saved {name} ({size:,} bytes). Read it with read_document_pages('{name}')."
 
 

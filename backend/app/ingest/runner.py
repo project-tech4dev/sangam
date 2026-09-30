@@ -189,7 +189,9 @@ async def _write_csr_year(conn: Any, run_id: int, rec: FunderCsrYearRecord) -> N
             target_table="resolution_queue", target_id=str(queue_id), source_url=rec.source_url,
         )
         return
-    document_id = await writer.ensure_document(conn, rec, funder_id=match.funder_id, doc_type="news_article")
+    document_id, _ = await writer.ensure_document(
+        conn, rec, funder_id=match.funder_id, doc_type="news_article"
+    )
     status, changes = await writer.write_csr_year(conn, rec, match.funder_id, document_id)
     await _item(
         conn, run_id, "india_csr", "funder_csr_year", status, subject=rec.funder_name,

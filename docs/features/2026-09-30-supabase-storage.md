@@ -38,12 +38,22 @@ part of the ingest write path and turn RLS into N policy sets that must be kept 
 
 | Bucket | Holds | Key |
 |---|---|---|
-| `source-archive` | what research downloaded — public documents, kept for provenance | `funders/<funder_id>/<sha256[:12]>-<name>` · `orgs/<org_id>/<sha256[:12]>-<name>` |
-| `org-vault` | what an NGO uploads about itself — DPDP-governed | `<org_id>/<sha256[:12]>-<name>` |
+| `source-archive` | what research downloaded — public documents, kept for provenance | `<sha256(source_url)[:12]>/<sha256(bytes)>-<name>` |
+| `org-vault` | what an NGO uploads about itself — DPDP-governed | `<org_id>/<sha256(bytes)>-<name>` |
 
-Two prefixes inside `source-archive` so funder 12 and org 12 cannot collide. Two buckets rather
-than one because a scraped public annual report and an NGO's audited accounts have genuinely
-different access rules, and a bucket is the cheapest place to put that boundary.
+Two buckets rather than one because a scraped public annual report and an NGO's audited accounts
+have genuinely different access rules, and a bucket is the cheapest place to put that boundary.
+
+**Revised at M2, from `funders/<funder_id>/…`.** Reading the code killed the original: an entity
+prefix cannot be written, because `fetch_document` runs during research and a `funder_id` does
+not exist until `resolve_funder` runs at promotion — while the bytes exist only at fetch. The
+archive therefore keys on the URL (known at both moments, so promotion finds the object with no
+lookup table) and on the content (so a funder republishing at the same URL adds a version instead
+of overwriting the bytes a finding was read from — the precise provenance failure this exists to
+prevent). The content hash in the key is what lets promotion populate `documents.content_hash`
+with nothing re-downloaded. The entity link lives in `documents.funder_id`.
+
+`org-vault` is unchanged: an upload knows its org, and `<org_id>` is the RLS predicate.
 
 ### Keyed by id, not slug
 
@@ -89,6 +99,7 @@ every result touching the table — and M4 is what deletes it.
 | **M0** | Reach the right Supabase project | — | `list_projects` returns the live ref |
 | **M1** | The two buckets and the path convention | S | Both buckets exist; `make migrate` is a clean no-op locally |
 | **M2** | Archive what research already downloads | M | A research run leaves `documents.storage_path` non-null and the object fetchable |
+| — | *M1 done, M2 code done — live verification of M2 needs the two env vars* | | |
 | **M3** | The Doc Vault — orgs upload | L | A 12 MB PDF goes up from the browser and comes back down |
 | **M4** | RLS, when auth lands | M | A non-member gets 403 *without* the backend checking |
 
@@ -148,6 +159,23 @@ storage.buckets` runs against it.
 **Exit:** research one funder against the live project — `documents.storage_path` non-null, the
 object downloads through a signed URL, the same PDF fetched twice writes one object. With
 `SUPABASE_SERVICE_KEY` unset the same run completes and writes its rows.
+
+**Built 2026-09-30; live verification still owed.** `app/integrations/storage.py`,
+`fetch_document` archiving, `ensure_document` recording and backfilling, 29 tests over
+`httpx.MockTransport` plus four against a real Postgres. The live half needs `SUPABASE_URL` and
+`SUPABASE_SERVICE_KEY` in `.env`; until they are set `storage_enabled` is false and the archive
+is a logged no-op.
+
+Two things that came out of building it, beyond the key change above:
+
+- **`ensure_document` returned early on an existing row and never updated it**, so a re-promote
+  could never have filled `storage_path` on any of the 96 rows that predate this. It now returns
+  `(id, added | updated | matched)` like the other writers, and backfills the archive columns
+  with a `coalesce`-style guard so a second promote cannot rewrite provenance.
+- **`storage_path` is looked up, not assumed.** A page read with `read_page` was never
+  downloaded; claiming a key for it would be a lie in a provenance column. Promotion asks
+  Storage whether the URL was archived, and Storage being unreachable returns `None` rather than
+  aborting the promote.
 
 ### M3 — The Doc Vault: orgs upload
 

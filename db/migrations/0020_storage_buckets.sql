@@ -6,15 +6,21 @@
 -- its own policies, and creating one would become part of the ingest write
 -- path. The two here differ in who may read them, which is what a bucket is for.
 --
---   source-archive   funders/<funder_id>/<sha256[:12]>-<name>
---                    orgs/<org_id>/<sha256[:12]>-<name>
---   org-vault        <org_id>/<sha256[:12]>-<name>
+--   source-archive   <sha256(source_url)[:12]>/<sha256(bytes)>-<name>
+--   org-vault        <org_id>/<sha256(bytes)>-<name>
 --
--- Keyed by id, not slug: _free_slug appends a suffix on collision so a slug
--- depends on insertion order, and org_members joins on org_id. The RLS policy
--- will read (storage.foldername(name))[1]::bigint, so this path convention IS
--- the access design — see docs/features/2026-09-30-supabase-storage.md.
--- documents.storage_path (migration 0005) already assumed '<org_id>/<file>'.
+-- The two are keyed differently because they are written at different moments.
+-- An upload knows its org_id, and <org_id>/ is what the RLS policy will read
+-- as (storage.foldername(name))[1]::bigint — an id rather than a slug because
+-- _free_slug appends a suffix on collision and org_members joins on org_id.
+-- migration 0005 already assumed '<org_id>/<file>' for exactly this.
+--
+-- The archive cannot use an entity id: fetch_document runs during research,
+-- and a funder_id does not exist until resolve_funder runs at promotion. So it
+-- keys on the URL, which is known at both moments, and on the content, so a
+-- funder republishing at the same URL adds a version instead of replacing the
+-- bytes a finding was read from. The entity link lives in documents.funder_id.
+-- See docs/features/2026-09-30-supabase-storage.md.
 --
 -- The guard is load-bearing. Supabase provides the `storage` schema; the local
 -- Postgres container does not, exactly as 0004 notes for `auth`. Without it
