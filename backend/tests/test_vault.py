@@ -7,10 +7,14 @@ refusal to record a document that is not actually in storage.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+from uuid import UUID
+
 import pytest
 
 from app.api.routes import documents as documents_api
 from app.core.config import Settings
+from app.repositories import documents as repo
 
 ROUTE = "app.api.routes.documents"
 ROW = {
@@ -171,3 +175,76 @@ class TestDownloading:
 
 async def _async(value):
     return value
+
+
+# --- the membership SQL, against a real Postgres ---------------------------
+# The unit tests above monkeypatch org_id_for_member, so the predicate that
+# actually decides who may upload is only proved here.
+
+STEWARD = UUID("00000000-0000-0000-0000-0000000000a1")
+MEMBER = UUID("00000000-0000-0000-0000-0000000000a2")
+OUTSIDER = UUID("00000000-0000-0000-0000-0000000000a3")
+
+
+class _PoolOf:
+    """One connection dressed as a pool, so a repository can be called inside
+    a transaction the test rolls back."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def connection(self):
+        @asynccontextmanager
+        async def held():
+            yield self._conn
+
+        return held()
+
+
+@pytest.fixture
+async def org(db):
+    """A throwaway org with three users in three relationships to it."""
+    row = await (await db.execute(
+        "INSERT INTO orgs (slug, name) VALUES ('test-vault-org', 'Test Vault Org') RETURNING id"
+    )).fetchone()
+    org_id = row["id"]
+    for user, email in ((STEWARD, "s@t.invalid"), (MEMBER, "m@t.invalid"), (OUTSIDER, "o@t.invalid")):
+        await db.execute(
+            "INSERT INTO users (id, email, is_staff) VALUES (%s, %s, false)", (user, email)
+        )
+    await db.execute(
+        "INSERT INTO org_members (user_id, org_id, role) VALUES (%s, %s, 'steward'), (%s, %s, 'member')",
+        (STEWARD, org_id, MEMBER, org_id),
+    )
+    return org_id
+
+
+@pytest.mark.integration
+class TestWhoMayTouchAnOrgsVault:
+    async def member(self, db, user, *, write, org="test-vault-org"):
+        return await repo.org_id_for_member(_PoolOf(db), org=org, user_id=user, write=write)
+
+    async def test_a_member_may_read_and_write(self, db, org):
+        assert await self.member(db, MEMBER, write=False) == org
+        assert await self.member(db, MEMBER, write=True) == org
+
+    async def test_a_steward_may_read_and_not_write(self, db, org):
+        """0004 defines a steward as an ecosystem player who reads an org's
+        private data and cannot write. This is where that is true or not.
+        """
+        assert await self.member(db, STEWARD, write=False) == org
+        assert await self.member(db, STEWARD, write=True) is None
+
+    async def test_an_outsider_gets_nothing(self, db, org):
+        assert await self.member(db, OUTSIDER, write=False) is None
+        assert await self.member(db, OUTSIDER, write=True) is None
+
+    async def test_staff_may_write_without_membership(self, db, org):
+        await db.execute("UPDATE users SET is_staff = true WHERE id = %s", (OUTSIDER,))
+        assert await self.member(db, OUTSIDER, write=True) == org
+
+    async def test_resolves_by_id_as_well_as_slug(self, db, org):
+        assert await self.member(db, MEMBER, write=True, org=str(org)) == org
+
+    async def test_an_org_that_does_not_exist_is_None(self, db, org):
+        assert await self.member(db, MEMBER, write=True, org="no-such-org") is None

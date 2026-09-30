@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from uuid import UUID
 
 import httpx
+import psycopg
 import pytest
 from fastapi import FastAPI
+from psycopg.rows import dict_row
 
 from app.core.security import DEV_USER_ID, get_current_user
 from app.db.pool import get_pool
@@ -43,3 +46,23 @@ def client_for():
 
 
 assert DEV_USER_ID == TEST_USER  # auth stub and tests agree on the dev identity
+
+DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
+
+
+@pytest.fixture
+async def db():
+    """An async connection to the compose Postgres, rolled back afterwards.
+
+    For the integration tier only. Unit tests get _SentinelPool and must
+    monkeypatch the repository instead.
+    """
+    try:
+        conn = await psycopg.AsyncConnection.connect(
+            DSN, connect_timeout=3, row_factory=dict_row, autocommit=False
+        )
+    except psycopg.OperationalError:
+        pytest.skip("compose Postgres not reachable on localhost:5433")
+    async with conn:
+        yield conn
+        await conn.rollback()  # never leave a test row behind

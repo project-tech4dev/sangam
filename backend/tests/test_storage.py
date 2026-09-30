@@ -9,14 +9,11 @@ makes no request at all.
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 
 import httpx
-import psycopg
 import pytest
-from psycopg.rows import dict_row
 
 from app.core.config import Settings
 from app.ingest.writer import ensure_document
@@ -223,22 +220,6 @@ class TestSignedUrl:
 
 
 # --- the documents row, against a real Postgres ----------------------------
-
-DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
-
-
-@pytest.fixture
-async def db():
-    try:
-        conn = await psycopg.AsyncConnection.connect(
-            DSN, connect_timeout=3, row_factory=dict_row, autocommit=False
-        )
-    except psycopg.OperationalError:
-        pytest.skip("compose Postgres not reachable on localhost:5433")
-    async with conn:
-        yield conn
-        await conn.rollback()  # never leave a test row behind
-
 
 @pytest.mark.integration
 class TestEnsureDocumentRecordsTheArchive:

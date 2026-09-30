@@ -270,6 +270,12 @@ Read this before treating the feature as finished.
   first few pages into `content_md` and no more. Fine for search, wrong for analysis.
 - **A failed upload leaves an orphan.** The signed URL is minted and the object may land before
   the confirm call fails or is never made; nothing sweeps a key with no `documents` row.
+- **An archived PDF is served to any signed-in user.** `readable_document` treats
+  `is_public = true` as readable by everyone, which is right for a public CSR report but means
+  the archive redistributes bytes we fetched under robots.txt permission — and robots governs
+  crawling, not redistribution. It cannot contain a *withheld* source: `check_url` refuses
+  before the download and only `open_api` and `crawl_allowed` are dispatchable. It can contain
+  a host nobody has classified yet, which `check_url` reads and files as a proposal.
 - **Row-level security does not exist anywhere in this database today** — no policies, no grants,
   no roles. `docs/DATA_PLATFORM.md:18`: *"Access control | none in the database; the backend
   connects as owner and sees everything."*
