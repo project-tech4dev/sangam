@@ -59,6 +59,12 @@ services:
       # Post-answer audit of SQL answers; empty = off. See docs/SQL_AGENT.md.
       SQL_AUDIT_MODEL: ${SQL_AUDIT_MODEL:-}
       UTILITY_MODEL: ${UTILITY_MODEL:-}
+      # Supabase Storage. Unset = archiving skipped, uploads 503; everything
+      # else runs. Forwarded here because a variable absent from this block
+      # never reaches the container however it is set in .env — which is how
+      # LangSmith tracing stayed silently dead.
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}

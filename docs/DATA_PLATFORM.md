@@ -56,6 +56,23 @@ write-up.
 `fit_score_items`, `score_adjustments`. The rubric family stays exactly as it is; scoring logic
 lives in the agent code.
 
+### Where `documents.storage_path` points
+
+`storage_path` is a key in Supabase Storage, in one of two private buckets created by
+`db/migrations/0020_storage_buckets.sql`:
+
+| Bucket | Holds | Key |
+|---|---|---|
+| `source-archive` | what research downloaded — public documents, kept so a fact survives its source URL going 404 | `funders/<funder_id>/<sha256[:12]>-<name>` · `orgs/<org_id>/<sha256[:12]>-<name>` |
+| `org-vault` | what an organisation uploads about itself, private by default under DPDP consent | `<org_id>/<sha256[:12]>-<name>` |
+
+Two buckets rather than one per entity because a bucket separates **access rules** and a folder
+organises; bucket names are also immutable. The first path segment is an **id, not a slug** —
+`_free_slug` appends a suffix on collision, so a slug depends on insertion order, and
+`org_members` joins on `org_id`. The policy in "Six fixes" below reads
+`(storage.foldername(name))[1]::bigint`, which is why this convention is fixed before the
+policies exist. Design and milestones: `docs/features/2026-09-30-supabase-storage.md`.
+
 ## Which tables are new
 
 14, in four groups.

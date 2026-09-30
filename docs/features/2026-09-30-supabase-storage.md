@@ -104,6 +104,9 @@ Re-authenticate via `/mcp` against the account that owns the ap-south-1 project.
 **Exit:** `list_projects` shows `aqhhlorihtkcipntwycg`, and `select id, name from
 storage.buckets` runs against it.
 
+**Done 2026-09-30.** Re-authenticating surfaced `aqhhlorihtkcipntwycg` "Sangam Dev", ap-south-1,
+36 public tables, 96 documents — the live one.
+
 ### M1 — The two buckets and the path convention
 
 - **`db/migrations/0020_storage_buckets.sql`** — `INSERT INTO storage.buckets (id, name, public,
@@ -220,6 +223,15 @@ Read this before treating the feature as finished.
   Backfilling is a one-off script after M2 proves the path, not part of it.
 - **No retention, deletion or virus scanning**, and no resumable (TUS) uploads. An upload that
   fails halfway leaves an orphaned object with no `documents` row.
+- **Staging is 19 migrations behind, which blocks M2 and M3.** Measured 2026-09-30 on
+  `aqhhlorihtkcipntwycg`: `schema_migrations` is empty, and `documents.storage_path`,
+  `org_members`, `entity_research`, `funder_csr_years`, `proposals` and `resolution_queue` do
+  not exist. It is the v2 baseline plus data. M2 writes `documents.storage_path` and M3 reads
+  `org_members`; neither can run there until `make migrate ENV=staging` applies `0001`–`0020`.
+  That is a substantial schema change to a live database with 96 documents in it — back it up
+  first, and treat it as its own piece of work, not a step inside this one.
+- **A bucket named `axis` already exists** on the project (private, 50 MB, created 2026-09-30
+  06:20 UTC), outside this design and unreferenced by any code. Left alone pending a decision.
 
 ## Verification
 

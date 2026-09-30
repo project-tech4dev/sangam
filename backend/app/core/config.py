@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     # Where download_file saves what it fetches, and read_pdf reads from.
     downloads_dir: str = "/tmp/sangam-downloads"
 
+    # Supabase Storage: the provenance archive for fetched documents and the
+    # Doc Vault for org uploads. The service-role key bypasses RLS, so it never
+    # reaches the browser. Both empty = archiving is skipped and the upload
+    # routes return 503; nothing else changes.
+    supabase_url: str = ""
+    supabase_service_key: str = ""
+
     # Optional tool integrations — all disabled when empty.
     tavily_api_key: str = ""
     github_pat: str = ""
@@ -94,6 +101,10 @@ class Settings(BaseSettings):
     @property
     def langfuse_enabled(self) -> bool:
         return bool(self.langfuse_public_key and self.langfuse_secret_key)
+
+    @property
+    def storage_enabled(self) -> bool:
+        return bool(self.supabase_url and self.supabase_service_key)
 
     @property
     def origins(self) -> list[str]:

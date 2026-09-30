@@ -354,14 +354,17 @@ def test_bad_credentials_report_instead_of_failing_silently(monkeypatch, caplog)
     assert "LANGFUSE_HOST" in caplog.text
 
 
-class TestComposeForwardsTheTracingEnvironment:
-    """LangSmith is configured by environment variable and nothing else, so a
-    variable compose does not forward is a variable that silently does nothing.
+class TestComposeForwardsTheDocumentedEnvironment:
+    """A variable compose does not forward is a variable that silently does
+    nothing, however carefully it is set in .env.
 
     That is exactly what happened: .env.example documented LANGSMITH_TRACING,
     LANGSMITH_API_KEY and LANGSMITH_PROJECT, the code read them, and the
     backend service never passed them in. Setting them looked correct and
     changed nothing.
+    
+    SUPABASE_* is covered by the same rule for the same reason: the Storage
+    archive is off unless both variables reach the process.
     """
 
     ROOT = Path(__file__).resolve().parents[2]
@@ -383,8 +386,8 @@ class TestComposeForwardsTheTracingEnvironment:
         backend = compose.read_text(encoding="utf-8").split("  frontend:")[0]
         return set(re.findall(r"^\s{6}([A-Z][A-Z0-9_]+):", backend, re.MULTILINE))
 
-    @pytest.mark.parametrize("prefix", ["LANGSMITH_", "LANGFUSE_"])
-    def test_every_documented_tracing_variable_reaches_the_container(self, prefix):
+    @pytest.mark.parametrize("prefix", ["LANGSMITH_", "LANGFUSE_", "SUPABASE_"])
+    def test_every_documented_variable_reaches_the_container(self, prefix):
         documented = {v for v in self.documented() if v.startswith(prefix)}
         assert documented, f"no {prefix}* variables in .env.example — did it move?"
         missing = sorted(documented - self.forwarded())
