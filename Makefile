@@ -99,9 +99,13 @@ evals:
 # Render docs/entities and the generated blocks of docs/clients from the
 # research table. Host venv, like `make evals`: the backend image mounts only
 # app/, seed/ and db/, so nothing inside it can write a repo file.
+#
+# Honours ENV, but cannot use $(DB_URL) for the local case: that resolves to
+# host=postgres, which only exists on the compose network, and this runs on the
+# host. Local gets the published port instead; staging is a real host either way.
 client-docs:
 	@set -a; [ -f .env ] && . ./.env; set +a; \
-	cd backend && DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
+	cd backend && DATABASE_URL="$(if $(filter staging,$(ENV)),$(DB_URL),postgresql://sangam:sangam@localhost:5433/sangam)" \
 	.venv/bin/python -m app.ingest.render_docs
 
 migrate-status:
