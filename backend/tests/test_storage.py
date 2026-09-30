@@ -168,9 +168,25 @@ class TestUpload:
         assert seen[0].headers["x-upsert"] == "false", "an overwrite would destroy provenance"
 
     async def test_already_archived_counts_as_success(self, enabled, monkeypatch):
-        """409 means the object is there, which is all the caller needs."""
-        transport(monkeypatch, lambda r: httpx.Response(409, json={"error": "Duplicate"}))
+        """The object being there is all the caller needs.
+
+        The body is the one the live API actually returns, captured on
+        2026-09-30: a duplicate comes back as HTTP **400** with a 409 inside.
+        Matching on the transport status alone logged every re-fetch of a
+        document as an archiving failure.
+        """
+        transport(monkeypatch, lambda r: httpx.Response(400, json={
+            "statusCode": "409", "error": "Duplicate",
+            "message": "The resource already exists", "code": "KeyAlreadyExists",
+        }))
         assert await storage.upload("source-archive", "k", b"x", "application/pdf") == "k"
+
+    async def test_a_real_bad_request_is_still_a_failure(self, enabled, monkeypatch):
+        """Not every 400 is a duplicate; a malformed key must not look stored."""
+        transport(monkeypatch, lambda r: httpx.Response(400, json={
+            "statusCode": "400", "error": "InvalidKey", "message": "Invalid key",
+        }))
+        assert await storage.upload("source-archive", "k", b"x", "application/pdf") is None
 
     async def test_refuses_a_file_larger_than_the_bucket(self, enabled, monkeypatch):
         seen = transport(monkeypatch, lambda r: httpx.Response(200))

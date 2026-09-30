@@ -125,11 +125,33 @@ def hash_from_key(key: str) -> str | None:
     return head if len(head) == 64 and all(c in "0123456789abcdef" for c in head) else None
 
 
+def _is_duplicate(response: httpx.Response) -> bool:
+    """Whether a rejected upload was rejected for already being there.
+
+    Measured against the live API, not assumed: Supabase answers a duplicate
+    with **HTTP 400** and `{"statusCode":"409","error":"Duplicate",
+    "code":"KeyAlreadyExists"}` in the body. Matching on the transport status
+    alone logged every re-fetch of a document as an archiving failure.
+    """
+    if response.status_code not in (400, 409):
+        return False
+    try:
+        body = response.json()
+    except ValueError:
+        return response.status_code == 409
+    return (
+        str(body.get("statusCode")) == "409"
+        or body.get("error") == "Duplicate"
+        or body.get("code") == "KeyAlreadyExists"
+    )
+
+
 async def upload(bucket: str, key: str, data: bytes, content_type: str) -> str | None:
     """Store bytes and return the key, or None if it did not happen.
 
-    `x-upsert: false`, so re-archiving identical content is a 409 and the first
-    write wins — treated as success, because the object is there either way.
+    `x-upsert: false`, so re-archiving content already there is a duplicate
+    rather than an overwrite — and a duplicate counts as success, because the
+    object is present either way and the key is content-addressed.
     """
     if _disabled():
         return None
@@ -147,7 +169,7 @@ async def upload(bucket: str, key: str, data: bytes, content_type: str) -> str |
                 headers={"Content-Type": content_type or "application/octet-stream",
                          "x-upsert": "false"},
             )
-        if response.status_code == 409:
+        if _is_duplicate(response):
             return key
         response.raise_for_status()
     except httpx.HTTPError as exc:

@@ -160,13 +160,22 @@ storage.buckets` runs against it.
 object downloads through a signed URL, the same PDF fetched twice writes one object. With
 `SUPABASE_SERVICE_KEY` unset the same run completes and writes its rows.
 
-**Built 2026-09-30; live verification still owed.** `app/integrations/storage.py`,
+**Done 2026-09-30, verified against the live project.** `app/integrations/storage.py`,
 `fetch_document` archiving, `ensure_document` recording and backfilling, 29 tests over
 `httpx.MockTransport` plus four against a real Postgres. The live half needs `SUPABASE_URL` and
 `SUPABASE_SERVICE_KEY` in `.env`; until they are set `storage_enabled` is false and the archive
 is a logged no-op.
 
-Two things that came out of building it, beyond the key change above:
+Round trip proved end to end: upload, a duplicate upload, `archived_key` finding it again, the
+content hash recovered from the key matching `sha256(bytes)`, a signed URL, a `GET` through it
+returning identical bytes, and cleanup.
+
+Three things that came out of building it, beyond the key change above:
+
+- **A duplicate upload answers HTTP 400, not 409.** Only the live API showed this: the body is
+  `{"statusCode":"409","error":"Duplicate","code":"KeyAlreadyExists"}`. `upload()` matched on the
+  transport status, so every re-fetch of a document logged an archiving failure and returned
+  `None`. It now reads the body, and a test pins the exact shape.
 
 - **`ensure_document` returned early on an existing row and never updated it**, so a re-promote
   could never have filled `storage_path` on any of the 96 rows that predate this. It now returns
@@ -204,8 +213,15 @@ knowingly leaving something in it.
 `is_public = false` and a populated `content_md`; `pytest -m "not integration"` green against the
 pool sentinel (unit tests never touch a database — monkeypatch the repository, not the pool).
 
-**Built 2026-09-30; live verification still owed**, for the same reason as M2 — the two env
-vars. Three deviations, each with its reason:
+**Done 2026-09-30, verified end to end against the live project**: a 12 MB PDF through
+`POST /api/documents/uploads` → `PUT` straight to Storage (4.8 s, never touching the backend) →
+`POST /api/documents` → `GET /api/documents/{id}/file` → bytes identical on the way back. The row
+came out `is_public = false`, `status = 'received'`, `storage_path` carrying its bucket,
+`uploaded_by` set, the PDF text in `content_md`, and `content_hash` equal to the file's real
+sha256 — measured server-side, not claimed by the client. All four refusals answered correctly
+(403 / 400 / 404 / 404). Test row and object deleted afterwards.
+
+Three deviations, each with its reason:
 
 - **The routes live on `/api/documents`, not under `/api/orgs/{slug}`.** `POST
   /api/documents/uploads`, `POST /api/documents`, `GET /api/documents/{id}/file`, with the org in
