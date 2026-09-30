@@ -398,3 +398,61 @@ async def _none():
 
 async def _text(value):
     return value
+
+
+class TestCatalogNaming:
+    """The name an object gets once promotion knows whose document it is.
+
+    Two keys exist because they are built at different moments: fetch has only
+    a URL and bytes, promotion has a funder and a period.
+    """
+
+    def test_reads_as_a_person_would_file_it(self):
+        assert storage.catalog_key(
+            "terre-des-hommes-deutschland-e-v", "FY2023-24", "tdh_de_jahresbericht_2023.pdf"
+        ) == "funders/terre-des-hommes-deutschland-e-v/2023-24-tdh_de_jahresbericht_2023.pdf"
+
+    def test_keeps_the_publishers_own_filename(self):
+        """So a row can be matched back to its source by eye, and so a title
+        the model wrote cannot drift between runs."""
+        key = storage.catalog_key("x", "FY2023", "RNP_AnnualReport24-25.pdf")
+        assert key.endswith("RNP_AnnualReport24-25.pdf")
+
+    def test_an_undated_document_keeps_a_clean_name(self):
+        assert storage.catalog_key("x", None, "policy.pdf") == "funders/x/policy.pdf"
+
+    def test_a_year_it_cannot_parse_is_left_off_rather_than_guessed(self):
+        assert storage.catalog_key("x", "undated", "policy.pdf") == "funders/x/policy.pdf"
+
+    def test_a_collision_is_disambiguated_before_the_extension(self):
+        """Same funder, same year, same published filename, different bytes.
+        Overwriting one with the other would lose a source."""
+        key = storage.catalog_key("x", "FY2023", "report.pdf", suffix="69b46979")
+        assert key == "funders/x/2023-report-69b46979.pdf"
+
+    def test_the_fetch_time_name_survives_the_rename(self):
+        fetched = storage.archive_key("https://x.example/ar.pdf", b"bytes", "ar.pdf")
+        assert storage.filename_from_key(fetched) == "ar.pdf"
+
+    def test_a_name_with_no_hash_is_returned_whole(self):
+        assert storage.filename_from_key("funders/x/2023-ar.pdf") == "2023-ar.pdf"
+
+
+class TestMove:
+    async def test_renames_and_reports_success(self, enabled, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"message": "ok"}))
+        assert await storage.move("source-archive", "ab/cd-x.pdf", "funders/y/x.pdf") is True
+        body = json.loads(seen[0].content)
+        assert body["sourceKey"] == "ab/cd-x.pdf"
+        assert body["destinationKey"] == "funders/y/x.pdf"
+
+    async def test_a_failed_move_is_False_not_an_exception(self, enabled, monkeypatch):
+        """Promotion must finish: the object is still archived under its
+        fetch-time key, and the caller records whichever key is real."""
+        transport(monkeypatch, lambda r: httpx.Response(500))
+        assert await storage.move("source-archive", "a", "b") is False
+
+    async def test_does_nothing_when_disabled(self, off, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200))
+        assert await storage.move("source-archive", "a", "b") is False
+        assert seen == []

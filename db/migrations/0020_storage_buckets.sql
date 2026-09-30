@@ -6,7 +6,8 @@
 -- its own policies, and creating one would become part of the ingest write
 -- path. The two here differ in who may read them, which is what a bucket is for.
 --
---   source-archive   <sha256(source_url)[:12]>/<sha256(bytes)>-<name>
+--   source-archive   <sha256(source_url)[:12]>/<sha256(bytes)>-<name>   at fetch
+--                    funders/<slug>/<year>-<name>                       after promotion
 --   org-vault        <org_id>/<uuid4>-<name>
 --
 -- The two are keyed differently because of who holds the bytes when the key

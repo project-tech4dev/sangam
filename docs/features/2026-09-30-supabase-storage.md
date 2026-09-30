@@ -38,7 +38,7 @@ part of the ingest write path and turn RLS into N policy sets that must be kept 
 
 | Bucket | Holds | Key |
 |---|---|---|
-| `source-archive` | what research downloaded — public documents, kept for provenance | `<sha256(source_url)[:12]>/<sha256(bytes)>-<name>` |
+| `source-archive` | what research downloaded — public documents, kept for provenance | `<sha256(source_url)[:12]>/<sha256(bytes)>-<name>` at fetch, renamed to `funders/<slug>/<year>-<name>` at promotion |
 | `org-vault` | what an NGO uploads about itself — DPDP-governed | `<org_id>/<uuid4>-<name>` |
 
 Two buckets rather than one because a scraped public annual report and an NGO's audited accounts
@@ -54,6 +54,16 @@ prevent). The content hash in the key is what lets promotion populate `documents
 with nothing re-downloaded. The entity link lives in `documents.funder_id`.
 
 `org-vault` is unchanged: an upload knows its org, and `<org_id>` is the RLS predicate.
+
+**Revised again after the first real run.** A hash-named bucket is unbrowsable — the publisher's
+filename was in the key, but behind a 12-character folder and a 64-character digest. The fix is
+not a different key, it is a *second* one: promotion knows the funder and the period, so
+`_shelve` renames the object to `funders/<slug>/<year>-<publisher's filename>` once it does.
+
+That also answers the original request — a place per funder — one stage later than asked for,
+and it leaves a signal worth having: **an object still under a hash folder was fetched and never
+cited by a finding.** The first run left two, including a 16 MB annual report that was read and
+produced no citation.
 
 ### Keyed by id, not slug
 

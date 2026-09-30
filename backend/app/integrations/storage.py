@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import uuid
 from pathlib import Path
 from typing import Any
@@ -94,7 +95,9 @@ def url_prefix(source_url: str) -> str:
 
 
 def archive_key(source_url: str, data: bytes, filename: str | None = None) -> str:
-    """`<url-hash>/<content-sha256>-<name>` — URL for the folder, content for the file.
+    """The key an object gets at FETCH time, when we do not yet know whose it is.
+
+    `<url-hash>/<content-sha256>-<name>` — URL for the folder, content for the file.
 
     Both halves earn their place. The URL hash means two sources both called
     `report.pdf` stop overwriting each other, which they do on disk today. The
@@ -119,10 +122,73 @@ def hash_from_key(key: str) -> str | None:
     """The content sha256 out of a key built by `archive_key`, or None.
 
     None matters: a key written by any other route has no hash to report, and
-    guessing one would put a wrong value in a provenance column.
+    guessing one would put a wrong value in a provenance column. Read it before
+    `catalog_key` renames the object — the readable name does not carry it.
     """
     head = Path(key).name.split("-", 1)[0]
     return head if len(head) == 64 and all(c in "0123456789abcdef" for c in head) else None
+
+
+def filename_from_key(key: str) -> str:
+    """The publisher's own filename, with any content hash stripped off."""
+    name = Path(key).name
+    return name.split("-", 1)[1] if hash_from_key(key) else name
+
+
+def _year(as_of: str | None) -> str:
+    """`FY2023-24` -> `2023-24`. Empty when the source did not say."""
+    if not as_of:
+        return ""
+    digits = re.sub(r"[^0-9-]", "", as_of).strip("-")
+    return digits if re.fullmatch(r"\d{4}(-\d{2,4})?", digits or "") else ""
+
+
+def catalog_key(funder_slug: str, as_of: str | None, filename: str, suffix: str = "") -> str:
+    """The key an object gets once PROMOTION knows which funder it belongs to.
+
+    `funders/<slug>/<year>-<publisher's filename>`, which is browsable, sorts
+    by year within a funder, and keeps the name the funder itself published so
+    a row can be matched back to its source by eye.
+
+    The year and the funder both come from the catalog, so this cannot be built
+    at fetch time — `fetch_document` runs during research and `resolve_funder`
+    does not run until promotion. Hence two keys and a move between them, and
+    hence a useful signal: anything left under a hash folder was fetched and
+    never cited by a finding.
+
+    `suffix` disambiguates the rare collision — same funder, same year, same
+    published filename, different bytes.
+    """
+    stem, dot, ext = _safe_name(filename).rpartition(".")
+    base = f"{stem}{'-' + suffix if suffix else ''}{dot}{ext}" if dot else (
+        f"{_safe_name(filename)}{'-' + suffix if suffix else ''}"
+    )
+    year = _year(as_of)
+    return f"funders/{_safe_name(funder_slug)}/{year + '-' if year else ''}{base}"
+
+
+async def move(bucket: str, source: str, destination: str) -> bool:
+    """Rename an object in place. False on any failure, never raises.
+
+    A failed move is not a failed promotion: the object is still archived under
+    its fetch-time key, and the caller records whichever key is real.
+    """
+    if _disabled():
+        return False
+    try:
+        async with _client() as client:
+            response = await client.post(
+                "/object/move",
+                json={"bucketId": bucket, "sourceKey": source, "destinationKey": destination},
+            )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "moving %s/%s to %s failed (%s: %s)", bucket, source, destination,
+            type(exc).__name__, exc,
+        )
+        return False
+    return True
 
 
 def _is_duplicate(response: httpx.Response) -> bool:
