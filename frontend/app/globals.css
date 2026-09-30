@@ -1,92 +1,231 @@
-/* Sangam design system — reconstructed from the design prototype.
-   Terracotta accent · olive accent-2 · warm neutrals · Public Sans. */
+/* Sangam global styles.
 
+   1. Imports — Tailwind, animations, shadcn's shared CSS.
+   2. Theme — every colour, radius, shadow and font token, under both the Sangam
+      names and shadcn's, then the @theme mapping that turns them into Tailwind
+      classes (bg-primary, text-muted-foreground, bg-terracotta-100 …).
+   3. Base and legacy classes — the existing screens' .card/.btn/.tag, which use
+      only the theme's tokens, until those screens move onto shadcn components.
+
+   No hard-coded colours outside section 2: change a colour there and it
+   changes everywhere. */
+
+/* 1. Imports ---------------------------------------------------------------- */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Everything below is layered so it sits in Tailwind's cascade: element rules
+/* 2. Theme -------------------------------------------------------------------
+   From the designer's handoff: features-plans/prototype-v1/sangam-theme.css on
+   origin/docs/data-platform-architecture-spec @ b27f395. Two local changes:
+   the Google Fonts @import is gone (next/font in app/layout.tsx self-hosts
+   Public Sans), and the font stacks use next/font's --font-public-sans.
+   Unlayered on purpose, so these values beat anything in a layer. */
+
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f5f2ec;
+  --color-text: #201e1d;
+  --color-accent: #e0a177;
+  --color-accent-2: #7a8a5e;
+  --color-divider: color-mix(in srgb, #201e1d 16%, transparent);
+
+  /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
+     same step of any role matches the others in visual value. */
+  --color-neutral-100: #f9f4ed;
+  --color-neutral-200: #eee7db;
+  --color-neutral-300: #dcd3c4;
+  --color-neutral-400: #c0b6a5;
+  --color-neutral-500: #a19786;
+  --color-neutral-600: #82796a;
+  --color-neutral-700: #645c50;
+  --color-neutral-800: #474238;
+  --color-neutral-900: #2e2b25;
+
+  --color-accent-100: #fff2eb;
+  --color-accent-200: #ffe1d0;
+  --color-accent-300: #ffc6a5;
+  --color-accent-400: #f6a06b;
+  --color-accent-500: #d67f48;
+  --color-accent-600: #d08f63;
+  --color-accent-700: #b97d50;
+  --color-accent-800: #643312;
+  --color-accent-900: #402310;
+
+  --color-accent-2-100: #f0fae1;
+  --color-accent-2-200: #e1eecc;
+  --color-accent-2-300: #ccdbb2;
+  --color-accent-2-400: #aebf92;
+  --color-accent-2-500: #8fa073;
+  --color-accent-2-600: #728157;
+  --color-accent-2-700: #56633f;
+  --color-accent-2-800: #3d472b;
+  --color-accent-2-900: #272e1b;
+
+  --font-heading: var(--font-public-sans), system-ui, sans-serif;
+  --font-heading-weight: 700;
+  --font-body: var(--font-public-sans), system-ui, sans-serif;
+
+  /* Type scale — the only sizes used anywhere in the design. */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 24px;
+  --fs-2xl: 36px;
+
+  --space-1: 4.4px;
+  --space-2: 8.8px;
+  --space-3: 13.2px;
+  --space-4: 17.6px;
+  --space-6: 26.4px;
+  --space-8: 35.2px;
+
+  /* shadcn stock radii: --radius 10px, derived sm/md/lg/xl */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Elevation — derived from the ground: soft ink-tinted shadows on a
+     light theme, a hairline edge + ambient darkness on a dark one. */
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
+  --shadow-md: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2e2b25 22%, transparent);
+
+  /* shadcn/ui contract — same tokens under shadcn's variable names.
+     Paste this block into the app's globals.css and stock shadcn components inherit the Sangam look. */
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-bg);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-bg);
+  --secondary: var(--color-accent-2-100);
+  --secondary-foreground: var(--color-accent-2-800);
+  --muted: var(--color-neutral-100);
+  --muted-foreground: var(--color-neutral-700);
+  --accent: var(--color-accent-100);
+  --accent-foreground: var(--color-accent-800);
+  --destructive: #a33f22;
+  --border: var(--color-divider);
+  --input: var(--color-divider);
+  --ring: var(--color-accent);
+  --radius: 0.625rem;
+  --chart-1: var(--color-accent-2-600);
+  --chart-2: var(--color-accent-500);
+  --chart-3: var(--color-accent-2-400);
+  --chart-4: var(--color-accent-300);
+  --chart-5: var(--color-neutral-500);
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-text);
+  --sidebar-primary: var(--color-accent-2-700);
+  --sidebar-primary-foreground: var(--color-bg);
+  --sidebar-accent: var(--color-accent-2-100);
+  --sidebar-accent-foreground: var(--color-accent-2-900);
+  --sidebar-border: var(--color-divider);
+  --sidebar-ring: var(--color-accent);
+}
+
+@theme inline {
+  --font-sans: var(--font-public-sans), system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  /* Brand ramps, usable as bg-terracotta-100, text-sage-700, etc. */
+  --color-terracotta-100: var(--color-accent-100);
+  --color-sage-100: var(--color-accent-2-100);
+  --color-sand-100: var(--color-neutral-100);
+  --color-terracotta-200: var(--color-accent-200);
+  --color-sage-200: var(--color-accent-2-200);
+  --color-sand-200: var(--color-neutral-200);
+  --color-terracotta-300: var(--color-accent-300);
+  --color-sage-300: var(--color-accent-2-300);
+  --color-sand-300: var(--color-neutral-300);
+  --color-terracotta-400: var(--color-accent-400);
+  --color-sage-400: var(--color-accent-2-400);
+  --color-sand-400: var(--color-neutral-400);
+  --color-terracotta-500: var(--color-accent-500);
+  --color-sage-500: var(--color-accent-2-500);
+  --color-sand-500: var(--color-neutral-500);
+  --color-terracotta-600: var(--color-accent-600);
+  --color-sage-600: var(--color-accent-2-600);
+  --color-sand-600: var(--color-neutral-600);
+  --color-terracotta-700: var(--color-accent-700);
+  --color-sage-700: var(--color-accent-2-700);
+  --color-sand-700: var(--color-neutral-700);
+  --color-terracotta-800: var(--color-accent-800);
+  --color-sage-800: var(--color-accent-2-800);
+  --color-sand-800: var(--color-neutral-800);
+  --color-terracotta-900: var(--color-accent-900);
+  --color-sage-900: var(--color-accent-2-900);
+  --color-sand-900: var(--color-neutral-900);
+}
+
+/* 3. Base and legacy classes ------------------------------------------------
+   Everything below is layered so it sits in Tailwind's cascade: element rules
    after preflight in `base`, the legacy classes in `components`, and Tailwind
    utilities (shadcn components) above both. Unlayered CSS would beat every
    utility regardless of specificity. */
 @layer base {
+  /* App-only tokens the theme does not define, all derived from it. */
   :root {
-    /* Terracotta accent ramp (anchors observed: 100 #ffe1d0, 600 #c67139, 700 #b2622d, 900 #8c491a) */
-    --color-accent-100: #ffe1d0;
-    --color-accent-200: #f8cbae;
-    --color-accent-300: #eeb289;
-    --color-accent-400: #e29a67;
-    --color-accent-500: #d4854f;
-    --color-accent-600: #c67139;
-    --color-accent-700: #b2622d;
-    --color-accent-800: #9e5523;
-    --color-accent-900: #8c491a;
-    --color-accent: var(--color-accent-600);
-
-    /* Olive accent-2 ramp (anchors: 100 #e1eecc, 600 #728157, 900 #3d472b) */
-    --color-accent-2-100: #e1eecc;
-    --color-accent-2-200: #cfe0af;
-    --color-accent-2-300: #b7c98f;
-    --color-accent-2-400: #9cb076;
-    --color-accent-2-500: #7a8a5e;
-    --color-accent-2-600: #728157;
-    --color-accent-2-700: #5e6c47;
-    --color-accent-2-800: #4d5939;
-    --color-accent-2-900: #3d472b;
-
-    /* Warm neutrals */
-    --color-bg: #f9f4ed;
-    --color-surface: #fffdf9;
-    --color-text: #201e1d;
-    --color-neutral-100: #f4eee4;
-    --color-neutral-200: #eae2d4;
-    --color-neutral-300: #ddd2c1;
-    --color-neutral-400: #c4b8a5;
-    --color-neutral-500: #a19786;
-    --color-neutral-600: #877d6d;
-    --color-neutral-700: #645c50;
-    --color-neutral-800: #47413a;
-    --color-neutral-900: #2e2a26;
-    --color-divider: #e7ddcf;
-
-    /* One-offs tokenized from the prototype */
-    --color-track-bg: #f3ded5;   /* occupation-track chip */
-    --color-track-fg: #8c3a22;
-    --color-bad: #a33f22;
-    /* What .muted resolves to, as a variable, so inline styles can use it too. */
+    --color-track-bg: var(--color-accent-200);   /* occupation-track chip */
+    --color-track-fg: var(--color-accent-900);
+    --color-bad: var(--destructive);
+    /* Grey body text, used by inline styles as var(--color-muted). Tailwind's
+       `bg-muted` class is a different colour (shadcn's near-white surface) —
+       it reads --muted directly, so the two never collide. */
     --color-muted: var(--color-neutral-700);
-
-    /* The six-step scale the prototype specifies. Import uses these; the older
-       screens still use literal px. */
-    --fs-xs: 12px;
-    --fs-sm: 14px;
-    --fs-md: 16px;
-    --fs-lg: 20px;
-    --fs-xl: 24px;
-    --fs-2xl: 36px;
-
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 18px;
-    --shadow-sm: 0 1px 3px rgba(32, 30, 29, 0.07);
-    --shadow-md: 0 4px 16px rgba(32, 30, 29, 0.09);
-
-    --font-body: var(--font-public-sans), -apple-system, system-ui, sans-serif;
-    --font-heading: var(--font-public-sans), -apple-system, system-ui, sans-serif;
 
     --page-max: 1160px;
     --page-pad: 32px;
   }
 
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+    @apply border-border outline-ring/50;
+  }
 
   body {
+    @apply bg-background text-foreground font-sans;
     margin: 0;
-    background: var(--color-bg);
-    color: var(--color-text);
-    font-family: var(--font-body);
     font-size: 14px;
     line-height: 1.55;
   }
@@ -159,7 +298,7 @@
   .tag-neutral  { background: var(--color-neutral-200); color: var(--color-neutral-800); }
   .tag-outline  { background: transparent; border-color: var(--color-divider); color: var(--color-neutral-700); }
   .tag-track    { background: var(--color-track-bg); color: var(--color-track-fg); }
-  .tag-ondark   { background: rgba(255, 255, 255, 0.14); color: #fff; border-color: rgba(255, 255, 255, 0.25); }
+  .tag-ondark   { background: color-mix(in srgb, var(--color-bg) 14%, transparent); color: var(--color-bg); border-color: color-mix(in srgb, var(--color-bg) 25%, transparent); }
 
   /* --- Buttons --------------------------------------------------------------- */
   .btn {
@@ -227,7 +366,7 @@
     border-radius: 999px;
     cursor: pointer;
   }
-  .seg-opt[data-active="true"] { background: var(--color-accent-2-600); color: #fff; }
+  .seg-opt[data-active="true"] { background: var(--color-accent-2-600); color: var(--color-bg); }
 
   /* --- Pills (place filters etc.) -------------------------------------------- */
   .pill {
@@ -241,12 +380,12 @@
     border-radius: 999px;
     cursor: pointer;
   }
-  .pill[data-active="true"] { background: var(--color-accent-2-600); border-color: var(--color-accent-2-600); color: #fff; }
+  .pill[data-active="true"] { background: var(--color-accent-2-600); border-color: var(--color-accent-2-600); color: var(--color-bg); }
 
   /* --- Dialog ----------------------------------------------------------------- */
   .dialog-backdrop {
     position: fixed; inset: 0;
-    background: rgba(32, 30, 29, 0.4);
+    background: color-mix(in srgb, var(--color-text) 40%, transparent);
     display: flex; align-items: center; justify-content: center;
     z-index: 100;
   }
