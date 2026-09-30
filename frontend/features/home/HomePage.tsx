@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { HeroSlides } from "./HeroSlides";
 
 // The home screen from the prototype handoff (Sangam Prototype.html#home).
-// Colours are the handoff tokens in app/shadcn.css: terracotta = accent, sage = accent-2,
+// Colours are the handoff tokens in app/globals.css: terracotta = accent, sage = accent-2,
 // sand = neutral. Everything renders inside .sangam-ui, the only place those tokens apply.
 
 const STEPS = [

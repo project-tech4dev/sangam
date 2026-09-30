@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Public_Sans } from "next/font/google";
 import "./globals.css";
-import "./shadcn.css";
 import { NavBar } from "@/components/layout/NavBar";
 import { Providers } from "./providers";
 

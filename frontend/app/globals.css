@@ -1,44 +1,66 @@
-/* Sangam design system — reconstructed from the design prototype.
-   Terracotta accent · olive accent-2 · warm neutrals · Public Sans. */
+/* Sangam design system: colours from the prototype handoff theme
+   (features-plans/prototype-v1/sangam-theme.css on origin/docs/data-platform-architecture-spec).
+
+   One file for the whole app:
+   - Tailwind v4 + shadcn/ui setup, and the shadcn variable names over the Sangam colours.
+   - The hand-written classes (.btn, .card, .tag, …) the existing screens still use.
+
+   Tailwind is set up so it cannot restyle those screens: its preflight is replaced by a
+   reset scoped to .sangam-ui, and utilities are generated only from the paths in @source.
+   A screen built on shadcn renders inside <div className="sangam-ui">. */
+
+/* Declared first so the scoped reset (base) sits below the utilities. */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import "tw-animate-css";
+
+@source "../components/ui";
+@source "../features/home";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Terracotta accent ramp (anchors observed: 100 #ffe1d0, 600 #c67139, 700 #b2622d, 900 #8c491a) */
-  --color-accent-100: #ffe1d0;
-  --color-accent-200: #f8cbae;
-  --color-accent-300: #eeb289;
-  --color-accent-400: #e29a67;
-  --color-accent-500: #d4854f;
-  --color-accent-600: #c67139;
-  --color-accent-700: #b2622d;
-  --color-accent-800: #9e5523;
-  --color-accent-900: #8c491a;
-  --color-accent: var(--color-accent-600);
-
-  /* Olive accent-2 ramp (anchors: 100 #e1eecc, 600 #728157, 900 #3d472b) */
-  --color-accent-2-100: #e1eecc;
-  --color-accent-2-200: #cfe0af;
-  --color-accent-2-300: #b7c98f;
-  --color-accent-2-400: #9cb076;
-  --color-accent-2-500: #7a8a5e;
-  --color-accent-2-600: #728157;
-  --color-accent-2-700: #5e6c47;
-  --color-accent-2-800: #4d5939;
-  --color-accent-2-900: #3d472b;
-
-  /* Warm neutrals */
-  --color-bg: #f9f4ed;
-  --color-surface: #fffdf9;
+  /* Colours: the handoff theme (features-plans/prototype-v1/sangam-theme.css on
+     origin/docs/data-platform-architecture-spec), identical to the prototype's tokens. */
+  --color-bg: #ffffff;
+  --color-surface: #f5f2ec;
   --color-text: #201e1d;
-  --color-neutral-100: #f4eee4;
-  --color-neutral-200: #eae2d4;
-  --color-neutral-300: #ddd2c1;
-  --color-neutral-400: #c4b8a5;
+  --color-accent: #e0a177;
+  --color-accent-2: #7a8a5e;
+  --color-divider: color-mix(in srgb, #201e1d 16%, transparent);
+
+  /* Tonal ramps: terracotta accent, olive accent-2, warm neutrals. */
+  --color-neutral-100: #f9f4ed;
+  --color-neutral-200: #eee7db;
+  --color-neutral-300: #dcd3c4;
+  --color-neutral-400: #c0b6a5;
   --color-neutral-500: #a19786;
-  --color-neutral-600: #877d6d;
+  --color-neutral-600: #82796a;
   --color-neutral-700: #645c50;
-  --color-neutral-800: #47413a;
-  --color-neutral-900: #2e2a26;
-  --color-divider: #e7ddcf;
+  --color-neutral-800: #474238;
+  --color-neutral-900: #2e2b25;
+
+  --color-accent-100: #fff2eb;
+  --color-accent-200: #ffe1d0;
+  --color-accent-300: #ffc6a5;
+  --color-accent-400: #f6a06b;
+  --color-accent-500: #d67f48;
+  --color-accent-600: #d08f63;
+  --color-accent-700: #b97d50;
+  --color-accent-800: #643312;
+  --color-accent-900: #402310;
+
+  --color-accent-2-100: #f0fae1;
+  --color-accent-2-200: #e1eecc;
+  --color-accent-2-300: #ccdbb2;
+  --color-accent-2-400: #aebf92;
+  --color-accent-2-500: #8fa073;
+  --color-accent-2-600: #728157;
+  --color-accent-2-700: #56633f;
+  --color-accent-2-800: #3d472b;
+  --color-accent-2-900: #272e1b;
 
   /* One-offs tokenized from the prototype */
   --color-track-bg: #f3ded5;   /* occupation-track chip */
@@ -67,20 +89,56 @@
 
   --page-max: 1160px;
   --page-pad: 32px;
+
+  /* shadcn/ui contract — same tokens under shadcn's variable names.
+     Paste this block into the app's globals.css and stock shadcn components inherit the Sangam look. */
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-bg);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-bg);
+  --secondary: var(--color-accent-2-100);
+  --secondary-foreground: var(--color-accent-2-800);
+  --muted: var(--color-neutral-100);
+  --muted-foreground: var(--color-neutral-700);
+  --accent: var(--color-accent-100);
+  --accent-foreground: var(--color-accent-800);
+  --destructive: #a33f22;
+  --border: var(--color-divider);
+  --input: var(--color-divider);
+  --ring: var(--color-accent);
+  --radius: 0.625rem;
+  --chart-1: var(--color-accent-2-600);
+  --chart-2: var(--color-accent-500);
+  --chart-3: var(--color-accent-2-400);
+  --chart-4: var(--color-accent-300);
+  --chart-5: var(--color-neutral-500);
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-text);
+  --sidebar-primary: var(--color-accent-2-700);
+  --sidebar-primary-foreground: var(--color-bg);
+  --sidebar-accent: var(--color-accent-2-100);
+  --sidebar-accent-foreground: var(--color-accent-2-900);
+  --sidebar-border: var(--color-divider);
+  --sidebar-ring: var(--color-accent);
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: var(--color-bg);
+  /* The prototype's app background: a sage tint over the white ground. */
+  background: color-mix(in srgb, var(--color-accent-2-700) 15%, var(--color-bg) 85%);
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 14px;
   line-height: 1.55;
 }
 
-/* Not inside .sangam-ui: that subtree is styled by app/shadcn.css. */
+/* Not inside .sangam-ui: that subtree gets the scoped reset at the end of this file. */
 :where(h1, h2, h3, h4):where(:not(.sangam-ui *)) {
   font-family: var(--font-heading);
   font-weight: 600;
@@ -90,6 +148,11 @@ body {
 
 :where(a):where(:not(.sangam-ui *)) { color: var(--color-accent-700); text-decoration: none; }
 :where(a):where(:not(.sangam-ui *)):hover { text-decoration: underline; }
+
+/* Nav bar links, as in the prototype: text colour, accent-700 on hover and for the current page. */
+.nav-link { color: var(--color-text); text-decoration: none; }
+.nav-link:hover,
+.nav-link[aria-current="page"] { color: var(--color-accent-700); text-decoration: none; }
 
 .page {
   max-width: var(--page-max);
@@ -302,4 +365,110 @@ textarea.input { resize: vertical; min-height: 64px; }
 @keyframes sangamPulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.35; transform: scale(0.72); }
+}
+
+/* The .sangam-ui screens use the handoff's shadows; the existing screens keep theirs. */
+.sangam-ui {
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
+  --shadow-md: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2e2b25 22%, transparent);
+}
+
+@theme inline {
+  --font-sans: var(--font-public-sans), "Public Sans", system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  /* Brand ramps, usable as bg-terracotta-100, text-sage-700, etc. */
+  --color-terracotta-100: var(--color-accent-100);
+  --color-sage-100: var(--color-accent-2-100);
+  --color-sand-100: var(--color-neutral-100);
+  --color-terracotta-200: var(--color-accent-200);
+  --color-sage-200: var(--color-accent-2-200);
+  --color-sand-200: var(--color-neutral-200);
+  --color-terracotta-300: var(--color-accent-300);
+  --color-sage-300: var(--color-accent-2-300);
+  --color-sand-300: var(--color-neutral-300);
+  --color-terracotta-400: var(--color-accent-400);
+  --color-sage-400: var(--color-accent-2-400);
+  --color-sand-400: var(--color-neutral-400);
+  --color-terracotta-500: var(--color-accent-500);
+  --color-sage-500: var(--color-accent-2-500);
+  --color-sand-500: var(--color-neutral-500);
+  --color-terracotta-600: var(--color-accent-600);
+  --color-sage-600: var(--color-accent-2-600);
+  --color-sand-600: var(--color-neutral-600);
+  --color-terracotta-700: var(--color-accent-700);
+  --color-sage-700: var(--color-accent-2-700);
+  --color-sand-700: var(--color-neutral-700);
+  --color-terracotta-800: var(--color-accent-800);
+  --color-sage-800: var(--color-accent-2-800);
+  --color-sand-800: var(--color-neutral-800);
+  --color-terracotta-900: var(--color-accent-900);
+  --color-sage-900: var(--color-accent-2-900);
+  --color-sand-900: var(--color-neutral-900);
+}
+
+/* Tailwind's preflight, limited to .sangam-ui so the existing screens keep
+   their browser defaults. */
+@layer base {
+  .sangam-ui *,
+  .sangam-ui ::before,
+  .sangam-ui ::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+  }
+  .sangam-ui h1, .sangam-ui h2, .sangam-ui h3,
+  .sangam-ui h4, .sangam-ui h5, .sangam-ui h6 { font-size: inherit; font-weight: inherit; }
+  .sangam-ui a { color: inherit; text-decoration: inherit; }
+  .sangam-ui ol, .sangam-ui ul { list-style: none; }
+  .sangam-ui img, .sangam-ui svg { display: block; vertical-align: middle; }
+  .sangam-ui table { border-collapse: collapse; }
+  .sangam-ui button, .sangam-ui input, .sangam-ui select, .sangam-ui textarea {
+    font: inherit;
+    color: inherit;
+    background-color: transparent;
+  }
+
+  .sangam-ui * { @apply border-border outline-ring/50; }
+  .sangam-ui {
+    @apply bg-background text-foreground font-sans;
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
 }
