@@ -430,7 +430,7 @@ class TestDocRendering:
         assert replace_block(once, "funders", "TABLE") == once
 
     def test_amounts_read_as_crore(self):
-        from app.ingest.render_docs import _crore
+        from app.ingest.brief import _crore
 
         # Stored in INR because the column says so; shown in crore because a
         # reader thinks in crore.

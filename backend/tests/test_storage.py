@@ -10,12 +10,15 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
 import pytest
 
 from app.core.config import Settings
+from app.ingest import brief
+from app.ingest.research_records import EntityResearch
 from app.ingest.tools import research_tools as research
 from app.ingest.writer import ensure_document
 from app.integrations import storage
@@ -481,3 +484,107 @@ class TestBriefKey:
         seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"Key": "k"}))
         await storage.upload("source-archive", "ab/cd-r.pdf", b"pdf", "application/pdf")
         assert seen[0].headers["x-upsert"] == "false"
+
+
+BRIEF_ROW = {
+    "slug": "acme-foundation", "entity_name": "Acme Foundation", "canonical_name": None,
+    "researched_on": "2026-09-30", "status": "complete", "stopped_reason": None,
+    "summary": "A foundation.", "website": None, "goals": [], "findings": [],
+    "not_found": [], "sources_read": [], "schema_version": 2,
+}
+
+
+class TestBriefRendering:
+    """`brief.py` renders; only `render_docs.py` writes repo files. The split is
+    what lets a container-run tool publish the same bytes `make client-docs` writes.
+    """
+
+    async def test_publishes_under_the_entity_key_and_overwrites(self, monkeypatch):
+        """replace=True is the whole point: re-researching an entity has to
+        rewrite its brief, not leave the stale one the page links to."""
+        sent = []
+
+        async def fake_upload(bucket, key, data, content_type, *, replace=False):
+            sent.append((bucket, key, data, content_type, replace))
+            return key
+
+        monkeypatch.setattr(brief.storage, "upload", fake_upload)
+        assert await brief.publish(dict(BRIEF_ROW)) == "entities/acme-foundation.md"
+
+        bucket, key, data, content_type, replace = sent[0]
+        assert (bucket, key) == (storage.SOURCE_ARCHIVE, storage.brief_key("acme-foundation"))
+        assert content_type == "text/markdown"
+        assert replace is True, "without upsert the brief freezes at its first version"
+        assert data == brief.entity_markdown(dict(BRIEF_ROW)).encode("utf-8")
+
+    async def test_says_nothing_happened_when_storage_is_off(self, off):
+        assert await brief.publish(dict(BRIEF_ROW)) is None
+
+
+@pytest.mark.integration
+class TestSavingResearchPublishesTheBrief:
+    """The bug this closes: the brief existed only after a human ran
+    `make client-docs` on the host, so an entity researched in the morning had
+    a dead "Research brief" link until someone remembered in the afternoon.
+    """
+
+    FINDINGS = EntityResearch(
+        entity_name="Testcorp Foundation", entity_kind="funder", status="not_found",
+        summary="A foundation that exists only inside this test, and nowhere else.",
+    )
+
+    @pytest.fixture
+    def saved(self, db, monkeypatch):
+        """save_research against the fixture's transaction, recording uploads."""
+        monkeypatch.setattr(research, "get_pool", lambda: _PoolOf(db))
+        published: list[tuple] = []
+
+        async def fake_upload(bucket, key, data, content_type, *, replace=False):
+            published.append((bucket, key, data, replace))
+            return key
+
+        monkeypatch.setattr(brief.storage, "upload", fake_upload)
+        return published
+
+    async def test_the_brief_is_published_by_the_call_that_saves_it(self, saved):
+        result = await research.save_research.ainvoke({"findings": self.FINDINGS})
+        assert "Saved as entity_research" in result
+
+        assert len(saved) == 1, "saving research did not publish a brief"
+        bucket, key, data, replace = saved[0]
+        assert (bucket, key) == (storage.SOURCE_ARCHIVE, "entities/testcorp-foundation.md")
+        assert replace is True
+        assert b"Testcorp Foundation" in data
+        assert "published" in result, "the model must be told the brief is live"
+
+    async def test_the_reply_does_not_claim_publication_that_did_not_happen(self, db, monkeypatch):
+        monkeypatch.setattr(research, "get_pool", lambda: _PoolOf(db))
+        monkeypatch.setattr(brief.storage, "upload", lambda *a, **k: _none())
+        result = await research.save_research.ainvoke({"findings": self.FINDINGS})
+        assert "make client-docs" in result and "is published" not in result
+
+    async def test_the_brief_renders_from_the_row_as_stored(self, db, saved):
+        """Not from the pydantic object: the row is what `make client-docs`
+        renders, and two renderers of one brief would drift."""
+        await research.save_research.ainvoke({"findings": self.FINDINGS})
+        row = await (await db.execute(
+            "SELECT * FROM entity_research WHERE slug = 'testcorp-foundation'"
+        )).fetchone()
+        assert saved[0][2] == brief.entity_markdown(dict(row)).encode("utf-8")
+
+
+class _PoolOf:
+    """A pool-shaped wrapper around the test's connection, so a tool calling
+    get_pool() writes inside the fixture's transaction and is rolled back."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def connection(self):
+        conn = self._conn
+
+        @asynccontextmanager
+        async def held():
+            yield conn
+
+        return held()

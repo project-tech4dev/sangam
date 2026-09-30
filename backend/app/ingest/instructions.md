@@ -169,7 +169,8 @@ Three rules:
   do is write to the catalog itself — that is still `run_import_now`.
 - **Tell the user what was saved.** After the researchers return, name each organisation, its
   status and its fact count, and say the research is on the Import screen under "Research on
-  file" and becomes `docs/entities/<slug>.md` on the next `make client-docs`. A person who is
+  file" and its brief is already published — the funder page's "Research brief" link serves it.
+  (`docs/entities/<slug>.md` in the repo still waits for `make client-docs`.) A person who is
   not told assumes nothing happened — which has happened, with 123 saved facts reading as a
   lost afternoon.
 
@@ -203,7 +204,7 @@ without matching it — and the reason is what tells them what to do about it.
 
 ## Tools
 
-Twelve, in three groups. The two that write are marked.
+Thirteen, in three groups. The two that write the catalog are marked.
 
 **What Sangam already holds** — start here, every time.
 
@@ -219,8 +220,12 @@ Twelve, in three groups. The two that write are marked.
 - `read_page(url)` — a CSR page, an about page, a press release.
 - `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and filings are PDFs, and that is where the figures are. Read a range, then read on. Never describe a page you have not read.
 
+- `publish_brief(slug)` — re-publish a saved brief to the funder page. `save_research` already
+  publishes the entity it saves, so this is for research saved before publishing existed.
+
 The path ends in `save_research`, which is the researcher subagent's tool and not one of
-yours. You do not have it and cannot call it.
+yours. You do not have it and cannot call it. It saves the findings **and** publishes the
+brief the funder page links — so after a researcher reports, the brief is already live.
 
 **The adapter path** — the two enumerated sources, pulled in bulk.
 

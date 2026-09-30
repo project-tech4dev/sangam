@@ -22,6 +22,7 @@ from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.ingest.access import check_url
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
+from app.ingest.brief import publish
 from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
 from app.ingest.writer import slugify
 from app.integrations import storage
@@ -257,7 +258,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         goals = EXCLUDED.goals,
                         schema_version = EXCLUDED.schema_version,
                         researched_at = now()
-                    RETURNING id
+                    RETURNING *
                     """,
                     (
                         findings.entity_name, findings.canonical_name, findings.entity_kind, slug,
@@ -269,17 +270,71 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     ),
                 )
             ).fetchone()
+        # Publish the brief with the same call that saves it: waiting for a
+        # person to run `make client-docs` left the funder page's link dead in
+        # between. Silent on failure, like archiving — the model cannot act on
+        # it and the findings are saved either way.
+        published = await publish(dict(row))
+
         found = ", ".join(findings.concepts_found()) or "nothing"
         replaced = (
             f" Replaced {prior['fact_count']} findings saved earlier today."
             if prior else ""
         )
+        # Only claim what happened. With Storage unconfigured the brief exists
+        # nowhere until someone renders it on the host.
+        where = (
+            "The brief is published and the funder page links it. "
+            if published
+            else f"It appears in docs/entities/{slug}.md on the next `make client-docs`. "
+        )
         return (
             f"Saved as entity_research #{row['id']} ({slug}): {len(findings.findings)} findings "
             f"across {found}; status {findings.status}. Report back with slug={slug!r} and "
-            f"saved=true. It appears in docs/entities/{slug}.md on the next `make client-docs`, "
-            f"and promote_research moves what has a writer into the catalog.{replaced}"
+            f"saved=true. {where}"
+            f"promote_research moves what has a writer into the catalog.{replaced}"
         )
     except Exception as exc:
         logger.exception("save_research failed for %s", findings.entity_name)
         return f"save_research failed: {type(exc).__name__}: {exc}. Report your findings in text."
+
+
+@tool
+async def publish_brief(slug: str = "") -> str:
+    """Re-publish a saved research brief, so the funder page serves the current one.
+
+    `save_research` already does this for the entity it just saved, so reach for
+    this only to republish: research saved before publishing existed, or a brief
+    that needs regenerating after the renderer changed.
+
+    Args:
+        slug: one entity, or empty for every researched entity.
+    """
+    try:
+        pool = get_pool()
+        async with pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    "SELECT DISTINCT ON (slug) * FROM entity_research "
+                    + ("WHERE slug = %s " if slug else "")
+                    + "ORDER BY slug, researched_at DESC",
+                    (slug,) if slug else (),
+                )
+            ).fetchall()
+        if not rows:
+            return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
+
+        done = [r["slug"] for r in rows if await publish(dict(r))]
+        if not done:
+            return (
+                f"Published nothing of {len(rows)}. Storage is not configured, so a brief "
+                f"exists only as docs/entities/<slug>.md after `make client-docs` on the host."
+            )
+        missed = [r["slug"] for r in rows if r["slug"] not in done]
+        return (
+            f"Published {len(done)} brief(s): {', '.join(done)}."
+            + (f" Failed: {', '.join(missed)}." if missed else "")
+        )
+    except Exception as exc:
+        logger.exception("publish_brief failed")
+        return f"publish_brief failed: {type(exc).__name__}: {exc}"

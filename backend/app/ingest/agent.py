@@ -28,6 +28,7 @@ from app.ingest.tools.pipeline_tools import (
 )
 from app.ingest.tools.research_tools import (
     fetch_document,
+    publish_brief,
     read_document_pages,
     read_page,
     save_research,
@@ -93,6 +94,8 @@ TOOLS = [
     read_page,
     fetch_document,
     read_document_pages,
+    # save_research publishes the brief it saves; this is only for re-publishing.
+    publish_brief,
 ]
 
 

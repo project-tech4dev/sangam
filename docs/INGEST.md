@@ -111,9 +111,9 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 |---|---|
 | `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` |
 | `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` |
-| `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` |
+| `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
-**Sangam Import** (main) holds twelve of the thirteen: everything above except `save_research`,
+**Sangam Import** (main) holds thirteen of the fourteen: everything above except `save_research`,
 which belongs to the researcher subagent, because the parent never copies findings around.
 
 **`entity-researcher`** — one per organisation, `mode: "isolated"`, so each gets its own context
@@ -153,6 +153,14 @@ losing the whole task.
 
 Saving is an upsert on `(slug, date)`. It refuses when the stored result has more findings than
 the one offered — a short re-run silently replacing a long one has already cost fifteen findings.
+
+It also **publishes the brief** — `brief.py` renders the row it just wrote and uploads it to
+`entities/<slug>.md` in `source-archive`, which is what the funder page's "Research brief" link
+serves. That used to wait for someone to run `make client-docs` on the host, so between a
+research turn and the next time a person remembered, the page's "Research brief" link pointed
+at nothing. Publishing is silent either way, like archiving — the model cannot act on a storage failure and the findings are saved
+regardless. `publish_brief(slug)` re-publishes; `make client-docs` is still the only thing that
+writes `docs/entities/`, because the container cannot write a repo file and should not.
 
 **4. `promote_research`** maps fields to columns. Documents are written first, so every fact can
 cite the report it was read from; then programmes, parents before children, because six concepts
