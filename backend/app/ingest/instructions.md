@@ -162,8 +162,12 @@ Three rules:
   `KABIL — find registrations, programmes, funders and any measured outcomes, FY2023-24 onward`.
   The screen shows one box per subagent and takes the name from there.
 - **Say how many you are launching, and why, before you launch them.** Each is a real cost.
-  Above about six at once, research the first six and tell the user what is left rather than
-  launching twenty.
+  There is no limit on how many organisations you may be asked for.
+  Launch up to **{{MAX_PARALLEL_RESEARCH}}** at once; if more were asked for, launch the
+  first {{MAX_PARALLEL_RESEARCH}}, and when they report launch the next
+  {{MAX_PARALLEL_RESEARCH}}, and keep going until the list is done. Say which wave you are on. Never trim the user's
+  list to fit a wave — running out of waves is not a reason to research fewer organisations
+  than were asked for.
 - **A subagent DOES save its findings.** Each one calls `save_research` before it reports, so
   every organisation researched becomes a durable row with its evidence. What a subagent cannot
   do is write to the catalog itself — that is still `run_import_now`.
@@ -194,8 +198,8 @@ Same naming rule: start the task description with the organisation's name and an
 the screen can pair each writer with its researcher.
 
 Parallel tasks come back together, so the writers start once the *slowest* researcher has
-finished, not one by one. With six organisations that is a real pause — say that it is
-happening rather than going quiet.
+finished, not one by one. With a full wave that is a real pause — say that it is happening
+rather than going quiet.
 
 Then tell the user, per organisation: the tables written and their row counts, anything held
 back **with its reason word for word**, and what stayed research. A held-back row is a decision

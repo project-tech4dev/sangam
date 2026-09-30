@@ -9,7 +9,7 @@ import pytest
 from psycopg.rows import dict_row
 
 from app.agent.tools.sql import catalog as cat
-from app.agent.tools.sql.executor import MAX_CONCURRENT_QUERIES, PsycopgExecutor
+from app.agent.tools.sql.executor import PsycopgExecutor, max_concurrent_queries
 from app.agent.tools.sql.validator import validate
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
@@ -127,8 +127,12 @@ class TestWireProtocol:
 
 
 def test_executor_concurrency_is_capped_below_the_pool_size():
-    """pool max_size=5, shared with the checkpointer."""
-    assert MAX_CONCURRENT_QUERIES < 5
+    """Whatever the pool is sized to, the gate stays under it — the checkpointer
+    writes through the same pool on every graph step, and a gate set at the pool
+    size starves it."""
+    from app.core.config import get_settings
+
+    assert 2 <= max_concurrent_queries() < get_settings().db_pool_max_size
     PsycopgExecutor(timeout_ms=5000)
 
 
@@ -162,3 +166,21 @@ class TestGeographyIsParentedCorrectly:
             """
         ).fetchall()
         assert orphans == [], f"districts with no state: {[o['name'] for o in orphans]}"
+
+
+def test_the_pool_is_sized_by_the_setting_not_a_constant():
+    """`max_size=5` in code and "about six at once" in the prompt were the same
+    number written twice. Research fan-out is bounded by connections, so the
+    two have to move together."""
+    from app.core.config import Settings
+    from app.db.checkpointer import make_pool
+
+    pool = make_pool("postgresql://x/y")
+    assert pool.max_size == Settings().db_pool_max_size
+    # The SHIPPED defaults, not the running config: someone may deliberately
+    # run more researchers than connections and let the waves queue. That is
+    # their call to make in .env, not a broken build.
+    assert (
+        Settings.model_fields["max_parallel_research"].default
+        <= Settings.model_fields["db_pool_max_size"].default
+    )

@@ -7,15 +7,19 @@ import logging
 from typing import Any, Protocol
 
 from app.agent.tools.sql.validator import ValidatedQuery
+from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.integrations.tracing import traced_fetch
 
 logger = logging.getLogger(__name__)
 
 
-# The pool is max_size=5 and shared with the checkpointer, which writes on every
-# graph step, so tool concurrency is capped well below the pool size.
-MAX_CONCURRENT_QUERIES = 2
+# Derived from the pool rather than asserted: the comment used to say "the pool
+# is max_size=5" and would have gone stale the moment anyone changed it.
+# Kept as a module name because tests and docs refer to it.
+def max_concurrent_queries() -> int:
+    """Tool concurrency, under the pool size so the checkpointer can still write."""
+    return get_settings().db_gate_slots
 
 
 class Executor(Protocol):
@@ -35,7 +39,7 @@ class PsycopgExecutor:
         """Created on first use, not at import: a Semaphore built before the
         event loop exists is fragile across loop restarts (notably in tests)."""
         if self._gate is None:
-            self._gate = asyncio.Semaphore(MAX_CONCURRENT_QUERIES)
+            self._gate = asyncio.Semaphore(max_concurrent_queries())
         return self._gate
 
     async def run(self, query: ValidatedQuery) -> list[dict[str, Any]]:

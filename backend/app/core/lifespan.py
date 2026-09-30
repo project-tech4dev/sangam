@@ -52,7 +52,7 @@ def build_lifespan(settings: Settings | None = None):
     async def lifespan(app: FastAPI):
         resolved = settings or get_settings()
         async with AsyncExitStack() as stack:
-            pool = make_pool(resolved.database_url)
+            pool = make_pool(resolved.database_url, resolved.db_pool_max_size)
             await pool.open()
             stack.push_async_callback(pool.close)
             db_pool.pool = pool  # shared by agent tools and REST endpoints
@@ -112,7 +112,13 @@ def build_lifespan(settings: Settings | None = None):
             # backend that is quietly off looks exactly like one that is working.
             status = langsmith_status()
             (logger.warning if "DROPPED" in status or "OFF" in status else logger.info)(status)
-            logger.info("Sangam agent ready: model=%s", resolved.model)
+            logger.info(
+                "Sangam agent ready: model=%s research-at-once=%d db-pool=%d gate=%d",
+                resolved.model,
+                resolved.max_parallel_research,
+                resolved.db_pool_max_size,
+                resolved.db_gate_slots,
+            )
 
             yield
 

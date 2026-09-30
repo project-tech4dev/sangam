@@ -266,6 +266,36 @@ class TestIngestAgentIsSelfDescribing:
                 f"makes it invisible whenever that skill is not loaded."
             )
 
+    def test_the_wave_size_reaching_the_model_is_the_configured_one(self):
+        """Raising MAX_PARALLEL_RESEARCH has to change what the agent does, not
+        just how big the pool is. The number lives in the setting; the prompt
+        carries a placeholder, because a number frozen in prose is how the
+        setting would end up decorative.
+        """
+        from app.core.config import Settings
+        from app.ingest.agent import _INSTRUCTIONS_MD, _render
+
+        assert "{{MAX_PARALLEL_RESEARCH}}" in _INSTRUCTIONS_MD
+        rendered = _render(_INSTRUCTIONS_MD, Settings(max_parallel_research=17))
+        assert "Launch up to **17** at once" in rendered
+        assert "{{" not in rendered, "a placeholder reached the model unrendered"
+
+    def test_the_shipped_prompt_has_no_placeholder_left_in_it(self):
+        from app.ingest.agent import INSTRUCTIONS
+
+        assert "{{" not in INSTRUCTIONS
+
+    def test_nothing_caps_how_many_organisations_may_be_asked_for(self):
+        """The cap that was there — "research the first six and tell the user
+        what is left" — turned a list of twenty into a list of six. Waves are
+        the replacement: every organisation gets researched, just not at once.
+        """
+        from app.ingest.agent import INSTRUCTIONS
+
+        assert "no limit on how many organisations" in INSTRUCTIONS
+        assert "keep going until the list is done" in INSTRUCTIONS
+        assert "tell the user what is left" not in INSTRUCTIONS
+
     def test_instructions_are_loaded_not_empty(self):
         from app.ingest.agent import INSTRUCTIONS
 

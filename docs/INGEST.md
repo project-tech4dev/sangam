@@ -130,6 +130,15 @@ against a dossier showing none is the failure worth catching, and nothing else w
 Parallel `task` calls resolve together, so the writers start after the *slowest* researcher, not
 one by one.
 
+**Waves, not a cap.** `MAX_PARALLEL_RESEARCH` (default 8) is how many researchers run at once;
+ask for thirty organisations and the agent runs four waves, not a list trimmed to eight. It used
+to say *"research the first six and tell the user what is left"*, which quietly turned a list of
+twenty into a list of six. The number is bounded by connections rather than by ambition — each
+researcher holds one from a pool shared with the checkpointer — so `DB_POOL_MAX_SIZE` (default
+10) is raised with it, and both are logged at boot. Each subagent gets its own recursion budget,
+so the count is not bounded by `RECURSION_LIMIT`; the ceiling that remains is the model
+provider's rate limit.
+
 ## The research path in detail
 
 **1. `research_goals(name, years, entity_kind)`** — the first call of any run. It derives what to

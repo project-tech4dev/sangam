@@ -288,6 +288,18 @@ there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
 Both agents register their list in one place — `build.py` and `agent.py` respectively — and
 a test walks the package to prove every tool defined is also registered.
 
+**How many organisations Import researches at once is a setting, not a number in the
+prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
+above it the agent researches in waves until every organisation asked for is done.
+`app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder — **the only
+substitution any prompt in this repo gets** — because a number frozen in prose made the
+setting decorative. It is a plain `.replace()`, not `.format()`: the file is full of literal
+braces. The fan-out is bounded by connections, so `DB_POOL_MAX_SIZE` (default 10) moves with
+it; the pool is shared with the checkpointer, which writes on every graph step, so the
+concurrency gates in `sql/executor.py` and `ingest/runner.py` derive from it and sit under
+it. The ceiling is the database's: Supabase allows 60 connections, 3 reserved, across every
+deployed instance.
+
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
 reusable brief — the 28-field funder scan a fundraiser wants — advertised by its frontmatter and
 read only when the model judges it relevant. Constraints never live there: progressive disclosure

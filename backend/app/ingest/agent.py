@@ -16,7 +16,7 @@ from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
 from app.agent.middleware import clear_old_tool_results
 from app.agent.models import resolve_model
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.ingest.research_records import PromotionReport, ResearchSummary
 from app.ingest.tools.catalog_tools import funder_dossier, promote_research, research_goals
 from app.ingest.tools.pipeline_tools import (
@@ -50,7 +50,26 @@ def prompt(name: str) -> str:
     return text
 
 
-INSTRUCTIONS = (files("app.ingest") / "instructions.md").read_text(encoding="utf-8")
+def _render(text: str, settings: Settings) -> str:
+    """The one substitution instructions.md gets.
+
+    Everywhere else in this repo a prompt is the file on disk, and it stays
+    that way here bar this token: how many researchers may run at once is
+    bounded by the connection pool, so a number frozen in prose would let
+    MAX_PARALLEL_RESEARCH be raised while the agent kept launching eight.
+    A plain replace, not .format() — the file is full of literal braces.
+
+    Two callers, deliberately: the module-level INSTRUCTIONS renders from
+    get_settings() for tests and tooling, while the graph renders from the
+    Settings it was built with. Same value in every real run; a test passing
+    its own Settings reaches the graph and not the constant.
+    """
+    return text.replace("{{MAX_PARALLEL_RESEARCH}}", str(settings.max_parallel_research))
+
+
+_INSTRUCTIONS_MD = (files("app.ingest") / "instructions.md").read_text(encoding="utf-8")
+# Module-level, for the tests and the tooling that read the shipped prompt.
+INSTRUCTIONS = _render(_INSTRUCTIONS_MD, get_settings())
 
 # Skills live beside the code and ship with it: inside the ./backend/app mount,
 # so an edit appears in the container with no rebuild, and inside the image's
@@ -178,7 +197,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         backend=backend,
         skills=[SKILLS_ROUTE],
         middleware=[filesystem_tools(backend, keep=SKILL_READING_TOOLS), clear_old_tool_results()],
-        system_prompt=INSTRUCTIONS,
+        system_prompt=_render(_INSTRUCTIONS_MD, settings),
         checkpointer=checkpointer,
     )
     # Its own trace name: Ask and Import are different graphs doing different
