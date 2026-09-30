@@ -80,15 +80,16 @@ body {
   line-height: 1.55;
 }
 
-h1, h2, h3, h4 {
+/* Not inside .sangam-ui: that subtree is styled by app/shadcn.css. */
+:where(h1, h2, h3, h4):where(:not(.sangam-ui *)) {
   font-family: var(--font-heading);
   font-weight: 600;
   letter-spacing: -0.01em;
   margin: 0;
 }
 
-a { color: var(--color-accent-700); text-decoration: none; }
-a:hover { text-decoration: underline; }
+:where(a):where(:not(.sangam-ui *)) { color: var(--color-accent-700); text-decoration: none; }
+:where(a):where(:not(.sangam-ui *)):hover { text-decoration: underline; }
 
 .page {
   max-width: var(--page-max);

@@ -32,7 +32,7 @@ export function Nav({ current }: { current: "home" | "registry" | "ask" | "impor
         }}
       >
         <Link
-          href="/registry"
+          href="/"
           style={{
             fontFamily: "var(--font-heading)",
             fontSize: 22,
