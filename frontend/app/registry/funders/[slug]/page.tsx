@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Breadcrumbs, Hero, Tag } from "@/components/ui";
+import { Breadcrumbs, Hero, HeroAction, HeroChip } from "@/components/ui";
 import {
   apiGet, NotFoundError,
   type FunderDetail, type GrantRow, type NewsRow, type PageOf, type ScoreRow,
@@ -24,7 +23,7 @@ export default async function FunderProfilePage({ params }: { params: Promise<{ 
   ]);
 
   return (
-    <div className="page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="page flex flex-col gap-5">
       <Breadcrumbs
         items={[
           { label: "Sangam", href: "/registry" },
@@ -40,17 +39,15 @@ export default async function FunderProfilePage({ params }: { params: Promise<{ 
         blurb={(funder.profile?.funding_trend as string) ?? null}
         chips={
           <>
-            {funder.funder_type && <Tag tone="ondark">{funder.funder_type.replace(/_/g, " ")}</Tag>}
+            {funder.funder_type && <HeroChip>{funder.funder_type.replace(/_/g, " ")}</HeroChip>}
             {funder.section_135_bound != null && (
-              <Tag tone="ondark">{funder.section_135_bound ? "Section 135 bound" : "Not Section-135 bound"}</Tag>
+              <HeroChip>{funder.section_135_bound ? "Section 135 bound" : "Not Section-135 bound"}</HeroChip>
             )}
-            {funder.website && <Tag tone="ondark">{funder.website.replace(/^https?:\/\/(www\.)?/, "")}</Tag>}
+            {funder.website && <HeroChip>{funder.website.replace(/^https?:\/\/(www\.)?/, "")}</HeroChip>}
           </>
         }
         cta={
-          <Link href="/ask" className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
-            Ask Sangam who fits this mandate →
-          </Link>
+          <HeroAction href="/ask">Ask Sangam who fits this mandate →</HeroAction>
         }
       />
       <FunderProfileTabs funder={funder} scores={scores} grants={grants} news={news} />

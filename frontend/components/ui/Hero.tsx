@@ -1,11 +1,33 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { Badge } from "./badge";
+import { Button } from "./button";
 import { EntityMark } from "./primitives";
 
 const HERO_BG: Record<string, string> = {
-  "org-full": "var(--color-accent-2-800)",
-  "org-partial": "var(--color-accent-800)",
-  funder: "var(--color-accent-2-900)",
+  "org-full": "bg-sage-800",
+  "org-partial": "bg-terracotta-800",
+  funder: "bg-sage-900",
 };
+
+/** A chip on the hero's dark ground. */
+export function HeroChip({ children }: { children: ReactNode }) {
+  return (
+    <Badge variant="outline" className="border-background/25 bg-background/15 text-background">
+      {children}
+    </Badge>
+  );
+}
+
+/** The hero's call to action, on the same dark ground. */
+export function HeroAction({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Button asChild className="bg-background/15 text-background hover:bg-background/25 hover:no-underline">
+      <Link href={href}>{children}</Link>
+    </Button>
+  );
+}
 
 export function Hero({
   kind,
@@ -23,30 +45,13 @@ export function Hero({
   cta?: ReactNode;
 }) {
   return (
-    <section
-      style={{
-        background: HERO_BG[kind],
-        color: "#fff",
-        borderRadius: "calc(var(--radius-lg) * 1.15)",
-        padding: "32px 34px",
-        display: "flex",
-        gap: 24,
-        alignItems: "flex-start",
-        flexWrap: "wrap",
-      }}
-    >
+    <section className={cn("flex flex-wrap items-start gap-6 rounded-xl p-8 text-background", HERO_BG[kind])}>
       <EntityMark name={name} size={64} />
-      <div style={{ flex: 1, minWidth: 260, display: "flex", flexDirection: "column", gap: 10 }}>
-        {kicker && (
-          <div className="eyebrow" style={{ color: "rgba(255,255,255,0.75)" }}>
-            {kicker}
-          </div>
-        )}
-        <h1 style={{ fontSize: 28, color: "#fff" }}>{name}</h1>
-        {blurb && (
-          <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.85)", maxWidth: 640 }}>{blurb}</p>
-        )}
-        {chips && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>{chips}</div>}
+      <div className="flex min-w-65 flex-1 flex-col gap-2.5">
+        {kicker && <div className="eyebrow text-background/75">{kicker}</div>}
+        <h1 className="text-2xl">{name}</h1>
+        {blurb && <p className="m-0 max-w-160 text-sm text-background/85">{blurb}</p>}
+        {chips && <div className="mt-1 flex flex-wrap gap-2">{chips}</div>}
       </div>
       {cta}
     </section>

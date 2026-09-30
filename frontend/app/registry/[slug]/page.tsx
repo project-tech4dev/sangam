@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Breadcrumbs, Hero, Tag } from "@/components/ui";
+import { Breadcrumbs, Hero, HeroAction, HeroChip } from "@/components/ui";
 import {
   apiGet, NotFoundError,
   type GrantRow, type NewsRow, type OrgDetail, type PageOf, type ProgramRow, type ScoreRow,
@@ -29,7 +28,7 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
   const displayName = titleCase(org.name);
 
   return (
-    <div className="page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="page flex flex-col gap-5">
       <Breadcrumbs
         items={[
           { label: "Sangam", href: "/registry" },
@@ -49,21 +48,19 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
         }
         chips={
           <>
-            <Tag tone="ondark">{isFull ? "Base coverage — good" : "Base coverage — partial"}</Tag>
+            <HeroChip>{isFull ? "Base coverage — good" : "Base coverage — partial"}</HeroChip>
             {["fcra", "80g", "12a", "csr1"].map((idType) => {
               const has = org.identifiers.some((i) => i.id_type === idType);
               return (
-                <Tag key={idType} tone="ondark">
+                <HeroChip key={idType}>
                   {idType.toUpperCase()} — {has ? "on file" : "not entered"}
-                </Tag>
+                </HeroChip>
               );
             })}
           </>
         }
         cta={
-          <Link href="/ask" className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
-            Ask Sangam about this CSO →
-          </Link>
+          <HeroAction href="/ask">Ask Sangam about this CSO →</HeroAction>
         }
       />
       <OrgProfileTabs org={org} grants={grants} programs={programs} scores={scores} news={news} />

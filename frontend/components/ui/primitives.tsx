@@ -1,6 +1,8 @@
 /* Small shared presentational components (server-safe). */
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Avatar, AvatarFallback } from "./avatar";
+import { Badge } from "./badge";
 
 export function Breadcrumbs({ items }: { items: { label: string; href?: string }[] }) {
   return (
@@ -52,25 +54,14 @@ export function initialsOf(name: string): string {
 export function EntityMark({ name, size = 46 }: { name: string; size?: number }) {
   const bg = MARK_COLORS[name.length % MARK_COLORS.length];
   return (
-    <div
-      aria-hidden
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: bg,
-        color: "#fff",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "var(--font-heading)",
-        fontWeight: 700,
-        fontSize: size * 0.34,
-        flexShrink: 0,
-      }}
-    >
-      {initialsOf(name)}
-    </div>
+    <Avatar aria-hidden className="after:hidden" style={{ width: size, height: size }}>
+      <AvatarFallback
+        className="font-bold text-background"
+        style={{ background: bg, fontSize: size * 0.34 }}
+      >
+        {initialsOf(name)}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -91,17 +82,17 @@ export function ProgressBar({
   );
 }
 
-const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
-  full: { label: "Full profile", cls: "tag-accent" },
-  partial: { label: "In vetting", cls: "tag-neutral" },
-  verified: { label: "Verified", cls: "tag-accent-2" },
-  missing: { label: "Not entered", cls: "tag-neutral" },
-  pending: { label: "Pending review", cls: "tag-neutral" },
+const STATUS_STYLES: Record<string, { label: string; variant: "accent" | "secondary" | "outline" }> = {
+  full: { label: "Full profile", variant: "accent" },
+  partial: { label: "In vetting", variant: "outline" },
+  verified: { label: "Verified", variant: "secondary" },
+  missing: { label: "Not entered", variant: "outline" },
+  pending: { label: "Pending review", variant: "outline" },
 };
 
 export function StatusChip({ status }: { status: keyof typeof STATUS_STYLES }) {
   const s = STATUS_STYLES[status] ?? STATUS_STYLES.pending;
-  return <span className={`tag ${s.cls}`}>{s.label}</span>;
+  return <Badge variant={s.variant}>{s.label}</Badge>;
 }
 
 /** Big stat numbers; value null renders the honest degraded em-dash state. */

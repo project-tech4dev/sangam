@@ -14,8 +14,6 @@
     "@copilotkit/runtime": "^1.73.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
-    "embla-carousel-fade": "^8.6.0",
-    "embla-carousel-react": "^8.6.0",
     "lucide-react": "^1.49.0",
     "next": "^16.0.0",
     "radix-ui": "^1.6.7",
