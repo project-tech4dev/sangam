@@ -73,6 +73,11 @@ def build_lifespan(settings: Settings | None = None):
                     name="sangam_agent",
                     description=AGENT_DESCRIPTION,
                     graph=build_agent(resolved, checkpointer),
+                    # Not redundant with the graph's own with_config. AG-UI
+                    # builds each request's config from THIS one, and a config
+                    # passed at invocation beats the one bound to the graph —
+                    # see the comment on the test in tests/test_tracing.py.
+                    config={"recursion_limit": resolved.recursion_limit},
                 ),
                 path="/agent",
             )
@@ -85,6 +90,7 @@ def build_lifespan(settings: Settings | None = None):
                     name="sangam_ingest",
                     description=INGEST_DESCRIPTION,
                     graph=build_ingest_agent(resolved, checkpointer),
+                    config={"recursion_limit": resolved.recursion_limit},
                 ),
                 path="/ingest",
             )

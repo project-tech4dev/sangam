@@ -200,6 +200,62 @@ def test_recursion_limit_reaches_the_graph():
     assert graph.config["recursion_limit"] == 137
 
 
+def test_binding_a_limit_to_the_graph_is_not_enough_on_its_own():
+    """The assertion above is true and was never sufficient, which is how a
+    six-funder research run died on `Recursion limit of 25 reached`.
+
+    CompiledStateGraph.with_config stores the value on the graph, but a config
+    passed at invocation replaces it — and unlike langchain's merge_configs,
+    Pregel applies no "ignore an incoming default 25" guard. AG-UI builds every
+    request's config with ensure_config(), which stamps 25 explicitly, so the
+    bound value was discarded on every single request.
+
+    This pins the trap itself, so nobody 'simplifies' the config= argument in
+    lifespan.py back out again.
+    """
+    from typing import TypedDict
+
+    from langchain_core.runnables import ensure_config
+    from langgraph.graph import END, START, StateGraph
+
+    class S(TypedDict):
+        seen: int
+
+    graph = (
+        StateGraph(S)
+        .add_node("n", lambda s: {"seen": ensure_config()["recursion_limit"]})
+        .add_edge(START, "n")
+        .add_edge("n", END)
+        .compile()
+        .with_config({"recursion_limit": 137})
+    )
+    assert graph.invoke({"seen": 0})["seen"] == 137, "bound config applies with no config passed"
+    assert graph.invoke({"seen": 0}, ensure_config({}))["seen"] == 25, (
+        "if this now returns 137, langgraph has started guarding the default and "
+        "the config= argument in lifespan.py is no longer load-bearing"
+    )
+
+
+def test_the_agui_agent_carries_the_limit_into_every_request():
+    """The actual fix: AG-UI reads self.config to build each request's config
+    (ag_ui_langgraph/agent.py, `ensure_config(self.config.copy())`), so the
+    limit has to live on the agent, not only on the graph.
+    """
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.agent.build import build_agent
+    from app.integrations.tracing import SessionScopedAGUIAgent
+
+    settings = Settings(recursion_limit=137)
+    agent = SessionScopedAGUIAgent(
+        name="sangam_agent",
+        description="test",
+        graph=build_agent(settings, InMemorySaver()),
+        config={"recursion_limit": settings.recursion_limit},
+    )
+    assert agent.config["recursion_limit"] == 137
+
+
 def test_recursion_limit_leaves_room_for_a_real_sql_turn():
     """Twelve tool calls was the worst observed (a full funder profile), and each model-then-tool cycle
     costs several graph steps because every middleware hook"""
