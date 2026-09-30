@@ -81,7 +81,7 @@ function SectionHeading({ className, children }: { className?: string; children:
 
 export function HomePage() {
   return (
-    <div className="sangam-ui bg-[color-mix(in_srgb,var(--color-accent-2-700)_15%,var(--color-bg)_85%)] pb-16 leading-[1.55]">
+    <div className="sangam-ui bg-[color-mix(in_srgb,var(--color-accent-2-700)_15%,var(--color-bg)_85%)] leading-[1.55]">
       <div className="mx-auto max-w-[1160px] px-8 pt-14 text-sm tracking-[0.14em] text-terracotta-700 uppercase">
         Surfacing · Assessment · Narrative · Grantmaker Access · Matching
       </div>

@@ -130,6 +130,10 @@
 
 body {
   margin: 0;
+  /* Nav, main, footer as a full-height column, so the footer sits at the bottom of short pages. */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   /* The prototype's app background: a sage tint over the white ground. */
   background: color-mix(in srgb, var(--color-accent-2-700) 15%, var(--color-bg) 85%);
   color: var(--color-text);
@@ -139,6 +143,8 @@ body {
 }
 
 /* Not inside .sangam-ui: that subtree gets the scoped reset at the end of this file. */
+body > main { flex: 1 0 auto; }
+
 :where(h1, h2, h3, h4):where(:not(.sangam-ui *)) {
   font-family: var(--font-heading);
   font-weight: 600;
