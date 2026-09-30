@@ -87,7 +87,16 @@ bundled Postgres container, `ENV=staging` uses the `STAGING_DB_*` block in `.env
 `docker-compose.staging.yml`. Compose resolves the connection string so there is one
 source of truth; `scripts/db-url.sh` surfaces its error when a staging variable is missing.
 
-`ENV=staging` deploys nothing. It points local tooling at the managed database.
+`ENV=staging` deploys nothing. It points local tooling at the managed database —
+and, with `make up ENV=staging`, the local stack itself. The containers stay yours;
+only the data is shared. Think before using that one: a research run from your
+machine then writes straight into the database the deployed app serves.
+
+**Supabase Storage is global, so the two halves of a document can disagree.**
+`SUPABASE_URL`/`SUPABASE_SERVICE_KEY` are not environment-scoped: with the backend
+on the local Postgres, `fetch_document` still archives the file to the cloud bucket,
+so the `documents` row is local and the object it names is not. Running
+`ENV=staging` puts both in the same place.
 
 **`STAGING_DB_*` are local-tooling variables only.** The backend itself reads
 `DATABASE_URL` (`backend/app/core/config.py`). Setting `STAGING_DB_*` on a deployed host does

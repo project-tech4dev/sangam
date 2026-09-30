@@ -3,7 +3,17 @@
 #   docker compose -f docker-compose.yml -f docker-compose.staging.yml run --rm --no-deps backend ...
 #   make migrate ENV=staging        # same thing, shorter
 #
-# This is for one-off operations from your machine — migrations, seeding, psql.
+# Two uses. One-off operations from your machine — migrations, seeding, psql —
+# and running the local stack itself against the managed database:
+#
+#   make up ENV=staging             # the containers are yours, the data is shared
+#
+# That second one is worth thinking about before you use it: research runs from
+# your machine then write straight into the database the deployed app serves,
+# and there is no undo. It also makes the two halves of a document agree, since
+# Supabase Storage is global — with the backend on the local Postgres, rows land
+# locally while fetch_document archives the file to the cloud bucket.
+#
 # It does NOT deploy anything: the staging frontend runs on Vercel and the
 # staging backend on its own host, both configured in their own dashboards.
 #

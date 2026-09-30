@@ -45,14 +45,17 @@ endef
 BACKUP_DIR := db/backups/$(shell date +%Y%m%d-%H%M%S)
 
 # --- Stack -------------------------------------------------------------------
+# ENV picks the database the backend RUNS against, not just the one the tooling
+# targets: `make up ENV=staging` points the local stack at the managed Postgres.
+# It still deploys nothing — the containers are yours, only the data is shared.
 up:
-	docker compose up --build -d
+	$(COMPOSE) up --build -d
 
 down:
-	docker compose down
+	$(COMPOSE) down
 
 logs:
-	docker compose logs -f
+	$(COMPOSE) logs -f
 
 # `run` rather than `exec` so ENV=staging is honoured (exec would reuse the
 # running container's environment, which always points at the local database).
