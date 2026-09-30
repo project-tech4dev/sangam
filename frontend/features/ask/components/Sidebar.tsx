@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { GoogleSignIn, UserAvatar } from "@/components/GoogleSignIn";
+import { displayName, initialsOf, signOut, useSupabaseUser } from "@/lib/useSupabaseUser";
 import type { ThreadMeta } from "../lib/threads";
 
 export type WorkspaceView = "ask" | "vault" | "media" | "rfpwatch";
@@ -133,17 +135,26 @@ export function Sidebar({
         ))}
       </div>
 
-      <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid var(--color-divider)", paddingTop: 12 }}>
-        <div
-          aria-hidden
-          style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--color-neutral-700)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}
-        >
-          DV
-        </div>
-        <div style={{ fontSize: 11.5 }} className="muted">
-          Signed in — dev workspace
-        </div>
+      <div style={{ marginTop: "auto", borderTop: "1px solid var(--color-divider)", paddingTop: 12 }}>
+        <SidebarAccount />
       </div>
+    </div>
+  );
+}
+
+function SidebarAccount() {
+  const user = useSupabaseUser();
+  if (user === undefined) return null;
+  if (!user) return <GoogleSignIn />;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <UserAvatar initials={initialsOf(user)} size={28} />
+      <div style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-xs)", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        {displayName(user)}
+      </div>
+      <button type="button" className="btn btn-ghost" onClick={signOut} style={{ fontSize: "var(--fs-xs)", flex: "none" }}>
+        Log out
+      </button>
     </div>
   );
 }

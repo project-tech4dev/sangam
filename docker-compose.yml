@@ -108,6 +108,9 @@ services:
     environment:
       AGENT_URL: http://backend:8000/agent
       NEXT_PUBLIC_API_URL: http://localhost:8010
+      # Supabase Auth (Google sign-in). Empty = sign-in unavailable; the rest of the app is unaffected.
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
       WATCHPACK_POLLING: "true"
     ports:
       - "3000:3000"

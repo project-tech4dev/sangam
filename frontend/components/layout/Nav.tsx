@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GoogleSignIn } from "@/components/GoogleSignIn";
 
 const LINKS = [
   { id: "registry", label: "Registry", href: "/registry" },
@@ -61,6 +62,7 @@ export function Nav({ current }: { current: "home" | "registry" | "ask" | "impor
         <Link href="/ask" className="btn btn-primary" style={{ padding: "8px 16px" }}>
           Ask Sangam
         </Link>
+        <GoogleSignIn />
       </div>
     </nav>
   );
