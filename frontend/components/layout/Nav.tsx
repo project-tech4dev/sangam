@@ -50,7 +50,7 @@ export function Nav({ current }: { current: "home" | "registry" | "ask" | "impor
             href={link.href}
             style={{
               fontSize: 13.5,
-              fontWeight: 600,
+              fontWeight: 700,
               textDecoration: "none",
               color: current === link.id ? "var(--color-accent-900)" : "var(--color-text)",
             }}

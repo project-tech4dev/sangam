@@ -13,7 +13,7 @@ export function CitationChip({ href: raw, index }: { href: string; index: Regist
     display: "inline-flex",
     alignItems: "center",
     fontSize: 10.5,
-    fontWeight: 600,
+    fontWeight: 700,
     padding: "1px 8px",
     borderRadius: 999,
     background: "var(--color-accent-100)",

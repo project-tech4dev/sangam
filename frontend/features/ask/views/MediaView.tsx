@@ -56,7 +56,7 @@ export function MediaView({ onDiscuss }: { onDiscuss: (seed: string) => void }) 
                   {item.domain} · {item.seendate ? new Date(item.seendate).toLocaleDateString("en-IN") : "date unknown"}
                 </span>
               </div>
-              <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: 13.5, fontWeight: 600 }}>
+              <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: 13.5, fontWeight: 700 }}>
                 {item.title ?? item.url}
               </a>
               <div>

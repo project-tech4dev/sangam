@@ -23,7 +23,7 @@ export function TraceCard({ steps, streaming }: { steps: TraceStep[]; streaming:
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-accent-2-900)" }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--color-accent-2-900)" }}>
           {streaming ? "Working…" : `How this answer was made — ${visible.length} step${visible.length === 1 ? "" : "s"}`}
         </span>
         {!streaming && visible.length > 0 && (

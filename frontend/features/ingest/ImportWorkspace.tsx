@@ -71,7 +71,7 @@ export function ImportWorkspace() {
                     }}
                   >
                     <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                      <span style={{ fontWeight: 600 }}>{label}</span>
+                      <span style={{ fontWeight: 700 }}>{label}</span>
                       <span style={{ color: "var(--color-muted)" }}>{detail(step.args)}</span>
                       {step.running && <span style={{ color: "var(--color-muted)" }}>…</span>}
                     </div>

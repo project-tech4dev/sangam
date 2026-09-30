@@ -61,7 +61,7 @@ export function EvidenceRail({
             const cites = extractCitations(step.result ?? "").slice(0, 6);
             return (
               <div key={step.id} style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600 }}>{label.label}</div>
+                <div style={{ fontSize: 12.5, fontWeight: 700 }}>{label.label}</div>
                 <div className="muted-2" style={{ fontSize: 11.5 }}>{label.detail(step.args)}</div>
                 {cites.length > 0 && (
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>

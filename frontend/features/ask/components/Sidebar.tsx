@@ -57,7 +57,7 @@ export function Sidebar({
       color: active ? "var(--color-accent-2-900)" : "var(--color-text)",
       fontFamily: "var(--font-body)",
       fontSize: 13,
-      fontWeight: 600,
+      fontWeight: 700,
       padding: "8px 12px",
       borderRadius: "var(--radius-sm)",
       cursor: "pointer",
@@ -114,7 +114,7 @@ export function Sidebar({
           threads.slice(0, 6).map((thread) => (
             <button
               key={thread.id}
-              style={{ ...itemStyle(view === "ask" && thread.id === activeThread), fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+              style={{ ...itemStyle(view === "ask" && thread.id === activeThread), fontWeight: 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
               onClick={() => onPickThread(thread.id)}
               title={thread.title}
             >

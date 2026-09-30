@@ -2,6 +2,7 @@
 
 import { CopilotKitProvider } from "@copilotkit/react-core/v2";
 import type { ReactNode } from "react";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -12,7 +13,8 @@ export function Providers({ children }: { children: ReactNode }) {
       // Auth stub: same wire shape as the future Supabase JWT.
       headers={{ Authorization: "Bearer dev" }}
     >
-      {children}
+      {/* Tooltip and Sidebar need one provider above them. */}
+      <TooltipProvider>{children}</TooltipProvider>
     </CopilotKitProvider>
   );
 }

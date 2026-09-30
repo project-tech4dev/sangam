@@ -97,7 +97,7 @@ export function ChatPane({
               >
                 You
               </div>
-              <div style={{ fontFamily: "var(--font-heading)", fontSize: 17, fontWeight: 600, paddingTop: 5 }}>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: 17, fontWeight: 700, paddingTop: 5 }}>
                 {turn.question}
               </div>
             </div>

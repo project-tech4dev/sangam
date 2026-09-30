@@ -63,7 +63,7 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
                 {(doc.doc_type ?? "DOC").slice(0, 12).toUpperCase()}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {doc.title ?? "Untitled document"}
                 </div>
                 <div className="muted-2" style={{ fontSize: 11.5 }}>

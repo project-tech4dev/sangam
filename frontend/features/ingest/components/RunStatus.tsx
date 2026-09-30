@@ -71,7 +71,7 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
           flexShrink: 0,
         }}
       />
-      <span style={{ fontWeight: 600 }}>{running ? "Running" : "Finished"}</span>
+      <span style={{ fontWeight: 700 }}>{running ? "Running" : "Finished"}</span>
       <span style={{ color: "var(--color-muted)" }}>{running ? doing : "nothing in flight"}</span>
       <span style={{ marginLeft: "auto", color: "var(--color-muted)", fontSize: "var(--fs-xs)" }}>
         {steps.length} step{steps.length === 1 ? "" : "s"}

@@ -82,7 +82,7 @@ export function OrgProfileTabs({
                 const found = org.identifiers.find((i) => i.id_type === idType);
                 return (
                   <div key={idType} className="card" style={{ padding: 14, gap: 4 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 600 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700 }}>
                       <span
                         style={{
                           width: 8, height: 8, borderRadius: "50%",
@@ -92,7 +92,7 @@ export function OrgProfileTabs({
                       {found ? "Verified" : "Not entered"}
                       <span className="muted-2" style={{ marginLeft: "auto" }}>{ID_LABELS[idType]}</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, fontStyle: found ? "normal" : "italic", color: found ? "var(--color-text)" : "var(--color-neutral-500)" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, fontStyle: found ? "normal" : "italic", color: found ? "var(--color-text)" : "var(--color-neutral-500)" }}>
                       {found ? found.id_value : "— not in base"}
                     </div>
                   </div>
@@ -110,7 +110,7 @@ export function OrgProfileTabs({
                   <div key={person.id} style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <EntityMark name={person.name} size={34} />
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{person.name}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{person.name}</div>
                       <div className="muted-2" style={{ fontSize: 11.5 }}>{person.role ?? person.kind}</div>
                     </div>
                   </div>
@@ -128,7 +128,7 @@ export function OrgProfileTabs({
             ) : (
               grants.map((grant) => (
                 <div key={grant.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", fontSize: 13 }}>
-                  <Link href={`/registry/funders/${grant.funder_id}`} style={{ fontWeight: 600 }}>
+                  <Link href={`/registry/funders/${grant.funder_id}`} style={{ fontWeight: 700 }}>
                     {grant.funder_name}
                   </Link>
                   <span className="muted">{grant.title}</span>
@@ -226,7 +226,7 @@ export function OrgProfileTabs({
           ) : (
             news.map((item) => (
               <div key={item.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 8 }}>
-                <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600 }}>
+                <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 700 }}>
                   {item.title ?? item.url}
                 </a>
                 <span className="muted-2" style={{ fontSize: 11.5 }}>
@@ -302,7 +302,7 @@ export function FunderProfileTabs({
           ) : (
             grants.map((grant) => (
               <div key={grant.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 8, fontSize: 13 }}>
-                <Link href={`/registry/${grant.org_id}`} style={{ fontWeight: 600 }}>{grant.org_name}</Link>
+                <Link href={`/registry/${grant.org_id}`} style={{ fontWeight: 700 }}>{grant.org_name}</Link>
                 <span className="muted">{grant.title}</span>
                 <Tag tone={grant.status === "active" ? "accent-2" : "neutral"}>{grant.status}</Tag>
                 <span className="muted-2" style={{ fontSize: 11.5 }}>
@@ -342,7 +342,7 @@ export function FunderProfileTabs({
               <div key={person.id} style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <EntityMark name={person.name} size={34} />
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{person.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{person.name}</div>
                   <div className="muted-2" style={{ fontSize: 11.5 }}>{person.role ?? person.kind}</div>
                 </div>
               </div>

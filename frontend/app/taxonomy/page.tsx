@@ -44,7 +44,7 @@ export default function TaxonomyPage() {
             <div key={sector.num} className="card" style={{ gap: 6, padding: 18 }}>
               <button
                 onClick={() => setOpen({ ...open, [sector.num]: !isOpen })}
-                style={{ display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-heading)", fontSize: 16, fontWeight: 600, color: "var(--color-text)", padding: 0, textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-heading)", fontSize: 16, fontWeight: 700, color: "var(--color-text)", padding: 0, textAlign: "left" }}
               >
                 <span className="muted-2" style={{ fontFamily: "var(--font-heading)" }}>{sector.num}</span>
                 {sector.name}
