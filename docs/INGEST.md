@@ -103,8 +103,18 @@ means adding it to the JSON with a basis and a robots check, in a pull request.
 
 One main agent and two subagents, built in `app/ingest/agent.py`.
 
-**Sangam Import** (main) holds twelve tools: the source registry, the import planner and runner,
-run summaries, the review queue, the promoter, and the five research tools.
+**Every tool lives in `app/ingest/tools/`, and nothing else in `app/ingest/` is a tool** — the
+rest of the folder is the pipeline the tools drive. Three modules, by what the tool touches,
+mirroring `app/agent/tools/` on the Ask Sangam side:
+
+| Module | Tools |
+|---|---|
+| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` |
+| `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` |
+| `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` |
+
+**Sangam Import** (main) holds twelve of the thirteen: everything above except `save_research`,
+which belongs to the researcher subagent, because the parent never copies findings around.
 
 **`entity-researcher`** — one per organisation, `mode: "isolated"`, so each gets its own context
 window. The reason is context, not speed: a single broad turn once read three PDFs across twenty

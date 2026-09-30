@@ -128,6 +128,9 @@ backend/app/
   schemas/         Pydantic, one module per resource
   agent/           build.py (builds the deep agent) · models.py · tools/
                    instructions.md (the system prompt) · prompt.py (loads it)
+  ingest/          agent.py (builds Sangam Import) · instructions.md · skills/
+                   tools/ every tool it has, and nothing else in ingest/ is one
+                   the rest is the pipeline: runner · writer · promote · matcher
   integrations/    graphiti.py (Neo4j client lifecycle)
 
 frontend/
@@ -268,12 +271,22 @@ Adding a tool: write the async function in `app/agent/tools/` with both conventi
 in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asserts every
 registered tool is named there), and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name).
+For Sangam Import the four places are the same shape but different files:
+`app/ingest/tools/<module>.py`, the `TOOLS` list in `app/ingest/agent.py`,
+`app/ingest/instructions.md`, and `frontend/features/ingest/lib/toolLabels.ts`.
 There used to be a `HIDDEN_TOOLS` set there suppressing the `deepagents` filesystem built-ins
 from the trace; the tools themselves are gone now, so hiding them is not needed.
 
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is
 that every field traces to a source.
+
+**A tool of either agent lives under a `tools/` package, and nothing else does.**
+`app/agent/tools/` for Ask Sangam, `app/ingest/tools/` for Sangam Import — three modules
+there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
+`catalog_tools.py` (what Sangam already holds), `research_tools.py` (the open web).
+Both agents register their list in one place — `build.py` and `agent.py` respectively — and
+a test walks the package to prove every tool defined is also registered.
 
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
 reusable brief — the 28-field funder scan a fundraiser wants — advertised by its frontmatter and

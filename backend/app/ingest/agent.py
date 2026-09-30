@@ -17,23 +17,21 @@ from app.agent.harness import install as install_harness
 from app.agent.middleware import clear_old_tool_results
 from app.agent.models import resolve_model
 from app.core.config import Settings
-from app.ingest.research import (
+from app.ingest.research_records import PromotionReport, ResearchSummary
+from app.ingest.tools.catalog_tools import funder_dossier, promote_research, research_goals
+from app.ingest.tools.pipeline_tools import (
+    import_run_summary,
+    list_import_sources,
+    pending_resolutions,
+    plan_import,
+    run_import_now,
+)
+from app.ingest.tools.research_tools import (
     fetch_document,
     read_document_pages,
     read_page,
     save_research,
     search_public_sources,
-)
-from app.ingest.research_records import PromotionReport, ResearchSummary
-from app.ingest.tools import (
-    funder_dossier,
-    import_run_summary,
-    list_import_sources,
-    pending_resolutions,
-    plan_import,
-    promote_research,
-    research_goals,
-    run_import_now,
 )
 from app.integrations.tracing import trace_config
 
@@ -74,19 +72,23 @@ def _backend() -> CompositeBackend:
         routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR)},
     )
 
-# plan_import before run_import_now: the plan is shown and agreed before anything is written.
+# Grouped as app/ingest/tools/ is, and in call order within each group.
+# plan_import before run_import_now: the plan is shown and agreed before
+# anything is written.
 TOOLS = [
+    # pipeline_tools — the adapter path.
     list_import_sources,
     plan_import,
     run_import_now,
     import_run_summary,
     pending_resolutions,
+    # catalog_tools — what Sangam already holds, and the one step that writes to it.
+    research_goals,
+    funder_dossier,
     promote_research,
-    # Research tools, the way the hand-vetted sheets were built: open the page,
+    # research_tools — the way the hand-vetted sheets were built: open the page,
     # open the report, read the pages carrying the figures. Each checks the
     # registry and robots.txt before it fetches, so capability does not widen access.
-    funder_dossier,
-    research_goals,
     search_public_sources,
     read_page,
     fetch_document,
@@ -100,8 +102,8 @@ TOOLS = [
 # last one's findings. An isolated subagent returns its conclusion, not its
 # reading. The main agent decides how many to launch.
 RESEARCH_TOOLS = [
-    funder_dossier,
     research_goals,
+    funder_dossier,
     search_public_sources,
     read_page,
     fetch_document,

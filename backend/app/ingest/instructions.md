@@ -203,15 +203,28 @@ without matching it — and the reason is what tells them what to do about it.
 
 ## Tools
 
+Twelve, in three groups. The two that write are marked.
+
+**What Sangam already holds** — start here, every time.
+
 - `research_goals(name, years)` — what the database expects, per concept, against what is already held. **First call of any research run.**
 - `funder_dossier(name)` — what the catalog holds, in detail.
-- `list_import_sources(category, detail)` — the registry, as counts; pass `detail` for a source's basis.
-- `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
-- `read_page(url)` — a CSR page, an about page, a press release.
-- `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and filings are PDFs, and that is where the figures are. Read a range, then read on. Never describe a page you have not read.
 - `promote_research(slug)` — move saved findings into the catalog. **This writes.** Offer it
   after research, and be exact about what moved, what was held back and why, and what stayed
   research.
+
+**The open web** — the research path, in the order you use it.
+
+- `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
+- `read_page(url)` — a CSR page, an about page, a press release.
+- `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and filings are PDFs, and that is where the figures are. Read a range, then read on. Never describe a page you have not read.
+
+The path ends in `save_research`, which is the researcher subagent's tool and not one of
+yours. You do not have it and cannot call it.
+
+**The adapter path** — the two enumerated sources, pulled in bulk.
+
+- `list_import_sources(category, detail)` — the registry, as counts; pass `detail` for a source's basis.
 - `plan_import(funders, years, sources)` — what a write-run would pull. Read-only.
 - `run_import_now(goal, funders, years, sources, limit)` — **this writes.**
 - `import_run_summary(run_id)` · `pending_resolutions(limit)` — what a run did, and what awaits a person.

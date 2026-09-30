@@ -16,7 +16,7 @@ import httpx
 import pytest
 
 from app.core.config import Settings
-from app.ingest import research
+from app.ingest.tools import research_tools as research
 from app.ingest.writer import ensure_document
 from app.integrations import storage
 

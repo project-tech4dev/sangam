@@ -1,8 +1,10 @@
-"""Reading tools for the importer: a page, a file, a PDF — each gated on access.
+"""The research path: search, a page, a file, a PDF — each gated on access.
 
 The pipeline adapters handle the two sources we enumerate. These are for the
 research the hand-vetted sheets did by hand: open the funder's CSR report, read
-the pages that carry the figures, quote the sentence.
+the pages that carry the figures, quote the sentence. `save_research` ends the
+path — it is the only tool here that writes, and it writes findings, not catalog
+rows.
 """
 
 from __future__ import annotations

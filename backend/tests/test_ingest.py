@@ -45,7 +45,6 @@ from app.ingest.records import (
     ProgramRecord,
     RfpRecord,
 )
-from app.ingest.research import save_research
 from app.ingest.research_records import (
     CONCEPTS,
     FINDING_MODELS,
@@ -64,6 +63,7 @@ from app.ingest.research_records import (
 )
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.taxonomy import clause_for
+from app.ingest.tools.research_tools import save_research
 from app.ingest.writer import CSR_YEAR_UPDATABLE, _diff, slugify
 
 NOW = datetime(2026, 9, 29, tzinfo=UTC)
@@ -275,27 +275,35 @@ class TestIngestAgentIsSelfDescribing:
     def test_every_tool_defined_is_also_registered(self):
         """The reverse of the rule above, and the one that actually bit: plan_import
         was written, documented and unreachable, because nothing added it to TOOLS."""
+        import importlib
         import inspect
+        import pkgutil
 
         from langchain_core.tools import BaseTool
 
-        from app.ingest import research, tools
+        from app.ingest import tools
         from app.ingest.agent import TOOLS
 
-        # Both modules: the importing tools live in tools.py and the reading
-        # tools in research.py, so equality on one module would be wrong.
+        # Every module in app/ingest/tools/, discovered rather than listed: a
+        # fourth one added later is covered without anyone remembering to.
         defined = {
             obj.name
-            for module in (tools, research)
-            for _, obj in inspect.getmembers(module)
+            for info in pkgutil.iter_modules(tools.__path__)
+            for _, obj in inspect.getmembers(importlib.import_module(f"{tools.__name__}.{info.name}"))
             if isinstance(obj, BaseTool)
         }
+
         # A subagent's tools are registered too — reachable through `task`,
         # not on the main agent. save_research is the researcher's, by design.
         from app.ingest.agent import ENTITY_RESEARCHER
 
         registered = {t.name for t in TOOLS} | {t.name for t in ENTITY_RESEARCHER["tools"]}
         assert not defined - registered, f"defined but never registered: {sorted(defined - registered)}"
+        # The other direction, which is the property the package exists to give:
+        # a tool the model can call is a file in app/ingest/tools/, always.
+        assert not registered - defined, (
+            f"registered but defined outside app/ingest/tools/: {sorted(registered - defined)}"
+        )
 
     def test_planning_comes_before_writing(self):
         from app.ingest.agent import TOOLS
@@ -757,9 +765,9 @@ class TestSavingCannotQuietlyShrinkAResult:
 
     def test_the_refusal_explains_itself(self):
         # @tool wraps the function, so read the module rather than the object.
-        from app.ingest import research
+        from app.ingest.tools import research_tools
 
-        source = inspect.getsource(research)
+        source = inspect.getsource(research_tools)
         assert "REFUSED" in source and "replace=true" in source
 
     def test_the_docstring_says_what_replace_costs(self):
