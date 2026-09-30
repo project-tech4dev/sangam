@@ -262,7 +262,8 @@ async def _write_documents(
         key = await storage.archived_key(storage.SOURCE_ARCHIVE, f.source_url)
         document_id, status = await ensure_document(
             conn, shim, funder_id=funder_id, doc_type=f.doc_type,
-            storage_path=key, content_hash=storage.hash_from_key(key) if key else None,
+            storage_path=storage.qualify(storage.SOURCE_ARCHIVE, key) if key else None,
+            content_hash=storage.hash_from_key(key) if key else None,
         )
         by_url[f.source_url] = document_id
         _count(report, "documents", status)

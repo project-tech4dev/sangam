@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +35,8 @@ ORG_VAULT = "org-vault"
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
 TIMEOUT_SECONDS = 120
 SIGNED_URL_TTL_SECONDS = 600
+# Supabase fixes this one: a signed upload URL is valid for two hours.
+UPLOAD_URL_TTL_SECONDS = 7200
 
 _warned = False
 
@@ -60,6 +63,24 @@ def _client() -> httpx.AsyncClient:
         headers={"Authorization": f"Bearer {key}", "apikey": key},
         timeout=TIMEOUT_SECONDS,
     )
+
+
+def qualify(bucket: str, key: str) -> str:
+    """What goes in `documents.storage_path`: the bucket and the key together.
+
+    One column has to say which of the two buckets an object is in, and
+    inferring it from `is_public` would be a guess that happens to be right
+    today. `<bucket>/<key>` is self-describing.
+    """
+    return f"{bucket}/{key}"
+
+
+def split(storage_path: str) -> tuple[str, str] | None:
+    """`documents.storage_path` back into (bucket, key). None if it is neither
+    of ours — a path we did not write is not one we will hand out a URL for.
+    """
+    bucket, _, key = storage_path.partition("/")
+    return (bucket, key) if key and bucket in (SOURCE_ARCHIVE, ORG_VAULT) else None
 
 
 def url_prefix(source_url: str) -> str:
@@ -184,3 +205,77 @@ async def signed_url(bucket: str, key: str, ttl: int = SIGNED_URL_TTL_SECONDS) -
     if not path:
         return None
     return get_settings().supabase_url.rstrip("/") + "/storage/v1" + path
+
+
+def vault_key(org_id: int, filename: str) -> str:
+    """`<org_id>/<uuid4>-<name>` for the Doc Vault.
+
+    Deliberately NOT content-addressed like `archive_key`, because of who holds
+    the bytes. The archive is written by the server, which can hash what it
+    just downloaded. A vault upload goes browser → Storage through a signed
+    URL, so at the moment the key is minted the backend has never seen the
+    file; a content hash there could only be one the client asserted, and a
+    provenance column filled from an unverified claim is worse than an empty
+    one. `documents.content_hash` is computed server-side afterwards, from the
+    bytes we read back to extract the text.
+
+    `<org_id>` first because that is what the RLS policy reads as
+    `(storage.foldername(name))[1]::bigint`.
+    """
+    return f"{org_id}/{uuid.uuid4().hex}-{_safe_name(filename)}"
+
+
+async def signed_upload_url(bucket: str, key: str) -> str | None:
+    """A one-shot URL the browser can PUT to, valid two hours.
+
+    This is what keeps file bytes out of the backend: Vercel Functions cap a
+    request body at a few MB and an annual report is routinely larger. The
+    authorisation decision still happens here — the URL is only minted for a
+    caller who passed the membership check.
+    """
+    if _disabled():
+        return None
+    try:
+        async with _client() as client:
+            response = await client.post(f"/object/upload/sign/{bucket}/{key}")
+        response.raise_for_status()
+        path = response.json().get("url")
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.warning("signing upload %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        return None
+    if not path:
+        return None
+    return get_settings().supabase_url.rstrip("/") + "/storage/v1" + path
+
+
+async def download(bucket: str, key: str, max_bytes: int = MAX_ARCHIVE_BYTES) -> bytes | None:
+    """Read an object back. None on anything that goes wrong, including a body
+    larger than `max_bytes` — extraction reads this into memory.
+    """
+    if _disabled():
+        return None
+    try:
+        async with _client() as client:
+            response = await client.get(f"/object/{bucket}/{key}")
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        logger.warning("reading %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        return None
+    if len(response.content) > max_bytes:
+        logger.warning("not reading %s/%s: %d bytes", bucket, key, len(response.content))
+        return None
+    return response.content
+
+
+async def stat(bucket: str, key: str) -> dict[str, Any] | None:
+    """The object's own record of itself, or None if it is not there.
+
+    Used to confirm an upload actually landed before a documents row claims it
+    did — the browser reporting success is not evidence, and a row pointing at
+    a missing object is worse than no row.
+    """
+    prefix, _, name = key.rpartition("/")
+    for entry in await list_prefix(bucket, prefix, limit=100):
+        if entry.get("name") == name:
+            return entry
+    return None

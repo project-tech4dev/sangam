@@ -14,25 +14,88 @@ type Doc = {
   fetched_at: string | null;
 };
 
+const AUTH = { Authorization: "Bearer dev" };
+
+/* Upload in three steps, because the file never passes through the backend:
+   ask for a signed URL, PUT straight to Supabase Storage, then tell the
+   backend it landed. A Vercel Function caps its request body well below the
+   size of an audited-accounts PDF. */
+async function uploadToVault(org: string, file: File) {
+  const ask = await fetch(`${API}/api/documents/uploads`, {
+    method: "POST",
+    headers: { ...AUTH, "Content-Type": "application/json" },
+    body: JSON.stringify({ org, filename: file.name }),
+  });
+  if (ask.status === 503) throw new Error("Document storage is not configured on this deployment.");
+  if (ask.status === 403) throw new Error("You do not have upload access to this organisation.");
+  if (!ask.ok) throw new Error(`Could not start the upload (${ask.status}).`);
+  const { upload_url, storage_path } = await ask.json();
+
+  const put = await fetch(upload_url, {
+    method: "PUT",
+    headers: { "Content-Type": file.type || "application/octet-stream" },
+    body: file,
+  });
+  if (!put.ok) throw new Error(`The file did not reach storage (${put.status}).`);
+
+  const confirm = await fetch(`${API}/api/documents`, {
+    method: "POST",
+    headers: { ...AUTH, "Content-Type": "application/json" },
+    body: JSON.stringify({ org, storage_path, title: file.name }),
+  });
+  if (!confirm.ok) throw new Error(`Uploaded, but not recorded (${confirm.status}).`);
+}
+
 export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: string }[] }) {
   const [orgSlug, setOrgSlug] = useState(orgs[0]?.slug ?? "");
   const [docs, setDocs] = useState<Doc[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     if (!orgSlug) return;
     setDocs(null);
-    fetch(`${API}/api/documents?org=${orgSlug}&limit=100`, { headers: { Authorization: "Bearer dev" } })
+    fetch(`${API}/api/documents?org=${orgSlug}&limit=100`, { headers: AUTH })
       .then((res) => res.json())
       .then((page) => setDocs(page.items))
       .catch(() => setDocs([]));
-  }, [orgSlug]);
+  }, [orgSlug, reload]);
+
+  async function onPick(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";  // so the same file can be retried after a failure
+    if (!file || !orgSlug) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      await uploadToVault(orgSlug, file);
+      setReload((n) => n + 1);
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <div className="eyebrow">Doc vault</div>
-        <h2 style={{ fontSize: 20 }}>Documents in the base, per organisation</h2>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div className="eyebrow">Doc vault</div>
+          <h2 style={{ fontSize: 20 }}>Documents in the base, per organisation</h2>
+        </div>
+        <label className="pill" style={{ cursor: busy ? "wait" : "pointer", opacity: orgSlug ? 1 : 0.5 }}>
+          {busy ? "Uploading…" : "Upload a document"}
+          <input type="file" onChange={onPick} disabled={busy || !orgSlug} style={{ display: "none" }} />
+        </label>
       </div>
+      {problem ? (
+        <div className="card" role="alert">
+          <div className="card-title">Upload failed</div>
+          <div className="card-body">{problem}</div>
+        </div>
+      ) : null}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {orgs.map((org) => (
           <button key={org.id} className="pill" data-active={orgSlug === org.slug} onClick={() => setOrgSlug(org.slug)}>

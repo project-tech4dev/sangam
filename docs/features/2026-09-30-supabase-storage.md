@@ -39,7 +39,7 @@ part of the ingest write path and turn RLS into N policy sets that must be kept 
 | Bucket | Holds | Key |
 |---|---|---|
 | `source-archive` | what research downloaded — public documents, kept for provenance | `<sha256(source_url)[:12]>/<sha256(bytes)>-<name>` |
-| `org-vault` | what an NGO uploads about itself — DPDP-governed | `<org_id>/<sha256(bytes)>-<name>` |
+| `org-vault` | what an NGO uploads about itself — DPDP-governed | `<org_id>/<uuid4>-<name>` |
 
 Two buckets rather than one because a scraped public annual report and an NGO's audited accounts
 have genuinely different access rules, and a bucket is the cheapest place to put that boundary.
@@ -204,6 +204,27 @@ knowingly leaving something in it.
 `is_public = false` and a populated `content_md`; `pytest -m "not integration"` green against the
 pool sentinel (unit tests never touch a database — monkeypatch the repository, not the pool).
 
+**Built 2026-09-30; live verification still owed**, for the same reason as M2 — the two env
+vars. Three deviations, each with its reason:
+
+- **The routes live on `/api/documents`, not under `/api/orgs/{slug}`.** `POST
+  /api/documents/uploads`, `POST /api/documents`, `GET /api/documents/{id}/file`, with the org in
+  the body. Splitting one resource across two routers is what the three-file convention exists to
+  prevent, and an owner in a create's body is ordinary.
+- **No `apiPost` in `frontend/lib/api/client.ts`.** That module is the *server-component*
+  transport; the upload is necessarily browser-side, and `VaultView.tsx` already had its own
+  `fetch` against `NEXT_PUBLIC_API_URL`. Adding an unused server helper would have been cargo.
+- **The vault key is `<org_id>/<uuid4>-<name>`, not content-addressed.** See the decisions above.
+
+Three refusals worth knowing, because they are the authorisation surface until M4:
+
+- A **steward** may read an org's vault and not write to it — `org_id_for_member(write=True)`
+  excludes the role, which is what 0004 defines it to mean.
+- A confirm whose `storage_path` names **another org's folder** is refused even though the
+  caller is a member of their own: the signed URL was minted for one org.
+- A confirm is refused when **nothing is actually at that key**. The browser reporting success
+  is not evidence, and a row pointing at a missing object is worse than no row.
+
 ### M4 — RLS, when auth lands
 
 Rides with the access-layer phase `docs/DATA_PLATFORM.md:157-181` already designs: `SET LOCAL
@@ -244,6 +265,11 @@ Read this before treating the feature as finished.
 - **From M3, any user's agent can read any org's private uploads.** Deliberate, scoped to the
   single-tenant staging reality, recorded as a catalog defect, closed by M4. See the decision
   above.
+- **Uploaded text is truncated.** `extract_pdf_text` stops at roughly 24k characters, which it
+  was written to do for a model's context window. A 100-page annual report in the vault gets its
+  first few pages into `content_md` and no more. Fine for search, wrong for analysis.
+- **A failed upload leaves an orphan.** The signed URL is minted and the object may land before
+  the confirm call fails or is never made; nothing sweeps a key with no `documents` row.
 - **Row-level security does not exist anywhere in this database today** — no policies, no grants,
   no roles. `docs/DATA_PLATFORM.md:18`: *"Access control | none in the database; the backend
   connects as owner and sees everything."*

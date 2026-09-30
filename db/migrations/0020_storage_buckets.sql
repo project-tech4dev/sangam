@@ -7,13 +7,19 @@
 -- path. The two here differ in who may read them, which is what a bucket is for.
 --
 --   source-archive   <sha256(source_url)[:12]>/<sha256(bytes)>-<name>
---   org-vault        <org_id>/<sha256(bytes)>-<name>
+--   org-vault        <org_id>/<uuid4>-<name>
 --
--- The two are keyed differently because they are written at different moments.
+-- The two are keyed differently because of who holds the bytes when the key
+-- is minted.
 -- An upload knows its org_id, and <org_id>/ is what the RLS policy will read
 -- as (storage.foldername(name))[1]::bigint — an id rather than a slug because
 -- _free_slug appends a suffix on collision and org_members joins on org_id.
 -- migration 0005 already assumed '<org_id>/<file>' for exactly this.
+--
+-- The vault is not content-addressed: an upload goes browser -> Storage
+-- through a signed URL, so at the moment the key is made the backend has
+-- never seen the file. documents.content_hash is measured afterwards, from
+-- the bytes read back to extract the text, rather than taken on trust.
 --
 -- The archive cannot use an entity id: fetch_document runs during research,
 -- and a funder_id does not exist until resolve_funder runs at promotion. So it
