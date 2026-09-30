@@ -27,10 +27,12 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.ingest.research_records import SCHEMA_VERSION, to_inr
+from app.integrations import storage
 
 REPO = Path(__file__).resolve().parents[3]
 ENTITIES = REPO / "docs" / "entities"
 CLIENTS = REPO / "docs" / "clients"
+
 
 CONCEPT_TITLES = {
     "identity": "Identity",
@@ -242,9 +244,19 @@ async def main() -> int:
     ]
 
     ENTITIES.mkdir(parents=True, exist_ok=True)
+    published = 0
     for row in rows:
-        (ENTITIES / f"{row['slug']}.md").write_text(entity_markdown(row), encoding="utf-8")
-    print(f"docs/entities: {len(rows)} file(s)")
+        markdown = entity_markdown(row)
+        (ENTITIES / f"{row['slug']}.md").write_text(markdown, encoding="utf-8")
+        # The same file in the bucket, so the app can link to a brief without
+        # reading the repo. git stays the place it is reviewed; this is the
+        # copy the product serves. A no-op when Storage is not configured.
+        if await storage.upload(
+            storage.SOURCE_ARCHIVE, storage.brief_key(row["slug"]),
+            markdown.encode("utf-8"), "text/markdown", replace=True,
+        ):
+            published += 1
+    print(f"docs/entities: {len(rows)} file(s)" + (f", {published} published" if published else ""))
 
     # Every researched funder is shown to every client for now: which funders
     # matter to which NGO is a matching question, and matching is not built.

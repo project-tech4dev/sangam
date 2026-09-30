@@ -456,3 +456,28 @@ class TestMove:
         seen = transport(monkeypatch, lambda r: httpx.Response(200))
         assert await storage.move("source-archive", "a", "b") is False
         assert seen == []
+
+
+class TestBriefKey:
+    """A brief's key is an identity, not a digest — the same key every time it
+    is regenerated, which is why it uploads with replace=True.
+    """
+
+    def test_one_key_per_entity(self):
+        assert storage.brief_key("sbi-foundation") == "entities/sbi-foundation.md"
+
+    def test_the_key_does_not_change_when_the_brief_does(self):
+        assert storage.brief_key("x-foundation") == storage.brief_key("x-foundation")
+
+    async def test_replace_lets_a_regenerated_brief_overwrite(self, enabled, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"Key": "k"}))
+        await storage.upload("source-archive", "entities/x.md", b"# x", "text/markdown",
+                             replace=True)
+        assert seen[0].headers["x-upsert"] == "true"
+
+    async def test_an_archived_source_still_refuses_to_be_overwritten(self, enabled, monkeypatch):
+        """The default has to stay no-overwrite: that is what stops a
+        republished report replacing the bytes a finding was read from."""
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"Key": "k"}))
+        await storage.upload("source-archive", "ab/cd-r.pdf", b"pdf", "application/pdf")
+        assert seen[0].headers["x-upsert"] == "false"

@@ -38,6 +38,8 @@ TIMEOUT_SECONDS = 120
 SIGNED_URL_TTL_SECONDS = 600
 # Supabase fixes this one: a signed upload URL is valid for two hours.
 UPLOAD_URL_TTL_SECONDS = 7200
+# A brief is linked from a rendered page, so the link has to outlive the visit.
+BRIEF_URL_TTL_SECONDS = 3600
 
 _warned = False
 
@@ -167,6 +169,20 @@ def catalog_key(funder_slug: str, as_of: str | None, filename: str, suffix: str 
     return f"funders/{_safe_name(funder_slug)}/{year + '-' if year else ''}{base}"
 
 
+def brief_key(slug: str) -> str:
+    """Where an entity's rendered research brief lives.
+
+    Alongside the sources rather than in a bucket of its own: same access rule
+    — any signed-in user may read it — and a bucket is a boundary between
+    access rules, not a filing cabinet.
+
+    Unlike the two keys above this one is an identity, not a digest. It is the
+    same key every time the brief is regenerated, which is why `render_docs`
+    uploads it with `replace=True`.
+    """
+    return f"entities/{_safe_name(slug)}.md"
+
+
 async def move(bucket: str, source: str, destination: str) -> bool:
     """Rename an object in place. False on any failure, never raises.
 
@@ -212,12 +228,18 @@ def _is_duplicate(response: httpx.Response) -> bool:
     )
 
 
-async def upload(bucket: str, key: str, data: bytes, content_type: str) -> str | None:
+async def upload(
+    bucket: str, key: str, data: bytes, content_type: str, *, replace: bool = False
+) -> str | None:
     """Store bytes and return the key, or None if it did not happen.
 
-    `x-upsert: false`, so re-archiving content already there is a duplicate
-    rather than an overwrite — and a duplicate counts as success, because the
-    object is present either way and the key is content-addressed.
+    Defaults to no overwrite, so re-archiving content already there is a
+    duplicate rather than a replacement — and a duplicate counts as success,
+    because the object is present either way and the key is content-addressed.
+
+    `replace=True` is for keys that are an identity rather than a digest: a
+    rendered brief lives at `entities/<slug>.md` forever and is meant to be
+    rewritten every time the research behind it changes.
     """
     if _disabled():
         return None
@@ -233,7 +255,7 @@ async def upload(bucket: str, key: str, data: bytes, content_type: str) -> str |
                 f"/object/{bucket}/{key}",
                 content=data,
                 headers={"Content-Type": content_type or "application/octet-stream",
-                         "x-upsert": "false"},
+                         "x-upsert": "true" if replace else "false"},
             )
         if _is_duplicate(response):
             return key

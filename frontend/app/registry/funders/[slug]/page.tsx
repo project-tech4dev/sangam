@@ -17,10 +17,13 @@ export default async function FunderProfilePage({ params }: { params: Promise<{ 
     throw err;
   }
 
-  const [scores, grants, news] = await Promise.all([
+  const [scores, grants, news, brief] = await Promise.all([
     apiGet<PageOf<ScoreRow>>(`/api/scores?funder=${funder.slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<GrantRow>>(`/api/grants?funder=${funder.slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<NewsRow>>(`/api/news?funder=${funder.slug}&limit=10`).then((p) => p.items),
+    // 404 when this funder has not been researched, which is most of them.
+    // A signed link, so it is minted per render rather than stored.
+    apiGet<{ url: string }>(`/api/funders/${funder.slug}/brief`).catch(() => null),
   ]);
 
   return (
@@ -48,9 +51,22 @@ export default async function FunderProfilePage({ params }: { params: Promise<{ 
           </>
         }
         cta={
-          <Link href="/ask" className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
-            Ask Sangam who fits this mandate →
-          </Link>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Link href="/ask" className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
+              Ask Sangam who fits this mandate →
+            </Link>
+            {brief && (
+              <a
+                href={brief.url}
+                target="_blank"
+                rel="noreferrer"
+                className="btn"
+                style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}
+              >
+                Research brief ↗
+              </a>
+            )}
+          </div>
         }
       />
       <FunderProfileTabs funder={funder} scores={scores} grants={grants} news={news} />
