@@ -187,7 +187,11 @@ export function HomePage() {
             <Checkbox className="mt-px bg-background data-[state=checked]:border-sage-700 data-[state=checked]:bg-sage-700" />
             <span>
               I agree to receive occasional email updates from Sangam and can unsubscribe at any time. See
-              the <span className="text-terracotta-700">Privacy Policy</span>.
+              the{" "}
+              <Link href="/privacy" className="text-terracotta-700">
+                Privacy Policy
+              </Link>
+              .
             </span>
           </label>
           <div className="flex w-[min(430px,100%)] gap-2.5">

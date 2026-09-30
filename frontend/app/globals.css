@@ -17,7 +17,9 @@
 @import "tw-animate-css";
 
 @source "../components/ui";
+@source "../components/layout";
 @source "../features/home";
+@source "../features/terms";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -152,8 +154,10 @@ body > main { flex: 1 0 auto; }
   margin: 0;
 }
 
-:where(a):where(:not(.sangam-ui *)) { color: var(--color-accent-700); text-decoration: none; }
-:where(a):where(:not(.sangam-ui *)):hover { text-decoration: underline; }
+@layer base {
+  :where(a):where(:not(.sangam-ui *)) { color: var(--color-accent-700); text-decoration: none; }
+  :where(a):where(:not(.sangam-ui *)):hover { text-decoration: underline; }
+}
 
 /* Nav bar links, as in the prototype: text colour, accent-700 on hover and for the current page. */
 .nav-link { color: var(--color-text); text-decoration: none; }
