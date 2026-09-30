@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { HIDDEN_TOOLS, humanizeTool } from "../lib/toolLabels";
+import { humanizeTool } from "../lib/toolLabels";
 import type { TraceStep } from "../lib/useSangamChat";
 
 export function TraceCard({ steps, streaming }: { steps: TraceStep[]; streaming: boolean }) {
-  const visible = steps.filter((s) => !HIDDEN_TOOLS.has(s.tool));
+  const visible = steps;
   const [open, setOpen] = useState(false);
   const expanded = streaming || open;
   if (visible.length === 0 && !streaming) return null;

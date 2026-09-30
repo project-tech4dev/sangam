@@ -223,7 +223,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows): no CSR spend has been loaded, so a zero total means 'not recorded', never 'spent nothing'.",
+            "Sparse: rows arrive only from research that has been promoted, one funder at a time, so most funders have none. A zero total means 'not recorded', never 'spent nothing'.",
         ),
     ),
     Table(
@@ -253,7 +253,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows): no statutory CSR return has been loaded, so a funder's budget and Section 135 status cannot be read here yet.",
+            "Sparse: filled a funder and a year at a time from promoted research, so a missing year means nobody has researched it, not that the funder filed nothing.",
         ),
     ),
     Table(
@@ -277,7 +277,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows): no district-level funder activity has been loaded. Until it is, funder_locations holds STATED priorities only, which is not the same as where a funder gave.",
+            "Sparse: a funder appears here only where a source named a place precisely enough to resolve. Absence is silence, not evidence of no activity, and funder_locations holds STATED priorities, which is a different claim.",
         ),
     ),
     Table(
@@ -342,7 +342,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows): no partner list has been loaded, so zero shared partners means 'not recorded', never 'no partners'.",
+            "Sparse: partners come from promoted research, so zero shared partners means 'not recorded', never 'no partners'. A row here is a named relationship, NOT evidence that money changed hands.",
         ),
     ),
     Table(
@@ -406,7 +406,7 @@ _TABLES: tuple[Table, ...] = (
         name="grants",
         description="Researched funding relationships: who funded whom, when, how much.",
         primary_key=('id',),
-        foreign_keys=(ForeignKey("funder_id", "funders.id"), ForeignKey("org_id", "orgs.id"), ForeignKey("program_id", "programs.id")),
+        foreign_keys=(ForeignKey("funder_id", "funders.id"), ForeignKey("org_id", "orgs.id"), ForeignKey("program_id", "programs.id"), ForeignKey("document_id", "documents.id")),
         columns=(
             Column("id", "bigint", cites="grant"),
             Column("funder_id", "bigint", cites="funder"),
@@ -470,9 +470,6 @@ _TABLES: tuple[Table, ...] = (
             Column("lgd_code", "text", note="Local Government Directory code, unique within a kind"),
             Column("aliases", "text[]", note="other spellings of the same place; match against these too"),
         ),
-        defects=(
-            "All 10 districts currently parent to Assam (id=2), including DIMAPUR (really Nagaland) and BISHNUPUR and TAMENGLONG (really Manipur). Any state-level rollup through parent_id is wrong for those three. Say so when a question depends on state.",
-        ),
     ),
     Table(
         name="metrics",
@@ -507,7 +504,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows): no impact figure has been loaded. grants.outcomes holds a little of this as jsonb; a zero here is not evidence an organisation measures nothing.",
+            "Sparse: figures arrive from promoted research and are mostly self-reported — check `method` before quoting one as evidence. grants.outcomes holds a little more as jsonb; a zero here is not evidence an organisation measures nothing.",
         ),
     ),
     Table(
@@ -694,7 +691,7 @@ _TABLES: tuple[Table, ...] = (
         name="programs",
         description="A programme run by an org, or a funding programme run by a funder — exactly one owner.",
         primary_key=('id',),
-        foreign_keys=(ForeignKey("funder_id", "funders.id"), ForeignKey("org_id", "orgs.id")),
+        foreign_keys=(ForeignKey("funder_id", "funders.id"), ForeignKey("org_id", "orgs.id"), ForeignKey("parent_id", "programs.id"), ForeignKey("document_id", "documents.id")),
         columns=(
             Column("id", "bigint"),
             Column("org_id", "bigint", cites="org", note="exactly one of org_id / funder_id is set (enforced by CHECK)"),
@@ -997,6 +994,13 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         # Private org data with no per-caller filter yet: every org's drafts,
         # amounts and decisions. Catalogue it when queries run as the caller.
         "proposals",
+        # Importer bookkeeping, not catalog data: run history and the review queue.
+        # Sangam Import has its own tools for these; Ask Sangam has no use for them.
+        "ingest_runs",
+        "ingest_run_items",
+        "ingest_source_proposals",
+        "entity_research",
+        "resolution_queue",
         # Infrastructure.
         "schema_migrations",
         "graph_ingest_log",

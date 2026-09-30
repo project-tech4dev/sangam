@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # "provider:model_name", resolved via langchain init_chat_model.
     model: str = "anthropic:claude-sonnet-5"
 
+    # For work that needs no reasoning: filling a fixed record shape from one
+    # article, and the catalog-writer subagent, which calls two tools and
+    # formats their output. Empty falls back to `model`, so an unset value
+    # changes nothing. Point it at the cheapest model of the same provider.
+    utility_model: str = ""
+
     # Postgres connection string; holds app data AND LangGraph checkpoints.
     database_url: str = "postgresql://sangam:sangam@localhost:5433/sangam"
 
@@ -45,6 +51,9 @@ class Settings(BaseSettings):
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
     langfuse_host: str = "https://cloud.langfuse.com"
+
+    # Where download_file saves what it fetches, and read_pdf reads from.
+    downloads_dir: str = "/tmp/sangam-downloads"
 
     # Optional tool integrations — all disabled when empty.
     tavily_api_key: str = ""

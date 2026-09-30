@@ -164,16 +164,23 @@ def _build_handler(settings: Settings):
     )
 
 
-def trace_config(settings: Settings) -> dict[str, Any]:
-    """Config fragment attaching Langfuse to the agent graph."""
-    base: dict[str, Any] = {"run_name": TRACE_NAME}
+def trace_config(
+    settings: Settings, *, name: str = TRACE_NAME, tags: tuple[str, ...] = ()
+) -> dict[str, Any]:
+    """Config fragment attaching Langfuse to the agent graph.
+
+    `name` is what a trace is called in Langfuse. Every agent passes its own:
+    two graphs sharing one name makes the two indistinguishable in the UI, and
+    a run's name is the only thing shown before you open it.
+    """
+    base: dict[str, Any] = {"run_name": name}
     if not settings.langfuse_enabled:
         return base
     try:
         return {
             **base,
             "callbacks": [_build_handler(settings)],
-            "metadata": {"langfuse_tags": ["sangam", settings.model]},
+            "metadata": {"langfuse_tags": ["sangam", *tags, settings.model]},
         }
     except Exception:  # telemetry must never take the app down
         logger.warning(
@@ -243,3 +250,23 @@ async def traced_fetch(
         if span is not None:
             span.update(output={"row_count": len(rows)})
         return rows
+
+
+def langsmith_status() -> str:
+    """One line on whether LangSmith will receive anything, for the boot log.
+
+    LangSmith needs no wiring in a LangGraph app — the tracer is switched on by
+    environment variables alone, and the `run_name` each agent already sets
+    names the root run there too. What it does need is for someone to be told
+    when it is silently off, which is the failure that cost a day with Langfuse.
+    """
+    enabled = os.environ.get("LANGSMITH_TRACING", "").lower() in ("1", "true", "yes")
+    key = os.environ.get("LANGSMITH_API_KEY") or os.environ.get("LANGCHAIN_API_KEY")
+    project = os.environ.get("LANGSMITH_PROJECT", "default")
+    if enabled and key:
+        return f"LangSmith tracing enabled: project={project}"
+    if enabled and not key:
+        return "LangSmith TRACING=true but no LANGSMITH_API_KEY — traces will be DROPPED"
+    if key and not enabled:
+        return "LangSmith key is set but LANGSMITH_TRACING is not true — tracing is OFF"
+    return "LangSmith tracing disabled (set LANGSMITH_TRACING=true and LANGSMITH_API_KEY)"

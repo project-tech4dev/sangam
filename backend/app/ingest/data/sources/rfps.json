@@ -1,0 +1,89 @@
+{
+  "_comment": "Edit this file to add or change a source. A source is only crawled when its access_rule is open_api or crawl_allowed, so changing a rule is a security decision and must carry its evidence in `basis`.",
+  "sources": [
+    {
+      "key": "funder_apply_pages",
+      "name": "Funder apply and call-for-proposals pages",
+      "host": "",
+      "access_rule": "crawl_allowed_check_each_site",
+      "categories": [
+        "rfp"
+      ],
+      "yields": [
+        "rfp"
+      ],
+      "basis": "A class of pages on each funder's own site, so that host's robots.txt governs. This is the weekly sweep that finds open calls.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "ngobox",
+      "name": "NGOBox RFP and EOI listings",
+      "host": "ngobox.org",
+      "access_rule": "crawl_only_with_permission",
+      "categories": [
+        "rfp"
+      ],
+      "yields": [
+        "rfp"
+      ],
+      "basis": "The site answered 403 to automated requests, including for robots.txt, so it actively blocks bots. Ask Renalysis Consultants for permission or a feed.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "gem",
+      "name": "Government e-Marketplace (GeM)",
+      "host": "gem.gov.in",
+      "access_rule": "not_checked",
+      "categories": [
+        "rfp"
+      ],
+      "yields": [
+        "rfp"
+      ],
+      "basis": "robots.txt timed out when checked from outside India, so whether automated access is permitted is unknown. Check again from an Indian network.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "psu_csr_templates",
+      "name": "PSU CSR proposal templates",
+      "host": "",
+      "access_rule": "reference_only",
+      "categories": [
+        "rfp"
+      ],
+      "yields": [
+        "rfp"
+      ],
+      "basis": "Public documents downloaded by hand from each PSU's CSR pages. Used to learn proposal formats and themes rather than as a data feed.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "tata_due_diligence",
+      "name": "Tata NGO due-diligence guidelines",
+      "host": "tatasustainability.com",
+      "access_rule": "reference_only",
+      "categories": [
+        "rfp"
+      ],
+      "yields": [
+        "rfp"
+      ],
+      "basis": "robots.txt allows this path, blocking only restricted folders. Read to learn what due-diligence areas a funder checks, not for entity data.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "tata_csr_assessment",
+      "name": "Tata CSR Assessment Framework",
+      "host": "tatasustainability.com",
+      "access_rule": "reference_only",
+      "categories": [
+        "rfp"
+      ],
+      "yields": [
+        "rfp"
+      ],
+      "basis": "Same host rule as the due-diligence guidelines: robots.txt allows this path. Read to learn how a funder rates a partner.",
+      "robots_checked_at": "2026-09-28"
+    }
+  ]
+}

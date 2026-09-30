@@ -12,8 +12,8 @@ FETCH_TIMEOUT_SECONDS = 20
 USER_AGENT = "Mozilla/5.0 (compatible; DeepAgentApp/0.1; +https://github.com)"
 
 
-def make_web_search(api_key: str) -> BaseTool:
-    return TavilySearch(max_results=5, tavily_api_key=api_key)
+def make_web_search(api_key: str, max_results: int = 5) -> BaseTool:
+    return TavilySearch(max_results=max_results, tavily_api_key=api_key)
 
 
 @tool

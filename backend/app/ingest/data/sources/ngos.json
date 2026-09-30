@@ -1,0 +1,249 @@
+{
+  "_comment": "Edit this file to add or change a source. A source is only crawled when its access_rule is open_api or crawl_allowed, so changing a rule is a security decision and must carry its evidence in `basis`.",
+  "sources": [
+    {
+      "key": "node_sesta",
+      "name": "Node/SeSTA CSO repository",
+      "host": "node.sesta.org",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "robots.txt allows all paths. Node is a project partner, so confirm reuse with them as a courtesy even though the rules permit it.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "guidestar_india",
+      "name": "GuideStar India (CSIS India)",
+      "host": "guidestarindia.org",
+      "access_rule": "crawl_allowed",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "robots.txt allows all paths. Terms of use were not read, so check them before Sangam displays its certification levels publicly.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "ngo_websites",
+      "name": "NGO official websites",
+      "host": "",
+      "access_rule": "crawl_allowed_check_each_site",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "A class of sites, not one host: read each NGO's robots.txt and terms before crawling. Cohort NGOs can also give consent directly.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "ngo_annual_reports",
+      "name": "NGO annual reports and audited financials",
+      "host": "",
+      "access_rule": "crawl_allowed_check_each_site",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "Public PDFs published on each NGO's own site, so that host's robots.txt governs. Download politely and one host at a time.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "ngo_darpan",
+      "name": "NGO Darpan (NITI Aayog)",
+      "host": "ngodarpan.gov.in",
+      "access_rule": "manual_entry_only_automation_blocked",
+      "categories": [
+        "ngo",
+        "rfp"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "Every public search is gated by an image CAPTCHA that tooling cannot solve, and robots.txt answered 503 from outside India. A person must look each record up.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "fcra_online",
+      "name": "FCRA Online (MHA)",
+      "host": "fcraonline.nic.in",
+      "access_rule": "manual_entry_only_automation_blocked",
+      "categories": [
+        "ngo",
+        "media"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "robots.txt answered 503 from outside India, so its rules are unknown from here and automated access is unestablished. Manual lookup is allowed.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "income_tax_exemptions",
+      "name": "Income Tax tax-exempted institutions",
+      "host": "incometaxindia.gov.in",
+      "access_rule": "manual_entry_only_automation_blocked",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "robots.txt answered 403 from outside India, so whether automated access is permitted cannot be established. Manual lookup by name or PAN is allowed.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "mca21",
+      "name": "MCA21 company master data",
+      "host": "mca.gov.in",
+      "access_rule": "manual_entry_only_automation_blocked",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "Master data search is CAPTCHA-gated and robots.txt answered 403 from outside India. A person must look up CIN and Section 8 status by hand.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "mca_csr1_registry",
+      "name": "MCA CSR-1 registry",
+      "host": "mca.gov.in",
+      "access_rule": "manual_entry_only_automation_blocked",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "No public search for CSR-1 was found and the host answers 403 to robots.txt from outside India. Take the number from the NGO's own certificate instead.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "mca_implementing_agency_master",
+      "name": "MCA CDM Implementing Agency Master",
+      "host": "mcacdm.nic.in",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "Same host rule as the other MCA CDM products: robots.txt disallows automated access. Manual export from an Indian network is allowed.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "csr_exchange",
+      "name": "National CSR eXchange Portal",
+      "host": "csrxchange.gov.in",
+      "access_rule": "manual_entry_only_automation_blocked",
+      "categories": [
+        "ngo",
+        "rfp"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "robots.txt answered 503 from outside India, so automated access is unestablished. Manual lookup of implementing agencies and proposed projects is allowed.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "dataful_ngo",
+      "name": "Dataful NGO datasets",
+      "host": "dataful.in",
+      "access_rule": "licence_or_paid_access_needed",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "robots.txt allows /datasets, but downloads need a login and a paid plan. A written licence is needed before any of it appears in the open layer.",
+      "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "ffrh_ngo_datasets",
+      "name": "FFRH NGO profiles and research folders",
+      "host": "",
+      "access_rule": "partner_permission_internal",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "Shared by FFRH for this project. Public release of any CSO fact from it needs that CSO's consent under the DPDP Act.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "cso_vault_uploads",
+      "name": "CSO self-reported vault uploads",
+      "host": "",
+      "access_rule": "partner_permission_internal",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "Documents an organisation uploads about itself. Use is governed by that CSO's consent under the DPDP Act, and the files stay private by default.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "hand_vetting_sheets",
+      "name": "Hand-vetting fact-check sheets",
+      "host": "",
+      "access_rule": "partner_permission_internal",
+      "categories": [
+        "ngo",
+        "funder"
+      ],
+      "yields": [
+        "org",
+        "funder"
+      ],
+      "basis": "Internal research in the org-grant-intelligence repo: each fact carries its source URL, date and verdict. The standard the importer is measured against.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "social_stock_exchange",
+      "name": "Social Stock Exchange registered NPOs",
+      "host": "",
+      "access_rule": "reference_only",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "Neither the robots rules nor the terms have been read, and the register is used to learn what disclosures exist rather than as a data source.",
+      "robots_checked_at": null
+    },
+    {
+      "key": "ngo_social_accounts",
+      "name": "NGO social accounts",
+      "host": "",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "ngo",
+        "media"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "LinkedIn permits crawling only under written whitelist approval, and the other platforms require their own APIs. A person may read and enter a fact by hand.",
+      "robots_checked_at": null
+    }
+  ]
+}

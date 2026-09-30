@@ -1,4 +1,4 @@
-.PHONY: up down logs seed graph-seed smoke db-reset db-backup db-upgrade \
+.PHONY: up down logs seed taxonomy-seed graph-seed smoke client-docs db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend evals
 
@@ -58,6 +58,11 @@ logs:
 # running container's environment, which always points at the local database).
 seed:
 	$(COMPOSE) run --rm --no-deps backend python -m seed.seed
+	$(COMPOSE) run --rm --no-deps backend python -m seed.taxonomy_seed
+
+# Schedule VII on its own. Idempotent; `make seed` already runs it.
+taxonomy-seed:
+	$(COMPOSE) run --rm --no-deps backend python -m seed.taxonomy_seed
 
 # Build the Neo4j knowledge graph from Postgres (needs OPENAI_API_KEY in .env).
 graph-seed:
@@ -87,6 +92,14 @@ evals:
 	@set -a; [ -f .env ] && . ./.env; set +a; \
 	cd backend && TEST_DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
 	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) -q
+
+# Render docs/entities and the generated blocks of docs/clients from the
+# research table. Host venv, like `make evals`: the backend image mounts only
+# app/, seed/ and db/, so nothing inside it can write a repo file.
+client-docs:
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+	cd backend && DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
+	.venv/bin/python -m app.ingest.render_docs
 
 migrate-status:
 	$(COMPOSE) run --rm --no-deps backend python -m app.db.migrate --status
@@ -136,6 +149,16 @@ psql:
 	$(COMPOSE) run --rm --no-deps --entrypoint psql postgres "$(DB_URL)"
 
 # --- Local-only maintenance --------------------------------------------------
+# Empty every table but keep the schema and the applied-migration ledger, so a
+# data run can start from nothing without re-applying migrations. Does NOT drop
+# volumes; `make seed` reloads the cohort. The 96 research documents are not in
+# the seed - back them up first if this database still has them.
+db-clean:
+	$(require_local)
+	docker compose exec -T postgres psql -U sangam -d sangam -v ON_ERROR_STOP=1 \
+	  < db/scripts/truncate_all.sql
+	@echo "every table emptied; schema and migrations intact"
+
 # Scorched earth: drops ALL volumes including the Neo4j graph and the
 # user-loaded documents/graph_ingest_log tables. Fresh installs only.
 db-reset:

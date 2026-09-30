@@ -9,6 +9,7 @@ from app.api.routes import (
     documents,
     funders,
     grants,
+    ingest,
     meta,
     news,
     orgs,
@@ -26,6 +27,7 @@ OPENAPI_TAGS = [
     {"name": "rfps", "description": "Funding opportunities and org matches (RFP Watch)"},
     {"name": "contacts", "description": "People at orgs and funders"},
     {"name": "scores", "description": "Rubric-based funder-fit assessments and adjustment audit log"},
+    {"name": "ingest", "description": "Sangam Import: sources, run history and the review queue"},
     {"name": "meta", "description": "Shared vocabularies: tags and locations"},
 ]
 
@@ -42,5 +44,6 @@ for _router in (
     meta.router,
     news.router,
     documents.router,
+    ingest.router,
 ):
     api_router.include_router(_router)

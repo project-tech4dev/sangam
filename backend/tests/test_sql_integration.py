@@ -130,3 +130,35 @@ def test_executor_concurrency_is_capped_below_the_pool_size():
     """pool max_size=5, shared with the checkpointer."""
     assert MAX_CONCURRENT_QUERIES < 5
     PsycopgExecutor(timeout_ms=5000)
+
+
+class TestGeographyIsParentedCorrectly:
+    """The defect the catalog used to carry, proved gone against real rows."""
+
+    def test_no_district_hangs_off_the_wrong_state(self, conn):
+        rows = conn.execute(
+            """
+            SELECT d.name AS district, s.name AS state
+            FROM locations d JOIN locations s ON s.id = d.parent_id
+            WHERE d.kind = 'district'
+            """
+        ).fetchall()
+        if not rows:
+            pytest.skip("no districts seeded")
+        placed = {r["district"]: r["state"] for r in rows}
+        # The three the catalog defect used to name, from Darpan's own
+        # state_of_registration rather than from the seed's assumption.
+        for district, state in (("DIMAPUR", "Nagaland"), ("BISHNUPUR", "Manipur"),
+                                ("TAMENGLONG", "Manipur")):
+            if district in placed:
+                assert placed[district] == state
+
+    def test_every_district_has_a_state_for_a_parent(self, conn):
+        orphans = conn.execute(
+            """
+            SELECT d.name FROM locations d
+            LEFT JOIN locations s ON s.id = d.parent_id AND s.kind = 'state'
+            WHERE d.kind = 'district' AND s.id IS NULL
+            """
+        ).fetchall()
+        assert orphans == [], f"districts with no state: {[o['name'] for o in orphans]}"

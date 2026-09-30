@@ -174,6 +174,21 @@ graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 `app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
 `db_query`, `search_graph`, `fetch_url`. Nothing else.
 
+That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
+`create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`
+and `execute` — and, whenever any subagent is declared, a `general-purpose` subagent carrying
+**the main agent's entire tool list** under deepagents' generic prompt. Ask Sangam was running
+fifteen tools; Sangam Import twenty-one, with a subagent that could call `run_import_now` and
+`promote_research` under none of its instructions. `app/agent/harness.py` removes both, by
+two different mechanisms, and the difference matters: a `HarnessProfile` is registered per
+**provider**, so it is global to every agent sharing a model — right for the subagent, wrong for
+tools, since Sangam Import needs `read_file` to load a skill and Ask Sangam must not. So
+`install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
+preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its six plus `read_file`,
+which `FilesystemMiddleware` refuses to be built without; Sangam Import adds `ls`. Nothing that
+writes survives on either. Tests pin all of it, because the next library upgrade is free to add
+more.
+
 There used to be four hand-written tools wrapping fixed queries (`search_orgs`, `get_funder`,
 `get_grants`, `get_fit_scores`). They were removed, and it is worth knowing why before
 proposing another: they were a cached query plan rather than a capability, and a worse one.
@@ -243,12 +258,20 @@ product depends on and that a new tool silently breaks:
 Adding a tool: write the async function in `app/agent/tools/` with both conventions, register it
 in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asserts every
 registered tool is named there), and add a label to
-`frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name;
-`HIDDEN_TOOLS` there suppresses the `deepagents` filesystem built-ins from the trace).
+`frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name).
+There used to be a `HIDDEN_TOOLS` set there suppressing the `deepagents` filesystem built-ins
+from the trace; the tools themselves are gone now, so hiding them is not needed.
 
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is
 that every field traces to a source.
+
+**Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
+reusable brief — the 28-field funder scan a fundraiser wants — advertised by its frontmatter and
+read only when the model judges it relevant. Constraints never live there: progressive disclosure
+means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and
+the access rules cannot be optional. `docs/SKILLS.md` has the mechanism, the discovery rules and
+the honest cost.
 
 **Optional subsystems degrade, they do not crash.** The graph activates only when
 `NEO4J_URI` and an OpenAI key are both set (`Settings.graph_enabled`); `graphiti_core` is

@@ -20,7 +20,6 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
 };
 
 /** deepagents filesystem built-ins — noise in a trace, hidden by default. */
-export const HIDDEN_TOOLS = new Set(["ls", "read_file", "write_file", "edit_file", "glob", "grep"]);
 
 export function humanizeTool(name: string): ToolLabel {
   return (

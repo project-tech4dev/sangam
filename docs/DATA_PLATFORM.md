@@ -229,3 +229,70 @@ will not be byte-identical.
 Matching views and `match_scores`, `entity_edges` and `connections()`, the chunking and embedding
 pipeline, Graphiti (deferred — the spike answered 0 of 4 benchmark questions as well as SQL and
 got 39 of 40 fact expiries wrong), and csr.gov.in.
+
+---
+
+# What a fundraiser asks for, and where each answer lives
+
+The brief the importer is built to answer is a CSO's, not an analyst's: *name two funders and
+tell me whether we can apply.* Twenty-eight fields. This is the map from each one to the column
+that holds it, because that map is what decides whether research becomes a row or a paragraph —
+and it is the first thing here that will go stale.
+
+| # | The brief asks for | Where it lands |
+|---|---|---|
+| 1 | Organization name | `funders.name` |
+| 2 | Parent company / group | `funders.parent_id` — linked only when the parent resolves |
+| 3 | CSR entity type | `funders.funder_type` |
+| 4 | Official website | `funders.website` |
+| 5 | Latest annual CSR spend | `funder_csr_years.total_spent` |
+| 6 | Previous 2–3 financial years | `funder_csr_years`, one row per year |
+| 7 | Total CSR budget, if disclosed | **`funder_csr_years.notes`** — see below |
+| 8 | Key themes / focus sectors | `funder_tags` → `tags(kind='csr_sector')`, `is_inferred` true |
+| 9 | Major programmes | `programs`, theme → programme → phase via `parent_id` |
+| 10 | Geographic focus | `funder_locations` (stated) and `funder_footprints` (actual) |
+| 11 | Target beneficiary groups | **no column** — `tags(kind='population')` exists, nothing seeds it |
+| 12–13 | Typical / min / max grant size | `funders.grant_size_min` `grant_size_max`; per call, `rfps.amount_min/max` |
+| 14 | Typical project duration | `funders.typical_duration_months` |
+| 15 | Funds external NGOs? | `funders.funds_external` (stated) vs `funder_csr_spend.via_agency` (done) |
+| 16 | NGO eligibility criteria | `rfps.eligibility`, one requirement per line |
+| 17 | Application process | `proposal_templates` — **no writer yet** |
+| 18 | Open / rolling / invitation-only | `funders.intake_mode` |
+| 19 | Current or recent RFPs | `rfps` |
+| 20 | Application deadlines | `rfps.deadline` |
+| 21 | Contact details | `contacts.name` `role` `kind`; `email` only for a shared mailbox |
+| 22 | Major implementation partners | `funder_partners` |
+| 23 | Grants in the last 2 years | **`funder_partners`** — `grants` has no writer |
+| 24 | Amount per partnership | `funder_csr_spend.amount` + `implementing_agency` |
+| 25 | States / districts worked in | `funder_footprints.location_id` → `locations` |
+| 26 | Schedule VII categories | `funder_csr_spend.csr_sector_id` → `tags(kind='csr_sector')` |
+| 27 | Annual report / CSR policy links | `documents` |
+| 28 | Source links for everything | `source_url` + `source_name` + `fetched_at` on every fact row |
+
+## The three that deliberately have no column
+
+**Total CSR budget (7).** `prescribed_csr` is the statutory 2% obligation. A company that
+publishes a budget above it is publishing a *plan*, and plan-versus-spend is the distinction this
+whole platform enforces — a column invites the two to be averaged. It stays in `notes` with the
+funder's own wording, and the report prints it beside the obligation.
+
+**Beneficiary groups (11).** `tags.kind` allows `'population'` and no vocabulary is seeded.
+Letting a researcher's free text become tag rows is the "Building Human Capital becomes
+Education" failure, one level down. Until a controlled list exists the wording stays on the row
+it describes.
+
+**Application process (17).** `proposal_templates` and `template_items` are fully specified and
+have no writer. The URL of the form reaches `rfps.url`; the form's structure does not.
+
+## Two answers that are honest rather than complete
+
+**Grants (23).** `grants.org_id` is `NOT NULL` and `orgs` has no writer, so a funded organisation
+we do not already hold cannot be a grant row. Such a relationship is recorded in
+`funder_partners`, whose `org_id` is nullable — which is the more careful claim anyway, since a
+named partner is not proof that money changed hands. The report says so rather than implying an
+empty `grants` table means no grants.
+
+**Funds external NGOs (15).** Two columns, never reconciled. `funders.funds_external` is what the
+funder *says*; counting `funder_csr_spend.via_agency` is what it *did*. The report prints both —
+*"States that it funds external NGOs; 3 of 18 recorded projects ran through an implementing
+agency"* — because the gap between them is itself the finding.

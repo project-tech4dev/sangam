@@ -46,12 +46,15 @@ assert ($expr)
 
 say "── backend ──────────────────────────────────────"
 check_status  "health endpoint"            "$BACKEND/health" 200 5
-check_json    "stats: cohort counts"       "$BACKEND/api/meta/stats" "d['orgs'] == 10 and d['funders'] == 4"
+# >= not ==: Sangam Import adds funders and documents to whatever is seeded, so a
+# fixed count would fail the first time someone runs an import. What matters here
+# is that the seeded cohort is present, not that nothing was ever added to it.
+check_json    "stats: cohort counts"       "$BACKEND/api/meta/stats" "d['orgs'] >= 10 and d['funders'] >= 4"
 check_json    "orgs: legacy array of 10"   "$BACKEND/api/orgs" "isinstance(d, list) and len(d) == 10"
 check_json    "funders: latest_scores"     "$BACKEND/api/funders" "d[0]['latest_scores'].get('v1') is not None"
 check_json    "scores: 8 assessments"      "$BACKEND/api/scores?limit=100" "d['total'] == 8"
 check_json    "grants: 4 relationships"    "$BACKEND/api/grants" "d['total'] == 4"
-check_json    "documents: 96 on file"      "$BACKEND/api/documents?limit=1" "d['total'] == 96"
+check_json    "documents: 96+ on file"    "$BACKEND/api/documents?limit=1" "d['total'] >= 96"
 check_status  "agent AG-UI health"         "$BACKEND/agent/health" 200 5
 
 say "── frontend ─────────────────────────────────────"

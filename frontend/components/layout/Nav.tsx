@@ -3,10 +3,11 @@ import Link from "next/link";
 const LINKS = [
   { id: "registry", label: "Registry", href: "/registry" },
   { id: "ask", label: "Ask Sangam", href: "/ask" },
+  { id: "import", label: "Import", href: "/import" },
   { id: "resources", label: "Resources", href: "/resources" },
 ] as const;
 
-export function Nav({ current }: { current: "home" | "registry" | "ask" | "resources" }) {
+export function Nav({ current }: { current: "home" | "registry" | "ask" | "import" | "resources" }) {
   return (
     <nav
       style={{

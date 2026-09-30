@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.api.routes import orgs as orgs_api
 
@@ -6,7 +6,7 @@ ROW = {
     "id": 1, "slug": "the-ant", "name": "THE ANT", "darpan_id": "AS/2017/0165645",
     "cohort": "core-cohort-2026", "state": "Assam", "district": "CHIRANG",
     "sectors": ["Agriculture", "Education"], "source_name": "darpan-portal",
-    "fetched_at": datetime(2026, 9, 21, tzinfo=timezone.utc), "total": 1,
+    "fetched_at": datetime(2026, 9, 21, tzinfo=UTC), "total": 1,
 }
 
 LEGACY_KEYS = {"id", "slug", "name", "darpan_id", "cohort", "state", "district",

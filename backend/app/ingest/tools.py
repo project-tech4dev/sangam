@@ -1,0 +1,632 @@
+"""The importer's tools. Like every Sangam tool, they return errors, never raise."""
+
+from __future__ import annotations
+
+import collections
+import logging
+from typing import Any
+
+from langchain_core.tools import tool
+
+from app.agent.models import resolve_model
+from app.agent.tools.sql.catalog import CATALOG
+from app.core.config import get_settings
+from app.db.pool import get_pool
+from app.ingest.expectations import (
+    CONCEPT_TABLES,
+    concepts_for,
+    expected_fields,
+    recent_fiscal_years,
+)
+from app.ingest.promote import promote
+from app.ingest.runner import catalog_baseline, run_import, summarise
+from app.ingest.sources import SOURCES, Category, resolve
+
+logger = logging.getLogger(__name__)
+
+
+@tool
+async def list_import_sources(category: str = "", detail: str = "") -> str:
+    """Summarise the source registry: how many sources there are, and their access rules.
+
+    There are ~74 registered sources, so this returns COUNTS by default, not the
+    whole list. Narrow it to get detail:
+
+    Args:
+        category: one of funder, ngo, rfp, media — restricts the summary to that
+            category and lists the sources that can actually be read.
+        detail: a source key, or a rule name like "no_scraping_manual_entry_allowed",
+            to get full entries with the basis quoted. Use this when a user asks
+            why a particular source was skipped, and quote the basis back to them.
+
+    A source is only crawled when its rule is open_api or crawl_allowed. Every
+    other rule means a person must enter the data by hand, or someone must get
+    permission, buy a licence, or run an export from an Indian network first.
+    """
+    try:
+        chosen = list(SOURCES.values())
+        if category:
+            try:
+                wanted = Category(category.strip().lower())
+            except ValueError:
+                return f"Unknown category {category!r}. Use one of: {', '.join(c.value for c in Category)}."
+            chosen = [s for s in chosen if wanted in s.categories]
+
+        if detail:
+            needle = detail.strip().lower()
+            picked = [s for s in chosen if needle in (s.key, s.access_rule.value)]
+            if not picked:
+                return f"Nothing registered matches {detail!r}."
+            return "\n".join(_full_entry(s) for s in picked)
+
+        runs = [s for s in chosen if s.dispatchable and s.key in _adapter_keys()]
+        permitted = [s for s in chosen if s.dispatchable and s.key not in _adapter_keys()]
+        by_rule = collections.Counter(s.access_rule.value for s in chosen if not s.dispatchable)
+
+        scope = f" in {category}" if category else ""
+        lines = [f"{len(chosen)} sources registered{scope}."]
+        lines.append(f"\nCan be read AND have an adapter ({len(runs)}) — these actually pull:")
+        for s in runs:
+            lines.append(f"  {s.key} ({s.host}) → {', '.join(s.yields)}")
+        if permitted:
+            lines.append(
+                f"\nPermitted but no adapter yet ({len(permitted)}): "
+                + ", ".join(s.key for s in permitted)
+            )
+        if by_rule:
+            lines.append("\nHeld, by rule:")
+            for rule, n in sorted(by_rule.items(), key=lambda kv: -kv[1]):
+                lines.append(f"  {rule}: {n}")
+            lines.append(
+                '\nAsk again with detail="<source key or rule>" for the evidence behind any of these.'
+            )
+        if not category:
+            counts = ", ".join(
+                f"{c.value} {len([s for s in SOURCES.values() if c in s.categories])}" for c in Category
+            )
+            lines.append(f"\nBy category: {counts}")
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001
+        return f"list_import_sources failed: {exc}"
+
+
+def _adapter_keys() -> set[str]:
+    from app.ingest.runner import ADAPTERS
+
+    return set(ADAPTERS)
+
+
+def _full_entry(s) -> str:
+    mark = "RUNS" if s.dispatchable else "HELD"
+    checked = s.robots_checked_at.isoformat() if s.robots_checked_at else "not checked"
+    host = s.host or "a class of sites, checked per host"
+    return (
+        f"[{mark}] {s.key} — {s.name} ({host})\n"
+        f"  rule: {s.access_rule.value} (checked {checked})\n"
+        f"  basis: {s.basis}\n"
+        f"  yields: {', '.join(s.yields)}"
+    )
+
+
+@tool
+async def plan_import(funders: str = "", years: str = "", sources: str = "", limit: int = 10) -> str:
+    """Say what a run WOULD pull, from where, and against what the catalog already holds.
+
+    Read-only: this writes nothing. Call it before every run and show the user the
+    plan, so the goal and the reach of the run are agreed before anything changes.
+
+    Args:
+        funders: comma-separated funder names the run would research.
+        years: comma-separated fiscal years, e.g. "FY2023-24,FY2024-25".
+        sources: comma-separated source keys, or empty for every registered source.
+        limit: items per source the run would request.
+    """
+    try:
+        keys = [s.strip() for s in sources.split(",") if s.strip()] or None
+        names = [n.strip() for n in funders.split(",") if n.strip()]
+        fys = [y.strip() for y in years.split(",") if y.strip()]
+        requested, unknown = resolve(keys)
+        baseline = await catalog_baseline()
+
+        adapters = _adapter_keys()
+        will_run = [s for s in requested if s.dispatchable and s.key in adapters]
+        no_adapter = [s for s in requested if s.dispatchable and s.key not in adapters]
+        held = [s for s in requested if not s.dispatchable]
+
+        lines = ["PLAN — nothing is written by this step."]
+        if names:
+            searches = len(names) * len(will_run) * max(len(fys), 1)
+            scope = f"{len(names)} name(s), concurrently: {', '.join(names)}"
+            if fys:
+                scope += f"\nAcross {len(fys)} year(s): {', '.join(fys)}"
+            lines.append(
+                f"\nResearching {scope}.\n"
+                f"That is {searches} searches, each costing a model call per article read."
+            )
+        else:
+            lines.append(
+                "\nNo funder named, so this pulls whatever the sources published most recently. "
+                "If the user asked about particular funders, pass their names instead."
+            )
+        lines += ["", "Will pull:"]
+        if not will_run:
+            lines.append("  nothing: no requested source both may be read and has an adapter.")
+        for s in will_run:
+            lines.append(
+                f"  {s.key} ({s.host}) — up to {limit} items → {', '.join(s.yields)}\n"
+                f"    permitted because: {s.basis}"
+            )
+        if no_adapter:
+            lines += ["", f"Permitted, but nothing reads them yet ({len(no_adapter)}): "
+                          + ", ".join(s.key for s in no_adapter)]
+        # Counts, not entries: naming all ~50 held sources here would put the
+        # whole registry into the prompt before every single run.
+        if held:
+            by_rule = collections.Counter(s.access_rule.value for s in held)
+            lines += ["", f"Will NOT pull ({len(held)} held by their access rule):"]
+            for rule, n in sorted(by_rule.items(), key=lambda kv: -kv[1]):
+                lines.append(f"  {rule}: {n}")
+            lines.append('  Ask list_import_sources(detail="<key or rule>") for the evidence.')
+        if unknown:
+            lines += ["", f"Unknown source names, ignored: {', '.join(unknown)}"]
+
+        lines += [
+            "",
+            "Catalog before the run:",
+            "  " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in baseline.items()),
+            "",
+            (
+                "New names are added. A name that resembles an existing funder without "
+                "matching it is queued for a person, never merged."
+            ),
+        ]
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001
+        return f"plan_import failed: {exc}"
+
+
+@tool
+async def run_import_now(
+    goal: str, funders: str = "", years: str = "", sources: str = "", limit: int = 10
+) -> str:
+    """Run an import and return the full summary. This WRITES to the database.
+
+    Call plan_import first and show the user the plan. The goal is stored on the
+    run, so months later the run says what it was for.
+
+    Args:
+        goal: one sentence on what this run is for, in the user's terms, e.g.
+            "FY2025-26 CSR figures for Indian corporate funders". Required.
+        funders: comma-separated funder names to research, e.g.
+            "Axis Bank Foundation, SBI Foundation". Each name is searched in every
+            runnable source, and the names run CONCURRENTLY. Leaving this empty
+            asks a different question — "whatever these sources published most
+            recently" — so when the user names funders, pass them.
+        years: comma-separated fiscal years, "FY2023-24,FY2024-25,FY2025-26". Each
+            year is searched separately, so three years of three funders is nine
+            searches — say so before running it. Empty searches without a year,
+            which in practice returns the most recent one. Years only aim the
+            SEARCH: whatever years an article turns out to state are all written.
+        sources: comma-separated source keys (e.g. "india_csr,gdelt"). Empty means
+            every registered source — the ones that may not be crawled are reported
+            as refused rather than skipped silently.
+        limit: how many items to pull per source. Keep it small (5-20); each item
+            costs a model call for extraction.
+
+    New funders are added. Names that closely resemble an existing funder are NOT
+    merged — they go to the review queue, because merging two different organisations
+    is the one mistake this pipeline cannot undo. Report the queue to the user.
+    """
+    try:
+        settings = get_settings()
+        keys = [s.strip() for s in sources.split(",") if s.strip()] or None
+        if not goal.strip():
+            return "run_import_now needs a goal: one sentence on what this run is for."
+        names = [n.strip() for n in funders.split(",") if n.strip()] or None
+        fys = [y.strip() for y in years.split(",") if y.strip()] or None
+        summary = await run_import(
+            keys, goal=goal.strip(), funders=names, years=fys,
+            model=resolve_model(settings.utility_model or settings.model), limit=limit,
+        )
+        return format_summary(summary)
+    except Exception as exc:
+        logger.exception("run_import_now failed")
+        return f"run_import_now failed: {type(exc).__name__}: {exc}"
+
+
+@tool
+async def import_run_summary(run_id: int = 0) -> str:
+    """Re-read the summary of an import run. 0 means the most recent run.
+
+    The summary is built from the run tables, so it says the same thing now as it
+    did when the run finished.
+    """
+    try:
+        if run_id <= 0:
+            pool = get_pool()
+            async with pool.connection() as conn:
+                row = await (
+                    await conn.execute("SELECT id FROM ingest_runs ORDER BY id DESC LIMIT 1")
+                ).fetchone()
+            if row is None:
+                return "No import has been run yet."
+            run_id = row["id"]
+        return format_summary(await summarise(run_id))
+    except Exception as exc:  # noqa: BLE001
+        return f"import_run_summary failed: {exc}"
+
+
+@tool
+async def pending_resolutions(limit: int = 20) -> str:
+    """Names waiting for a person to confirm before anything is merged.
+
+    Each row is a name from a source that resembled an existing funder without
+    matching it. Show the candidates and their scores; do not guess on the user's
+    behalf.
+    """
+    try:
+        pool = get_pool()
+        async with pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    "SELECT id, raw_name, entity_kind, source, candidates, source_url "
+                    "FROM resolution_queue WHERE status = 'pending' ORDER BY created_at DESC LIMIT %s",
+                    (min(limit, 100),),
+                )
+            ).fetchall()
+        if not rows:
+            return "Nothing is waiting for review."
+        out = []
+        for r in rows:
+            cands = ", ".join(
+                f"{c['name']} [funder:{c['id']}] ({c['score']})" for c in (r["candidates"] or [])
+            ) or "no candidate above the threshold"
+            out.append(f"#{r['id']} {r['raw_name']!r} from {r['source']} → {cands}\n  {r['source_url']}")
+        return "\n".join(out)
+    except Exception as exc:  # noqa: BLE001
+        return f"pending_resolutions failed: {exc}"
+
+
+def format_summary(s: dict[str, Any]) -> str:
+    """One shape for the run report, wherever it is read."""
+    if "error" in s:
+        return s["error"]
+    t = s["totals"]
+    head = (
+        f"Import run #{s['run_id']} — {s['status']} in {s['duration_seconds']}s\n"
+        f"  goal:      {s.get('goal') or 'not recorded'}\n"
+        f"  names:     {', '.join(s.get('subjects') or []) or 'none — latest from each source'}\n"
+        f"  years:     {', '.join(s.get('fiscal_years') or []) or 'not narrowed by year'}\n"
+        f"  processed: {', '.join(s['sources_processed']) or 'none'}\n"
+        # A count, not 51 keys: the rules behind them are listed below.
+        f"  refused:   {len(s['sources_refused'])} held by their access rule\n"
+        f"  failed:    {', '.join(s['sources_failed']) or 'none'}\n"
+        f"  records:   {t.get('added', 0)} added, {t.get('updated', 0)} updated, "
+        f"{t.get('matched', 0)} already current, {t.get('queued', 0)} queued for review"
+    )
+    parts = [head]
+    empty = [k for k in s["sources_processed"] if not s["by_source"].get(k)]
+    if empty:
+        parts.append(
+            f"\n{', '.join(empty)} ran and found nothing new. That is a result, not a failure."
+        )
+    if s["written"]:
+        parts.append("\nWritten:")
+        for w in s["written"]:
+            changed = ", ".join(w["changes"]) if w["changes"] else ""
+            parts.append(f"  {w['status']}: {w['subject']} → {w['target_table']} {changed}".rstrip())
+    if s.get("sources_without_adapter"):
+        names = ", ".join(s["sources_without_adapter"])
+        parts.append(
+            f"\nPermitted but not built yet ({len(s['sources_without_adapter'])}): {names}. "
+            f"These are legally readable; nothing reads them."
+        )
+    if s["needs_attention"]:
+        parts.append("\nCould not be processed:")
+        # Bounded: at 74 registered sources the held set alone was ~50 lines.
+        for p in s["needs_attention"][:15]:
+            parts.append(f"  {p['status']}: {p['subject'] or p['source']} — {p['reason']}")
+        if len(s["needs_attention"]) > 15:
+            parts.append(f"  … and {len(s['needs_attention']) - 15} more; ask for the run detail.")
+    return "\n".join(parts)
+
+
+@tool
+async def funder_dossier(name: str) -> str:
+    """Everything the catalog already holds about a funder. Read this BEFORE researching.
+
+    Research fills gaps; it does not rediscover what is already recorded. This
+    also gives you the baseline for the comparison you report at the end: what
+    matches, what is new, what conflicts.
+
+    A missing section means NOT RECORDED. It never means zero spending, no
+    partners, no impact or no geography — say "not recorded", never "none".
+    """
+    try:
+        pool = get_pool()
+        async with pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    "SELECT id, name, slug, funder_type, website, registry_status, parent_id, "
+                    "section_135_bound FROM funders "
+                    "WHERE name ILIKE %s OR similarity(name, %s) >= 0.4 "
+                    "ORDER BY similarity(name, %s) DESC LIMIT 5",
+                    (f"%{name}%", name, name),
+                )
+            ).fetchall()
+            if not rows:
+                return (
+                    f"No funder in the catalog matches {name!r}. Everything you find is a NEW "
+                    f"RECORD. That is not evidence the funder is absent from the sector."
+                )
+            top = rows[0]
+            fid = top["id"]
+            out = [
+                f"funders [funder:{fid}] {top['name']} ({top['slug']})",
+                (
+                    f"  type={top['funder_type'] or 'not recorded'} "
+                    f"website={top['website'] or 'not recorded'} "
+                    f"section_135_bound={top['section_135_bound']} "
+                    f"registry_status={top['registry_status']} parent_id={top['parent_id']}"
+                ),
+            ]
+            if len(rows) > 1:
+                others = ", ".join(f"{r['name']} [funder:{r['id']}]" for r in rows[1:])
+                out.append(f"  other funders with a similar name: {others}")
+
+            for label, sql in _DOSSIER_SECTIONS:
+                found = await (await conn.execute(sql, (fid,))).fetchall()
+                if not found:
+                    out.append(f"\n{label}: NOT RECORDED")
+                    continue
+                out.append(f"\n{label} ({len(found)}):")
+                out += [f"  {_row(r)}" for r in found[:20]]
+                if len(found) > 20:
+                    out.append(f"  … and {len(found) - 20} more")
+        return "\n".join(out)
+    except Exception as exc:  # noqa: BLE001
+        return f"funder_dossier failed: {exc}"
+
+
+def _row(r: Any) -> str:
+    return " ".join(f"{k}={v}" for k, v in r.items() if v is not None and k != "id")
+
+
+# Read-only, fixed SQL, one query per concept the research brief targets.
+# contacts deliberately omits email and phone: the catalog withholds them.
+_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
+    (
+        "funder_identifiers",
+        """
+        SELECT id_type, id_value, verified FROM funder_identifiers
+        WHERE funder_id = %s ORDER BY id_type
+        """,
+    ),
+    (
+        "funder_csr_years (amounts in INR)",
+        """
+        SELECT fiscal_year, prescribed_csr, total_spent, average_net_profit, unspent_transferred,
+               source_name
+        FROM funder_csr_years WHERE funder_id = %s ORDER BY fiscal_year
+        """,
+    ),
+    (
+        "funder_csr_spend",
+        """
+        SELECT fiscal_year, project_name, amount, implementing_agency, designation
+        FROM funder_csr_spend WHERE funder_id = %s ORDER BY fiscal_year
+        """,
+    ),
+    (
+        "funder_footprints",
+        """
+        SELECT f.fiscal_year, f.name_as_printed, l.name AS location
+        FROM funder_footprints f LEFT JOIN locations l ON l.id = f.location_id
+        WHERE f.funder_id = %s ORDER BY f.fiscal_year
+        """,
+    ),
+    (
+        "funder_locations (STATED, not proof of spending)",
+        """
+        SELECT fl.role, l.name AS location FROM funder_locations fl
+        JOIN locations l ON l.id = fl.location_id WHERE fl.funder_id = %s
+        """,
+    ),
+    (
+        "funder_partners",
+        """
+        SELECT fiscal_year, partner_name, partner_canonical, partner_kind
+        FROM funder_partners WHERE funder_id = %s ORDER BY fiscal_year
+        """,
+    ),
+    (
+        "programs",
+        """
+        SELECT name, kind, status, start_date, end_date FROM programs
+        WHERE funder_id = %s ORDER BY kind, name
+        """,
+    ),
+    (
+        "grants",
+        """
+        SELECT g.title, g.amount, g.status, g.start_date, o.name AS recipient
+        FROM grants g JOIN orgs o ON o.id = g.org_id WHERE g.funder_id = %s
+        """,
+    ),
+    (
+        "metrics",
+        """
+        SELECT name, value, unit, period, stage, method FROM metrics
+        WHERE funder_id = %s ORDER BY period
+        """,
+    ),
+    (
+        "contacts",
+        """
+        SELECT name, role, kind, verified FROM contacts WHERE funder_id = %s
+        """,
+    ),
+    (
+        "documents",
+        """
+        SELECT title, doc_type, as_of, source_url FROM documents
+        WHERE funder_id = %s ORDER BY as_of
+        """,
+    ),
+)
+
+
+@tool
+async def research_goals(name: str, years: str = "", entity_kind: str = "funder") -> str:
+    """What to look for, derived from what the database expects. Call this FIRST.
+
+    The catalog has a column for every fact worth finding, and this reads that
+    list rather than repeating it: per concept, the fields a source could state,
+    which of them the row cannot be written without, and what is already held
+    for this funder. Research the gaps.
+
+    Args:
+        name: the organisation, as the user asked for it.
+        years: comma-separated fiscal years, e.g. 'FY2024-25,FY2023-24'.
+               Empty means the three most recent reportable years.
+        entity_kind: 'funder' for a company or foundation, 'org' for an NGO.
+               An NGO's facts hang off tables that have no writer, so the list
+               is shorter and says so.
+    """
+    try:
+        wanted = [y.strip() for y in years.split(",") if y.strip()] or list(recent_fiscal_years())
+        pool = get_pool()
+        async with pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    "SELECT id, name FROM funders WHERE name ILIKE %s OR similarity(name, %s) >= 0.4 "
+                    "ORDER BY similarity(name, %s) DESC LIMIT 1",
+                    (f"%{name}%", name, name),
+                )
+            ).fetchone()
+            held = await _held_per_concept(conn, row["id"]) if row else {}
+
+        out = [
+            (f"Research goals for {name!r}. These are the database's columns, not a wish list — "
+             f"a field marked REQUIRED is one the row cannot be written without."),
+            (f"\nYears to cover: {', '.join(wanted)}. Recurrence is the signal, so ask each year "
+             f"separately and never mix them in one record."),
+        ]
+        out.append(
+            f"\nIn the catalog as [funder:{row['id']}] {row['name']}."
+            if row
+            else f"\nNothing in the catalog matches {name!r}. Everything you find is a NEW RECORD. "
+            f"That is not evidence the funder is absent from the sector."
+        )
+
+        wanted_concepts = concepts_for(entity_kind)
+        if entity_kind == "org":
+            out.append(
+                "\nThis is an NGO. Everything below hangs off funders in the schema, and orgs "
+                "has no writer yet — so research it fully, but expect it to stay research "
+                "rather than become catalog rows. Saying that plainly is part of the job."
+            )
+        for concept in wanted_concepts:
+            table = CONCEPT_TABLES[concept]
+            fields = expected_fields(concept)
+            count, seen_years = held.get(concept, (0, []))
+            state = f"{count} row(s) held" if count else "NOT RECORDED"
+            if seen_years:
+                missing = [y for y in wanted if y not in seen_years]
+                state += f", years {', '.join(sorted(seen_years))}"
+                state += f" — still missing {', '.join(missing)}" if missing else " — years covered"
+            out.append(f"\n{concept} -> {table}: {state}")
+            out += [f"    {f.describe()}" for f in fields]
+
+        out.append(
+            "\nFields nothing can fill are as useful as fields you fill: say which you looked "
+            "for and did not find, and pass them to save_research as not_found."
+        )
+        return "\n".join(out)
+    except Exception as exc:
+        logger.exception("research_goals failed")
+        return f"research_goals failed: {type(exc).__name__}: {exc}"
+
+
+async def _held_per_concept(conn: Any, funder_id: int) -> dict[str, tuple[int, list[str]]]:
+    """Row counts, and the fiscal years already covered, per concept."""
+    out: dict[str, tuple[int, list[str]]] = {}
+    for concept, table in CONCEPT_TABLES.items():
+        if concept == "identity":
+            out[concept] = (1, [])
+            continue
+        # Table names come from CONCEPT_TABLES, a module constant, never a caller.
+        has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
+        years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
+        found = await (
+            await conn.execute(
+                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE funder_id = %s",
+                (funder_id,),
+            )
+        ).fetchone()
+        out[concept] = (found["n"], [y for y in (found["years"] or []) if y])
+    return out
+
+
+@tool
+async def promote_research(slug: str = "") -> str:
+    """Move saved research into the catalog, where a writer exists for it.
+
+    Research and the catalog are different: a finding is what a source said,
+    a catalog row is what the product answers from. This is the step between.
+
+    Only identity, identifier and csr_year findings can move — those are the
+    concepts with writers. Everything else stays research and is reported as
+    such, never silently dropped. A name that resembles an existing funder
+    without matching it is NOT merged; it is reported for a person.
+
+    Args:
+        slug: one entity, or empty for every researched entity not yet promoted.
+    """
+    try:
+        pool = get_pool()
+        async with pool.connection() as conn:
+            rows = await (
+                await conn.execute(
+                    "SELECT DISTINCT ON (slug) * FROM entity_research "
+                    + ("WHERE slug = %s " if slug else "")
+                    + "ORDER BY slug, researched_at DESC",
+                    (slug,) if slug else (),
+                )
+            ).fetchall()
+        if not rows:
+            return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
+
+        reports = []
+        async with pool.connection() as conn:
+            for row in rows:
+                async with conn.transaction():
+                    reports.append(await promote(conn, dict(row)))
+
+        lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
+        for r in reports:
+            if r["funder"]:
+                years = ", ".join(f"{y['fiscal_year']} {y['status']}" for y in r["csr_years"])
+                lines.append(
+                    f"  {r['funder']['name']}: funder {r['funder']['status']} "
+                    f"[funder:{r['funder']['id']}]" + (f" · CSR years {years}" if years else "")
+                )
+            for table, counts in sorted(r.get("written", {}).items()):
+                tally = ", ".join(f"{n} {status}" for status, n in sorted(counts.items()))
+                lines.append(f"    {table}: {tally}")
+            for reason in r["reasons"]:
+                lines.append(f"  {r['slug']}: not promoted — {reason}")
+            for held in r.get("held", []):
+                lines.append(f"    held back: {held}")
+            if r["skipped"]:
+                skipped = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
+                lines.append(f"    still research only (no writer): {skipped}")
+        lines.append(
+            "\nA grant needs a recipient in orgs, which has no writer yet, so grant findings "
+            "stay research — they are on file and in docs/entities/. Anything held back is "
+            "named above: it is a decision waiting for a person, not a silent loss."
+        )
+        return "\n".join(lines)
+    except Exception as exc:
+        logger.exception("promote_research failed")
+        return f"promote_research failed: {type(exc).__name__}: {exc}"

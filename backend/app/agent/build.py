@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from deepagents import create_deep_agent
+from deepagents.backends.state import StateBackend
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from app.agent.harness import filesystem as filesystem_tools
+from app.agent.harness import install as install_harness
 from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry_limiter
 from app.agent.models import resolve_model
 from app.agent.prompt import SYSTEM_PROMPT
@@ -32,9 +35,14 @@ TOOLS = [
 
 
 def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
+    # Before create_deep_agent: the profile is read while the graph is built,
+    # so registering afterwards would leave this agent with the preset's tools.
+    install_harness()
     # CopilotKitMiddleware was here: it serves frontend-declared tools, setState and
     # generative UI, none of which this app uses. Removing it cost 4 fewer graph nodes.
-    middleware = [sql_retry_limiter, clear_old_tool_results()]
+    # Replaces the preset's FilesystemMiddleware, which brings eight tools
+    # bound to virtual state. read_file is the floor the library enforces.
+    middleware = [filesystem_tools(StateBackend()), sql_retry_limiter, clear_old_tool_results()]
     if settings.sql_audit_model:
         # Off unless configured: a real extra model call per SQL turn.
         middleware.append(answer_audit(settings.sql_audit_model))
@@ -50,4 +58,9 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     )
     # Langfuse v3 reads LANGFUSE_PUBLIC_KEY/SECRET_KEY/HOST from the env; attaching the handler at graph
     # level traces every run, tool call, and generation without touching the AG-UI endpoint. trace_config().
-    return agent.with_config({**trace_config(settings), "recursion_limit": settings.recursion_limit})
+    return agent.with_config(
+        {
+            **trace_config(settings, name="sangam_ask", tags=("ask",)),
+            "recursion_limit": settings.recursion_limit,
+        }
+    )
