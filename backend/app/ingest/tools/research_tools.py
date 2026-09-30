@@ -282,7 +282,8 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
             if prior else ""
         )
         # Only claim what happened. With Storage unconfigured the brief exists
-        # nowhere until someone renders it on the host.
+        # nowhere until someone renders it on the host. "brief is published" is
+        # matched by the Import UI's milestone strip — a test pins the phrase.
         where = (
             "The brief is published and the funder page links it. "
             if published
