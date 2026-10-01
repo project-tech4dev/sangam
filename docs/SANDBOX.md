@@ -159,9 +159,16 @@ The first sandbox is 6-10 minutes: two image builds plus `npm ci` into an empty 
 Later ones are ~2 minutes, because `sangam_shared_npm_cache` is external and shared and
 Docker's layer cache is warm.
 
-Memory, not ports, is the real ceiling. Roughly 1.5 GB per stack, plus ~768 MB with
-`GRAPH=1` — which is why the graph is off by default. Three are comfortable on 16 GB and
-four is the ceiling.
+Memory, not ports, is the real ceiling, and the number that matters is **Docker's
+allocation, not the host's RAM** — `docker info --format '{{.MemTotal}}'`. On this machine
+Docker has 8.3 GB, not the 16 the host reports. Roughly 1.5 GB per stack, plus ~768 MB with
+`GRAPH=1`, which is why the graph is off by default.
+
+Running out does not look like an error. Building three sandboxes at once here left one
+`next dev` **exited 0** — a clean shutdown, not an OOM kill, so there is no 137 and nothing
+in the logs beyond the last request it served. `make sandbox-verify` reports it as a wall of
+`expected 200, got 000`; `docker compose ps -a` in that worktree shows `frontend Exited (0)`
+and `make up` brings it straight back. Create sandboxes one at a time if you can.
 
 ## What this deliberately does not do
 

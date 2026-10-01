@@ -48,6 +48,11 @@ hyphenated; the script slugifies and truncates, but a name you chose reads bette
 **Never invent a slot number or a port.** Allocation is the script's job and it reads
 live state to do it. Report what it printed; do not predict it beforehand.
 
+A non-zero exit **after** the URL banner means smoke failed, not that creation failed —
+the stack is up and usable. Compare against `make smoke` in the main checkout; if the same
+checks fail there, the sandbox is fine and slot 0 has the problem. Say which it is rather
+than reporting the sandbox as broken.
+
 When it finishes, tell the user three things: the slot and its URLs, whether the
 database was cloned from the main stack or rebuilt from the baseline (the script says
 which), and the branch name `sandbox/<slug>`.
@@ -144,6 +149,13 @@ a list would drift, which is exactly what deriving the slot avoids.
 **`git worktree add` does not carry a dirty tree.** Neither `BASE=origin/master` nor
 `BASE=HEAD` brings uncommitted work across. Commit first if the sandbox should build
 on something in progress.
+
+**A frontend that exited 0 looks like a broken sandbox.** Under memory pressure `next dev`
+shuts down cleanly rather than being OOM-killed, so there is no exit 137 and no error in the
+logs — `sandbox-verify` just reports `expected 200, got 000` for every frontend check.
+`docker compose ps -a` shows `frontend Exited (0)` and `make up` brings it back. Check for
+this before concluding anything is wrong with the code. The budget is Docker's allocation,
+not the host's RAM: `docker info --format '{{.MemTotal}}'`.
 
 **The first build is 6-10 minutes**, two images plus `npm ci` into an empty volume;
 later ones are ~2 minutes because the npm cache is shared. Warn before starting.

@@ -204,7 +204,7 @@ EOF
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_sandbox_placeholder
 EOF
-    note "Supabase: placeholder values (no real project in the main .env)"
+    note "Supabase: placeholder values (the main .env is missing the URL or the key)"
   fi
 
   # Append any key .env.example has gained that this copy lacks, so an older
@@ -309,7 +309,8 @@ clone_from_slot0() {
     baseline_from_init "$wt"
     return 1
   fi
-  note "database: clone of slot 0 ($(du -h "$dump" | cut -f1)), dump kept at ${dump#"$MAIN_ROOT"/}"
+  note "database: clone of slot 0 ($(du -h "$dump" | cut -f1))"
+  rm -rf "$(dirname "$dump")"   # scaffolding, not a backup; db/backups/ is for `make db-backup`
   return 0
 }
 
@@ -354,8 +355,8 @@ A sandbox inherits its keys from it."
 Until feat/dev-harness-parallel-sandboxes is merged, pass the branch explicitly:
     make sandbox-new SLUG=$slug BASE=HEAD"
 
-  git -C "$MAIN_ROOT" worktree prune
   acquire_lock
+  git -C "$MAIN_ROOT" worktree prune     # inside the lock: it mutates shared metadata
   local slot; slot=$(allocate_slot) || exit 1
   local fp=$((BASE_FRONTEND+slot*STRIDE)) bp=$((BASE_BACKEND+slot*STRIDE))
 
@@ -390,14 +391,10 @@ Until feat/dev-harness-parallel-sandboxes is merged, pass the branch explicitly:
   fi
   ( cd "$wt" && make up )         # idempotent; brings the rest up with --wait
 
-  echo "── verifying ───────────────────────────────────────"
-  if ! SMOKE_MIN_DOCUMENTS=$min_docs SMOKE_SKIP_LLM="${SMOKE_SKIP_LLM:-1}" cmd_verify "$slug"; then
-    echo
-    echo "smoke failed, but the stack is still up. Inspect it rather than recreating:"
-    echo "    cd $wt && make logs"
-    exit 1
-  fi
-
+  # The banner comes BEFORE the verdict and is never conditional: the stack being
+  # up is what `new` delivers, and smoke's result is information about it. Gating
+  # the URLs on a green smoke hid them on every clone-path sandbox, because a
+  # clone cannot be greener than its source and slot 0's own smoke is red today.
   cat <<EOF
 
 ── sandbox $slug is up (slot $slot) ───────────────────
@@ -408,7 +405,23 @@ Until feat/dev-harness-parallel-sandboxes is merged, pass the branch explicitly:
 
   work on it here:  cd $wt && claude "<the idea>"
   tear it down:     make sandbox-rm SLUG=$slug
+
+── verifying ───────────────────────────────────────
 EOF
+  if SMOKE_MIN_DOCUMENTS=$min_docs SMOKE_SKIP_LLM="${SMOKE_SKIP_LLM:-1}" cmd_verify "$slug"; then
+    return 0
+  fi
+  cat <<EOF
+
+The stack is up; it is smoke that failed. A clone is never greener than its
+source, so compare before concluding anything is wrong with this sandbox:
+
+    make smoke                      # in the main checkout, from $MAIN_ROOT
+    cd $wt && make logs
+
+Matching failures mean the sandbox is fine and slot 0 has the problem.
+EOF
+  return 1
 }
 
 # -------------------------------------------------------- verify / ls / url
@@ -416,9 +429,17 @@ cmd_verify() {
   local wt fp bp
   wt=$(worktree_for "${1:?usage: sandbox.sh verify <slug>}")
   # Ports asked of the running stack, never read from a file: zero drift.
-  fp=$(cd "$wt" && docker compose port frontend 3000 2>/dev/null | cut -d: -f2)
-  bp=$(cd "$wt" && docker compose port backend  8000 2>/dev/null | cut -d: -f2)
-  [ -n "$fp" ] && [ -n "$bp" ] || die "stack is down — cd $wt && make up"
+  # `|| true` is load-bearing: under `set -e` plus pipefail, an assignment whose
+  # command substitution fails exits the shell immediately — so a stopped stack
+  # died silently here, with no output at all, instead of reaching the message
+  # below. The guard has to be reachable to be a guard.
+  fp=$(cd "$wt" && docker compose port frontend 3000 2>/dev/null | cut -d: -f2) || true
+  bp=$(cd "$wt" && docker compose port backend  8000 2>/dev/null | cut -d: -f2) || true
+  if [ -z "$fp" ] || [ -z "$bp" ]; then
+    ( cd "$wt" && docker compose ps --format 'table {{.Service}}\t{{.Status}}' ) || true
+    die "sandbox $1 has no published frontend/backend port — bring it up with:
+    cd $wt && make up"
+  fi
   ( cd "$wt" \
     && BACKEND_URL="http://localhost:$bp" FRONTEND_URL="http://localhost:$fp" \
        SMOKE_SKIP_LLM="${SMOKE_SKIP_LLM:-1}" \
@@ -455,8 +476,14 @@ cmd_rm() {
   local slug=${1:?usage: sandbox.sh rm <slug> [--force]} force=0
   [ "${2:-}" = --force ] && force=1
   local wt; wt=$(worktree_for "$slug")
-  if [ -n "$(git -C "$wt" status --porcelain)" ] && [ "$force" != 1 ]; then
-    git -C "$wt" status --short
+  # next-env.d.ts is tracked but `next dev` rewrites it on every boot — the dev
+  # server points it at .next/dev/types, `next build` at .next/types. So every
+  # worktree that has ever run the frontend is dirty by that one file, including
+  # the main checkout. Excluded here, or teardown would refuse every single time
+  # and FORCE=1 would become the habit, which is how real work gets discarded.
+  if [ -n "$(git -C "$wt" status --porcelain -- ':(exclude)frontend/next-env.d.ts')" ] \
+     && [ "$force" != 1 ]; then
+    git -C "$wt" status --short -- ':(exclude)frontend/next-env.d.ts'
     die "uncommitted changes in $wt — commit or push them, or pass FORCE=1"
   fi
   # Project-scoped, so this removes sangam-<slug>_pgdata and CANNOT touch
