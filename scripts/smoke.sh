@@ -52,7 +52,10 @@ check_status  "health endpoint"            "$BACKEND/health" 200 5
 # is that the seeded cohort is present, not that nothing was ever added to it.
 check_json    "stats: cohort counts"       "$BACKEND/api/meta/stats" "d['orgs'] >= 10 and d['funders'] >= 4"
 check_json    "orgs: legacy array of 10"   "$BACKEND/api/orgs" "isinstance(d, list) and len(d) == 10"
-check_json    "funders: latest_scores"     "$BACKEND/api/funders" "d[0]['latest_scores'].get('v1') is not None"
+# any(), not d[0]: funders are returned alphabetically and Sangam Import adds
+# unscored ones, so d[0] drifted from a seeded funder to "Abbott India Limited"
+# the first time an import ran. Same failure mode as the counts below.
+check_json    "funders: latest_scores"     "$BACKEND/api/funders" "any(f['latest_scores'].get('v1') is not None for f in d)"
 # >= not ==, for the same reason as the comment above: an import only ever adds.
 # A dev-harness sandbox cloned from a stack that has run one would fail an
 # equality check on rows it is correct to have.
