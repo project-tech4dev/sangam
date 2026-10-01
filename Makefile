@@ -45,8 +45,10 @@ endef
 BACKUP_DIR := db/backups/$(shell date +%Y%m%d-%H%M%S)
 
 # --- Stack -------------------------------------------------------------------
+# --renew-anon-volumes swaps the frontend's node_modules for the freshly built
+# image's copy (see docker-compose.yml). Named volumes — data — are untouched.
 up:
-	docker compose up --build -d
+	docker compose up --build -d --renew-anon-volumes
 
 down:
 	docker compose down
