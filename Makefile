@@ -1,6 +1,6 @@
 .PHONY: up down logs seed taxonomy-seed graph-seed smoke client-docs db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
-        dev-backend dev-frontend evals
+        dev-backend dev-frontend frontend-reinstall evals
 
 SHELL := /bin/bash
 
@@ -45,16 +45,22 @@ endef
 BACKUP_DIR := db/backups/$(shell date +%Y%m%d-%H%M%S)
 
 # --- Stack -------------------------------------------------------------------
-# --renew-anon-volumes swaps the frontend's node_modules for the freshly built
-# image's copy (see docker-compose.yml). Named volumes — data — are untouched.
+# --wait: the frontend installs deps at container start now, so without it
+# `make up` would return before the first (or post-dep-change) install lands.
 up:
-	docker compose up --build -d --renew-anon-volumes
+	docker compose up --build -d --wait
 
 down:
 	docker compose down
 
 logs:
 	docker compose logs -f
+
+# Force a frontend dependency install; the entrypoint otherwise skips it when
+# package.json and package-lock.json are unchanged.
+frontend-reinstall:
+	docker compose exec frontend rm -f /app/node_modules/.deps-stamp
+	docker compose restart frontend
 
 # `run` rather than `exec` so ENV=staging is honoured (exec would reuse the
 # running container's environment, which always points at the local database).

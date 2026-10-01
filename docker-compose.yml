@@ -116,16 +116,25 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    # Port-only, not an HTTP status: the entrypoint may be mid-install, and a
+    # booted next dev still answers 500 until the Supabase vars are set.
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 10s
     volumes:
       - ./frontend:/app
-      # Anonymous, not named: a named volume is filled from the image once and
-      # then never refreshed, so it kept serving the deps of whichever
-      # package.json first created it. `make up` passes --renew-anon-volumes,
-      # so this always holds what the image just installed.
-      - /app/node_modules
+      # Named, so an install survives restarts. docker-entrypoint.sh compares a
+      # stamp inside it against the manifests and reinstalls only on a change.
+      - frontend_node_modules:/app/node_modules
       - frontend_next:/app/.next
+      - frontend_npm_cache:/root/.npm
 
 volumes:
   pgdata:
   neo4jdata:
+  frontend_node_modules:
   frontend_next:
+  frontend_npm_cache:
