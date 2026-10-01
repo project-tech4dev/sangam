@@ -301,11 +301,10 @@ hardcoded `Authorization: Bearer dev` from five call sites.
 
 ## Deployment
 
-> **Two other files describe a hosting setup that is not the live one — ignore them.**
-> `docs/DEPLOY.md` argues the backend cannot run on Vercel and belongs on a container host,
-> and the tracked `vercel.json` describes a single project with the backend as a
-> `runtime: "container"` build of `backend/Dockerfile`. Neither is what is deployed. **This
-> table is authoritative.**
+> **`docs/DEPLOY.md` describes a hosting setup that is not the live one — ignore it.** It
+> argues the backend cannot run on Vercel and belongs on a container host. **This table is
+> authoritative.** (The root `vercel.json`, which described the same non-deployed shape, is
+> gone; the two that remain are real config — see below.)
 
 Docker is local development only. Deployed, the stack splits across three hosts — see
 `docs/DEPLOY.md`:
@@ -327,6 +326,19 @@ Non-obvious constraints:
   just an env edit.
 - **Vercel's Python bundle limit is 500 MB.** The backend's dependency tree is ~256 MB and
   fits with no trimming.
+
+**Only a merge to `master` deploys, and only `.github/workflows/deploy.yml` does it.**
+`frontend/vercel.json` and `backend/vercel.json` each set `git.deploymentEnabled: false`, so
+a branch push builds nothing — before this, every push to any of twenty branches built *both*
+projects, 40 deployments in one day. The workflow diffs the merge and deploys only the
+projects whose directory changed; a docs-only merge deploys nothing. There are no preview
+deployments by design.
+
+Each `vercel.json` must stay in its project's **Root Directory** (`frontend` / `backend`) —
+that is where Vercel reads it from, which is why a repo-root one did nothing. The workflow
+needs one secret, `VERCEL_TOKEN`; the org and project IDs in it are identifiers, not
+credentials. Run it by hand from the Actions tab (`workflow_dispatch`) to redeploy `master`
+without a new commit.
 
 ## Working state
 
