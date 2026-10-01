@@ -134,11 +134,6 @@ write_env() {
   local profiles=localdb neo4j_uri=
   [ "$graph" = 1 ] && { profiles=localdb,graph; neo4j_uri=bolt://neo4j:7687; }
 
-  [ -f "$MAIN_ROOT/.env" ] || die \
-"$MAIN_ROOT/.env is missing. In the main checkout:
-    cp .env.example .env     # then fill ANTHROPIC_API_KEY
-A sandbox inherits its keys from it."
-
   cp -p "$MAIN_ROOT/.env" "$wt/.env"      # copied, never read
   chmod 600 "$wt/.env"
 
@@ -190,14 +185,22 @@ DB_POOL_MAX_SIZE=5
 MAX_PARALLEL_RESEARCH=3
 EOF
 
-  # Only when the main .env has no real Supabase project. `grep -q` prints
-  # nothing, so this decides without the value reaching stdout or this script.
-  if ! grep -qs '^NEXT_PUBLIC_SUPABASE_URL=..*' "$wt/.env"; then
+  # BOTH variables, not just the URL: createServerClient non-null-asserts each
+  # and @supabase/ssr throws the same "URL and Key are required" on either one
+  # being empty — so a real URL beside an empty key 500s exactly like no config
+  # at all. If either is unset, both get placeholders, so the pair stays
+  # coherent rather than mixing a real project with a fake key.
+  # `grep -q` prints nothing, so this decides without any value reaching stdout
+  # or this script.
+  if ! grep -qs '^NEXT_PUBLIC_SUPABASE_URL=..*' "$wt/.env" \
+     || ! grep -qs '^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=..*' "$wt/.env"; then
     cat >>"$wt/.env" <<'EOF'
 
 # Dummy but NON-EMPTY: frontend/lib/supabase/middleware.ts non-null-asserts both
-# and @supabase/ssr throws on an empty URL, which 500s every page. Sign-in will
-# not work against these; everything else renders.
+# and @supabase/ssr throws unless each is a non-empty string, which 500s every
+# page including the unauthenticated ones. Sign-in will not work against these —
+# middleware redirects /ask, /import and /protected to the login page — but the
+# registry and the rest of the site render.
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_sandbox_placeholder
 EOF
@@ -248,6 +251,21 @@ link_tooling() {
 }
 
 # -------------------------------------------------------------------- the db
+# The new pgdata volume has ALREADY run db/init on its first boot, so the target
+# is NOT empty and a plain pg_restore aborts on the first CREATE TABLE.
+#
+# DROP/CREATE DATABASE rather than pg_restore --clean --if-exists: all three init
+# scripts are database-scoped, so this is a complete reset, whereas --clean emits
+# a bare DROP EXTENSION vector that fails while pgvector columns still depend on
+# it. Safe only because the backend is not up yet — nothing is connected; WITH
+# (FORCE) covers a stray session anyway.
+reset_database() {
+  ( cd "$1" && docker compose exec -T postgres sh -c '
+      psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
+        -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\" WITH (FORCE)" \
+        -c "CREATE DATABASE \"$POSTGRES_DB\" OWNER \"$POSTGRES_USER\""' >/dev/null )
+}
+
 baseline_from_init() {
   # The same three files, in the same order, that a first boot would run. They
   # are mounted read-only at /docker-entrypoint-initdb.d by the base compose.
@@ -278,25 +296,17 @@ clone_from_slot0() {
   fi
   [ -s "$dump" ] || { note "slot 0 dump is empty — building from the baseline instead"; return 1; }
 
-  # The new pgdata volume has ALREADY run db/init on its first boot, so the
-  # target is NOT empty and a plain pg_restore aborts on the first CREATE TABLE.
-  #
-  # DROP/CREATE DATABASE rather than pg_restore --clean --if-exists: all three
-  # init scripts are database-scoped, so this is a complete reset, whereas
-  # --clean emits a bare DROP EXTENSION vector that fails while pgvector columns
-  # still depend on it. Safe only because the backend is not up yet — nothing is
-  # connected; WITH (FORCE) covers a stray session anyway.
-  ( cd "$wt" && docker compose exec -T postgres sh -c '
-      psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
-        -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\" WITH (FORCE)" \
-        -c "CREATE DATABASE \"$POSTGRES_DB\" OWNER \"$POSTGRES_USER\""' >/dev/null )
+  reset_database "$wt"
 
   # pg_restore with no filename reads stdin.
   if ! ( cd "$wt" && docker compose exec -T postgres sh -c '
           pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
             --no-owner --no-acl --exit-on-error' <"$dump" >/dev/null ); then
     note "pg_restore failed — rebuilding from the baseline instead"
-    baseline_from_init "$wt"        # we already dropped; put the schema back
+    # --exit-on-error leaves a HALF-restored database, so drop it a second time:
+    # the baseline's bare CREATE TABLEs would otherwise hit tables that exist.
+    reset_database "$wt"
+    baseline_from_init "$wt"
     return 1
   fi
   note "database: clone of slot 0 ($(du -h "$dump" | cut -f1)), dump kept at ${dump#"$MAIN_ROOT"/}"
@@ -324,14 +334,34 @@ cmd_new() {
   local wt="$MAIN_ROOT/../sangam-$slug"
   [ -e "$wt" ] && die "$wt already exists (make sandbox-ls, or make sandbox-rm SLUG=$slug)"
 
+  # Everything that can refuse runs BEFORE anything that creates: a die() after
+  # `worktree add` strands a worktree and branch with no .sandbox, which `rm`
+  # then cannot find.
+  [ -f "$MAIN_ROOT/.env" ] || die \
+"$MAIN_ROOT/.env is missing. In the main checkout:
+    cp .env.example .env     # then fill ANTHROPIC_API_KEY
+A sandbox inherits its keys from it."
+
+  git -C "$MAIN_ROOT" fetch --quiet origin 2>/dev/null || note "fetch skipped (offline?)"
+  git -C "$MAIN_ROOT" rev-parse --verify --quiet "$base^{commit}" >/dev/null \
+    || die "--base $base is not a commit this repository knows"
+  # The sandbox .env sets COMPOSE_FILE to a two-file list, and the ports are
+  # ${VAR:-...} tokens. A base predating the harness has neither, so compose
+  # would fail on a missing file or bind slot 0's ports. Caught here rather than
+  # ten minutes into a build.
+  git -C "$MAIN_ROOT" cat-file -e "$base:docker-compose.sandbox.yml" 2>/dev/null \
+    || die "base '$base' predates the sandbox harness (no docker-compose.sandbox.yml).
+Until feat/dev-harness-parallel-sandboxes is merged, pass the branch explicitly:
+    make sandbox-new SLUG=$slug BASE=HEAD"
+
   git -C "$MAIN_ROOT" worktree prune
   acquire_lock
   local slot; slot=$(allocate_slot) || exit 1
   local fp=$((BASE_FRONTEND+slot*STRIDE)) bp=$((BASE_BACKEND+slot*STRIDE))
 
   echo "── sandbox $slug → slot $slot ──────────────────────"
-  git -C "$MAIN_ROOT" fetch --quiet origin 2>/dev/null || note "fetch skipped (offline?)"
   git -C "$MAIN_ROOT" worktree add -b "sandbox/$slug" "$wt" "$base"
+  wt=$(cd "$wt" && pwd)          # …/sangam/../sangam-a → …/sangam-a, for printing
   note "worktree $wt on sandbox/$slug from $base"
 
   write_env "$wt" "$slot" "$slug" "$graph"
