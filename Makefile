@@ -26,7 +26,7 @@ help:
 #
 # Docker is local tooling only. ENV=staging does not deploy anything; it points
 # migrations/seeding/psql at the managed database from your machine. The staging
-# frontend runs on Vercel and the backend on its own host, each configured there.
+# frontend and the backend both run on Vercel, each configured there.
 ENV ?= local
 
 ifeq ($(ENV),staging)
