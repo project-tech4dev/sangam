@@ -54,6 +54,21 @@ Ports: frontend `3000`, backend `8010` (published from the container's `8000`), 
 on `8000` directly — which is why `dev-frontend` points there while `make smoke` defaults to
 `8010`.
 
+Those are **slot 0**'s ports. A second feature gets its own whole stack:
+
+```bash
+make sandbox-new SLUG=rls BASE=HEAD   # worktree ../sangam-rls, ports 3010/8020/5443
+make sandbox-ls                       # slot, branch and URLs for each
+make sandbox-rm SLUG=rls              # containers, volumes, worktree and branch
+```
+
+Slot *N* publishes base + 10*N*, and its database is a `pg_dump` clone of slot 0. Inside the
+worktree every ordinary target already hits that stack — the compose project name comes from
+the directory basename, which is what makes the isolation free and why `docker-compose.yml`
+must never gain a `name:` key or an absolute bind-mount path. `docs/SANDBOX.md` has the slot
+allocation, the clone/fallback decision tree and the memory budget. `BASE=HEAD` is needed only
+until `feat/dev-harness-parallel-sandboxes` merges.
+
 Tests and lint (backend):
 
 ```bash
