@@ -18,8 +18,10 @@ concurrency:
   cancel-in-progress: false   # queue; never cancel a production deploy mid-flight
 
 env:
-  # Identifiers, not credentials — these are the values `vercel link` writes to
-  # .vercel/project.json. Only VERCEL_TOKEN is a secret.
+  # The team the projects live in. An identifier, not a credential — the value
+  # `vercel link` writes to .vercel/project.json. Only VERCEL_TOKEN is a secret.
+  # Each job names its own project with `--project`, so there is no opaque
+  # prj_… id to match up by eye.
   VERCEL_ORG_ID: team_2wBuhP7bLwZbGSDrsoxh2WdE
 
 jobs:
@@ -68,10 +70,10 @@ jobs:
       # Deploys from the repo root, matching what the Git integration uploaded;
       # the project's own Root Directory setting still selects frontend/.
       # Vercel builds it — no --prebuilt — so the build env is unchanged.
-      - run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+      # --project takes the project's name (prj_s6gnmRzSdmc9gUksqtxcMnfwOSCK).
+      - run: vercel deploy --prod --yes --project sangam --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_PROJECT_ID: prj_s6gnmRzSdmc9gUksqtxcMnfwOSCK
 
   backend:
     needs: changes
@@ -83,7 +85,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm i -g vercel@latest
-      - run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+      # --project takes the project's name (prj_lXhFOACjENhM6n9RqORsvQ3lGgVT).
+      - run: vercel deploy --prod --yes --project sangam-backend --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_PROJECT_ID: prj_lXhFOACjENhM6n9RqORsvQ3lGgVT
