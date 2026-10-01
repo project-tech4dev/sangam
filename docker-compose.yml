@@ -117,19 +117,33 @@ services:
     environment:
       AGENT_URL: http://backend:8000/agent
       NEXT_PUBLIC_API_URL: http://localhost:8010
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
       WATCHPACK_POLLING: "true"
     ports:
       - "3000:3000"
     depends_on:
       backend:
         condition: service_healthy
+    # Port-only, not an HTTP status: the entrypoint may be mid-install, and a
+    # booted next dev still answers 500 until the Supabase vars are set.
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 10s
     volumes:
       - ./frontend:/app
+      # Named, so an install survives restarts. docker-entrypoint.sh compares a
+      # stamp inside it against the manifests and reinstalls only on a change.
       - frontend_node_modules:/app/node_modules
       - frontend_next:/app/.next
+      - frontend_npm_cache:/root/.npm
 
 volumes:
   pgdata:
   neo4jdata:
   frontend_node_modules:
   frontend_next:
+  frontend_npm_cache:

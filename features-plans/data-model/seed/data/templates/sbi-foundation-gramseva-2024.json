@@ -1,0 +1,650 @@
+{
+  "_about": "SBI Foundation 'Gram Seva' RFP (published 21 November 2024), read from the copy in the org-grant-intelligence repo.",
+  "funder": "sbi-foundation",
+  "source": {
+    "url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/deep-agent-app/downloads/SBI_Foundation_GramSeva_RFP.pdf",
+    "source_name": "sbi-foundation-rfp",
+    "fetched_at": "2026-09-27",
+    "as_of": "2024-11-21",
+    "funder_url": "https://www.sbifoundation.in/request-for-proposal"
+  },
+  "rfp": {
+    "title": "SBI Gram Seva: integrated rural development programme (RFP 2024)",
+    "status": "closed",
+    "deadline": "2024-12-12",
+    "amount_min": 30000000,
+    "amount_max": 40000000,
+    "details": {
+      "term_months": 24,
+      "published": "2024-11-21",
+      "one_district_per_agency": true,
+      "themes": [
+        "Digitalisation",
+        "Education",
+        "Health",
+        "WaSH",
+        "Livelihoods",
+        "Women Empowerment",
+        "Infrastructure",
+        "Environment"
+      ],
+      "grant_release": "Quarterly or half-yearly against certified reports",
+      "separate_sbi_account": true
+    },
+    "states": [
+      "Bihar",
+      "Jharkhand",
+      "Uttar Pradesh",
+      "Madhya Pradesh",
+      "Odisha",
+      "Assam",
+      "Chhattisgarh",
+      "Ladakh",
+      "Dadra and Nagar Haveli and Daman and Diu",
+      "Jammu and Kashmir",
+      "Andaman and Nicobar Islands",
+      "Puducherry"
+    ],
+    "districts": {
+      "Assam": [
+        [
+          "Karbi Anglong"
+        ],
+        [
+          "North Cachar Hills",
+          "Dima Hasao"
+        ],
+        [
+          "Udalguri"
+        ],
+        [
+          "West Karbi Anglong"
+        ]
+      ]
+    }
+  },
+  "template": {
+    "name": "SBI Gram Seva RFP 2024",
+    "kind": "rfp",
+    "version": "2024",
+    "items": [
+      [
+        "eligibility",
+        "P1",
+        "At least 10 years of existence on the RFP publication date",
+        null,
+        {
+          "type": "min_years_registered",
+          "years": 10
+        }
+      ],
+      [
+        "eligibility",
+        "P2",
+        "Has worked on at least 5 of the 10 listed rural development themes",
+        null,
+        null
+      ],
+      [
+        "eligibility",
+        "P3",
+        "No sub-letting, sub-contracting or outsourcing of activities",
+        null,
+        null
+      ],
+      [
+        "eligibility",
+        "P4",
+        "Self-declaration of non-discrimination on letterhead",
+        null,
+        null
+      ],
+      [
+        "eligibility",
+        "P5",
+        "Not blacklisted by any government agency or PSU",
+        null,
+        null
+      ],
+      [
+        "eligibility",
+        "C1",
+        "Rejected if cumulative annual revenue for the last 3 years is below Rs 5 crore",
+        null,
+        {
+          "type": "min_income",
+          "fiscal_years": 3,
+          "amount": 50000000
+        }
+      ],
+      [
+        "eligibility",
+        "C2",
+        "Rejected if the agency has political or religious associations",
+        null,
+        null
+      ],
+      [
+        "eligibility",
+        "C3",
+        "Rejected if the due diligence documents in Annexure II are missing",
+        "See the document items",
+        null
+      ],
+      [
+        "eligibility",
+        "C4",
+        "Rejected if the board has fewer than 3 members",
+        null,
+        {
+          "type": "min_office_bearers",
+          "count": 3
+        }
+      ],
+      [
+        "eligibility",
+        "C5",
+        "Rejected if there are fewer than 5 permanent employees",
+        null,
+        null
+      ],
+      [
+        "eligibility",
+        "C6",
+        "Rejected if individual donors are among the top 3 donors",
+        null,
+        null
+      ],
+      [
+        "eligibility",
+        "G1",
+        "Project district is on the RFP list (one district per agency)",
+        null,
+        {
+          "type": "in_rfp_geography"
+        }
+      ],
+      [
+        "section",
+        "S1",
+        "Implementation plan, step by step",
+        "Direct, concise and complete; omit anything not relevant to the RFP",
+        null
+      ],
+      [
+        "section",
+        "S2",
+        "Log frame with means of verification",
+        null,
+        null
+      ],
+      [
+        "section",
+        "S3",
+        "Work plan with clear timelines",
+        null,
+        null
+      ],
+      [
+        "section",
+        "S4",
+        "Detailed financials with cost break-ups, in INR inclusive of all taxes",
+        "Annexure IV financial format (Excel)",
+        null
+      ],
+      [
+        "criterion",
+        "A1",
+        "Alignment with Gram Seva programme objectives",
+        null,
+        null
+      ],
+      [
+        "criterion",
+        "A2",
+        "Clear and concise detailing of the proposed solution, implementation plan and outcomes",
+        null,
+        null
+      ],
+      [
+        "criterion",
+        "A3",
+        "Innovation in the project",
+        null,
+        null
+      ],
+      [
+        "criterion",
+        "A4",
+        "Risk-mitigation measures",
+        null,
+        null
+      ],
+      [
+        "criterion",
+        "A5",
+        "Comprehensiveness of the log frame and project timelines",
+        null,
+        null
+      ],
+      [
+        "criterion",
+        "A6",
+        "Project monitoring and evaluation process",
+        null,
+        null
+      ],
+      [
+        "criterion",
+        "A7",
+        "Proportion of admin and overhead costs in the total project budget",
+        null,
+        null
+      ],
+      [
+        "criterion",
+        "A8",
+        "Exit strategy and sustainability of the solution",
+        null,
+        null
+      ],
+      [
+        "criterion",
+        "B1",
+        "Minimum 10 years of existence",
+        null,
+        {
+          "type": "min_years_registered",
+          "years": 10
+        }
+      ],
+      [
+        "criterion",
+        "B2",
+        "Strong presence (at least 3 years) in the proposed State/UT",
+        null,
+        {
+          "type": "in_rfp_geography"
+        }
+      ],
+      [
+        "criterion",
+        "B3",
+        "Demonstrated capability to improve measurable outcomes",
+        null,
+        {
+          "type": "has_stage",
+          "stage": "outcome"
+        }
+      ],
+      [
+        "criterion",
+        "B4",
+        "In-house implementation team with more than 5 permanent employees",
+        null,
+        null
+      ],
+      [
+        "criterion",
+        "B5",
+        "Experience of integrated or holistic village development projects",
+        null,
+        null
+      ],
+      [
+        "document",
+        "D1",
+        "Proposal form",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "proposal_form"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D2",
+        "Two donor feedbacks",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "donor_feedback"
+          ],
+          "min_count": 2
+        }
+      ],
+      [
+        "document",
+        "D3",
+        "Memorandum of Association / Trust Deed / Rules and Regulations",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "trust_deed",
+            "moa"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D4",
+        "Registration certificate",
+        null,
+        {
+          "type": "credential",
+          "credential": "reg_no"
+        }
+      ],
+      [
+        "document",
+        "D5",
+        "12A registration",
+        null,
+        {
+          "type": "credential",
+          "credential": "12a"
+        }
+      ],
+      [
+        "document",
+        "D6",
+        "80G registration",
+        null,
+        {
+          "type": "credential",
+          "credential": "80g"
+        }
+      ],
+      [
+        "document",
+        "D7",
+        "FCRA certificate",
+        null,
+        {
+          "type": "credential",
+          "credential": "fcra"
+        }
+      ],
+      [
+        "document",
+        "D8",
+        "PAN",
+        null,
+        {
+          "type": "credential",
+          "credential": "pan"
+        }
+      ],
+      [
+        "document",
+        "D9",
+        "Address proof",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "address_proof"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D10",
+        "IT returns, last 3 years",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "itr"
+          ],
+          "min_count": 3
+        }
+      ],
+      [
+        "document",
+        "D11",
+        "Audited reports, last 3 years",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "audited_accounts"
+          ],
+          "min_count": 3
+        }
+      ],
+      [
+        "document",
+        "D12",
+        "Self-declaration (format provided)",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "self_declaration"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D13",
+        "Annual reports, last 3 years",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "annual_report"
+          ],
+          "min_count": 3
+        }
+      ],
+      [
+        "document",
+        "D14",
+        "Organisation profile",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "org_profile"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D15",
+        "Brief bio data of board members",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "board_bios"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D16",
+        "Brief bio data of top management",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "management_bios"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D17",
+        "Minutes of the last two board meetings",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "board_minutes"
+          ],
+          "min_count": 2
+        }
+      ],
+      [
+        "document",
+        "D18",
+        "HR policy, including remuneration policies",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "hr_policy"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D19",
+        "Finance policy, including procurement and assets",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "finance_policy"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D20",
+        "Organogram",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "organogram"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D21",
+        "Detailed budget sheet in Excel",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "budget"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D22",
+        "Third-party evaluation, audit or impact assessment reports",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "evaluation_report"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D23",
+        "MIS for planning, tracking and reviewing",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "mis"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D24",
+        "Profile of key leaders and founders",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "leader_profiles"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D25",
+        "Press reports",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "press"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D26",
+        "Awards and recognitions",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "awards"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D27",
+        "Feedback mechanism",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "feedback_mechanism"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D28",
+        "Monitoring mechanism or software in place",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "monitoring_system"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D29",
+        "GST certificate",
+        null,
+        {
+          "type": "document",
+          "doc_types": [
+            "gst_certificate"
+          ]
+        }
+      ],
+      [
+        "document",
+        "D30",
+        "Form CSR-1",
+        null,
+        {
+          "type": "credential",
+          "credential": "csr1"
+        }
+      ]
+    ]
+  }
+}

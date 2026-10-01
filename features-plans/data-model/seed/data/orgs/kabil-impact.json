@@ -1,0 +1,158 @@
+{
+  "_about": "KABIL programmes, results chains and credential findings, from the research file in the org-grant-intelligence repo (which reads KABIL's annual reports). Only figures the file states are used; missing stages are left empty on purpose.",
+  "org": "kabil",
+  "source": {
+    "url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/ngos/KABIL/KABIL_Programs_and_Reports.md",
+    "source_name": "org-grant-intelligence",
+    "fetched_at": "2026-09-27"
+  },
+  "locations": [
+    {
+      "state": "Assam",
+      "district": "Udalguri",
+      "block": "Mazbat"
+    }
+  ],
+  "programs": [
+    {
+      "name": "Sustainable livelihoods project, undivided Udalguri (Axis Bank Foundation)",
+      "status": "concluded",
+      "description": "4-year livelihoods project in Udalguri and Harisinga with SHG and non-SHG families: agriculture, livestock, and MGNREGS individual beneficiary schemes such as farm ponds.",
+      "schemes": [
+        "mgnrega"
+      ],
+      "district": "Udalguri",
+      "grant_title": "Sustainable livelihoods project, Udalguri (with ASRLM)"
+    },
+    {
+      "name": "Livelihood improvement, Mazbat block (Azim Premji Foundation)",
+      "status": "concluded",
+      "description": "Small and marginal farmers in Mazbat block: agriculture and livestock interventions, training and adoption support. Ran from January 2021, concluded FY2023-24.",
+      "schemes": [],
+      "block": "Mazbat"
+    },
+    {
+      "name": "Promoting livelihoods for rural poor households, Mazbat block",
+      "status": "active",
+      "description": "Aims to raise the income of 2,000 households in selected village councils by an average of 50% of current income.",
+      "schemes": [],
+      "block": "Mazbat"
+    },
+    {
+      "name": "DWIMU: Diversification with Integrated Management for the Upliftment of People's Lives",
+      "status": "active",
+      "description": "10,000 ST, SC and other vulnerable households, 20 VCDCs, 105 villages; convergence with Agriculture, Forest, Animal Husbandry and Fishery departments. Launched July 2024; tripartite MoU with ASRLM and BRLF.",
+      "schemes": [
+        "asrlm",
+        "pm-kisan"
+      ],
+      "district": "Udalguri"
+    }
+  ],
+  "metrics": [
+    {
+      "chain": "kabil-abf-udalguri",
+      "program": 0,
+      "seq": 1,
+      "stage": "output",
+      "name": "Net families reached",
+      "value": 24765,
+      "target": 15000,
+      "unit": "families",
+      "period": "project total",
+      "method": "self_reported",
+      "grant": true
+    },
+    {
+      "chain": "kabil-apf-mazbat",
+      "program": 1,
+      "seq": 1,
+      "stage": "output",
+      "name": "Farmers trained (agriculture and livestock)",
+      "value": 2000,
+      "unit": "farmers",
+      "period": "as of March 2023",
+      "method": "self_reported"
+    },
+    {
+      "chain": "kabil-apf-mazbat",
+      "program": 1,
+      "seq": 2,
+      "stage": "output",
+      "name": "Net households reached",
+      "value": 2417,
+      "target": 2000,
+      "unit": "households",
+      "period": "FY2023-24",
+      "method": "self_reported"
+    },
+    {
+      "chain": "kabil-apf-mazbat",
+      "program": 1,
+      "seq": 3,
+      "stage": "adoption",
+      "name": "Farmers cultivating under rain shelters",
+      "value": 1163,
+      "unit": "farmers",
+      "period": "FY2023-24",
+      "method": "self_reported"
+    },
+    {
+      "chain": "kabil-apf-mazbat",
+      "program": 1,
+      "seq": 4,
+      "stage": "adoption",
+      "name": "Farmers using trellis cultivation",
+      "value": 931,
+      "unit": "farmers",
+      "period": "FY2023-24",
+      "method": "self_reported"
+    },
+    {
+      "chain": "kabil-mazbat-2024",
+      "program": 2,
+      "seq": 1,
+      "stage": "output",
+      "name": "SHGs with livelihood plans",
+      "value": 15,
+      "unit": "SHGs",
+      "period": "FY2024-25",
+      "method": "self_reported"
+    },
+    {
+      "chain": "kabil-mazbat-2024",
+      "program": 2,
+      "seq": 2,
+      "stage": "outcome",
+      "name": "Average household income increase",
+      "value": null,
+      "target": 50,
+      "unit": "% of current income",
+      "period": "project target",
+      "method": null
+    },
+    {
+      "chain": "kabil-dwimu",
+      "program": 3,
+      "seq": 1,
+      "stage": "output",
+      "name": "Households with vegetable or horticulture plans submitted to the Agriculture Department",
+      "value": 4000,
+      "target": 10000,
+      "unit": "households",
+      "period": "FY2024-25",
+      "method": "self_reported"
+    }
+  ],
+  "credential_events": [
+    {
+      "credential": "csr1",
+      "event": "not_available",
+      "event_date": "2026-09-10",
+      "verified": true,
+      "source_name": "give.do",
+      "notes": "Single source, not checked against the MCA register",
+      "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/hand-vetting/KABIL_Fact_Check_Verified.md"
+    }
+  ]
+}

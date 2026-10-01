@@ -4,23 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-First run, from a clean checkout (needs Docker and an `ANTHROPIC_API_KEY`):
+First run, from a clean checkout (needs Docker, an `ANTHROPIC_API_KEY`, and a Supabase
+project — see README.md, "Prerequisites"):
 
 ```bash
-cp .env.example .env     # set ANTHROPIC_API_KEY, or another provider's key + MODEL
+cp .env.example .env     # ANTHROPIC_API_KEY, and the two NEXT_PUBLIC_SUPABASE_* values
 make up                  # build and start everything
-make seed                # load the cohort data — the app is empty without it
+make seed                # migrate, then load the cohort data — the app is empty without it
 make smoke               # confirm the stack is wired end to end
 ```
 
-Then http://localhost:3000 for the app and http://localhost:8010/docs for the API.
-`OPENAI_API_KEY` and `make graph-seed` are optional — the graph disables itself cleanly.
+**Migrations are not automatic, and two things depend on them.** `db/init/` is a baseline only:
+12 of the SQL catalog's 40 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
+at boot when one is missing, so the backend will not start against an unmigrated database.
+`seed.taxonomy_seed` needs `0002_taxonomy.sql` as well.
 
-Everyday targets:
+Locally, `make up` therefore starts Postgres, runs `migrate`, and only then starts the backend,
+and `make seed` runs `migrate` too. Both are pinned to `ENV=local`: against a managed database
+you run `make migrate ENV=staging` yourself, deliberately and after a backup.
+
+Then http://localhost:3000 for the app and http://localhost:8010/docs for the API. `/ask` and
+`/import` are behind Supabase sign-in. `OPENAI_API_KEY` and `make graph-seed` are optional —
+the graph disables itself cleanly. One smoke check, `documents: 96+`, is expected to fail on a
+fresh clone: `make seed` does not create those documents.
+
+Everyday targets (`make help` lists all of them):
 
 ```bash
 make up                  # start the whole stack (Postgres, Neo4j, backend, frontend)
 make down / make logs
+make frontend-reinstall  # force a frontend npm ci; `make up` installs only on a dep change
 make seed                # load cohort data into Postgres
 make graph-seed          # build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
 make smoke               # end-to-end check of backend + frontend + chat wire
@@ -77,8 +90,9 @@ deleted.
 Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaults to the
 container path `/srv/db/migrations`.
 
-Frontend: `npm run lint`, `npm run build`. Run `next build` before pushing — type errors
-surface there and never in `next dev`.
+Frontend: `npm run lint` (ESLint, flat config in `frontend/eslint.config.mjs`) and
+`npm run build`. Run the build before pushing — type errors surface there and never in
+`next dev`.
 
 ## Environment selection
 
@@ -135,9 +149,9 @@ backend/app/
 
 frontend/
   app/             routes ONLY — pages, layouts, route handlers
-  features/        one folder per screen: ask/, registry/
+  features/        one folder per screen: ask/ auth/ home/ ingest/ registry/ terms/
   components/      ui/ (display primitives) · layout/ (site chrome)
-  lib/             api/ (client + types) · format.ts
+  lib/             api/ (client + types) · supabase/ · format.ts
 ```
 
 Two rules keep this from eroding: **nothing that is not a route goes under
@@ -252,9 +266,9 @@ baseline is what a brand-new database gets; migrations carry everything after it
 `db/migrations/README.md`. `0001_`–`0010_` carry the v3 data model on top of the v2 baseline:
 provenance columns, the taxonomy, geography, identity, credentials, funder activity, org facts,
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
-dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. The design and the
-before/after are in `docs/DATA_PLATFORM.md`. (`README.md` says migrations live in `db/init/`;
-it is stale, this rule wins.)
+dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0019_`
+continue on top; there are 19 in total. The design and the before/after are in
+`docs/DATA_PLATFORM.md`.
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:
@@ -334,11 +348,10 @@ hardcoded `Authorization: Bearer dev` from five call sites.
 
 ## Deployment
 
-> **Two other files describe a hosting setup that is not the live one — ignore them.**
-> `docs/DEPLOY.md` argues the backend cannot run on Vercel and belongs on a container host,
-> and the tracked `vercel.json` describes a single project with the backend as a
-> `runtime: "container"` build of `backend/Dockerfile`. Neither is what is deployed. **This
-> table is authoritative.**
+> **`docs/DEPLOY.md` describes a hosting setup that is not the live one — ignore it.** It
+> argues the backend cannot run on Vercel and belongs on a container host. **This table is
+> authoritative.** (The root `vercel.json`, which described the same non-deployed shape, is
+> gone; the two that remain are real config — see below.)
 
 Docker is local development only. Deployed, the stack splits across three hosts — see
 `docs/DEPLOY.md`:
@@ -360,6 +373,19 @@ Non-obvious constraints:
   just an env edit.
 - **Vercel's Python bundle limit is 500 MB.** The backend's dependency tree is ~256 MB and
   fits with no trimming.
+
+**Only a merge to `master` deploys, and only `.github/workflows/deploy.yml` does it.**
+`frontend/vercel.json` and `backend/vercel.json` each set `git.deploymentEnabled: false`, so
+a branch push builds nothing — before this, every push to any of twenty branches built *both*
+projects, 40 deployments in one day. The workflow diffs the merge and deploys only the
+projects whose directory changed; a docs-only merge deploys nothing. There are no preview
+deployments by design.
+
+Each `vercel.json` must stay in its project's **Root Directory** (`frontend` / `backend`) —
+that is where Vercel reads it from, which is why a repo-root one did nothing. The workflow
+needs one secret, `VERCEL_TOKEN`; the org and project IDs in it are identifiers, not
+credentials. Run it by hand from the Actions tab (`workflow_dispatch`) to redeploy `master`
+without a new commit.
 
 ## Working state
 

@@ -1,0 +1,1328 @@
+{
+  "_about": "Extraction from three Axis Bank CSR impact reports plus CSR obligation figures reported from Axis Bank's integrated annual reports. District footprints are loaded for the eight North East states; other states are loaded at state level. Theme-to-CSR-sector links are inferred by SANGAM, not stated in the reports.",
+  "sources": [
+    {
+      "key": "fy26",
+      "title": "Axis Bank Annual CSR Report FY2025-26",
+      "url": "https://www.axis.bank.in/docs/default-source/reports-and-disclosures/csr-impact-report/annual-csr-report-fy-2025-26.pdf?sfvrsn=a6712126_3",
+      "source_name": "axis-bank-csr-report",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2025-26"
+    },
+    {
+      "key": "fy25",
+      "title": "Axis Bank CSR Impact Report FY2024-25",
+      "url": "https://www.axis.bank.in/docs/default-source/csr-reports-and-disclosures/csr-impact-report-fy-2024-25.pdf?sfvrsn=dbf2ad86_1",
+      "source_name": "axis-bank-csr-report",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2024-25"
+    },
+    {
+      "key": "fy24",
+      "title": "Axis Bank CSR Impact Report FY2023-24",
+      "url": "https://www.axis.bank.in/docs/default-source/reports-and-disclosures/csr-impact-report/csr-impact-report-fy-2023-24.pdf?sfvrsn=b2a1cf74_1",
+      "source_name": "axis-bank-csr-report",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2023-24"
+    },
+    {
+      "key": "csr26",
+      "title": "India CSR: Axis Bank reports Rs 530.11 crore CSR obligation coverage in FY26 (citing Integrated Annual Report 2025-26, Annexure 4)",
+      "url": "https://indiacsr.in/axis-bank-reports-rs-530-11-cr-csr-obligation-coverage/",
+      "source_name": "indiacsr",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2025-26"
+    },
+    {
+      "key": "csr25",
+      "title": "India CSR: Axis Bank spends Rs 426.57 crore on CSR in FY 2025",
+      "url": "https://indiacsr.in/axis-bank-spends-rs-426-57-crore-on-corporate-social-responsibility-csr-in-fy-2025/",
+      "source_name": "indiacsr",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2024-25"
+    },
+    {
+      "key": "csr23",
+      "title": "India CSR: CSR spending analysis of Axis Bank for FY 2022-23",
+      "url": "https://indiacsr.in/csr-spending-analysis-of-axis-bank/",
+      "source_name": "indiacsr",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2022-23"
+    },
+    {
+      "key": "csr20",
+      "title": "India CSR: Axis Bank spends Rs 100 Cr on CSR in FY 2020",
+      "url": "https://indiacsr.in/axis-bank-spends-rs-100-cr-on-corporate-social-responsibility-csr-in-fy-2020/",
+      "source_name": "indiacsr",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2019-20"
+    }
+  ],
+  "funders": [
+    {
+      "slug": "axis-bank",
+      "name": "Axis Bank Limited",
+      "funder_type": "corporate_csr",
+      "parent": null,
+      "section_135_applicable": true,
+      "note": "The company that holds the CSR obligation; runs most themes directly."
+    },
+    {
+      "slug": "axis-bank-foundation",
+      "name": "Axis Bank Foundation",
+      "parent": "axis-bank",
+      "note": "Implements the Lives & Livelihoods theme (Sustainable Livelihood Programme) through NGO partners."
+    }
+  ],
+  "themes": [
+    {
+      "code": "lives-livelihoods",
+      "funder": "axis-bank",
+      "implemented_by": "axis-bank-foundation",
+      "labels_by_year": {
+        "FY2023-24": "Livelihoods",
+        "FY2024-25": "Lives & Livelihoods",
+        "FY2025-26": "Lives & Livelihoods"
+      },
+      "csr_sectors": [
+        "livelihood-enhancement",
+        "rural-development",
+        "vocational-skills"
+      ]
+    },
+    {
+      "code": "education",
+      "funder": "axis-bank",
+      "labels_by_year": {
+        "FY2023-24": "Education",
+        "FY2024-25": "Education",
+        "FY2025-26": "Education"
+      },
+      "csr_sectors": [
+        "education",
+        "special-education"
+      ]
+    },
+    {
+      "code": "environmental-sustainability",
+      "funder": "axis-bank",
+      "labels_by_year": {
+        "FY2023-24": "Environmental Sustainability",
+        "FY2024-25": "Environmental Sustainability",
+        "FY2025-26": "Environmental Sustainability"
+      },
+      "csr_sectors": [
+        "environmental-sustainability",
+        "agro-forestry",
+        "conservation-natural-resources"
+      ]
+    },
+    {
+      "code": "financial-inclusion-literacy",
+      "funder": "axis-bank",
+      "labels_by_year": {
+        "FY2023-24": "Financial Inclusion and Literacy",
+        "FY2024-25": "Financial Inclusion & Literacy",
+        "FY2025-26": "Financial Inclusion & Literacy"
+      },
+      "csr_sectors": [
+        "livelihood-enhancement",
+        "socio-economic-inequalities"
+      ]
+    },
+    {
+      "code": "health-nutrition",
+      "funder": "axis-bank",
+      "labels_by_year": {
+        "FY2023-24": "Health & Nutrition",
+        "FY2024-25": "Health & Nutrition",
+        "FY2025-26": "Health & Nutrition"
+      },
+      "csr_sectors": [
+        "health-care",
+        "poverty-hunger-malnutrition"
+      ]
+    },
+    {
+      "code": "sports",
+      "funder": "axis-bank",
+      "labels_by_year": {
+        "FY2024-25": "Sports",
+        "FY2025-26": "Sports"
+      },
+      "csr_sectors": [
+        "training-promote-sports"
+      ],
+      "note": "Added as a theme in FY2024-25."
+    },
+    {
+      "code": "humanitarian-relief",
+      "funder": "axis-bank",
+      "labels_by_year": {
+        "FY2023-24": "Disaster Relief",
+        "FY2024-25": "Humanitarian & Relief",
+        "FY2025-26": "Humanitarian & Relief"
+      },
+      "csr_sectors": [
+        "disaster-management"
+      ]
+    }
+  ],
+  "programmes": [
+    {
+      "name": "Sustainable Livelihoods Programme",
+      "theme": "lives-livelihoods",
+      "owner": "axis-bank-foundation",
+      "start": "2011",
+      "source": "fy25",
+      "phases": [
+        {
+          "name": "Mission 1 Million",
+          "start": "2011",
+          "end": "2018"
+        },
+        {
+          "name": "Mission 2 Million",
+          "start": "2019",
+          "end": "2025"
+        },
+        {
+          "name": "Mission 4 Million",
+          "start": "2025",
+          "end": "2031"
+        }
+      ],
+      "names_as_printed": [
+        "Sustainable Livelihood Programme"
+      ],
+      "note": "Same programme as the hand-vetting record; the reports print it as Sustainable Livelihood Programme."
+    },
+    {
+      "name": "Axis DilSe",
+      "theme": "education",
+      "owner": "axis-bank",
+      "start": "2017",
+      "source": "fy25",
+      "note": "Flagship education programme for remote geographies; Centres of Excellence across six North East states with Assam Rifles, Indian Army and NIEDO."
+    },
+    {
+      "name": "Mission 8 Million",
+      "theme": "environmental-sustainability",
+      "owner": "axis-bank",
+      "source": "fy26",
+      "note": "Tree-planting pledge, 8 million by 2030; follows Mission 2 Million."
+    }
+  ],
+  "stated_priorities": [
+    {
+      "theme": "lives-livelihoods",
+      "fiscal_year": "FY2025-26",
+      "source": "fy26",
+      "geo_tags": [
+        "geo-aspirational-districts",
+        "geo-rainfed-regions",
+        "geo-tribal-areas"
+      ],
+      "population_tags": [
+        "pop-small-marginal-farmers",
+        "pop-landless-labourers",
+        "pop-tribal-communities",
+        "pop-women",
+        "pop-youth",
+        "pop-persons-with-disabilities"
+      ]
+    },
+    {
+      "theme": "education",
+      "fiscal_year": "FY2025-26",
+      "source": "fy26",
+      "geo_tags": [
+        "geo-north-east",
+        "geo-himalayan",
+        "geo-conflict-affected"
+      ]
+    }
+  ],
+  "figures": [
+    {
+      "fiscal_year": "FY2025-26",
+      "theme": "lives-livelihoods",
+      "name": "Families reached by the Sustainable Livelihood Programme in the year",
+      "value": 710000,
+      "unit": "families",
+      "source": "fy26"
+    },
+    {
+      "fiscal_year": "FY2024-25",
+      "theme": "lives-livelihoods",
+      "name": "Families reached by the Sustainable Livelihood Programme in the year",
+      "value": 380000,
+      "unit": "families",
+      "source": "fy25"
+    },
+    {
+      "fiscal_year": "FY2024-25",
+      "theme": "sports",
+      "name": "CSR investment in sports",
+      "value": 80000000,
+      "unit": "INR",
+      "source": "fy25"
+    }
+  ],
+  "footprints_north_east": {
+    "FY2025-26": {
+      "lives-livelihoods": {
+        "Assam": [
+          "Baksa",
+          "Dhemaji",
+          "Jorhat",
+          "Kamrup",
+          "Kamrup Metro",
+          "Majuli",
+          "Tamulpur",
+          "Tinsukia",
+          "Udalguri"
+        ],
+        "Meghalaya": [
+          "East Garo Hills",
+          "East Khasi Hills",
+          "North Garo Hills",
+          "Ri Bhoi",
+          "South Garo Hills",
+          "South West Khasi Hills",
+          "West Garo Hills",
+          "West Jaintia Hills",
+          "West Khasi Hills"
+        ],
+        "Mizoram": [
+          "Aizawl",
+          "Champhai",
+          "Lunglei",
+          "Mamit",
+          "Serchhip"
+        ],
+        "Nagaland": [
+          "Dimapur",
+          "Kiphire",
+          "Kohima",
+          "Mokokchung",
+          "Noklak",
+          "Phek",
+          "Tuensang"
+        ],
+        "Tripura": [
+          "Dhalai",
+          "South Tripura"
+        ]
+      },
+      "education": {
+        "Arunachal Pradesh": [
+          "Changlang",
+          "Papum Pare",
+          "Shi Yomi"
+        ],
+        "Assam": [
+          "Baksa",
+          "Barpeta",
+          "Bongaigaon",
+          "Darrang",
+          "Dhemaji",
+          "Dhubri",
+          "Dibrugarh",
+          "Dima Hasao",
+          "Goalpara",
+          "Golaghat",
+          "Jorhat",
+          "Kamrup Metro",
+          "Karbi Anglong",
+          "Kokrajhar",
+          "Lakhimpur",
+          "Majuli",
+          "Marigaon",
+          "Nagaon",
+          "Sivasagar",
+          "Sonitpur",
+          "Tinsukia",
+          "Udalguri"
+        ],
+        "Manipur": [
+          "Churachandpur",
+          "Ukhrul"
+        ],
+        "Mizoram": [
+          "Aizawl"
+        ],
+        "Nagaland": [
+          "Chumoukedima",
+          "Kohima",
+          "Mokokchung"
+        ],
+        "Tripura": [
+          "Khowai",
+          "West Tripura"
+        ]
+      },
+      "environmental-sustainability": {
+        "Assam": [
+          "Majuli"
+        ]
+      },
+      "financial-inclusion-literacy": {
+        "Assam": [
+          "Dibrugarh",
+          "Kamrup"
+        ]
+      },
+      "sports": {
+        "Assam": [
+          "Kamrup"
+        ],
+        "Manipur": [
+          "Imphal East",
+          "Imphal West"
+        ]
+      }
+    },
+    "FY2024-25": {
+      "lives-livelihoods": {
+        "Assam": [
+          "Baksa",
+          "Kamrup Metro",
+          "Majuli",
+          "Tamulpur",
+          "Tinsukia",
+          "Udalguri"
+        ],
+        "Meghalaya": [
+          "East Khasi Hills",
+          "North Garo Hills",
+          "Ri Bhoi",
+          "South Garo Hills",
+          "South West Khasi Hills",
+          "West Garo Hills",
+          "West Jaintia Hills",
+          "West Khasi Hills"
+        ],
+        "Mizoram": [
+          "Aizawl",
+          "Champhai",
+          "Lunglei",
+          "Mamit",
+          "Serchhip"
+        ],
+        "Nagaland": [
+          "Chumoukedima",
+          "Dimapur",
+          "Kiphire",
+          "Mokokchung",
+          "Niuland",
+          "Noklak",
+          "Peren",
+          "Phek",
+          "Tseminyu",
+          "Tuensang"
+        ],
+        "Sikkim": [
+          "Gangtok"
+        ],
+        "Tripura": [
+          "Sepahijala"
+        ]
+      },
+      "education": {
+        "Arunachal Pradesh": [
+          "Changlang",
+          "Shi Yomi",
+          "Papum Pare"
+        ],
+        "Assam": [
+          "Baksa",
+          "Barpeta",
+          "Bongaigaon",
+          "Darrang",
+          "Dhemaji",
+          "Dhubri",
+          "Dibrugarh",
+          "Dima Hasao",
+          "Goalpara",
+          "Golaghat",
+          "Jorhat",
+          "Kamrup Metro",
+          "Karbi Anglong",
+          "Kokrajhar",
+          "Lakhimpur",
+          "Majuli",
+          "Marigaon",
+          "Nagaon",
+          "Sivasagar",
+          "Sonitpur",
+          "Tinsukia",
+          "Udalguri"
+        ],
+        "Manipur": [
+          "Churachandpur",
+          "Ukhrul"
+        ],
+        "Mizoram": [
+          "Aizawl"
+        ],
+        "Nagaland": [
+          "Kohima",
+          "Chumoukedima"
+        ],
+        "Sikkim": [
+          "Gangtok",
+          "Pakyong",
+          "Mangan"
+        ],
+        "Tripura": [
+          "Khowai",
+          "West Tripura"
+        ]
+      },
+      "environmental-sustainability": {
+        "Assam": [
+          "Majuli"
+        ]
+      },
+      "sports": {
+        "Assam": [
+          "Kamrup Metro"
+        ],
+        "Manipur": [
+          "Imphal East"
+        ]
+      },
+      "humanitarian-relief": {
+        "Assam": [
+          "Majuli"
+        ],
+        "Manipur": [
+          "Churachandpur",
+          "Imphal West",
+          "Jiribam"
+        ]
+      }
+    },
+    "FY2023-24": {
+      "lives-livelihoods": {
+        "Assam": [
+          "Baksa",
+          "Dhemaji",
+          "Jorhat",
+          "Kamrup",
+          "Kamrup Metro",
+          "Tinsukia"
+        ],
+        "Meghalaya": [
+          "East Khasi Hills",
+          "North Garo Hills",
+          "Ri Bhoi",
+          "South Garo Hills",
+          "West Jaintia Hills"
+        ]
+      },
+      "education": {
+        "Arunachal Pradesh": [
+          "Changlang"
+        ],
+        "Assam": [
+          "Dibrugarh",
+          "Majuli"
+        ],
+        "Manipur": [
+          "Churachandpur",
+          "Ukhrul"
+        ],
+        "Mizoram": [
+          "Aizawl"
+        ],
+        "Nagaland": [
+          "Kohima"
+        ],
+        "Sikkim": [
+          "Gangtok",
+          "Mangan",
+          "Namchi"
+        ],
+        "Tripura": [
+          "Khowai"
+        ]
+      },
+      "financial-inclusion-literacy": {
+        "Arunachal Pradesh": [
+          "East Siang",
+          "Lohit",
+          "Papum Pare"
+        ],
+        "Assam": [
+          "Baksa",
+          "Barpeta",
+          "Biswanath",
+          "Bongaigaon",
+          "Charaideo",
+          "Chirang",
+          "Darrang",
+          "Dhemaji",
+          "Dibrugarh",
+          "Goalpara",
+          "Golaghat",
+          "Hojai",
+          "Jorhat",
+          "Kamrup",
+          "Kamrup Metro",
+          "Lakhimpur",
+          "Marigaon",
+          "Nagaon",
+          "Nalbari",
+          "Sonitpur",
+          "Tinsukia"
+        ],
+        "Meghalaya": [
+          "East Khasi Hills",
+          "Ri Bhoi",
+          "South West Garo Hills",
+          "West Garo Hills"
+        ],
+        "Mizoram": [
+          "Aizawl",
+          "Champhai",
+          "Kolasib",
+          "Lunglei"
+        ],
+        "Nagaland": [
+          "Chumoukedima",
+          "Dimapur",
+          "Kohima"
+        ],
+        "Sikkim": [
+          "Gangtok",
+          "Namchi"
+        ],
+        "Tripura": [
+          "North Tripura",
+          "Sepahijala",
+          "South Tripura",
+          "Unakoti",
+          "West Tripura"
+        ]
+      },
+      "environmental-sustainability": {
+        "Assam": [
+          "Majuli"
+        ],
+        "Nagaland": [
+          "Chumoukedima",
+          "Kiphire",
+          "Kohima",
+          "Longleng",
+          "Mokokchung",
+          "Noklak",
+          "Peren",
+          "Shamator",
+          "Tseminyu",
+          "Zunheboto"
+        ]
+      },
+      "humanitarian-relief": {
+        "Assam": [
+          "Majuli"
+        ],
+        "Manipur": [
+          "Bishnupur",
+          "Churachandpur",
+          "Imphal East"
+        ]
+      }
+    }
+  },
+  "district_aliases": {
+    "Kamrup Metro": [
+      "Kamrup Metropolitan"
+    ],
+    "Gangtok": [
+      "East Sikkim"
+    ],
+    "Mangan": [
+      "North Sikkim"
+    ],
+    "Namchi": [
+      "South Sikkim"
+    ]
+  },
+  "partners": {
+    "FY2025-26": {
+      "lives-livelihoods": [
+        "Axis Bank Foundation"
+      ],
+      "education": [
+        "Ashoka University",
+        "Assam Rifles",
+        "Ayang Trust",
+        "Chandigarh University",
+        "Create Foundation",
+        "Indian Institute of Science (IISc)",
+        "Indian School of Development Management (ISDM)",
+        "Khan Academy India",
+        "LIFI",
+        "Mantra Social Services",
+        "Muheem",
+        "NIEDO",
+        "Peepul",
+        "Plaksha University",
+        "Planetskool",
+        "St. Loyola College",
+        "Sarthak Foundation",
+        "Sri Aurobindo Society",
+        "Step Up For India",
+        "Sunbird Trust",
+        "Tata Steel Foundation",
+        "Tibetan Children's Village"
+      ],
+      "environmental-sustainability": [
+        "Action for Rural Technology",
+        "Balipara Tract & Frontier Foundation",
+        "Centre for Wildlife Studies",
+        "Foundation for Ecological Security (FES)",
+        "Nature Environment & Wildlife Society (NEWS)",
+        "Seva Mandir",
+        "The Corbett Foundation",
+        "The Hans Foundation",
+        "VIKAS Centre for Development"
+      ],
+      "financial-inclusion-literacy": [
+        "CSC Academy",
+        "Institute of Rural Management Anand (IRMA)",
+        "Kalanjiam Foundation"
+      ],
+      "health-nutrition": [
+        "Aditya Birla Education Trust (Project Masoom with Mpower)",
+        "Antara Institute of Health Sciences",
+        "CanKids KidsCan",
+        "Christian Medical College (CMC), Vellore",
+        "Indian Cancer Society (ICS)",
+        "National Cancer Grid (Tata Memorial Centre)",
+        "Sai Aashraya Trust"
+      ],
+      "sports": [
+        "Foundation for Promotion of Sports & Games (FPSG)",
+        "Inspire Institute of Sport (IIS)",
+        "Lakshya Shooting Club"
+      ],
+      "humanitarian-relief": [
+        "People's Science Institute",
+        "The Hans Foundation",
+        "The Kalgidhar Society"
+      ]
+    },
+    "FY2024-25": {
+      "lives-livelihoods": [
+        "Axis Bank Foundation"
+      ],
+      "education": [
+        "17000 ft Foundation",
+        "Ashoka University",
+        "Ayang Trust",
+        "Khan Academy India",
+        "Learning Initiatives for India",
+        "Mantra 4 Change",
+        "Muheem Ek Sarthak Prayas Welfare Society",
+        "Peepul",
+        "Plaksha University",
+        "Sarthak Foundation",
+        "Sri Aurobindo Society",
+        "Step up for India",
+        "Tata Steel Foundation",
+        "National Integrity and Educational Development Organisation India"
+      ],
+      "environmental-sustainability": [
+        "The Corbett Foundation",
+        "Centre for Wildlife Studies (CWS)",
+        "Foundation for Ecological Security (FES)",
+        "Greenyatra",
+        "Nature Environment and Wildlife Society (NEWS)",
+        "Sewa Mandir",
+        "Balipara Foundation"
+      ],
+      "financial-inclusion-literacy": [
+        "Institute of Rural Management Anand (IRMA)",
+        "Kalanjiam Foundation"
+      ],
+      "health-nutrition": [
+        "Indian Institute of Science (IISc)",
+        "Indian Cancer Society",
+        "National Cancer Grid",
+        "St. Jude India Child Care"
+      ],
+      "sports": [
+        "Inspire Institute of Sport",
+        "Foundation for Promotion of Sports and Games"
+      ],
+      "humanitarian-relief": [
+        "Action for Rural Technology",
+        "Karnataka Rural Infrastructure Development Limited",
+        "Sunbird Trust",
+        "Balipara Foundation",
+        "Ayang Trust"
+      ]
+    },
+    "FY2023-24": {
+      "lives-livelihoods": [
+        "Axis Bank Foundation"
+      ],
+      "education": [
+        "Assam Rifles",
+        "Ashoka University",
+        "Ayang Trust",
+        "Indian Institute of Science",
+        "NIEDO",
+        "Peepul Trust",
+        "Plaksha University",
+        "Sunbird Trust",
+        "Tata Steel Foundation",
+        "17000 ft Foundation"
+      ],
+      "environmental-sustainability": [
+        "Balipara Foundation",
+        "Center for Wildlife Studies",
+        "Foundation for Ecological Security",
+        "Green Yatra",
+        "Nature Environment and Wildlife Society",
+        "Seva Mandir"
+      ],
+      "financial-inclusion-literacy": [
+        "Institute of Rural Management, Anand",
+        "Kalanjiam Foundation",
+        "Micro Save Consulting",
+        "National Institute of Securities Markets"
+      ],
+      "health-nutrition": [
+        "Indian Institute of Science",
+        "National Cancer Grid, Tata Memorial Center",
+        "Sri Sathya Sai Health and Education Trust"
+      ],
+      "humanitarian-relief": [
+        "Ayang Trust",
+        "The Kalgidhar Society",
+        "Vrutti"
+      ]
+    }
+  },
+  "extraction_notes": [
+    "Partner lists are printed per theme on each report's partners page; the FY2023-24 and FY2025-26 pages print some headings out of order, so each list was assigned to the theme its members appear under in the report text.",
+    "The FY2025-26 list prints 'Kalinjiam Foundation'; recorded as Kalanjiam Foundation, as in the other years.",
+    "District names are kept as printed (e.g. 'Kamrup Metro' and 'Kamrup Metropolitan' are the same district)."
+  ],
+  "csr_years": [
+    {
+      "fiscal_year": "FY2025-26",
+      "funder": "axis-bank",
+      "section_135_applicable": true,
+      "prescribed_csr": 5294900000.0,
+      "total_spent": 4216600000.0000005,
+      "unspent_transferred": 1084500000.0,
+      "source": "csr26",
+      "notes": "Spent figure includes programme expenditure, admin overheads and impact assessment. With the transfer to the Unspent CSR Account the total is Rs 530.11 crore."
+    },
+    {
+      "fiscal_year": "FY2024-25",
+      "funder": "axis-bank",
+      "section_135_applicable": true,
+      "prescribed_csr": 4259200000.0,
+      "total_spent": 4265700000.0,
+      "source": "csr25",
+      "notes": "Reported as spent or committed to ongoing projects."
+    },
+    {
+      "fiscal_year": "FY2022-23",
+      "funder": "axis-bank",
+      "section_135_applicable": true,
+      "prescribed_csr": 1994600000.0,
+      "total_spent": 2019199999.9999998,
+      "source": "csr23"
+    },
+    {
+      "fiscal_year": "FY2019-20",
+      "funder": "axis-bank",
+      "section_135_applicable": true,
+      "prescribed_csr": 1006200000.0,
+      "source": "csr20"
+    }
+  ],
+  "csr_spend": [
+    {
+      "fiscal_year": "FY2024-25",
+      "theme": "sports",
+      "csr_sector": "training-promote-sports",
+      "amount": 80000000,
+      "source": "fy25",
+      "notes": "Sports investment stated in the impact report; no place breakdown."
+    }
+  ],
+  "metrics": [
+    {
+      "funder": "axis-bank-foundation",
+      "programme": "Sustainable Livelihoods Programme",
+      "name": "Families reached in the year",
+      "value": 710000,
+      "unit": "families",
+      "period": "FY2025-26",
+      "source": "fy26"
+    },
+    {
+      "funder": "axis-bank-foundation",
+      "programme": "Sustainable Livelihoods Programme",
+      "name": "Families reached in the year",
+      "value": 380000,
+      "unit": "families",
+      "period": "FY2024-25",
+      "source": "fy25"
+    },
+    {
+      "funder": "axis-bank-foundation",
+      "programme": "Mission 4 Million",
+      "name": "Rural households supported, cumulative",
+      "value": 2760000,
+      "unit": "households",
+      "period": "cumulative to 2026-03-31",
+      "source": "fy26"
+    },
+    {
+      "funder": "axis-bank-foundation",
+      "programme": "Mission 4 Million",
+      "name": "Villages reached, cumulative",
+      "value": 33517,
+      "unit": "villages",
+      "period": "cumulative to 2026-03-31",
+      "source": "fy26"
+    },
+    {
+      "funder": "axis-bank",
+      "programme": "Mission 8 Million",
+      "name": "Saplings planted in the year",
+      "value": 1500000,
+      "unit": "saplings",
+      "period": "FY2025-26",
+      "source": "fy26"
+    }
+  ],
+  "footprints_states": {
+    "FY2025-26": {
+      "lives-livelihoods": [
+        "Andhra Pradesh",
+        "Assam",
+        "Bihar",
+        "Chhattisgarh",
+        "Delhi",
+        "Gujarat",
+        "Haryana",
+        "Himachal Pradesh",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Ladakh",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Meghalaya",
+        "Mizoram",
+        "Nagaland",
+        "Odisha",
+        "Puducherry",
+        "Rajasthan",
+        "Tamil Nadu",
+        "Telangana",
+        "Tripura",
+        "Uttar Pradesh",
+        "Uttarakhand",
+        "West Bengal"
+      ],
+      "education": [
+        "Andaman and Nicobar Islands",
+        "Arunachal Pradesh",
+        "Assam",
+        "Chandigarh",
+        "Chhattisgarh",
+        "Dadra and Nagar Haveli and Daman and Diu",
+        "Delhi",
+        "Gujarat",
+        "Haryana",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Ladakh",
+        "Lakshadweep",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Manipur",
+        "Mizoram",
+        "Nagaland",
+        "Odisha",
+        "Puducherry",
+        "Punjab",
+        "Tamil Nadu",
+        "Tripura",
+        "Uttar Pradesh",
+        "Uttarakhand"
+      ],
+      "environmental-sustainability": [
+        "Andhra Pradesh",
+        "Assam",
+        "Gujarat",
+        "Himachal Pradesh",
+        "Karnataka",
+        "Kerala",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Odisha",
+        "Rajasthan",
+        "Tamil Nadu",
+        "Uttarakhand",
+        "West Bengal"
+      ],
+      "financial-inclusion-literacy": [
+        "Assam",
+        "Delhi",
+        "Goa",
+        "Haryana",
+        "Himachal Pradesh",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Punjab",
+        "Rajasthan",
+        "Tamil Nadu",
+        "Uttar Pradesh"
+      ],
+      "health-nutrition": [
+        "Bihar",
+        "Karnataka",
+        "Maharashtra",
+        "Punjab",
+        "Tamil Nadu",
+        "Uttar Pradesh",
+        "West Bengal"
+      ],
+      "humanitarian-relief": [
+        "Chhattisgarh",
+        "Haryana",
+        "Himachal Pradesh",
+        "Punjab",
+        "Uttarakhand"
+      ],
+      "sports": [
+        "Assam",
+        "Chandigarh",
+        "Delhi",
+        "Gujarat",
+        "Haryana",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Manipur",
+        "Odisha",
+        "Punjab",
+        "Rajasthan",
+        "Tamil Nadu",
+        "Telangana",
+        "Uttar Pradesh",
+        "West Bengal"
+      ]
+    },
+    "FY2024-25": {
+      "lives-livelihoods": [
+        "Andhra Pradesh",
+        "Assam",
+        "Bihar",
+        "Chandigarh",
+        "Chhattisgarh",
+        "Delhi",
+        "Goa",
+        "Gujarat",
+        "Haryana",
+        "Himachal Pradesh",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Ladakh",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Meghalaya",
+        "Mizoram",
+        "Nagaland",
+        "Odisha",
+        "Puducherry",
+        "Punjab",
+        "Rajasthan",
+        "Sikkim",
+        "Tamil Nadu",
+        "Telangana",
+        "Tripura",
+        "Uttar Pradesh",
+        "Uttarakhand",
+        "West Bengal"
+      ],
+      "education": [
+        "Andaman and Nicobar Islands",
+        "Arunachal Pradesh",
+        "Assam",
+        "Chandigarh",
+        "Chhattisgarh",
+        "Goa",
+        "Haryana",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Lakshadweep",
+        "Madhya Pradesh",
+        "Manipur",
+        "Mizoram",
+        "Nagaland",
+        "Odisha",
+        "Puducherry",
+        "Punjab",
+        "Rajasthan",
+        "Sikkim",
+        "Tamil Nadu",
+        "Tripura",
+        "Uttar Pradesh",
+        "Uttarakhand"
+      ],
+      "environmental-sustainability": [
+        "Andhra Pradesh",
+        "Assam",
+        "Gujarat",
+        "Karnataka",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Odisha",
+        "Rajasthan",
+        "Tamil Nadu",
+        "West Bengal"
+      ],
+      "financial-inclusion-literacy": [
+        "Gujarat",
+        "Karnataka",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Rajasthan",
+        "Tamil Nadu"
+      ],
+      "health-nutrition": [
+        "Karnataka",
+        "Maharashtra",
+        "Telangana"
+      ],
+      "humanitarian-relief": [
+        "Assam",
+        "Karnataka",
+        "Maharashtra",
+        "Manipur"
+      ],
+      "sports": [
+        "Assam",
+        "Chandigarh",
+        "Delhi",
+        "Gujarat",
+        "Haryana",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Manipur",
+        "Punjab",
+        "Rajasthan",
+        "Tamil Nadu",
+        "Telangana",
+        "Uttar Pradesh",
+        "West Bengal"
+      ]
+    },
+    "FY2023-24": {
+      "lives-livelihoods": [
+        "Andhra Pradesh",
+        "Assam",
+        "Bihar",
+        "Chandigarh",
+        "Chhattisgarh",
+        "Delhi",
+        "Gujarat",
+        "Haryana",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Meghalaya",
+        "Odisha",
+        "Puducherry",
+        "Punjab",
+        "Rajasthan",
+        "Tamil Nadu",
+        "Telangana",
+        "Uttar Pradesh",
+        "West Bengal"
+      ],
+      "education": [
+        "Arunachal Pradesh",
+        "Assam",
+        "Delhi",
+        "Haryana",
+        "Karnataka",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Manipur",
+        "Mizoram",
+        "Nagaland",
+        "Odisha",
+        "Punjab",
+        "Sikkim",
+        "Tripura"
+      ],
+      "environmental-sustainability": [
+        "Assam",
+        "Karnataka",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Nagaland",
+        "Tamil Nadu"
+      ],
+      "financial-inclusion-literacy": [
+        "Arunachal Pradesh",
+        "Assam",
+        "Bihar",
+        "Chhattisgarh",
+        "Goa",
+        "Gujarat",
+        "Haryana",
+        "Himachal Pradesh",
+        "Jammu and Kashmir",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Meghalaya",
+        "Mizoram",
+        "Nagaland",
+        "Odisha",
+        "Puducherry",
+        "Punjab",
+        "Rajasthan",
+        "Sikkim",
+        "Tamil Nadu",
+        "Tripura",
+        "Uttar Pradesh",
+        "Uttarakhand",
+        "West Bengal"
+      ],
+      "health-nutrition": [
+        "Chhattisgarh",
+        "Delhi",
+        "Haryana",
+        "Maharashtra",
+        "Punjab",
+        "Telangana"
+      ],
+      "humanitarian-relief": [
+        "Assam",
+        "Himachal Pradesh",
+        "Manipur",
+        "Punjab",
+        "Telangana",
+        "West Bengal"
+      ]
+    }
+  },
+  "state_aliases": {
+    "Jammu and Kashmir": [
+      "Jammu & Kashmir"
+    ],
+    "Andaman and Nicobar Islands": [
+      "Andaman & Nicobar"
+    ],
+    "Dadra and Nagar Haveli and Daman and Diu": [
+      "Dadra & Nagar Haveli and Daman & Diu"
+    ]
+  },
+  "report_inconsistencies": [
+    {
+      "fiscal_year": "FY2023-24",
+      "theme": "environmental-sustainability",
+      "note": "Tamil Nadu is on the state list, but the district table covers 5 states and has no Tamil Nadu district."
+    },
+    {
+      "fiscal_year": "FY2024-25",
+      "theme": "humanitarian-relief",
+      "note": "The state list has 4 states; the district table also lists Uttar Pradesh (Baghpat, Lucknow) and West Bengal (Kolkata, North 24 Paraganas)."
+    }
+  ],
+  "partner_kinds": {
+    "Axis Bank Foundation": "foundation",
+    "Tata Steel Foundation": "foundation",
+    "The Hans Foundation": "foundation",
+    "Aditya Birla Education Trust (Project Masoom with Mpower)": "foundation",
+    "Ashoka University": "university",
+    "Chandigarh University": "university",
+    "Indian Institute of Science (IISc)": "university",
+    "Indian Institute of Science": "university",
+    "Indian School of Development Management (ISDM)": "university",
+    "Plaksha University": "university",
+    "St. Loyola College": "university",
+    "Institute of Rural Management Anand (IRMA)": "university",
+    "Institute of Rural Management, Anand": "university",
+    "Assam Rifles": "armed_forces",
+    "CSC Academy": "government",
+    "National Institute of Securities Markets": "government",
+    "Karnataka Rural Infrastructure Development Limited": "government",
+    "Christian Medical College (CMC), Vellore": "hospital",
+    "Sai Aashraya Trust": "hospital",
+    "Antara Institute of Health Sciences": "hospital",
+    "Sri Sathya Sai Health and Education Trust": "hospital",
+    "National Cancer Grid (Tata Memorial Centre)": "network",
+    "National Cancer Grid": "network",
+    "National Cancer Grid, Tata Memorial Center": "network",
+    "Planetskool": "company",
+    "Micro Save Consulting": "company",
+    "Inspire Institute of Sport (IIS)": "other",
+    "Inspire Institute of Sport": "other",
+    "Lakshya Shooting Club": "other"
+  },
+  "partner_kind_default": "ngo",
+  "partner_canonical": {
+    "Peepul Trust": "Peepul",
+    "National Integrity and Educational Development Organisation India": "NIEDO",
+    "Centre for Wildlife Studies (CWS)": "Centre for Wildlife Studies",
+    "Center for Wildlife Studies": "Centre for Wildlife Studies",
+    "Balipara Tract & Frontier Foundation": "Balipara Foundation",
+    "Foundation for Ecological Security (FES)": "Foundation for Ecological Security",
+    "Nature Environment & Wildlife Society (NEWS)": "Nature Environment and Wildlife Society",
+    "Nature Environment and Wildlife Society (NEWS)": "Nature Environment and Wildlife Society",
+    "Sewa Mandir": "Seva Mandir",
+    "Greenyatra": "Green Yatra",
+    "Institute of Rural Management Anand (IRMA)": "Institute of Rural Management Anand",
+    "Institute of Rural Management, Anand": "Institute of Rural Management Anand",
+    "Indian Institute of Science (IISc)": "Indian Institute of Science",
+    "17000 ft Foundation": "17000 ft Foundation",
+    "Step up for India": "Step Up For India",
+    "Muheem Ek Sarthak Prayas Welfare Society": "Muheem",
+    "LIFI": "Learning Initiatives for India",
+    "Mantra 4 Change": "Mantra Social Services",
+    "Inspire Institute of Sport (IIS)": "Inspire Institute of Sport",
+    "Foundation for Promotion of Sports & Games (FPSG)": "Foundation for Promotion of Sports and Games",
+    "National Cancer Grid (Tata Memorial Centre)": "National Cancer Grid",
+    "National Cancer Grid, Tata Memorial Center": "National Cancer Grid",
+    "Indian Cancer Society (ICS)": "Indian Cancer Society"
+  }
+}
