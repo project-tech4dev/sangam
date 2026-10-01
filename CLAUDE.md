@@ -4,19 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-First run, from a clean checkout (needs Docker and an `ANTHROPIC_API_KEY`):
+First run, from a clean checkout (needs Docker, an `ANTHROPIC_API_KEY`, and a Supabase
+project — see README.md, "Prerequisites"):
 
 ```bash
-cp .env.example .env     # set ANTHROPIC_API_KEY, or another provider's key + MODEL
+cp .env.example .env     # ANTHROPIC_API_KEY, and the two NEXT_PUBLIC_SUPABASE_* values
 make up                  # build and start everything
-make seed                # load the cohort data — the app is empty without it
+make seed                # migrate, then load the cohort data — the app is empty without it
 make smoke               # confirm the stack is wired end to end
 ```
 
-Then http://localhost:3000 for the app and http://localhost:8010/docs for the API.
-`OPENAI_API_KEY` and `make graph-seed` are optional — the graph disables itself cleanly.
+**Migrations are not automatic, and two things depend on them.** `db/init/` is a baseline only:
+12 of the SQL catalog's 40 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
+at boot when one is missing, so the backend will not start against an unmigrated database.
+`seed.taxonomy_seed` needs `0002_taxonomy.sql` as well.
 
-Everyday targets:
+Locally, `make up` therefore starts Postgres, runs `migrate`, and only then starts the backend,
+and `make seed` runs `migrate` too. Both are pinned to `ENV=local`: against a managed database
+you run `make migrate ENV=staging` yourself, deliberately and after a backup.
+
+Then http://localhost:3000 for the app and http://localhost:8010/docs for the API. `/ask` and
+`/import` are behind Supabase sign-in. `OPENAI_API_KEY` and `make graph-seed` are optional —
+the graph disables itself cleanly. One smoke check, `documents: 96+`, is expected to fail on a
+fresh clone: `make seed` does not create those documents.
+
+Everyday targets (`make help` lists all of them):
 
 ```bash
 make up                  # start the whole stack (Postgres, Neo4j, backend, frontend)
@@ -78,8 +90,9 @@ deleted.
 Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaults to the
 container path `/srv/db/migrations`.
 
-Frontend: `npm run lint`, `npm run build`. Run `next build` before pushing — type errors
-surface there and never in `next dev`.
+Frontend: `npm run lint` (ESLint, flat config in `frontend/eslint.config.mjs`) and
+`npm run build`. Run the build before pushing — type errors surface there and never in
+`next dev`.
 
 ## Environment selection
 
@@ -120,13 +133,14 @@ backend/app/
   schemas/         Pydantic, one module per resource
   agent/           build.py (builds the deep agent) · models.py · tools/
                    instructions.md (the system prompt) · prompt.py (loads it)
+  ingest/          Sangam Import: its own agent, tools/, skills/ and adapters/
   integrations/    graphiti.py (Neo4j client lifecycle)
 
 frontend/
   app/             routes ONLY — pages, layouts, route handlers
-  features/        one folder per screen: ask/, registry/
+  features/        one folder per screen: ask/ auth/ home/ ingest/ registry/ terms/
   components/      ui/ (display primitives) · layout/ (site chrome)
-  lib/             api/ (client + types) · format.ts
+  lib/             api/ (client + types) · supabase/ · format.ts
 ```
 
 Two rules keep this from eroding: **nothing that is not a route goes under
@@ -241,9 +255,9 @@ baseline is what a brand-new database gets; migrations carry everything after it
 `db/migrations/README.md`. `0001_`–`0010_` carry the v3 data model on top of the v2 baseline:
 provenance columns, the taxonomy, geography, identity, credentials, funder activity, org facts,
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
-dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. The design and the
-before/after are in `docs/DATA_PLATFORM.md`. (`README.md` says migrations live in `db/init/`;
-it is stale, this rule wins.)
+dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0019_`
+continue on top; there are 19 in total. The design and the before/after are in
+`docs/DATA_PLATFORM.md`.
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:

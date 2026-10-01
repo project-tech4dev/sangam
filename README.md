@@ -1,75 +1,42 @@
 # Sangam
 
-Grant intelligence for Indian CSOs and the funders who back them. Local dev scaffold:
-**Next.js + CopilotKit** → **FastAPI + LangGraph** (via the AG-UI protocol) → **Postgres + pgvector**,
-seeded with real cohort data (NGO Darpan registry records, GDELT news monitoring, and
-hand-vetted KABIL funder-fit scores on rubric v1/v2).
+![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)
+![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![LangGraph 1.x](https://img.shields.io/badge/LangGraph-1.x-1C3C3C?style=flat-square)
+![Postgres 17 + pgvector](https://img.shields.io/badge/Postgres_17-pgvector-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Neo4j 5](https://img.shields.io/badge/Neo4j_5-optional-018BFF?style=flat-square&logo=neo4j&logoColor=white)
+![Deploys to Vercel](https://img.shields.io/badge/deploys_to-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
 
-```
-browser ── Next.js (:3000) ── /api/copilotkit (CopilotKit v2 runtime)
-                │                    │ AG-UI (SSE)
-                │ REST               ▼
-                └────────── FastAPI (:8010) ── LangGraph deep agent
-                                     │           │ tools: db_list_tables · db_describe_table
-                                     │           │        db_profile_column · db_query
-                                     │           │        search_graph · fetch_url
-                                     ▼           ▼
-                    Postgres + pgvector (:5433)   Neo4j (:7474/:7687)
-                    records · scores · documents  temporal knowledge graph
-                    chat checkpoints (truth)      (derived via Graphiti)
-```
+**Grant intelligence for Indian civil-society organisations and the funders who back them.**
 
-## Quickstart
+Finding the right funder is slow, manual research: who gives in this state, to this sector, at
+this size, and have they funded anyone like us before. Sangam keeps that research as structured,
+sourced data and lets you interrogate it in plain language. Two agents sit on one database —
+**Ask Sangam** answers questions about the registry, and **Sangam Import** pulls new funder data
+in from public sources.
 
-Requirements: Docker Desktop.
+The commitment that shapes everything else: **Postgres is the system of record, and every fact
+the agent states carries a citation back to a row.** No answer comes from the model's own
+knowledge of an organisation.
 
-```bash
-cp .env.example .env        # set ANTHROPIC_API_KEY (or another provider's key + MODEL)
-make up                     # postgres + backend + frontend (frontend runs `next dev`)
-make seed                   # loads orgs, funders, rubrics, scores, news
-```
-
-Open:
-
-- http://localhost:3000 — **Ask Sangam** chat (agent tool calls render inline)
-- http://localhost:3000/orgs — cohort registry (10 orgs: 8 Darpan + KABIL + BDF)
-- http://localhost:3000/funders — funders with KABIL fit scores (v1/v2)
-- http://localhost:8010/docs — FastAPI OpenAPI
-
-Prove the agent → Postgres → citation loop in the chat:
-
-1. *“Which NGOs in our database work in Assam?”* → visible `db_query` call, answer cites `[org:N]`.
-2. *“How well does KABIL fit Axis Bank Foundation, and why did Eligibility lose points?”*
-   → `db_query` over the rubric tables; the answer should cite the CSR-1 gap (16/20 on criterion 2, rubric v1)
-   and mention the hand-vetting adjustment (Relationship 10 → 7, grant concluded ~March 2022).
-3. Refresh mid-conversation and continue — threads persist in Postgres (LangGraph checkpointer).
-
-## Layout
-
-```
-db/init/        # schema; runs once on first `make up` (plain SQL, lexical order)
-seed/           # vendored data + idempotent seed script (see seed/data/README.md for provenance)
-backend/        # FastAPI + LangGraph deep agent, AG-UI endpoint at /agent
-frontend/       # Next.js App Router + CopilotKit
-```
-
-Useful targets: `make logs`, `make psql`, `make db-reset` (drop volume, recreate, re-seed),
-`make dev-backend` / `make dev-frontend` (run either outside docker against compose Postgres).
-
-## Architecture (high level)
+## How it fits together
 
 ```mermaid
 flowchart TD
-  U["User<br/><small>FFRH staff / CSO cohort</small>"]
+  U["User<br/><small>CSO fundraisers · funder staff</small>"]
+  AUTH["Supabase Auth<br/><small>Google sign-in; gates /ask and /import</small>"]
 
   subgraph FE["Frontend — Next.js :3000"]
-    PAGES["Registry pages<br/><small>/orgs · /funders</small>"]
-    CHAT["Ask Sangam chat<br/><small>CopilotKit runtime</small>"]
+    PAGES["Registry pages<br/><small>/registry · /registry/funders</small>"]
+    CHAT["Ask Sangam<br/><small>/ask · CopilotKit runtime</small>"]
+    IMPORT["Sangam Import<br/><small>/import</small>"]
   end
 
   subgraph BE["Backend — FastAPI :8010"]
     REST["REST API<br/><small>orgs · funders · grants · programs<br/>rfps · contacts · scores · meta</small>"]
-    AGENT["LangGraph deep agent<br/><small>Claude · 6 tools · cited answers</small>"]
+    AGENT["Ask Sangam agent<br/><small>Claude · 6 tools · cited answers</small>"]
+    INGEST["Sangam Import agent<br/><small>fetch · extract · match · promote</small>"]
     GRT["Graphiti<br/><small>extraction · embeddings · dedup</small>"]
   end
 
@@ -79,25 +46,29 @@ flowchart TD
   ANT["Anthropic API<br/><small>agent reasoning</small>"]
   OAI["OpenAI API<br/><small>graph extraction + embeddings (768-dim)</small>"]
 
-  U --> PAGES & CHAT
+  U --> AUTH
+  AUTH --> PAGES & CHAT & IMPORT
   PAGES --> REST
   CHAT -- "AG-UI (SSE)" --> AGENT
+  IMPORT -- "AG-UI (SSE)" --> INGEST
   REST --> PG
   AGENT -- "SQL tools" --> PG
+  INGEST --> PG
   AGENT -- "search_graph" --> GRT
   GRT -- Cypher --> NEO
   PG -- "make graph-seed (derive episodes)" --> GRT
   AGENT -.-> ANT
+  INGEST -.-> ANT
   GRT -.-> OAI
 
   style PG stroke:#0d6b60,stroke-width:2px
   style NEO stroke:#a9622f,stroke-width:2px
+  style AUTH stroke:#6b5bd6,stroke-width:2px
 ```
 
 **The one rule that holds it together: data flows left to right.** Postgres is the source of
-truth; the Neo4j graph is *derived* from it (episodes generated from Postgres rows, entities
-and time-bounded relationship facts extracted by an LLM) and can be wiped and rebuilt at any
-time without losing anything. If the two ever disagree, Postgres wins.
+truth; the Neo4j graph is *derived* from it and can be wiped and rebuilt at any time without
+losing anything. If the two disagree, Postgres wins.
 
 | Store | Holds | Ask it |
 |---|---|---|
@@ -105,74 +76,316 @@ time without losing anything. If the two ever disagree, Postgres wins.
 | Postgres (`documents`/`chunks`) | full document text; tsvector + pgvector indexes (chunks pipeline pending) | "what does the report actually say" |
 | Neo4j (via Graphiti) | entities + temporal relationship edges with validity windows | "what *connects* X to Y", multi-hop paths |
 
-External services are deliberately narrow: **Anthropic** powers the agent's reasoning
-(`MODEL`, provider-agnostic), **OpenAI** powers only the graph's extraction/embeddings
-(`OPENAI_API_KEY`). Auth is a dev-stub pending Supabase JWT; everything runs locally via
-docker compose (`make up`).
+External services are deliberately narrow: **Anthropic** powers agent reasoning (`MODEL`,
+provider-agnostic), **OpenAI** powers only the graph's extraction and embeddings.
 
-## Agentic layer (how the chat actually works)
+## Prerequisites
 
-The "intelligence" is one LangGraph **deep agent** (`deepagents` + Claude, built in
-`backend/app/agent/build.py`), exposed to the frontend over the **AG-UI protocol**
-(`add_langgraph_fastapi_endpoint` at `/agent`; the Next.js CopilotKit runtime proxies it).
-Design principles, in priority order:
+To run the stack you need **Docker Desktop**, an **Anthropic API key**, and a **Supabase
+project**. The Supabase requirement is not optional and is the step people miss: the frontend
+runs `lib/supabase/middleware.ts` on every request, and without its two keys every page returns
+500. Create a free project, then copy the URL and the publishable key from **Project Settings →
+API**. To reach `/ask` or `/import` you also need a sign-in method — enable the **Google**
+provider under **Authentication → Providers**, or add a user by hand.
 
-1. **Tools are the only source of truth.** The agent answers exclusively from tool results —
-   never from the model's own knowledge of an org or funder. No data → it says so.
-   The system prompt enforcing this lives in `backend/app/agent/instructions.md`.
-2. **Every fact is cited.** Tool results embed markers — `[org:9]`, `[funder:1]`, `[grant:2]`,
-   `[score:1]`, `[graph:ab12cd34]` — and the agent must repeat them inline next to each claim,
-   so every sentence traces to a Postgres row or a graph edge.
-3. **Routing by question type** (the agent picks tools; nothing is hardcoded):
+Everything else is optional. The knowledge graph needs `OPENAI_API_KEY`; without it the graph
+disables itself cleanly and the agent is told to use the database tools instead.
 
-   | Question | Tool | Backing store |
-   |---|---|---|
-   | "Which NGOs work in Assam?" | `db_query` | Postgres (orgs + tags/locations) |
-   | "Tell me about SBI Foundation" | `get_funder` | Postgres (funders + contacts + grants summary) |
-   | "Who has funded KABIL?" | `db_query` | Postgres `grants` (authoritative record) |
-   | "How well does KABIL fit ABF, and why?" | `db_query` | Postgres rubric family + adjustment audit log |
-   | "What *connects* KABIL to Tata Trusts?" | `search_graph` | Neo4j via Graphiti (temporal facts) |
-   | Fetch a page the user links | `fetch_url` | live web |
+Four `make` targets run on the **host**, not in Docker, and need their own tooling:
 
-4. **Tools never raise.** Errors return as strings so the agent can see the failure and adapt
-   (`backend/app/agent/tools/sql_tools.py` / `graph_tools.py`). If the graph is unconfigured, the agent
-   is told so and falls back to SQL tools, disclosing the limitation in its answer.
-5. **Conversations persist.** Threads checkpoint into Postgres (`AsyncPostgresSaver` on the
-   shared connection pool, `backend/app/db/checkpointer.py`) — refresh mid-chat and continue.
-6. **Adding a tool** = write an async function with the citation-marker + error-as-string
-   conventions in `backend/app/agent/tools/`, register it in `agent/build.py`, and mention its marker
-   in `agent/instructions.md`. The chat UI renders new tool calls automatically (wildcard renderer
-   in `frontend/app/page.tsx`).
+| Target | Needs |
+|---|---|
+| `make evals`, `make client-docs` | a backend virtualenv at `backend/.venv` — the image installs runtime dependencies only, so it has no pytest |
+| `make dev-backend` | `uvicorn` on the host |
+| `make dev-frontend` | Node 22 and `npm` on the host |
 
-Model and keys: the agent's reasoning model is `MODEL` (default `anthropic:claude-sonnet-5`,
-provider-agnostic via `agent/models.py`); Graphiti's extraction/embeddings use `OPENAI_API_KEY`
-independently. Tool calls stream live into the chat (AG-UI events), so users watch the agent
-query the databases rather than trusting a black box.
+## Quickstart
 
-## Knowledge graph (Graphiti + Neo4j)
+```bash
+cp .env.example .env     # set ANTHROPIC_API_KEY and the two NEXT_PUBLIC_SUPABASE_* values
+make up                  # migrate, then build and start the whole stack
+make seed                # load the cohort data — the app is empty without it
+```
 
-Relationship facts extracted from source text live in a temporal graph (Neo4j; browser at
-http://localhost:7474, login `neo4j` / `sangamneo4j`, bolt on 7687). The agent's
-`search_graph` tool answers connection questions — "what links KABIL to Tata Trusts?" —
-with time-bounded facts.
+**Migrations are not automatic, and two steps above depend on them.** `db/init/` is only a
+baseline; 12 of the 40 tables the agent's catalog expects arrive in `db/migrations/*.sql`, and
+the backend refuses to boot when one is missing. The seeder needs migration `0002` too, or it
+fails on `column "code" of relation "tags" does not exist`.
 
-- Requires `OPENAI_API_KEY` in `.env` (Graphiti's extraction LLM + embeddings; Anthropic has
-  no embedding models). Without it the stack runs fine and the tool reports the graph as off.
-- `make graph-seed` builds the graph **from Postgres** (funder/org profiles, grants, the
-  hand-vetting adjustment log). Postgres stays the system of record; the graph is derived
-  and rebuildable — safe to wipe (`docker compose down -v` clears it along with everything else).
-- Embeddings are pinned at 768 dims (`EMBEDDING_DIM` in compose) — keep any external
-  ingestion tooling on the same value.
+So `make up` now brings Postgres up, runs `make migrate`, and only then starts the backend; and
+`make seed` runs `migrate` as well, which is a no-op the second time. You do not have to think
+about it locally. Against a managed database both are deliberately off — run
+`make migrate ENV=staging` yourself, after a backup.
 
-## Design notes
+Then:
 
-- **Auth is a stub** (`backend/app/core/security.py` returns a seeded dev user; the frontend already
-  sends `Authorization: Bearer dev`). Swapping to Supabase JWT later changes only that function.
-- **Provenance discipline**: every scraped-fact table carries `source_url/source_name/fetched_at/
-  content_hash/extractor_version`; scores carry `scored_by/scored_at` and a manual-override audit
-  log (`score_adjustments`). The agent's system prompt requires inline `[org:N]`-style citations.
-- **Rubrics are versioned** (`rubrics`/`rubric_criteria` with self-referencing sub-criteria), so a
-  future model-based rubric judge writes `fit_scores` rows with `scored_by='model:<name>'` next to
-  the human baseline rather than overwriting it.
-- **Migrations**: plain SQL in `db/init/` while the schema is young; these files become the first
-  Supabase migration when hosted auth/storage arrives.
+| URL | What |
+|---|---|
+| http://localhost:3000 | Home |
+| http://localhost:3000/registry | The registry — organisations and funders |
+| http://localhost:3000/ask | **Ask Sangam** — *requires sign-in* |
+| http://localhost:3000/import | **Sangam Import** — *requires sign-in* |
+| http://localhost:8010/docs | FastAPI OpenAPI |
+| http://localhost:7474 | Neo4j browser — `neo4j` / `sangamneo4j` |
+
+`make graph-seed` builds the knowledge graph afterwards, if `OPENAI_API_KEY` is set.
+
+## Verify the install
+
+```bash
+make smoke                      # backend, frontend and the chat wire
+SMOKE_SKIP_LLM=1 make smoke     # same, minus the one real agent call
+```
+
+**One check is expected to fail on a fresh clone**: `documents: 96+ on file`. Those documents
+were restored from a dump and `make seed` does not create them, so the table is empty until an
+import run or a `make db-push-remote` from a database that has them. Every other check should
+pass.
+
+Then prove the loop the product is actually built on — that you can watch the agent query the
+database and check its work. In the chat at `/ask`:
+
+1. Ask **"Which organisations in the database work in Assam?"** A labelled `db_query` step
+   appears in the trace *before* the answer streams, and the answer carries inline `[org:N]`
+   markers — one per claim.
+2. Pick an organisation from that answer and ask **"How well does it fit Axis Bank Foundation,
+   and why did Eligibility lose points?"** The answer should cite a specific rubric criterion,
+   and where a score was adjusted by hand it should say so and why. The numbers move as the
+   data changes; the citation and the disclosed adjustment are the point.
+3. Ask something the data cannot answer — **"What is this funder's 2027 budget?"** It should
+   say it has no data rather than guess. This is the rule that makes the citations worth
+   anything.
+4. Refresh the page mid-conversation and keep going. Threads checkpoint into Postgres, so the
+   conversation resumes.
+
+## Configuration
+
+`.env` is read by docker compose automatically; `.env.example` documents every variable and is
+the fuller reference. The tiers:
+
+| | Variables | Without them |
+|---|---|---|
+| **Required** | `ANTHROPIC_API_KEY` | the backend cannot answer anything |
+| **Required (frontend)** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | every page returns 500 |
+| **Optional** | `OPENAI_API_KEY` + `NEO4J_*` | the graph disables itself cleanly |
+| **Optional** | `MODEL`, `UTILITY_MODEL`, `SQL_AUDIT_MODEL`, `TAVILY_API_KEY` | sensible defaults; see `.env.example` |
+| **Optional** | `LANGFUSE_*`, `LANGSMITH_*` | no tracing. Both can run at once |
+| **Deployed only** | `ALLOWED_ORIGINS`, `ALLOWED_ORIGIN_REGEX`, `STAGING_DB_*` | irrelevant locally |
+
+**`ENV` selects the database** for every DB-touching target. `ENV=local` (the default) uses the
+bundled Postgres container; `ENV=staging` uses the `STAGING_DB_*` block via
+`docker-compose.staging.yml`. `ENV=staging` deploys nothing — it points local tooling at the
+managed database.
+
+It is honoured by `seed`, `migrate`, `migrate-status`, `psql`, `db-url` and the remote targets.
+It is **not** honoured by `up`, `down`, `logs`, `frontend-reinstall` or the
+`db-clean`/`db-reset`/`db-backup`/`db-upgrade` group, which always act on the local stack.
+
+**Ports are fixed in `docker-compose.yml`, not in `.env`.** The frontend is on 3000, the backend
+publishes 8010 from the container's 8000, Postgres publishes 5433 from 5432, and Neo4j is on
+7474/7687. The non-default host ports exist because 8000 and 5432 were already taken on the
+machine this was built on. Changing them means editing `docker-compose.yml` — in two places for
+the backend, since `NEXT_PUBLIC_API_URL` is set there too.
+
+## Everyday commands
+
+`make help` lists every target, grouped, with a one-line description. The ones you need first:
+
+```bash
+make up                  # start the whole stack
+make down                # stop it, keeping the volumes
+make logs                # follow every container
+make frontend-reinstall  # force a frontend npm ci; make up installs only on a dep change
+```
+
+```bash
+make seed                # load the cohort data (migrates first, locally)
+make graph-seed          # build the Neo4j graph from Postgres; needs OPENAI_API_KEY
+make migrate             # apply db/migrations/*.sql
+make migrate-status      # show what would run
+make psql                # interactive shell against whichever database ENV selects
+```
+
+```bash
+make smoke               # end-to-end check
+make evals               # golden questions through the real agent — COSTS MONEY
+make evals TAG=canary    # the cheap subset
+```
+
+```bash
+make dev-backend         # uvicorn on the host, against the compose Postgres on 5433
+make dev-frontend        # next dev on the host, against a host backend on 8000
+```
+
+`make db-reset` is the scorched-earth option: it drops **every** volume, including the Neo4j
+graph and any documents loaded by an import run, then rebuilds and reseeds. Fresh installs only.
+
+## Tests and lint
+
+Backend tests come in three tiers, and the distinction matters:
+
+```bash
+cd backend
+pytest                        # unit tests — these never touch a database
+pytest -m integration         # needs the compose Postgres on :5433
+pytest tests/evals --run-evals  # real model calls, real money. `make evals` is the usual door
+ruff check .                  # line-length 110, target py312
+```
+
+Unit tests build a router-only FastAPI app with no lifespan and a sentinel pool that raises on
+any attribute access, so a test that reaches for a database fails loudly rather than quietly
+connecting to one. Monkeypatch the `repositories/` function, not the pool. `asyncio_mode =
+"auto"`, so async tests need no decorator.
+
+Evals are gated behind `--run-evals` by a conftest flag rather than a marker filter in
+`addopts`, on purpose: a command-line `-m` *replaces* addopts' `-m`, so `pytest -m integration`
+would otherwise start billing model calls.
+
+Frontend:
+
+```bash
+cd frontend
+npm run lint             # eslint
+npm run build            # next build
+```
+
+**Run `npm run build` before pushing.** Type errors surface there and never in `next dev`.
+
+Linting is newly wired up and three rules are warnings rather than errors while the existing
+findings get cleared — see the comment in `frontend/eslint.config.mjs`.
+
+## Repository layout
+
+```
+backend/app/
+  main.py          create_app() + the ASGI entrypoint — wiring only
+  core/            config · security (auth stub) · lifespan · logging
+  db/              pool · checkpointer (LangGraph) · migrate (the runner)
+  api/             router.py (one aggregate router) · deps · routes/<resource>.py
+  repositories/    hand-written SQL, one module per resource
+  schemas/         Pydantic, one module per resource
+  agent/           Ask Sangam: build.py · tools/ · instructions.md · harness.py
+  ingest/          Sangam Import: its own agent, tools, skills/ and adapters
+  integrations/    graphiti (Neo4j lifecycle) · tracing
+
+frontend/
+  app/             routes ONLY — pages, layouts, route handlers
+  features/        one folder per screen: ask · auth · home · ingest · registry · terms
+  components/      ui/ (display primitives) · layout/ (site chrome)
+  lib/             api/ (client + types) · supabase/ · format.ts
+
+db/init/           baseline schema; runs once on a new database
+db/migrations/     every change after the baseline — 0001 onward, applied by `make migrate`
+seed/              vendored data + idempotent loaders (see seed/data/README.md for provenance)
+scripts/           smoke.sh and the db-url resolver
+```
+
+Two rules keep this from eroding: **nothing that is not a route goes under `frontend/app/`**,
+and **no new module goes flat at the top of `backend/app/`**. Cross-folder frontend imports use
+the `@/` alias.
+
+A REST resource is always three files — `api/routes/<r>.py`, `repositories/<r>.py`,
+`schemas/<r>.py` — plus one line in `api/router.py`. There is no ORM and no Alembic;
+`app/db/migrate.py` explains why.
+
+Note that `seed/seed.py` loads the **v2** shape of the data model while migrations 0001–0019
+carry v3. The seed data has not caught up; `docs/DATA_PLATFORM.md` has the full picture.
+
+## How the agent answers
+
+The intelligence is two LangGraph **deep agents** over one database, both exposed to the
+frontend over the **AG-UI protocol** and both streaming their tool calls live, so you watch the
+work rather than trusting a black box.
+
+**Ask Sangam has exactly six tools** — `db_list_tables`, `db_describe_table`,
+`db_profile_column`, `db_query`, `search_graph`, `fetch_url` — and that sentence is load-bearing.
+`create_deep_agent` adds eight filesystem tools of its own plus a general-purpose subagent
+carrying the whole tool list; `backend/app/agent/harness.py` removes both, and tests pin it.
+
+Three conventions a new tool must not break:
+
+- **Tools never raise.** A raised exception aborts the whole agent run, so every tool body
+  returns `"<tool> failed: …"` instead and lets the model adapt.
+- **Every row is cited.** Tool results embed `[org:N]`, `[funder:N]`, `[grant:N]`, `[score:N]`,
+  `[graph:<uuid8>]`, and `instructions.md` requires the model to repeat them inline. A tool
+  returning uncited rows produces uncitable answers.
+- **The model writes its own SQL, behind four layers.** An allowlist catalog of 40 tables, a
+  pure validator that regenerates the statement from a parsed AST so the model's string never
+  executes, a read-only transaction with timeouts, and the extended protocol so the server
+  itself refuses multi-command statements. `docs/SQL_AGENT.md` has the design.
+
+**Auth is split, and half of it is a stub.** The frontend has real Supabase sign-in. The backend
+does not: `backend/app/core/security.py` resolves every request to one seeded user regardless of
+the token, and the frontend sends a literal `Bearer dev`. A deployed backend is therefore
+readable by anyone who finds the URL. Swapping in JWT verification changes only that function.
+
+## Deployment
+
+Docker is local development only. Deployed, the stack splits across three hosts:
+
+| Piece | Runs on |
+|---|---|
+| Next.js frontend | Vercel project `sangam` (root directory `frontend`) |
+| FastAPI backend | Vercel project `sangam-backend` (root `backend`, preset `fastapi`) |
+| Postgres | Supabase |
+| Neo4j | Neo4j Aura, or omitted |
+
+**Only a merge to `master` deploys**, and only `.github/workflows/deploy.yml` does it. Both
+`vercel.json` files set `git.deploymentEnabled: false`, so a branch push builds nothing. The
+workflow deploys only the projects whose directory changed, so a docs-only merge deploys
+nothing. There are no preview deployments by design.
+
+Two traps worth knowing before touching this:
+
+- **Use Supabase's session pooler, not the direct host.** `db.<ref>.supabase.co` is IPv6-only,
+  which containers cannot reach — connections hang rather than fail. The transaction pooler on
+  6543 breaks `pg_restore`; use session mode on 5432.
+- **`NEXT_PUBLIC_*` is inlined at build time.** Changing one needs a fresh deploy, not an env
+  edit.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `column "code" of relation "tags" does not exist` while seeding | migrations not applied — `0002_taxonomy.sql` adds that column | `make migrate`, then `make seed`. Locally both `make up` and `make seed` now do this for you |
+| Every page returns 500 | `NEXT_PUBLIC_SUPABASE_*` empty; the proxy throws on every request | set both in `.env`, then `make up` — `docker compose restart` will **not** help, since a container's environment is fixed when it is created |
+| `/ask` bounces to `/auth/login` | working as designed — `/ask`, `/import` and `/protected` are gated | sign in, or enable a Supabase auth provider |
+| Postgres container never starts | `COMPOSE_PROFILES=localdb` missing from `.env` | the one line you cannot drop and still use the bundled database |
+| `make smoke` fails only on `documents: 96+` | `make seed` does not create those documents | expected on a fresh clone |
+| `Module not found` after a `package.json` change | the install stamp in `frontend/docker-entrypoint.sh` is stale | `make frontend-reinstall` |
+| A staging connection hangs instead of failing | `db.<ref>.supabase.co` is IPv6-only | use the session pooler on 5432 |
+| Type errors appear only on deploy | `next dev` does not typecheck | `npm run build` before pushing |
+
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [`CLAUDE.md`](CLAUDE.md) | Conventions and architecture decisions, in more depth than this file |
+| [`docs/DATA_PLATFORM.md`](docs/DATA_PLATFORM.md) | The v2 → v3 data model: what changed, what is new, and why |
+| [`docs/SQL_AGENT.md`](docs/SQL_AGENT.md) | The safe text-to-SQL design — the catalog, validator and executor |
+| [`docs/INGEST.md`](docs/INGEST.md) | Sangam Import end to end: sources, matching, what it refuses to do |
+| [`docs/SKILLS.md`](docs/SKILLS.md) | How the importer loads procedures from `SKILL.md` files, and the cost |
+| [`docs/DEPLOY.md`](docs/DEPLOY.md) | Deployment detail. **Its premise that the backend cannot run on Vercel is out of date** — the Deployment section above is authoritative |
+| [`db/migrations/README.md`](db/migrations/README.md) | Why migrations are plain SQL and how to add one |
+| [`seed/data/README.md`](seed/data/README.md) | Provenance for every seeded record |
+| [`docs/entities/`](docs/entities/) | Generated funder briefs — written by `make client-docs`, not by hand |
+
+## Glossary
+
+| Term | Meaning |
+|---|---|
+| **CSO** | Civil-society organisation. Used interchangeably with NGO here |
+| **Darpan** | NGO Darpan, the Indian government's registry of voluntary organisations. A Darpan ID is the closest thing to a national identifier |
+| **CSR-1** | The filing an organisation must have with the MCA to receive corporate CSR funding. Its absence is a hard eligibility blocker |
+| **Schedule VII** | The Companies Act list of activities CSR money may fund. The taxonomy's top level |
+| **Rubric v1 / v2** | Versioned scoring criteria for how well an organisation fits a funder. Scores carry `scored_by` and an adjustment audit log, so a hand-vetted override sits beside the computed score rather than replacing it |
+| **Deep agent** | A `deepagents` preset over LangGraph — planning middleware and subagents around a tool-calling loop. Not an alternative to LangGraph |
+| **AG-UI** | The protocol streaming agent events (tool calls, tokens) from the backend to the chat UI over SSE |
+
+## Status
+
+Pre-release and under active development. The schema moves, and the backend has **no
+authentication** — see the auth note above before exposing it.
+
+There is no `LICENSE` file yet, so default copyright applies and the code is not open source.
+Resolve that before sharing the repository outside the organisation.
