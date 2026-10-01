@@ -20,6 +20,7 @@
 @source "../components/layout";
 @source "../features/home";
 @source "../features/terms";
+@source "../features/auth";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -243,6 +244,7 @@ body > main { flex: 1 0 auto; }
 .btn-secondary { background: transparent; border-color: var(--color-accent-2-600); color: var(--color-accent-2-800); }
 .btn-ghost     { background: transparent; color: var(--color-accent-700); }
 .btn-block     { width: 100%; }
+.btn-square    { border-radius: var(--radius-md); }
 .btn-icon {
   padding: 8px;
   width: 36px;
