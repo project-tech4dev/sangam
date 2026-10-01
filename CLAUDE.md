@@ -66,8 +66,9 @@ Slot *N* publishes base + 10*N*, and its database is a `pg_dump` clone of slot 0
 worktree every ordinary target already hits that stack — the compose project name comes from
 the directory basename, which is what makes the isolation free and why `docker-compose.yml`
 must never gain a `name:` key or an absolute bind-mount path. `docs/SANDBOX.md` has the slot
-allocation, the clone/fallback decision tree and the memory budget. `BASE=HEAD` is needed only
-until `feat/dev-harness-parallel-sandboxes` merges.
+allocation and the clone/fallback decision tree; `.claude/skills/sandbox/SKILL.md` has the
+day-to-day use and the memory budget. `BASE=HEAD` is needed only until
+`feat/dev-harness-parallel-sandboxes` merges.
 
 Tests and lint (backend):
 
