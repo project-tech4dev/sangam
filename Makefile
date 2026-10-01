@@ -45,8 +45,10 @@ endef
 BACKUP_DIR := db/backups/$(shell date +%Y%m%d-%H%M%S)
 
 # --- Stack -------------------------------------------------------------------
+# --wait: the frontend installs deps at container start now, so without it
+# `make up` would return before the first (or post-dep-change) install lands.
 up:
-	docker compose up --build -d
+	docker compose up --build -d --wait
 
 down:
 	docker compose down

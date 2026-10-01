@@ -116,6 +116,14 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    # Port-only, not an HTTP status: the entrypoint may be mid-install, and a
+    # booted next dev still answers 500 until the Supabase vars are set.
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 10s
     volumes:
       - ./frontend:/app
       # Named, so an install survives restarts. docker-entrypoint.sh compares a
