@@ -265,6 +265,20 @@ neither catalogued nor in `KNOWN_EXCLUDED`.
 
 ## Conventions
 
+**Comments and docstrings are 1-2 lines. This one is strict.** One line by default, a second
+only when the first genuinely needs it. Rationale, alternatives considered and the war story
+go in the commit message and `docs/`, which is where they stay accurate — a paragraph inlined
+above a function pushes the code apart and goes stale the first time someone edits below it.
+An inline comment marking a hazard at the line it protects is wanted; compress it, do not
+delete it. This was stated after a cleanup deleted 842 lines of inlined rationale across 89
+docstrings and 39 comment blocks, so it is a correction, not a preference.
+
+**The one exception: `@tool` docstrings in `backend/app/agent/tools/`.** Those are not
+documentation — they are what the model reads to choose and call the tool, and the `Args:`
+block becomes the parameter schema. Trimming them changes agent behaviour: doing it
+mechanically once deleted `db_query`'s "ALWAYS profile a text column before filtering" rule
+and left its arguments with no descriptions at all.
+
 **Schema changes go in `db/migrations/*.sql`, never in `db/init/02_schema.sql`.** The
 baseline is what a brand-new database gets; migrations carry everything after it. See
 `db/migrations/README.md`. `0001_`–`0010_` carry the v3 data model on top of the v2 baseline:
