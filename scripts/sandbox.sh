@@ -489,6 +489,11 @@ cmd_rm() {
   # Project-scoped, so this removes sangam-<slug>_pgdata and CANNOT touch
   # sangam_pgdata. The npm cache is external, so -v leaves it alone.
   ( cd "$wt" && docker compose down -v --remove-orphans --rmi local ) || true
+  # `git worktree remove` runs its OWN dirty check and does not honour the
+  # pathspec above, so it refuses on next-env.d.ts alone. Restore that one
+  # generated file — the check above already established nothing else differs —
+  # rather than reaching for --force, which would discard real work too.
+  git -C "$wt" checkout -- frontend/next-env.d.ts 2>/dev/null || true
   if [ "$force" = 1 ]; then
     git -C "$MAIN_ROOT" worktree remove --force "$wt"
   else
