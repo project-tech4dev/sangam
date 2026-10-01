@@ -212,4 +212,5 @@ dev-backend:
 		uvicorn app.main:app --reload
 
 dev-frontend:
-	cd frontend && AGENT_URL=http://localhost:8000/agent npm run dev
+	cd frontend && set -a && source <(grep -E '^NEXT_PUBLIC_SUPABASE_' ../.env) && set +a && \
+		AGENT_URL=http://localhost:8000/agent npm run dev
