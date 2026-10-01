@@ -21,6 +21,7 @@ Everyday targets:
 ```bash
 make up                  # start the whole stack (Postgres, Neo4j, backend, frontend)
 make down / make logs
+make frontend-reinstall  # force a frontend npm ci; `make up` installs only on a dep change
 make seed                # load cohort data into Postgres
 make graph-seed          # build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
 make smoke               # end-to-end check of backend + frontend + chat wire
