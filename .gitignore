@@ -21,3 +21,6 @@ db/backups/
 .agents/
 .claude/skills/
 skills-lock.json
+
+# Vercel CLI link (contains projectId/orgId)
+.vercel

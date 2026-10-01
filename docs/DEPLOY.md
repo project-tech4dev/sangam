@@ -119,6 +119,38 @@ their empty states while everything server-rendered keeps working. If you need
 those working under lockdown, route them through Next server-side handlers so
 the credential stays on Vercel.
 
+## What triggers a deploy
+
+Nothing automatic happens on a branch push. `frontend/vercel.json` and
+`backend/vercel.json` set `git.deploymentEnabled: false`, which switches off Vercel's
+Git integration for both projects, and `.github/workflows/deploy.yml` is the only thing
+that deploys.
+
+| Event | Deploys |
+|---|---|
+| Push to any branch | nothing |
+| Merge to `master` touching `frontend/**` | `sangam` |
+| Merge to `master` touching `backend/**` | `sangam-backend` |
+| Merge to `master` touching both | both |
+| Merge to `master` touching neither (docs, Makefile, compose) | nothing |
+| Actions tab → Deploy → Run workflow | both |
+
+There are **no preview deployments**. Before this, every push to any of the repo's twenty
+branches built both projects — 40 deployments in a day — because the Git integration cannot
+tell which directory a commit touched.
+
+Two things to know before changing it:
+
+- **Each `vercel.json` must stay in its project's Root Directory.** Vercel reads it from
+  there, not from the repo root; a repo-root `vercel.json` is silently ignored when Root
+  Directory is set, which is how the old one sat tracked and inert for weeks.
+- **The workflow does not build.** It runs `vercel deploy --prod` without `--prebuilt`, so
+  Vercel still builds exactly as it did under the Git integration. The workflow only decides
+  whether and what to deploy. It needs one repository secret, `VERCEL_TOKEN`.
+
+The `ALLOWED_ORIGIN_REGEX` guidance above is now belt-and-braces: with previews disabled,
+no preview hostname is generated. Keep it in case previews are ever re-enabled.
+
 ## Post-deploy check
 
 ```bash
