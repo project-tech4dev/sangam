@@ -1,0 +1,197 @@
+{
+  "_about": "Government schemes and missions as tags (kind 'scheme'), for aligning programmes with government priorities. Programmes link to them through program_tags.",
+  "version": "2026.1",
+  "schemes": [
+    {
+      "code": "mgnrega",
+      "label": "Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA)",
+      "ministry": "Ministry of Rural Development",
+      "aliases": [
+        "MGNREGS",
+        "NREGA"
+      ],
+      "maps_to": [
+        "sector-livelihoods"
+      ]
+    },
+    {
+      "code": "day-nrlm",
+      "label": "Deendayal Antyodaya Yojana - National Rural Livelihoods Mission (DAY-NRLM)",
+      "ministry": "Ministry of Rural Development",
+      "aliases": [
+        "NRLM",
+        "Aajeevika"
+      ],
+      "maps_to": [
+        "sector-livelihoods",
+        "sector-financial-inclusion",
+        "pop-shg-members"
+      ]
+    },
+    {
+      "code": "asrlm",
+      "label": "Assam State Rural Livelihoods Mission (ASRLM)",
+      "ministry": "Government of Assam",
+      "parent": "day-nrlm",
+      "state": "Assam",
+      "aliases": [],
+      "maps_to": [
+        "sector-livelihoods",
+        "pop-shg-members"
+      ]
+    },
+    {
+      "code": "ddu-gky",
+      "label": "Deen Dayal Upadhyaya Grameen Kaushalya Yojana (DDU-GKY)",
+      "ministry": "Ministry of Rural Development",
+      "aliases": [],
+      "maps_to": [
+        "sector-skilling",
+        "pop-youth"
+      ]
+    },
+    {
+      "code": "pmkvy",
+      "label": "Pradhan Mantri Kaushal Vikas Yojana (PMKVY)",
+      "ministry": "Ministry of Skill Development and Entrepreneurship",
+      "aliases": [],
+      "maps_to": [
+        "sector-skilling",
+        "pop-youth"
+      ]
+    },
+    {
+      "code": "pm-kisan",
+      "label": "Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)",
+      "ministry": "Ministry of Agriculture and Farmers Welfare",
+      "aliases": [],
+      "maps_to": [
+        "sector-agriculture-livelihoods",
+        "pop-small-marginal-farmers"
+      ]
+    },
+    {
+      "code": "pmksy",
+      "label": "Pradhan Mantri Krishi Sinchayee Yojana (PMKSY)",
+      "ministry": "Ministry of Agriculture and Farmers Welfare; Ministry of Jal Shakti",
+      "aliases": [],
+      "maps_to": [
+        "sector-agriculture-livelihoods",
+        "sector-environment-nrm"
+      ]
+    },
+    {
+      "code": "pmfby",
+      "label": "Pradhan Mantri Fasal Bima Yojana (PMFBY)",
+      "ministry": "Ministry of Agriculture and Farmers Welfare",
+      "aliases": [],
+      "maps_to": [
+        "sector-agriculture-livelihoods",
+        "sector-financial-inclusion"
+      ]
+    },
+    {
+      "code": "midh",
+      "label": "Mission for Integrated Development of Horticulture (MIDH)",
+      "ministry": "Ministry of Agriculture and Farmers Welfare",
+      "aliases": [],
+      "maps_to": [
+        "sector-agriculture-livelihoods"
+      ]
+    },
+    {
+      "code": "nlm",
+      "label": "National Livestock Mission (NLM)",
+      "ministry": "Department of Animal Husbandry and Dairying",
+      "aliases": [],
+      "maps_to": [
+        "sector-agriculture-livelihoods"
+      ]
+    },
+    {
+      "code": "pmmsy",
+      "label": "Pradhan Mantri Matsya Sampada Yojana (PMMSY)",
+      "ministry": "Department of Fisheries",
+      "aliases": [],
+      "maps_to": [
+        "sector-agriculture-livelihoods"
+      ]
+    },
+    {
+      "code": "pm-vishwakarma",
+      "label": "PM Vishwakarma",
+      "ministry": "Ministry of Micro, Small and Medium Enterprises",
+      "aliases": [],
+      "maps_to": [
+        "sector-culture-craft",
+        "sector-msme"
+      ]
+    },
+    {
+      "code": "pmay-g",
+      "label": "Pradhan Mantri Awaas Yojana - Gramin (PMAY-G)",
+      "ministry": "Ministry of Rural Development",
+      "aliases": [],
+      "maps_to": [
+        "sector-infrastructure"
+      ]
+    },
+    {
+      "code": "jjm",
+      "label": "Jal Jeevan Mission (JJM)",
+      "ministry": "Ministry of Jal Shakti",
+      "aliases": [],
+      "maps_to": [
+        "sector-water-sanitation"
+      ]
+    },
+    {
+      "code": "sbm-g",
+      "label": "Swachh Bharat Mission - Grameen (SBM-G)",
+      "ministry": "Ministry of Jal Shakti",
+      "aliases": [],
+      "maps_to": [
+        "sector-water-sanitation"
+      ]
+    },
+    {
+      "code": "nhm",
+      "label": "National Health Mission (NHM)",
+      "ministry": "Ministry of Health and Family Welfare",
+      "aliases": [],
+      "maps_to": [
+        "sector-health"
+      ]
+    },
+    {
+      "code": "poshan",
+      "label": "POSHAN Abhiyaan",
+      "ministry": "Ministry of Women and Child Development",
+      "aliases": [],
+      "maps_to": [
+        "sector-nutrition",
+        "pop-children",
+        "pop-women"
+      ]
+    },
+    {
+      "code": "samagra-shiksha",
+      "label": "Samagra Shiksha",
+      "ministry": "Ministry of Education",
+      "aliases": [],
+      "maps_to": [
+        "sector-education",
+        "pop-children"
+      ]
+    },
+    {
+      "code": "pmjdy",
+      "label": "Pradhan Mantri Jan Dhan Yojana (PMJDY)",
+      "ministry": "Department of Financial Services",
+      "aliases": [],
+      "maps_to": [
+        "sector-financial-inclusion"
+      ]
+    }
+  ]
+}

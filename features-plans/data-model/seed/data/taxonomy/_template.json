@@ -1,0 +1,44 @@
+{
+  "_help": [
+    "Copy to <domain>.json (e.g. health.json), fill in, run: python -m seed.taxonomy_seed",
+    "levels: name of each tree depth, top first. Node codes join into paths like 01.A.",
+    "variants (optional): children added to every node at apply_to_level, e.g. livelihoods tracks.",
+    "sdgs are numbers; sectors are slugs from common.json; adds maps a variant or modifier code to extra SDGs.",
+    "To rename or split a cell, give the new node a 'replaces' list of old slugs; removed cells are deprecated, never deleted.",
+    "Set status to 'draft' to load the tree for review without showing it in the product."
+  ],
+  "domain": "health",
+  "label": "Health",
+  "version": "0.1",
+  "status": "draft",
+  "tree_name": "",
+  "source": "",
+  "levels": [
+    "area",
+    "service"
+  ],
+  "variants": null,
+  "modifiers": [],
+  "enabler_kinds": [],
+  "nodes": [
+    {
+      "code": "01",
+      "label": "<area>",
+      "children": [
+        {
+          "code": "A",
+          "label": "<service>",
+          "sdgs": [
+            "3"
+          ],
+          "sectors": [
+            "health"
+          ],
+          "adds": {},
+          "note": "",
+          "replaces": []
+        }
+      ]
+    }
+  ]
+}

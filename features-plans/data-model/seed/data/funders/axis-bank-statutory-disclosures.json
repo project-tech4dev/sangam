@@ -1,0 +1,1976 @@
+{
+  "_about": "Axis Bank statutory disclosures: the Annual Report on CSR Activities (Board's report annexure) and BRSR Principle 8 Leadership Indicator 2, which lists CSR projects in aspirational districts with the amount spent per state.",
+  "funder": "axis-bank",
+  "sources": [
+    {
+      "key": "ar25",
+      "title": "Axis Bank Integrated Annual Report 2024-25, Board's report Annexure 4: Annual Report on CSR Activities (printed pp. 225-230)",
+      "url": "https://www.axis.bank.in/docs/default-source/annual-reports/for-axis-bank/annual-report-for-the-year-2024-2025.pdf?sfvrsn=30dd000d_3",
+      "source_name": "axis-bank-annual-report",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2024-25"
+    },
+    {
+      "key": "brsr24",
+      "title": "Axis Bank BRSR 2023-24, Principle 8 Leadership Indicator 2",
+      "url": "https://www.axis.bank.in/docs/default-source/business-responsibility-reports/business-responsibility-sustainability-report-for-the-year-2023-24.pdf",
+      "source_name": "axis-bank-brsr",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2023-24"
+    },
+    {
+      "key": "brsr25",
+      "title": "Axis Bank BRSR 2024-25, Principle 8 Leadership Indicator 2",
+      "url": "https://www.axis.bank.in/docs/default-source/business-responsibility-reports/business-responsibility-sustainability-report-for-the-year-2024-25.pdf",
+      "source_name": "axis-bank-brsr",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2024-25"
+    },
+    {
+      "key": "brsr26",
+      "title": "Axis Bank BRSR 2025-26, Principle 8 Leadership Indicator 2",
+      "url": "https://www.axis.bank.in/docs/default-source/business-responsibility-reports/business-responsibility-sustainability-report-for-the-year-2025-26.pdf",
+      "source_name": "axis-bank-brsr",
+      "fetched_at": "2026-09-27",
+      "as_of": "FY2025-26"
+    }
+  ],
+  "csr_year_FY2024-25": {
+    "source": "ar25",
+    "average_net_profit_crore": 21296.18,
+    "prescribed_csr_crore": 425.92,
+    "spent_on_projects_crore": 284.86,
+    "admin_overheads_crore": 1.73,
+    "impact_assessment_cost_crore": 0.33,
+    "total_spent_crore": 286.92,
+    "unspent_transferred_crore": 139.65,
+    "excess_spent_crore": 0.65,
+    "impact_assessment_done": true,
+    "notes": "Transferred to the Unspent CSR Account on 17-23 April 2025. Spent plus transferred = 426.57 crore; 0.65 crore available for set-off."
+  },
+  "impact_assessed_projects": [
+    {
+      "fiscal_year": "FY2022-23",
+      "theme": "financial-inclusion-literacy",
+      "partner": "CSC Academy",
+      "places": [],
+      "note": "Financial literacy through 20 mobile vans; impact assessment reported in the FY2024-25 annual report"
+    },
+    {
+      "fiscal_year": "FY2022-23",
+      "theme": "health-nutrition",
+      "partner": "Sri Sathya Sai Health and Education Trust",
+      "places": [
+        [
+          "Chhattisgarh",
+          "Raipur"
+        ]
+      ],
+      "note": "300 child heart surgeries at Sri Sathya Sai Sanjeevani Hospital, Raipur"
+    },
+    {
+      "fiscal_year": "FY2022-23",
+      "theme": "health-nutrition",
+      "partner": "The Akshaya Patra Foundation",
+      "places": [
+        [
+          "Uttar Pradesh",
+          null
+        ],
+        [
+          "Gujarat",
+          null
+        ],
+        [
+          "Karnataka",
+          null
+        ],
+        [
+          "Odisha",
+          null
+        ]
+      ],
+      "note": "Mid-day meals, about 1 lakh children, December 2022 to March 2023"
+    },
+    {
+      "fiscal_year": "FY2022-23",
+      "theme": "education",
+      "partner": "Sunbird Trust",
+      "places": [
+        [
+          "Manipur",
+          "Churachandpur"
+        ]
+      ],
+      "note": "Axis DilSe: Lyzon Friendship School, Singngat subdivision"
+    }
+  ],
+  "brsr_beneficiaries_FY2025-26": [
+    {
+      "theme": "education",
+      "name": "Direct beneficiaries (students and teachers)",
+      "value": 1600000,
+      "unit": "people",
+      "approx": true
+    },
+    {
+      "theme": "financial-inclusion-literacy",
+      "name": "Beneficiaries",
+      "value": 270000,
+      "unit": "people",
+      "approx": true
+    },
+    {
+      "theme": "lives-livelihoods",
+      "name": "Households",
+      "value": 712879,
+      "unit": "households",
+      "approx": false
+    },
+    {
+      "theme": "sports",
+      "name": "Beneficiaries",
+      "value": 1100,
+      "unit": "people",
+      "approx": true
+    }
+  ],
+  "aspirational_district_spend": {
+    "FY2023-24": {
+      "total_crore": 38.9,
+      "states": [
+        {
+          "state": "Assam",
+          "amount_crore": 0.48,
+          "districts": [
+            {
+              "as_printed": "Baksa",
+              "names": [
+                "Baksa"
+              ]
+            },
+            {
+              "as_printed": "Barpeta",
+              "names": [
+                "Barpeta"
+              ]
+            },
+            {
+              "as_printed": "Darrang",
+              "names": [
+                "Darrang"
+              ]
+            },
+            {
+              "as_printed": "Goalpara",
+              "names": [
+                "Goalpara"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Bihar",
+          "amount_crore": 4.73,
+          "districts": [
+            {
+              "as_printed": "Araria",
+              "names": [
+                "Araria"
+              ]
+            },
+            {
+              "as_printed": "Aurangabad",
+              "names": [
+                "Aurangabad"
+              ]
+            },
+            {
+              "as_printed": "Banka",
+              "names": [
+                "Banka"
+              ]
+            },
+            {
+              "as_printed": "Begusarai",
+              "names": [
+                "Begusarai"
+              ]
+            },
+            {
+              "as_printed": "Gaya",
+              "names": [
+                "Gaya"
+              ]
+            },
+            {
+              "as_printed": "Jamui",
+              "names": [
+                "Jamui"
+              ]
+            },
+            {
+              "as_printed": "Katihar",
+              "names": [
+                "Katihar"
+              ]
+            },
+            {
+              "as_printed": "Khagaria",
+              "names": [
+                "Khagaria"
+              ]
+            },
+            {
+              "as_printed": "Muzaffarpur",
+              "names": [
+                "Muzaffarpur"
+              ]
+            },
+            {
+              "as_printed": "Nawada",
+              "names": [
+                "Nawada"
+              ]
+            },
+            {
+              "as_printed": "Purnia",
+              "names": [
+                "Purnia"
+              ]
+            },
+            {
+              "as_printed": "Sheikhpura",
+              "names": [
+                "Sheikhpura"
+              ]
+            },
+            {
+              "as_printed": "Sitamarhi",
+              "names": [
+                "Sitamarhi"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Chhattisgarh",
+          "amount_crore": 5.23,
+          "districts": [
+            {
+              "as_printed": "Bastar",
+              "names": [
+                "Bastar"
+              ]
+            },
+            {
+              "as_printed": "Bijapur",
+              "names": [
+                "Bijapur"
+              ]
+            },
+            {
+              "as_printed": "Dantewada",
+              "names": [
+                "Dantewada"
+              ]
+            },
+            {
+              "as_printed": "Kanker",
+              "names": [
+                "Kanker"
+              ]
+            },
+            {
+              "as_printed": "Kondagaon",
+              "names": [
+                "Kondagaon"
+              ]
+            },
+            {
+              "as_printed": "Korba",
+              "names": [
+                "Korba"
+              ]
+            },
+            {
+              "as_printed": "Mahasamund",
+              "names": [
+                "Mahasamund"
+              ]
+            },
+            {
+              "as_printed": "Narayanpur",
+              "names": [
+                "Narayanpur"
+              ]
+            },
+            {
+              "as_printed": "Rajnandgaon",
+              "names": [
+                "Rajnandgaon"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Gujarat",
+          "amount_crore": 1.81,
+          "districts": [
+            {
+              "as_printed": "Dahod",
+              "names": [
+                "Dahod"
+              ]
+            },
+            {
+              "as_printed": "Narmada",
+              "names": [
+                "Narmada"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Jammu and Kashmir",
+          "amount_crore": 0.01,
+          "districts": [
+            {
+              "as_printed": "Baramulla",
+              "names": [
+                "Baramulla"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Jharkhand",
+          "amount_crore": 8.38,
+          "districts": [
+            {
+              "as_printed": "Bokaro",
+              "names": [
+                "Bokaro"
+              ]
+            },
+            {
+              "as_printed": "Chatra",
+              "names": [
+                "Chatra"
+              ]
+            },
+            {
+              "as_printed": "Dumka",
+              "names": [
+                "Dumka"
+              ]
+            },
+            {
+              "as_printed": "East Singhbhum",
+              "names": [
+                "East Singhbhum"
+              ]
+            },
+            {
+              "as_printed": "Garhwa",
+              "names": [
+                "Garhwa"
+              ]
+            },
+            {
+              "as_printed": "Giridih",
+              "names": [
+                "Giridih"
+              ]
+            },
+            {
+              "as_printed": "Godda",
+              "names": [
+                "Godda"
+              ]
+            },
+            {
+              "as_printed": "Gumla",
+              "names": [
+                "Gumla"
+              ]
+            },
+            {
+              "as_printed": "Hazaribagh",
+              "names": [
+                "Hazaribagh"
+              ]
+            },
+            {
+              "as_printed": "Khunti",
+              "names": [
+                "Khunti"
+              ]
+            },
+            {
+              "as_printed": "Latehar",
+              "names": [
+                "Latehar"
+              ]
+            },
+            {
+              "as_printed": "Lohardaga",
+              "names": [
+                "Lohardaga"
+              ]
+            },
+            {
+              "as_printed": "Palamu",
+              "names": [
+                "Palamu"
+              ]
+            },
+            {
+              "as_printed": "Ramgarh",
+              "names": [
+                "Ramgarh"
+              ]
+            },
+            {
+              "as_printed": "Ranchi",
+              "names": [
+                "Ranchi"
+              ]
+            },
+            {
+              "as_printed": "Sahebganj",
+              "names": [
+                "Sahebganj"
+              ]
+            },
+            {
+              "as_printed": "Simdega",
+              "names": [
+                "Simdega"
+              ]
+            },
+            {
+              "as_printed": "West Singhbhum",
+              "names": [
+                "West Singhbhum"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Karnataka",
+          "amount_crore": 0.14,
+          "districts": [
+            {
+              "as_printed": "Raichur",
+              "names": [
+                "Raichur"
+              ]
+            },
+            {
+              "as_printed": "Yadgir",
+              "names": [
+                "Yadgir"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Kerala",
+          "amount_crore": 0.13,
+          "districts": [
+            {
+              "as_printed": "Wayanad",
+              "names": [
+                "Wayanad"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Madhya Pradesh",
+          "amount_crore": 1.35,
+          "districts": [
+            {
+              "as_printed": "Barwani",
+              "names": [
+                "Barwani"
+              ]
+            },
+            {
+              "as_printed": "Chhatarpur",
+              "names": [
+                "Chhatarpur"
+              ]
+            },
+            {
+              "as_printed": "Damoh",
+              "names": [
+                "Damoh"
+              ]
+            },
+            {
+              "as_printed": "Guna",
+              "names": [
+                "Guna"
+              ]
+            },
+            {
+              "as_printed": "Khandwa (East Nimar)",
+              "names": [
+                "Khandwa",
+                "East Nimar"
+              ]
+            },
+            {
+              "as_printed": "Rajgarh",
+              "names": [
+                "Rajgarh"
+              ]
+            },
+            {
+              "as_printed": "Singrauli",
+              "names": [
+                "Singrauli"
+              ]
+            },
+            {
+              "as_printed": "Vidisha",
+              "names": [
+                "Vidisha"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Maharashtra",
+          "amount_crore": 0.69,
+          "districts": [
+            {
+              "as_printed": "Gadchiroli",
+              "names": [
+                "Gadchiroli"
+              ]
+            },
+            {
+              "as_printed": "Nandurbar",
+              "names": [
+                "Nandurbar"
+              ]
+            },
+            {
+              "as_printed": "Osmanabad (Dharashiv)",
+              "names": [
+                "Osmanabad",
+                "Dharashiv"
+              ]
+            },
+            {
+              "as_printed": "Washim",
+              "names": [
+                "Washim"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Meghalaya",
+          "amount_crore": 0.34,
+          "districts": [
+            {
+              "as_printed": "Ri Bhoi",
+              "names": [
+                "Ri Bhoi"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Nagaland",
+          "amount_crore": 0.42,
+          "districts": [
+            {
+              "as_printed": "Kiphire",
+              "names": [
+                "Kiphire"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Odisha",
+          "amount_crore": 13.66,
+          "districts": [
+            {
+              "as_printed": "Balangir",
+              "names": [
+                "Balangir"
+              ]
+            },
+            {
+              "as_printed": "Dhenkanal",
+              "names": [
+                "Dhenkanal"
+              ]
+            },
+            {
+              "as_printed": "Gajapati",
+              "names": [
+                "Gajapati"
+              ]
+            },
+            {
+              "as_printed": "Kalahandi",
+              "names": [
+                "Kalahandi"
+              ]
+            },
+            {
+              "as_printed": "Kandhamal",
+              "names": [
+                "Kandhamal"
+              ]
+            },
+            {
+              "as_printed": "Koraput",
+              "names": [
+                "Koraput"
+              ]
+            },
+            {
+              "as_printed": "Malkangiri",
+              "names": [
+                "Malkangiri"
+              ]
+            },
+            {
+              "as_printed": "Nabarangpur",
+              "names": [
+                "Nabarangpur"
+              ]
+            },
+            {
+              "as_printed": "Nuapada",
+              "names": [
+                "Nuapada"
+              ]
+            },
+            {
+              "as_printed": "Rayagada",
+              "names": [
+                "Rayagada"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Rajasthan",
+          "amount_crore": 0.06,
+          "districts": [
+            {
+              "as_printed": "Baran",
+              "names": [
+                "Baran"
+              ]
+            },
+            {
+              "as_printed": "Jaisalmer",
+              "names": [
+                "Jaisalmer"
+              ]
+            },
+            {
+              "as_printed": "Sirohi",
+              "names": [
+                "Sirohi"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Tamil Nadu",
+          "amount_crore": 1.31,
+          "districts": [
+            {
+              "as_printed": "Ramanathapuram",
+              "names": [
+                "Ramanathapuram"
+              ]
+            },
+            {
+              "as_printed": "Virudhunagar",
+              "names": [
+                "Virudhunagar"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Uttar Pradesh",
+          "amount_crore": 0.09,
+          "districts": [
+            {
+              "as_printed": "Bahraich",
+              "names": [
+                "Bahraich"
+              ]
+            },
+            {
+              "as_printed": "Balrampur",
+              "names": [
+                "Balrampur"
+              ]
+            },
+            {
+              "as_printed": "Chandauli",
+              "names": [
+                "Chandauli"
+              ]
+            },
+            {
+              "as_printed": "Fatehpur",
+              "names": [
+                "Fatehpur"
+              ]
+            },
+            {
+              "as_printed": "Sonbhadra",
+              "names": [
+                "Sonbhadra"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Uttarakhand",
+          "amount_crore": 0.05,
+          "districts": [
+            {
+              "as_printed": "Haridwar",
+              "names": [
+                "Haridwar"
+              ]
+            },
+            {
+              "as_printed": "Udham Singh Nagar",
+              "names": [
+                "Udham Singh Nagar"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "FY2024-25": {
+      "total_crore": 67.79,
+      "states": [
+        {
+          "state": "Andhra Pradesh",
+          "amount_crore": 1.59,
+          "districts": [
+            {
+              "as_printed": "Visakhapatnam",
+              "names": [
+                "Visakhapatnam"
+              ]
+            },
+            {
+              "as_printed": "Vizianagaram",
+              "names": [
+                "Vizianagaram"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Assam",
+          "amount_crore": 0.72,
+          "districts": [
+            {
+              "as_printed": "Baksa",
+              "names": [
+                "Baksa"
+              ]
+            },
+            {
+              "as_printed": "Barpeta",
+              "names": [
+                "Barpeta"
+              ]
+            },
+            {
+              "as_printed": "Darrang",
+              "names": [
+                "Darrang"
+              ]
+            },
+            {
+              "as_printed": "Dhubri",
+              "names": [
+                "Dhubri"
+              ]
+            },
+            {
+              "as_printed": "Goalpara",
+              "names": [
+                "Goalpara"
+              ]
+            },
+            {
+              "as_printed": "Udalguri",
+              "names": [
+                "Udalguri"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Bihar",
+          "amount_crore": 5.25,
+          "districts": [
+            {
+              "as_printed": "Aurangabad",
+              "names": [
+                "Aurangabad"
+              ]
+            },
+            {
+              "as_printed": "Banka",
+              "names": [
+                "Banka"
+              ]
+            },
+            {
+              "as_printed": "Gaya",
+              "names": [
+                "Gaya"
+              ]
+            },
+            {
+              "as_printed": "Jamui",
+              "names": [
+                "Jamui"
+              ]
+            },
+            {
+              "as_printed": "Muzaffarpur",
+              "names": [
+                "Muzaffarpur"
+              ]
+            },
+            {
+              "as_printed": "Nawada",
+              "names": [
+                "Nawada"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Chhattisgarh",
+          "amount_crore": 10.77,
+          "districts": [
+            {
+              "as_printed": "Bastar",
+              "names": [
+                "Bastar"
+              ]
+            },
+            {
+              "as_printed": "Bijapur",
+              "names": [
+                "Bijapur"
+              ]
+            },
+            {
+              "as_printed": "Dakshin Bastar Dantewada",
+              "names": [
+                "Dakshin Bastar Dantewada"
+              ]
+            },
+            {
+              "as_printed": "Korba",
+              "names": [
+                "Korba"
+              ]
+            },
+            {
+              "as_printed": "Mahasamund",
+              "names": [
+                "Mahasamund"
+              ]
+            },
+            {
+              "as_printed": "Narayanpur",
+              "names": [
+                "Narayanpur"
+              ]
+            },
+            {
+              "as_printed": "Rajnandgaon",
+              "names": [
+                "Rajnandgaon"
+              ]
+            },
+            {
+              "as_printed": "Sukma",
+              "names": [
+                "Sukma"
+              ]
+            },
+            {
+              "as_printed": "Uttar Bastar Kanker",
+              "names": [
+                "Uttar Bastar Kanker"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Gujarat",
+          "amount_crore": 0.31,
+          "districts": [
+            {
+              "as_printed": "Narmada",
+              "names": [
+                "Narmada"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Himachal Pradesh",
+          "amount_crore": 0.04,
+          "districts": [
+            {
+              "as_printed": "Chamba",
+              "names": [
+                "Chamba"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Jharkhand",
+          "amount_crore": 16.69,
+          "districts": [
+            {
+              "as_printed": "Bokaro",
+              "names": [
+                "Bokaro"
+              ]
+            },
+            {
+              "as_printed": "Dumka",
+              "names": [
+                "Dumka"
+              ]
+            },
+            {
+              "as_printed": "East Singhbhum",
+              "names": [
+                "East Singhbhum"
+              ]
+            },
+            {
+              "as_printed": "Garhwa",
+              "names": [
+                "Garhwa"
+              ]
+            },
+            {
+              "as_printed": "Godda",
+              "names": [
+                "Godda"
+              ]
+            },
+            {
+              "as_printed": "Gumla",
+              "names": [
+                "Gumla"
+              ]
+            },
+            {
+              "as_printed": "Hazaribagh",
+              "names": [
+                "Hazaribagh"
+              ]
+            },
+            {
+              "as_printed": "Khunti",
+              "names": [
+                "Khunti"
+              ]
+            },
+            {
+              "as_printed": "Latehar",
+              "names": [
+                "Latehar"
+              ]
+            },
+            {
+              "as_printed": "Lohardaga",
+              "names": [
+                "Lohardaga"
+              ]
+            },
+            {
+              "as_printed": "Palamu",
+              "names": [
+                "Palamu"
+              ]
+            },
+            {
+              "as_printed": "Ramgarh",
+              "names": [
+                "Ramgarh"
+              ]
+            },
+            {
+              "as_printed": "Ranchi",
+              "names": [
+                "Ranchi"
+              ]
+            },
+            {
+              "as_printed": "Sahebganj",
+              "names": [
+                "Sahebganj"
+              ]
+            },
+            {
+              "as_printed": "Simdega",
+              "names": [
+                "Simdega"
+              ]
+            },
+            {
+              "as_printed": "West Singhbhum",
+              "names": [
+                "West Singhbhum"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Kerala",
+          "amount_crore": 0.02,
+          "districts": [
+            {
+              "as_printed": "Wayanad",
+              "names": [
+                "Wayanad"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Madhya Pradesh",
+          "amount_crore": 3.27,
+          "districts": [
+            {
+              "as_printed": "Barwani",
+              "names": [
+                "Barwani"
+              ]
+            },
+            {
+              "as_printed": "Chhatarpur",
+              "names": [
+                "Chhatarpur"
+              ]
+            },
+            {
+              "as_printed": "Damoh",
+              "names": [
+                "Damoh"
+              ]
+            },
+            {
+              "as_printed": "Guna",
+              "names": [
+                "Guna"
+              ]
+            },
+            {
+              "as_printed": "Khandwa (East Nimar)",
+              "names": [
+                "Khandwa",
+                "East Nimar"
+              ]
+            },
+            {
+              "as_printed": "Rajgarh",
+              "names": [
+                "Rajgarh"
+              ]
+            },
+            {
+              "as_printed": "Singrauli",
+              "names": [
+                "Singrauli"
+              ]
+            },
+            {
+              "as_printed": "Vidisha",
+              "names": [
+                "Vidisha"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Maharashtra",
+          "amount_crore": 0.97,
+          "districts": [
+            {
+              "as_printed": "Dharashiv",
+              "names": [
+                "Dharashiv"
+              ]
+            },
+            {
+              "as_printed": "Gadchiroli",
+              "names": [
+                "Gadchiroli"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Meghalaya",
+          "amount_crore": 0.56,
+          "districts": [
+            {
+              "as_printed": "Ri Bhoi",
+              "names": [
+                "Ri Bhoi"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Mizoram",
+          "amount_crore": 0.02,
+          "districts": [
+            {
+              "as_printed": "Mamit",
+              "names": [
+                "Mamit"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Nagaland",
+          "amount_crore": 0.02,
+          "districts": [
+            {
+              "as_printed": "Kiphire",
+              "names": [
+                "Kiphire"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Odisha",
+          "amount_crore": 17.49,
+          "districts": [
+            {
+              "as_printed": "Balangir",
+              "names": [
+                "Balangir"
+              ]
+            },
+            {
+              "as_printed": "Dhenkanal",
+              "names": [
+                "Dhenkanal"
+              ]
+            },
+            {
+              "as_printed": "Gajapati",
+              "names": [
+                "Gajapati"
+              ]
+            },
+            {
+              "as_printed": "Kalahandi",
+              "names": [
+                "Kalahandi"
+              ]
+            },
+            {
+              "as_printed": "Kandhamal",
+              "names": [
+                "Kandhamal"
+              ]
+            },
+            {
+              "as_printed": "Koraput",
+              "names": [
+                "Koraput"
+              ]
+            },
+            {
+              "as_printed": "Malkangiri",
+              "names": [
+                "Malkangiri"
+              ]
+            },
+            {
+              "as_printed": "Nabarangpur",
+              "names": [
+                "Nabarangpur"
+              ]
+            },
+            {
+              "as_printed": "Nuapada",
+              "names": [
+                "Nuapada"
+              ]
+            },
+            {
+              "as_printed": "Rayagada",
+              "names": [
+                "Rayagada"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Punjab",
+          "amount_crore": 0.06,
+          "districts": [
+            {
+              "as_printed": "Ferozepur",
+              "names": [
+                "Ferozepur"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Rajasthan",
+          "amount_crore": 1.59,
+          "districts": [
+            {
+              "as_printed": "Baran",
+              "names": [
+                "Baran"
+              ]
+            },
+            {
+              "as_printed": "Dholpur",
+              "names": [
+                "Dholpur"
+              ]
+            },
+            {
+              "as_printed": "Jaisalmer",
+              "names": [
+                "Jaisalmer"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Tamil Nadu",
+          "amount_crore": 6.06,
+          "districts": [
+            {
+              "as_printed": "Ramanathapuram",
+              "names": [
+                "Ramanathapuram"
+              ]
+            },
+            {
+              "as_printed": "Virudhunagar",
+              "names": [
+                "Virudhunagar"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Uttar Pradesh",
+          "amount_crore": 2.25,
+          "districts": [
+            {
+              "as_printed": "Bahraich",
+              "names": [
+                "Bahraich"
+              ]
+            },
+            {
+              "as_printed": "Chandauli",
+              "names": [
+                "Chandauli"
+              ]
+            },
+            {
+              "as_printed": "Chitrakoot",
+              "names": [
+                "Chitrakoot"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Uttarakhand",
+          "amount_crore": 0.1,
+          "districts": [
+            {
+              "as_printed": "Haridwar",
+              "names": [
+                "Haridwar"
+              ]
+            },
+            {
+              "as_printed": "Udham Singh Nagar",
+              "names": [
+                "Udham Singh Nagar"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "FY2025-26": {
+      "total_crore": 102.33,
+      "states": [
+        {
+          "state": "Andhra Pradesh",
+          "amount_crore": 1.47,
+          "districts": [
+            {
+              "as_printed": "Visakhapatnam",
+              "names": [
+                "Visakhapatnam"
+              ]
+            },
+            {
+              "as_printed": "Vizianagaram",
+              "names": [
+                "Vizianagaram"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Assam",
+          "amount_crore": 0.91,
+          "districts": [
+            {
+              "as_printed": "Baksa",
+              "names": [
+                "Baksa"
+              ]
+            },
+            {
+              "as_printed": "Barpeta",
+              "names": [
+                "Barpeta"
+              ]
+            },
+            {
+              "as_printed": "Darrang",
+              "names": [
+                "Darrang"
+              ]
+            },
+            {
+              "as_printed": "Dhubri",
+              "names": [
+                "Dhubri"
+              ]
+            },
+            {
+              "as_printed": "Goalpara",
+              "names": [
+                "Goalpara"
+              ]
+            },
+            {
+              "as_printed": "Udalguri",
+              "names": [
+                "Udalguri"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Bihar",
+          "amount_crore": 8.5,
+          "districts": [
+            {
+              "as_printed": "Banka",
+              "names": [
+                "Banka"
+              ]
+            },
+            {
+              "as_printed": "Gaya",
+              "names": [
+                "Gaya"
+              ]
+            },
+            {
+              "as_printed": "Jamui",
+              "names": [
+                "Jamui"
+              ]
+            },
+            {
+              "as_printed": "Muzaffarpur",
+              "names": [
+                "Muzaffarpur"
+              ]
+            },
+            {
+              "as_printed": "Nawada",
+              "names": [
+                "Nawada"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Chhattisgarh",
+          "amount_crore": 9.1,
+          "districts": [
+            {
+              "as_printed": "Bastar",
+              "names": [
+                "Bastar"
+              ]
+            },
+            {
+              "as_printed": "Bijapur",
+              "names": [
+                "Bijapur"
+              ]
+            },
+            {
+              "as_printed": "Korba",
+              "names": [
+                "Korba"
+              ]
+            },
+            {
+              "as_printed": "Mahasamund",
+              "names": [
+                "Mahasamund"
+              ]
+            },
+            {
+              "as_printed": "Narayanpur",
+              "names": [
+                "Narayanpur"
+              ]
+            },
+            {
+              "as_printed": "Rajnandgaon",
+              "names": [
+                "Rajnandgaon"
+              ]
+            },
+            {
+              "as_printed": "Sukma",
+              "names": [
+                "Sukma"
+              ]
+            },
+            {
+              "as_printed": "Dantewada (Dakshin Bastar Dantewada)",
+              "names": [
+                "Dantewada",
+                "Dakshin Bastar Dantewada"
+              ]
+            },
+            {
+              "as_printed": "Kanker (Uttar Bastar Kanker)",
+              "names": [
+                "Kanker",
+                "Uttar Bastar Kanker"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Gujarat",
+          "amount_crore": 2.52,
+          "districts": [
+            {
+              "as_printed": "Dahod",
+              "names": [
+                "Dahod"
+              ]
+            },
+            {
+              "as_printed": "Narmada",
+              "names": [
+                "Narmada"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Jammu and Kashmir",
+          "amount_crore": 0.12,
+          "districts": [
+            {
+              "as_printed": "Baramulla",
+              "names": [
+                "Baramulla"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Jharkhand",
+          "amount_crore": 26.66,
+          "districts": [
+            {
+              "as_printed": "Bokaro",
+              "names": [
+                "Bokaro"
+              ]
+            },
+            {
+              "as_printed": "Chatra",
+              "names": [
+                "Chatra"
+              ]
+            },
+            {
+              "as_printed": "Dumka",
+              "names": [
+                "Dumka"
+              ]
+            },
+            {
+              "as_printed": "Garhwa",
+              "names": [
+                "Garhwa"
+              ]
+            },
+            {
+              "as_printed": "Giridih",
+              "names": [
+                "Giridih"
+              ]
+            },
+            {
+              "as_printed": "Godda",
+              "names": [
+                "Godda"
+              ]
+            },
+            {
+              "as_printed": "Gumla",
+              "names": [
+                "Gumla"
+              ]
+            },
+            {
+              "as_printed": "Hazaribagh",
+              "names": [
+                "Hazaribagh"
+              ]
+            },
+            {
+              "as_printed": "Khunti",
+              "names": [
+                "Khunti"
+              ]
+            },
+            {
+              "as_printed": "Latehar",
+              "names": [
+                "Latehar"
+              ]
+            },
+            {
+              "as_printed": "Lohardaga",
+              "names": [
+                "Lohardaga"
+              ]
+            },
+            {
+              "as_printed": "Palamu",
+              "names": [
+                "Palamu"
+              ]
+            },
+            {
+              "as_printed": "Ramgarh",
+              "names": [
+                "Ramgarh"
+              ]
+            },
+            {
+              "as_printed": "Ranchi",
+              "names": [
+                "Ranchi"
+              ]
+            },
+            {
+              "as_printed": "Sahebganj",
+              "names": [
+                "Sahebganj"
+              ]
+            },
+            {
+              "as_printed": "Simdega",
+              "names": [
+                "Simdega"
+              ]
+            },
+            {
+              "as_printed": "Paschimi Singhbhum (West Singhbhum)",
+              "names": [
+                "Paschimi Singhbhum",
+                "West Singhbhum"
+              ]
+            },
+            {
+              "as_printed": "Purbi Singbhum (East Singhbhum)",
+              "names": [
+                "Purbi Singbhum",
+                "East Singhbhum"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Karnataka",
+          "amount_crore": 0.05,
+          "districts": [
+            {
+              "as_printed": "Raichur",
+              "names": [
+                "Raichur"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Kerala",
+          "amount_crore": 0.86,
+          "districts": [
+            {
+              "as_printed": "Wayanad",
+              "names": [
+                "Wayanad"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Madhya Pradesh",
+          "amount_crore": 10.35,
+          "districts": [
+            {
+              "as_printed": "Barwani",
+              "names": [
+                "Barwani"
+              ]
+            },
+            {
+              "as_printed": "Chhatarpur",
+              "names": [
+                "Chhatarpur"
+              ]
+            },
+            {
+              "as_printed": "Damoh",
+              "names": [
+                "Damoh"
+              ]
+            },
+            {
+              "as_printed": "Guna",
+              "names": [
+                "Guna"
+              ]
+            },
+            {
+              "as_printed": "Khandwa (East Nimar)",
+              "names": [
+                "Khandwa",
+                "East Nimar"
+              ]
+            },
+            {
+              "as_printed": "Rajgarh",
+              "names": [
+                "Rajgarh"
+              ]
+            },
+            {
+              "as_printed": "Singrauli",
+              "names": [
+                "Singrauli"
+              ]
+            },
+            {
+              "as_printed": "Vidisha",
+              "names": [
+                "Vidisha"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Maharashtra",
+          "amount_crore": 6.01,
+          "districts": [
+            {
+              "as_printed": "Gadchiroli",
+              "names": [
+                "Gadchiroli"
+              ]
+            },
+            {
+              "as_printed": "Nandurbar",
+              "names": [
+                "Nandurbar"
+              ]
+            },
+            {
+              "as_printed": "Washim",
+              "names": [
+                "Washim"
+              ]
+            },
+            {
+              "as_printed": "Osmanabad (Dharashiv)",
+              "names": [
+                "Osmanabad",
+                "Dharashiv"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Meghalaya",
+          "amount_crore": 0.49,
+          "districts": [
+            {
+              "as_printed": "Ri Bhoi",
+              "names": [
+                "Ri Bhoi"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Mizoram",
+          "amount_crore": 0.15,
+          "districts": [
+            {
+              "as_printed": "Mamit",
+              "names": [
+                "Mamit"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Nagaland",
+          "amount_crore": 1.58,
+          "districts": [
+            {
+              "as_printed": "Kiphire",
+              "names": [
+                "Kiphire"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Odisha",
+          "amount_crore": 21.2,
+          "districts": [
+            {
+              "as_printed": "Balangir",
+              "names": [
+                "Balangir"
+              ]
+            },
+            {
+              "as_printed": "Dhenkanal",
+              "names": [
+                "Dhenkanal"
+              ]
+            },
+            {
+              "as_printed": "Gajapati",
+              "names": [
+                "Gajapati"
+              ]
+            },
+            {
+              "as_printed": "Kalahandi",
+              "names": [
+                "Kalahandi"
+              ]
+            },
+            {
+              "as_printed": "Kandhamal",
+              "names": [
+                "Kandhamal"
+              ]
+            },
+            {
+              "as_printed": "Koraput",
+              "names": [
+                "Koraput"
+              ]
+            },
+            {
+              "as_printed": "Malkangiri",
+              "names": [
+                "Malkangiri"
+              ]
+            },
+            {
+              "as_printed": "Nabarangpur",
+              "names": [
+                "Nabarangpur"
+              ]
+            },
+            {
+              "as_printed": "Nuapada",
+              "names": [
+                "Nuapada"
+              ]
+            },
+            {
+              "as_printed": "Rayagada",
+              "names": [
+                "Rayagada"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Punjab",
+          "amount_crore": 0.05,
+          "districts": [
+            {
+              "as_printed": "Firozpur (Ferozepur)",
+              "names": [
+                "Firozpur",
+                "Ferozepur"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Rajasthan",
+          "amount_crore": 5.11,
+          "districts": [
+            {
+              "as_printed": "Baran",
+              "names": [
+                "Baran"
+              ]
+            },
+            {
+              "as_printed": "Dholpur",
+              "names": [
+                "Dholpur"
+              ]
+            },
+            {
+              "as_printed": "Karauli",
+              "names": [
+                "Karauli"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Tamil Nadu",
+          "amount_crore": 5.48,
+          "districts": [
+            {
+              "as_printed": "Ramanathapuram",
+              "names": [
+                "Ramanathapuram"
+              ]
+            },
+            {
+              "as_printed": "Virudhunagar",
+              "names": [
+                "Virudhunagar"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Tripura",
+          "amount_crore": 0.27,
+          "districts": [
+            {
+              "as_printed": "Dhalai",
+              "names": [
+                "Dhalai"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Uttar Pradesh",
+          "amount_crore": 1.35,
+          "districts": [
+            {
+              "as_printed": "Bahraich",
+              "names": [
+                "Bahraich"
+              ]
+            },
+            {
+              "as_printed": "Chitrakoot",
+              "names": [
+                "Chitrakoot"
+              ]
+            },
+            {
+              "as_printed": "Sonbhadra",
+              "names": [
+                "Sonbhadra"
+              ]
+            }
+          ]
+        },
+        {
+          "state": "Uttarakhand",
+          "amount_crore": 0.09,
+          "districts": [
+            {
+              "as_printed": "Haridwar",
+              "names": [
+                "Haridwar"
+              ]
+            },
+            {
+              "as_printed": "Udham Singh Nagar",
+              "names": [
+                "Udham Singh Nagar"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "notes": [
+    "Amounts are per state; the BRSR lists the aspirational districts covered but not an amount for each district.",
+    "The statutory CSR annexure in the FY2024-25 annual report gives totals only; it no longer lists projects, implementing agencies or CSR-1 numbers.",
+    "Parsed totals match the printed totals to within 0.01 crore (rounding): FY2023-24 38.88 vs 38.90, FY2024-25 67.78 vs 67.79, FY2025-26 102.32 vs 102.33."
+  ]
+}

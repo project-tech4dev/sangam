@@ -1,0 +1,14 @@
+{
+  "_about": "External reference figures for budgets and secondary research. Add cost benchmarks, outcome rates and district indicators here as they are sourced.",
+  "figures": [
+    {
+      "kind": "overhead_norm",
+      "name": "Cap on a company's CSR administrative overheads",
+      "value": 5,
+      "unit": "% of total CSR expenditure for the year",
+      "period": "from FY2021-22",
+      "source_name": "Companies (Corporate Social Responsibility Policy) Rules, 2014, rule 7(1), as amended on 22 January 2021",
+      "notes": "Applies to the company's own CSR administration, not to an NGO's project budget; funders set their own limits for grantee overheads."
+    }
+  ]
+}

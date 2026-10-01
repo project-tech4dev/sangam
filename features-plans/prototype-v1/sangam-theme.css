@@ -1,0 +1,187 @@
+/* Sangam theme for React + Tailwind v4 + shadcn/ui.
+   Usage: in app/globals.css
+     @import "tailwindcss";
+     @import "tw-animate-css";
+     @import "./sangam-theme.css";
+   Then add shadcn components as normal (npx shadcn@latest add button card ...).
+   Stock shadcn first: radius 0.625rem, Tailwind default type sizes. */
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;700&display=swap');
+
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f5f2ec;
+  --color-text: #201e1d;
+  --color-accent: #e0a177;
+  --color-accent-2: #7a8a5e;
+  --color-divider: color-mix(in srgb, #201e1d 16%, transparent);
+
+  /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
+     same step of any role matches the others in visual value. */
+  --color-neutral-100: #f9f4ed;
+  --color-neutral-200: #eee7db;
+  --color-neutral-300: #dcd3c4;
+  --color-neutral-400: #c0b6a5;
+  --color-neutral-500: #a19786;
+  --color-neutral-600: #82796a;
+  --color-neutral-700: #645c50;
+  --color-neutral-800: #474238;
+  --color-neutral-900: #2e2b25;
+
+  --color-accent-100: #fff2eb;
+  --color-accent-200: #ffe1d0;
+  --color-accent-300: #ffc6a5;
+  --color-accent-400: #f6a06b;
+  --color-accent-500: #d67f48;
+  --color-accent-600: #d08f63;
+  --color-accent-700: #b97d50;
+  --color-accent-800: #643312;
+  --color-accent-900: #402310;
+
+  --color-accent-2-100: #f0fae1;
+  --color-accent-2-200: #e1eecc;
+  --color-accent-2-300: #ccdbb2;
+  --color-accent-2-400: #aebf92;
+  --color-accent-2-500: #8fa073;
+  --color-accent-2-600: #728157;
+  --color-accent-2-700: #56633f;
+  --color-accent-2-800: #3d472b;
+  --color-accent-2-900: #272e1b;
+
+  --font-heading: "Public Sans", system-ui, sans-serif;
+  --font-heading-weight: 700;
+  --font-body: "Public Sans", system-ui, sans-serif;
+
+  /* Type scale — the only sizes used anywhere in the design. */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 24px;
+  --fs-2xl: 36px;
+
+  --space-1: 4.4px;
+  --space-2: 8.8px;
+  --space-3: 13.2px;
+  --space-4: 17.6px;
+  --space-6: 26.4px;
+  --space-8: 35.2px;
+
+  /* shadcn stock radii: --radius 10px, derived sm/md/lg/xl */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Elevation — derived from the ground: soft ink-tinted shadows on a
+     light theme, a hairline edge + ambient darkness on a dark one. */
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
+  --shadow-md: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2e2b25 22%, transparent);
+
+  /* shadcn/ui contract — same tokens under shadcn's variable names.
+     Paste this block into the app's globals.css and stock shadcn components inherit the Sangam look. */
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-bg);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-bg);
+  --secondary: var(--color-accent-2-100);
+  --secondary-foreground: var(--color-accent-2-800);
+  --muted: var(--color-neutral-100);
+  --muted-foreground: var(--color-neutral-700);
+  --accent: var(--color-accent-100);
+  --accent-foreground: var(--color-accent-800);
+  --destructive: #a33f22;
+  --border: var(--color-divider);
+  --input: var(--color-divider);
+  --ring: var(--color-accent);
+  --radius: 0.625rem;
+  --chart-1: var(--color-accent-2-600);
+  --chart-2: var(--color-accent-500);
+  --chart-3: var(--color-accent-2-400);
+  --chart-4: var(--color-accent-300);
+  --chart-5: var(--color-neutral-500);
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-text);
+  --sidebar-primary: var(--color-accent-2-700);
+  --sidebar-primary-foreground: var(--color-bg);
+  --sidebar-accent: var(--color-accent-2-100);
+  --sidebar-accent-foreground: var(--color-accent-2-900);
+  --sidebar-border: var(--color-divider);
+  --sidebar-ring: var(--color-accent);
+}
+
+@theme inline {
+  --font-sans: "Public Sans", system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  /* Brand ramps, usable as bg-terracotta-100, text-sage-700, etc. */
+  --color-terracotta-100: var(--color-accent-100);
+  --color-sage-100: var(--color-accent-2-100);
+  --color-sand-100: var(--color-neutral-100);
+  --color-terracotta-200: var(--color-accent-200);
+  --color-sage-200: var(--color-accent-2-200);
+  --color-sand-200: var(--color-neutral-200);
+  --color-terracotta-300: var(--color-accent-300);
+  --color-sage-300: var(--color-accent-2-300);
+  --color-sand-300: var(--color-neutral-300);
+  --color-terracotta-400: var(--color-accent-400);
+  --color-sage-400: var(--color-accent-2-400);
+  --color-sand-400: var(--color-neutral-400);
+  --color-terracotta-500: var(--color-accent-500);
+  --color-sage-500: var(--color-accent-2-500);
+  --color-sand-500: var(--color-neutral-500);
+  --color-terracotta-600: var(--color-accent-600);
+  --color-sage-600: var(--color-accent-2-600);
+  --color-sand-600: var(--color-neutral-600);
+  --color-terracotta-700: var(--color-accent-700);
+  --color-sage-700: var(--color-accent-2-700);
+  --color-sand-700: var(--color-neutral-700);
+  --color-terracotta-800: var(--color-accent-800);
+  --color-sage-800: var(--color-accent-2-800);
+  --color-sand-800: var(--color-neutral-800);
+  --color-terracotta-900: var(--color-accent-900);
+  --color-sage-900: var(--color-accent-2-900);
+  --color-sand-900: var(--color-neutral-900);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground font-sans; }
+}
