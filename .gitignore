@@ -17,23 +17,19 @@ db/backups/
 *.swp
 *.swo
 
-# Agent skills installed with `npx skills` — tooling, not application code.
-# No trailing slash on this or .venv above: a dev-harness sandbox symlinks both
-# into its worktree, git treats a symlink as a file, and `.agents/` would not
-# match it — so every sandbox would be born with an untracked file.
+# Agent skills installed with `npx skills`. No trailing slash here or on .venv:
+# git treats a symlink as a file, and a sandbox symlinks both into its worktree.
 .agents
 skills-lock.json
 
-# Per-entry, not `.claude/skills/`: git never descends into an excluded
-# directory, so a `!` negation after a directory exclude could never match.
-# Installed skills stay ignored; first-party ones are committed one by one.
+# Per-entry: git never descends into an excluded directory, so a `!` negation
+# after a directory exclude could never match. First-party skills are committed.
 .claude/skills/*
 !.claude/skills/sandbox/
 
 # Vercel CLI link (contains projectId/orgId)
 .vercel
 
-# Per-worktree sandbox manifest written by scripts/sandbox.sh (slot and ports,
-# no secrets). It is deleted with the worktree, which is what keeps slot
-# allocation derived rather than held in a registry that drifts.
+# Per-worktree manifest from scripts/sandbox.sh: slot and ports, no secrets.
+# It dies with the worktree, which is what keeps slot allocation derived.
 .sandbox

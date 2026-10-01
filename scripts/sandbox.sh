@@ -1,23 +1,12 @@
 #!/usr/bin/env bash
-# Parallel dev sandboxes: one git worktree plus one isolated Docker stack per
-# feature idea, each on its own ports with its own Postgres.
+# One git worktree plus one isolated Docker stack per feature. docs/SANDBOX.md
+# has the design; this script never reads .env, only copies and appends to it.
 #
 #   scripts/sandbox.sh new <slug> [--graph] [--base <ref>] [--no-clone]
 #   scripts/sandbox.sh ls
 #   scripts/sandbox.sh url    <slug>
 #   scripts/sandbox.sh verify <slug>
 #   scripts/sandbox.sh rm     <slug> [--force]
-#
-# Isolation rests on one fact: compose derives the project name from the
-# directory basename, so a worktree at ../sangam-<slug> gets its own containers,
-# network and volumes for free. There is no -p anywhere, and docker-compose.yml
-# must never gain a `name:` key.
-#
-# This script never READS .env. It copies it and appends an override block;
-# compose takes the LAST assignment of a duplicate key, so the block wins
-# without anything here parsing a secret. Slot and ports also go to a separate
-# non-secret .sandbox manifest, and that is the only file ls/url/rm and slot
-# allocation ever read.
 
 set -euo pipefail
 
@@ -36,8 +25,7 @@ die()  { printf '%s\n' "$*" >&2; exit 1; }
 note() { printf '  %s\n' "$*"; }
 
 # ---------------------------------------------------------------- slot maths
-# All five ports are reserved for a slot whether or not --graph is used, so
-# adding the graph later can never collide with a neighbour.
+# All five ports are reserved even without --graph, so adding it later cannot collide.
 slot_ports() {
   local n=$1
   echo $((BASE_FRONTEND+n*STRIDE)) $((BASE_BACKEND+n*STRIDE)) $((BASE_PG+n*STRIDE)) \
@@ -54,9 +42,7 @@ claimed_slots() {
     | while read -r wt; do
         [ -f "$wt/.sandbox" ] && sed -n 's/^SANDBOX_SLOT=\([0-9]\{1,2\}\)$/\1/p' "$wt/.sandbox"
       done
-  # (b) compose projects with containers, running or not: catches a stack whose
-  #     worktree directory was deleted by hand. `down` without -v leaves the
-  #     pgdata volume, which is why (a) is needed and this alone is not enough.
+  # (b) compose projects, running or not: catches a hand-deleted worktree directory.
   docker compose ls -a --format json 2>/dev/null \
     | python3 -c 'import json,sys
 try: rows = json.load(sys.stdin)
@@ -141,9 +127,7 @@ write_env() {
 
 # =============================================================================
 # SANDBOX OVERRIDE BLOCK — appended by scripts/sandbox.sh.
-# Docker Compose takes the LAST assignment of a duplicate key, so every line
-# below wins over the copy of the main .env above it. Edit the block, not the
-# lines above it; regenerate by tearing the sandbox down and recreating it.
+# Compose takes the LAST assignment of a duplicate key, so this block wins.
 # =============================================================================
 SANDBOX_SLOT=$slot
 SANDBOX_SLUG=$slug
@@ -161,14 +145,12 @@ NEO4J_BOLT_PORT=$nb
 
 # Baked into the browser bundle, so it must name THIS stack's backend port.
 NEXT_PUBLIC_API_URL=http://localhost:$bp
-# An exact origin, not a regex: a trailing \$ in a compose .env value is
-# interpolation-ambiguous and warns differently across compose versions.
+# Exact origin, not a regex: a trailing \$ here is interpolation-ambiguous.
 ALLOWED_ORIGINS=http://localhost:$fp
 ALLOWED_ORIGIN_REGEX=
 
-# Empty = the graph disables itself cleanly and search_graph tells the agent to
-# use the database tools. Compose reads \${NEO4J_URI-...}, without the colon, so
-# set-but-empty stays empty instead of falling back to the default.
+# Empty = the graph self-disables. Compose reads \${NEO4J_URI-...} without the
+# colon, so set-but-empty stays empty rather than taking the default.
 NEO4J_URI=$neo4j_uri
 
 # The bundled container, always: never inherit a managed URL from the copy.
@@ -185,22 +167,14 @@ DB_POOL_MAX_SIZE=5
 MAX_PARALLEL_RESEARCH=3
 EOF
 
-  # BOTH variables, not just the URL: createServerClient non-null-asserts each
-  # and @supabase/ssr throws the same "URL and Key are required" on either one
-  # being empty — so a real URL beside an empty key 500s exactly like no config
-  # at all. If either is unset, both get placeholders, so the pair stays
-  # coherent rather than mixing a real project with a fake key.
-  # `grep -q` prints nothing, so this decides without any value reaching stdout
-  # or this script.
+  # Both, not just the URL: @supabase/ssr throws on either being empty, so a real
+  # URL beside an empty key 500s identically. grep -q decides without printing.
   if ! grep -qs '^NEXT_PUBLIC_SUPABASE_URL=..*' "$wt/.env" \
      || ! grep -qs '^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=..*' "$wt/.env"; then
     cat >>"$wt/.env" <<'EOF'
 
-# Dummy but NON-EMPTY: frontend/lib/supabase/middleware.ts non-null-asserts both
-# and @supabase/ssr throws unless each is a non-empty string, which 500s every
-# page including the unauthenticated ones. Sign-in will not work against these —
-# middleware redirects /ask, /import and /protected to the login page — but the
-# registry and the rest of the site render.
+# Dummy but NON-EMPTY, or every page 500s. Sign-in will not work against these;
+# /ask and /import redirect to login, the rest of the site renders.
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_sandbox_placeholder
 EOF
@@ -232,18 +206,15 @@ EOF
 
 link_tooling() {
   local wt=$1 s
-  # .agents/, skills-lock.json and backend/.venv are gitignored, so a fresh
-  # worktree has none of them. Symlinked rather than copied: one `npx skills`
-  # update or one pip install reaches every sandbox. The .gitignore entries for
-  # .agents and .venv carry no trailing slash precisely so these are ignored.
+  # Gitignored, so a fresh worktree lacks them. Symlinked so one update reaches
+  # every sandbox; .gitignore drops the trailing slash so symlinks still match.
   ln -sfn "$MAIN_ROOT/.agents" "$wt/.agents"
   [ -f "$MAIN_ROOT/skills-lock.json" ] && ln -sfn "$MAIN_ROOT/skills-lock.json" "$wt/skills-lock.json"
   [ -d "$MAIN_ROOT/backend/.venv" ] && ln -sfn "$MAIN_ROOT/backend/.venv" "$wt/backend/.venv"
 
   mkdir -p "$wt/.claude/skills"
-  # -P keeps each entry's relative ../../.agents/skills/<name> target, which
-  # resolves through the .agents symlink above. -n so tracked first-party skills
-  # that came with the worktree are not clobbered.
+  # -P keeps each relative target (resolves via the .agents symlink); -n spares
+  # tracked first-party skills.
   for s in "$MAIN_ROOT"/.claude/skills/*; do
     [ -e "$s" ] || continue
     cp -RPn "$s" "$wt/.claude/skills/" 2>/dev/null || true
@@ -251,14 +222,8 @@ link_tooling() {
 }
 
 # -------------------------------------------------------------------- the db
-# The new pgdata volume has ALREADY run db/init on its first boot, so the target
-# is NOT empty and a plain pg_restore aborts on the first CREATE TABLE.
-#
-# DROP/CREATE DATABASE rather than pg_restore --clean --if-exists: all three init
-# scripts are database-scoped, so this is a complete reset, whereas --clean emits
-# a bare DROP EXTENSION vector that fails while pgvector columns still depend on
-# it. Safe only because the backend is not up yet — nothing is connected; WITH
-# (FORCE) covers a stray session anyway.
+# The volume already ran db/init, so the target is not empty. DROP/CREATE rather
+# than --clean, whose bare DROP EXTENSION vector fails under live pgvector columns.
 reset_database() {
   ( cd "$1" && docker compose exec -T postgres sh -c '
       psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
@@ -280,11 +245,8 @@ baseline_from_init() {
 clone_from_slot0() {
   local wt=$1 src dump
   dump="$MAIN_ROOT/db/backups/sandbox-$(date +%Y%m%d-%H%M%S)/slot0.dump"
-  # The dump is ~100 MB of scaffolding, and every path out of here that is not
-  # the happy one used to leave it in db/backups/ — including a Ctrl-C midway
-  # through pg_restore. One trap covers all of them. Assign before arming it, or
-  # set -u makes the trap itself the error. Safe to claim EXIT: the lock's trap
-  # is cleared by release_lock before this runs.
+  # One trap covers every exit path, Ctrl-C included. Assign before arming or
+  # set -u makes the trap the error; release_lock has already cleared EXIT.
   CLONE_DUMP_DIR="$(dirname "$dump")"
   trap 'rm -rf "$CLONE_DUMP_DIR" 2>/dev/null || true' EXIT
 
@@ -341,9 +303,8 @@ cmd_new() {
   local wt="$MAIN_ROOT/../sangam-$slug"
   [ -e "$wt" ] && die "$wt already exists (make sandbox-ls, or make sandbox-rm SLUG=$slug)"
 
-  # Everything that can refuse runs BEFORE anything that creates: a die() after
-  # `worktree add` strands a worktree and branch with no .sandbox, which `rm`
-  # then cannot find.
+  # Everything that can refuse runs before anything that creates: a die() after
+  # `worktree add` strands a worktree with no .sandbox, which `rm` cannot find.
   [ -f "$MAIN_ROOT/.env" ] || die \
 "$MAIN_ROOT/.env is missing. In the main checkout:
     cp .env.example .env     # then fill ANTHROPIC_API_KEY
@@ -352,10 +313,8 @@ A sandbox inherits its keys from it."
   git -C "$MAIN_ROOT" fetch --quiet origin 2>/dev/null || note "fetch skipped (offline?)"
   git -C "$MAIN_ROOT" rev-parse --verify --quiet "$base^{commit}" >/dev/null \
     || die "--base $base is not a commit this repository knows"
-  # The sandbox .env sets COMPOSE_FILE to a two-file list, and the ports are
-  # ${VAR:-...} tokens. A base predating the harness has neither, so compose
-  # would fail on a missing file or bind slot 0's ports. Caught here rather than
-  # ten minutes into a build.
+  # A base predating the harness has neither the overlay nor the port tokens, so
+  # compose would fail or bind slot 0's ports. Caught here, not mid-build.
   git -C "$MAIN_ROOT" cat-file -e "$base:docker-compose.sandbox.yml" 2>/dev/null \
     || die "base '$base' predates the sandbox harness (no docker-compose.sandbox.yml).
 Until feat/dev-harness-parallel-sandboxes is merged, pass the branch explicitly:
@@ -377,8 +336,7 @@ Until feat/dev-harness-parallel-sandboxes is merged, pass the branch explicitly:
   note "env written, tooling linked, npm cache shared"
   release_lock
 
-  # Explicit build: a cold frontend image plus npm ci is minutes, and letting
-  # `up` do it silently behind one log line looks like a hang.
+  # Explicit: a cold build is minutes, and `up` doing it silently looks like a hang.
   echo "── building (6-10 min cold, ~2 min warm) ───────────"
   ( cd "$wt" && docker compose build backend frontend )
   ( cd "$wt" && docker compose up -d --wait postgres )
@@ -387,9 +345,7 @@ Until feat/dev-harness-parallel-sandboxes is merged, pass the branch explicitly:
   if [ "$do_clone" = 1 ] && clone_from_slot0 "$wt"; then
     :
   else
-    # Every path here leaves the baseline schema present: either the volume's own
-    # db/init ran, or baseline_from_init reinstated it. So these two steps are
-    # the same in all three cases.
+    # Every path here leaves the baseline present, so these two steps are identical.
     ( cd "$wt" && make up )
     ( cd "$wt" && make seed )
     min_docs=0                    # `make seed` creates no documents rows
@@ -397,10 +353,8 @@ Until feat/dev-harness-parallel-sandboxes is merged, pass the branch explicitly:
   fi
   ( cd "$wt" && make up )         # idempotent; brings the rest up with --wait
 
-  # The banner comes BEFORE the verdict and is never conditional: the stack being
-  # up is what `new` delivers, and smoke's result is information about it. Gating
-  # the URLs on a green smoke hid them on every clone-path sandbox, because a
-  # clone cannot be greener than its source and slot 0's own smoke is red today.
+  # Banner before the verdict, never conditional: the stack is what `new` delivers.
+  # Gating it on a green smoke hid the URLs on every clone-path sandbox.
   cat <<EOF
 
 ── sandbox $slug is up (slot $slot) ───────────────────
@@ -434,11 +388,8 @@ EOF
 cmd_verify() {
   local wt fp bp
   wt=$(worktree_for "${1:?usage: sandbox.sh verify <slug>}")
-  # Ports asked of the running stack, never read from a file: zero drift.
-  # `|| true` is load-bearing: under `set -e` plus pipefail, an assignment whose
-  # command substitution fails exits the shell immediately — so a stopped stack
-  # died silently here, with no output at all, instead of reaching the message
-  # below. The guard has to be reachable to be a guard.
+  # Ports from the running stack, never a file. `|| true` is load-bearing: under
+  # set -e a failed substitution exits before the guard below can explain why.
   fp=$(cd "$wt" && docker compose port frontend 3000 2>/dev/null | cut -d: -f2) || true
   bp=$(cd "$wt" && docker compose port backend  8000 2>/dev/null | cut -d: -f2) || true
   if [ -z "$fp" ] || [ -z "$bp" ]; then
@@ -482,23 +433,17 @@ cmd_rm() {
   local slug=${1:?usage: sandbox.sh rm <slug> [--force]} force=0
   [ "${2:-}" = --force ] && force=1
   local wt; wt=$(worktree_for "$slug")
-  # next-env.d.ts is tracked but `next dev` rewrites it on every boot — the dev
-  # server points it at .next/dev/types, `next build` at .next/types. So every
-  # worktree that has ever run the frontend is dirty by that one file, including
-  # the main checkout. Excluded here, or teardown would refuse every single time
-  # and FORCE=1 would become the habit, which is how real work gets discarded.
+  # `next dev` rewrites tracked next-env.d.ts on every boot, so any worktree that
+  # ran the frontend is dirty by it alone — excluded, or FORCE=1 becomes habit.
   if [ -n "$(git -C "$wt" status --porcelain -- ':(exclude)frontend/next-env.d.ts')" ] \
      && [ "$force" != 1 ]; then
     git -C "$wt" status --short -- ':(exclude)frontend/next-env.d.ts'
     die "uncommitted changes in $wt — commit or push them, or pass FORCE=1"
   fi
-  # Project-scoped, so this removes sangam-<slug>_pgdata and CANNOT touch
-  # sangam_pgdata. The npm cache is external, so -v leaves it alone.
+  # Project-scoped: removes sangam-<slug>_pgdata, cannot touch sangam_pgdata.
   ( cd "$wt" && docker compose down -v --remove-orphans --rmi local ) || true
-  # `git worktree remove` runs its OWN dirty check and does not honour the
-  # pathspec above, so it refuses on next-env.d.ts alone. Restore that one
-  # generated file — the check above already established nothing else differs —
-  # rather than reaching for --force, which would discard real work too.
+  # worktree remove runs its own dirty check, ignoring the pathspec above. Restore
+  # that one generated file rather than --force, which discards real work too.
   git -C "$wt" checkout -- frontend/next-env.d.ts 2>/dev/null || true
   if [ "$force" = 1 ]; then
     git -C "$MAIN_ROOT" worktree remove --force "$wt"
@@ -516,5 +461,5 @@ case "${1:-}" in
   url)    shift; cmd_url "$@" ;;
   verify) shift; cmd_verify "$@" ;;
   rm)     shift; cmd_rm "$@" ;;
-  *)      sed -n '2,20p' "${BASH_SOURCE[0]}"; exit 2 ;;
+  *)      sed -n '2,9p' "${BASH_SOURCE[0]}"; exit 2 ;;
 esac

@@ -1,48 +1,26 @@
-# Layered over docker-compose.yml for every stack scripts/sandbox.sh creates.
-# The main checkout never loads it, so slot 0 is untouched.
+# Layered over docker-compose.yml for every stack scripts/sandbox.sh creates,
+# via COMPOSE_FILE in the sandbox's .env so no -f is needed. See docs/SANDBOX.md.
 #
-# Selected via COMPOSE_FILE in the sandbox's own .env, not with -f: that way a
-# bare `docker compose` — and every ordinary `make` target — inside the worktree
-# picks it up with nothing to remember.
-#
-# Isolation comes from ONE fact: the compose project name is derived from the
-# directory basename, so ../sangam-<slug> gets its own containers, its own
-# default network, and its own pgdata/neo4jdata/node_modules volumes for free.
-# Adding a `name:` key, a `container_name:`, or an absolute bind-mount path to
-# either file breaks that silently. Every mount in the base file is relative
-# (./backend/app, ./seed, ./db, ./frontend) and must stay that way.
+# Isolation rests on the project name coming from the directory basename. A
+# `name:` key, a `container_name:`, or an absolute bind mount breaks it silently.
 
 services:
-  # Neo4j off by default per sandbox: 768 MB of heap+pagecache and two host
-  # ports each, for a graph most features never touch. `make sandbox-new
-  # GRAPH=1` adds `graph` to COMPOSE_PROFILES and switches it back on.
-  #
-  # The profile lives HERE rather than in the base file because a profiled
-  # service is off unless its profile is named, and slot 0's .env carries only
-  # COMPOSE_PROFILES=localdb — putting it in the base would stop the MAIN
-  # stack's Neo4j. The base declares no profiles for neo4j, so this is the
-  # result whether compose merges list fields by append or by replace.
+  # Off by default: 768 MB and two ports for a graph most features never touch.
+  # Profiled here, not in the base file, or slot 0's Neo4j would stop too.
   neo4j:
     profiles: ["graph"]
 
   backend:
     depends_on:
-      # Without required:false, `up` refuses to start the backend when the graph
-      # profile is inactive: the dependency resolves to a service that is not
-      # part of the project. depends_on is a mapping, so the base file's
-      # `postgres` entry survives this override untouched.
+      # Without required:false, `up` refuses to start when the profile is off.
+      # depends_on is a mapping, so the base file's postgres entry survives.
       neo4j:
         condition: service_healthy
         required: false
 
 volumes:
-  # One npm cache shared by every sandbox. Without it each new stack does a cold
-  # `npm ci` from the network, which is most of the 6-10 minute first boot;
-  # npm's cacache is concurrency-safe, so sharing it is fine.
-  #
-  # `external: true` is the point: a sandbox teardown runs `docker compose down
-  # -v`, and an external volume is the one kind that cannot delete.
-  # scripts/sandbox.sh creates it (idempotently) before the first build.
+  # Shared npm cache — most of the 6-10 minute cold boot. external:true is the
+  # point: a teardown's `down -v` is the one thing that cannot delete it.
   frontend_npm_cache:
     name: sangam_shared_npm_cache
     external: true

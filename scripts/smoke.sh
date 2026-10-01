@@ -52,18 +52,15 @@ check_status  "health endpoint"            "$BACKEND/health" 200 5
 # is that the seeded cohort is present, not that nothing was ever added to it.
 check_json    "stats: cohort counts"       "$BACKEND/api/meta/stats" "d['orgs'] >= 10 and d['funders'] >= 4"
 check_json    "orgs: legacy array of 10"   "$BACKEND/api/orgs" "isinstance(d, list) and len(d) == 10"
-# any(), not d[0]: funders are returned alphabetically and Sangam Import adds
-# unscored ones, so d[0] drifted from a seeded funder to "Abbott India Limited"
-# the first time an import ran. Same failure mode as the counts below.
+# any(), not d[0]: funders come back alphabetically and Sangam Import adds
+# unscored ones, so d[0] stopped being a seeded funder on the first import.
 check_json    "funders: latest_scores"     "$BACKEND/api/funders" "any(f['latest_scores'].get('v1') is not None for f in d)"
-# >= not ==, for the same reason as the comment above: an import only ever adds.
-# A dev-harness sandbox cloned from a stack that has run one would fail an
-# equality check on rows it is correct to have.
+# >= not ==, same reason: an import only ever adds, and a sandbox cloned from a
+# stack that has run one would fail an equality check on rows it should have.
 check_json    "scores: 8+ assessments"     "$BACKEND/api/scores?limit=100" "d['total'] >= 8"
 check_json    "grants: 4+ relationships"   "$BACKEND/api/grants" "d['total'] >= 4"
-# Overridable floor: a sandbox built from the baseline + `make seed` instead of a
-# clone has NO documents at all, because only a dump restore creates them. It
-# runs with SMOKE_MIN_DOCUMENTS=0 so one script serves both database paths.
+# Overridable floor: a baseline + `make seed` sandbox has no documents at all,
+# so it runs with SMOKE_MIN_DOCUMENTS=0 and one script serves both paths.
 check_json    "documents: ${MIN_DOCUMENTS}+ on file" "$BACKEND/api/documents?limit=1" "d['total'] >= $MIN_DOCUMENTS"
 check_status  "agent AG-UI health"         "$BACKEND/agent/health" 200 5
 

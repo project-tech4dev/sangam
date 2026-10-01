@@ -30,12 +30,8 @@ help:
 # frontend and the backend both run on Vercel, each configured there.
 ENV ?= local
 
-# A sandbox worktree is identified by its .sandbox manifest, and ENV=staging
-# there is worse than merely the wrong database: the staging overlay passes an
-# explicit -f, which OVERRIDES the COMPOSE_FILE in the sandbox's .env and
-# silently drops docker-compose.sandbox.yml. Neo4j un-profiles and starts, while
-# the backend points at the live managed Postgres with a half-built migration in
-# the tree. $(error) fires at parse time, so no recipe can have run first.
+# ENV=staging in a sandbox: the overlay's explicit -f overrides COMPOSE_FILE and
+# drops the sandbox file, pointing the backend at the live managed Postgres.
 ifneq ($(ENV),local)
 ifneq ($(wildcard .sandbox),)
 $(error ENV=$(ENV) is refused inside a sandbox worktree. Sandboxes exist to keep \
@@ -63,23 +59,19 @@ DB_URL = $(shell bash scripts/db-url.sh $(COMPOSE))
 PG_CLIENT = $(COMPOSE) run --rm --no-deps --entrypoint
 
 # --- This stack's identity and published ports -------------------------------
-# The compose project name, and so every volume prefix, comes from the directory
-# basename: in ../sangam-<slug> the pgdata volume is sangam-<slug>_pgdata. Asked
-# of compose rather than guessed, because its sanitising rules are not obvious.
-# Lazy (=) so only the targets that name a volume pay for the call.
+# Project name, and so every volume prefix, comes from the directory basename.
+# Asked of compose, not guessed; lazy (=) so only volume targets pay for it.
 PROJECT = $(shell docker compose config --format json 2>/dev/null \
 	  | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])' 2>/dev/null)
 
-# Host ports asked of the RUNNING stack, never assumed. A dev-harness sandbox
-# publishes 8020/3010/5443, so hardcoding 5433 made every host-side target in a
-# worktree talk to the main stack's database instead of its own.
+# Asked of the RUNNING stack, never assumed: hardcoding 5433 made every host-side
+# target in a sandbox talk to the main stack's database instead of its own.
 PG_HOST_PORT       = $(shell docker compose port postgres 5432 2>/dev/null | cut -d: -f2)
 BACKEND_HOST_PORT  = $(shell docker compose port backend  8000 2>/dev/null | cut -d: -f2)
 FRONTEND_HOST_PORT = $(shell docker compose port frontend 3000 2>/dev/null | cut -d: -f2)
 
-# Guard for host-side targets that reach the stack over a published port. Without
-# it they silently fall back to the default port, which in a sandbox is another
-# stack — a green result for the wrong database.
+# Without this, host-side targets fall back to the default port — in a sandbox
+# that is another stack, i.e. a green result for the wrong database.
 define require_running
 	@test -n "$(PG_HOST_PORT)" || { \
 	  echo "$@ needs this stack running (it connects over a published port)."; \
@@ -87,10 +79,8 @@ define require_running
 	  exit 1; }
 endef
 
-# Without a .env there is no COMPOSE_PROFILES=localdb, so the postgres service
-# is not even selected and `make up` dies on compose's "no such service:
-# postgres" — which sends people looking in docker-compose.yml. Say the real
-# thing instead. Checked with wildcard, not a recipe test, so it costs nothing.
+# No .env means no COMPOSE_PROFILES=localdb, so postgres is never selected and
+# compose's "no such service: postgres" sends people into the wrong file.
 define require_env
 	@test -f .env || { \
 	  echo "No .env in $(CURDIR), so the bundled Postgres is not even selected."; \
@@ -329,10 +319,8 @@ dev-frontend:  ## Run next dev on the host against a host backend
 		AGENT_URL=http://localhost:8000/agent npm run dev
 
 ##@ Dev sandboxes (parallel feature stacks)
-# Each sandbox is a git worktree at ../sangam-<slug> with its own compose
-# project, ports and Postgres. Mechanism lives in scripts/sandbox.sh; these are
-# only the entry points. No @ prefix is needed: none of them echoes a
-# connection string, and seeing the script invocation is useful.
+# A worktree at ../sangam-<slug> with its own compose project, ports and Postgres.
+# Mechanism is in scripts/sandbox.sh; these are entry points and echo no secrets.
 sandbox-new:  ## Stand up an isolated stack: make sandbox-new SLUG=x [GRAPH=1] [BASE=ref] [CLONE=0]
 	@test -n "$(SLUG)" || { echo "usage: make sandbox-new SLUG=<short-name> [GRAPH=1] [BASE=<ref>] [CLONE=0]"; exit 1; }
 	bash scripts/sandbox.sh new "$(SLUG)" \
