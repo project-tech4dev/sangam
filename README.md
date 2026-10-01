@@ -25,9 +25,17 @@ Requirements: Docker Desktop.
 
 ```bash
 cp .env.example .env        # set ANTHROPIC_API_KEY (or another provider's key + MODEL)
-make up                     # postgres + backend + frontend (frontend runs `next dev`)
+make up                     # postgres + neo4j + backend + frontend (frontend runs `next dev`)
+make migrate                # apply db/migrations/*.sql on top of the baseline schema
 make seed                   # loads orgs, funders, rubrics, scores, news
 ```
+
+**`make migrate` is not optional, and nothing runs it for you.** `db/init/` only gives a new
+database the *baseline* schema, and it only runs on the Postgres container's first boot;
+every change since then lives in `db/migrations/`. Skip it and `make seed` fails partway —
+`seed.taxonomy_seed` writes `tags.code`/`status`/`sort_order`, columns that
+`0002_taxonomy.sql` adds. (Same for `make db-reset`, which recreates the volume but does not
+migrate: run `make migrate` before `make seed`.)
 
 Open:
 
@@ -47,14 +55,66 @@ Prove the agent → Postgres → citation loop in the chat:
 ## Layout
 
 ```
-db/init/        # schema; runs once on first `make up` (plain SQL, lexical order)
+db/init/        # BASELINE schema for a new database; runs once on the container's first boot
+db/migrations/  # every schema change after the baseline, applied by `make migrate`
 seed/           # vendored data + idempotent seed script (see seed/data/README.md for provenance)
 backend/        # FastAPI + LangGraph deep agent, AG-UI endpoint at /agent
 frontend/       # Next.js App Router + CopilotKit
 ```
 
-Useful targets: `make logs`, `make psql`, `make db-reset` (drop volume, recreate, re-seed),
-`make dev-backend` / `make dev-frontend` (run either outside docker against compose Postgres).
+Useful targets: `make logs`, `make psql`, `make db-reset` (drop volume, recreate, re-seed —
+then `make migrate`), `make dev-backend` / `make dev-frontend` (run either outside docker
+against compose Postgres).
+
+## After pulling
+
+Three things a teammate's commit can change under you. The fixes are different because the
+backend's dependencies live in its image and the frontend's live in a named volume.
+
+**A migration landed** — `db/migrations/` gained a file:
+
+```bash
+make migrate-status    # what would run; prints "nothing pending" when you are current
+make migrate           # apply it
+```
+
+Both work against any `ENV`: `make migrate ENV=staging` targets the managed database.
+Writing one is `db/migrations/README.md` — forward-only, `NNNN_short_name.sql`, never edit an
+applied file (the runner checksums them and reports drift).
+
+**A frontend dependency landed** — `frontend/package.json` changed:
+
+```bash
+docker compose exec frontend npm install
+docker compose restart frontend
+```
+
+`make up` will *not* fix this, and neither will `--build`. Compose mounts
+`frontend_node_modules` over `/app/node_modules`, and a named volume **shadows the image
+layer underneath it** — so the container reads your new `package.json` through the bind mount
+while still resolving imports against the `node_modules` from whenever the volume was first
+populated. The symptom is `Module not found: Can't resolve '<the new package>'` for a package
+that is sitting right there in `package.json`. Use `npm install`, not `npm ci`: `ci` starts by
+deleting `node_modules`, cannot delete a mount point, and leaves the volume empty — which
+takes the container down with it. If that happens, or the volume is otherwise wedged:
+
+```bash
+docker compose rm -sf frontend
+docker volume rm sangam_frontend_node_modules sangam_frontend_next
+docker compose up -d --build frontend
+```
+
+**A backend dependency landed** — `backend/pyproject.toml` changed:
+
+```bash
+make up                # already passes --build; deps install into the image
+```
+
+No volume is involved here, so rebuilding is enough. Only `backend/app/` is bind-mounted.
+
+One piece of churn to ignore: `frontend/next-env.d.ts` flips between `./.next/types/...` and
+`./.next/dev/types/...` depending on whether `next build` or `next dev` touched it last. The
+committed version is the `build` one. Don't commit the flip — `git checkout -- frontend/next-env.d.ts`.
 
 ## Architecture (high level)
 
@@ -174,5 +234,8 @@ with time-bounded facts.
 - **Rubrics are versioned** (`rubrics`/`rubric_criteria` with self-referencing sub-criteria), so a
   future model-based rubric judge writes `fit_scores` rows with `scored_by='model:<name>'` next to
   the human baseline rather than overwriting it.
-- **Migrations**: plain SQL in `db/init/` while the schema is young; these files become the first
-  Supabase migration when hosted auth/storage arrives.
+- **Migrations**: `db/init/02_schema.sql` is the baseline a brand-new database gets; every change
+  after it is a forward-only file in `db/migrations/`, applied by `make migrate` and recorded in a
+  ledger with a checksum. The baseline is deliberately not rewritten as `0000`, so a fresh install
+  stays one fast `CREATE TABLE` pass instead of a replay of every historical change.
+  See `db/migrations/README.md`.

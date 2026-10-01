@@ -9,9 +9,13 @@ First run, from a clean checkout (needs Docker and an `ANTHROPIC_API_KEY`):
 ```bash
 cp .env.example .env     # set ANTHROPIC_API_KEY, or another provider's key + MODEL
 make up                  # build and start everything
+make migrate             # apply db/migrations/ on top of the baseline — nothing runs it for you
 make seed                # load the cohort data — the app is empty without it
 make smoke               # confirm the stack is wired end to end
 ```
+
+Skipping `make migrate` fails `make seed` partway: `seed.taxonomy_seed` writes columns that
+`0002_taxonomy.sql` adds. `make db-reset` does not migrate either.
 
 Then http://localhost:3000 for the app and http://localhost:8010/docs for the API.
 `OPENAI_API_KEY` and `make graph-seed` are optional — the graph disables itself cleanly.
@@ -241,8 +245,7 @@ baseline is what a brand-new database gets; migrations carry everything after it
 provenance columns, the taxonomy, geography, identity, credentials, funder activity, org facts,
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. The design and the
-before/after are in `docs/DATA_PLATFORM.md`. (`README.md` says migrations live in `db/init/`;
-it is stale, this rule wins.)
+before/after are in `docs/DATA_PLATFORM.md`.
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:
