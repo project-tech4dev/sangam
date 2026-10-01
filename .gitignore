@@ -1,4 +1,5 @@
 .env
+.env.local
 .memory/
 node_modules/
 .next/
