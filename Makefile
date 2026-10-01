@@ -30,6 +30,20 @@ help:
 # frontend and the backend both run on Vercel, each configured there.
 ENV ?= local
 
+# A sandbox worktree is identified by its .sandbox manifest, and ENV=staging
+# there is worse than merely the wrong database: the staging overlay passes an
+# explicit -f, which OVERRIDES the COMPOSE_FILE in the sandbox's .env and
+# silently drops docker-compose.sandbox.yml. Neo4j un-profiles and starts, while
+# the backend points at the live managed Postgres with a half-built migration in
+# the tree. $(error) fires at parse time, so no recipe can have run first.
+ifneq ($(ENV),local)
+ifneq ($(wildcard .sandbox),)
+$(error ENV=$(ENV) is refused inside a sandbox worktree. Sandboxes exist to keep \
+experiments away from shared databases; run managed-database targets from the \
+main checkout instead)
+endif
+endif
+
 ifeq ($(ENV),staging)
 COMPOSE := docker compose -f docker-compose.yml -f docker-compose.staging.yml
 else ifeq ($(ENV),local)
@@ -73,6 +87,18 @@ define require_running
 	  exit 1; }
 endef
 
+# Without a .env there is no COMPOSE_PROFILES=localdb, so the postgres service
+# is not even selected and `make up` dies on compose's "no such service:
+# postgres" — which sends people looking in docker-compose.yml. Say the real
+# thing instead. Checked with wildcard, not a recipe test, so it costs nothing.
+define require_env
+	@test -f .env || { \
+	  echo "No .env in $(CURDIR), so the bundled Postgres is not even selected."; \
+	  echo "  cp .env.example .env     # then set ANTHROPIC_API_KEY"; \
+	  echo "(A sandbox worktree gets one from 'make sandbox-new'.)"; \
+	  exit 1; }
+endef
+
 # Guard for the targets that only make sense against the bundled container.
 define require_local
 	@test "$(ENV)" = "local" || { \
@@ -100,6 +126,7 @@ BACKUP_DIR := db/backups/$(shell date +%Y%m%d-%H%M%S)
 # is switched off (COMPOSE_PROFILES without localdb), because then DATABASE_URL
 # points at somebody's managed database and migrating it is their decision.
 up:  ## Build and start postgres, neo4j, backend, frontend
+	$(require_env)
 	@if docker compose config --services | grep -qx postgres; then \
 	  docker compose up -d --wait postgres && $(MAKE) migrate ENV=local; \
 	else \
