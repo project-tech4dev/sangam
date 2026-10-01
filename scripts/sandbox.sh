@@ -280,6 +280,13 @@ baseline_from_init() {
 clone_from_slot0() {
   local wt=$1 src dump
   dump="$MAIN_ROOT/db/backups/sandbox-$(date +%Y%m%d-%H%M%S)/slot0.dump"
+  # The dump is ~100 MB of scaffolding, and every path out of here that is not
+  # the happy one used to leave it in db/backups/ — including a Ctrl-C midway
+  # through pg_restore. One trap covers all of them. Assign before arming it, or
+  # set -u makes the trap itself the error. Safe to claim EXIT: the lock's trap
+  # is cleared by release_lock before this runs.
+  CLONE_DUMP_DIR="$(dirname "$dump")"
+  trap 'rm -rf "$CLONE_DUMP_DIR" 2>/dev/null || true' EXIT
 
   src="$(cd "$MAIN_ROOT" && docker compose ps -q postgres 2>/dev/null || true)"
   if [ -z "$src" ] || [ "$(docker inspect -f '{{.State.Running}}' "$src" 2>/dev/null)" != true ]; then
@@ -289,10 +296,10 @@ clone_from_slot0() {
 
   # Dump BEFORE touching the target, so a failure here costs nothing. -U/-d from
   # the container's own env: slot 0 need not be sangam/sangam.
-  mkdir -p "$(dirname "$dump")"
+  mkdir -p "$CLONE_DUMP_DIR"
   if ! docker exec -i "$src" sh -c \
       'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --no-owner --no-acl' >"$dump"; then
-    note "pg_dump of slot 0 failed — building from the baseline instead"; rm -f "$dump"; return 1
+    note "pg_dump of slot 0 failed — building from the baseline instead"; return 1
   fi
   [ -s "$dump" ] || { note "slot 0 dump is empty — building from the baseline instead"; return 1; }
 
@@ -310,7 +317,6 @@ clone_from_slot0() {
     return 1
   fi
   note "database: clone of slot 0 ($(du -h "$dump" | cut -f1))"
-  rm -rf "$(dirname "$dump")"   # scaffolding, not a backup; db/backups/ is for `make db-backup`
   return 0
 }
 
