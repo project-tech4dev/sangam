@@ -103,14 +103,19 @@ Four `make` targets run on the **host**, not in Docker, and need their own tooli
 
 ```bash
 cp .env.example .env     # set ANTHROPIC_API_KEY and the two NEXT_PUBLIC_SUPABASE_* values
-make up                  # build and start postgres, neo4j, backend, frontend
-make seed                # apply migrations, then load the cohort data
+make up                  # migrate, then build and start the whole stack
+make seed                # load the cohort data — the app is empty without it
 ```
 
-`make seed` applies `db/migrations/*.sql` first. **Nothing else does** — not `make up`, not the
-backend at boot — and the seeder depends on migration `0002`, so seeding a baseline-only database
-without it fails on `column "code" of relation "tags" does not exist`. Against a managed database
-the dependency is deliberately off; run `make migrate ENV=staging` yourself, after a backup.
+**Migrations are not automatic, and two steps above depend on them.** `db/init/` is only a
+baseline; 12 of the 40 tables the agent's catalog expects arrive in `db/migrations/*.sql`, and
+the backend refuses to boot when one is missing. The seeder needs migration `0002` too, or it
+fails on `column "code" of relation "tags" does not exist`.
+
+So `make up` now brings Postgres up, runs `make migrate`, and only then starts the backend; and
+`make seed` runs `migrate` as well, which is a no-op the second time. You do not have to think
+about it locally. Against a managed database both are deliberately off — run
+`make migrate ENV=staging` yourself, after a backup.
 
 Then:
 
@@ -143,10 +148,10 @@ database and check its work. In the chat at `/ask`:
 1. Ask **"Which organisations in the database work in Assam?"** A labelled `db_query` step
    appears in the trace *before* the answer streams, and the answer carries inline `[org:N]`
    markers — one per claim.
-2. Ask **"How well does KABIL fit Axis Bank Foundation, and why did Eligibility lose points?"**
-   The answer should cite a specific rubric criterion, and surface that a score was adjusted by
-   hand and why. The numbers move as the data changes; the citation and the disclosed
-   adjustment are the point.
+2. Pick an organisation from that answer and ask **"How well does it fit Axis Bank Foundation,
+   and why did Eligibility lose points?"** The answer should cite a specific rubric criterion,
+   and where a score was adjusted by hand it should say so and why. The numbers move as the
+   data changes; the citation and the disclosed adjustment are the point.
 3. Ask something the data cannot answer — **"What is this funder's 2027 budget?"** It should
    say it has no data rather than guess. This is the rule that makes the citations worth
    anything.
@@ -194,7 +199,7 @@ make frontend-reinstall  # force a frontend npm ci; make up installs only on a d
 ```
 
 ```bash
-make seed                # migrate (locally) + load the cohort data
+make seed                # load the cohort data (migrates first, locally)
 make graph-seed          # build the Neo4j graph from Postgres; needs OPENAI_API_KEY
 make migrate             # apply db/migrations/*.sql
 make migrate-status      # show what would run
@@ -342,8 +347,8 @@ Two traps worth knowing before touching this:
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `column "code" of relation "tags" does not exist` while seeding | migrations not applied — `0002_taxonomy.sql` adds that column | `make migrate`, then `make seed`. Locally `make seed` now does this for you |
-| Every page returns 500 | `NEXT_PUBLIC_SUPABASE_*` empty; the proxy throws on every request | set both in `.env`, then `docker compose restart frontend` |
+| `column "code" of relation "tags" does not exist` while seeding | migrations not applied — `0002_taxonomy.sql` adds that column | `make migrate`, then `make seed`. Locally both `make up` and `make seed` now do this for you |
+| Every page returns 500 | `NEXT_PUBLIC_SUPABASE_*` empty; the proxy throws on every request | set both in `.env`, then `make up` — `docker compose restart` will **not** help, since a container's environment is fixed when it is created |
 | `/ask` bounces to `/auth/login` | working as designed — `/ask`, `/import` and `/protected` are gated | sign in, or enable a Supabase auth provider |
 | Postgres container never starts | `COMPOSE_PROFILES=localdb` missing from `.env` | the one line you cannot drop and still use the bundled database |
 | `make smoke` fails only on `documents: 96+` | `make seed` does not create those documents | expected on a fresh clone |

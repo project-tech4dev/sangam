@@ -14,10 +14,14 @@ make seed                # migrate, then load the cohort data — the app is emp
 make smoke               # confirm the stack is wired end to end
 ```
 
-`make seed` depends on `make migrate` when `ENV=local`, because `seed.taxonomy_seed` needs
-columns that `0002_taxonomy.sql` adds. Nothing else applies migrations — not `make up`, not
-the backend at boot — so against a managed database you run `make migrate ENV=staging`
-yourself, deliberately and after a backup.
+**Migrations are not automatic, and two things depend on them.** `db/init/` is a baseline only:
+12 of the SQL catalog's 40 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
+at boot when one is missing, so the backend will not start against an unmigrated database.
+`seed.taxonomy_seed` needs `0002_taxonomy.sql` as well.
+
+Locally, `make up` therefore starts Postgres, runs `migrate`, and only then starts the backend,
+and `make seed` runs `migrate` too. Both are pinned to `ENV=local`: against a managed database
+you run `make migrate ENV=staging` yourself, deliberately and after a backup.
 
 Then http://localhost:3000 for the app and http://localhost:8010/docs for the API. `/ask` and
 `/import` are behind Supabase sign-in. `OPENAI_API_KEY` and `make graph-seed` are optional —

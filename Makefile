@@ -61,9 +61,24 @@ endef
 BACKUP_DIR := db/backups/$(shell date +%Y%m%d-%H%M%S)
 
 ##@ Run the stack
-# --wait: the frontend installs deps at container start now, so without it
-# `make up` would return before the first (or post-dep-change) install lands.
+# Three steps, not one, because the backend cannot boot against an unmigrated
+# database: `_verify_sql_catalog` raises when a catalogued table is missing, and
+# 12 of the catalog's 40 tables arrive in db/migrations rather than in the
+# db/init baseline. So postgres comes up first, migrations run, and only then
+# does the backend start. Before this, a clean checkout failed at `make up`.
+#
+# --wait: the frontend installs deps at container start, so without it `make up`
+# would return before the first (or post-dep-change) install lands.
+#
+# The migrate step is pinned to ENV=local and skipped when the bundled Postgres
+# is switched off (COMPOSE_PROFILES without localdb), because then DATABASE_URL
+# points at somebody's managed database and migrating it is their decision.
 up:  ## Build and start postgres, neo4j, backend, frontend
+	@if docker compose config --services | grep -qx postgres; then \
+	  docker compose up -d --wait postgres && $(MAKE) migrate ENV=local; \
+	else \
+	  echo "bundled Postgres is off; run migrations yourself if the backend fails to boot"; \
+	fi
 	docker compose up --build -d --wait
 
 down:  ## Stop the stack, keeping the volumes
@@ -204,8 +219,7 @@ db-clean:  ## Empty every table, keep the schema and migration ledger
 db-reset:  ## Scorched earth: drops ALL volumes, incl. Neo4j and documents
 	$(require_local)
 	docker compose down -v
-	docker compose up --build -d
-	@echo "waiting for backend to be healthy..." && sleep 5
+	$(MAKE) up
 	$(MAKE) seed
 
 # Snapshot the irreplaceable tables + a linkage projection for post-restore diffing.
@@ -231,8 +245,9 @@ db-upgrade: db-backup  ## Volume-level schema rebuild; superseded by make migrat
 	$(require_local)
 	docker compose rm -sf backend postgres
 	docker volume rm sangam_pgdata
-	docker compose up --build -d backend
-	@echo "waiting for backend (initdb + checkpointer setup)..." && sleep 10
+	docker compose up -d --wait postgres
+	$(MAKE) migrate ENV=local
+	docker compose up --build -d --wait backend
 	$(MAKE) seed
 	docker compose exec -T postgres psql -U sangam -d sangam -v ON_ERROR_STOP=1 < $(BACKUP_DIR)/documents.sql
 	docker compose exec -T postgres psql -U sangam -d sangam -v ON_ERROR_STOP=1 < $(BACKUP_DIR)/graph_ingest_log.sql
