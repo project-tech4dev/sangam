@@ -47,6 +47,31 @@ DB_URL = $(shell bash scripts/db-url.sh $(COMPOSE))
 # bundled container (host=postgres) and any public host.
 PG_CLIENT = $(COMPOSE) run --rm --no-deps --entrypoint
 
+# --- This stack's identity and published ports -------------------------------
+# The compose project name, and so every volume prefix, comes from the directory
+# basename: in ../sangam-<slug> the pgdata volume is sangam-<slug>_pgdata. Asked
+# of compose rather than guessed, because its sanitising rules are not obvious.
+# Lazy (=) so only the targets that name a volume pay for the call.
+PROJECT = $(shell docker compose config --format json 2>/dev/null \
+	  | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])' 2>/dev/null)
+
+# Host ports asked of the RUNNING stack, never assumed. A dev-harness sandbox
+# publishes 8020/3010/5443, so hardcoding 5433 made every host-side target in a
+# worktree talk to the main stack's database instead of its own.
+PG_HOST_PORT       = $(shell docker compose port postgres 5432 2>/dev/null | cut -d: -f2)
+BACKEND_HOST_PORT  = $(shell docker compose port backend  8000 2>/dev/null | cut -d: -f2)
+FRONTEND_HOST_PORT = $(shell docker compose port frontend 3000 2>/dev/null | cut -d: -f2)
+
+# Guard for host-side targets that reach the stack over a published port. Without
+# it they silently fall back to the default port, which in a sandbox is another
+# stack — a green result for the wrong database.
+define require_running
+	@test -n "$(PG_HOST_PORT)" || { \
+	  echo "$@ needs this stack running (it connects over a published port)."; \
+	  echo "Start it with 'make up' from this directory."; \
+	  exit 1; }
+endef
+
 # Guard for the targets that only make sense against the bundled container.
 define require_local
 	@test "$(ENV)" = "local" || { \
@@ -134,6 +159,9 @@ migrate-status:  ## Show which migrations would run
 # End-to-end smoke test of the running stack (backend, frontend, chat wire).
 # SMOKE_SKIP_LLM=1 make smoke  → skips the one real agent call.
 smoke:  ## End-to-end check of backend, frontend and the chat wire
+	$(require_running)
+	BACKEND_URL=http://localhost:$(BACKEND_HOST_PORT) \
+	FRONTEND_URL=http://localhost:$(FRONTEND_HOST_PORT) \
 	bash scripts/smoke.sh
 
 # Golden-question evals through the real agent. Real model calls: ~10c/case.
@@ -145,8 +173,9 @@ smoke:  ## End-to-end check of backend, frontend and the chat wire
 # @-prefixed and sources .env quietly — it carries the provider API key, and an
 # echoed recipe line would put it in the terminal scrollback.
 evals:  ## Golden-question evals through the real agent (COSTS MONEY)
+	$(require_running)
 	@set -a; [ -f .env ] && . ./.env; set +a; \
-	cd backend && TEST_DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
+	cd backend && TEST_DATABASE_URL="postgresql://sangam:sangam@localhost:$(PG_HOST_PORT)/sangam" \
 	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) -q
 
 ##@ Generated docs
@@ -154,8 +183,9 @@ evals:  ## Golden-question evals through the real agent (COSTS MONEY)
 # research table. Host venv, like `make evals`: the backend image mounts only
 # app/, seed/ and db/, so nothing inside it can write a repo file.
 client-docs:  ## Render docs/entities from the research table (host venv)
+	$(require_running)
 	@set -a; [ -f .env ] && . ./.env; set +a; \
-	cd backend && DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
+	cd backend && DATABASE_URL="postgresql://sangam:sangam@localhost:$(PG_HOST_PORT)/sangam" \
 	.venv/bin/python -m app.ingest.render_docs
 
 ##@ Managed database (ENV=staging)
@@ -233,8 +263,8 @@ db-backup:  ## Snapshot the irreplaceable tables to db/backups/
 	  "SELECT d.id||'|'||COALESCE(o.slug,'')||'|'||COALESCE(f.slug,'') FROM documents d \
 	   LEFT JOIN orgs o ON o.id=d.org_id LEFT JOIN funders f ON f.id=d.funder_id ORDER BY d.id" \
 	  > $(BACKUP_DIR)/documents_linkage.txt
-	curl -sf localhost:8010/api/orgs -H "Authorization: Bearer dev" > $(BACKUP_DIR)/api_orgs.json || true
-	curl -sf localhost:8010/api/funders -H "Authorization: Bearer dev" > $(BACKUP_DIR)/api_funders.json || true
+	curl -sf localhost:$(BACKEND_HOST_PORT)/api/orgs -H "Authorization: Bearer dev" > $(BACKUP_DIR)/api_orgs.json || true
+	curl -sf localhost:$(BACKEND_HOST_PORT)/api/funders -H "Authorization: Bearer dev" > $(BACKUP_DIR)/api_funders.json || true
 	@echo "backup written to $(BACKUP_DIR)"
 
 # Preserve-and-reset schema upgrade: destroys the pgdata volume and restores the
@@ -244,7 +274,8 @@ db-backup:  ## Snapshot the irreplaceable tables to db/backups/
 db-upgrade: db-backup  ## Volume-level schema rebuild; superseded by make migrate
 	$(require_local)
 	docker compose rm -sf backend postgres
-	docker volume rm sangam_pgdata
+	@test -n "$(PROJECT)" || { echo "could not resolve the compose project name"; exit 1; }
+	docker volume rm $(PROJECT)_pgdata
 	docker compose up -d --wait postgres
 	$(MAKE) migrate ENV=local
 	docker compose up --build -d --wait backend
@@ -261,7 +292,8 @@ db-upgrade: db-backup  ## Volume-level schema rebuild; superseded by make migrat
 
 ##@ Run outside Docker
 dev-backend:  ## Run uvicorn on the host against the compose Postgres
-	cd backend && DATABASE_URL="host=localhost port=5433 user=sangam password=sangam dbname=sangam" \
+	$(require_running)
+	cd backend && DATABASE_URL="host=localhost port=$(PG_HOST_PORT) user=sangam password=sangam dbname=sangam" \
 		uvicorn app.main:app --reload
 
 dev-frontend:  ## Run next dev on the host against a host backend
