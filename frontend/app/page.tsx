@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { HomePage } from "@/features/home/HomePage";
 
 export default function Home() {
-  redirect("/registry");
+  return <HomePage />;
 }

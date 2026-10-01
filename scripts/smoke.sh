@@ -58,7 +58,7 @@ check_json    "documents: 96+ on file"    "$BACKEND/api/documents?limit=1" "d['t
 check_status  "agent AG-UI health"         "$BACKEND/agent/health" 200 5
 
 say "── frontend ─────────────────────────────────────"
-check_status  "home redirects"             "$FRONTEND/" 200 60
+check_status  "home page renders"          "$FRONTEND/" 200 60
 check_contains "registry lists KABIL"      "$FRONTEND/registry" "KABIL" 90
 check_contains "org profile renders"       "$FRONTEND/registry/kabil" "Registered December 2012" 90
 check_contains "funder profile renders"    "$FRONTEND/registry/funders/axis-bank-foundation" "Axis Bank Foundation" 90
