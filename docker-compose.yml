@@ -116,11 +116,14 @@ services:
         condition: service_healthy
     volumes:
       - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
+      # Anonymous, not named: a named volume is filled from the image once and
+      # then never refreshed, so it kept serving the deps of whichever
+      # package.json first created it. `make up` passes --renew-anon-volumes,
+      # so this always holds what the image just installed.
+      - /app/node_modules
       - frontend_next:/app/.next
 
 volumes:
   pgdata:
   neo4jdata:
-  frontend_node_modules:
   frontend_next:
