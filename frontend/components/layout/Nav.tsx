@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignInButton } from "@/features/auth/sign-in-button";
 
 const LINKS = [
   { id: "registry", label: "Registry", href: "/registry" },
@@ -69,6 +70,7 @@ export function Nav({
         >
           Ask Sangam
         </Link>
+        <SignInButton />
       </div>
     </nav>
   );
