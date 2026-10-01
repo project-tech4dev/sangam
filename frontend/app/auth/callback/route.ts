@@ -13,10 +13,14 @@ export async function GET(request: Request) {
     next = '/'
   }
 
+  let reason = searchParams.get('error_description') ?? searchParams.get('error') ?? 'missing code'
+
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    if (error) {
+      reason = error.code ? `${error.code}: ${error.message}` : error.message
+    } else {
       const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
       const isLocalEnv = process.env.NODE_ENV === 'development'
       if (isLocalEnv) {
@@ -30,6 +34,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/error`)
+  console.error('[auth/callback] sign-in failed:', reason)
+  return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent(reason)}`)
 }
