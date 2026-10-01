@@ -50,5 +50,5 @@ async def test_detail_404(client_for, monkeypatch):
     monkeypatch.setattr("app.api.routes.orgs.repo.get_org", fake_get)
     async with client_for(orgs_api.router) as client:
         response = await client.get("/api/orgs/nope")
-    assert response.status_code == 200
+    assert response.status_code == 404
     assert "not found" in response.json()["detail"]

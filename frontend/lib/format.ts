@@ -10,3 +10,5 @@ export function titleCase(value: string | null): string {
     .map((w) => (w.length > 2 ? w[0]!.toUpperCase() + w.slice(1) : w.toUpperCase()))
     .join(" ");
 }
+
+export const ciTypecheckProbe: number = "not a number";
