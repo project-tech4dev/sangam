@@ -5,7 +5,7 @@ node_modules/
 .next/
 __pycache__/
 *.pyc
-.venv/
+.venv
 backend/downloads/
 .DS_Store
 db/backups/
@@ -18,9 +18,17 @@ db/backups/
 *.swo
 
 # Agent skills installed with `npx skills` — tooling, not application code.
-.agents/
+# No trailing slash on this or .venv above: a dev-harness sandbox symlinks both
+# into its worktree, git treats a symlink as a file, and `.agents/` would not
+# match it — so every sandbox would be born with an untracked file.
+.agents
 .claude/skills/
 skills-lock.json
 
 # Vercel CLI link (contains projectId/orgId)
 .vercel
+
+# Per-worktree sandbox manifest written by scripts/sandbox.sh (slot and ports,
+# no secrets). It is deleted with the worktree, which is what keeps slot
+# allocation derived rather than held in a registry that drifts.
+.sandbox

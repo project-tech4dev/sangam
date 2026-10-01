@@ -1,6 +1,7 @@
 .PHONY: help up down logs seed taxonomy-seed graph-seed smoke client-docs db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
-        dev-backend dev-frontend frontend-reinstall evals
+        dev-backend dev-frontend frontend-reinstall evals \
+        sandbox-new sandbox-ls sandbox-url sandbox-verify sandbox-rm
 
 SHELL := /bin/bash
 
@@ -299,3 +300,28 @@ dev-backend:  ## Run uvicorn on the host against the compose Postgres
 dev-frontend:  ## Run next dev on the host against a host backend
 	cd frontend && set -a && source <(grep -E '^NEXT_PUBLIC_SUPABASE_' ../.env) && set +a && \
 		AGENT_URL=http://localhost:8000/agent npm run dev
+
+##@ Dev sandboxes (parallel feature stacks)
+# Each sandbox is a git worktree at ../sangam-<slug> with its own compose
+# project, ports and Postgres. Mechanism lives in scripts/sandbox.sh; these are
+# only the entry points. No @ prefix is needed: none of them echoes a
+# connection string, and seeing the script invocation is useful.
+sandbox-new:  ## Stand up an isolated stack: make sandbox-new SLUG=x [GRAPH=1] [BASE=ref] [CLONE=0]
+	@test -n "$(SLUG)" || { echo "usage: make sandbox-new SLUG=<short-name> [GRAPH=1] [BASE=<ref>] [CLONE=0]"; exit 1; }
+	bash scripts/sandbox.sh new "$(SLUG)" \
+	  $(if $(GRAPH),--graph,) $(if $(BASE),--base $(BASE),) $(if $(filter 0,$(CLONE)),--no-clone,)
+
+sandbox-ls:  ## List every sandbox with its slot, branch and URLs
+	@bash scripts/sandbox.sh ls
+
+sandbox-url:  ## Print one sandbox's URLs: make sandbox-url SLUG=x
+	@test -n "$(SLUG)" || { echo "usage: make sandbox-url SLUG=<slug>"; exit 1; }
+	@bash scripts/sandbox.sh url "$(SLUG)"
+
+sandbox-verify:  ## Run smoke against one sandbox: make sandbox-verify SLUG=x [LLM=1]
+	@test -n "$(SLUG)" || { echo "usage: make sandbox-verify SLUG=<slug> [LLM=1]"; exit 1; }
+	SMOKE_SKIP_LLM=$(if $(LLM),0,1) bash scripts/sandbox.sh verify "$(SLUG)"
+
+sandbox-rm:  ## Tear one down — volumes, worktree, branch: make sandbox-rm SLUG=x [FORCE=1]
+	@test -n "$(SLUG)" || { echo "usage: make sandbox-rm SLUG=<slug> [FORCE=1]"; exit 1; }
+	bash scripts/sandbox.sh rm "$(SLUG)" $(if $(FORCE),--force,)
