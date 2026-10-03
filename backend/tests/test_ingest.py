@@ -267,6 +267,19 @@ class TestIngestAgentIsSelfDescribing:
                 f"makes it invisible whenever that skill is not loaded."
             )
 
+    @pytest.mark.parametrize("spec_name", ["ENTITY_RESEARCHER", "CATALOG_WRITER"])
+    def test_a_subagent_prompt_names_every_tool_its_spec_declares(self, spec_name):
+        """The same rule, one level down, and it is easier to break here: a
+        subagent is isolated, so instructions.md naming a tool does nothing for
+        it. When the parent stopped researching, every web tool moved to a spec
+        whose 17-line prompt named three of its seven.
+        """
+        from app.ingest import agent
+
+        spec = getattr(agent, spec_name)
+        missing = [t.name for t in spec["tools"] if t.name not in spec["system_prompt"]]
+        assert not missing, f"{spec_name} declares but never names: {missing}"
+
     def test_the_wave_size_reaching_the_model_is_the_configured_one(self):
         """Raising MAX_PARALLEL_RESEARCH has to change what the agent does, not
         just how big the pool is. The number lives in the setting; the prompt

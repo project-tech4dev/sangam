@@ -296,8 +296,12 @@ in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asse
 registered tool is named there), and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name).
 For Sangam Import the four places are the same shape but different files:
-`app/ingest/tools/<module>.py`, the `TOOLS` list in `app/ingest/agent.py`,
-`app/ingest/instructions.md`, and `frontend/features/ingest/lib/toolLabels.ts`.
+`app/ingest/tools/<module>.py`, a tool list in `app/ingest/agent.py`,
+the prompt that owns that list, and `frontend/features/ingest/lib/toolLabels.ts`.
+**Which list, and therefore which prompt, is the decision.** The supervisor's `TOOLS` is
+named in `instructions.md`; a subagent's `tools` is named in its `prompts/<name>.md`, and
+instructions.md naming it does nothing — an isolated subagent never sees that file. A
+parametrised test holds each spec against its own prompt.
 There used to be a `HIDDEN_TOOLS` set there suppressing the `deepagents` filesystem built-ins
 from the trace; the tools themselves are gone now, so hiding them is not needed.
 

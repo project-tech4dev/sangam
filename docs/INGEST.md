@@ -21,14 +21,16 @@ else.
 
 ```
   ┌─ RESEARCH PATH (the main one) ────────────────────────┐
-  │  research_goals    what the schema expects, minus     │
+  │  entity-researcher, one per organisation:             │
+  │    research_goals  what the schema expects, minus     │
   │                    what the catalog already holds     │
   │         ↓                                             │
-  │  search_public_sources → read_page / fetch_document   │
+  │    search_public_sources → read_page / fetch_document │
   │         ↓                                             │
-  │  save_research  →  entity_research (typed findings)   │
+  │    save_research → entity_research (typed findings)   │
   │         ↓                                             │
-  │  promote_research ────────────────────┐               │
+  │  catalog-writer, one per organisation:                │
+  │    promote_research ──────────────────┐               │
   └───────────────────────────────────────│───────────────┘
                                           │
   ┌─ ADAPTER PATH ────────────────────┐   │
@@ -113,8 +115,20 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 | `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
-**Sangam Import** (main) holds thirteen of the fourteen: everything above except `save_research`,
-which belongs to the researcher subagent, because the parent never copies findings around.
+**Sangam Import** (main) holds seven: the five pipeline tools, `funder_dossier` and
+`publish_brief`. It supervises. It cannot open a web page and it cannot write a catalog row —
+both go through a subagent, so there is one path to a source and one path to the catalog, each
+under the prompt written for it. The parent held all of them until 2026-10-03, and a
+single-organisation run then researched under `instructions.md`, without the researcher's
+budget, entity-confirmation or money-unit rules: two paths to the same work, already drifted.
+
+`research_goals` went with them. In a kind-aware world it refuses `"unknown"`, and a supervisor
+that has not read a source can only ever guess `"funder"`.
+
+A tool's **prompt** is therefore whichever one owns its list. An isolated subagent never sees
+`instructions.md`, so naming a researcher's tool there does nothing for it;
+`test_a_subagent_prompt_names_every_tool_its_spec_declares` holds each spec against its own
+`prompts/<name>.md`.
 
 **`entity-researcher`** — one per organisation, `mode: "isolated"`, so each gets its own context
 window. The reason is context, not speed: a single broad turn once read three PDFs across twenty
