@@ -168,6 +168,7 @@ the fuller reference. The tiers:
 | **Required** | `ANTHROPIC_API_KEY` | the backend cannot answer anything |
 | **Required (frontend)** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | every page returns 500 |
 | **Optional** | `OPENAI_API_KEY` + `NEO4J_*` | the graph disables itself cleanly |
+| **Optional** | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | no document archive or Doc Vault; uploads return 503 |
 | **Optional** | `MODEL`, `UTILITY_MODEL`, `SQL_AUDIT_MODEL`, `TAVILY_API_KEY` | sensible defaults; see `.env.example` |
 | **Optional** | `LANGFUSE_*`, `LANGSMITH_*` | no tracing. Both can run at once |
 | **Deployed only** | `ALLOWED_ORIGINS`, `ALLOWED_ORIGIN_REGEX`, `STAGING_DB_*` | irrelevant locally |
@@ -177,9 +178,14 @@ bundled Postgres container; `ENV=staging` uses the `STAGING_DB_*` block via
 `docker-compose.staging.yml`. `ENV=staging` deploys nothing — it points local tooling at the
 managed database.
 
-It is honoured by `seed`, `migrate`, `migrate-status`, `psql`, `db-url` and the remote targets.
-It is **not** honoured by `up`, `down`, `logs`, `frontend-reinstall` or the
-`db-clean`/`db-reset`/`db-backup`/`db-upgrade` group, which always act on the local stack.
+It is honoured by `up`, `down`, `logs`, `seed`, `migrate`, `migrate-status`, `psql`, `db-url`,
+`client-docs` and the remote targets. It is **not** honoured by `frontend-reinstall` or the
+`db-clean`/`db-reset`/`db-backup`/`db-upgrade` group, which are local-only by design.
+
+`make up ENV=staging` is the one to think about before running: the containers are yours, but
+the data is shared, so a research run from your machine writes into the database the deployed
+app serves. It still deploys nothing, and it will not migrate for you — only `ENV=local`
+bootstraps and migrates automatically.
 
 **Ports are fixed in `docker-compose.yml`, not in `.env`.** The frontend is on 3000, the backend
 publishes 8010 from the container's 8000, Postgres publishes 5433 from 5432, and Neo4j is on

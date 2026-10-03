@@ -140,6 +140,7 @@ _TABLES: tuple[Table, ...] = (
         ),
         defects=(
             "53 of 96 rows have neither org_id nor funder_id set, so ownership filters silently under-count. There is no CHECK enforcing exactly-one-owner on this table.",
+            "Rows with is_public = false are private Doc Vault uploads belonging to one organisation, and this tool applies no per-caller filter: their content_md and storage_path are readable by every user. Deliberate and temporary - it ends when queries run as the caller (docs/DATA_PLATFORM.md, 'Authorization: run every query as the caller'). Until then, do not quote a private document to anyone outside the organisation that owns it.",
         ),
     ),
     Table(

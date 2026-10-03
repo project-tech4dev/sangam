@@ -62,6 +62,10 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Saving findings",
     detail: (a) => a?.findings?.entity_name ?? "",
   },
+  publish_brief: {
+    label: "Publishing the research brief",
+    detail: (a) => a?.slug || "every researched entity",
+  },
   promote_research: {
     label: "Writing research into the catalog",
     detail: (a) => a?.slug || "everything not yet promoted",

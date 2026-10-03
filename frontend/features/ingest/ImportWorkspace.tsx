@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
+import { Milestones } from "./components/Milestones";
 import { RunStatus } from "./components/RunStatus";
 import { SubagentBoard } from "./components/SubagentBoard";
 import { humanizeTool, stepNote } from "./lib/toolLabels";
@@ -51,6 +52,10 @@ export function ImportWorkspace() {
         {turns.map((turn) => (
           <article key={turn.id} style={{ display: "grid", gap: 10 }}>
             <p style={{ fontWeight: 700, margin: 0 }}>{turn.question}</p>
+
+            {/* The stages of the run, above the step-by-step. A reader wants
+                to know what was reached before they want to know how. */}
+            <Milestones steps={turn.steps} running={turn.streaming} />
 
             {/* Subagents get their own board: several run at once and a flat
                 list of "Delegating a sub-task" hides that entirely. */}

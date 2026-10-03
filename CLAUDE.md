@@ -101,7 +101,16 @@ bundled Postgres container, `ENV=staging` uses the `STAGING_DB_*` block in `.env
 `docker-compose.staging.yml`. Compose resolves the connection string so there is one
 source of truth; `scripts/db-url.sh` surfaces its error when a staging variable is missing.
 
-`ENV=staging` deploys nothing. It points local tooling at the managed database.
+`ENV=staging` deploys nothing. It points local tooling at the managed database —
+and, with `make up ENV=staging`, the local stack itself. The containers stay yours;
+only the data is shared. Think before using that one: a research run from your
+machine then writes straight into the database the deployed app serves.
+
+**Supabase Storage is global, so the two halves of a document can disagree.**
+`SUPABASE_URL`/`SUPABASE_SERVICE_KEY` are not environment-scoped: with the backend
+on the local Postgres, `fetch_document` still archives the file to the cloud bucket,
+so the `documents` row is local and the object it names is not. Running
+`ENV=staging` puts both in the same place.
 
 **`STAGING_DB_*` are local-tooling variables only.** The backend itself reads
 `DATABASE_URL` (`backend/app/core/config.py`). Setting `STAGING_DB_*` on a deployed host does
@@ -133,7 +142,9 @@ backend/app/
   schemas/         Pydantic, one module per resource
   agent/           build.py (builds the deep agent) · models.py · tools/
                    instructions.md (the system prompt) · prompt.py (loads it)
-  ingest/          Sangam Import: its own agent, tools/, skills/ and adapters/
+  ingest/          agent.py (builds Sangam Import) · instructions.md · skills/
+                   tools/ every tool it has, and nothing else in ingest/ is one
+                   the rest is the pipeline: runner · writer · promote · matcher
   integrations/    graphiti.py (Neo4j client lifecycle)
 
 frontend/
@@ -274,12 +285,34 @@ Adding a tool: write the async function in `app/agent/tools/` with both conventi
 in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asserts every
 registered tool is named there), and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name).
+For Sangam Import the four places are the same shape but different files:
+`app/ingest/tools/<module>.py`, the `TOOLS` list in `app/ingest/agent.py`,
+`app/ingest/instructions.md`, and `frontend/features/ingest/lib/toolLabels.ts`.
 There used to be a `HIDDEN_TOOLS` set there suppressing the `deepagents` filesystem built-ins
 from the trace; the tools themselves are gone now, so hiding them is not needed.
 
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is
 that every field traces to a source.
+
+**A tool of either agent lives under a `tools/` package, and nothing else does.**
+`app/agent/tools/` for Ask Sangam, `app/ingest/tools/` for Sangam Import — three modules
+there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
+`catalog_tools.py` (what Sangam already holds), `research_tools.py` (the open web).
+Both agents register their list in one place — `build.py` and `agent.py` respectively — and
+a test walks the package to prove every tool defined is also registered.
+
+**How many organisations Import researches at once is a setting, not a number in the
+prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
+above it the agent researches in waves until every organisation asked for is done.
+`app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder — **the only
+substitution any prompt in this repo gets** — because a number frozen in prose made the
+setting decorative. It is a plain `.replace()`, not `.format()`: the file is full of literal
+braces. The fan-out is bounded by connections, so `DB_POOL_MAX_SIZE` (default 10) moves with
+it; the pool is shared with the checkpointer, which writes on every graph step, so the
+concurrency gates in `sql/executor.py` and `ingest/runner.py` derive from it and sit under
+it. The ceiling is the database's: Supabase allows 60 connections, 3 reserved, across every
+deployed instance.
 
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
 reusable brief — the 28-field funder scan a fundraiser wants — advertised by its frontmatter and

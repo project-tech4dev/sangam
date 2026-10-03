@@ -103,8 +103,18 @@ means adding it to the JSON with a basis and a robots check, in a pull request.
 
 One main agent and two subagents, built in `app/ingest/agent.py`.
 
-**Sangam Import** (main) holds twelve tools: the source registry, the import planner and runner,
-run summaries, the review queue, the promoter, and the five research tools.
+**Every tool lives in `app/ingest/tools/`, and nothing else in `app/ingest/` is a tool** — the
+rest of the folder is the pipeline the tools drive. Three modules, by what the tool touches,
+mirroring `app/agent/tools/` on the Ask Sangam side:
+
+| Module | Tools |
+|---|---|
+| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` |
+| `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` |
+| `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
+
+**Sangam Import** (main) holds thirteen of the fourteen: everything above except `save_research`,
+which belongs to the researcher subagent, because the parent never copies findings around.
 
 **`entity-researcher`** — one per organisation, `mode: "isolated"`, so each gets its own context
 window. The reason is context, not speed: a single broad turn once read three PDFs across twenty
@@ -119,6 +129,15 @@ against a dossier showing none is the failure worth catching, and nothing else w
 
 Parallel `task` calls resolve together, so the writers start after the *slowest* researcher, not
 one by one.
+
+**Waves, not a cap.** `MAX_PARALLEL_RESEARCH` (default 8) is how many researchers run at once;
+ask for thirty organisations and the agent runs four waves, not a list trimmed to eight. It used
+to say *"research the first six and tell the user what is left"*, which quietly turned a list of
+twenty into a list of six. The number is bounded by connections rather than by ambition — each
+researcher holds one from a pool shared with the checkpointer — so `DB_POOL_MAX_SIZE` (default
+10) is raised with it, and both are logged at boot. Each subagent gets its own recursion budget,
+so the count is not bounded by `RECURSION_LIMIT`; the ceiling that remains is the model
+provider's rate limit.
 
 ## The research path in detail
 
@@ -143,6 +162,14 @@ losing the whole task.
 
 Saving is an upsert on `(slug, date)`. It refuses when the stored result has more findings than
 the one offered — a short re-run silently replacing a long one has already cost fifteen findings.
+
+It also **publishes the brief** — `brief.py` renders the row it just wrote and uploads it to
+`entities/<slug>.md` in `source-archive`, which is what the funder page's "Research brief" link
+serves. That used to wait for someone to run `make client-docs` on the host, so between a
+research turn and the next time a person remembered, the page's "Research brief" link pointed
+at nothing. Publishing is silent either way, like archiving — the model cannot act on a storage failure and the findings are saved
+regardless. `publish_brief(slug)` re-publishes; `make client-docs` is still the only thing that
+writes `docs/entities/`, because the container cannot write a repo file and should not.
 
 **4. `promote_research`** maps fields to columns. Documents are written first, so every fact can
 cite the report it was read from; then programmes, parents before children, because six concepts

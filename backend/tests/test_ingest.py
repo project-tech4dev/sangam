@@ -45,7 +45,6 @@ from app.ingest.records import (
     ProgramRecord,
     RfpRecord,
 )
-from app.ingest.research import save_research
 from app.ingest.research_records import (
     CONCEPTS,
     FINDING_MODELS,
@@ -64,6 +63,7 @@ from app.ingest.research_records import (
 )
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.taxonomy import clause_for
+from app.ingest.tools.research_tools import save_research
 from app.ingest.writer import CSR_YEAR_UPDATABLE, _diff, slugify
 
 NOW = datetime(2026, 9, 29, tzinfo=UTC)
@@ -266,6 +266,36 @@ class TestIngestAgentIsSelfDescribing:
                 f"makes it invisible whenever that skill is not loaded."
             )
 
+    def test_the_wave_size_reaching_the_model_is_the_configured_one(self):
+        """Raising MAX_PARALLEL_RESEARCH has to change what the agent does, not
+        just how big the pool is. The number lives in the setting; the prompt
+        carries a placeholder, because a number frozen in prose is how the
+        setting would end up decorative.
+        """
+        from app.core.config import Settings
+        from app.ingest.agent import _INSTRUCTIONS_MD, _render
+
+        assert "{{MAX_PARALLEL_RESEARCH}}" in _INSTRUCTIONS_MD
+        rendered = _render(_INSTRUCTIONS_MD, Settings(max_parallel_research=17))
+        assert "Launch up to **17** at once" in rendered
+        assert "{{" not in rendered, "a placeholder reached the model unrendered"
+
+    def test_the_shipped_prompt_has_no_placeholder_left_in_it(self):
+        from app.ingest.agent import INSTRUCTIONS
+
+        assert "{{" not in INSTRUCTIONS
+
+    def test_nothing_caps_how_many_organisations_may_be_asked_for(self):
+        """The cap that was there — "research the first six and tell the user
+        what is left" — turned a list of twenty into a list of six. Waves are
+        the replacement: every organisation gets researched, just not at once.
+        """
+        from app.ingest.agent import INSTRUCTIONS
+
+        assert "no limit on how many organisations" in INSTRUCTIONS
+        assert "keep going until the list is done" in INSTRUCTIONS
+        assert "tell the user what is left" not in INSTRUCTIONS
+
     def test_instructions_are_loaded_not_empty(self):
         from app.ingest.agent import INSTRUCTIONS
 
@@ -275,27 +305,35 @@ class TestIngestAgentIsSelfDescribing:
     def test_every_tool_defined_is_also_registered(self):
         """The reverse of the rule above, and the one that actually bit: plan_import
         was written, documented and unreachable, because nothing added it to TOOLS."""
+        import importlib
         import inspect
+        import pkgutil
 
         from langchain_core.tools import BaseTool
 
-        from app.ingest import research, tools
+        from app.ingest import tools
         from app.ingest.agent import TOOLS
 
-        # Both modules: the importing tools live in tools.py and the reading
-        # tools in research.py, so equality on one module would be wrong.
+        # Every module in app/ingest/tools/, discovered rather than listed: a
+        # fourth one added later is covered without anyone remembering to.
         defined = {
             obj.name
-            for module in (tools, research)
-            for _, obj in inspect.getmembers(module)
+            for info in pkgutil.iter_modules(tools.__path__)
+            for _, obj in inspect.getmembers(importlib.import_module(f"{tools.__name__}.{info.name}"))
             if isinstance(obj, BaseTool)
         }
+
         # A subagent's tools are registered too — reachable through `task`,
         # not on the main agent. save_research is the researcher's, by design.
         from app.ingest.agent import ENTITY_RESEARCHER
 
         registered = {t.name for t in TOOLS} | {t.name for t in ENTITY_RESEARCHER["tools"]}
         assert not defined - registered, f"defined but never registered: {sorted(defined - registered)}"
+        # The other direction, which is the property the package exists to give:
+        # a tool the model can call is a file in app/ingest/tools/, always.
+        assert not registered - defined, (
+            f"registered but defined outside app/ingest/tools/: {sorted(registered - defined)}"
+        )
 
     def test_planning_comes_before_writing(self):
         from app.ingest.agent import TOOLS
@@ -422,7 +460,7 @@ class TestDocRendering:
         assert replace_block(once, "funders", "TABLE") == once
 
     def test_amounts_read_as_crore(self):
-        from app.ingest.render_docs import _crore
+        from app.ingest.brief import _crore
 
         # Stored in INR because the column says so; shown in crore because a
         # reader thinks in crore.
@@ -757,9 +795,9 @@ class TestSavingCannotQuietlyShrinkAResult:
 
     def test_the_refusal_explains_itself(self):
         # @tool wraps the function, so read the module rather than the object.
-        from app.ingest import research
+        from app.ingest.tools import research_tools
 
-        source = inspect.getsource(research)
+        source = inspect.getsource(research_tools)
         assert "REFUSED" in source and "replace=true" in source
 
     def test_the_docstring_says_what_replace_costs(self):

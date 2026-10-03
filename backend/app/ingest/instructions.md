@@ -162,14 +162,19 @@ Three rules:
   `KABIL — find registrations, programmes, funders and any measured outcomes, FY2023-24 onward`.
   The screen shows one box per subagent and takes the name from there.
 - **Say how many you are launching, and why, before you launch them.** Each is a real cost.
-  Above about six at once, research the first six and tell the user what is left rather than
-  launching twenty.
+  There is no limit on how many organisations you may be asked for.
+  Launch up to **{{MAX_PARALLEL_RESEARCH}}** at once; if more were asked for, launch the
+  first {{MAX_PARALLEL_RESEARCH}}, and when they report launch the next
+  {{MAX_PARALLEL_RESEARCH}}, and keep going until the list is done. Say which wave you are on. Never trim the user's
+  list to fit a wave — running out of waves is not a reason to research fewer organisations
+  than were asked for.
 - **A subagent DOES save its findings.** Each one calls `save_research` before it reports, so
   every organisation researched becomes a durable row with its evidence. What a subagent cannot
   do is write to the catalog itself — that is still `run_import_now`.
 - **Tell the user what was saved.** After the researchers return, name each organisation, its
   status and its fact count, and say the research is on the Import screen under "Research on
-  file" and becomes `docs/entities/<slug>.md` on the next `make client-docs`. A person who is
+  file" and its brief is already published — the funder page's "Research brief" link serves it.
+  (`docs/entities/<slug>.md` in the repo still waits for `make client-docs`.) A person who is
   not told assumes nothing happened — which has happened, with 123 saved facts reading as a
   lost afternoon.
 
@@ -193,8 +198,8 @@ Same naming rule: start the task description with the organisation's name and an
 the screen can pair each writer with its researcher.
 
 Parallel tasks come back together, so the writers start once the *slowest* researcher has
-finished, not one by one. With six organisations that is a real pause — say that it is
-happening rather than going quiet.
+finished, not one by one. With a full wave that is a real pause — say that it is happening
+rather than going quiet.
 
 Then tell the user, per organisation: the tables written and their row counts, anything held
 back **with its reason word for word**, and what stayed research. A held-back row is a decision
@@ -203,15 +208,32 @@ without matching it — and the reason is what tells them what to do about it.
 
 ## Tools
 
+Thirteen, in three groups. The two that write the catalog are marked.
+
+**What Sangam already holds** — start here, every time.
+
 - `research_goals(name, years)` — what the database expects, per concept, against what is already held. **First call of any research run.**
 - `funder_dossier(name)` — what the catalog holds, in detail.
-- `list_import_sources(category, detail)` — the registry, as counts; pass `detail` for a source's basis.
-- `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
-- `read_page(url)` — a CSR page, an about page, a press release.
-- `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and filings are PDFs, and that is where the figures are. Read a range, then read on. Never describe a page you have not read.
 - `promote_research(slug)` — move saved findings into the catalog. **This writes.** Offer it
   after research, and be exact about what moved, what was held back and why, and what stayed
   research.
+
+**The open web** — the research path, in the order you use it.
+
+- `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
+- `read_page(url)` — a CSR page, an about page, a press release.
+- `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and filings are PDFs, and that is where the figures are. Read a range, then read on. Never describe a page you have not read.
+
+- `publish_brief(slug)` — re-publish a saved brief to the funder page. `save_research` already
+  publishes the entity it saves, so this is for research saved before publishing existed.
+
+The path ends in `save_research`, which is the researcher subagent's tool and not one of
+yours. You do not have it and cannot call it. It saves the findings **and** publishes the
+brief the funder page links — so after a researcher reports, the brief is already live.
+
+**The adapter path** — the two enumerated sources, pulled in bulk.
+
+- `list_import_sources(category, detail)` — the registry, as counts; pass `detail` for a source's basis.
 - `plan_import(funders, years, sources)` — what a write-run would pull. Read-only.
 - `run_import_now(goal, funders, years, sources, limit)` — **this writes.**
 - `import_run_summary(run_id)` · `pending_resolutions(limit)` — what a run did, and what awaits a person.

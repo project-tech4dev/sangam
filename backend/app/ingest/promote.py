@@ -51,6 +51,7 @@ from app.ingest.writer import (
     write_program,
     write_rfp,
 )
+from app.integrations import storage
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +248,10 @@ async def _write_documents(
     report: dict[str, Any],
 ) -> dict[str, int]:
     """Returns source_url -> document id, so many facts can cite one report."""
+    slug = (await (await conn.execute(
+        "SELECT slug FROM funders WHERE id = %s", (funder_id,)
+    )).fetchone())["slug"]
+
     by_url: dict[str, int] = {}
     for f in _validated(findings, "document"):
         shim = type("Doc", (), {
@@ -254,16 +259,46 @@ async def _write_documents(
             "source_name": f.source_name or "research",
             "fetched_at": row["researched_at"], "as_of": f.as_of,
         })()
-        # ensure_document returns an id either way, so ask first: reporting
-        # "1 added" on every re-run would overstate what the run did.
-        seen = await (
-            await conn.execute("SELECT 1 FROM documents WHERE source_url = %s", (f.source_url,))
-        ).fetchone()
-        by_url[f.source_url] = await ensure_document(
-            conn, shim, funder_id=funder_id, doc_type=f.doc_type
+        # Whether the research run managed to archive this URL. Looked up
+        # rather than assumed: a page read with read_page was never downloaded,
+        # and claiming a storage_path for it would be a lie about provenance.
+        # Storage being unreachable returns None here, never raises.
+        key = await storage.archived_key(storage.SOURCE_ARCHIVE, f.source_url)
+        digest = storage.hash_from_key(key) if key else None
+        if key:
+            key = await _shelve(key, slug, f.as_of, digest)
+        document_id, status = await ensure_document(
+            conn, shim, funder_id=funder_id, doc_type=f.doc_type,
+            storage_path=storage.qualify(storage.SOURCE_ARCHIVE, key) if key else None,
+            content_hash=digest,
         )
-        _count(report, "documents", "matched" if seen else "added")
+        by_url[f.source_url] = document_id
+        _count(report, "documents", status)
     return by_url
+
+
+async def _shelve(key: str, slug: str, as_of: str | None, digest: str | None) -> str:
+    """Move a just-archived object to a name a person can read, now that the
+    funder is known. Returns wherever the object actually ended up.
+
+    Fetching cannot name the file: `fetch_document` runs during research, so it
+    has only the URL and the bytes to key on. Promotion has the funder and the
+    period, which is what makes `funders/<slug>/2023-annual-report.pdf`
+    possible. The leftovers are informative — an object still under a hash
+    folder is one we downloaded and no finding ever cited.
+    """
+    destination = storage.catalog_key(slug, as_of, storage.filename_from_key(key))
+    if destination == key:
+        return key
+    # Same funder, same year, same published filename, different bytes. Rare,
+    # and silently overwriting one with the other would lose a source.
+    if await storage.stat(storage.SOURCE_ARCHIVE, destination) is not None:
+        destination = storage.catalog_key(
+            slug, as_of, storage.filename_from_key(key), suffix=(digest or "")[:8]
+        )
+    return destination if await storage.move(
+        storage.SOURCE_ARCHIVE, key, destination
+    ) else key
 
 
 async def _write_programs(

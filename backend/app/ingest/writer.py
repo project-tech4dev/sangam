@@ -68,23 +68,45 @@ def _plain(v: Any) -> Any:
     return v if v is None or isinstance(v, str | int | float | bool) else str(v)
 
 
-async def ensure_document(conn: Any, rec: Any, *, funder_id: int | None, doc_type: str) -> int:
-    """One documents row per source URL, so many facts can cite one report."""
+async def ensure_document(
+    conn: Any, rec: Any, *, funder_id: int | None, doc_type: str,
+    storage_path: str | None = None, content_hash: str | None = None,
+) -> tuple[int, str]:
+    """One documents row per source URL, so many facts can cite one report.
+
+    Returns (id, added | updated | matched), like the other writers here. The
+    archive columns backfill onto a row that predates archiving, and only where
+    the row is empty - a re-promote never overwrites what is already recorded.
+    """
     row = await (
-        await conn.execute("SELECT id FROM documents WHERE source_url = %s", (rec.source_url,))
+        await conn.execute(
+            "SELECT id, storage_path, content_hash FROM documents WHERE source_url = %s",
+            (rec.source_url,),
+        )
     ).fetchone()
     if row:
-        return row["id"]
+        # Column names come from this dict, never from a caller; only values
+        # are parameterised. Same rule as _upsert.
+        fill = {c: v for c, v in
+                (("storage_path", storage_path), ("content_hash", content_hash))
+                if v and not row[c]}
+        if not fill:
+            return row["id"], "matched"
+        sets = ", ".join(f"{c} = %s" for c in fill)
+        await conn.execute(
+            f"UPDATE documents SET {sets} WHERE id = %s", (*fill.values(), row["id"])
+        )
+        return row["id"], "updated"
     row = await (
         await conn.execute(
             "INSERT INTO documents (funder_id, title, doc_type, source_url, source_name, "
-            "fetched_at, as_of, is_public, status) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, true, 'read') RETURNING id",
+            "fetched_at, as_of, storage_path, content_hash, is_public, status) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, true, 'read') RETURNING id",
             (funder_id, getattr(rec, "title", None), doc_type, rec.source_url,
-             rec.source_name, rec.fetched_at, rec.as_of),
+             rec.source_name, rec.fetched_at, rec.as_of, storage_path, content_hash),
         )
     ).fetchone()
-    return row["id"]
+    return row["id"], "added"
 
 
 async def write_funder(

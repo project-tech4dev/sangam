@@ -1,5 +1,14 @@
 import type { ResearchRecord } from "../lib/types";
 
+/** The site, which is what a reader recognises — not the whole URL. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
 const TONE: Record<string, string> = {
   complete: "var(--color-accent-2-900)",
   partial: "var(--color-accent-900)",
@@ -20,8 +29,8 @@ export function ResearchShelf({ items }: { items: ResearchRecord[] }) {
       <h2 style={{ fontSize: "var(--fs-lg)", margin: "0 0 4px" }}>Research on file</h2>
       <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-muted)", margin: "0 0 12px" }}>
         {items.length} organisation{items.length === 1 ? "" : "s"}, {facts} facts, each with the
-        sentence behind it. Run <code>make client-docs</code> to write these to{" "}
-        <code>docs/entities/</code>.
+        sentence behind it. Each brief is published as it is saved;{" "}
+        <code>make client-docs</code> also writes them to <code>docs/entities/</code> for review.
       </p>
       <div style={{ display: "grid", gap: 8 }}>
         {items.map((r) => (
@@ -49,6 +58,17 @@ export function ResearchShelf({ items }: { items: ResearchRecord[] }) {
                 {r.fact_count} facts · {r.sources_read.length} sources
               </span>
             </div>
+            {r.sources_read.length > 0 && (
+              <p
+                style={{
+                  margin: "4px 0 0",
+                  fontSize: "var(--fs-xs)",
+                  color: "var(--color-muted)",
+                }}
+              >
+                {[...new Set(r.sources_read.map(hostOf).filter(Boolean))].slice(0, 6).join(" · ")}
+              </p>
+            )}
             <p
               style={{
                 margin: "5px 0 0",

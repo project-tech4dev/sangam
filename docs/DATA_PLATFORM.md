@@ -56,6 +56,43 @@ write-up.
 `fit_score_items`, `score_adjustments`. The rubric family stays exactly as it is; scoring logic
 lives in the agent code.
 
+### Where `documents.storage_path` points
+
+`storage_path` is a key in Supabase Storage, in one of two private buckets created by
+`db/migrations/0020_storage_buckets.sql`:
+
+| Bucket | Holds | Key |
+|---|---|---|
+| `source-archive` | what research downloaded — public documents, kept so a fact survives its source URL going 404 | fetched as `<sha256(source_url)[:12]>/<sha256(bytes)>-<name>`, renamed by promotion to `funders/<slug>/<year>-<name>` |
+| `org-vault` | what an organisation uploads about itself, private by default under DPDP consent | `<org_id>/<uuid4>-<name>` |
+
+Two buckets rather than one per entity because a bucket separates **access rules** and a folder
+organises; bucket names are also immutable.
+
+They are keyed differently because of who holds the bytes when the key is minted. An upload
+knows its org, so the vault leads with `<org_id>` — an **id, not a slug**, because `_free_slug`
+appends a suffix on collision and `org_members` joins on `org_id`. That segment is the eventual
+RLS predicate, read as `(storage.foldername(name))[1]::bigint`, which is why the convention is
+fixed before the policies exist. The rest is a uuid rather than a content hash: the file goes
+browser → Storage through a signed URL, so when the key is made the backend has never seen it,
+and a hash there could only be one the client asserted. `content_hash` is measured afterwards,
+from the bytes read back to extract the text.
+
+The archive cannot do the same at the moment it writes: `fetch_document` runs during research and
+a `funder_id` does not exist until `resolve_funder` runs at promotion. So it has **two keys and a
+move between them**.
+
+At fetch it keys on the **URL**, known at both moments, so promotion can find the object again
+with no lookup table; and on the **content**, so a funder republishing at the same URL next year
+adds a version rather than overwriting the bytes a finding was read from. The content hash in the
+key is also what lets promotion fill `documents.content_hash` without re-downloading.
+
+At promotion, `_shelve` renames it to `funders/<slug>/<year>-<publisher's filename>` — browsable,
+sorted by year, and keeping the name the funder itself published so a row can be matched to its
+source by eye. The leftovers are the point: **an object still under a hash folder is one we
+downloaded and no finding ever cited.** `app/ingest/reshelve.py` re-runs the rename if the scheme
+changes. Design and milestones: `docs/features/2026-09-30-supabase-storage.md`.
+
 ## Which tables are new
 
 14, in four groups.

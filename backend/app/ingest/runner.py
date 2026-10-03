@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.ingest import writer
 from app.ingest.adapters import gdelt, india_csr
@@ -21,9 +22,11 @@ from app.ingest.sources import SOURCES, Source, resolve
 
 logger = logging.getLogger(__name__)
 
-# Two at a time: each task holds an HTTP request and a pooled connection, and the
-# pool is max_size=5 shared with the LangGraph checkpointer, which writes.
-MAX_CONCURRENT_SOURCES = 2
+# Each task holds an HTTP request and a pooled connection, and the pool is shared
+# with the LangGraph checkpointer, which writes on every step — so this tracks the
+# pool size rather than restating a number that would go stale beside it.
+def max_concurrent_sources() -> int:
+    return get_settings().db_gate_slots
 
 
 @dataclass(slots=True)
@@ -95,7 +98,7 @@ async def run_import(
                 reason="; ".join(f"{rule}: {n}" for rule, n in sorted(by_rule.items())),
             )
 
-    gate = asyncio.Semaphore(MAX_CONCURRENT_SOURCES)
+    gate = asyncio.Semaphore(max_concurrent_sources())
     runnable = [s for s in requested if s.dispatchable and s.key in ADAPTERS]
     # One task per source, or per (source, funder) pair when names are given, all
     # started together. The semaphore bounds them: each task holds a pooled
@@ -189,7 +192,9 @@ async def _write_csr_year(conn: Any, run_id: int, rec: FunderCsrYearRecord) -> N
             target_table="resolution_queue", target_id=str(queue_id), source_url=rec.source_url,
         )
         return
-    document_id = await writer.ensure_document(conn, rec, funder_id=match.funder_id, doc_type="news_article")
+    document_id, _ = await writer.ensure_document(
+        conn, rec, funder_id=match.funder_id, doc_type="news_article"
+    )
     status, changes = await writer.write_csr_year(conn, rec, match.funder_id, document_id)
     await _item(
         conn, run_id, "india_csr", "funder_csr_year", status, subject=rec.funder_name,

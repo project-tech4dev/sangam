@@ -52,7 +52,7 @@ def build_lifespan(settings: Settings | None = None):
     async def lifespan(app: FastAPI):
         resolved = settings or get_settings()
         async with AsyncExitStack() as stack:
-            pool = make_pool(resolved.database_url)
+            pool = make_pool(resolved.database_url, resolved.db_pool_max_size)
             await pool.open()
             stack.push_async_callback(pool.close)
             db_pool.pool = pool  # shared by agent tools and REST endpoints
@@ -73,6 +73,11 @@ def build_lifespan(settings: Settings | None = None):
                     name="sangam_agent",
                     description=AGENT_DESCRIPTION,
                     graph=build_agent(resolved, checkpointer),
+                    # Not redundant with the graph's own with_config. AG-UI
+                    # builds each request's config from THIS one, and a config
+                    # passed at invocation beats the one bound to the graph —
+                    # see the comment on the test in tests/test_tracing.py.
+                    config={"recursion_limit": resolved.recursion_limit},
                 ),
                 path="/agent",
             )
@@ -85,6 +90,7 @@ def build_lifespan(settings: Settings | None = None):
                     name="sangam_ingest",
                     description=INGEST_DESCRIPTION,
                     graph=build_ingest_agent(resolved, checkpointer),
+                    config={"recursion_limit": resolved.recursion_limit},
                 ),
                 path="/ingest",
             )
@@ -106,7 +112,13 @@ def build_lifespan(settings: Settings | None = None):
             # backend that is quietly off looks exactly like one that is working.
             status = langsmith_status()
             (logger.warning if "DROPPED" in status or "OFF" in status else logger.info)(status)
-            logger.info("Sangam agent ready: model=%s", resolved.model)
+            logger.info(
+                "Sangam agent ready: model=%s research-at-once=%d db-pool=%d gate=%d",
+                resolved.model,
+                resolved.max_parallel_research,
+                resolved.db_pool_max_size,
+                resolved.db_gate_slots,
+            )
 
             yield
 

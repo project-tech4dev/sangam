@@ -15,9 +15,11 @@ help:
 	     /^[a-zA-Z0-9_-]+:.*##/ { printf "  \033[36m%-19s\033[0m%s\n", $$1, $$2 }' \
 	     $(MAKEFILE_LIST)
 	@echo
-	@echo "  ENV=staging points the database targets at the managed database."
-	@echo "  It is honoured by seed, migrate, psql and the remote targets — NOT"
-	@echo "  by up/down/logs or the db-clean/reset/backup/upgrade group."
+	@echo "  ENV=staging points at the managed database. It is honoured by up,"
+	@echo "  down, logs, seed, migrate, psql, client-docs and the remote targets"
+	@echo "  — NOT by the db-clean/reset/backup/upgrade group, which are local-only."
+	@echo
+	@echo "  'make up ENV=staging' runs YOUR containers against the SHARED data."
 	@echo
 
 # --- Environment selection ---------------------------------------------------
@@ -70,22 +72,27 @@ BACKUP_DIR := db/backups/$(shell date +%Y%m%d-%H%M%S)
 # --wait: the frontend installs deps at container start, so without it `make up`
 # would return before the first (or post-dep-change) install lands.
 #
-# The migrate step is pinned to ENV=local and skipped when the bundled Postgres
-# is switched off (COMPOSE_PROFILES without localdb), because then DATABASE_URL
-# points at somebody's managed database and migrating it is their decision.
+# ENV picks the database the backend RUNS against, not just the one the tooling
+# targets: `make up ENV=staging` points the local stack at the managed Postgres.
+# It still deploys nothing — the containers are yours, only the data is shared.
+#
+# Which is why the bootstrap step is local-only, and skipped when the bundled
+# Postgres is switched off (COMPOSE_PROFILES without localdb). Under either,
+# DATABASE_URL names somebody's managed database, and migrating it is their
+# decision rather than a side effect of `make up`.
 up:  ## Build and start postgres, neo4j, backend, frontend
-	@if docker compose config --services | grep -qx postgres; then \
+	@if [ "$(ENV)" = "local" ] && docker compose config --services | grep -qx postgres; then \
 	  docker compose up -d --wait postgres && $(MAKE) migrate ENV=local; \
 	else \
-	  echo "bundled Postgres is off; run migrations yourself if the backend fails to boot"; \
+	  echo "not migrating $(ENV); run migrations yourself if the backend fails to boot"; \
 	fi
-	docker compose up --build -d --wait
+	$(COMPOSE) up --build -d --wait
 
 down:  ## Stop the stack, keeping the volumes
-	docker compose down
+	$(COMPOSE) down
 
 logs:  ## Follow every container's logs
-	docker compose logs -f
+	$(COMPOSE) logs -f
 
 # Force a frontend dependency install; the entrypoint otherwise skips it when
 # package.json and package-lock.json are unchanged.
@@ -153,9 +160,13 @@ evals:  ## Golden-question evals through the real agent (COSTS MONEY)
 # Render docs/entities and the generated blocks of docs/clients from the
 # research table. Host venv, like `make evals`: the backend image mounts only
 # app/, seed/ and db/, so nothing inside it can write a repo file.
+#
+# Honours ENV, but cannot use $(DB_URL) for the local case: that resolves to
+# host=postgres, which only exists on the compose network, and this runs on the
+# host. Local gets the published port instead; staging is a real host either way.
 client-docs:  ## Render docs/entities from the research table (host venv)
 	@set -a; [ -f .env ] && . ./.env; set +a; \
-	cd backend && DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
+	cd backend && DATABASE_URL="$(if $(filter staging,$(ENV)),$(DB_URL),postgresql://sangam:sangam@localhost:5433/sangam)" \
 	.venv/bin/python -m app.ingest.render_docs
 
 ##@ Managed database (ENV=staging)
