@@ -325,10 +325,16 @@ class TestIngestAgentIsSelfDescribing:
         }
 
         # A subagent's tools are registered too — reachable through `task`,
-        # not on the main agent. save_research is the researcher's, by design.
-        from app.ingest.agent import ENTITY_RESEARCHER
+        # not on the main agent. Both subagents count: the parent researches
+        # nothing and writes nothing, so save_research reaches the model only
+        # through the researcher and promote_research only through the writer.
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER
 
-        registered = {t.name for t in TOOLS} | {t.name for t in ENTITY_RESEARCHER["tools"]}
+        registered = (
+            {t.name for t in TOOLS}
+            | {t.name for t in ENTITY_RESEARCHER["tools"]}
+            | {t.name for t in CATALOG_WRITER["tools"]}
+        )
         assert not defined - registered, f"defined but never registered: {sorted(defined - registered)}"
         # The other direction, which is the property the package exists to give:
         # a tool the model can call is a file in app/ingest/tools/, always.

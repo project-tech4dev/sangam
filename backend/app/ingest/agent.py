@@ -92,6 +92,17 @@ def _backend() -> CompositeBackend:
         routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR)},
     )
 
+# The supervisor's own tools. It researches nothing and writes no catalog row:
+# both go through a subagent, so there is one path to a source and one path to
+# the catalog, each under the instructions written for it. Two paths to the
+# same work is what CLAUDE.md killed with search_orgs, and these two had
+# already drifted — only the subagent runs under the researcher's budget,
+# entity-confirmation and money-unit rules.
+#
+# research_goals is not here either, though the parent could use it: in M5 it
+# requires an entity_kind and refuses "unknown", and a supervisor that has not
+# read a source can only ever guess "funder".
+#
 # Grouped as app/ingest/tools/ is, and in call order within each group.
 # plan_import before run_import_now: the plan is shown and agreed before
 # anything is written.
@@ -102,17 +113,9 @@ TOOLS = [
     run_import_now,
     import_run_summary,
     pending_resolutions,
-    # catalog_tools — what Sangam already holds, and the one step that writes to it.
-    research_goals,
+    # catalog_tools — what Sangam already holds. Read-only; promote_research is
+    # the catalog-writer's.
     funder_dossier,
-    promote_research,
-    # research_tools — the way the hand-vetted sheets were built: open the page,
-    # open the report, read the pages carrying the figures. Each checks the
-    # registry and robots.txt before it fetches, so capability does not widen access.
-    search_public_sources,
-    read_page,
-    fetch_document,
-    read_document_pages,
     # save_research publishes the brief it saves; this is only for re-publishing.
     publish_brief,
 ]

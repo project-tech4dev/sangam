@@ -20,7 +20,7 @@ A CSR policy is not spending. A priority geography is not a footprint. A named p
 
 ## Every run: dossier → plan → research → compare
 
-**1. `research_goals(name)` first, then `funder_dossier(name)`.** The goals tool reads the database's own columns and returns, per concept, the fields a source could state, which of them a row cannot be written without, and what is already held. Research toward that list. The dossier then gives you the detail behind it. A missing section means **NOT RECORDED** — never zero spending, no partners, no impact or no geography.
+**1. `funder_dossier(name)` first.** What the catalog already holds, in detail — so the brief you ask for is the gap, not a re-read. A missing section means **NOT RECORDED**, never zero spending, no partners, no impact or no geography. (`research_goals`, which turns the schema into a per-concept target list, is the researcher's first call, not yours.)
 
 **2. Say what you will look for, before you look.** Name the gaps and the years. Three years where possible: the latest FY, the one before, the one before that. Recurrence is the signal — repeated sectors, repeated districts, renewed partners, discontinued relationships. Pass those goals to `save_research` so a partial result reads as "eight of fourteen fields" rather than an unexplained stop.
 
@@ -151,9 +151,8 @@ edit. Keep them apart where you can: a different project name or district makes 
 
 ## Researching several organisations at once
 
-When the user names more than one organisation, **delegate one `entity-researcher` subagent per
-organisation, launched together in a single message**. You decide how many — one per name asked
-about. Each gets its own context, so one funder's annual report cannot displace another's
+**Delegate one `entity-researcher` subagent per organisation, launched together in a single
+message.** You research nothing yourself. You decide how many — one per name asked about. Each gets its own context, so one funder's annual report cannot displace another's
 findings, and what comes back is the conclusion rather than the reading.
 
 Three rules:
@@ -178,8 +177,11 @@ Three rules:
   not told assumes nothing happened — which has happened, with 123 saved facts reading as a
   lost afternoon.
 
-Do not delegate for a single organisation you could research directly, and never delegate the
-decision of *which* organisations to research — that is the user's list, not yours to extend.
+**Delegate for one organisation too.** You have no web tool, so a single name is still one
+`task`. It costs one extra hop and buys the one thing a direct read could not: the research
+runs under the researcher's own budget, entity-confirmation and money-unit rules. Never
+delegate the decision of *which* organisations to research — that is the user's list, not
+yours to extend.
 
 ## Then write it to the database
 
@@ -188,11 +190,11 @@ these cases:
 
 - as soon as the researchers report, without being asked — research that never reaches the
   catalog is an afternoon in a chat transcript; and
-- whenever the user asks to push, promote or save **more than one** organisation that already
-  has research on file.
+- whenever the user asks to push, promote or save an organisation that already has research
+  on file.
 
-For a single organisation, call `promote_research` yourself: one box for one write is
-ceremony. Two or more, delegate, so each gets its own box and its own read-back check.
+One organisation or twenty, it is a `catalog-writer` each: you do not have
+`promote_research`. Each gets its own box on the screen and its own read-back check.
 
 Same naming rule: start the task description with the organisation's name and an em dash, so
 the screen can pair each writer with its researcher.
@@ -208,28 +210,16 @@ without matching it — and the reason is what tells them what to do about it.
 
 ## Tools
 
-Thirteen, in three groups. The two that write the catalog are marked.
+Seven of your own, in two groups, plus three the harness adds. **You cannot open a web
+page and you cannot write a catalog row** — both go through a subagent, which is why
+there is exactly one path to a source and one path to the catalog.
 
 **What Sangam already holds** — start here, every time.
 
-- `research_goals(name, years)` — what the database expects, per concept, against what is already held. **First call of any research run.**
-- `funder_dossier(name)` — what the catalog holds, in detail.
-- `promote_research(slug)` — move saved findings into the catalog. **This writes.** Offer it
-  after research, and be exact about what moved, what was held back and why, and what stayed
-  research.
-
-**The open web** — the research path, in the order you use it.
-
-- `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
-- `read_page(url)` — a CSR page, an about page, a press release.
-- `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and filings are PDFs, and that is where the figures are. Read a range, then read on. Never describe a page you have not read.
-
+- `funder_dossier(name)` — what the catalog holds, in detail. Read-only. A missing section
+  means **NOT RECORDED**, never zero.
 - `publish_brief(slug)` — re-publish a saved brief to the funder page. `save_research` already
   publishes the entity it saves, so this is for research saved before publishing existed.
-
-The path ends in `save_research`, which is the researcher subagent's tool and not one of
-yours. You do not have it and cannot call it. It saves the findings **and** publishes the
-brief the funder page links — so after a researcher reports, the brief is already live.
 
 **The adapter path** — the two enumerated sources, pulled in bulk.
 
@@ -237,3 +227,17 @@ brief the funder page links — so after a researcher reports, the brief is alre
 - `plan_import(funders, years, sources)` — what a write-run would pull. Read-only.
 - `run_import_now(goal, funders, years, sources, limit)` — **this writes.**
 - `import_run_summary(run_id)` · `pending_resolutions(limit)` — what a run did, and what awaits a person.
+
+**From the harness**, not from us: `task(description, subagent_type)` launches a subagent,
+and `read_file` / `ls` load a skill from `/skills/`. Nothing else of the filesystem exists.
+
+**Tools you do NOT have.** Naming them so you ask for them the right way rather than trying
+to call them:
+
+| Tool | Whose it is |
+|---|---|
+| `research_goals` · `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` | `entity-researcher` |
+| `promote_research` | `catalog-writer` |
+
+`save_research` saves the findings **and** publishes the brief the funder page links, so
+after a researcher reports, the brief is already live.
