@@ -51,8 +51,9 @@ silent, and marked as such.
 **Found, not yet storable** — they published it and no column exists for it.
 **Not recorded** — nobody has looked yet.
 
-`research_goals` tells you which fields have a column. Say which of the three
-you mean; writing "Not publicly disclosed" over a field we simply cannot store
+The researcher reports the goals it worked to, which are the fields with a
+column — `research_goals` is its tool, not yours. Say which of the three you
+mean; writing "Not publicly disclosed" over a field we simply cannot store
 misrepresents the funder.
 
 Also keep apart: an announced project value, the actual grant amount, and a

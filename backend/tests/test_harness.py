@@ -220,11 +220,28 @@ class TestTheSkillIsFoundAndIsProgressive:
         text = content if isinstance(content, str) else content.decode("utf-8")
         assert "name:" in text
 
-    def test_the_researcher_declares_its_own_sources(self):
-        from app.ingest.agent import ENTITY_RESEARCHER, SKILLS_ROUTE
+    def test_no_subagent_declares_any(self):
+        """Skills are output procedures, and a subagent has no output to shape.
 
-        # An isolated subagent inherits none of the parent's skills.
-        assert ENTITY_RESEARCHER["skills"] == [SKILLS_ROUTE]
+        The researcher used to declare the route — an isolated subagent
+        inherits nothing, so it had to be declared or not held at all. But its
+        targets come from research_goals, derived from the schema, and the one
+        thing a skill could add is a brief format it cannot produce: it returns
+        a ResearchSummary with no prose. The supervisor writes the brief, so
+        the supervisor holds the skills.
+        """
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER
+
+        for spec in (ENTITY_RESEARCHER, CATALOG_WRITER):
+            assert "skills" not in spec, spec["name"]
+
+    def test_both_skills_are_advertised_to_the_supervisor(self):
+        """One per entity kind. An NGO brief is not a funder scan with fewer
+        rows — it opens on 12A, 80G and FCRA, which no funder table holds."""
+        from app.ingest.agent import SKILLS_DIR
+
+        names = {d.name for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()}
+        assert names == {"funder-scan-for-fundraisers", "ngo-brief-for-funders"}
 
 
 def _subagent_tools(graph) -> dict[str, set[str]]:
@@ -268,14 +285,20 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         for name, tools in subagents.items():
             assert not tools & forbidden, f"{name}: {sorted(tools & forbidden)}"
 
-    def test_the_researcher_reads_skills_and_nothing_else_of_the_filesystem(self, subagents):
+    def test_the_researcher_gets_its_seven_and_nothing_of_the_filesystem(self, subagents):
         assert subagents["entity-researcher"] == {
             "research_goals", "funder_dossier", "search_public_sources",
             "read_page", "fetch_document", "read_document_pages", "save_research",
-            "read_file", "ls",
+            "read_file",
         }
 
     def test_the_writer_gets_the_floor_and_not_the_skill_reader(self, subagents):
-        # It declares no skills, so ls would be dead weight; read_file is the
-        # one tool FilesystemMiddleware refuses to be built without.
         assert subagents["catalog-writer"] == {"promote_research", "funder_dossier", "read_file"}
+
+    def test_neither_gets_ls_because_neither_loads_a_skill(self, subagents):
+        # read_file is left on both only because FilesystemMiddleware refuses
+        # to be constructed without it. `ls` is how a skill is discovered, and
+        # skills are the supervisor's — so on a subagent it is dead weight
+        # pointing at the one backend route that is real disk.
+        for name, tools in subagents.items():
+            assert "ls" not in tools, name

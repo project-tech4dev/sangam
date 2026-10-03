@@ -329,8 +329,11 @@ it. The ceiling is the database's: Supabase allows 60 connections, 3 reserved, a
 deployed instance.
 
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
-reusable brief — the 28-field funder scan a fundraiser wants — advertised by its frontmatter and
-read only when the model judges it relevant. Constraints never live there: progressive disclosure
+reusable brief — the 28-field funder scan a fundraiser wants, and the 12A/80G/FCRA brief a
+funder's CSR team wants about an NGO — advertised by its frontmatter and read only when the
+model judges it relevant. **They are the supervisor's, and no subagent declares one**: a
+researcher's targets come from `research_goals` and the schema, and it returns a
+`ResearchSummary` with no prose to shape. Constraints never live there: progressive disclosure
 means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and
 the access rules cannot be optional. `docs/SKILLS.md` has the mechanism, the discovery rules and
 the honest cost.

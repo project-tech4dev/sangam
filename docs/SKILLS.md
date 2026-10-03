@@ -4,9 +4,16 @@ A skill is a directory with one file:
 
 ```
 backend/app/ingest/skills/
-└── funder-scan-for-fundraisers/
+├── funder-scan-for-fundraisers/
+│   └── SKILL.md
+└── ngo-brief-for-funders/
     └── SKILL.md
 ```
+
+Two, because there are two kinds of entity and the briefs are not the same
+document with fewer rows. A funder scan opens on CSR spend and how to apply;
+an NGO brief opens on 12A, 80G and FCRA, which exist on no funder table and
+are the three facts that decide whether a funder may give at all.
 
 ```markdown
 ---
@@ -109,24 +116,33 @@ graphs rather than the parent's, which is why the original tests missed it.
   change the advertised description until a new thread; the body, read through
   `read_file`, is always current.
 
-## Subagents declare their own
+## Skills are the supervisor's, and no subagent declares one
 
 An isolated subagent inherits **nothing** from the parent
-(`graph.py:701-703`), so `entity-researcher` names `skills=["/skills/"]`
-itself. A `mode="fork"` subagent is the opposite: it inherits the parent's and
-may not declare any.
+(`graph.py:701-703`), so a subagent that wanted skills had to name
+`skills=["/skills/"]` itself, and `entity-researcher` did. It no longer does,
+and the reason is what a skill is for.
 
-"Nothing" includes the **filesystem middleware**, which is less obvious
+A skill carries what the schema cannot: how to lay out a brief a person can
+act on. The researcher's targets come from `research_goals`, derived from the
+SQL catalog, which cannot go stale the way a written field list can — and the
+one thing a skill could add it cannot produce, because it returns a
+`ResearchSummary` with no prose. The supervisor writes the brief, so the
+supervisor holds the skills. `test_no_subagent_declares_any` pins it.
+
+"Nothing" also includes the **filesystem middleware**, which is less obvious
 because the library supplies an unrestricted one rather than none. Each spec
-therefore carries its own `middleware=[filesystem_tools(backend, keep=…)]`:
-`read_file` and `ls` for the researcher, which loads skills, and `read_file`
-alone for `catalog-writer`, which loads none and takes the floor.
+therefore carries its own `middleware=[filesystem_tools(backend)]`, which is
+`keep=("read_file",)` — the floor `FilesystemMiddleware` refuses to be built
+below, and not a capability either subagent uses. Neither gets `ls`: `ls` is
+how a skill is discovered, and on a subagent it is dead weight pointing at the
+one backend route that is real disk.
 
 ## The cost, honestly
 
 deepagents injects a fixed block of roughly forty lines — "Skills System", how
 progressive disclosure works, an example workflow — into **every** request,
-plus one index entry per skill. For one brief-sized procedure that is a clear
+plus one index entry per skill. For two brief-sized procedures that is a clear
 win. Splitting `instructions.md` into six small skills would not be: the
 boilerplate would cost more than the bodies saved, and a turn that loads two
 skills is larger than one that loads none.

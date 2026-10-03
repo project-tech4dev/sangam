@@ -147,9 +147,12 @@ ENTITY_RESEARCHER = {
     ),
     "mode": "isolated",
     "tools": RESEARCHER_TOOLS,
-    # Isolated subagents inherit nothing (graph.py:701-703), so the sources
-    # are declared again here rather than picked up from the parent.
-    "skills": [SKILLS_ROUTE],
+    # No "skills" key, deliberately. It had one, and an isolated subagent
+    # inherits nothing (graph.py:701-703) so it had to be declared here — but
+    # the only skill it could load is an output format, and a researcher
+    # produces a ResearchSummary with no prose. Its targets come from
+    # research_goals, derived from the schema, which cannot go stale the way a
+    # written field list can. Skills are the supervisor's: see docs/SKILLS.md.
     # With a response_format the task tool returns the model's JSON instead of
     # its last message, so the parent and the screen both get structure. It is
     # a SUMMARY, not the findings: those reach the database through
@@ -188,11 +191,10 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     backend = _backend()
     # An isolated subagent builds its own middleware stack, so the parent's restricted
     # filesystem never reaches it: unset, both run write_file and delete against /skills/.
-    researcher = {
-        **ENTITY_RESEARCHER,
-        "middleware": [filesystem_tools(backend, keep=SKILL_READING_TOOLS)],
-    }
-    # The writer loads no skill; read_file is the floor FilesystemMiddleware demands.
+    # Neither subagent loads a skill now, so neither gets `ls`. read_file is
+    # the floor FilesystemMiddleware refuses to be constructed below, not a
+    # capability either of them uses.
+    researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend)]}
     writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend)]}
     # It formats what two tools return, so it needs no reasoning about sources.
     if settings.utility_model:
