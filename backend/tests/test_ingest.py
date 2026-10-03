@@ -416,27 +416,30 @@ class TestResearchRecords:
 
     def test_complete_with_nothing_found_is_a_contradiction(self):
         with pytest.raises(ValidationError, match="complete"):
-            EntityResearch(entity_name="Acme Ltd", status="complete", summary="A" * 25)
+            EntityResearch(entity_name="Acme Ltd", entity_kind="funder", status="complete",
+                           summary="A" * 25)
 
     @pytest.mark.parametrize("status", ["partial", "wrong_entity"])
     def test_stopping_early_has_to_say_why(self, status):
         with pytest.raises(ValidationError, match="stopped_reason"):
-            EntityResearch(entity_name="Acme Ltd", status=status, summary="A" * 25)
+            EntityResearch(entity_name="Acme Ltd", entity_kind="funder", status=status,
+                           summary="A" * 25)
 
     def test_not_found_stands_on_its_own(self):
         # The one status that needs neither findings nor a reason.
-        assert EntityResearch(entity_name="Acme Ltd", status="not_found", summary="A" * 25)
+        assert EntityResearch(entity_name="Acme Ltd", entity_kind="unknown", status="not_found",
+                              summary="A" * 25)
 
     def test_unknown_concepts_are_refused(self):
         with pytest.raises(ValidationError, match="unknown concepts"):
             EntityResearch(
-                entity_name="Acme Ltd", status="not_found", summary="A" * 25,
-                not_found=["csr_year", "vibes"],
+                entity_name="Acme Ltd", entity_kind="unknown", status="not_found",
+                summary="A" * 25, not_found=["csr_year", "vibes"],
             )
 
     def test_findings_are_reachable_by_concept(self):
         r = EntityResearch(
-            entity_name="Acme Ltd", status="complete", summary="A" * 25,
+            entity_name="Acme Ltd", entity_kind="funder", status="complete", summary="A" * 25,
             findings=[
                 self.finding(),
                 PartnerFinding(
@@ -698,7 +701,32 @@ class TestOneConversionTable:
 class TestTheSummaryCannotUnderreport:
     def test_fact_count_is_required(self):
         with pytest.raises(ValidationError):
-            ResearchSummary(slug="acme", entity_name="Acme Ltd", status="complete")
+            ResearchSummary(
+                slug="acme", entity_name="Acme Ltd", entity_kind="funder", status="complete"
+            )
+
+    def test_the_kind_is_required_too(self):
+        # The parent reads this to decide whether to launch a catalog-writer.
+        # Defaulted, every NGO would get one and get back only a refusal.
+        with pytest.raises(ValidationError):
+            ResearchSummary(
+                slug="acme", entity_name="Acme Ltd", status="complete", fact_count=3
+            )
+
+    def test_a_finished_run_cannot_still_be_undecided(self):
+        # 'unknown' is honest for not_found and wrong_entity and nowhere else:
+        # the search that confirms the entity is the search that classifies it.
+        for status in ("complete", "partial"):
+            with pytest.raises(ValidationError, match="unknown"):
+                EntityResearch(
+                    entity_name="Acme Ltd", entity_kind="unknown", status=status,
+                    stopped_reason="budget spent", summary="A" * 25,
+                    findings=[{
+                        "concept": "csr_year", "fiscal_year": "FY2024-25",
+                        "evidence": "The Bank spent Rs 427 crore on CSR activities in FY2024-25.",
+                        "source_url": "https://axis.bank.in/report.pdf", "confidence": "high",
+                    }],
+                )
 
 
 class TestPlaceNamesResolveOrAreRefused:
@@ -781,6 +809,82 @@ class TestPromotionCoversEveryConceptWithAWriter:
         # a program_id, so a programme written after them would leave nulls.
         assert "program" not in WRITE_ORDER
         assert {"csr_spend", "footprint", "partner", "metric"} <= set(WRITE_ORDER)
+
+
+class TestResearchGoalsAsksTheRightTables:
+    """The kind decides the tables AND the foreign key, and both have to move
+    together. `_held_per_concept` used to walk every concept in the registry
+    emitting `WHERE funder_id = %s`, which worked only while every table had
+    one. The day org tables joined the registry it became `SELECT … FROM orgs
+    WHERE funder_id = %s` — an UndefinedColumn swallowed by the broad `except`
+    in research_goals, for FUNDER runs too, since the loop runs before anything
+    is printed. Nothing caught it, which is why this captures the SQL.
+    """
+
+    class _Cursor:
+        async def fetchone(self):
+            return {"n": 0, "years": []}
+
+    class _Conn:
+        def __init__(self):
+            self.sql: list[str] = []
+
+        async def execute(self, sql, params=None):
+            self.sql.append(" ".join(sql.split()))
+            return TestResearchGoalsAsksTheRightTables._Cursor()
+
+    async def _sql_for(self, kind):
+        from app.ingest.tools.catalog_tools import _held_per_concept
+
+        conn = self._Conn()
+        await _held_per_concept(conn, 7, kind)
+        return conn.sql
+
+    @pytest.mark.parametrize(
+        ("kind", "fk", "other"), [("funder", "funder_id", "org_id"), ("org", "org_id", "funder_id")]
+    )
+    async def test_every_query_uses_the_foreign_key_for_its_kind(self, kind, fk, other):
+        from app.ingest.expectations import CONCEPT_TABLES, concepts_for
+
+        queries = await self._sql_for(kind)
+        assert queries, f"{kind} asked nothing"
+        for sql in queries:
+            assert f"WHERE {fk} = %s" in sql, sql
+            assert other not in sql, sql
+        # And only tables this kind actually offers — the entity's own row is
+        # the match already in hand, so it is counted rather than queried.
+        asked = {sql.split(" FROM ")[1].split()[0] for sql in queries}
+        offered = {CONCEPT_TABLES[c] for c in concepts_for(kind)}
+        assert asked <= offered
+        assert "orgs" not in asked and "funders" not in asked
+
+    async def test_an_org_is_asked_about_its_own_tables(self):
+        queries = " | ".join(await self._sql_for("org"))
+        for table in ("org_identifiers", "org_financials", "org_locations"):
+            assert table in queries
+        assert "funder_identifiers" not in queries
+
+    @pytest.mark.parametrize("kind", ["unknown", "", "FUNDER", "ngo"])
+    async def test_a_kind_that_is_not_a_kind_is_refused_with_the_rule(self, kind):
+        """`unknown` is a save-time value for not_found and wrong_entity rows,
+        and the DB CHECK keeps it readable — but it is never a research target.
+        A run given one would get the funder list, which is F6 exactly."""
+        from app.ingest.tools.catalog_tools import funder_dossier, research_goals
+
+        for tool in (research_goals, funder_dossier):
+            out = await tool.ainvoke({"name": "Arpan", "entity_kind": kind})
+            assert out.startswith("REFUSED:"), out
+            # Correctable: it says what to send instead and how to decide.
+            assert "'funder'" in out and "'org'" in out
+
+    def test_the_kind_is_required_and_has_no_default(self):
+        # A default is what made this decorative before: research_goals
+        # defaulted to "funder" and nothing ever passed anything else.
+        from app.ingest.tools.catalog_tools import research_goals
+
+        schema = research_goals.args_schema.model_fields
+        assert schema["entity_kind"].is_required()
+        assert not schema["years"].is_required()
 
 
 class TestTheCatalogWriterCannotResearch:

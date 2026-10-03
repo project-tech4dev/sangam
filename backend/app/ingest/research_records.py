@@ -442,7 +442,10 @@ class EntityResearch(BaseModel):
 
     entity_name: str = Field(min_length=2, description="the name as it was asked for")
     canonical_name: str | None = Field(default=None, description="as the strongest source writes it")
-    entity_kind: Literal["funder", "org", "unknown"] = "unknown"
+    entity_kind: Literal["funder", "org", "unknown"] = Field(
+        description="'funder' if it GIVES money, 'org' if it RECEIVES it. 'unknown' only when "
+                    "the research did not get far enough to tell"
+    )
     website: str | None = None
     status: Literal["complete", "partial", "not_found", "wrong_entity"]
     stopped_reason: str | None = Field(
@@ -477,6 +480,14 @@ class EntityResearch(BaseModel):
             raise ValueError("status 'complete' with no findings — use 'not_found' or 'partial'")
         if self.status in ("partial", "wrong_entity") and not self.stopped_reason:
             raise ValueError(f"status {self.status!r} needs a stopped_reason saying why")
+        # A run that read enough to report findings read enough to say which
+        # kind it was reading about — the two sit in the same first search.
+        # 'unknown' survives for not_found and wrong_entity, where it is true.
+        if self.status in ("complete", "partial") and self.entity_kind == "unknown":
+            raise ValueError(
+                f"status {self.status!r} with entity_kind 'unknown' — research that got this far "
+                f"knows whether the organisation gives money ('funder') or receives it ('org')"
+            )
         return self
 
     def by_concept(self, concept: str) -> list[FindingBase]:
@@ -502,6 +513,10 @@ class ResearchSummary(BaseModel):
     canonical_name: str | None = None
     status: Literal["complete", "partial", "not_found", "wrong_entity"]
     stopped_reason: str | None = None
+    # Required for the same reason fact_count is, plus one the parent acts on:
+    # it decides whether a catalog-writer is launched at all. An NGO has no
+    # writer, so launching one burns a subagent to produce only a refusal.
+    entity_kind: Literal["funder", "org", "unknown"]
     # Required, not defaulted: a model that omits it would put "0 facts" on
     # the board next to a researcher that found thirty.
     fact_count: int

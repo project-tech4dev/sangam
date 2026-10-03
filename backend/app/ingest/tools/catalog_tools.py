@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-async def funder_dossier(name: str) -> str:
-    """Everything the catalog already holds about a funder. Read this BEFORE researching.
+async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
+    """Everything the catalog already holds about a funder or an NGO. Read this BEFORE researching.
 
     Research fills gaps; it does not rediscover what is already recorded. This
     also gives you the baseline for the comparison you report at the end: what
@@ -35,14 +35,32 @@ async def funder_dossier(name: str) -> str:
 
     A missing section means NOT RECORDED. It never means zero spending, no
     partners, no impact or no geography — say "not recorded", never "none".
+
+    Args:
+        name: the organisation, as the user asked for it.
+        entity_kind: 'funder' (the default) reads the funder tables; 'org'
+               reads an NGO's. A parameter rather than a second tool, so there
+               is one dossier to name in one prompt.
     """
+    refusal = _reject_unknown(entity_kind)
+    if refusal:
+        return refusal
+    entity_table, _, sections = _BY_KIND[entity_kind]
+    noun = "funder" if entity_kind == "funder" else "organisation"
+    # Both tables carry these; funder_type and section_135_bound are a funder's
+    # and org_kind and legal_form are an NGO's, so the head line differs.
+    head = (
+        "id, name, slug, registry_status, funder_type, website, parent_id, section_135_bound"
+        if entity_kind == "funder"
+        else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort"
+    )
     try:
         pool = get_pool()
         async with pool.connection() as conn:
+            # Column and table names come from the branch above, never a caller.
             rows = await (
                 await conn.execute(
-                    "SELECT id, name, slug, funder_type, website, registry_status, parent_id, "
-                    "section_135_bound FROM funders "
+                    f"SELECT {head} FROM {entity_table} "
                     "WHERE name ILIKE %s OR similarity(name, %s) >= 0.4 "
                     "ORDER BY similarity(name, %s) DESC LIMIT 5",
                     (f"%{name}%", name, name),
@@ -50,25 +68,24 @@ async def funder_dossier(name: str) -> str:
             ).fetchall()
             if not rows:
                 return (
-                    f"No funder in the catalog matches {name!r}. Everything you find is a NEW "
-                    f"RECORD. That is not evidence the funder is absent from the sector."
+                    f"No {noun} in the catalog matches {name!r}. Everything you find is a NEW "
+                    f"RECORD. That is not evidence the {noun} is absent from the sector."
                 )
             top = rows[0]
             fid = top["id"]
             out = [
-                f"funders [funder:{fid}] {top['name']} ({top['slug']})",
-                (
-                    f"  type={top['funder_type'] or 'not recorded'} "
-                    f"website={top['website'] or 'not recorded'} "
-                    f"section_135_bound={top['section_135_bound']} "
-                    f"registry_status={top['registry_status']} parent_id={top['parent_id']}"
+                f"{entity_table} [{entity_kind}:{fid}] {top['name']} ({top['slug']})",
+                "  " + " ".join(
+                    f"{k}={top[k] if top[k] is not None else 'not recorded'}"
+                    for k in top
+                    if k not in ("id", "name", "slug")
                 ),
             ]
             if len(rows) > 1:
-                others = ", ".join(f"{r['name']} [funder:{r['id']}]" for r in rows[1:])
-                out.append(f"  other funders with a similar name: {others}")
+                others = ", ".join(f"{r['name']} [{entity_kind}:{r['id']}]" for r in rows[1:])
+                out.append(f"  other rows with a similar name: {others}")
 
-            for label, sql in _DOSSIER_SECTIONS:
+            for label, sql in sections:
                 found = await (await conn.execute(sql, (fid,))).fetchall()
                 if not found:
                     out.append(f"\n{label}: NOT RECORDED")
@@ -169,36 +186,132 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     ),
 )
 
+# The org side. Not a rewrite of the tuple above with a different column: an
+# NGO's facts live in different tables, and the four shared ones (programs,
+# metrics, contacts, documents) are the same query with the other foreign key.
+_ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
+    (
+        "org_identifiers (12A, 80G and FCRA live here)",
+        """
+        SELECT id_type, id_value, verified, is_current FROM org_identifiers
+        WHERE org_id = %s ORDER BY id_type
+        """,
+    ),
+    (
+        "org_financials (amounts in INR)",
+        """
+        SELECT fiscal_year, total_income, program_spend, non_program_spend,
+               foreign_contribution, is_audited
+        FROM org_financials WHERE org_id = %s ORDER BY fiscal_year
+        """,
+    ),
+    (
+        "org_locations",
+        """
+        SELECT ol.role, l.name AS location FROM org_locations ol
+        JOIN locations l ON l.id = ol.location_id WHERE ol.org_id = %s
+        """,
+    ),
+    (
+        "programs",
+        """
+        SELECT name, kind, status, start_date, end_date FROM programs
+        WHERE org_id = %s ORDER BY kind, name
+        """,
+    ),
+    (
+        "grants received",
+        """
+        SELECT g.title, g.amount, g.status, g.start_date, f.name AS funder
+        FROM grants g JOIN funders f ON f.id = g.funder_id WHERE g.org_id = %s
+        """,
+    ),
+    (
+        "metrics",
+        """
+        SELECT name, value, unit, period, stage, method FROM metrics
+        WHERE org_id = %s ORDER BY period
+        """,
+    ),
+    (
+        "contacts",
+        """
+        SELECT name, role, kind, verified FROM contacts WHERE org_id = %s
+        """,
+    ),
+    (
+        "documents",
+        """
+        SELECT title, doc_type, as_of, source_url FROM documents
+        WHERE org_id = %s ORDER BY as_of
+        """,
+    ),
+)
+
+# Everything that differs between a funder run and an org run, in one place, so
+# that adding a kind is adding a row rather than editing four `if`s.
+_BY_KIND: dict[str, tuple[str, str, tuple[tuple[str, str], ...]]] = {
+    # kind -> (entity table, foreign key, dossier sections)
+    "funder": ("funders", "funder_id", _DOSSIER_SECTIONS),
+    "org": ("orgs", "org_id", _ORG_DOSSIER_SECTIONS),
+}
+
+
+def _reject_unknown(entity_kind: str) -> str | None:
+    """`unknown` is a save-time value, never a research target.
+
+    It is what a not_found or wrong_entity row is saved as, and legacy rows
+    hold it, so the column keeps it. But a run that has not decided which kind
+    it is researching cannot be given a target list: it would get a funder's,
+    which is how an NGO ended up aimed at funder_identifiers.
+    """
+    if entity_kind in _BY_KIND:
+        return None
+    return (
+        f"REFUSED: entity_kind must be 'funder' or 'org', not {entity_kind!r}. Decide first: "
+        f"one search answers it. A company, corporate foundation or trust that GIVES money is "
+        f"'funder' — BSE/NSE, MCA, csr.gov.in, a CSR annexure. An organisation that RECEIVES "
+        f"it is 'org' — NGO-Darpan, GuideStar India, a 12A/80G page. Say which and why, then "
+        f"call this again."
+    )
+
 
 @tool
-async def research_goals(name: str, years: str = "", entity_kind: str = "funder") -> str:
+async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
     """What to look for, derived from what the database expects. Call this FIRST.
 
     The catalog has a column for every fact worth finding, and this reads that
     list rather than repeating it: per concept, the fields a source could state,
     which of them the row cannot be written without, and what is already held
-    for this funder. Research the gaps.
+    for this entity. Research the gaps.
 
     Args:
         name: the organisation, as the user asked for it.
+        entity_kind: 'funder' for a company, corporate foundation or trust that
+               GIVES money; 'org' for an NGO that RECEIVES it. Required, and
+               'unknown' is refused: the two get different tables, and an NGO
+               aimed at a funder's has nowhere to put its 12A, 80G or FCRA.
         years: comma-separated fiscal years, e.g. 'FY2024-25,FY2023-24'.
                Empty means the three most recent reportable years.
-        entity_kind: 'funder' for a company or foundation, 'org' for an NGO.
-               An NGO's facts hang off tables that have no writer, so the list
-               is shorter and says so.
     """
+    refusal = _reject_unknown(entity_kind)
+    if refusal:
+        return refusal
+    entity_table, _, _ = _BY_KIND[entity_kind]
     try:
         wanted = [y.strip() for y in years.split(",") if y.strip()] or list(recent_fiscal_years())
         pool = get_pool()
         async with pool.connection() as conn:
+            # entity_table comes from _BY_KIND, a module constant, never a caller.
             row = await (
                 await conn.execute(
-                    "SELECT id, name FROM funders WHERE name ILIKE %s OR similarity(name, %s) >= 0.4 "
+                    f"SELECT id, name FROM {entity_table} "
+                    "WHERE name ILIKE %s OR similarity(name, %s) >= 0.4 "
                     "ORDER BY similarity(name, %s) DESC LIMIT 1",
                     (f"%{name}%", name, name),
                 )
             ).fetchone()
-            held = await _held_per_concept(conn, row["id"]) if row else {}
+            held = await _held_per_concept(conn, row["id"], entity_kind) if row else {}
 
         out = [
             (f"Research goals for {name!r}. These are the database's columns, not a wish list — "
@@ -206,19 +319,22 @@ async def research_goals(name: str, years: str = "", entity_kind: str = "funder"
             (f"\nYears to cover: {', '.join(wanted)}. Recurrence is the signal, so ask each year "
              f"separately and never mix them in one record."),
         ]
+        noun = "funder" if entity_kind == "funder" else "organisation"
         out.append(
-            f"\nIn the catalog as [funder:{row['id']}] {row['name']}."
+            f"\nIn the catalog as [{entity_kind}:{row['id']}] {row['name']}."
             if row
             else f"\nNothing in the catalog matches {name!r}. Everything you find is a NEW RECORD. "
-            f"That is not evidence the funder is absent from the sector."
+            f"That is not evidence the {noun} is absent from the sector."
         )
 
         wanted_concepts = concepts_for(entity_kind)
         if entity_kind == "org":
             out.append(
-                "\nThis is an NGO. Everything below hangs off funders in the schema, and orgs "
-                "has no writer yet — so research it fully, but expect it to stay research "
-                "rather than become catalog rows. Saying that plainly is part of the job."
+                "\nThis is an NGO, so these are the org tables: its registrations are 12A, 80G "
+                "and FCRA, not a CSR-1, and its money is income and programme spend rather than "
+                "a Section 135 obligation. orgs has no writer yet — research it fully, it is "
+                "saved and it renders, but expect it to stay research rather than become "
+                "catalog rows. Saying that plainly is part of the job."
             )
         for concept in wanted_concepts:
             table = CONCEPT_TABLES[concept]
@@ -242,20 +358,34 @@ async def research_goals(name: str, years: str = "", entity_kind: str = "funder"
         return f"research_goals failed: {type(exc).__name__}: {exc}"
 
 
-async def _held_per_concept(conn: Any, funder_id: int) -> dict[str, tuple[int, list[str]]]:
-    """Row counts, and the fiscal years already covered, per concept."""
+async def _held_per_concept(
+    conn: Any, entity_id: int, entity_kind: str
+) -> dict[str, tuple[int, list[str]]]:
+    """Row counts, and the fiscal years already covered, per concept.
+
+    Both halves have to move together. This used to walk every concept in the
+    registry and emit `WHERE funder_id = %s`, which was fine while every table
+    had one — the moment orgs tables joined the registry it became `SELECT …
+    FROM orgs WHERE funder_id = %s`, an UndefinedColumn swallowed by the broad
+    `except` in research_goals, **for funder runs too**, because the loop runs
+    before anything is printed. So it iterates the concepts for this kind and
+    takes the foreign key from the same place.
+    """
+    entity_table, fk, _ = _BY_KIND[entity_kind]
     out: dict[str, tuple[int, list[str]]] = {}
-    for concept, table in CONCEPT_TABLES.items():
-        if concept == "identity":
+    for concept in concepts_for(entity_kind):
+        table = CONCEPT_TABLES[concept]
+        # The entity's own row, which is the match we already have in hand.
+        if table == entity_table:
             out[concept] = (1, [])
             continue
-        # Table names come from CONCEPT_TABLES, a module constant, never a caller.
+        # Table and column names come from module constants, never a caller.
         has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
         years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
         found = await (
             await conn.execute(
-                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE funder_id = %s",
-                (funder_id,),
+                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE {fk} = %s",
+                (entity_id,),
             )
         ).fetchone()
         out[concept] = (found["n"], [y for y in (found["years"] or []) if y])
