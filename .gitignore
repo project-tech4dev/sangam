@@ -5,7 +5,7 @@ node_modules/
 .next/
 __pycache__/
 *.pyc
-.venv/
+.venv
 backend/downloads/
 .DS_Store
 db/backups/
@@ -17,10 +17,19 @@ db/backups/
 *.swp
 *.swo
 
-# Agent skills installed with `npx skills` — tooling, not application code.
-.agents/
-.claude/skills/
+# Agent skills installed with `npx skills`. No trailing slash here or on .venv:
+# git treats a symlink as a file, and a sandbox symlinks both into its worktree.
+.agents
 skills-lock.json
+
+# Per-entry: git never descends into an excluded directory, so a `!` negation
+# after a directory exclude could never match. First-party skills are committed.
+.claude/skills/*
+!.claude/skills/sandbox/
 
 # Vercel CLI link (contains projectId/orgId)
 .vercel
+
+# Per-worktree manifest from scripts/sandbox.sh: slot and ports, no secrets.
+# It dies with the worktree, which is what keeps slot allocation derived.
+.sandbox

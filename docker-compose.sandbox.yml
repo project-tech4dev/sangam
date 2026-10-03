@@ -1,0 +1,26 @@
+# Layered over docker-compose.yml for every stack scripts/sandbox.sh creates,
+# via COMPOSE_FILE in the sandbox's .env so no -f is needed. See docs/SANDBOX.md.
+#
+# Isolation rests on the project name coming from the directory basename. A
+# `name:` key, a `container_name:`, or an absolute bind mount breaks it silently.
+
+services:
+  # Off by default: 768 MB and two ports for a graph most features never touch.
+  # Profiled here, not in the base file, or slot 0's Neo4j would stop too.
+  neo4j:
+    profiles: ["graph"]
+
+  backend:
+    depends_on:
+      # Without required:false, `up` refuses to start when the profile is off.
+      # depends_on is a mapping, so the base file's postgres entry survives.
+      neo4j:
+        condition: service_healthy
+        required: false
+
+volumes:
+  # Shared npm cache — most of the 6-10 minute cold boot. external:true is the
+  # point: a teardown's `down -v` is the one thing that cannot delete it.
+  frontend_npm_cache:
+    name: sangam_shared_npm_cache
+    external: true

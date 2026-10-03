@@ -8,6 +8,7 @@ set -uo pipefail
 BACKEND="${BACKEND_URL:-http://localhost:8010}"
 FRONTEND="${FRONTEND_URL:-http://localhost:3000}"
 AUTH=(-H "Authorization: Bearer dev")
+MIN_DOCUMENTS="${SMOKE_MIN_DOCUMENTS:-96}"
 PASS=0
 FAIL=0
 
@@ -51,10 +52,16 @@ check_status  "health endpoint"            "$BACKEND/health" 200 5
 # is that the seeded cohort is present, not that nothing was ever added to it.
 check_json    "stats: cohort counts"       "$BACKEND/api/meta/stats" "d['orgs'] >= 10 and d['funders'] >= 4"
 check_json    "orgs: legacy array of 10"   "$BACKEND/api/orgs" "isinstance(d, list) and len(d) == 10"
-check_json    "funders: latest_scores"     "$BACKEND/api/funders" "d[0]['latest_scores'].get('v1') is not None"
-check_json    "scores: 8 assessments"      "$BACKEND/api/scores?limit=100" "d['total'] == 8"
-check_json    "grants: 4 relationships"    "$BACKEND/api/grants" "d['total'] == 4"
-check_json    "documents: 96+ on file"    "$BACKEND/api/documents?limit=1" "d['total'] >= 96"
+# any(), not d[0]: funders come back alphabetically and Sangam Import adds
+# unscored ones, so d[0] stopped being a seeded funder on the first import.
+check_json    "funders: latest_scores"     "$BACKEND/api/funders" "any(f['latest_scores'].get('v1') is not None for f in d)"
+# >= not ==, same reason: an import only ever adds, and a sandbox cloned from a
+# stack that has run one would fail an equality check on rows it should have.
+check_json    "scores: 8+ assessments"     "$BACKEND/api/scores?limit=100" "d['total'] >= 8"
+check_json    "grants: 4+ relationships"   "$BACKEND/api/grants" "d['total'] >= 4"
+# Overridable floor: a baseline + `make seed` sandbox has no documents at all,
+# so it runs with SMOKE_MIN_DOCUMENTS=0 and one script serves both paths.
+check_json    "documents: ${MIN_DOCUMENTS}+ on file" "$BACKEND/api/documents?limit=1" "d['total'] >= $MIN_DOCUMENTS"
 check_status  "agent AG-UI health"         "$BACKEND/agent/health" 200 5
 
 say "── frontend ─────────────────────────────────────"

@@ -54,6 +54,22 @@ Ports: frontend `3000`, backend `8010` (published from the container's `8000`), 
 on `8000` directly — which is why `dev-frontend` points there while `make smoke` defaults to
 `8010`.
 
+Those are **slot 0**'s ports. A second feature gets its own whole stack:
+
+```bash
+make sandbox-new SLUG=rls BASE=HEAD   # worktree ../sangam-rls, ports 3010/8020/5443
+make sandbox-ls                       # slot, branch and URLs for each
+make sandbox-rm SLUG=rls              # containers, volumes, worktree and branch
+```
+
+Slot *N* publishes base + 10*N*, and its database is a `pg_dump` clone of slot 0. Inside the
+worktree every ordinary target already hits that stack — the compose project name comes from
+the directory basename, which is what makes the isolation free and why `docker-compose.yml`
+must never gain a `name:` key or an absolute bind-mount path. `docs/SANDBOX.md` has the slot
+allocation and the clone/fallback decision tree; `.claude/skills/sandbox/SKILL.md` has the
+day-to-day use and the memory budget. `BASE=HEAD` is needed only until
+`feat/dev-harness-parallel-sandboxes` merges.
+
 Tests and lint (backend):
 
 ```bash
@@ -249,6 +265,20 @@ invisible to the agent until someone puts it there, and boot logs any live table
 neither catalogued nor in `KNOWN_EXCLUDED`.
 
 ## Conventions
+
+**Comments and docstrings are 1-2 lines. This one is strict.** One line by default, a second
+only when the first genuinely needs it. Rationale, alternatives considered and the war story
+go in the commit message and `docs/`, which is where they stay accurate — a paragraph inlined
+above a function pushes the code apart and goes stale the first time someone edits below it.
+An inline comment marking a hazard at the line it protects is wanted; compress it, do not
+delete it. This was stated after a cleanup deleted 842 lines of inlined rationale across 89
+docstrings and 39 comment blocks, so it is a correction, not a preference.
+
+**The one exception: `@tool` docstrings in `backend/app/agent/tools/`.** Those are not
+documentation — they are what the model reads to choose and call the tool, and the `Args:`
+block becomes the parameter schema. Trimming them changes agent behaviour: doing it
+mechanically once deleted `db_query`'s "ALWAYS profile a text column before filtering" rule
+and left its arguments with no descriptions at all.
 
 **Schema changes go in `db/migrations/*.sql`, never in `db/init/02_schema.sql`.** The
 baseline is what a brand-new database gets; migrations carry everything after it. See
