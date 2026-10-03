@@ -366,10 +366,61 @@ class RfpFinding(FindingBase):
     sector: str | None = Field(default=None, description="the theme the call is for, as printed")
 
 
+# --- The org side -----------------------------------------------------------
+# Namespaced because this is a tagged union on `concept`: two members cannot
+# both declare Literal["identity"]. Amounts are Money even though the columns
+# are numeric — the test compares names, and a bare float is how the crore bug
+# gets reintroduced on a new surface.
+
+
+class OrgIdentityFinding(FindingBase):
+    """An NGO, not a funder. orgs has no website column; EntityResearch carries it."""
+
+    concept: Literal["org_identity"] = "org_identity"
+    name: str = Field(min_length=2, description="the legal name as the strongest source writes it")
+    org_kind: Literal["cso", "intermediary", "government"] | None = None
+    legal_form: str | None = Field(
+        default=None, description="free text as printed, e.g. 'Public Charitable Trust'"
+    )
+    registration_date: date | None = None
+
+
+class OrgIdentifierFinding(FindingBase):
+    """12A, 80G and FCRA live here and nowhere else — funder_identifiers has no room for them."""
+
+    concept: Literal["org_identifier"] = "org_identifier"
+    id_type: Literal["pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"]
+    id_value: str = Field(min_length=2, description="exactly as printed. Never guess an identifier")
+    notes: str | None = None
+
+
+class OrgFinancialsFinding(YearlyFinding):
+    concept: Literal["org_financials"] = "org_financials"
+    total_income: Money | None = None
+    program_spend: Money | None = Field(
+        default=None, description="spent on programmes, not the total. The two are different"
+    )
+    non_program_spend: Money | None = None
+    foreign_contribution: Money | None = Field(
+        default=None, description="FCRA receipts for the year, when the return states them"
+    )
+    is_audited: bool | None = Field(default=None, description="null means unknown, not false")
+    notes: str | None = None
+
+
+class OrgLocationFinding(PlacedFinding):
+    """Where an NGO works. role='registered' is its registered address."""
+
+    concept: Literal["org_location"] = "org_location"
+    role: Literal["registered", "operates", "funds"] = "operates"
+    note: str | None = None
+
+
 Finding = Annotated[
     IdentityFinding | IdentifierFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
     | StatedGeographyFinding | PartnerFinding | ProgramFinding | GrantFinding | MetricFinding
-    | ContactFinding | DocumentFinding | RfpFinding,
+    | ContactFinding | DocumentFinding | RfpFinding
+    | OrgIdentityFinding | OrgIdentifierFinding | OrgFinancialsFinding | OrgLocationFinding,
     Field(discriminator="concept"),
 ]
 
@@ -379,6 +430,8 @@ FINDING_MODELS: dict[str, type[FindingBase]] = {
     "stated_geography": StatedGeographyFinding, "partner": PartnerFinding,
     "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,
     "contact": ContactFinding, "document": DocumentFinding, "rfp": RfpFinding,
+    "org_identity": OrgIdentityFinding, "org_identifier": OrgIdentifierFinding,
+    "org_financials": OrgFinancialsFinding, "org_location": OrgLocationFinding,
 }
 
 

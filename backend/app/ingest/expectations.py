@@ -26,9 +26,20 @@ from datetime import UTC, date, datetime
 
 from app.agent.tools.sql.catalog import CATALOG
 
-# Concepts an NGO offers too. Every other table hangs off a funder_id.
+# Which kind of entity offers a concept. programs, metrics, contacts and
+# documents each carry both an org_id and a funder_id, so they are the same
+# concept either way and only the foreign key changes. Everything else hangs
+# off one or the other — including identity and identifiers, which is the bug
+# this split fixes: an NGO used to be sent at funder_identifiers, whose id_type
+# enum is pan|cin|csr1|darpan|reg_no|domain|name and holds no 12A, 80G or FCRA.
 _BOTH = frozenset({"funder", "org"})
 _FUNDER = frozenset({"funder"})
+_ORG = frozenset({"org"})
+
+# orgs has no writer: no OrgRecord, no resolve_org, no write_org. Research an
+# NGO fully — it is saved, it renders, it is on file — but it stays research
+# until one lands. See docs/INGEST.md, "Known gaps".
+_ORGS_HAVE_NO_WRITER = "orgs has no writer yet; stays research until one lands"
 
 # grants.org_id is NOT NULL and orgs has no writer, so a funded organisation the
 # catalog does not hold cannot become a grant row at all. The relationship goes
@@ -55,8 +66,8 @@ class ConceptSpec:
 # 'stated_geography' is where a funder SAYS it prioritises and 'footprint' is
 # where money demonstrably went: two concepts and two tables, never one.
 CONCEPTS: dict[str, ConceptSpec] = {
-    "identity": ConceptSpec("funders", "Identity", kinds=_BOTH),
-    "identifier": ConceptSpec("funder_identifiers", "Registrations and identifiers", kinds=_BOTH),
+    "identity": ConceptSpec("funders", "Identity"),
+    "identifier": ConceptSpec("funder_identifiers", "Registrations and identifiers"),
     "csr_year": ConceptSpec("funder_csr_years", "CSR position by year"),
     "csr_spend": ConceptSpec(
         "funder_csr_spend",
@@ -95,6 +106,46 @@ CONCEPTS: dict[str, ConceptSpec] = {
         },
     ),
     "rfp": ConceptSpec("rfps", "Open calls for proposals"),
+    # The org side. Namespaced because Finding is a tagged union on `concept`
+    # and two members cannot both declare Literal["identity"]. org_tags is
+    # deliberately absent: tag_id is a bare _id, so the concept would have no
+    # field naming its own subject.
+    "org_identity": ConceptSpec(
+        "orgs",
+        "Identity",
+        kinds=_ORG,
+        promotable=False,
+        not_written=dict.fromkeys(
+            ("name", "org_kind", "legal_form", "registration_date"), _ORGS_HAVE_NO_WRITER
+        ),
+    ),
+    "org_identifier": ConceptSpec(
+        "org_identifiers",
+        "Registrations and identifiers",
+        kinds=_ORG,
+        promotable=False,
+        not_written=dict.fromkeys(("id_type", "id_value", "notes"), _ORGS_HAVE_NO_WRITER),
+    ),
+    "org_financials": ConceptSpec(
+        "org_financials",
+        "Income and spending by year",
+        kinds=_ORG,
+        promotable=False,
+        not_written=dict.fromkeys(
+            (
+                "fiscal_year", "total_income", "program_spend", "non_program_spend",
+                "foreign_contribution", "is_audited", "notes",
+            ),
+            _ORGS_HAVE_NO_WRITER,
+        ),
+    ),
+    "org_location": ConceptSpec(
+        "org_locations",
+        "Where it works",
+        kinds=_ORG,
+        promotable=False,
+        not_written=dict.fromkeys(("state", "district", "role", "note"), _ORGS_HAVE_NO_WRITER),
+    ),
 }
 
 # Derived views. They keep the names the four modules already import, so the
@@ -184,6 +235,12 @@ REQUIRED: dict[str, frozenset[str]] = {
     "contact": frozenset({"name"}),
     "document": frozenset({"title", "doc_type"}),
     "rfp": frozenset({"title"}),
+    "org_identity": frozenset({"name"}),
+    "org_identifier": frozenset({"id_type", "id_value"}),
+    "org_financials": frozenset({"fiscal_year"}),
+    # org_locations.role is NOT NULL but defaults to 'operates', so it is not
+    # demanded. `state` is, for the same reason stated_geography demands it.
+    "org_location": frozenset({"state"}),
 }
 
 
@@ -208,6 +265,12 @@ _DISTRICT = Expected(
 EXTRA: dict[str, tuple[Expected, ...]] = {
     "footprint": (_STATE, _DISTRICT),
     "stated_geography": (_STATE, _DISTRICT),
+    # org_locations has one location_id and no NAMED_AS entry, so the
+    # derivation drops it entirely — the pair is how a place gets stated.
+    # orgs.registered_location_id is dropped the same way and deliberately not
+    # added back: a registered address is this concept with role='registered',
+    # not a second field on org_identity.
+    "org_location": (_STATE, _DISTRICT),
     "metric": (
         Expected(name="state", type="text", note="the state, when the figure is for one place",
                  values=(), required=False),

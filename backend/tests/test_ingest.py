@@ -760,9 +760,21 @@ class TestTheWriterSideRecords:
 
 
 class TestPromotionCoversEveryConceptWithAWriter:
-    def test_only_grant_is_left_out(self):
-        # Eleven of twelve. grants.org_id is NOT NULL and orgs has no writer.
-        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == {"grant"}
+    def test_what_is_left_out_is_left_out_for_one_reason(self):
+        # Twelve of seventeen. Everything excluded is excluded because orgs has
+        # no writer: the four org_* concepts land in org tables, and `grant`
+        # cannot be written either, since grants.org_id is NOT NULL and the
+        # recipient would have to be an orgs row first.
+        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == {
+            "grant", "org_identity", "org_identifier", "org_financials", "org_location",
+        }
+
+    def test_a_funder_concept_is_never_the_one_left_out(self):
+        # The reason above is the whole reason. A funder concept that stopped
+        # being promotable would be a regression, not a design decision.
+        from app.ingest.expectations import concepts_for
+
+        assert set(concepts_for("funder")) - set(PROMOTABLE) == {"grant"}
 
     def test_programmes_are_written_before_anything_that_names_one(self):
         # csr_spend, footprint, partner and metric all resolve program_name to
