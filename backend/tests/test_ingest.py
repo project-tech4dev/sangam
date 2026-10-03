@@ -1158,3 +1158,106 @@ class TestJsonbColumnsCompareByValue:
             {"eligibility": {"requirements": ["80G"]}},
             {"eligibility": '{"requirements": ["12A"]}'},
         )
+
+
+class TestTheOrgWriter:
+    """An NGO reaches the catalog the way a funder does, bar one rule: a row
+    somebody vetted by hand is filled, never overwritten."""
+
+    class _Conn:
+        """Replays a queued row per execute() and records the SQL."""
+
+        def __init__(self, rows):
+            self.rows, self.sql, self.params = list(rows), [], []
+
+        async def execute(self, sql, params=None):
+            self.sql.append(" ".join(sql.split()))
+            self.params.append(params)
+            return self
+
+        async def fetchone(self):
+            return self.rows.pop(0) if self.rows else None
+
+        async def fetchall(self):
+            return self.rows.pop(0) if self.rows else []
+
+    def rec(self, **kw):
+        from app.ingest.records import OrgRecord
+
+        return OrgRecord(**{"name": "Goonj", **prov(), **kw})
+
+    async def test_a_new_org_is_inserted_as_a_placeholder(self):
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([None, {"id": 42}])
+        status, org_id, _changes, conflicts = await write_org(
+            conn, self.rec(legal_form="Trust"), Match("none")
+        )
+        assert (status, org_id, conflicts) == ("added", 42, [])
+        insert = next(q for q in conn.sql if q.startswith("INSERT INTO orgs"))
+        # Not 'in_vetting': an imported row and a row the client vetted must be
+        # tellable apart in the registry.
+        assert "'placeholder'" in insert
+
+    async def test_an_existing_org_is_filled_not_overwritten(self):
+        """The whole reason the org rule differs from write_funder's."""
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([
+            {"org_kind": "cso", "legal_form": "Registered Society "
+             "(Societies Registration Act)", "registration_date": None},
+        ])
+        status, _id, changes, conflicts = await write_org(
+            conn, self.rec(legal_form="Society", registration_date=date(1999, 3, 12)),
+            Match("exact", 9),
+        )
+        assert status == "updated"
+        assert set(changes) == {"registration_date"}
+        assert len(conflicts) == 1 and "Registered Society" in conflicts[0]
+        update = next(q for q in conn.sql if q.startswith("UPDATE orgs"))
+        assert "legal_form" not in update
+
+    async def test_nothing_to_fill_writes_nothing_at_all(self):
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([
+            {"org_kind": "cso", "legal_form": "Trust", "registration_date": None},
+        ])
+        status, _, changes, conflicts = await write_org(
+            conn, self.rec(legal_form="Trust"), Match("exact", 9)
+        )
+        # Provenance describes the write, so with nothing written it stays put.
+        assert (status, changes, conflicts) == ("matched", {}, [])
+        assert not any(q.startswith("UPDATE orgs") for q in conn.sql)
+
+    async def test_twelve_a_and_eighty_g_reach_org_identifiers(self):
+        """funder_identifiers has no room for either; this is the whole point
+        of researching an NGO against its own tables."""
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([None, {"id": 42}])
+        await write_org(
+            conn, self.rec(identifiers={"12a": "AAATG5219M", "80g": "AAATG5219MF2021"}),
+            Match("none"),
+        )
+        wrote = [q for q in conn.sql if q.startswith("INSERT INTO org_identifiers")]
+        assert len(wrote) == 2
+        assert {p[1] for p in conn.params[-2:]} == {"12a", "80g"}
+
+    async def test_a_free_slug_steps_aside_for_one_already_taken(self):
+        from app.ingest.writer import _free_slug
+
+        conn = self._Conn([{"?": 1}, None])
+        assert await _free_slug(conn, "goonj", "orgs") == "goonj-2"
+        assert all("FROM orgs" in q for q in conn.sql)
+
+    async def test_a_registered_address_only_fills_an_empty_one(self):
+        from app.ingest.writer import set_registered_location
+
+        conn = self._Conn([None])
+        assert await set_registered_location(conn, 42, 7) is False
+        assert "registered_location_id IS NULL" in conn.sql[0]

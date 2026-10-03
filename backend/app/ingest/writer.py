@@ -4,10 +4,37 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, NamedTuple
 
 from app.ingest.matcher import Match
-from app.ingest.records import FunderCsrYearRecord, FunderRecord, NewsMentionRecord
+from app.ingest.records import (
+    FunderCsrYearRecord,
+    FunderRecord,
+    NewsMentionRecord,
+    OrgFinancialsRecord,
+    OrgLocationRecord,
+    OrgRecord,
+)
+
+
+class Owner(NamedTuple):
+    """Which side of a shared table a row hangs off.
+
+    programs, metrics, contacts and documents each carry both org_id and
+    funder_id under a CHECK that exactly one is set, so the writers that
+    target them take the column as well as the id rather than existing twice.
+    """
+
+    column: str
+    id: int
+
+    @classmethod
+    def funder(cls, id: int) -> Owner:
+        return cls("funder_id", id)
+
+    @classmethod
+    def org(cls, id: int) -> Owner:
+        return cls("org_id", id)
 
 # Columns a re-import may overwrite on an existing funder. Everything else on the
 # row was either hand-vetted or set by a different source, so an importer leaves it.
@@ -69,7 +96,7 @@ def _plain(v: Any) -> Any:
 
 
 async def ensure_document(
-    conn: Any, rec: Any, *, funder_id: int | None, doc_type: str,
+    conn: Any, rec: Any, *, owner: Owner | None, doc_type: str,
     storage_path: str | None = None, content_hash: str | None = None,
 ) -> tuple[int, str]:
     """One documents row per source URL, so many facts can cite one report.
@@ -97,12 +124,15 @@ async def ensure_document(
             f"UPDATE documents SET {sets} WHERE id = %s", (*fill.values(), row["id"])
         )
         return row["id"], "updated"
+    # The owner column is one of two literals from Owner, never a caller's
+    # string; only values are parameterised. Same rule as _upsert.
+    column = owner.column if owner else "funder_id"
     row = await (
         await conn.execute(
-            "INSERT INTO documents (funder_id, title, doc_type, source_url, source_name, "
+            f"INSERT INTO documents ({column}, title, doc_type, source_url, source_name, "
             "fetched_at, as_of, storage_path, content_hash, is_public, status) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, true, 'read') RETURNING id",
-            (funder_id, getattr(rec, "title", None), doc_type, rec.source_url,
+            (owner.id if owner else None, getattr(rec, "title", None), doc_type, rec.source_url,
              rec.source_name, rec.fetched_at, rec.as_of, storage_path, content_hash),
         )
     ).fetchone()
@@ -157,9 +187,12 @@ async def write_funder(
     return "added", row["id"], {"name": {"old": None, "new": rec.name}}
 
 
-async def _free_slug(conn: Any, base: str) -> str:
+async def _free_slug(conn: Any, base: str, table: str = "funders") -> str:
+    """Table comes from this module, never from a caller."""
     slug, n = base, 2
-    while await (await conn.execute("SELECT 1 FROM funders WHERE slug = %s", (slug,))).fetchone():
+    while await (
+        await conn.execute(f"SELECT 1 FROM {table} WHERE slug = %s", (slug,))
+    ).fetchone():
         slug, n = f"{base}-{n}", n + 1
     return slug
 
@@ -393,11 +426,11 @@ async def write_partner(
 
 
 async def write_program(
-    conn: Any, rec: Any, funder_id: int, *, parent_id: int | None, document_id: int | None
+    conn: Any, rec: Any, owner: Owner, *, parent_id: int | None, document_id: int | None
 ) -> tuple[str, int, dict]:
     """Returns (status, program_id, changes) — the id is needed by every fact
     that names a programme."""
-    key = {"funder_id": funder_id, "name": rec.name}
+    key = {owner.column: owner.id, "name": rec.name}
     proposed = {
         "description": rec.description, "status": rec.status, "start_date": rec.start_date,
         "end_date": rec.end_date, "parent_id": parent_id, "kind": rec.program_kind,
@@ -410,17 +443,18 @@ async def write_program(
     )
     row = await (
         await conn.execute(
-            "SELECT id FROM programs WHERE funder_id = %s AND name = %s", (funder_id, rec.name)
+            f"SELECT id FROM programs WHERE {owner.column} = %s AND name = %s",
+            (owner.id, rec.name),
         )
     ).fetchone()
     return status, row["id"], changes
 
 
 async def write_metric(
-    conn: Any, rec: Any, funder_id: int, *, program_id: int | None,
+    conn: Any, rec: Any, owner: Owner, *, program_id: int | None,
     location_id: int | None, document_id: int | None,
 ) -> tuple[str, dict]:
-    key = {"funder_id": funder_id, "name": rec.name, "period": rec.period,
+    key = {owner.column: owner.id, "name": rec.name, "period": rec.period,
            "program_id": program_id}
     proposed = {
         "value": rec.value, "target": rec.target, "unit": rec.unit, "stage": rec.stage,
@@ -434,9 +468,9 @@ async def write_metric(
 
 
 async def write_contact(
-    conn: Any, rec: Any, funder_id: int, *, document_id: int | None
+    conn: Any, rec: Any, owner: Owner, *, document_id: int | None
 ) -> tuple[str, dict]:
-    key = {"funder_id": funder_id, "name": rec.name, "role": rec.role}
+    key = {owner.column: owner.id, "name": rec.name, "role": rec.role}
     proposed = {
         "kind": rec.contact_kind, "email": rec.email,
         # A shared mailbox the funder published is public by definition; the
@@ -514,3 +548,151 @@ async def write_funder_tag(conn: Any, funder_id: int, tag_id: int, *, note: str 
         "ON CONFLICT (funder_id, tag_id) DO NOTHING",
         (funder_id, tag_id, EXTRACTOR_TAGGER, note),
     )
+
+
+# --- The org side ------------------------------------------------------------
+#
+# Same shape as the funder writers, with one deliberate difference: an org that
+# already exists is FILLED, not overwritten. The ten cohort rows were vetted by
+# hand, so a web page may supply a value nobody has yet and may not replace one
+# somebody chose. write_funder has the opposite rule because every funder row
+# was machine-made in the first place.
+
+ORG_UPDATABLE = ("org_kind", "legal_form", "registration_date")
+ORG_PROVENANCE = ("source_url", "source_name", "fetched_at", "as_of",
+                  "content_hash", "extractor_version")
+ORG_FINANCIALS_KEY = ("org_id", "fiscal_year")
+ORG_FINANCIALS_UPDATABLE = ("total_income", "program_spend", "non_program_spend",
+                            "foreign_contribution", "is_audited", "notes",
+                            "source_url", "source_name", "fetched_at", "as_of")
+ORG_LOCATION_KEY = ("org_id", "location_id")
+ORG_LOCATION_UPDATABLE = ("role", "note", "source_url", "source_name", "fetched_at", "as_of")
+
+
+def _blanks(existing: dict[str, Any], proposed: dict[str, Any]) -> tuple[dict, list[str]]:
+    """(what to write, what we refused to overwrite).
+
+    A column is written only where the stored value is NULL. Everything else a
+    source disagrees with is returned as prose for a person, because silently
+    preferring either one would be a guess dressed as a fact.
+    """
+    fill, conflicts = {}, []
+    for col, new in proposed.items():
+        if new is None:
+            continue
+        old = existing.get(col)
+        if old is None:
+            fill[col] = {"old": None, "new": _plain(new)}
+        elif _diff({col: old}, {col: new}):
+            conflicts.append(
+                f"{col}: the catalog says {_plain(old)!r} and this research says "
+                f"{_plain(new)!r}. The catalog value was kept — a person decides."
+            )
+    return fill, conflicts
+
+
+async def write_org(
+    conn: Any, rec: OrgRecord, match: Match
+) -> tuple[str, int, dict, list[str]]:
+    """Returns (status, org_id, changes, conflicts). Status is added | updated | matched.
+
+    Unlike write_funder this returns a fourth value: the stated differences it
+    declined to apply, which promotion reports rather than discards.
+    """
+    proposed = {
+        "org_kind": rec.org_kind, "legal_form": rec.legal_form,
+        "registration_date": rec.registration_date,
+    }
+    provenance = {
+        "source_url": rec.source_url, "source_name": rec.source_name,
+        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+        "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
+    }
+    if match.resolved:
+        existing = await (
+            await conn.execute(
+                f"SELECT {', '.join(ORG_UPDATABLE)} FROM orgs WHERE id = %s", (match.entity_id,)
+            )
+        ).fetchone()
+        changes, conflicts = _blanks(dict(existing), proposed)
+        await _write_org_identifiers(conn, match.entity_id, rec)
+        if not changes:
+            return "matched", match.entity_id, {}, conflicts
+        # Provenance describes the write, not the entity, so it moves with an
+        # actual change and stays put when nothing was filled.
+        write = {**{c: changes[c]["new"] for c in changes}, **provenance}
+        sets = ", ".join(f"{c} = %s" for c in write)
+        await conn.execute(
+            f"UPDATE orgs SET {sets} WHERE id = %s", (*write.values(), match.entity_id)
+        )
+        return "updated", match.entity_id, changes, conflicts
+
+    slug = await _free_slug(conn, slugify(rec.name), "orgs")
+    row = await (
+        await conn.execute(
+            "INSERT INTO orgs (slug, name, org_kind, legal_form, registration_date, "
+            "registry_status, source_url, source_name, fetched_at, as_of, content_hash, "
+            "extractor_version) "
+            "VALUES (%s, %s, %s, %s, %s, 'placeholder', %s, %s, %s, %s, %s, %s) RETURNING id",
+            (slug, rec.name, rec.org_kind, rec.legal_form, rec.registration_date,
+             *provenance.values()),
+        )
+    ).fetchone()
+    await _write_org_identifiers(conn, row["id"], rec)
+    return "added", row["id"], {"name": {"old": None, "new": rec.name}}, []
+
+
+async def _write_org_identifiers(conn: Any, org_id: int, rec: OrgRecord) -> None:
+    """12A, 80G and FCRA among them — the three funder_identifiers has no room
+    for. `verified` is left at its default: research is not verification."""
+    for id_type, id_value in rec.identifiers.items():
+        await conn.execute(
+            "INSERT INTO org_identifiers (org_id, id_type, id_value, source_url, source_name, "
+            "fetched_at) VALUES (%s, %s, %s, %s, %s, %s) "
+            "ON CONFLICT (id_type, id_value) DO NOTHING",
+            (org_id, id_type, id_value, rec.source_url, rec.source_name, rec.fetched_at),
+        )
+
+
+async def write_org_financials(
+    conn: Any, rec: OrgFinancialsRecord, org_id: int, document_id: int | None
+) -> tuple[str, dict]:
+    """The org analogue of write_csr_year, on UNIQUE (org_id, fiscal_year)."""
+    key = {"org_id": org_id, "fiscal_year": rec.fiscal_year}
+    proposed = {
+        "total_income": rec.total_income, "program_spend": rec.program_spend,
+        "non_program_spend": rec.non_program_spend,
+        "foreign_contribution": rec.foreign_contribution,
+        "is_audited": rec.is_audited, "notes": rec.notes,
+        "source_url": rec.source_url, "source_name": rec.source_name,
+        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+    }
+    return await _upsert(
+        conn, "org_financials", key, ORG_FINANCIALS_UPDATABLE, proposed, document_id
+    )
+
+
+async def write_org_location(
+    conn: Any, rec: OrgLocationRecord, org_id: int, *, location_id: int, document_id: int | None
+) -> tuple[str, dict]:
+    key = {"org_id": org_id, "location_id": location_id}
+    proposed = {
+        "role": rec.role, "note": rec.note, "source_url": rec.source_url,
+        "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+    }
+    return await _upsert(
+        conn, "org_locations", key, ORG_LOCATION_UPDATABLE, proposed, document_id
+    )
+
+
+async def set_registered_location(conn: Any, org_id: int, location_id: int) -> bool:
+    """orgs.registered_location_id, from the org_location finding whose role is
+    'registered'. Fill-only, like every other column on an existing org."""
+    row = await (
+        await conn.execute(
+            "UPDATE orgs SET registered_location_id = %s "
+            "WHERE id = %s AND registered_location_id IS NULL RETURNING id",
+            (location_id, org_id),
+        )
+    ).fetchone()
+    return row is not None

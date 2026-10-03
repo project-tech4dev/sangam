@@ -39,6 +39,7 @@ from app.ingest.records import (
 from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
 from app.ingest.taxonomy import resolve_csr_sector
 from app.ingest.writer import (
+    Owner,
     ensure_document,
     write_contact,
     write_csr_spend,
@@ -212,12 +213,15 @@ async def _place(conn: Any, f: Any, report: dict[str, Any]) -> tuple[int | None,
 
 
 async def _write_documents(
-    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], funder_id: int,
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], owner: Owner,
     report: dict[str, Any],
 ) -> dict[str, int]:
     """Returns source_url -> document id, so many facts can cite one report."""
+    # funders and orgs both key their archive folder on the catalog slug,
+    # which is assigned at write time and so is not known before now.
+    table = "orgs" if owner.column == "org_id" else "funders"
     slug = (await (await conn.execute(
-        "SELECT slug FROM funders WHERE id = %s", (funder_id,)
+        f"SELECT slug FROM {table} WHERE id = %s", (owner.id,)
     )).fetchone())["slug"]
 
     by_url: dict[str, int] = {}
@@ -234,9 +238,9 @@ async def _write_documents(
         key = await storage.archived_key(storage.SOURCE_ARCHIVE, f.source_url)
         digest = storage.hash_from_key(key) if key else None
         if key:
-            key = await _shelve(key, slug, f.as_of, digest)
+            key = await _shelve(key, slug, f.as_of, digest, prefix=table)
         document_id, status = await ensure_document(
-            conn, shim, funder_id=funder_id, doc_type=f.doc_type,
+            conn, shim, owner=owner, doc_type=f.doc_type,
             storage_path=storage.qualify(storage.SOURCE_ARCHIVE, key) if key else None,
             content_hash=digest,
         )
@@ -245,7 +249,9 @@ async def _write_documents(
     return by_url
 
 
-async def _shelve(key: str, slug: str, as_of: str | None, digest: str | None) -> str:
+async def _shelve(
+    key: str, slug: str, as_of: str | None, digest: str | None, *, prefix: str = "funders"
+) -> str:
     """Move a just-archived object to a name a person can read, now that the
     funder is known. Returns wherever the object actually ended up.
 
@@ -255,14 +261,15 @@ async def _shelve(key: str, slug: str, as_of: str | None, digest: str | None) ->
     possible. The leftovers are informative — an object still under a hash
     folder is one we downloaded and no finding ever cited.
     """
-    destination = storage.catalog_key(slug, as_of, storage.filename_from_key(key))
+    destination = storage.catalog_key(slug, as_of, storage.filename_from_key(key), prefix=prefix)
     if destination == key:
         return key
     # Same funder, same year, same published filename, different bytes. Rare,
     # and silently overwriting one with the other would lose a source.
     if await storage.stat(storage.SOURCE_ARCHIVE, destination) is not None:
         destination = storage.catalog_key(
-            slug, as_of, storage.filename_from_key(key), suffix=(digest or "")[:8]
+            slug, as_of, storage.filename_from_key(key), suffix=(digest or "")[:8],
+            prefix=prefix,
         )
     return destination if await storage.move(
         storage.SOURCE_ARCHIVE, key, destination
@@ -270,7 +277,7 @@ async def _shelve(key: str, slug: str, as_of: str | None, digest: str | None) ->
 
 
 async def _write_programs(
-    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], funder_id: int,
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], owner: Owner,
     docs: dict[str, int], report: dict[str, Any],
 ) -> dict[str, int]:
     """Returns programme name -> id, so later concepts can resolve program_name."""
@@ -289,7 +296,7 @@ async def _write_programs(
             report["held"].append(f"programme {f.name!r}: {exc.errors()[0]['msg']}")
             continue
         status, program_id, _ = await write_program(
-            conn, rec, funder_id, parent_id=ids.get(f.parent_name or ""),
+            conn, rec, owner, parent_id=ids.get(f.parent_name or ""),
             document_id=docs.get(f.source_url),
         )
         ids[f.name] = program_id
@@ -335,10 +342,16 @@ def _describe(concept: str, f: Any) -> str:
 
 
 async def _write_facts(
-    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], funder_id: int,
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], owner: Owner,
     programs: dict[str, int], docs: dict[str, int], report: dict[str, Any],
 ) -> None:
-    """Every remaining concept, in dependency order."""
+    """Every remaining concept, in dependency order.
+
+    `order` is what keeps the two kinds apart: the funder-only branches below
+    read funder_id, and an org run never reaches them because ORG_WRITE_ORDER
+    names none of their concepts.
+    """
+    funder_id = owner.id
     name = row["canonical_name"] or row["entity_name"]
     fetched = row["researched_at"]
     seen: set[tuple] = set()
@@ -443,7 +456,7 @@ async def _write_facts(
                         sequence=f.sequence, notes=f.notes, as_of=f.period, **shared,
                     )
                     status, _ = await write_metric(
-                        conn, rec, funder_id, program_id=program_id,
+                        conn, rec, owner, program_id=program_id,
                         location_id=district_id or state_id, document_id=document_id,
                     )
                     _count(report, "metrics", status)
@@ -469,7 +482,7 @@ async def _write_facts(
                         is_role_mailbox=f.is_role_mailbox, notes=f.notes, as_of=None, **shared,
                     )
                     status, _ = await write_contact(
-                        conn, rec, funder_id, document_id=document_id
+                        conn, rec, owner, document_id=document_id
                     )
                     _count(report, "contacts", status)
 
@@ -477,8 +490,9 @@ async def _write_facts(
                 report["held"].append(f"{concept}: {exc.errors()[0]['msg']}")
 
     # Every Schedule VII clause this funder's spending touched, recorded once
-    # against the funder with the wording that placed it there.
-    for tag_id, wording in themes.items():
+    # against the funder with the wording that placed it there. org_tags is
+    # not a concept, and nothing on the org side resolves a sector anyway.
+    for tag_id, wording in themes.items() if owner.column == "funder_id" else ():
         await write_funder_tag(
             conn, funder_id, tag_id, note=f"from research: {wording}" if wording else None
         )
@@ -570,14 +584,15 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
     status, funder_id, _ = await write_funder(conn, record, match, parent_id=parent_id)
     report["funder"] = {"status": status, "id": funder_id, "name": record.name}
 
-    docs = await _write_documents(conn, row, findings, funder_id, report)
+    owner = Owner.funder(funder_id)
+    docs = await _write_documents(conn, row, findings, owner, report)
     for year_record in csr_years_from(row, findings):
         state, _ = await write_csr_year(
             conn, year_record, funder_id, docs.get(year_record.source_url)
         )
         report["csr_years"].append({"fiscal_year": year_record.fiscal_year, "status": state})
-    programs = await _write_programs(conn, row, findings, funder_id, docs, report)
-    await _write_facts(conn, row, findings, funder_id, programs, docs, report)
+    programs = await _write_programs(conn, row, findings, owner, docs, report)
+    await _write_facts(conn, row, findings, owner, programs, docs, report)
     # Ten findings citing the same unresolvable state is one problem, not ten.
     report["held"] = list(dict.fromkeys(report["held"]))
     return report

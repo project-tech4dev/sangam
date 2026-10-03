@@ -145,12 +145,15 @@ def _year(as_of: str | None) -> str:
     return digits if re.fullmatch(r"\d{4}(-\d{2,4})?", digits or "") else ""
 
 
-def catalog_key(funder_slug: str, as_of: str | None, filename: str, suffix: str = "") -> str:
-    """The key an object gets once PROMOTION knows which funder it belongs to.
+def catalog_key(
+    entity_slug: str, as_of: str | None, filename: str, suffix: str = "",
+    prefix: str = "funders",
+) -> str:
+    """The key an object gets once PROMOTION knows which entity it belongs to.
 
-    `funders/<slug>/<year>-<publisher's filename>`, which is browsable, sorts
-    by year within a funder, and keeps the name the funder itself published so
-    a row can be matched back to its source by eye.
+    `<funders|orgs>/<slug>/<year>-<publisher's filename>`, which is browsable,
+    sorts by year within an entity, and keeps the name the publisher itself
+    used so a row can be matched back to its source by eye.
 
     The year and the funder both come from the catalog, so this cannot be built
     at fetch time — `fetch_document` runs during research and `resolve_funder`
@@ -166,7 +169,7 @@ def catalog_key(funder_slug: str, as_of: str | None, filename: str, suffix: str 
         f"{_safe_name(filename)}{'-' + suffix if suffix else ''}"
     )
     year = _year(as_of)
-    return f"funders/{_safe_name(funder_slug)}/{year + '-' if year else ''}{base}"
+    return f"{prefix}/{_safe_name(entity_slug)}/{year + '-' if year else ''}{base}"
 
 
 def brief_key(slug: str) -> str:

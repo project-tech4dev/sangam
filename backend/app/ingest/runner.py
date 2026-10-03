@@ -193,7 +193,7 @@ async def _write_csr_year(conn: Any, run_id: int, rec: FunderCsrYearRecord) -> N
         )
         return
     document_id, _ = await writer.ensure_document(
-        conn, rec, funder_id=match.entity_id, doc_type="news_article"
+        conn, rec, owner=writer.Owner.funder(match.entity_id), doc_type="news_article"
     )
     status, changes = await writer.write_csr_year(conn, rec, match.entity_id, document_id)
     await _item(
