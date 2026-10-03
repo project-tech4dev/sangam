@@ -17,7 +17,7 @@ export type Milestone = {
   /** What actually happened, in the user's terms — never a tool name. */
   detail: string;
   state: MilestoneState;
-  /** Shown as chips: the hosts read, the organisations saved. */
+  /** Shown as chips: the organisations and their kind, the hosts read. */
   items: string[];
 };
 
@@ -71,9 +71,23 @@ export function milestonesOf(steps: TraceStep[], running: boolean): Milestone[] 
 
   const hosts = [...new Set(readOk.map((s) => host((s.args as any)?.url)).filter(Boolean))];
   const refused = read.filter((s) => !s.running && !succeeded(s)).length;
-  const names = [
-    ...new Set(checked.map((s) => (s.args as any)?.name).filter(Boolean) as string[]),
-  ];
+  // name -> entity kind. Only research_goals carries a kind today, and only
+  // from M5; a call without one must never overwrite a name already resolved
+  // by one with it, which a Set over joined strings could not express.
+  const kinds = new Map<string, string>();
+  for (const s of checked) {
+    const name = (s.args as any)?.name as string | undefined;
+    if (!name) continue;
+    // "unknown" is a kind the tool can return and not a classification, so it
+    // is treated as absent here as well as at render time.
+    const raw = (s.args as any)?.entity_kind as string | undefined;
+    const kind = !raw || raw === "unknown" ? "" : raw;
+    if (kind || !kinds.has(name)) kinds.set(name, kind);
+  }
+  const names = [...kinds.keys()];
+  const identified = [...kinds].map(([name, kind]) =>
+    kind ? `${name} → ${kind.toUpperCase()}` : name,
+  );
   const organisations = [
     ...new Set(
       saved.map((s) => (s.args as any)?.findings?.entity_name).filter(Boolean) as string[],
@@ -91,10 +105,13 @@ export function milestonesOf(steps: TraceStep[], running: boolean): Milestone[] 
   return [
     {
       key: "catalog",
-      label: "Checked what we already hold",
-      detail: names.length > 0 ? names.join(", ") : "the catalog was not consulted first",
+      label: "Identified",
+      detail:
+        names.length > 0
+          ? `${names.length} organisation${names.length === 1 ? "" : "s"}, checked against the catalog`
+          : "no organisation was named before the sources were opened",
       state: state(checked, read.length > 0),
-      items: names,
+      items: identified,
     },
     {
       key: "sources",

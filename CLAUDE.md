@@ -212,8 +212,18 @@ tools, since Sangam Import needs `read_file` to load a skill and Ask Sangam must
 `install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
 preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its six plus `read_file`,
 which `FilesystemMiddleware` refuses to be built without; Sangam Import adds `ls`. Nothing that
-writes survives on either. Tests pin all of it, because the next library upgrade is free to add
-more.
+writes survives on either.
+
+**A subagent inherits none of that and must say so itself.** `create_deep_agent` builds an
+isolated subagent's middleware from scratch with an *unrestricted* `FilesystemMiddleware`, and
+folds the parent's in only for `mode="fork"`. So `entity-researcher` and `catalog-writer` each
+carry their own `middleware=[filesystem(backend, keep=...)]` in `app/ingest/agent.py` — without
+it they run all eight tools, and `write_file`/`edit_file`/`delete` reach real disk through the
+`/skills/` route. A test that reads only `build(...).nodes["tools"]` cannot see this: it is the
+parent's tool node. `TestASubagentRunsOnlyTheToolsItsSpecDeclares` walks the compiled subagent
+graphs instead.
+
+Tests pin all of it, because the next library upgrade is free to add more.
 
 There used to be four hand-written tools wrapping fixed queries (`search_orgs`, `get_funder`,
 `get_grants`, `get_fit_scores`). They were removed, and it is worth knowing why before
@@ -286,8 +296,12 @@ in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asse
 registered tool is named there), and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name).
 For Sangam Import the four places are the same shape but different files:
-`app/ingest/tools/<module>.py`, the `TOOLS` list in `app/ingest/agent.py`,
-`app/ingest/instructions.md`, and `frontend/features/ingest/lib/toolLabels.ts`.
+`app/ingest/tools/<module>.py`, a tool list in `app/ingest/agent.py`,
+the prompt that owns that list, and `frontend/features/ingest/lib/toolLabels.ts`.
+**Which list, and therefore which prompt, is the decision.** The supervisor's `TOOLS` is
+named in `instructions.md`; a subagent's `tools` is named in its `prompts/<name>.md`, and
+instructions.md naming it does nothing — an isolated subagent never sees that file. A
+parametrised test holds each spec against its own prompt.
 There used to be a `HIDDEN_TOOLS` set there suppressing the `deepagents` filesystem built-ins
 from the trace; the tools themselves are gone now, so hiding them is not needed.
 
@@ -315,8 +329,11 @@ it. The ceiling is the database's: Supabase allows 60 connections, 3 reserved, a
 deployed instance.
 
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
-reusable brief — the 28-field funder scan a fundraiser wants — advertised by its frontmatter and
-read only when the model judges it relevant. Constraints never live there: progressive disclosure
+reusable brief — the 28-field funder scan a fundraiser wants, and the 12A/80G/FCRA brief a
+funder's CSR team wants about an NGO — advertised by its frontmatter and read only when the
+model judges it relevant. **They are the supervisor's, and no subagent declares one**: a
+researcher's targets come from `research_goals` and the schema, and it returns a
+`ResearchSummary` with no prose to shape. Constraints never live there: progressive disclosure
 means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and
 the access rules cannot be optional. `docs/SKILLS.md` has the mechanism, the discovery rules and
 the honest cost.

@@ -21,14 +21,16 @@ else.
 
 ```
   ┌─ RESEARCH PATH (the main one) ────────────────────────┐
-  │  research_goals    what the schema expects, minus     │
+  │  entity-researcher, one per organisation:             │
+  │    research_goals  what the schema expects, minus     │
   │                    what the catalog already holds     │
   │         ↓                                             │
-  │  search_public_sources → read_page / fetch_document   │
+  │    search_public_sources → read_page / fetch_document │
   │         ↓                                             │
-  │  save_research  →  entity_research (typed findings)   │
+  │    save_research → entity_research (typed findings)   │
   │         ↓                                             │
-  │  promote_research ────────────────────┐               │
+  │  catalog-writer, one per organisation:                │
+  │    promote_research ──────────────────┐               │
   └───────────────────────────────────────│───────────────┘
                                           │
   ┌─ ADAPTER PATH ────────────────────┐   │
@@ -113,8 +115,20 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 | `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
-**Sangam Import** (main) holds thirteen of the fourteen: everything above except `save_research`,
-which belongs to the researcher subagent, because the parent never copies findings around.
+**Sangam Import** (main) holds seven: the five pipeline tools, `funder_dossier` and
+`publish_brief`. It supervises. It cannot open a web page and it cannot write a catalog row —
+both go through a subagent, so there is one path to a source and one path to the catalog, each
+under the prompt written for it. The parent held all of them until 2026-10-03, and a
+single-organisation run then researched under `instructions.md`, without the researcher's
+budget, entity-confirmation or money-unit rules: two paths to the same work, already drifted.
+
+`research_goals` went with them. In a kind-aware world it refuses `"unknown"`, and a supervisor
+that has not read a source can only ever guess `"funder"`.
+
+A tool's **prompt** is therefore whichever one owns its list. An isolated subagent never sees
+`instructions.md`, so naming a researcher's tool there does nothing for it;
+`test_a_subagent_prompt_names_every_tool_its_spec_declares` holds each spec against its own
+`prompts/<name>.md`.
 
 **`entity-researcher`** — one per organisation, `mode: "isolated"`, so each gets its own context
 window. The reason is context, not speed: a single broad turn once read three PDFs across twenty
@@ -141,7 +155,16 @@ provider's rate limit.
 
 ## The research path in detail
 
-**1. `research_goals(name, years, entity_kind)`** — the first call of any run. It derives what to
+**0. One search, to resolve and classify.** Before any budget is spent, the researcher
+confirms the organisation is the one that was asked for, and decides whether it **gives**
+money or **receives** it. That is `entity_kind`, and it is the most consequential call of
+the run: the two kinds get different tables, and an NGO aimed at the funder tables is offered
+an identifier enum with no 12A, no 80G and no FCRA. A wrong *entity* is a STOP; a wrong
+*kind* is just a different goal list.
+
+**1. `research_goals(name, entity_kind, years)`** — the first call after that. `entity_kind`
+is required and `'unknown'` is refused: it stays a save-time value for `not_found` and
+`wrong_entity` rows, where it is true, and is never a research target. The tool derives what to
 look for from `app/agent/tools/sql/catalog.py`, the same data the SQL tool allowlists and that
 `verify_against_db()` checks against the live schema at boot. Per concept it returns the fields a
 source could state, their CHECK-constraint values, which of them the row cannot be written
@@ -178,7 +201,13 @@ it.
 
 ## What lands where
 
-Twelve concepts, eleven with a writer:
+Seventeen concepts, twelve with a writer — a funder is researched against thirteen of them
+and an NGO against eight, with four shared. The tables below are a copy; the source is
+`CONCEPTS` in `app/ingest/expectations.py`, from which the table map, the brief's section
+titles, the promotable list, the "researched but not written" excuses and `concepts_for(kind)`
+are all derived.
+
+A **funder** (13):
 
 | Concept | Table |
 |---|---|
@@ -193,9 +222,26 @@ Twelve concepts, eleven with a writer:
 | metric | `metrics` |
 | contact | `contacts` |
 | document | `documents` |
+| rfp | `rfps` |
 | **grant** | **`grants` — no writer** |
 
-`grant` is the exception, deliberately: `grants.org_id` is `NOT NULL` and there is no writer for
+An **org** (8). `program`, `metric`, `contact` and `document` are the same four tables as
+above, which each carry an `org_id` as well as a `funder_id`; only the foreign key changes.
+The other four are the NGO's own, and none has a writer:
+
+| Concept | Table |
+|---|---|
+| program · metric · contact · document | as above, on `org_id` |
+| **org_identity** | **`orgs` — no writer** |
+| **org_identifier** | **`org_identifiers` — no writer.** 12A, 80G and FCRA live here |
+| **org_financials** | **`org_financials` — no writer** |
+| **org_location** | **`org_locations` — no writer** |
+
+`org_tags` is deliberately unmapped: `tag_id` is a bare `_id`, so the concept would have no
+field naming its own subject. The org concepts are namespaced because `Finding` is a tagged
+union on `concept` and two members cannot both declare `Literal["identity"]`.
+
+`grant` is the exception on the funder side, deliberately: `grants.org_id` is `NOT NULL` and there is no writer for
 `orgs`, so a funded organisation the catalog does not hold cannot become a grant row.
 `funder_partners.org_id` is nullable, which is where such a relationship belongs — and the more
 honest claim anyway, since a named partner is not proof that money changed hands.
@@ -226,9 +272,11 @@ apart.
 real sentence with a real number and no funder in it. `reject_if_aggregate()` raises on any record
 carrying such a name.
 
-**An NGO promoted as a funder.** Every table above hangs off `funders`, so promoting research with
-`entity_kind = 'org'` would write an NGO into the funder table — a wrong answer wearing a catalog
-citation.
+**An NGO promoted as a funder.** Every promotable table hangs off `funders`, so promoting
+research with `entity_kind = 'org'` would write an NGO into the funder table — a wrong answer
+wearing a catalog citation. The supervisor does not launch a `catalog-writer` for one at all:
+`ResearchSummary.entity_kind` is required precisely so it can tell, and spending a subagent to
+be handed a refusal is the thing to avoid.
 
 ## Amounts
 
@@ -284,17 +332,17 @@ so keying off it made every unfinished researcher read as "done" the moment a ru
 
 ## Known gaps
 
-- **The org data path.** No `OrgRecord`, no `resolve_org`, no `write_org`. NGO research is saved
-  and rendered but never becomes a row in `orgs` — and `grants` waits on it.
+- **The org data path.** NGO research is now asked for against the right four tables — 12A,
+  80G, FCRA, income and programme spend, districts — and it is saved, published and rendered.
+  What is missing is the writer: no `OrgRecord`, no `resolve_org`, no `write_org`, so none of
+  it becomes a row in `orgs`, `org_identifiers`, `org_financials` or `org_locations`. `grants`
+  waits on the same thing. The registry already carries a `not_written` reason per field, so
+  when a writer lands the change is `promotable=True` and a record class, not a hunt.
 - **`csr_sector_id` is always NULL.** `tags.kind` allows `'csr_sector'` but no Schedule VII
   taxonomy is seeded to normalise against, so a funder's own wording for a theme stays in `notes`
   rather than being invented into a tag.
-- **RFPs are outside the research vocabulary.** `rfps` has `deadline`, `amount_min`, `amount_max`
-  and `eligibility` columns; no concept points at them, so the researcher is never asked to look.
-- **Some researched fields are dropped on promotion** — five of the ten statutory CSR items, the
-  parent-company link, and `section_135_bound` are collected by the finding models and not
-  written.
-- **`archive_url`, `content_hash` and `extractor_version`** are written by nothing in the ingest
-  path, against the provenance convention in CLAUDE.md.
+- **`archive_url` is written by nothing in the ingest path**, against the provenance convention
+  in CLAUDE.md. `content_hash` and `extractor_version` are written (`promote.py`); the hash is
+  over the sentence and the URL, so re-reading the same claim is recognisably the same fact.
 - **Batch durability** — per-organisation timeouts, resumability and per-organisation status are
   designed and not built.

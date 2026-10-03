@@ -92,6 +92,17 @@ def _backend() -> CompositeBackend:
         routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR)},
     )
 
+# The supervisor's own tools. It researches nothing and writes no catalog row:
+# both go through a subagent, so there is one path to a source and one path to
+# the catalog, each under the instructions written for it. Two paths to the
+# same work is what CLAUDE.md killed with search_orgs, and these two had
+# already drifted — only the subagent runs under the researcher's budget,
+# entity-confirmation and money-unit rules.
+#
+# research_goals is not here either, though the parent could use it: in M5 it
+# requires an entity_kind and refuses "unknown", and a supervisor that has not
+# read a source can only ever guess "funder".
+#
 # Grouped as app/ingest/tools/ is, and in call order within each group.
 # plan_import before run_import_now: the plan is shown and agreed before
 # anything is written.
@@ -102,17 +113,9 @@ TOOLS = [
     run_import_now,
     import_run_summary,
     pending_resolutions,
-    # catalog_tools — what Sangam already holds, and the one step that writes to it.
-    research_goals,
+    # catalog_tools — what Sangam already holds. Read-only; promote_research is
+    # the catalog-writer's.
     funder_dossier,
-    promote_research,
-    # research_tools — the way the hand-vetted sheets were built: open the page,
-    # open the report, read the pages carrying the figures. Each checks the
-    # registry and robots.txt before it fetches, so capability does not widen access.
-    search_public_sources,
-    read_page,
-    fetch_document,
-    read_document_pages,
     # save_research publishes the brief it saves; this is only for re-publishing.
     publish_brief,
 ]
@@ -144,9 +147,12 @@ ENTITY_RESEARCHER = {
     ),
     "mode": "isolated",
     "tools": RESEARCHER_TOOLS,
-    # Isolated subagents inherit nothing (graph.py:701-703), so the sources
-    # are declared again here rather than picked up from the parent.
-    "skills": [SKILLS_ROUTE],
+    # No "skills" key, deliberately. It had one, and an isolated subagent
+    # inherits nothing (graph.py:701-703) so it had to be declared here — but
+    # the only skill it could load is an output format, and a researcher
+    # produces a ResearchSummary with no prose. Its targets come from
+    # research_goals, derived from the schema, which cannot go stale the way a
+    # written field list can. Skills are the supervisor's: see docs/SKILLS.md.
     # With a response_format the task tool returns the model's JSON instead of
     # its last message, so the parent and the screen both get structure. It is
     # a SUMMARY, not the findings: those reach the database through
@@ -180,20 +186,23 @@ CATALOG_WRITER: dict = {
 def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Before create_deep_agent: the profile is read while the graph is built.
     install_harness()
-    # The writer calls two tools and formats what they return; it needs no
-    # reasoning about sources, so it does not need the model that reads
-    # forty-page annual reports. Unset, this is the same model as everything
-    # else and nothing changes.
-    writer = {**CATALOG_WRITER}
-    if settings.utility_model:
-        writer["model"] = resolve_model(settings.utility_model)
     # No SQL tools by design: this agent proposes typed records, and app/ingest/writer.py
     # is the only thing that writes. Ask Sangam reads; this one imports.
     backend = _backend()
+    # An isolated subagent builds its own middleware stack, so the parent's restricted
+    # filesystem never reaches it: unset, both run write_file and delete against /skills/.
+    # Neither subagent loads a skill now, so neither gets `ls`. read_file is
+    # the floor FilesystemMiddleware refuses to be constructed below, not a
+    # capability either of them uses.
+    researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend)]}
+    writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend)]}
+    # It formats what two tools return, so it needs no reasoning about sources.
+    if settings.utility_model:
+        writer["model"] = resolve_model(settings.utility_model)
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,
-        subagents=[ENTITY_RESEARCHER, writer],
+        subagents=[researcher, writer],
         backend=backend,
         skills=[SKILLS_ROUTE],
         middleware=[filesystem_tools(backend, keep=SKILL_READING_TOOLS), clear_old_tool_results()],

@@ -79,12 +79,24 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
 };
 
 
+/** The URL is already in the label beside the note, and often twice in the
+ *  message itself. What is left after removing it is the reason. */
+function reason(message: string): string {
+  const quoted = message.match(/'(\d{3}) ([^']+)'/);
+  if (quoted) return `HTTP ${quoted[1]} ${quoted[2]}`;
+  const plain = message.match(/\bHTTP (\d{3})\b/);
+  if (plain) return `HTTP ${plain[1]}`;
+  const text = message.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
+  return text.length > 110 ? `${text.slice(0, 110)}…` : text;
+}
+
 /** Refusals and failures are the one thing worth surfacing from a result. */
 export function stepNote(result: string | null): string | null {
   if (!result) return null;
-  const first = result.trim().split("\n")[0] ?? "";
-  if (first.startsWith("REFUSED:")) return first.replace("REFUSED:", "").trim();
-  if (first.startsWith("ERROR:") || first.includes("failed:")) return first;
+  const first = (result.trim().split("\n")[0] ?? "").trim();
+  // A refusal is already a written sentence; an error is a traceback fragment.
+  if (first.startsWith("REFUSED:")) return reason(first.slice("REFUSED:".length));
+  if (first.startsWith("ERROR:") || first.includes("failed:")) return reason(first);
   return null;
 }
 

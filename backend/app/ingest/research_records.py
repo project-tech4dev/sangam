@@ -20,17 +20,11 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# 'stated_geography' is where a funder SAYS it prioritises; 'footprint' is where
-# money demonstrably went. Keeping them apart is the distinction the whole agent
-# runs on, so they are two concepts and two tables, never one.
-CONCEPTS = (
-    "identity", "identifier", "csr_year", "csr_spend", "footprint", "stated_geography",
-    "partner", "program", "grant", "metric", "contact", "document", "rfp",
-)
-Concept = Literal[
-    "identity", "identifier", "csr_year", "csr_spend", "footprint", "stated_geography",
-    "partner", "program", "grant", "metric", "contact", "document", "rfp",
-]
+from app.ingest.expectations import CONCEPTS as _REGISTRY
+
+# The vocabulary is the registry's, in its order. A `Concept = Literal[...]`
+# alias used to sit here repeating all thirteen; it was imported nowhere.
+CONCEPTS: tuple[str, ...] = tuple(_REGISTRY)
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
 
 SCHEMA_VERSION = 2
@@ -372,10 +366,61 @@ class RfpFinding(FindingBase):
     sector: str | None = Field(default=None, description="the theme the call is for, as printed")
 
 
+# --- The org side -----------------------------------------------------------
+# Namespaced because this is a tagged union on `concept`: two members cannot
+# both declare Literal["identity"]. Amounts are Money even though the columns
+# are numeric — the test compares names, and a bare float is how the crore bug
+# gets reintroduced on a new surface.
+
+
+class OrgIdentityFinding(FindingBase):
+    """An NGO, not a funder. orgs has no website column; EntityResearch carries it."""
+
+    concept: Literal["org_identity"] = "org_identity"
+    name: str = Field(min_length=2, description="the legal name as the strongest source writes it")
+    org_kind: Literal["cso", "intermediary", "government"] | None = None
+    legal_form: str | None = Field(
+        default=None, description="free text as printed, e.g. 'Public Charitable Trust'"
+    )
+    registration_date: date | None = None
+
+
+class OrgIdentifierFinding(FindingBase):
+    """12A, 80G and FCRA live here and nowhere else — funder_identifiers has no room for them."""
+
+    concept: Literal["org_identifier"] = "org_identifier"
+    id_type: Literal["pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"]
+    id_value: str = Field(min_length=2, description="exactly as printed. Never guess an identifier")
+    notes: str | None = None
+
+
+class OrgFinancialsFinding(YearlyFinding):
+    concept: Literal["org_financials"] = "org_financials"
+    total_income: Money | None = None
+    program_spend: Money | None = Field(
+        default=None, description="spent on programmes, not the total. The two are different"
+    )
+    non_program_spend: Money | None = None
+    foreign_contribution: Money | None = Field(
+        default=None, description="FCRA receipts for the year, when the return states them"
+    )
+    is_audited: bool | None = Field(default=None, description="null means unknown, not false")
+    notes: str | None = None
+
+
+class OrgLocationFinding(PlacedFinding):
+    """Where an NGO works. role='registered' is its registered address."""
+
+    concept: Literal["org_location"] = "org_location"
+    role: Literal["registered", "operates", "funds"] = "operates"
+    note: str | None = None
+
+
 Finding = Annotated[
     IdentityFinding | IdentifierFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
     | StatedGeographyFinding | PartnerFinding | ProgramFinding | GrantFinding | MetricFinding
-    | ContactFinding | DocumentFinding | RfpFinding,
+    | ContactFinding | DocumentFinding | RfpFinding
+    | OrgIdentityFinding | OrgIdentifierFinding | OrgFinancialsFinding | OrgLocationFinding,
     Field(discriminator="concept"),
 ]
 
@@ -385,6 +430,8 @@ FINDING_MODELS: dict[str, type[FindingBase]] = {
     "stated_geography": StatedGeographyFinding, "partner": PartnerFinding,
     "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,
     "contact": ContactFinding, "document": DocumentFinding, "rfp": RfpFinding,
+    "org_identity": OrgIdentityFinding, "org_identifier": OrgIdentifierFinding,
+    "org_financials": OrgFinancialsFinding, "org_location": OrgLocationFinding,
 }
 
 
@@ -395,7 +442,10 @@ class EntityResearch(BaseModel):
 
     entity_name: str = Field(min_length=2, description="the name as it was asked for")
     canonical_name: str | None = Field(default=None, description="as the strongest source writes it")
-    entity_kind: Literal["funder", "org", "unknown"] = "unknown"
+    entity_kind: Literal["funder", "org", "unknown"] = Field(
+        description="'funder' if it GIVES money, 'org' if it RECEIVES it. 'unknown' only when "
+                    "the research did not get far enough to tell"
+    )
     website: str | None = None
     status: Literal["complete", "partial", "not_found", "wrong_entity"]
     stopped_reason: str | None = Field(
@@ -430,6 +480,14 @@ class EntityResearch(BaseModel):
             raise ValueError("status 'complete' with no findings — use 'not_found' or 'partial'")
         if self.status in ("partial", "wrong_entity") and not self.stopped_reason:
             raise ValueError(f"status {self.status!r} needs a stopped_reason saying why")
+        # A run that read enough to report findings read enough to say which
+        # kind it was reading about — the two sit in the same first search.
+        # 'unknown' survives for not_found and wrong_entity, where it is true.
+        if self.status in ("complete", "partial") and self.entity_kind == "unknown":
+            raise ValueError(
+                f"status {self.status!r} with entity_kind 'unknown' — research that got this far "
+                f"knows whether the organisation gives money ('funder') or receives it ('org')"
+            )
         return self
 
     def by_concept(self, concept: str) -> list[FindingBase]:
@@ -455,6 +513,10 @@ class ResearchSummary(BaseModel):
     canonical_name: str | None = None
     status: Literal["complete", "partial", "not_found", "wrong_entity"]
     stopped_reason: str | None = None
+    # Required for the same reason fact_count is, plus one the parent acts on:
+    # it decides whether a catalog-writer is launched at all. An NGO has no
+    # writer, so launching one burns a subagent to produce only a refusal.
+    entity_kind: Literal["funder", "org", "unknown"]
     # Required, not defaulted: a model that omits it would put "0 facts" on
     # the board next to a researcher that found thirty.
     fact_count: int

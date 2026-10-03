@@ -104,7 +104,20 @@ async def main() -> int:
 
     # Every researched funder is shown to every client for now: which funders
     # matter to which NGO is a matching question, and matching is not built.
-    funders = [r for r in rows if r["entity_kind"] != "org"]
+    #
+    # `== "funder"`, not `!= "org"`. The old test let "unknown" through, and
+    # today's one unknown row is a wrong_entity — an organisation we looked at
+    # and rejected, listed to a client as a funder we researched for them. An
+    # unclassified row is not a funder; it is a row that has not said. Every
+    # row still gets its docs/entities/<slug>.md above, so nothing is dropped
+    # from the record, only from the client's table.
+    funders = [r for r in rows if r["entity_kind"] == "funder"]
+    skipped = [r for r in rows if r["entity_kind"] != "funder"]
+    if skipped:
+        print(
+            f"docs/clients: {len(skipped)} row(s) not listed as funders — "
+            + ", ".join(f"{r['slug']} ({r['entity_kind']}/{r['status']})" for r in skipped)
+        )
     written = 0
     for client in clients:
         readme = CLIENTS / client["slug"] / "README.md"

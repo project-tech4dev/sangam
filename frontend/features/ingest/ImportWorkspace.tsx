@@ -5,7 +5,7 @@ import { useAgentChat } from "@/lib/useAgentChat";
 import { Milestones } from "./components/Milestones";
 import { RunStatus } from "./components/RunStatus";
 import { SubagentBoard } from "./components/SubagentBoard";
-import { humanizeTool, stepNote } from "./lib/toolLabels";
+import { failuresOf } from "./lib/failures";
 
 const SUGGESTIONS = [
   // Loads the funder-scan skill, which supplies the 28-field brief so nobody
@@ -61,36 +61,31 @@ export function ImportWorkspace() {
                 list of "Delegating a sub-task" hides that entirely. */}
             <SubagentBoard steps={turn.steps.filter((s) => s.tool === "task")} />
 
-            {turn.steps
-              .filter((step) => step.tool !== "task")
-              .map((step) => {
-                const { label, detail } = humanizeTool(step.tool);
-                const note = stepNote(step.result);
-                return (
-                  <div
-                    key={step.id}
-                    style={{
-                      borderLeft: "3px solid var(--color-divider)",
-                      paddingLeft: 12,
-                      fontSize: "var(--fs-sm)",
-                    }}
-                  >
-                    <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                      <span style={{ fontWeight: 600 }}>{label}</span>
-                      <span style={{ color: "var(--color-muted)" }}>{detail(step.args)}</span>
-                      {step.running && <span style={{ color: "var(--color-muted)" }}>…</span>}
-                    </div>
-                    {/* The findings belong in the answer, not the trace. Only a
-                        refusal or an error is surfaced here, because those change
-                        what the answer can claim. */}
-                    {note && (
-                      <div style={{ color: "var(--color-bad)", fontSize: "var(--fs-xs)", marginTop: 2 }}>
-                        {note}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            {/* Refusals and failures only. The findings belong in the answer and
+                the stages belong above; a line per tool call buried both. */}
+            {failuresOf(turn.steps).map((f) => (
+              <div
+                key={f.id}
+                style={{
+                  borderLeft: "3px solid var(--color-bad)",
+                  paddingLeft: 12,
+                  fontSize: "var(--fs-sm)",
+                }}
+              >
+                <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 600 }}>{f.label}</span>
+                  <span style={{ color: "var(--color-muted)" }}>{f.detail}</span>
+                  <span style={{ color: "var(--color-bad)", fontSize: "var(--fs-xs)" }}>
+                    {f.note}
+                  </span>
+                  {f.count > 1 && (
+                    <span style={{ color: "var(--color-muted)", fontSize: "var(--fs-xs)" }}>
+                      ×{f.count}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
 
             {turn.answer && (
               <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{turn.answer}</div>
