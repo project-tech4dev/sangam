@@ -160,7 +160,7 @@ export function milestonesOf(steps: TraceStep[], running: boolean): Milestone[] 
       label: "Saved the brief to the bucket",
       detail:
         published.length > 0
-          ? `${published.length} brief${published.length === 1 ? "" : "s"} — the funder page links it`
+          ? `${published.length} brief${published.length === 1 ? "" : "s"} — the entity page links it`
           : "no brief was published",
       // Publishing rides on save_research, so a save that happened without it
       // means Storage is off — worth showing, never worth calling a failure.

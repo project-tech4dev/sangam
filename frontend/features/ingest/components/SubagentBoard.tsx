@@ -69,7 +69,7 @@ function outcomeOf(step: TraceStep): Outcome {
         rows,
         tables,
         held,
-        slug: parsed.funder_name ?? parsed.slug,
+        slug: parsed.entity_name ?? parsed.slug,
         note: held[0] ?? (rows === 0 ? "nothing reached the catalog" : undefined),
       };
     }

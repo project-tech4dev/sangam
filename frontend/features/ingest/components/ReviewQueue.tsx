@@ -7,8 +7,9 @@ export function ReviewQueue({ items }: { items: QueueItem[] }) {
     <section>
       <h2 style={{ fontSize: "var(--fs-lg)", margin: "0 0 4px" }}>Waiting for a person</h2>
       <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-muted)", margin: "0 0 12px" }}>
-        Each of these resembled a funder already in the catalog without matching it. Merging two
-        different organisations is the one mistake an import cannot undo, so it stops here.
+        Each of these resembled an organisation already in the catalog — a funder or an NGO —
+        without matching it. Merging two different organisations is the one mistake an import
+        cannot undo, so it stops here.
       </p>
       <div style={{ display: "grid", gap: 8 }}>
         {items.map((q) => (
