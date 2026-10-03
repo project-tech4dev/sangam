@@ -31,10 +31,11 @@ duplicates in a catalog read as corroboration.
 
 ## Where each field lands
 
-**An NGO's fields.** Note that none of these land today regardless of the
-map: `orgs` has no writer — no `OrgRecord`, no `resolve_org`, no `write_org`
-— so an organisation's research stays research. The map is what a writer will
-satisfy.
+**An NGO's fields.** These land, with one rule that changes what the map
+means: on an organisation the catalog already holds, a column is written only
+where it is currently empty. A value the catalog states and the research
+contradicts is **reported, never applied** — so a cell in this map can be
+correct, cited, and still not become the stored value. Say which.
 
 | Pulled | Lands in |
 |---|---|

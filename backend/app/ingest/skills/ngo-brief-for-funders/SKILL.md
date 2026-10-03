@@ -58,8 +58,10 @@ here is a judgement wearing a citation.
 - **found, not storable** — they published it and no column exists for it
 - **not recorded** — nobody has looked yet
 
-## What stays research
+## What is stored and what is not
 
-An organisation's research is saved and published but never promoted: `orgs`
-has no writer. Say so plainly wherever the comparison implies the catalog
-holds these rows. It does not.
+An organisation's research promotes, so the comparison may well be describing
+rows the catalog holds. Two things it still does not hold, and a cell that
+depends on either says so: an NGO's **website**, which has no column, and any
+figure on an organisation the catalog already states differently — that
+difference is reported for a person, not stored.

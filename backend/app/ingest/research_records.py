@@ -546,15 +546,16 @@ class PromotionReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     slug: str
-    funder_name: str | None = None
-    funder_id: int | None = None
+    entity_name: str | None = None
+    entity_id: int | None = None
+    entity_kind: Literal["funder", "org"] | None = None
     tables_written: list[TableWrite] = Field(default_factory=list)
     rows_written: int
     held_back: list[str] = Field(
         default_factory=list, description="verbatim reasons, each a decision for a person"
     )
     still_research: list[str] = Field(
-        default_factory=list, description="concepts with no writer, e.g. ['grant']"
+        default_factory=list, description="concepts that stayed research, e.g. ['grant']"
     )
     verified: bool = Field(
         default=False, description="true only if the dossier was read back and agreed"

@@ -152,17 +152,18 @@ Import screen, and renders to `docs/entities/<slug>.md`. Nothing you research is
 identity, identifiers, CSR years, project spend, footprints, stated geography, partners,
 programmes, metrics, contacts, documents and RFPs. Offer it once research is saved.
 
-**The one exception is `grant`.** `grants.org_id` is NOT NULL and there is no writer for `orgs`,
-so a funded organisation the catalog does not already hold cannot become a grant row. Record the
-relationship as a **partner** instead, which is the honest claim anyway: a named partner is not
-proof that money changed hands.
+**The one exception is `grant`.** `grants.org_id` is NOT NULL and promoting a funder's
+research does not write the NGOs it names, so a recipient the catalog does not already hold
+cannot become a grant row. Record the relationship as a **partner** instead, which is the
+honest claim anyway: a named partner is not proof that money changed hands.
 
-**An NGO stays research.** Everything promotable above hangs off a funder. An NGO is
-researched against its own four concepts — `org_identity`, `org_identifier`, `org_financials`,
-`org_location` — which land in `orgs`, `org_identifiers`, `org_financials` and `org_locations`,
-and none of those four has a writer. Research an NGO fully: it is saved, it renders, it is on
-file, and its 12A, 80G and FCRA are recorded with the evidence for each. Then say plainly that
-it does not become a catalog row yet. Do not launch a `catalog-writer` for it.
+**An NGO promotes too, down its own path.** It is researched against its own four concepts —
+`org_identity`, `org_identifier`, `org_financials`, `org_location` — which land in `orgs`,
+`org_identifiers`, `org_financials` and `org_locations`, while its programmes, metrics,
+contacts and documents land in the same tables a funder's do. Its 12A, 80G and FCRA are
+recorded with the evidence for each. One rule differs and is worth repeating to the user: on
+an organisation the catalog already holds, research **fills blanks only** — a column somebody
+entered by hand is never overwritten, and every difference is reported instead.
 
 **What promotion holds back, it names.** A place that is not an Indian state, an organisation
 whose name resembles one we hold without matching it, a finding missing a field the column
@@ -218,11 +219,11 @@ yours to extend.
 
 ## Then write it to the database
 
-**Only for a `funder`.** The researcher's summary carries `entity_kind`, and that is the gate:
-an NGO has no writer, so launching one spends a subagent to be told so. Say plainly that the
-research is saved, published and on file, and that it stays research — then stop.
+**Either kind.** The researcher's summary carries `entity_kind`; pass it on, because the
+writer's read-back check defaults to the funder tables and an NGO checked against those reads
+as empty however well the write went.
 
-**Launch one `catalog-writer` per funder, together in a single message**, in both of
+**Launch one `catalog-writer` per organisation, together in a single message**, in both of
 these cases:
 
 - as soon as the researchers report, without being asked — research that never reaches the
@@ -230,7 +231,7 @@ these cases:
 - whenever the user asks to push, promote or save an organisation that already has research
   on file.
 
-One organisation or twenty, it is a `catalog-writer` each: you do not have
+One organisation or twenty, funder or NGO, it is a `catalog-writer` each: you do not have
 `promote_research`. Each gets its own box on the screen and its own read-back check.
 
 Same naming rule: start the task description with the organisation's name and an em dash, so

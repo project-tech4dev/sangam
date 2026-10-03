@@ -332,9 +332,9 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
             out.append(
                 "\nThis is an NGO, so these are the org tables: its registrations are 12A, 80G "
                 "and FCRA, not a CSR-1, and its money is income and programme spend rather than "
-                "a Section 135 obligation. orgs has no writer yet — research it fully, it is "
-                "saved and it renders, but expect it to stay research rather than become "
-                "catalog rows. Saying that plainly is part of the job."
+                "a Section 135 obligation. Every concept below promotes — with one rule: on an "
+                "organisation the catalog already holds, research fills blanks only and never "
+                "overwrites a value somebody entered by hand."
             )
         for concept in wanted_concepts:
             table = CONCEPT_TABLES[concept]
@@ -399,9 +399,12 @@ async def promote_research(slug: str = "") -> str:
     Research and the catalog are different: a finding is what a source said,
     a catalog row is what the product answers from. This is the step between.
 
-    Only identity, identifier and csr_year findings can move — those are the
-    concepts with writers. Everything else stays research and is reported as
-    such, never silently dropped. A name that resembles an existing funder
+    Works on either kind. A funder's findings reach funders, funder_identifiers
+    and the funder fact tables; an NGO's reach orgs, org_identifiers,
+    org_financials and org_locations, and both kinds write the shared
+    programmes, metrics, contacts and documents. `grant` is the one concept
+    that still stays research, and anything held back is reported rather than
+    silently dropped. A name that resembles an organisation we already hold
     without matching it is NOT merged; it is reported for a person.
 
     Args:
@@ -447,9 +450,10 @@ async def promote_research(slug: str = "") -> str:
                 skipped = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
                 lines.append(f"    still research only (no writer): {skipped}")
         lines.append(
-            "\nA grant needs a recipient in orgs, which has no writer yet, so grant findings "
-            "stay research — they are on file and in docs/entities/. Anything held back is "
-            "named above: it is a decision waiting for a person, not a silent loss."
+            "\nA grant needs its recipient to already be in orgs, and promoting a funder's "
+            "research does not put it there, so grant findings stay research — they are on "
+            "file and in docs/entities/. Anything held back is named above: it is a decision "
+            "waiting for a person, not a silent loss."
         )
         return "\n".join(lines)
     except Exception as exc:
