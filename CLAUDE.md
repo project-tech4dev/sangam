@@ -329,9 +329,13 @@ it. The ceiling is the database's: Supabase allows 60 connections, 3 reserved, a
 deployed instance.
 
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
-reusable brief — the 28-field funder scan a fundraiser wants, and the 12A/80G/FCRA brief a
-funder's CSR team wants about an NGO — advertised by its frontmatter and read only when the
-model judges it relevant. **They are the supervisor's, and no subagent declares one**: a
+reusable procedure, advertised by its frontmatter and read only when the model judges it
+relevant. There are seven, in three groups: **what to pull** (`funder-intake-research`,
+`ngo-credential-research` — ten cited fields each), **what to produce** (`entity-record` for one
+organisation, `funder-scan-for-fundraisers` and `ngo-brief-for-funders` for a comparison across
+several), and **what the catalog did with it** (`catalog-mapping` before a write,
+`catalog-write-report` after). The two outer groups split by entity kind because the kinds
+genuinely differ; the record, the mapping and the report do not. **They are the supervisor's, and no subagent declares one**: a
 researcher's targets come from `research_goals` and the schema, and it returns a
 `ResearchSummary` with no prose to shape. Constraints never live there: progressive disclosure
 means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and

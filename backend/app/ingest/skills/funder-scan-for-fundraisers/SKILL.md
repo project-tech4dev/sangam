@@ -1,77 +1,59 @@
 ---
 name: funder-scan-for-fundraisers
-description: Use when someone names one or more companies, foundations or CSR arms and wants to know whether their NGO could get funded — CSR spend, grant sizes, how to apply, deadlines, partners, geography. Produces one profile table per funder and a comparison. Not for a single fact about a funder already in the catalog; use funder_dossier for that.
+description: Use when several funders have been researched and a fundraiser at an Indian CSO needs them side by side to decide where to spend the next month — which ones are reachable, which are open now, which fit. Produces the comparison across funders, not the research behind it. What to pull for each funder is funder-intake-research; the record for one funder on its own is entity-record. Not for a single fact about a funder already in the catalog; funder_dossier answers that in one call.
 ---
 
-# A funding profile an NGO can act on
+# The comparison a fundraiser acts on
 
-The reader is a fundraiser at an Indian CSO deciding where to spend the next
-month. Every field below exists because it changes that decision. A beautiful
-profile that does not say whether they can apply has failed.
+The reader has a month and a list. They are not reading to learn about
+funders; they are deciding which two or three to approach. The comparison
+earns its place only if it ends with them knowing where to start.
 
-Research each organisation against this list, in this order, and put the
-result in one table per funder.
+The fields come from `funder-intake-research` and the per-funder record from
+`entity-record`. This skill is only the table across them, and the judgement
+rules that make it honest.
 
-## The fields
+## The table
 
-**Who they are** — name · parent company or group · CSR entity type · website.
-Never merge a company with its foundation: Axis Bank Limited and Axis Bank
-Foundation are two rows and a link.
+One row per funder, in this order: **reachable now** (intake route, live or
+not, checked when) · **open call and deadline** · **grant size band** ·
+**co-funding share** · **who it funds** — external NGOs, or mainly its own
+programmes · **sectors** · **districts** · **hard disqualifiers** · **latest
+annual CSR spend with its financial year**.
 
-**What they spend** — latest annual CSR spend · the two or three years before
-it · the statutory obligation (`prescribed_csr`) · any separately disclosed
-budget, quoted as the funder worded it. Mention the financial year against
-every figure, and keep company-level and foundation-level spending apart.
+Reachability leads because an unreachable funder with a perfect sector match
+is worth less than a reachable one with an adequate match, and a list sorted
+by spend hides that.
 
-**Where and on what** — themes and focus sectors · major programmes · states
-and districts where work actually ran · relevant Schedule VII categories.
+## Rules that keep it honest
 
-**Whether they fund others** — whether they fund external NGOs or mainly run
-their own programmes · major implementation partners · examples from the last
-two years with the amount where it is disclosed.
+**Never merge a company with its foundation.** Axis Bank Limited and Axis
+Bank Foundation are two rows and a link. Company-level and foundation-level
+spending stay apart.
 
-**How to apply** — typical, minimum and maximum grant size · typical project
-duration · eligibility criteria · the application process · whether intake is
-open, rolling, invitation-only or by RFP · current calls and their deadlines ·
-the CSR or grants contact point.
+**Every figure carries its financial year.** A spend with no year is not a
+comparable number.
 
-**Evidence** — the latest annual report, CSR report and CSR policy links, and
-a source link for every important data point.
+**"Funds external NGOs" is two facts, reported side by side, never
+averaged** — what the funder says, and how many of its recorded projects
+actually ran through an implementing agency.
 
-## Sources, in order
+**Do not estimate.** No inferred grant size, no estimated spend. If a range
+comes from examples, say so and show the examples. An announced project
+value, an actual grant amount and a whole programme's budget are three
+different numbers.
 
-Official first: annual reports, CSR reports and board-approved annexures, MCA
-and NSE/BSE filings, the funder's own CSR and partnership pages, official
-press releases. Credible secondary sources only where an official one is
-silent, and marked as such.
+**A stated priority geography is not a footprint.** Where a funder says it
+cares and where its money went are separate columns when both are known.
 
-## Three things not to conflate
+**Describe the best-fit NGO profile; never score it.** A number invented here
+is a judgement wearing a citation, and the funder's own criteria decide fit.
 
-**Not publicly disclosed** — the funder did not publish it.
-**Found, not yet storable** — they published it and no column exists for it.
-**Not recorded** — nobody has looked yet.
+## Three things never conflated in a cell
 
-The researcher reports the goals it worked to, which are the fields with a
-column — `research_goals` is its tool, not yours. Say which of the three you
-mean; writing "Not publicly disclosed" over a field we simply cannot store
-misrepresents the funder.
+- **not disclosed** — the funder did not publish it
+- **found, not storable** — they published it and no column exists for it
+- **not recorded** — nobody has looked yet
 
-Also keep apart: an announced project value, the actual grant amount, and a
-whole programme's budget. And a stated priority geography is not a footprint.
-
-## Estimates
-
-Do not estimate a grant size or a spend figure. If a range is inferred from
-examples, say so and show the examples.
-
-## The comparison
-
-After the per-funder tables, one comparison table: annual CSR spend · main
-sectors · geographic focus · whether they fund external NGOs · typical grant
-size · how reachable the application process is · anything open now · and the
-NGO profile each is the best fit for.
-
-Build every line of it from what you just stored. "Funds external NGOs" is two
-facts and they are reported side by side, never averaged — what the funder
-*says*, and how many of its recorded projects ran through an implementing
-agency. Describe the best-fit NGO; do not score it.
+Writing "not disclosed" over a field we simply cannot store misrepresents the
+funder. Say which of the three the cell means.

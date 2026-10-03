@@ -1,103 +1,65 @@
 ---
 name: ngo-brief-for-funders
-description: Use when someone names one or more NGOs, CSOs, trusts or societies — organisations that RECEIVE funding rather than give it — and wants the brief a funder's CSR team would read before a first conversation. Covers statutory standing (12A, 80G, FCRA), income and programme spend, where it works, what it has reached, and who funds it already. Produces one profile per organisation and, for several, a comparison. Not for a company, corporate foundation or CSR arm — use funder-scan-for-fundraisers for those. Not for a single fact about an organisation already in the catalog, which funder_dossier answers in one call with entity_kind set to org.
+description: Use when several NGOs, CSOs, trusts or societies have been researched and a funder's CSR or grants team needs them side by side to decide which are worth a conversation — who clears the statutory gates, at what scale, working where. Produces the comparison across organisations, not the research behind it. What to pull for each organisation is ngo-credential-research; the record for one organisation on its own is entity-record. Not for a company, corporate foundation or CSR arm.
 ---
 
-# A brief a funder would read before the first meeting
+# The comparison a CSR team acts on
 
-The reader is a CSR or grants lead deciding whether an organisation is worth
-a conversation. They are asking three things in order, and the order matters:
-**can we legally give them money, what would it do, and has it worked before?**
-A profile that describes the mission beautifully and cannot answer the first
-question has failed, because the first question ends the conversation.
+The reader is deciding who gets a first meeting. They ask three things in
+order, and the order matters: **can we legally give them money, what would it
+do, and has it worked before?** A comparison that describes missions
+beautifully and cannot answer the first question has failed, because the
+first question ends the conversation.
 
-Research each organisation against this list, in this order, and put the
-result in one section per organisation.
+The fields come from `ngo-credential-research` and the per-organisation
+record from `entity-record`. This skill is only the table across them.
 
-## The fields
+## The table
 
-**Can we give them money** — 12A · 80G · FCRA, each with its number as
-printed, its date, and whether it is current. These three are the gate, and
-each is a separate fact: 80G is what makes a donation deductible, FCRA is what
-makes foreign money lawful, and 12A is neither. A lapsed or surrendered
-registration is a finding, not an absence — say which it is. Then PAN, Darpan,
-CIN or registration number, and the legal form as printed ("Public Charitable
-Trust", "Society", "Section 8 Company" — these are not interchangeable).
+One row per organisation, in this order: **statutory standing** — 12A, 80G,
+CSR-1, each present or not, with the blocking one named · **FCRA, separately**
+· **DARPAN and blacklist status** · **three years of audited accounts, yes or
+which years are missing** · **latest programme spend with its year** ·
+**states and districts** · **primary themes** · **existing funders** ·
+**permanent staff count**.
 
-**What size of organisation** — total income, programme spend, non-programme
-spend and foreign contribution for the latest financial year and the two
-before it, each against its year, each marked audited or not. Programme spend
-is not total spend; total income is not grant income; foreign contribution is
-the FCRA return's figure, never inferred from a donor list. A ratio is worth
-reporting only when both halves came from the same statement.
+Statutory standing leads because it is the only column that can end the
+conversation on its own. An organisation doing excellent work without CSR-1
+cannot receive Section 135 money this year, and a table that sorts by
+programme spend buries that.
 
-**What the money does** — programmes with their themes, phases and dates.
-Keep the organisation's own wording for a theme beside any normalised one.
+## Rules that keep it honest
 
-**Where** — states and districts where work actually runs, with the role
-(registered, operates, funds). A district always travels with its state. The
-registered address is one of these with role `registered`, not a separate fact.
+**Evidenced and claimed are different columns' worth of difference.** A
+homepage sentence saying "we are 12A registered" does not clear a gate. Mark
+every credential as evidenced or claimed and never let a claim satisfy a cell.
 
-**What it has reached** — beneficiaries, outputs and outcomes, each with its
-value, unit, period and stage, and the method behind it. **Never describe a
-self-reported figure as independently verified**, and never report a cumulative
-"since inception" number as an annual one.
+**Name the blocking gate, never just "ineligible".** "CSR-1 missing" and
+"80G and CSR-1 missing" and "12A cancelled, under appeal" are three different
+next actions.
 
-**Who funds it already** — named funders and grants where disclosed. An
-existing CSR funder is the single most useful line in this brief: it says
-somebody did this diligence and said yes. **It is the one field here with no
-finding behind it.** `grant` is a funder-side concept — a `GrantFinding`
-records money a funder GAVE, and there is no org-side counterpart for money
-received, because `grants.org_id` is NOT NULL and `orgs` has no writer. So
-this line comes from two places: the researcher's prose summary, which is
-asked to name any funder it saw, and `funder_dossier` with `entity_kind='org'`,
-whose "grants received" section covers only an organisation already in the
-catalog. Say which of the two it came from, and say "not recorded" rather
-than leaving it out.
+**A cancellation under appeal is still a cancellation.** Appeal status is its
+own note beside it, never a resolution.
 
-**Evidence** — the latest annual report, audited accounts, FCRA return and
-Darpan listing, with a source link for every important figure.
+**Never treat a self-reported figure as independently verified**, and never
+report a cumulative reach number as an annual one.
 
-## Sources, in order
+**Existing funders has no finding behind it.** `grant` is a funder-side
+concept and `grants.org_id` is NOT NULL, so this cell comes from the
+researcher's prose summary or from `funder_dossier` with `entity_kind='org'`.
+Say which, and write "not recorded" rather than leaving it out.
 
-Official first: NGO-Darpan, the FCRA portal, the organisation's audited
-accounts and annual report, 12A/80G orders where published, MCA for a Section
-8 company. Then the organisation's own site. Then GuideStar India, Credibility
-Alliance and similar directories, which are useful and are secondary. Credible
-news last, and marked as such.
+**Refuse to score.** A funder's own criteria decide fit, and a rating invented
+here is a judgement wearing a citation.
 
-## Three things not to conflate
+## Three things never conflated in a cell
 
-**Not publicly disclosed** — the organisation did not publish it.
-**Found, not yet storable** — it published it and no column exists for it.
-**Not recorded** — nobody has looked yet.
-
-The researcher reports the goals it worked to, which are the fields with a
-column. Say which of the three you mean: writing "Not publicly disclosed" over
-a field we simply cannot store misrepresents the organisation, and in this
-brief it misrepresents it to a funder.
-
-## Do not score
-
-No rating, no tier, no "strong candidate". A funder's own criteria decide
-that, and a score invented here is a judgement wearing a citation. Report what
-is true and let the reader weigh it.
-
-## The comparison
-
-For several organisations, one table after the sections: statutory standing
-(12A / 80G / FCRA, each present, lapsed or not found) · latest total income ·
-latest programme spend · states · primary themes · existing CSR funders ·
-latest year with audited accounts.
-
-Build every line from what the researchers stored, except "existing CSR
-funders", which has no finding behind it and comes from the summary or the
-dossier as described above. An empty cell is ambiguous, so never leave one —
-write "not recorded" or "not disclosed", whichever is true.
+- **not disclosed** — the organisation did not publish it
+- **found, not storable** — they published it and no column exists for it
+- **not recorded** — nobody has looked yet
 
 ## What stays research
 
-None of this becomes a catalog row yet: `orgs`, `org_identifiers`,
-`org_financials` and `org_locations` have no writer. The findings are saved,
-the brief is published and the entity file renders — say that plainly rather
-than offering a promotion that will be refused.
+An organisation's research is saved and published but never promoted: `orgs`
+has no writer. Say so plainly wherever the comparison implies the catalog
+holds these rows. It does not.

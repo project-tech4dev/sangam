@@ -4,27 +4,39 @@ A skill is a directory with one file:
 
 ```
 backend/app/ingest/skills/
-├── funder-scan-for-fundraisers/
-│   └── SKILL.md
-└── ngo-brief-for-funders/
+├── funder-intake-research/      what to pull for a funder
+├── ngo-credential-research/     what to pull for an NGO
+├── entity-record/               the record we keep for one organisation
+├── catalog-mapping/             onto the catalog, against what we hold
+├── catalog-write-report/        what actually landed
+├── funder-scan-for-fundraisers/ the comparison across several funders
+└── ngo-brief-for-funders/       the comparison across several NGOs
     └── SKILL.md
 ```
 
-Two, because there are two kinds of entity and the briefs are not the same
-document with fewer rows. A funder scan opens on CSR spend and how to apply;
-an NGO brief opens on 12A, 80G and FCRA, which exist on no funder table and
-are the three facts that decide whether a funder may give at all.
+Seven, in three groups, and the grouping is the point: **what to pull**,
+**what to produce**, and **what the catalog did with it**. They are separate
+skills rather than one long one because a run loads at most two of them —
+a funder scan never needs the NGO credential chain, and neither needs the
+write report until something has been written.
+
+Two of the three groups split by entity kind, and only where the kinds
+genuinely differ. A funder is researched for its intake route and its
+disqualifiers; an NGO for a statutory chain — 12A, 80G, CSR-1 — that exists
+on no funder table and decides whether a funder may give at all. The middle
+group does not split: one organisation's record, one mapping onto the
+catalog, one report, either kind.
 
 ```markdown
 ---
-name: funder-scan-for-fundraisers
-description: Use when someone names one or more companies or foundations and
-  wants to know whether their NGO could get funded — CSR spend, grant sizes,
-  how to apply, deadlines…
+name: funder-intake-research
+description: Use when someone names one or more companies, corporate
+  foundations, trusts or grantmakers and wants to know what it would actually
+  take to reach their money…
 ---
 
-# A funding profile an NGO can act on
-…the 28-field brief…
+# What we want pulled for a funder
+…the ten fields, in intake order…
 ```
 
 The frontmatter is the advertisement, always in the prompt. The body is the
@@ -142,10 +154,13 @@ one backend route that is real disk.
 
 deepagents injects a fixed block of roughly forty lines — "Skills System", how
 progressive disclosure works, an example workflow — into **every** request,
-plus one index entry per skill. For two brief-sized procedures that is a clear
-win. Splitting `instructions.md` into six small skills would not be: the
-boilerplate would cost more than the bodies saved, and a turn that loads two
-skills is larger than one that loads none.
+plus one index entry per skill. Seven index entries is seven lines; the
+bodies — sixty to a hundred lines each — are read only when the description
+matches, and a run loads at most two. That is the trade the split is making,
+and it only holds while the descriptions stay disjoint enough that the model
+is not loading two to find out which it needed. Splitting `instructions.md`
+into six small skills would not pass the same test: the boilerplate would
+cost more than the bodies saved, and those rules have to hold on every run.
 
 That is the rule of thumb. A skill should be big enough to be worth a round
 trip, and it should not load on a turn that did not need it. Both are
