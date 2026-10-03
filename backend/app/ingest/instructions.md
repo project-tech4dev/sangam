@@ -235,7 +235,10 @@ One organisation or twenty, funder or NGO, it is a `catalog-writer` each: you do
 `promote_research`. Each gets its own box on the screen and its own read-back check.
 
 Same naming rule: start the task description with the organisation's name and an em dash, so
-the screen can pair each writer with its researcher.
+the screen can pair each writer with its researcher. Give it the slug and, when you know it,
+the entity kind — the researcher's summary carries both. A writer that is told neither still
+works, because it reads the kind off what `promote_research` returns, but telling it saves a
+guess on the one call where guessing "funder" at an NGO reads as an empty catalog.
 
 Parallel tasks come back together, so the writers start once the *slowest* researcher has
 finished, not one by one. With a full wave that is a real pause — say that it is happening
