@@ -225,3 +225,57 @@ class TestTheSkillIsFoundAndIsProgressive:
 
         # An isolated subagent inherits none of the parent's skills.
         assert ENTITY_RESEARCHER["skills"] == [SKILLS_ROUTE]
+
+
+def _subagent_tools(graph) -> dict[str, set[str]]:
+    """What each subagent's own graph runs — which is not what its spec declares."""
+    # deepagents 0.7.16 keeps compiled subagents only in the task tool's
+    # closure; an upgrade that moves them must fail here, not pass silently.
+    task = graph.nodes["tools"].bound.tools_by_name["task"]
+    found: dict[str, set[str]] = {}
+    for cell in (task.func or task.coroutine).__closure__ or ():
+        value = cell.cell_contents
+        if not isinstance(value, dict):
+            continue
+        for name, sub in value.items():
+            if "tools" in getattr(sub, "nodes", {}):
+                found[name] = set(sub.nodes["tools"].bound.tools_by_name)
+    assert found, "no compiled subagent graphs found — deepagents moved them"
+    return found
+
+
+@pytest.fixture(scope="module")
+def subagents() -> dict[str, set[str]]:
+    from app.core.config import get_settings
+    from app.ingest.agent import build_ingest_agent
+
+    return _subagent_tools(build_ingest_agent(get_settings(), None))
+
+
+class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
+    """The parent's restricted filesystem does not reach an isolated subagent.
+
+    deepagents builds it a stack of its own with an unrestricted
+    FilesystemMiddleware, so both subagents ran write_file, edit_file and
+    delete against the backend whose /skills/ route is real disk.
+    """
+
+    def test_both_subagents_are_compiled_and_found(self, subagents):
+        assert set(subagents) == {"entity-researcher", "catalog-writer"}
+
+    def test_neither_subagent_can_write_a_file_or_run_a_command(self, subagents):
+        forbidden = {"write_file", "edit_file", "delete", "execute", "glob", "grep"}
+        for name, tools in subagents.items():
+            assert not tools & forbidden, f"{name}: {sorted(tools & forbidden)}"
+
+    def test_the_researcher_reads_skills_and_nothing_else_of_the_filesystem(self, subagents):
+        assert subagents["entity-researcher"] == {
+            "research_goals", "funder_dossier", "search_public_sources",
+            "read_page", "fetch_document", "read_document_pages", "save_research",
+            "read_file", "ls",
+        }
+
+    def test_the_writer_gets_the_floor_and_not_the_skill_reader(self, subagents):
+        # It declares no skills, so ls would be dead weight; read_file is the
+        # one tool FilesystemMiddleware refuses to be built without.
+        assert subagents["catalog-writer"] == {"promote_research", "funder_dossier", "read_file"}

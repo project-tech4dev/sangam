@@ -22,7 +22,10 @@ harness profile is registered per **provider**, so it is global to every agent
 sharing a model — right for the subagent, wrong for tools, since Sangam Import
 needs `read_file` to load a skill and Ask Sangam must not have it.
 `FilesystemMiddleware` passed in `middleware=` replaces the default one **per
-agent**, which is where the tool surface is decided.
+agent**, which is where the tool surface is decided — and per *subagent* too:
+an isolated one builds its own stack and inherits none of the parent's, so
+`app/ingest/agent.py` declares this on each spec as well. Left to the library
+both subagents run the full eight against whatever backend they are handed.
 """
 
 from __future__ import annotations
@@ -48,8 +51,8 @@ REQUIRED_MINIMUM: tuple[str, ...] = ("read_file",)
 
 # Sangam Import keeps ls as well. deepagents has no dedicated tool for loading
 # a skill: the model reads a SKILL.md with read_file, and ls is how it recovers
-# when a path in the prompt has gone stale. Nothing that writes is ever kept,
-# so no agent can rewrite its own instructions whatever backend it is given.
+# when a path in the prompt has gone stale. Nothing that writes is kept — on
+# the parent, or on a subagent, whose spec has to ask for this separately.
 SKILL_READING_TOOLS: tuple[str, ...] = ("read_file", "ls")
 
 # Every provider app/agent/models.py can resolve. An exact `provider:model`

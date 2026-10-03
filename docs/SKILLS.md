@@ -76,10 +76,22 @@ root, and `_remap_file_info_path` prepends `/skills/` back onto every entry
 (`backends/composite.py:319-328`). So the path printed into the prompt is the
 path `read_file` resolves. `test_the_route_round_trips` holds it.
 
-**Nothing that writes exists on either agent.** `write_file`, `edit_file`,
-`delete` and `execute` are gone — see `app/agent/harness.py` — so an agent
-cannot rewrite its own instructions regardless of backend. `read_file` stays
-because `FilesystemMiddleware` refuses to be constructed without it.
+**Nothing that writes exists on either agent, or on their subagents.**
+`write_file`, `edit_file`, `delete` and `execute` are gone — see
+`app/agent/harness.py` — so an agent cannot rewrite its own instructions
+regardless of backend. `read_file` stays because `FilesystemMiddleware`
+refuses to be constructed without it.
+
+That sentence was false for the subagents until 2026-10-03, and the `/skills/`
+route is exactly what made it matter. A subagent's middleware is built from
+scratch (`graph.py:689-702`) with an unrestricted `FilesystemMiddleware`, and
+the parent's is folded in only for `mode="fork"` — so `entity-researcher`, the
+agent that reads untrusted web pages, ran `write_file` and `delete` against
+the one route backed by real disk, and could have rewritten the SKILL.md every
+later thread is told about. `execute` was inert throughout: `StateBackend` is
+not a sandbox. The fix is one `middleware` key per spec, and
+`TestASubagentRunsOnlyTheToolsItsSpecDeclares` reads the compiled subagent
+graphs rather than the parent's, which is why the original tests missed it.
 
 ## Discovery, exactly
 
@@ -103,6 +115,12 @@ An isolated subagent inherits **nothing** from the parent
 (`graph.py:701-703`), so `entity-researcher` names `skills=["/skills/"]`
 itself. A `mode="fork"` subagent is the opposite: it inherits the parent's and
 may not declare any.
+
+"Nothing" includes the **filesystem middleware**, which is less obvious
+because the library supplies an unrestricted one rather than none. Each spec
+therefore carries its own `middleware=[filesystem_tools(backend, keep=…)]`:
+`read_file` and `ls` for the researcher, which loads skills, and `read_file`
+alone for `catalog-writer`, which loads none and takes the floor.
 
 ## The cost, honestly
 

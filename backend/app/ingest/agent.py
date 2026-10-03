@@ -180,20 +180,24 @@ CATALOG_WRITER: dict = {
 def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Before create_deep_agent: the profile is read while the graph is built.
     install_harness()
-    # The writer calls two tools and formats what they return; it needs no
-    # reasoning about sources, so it does not need the model that reads
-    # forty-page annual reports. Unset, this is the same model as everything
-    # else and nothing changes.
-    writer = {**CATALOG_WRITER}
-    if settings.utility_model:
-        writer["model"] = resolve_model(settings.utility_model)
     # No SQL tools by design: this agent proposes typed records, and app/ingest/writer.py
     # is the only thing that writes. Ask Sangam reads; this one imports.
     backend = _backend()
+    # An isolated subagent builds its own middleware stack, so the parent's restricted
+    # filesystem never reaches it: unset, both run write_file and delete against /skills/.
+    researcher = {
+        **ENTITY_RESEARCHER,
+        "middleware": [filesystem_tools(backend, keep=SKILL_READING_TOOLS)],
+    }
+    # The writer loads no skill; read_file is the floor FilesystemMiddleware demands.
+    writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend)]}
+    # It formats what two tools return, so it needs no reasoning about sources.
+    if settings.utility_model:
+        writer["model"] = resolve_model(settings.utility_model)
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,
-        subagents=[ENTITY_RESEARCHER, writer],
+        subagents=[researcher, writer],
         backend=backend,
         skills=[SKILLS_ROUTE],
         middleware=[filesystem_tools(backend, keep=SKILL_READING_TOOLS), clear_old_tool_results()],

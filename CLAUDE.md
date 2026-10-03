@@ -212,8 +212,18 @@ tools, since Sangam Import needs `read_file` to load a skill and Ask Sangam must
 `install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
 preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its six plus `read_file`,
 which `FilesystemMiddleware` refuses to be built without; Sangam Import adds `ls`. Nothing that
-writes survives on either. Tests pin all of it, because the next library upgrade is free to add
-more.
+writes survives on either.
+
+**A subagent inherits none of that and must say so itself.** `create_deep_agent` builds an
+isolated subagent's middleware from scratch with an *unrestricted* `FilesystemMiddleware`, and
+folds the parent's in only for `mode="fork"`. So `entity-researcher` and `catalog-writer` each
+carry their own `middleware=[filesystem(backend, keep=...)]` in `app/ingest/agent.py` — without
+it they run all eight tools, and `write_file`/`edit_file`/`delete` reach real disk through the
+`/skills/` route. A test that reads only `build(...).nodes["tools"]` cannot see this: it is the
+parent's tool node. `TestASubagentRunsOnlyTheToolsItsSpecDeclares` walks the compiled subagent
+graphs instead.
+
+Tests pin all of it, because the next library upgrade is free to add more.
 
 There used to be four hand-written tools wrapping fixed queries (`search_orgs`, `get_funder`,
 `get_grants`, `get_fit_scores`). They were removed, and it is worth knowing why before
