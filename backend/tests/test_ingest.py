@@ -43,6 +43,9 @@ from app.ingest.records import (
     FunderRecord,
     MetricRecord,
     NewsMentionRecord,
+    OrgFinancialsRecord,
+    OrgLocationRecord,
+    OrgRecord,
     ProgramRecord,
     RfpRecord,
 )
@@ -561,8 +564,12 @@ class TestExpectationsComeFromTheSchema:
 
 class TestPromotionRefusesWhatItCannotWrite:
     async def test_an_ngo_is_not_written_into_funders(self):
-        # orgs has no writer. Promoting an org row would put an NGO in the
-        # funder table, which is a wrong answer carrying a catalog citation.
+        """An NGO now promotes, and the thing that must stay true is which
+        table it reaches. The org path never calls a funder writer, so a row
+        carrying only funder-shaped findings builds no organisation at all —
+        which is the refusal, rather than an NGO landing in `funders`."""
+        from app.ingest.promote import funder_from, org_from
+
         row = {
             "slug": "the-ant", "entity_name": "The ANT", "canonical_name": None,
             "entity_kind": "org", "researched_at": NOW, "schema_version": 2,
@@ -572,8 +579,12 @@ class TestPromotionRefusesWhatItCannotWrite:
                           "confidence": "high"}],
         }
         report = await promote(None, row)
-        assert report["funder"] is None
-        assert any("no writer" in r for r in report["reasons"])
+        assert report["entity"] is None
+        assert any("org_identity" in r for r in report["reasons"])
+        # The two builders read disjoint concepts, which is what keeps the
+        # kinds apart before any connection is touched.
+        assert org_from(row, row["findings"]) is None
+        assert funder_from(row, row["findings"]) is not None
 
 
 class TestFindingsAreShapedLikeTheRowsTheyBecome:
@@ -681,7 +692,7 @@ class TestOldFindingsAreNotPromoted:
                           "confidence": "high"}],
         }
         report = await promote(None, row)
-        assert report["funder"] is None
+        assert report["entity"] is None
         assert any("Re-run the research" in r for r in report["reasons"])
         assert SCHEMA_VERSION == 2
 
@@ -761,17 +772,37 @@ class TestTheWriterSideRecords:
     def base(self, **kw):
         return {"funder_name": "Oil India Limited", **prov(), **kw}
 
+    # program, metric and contact sit on tables carrying both foreign keys, so
+    # they name the entity rather than the funder. The rest are funder-only.
+    NAMED = (
+        (FunderCsrSpendRecord, "funder_name", {"fiscal_year": "FY2024-25", "amount": 1.0}),
+        (FunderFootprintRecord, "funder_name", {"fiscal_year": "FY2024-25", "state": "Assam"}),
+        (FunderPartnerRecord, "funder_name",
+         {"fiscal_year": "FY2024-25", "partner_name": "Harsha Trust"}),
+        (ProgramRecord, "entity_name", {"name": "Rural Health"}),
+        (MetricRecord, "entity_name", {"name": "beneficiaries"}),
+        (ContactRecord, "entity_name", {"name": "A. Borgohain"}),
+        (OrgRecord, "name", {}),
+        (OrgFinancialsRecord, "entity_name", {"fiscal_year": "FY2024-25"}),
+        (OrgLocationRecord, "entity_name", {"state": "Assam"}),
+    )
+
     def test_a_market_is_not_a_funder_on_any_of_them(self):
-        for model, extra in (
-            (FunderCsrSpendRecord, {"fiscal_year": "FY2024-25", "amount": 1.0}),
-            (FunderFootprintRecord, {"fiscal_year": "FY2024-25", "state": "Assam"}),
-            (FunderPartnerRecord, {"fiscal_year": "FY2024-25", "partner_name": "Harsha Trust"}),
-            (ProgramRecord, {"name": "Rural Health"}),
-            (MetricRecord, {"name": "beneficiaries"}),
-            (ContactRecord, {"name": "A. Borgohain"}),
-        ):
+        for model, key, extra in self.NAMED:
             with pytest.raises(ValidationError, match="group of companies"):
-                model(**{**self.base(funder_name="NSE-listed companies"), **extra})
+                model(**{**prov(), key: "NSE-listed companies", **extra})
+
+    def test_a_real_ngo_name_is_not_mistaken_for_a_market(self):
+        """The aggregate guard was written for funders, and the cohort is full
+        of names built from the same words it refuses."""
+        for name in (
+            "Goonj",
+            "SOCIETY FOR NORTH EAST HANDMADE PAPER DEVELOPMENT",
+            "THE ANT THE ACTION NORTH EAST TRUST",
+            "PEOPLES RESOURCE DEVELOPMENT ASSOCIATION",
+            "Bodoland Development Foundation (BDF)",
+        ):
+            assert OrgRecord(name=name, **prov()).name == name
 
     def test_fiscal_year_format_is_enforced_on_every_yearly_record(self):
         for model, extra in (
@@ -789,13 +820,10 @@ class TestTheWriterSideRecords:
 
 class TestPromotionCoversEveryConceptWithAWriter:
     def test_what_is_left_out_is_left_out_for_one_reason(self):
-        # Twelve of seventeen. Everything excluded is excluded because orgs has
-        # no writer: the four org_* concepts land in org tables, and `grant`
-        # cannot be written either, since grants.org_id is NOT NULL and the
-        # recipient would have to be an orgs row first.
-        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == {
-            "grant", "org_identity", "org_identifier", "org_financials", "org_location",
-        }
+        # Sixteen of seventeen. The one exclusion left is `grant`: grants.org_id
+        # is NOT NULL and promoting a funder's research does not write the NGOs
+        # it names, so the recipient would have to be an orgs row first.
+        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == {"grant"}
 
     def test_a_funder_concept_is_never_the_one_left_out(self):
         # The reason above is the whole reason. A funder concept that stopped
@@ -809,6 +837,25 @@ class TestPromotionCoversEveryConceptWithAWriter:
         # a program_id, so a programme written after them would leave nulls.
         assert "program" not in WRITE_ORDER
         assert {"csr_spend", "footprint", "partner", "metric"} <= set(WRITE_ORDER)
+
+    def test_every_promotable_concept_is_written_by_one_kind_or_the_other(self):
+        """The two orders are the whole dispatch. A concept with a writer and
+        no place in either loop is researched, promotable and never written —
+        which is the failure the order was split in two to risk."""
+        from app.ingest.promote import ORG_WRITE_ORDER
+
+        # Handled outside the fact loops: the entity itself, its identifiers,
+        # its documents and its programmes each have their own step.
+        apart = {"identity", "identifier", "csr_year", "program", "document",
+                 "org_identity", "org_identifier"}
+        assert set(PROMOTABLE) - apart == set(WRITE_ORDER) | set(ORG_WRITE_ORDER)
+
+    def test_the_funder_loop_never_tries_an_org_concept(self):
+        from app.ingest.promote import ORG_WRITE_ORDER
+
+        # metric and contact sit on tables with both foreign keys; nothing else
+        # may overlap, or one kind writes the other's table.
+        assert set(WRITE_ORDER) & set(ORG_WRITE_ORDER) == {"metric", "contact"}
 
 
 class TestResearchGoalsAsksTheRightTables:
@@ -1135,3 +1182,122 @@ class TestJsonbColumnsCompareByValue:
             {"eligibility": {"requirements": ["80G"]}},
             {"eligibility": '{"requirements": ["12A"]}'},
         )
+
+
+class TestTheOrgWriter:
+    """An NGO reaches the catalog the way a funder does, bar one rule: a row
+    somebody vetted by hand is filled, never overwritten."""
+
+    class _Conn:
+        """Replays a queued row per execute() and records the SQL."""
+
+        def __init__(self, rows):
+            self.rows, self.sql, self.params = list(rows), [], []
+
+        async def execute(self, sql, params=None):
+            self.sql.append(" ".join(sql.split()))
+            self.params.append(params)
+            return self
+
+        async def fetchone(self):
+            return self.rows.pop(0) if self.rows else None
+
+        async def fetchall(self):
+            return self.rows.pop(0) if self.rows else []
+
+    def rec(self, **kw):
+        from app.ingest.records import OrgRecord
+
+        return OrgRecord(**{"name": "Goonj", **prov(), **kw})
+
+    async def test_a_new_org_is_inserted_as_a_placeholder(self):
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([None, {"id": 42}])
+        status, org_id, _changes, conflicts = await write_org(
+            conn, self.rec(legal_form="Trust"), Match("none")
+        )
+        assert (status, org_id, conflicts) == ("added", 42, [])
+        insert = next(q for q in conn.sql if q.startswith("INSERT INTO orgs"))
+        # Not 'in_vetting': an imported row and a row the client vetted must be
+        # tellable apart in the registry.
+        assert "'placeholder'" in insert
+
+    async def test_an_existing_org_is_filled_not_overwritten(self):
+        """The whole reason the org rule differs from write_funder's."""
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([
+            {"org_kind": "cso", "legal_form": "Registered Society "
+             "(Societies Registration Act)", "registration_date": None},
+        ])
+        status, _id, changes, conflicts = await write_org(
+            conn, self.rec(legal_form="Society", registration_date=date(1999, 3, 12)),
+            Match("exact", 9),
+        )
+        assert status == "updated"
+        assert set(changes) == {"registration_date"}
+        assert len(conflicts) == 1 and "Registered Society" in conflicts[0]
+        update = next(q for q in conn.sql if q.startswith("UPDATE orgs"))
+        assert "legal_form" not in update
+
+    async def test_nothing_to_fill_writes_nothing_at_all(self):
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([
+            {"org_kind": "cso", "legal_form": "Trust", "registration_date": None},
+        ])
+        status, _, changes, conflicts = await write_org(
+            conn, self.rec(legal_form="Trust"), Match("exact", 9)
+        )
+        # Provenance describes the write, so with nothing written it stays put.
+        assert (status, changes, conflicts) == ("matched", {}, [])
+        assert not any(q.startswith("UPDATE orgs") for q in conn.sql)
+
+    async def test_an_unstated_kind_is_not_a_finding_that_contradicts_one(self):
+        """orgs.org_kind is NOT NULL DEFAULT 'cso', so it is never a blank to
+        fill — a default on the record would only ever read as research
+        disagreeing with every intermediary and government row we hold."""
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([
+            {"org_kind": "intermediary", "legal_form": "Trust", "registration_date": None},
+        ])
+        status, _id, changes, conflicts = await write_org(
+            conn, self.rec(legal_form="Trust"), Match("exact", 9)
+        )
+        assert self.rec().org_kind is None
+        assert (status, changes, conflicts) == ("matched", {}, [])
+
+    async def test_twelve_a_and_eighty_g_reach_org_identifiers(self):
+        """funder_identifiers has no room for either; this is the whole point
+        of researching an NGO against its own tables."""
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([None, {"id": 42}])
+        await write_org(
+            conn, self.rec(identifiers={"12a": "AAATG5219M", "80g": "AAATG5219MF2021"}),
+            Match("none"),
+        )
+        wrote = [q for q in conn.sql if q.startswith("INSERT INTO org_identifiers")]
+        assert len(wrote) == 2
+        assert {p[1] for p in conn.params[-2:]} == {"12a", "80g"}
+
+    async def test_a_free_slug_steps_aside_for_one_already_taken(self):
+        from app.ingest.writer import _free_slug
+
+        conn = self._Conn([{"?": 1}, None])
+        assert await _free_slug(conn, "goonj", "orgs") == "goonj-2"
+        assert all("FROM orgs" in q for q in conn.sql)
+
+    async def test_a_registered_address_only_fills_an_empty_one(self):
+        from app.ingest.writer import set_registered_location
+
+        conn = self._Conn([None])
+        assert await set_registered_location(conn, 42, 7) is False
+        assert "registered_location_id IS NULL" in conn.sql[0]

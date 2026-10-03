@@ -36,16 +36,15 @@ _BOTH = frozenset({"funder", "org"})
 _FUNDER = frozenset({"funder"})
 _ORG = frozenset({"org"})
 
-# orgs has no writer: no OrgRecord, no resolve_org, no write_org. Research an
-# NGO fully — it is saved, it renders, it is on file — but it stays research
-# until one lands. See docs/INGEST.md, "Known gaps".
-_ORGS_HAVE_NO_WRITER = "orgs has no writer yet; stays research until one lands"
-
-# grants.org_id is NOT NULL and orgs has no writer, so a funded organisation the
-# catalog does not hold cannot become a grant row at all. The relationship goes
-# to funder_partners, whose org_id is nullable — and which is the more honest
-# claim anyway, since a named partner is not proof that money changed hands.
-_GRANT_HAS_NO_WRITER = "grants.org_id is NOT NULL and orgs has no writer; recorded as a partner instead"
+# grants.org_id is NOT NULL, so a recipient the catalog does not already hold
+# cannot become a grant row — and promoting a funder's research does not write
+# the NGOs it names. The relationship goes to funder_partners, whose org_id is
+# nullable, and which is the more honest claim anyway: a named partner is not
+# proof that money changed hands.
+_GRANT_NEEDS_A_RECIPIENT = (
+    "grants.org_id is NOT NULL and the recipient is not resolved here; "
+    "recorded as a partner instead"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,7 +89,7 @@ CONCEPTS: dict[str, ConceptSpec] = {
                 "recipient_name", "title", "status", "amount", "currency",
                 "start_date", "end_date", "program_name", "notes",
             ),
-            _GRANT_HAS_NO_WRITER,
+            _GRANT_NEEDS_A_RECIPIENT,
         ),
     ),
     "metric": ConceptSpec("metrics", "Reach and outcomes", kinds=_BOTH),
@@ -110,42 +109,18 @@ CONCEPTS: dict[str, ConceptSpec] = {
     # and two members cannot both declare Literal["identity"]. org_tags is
     # deliberately absent: tag_id is a bare _id, so the concept would have no
     # field naming its own subject.
-    "org_identity": ConceptSpec(
-        "orgs",
-        "Identity",
-        kinds=_ORG,
-        promotable=False,
-        not_written=dict.fromkeys(
-            ("name", "org_kind", "legal_form", "registration_date"), _ORGS_HAVE_NO_WRITER
-        ),
-    ),
+    "org_identity": ConceptSpec("orgs", "Identity", kinds=_ORG),
     "org_identifier": ConceptSpec(
         "org_identifiers",
         "Registrations and identifiers",
         kinds=_ORG,
-        promotable=False,
-        not_written=dict.fromkeys(("id_type", "id_value", "notes"), _ORGS_HAVE_NO_WRITER),
+        not_written={
+            "notes": "OrgRecord.identifiers is a type-to-value map with no room for a third "
+                     "field, so promotion reports the note instead of storing it",
+        },
     ),
-    "org_financials": ConceptSpec(
-        "org_financials",
-        "Income and spending by year",
-        kinds=_ORG,
-        promotable=False,
-        not_written=dict.fromkeys(
-            (
-                "fiscal_year", "total_income", "program_spend", "non_program_spend",
-                "foreign_contribution", "is_audited", "notes",
-            ),
-            _ORGS_HAVE_NO_WRITER,
-        ),
-    ),
-    "org_location": ConceptSpec(
-        "org_locations",
-        "Where it works",
-        kinds=_ORG,
-        promotable=False,
-        not_written=dict.fromkeys(("state", "district", "role", "note"), _ORGS_HAVE_NO_WRITER),
-    ),
+    "org_financials": ConceptSpec("org_financials", "Income and spending by year", kinds=_ORG),
+    "org_location": ConceptSpec("org_locations", "Where it works", kinds=_ORG),
 }
 
 # Derived views. They keep the names the four modules already import, so the
@@ -387,9 +362,9 @@ def expected_fields(concept: str) -> tuple[Expected, ...]:
 def concepts_for(entity_kind: str) -> tuple[str, ...]:
     """Which concepts are worth chasing for this kind of entity.
 
-    An NGO's facts have no writer yet, so researching one is still worth doing
-    and still lands in entity_research — it just does not become a catalog row.
-    See docs/INGEST.md.
+    Both kinds now promote: the shared concepts write the same table through a
+    different foreign key, and each kind's own concepts write its own tables.
+    `grant` is the one that still stays research, for the reason above it.
     """
     return tuple(n for n, c in CONCEPTS.items() if entity_kind in c.kinds)
 

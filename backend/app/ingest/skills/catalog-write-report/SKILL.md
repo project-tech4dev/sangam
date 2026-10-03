@@ -48,11 +48,11 @@ That number is the backlog, and the write report is where a person sees it.
 
 Two cases, and they are different:
 
-- **An organisation that receives money.** `orgs` has no writer, so no NGO
-  research is ever promoted. Say the research is saved, published and on
-  file, and that it stays research until a writer lands — not "failed", not
-  "held back", and never silently. This is the expected path, not an error.
-- **A funder where everything was held.** Say which gate stopped it — no
+- **An organisation the catalog already holds in full.** Every column was
+  already filled by hand, so the write is a `matched` with no rows moved and
+  a list of differences. That is a complete, successful run — say what the
+  differences are and who decides them, not "nothing happened".
+- **Either kind where everything was held.** Say which gate stopped it — no
   match, a stale schema version, every value a duplicate — and what would
   change it.
 
@@ -60,5 +60,5 @@ Two cases, and they are different:
 
 - Never report a count you did not read back out of the database.
 - Never fold held-back reasons into a total.
-- Never describe an NGO's saved research as "added to the catalog".
+- Never describe a difference the catalog kept as a value we wrote.
 - Never say "successfully" without the table names behind it.

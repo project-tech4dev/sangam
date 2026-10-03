@@ -323,8 +323,8 @@ have no writer. The URL of the form reaches `rfps.url`; the form's structure doe
 
 ## Two answers that are honest rather than complete
 
-**Grants (23).** `grants.org_id` is `NOT NULL` and `orgs` has no writer, so a funded organisation
-we do not already hold cannot be a grant row. Such a relationship is recorded in
+**Grants (23).** `grants.org_id` is `NOT NULL`, and promoting a funder's research does not
+write the NGOs it names, so a funded organisation we do not already hold cannot be a grant row. Such a relationship is recorded in
 `funder_partners`, whose `org_id` is nullable — which is the more careful claim anyway, since a
 named partner is not proof that money changed hands. The report says so rather than implying an
 empty `grants` table means no grants.

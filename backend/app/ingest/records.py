@@ -227,7 +227,7 @@ class FunderPartnerRecord(Provenance):
 
 class ProgramRecord(Provenance):
     kind: Literal["program"] = "program"
-    funder_name: str = Field(min_length=2)
+    entity_name: str = Field(min_length=2)
     name: str = Field(min_length=2)
     program_kind: Literal["theme", "programme", "phase", "project"] = "programme"
     parent_name: str | None = None
@@ -237,12 +237,12 @@ class ProgramRecord(Provenance):
     end_date: date | None = None
     is_enabler: bool | None = None
 
-    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+    _org = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
 class MetricRecord(Provenance):
     kind: Literal["metric"] = "metric"
-    funder_name: str = Field(min_length=2)
+    entity_name: str = Field(min_length=2)
     name: str = Field(min_length=2)
     value: float | None = None
     target: float | None = None
@@ -260,7 +260,7 @@ class MetricRecord(Provenance):
     district: str | None = None
     notes: str | None = None
 
-    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+    _org = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
 class ContactRecord(Provenance):
@@ -273,7 +273,7 @@ class ContactRecord(Provenance):
     """
 
     kind: Literal["contact"] = "contact"
-    funder_name: str = Field(min_length=2)
+    entity_name: str = Field(min_length=2)
     name: str = Field(min_length=2)
     contact_kind: Literal["office_bearer", "programme", "grants", "other"] = "other"
     role: str | None = None
@@ -281,7 +281,7 @@ class ContactRecord(Provenance):
     is_role_mailbox: bool = False
     notes: str | None = None
 
-    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+    _org = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
 class RfpRecord(Provenance):
@@ -312,8 +312,82 @@ class RfpRecord(Provenance):
         return self
 
 
+# --- The org side ------------------------------------------------------------
+#
+# An organisation that RECEIVES money. Same writer discipline as the funder
+# records: typed, provenance-carrying, and refusing anything the writer cannot
+# turn into a column.
+
+ORG_ID_TYPES = frozenset({"pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"})
+
+
+class OrgRecord(Provenance):
+    """An NGO. No website field: `orgs` has no column for one, and promotion
+    reports that rather than dropping it quietly."""
+
+    kind: Literal["org"] = "org"
+    name: str = Field(min_length=2)
+    org_kind: Literal["cso", "intermediary", "government"] | None = None
+    """None, not "cso". orgs.org_kind is NOT NULL DEFAULT 'cso', so a default
+    here would reach _blanks as a stated finding and contradict every
+    intermediary and government row the cohort holds."""
+    legal_form: str | None = None
+    registration_date: date | None = None
+    identifiers: dict[str, str] = Field(default_factory=dict)
+    """12A, 80G and FCRA, which funder_identifiers has no room for."""
+
+    @field_validator("name")
+    @classmethod
+    def _one_organisation(cls, v: str) -> str:
+        return reject_if_aggregate(v)
+
+    @field_validator("identifiers")
+    @classmethod
+    def _known_types(cls, v: dict[str, str]) -> dict[str, str]:
+        unknown = sorted(set(v) - ORG_ID_TYPES)
+        if unknown:
+            raise ValueError(
+                f"unknown identifier types: {unknown}; allowed: {sorted(ORG_ID_TYPES)}"
+            )
+        return v
+
+
+class OrgFinancialsRecord(Provenance):
+    """Amounts are INR, like every other record here. The org analogue of
+    FunderCsrYearRecord: one row per fiscal year, keyed on (org_id, fiscal_year)."""
+
+    kind: Literal["org_financials"] = "org_financials"
+    entity_name: str = Field(min_length=2)
+    fiscal_year: str
+    total_income: float | None = None
+    program_spend: float | None = None
+    non_program_spend: float | None = None
+    foreign_contribution: float | None = None
+    is_audited: bool | None = None
+    notes: str | None = None
+
+    _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
+    _one = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
+
+
+class OrgLocationRecord(Provenance):
+    """Where an NGO is registered or works. org_locations.role has no
+    'priority' value, unlike the funder side — an NGO states where it works,
+    not where it would like to fund."""
+
+    kind: Literal["org_location"] = "org_location"
+    entity_name: str = Field(min_length=2)
+    state: str = Field(min_length=2)
+    district: str | None = None
+    role: Literal["registered", "operates", "funds"] = "operates"
+    note: str | None = None
+
+    _one = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
+
+
 Record = (
-    FunderRecord | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
+    FunderRecord | OrgRecord | OrgFinancialsRecord | OrgLocationRecord
+    | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
     | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | ProgramRecord
     | MetricRecord | ContactRecord | RfpRecord
 )

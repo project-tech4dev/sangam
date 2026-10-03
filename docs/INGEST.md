@@ -227,22 +227,29 @@ A **funder** (13):
 
 An **org** (8). `program`, `metric`, `contact` and `document` are the same four tables as
 above, which each carry an `org_id` as well as a `funder_id`; only the foreign key changes.
-The other four are the NGO's own, and none has a writer:
+The other four are the NGO's own:
 
 | Concept | Table |
 |---|---|
 | program · metric · contact · document | as above, on `org_id` |
-| **org_identity** | **`orgs` — no writer** |
-| **org_identifier** | **`org_identifiers` — no writer.** 12A, 80G and FCRA live here |
-| **org_financials** | **`org_financials` — no writer** |
-| **org_location** | **`org_locations` — no writer** |
+| org_identity | `orgs` |
+| org_identifier | `org_identifiers`. 12A, 80G and FCRA live here |
+| org_financials | `org_financials` |
+| org_location | `org_locations`, and the `registered` one sets `orgs.registered_location_id` |
+
+**On an org the catalog already holds, promotion fills blanks only.** A column is written
+where it is NULL and nowhere else; every difference between a stated catalog value and the
+research is reported for a person instead. The funder side is the other way round — a stated
+value wins — because funder rows are machine-made and the ten cohort orgs were vetted by
+hand.
 
 `org_tags` is deliberately unmapped: `tag_id` is a bare `_id`, so the concept would have no
 field naming its own subject. The org concepts are namespaced because `Finding` is a tagged
 union on `concept` and two members cannot both declare `Literal["identity"]`.
 
-`grant` is the exception on the funder side, deliberately: `grants.org_id` is `NOT NULL` and there is no writer for
-`orgs`, so a funded organisation the catalog does not hold cannot become a grant row.
+`grant` is the exception on the funder side, deliberately: `grants.org_id` is `NOT NULL` and
+promoting a funder's research does not write the NGOs it names, so a recipient the catalog does
+not already hold cannot become a grant row.
 `funder_partners.org_id` is nullable, which is where such a relationship belongs — and the more
 honest claim anyway, since a named partner is not proof that money changed hands.
 
@@ -332,12 +339,15 @@ so keying off it made every unfinished researcher read as "done" the moment a ru
 
 ## Known gaps
 
-- **The org data path.** NGO research is now asked for against the right four tables — 12A,
-  80G, FCRA, income and programme spend, districts — and it is saved, published and rendered.
-  What is missing is the writer: no `OrgRecord`, no `resolve_org`, no `write_org`, so none of
-  it becomes a row in `orgs`, `org_identifiers`, `org_financials` or `org_locations`. `grants`
-  waits on the same thing. The registry already carries a `not_written` reason per field, so
-  when a writer lands the change is `promotable=True` and a record class, not a hunt.
+- **Two NGO facts still have nowhere to go.** An org's **website** has no column — `orgs`
+  has none and `org_identifiers` has no `domain` type — and a note on an identifier has no
+  room in a type-to-value map. Both are reported as held rather than dropped. `credential_events`
+  is the other half: the table exists and holds the same credential enum, but no finding
+  carries the dates that would fill it.
+- **A grant writer.** Unblocked by the org writer and not built by it: `grants.org_id` is
+  `NOT NULL`, and a recipient named in a funder's research is still not an `orgs` row.
+- **`repositories/orgs.py::get_org` does not read `org_financials`**, so promoted figures do
+  not appear on `/orgs/<slug>` yet.
 - **`csr_sector_id` is always NULL.** `tags.kind` allows `'csr_sector'` but no Schedule VII
   taxonomy is seeded to normalise against, so a funder's own wording for a theme stays in `notes`
   rather than being invented into a tag.
