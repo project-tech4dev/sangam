@@ -21,6 +21,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.ingest.expectations import PROMOTABLE
 from app.ingest.geography import resolve_location
 from app.ingest.matcher import resolve_funder
 from app.ingest.records import (
@@ -55,17 +56,9 @@ from app.integrations import storage
 
 logger = logging.getLogger(__name__)
 
-# Eleven of the twelve concepts. 'grant' is the exception: grants.org_id is NOT
-# NULL and orgs has no writer, so a funded organisation we do not hold cannot
-# become a grant row. It belongs in funder_partners. See docs/INGEST.md.
 # The matcher methods that mean "this is the same organisation". 'trigram'
 # proposes and a person accepts; 'none' is a new entity.
 MERGEABLE = ("identifier", "exact", "alias", "boilerplate")
-
-PROMOTABLE = (
-    "identity", "identifier", "csr_year", "document", "program", "csr_spend",
-    "footprint", "stated_geography", "partner", "metric", "contact", "rfp",
-)
 
 # Documents first, so every other fact can cite the report it was read from.
 # Programmes next, because every remaining concept can name one and a spend row
@@ -108,31 +101,6 @@ RENAMED: dict[tuple[str, str], str] = {
     ("identifier", "id_value"): "identifiers",
 }
 
-# Researched deliberately and deliberately not stored as its own column. Each
-# entry is a decision; an undocumented gap is a bug.
-NOT_WRITTEN: dict[str, dict[str, str]] = {
-    "csr_spend": {
-        "sector": "kept in funder_csr_spend.notes: tags.kind allows 'csr_sector' but no "
-                  "Schedule VII taxonomy is seeded to normalise against",
-    },
-    "document": {
-        "title": "written by ensure_document, which takes a shim rather than a record",
-        "doc_type": "written by ensure_document",
-        "as_of": "written by ensure_document",
-    },
-    # The whole concept. grants.org_id is NOT NULL and there is no writer for
-    # orgs, so a funded organisation the catalog does not hold cannot become a
-    # grant row at all. Such a relationship goes to funder_partners, whose
-    # org_id is nullable — and which is the more honest claim anyway, since a
-    # named partner is not proof that money changed hands.
-    "grant": dict.fromkeys(
-        (
-            "recipient_name", "title", "status", "amount", "currency",
-            "start_date", "end_date", "program_name", "notes",
-        ),
-        "grants.org_id is NOT NULL and orgs has no writer; recorded as a partner instead",
-    ),
-}
 
 
 def _provenance(finding: dict[str, Any] | Any, fetched: datetime) -> dict[str, Any]:

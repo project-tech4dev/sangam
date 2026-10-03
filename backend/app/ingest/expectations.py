@@ -9,31 +9,102 @@ What comes out is the list of fields a person could actually find in a public
 source: no surrogate keys, no provenance (the tool fills that in), and no
 foreign keys except the few a source states by name — a district, a state, a
 parent programme — which the writer resolves.
+
+It is also the concept registry. The vocabulary used to be written out seven
+times across four modules, and the one list with no test under it — the brief's
+section titles — was missing `rfp`, so every RFP finding ever saved was dropped
+from every brief with no error anywhere. `CONCEPTS` is now the single record and
+the rest are derived views that keep their old names, so the invariant tests
+still read as invariants. `FINDING_MODELS` is the one that cannot derive:
+research_records.py imports this module, so this module cannot import it back.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
 from app.agent.tools.sql.catalog import CATALOG
 
+# Concepts an NGO offers too. Every other table hangs off a funder_id.
+_BOTH = frozenset({"funder", "org"})
+_FUNDER = frozenset({"funder"})
+
+# grants.org_id is NOT NULL and orgs has no writer, so a funded organisation the
+# catalog does not hold cannot become a grant row at all. The relationship goes
+# to funder_partners, whose org_id is nullable — and which is the more honest
+# claim anyway, since a named partner is not proof that money changed hands.
+_GRANT_HAS_NO_WRITER = "grants.org_id is NOT NULL and orgs has no writer; recorded as a partner instead"
+
+
+@dataclass(frozen=True, slots=True)
+class ConceptSpec:
+    """One research concept: where it lands, what it is called, who offers it."""
+
+    table: str
+    title: str
+    kinds: frozenset[str] = _FUNDER
+    promotable: bool = True
+    # Researched deliberately and deliberately not stored as its own column.
+    # Each entry is a decision; an undocumented gap is a bug.
+    not_written: dict[str, str] = field(default_factory=dict)
+
+
 # A concept is a research finding; a table is where it lands. 'identity' is the
 # entity itself, which is why it maps to funders rather than to a fact table.
-CONCEPT_TABLES: dict[str, str] = {
-    "identity": "funders",
-    "identifier": "funder_identifiers",
-    "csr_year": "funder_csr_years",
-    "csr_spend": "funder_csr_spend",
-    "footprint": "funder_footprints",
-    "stated_geography": "funder_locations",
-    "partner": "funder_partners",
-    "program": "programs",
-    "grant": "grants",
-    "metric": "metrics",
-    "contact": "contacts",
-    "document": "documents",
-    "rfp": "rfps",
+# 'stated_geography' is where a funder SAYS it prioritises and 'footprint' is
+# where money demonstrably went: two concepts and two tables, never one.
+CONCEPTS: dict[str, ConceptSpec] = {
+    "identity": ConceptSpec("funders", "Identity", kinds=_BOTH),
+    "identifier": ConceptSpec("funder_identifiers", "Registrations and identifiers", kinds=_BOTH),
+    "csr_year": ConceptSpec("funder_csr_years", "CSR position by year"),
+    "csr_spend": ConceptSpec(
+        "funder_csr_spend",
+        "Project and sector spend",
+        not_written={
+            "sector": "kept in funder_csr_spend.notes: tags.kind allows 'csr_sector' but no "
+                      "Schedule VII taxonomy is seeded to normalise against",
+        },
+    ),
+    "footprint": ConceptSpec("funder_footprints", "Where the work ran"),
+    "stated_geography": ConceptSpec("funder_locations", "Where it says it prioritises"),
+    "partner": ConceptSpec("funder_partners", "Implementing partners"),
+    "program": ConceptSpec("programs", "Programmes", kinds=_BOTH),
+    "grant": ConceptSpec(
+        "grants",
+        "Grants",
+        promotable=False,
+        not_written=dict.fromkeys(
+            (
+                "recipient_name", "title", "status", "amount", "currency",
+                "start_date", "end_date", "program_name", "notes",
+            ),
+            _GRANT_HAS_NO_WRITER,
+        ),
+    ),
+    "metric": ConceptSpec("metrics", "Reach and outcomes", kinds=_BOTH),
+    "contact": ConceptSpec("contacts", "Contacts", kinds=_BOTH),
+    "document": ConceptSpec(
+        "documents",
+        "Source documents",
+        kinds=_BOTH,
+        not_written={
+            "title": "written by ensure_document, which takes a shim rather than a record",
+            "doc_type": "written by ensure_document",
+            "as_of": "written by ensure_document",
+        },
+    ),
+    "rfp": ConceptSpec("rfps", "Open calls for proposals"),
+}
+
+# Derived views. They keep the names the four modules already import, so the
+# invariant tests over them still read as invariants — they just cannot fail
+# through a missed edit any more.
+CONCEPT_TABLES: dict[str, str] = {n: c.table for n, c in CONCEPTS.items()}
+CONCEPT_TITLES: dict[str, str] = {n: c.title for n, c in CONCEPTS.items()}
+PROMOTABLE: tuple[str, ...] = tuple(n for n, c in CONCEPTS.items() if c.promotable)
+NOT_WRITTEN: dict[str, dict[str, str]] = {
+    n: c.not_written for n, c in CONCEPTS.items() if c.not_written
 }
 
 # Filled in by the tool from the finding's own evidence, never researched as a field.
@@ -253,13 +324,11 @@ def expected_fields(concept: str) -> tuple[Expected, ...]:
 def concepts_for(entity_kind: str) -> tuple[str, ...]:
     """Which concepts are worth chasing for this kind of entity.
 
-    Every table above hangs off funders. An NGO's facts have no writer yet, so
-    researching one is still worth doing and still lands in entity_research —
-    it just does not become a catalog row. See docs/INGEST.md.
+    An NGO's facts have no writer yet, so researching one is still worth doing
+    and still lands in entity_research — it just does not become a catalog row.
+    See docs/INGEST.md.
     """
-    if entity_kind == "org":
-        return ("identity", "identifier", "program", "metric", "contact", "document")
-    return tuple(CONCEPT_TABLES)
+    return tuple(n for n, c in CONCEPTS.items() if entity_kind in c.kinds)
 
 
 def recent_fiscal_years(today: date | None = None, count: int = 3) -> tuple[str, ...]:

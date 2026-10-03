@@ -178,7 +178,9 @@ it.
 
 ## What lands where
 
-Twelve concepts, eleven with a writer:
+Thirteen concepts, twelve with a writer. The table below is a copy; the source is
+`CONCEPTS` in `app/ingest/expectations.py`, from which the table map, the brief's section
+titles, the promotable list and the "researched but not written" excuses are all derived.
 
 | Concept | Table |
 |---|---|
@@ -193,6 +195,7 @@ Twelve concepts, eleven with a writer:
 | metric | `metrics` |
 | contact | `contacts` |
 | document | `documents` |
+| rfp | `rfps` |
 | **grant** | **`grants` — no writer** |
 
 `grant` is the exception, deliberately: `grants.org_id` is `NOT NULL` and there is no writer for
@@ -289,12 +292,8 @@ so keying off it made every unfinished researcher read as "done" the moment a ru
 - **`csr_sector_id` is always NULL.** `tags.kind` allows `'csr_sector'` but no Schedule VII
   taxonomy is seeded to normalise against, so a funder's own wording for a theme stays in `notes`
   rather than being invented into a tag.
-- **RFPs are outside the research vocabulary.** `rfps` has `deadline`, `amount_min`, `amount_max`
-  and `eligibility` columns; no concept points at them, so the researcher is never asked to look.
-- **Some researched fields are dropped on promotion** — five of the ten statutory CSR items, the
-  parent-company link, and `section_135_bound` are collected by the finding models and not
-  written.
-- **`archive_url`, `content_hash` and `extractor_version`** are written by nothing in the ingest
-  path, against the provenance convention in CLAUDE.md.
+- **`archive_url` is written by nothing in the ingest path**, against the provenance convention
+  in CLAUDE.md. `content_hash` and `extractor_version` are written (`promote.py`); the hash is
+  over the sentence and the URL, so re-reading the same claim is recognisably the same fact.
 - **Batch durability** — per-organisation timeouts, resumability and per-organisation status are
   designed and not built.

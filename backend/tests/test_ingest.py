@@ -11,6 +11,8 @@ from pydantic import ValidationError
 from app.ingest.agent import CATALOG_WRITER
 from app.ingest.expectations import (
     CONCEPT_TABLES,
+    CONCEPT_TITLES,
+    NOT_WRITTEN,
     concepts_for,
     expected_fields,
     recent_fiscal_years,
@@ -26,7 +28,6 @@ from app.ingest.matcher import (
 from app.ingest.promote import (
     CONCEPT_RECORDS,
     MERGEABLE,
-    NOT_WRITTEN,
     PROMOTABLE,
     RENAMED,
     WRITE_ORDER,
@@ -482,6 +483,13 @@ class TestExpectationsComeFromTheSchema:
         # table is a finding with nowhere to go.
         assert set(CONCEPTS) == set(CONCEPT_TABLES)
 
+    def test_every_concept_has_a_brief_title(self):
+        # brief.py iterates the TITLES, not the findings, so a concept without
+        # one is dropped from every brief with no error anywhere. `rfp` was,
+        # for its whole existence — the one concept instructions.md calls
+        # "the one an NGO can act on this week".
+        assert set(CONCEPT_TITLES) == set(CONCEPT_TABLES)
+
     def test_stated_geography_and_footprint_are_different_concepts(self):
         # A priority is not a spend. Collapsing them is the error the whole
         # agent brief is built to prevent.
@@ -827,7 +835,7 @@ class TestNothingResearchedIsSilentlyDropped:
         )
         assert not dropped, (
             f"{concept}: researched and never written — {dropped}. Add the field to its "
-            f"record and writer, or name it in promote.NOT_WRITTEN with a reason."
+            f"record and writer, or name it in the concept's not_written with a reason."
         )
 
     def test_the_excuses_are_reasons_not_labels(self):

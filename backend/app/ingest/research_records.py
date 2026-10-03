@@ -20,17 +20,11 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# 'stated_geography' is where a funder SAYS it prioritises; 'footprint' is where
-# money demonstrably went. Keeping them apart is the distinction the whole agent
-# runs on, so they are two concepts and two tables, never one.
-CONCEPTS = (
-    "identity", "identifier", "csr_year", "csr_spend", "footprint", "stated_geography",
-    "partner", "program", "grant", "metric", "contact", "document", "rfp",
-)
-Concept = Literal[
-    "identity", "identifier", "csr_year", "csr_spend", "footprint", "stated_geography",
-    "partner", "program", "grant", "metric", "contact", "document", "rfp",
-]
+from app.ingest.expectations import CONCEPTS as _REGISTRY
+
+# The vocabulary is the registry's, in its order. A `Concept = Literal[...]`
+# alias used to sit here repeating all thirteen; it was imported nowhere.
+CONCEPTS: tuple[str, ...] = tuple(_REGISTRY)
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
 
 SCHEMA_VERSION = 2
