@@ -429,11 +429,12 @@ async def promote_research(slug: str = "") -> str:
 
         lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
         for r in reports:
-            if r["funder"]:
+            if r["entity"]:
+                e = r["entity"]
                 years = ", ".join(f"{y['fiscal_year']} {y['status']}" for y in r["csr_years"])
                 lines.append(
-                    f"  {r['funder']['name']}: funder {r['funder']['status']} "
-                    f"[funder:{r['funder']['id']}]" + (f" · CSR years {years}" if years else "")
+                    f"  {e['name']}: {e['kind']} {e['status']} [{e['kind']}:{e['id']}]"
+                    + (f" · CSR years {years}" if years else "")
                 )
             for table, counts in sorted(r.get("written", {}).items()):
                 tally = ", ".join(f"{n} {status}" for status, n in sorted(counts.items()))

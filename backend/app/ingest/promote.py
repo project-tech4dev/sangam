@@ -23,7 +23,7 @@ from pydantic import ValidationError
 
 from app.ingest.expectations import PROMOTABLE
 from app.ingest.geography import resolve_location
-from app.ingest.matcher import resolve_funder
+from app.ingest.matcher import resolve_funder, resolve_org
 from app.ingest.records import (
     ContactRecord,
     FunderCsrSpendRecord,
@@ -33,6 +33,9 @@ from app.ingest.records import (
     FunderPartnerRecord,
     FunderRecord,
     MetricRecord,
+    OrgFinancialsRecord,
+    OrgLocationRecord,
+    OrgRecord,
     ProgramRecord,
     RfpRecord,
 )
@@ -41,6 +44,7 @@ from app.ingest.taxonomy import resolve_csr_sector
 from app.ingest.writer import (
     Owner,
     ensure_document,
+    set_registered_location,
     write_contact,
     write_csr_spend,
     write_csr_year,
@@ -49,6 +53,9 @@ from app.ingest.writer import (
     write_funder_location,
     write_funder_tag,
     write_metric,
+    write_org,
+    write_org_financials,
+    write_org_location,
     write_partner,
     write_program,
     write_rfp,
@@ -67,6 +74,11 @@ MERGEABLE = ("identifier", "exact", "alias", "boilerplate")
 WRITE_ORDER = (
     "csr_spend", "footprint", "stated_geography", "partner", "metric", "contact", "rfp",
 )
+
+# The org side's own order. Separate rather than appended: the funder path
+# would otherwise try concepts whose findings it never has, and the shared
+# concepts — programme, metric, contact, document — are the only overlap.
+ORG_WRITE_ORDER = ("org_financials", "org_location", "metric", "contact")
 
 
 # The provenance convention in CLAUDE.md asks for content_hash and
@@ -91,6 +103,10 @@ CONCEPT_RECORDS: dict[str, type] = {
     "metric": MetricRecord,
     "contact": ContactRecord,
     "rfp": RfpRecord,
+    "org_identity": OrgRecord,
+    "org_identifier": OrgRecord,
+    "org_financials": OrgFinancialsRecord,
+    "org_location": OrgLocationRecord,
 }
 
 # A finding field whose record field has a different name. `kind` collides
@@ -100,6 +116,8 @@ RENAMED: dict[tuple[str, str], str] = {
     ("contact", "kind"): "contact_kind",
     ("identifier", "id_type"): "identifiers",
     ("identifier", "id_value"): "identifiers",
+    ("org_identifier", "id_type"): "identifiers",
+    ("org_identifier", "id_value"): "identifiers",
 }
 
 
@@ -157,6 +175,32 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
         )
     except ValueError as exc:
         logger.info("funder record refused for %s: %s", row["slug"], exc)
+        return None
+
+
+def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord | None:
+    """One org record, the same shape as funder_from on the other kind.
+
+    The website is deliberately absent: orgs has no column for one, and
+    _hold_unstorable reports it rather than letting it disappear here.
+    """
+    identity = next((f for f in findings if f["concept"] == "org_identity"), None)
+    identifiers = [f for f in findings if f["concept"] == "org_identifier"]
+    anchor = identity or (identifiers[0] if identifiers else None)
+    if anchor is None:
+        return None
+    try:
+        return OrgRecord(
+            name=(identity or {}).get("name") or row["canonical_name"] or row["entity_name"],
+            org_kind=(identity or {}).get("org_kind") or "cso",
+            legal_form=(identity or {}).get("legal_form"),
+            registration_date=(identity or {}).get("registration_date"),
+            identifiers={f["id_type"]: f["id_value"] for f in identifiers},
+            as_of=None,
+            **_provenance(anchor, row["researched_at"]),
+        )
+    except ValueError as exc:
+        logger.info("org record refused for %s: %s", row["slug"], exc)
         return None
 
 
@@ -330,6 +374,10 @@ def _row_identity(
         return (concept, f.name, f.role)
     if concept == "rfp":
         return (concept, f.title, f.deadline)
+    if concept == "org_location":
+        return (concept, district_id or state_id)
+    if concept == "org_financials":
+        return (concept, year)
     return (concept, id(f))
 
 
@@ -344,6 +392,7 @@ def _describe(concept: str, f: Any) -> str:
 async def _write_facts(
     conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], owner: Owner,
     programs: dict[str, int], docs: dict[str, int], report: dict[str, Any],
+    *, order: tuple[str, ...] = WRITE_ORDER,
 ) -> None:
     """Every remaining concept, in dependency order.
 
@@ -357,7 +406,7 @@ async def _write_facts(
     seen: set[tuple] = set()
     themes: dict[int, str] = {}
 
-    for concept in WRITE_ORDER:
+    for concept in order:
         for f in _validated(findings, concept):
             program_id = programs.get(getattr(f, "program_name", None) or "")
             document_id = docs.get(f.source_url)
@@ -476,6 +525,42 @@ async def _write_facts(
                     )
                     _count(report, "rfps", status)
 
+                elif concept == "org_financials":
+                    rec = OrgFinancialsRecord(
+                        fiscal_year=f.fiscal_year,
+                        total_income=f.total_income.inr if f.total_income else None,
+                        program_spend=f.program_spend.inr if f.program_spend else None,
+                        non_program_spend=(
+                            f.non_program_spend.inr if f.non_program_spend else None
+                        ),
+                        foreign_contribution=(
+                            f.foreign_contribution.inr if f.foreign_contribution else None
+                        ),
+                        is_audited=f.is_audited, notes=f.notes, as_of=f.fiscal_year, **shared,
+                    )
+                    status, _ = await write_org_financials(
+                        conn, rec, owner.id, document_id
+                    )
+                    _count(report, "org_financials", status)
+
+                elif concept == "org_location":
+                    location_id = district_id or state_id
+                    if location_id is None:
+                        continue
+                    rec = OrgLocationRecord(
+                        state=f.state, district=f.district, role=f.role, note=f.note,
+                        as_of=None, **shared,
+                    )
+                    status, _ = await write_org_location(
+                        conn, rec, owner.id, location_id=location_id, document_id=document_id
+                    )
+                    _count(report, "org_locations", status)
+                    # A registered address is this concept with role='registered',
+                    # not a second field on org_identity — so the column that
+                    # names it is set here, where the place is already resolved.
+                    if f.role == "registered":
+                        await set_registered_location(conn, owner.id, location_id)
+
                 elif concept == "contact":
                     rec = ContactRecord(
                         name=f.name, contact_kind=f.kind, role=f.role, email=f.email,
@@ -537,41 +622,44 @@ async def _parent(conn: Any, record: FunderRecord, report: dict[str, Any]) -> in
     return None
 
 
-async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
-    """Write what can be written from one research row. Returns a report."""
-    findings = row["findings"] if isinstance(row["findings"], list) else []
-    report: dict[str, Any] = {
-        "slug": row["slug"], "funder": None, "csr_years": [],
-        "written": {}, "held": [], "skipped": {}, "reasons": [],
-    }
-    for concept in sorted({f["concept"] for f in findings}):
-        if concept not in PROMOTABLE:
-            report["skipped"][concept] = len([f for f in findings if f["concept"] == concept])
+async def _link_research(
+    conn: Any, row: dict[str, Any], *, org_id: int | None = None, funder_id: int | None = None
+) -> None:
+    """What this research row became. Both columns, always: the pair existed
+    unwritten and unread since 0011, and filling one of them would leave the
+    other looking deliberately empty."""
+    await conn.execute(
+        "UPDATE entity_research SET resolved_org_id = %s, resolved_funder_id = %s WHERE id = %s",
+        (org_id, funder_id, row["id"]),
+    )
 
-    # An NGO is not a funder. Without this the first org researched becomes a
-    # funders row, which is worse than not promoting it at all: it is a wrong
-    # answer wearing a catalog citation.
-    if row.get("entity_kind") == "org":
-        report["reasons"].append(
-            "researched as an organisation, not a funder. orgs has no writer yet "
-            "(no OrgRecord, no resolve_org, no write_org), so this stays research. "
-            "See docs/INGEST.md."
+
+def _hold_unstorable(row: dict[str, Any], findings: list[dict[str, Any]], report) -> None:
+    """Two org facts that are researched, correct, and have nowhere to go.
+
+    Reported rather than dropped, because "we never asked" and "there is no
+    column" are different answers and only one of them is ours to fix.
+    """
+    if row.get("website"):
+        report["held"].append(
+            f"website {row['website']!r}: orgs has no column for one and org_identifiers has "
+            f"no 'domain' type, so it stays on the research row."
         )
-        return report
+    for f in findings:
+        if f["concept"] == "org_identifier" and f.get("notes"):
+            report["held"].append(
+                f"{f['id_type']} note {f['notes']!r}: the identifier map carries a type and a "
+                f"value, so the note stays on the research row."
+            )
 
-    # Flat label/value findings cannot be mapped to columns without the
-    # guessing this file was rewritten to remove. Re-research, do not migrate.
-    if findings and row.get("schema_version", 1) < SCHEMA_VERSION:
-        report["reasons"].append(
-            f"researched under finding shape v{row.get('schema_version', 1)}, which has no typed "
-            f"fields to map. Re-run the research for {row['slug']} and promote that."
-        )
-        return report
 
+async def _promote_funder(
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any]
+) -> None:
     record = funder_from(row, findings)
     if record is None:
         report["reasons"].append("no identity or identifier finding to build a funder from")
-        return report
+        return
 
     match = await resolve_funder(conn, record.name, record.identifiers)
     if match.method == "trigram":
@@ -579,10 +667,12 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
         report["reasons"].append(
             f"{record.name!r} resembles {names} without matching. Not merged — a person decides."
         )
-        return report
+        return
     parent_id = await _parent(conn, record, report)
     status, funder_id, _ = await write_funder(conn, record, match, parent_id=parent_id)
-    report["funder"] = {"status": status, "id": funder_id, "name": record.name}
+    report["entity"] = {
+        "kind": "funder", "status": status, "id": funder_id, "name": record.name
+    }
 
     owner = Owner.funder(funder_id)
     docs = await _write_documents(conn, row, findings, owner, report)
@@ -593,6 +683,69 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
         report["csr_years"].append({"fiscal_year": year_record.fiscal_year, "status": state})
     programs = await _write_programs(conn, row, findings, owner, docs, report)
     await _write_facts(conn, row, findings, owner, programs, docs, report)
+    await _link_research(conn, row, funder_id=funder_id)
+
+
+async def _promote_org(
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any]
+) -> None:
+    """The NGO path. Same shape as the funder one bar two differences: there is
+    no parent link to resolve, and write_org fills blanks instead of winning."""
+    record = org_from(row, findings)
+    if record is None:
+        report["reasons"].append(
+            "no org_identity or org_identifier finding to build an organisation from"
+        )
+        return
+
+    match = await resolve_org(conn, record.name, record.identifiers)
+    if match.method == "trigram":
+        names = ", ".join(c["name"] for c in match.candidates)
+        report["reasons"].append(
+            f"{record.name!r} resembles {names} without matching. Not merged — a person decides."
+        )
+        return
+    status, org_id, _, conflicts = await write_org(conn, record, match)
+    report["entity"] = {"kind": "org", "status": status, "id": org_id, "name": record.name}
+    report["held"].extend(conflicts)
+    _hold_unstorable(row, findings, report)
+
+    owner = Owner.org(org_id)
+    docs = await _write_documents(conn, row, findings, owner, report)
+    programs = await _write_programs(conn, row, findings, owner, docs, report)
+    await _write_facts(
+        conn, row, findings, owner, programs, docs, report, order=ORG_WRITE_ORDER
+    )
+    await _link_research(conn, row, org_id=org_id)
+
+
+async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
+    """Write what can be written from one research row. Returns a report."""
+    findings = row["findings"] if isinstance(row["findings"], list) else []
+    report: dict[str, Any] = {
+        "slug": row["slug"], "entity": None, "csr_years": [],
+        "written": {}, "held": [], "skipped": {}, "reasons": [],
+    }
+    for concept in sorted({f["concept"] for f in findings}):
+        if concept not in PROMOTABLE:
+            report["skipped"][concept] = len([f for f in findings if f["concept"] == concept])
+
+    # Before the kind branch, not after it. An org row researched under the old
+    # shape used to be turned away for having no writer, which is a reason that
+    # has stopped existing; "re-run the research" is the one that says what to do.
+    if findings and row.get("schema_version", 1) < SCHEMA_VERSION:
+        report["reasons"].append(
+            f"researched under finding shape v{row.get('schema_version', 1)}, which has no typed "
+            f"fields to map. Re-run the research for {row['slug']} and promote that."
+        )
+        return report
+
+    # An NGO is not a funder, and the two kinds reach different tables through
+    # different resolvers. Nothing below this line is shared but the report.
+    if row.get("entity_kind") == "org":
+        await _promote_org(conn, row, findings, report)
+    else:
+        await _promote_funder(conn, row, findings, report)
     # Ten findings citing the same unresolvable state is one problem, not ten.
     report["held"] = list(dict.fromkeys(report["held"]))
     return report

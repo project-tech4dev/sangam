@@ -564,8 +564,12 @@ class TestExpectationsComeFromTheSchema:
 
 class TestPromotionRefusesWhatItCannotWrite:
     async def test_an_ngo_is_not_written_into_funders(self):
-        # orgs has no writer. Promoting an org row would put an NGO in the
-        # funder table, which is a wrong answer carrying a catalog citation.
+        """An NGO now promotes, and the thing that must stay true is which
+        table it reaches. The org path never calls a funder writer, so a row
+        carrying only funder-shaped findings builds no organisation at all —
+        which is the refusal, rather than an NGO landing in `funders`."""
+        from app.ingest.promote import funder_from, org_from
+
         row = {
             "slug": "the-ant", "entity_name": "The ANT", "canonical_name": None,
             "entity_kind": "org", "researched_at": NOW, "schema_version": 2,
@@ -575,8 +579,12 @@ class TestPromotionRefusesWhatItCannotWrite:
                           "confidence": "high"}],
         }
         report = await promote(None, row)
-        assert report["funder"] is None
-        assert any("no writer" in r for r in report["reasons"])
+        assert report["entity"] is None
+        assert any("org_identity" in r for r in report["reasons"])
+        # The two builders read disjoint concepts, which is what keeps the
+        # kinds apart before any connection is touched.
+        assert org_from(row, row["findings"]) is None
+        assert funder_from(row, row["findings"]) is not None
 
 
 class TestFindingsAreShapedLikeTheRowsTheyBecome:
@@ -684,7 +692,7 @@ class TestOldFindingsAreNotPromoted:
                           "confidence": "high"}],
         }
         report = await promote(None, row)
-        assert report["funder"] is None
+        assert report["entity"] is None
         assert any("Re-run the research" in r for r in report["reasons"])
         assert SCHEMA_VERSION == 2
 
@@ -812,13 +820,10 @@ class TestTheWriterSideRecords:
 
 class TestPromotionCoversEveryConceptWithAWriter:
     def test_what_is_left_out_is_left_out_for_one_reason(self):
-        # Twelve of seventeen. Everything excluded is excluded because orgs has
-        # no writer: the four org_* concepts land in org tables, and `grant`
-        # cannot be written either, since grants.org_id is NOT NULL and the
-        # recipient would have to be an orgs row first.
-        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == {
-            "grant", "org_identity", "org_identifier", "org_financials", "org_location",
-        }
+        # Sixteen of seventeen. The one exclusion left is `grant`: grants.org_id
+        # is NOT NULL and promoting a funder's research does not write the NGOs
+        # it names, so the recipient would have to be an orgs row first.
+        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == {"grant"}
 
     def test_a_funder_concept_is_never_the_one_left_out(self):
         # The reason above is the whole reason. A funder concept that stopped
@@ -832,6 +837,25 @@ class TestPromotionCoversEveryConceptWithAWriter:
         # a program_id, so a programme written after them would leave nulls.
         assert "program" not in WRITE_ORDER
         assert {"csr_spend", "footprint", "partner", "metric"} <= set(WRITE_ORDER)
+
+    def test_every_promotable_concept_is_written_by_one_kind_or_the_other(self):
+        """The two orders are the whole dispatch. A concept with a writer and
+        no place in either loop is researched, promotable and never written —
+        which is the failure the order was split in two to risk."""
+        from app.ingest.promote import ORG_WRITE_ORDER
+
+        # Handled outside the fact loops: the entity itself, its identifiers,
+        # its documents and its programmes each have their own step.
+        apart = {"identity", "identifier", "csr_year", "program", "document",
+                 "org_identity", "org_identifier"}
+        assert set(PROMOTABLE) - apart == set(WRITE_ORDER) | set(ORG_WRITE_ORDER)
+
+    def test_the_funder_loop_never_tries_an_org_concept(self):
+        from app.ingest.promote import ORG_WRITE_ORDER
+
+        # metric and contact sit on tables with both foreign keys; nothing else
+        # may overlap, or one kind writes the other's table.
+        assert set(WRITE_ORDER) & set(ORG_WRITE_ORDER) == {"metric", "contact"}
 
 
 class TestResearchGoalsAsksTheRightTables:
