@@ -633,7 +633,8 @@ async def write_org(
             "INSERT INTO orgs (slug, name, org_kind, legal_form, registration_date, "
             "registry_status, source_url, source_name, fetched_at, as_of, content_hash, "
             "extractor_version) "
-            "VALUES (%s, %s, %s, %s, %s, 'placeholder', %s, %s, %s, %s, %s, %s) RETURNING id",
+            "VALUES (%s, %s, COALESCE(%s, 'cso'), %s, %s, 'placeholder', %s, %s, %s, %s, %s, "
+            "%s) RETURNING id",
             (slug, rec.name, rec.org_kind, rec.legal_form, rec.registration_date,
              *provenance.values()),
         )

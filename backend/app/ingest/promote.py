@@ -192,7 +192,7 @@ def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord |
     try:
         return OrgRecord(
             name=(identity or {}).get("name") or row["canonical_name"] or row["entity_name"],
-            org_kind=(identity or {}).get("org_kind") or "cso",
+            org_kind=(identity or {}).get("org_kind"),
             legal_form=(identity or {}).get("legal_form"),
             registration_date=(identity or {}).get("registration_date"),
             identifiers={f["id_type"]: f["id_value"] for f in identifiers},

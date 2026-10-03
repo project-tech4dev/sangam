@@ -327,7 +327,10 @@ class OrgRecord(Provenance):
 
     kind: Literal["org"] = "org"
     name: str = Field(min_length=2)
-    org_kind: Literal["cso", "intermediary", "government"] = "cso"
+    org_kind: Literal["cso", "intermediary", "government"] | None = None
+    """None, not "cso". orgs.org_kind is NOT NULL DEFAULT 'cso', so a default
+    here would reach _blanks as a stated finding and contradict every
+    intermediary and government row the cohort holds."""
     legal_form: str | None = None
     registration_date: date | None = None
     identifiers: dict[str, str] = Field(default_factory=dict)

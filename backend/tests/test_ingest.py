@@ -1257,6 +1257,22 @@ class TestTheOrgWriter:
         assert (status, changes, conflicts) == ("matched", {}, [])
         assert not any(q.startswith("UPDATE orgs") for q in conn.sql)
 
+    async def test_an_unstated_kind_is_not_a_finding_that_contradicts_one(self):
+        """orgs.org_kind is NOT NULL DEFAULT 'cso', so it is never a blank to
+        fill — a default on the record would only ever read as research
+        disagreeing with every intermediary and government row we hold."""
+        from app.ingest.matcher import Match
+        from app.ingest.writer import write_org
+
+        conn = self._Conn([
+            {"org_kind": "intermediary", "legal_form": "Trust", "registration_date": None},
+        ])
+        status, _id, changes, conflicts = await write_org(
+            conn, self.rec(legal_form="Trust"), Match("exact", 9)
+        )
+        assert self.rec().org_kind is None
+        assert (status, changes, conflicts) == ("matched", {}, [])
+
     async def test_twelve_a_and_eighty_g_reach_org_identifiers(self):
         """funder_identifiers has no room for either; this is the whole point
         of researching an NGO against its own tables."""
