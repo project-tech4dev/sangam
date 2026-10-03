@@ -235,13 +235,30 @@ class TestTheSkillIsFoundAndIsProgressive:
         for spec in (ENTITY_RESEARCHER, CATALOG_WRITER):
             assert "skills" not in spec, spec["name"]
 
-    def test_both_skills_are_advertised_to_the_supervisor(self):
-        """One per entity kind. An NGO brief is not a funder scan with fewer
-        rows — it opens on 12A, 80G and FCRA, which no funder table holds."""
+    def test_every_skill_is_advertised_to_the_supervisor(self):
+        """Pinned as a literal set, not a count, because the hazard is a skill
+        that overlaps another's trigger: the model picks between them on the
+        description alone. Two per stage of the run, split by entity kind
+        where the kinds genuinely differ — an NGO brief is not a funder scan
+        with fewer rows; it opens on 12A, 80G and CSR-1, which no funder table
+        holds — plus the three that are the same job either way.
+        """
         from app.ingest.agent import SKILLS_DIR
 
         names = {d.name for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()}
-        assert names == {"funder-scan-for-fundraisers", "ngo-brief-for-funders"}
+        assert names == {
+            # what to pull, per kind
+            "funder-intake-research",
+            "ngo-credential-research",
+            # the record for one organisation, either kind
+            "entity-record",
+            # onto the catalog, and back out again
+            "catalog-mapping",
+            "catalog-write-report",
+            # the comparison across several, per kind
+            "funder-scan-for-fundraisers",
+            "ngo-brief-for-funders",
+        }
 
 
 def _subagent_tools(graph) -> dict[str, set[str]]:
