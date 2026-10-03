@@ -51,15 +51,18 @@ def same_but_for_boilerplate(a: str, b: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class Match:
+    """One dataclass for both kinds. `entity_id` is a funders.id or an orgs.id
+    depending on which resolver produced it, and the caller always knows which."""
+
     method: Method
-    funder_id: int | None = None
+    entity_id: int | None = None
     score: float | None = None
     candidates: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def resolved(self) -> bool:
         """A trigram hit proposes; a person accepts. Everything else resolves."""
-        return self.funder_id is not None
+        return self.entity_id is not None
 
 
 async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | None = None) -> Match:
@@ -106,6 +109,64 @@ async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | Non
     rows = await (
         await conn.execute(
             "SELECT id, name, similarity(name, %s) AS score FROM funders "
+            "WHERE similarity(name, %s) >= %s ORDER BY score DESC LIMIT 10",
+            (name, name, TRIGRAM_FLOOR),
+        )
+    ).fetchall()
+    candidates = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "score": round(core_similarity(name, r["name"]), 3),
+            "raw_score": round(float(r["score"]), 3),
+        }
+        for r in rows
+    ]
+    survivors = sorted(
+        (c for c in candidates if c["score"] >= CORE_FLOOR), key=lambda c: -c["score"]
+    )[:3]
+    if survivors:
+        return Match("trigram", None, survivors[0]["score"], survivors)
+    return Match("none")
+
+
+async def resolve_org(conn: Any, name: str, identifiers: dict[str, str] | None = None) -> Match:
+    """Three steps, not four: identifier, exact name, trigram.
+
+    `resolve_funder` has an alias step reading `funder_identifiers` rows of
+    id_type 'name'. org_identifiers' CHECK is pan|12a|80g|fcra|csr1|darpan|
+    cin|reg_no, so there is no such row to read and no alias step to port.
+    Everything else is the funder path: the same boilerplate rule, the same
+    floors, the same trigram re-rank on the distinctive part of the name.
+    """
+    for id_type, id_value in (identifiers or {}).items():
+        row = await (
+            await conn.execute(
+                "SELECT org_id FROM org_identifiers WHERE id_type = %s AND lower(id_value) = lower(%s)",
+                (id_type, id_value),
+            )
+        ).fetchone()
+        if row:
+            return Match("identifier", row["org_id"])
+
+    row = await (
+        await conn.execute("SELECT id FROM orgs WHERE lower(name) = lower(%s)", (name,))
+    ).fetchone()
+    if row:
+        return Match("exact", row["id"])
+
+    rows = await (
+        await conn.execute(
+            "SELECT id, name FROM orgs WHERE similarity(name, %s) >= %s", (name, TRIGRAM_FLOOR)
+        )
+    ).fetchall()
+    for row in rows:
+        if same_but_for_boilerplate(name, row["name"]):
+            return Match("boilerplate", row["id"], 1.0)
+
+    rows = await (
+        await conn.execute(
+            "SELECT id, name, similarity(name, %s) AS score FROM orgs "
             "WHERE similarity(name, %s) >= %s ORDER BY score DESC LIMIT 10",
             (name, name, TRIGRAM_FLOOR),
         )

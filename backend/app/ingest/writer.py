@@ -127,19 +127,19 @@ async def write_funder(
     if match.resolved:
         existing = await (
             await conn.execute(
-                f"SELECT {', '.join(FUNDER_UPDATABLE)} FROM funders WHERE id = %s", (match.funder_id,)
+                f"SELECT {', '.join(FUNDER_UPDATABLE)} FROM funders WHERE id = %s", (match.entity_id,)
             )
         ).fetchone()
         changes = _diff(dict(existing), proposed)
         if not changes:
-            return "matched", match.funder_id, {}
+            return "matched", match.entity_id, {}
         sets = ", ".join(f"{c} = %s" for c in changes)
         await conn.execute(
             f"UPDATE funders SET {sets} WHERE id = %s",
-            (*[proposed[c] for c in changes], match.funder_id),
+            (*[proposed[c] for c in changes], match.entity_id),
         )
-        await _write_identifiers(conn, match.funder_id, rec)
-        return "updated", match.funder_id, changes
+        await _write_identifiers(conn, match.entity_id, rec)
+        return "updated", match.entity_id, changes
 
     slug = await _free_slug(conn, slugify(rec.name))
     row = await (

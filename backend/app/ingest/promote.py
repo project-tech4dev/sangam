@@ -280,7 +280,7 @@ async def _write_programs(
     for f in sorted(_validated(findings, "program"), key=lambda f: depth.get(f.kind, 9)):
         try:
             rec = ProgramRecord(
-                funder_name=row["canonical_name"] or row["entity_name"], name=f.name,
+                entity_name=row["canonical_name"] or row["entity_name"], name=f.name,
                 program_kind=f.kind, description=f.description, status=f.status,
                 start_date=f.start_date, end_date=f.end_date, is_enabler=f.is_enabler,
                 as_of=None, **_provenance(f, row["researched_at"]),
@@ -352,7 +352,11 @@ async def _write_facts(
             sector_id = await resolve_csr_sector(conn, getattr(f, "sector", None))
             if sector_id is not None:
                 themes.setdefault(sector_id, getattr(f, "sector", "") or "")
-            base = {"funder_name": name, **_provenance(f, fetched)}
+            prov = _provenance(f, fetched)
+            # metric and contact sit on tables with both foreign keys, so
+            # they name the entity; the rest are funder-only records.
+            base = {"funder_name": name, **prov}
+            shared = {"entity_name": name, **prov}
 
             # Two findings can be distinct and still resolve to one row:
             # "Healthcare" and "Sanitation" are both Schedule VII clause (i),
@@ -436,7 +440,7 @@ async def _write_facts(
                         period=f.period, stage=f.stage, method=f.method,
                         is_self_reported=f.is_self_reported, baseline=f.baseline,
                         comparison_value=f.comparison_value, chain_key=f.chain_key,
-                        sequence=f.sequence, notes=f.notes, as_of=f.period, **base,
+                        sequence=f.sequence, notes=f.notes, as_of=f.period, **shared,
                     )
                     status, _ = await write_metric(
                         conn, rec, funder_id, program_id=program_id,
@@ -462,7 +466,7 @@ async def _write_facts(
                 elif concept == "contact":
                     rec = ContactRecord(
                         name=f.name, contact_kind=f.kind, role=f.role, email=f.email,
-                        is_role_mailbox=f.is_role_mailbox, notes=f.notes, as_of=None, **base,
+                        is_role_mailbox=f.is_role_mailbox, notes=f.notes, as_of=None, **shared,
                     )
                     status, _ = await write_contact(
                         conn, rec, funder_id, document_id=document_id
@@ -504,7 +508,7 @@ async def _parent(conn: Any, record: FunderRecord, report: dict[str, Any]) -> in
     # of the dataclass. A near-miss parent — ITC Limited against ITC Infotech —
     # is precisely the link that must not be stored quietly.
     if match.method in MERGEABLE:
-        return match.funder_id
+        return match.entity_id
     if match.method == "trigram":
         names = ", ".join(c["name"] for c in match.candidates)
         report["held"].append(

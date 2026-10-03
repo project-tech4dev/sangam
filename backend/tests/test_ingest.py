@@ -43,6 +43,9 @@ from app.ingest.records import (
     FunderRecord,
     MetricRecord,
     NewsMentionRecord,
+    OrgFinancialsRecord,
+    OrgLocationRecord,
+    OrgRecord,
     ProgramRecord,
     RfpRecord,
 )
@@ -761,17 +764,37 @@ class TestTheWriterSideRecords:
     def base(self, **kw):
         return {"funder_name": "Oil India Limited", **prov(), **kw}
 
+    # program, metric and contact sit on tables carrying both foreign keys, so
+    # they name the entity rather than the funder. The rest are funder-only.
+    NAMED = (
+        (FunderCsrSpendRecord, "funder_name", {"fiscal_year": "FY2024-25", "amount": 1.0}),
+        (FunderFootprintRecord, "funder_name", {"fiscal_year": "FY2024-25", "state": "Assam"}),
+        (FunderPartnerRecord, "funder_name",
+         {"fiscal_year": "FY2024-25", "partner_name": "Harsha Trust"}),
+        (ProgramRecord, "entity_name", {"name": "Rural Health"}),
+        (MetricRecord, "entity_name", {"name": "beneficiaries"}),
+        (ContactRecord, "entity_name", {"name": "A. Borgohain"}),
+        (OrgRecord, "name", {}),
+        (OrgFinancialsRecord, "entity_name", {"fiscal_year": "FY2024-25"}),
+        (OrgLocationRecord, "entity_name", {"state": "Assam"}),
+    )
+
     def test_a_market_is_not_a_funder_on_any_of_them(self):
-        for model, extra in (
-            (FunderCsrSpendRecord, {"fiscal_year": "FY2024-25", "amount": 1.0}),
-            (FunderFootprintRecord, {"fiscal_year": "FY2024-25", "state": "Assam"}),
-            (FunderPartnerRecord, {"fiscal_year": "FY2024-25", "partner_name": "Harsha Trust"}),
-            (ProgramRecord, {"name": "Rural Health"}),
-            (MetricRecord, {"name": "beneficiaries"}),
-            (ContactRecord, {"name": "A. Borgohain"}),
-        ):
+        for model, key, extra in self.NAMED:
             with pytest.raises(ValidationError, match="group of companies"):
-                model(**{**self.base(funder_name="NSE-listed companies"), **extra})
+                model(**{**prov(), key: "NSE-listed companies", **extra})
+
+    def test_a_real_ngo_name_is_not_mistaken_for_a_market(self):
+        """The aggregate guard was written for funders, and the cohort is full
+        of names built from the same words it refuses."""
+        for name in (
+            "Goonj",
+            "SOCIETY FOR NORTH EAST HANDMADE PAPER DEVELOPMENT",
+            "THE ANT THE ACTION NORTH EAST TRUST",
+            "PEOPLES RESOURCE DEVELOPMENT ASSOCIATION",
+            "Bodoland Development Foundation (BDF)",
+        ):
+            assert OrgRecord(name=name, **prov()).name == name
 
     def test_fiscal_year_format_is_enforced_on_every_yearly_record(self):
         for model, extra in (
