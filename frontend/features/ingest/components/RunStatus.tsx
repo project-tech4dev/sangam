@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { TraceStep } from "@/lib/useAgentChat";
+import { humanizeTool } from "../lib/toolLabels";
+
+/** The same label the trace uses — the raw tool name leaked out of here. */
+function doing(current: TraceStep | undefined, stepCount: number): string {
+  if (!current) return stepCount === 0 ? "thinking" : "deciding what to do next";
+  const { label, detail } = humanizeTool(current.tool);
+  return [label, detail(current.args)].filter(Boolean).join(" ");
+}
 
 function elapsed(sinceMs: number): string {
   const s = Math.floor((Date.now() - sinceMs) / 1000);
@@ -39,11 +47,6 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
   const writers = tasks.filter((s) => (s.args as any)?.subagent_type === "catalog-writer");
   const active = steps.filter((s) => s.running);
   const current = active[active.length - 1];
-  const doing = current
-    ? current.tool.replace(/_/g, " ")
-    : steps.length === 0
-      ? "thinking"
-      : "deciding what to do next";
 
   return (
     <div
@@ -72,7 +75,9 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
         }}
       />
       <span style={{ fontWeight: 600 }}>{running ? "Running" : "Finished"}</span>
-      <span style={{ color: "var(--color-muted)" }}>{running ? doing : "nothing in flight"}</span>
+      <span style={{ color: "var(--color-muted)" }}>
+        {running ? doing(current, steps.length) : "nothing in flight"}
+      </span>
       <span style={{ marginLeft: "auto", color: "var(--color-muted)", fontSize: "var(--fs-xs)" }}>
         {steps.length} step{steps.length === 1 ? "" : "s"}
         {researchers.length > 0 &&

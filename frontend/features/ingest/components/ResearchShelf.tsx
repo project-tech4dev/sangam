@@ -48,6 +48,19 @@ export function ResearchShelf({ items }: { items: ResearchRecord[] }) {
                 {r.canonical_name ?? r.entity_name}
               </strong>
               <span style={{ fontSize: "var(--fs-xs)", color: TONE[r.status] }}>{r.status}</span>
+              {/* Shown even when it is "unknown", which is still most rows: a
+                  blank badge would hide that nothing classified them. */}
+              <span
+                style={{
+                  fontSize: "var(--fs-xs)",
+                  color: r.entity_kind === "unknown" ? "var(--color-muted)" : "inherit",
+                  border: "1px solid var(--color-divider)",
+                  borderRadius: 999,
+                  padding: "0 7px",
+                }}
+              >
+                {r.entity_kind}
+              </span>
               <span
                 style={{
                   marginLeft: "auto",
