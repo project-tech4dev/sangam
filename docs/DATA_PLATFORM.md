@@ -292,7 +292,7 @@ and it is the first thing here that will go stale.
 | 12–13 | Typical / min / max grant size | `funders.grant_size_min` `grant_size_max`; per call, `rfps.amount_min/max` |
 | 14 | Typical project duration | `funders.typical_duration_months` |
 | 15 | Funds external NGOs? | `funders.funds_external` (stated) vs `funder_csr_spend.via_agency` (done) |
-| 16 | NGO eligibility criteria | `rfps.eligibility`, one requirement per line |
+| 16 | NGO eligibility criteria | `funder_eligibility`, one row per condition, `kind` splitting statutory restatement from the funder's own bar from a hard disqualifier; per call, `rfps.eligibility` |
 | 17 | Application process | `proposal_templates` — **no writer yet** |
 | 18 | Open / rolling / invitation-only | `funders.intake_mode` |
 | 19 | Current or recent RFPs | `rfps` |
@@ -320,6 +320,17 @@ it describes.
 
 **Application process (17).** `proposal_templates` and `template_items` are fully specified and
 have no writer. The URL of the form reaches `rfps.url`; the form's structure does not.
+
+## One answer that is now two columns
+
+**Eligibility (16).** A funder's standing bar and one call's requirements are different
+claims, and `rfps.eligibility` could only hold the second — which meant a funder with a
+published policy and no open call had nowhere to put the first, and most funders have no
+open call. `funder_eligibility` holds the standing policy, one row per condition with its
+own source, `kind` carrying the split that `funder-intake-research` field 4 works to
+produce: a funder that only restates Rule 4 has set no bar of its own. `rfps.eligibility`
+is unchanged and still means "this call asks for it". The same sentence appearing in both
+is correct, not a duplicate — and counting across the two double-counts.
 
 ## Two answers that are honest rather than complete
 

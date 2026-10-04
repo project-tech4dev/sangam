@@ -65,13 +65,15 @@ correct, cited, and still not become the stored value. Say which.
 | CSR position by year | `funder_csr_years` |
 | project and sector spend | `funder_csr_spend` |
 | implementing partners | `funder_partners` |
-| open call, its deadline, amount band, eligibility text | `rfps` — `eligibility` is jsonb, so it stores the text and queries none of it |
+| the funder's standing eligibility — statutory restatement, its own bar | `funder_eligibility`, `kind='statutory_restatement'` / `'own_bar'`, one row per condition |
+| hard disqualifiers | `funder_eligibility`, `kind='disqualifier'` |
+| open call, its deadline, amount band | `rfps` |
+| a requirement printed in *that call* | `rfps.eligibility` — jsonb, so it stores the text and queries none of it. Not the same claim as the standing bar above; the same sentence in both is two rows, not a duplicate |
 | whether a call is open | `rfps.status` |
 | source URL, fetch date | the provenance columns every table carries |
 | **intake route, and whether it was live when checked** | **no home** — `rfps.url` is one call, not a standing door |
 | **grantmaker / implementer / neither** | **no queryable home** — `funder_type` is free text |
 | **the document checklist, verbatim** | **no home** |
-| **hard disqualifiers** | **no home** |
 | **duration and co-funding share** | **no home** |
 | **access state — scanned, soft-404, archived** | **no home** |
 
