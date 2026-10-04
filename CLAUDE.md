@@ -306,6 +306,13 @@ parametrised test holds each spec against its own prompt.
 There used to be a `HIDDEN_TOOLS` set there suppressing the `deepagents` filesystem built-ins
 from the trace; the tools themselves are gone now, so hiding them is not needed.
 
+**Design changes start in the design system, not here.** The Claude Design project "Sangam
+Design System" is the system of record for colours, type, corners, spacing and component looks;
+changes flow from it into `frontend/app/globals.css` and `frontend/components/ui/`. Do not add a
+token, size or colour to `globals.css` that the design system lacks — reuse one, or change the
+design system first. `docs/DESIGN_SYSTEM.md` has the link, the file-by-file mapping and how to
+sync.
+
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is
 that every field traces to a source.
