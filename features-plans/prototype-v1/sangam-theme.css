@@ -1,3 +1,7 @@
+/* SUPERSEDED: the Claude Design project "Sangam Design System" is the system of record for
+   design, and the app's tokens live in frontend/app/globals.css. See docs/DESIGN_SYSTEM.md.
+   Kept as the prototype's original handoff, for reference only. */
+
 /* Sangam theme for React + Tailwind v4 + shadcn/ui.
    Usage: in app/globals.css
      @import "tailwindcss";
