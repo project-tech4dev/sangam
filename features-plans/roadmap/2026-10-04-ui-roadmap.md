@@ -11,7 +11,8 @@ only what comes next, one line per planned PR, so it can be picked up without re
   Changes start there and flow into the repo (`docs/DESIGN_SYSTEM.md`, from PR #86).
 - **Where they disagree, the design system wins on look; the prototype wins on Registry content.**
 - **Reduce before you diverge:** reuse a token, size or component before adding one.
-- **"CSO" stays** in the UI. "Vetted", never "hand-vetted".
+- **"CSO" stays** in the UI. "Vetted", never "hand-vetted". No "North East India" framing in
+  product copy; place names in records stay.
 - **Auth enforcement waits for #74 phase 1** (real Supabase JWT); UI work does not wait for it.
 
 ## Order
@@ -46,8 +47,9 @@ Data the API already returns first (A4–A7), then the prototype's content (R1�
     returns 404.
   - Profiles show only `review_status = 'vetted'` news; the "Pending review" label goes.
   - The status badge reads `registry_status`; funders are no longer hard-coded "full".
-  - To confirm: drop the "North East India" framing from the Registry heading and site
-    description, as `prototype-v1/CONTEXT.md` asks.
+  - Drop the "North East India" framing from the product copy: the Registry heading ("…of North
+    East India CSOs…") and the site description in `app/layout.tsx`. Place names inside records
+    (Assam, Udalguri, Action Northeast Trust) stay; they are data, not framing.
 - **A5 Registry index** on the design system's `Card`, `Tag`, `Input`, `SegmentedControl`/`Pill`
   - CSO blurb from the profile description (always empty today).
   - Pending entries read "Profile in vetting" and are not links.
