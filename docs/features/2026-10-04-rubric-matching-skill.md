@@ -41,6 +41,41 @@ So a model-produced score is `scored_by = 'model:<name>'`. Today every one of th
 
 ---
 
+## What master already has
+
+Checked against `master` (7e5935e). Most of this feature is assembly, not construction.
+
+| Need | Already on master | Status |
+|---|---|---|
+| Fit-score REST resource | `routes/scores.py` · `repositories/scores.py` · `schemas/scores.py` | Complete three-file set. `create_adjustment` is a **working write precedent**: POST → Pydantic body → hand-written parameterised SQL → row or `None`→404 |
+| Rubric tables readable by the agent | `rubrics`, `rubric_criteria`, `fit_scores`, `fit_score_items`, `score_adjustments` all in `catalog.py`, with `parent_id` for v2 leaves | **No catalog work needed for the rubric itself** |
+| Scorecard UI | `features/registry/ScoreCard.tsx` | Renders `code · label · justification · +score/points` per criterion, a `ProgressBar`, and an adjustments block. **This is the proposal's visual shape, already built** |
+| The provenance tier on screen | `ScoreCard.tsx:43` renders `Rubric {version} · {scored_by} · {date}` | **`scored_by` is already displayed.** `ScoreRow` already types it (`lib/api/types.ts:52-56`). The tier needs *formatting*, not new UI or a new field |
+| Cited tool output | `tools/sql/render.py` — `render_rows(…, cites=…)`, `render_caveats(defects)` | Reuse for `propose_fit_score`'s result rather than hand-rolling `[org:N]` |
+| A home for the save affordance | `AskWorkspace.tsx` mounts views; `EvidenceRail` already receives `latest.steps` and renders each tool call | The proposal step is **already in the rail's data**; it needs a renderer, not a new data path |
+| Client-side authenticated POST from `features/ask/` | `views/VaultView.tsx` (upload), `ScoreCard.tsx` (detail fetch) | Precedent for the fetch shape, `Authorization: "Bearer dev"` included |
+| Display primitives | `components/ui/` — `EntityMark`, `ProgressBar`, `card`/`badge`/`button`, `PillTabs` | Reuse; add no new tokens |
+
+**What genuinely does not exist and must be built:** the `propose_fit_score` tool, the skill and
+the disk-skill plumbing for Ask Sangam, `POST /scores` + `create_score`, and the save card itself.
+
+### Two things found while checking that are worth fixing here
+
+**`app/agent/tools/files.py` is dead code.** `download_file` and `read_pdf` are defined as tools,
+registered nowhere, and referenced only by a comment in `config.py:56`. They survive because
+**`test_every_tool_defined_is_also_registered` exists only for Import** (`test_ingest.py:322`) —
+Ask Sangam has no equivalent. CLAUDE.md claims *"Both agents register their list in one place …
+and a test walks the package to prove every tool defined is also registered"*; that is **false for
+Ask Sangam**. M2 adds the missing twin, which is cheap and is what keeps a seventh tool honest.
+
+**`feat/phase-1-ask-entry` will conflict with M4.** That unmerged branch adds an `import` view to
+`WorkspaceView` (`"ask" | "vault" | "media" | "rfpwatch"` today) and introduces a rule that is not
+yet on master: *design changes start in the Claude Design "Sangam Design System", not in
+`globals.css`*. **M4 should land after it merges**, and the save card must compose existing
+`components/ui` primitives rather than add a token, size or colour.
+
+---
+
 ## Design
 
 ### The shape: the agent proposes, a person saves
@@ -125,8 +160,10 @@ is ignored entirely**. Saving a model score today would make it the figure the R
 that funder, replacing a human's. Two changes, both required:
 
 - `LATEST_SCORES_SQL` prefers a human row: `ORDER BY r.version, (fs.scored_by <> 'manual'), fs.scored_at DESC`.
-- `FitScoreOut` already exposes `scored_by`; `frontend/features/registry/ScoreCard.tsx` renders
-  the tier so a model score is never mistaken for a vetted one.
+- `ScoreCard.tsx:43` **already renders `scored_by`** as raw text, so a saved row would read
+  `Rubric v1 · model:anthropic:claude-sonnet-5 · 4 Oct 2026`. Honest but ugly, and it reads as a
+  username. This is a formatting change — a badge that says *Model-proposed* vs *Hand-vetted* —
+  not new UI, and `FitScoreOut`/`ScoreRow` already carry the field.
 
 **The correction tier comes free.** `POST /scores/{id}/adjustments` already exists and is
 currently unconsumed — it logs `criterion_id`, `old_score`, `new_score`, `reason` and the
@@ -190,10 +227,15 @@ question the agent answers, and it is reviewable without the rest.
 `app/agent/tools/fit_tools.py` (new, matching the `tools/` package rule) · the shared Pydantic
 model in `app/schemas/scores.py` · register in `app/agent/build.py` · describe in
 `app/agent/instructions.md` · label in `frontend/features/ask/lib/toolLabels.ts`.
+Build the result with `tools/sql/render.py`'s `render_rows`/`render_caveats` so citations and
+caveats come out in the same shape every other tool uses.
 
 Tests: `test_prompt.py::test_prompt_names_every_registered_tool` passes · update
 `test_harness.py` to the 7+1 name set · new cases for a bad code, an over-max score, a v2 parent
-instead of a leaf, and a sum mismatch.
+instead of a leaf, and a sum mismatch · **add the Ask Sangam twin of
+`test_every_tool_defined_is_also_registered`**, which Import has and Ask does not. Expect it to
+fail first on `files.py`'s unregistered `download_file`/`read_pdf`; delete them, or register
+them deliberately.
 
 *Tool before skill, deliberately:* the always-on prompt must name a tool before any SKILL.md does.
 *Gate:* `pytest` green; a real `/ask` turn produces a valid proposal and nothing is written.
@@ -231,10 +273,18 @@ transaction for `fit_scores` + `fit_score_items`.
 Non-negotiables: **`scored_by` is stamped server-side** as `f"model:{settings.model}"` and never
 read from the body · the route **re-validates against `rubric_criteria`** rather than trusting the
 client · a duplicate `(org, funder, rubric, scored_at)` returns **409**, not a 500.
-Then `LATEST_SCORES_SQL`, `ScoreCard.tsx`, and the save card in `features/ask/`.
+
+Frontend, all of it reuse: lift `ScoreCard.tsx`'s criterion-row markup into a shared component so
+the proposal and the saved score render identically · the save card mounts in `EvidenceRail`,
+which already receives the `propose_fit_score` step in `latest.steps` · the POST follows
+`VaultView.tsx`'s fetch shape · the tier badge replaces the raw `scored_by` text · then
+`LATEST_SCORES_SQL`.
+
+**Sequence after `feat/phase-1-ask-entry` merges** — it touches `WorkspaceView` and adds the
+design-system rule. Compose `components/ui` primitives; add no new token to `globals.css`.
 
 *Gate:* save a proposal; `GET /api/scores?org=kabil` shows it with `scored_by` set; the Registry
-still displays the hand-vetted v1 score as primary.
+still displays the hand-vetted v1 score as primary, and the model one is visibly a second tier.
 
 ### M5 — evals
 Two or three cases in `backend/tests/evals/cases/golden.jsonl` with `tags: ["rubric"]`, including
