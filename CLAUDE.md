@@ -23,8 +23,9 @@ Locally, `make up` therefore starts Postgres, runs `migrate`, and only then star
 and `make seed` runs `migrate` too. Both are pinned to `ENV=local`: against a managed database
 you run `make migrate ENV=staging` yourself, deliberately and after a backup.
 
-Then http://localhost:3000 for the app and http://localhost:8010/docs for the API. `/ask` and
-`/import` are behind Supabase sign-in. `OPENAI_API_KEY` and `make graph-seed` are optional —
+Then http://localhost:3000 for the app and http://localhost:8010/docs for the API. The Ask
+workspace and Import (`/ask?view=import`; `/import` redirects there) are behind Supabase
+sign-in; signed out, `/ask` is a public preview. `OPENAI_API_KEY` and `make graph-seed` are optional —
 the graph disables itself cleanly. One smoke check, `documents: 96+`, is expected to fail on a
 fresh clone: `make seed` does not create those documents.
 
@@ -365,7 +366,9 @@ a bucket.
 **Auth is a deliberate stub.** `backend/app/core/security.py::get_current_user` resolves every
 request to one seeded user. Every route already does `Depends(get_current_user)`, so
 swapping in Supabase JWT verification changes only that function. The frontend sends a
-hardcoded `Authorization: Bearer dev` from five call sites.
+hardcoded `Authorization: Bearer dev` from six call sites: `lib/api/client.ts`,
+`lib/AgentProviders.tsx`, `features/registry/ScoreCard.tsx` and the Ask workspace's Vault, Media
+and Import views. Count them with `grep -rn "Bearer dev" frontend` before swapping the stub out.
 
 ## Deployment
 
