@@ -22,11 +22,11 @@ only what comes next, one line per planned PR, so it can be picked up without re
 | DS-0 | One-time catch-up of the design system with Phase 1 | #86 merged |
 | A4 | Registry correctness | — |
 | A5 → A7 | Registry index, CSO profile, funder profile on the design system | A4 |
-| R1 → R6 | Prototype content, one tab per PR | A6 / A7; R6 needs D1 |
+| R1 → R6 | Prototype content, one tab per PR | A6 / A7; R3 and R6 need D1 |
 | A9 | Workspace views as real URLs; Tools gated for staff in the UI | — |
 | A10 | Ask workspace on the design system | A9 |
 | B1 | Server-side enforcement | #74 phase 1 |
-| D1 | Data-model spec for content with no schema | — |
+| D1 | Taxonomy as themes in Postgres, and content with no schema | — |
 | P1 | Phase 1 follow-ups | — |
 
 ## DS-0: design system catch-up (repo → design system, once)
@@ -68,8 +68,8 @@ Data the API already returns first (A4–A7), then the prototype's content (R1�
   - Identifiers and provenance shown.
 - **R1 Financials tab** (CSO) from `org_financials`: income, growth, programme spend.
 - **R2 Impact tab** (CSO) from `metrics`: values against targets; feeds villages and families.
-- **R3 Programmes & taxonomy** from `tags.kind` and `program_tags`: sector footprint, SDGs, and
-  each programme's taxonomy cell. Best after D1 loads the taxonomy into Postgres.
+- **R3 Programmes & themes** from `program_tags`: each programme's sub-themes and lenses, with
+  the SDGs and Schedule VII sectors they imply. Needs D1's themes in Postgres.
 - **R4 Funder giving** from `funder_csr_years`, `funder_csr_spend`, `funder_footprints`,
   `funder_partners` and the 0019 grant-band fields: giving by year, sector split, grant shape.
 - **R5 Signals** from the 0010 columns (`kind`, `platform`, `review_status`, `sentiment`): news
@@ -101,10 +101,51 @@ Phase 1 already moved Import into the workspace (sidebar → Tools → Import, `
 
 ## D1: data-model spec
 
-For Registry content with no schema today: district coordinates or GeoJSON for the map,
-certification, per-funder rubric weights, and per-match narratives and caveats. Also: load the
-taxonomy domains (Livelihoods, Education, Health) into Postgres as `tags` of kind `domain` and
-`cell`, so `/resources/taxonomy` reads the API and the frontend's copied JSON goes.
+> **Changed 2026-10-04: the taxonomy is themes first.** The earlier plan loaded the occupation
+> trees (Livelihoods macro-sectors and tracks, Health care levels, Education areas) as the primary
+> tags. Matching and planning happen in funders' terms, and an LLM supplies the fine nuance at
+> query time, so the primary tags are now a short two-level list of **themes and sub-themes**,
+> with the standards hung on each sub-theme. The trees are parked, not deleted.
+
+**Taxonomy, themes first** — source `features-plans/data-model/seed/data/taxonomy/themes.json`
+(already shown on `/resources/taxonomy` from PR #86):
+
+| Domain | Themes | Status |
+|---|---|---|
+| Livelihoods | Skilling for jobs & employment · Economic empowerment of SHGs · Nano & micro entrepreneurship in farm & non-farm sectors (farm, FPO and natural-resource work folded in) | active |
+| Health | Maternal, child & adolescent health and nutrition · Primary & community health systems · Disease prevention & control · Care for vulnerable groups | draft |
+| Education | Early years & foundational learning · School quality · Access, inclusion & retention · Pathways beyond school | draft |
+
+What happens to each part of the earlier taxonomy:
+
+| Part | Fate |
+|---|---|
+| Themes and sub-themes | **New, primary.** `tags` of kind `theme`; a sub-theme's `parent_id` is its theme. No migration: `theme` is already an allowed kind |
+| SDGs, Schedule VII (two-level MCA sectors), government schemes | **Kept, as crosswalks** in each sub-theme's `meta`, so tagging a sub-theme gives all three |
+| Population groups, lenses (women & girls, tribal & remote, digital, climate-smart) | **Kept**, shared across domains; lenses add SDGs |
+| The 24 Sangam sectors | **Retired**, `replaced_by` the matching theme |
+| "Enabling work" kinds | **Absorbed** into sub-themes (institution building, financial inclusion, …) |
+| Occupation tree, tracks, care levels, ISCED levels, NIC/CRS codes | **Parked** as an optional second layer, for matching at scale |
+| Darpan → Sangam map | **Retargeted** from sectors to themes |
+
+**How tags get assigned:** Sangam Import (an LLM) proposes sub-themes and lenses for each
+programme and each CSR filing line, quoting its evidence (`is_inferred = true`); a person confirms
+during vetting. Queries narrow with the tags in SQL, then the LLM judges and explains. Classified
+CSR lines give spend per sub-theme — the evidence behind theme sizing.
+
+**Schedule VII decision still open:** load the two-level MCA list (14 groups, 30 sectors) that the
+crosswalks use, with today's 12 clauses pointing at it via `replaced_by` so imported spend keeps
+resolving. Recommended; needs confirming, along with moving the taxonomy from `features-plans/`
+into the live seed.
+
+**Steps:**
+1. One loader and one data folder: `seed/taxonomy_seed.py` loads Schedule VII, SDGs, population
+   groups, lenses and themes from `seed/data/taxonomy/`; `make seed` runs it.
+2. `GET /api/taxonomy`; `/resources/taxonomy` reads it and the frontend copy goes.
+3. Import classifies programmes and CSR lines into sub-themes; vetting confirms.
+
+**Registry content with no schema today** (unchanged): district coordinates or GeoJSON for the
+map, certification, per-funder rubric weights, per-match narratives and caveats.
 
 ## P1: Phase 1 follow-ups
 
