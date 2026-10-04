@@ -114,6 +114,27 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
+        # Its standing bar, which is NOT the same question as whether a call is
+        # open. Labelled so a reader cannot mistake "what the funder requires"
+        # for "whether anybody qualifies" — nothing here judges an applicant.
+        "funder_eligibility (what the funder REQUIRES of applicants; not a judgement on any)",
+        """
+        SELECT kind, criterion, source_name FROM funder_eligibility
+        WHERE funder_id = %s ORDER BY kind, id
+        """,
+    ),
+    (
+        # Without this section an rfps write is invisible to the catalog-writer's
+        # own verification step, and a researcher cannot tell a funder with no
+        # calls from a funder nobody has checked. A missing section means NOT
+        # RECORDED, as the tool's docstring says of every section.
+        "rfps (open calls; requirements here are the CALL's, not the standing bar above)",
+        """
+        SELECT title, status, deadline, amount_min, amount_max, url FROM rfps
+        WHERE funder_id = %s ORDER BY deadline DESC NULLS LAST
+        """,
+    ),
+    (
         "funder_csr_years (amounts in INR)",
         """
         SELECT fiscal_year, prescribed_csr, total_spent, average_net_profit, unspent_transferred,

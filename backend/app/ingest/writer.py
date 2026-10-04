@@ -534,6 +534,32 @@ async def write_rfp(
     return status, rfp_id, changes
 
 
+FUNDER_ELIGIBILITY_KEY = ("funder_id", "kind", "criterion")
+# No content_hash or extractor_version: funder_eligibility carries the same
+# provenance set as funder_partners, and _upsert names its columns.
+FUNDER_ELIGIBILITY_UPDATABLE = ("notes", "source_url", "source_name", "fetched_at", "as_of")
+
+
+async def write_funder_eligibility(
+    conn: Any, rec: Any, funder_id: int, *, document_id: int | None
+) -> tuple[str, dict]:
+    """One condition the funder sets for applicants.
+
+    The criterion itself is part of the key: a funder restating the same bar
+    in different words is two conditions as far as this table is concerned,
+    and collapsing them would silently pick one source's wording over another.
+    """
+    key = {"funder_id": funder_id, "kind": rec.criterion_kind, "criterion": rec.criterion}
+    proposed = {
+        "notes": rec.notes,
+        "source_url": rec.source_url, "source_name": rec.source_name,
+        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+    }
+    return await _upsert(
+        conn, "funder_eligibility", key, FUNDER_ELIGIBILITY_UPDATABLE, proposed, document_id
+    )
+
+
 async def write_funder_tag(conn: Any, funder_id: int, tag_id: int, *, note: str | None) -> None:
     """A theme this funder actually spends on, so field-8 questions can be
     answered from one place instead of aggregated over spend rows.

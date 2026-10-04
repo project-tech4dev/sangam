@@ -79,6 +79,12 @@ CONCEPTS: dict[str, ConceptSpec] = {
     "footprint": ConceptSpec("funder_footprints", "Where the work ran"),
     "stated_geography": ConceptSpec("funder_locations", "Where it says it prioritises"),
     "partner": ConceptSpec("funder_partners", "Implementing partners"),
+    # The funder's standing bar, which is NOT rfps.eligibility: that one is a
+    # requirement printed in one call, and the same sentence can be true in
+    # both places. funder-intake-research pulls this as fields 4 and 6.
+    "funder_eligibility": ConceptSpec(
+        "funder_eligibility", "Eligibility it sets for applicants"
+    ),
     "program": ConceptSpec("programs", "Programmes", kinds=_BOTH),
     "grant": ConceptSpec(
         "grants",
@@ -204,6 +210,7 @@ REQUIRED: dict[str, frozenset[str]] = {
     "footprint": frozenset({"fiscal_year", "state"}),
     "stated_geography": frozenset({"state"}),
     "partner": frozenset({"fiscal_year", "partner_name"}),
+    "funder_eligibility": frozenset({"kind", "criterion"}),
     "program": frozenset({"name"}),
     "grant": frozenset({"title", "recipient_name"}),
     "metric": frozenset({"name"}),
