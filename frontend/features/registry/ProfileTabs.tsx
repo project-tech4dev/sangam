@@ -71,7 +71,7 @@ export function OrgProfileTabs({
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <SectionCard kicker="Base coverage" title={`${coverage} / 100`}>
             <ProgressBar pct={coverage} color={coverage >= 65 ? "var(--color-accent-2-600)" : "var(--color-accent-600)"} />
-            <div className="card-body" style={{ fontSize: 12 }}>
+            <div className="card-body" style={{ fontSize: "var(--fs-xs)" }}>
               Share of profile sections with verified data in the base — not a judgement of the organisation.
             </div>
           </SectionCard>
@@ -82,7 +82,7 @@ export function OrgProfileTabs({
                 const found = org.identifiers.find((i) => i.id_type === idType);
                 return (
                   <div key={idType} className="card" style={{ padding: 14, gap: 4 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 600 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--fs-xs)", fontWeight: 600 }}>
                       <span
                         style={{
                           width: 8, height: 8, borderRadius: "50%",
@@ -92,7 +92,7 @@ export function OrgProfileTabs({
                       {found ? "Verified" : "Not entered"}
                       <span className="muted-2" style={{ marginLeft: "auto" }}>{ID_LABELS[idType]}</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, fontStyle: found ? "normal" : "italic", color: found ? "var(--color-text)" : "var(--color-neutral-500)" }}>
+                    <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, fontStyle: found ? "normal" : "italic", color: found ? "var(--color-text)" : "var(--color-neutral-500)" }}>
                       {found ? found.id_value : "— not in base"}
                     </div>
                   </div>
@@ -110,15 +110,15 @@ export function OrgProfileTabs({
                   <div key={person.id} style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <EntityMark name={person.name} size={34} />
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{person.name}</div>
-                      <div className="muted-2" style={{ fontSize: 11.5 }}>{person.role ?? person.kind}</div>
+                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600 }}>{person.name}</div>
+                      <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>{person.role ?? person.kind}</div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
             {org.contacts.length > 8 && (
-              <div className="muted-2" style={{ fontSize: 12 }}>+ {org.contacts.length - 8} more on record</div>
+              <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>+ {org.contacts.length - 8} more on record</div>
             )}
           </SectionCard>
 
@@ -127,13 +127,13 @@ export function OrgProfileTabs({
               <DegradedNote>No funding relationships recorded yet — awaiting research or vetting.</DegradedNote>
             ) : (
               grants.map((grant) => (
-                <div key={grant.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", fontSize: 13 }}>
+                <div key={grant.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", fontSize: "var(--fs-sm)" }}>
                   <Link href={`/registry/funders/${grant.funder_id}`} style={{ fontWeight: 600 }}>
                     {grant.funder_name}
                   </Link>
                   <span className="muted">{grant.title}</span>
                   <Tag tone={grant.status === "active" ? "accent-2" : "neutral"}>{grant.status}</Tag>
-                  <span className="muted-2" style={{ fontSize: 11.5 }}>
+                  <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
                     {[fmtDate(grant.start_date), fmtDate(grant.end_date)].filter(Boolean).join(" – ") || "dates not public"} · {fmtAmount(grant)}
                   </span>
                 </div>
@@ -167,7 +167,7 @@ export function OrgProfileTabs({
               {programs.map((program) => (
                 <div key={program.id} className="card">
                   <div className="card-kicker">{program.status ?? "program"}</div>
-                  <div className="card-title" style={{ fontSize: 15 }}>{program.name}</div>
+                  <div className="card-title">{program.name}</div>
                   {program.description && <div className="card-body">{program.description}</div>}
                 </div>
               ))}
@@ -182,7 +182,7 @@ export function OrgProfileTabs({
             <SectionCard title="No fit scores recorded">
               <DegradedNote>
                 This organisation has not yet been scored against a funder rubric. Scores appear here
-                once a hand-vetted (or model-assisted) assessment lands in the base.
+                once a vetted (or model-assisted) assessment lands in the base.
               </DegradedNote>
             </SectionCard>
           ) : (
@@ -226,10 +226,10 @@ export function OrgProfileTabs({
           ) : (
             news.map((item) => (
               <div key={item.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 8 }}>
-                <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600 }}>
+                <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: "var(--fs-sm)", fontWeight: 600 }}>
                   {item.title ?? item.url}
                 </a>
-                <span className="muted-2" style={{ fontSize: 11.5 }}>
+                <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
                   {item.domain} · {fmtDate(item.seendate) ?? "date unknown"}
                 </span>
                 <Tag tone="neutral">Pending review</Tag>
@@ -284,7 +284,7 @@ export function FunderProfileTabs({
                 <DegradedNote>— not yet entered</DegradedNote>
               ) : (
                 profileEntries.map(([key, value]) => (
-                  <div key={key} style={{ fontSize: 12.5 }}>
+                  <div key={key} style={{ fontSize: "var(--fs-xs)" }}>
                     <strong style={{ textTransform: "capitalize" }}>{key.replace(/_/g, " ")}:</strong>{" "}
                     <span className="muted">{String(value)}</span>
                   </div>
@@ -301,11 +301,11 @@ export function FunderProfileTabs({
             <DegradedNote>No grants recorded for this funder yet.</DegradedNote>
           ) : (
             grants.map((grant) => (
-              <div key={grant.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 8, fontSize: 13 }}>
+              <div key={grant.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 8, fontSize: "var(--fs-sm)" }}>
                 <Link href={`/registry/${grant.org_id}`} style={{ fontWeight: 600 }}>{grant.org_name}</Link>
                 <span className="muted">{grant.title}</span>
                 <Tag tone={grant.status === "active" ? "accent-2" : "neutral"}>{grant.status}</Tag>
-                <span className="muted-2" style={{ fontSize: 11.5 }}>
+                <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
                   {[fmtDate(grant.start_date), fmtDate(grant.end_date)].filter(Boolean).join(" – ") || "dates not public"} · {fmtAmount(grant)}
                 </span>
               </div>
@@ -342,8 +342,8 @@ export function FunderProfileTabs({
               <div key={person.id} style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <EntityMark name={person.name} size={34} />
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{person.name}</div>
-                  <div className="muted-2" style={{ fontSize: 11.5 }}>{person.role ?? person.kind}</div>
+                  <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600 }}>{person.name}</div>
+                  <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>{person.role ?? person.kind}</div>
                 </div>
               </div>
             ))

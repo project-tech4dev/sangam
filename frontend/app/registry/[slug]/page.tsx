@@ -61,7 +61,9 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
           </>
         }
         cta={
-          <Link href="/ask" className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
+          <Link
+            href={`/ask?q=${encodeURIComponent(`What does ${displayName} do, where does it work, and which funders fit it?`)}`}
+            className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
             Ask Sangam about this CSO →
           </Link>
         }

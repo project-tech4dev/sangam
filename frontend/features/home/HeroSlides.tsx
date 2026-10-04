@@ -49,20 +49,21 @@ export function HeroSlides() {
 
   return (
     <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-      <div className="relative h-80 overflow-hidden rounded-lg bg-background shadow-[var(--shadow-md)]">
+      <div className="relative h-80 overflow-hidden rounded-xl bg-background shadow-[var(--shadow-md)]">
         {SLIDES.map((slide, i) => (
           <div
             key={slide.who}
             aria-hidden={i !== current}
             className={cn(
-              "absolute inset-0 flex flex-col transition-[opacity,transform] duration-[1200ms] ease-in-out",
-              i === current ? "opacity-100" : "pointer-events-none translate-y-2 opacity-0",
+              // A plain cross-fade: the outgoing slide fades out where it is, no drift.
+              "absolute inset-0 flex flex-col transition-opacity duration-[1200ms] ease-in-out",
+              i === current ? "opacity-100" : "pointer-events-none opacity-0",
             )}
           >
             <div className="flex h-full flex-col justify-center gap-1.5 px-8 pt-8 pb-7">
               <Badge
                 variant="secondary"
-                className="self-start rounded-md px-2.5 py-[3px] font-normal tracking-[0.02em]"
+                className="self-start rounded-full px-2.5 py-[3px] font-normal tracking-[0.02em]"
               >
                 {slide.who}
               </Badge>

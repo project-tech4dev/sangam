@@ -25,7 +25,7 @@ knowledge of an organisation.
 ```mermaid
 flowchart TD
   U["User<br/><small>CSO fundraisers · funder staff</small>"]
-  AUTH["Supabase Auth<br/><small>Google sign-in; gates /ask and /import</small>"]
+  AUTH["Supabase Auth<br/><small>Google sign-in; gates /import and the Ask workspace</small>"]
 
   subgraph FE["Frontend — Next.js :3000"]
     PAGES["Registry pages<br/><small>/registry · /registry/funders</small>"]

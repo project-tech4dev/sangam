@@ -1,11 +1,6 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 export function Footer() {
-  const pathname = usePathname() ?? "/";
-  if (pathname.startsWith("/ask")) return null;
   return (
     <footer className="mt-16 bg-sage-900 py-9 text-sand-200">
       <div className="mx-auto flex max-w-(--page-max) flex-wrap items-baseline justify-between gap-5 px-(--page-pad) text-sm">

@@ -1,8 +1,18 @@
 'use client'
 
 import type { User } from '@supabase/supabase-js'
-import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { LoginForm } from '@/features/auth/login-form'
 import { createClient } from '@/lib/supabase/client'
 
@@ -13,52 +23,36 @@ function initials(user: User) {
 }
 
 function UserMenu({ user }: { user: User }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const router = useRouter()
   const name: string = user.user_metadata?.full_name ?? user.email ?? 'Account'
 
-  useEffect(() => {
-    if (!open) return
-    const close = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [open])
+  async function logOut() {
+    await createClient().auth.signOut()
+    // Server components (the /ask workspace above all) read the session; re-render them.
+    router.refresh()
+  }
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="flex cursor-pointer items-center gap-2 rounded-md border-none bg-transparent px-1.5 py-1"
-      >
-        <span className="flex size-7.5 items-center justify-center rounded-full bg-terracotta-600 font-(family-name:--font-heading) text-xs text-(--color-bg)">
-          {initials(user)}
-        </span>
-        <span className="text-sm text-(--color-text)">{name}</span>
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-55 rounded-md border border-(--color-divider) bg-(--color-bg) p-2 shadow-(--shadow-md)"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex cursor-pointer items-center gap-2 rounded-full border-none bg-transparent py-1 pr-2.5 pl-1"
         >
-          <div className="truncate px-2.5 py-2 text-xs text-(--color-neutral-700)">
-            Signed in — {user.email}
-          </div>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => createClient().auth.signOut()}
-            className="block w-full cursor-pointer rounded-sm border-none bg-transparent px-2.5 py-2 text-left text-sm text-terracotta-700 hover:bg-(--color-neutral-100)"
-          >
-            Log out
-          </button>
-        </div>
-      )}
-    </div>
+          <Avatar className="size-7.5">
+            <AvatarFallback>{initials(user)}</AvatarFallback>
+          </Avatar>
+          <span className="hidden text-sm text-(--color-text) sm:inline">{name}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuLabel className="truncate">Signed in — {user.email}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="text-terracotta-750" onSelect={logOut}>
+          Log out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -76,12 +70,13 @@ export function SignInButton() {
   if (user === undefined) return null
   if (user) return <UserMenu user={user} />
 
+  // Signing in from the navbar always lands in Ask Sangam.
   return (
     <>
-      <button type="button" className="btn btn-primary btn-square px-4 py-2" onClick={() => setOpen(true)}>
+      <button type="button" className="btn btn-primary shrink-0 px-4 py-2" onClick={() => setOpen(true)}>
         Sign in
       </button>
-      {open && <LoginForm onCancel={() => setOpen(false)} />}
+      <LoginForm open={open} onOpenChange={setOpen} next="/ask" />
     </>
   )
 }

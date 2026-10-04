@@ -30,7 +30,7 @@ export function toRegistryEntries(orgs: OrgListItem[], funders: FunderListItem[]
     where: [titleCase(org.district), org.state].filter(Boolean).join(", ") || "Location not entered",
     blurb: null,
     tags: org.sectors.slice(0, 4),
-    meta: org.darpan_id ? `Darpan ${org.darpan_id}` : `Source: ${org.source_name ?? "hand-vetting"}`,
+    meta: org.darpan_id ? `Darpan ${org.darpan_id}` : `Source: ${org.source_name ?? "vetting"}`,
     status: org.sectors.length > 0 && org.darpan_id !== null ? "full" : "partial",
     href: `/registry/${org.slug}`,
     states: org.state ? [org.state] : [],

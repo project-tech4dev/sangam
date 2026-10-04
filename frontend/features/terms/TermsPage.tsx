@@ -42,8 +42,8 @@ function Rows({ rows }: { rows: [string, string][] }) {
 function VaultCard({ kicker, children }: { kicker: string; children: ReactNode }) {
   return (
     <Card className="gap-2 rounded-xl border-0 p-5 shadow-none">
-      <div className="text-[10.5px] font-bold tracking-[0.1em] text-terracotta-700 uppercase">{kicker}</div>
-      <p className="text-sm text-foreground/78">{children}</p>
+      <div className="text-xs font-bold tracking-[0.1em] text-terracotta-750 uppercase">{kicker}</div>
+      <p className="text-base text-foreground/78">{children}</p>
     </Card>
   );
 }
@@ -51,9 +51,9 @@ function VaultCard({ kicker, children }: { kicker: string; children: ReactNode }
 export function TermsPage() {
   return (
     <div className="sangam-ui bg-[color-mix(in_srgb,var(--color-accent-2-700)_15%,var(--color-bg)_85%)]">
-      <div className="mx-auto max-w-[1160px] px-8 pt-12 pb-20">
+      <div className="mx-auto max-w-(--page-max) px-(--page-pad) pt-12 pb-20">
         <div className="mb-[18px] text-xs text-sand-700">
-          <Link href="/" className="text-terracotta-700">Sangam</Link> / Terms &amp; Privacy
+          <Link href="/" className="text-terracotta-750">Sangam</Link> / Terms &amp; Privacy
         </div>
         <h1 className="mb-3.5 text-4xl leading-[1.12] font-bold tracking-[-0.015em]">Terms &amp; Privacy</h1>
         <p className="mb-3.5 max-w-160 text-base text-foreground/75">
@@ -62,7 +62,7 @@ export function TermsPage() {
         </p>
         <div className="mb-12 flex flex-wrap items-center gap-2.5">
           <Badge className="border-0 bg-sand-100 text-sand-800">Last updated 26 September 2026</Badge>
-          <Badge className="border-0 bg-terracotta-100 text-terracotta-800">
+          <Badge className="border-0 bg-terracotta-100 text-terracotta-750">
             Prototype draft — to be reviewed by counsel before launch
           </Badge>
         </div>
@@ -246,7 +246,7 @@ export function TermsPage() {
                 We will post changes here and update the date at the top. For material changes affecting vault data or
                 AI providers, we will notify signed-in users first. For questions, corrections or data requests, write
                 to{" "}
-                <a href="mailto:privacy@sangam.example" className="text-terracotta-700">
+                <a href="mailto:privacy@sangam.example" className="text-terracotta-750">
                   privacy@sangam.example
                 </a>
                 .

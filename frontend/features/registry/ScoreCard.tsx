@@ -16,7 +16,7 @@ export function ScoreCard({ score, headline }: { score: ScoreRow; headline: stri
   const [detail, setDetail] = useState<ScoreDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const pct = Math.round((score.total_score / score.max_score) * 100);
-  const tone = pct >= 65 ? "var(--color-accent-2-700)" : "var(--color-accent-600)";
+  const tone = pct >= 65 ? "var(--color-accent-2-700)" : "var(--color-accent-750)";
 
   async function toggle() {
     if (!open && !detail) {
@@ -38,21 +38,21 @@ export function ScoreCard({ score, headline }: { score: ScoreRow; headline: stri
       <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
         <EntityMark name={headline} size={40} />
         <div style={{ flex: 1, minWidth: 200 }}>
-          <div className="card-title" style={{ fontSize: 16 }}>{headline}</div>
-          <div className="muted" style={{ fontSize: 12 }}>
+          <div className="card-title">{headline}</div>
+          <div className="muted" style={{ fontSize: "var(--fs-xs)" }}>
             Rubric {score.rubric_version} · {score.scored_by} ·{" "}
             {new Date(score.scored_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <span style={{ fontFamily: "var(--font-heading)", fontSize: 30, fontWeight: 700, color: tone }}>
+          <span style={{ fontFamily: "var(--font-heading)", fontSize: "var(--fs-xl)", fontWeight: 700, color: tone }}>
             {score.total_score}
           </span>
-          <span className="muted" style={{ fontSize: 13 }}> / {score.max_score}</span>
+          <span className="muted" style={{ fontSize: "var(--fs-sm)" }}> / {score.max_score}</span>
         </div>
       </div>
       <ProgressBar pct={pct} color={tone} />
-      {score.notes && <div className="card-body" style={{ fontSize: 12.5 }}>{score.notes}</div>}
+      {score.notes && <div className="card-body" style={{ fontSize: "var(--fs-xs)" }}>{score.notes}</div>}
       <button className="btn btn-ghost" style={{ alignSelf: "flex-start", padding: "4px 0" }} onClick={toggle}>
         {open ? "Hide reasoning" : loading ? "Loading…" : "Why this score"}
       </button>
@@ -65,7 +65,7 @@ export function ScoreCard({ score, headline }: { score: ScoreRow; headline: stri
                 display: "grid",
                 gridTemplateColumns: "minmax(140px, 1fr) 2fr auto",
                 gap: 12,
-                fontSize: 12.5,
+                fontSize: "var(--fs-xs)",
                 borderTop: "1px solid var(--color-divider)",
                 paddingTop: 8,
               }}
@@ -81,10 +81,10 @@ export function ScoreCard({ score, headline }: { score: ScoreRow; headline: stri
               style={{ background: "var(--color-accent-100)", border: "none", padding: 14, gap: 6 }}
             >
               <div className="card-kicker" style={{ color: "var(--color-accent-900)" }}>
-                Hand-vetting adjustments
+                Vetting adjustments
               </div>
               {detail.adjustments.map((adj, i) => (
-                <div key={i} style={{ fontSize: 12.5, color: "var(--color-accent-900)" }}>
+                <div key={i} style={{ fontSize: "var(--fs-xs)", color: "var(--color-accent-900)" }}>
                   Criterion {adj.code}: {adj.old_score} → {adj.new_score} — {adj.reason}
                 </div>
               ))}

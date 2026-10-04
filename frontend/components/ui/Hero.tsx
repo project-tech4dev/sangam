@@ -27,7 +27,7 @@ export function Hero({
       style={{
         background: HERO_BG[kind],
         color: "#fff",
-        borderRadius: "calc(var(--radius-lg) * 1.15)",
+        borderRadius: "var(--radius-surface)",
         padding: "32px 34px",
         display: "flex",
         gap: 24,
@@ -42,9 +42,9 @@ export function Hero({
             {kicker}
           </div>
         )}
-        <h1 style={{ fontSize: 28, color: "#fff" }}>{name}</h1>
+        <h1 style={{ fontSize: "var(--fs-2xl)", color: "#fff" }}>{name}</h1>
         {blurb && (
-          <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.85)", maxWidth: 640 }}>{blurb}</p>
+          <p style={{ margin: 0, fontSize: "var(--fs-sm)", color: "rgba(255,255,255,0.85)", maxWidth: 640 }}>{blurb}</p>
         )}
         {chips && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>{chips}</div>}
       </div>

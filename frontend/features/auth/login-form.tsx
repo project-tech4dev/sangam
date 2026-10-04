@@ -1,9 +1,16 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useSyncExternalStore } from 'react'
-import { createPortal } from 'react-dom'
+import { useState } from 'react'
 
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { createClient } from '@/lib/supabase/client'
 
 function GoogleIcon() {
@@ -17,22 +24,44 @@ function GoogleIcon() {
   )
 }
 
-const subscribe = () => () => {}
+// Inlined at build time, so a local run without Supabase keys is known on the client.
+const SUPABASE_CONFIGURED = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+)
 
-export function LoginForm({ onCancel }: { onCancel?: () => void }) {
+/**
+ * Google sign-in, as a dialog over the current page.
+ *
+ * `next` is where the user lands after the OAuth round-trip; the callback validates it.
+ * `onBeforeRedirect` runs just before the browser leaves for Google, which is the last
+ * moment to stash anything the user typed (the Ask preview saves its question there).
+ */
+export function LoginForm({
+  open = true,
+  onOpenChange,
+  next = '/',
+  onBeforeRedirect,
+}: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  next?: string
+  onBeforeRedirect?: () => void
+}) {
   const router = useRouter()
-  const cancel = onCancel ?? (() => router.push('/'))
-  const mounted = useSyncExternalStore(subscribe, () => true, () => false)
+  const handleOpenChange = onOpenChange ?? ((o: boolean) => !o && router.push('/'))
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   const signInWithGoogle = async () => {
     setIsLoading(true)
     setError(null)
+    onBeforeRedirect?.()
 
+    const callback = new URL('/auth/callback', window.location.origin)
+    callback.searchParams.set('next', next)
     const { error } = await createClient().auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callback.toString() },
     })
 
     if (error) {
@@ -41,37 +70,35 @@ export function LoginForm({ onCancel }: { onCancel?: () => void }) {
     }
   }
 
-  if (!mounted) return null
-
-  return createPortal(
-    <div className="dialog-backdrop" onClick={cancel}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="sign-in-title"
-        className="dialog flex flex-col gap-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div id="sign-in-title" className="dialog-title">
-          Sign in to Sangam
-        </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <button
-          type="button"
-          className="btn btn-primary self-center gap-2 px-4 py-2 text-sm"
-          onClick={signInWithGoogle}
-          disabled={isLoading}
-        >
-          <GoogleIcon />
-          {isLoading ? 'Redirecting…' : 'Continue with Google'}
-        </button>
-        <div className="dialog-actions">
-          <button type="button" className="btn btn-ghost" onClick={cancel}>
-            Cancel
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogTitle>Sign in to Sangam</DialogTitle>
+        <DialogDescription>
+          {SUPABASE_CONFIGURED
+            ? 'Sign in with Google to ask questions and see your workspace.'
+            : 'Sign-in is not available in this environment: the Supabase keys are not set.'}
+        </DialogDescription>
+        {error && <p className="m-0 text-sm text-destructive">{error}</p>}
+        {SUPABASE_CONFIGURED && (
+          <button
+            type="button"
+            className="btn btn-primary self-center gap-2 px-4 py-2 text-sm"
+            onClick={signInWithGoogle}
+            disabled={isLoading}
+          >
+            <GoogleIcon />
+            {isLoading ? 'Redirecting…' : 'Continue with Google'}
           </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        )}
+        <DialogFooter>
+          <DialogClose asChild>
+            <button type="button" className="btn btn-ghost">
+              Cancel
+            </button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -1,75 +1,46 @@
 import Link from "next/link";
 import { SignInButton } from "@/features/auth/sign-in-button";
 
+// One entry point per destination. Ask Sangam is public: signed out it previews,
+// signed in it is the workspace. Import is staff tooling and lives in the workspace.
 const LINKS = [
   { id: "registry", label: "Registry", href: "/registry" },
   { id: "ask", label: "Ask Sangam", href: "/ask" },
-  { id: "import", label: "Import", href: "/import" },
   { id: "resources", label: "Resources", href: "/resources" },
 ] as const;
 
-export function Nav({
-  current,
-}: {
-  current: "home" | "registry" | "ask" | "import" | "resources";
-}) {
+export type NavSection = "home" | (typeof LINKS)[number]["id"];
+
+export function Nav({ current }: { current: NavSection }) {
   return (
     <nav
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        background:
-          "color-mix(in srgb, var(--color-accent-2-700) 34%, white 66%)",
-        backdropFilter: "blur(16px) saturate(1.4)",
-        WebkitBackdropFilter: "blur(16px) saturate(1.4)",
-        boxShadow:
-          "0 1px 0 color-mix(in srgb, var(--color-accent-2-700) 20%, transparent), " +
-          "0 8px 24px -12px color-mix(in srgb, var(--color-accent-2-900) 25%, transparent)",
-      }}
+      className={
+        "sticky top-0 z-50 h-(--nav-h) " +
+        // Sage "liquid glass": the only translucent surface in the design system.
+        "bg-[color-mix(in_srgb,var(--color-accent-2-700)_34%,white_66%)] backdrop-blur-[16px] backdrop-saturate-[1.4] " +
+        "shadow-[0_1px_0_color-mix(in_srgb,var(--color-accent-2-700)_20%,transparent),0_8px_24px_-12px_color-mix(in_srgb,var(--color-accent-2-900)_25%,transparent)]"
+      }
     >
-      <div
-        style={{
-          maxWidth: "var(--page-max)",
-          margin: "0 auto",
-          padding: "14px var(--page-pad)",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px 20px",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="nav-inner mx-auto flex h-full max-w-(--page-max) items-center gap-3 px-(--page-pad) sm:gap-5">
         <Link
           href="/"
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: 22,
-            fontWeight: 700,
-            color: "var(--color-text)",
-            textDecoration: "none",
-            marginRight: "auto",
-          }}
+          className="mr-auto shrink-0 font-(family-name:--font-heading) text-2xl font-bold text-(--color-text) no-underline hover:no-underline"
         >
           sangam
         </Link>
-        {LINKS.map((link) => (
-          <Link
-            key={link.id}
-            href={link.href}
-            className="nav-link"
-            aria-current={current === link.id ? "page" : undefined}
-            style={{ fontSize: 13.5, fontWeight: 600 }}
-          >
-            {link.label}
-          </Link>
-        ))}
-        <Link
-          href="/ask"
-          className="btn btn-primary"
-          style={{ padding: "8px 16px" }}
-        >
-          Ask Sangam
-        </Link>
+        {/* Fixed height, so on a phone the links scroll sideways rather than wrap. */}
+        <div className="flex min-w-0 items-center gap-3 overflow-x-auto whitespace-nowrap sm:gap-5">
+          {LINKS.map((link) => (
+            <Link
+              key={link.id}
+              href={link.href}
+              className="nav-link text-sm font-semibold"
+              aria-current={current === link.id ? "page" : undefined}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
         <SignInButton />
       </div>
     </nav>

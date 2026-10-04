@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
-import { Providers } from "./providers";
 
-// CopilotKit's client runtime pulls in AG-UI, zod, katex, mermaid and lit. Only
-// /ask and /import talk to an agent, so the provider is scoped to this group
-// rather than the root layout — /registry must not pay for it.
+// CopilotKit's client runtime pulls in AG-UI, zod, katex, mermaid and lit, so it must
+// load only where an agent runs. That is not the whole group any more: signed out,
+// /ask is a static preview. Each page wraps its agent UI in <AgentProviders> (lib/AgentProviders.tsx).
 export default function AgentLayout({ children }: { children: ReactNode }) {
-  return <Providers>{children}</Providers>;
+  return children;
 }

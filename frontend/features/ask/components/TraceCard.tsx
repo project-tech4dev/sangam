@@ -15,7 +15,7 @@ export function TraceCard({ steps, streaming }: { steps: TraceStep[]; streaming:
       className="ask-in"
       style={{
         background: "var(--color-accent-2-100)",
-        borderRadius: "var(--radius-md)",
+        borderRadius: "var(--radius-surface)",
         padding: "12px 16px",
         display: "flex",
         flexDirection: "column",
@@ -23,13 +23,13 @@ export function TraceCard({ steps, streaming }: { steps: TraceStep[]; streaming:
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-accent-2-900)" }}>
+        <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-accent-2-900)" }}>
           {streaming ? "Working…" : `How this answer was made — ${visible.length} step${visible.length === 1 ? "" : "s"}`}
         </span>
         {!streaming && visible.length > 0 && (
           <button
             className="btn btn-ghost"
-            style={{ padding: 0, fontSize: 12, marginLeft: "auto" }}
+            style={{ padding: 0, fontSize: "var(--fs-xs)", marginLeft: "auto" }}
             onClick={() => setOpen(!open)}
           >
             {open ? "Hide steps" : "Show steps"}
@@ -51,16 +51,16 @@ export function TraceCard({ steps, streaming }: { steps: TraceStep[]; streaming:
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 11,
+                  fontSize: "var(--fs-xs)",
                   color: "#fff",
                   background: step.running ? "var(--color-accent-500)" : "var(--color-accent-2-600)",
                 }}
               >
                 {step.running ? "" : "✓"}
               </span>
-              <div style={{ fontSize: 12.5 }}>
+              <div style={{ fontSize: "var(--fs-xs)" }}>
                 <strong>{label.label}</strong>
-                <span className="muted" style={{ marginLeft: 8, fontSize: 11.5 }}>
+                <span className="muted" style={{ marginLeft: 8, fontSize: "var(--fs-xs)" }}>
                   {label.detail(step.args)}
                 </span>
               </div>
