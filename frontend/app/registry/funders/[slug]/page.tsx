@@ -52,7 +52,9 @@ export default async function FunderProfilePage({ params }: { params: Promise<{ 
         }
         cta={
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href="/ask" className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
+            <Link
+              href={`/ask?q=${encodeURIComponent(`Which NGOs in the base fit ${funder.name}'s mandate, and why?`)}`}
+              className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
               Ask Sangam who fits this mandate →
             </Link>
             {brief && (

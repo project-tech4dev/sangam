@@ -4,6 +4,7 @@
 # Exits non-zero on the first failure with a clear message.
 
 set -uo pipefail
+cd "$(dirname "$0")/.."  # the taxonomy check compares repo-relative paths
 
 BACKEND="${BACKEND_URL:-http://localhost:8010}"
 FRONTEND="${FRONTEND_URL:-http://localhost:3000}"
@@ -29,6 +30,13 @@ check_contains() { # name url needle [max-time]
   else
     bad "$name — response from $url does not contain '$needle'"
   fi
+}
+
+check_redirect() { # name url needle-in-Location — a signed-out request is sent to sign-in
+  local name="$1" url="$2" needle="$3"
+  local location
+  location=$(curl -s -o /dev/null --max-time 60 -w "%{redirect_url}" "$url")
+  [[ "$location" == *"$needle"* ]] && ok "$name" || bad "$name — redirect '$location' lacks '$needle'"
 }
 
 check_json() { # name url python-assertion
@@ -58,12 +66,21 @@ check_json    "documents: 96+ on file"    "$BACKEND/api/documents?limit=1" "d['t
 check_status  "agent AG-UI health"         "$BACKEND/agent/health" 200 5
 
 say "── frontend ─────────────────────────────────────"
+# /resources/taxonomy reads copies of the seed files; the originals in features-plans are the source.
+TAX_SRC="features-plans/data-model/seed/data/taxonomy" TAX_COPY="frontend/features/taxonomy/data"
+if diff -q "$TAX_SRC/themes.json" "$TAX_COPY/themes.json" >/dev/null && diff -q "$TAX_SRC/common.json" "$TAX_COPY/common.json" >/dev/null; then
+  ok "taxonomy copies match their seed files"
+else
+  bad "taxonomy copies differ from $TAX_SRC — see $TAX_COPY/README.md"
+fi
+check_contains "taxonomy shows the SHG theme" "$FRONTEND/resources/taxonomy" "Economic empowerment of SHGs" 90
 check_status  "home page renders"          "$FRONTEND/" 200 60
 check_contains "registry lists KABIL"      "$FRONTEND/registry" "KABIL" 90
 check_contains "org profile renders"       "$FRONTEND/registry/kabil" "Registered December 2012" 90
 check_contains "funder profile renders"    "$FRONTEND/registry/funders/axis-bank-foundation" "Axis Bank Foundation" 90
 check_status  "unknown org 404s"           "$FRONTEND/registry/nonexistent-org" 404 60
-check_status  "ask workspace"              "$FRONTEND/ask" 200 90
+check_contains "ask preview (signed out)"  "$FRONTEND/ask" "ask-preview" 90
+check_redirect "import keeps its destination" "$FRONTEND/import" "next=%2Fimport"
 check_status  "resources"                  "$FRONTEND/resources" 200 60
 check_status  "copilotkit runtime info"    "$FRONTEND/api/copilotkit/info" 200 30
 

@@ -21,7 +21,7 @@ function IndexCard({ stats }: { stats: Stats | null }) {
     <div className="card" style={{ gap: 8 }}>
       <div className="card-kicker">What&apos;s in the base</div>
       {rows.map(([label, value]) => (
-        <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
+        <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-xs)" }}>
           <span className="muted">{label}</span>
           <strong>{value ?? "—"}</strong>
         </div>
@@ -61,8 +61,8 @@ export function EvidenceRail({
             const cites = extractCitations(step.result ?? "").slice(0, 6);
             return (
               <div key={step.id} style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600 }}>{label.label}</div>
-                <div className="muted-2" style={{ fontSize: 11.5 }}>{label.detail(step.args)}</div>
+                <div style={{ fontSize: "var(--fs-xs)", fontWeight: 600 }}>{label.label}</div>
+                <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>{label.detail(step.args)}</div>
                 {cites.length > 0 && (
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {cites.map((cite) => (
@@ -76,7 +76,7 @@ export function EvidenceRail({
         </div>
       )}
       <div className="card" style={{ background: "var(--color-accent-2-100)", border: "none", padding: 14 }}>
-        <div style={{ fontSize: 11.5, color: "var(--color-accent-2-900)" }}>
+        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-accent-2-900)" }}>
           Every claim in an answer carries a citation into the Registry. If it isn&apos;t in the base,
           Sangam says so instead of guessing.
         </div>

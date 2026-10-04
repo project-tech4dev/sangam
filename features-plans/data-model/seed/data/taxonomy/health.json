@@ -4,7 +4,7 @@
   "version": "0.1",
   "status": "draft",
   "tree_name": "Health programme areas",
-  "source": "Starting point drafted from international standards and India's national health programmes; for FFRH review before activation",
+  "source": "Starting point drafted from international standards and India's national health programmes",
   "sources": [
     {
       "id": "sdg",
@@ -184,7 +184,7 @@
     "research_and_evaluation"
   ],
   "notes": [
-    "Status is draft: the loader stores it hidden until FFRH reviews it.",
+    "Status is draft.",
     "Programme level, not diagnosis level. ICD-11 is a source for groupings, not for codes.",
     "crs codes are the OECD DAC purpose codes international donors use; verify against the current CRS list before using them for reporting.",
     "csr refs are slugs of csr_sector tags loaded from reference_data.sql."

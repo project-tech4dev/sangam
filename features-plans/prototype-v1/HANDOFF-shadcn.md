@@ -1,5 +1,10 @@
 # Sangam → shadcn/ui handoff
 
+> **Superseded.** The Claude Design project "Sangam Design System" is now the system of record
+> for design, and the app's tokens live in `frontend/app/globals.css`; see
+> [`docs/DESIGN_SYSTEM.md`](../../docs/DESIGN_SYSTEM.md). This file is the prototype's original
+> handoff, kept for reference only.
+
 The prototype is styled from one token sheet (`styles.css`). Its `:root` block carries the Sangam tokens **and** the same values under shadcn/ui's variable names, so a Next.js + Tailwind v4 + shadcn app can adopt the look by pasting that block into `app/globals.css`.
 
 ## Package contents

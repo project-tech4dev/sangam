@@ -23,7 +23,7 @@ export function PillTabs({
             data-active={isActive}
             style={
               isActive
-                ? { background: "var(--color-accent-600)", borderColor: "var(--color-accent-600)", color: "#fff" }
+                ? { background: "var(--color-accent-750)", borderColor: "var(--color-accent-750)", color: "#fff" }
                 : undefined
             }
           >

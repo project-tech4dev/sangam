@@ -1,9 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PROTECTED_PREFIXES = ['/ask', '/import', '/protected']
+// /ask is public: signed out it renders a preview, signed in the workspace.
+const PROTECTED_PREFIXES = ['/import']
 
 export async function updateSession(request: NextRequest) {
+  // A local run without Supabase keys: nobody can sign in, so nothing is gated and
+  // public pages (including the /ask preview) still render.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -40,10 +47,13 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims()
   const user = data?.claims
 
-  if (!user && PROTECTED_PREFIXES.some((prefix) => request.nextUrl.pathname.startsWith(prefix))) {
+  const { pathname, search } = request.nextUrl
+  const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+  if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     url.search = ''
+    url.searchParams.set('next', `${pathname}${search}`)
     return NextResponse.redirect(url)
   }
 

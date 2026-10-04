@@ -9,7 +9,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
         <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="font-medium text-lg tracking-normal">
+              <CardTitle className="font-medium text-xl tracking-normal">
                 Sorry, something went wrong.
               </CardTitle>
             </CardHeader>

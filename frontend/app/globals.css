@@ -21,6 +21,9 @@
 @source "../features/home";
 @source "../features/terms";
 @source "../features/auth";
+@source "../features/ask";
+@source "../features/taxonomy";
+@source "../features/resources";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -52,6 +55,9 @@
   --color-accent-500: #d67f48;
   --color-accent-600: #d08f63;
   --color-accent-700: #b97d50;
+  /* Text-safe terracotta: the lightest of the ramp's hue that clears WCAG AA (4.5:1) on the
+     page, cards, tints and white. Use it for terracotta text and for fills behind white text. */
+  --color-accent-750: #975728;
   --color-accent-800: #643312;
   --color-accent-900: #402310;
 
@@ -81,9 +87,13 @@
   --fs-xl: 24px;
   --fs-2xl: 36px;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  /* Two shapes. Everything you click or type a line into is a pill: buttons, tags,
+     filters, toggles, single-line inputs. Surfaces are 14px (shadcn's rounded-xl):
+     cards, dialogs, panels, menus, the multi-line composer. Rows inside a surface
+     (sidebar items, menu items) are 8px. */
+  --radius-pill: 999px;
+  --radius-surface: calc(var(--radius) + 4px);
+  --radius-row: calc(var(--radius) - 2px);
   --shadow-sm: 0 1px 3px rgba(32, 30, 29, 0.07);
   --shadow-md: 0 4px 16px rgba(32, 30, 29, 0.09);
 
@@ -92,6 +102,7 @@
 
   --page-max: 1160px;
   --page-pad: 32px;
+  --nav-h: 64px; /* the sticky navbar; the Ask workspace fills the viewport below it */
 
   /* shadcn/ui contract — same tokens under shadcn's variable names.
      Paste this block into the app's globals.css and stock shadcn components inherit the Sangam look. */
@@ -101,7 +112,7 @@
   --card-foreground: var(--color-text);
   --popover: var(--color-bg);
   --popover-foreground: var(--color-text);
-  --primary: var(--color-accent);
+  --primary: var(--color-accent-750);
   --primary-foreground: var(--color-bg);
   --secondary: var(--color-accent-2-100);
   --secondary-foreground: var(--color-accent-2-800);
@@ -156,23 +167,43 @@ body > main { flex: 1 0 auto; }
 }
 
 @layer base {
-  :where(a):where(:not(.sangam-ui *)) { color: var(--color-accent-700); text-decoration: none; }
+  :where(a):where(:not(.sangam-ui *)) { color: var(--color-accent-750); text-decoration: none; }
   :where(a):where(:not(.sangam-ui *)):hover { text-decoration: underline; }
 }
 
-/* Nav bar links, as in the prototype: text colour, accent-700 on hover and for the current page. */
+/* Nav bar links stay in the text colour; hover and the current page add a terracotta
+   underline. No terracotta clears 4.5:1 on the sage glass without turning brown, but an
+   underline needs only 3:1, which accent-750 gives (3.4:1).
+   Terracotta text elsewhere is accent-750: accent-700 reads only 2.1–3.4:1 on our
+   backgrounds, under WCAG AA's 4.5:1 for body-size text. */
 .nav-link { color: var(--color-text); text-decoration: none; }
 .nav-link:hover,
-.nav-link[aria-current="page"] { color: var(--color-accent-700); text-decoration: none; }
+.nav-link[aria-current="page"] {
+  color: var(--color-text);
+  text-decoration: underline 2px var(--color-accent-750);
+  text-underline-offset: 6px;
+}
 
+/* One column for every page: its left edge sits under the navbar's wordmark. Pages do
+   not narrow it; text that needs a shorter line caps itself with .measure instead. */
 .page {
   max-width: var(--page-max);
   margin: 0 auto;
   padding: 28px var(--page-pad) 72px;
 }
+.measure { max-width: 72ch; }
+
+/* Pages meant to be read through (Resources, Methodology, Taxonomy) set body text at 16px;
+   data screens keep 14px. */
+.reading .card-body,
+.reading p { font-size: var(--fs-md); }
+
+/* An app surface (the signed-in Ask workspace) runs edge to edge, so the navbar does too,
+   with the wordmark over the workspace sidebar's 14px inset. */
+body:has([data-app-shell]) .nav-inner { max-width: none; padding-inline: 14px; }
 
 .eyebrow {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-neutral-700);
@@ -180,27 +211,27 @@ body > main { flex: 1 0 auto; }
 }
 
 .muted { color: var(--color-neutral-700); }
-.muted-2 { color: var(--color-neutral-500); }
+.muted-2 { color: var(--color-neutral-700); } /* sand-500 was 2.3:1; kept as a class so call sites need not change */
 
 /* --- Cards --------------------------------------------------------------- */
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-divider);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-surface);
   padding: 22px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 .card-kicker {
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-neutral-700);
   font-weight: 600;
 }
-.card-title { font-family: var(--font-heading); font-size: 17px; font-weight: 600; }
-.card-body { font-size: 13.5px; color: color-mix(in srgb, var(--color-text) 78%, transparent); }
+.card-title { font-family: var(--font-heading); font-size: var(--fs-md); font-weight: 600; }
+.card-body { font-size: var(--fs-sm); color: color-mix(in srgb, var(--color-text) 78%, transparent); }
 .elev-sm { box-shadow: var(--shadow-sm); }
 .elev-md { box-shadow: var(--shadow-md); }
 
@@ -209,10 +240,10 @@ body > main { flex: 1 0 auto; }
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 4px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
   border: 1px solid transparent;
 }
@@ -230,26 +261,25 @@ body > main { flex: 1 0 auto; }
   justify-content: center;
   gap: 6px;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   padding: 9px 18px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
   transition: filter 0.12s ease, background 0.12s ease;
 }
 .btn:hover { text-decoration: none; filter: brightness(0.96); }
-.btn-primary   { background: var(--color-accent-600); color: var(--color-bg); }
+.btn-primary   { background: var(--color-accent-750); color: #fff; } /* white on accent-600 was 2.7:1; on accent-750 it is 5.7:1 */
 .btn-secondary { background: transparent; border-color: var(--color-accent-2-600); color: var(--color-accent-2-800); }
-.btn-ghost     { background: transparent; color: var(--color-accent-700); }
+.btn-ghost     { background: transparent; color: var(--color-accent-750); }
 .btn-block     { width: 100%; }
-.btn-square    { border-radius: var(--radius-md); }
 .btn-icon {
   padding: 8px;
   width: 36px;
   height: 36px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   border-color: var(--color-divider);
   color: var(--color-neutral-700);
@@ -258,23 +288,23 @@ body > main { flex: 1 0 auto; }
 /* --- Inputs ---------------------------------------------------------------- */
 .input {
   font-family: var(--font-body);
-  font-size: 13.5px;
+  font-size: var(--fs-sm);
   color: var(--color-text);
   background: var(--color-surface);
   border: 1px solid var(--color-divider);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   padding: 10px 14px;
   outline: none;
   width: 100%;
 }
 .input:focus { border-color: var(--color-accent-2-600); }
-textarea.input { resize: vertical; min-height: 64px; }
+textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius-surface); }
 
 /* --- Segmented control ----------------------------------------------------- */
 .seg {
   display: inline-flex;
   border: 1px solid var(--color-divider);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 3px;
   background: var(--color-surface);
   gap: 2px;
@@ -283,28 +313,28 @@ textarea.input { resize: vertical; min-height: 64px; }
   border: none;
   background: transparent;
   font-family: var(--font-body);
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--color-neutral-700);
   padding: 6px 16px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
-.seg-opt[data-active="true"] { background: var(--color-accent-2-600); color: #fff; }
+.seg-opt[data-active="true"] { background: var(--color-accent-2-700); color: #fff; }
 
 /* --- Pills (place filters etc.) -------------------------------------------- */
 .pill {
   border: 1px solid var(--color-divider);
   background: transparent;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--color-neutral-700);
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
-.pill[data-active="true"] { background: var(--color-accent-2-600); border-color: var(--color-accent-2-600); color: #fff; }
+.pill[data-active="true"] { background: var(--color-accent-2-700); border-color: var(--color-accent-2-700); color: #fff; }
 
 /* --- Dialog ----------------------------------------------------------------- */
 .dialog-backdrop {
@@ -315,13 +345,13 @@ textarea.input { resize: vertical; min-height: 64px; }
 }
 .dialog {
   background: var(--color-surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-surface);
   padding: 28px;
   max-width: 420px;
   width: calc(100% - 48px);
   box-shadow: var(--shadow-md);
 }
-.dialog-title { font-family: var(--font-heading); font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.dialog-title { font-family: var(--font-heading); font-size: var(--fs-lg); font-weight: 600; margin-bottom: 8px; }
 .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
 
 /* --- Progress --------------------------------------------------------------- */
@@ -352,7 +382,7 @@ textarea.input { resize: vertical; min-height: 64px; }
   .evidence-rail-slot { display: none; }
 }
 .answer-md p { margin: 0 0 10px; }
-.answer-md table { border-collapse: collapse; font-size: 13px; }
+.answer-md table { border-collapse: collapse; font-size: var(--fs-sm); }
 .answer-md th, .answer-md td { border: 1px solid var(--color-divider); padding: 6px 10px; text-align: left; }
 
 /* --- Responsive ------------------------------------------------------------- */
@@ -445,6 +475,7 @@ textarea.input { resize: vertical; min-height: 64px; }
   --color-terracotta-700: var(--color-accent-700);
   --color-sage-700: var(--color-accent-2-700);
   --color-sand-700: var(--color-neutral-700);
+  --color-terracotta-750: var(--color-accent-750);
   --color-terracotta-800: var(--color-accent-800);
   --color-sage-800: var(--color-accent-2-800);
   --color-sand-800: var(--color-neutral-800);

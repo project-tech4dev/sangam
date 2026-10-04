@@ -4,7 +4,7 @@
   "version": "0.1",
   "status": "draft",
   "tree_name": "Education programme areas",
-  "source": "Starting point drafted from ISCED 2011, SDG 4 and India's NEP 2020 school structure and national schemes; for FFRH review before activation",
+  "source": "Starting point drafted from ISCED 2011, SDG 4 and India's NEP 2020 school structure and national schemes",
   "sources": [
     {
       "id": "sdg",
@@ -166,7 +166,7 @@
     "research_and_evaluation"
   ],
   "notes": [
-    "Status is draft: the loader stores it hidden until FFRH reviews it.",
+    "Status is draft.",
     "Areas 01 to 03 follow the learner's stage (NEP 2020 and ISCED); area 04 is an equity lens to tag alongside a stage area.",
     "No variants: whether a programme works in government schools, private schools or community settings is recorded on the programme, not as a cell.",
     "crs codes are OECD DAC purpose codes; verify against the current CRS list before using them for reporting.",

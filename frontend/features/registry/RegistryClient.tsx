@@ -38,9 +38,9 @@ export function RegistryClient({
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <header style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div className="eyebrow">The Registry</div>
-        <h1 style={{ fontSize: 30 }}>Every organisation and funder in the base</h1>
+        <h1 style={{ fontSize: "var(--fs-2xl)" }}>Every organisation and funder in the base</h1>
         <p className="muted" style={{ margin: 0, maxWidth: 640 }}>
-          Hand-vetted profiles of North East India CSOs and the funders active around them. Every
+          Vetted profiles of North East India CSOs and the funders active around them. Every
           field traces to a source.
         </p>
       </header>
@@ -65,7 +65,7 @@ export function RegistryClient({
             </button>
           ))}
         </div>
-        <span className="muted" style={{ marginLeft: "auto", fontSize: 12.5 }}>
+        <span className="muted" style={{ marginLeft: "auto", fontSize: "var(--fs-xs)" }}>
           {shown.length} of {entries.length} entries
         </span>
       </div>
@@ -100,8 +100,8 @@ export function RegistryClient({
                   <StatusChip status={entry.status} />
                 </div>
               </div>
-              <div className="card-title" style={{ fontSize: 19 }}>{entry.name}</div>
-              <div className="muted" style={{ fontSize: 12.5 }}>{entry.where}</div>
+              <div className="card-title" style={{ fontSize: "var(--fs-lg)" }}>{entry.name}</div>
+              <div className="muted" style={{ fontSize: "var(--fs-xs)" }}>{entry.where}</div>
               {entry.blurb && <div className="card-body">{entry.blurb}</div>}
               {entry.tags.length > 0 && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -120,8 +120,8 @@ export function RegistryClient({
                   gap: 10,
                 }}
               >
-                <span className="muted-2" style={{ fontSize: 11.5 }}>{entry.meta}</span>
-                <Link href={entry.href} className="btn btn-secondary" style={{ padding: "6px 14px", fontSize: 12 }}>
+                <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>{entry.meta}</span>
+                <Link href={entry.href} className="btn btn-secondary" style={{ padding: "6px 14px", fontSize: "var(--fs-xs)" }}>
                   Open profile →
                 </Link>
               </div>

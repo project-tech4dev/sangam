@@ -7,11 +7,35 @@ import type {
   PageOf,
   ScoreRow,
 } from "@/lib/api";
-import { AskWorkspace, type IndexPayload } from "@/features/ask/AskWorkspace";
+import type { IndexPayload } from "@/features/ask/AskWorkspace";
+import { AskPreview } from "@/features/ask/preview/AskPreview";
+import { WorkspaceLoader } from "@/features/ask/WorkspaceLoader";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Ask Sangam" };
 
-export default async function AskPage() {
+export const dynamic = "force-dynamic";
+
+async function isSignedIn(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getClaims();
+    return Boolean(data?.claims);
+  } catch {
+    // No Supabase keys (a bare local run): nobody can sign in, so show the preview.
+    return false;
+  }
+}
+
+// One URL: signed out it is a preview that costs no agent call, signed in the workspace.
+// `?q=` carries a question from elsewhere (a Registry profile's "Ask Sangam about …").
+export default async function AskPage({ searchParams }: { searchParams: Promise<{ q?: string; view?: string }> }) {
+  const params = await searchParams;
+  const q = params.q?.trim().slice(0, 500) || null;
+  // Only Tools are addressable by URL; chat views are not.
+  const initialView = params.view === "import" ? "import" : "ask";
+  if (!(await isSignedIn())) return <AskPreview initialQuestion={q} />;
+
   const [orgs, funders, scores, grants, stats] = await Promise.all([
     apiGet<OrgListItem[]>("/api/orgs"),
     apiGet<FunderListItem[]>("/api/funders"),
@@ -40,10 +64,10 @@ export default async function AskPage() {
     stats,
   };
 
-  // Full-viewport app shell: the global nav is hidden on /ask.
+  // The workspace fills the viewport below the sticky navbar; the footer sits below the fold.
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <AskWorkspace payload={payload} />
+    <div data-app-shell style={{ height: "calc(100dvh - var(--nav-h))", display: "flex", flexDirection: "column" }}>
+      <WorkspaceLoader payload={payload} initialQuestion={q} initialView={initialView} />
     </div>
   );
 }

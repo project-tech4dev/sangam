@@ -12,7 +12,7 @@ export function CitationChip({ href: raw, index }: { href: string; index: Regist
   const chipStyle = {
     display: "inline-flex",
     alignItems: "center",
-    fontSize: 10.5,
+    fontSize: "var(--fs-xs)",
     fontWeight: 600,
     padding: "1px 8px",
     borderRadius: 999,
@@ -46,19 +46,19 @@ export function AnswerCard({ answer, index }: { answer: string; index: RegistryI
           height: 34,
           borderRadius: "50%",
           flexShrink: 0,
-          background: "var(--color-accent-600)",
+          background: "var(--color-accent-750)",
           color: "#fff",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontFamily: "var(--font-heading)",
           fontWeight: 700,
-          fontSize: 14,
+          fontSize: "var(--fs-sm)",
         }}
       >
         S
       </div>
-      <div className="answer-md" style={{ fontSize: 14, lineHeight: 1.6, minWidth: 0, flex: 1 }}>
+      <div className="answer-md" style={{ fontSize: "var(--fs-sm)", lineHeight: 1.6, minWidth: 0, flex: 1 }}>
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{

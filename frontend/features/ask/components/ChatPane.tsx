@@ -5,6 +5,7 @@ import type { RegistryIndex } from "../lib/citations";
 import { saveThread, titleFrom } from "../lib/threads";
 import { useSangamChat } from "../lib/useSangamChat";
 import { AnswerCard } from "./AnswerCard";
+import { ComposerNotice } from "./ComposerNotice";
 import { TraceCard } from "./TraceCard";
 
 const SUGGESTIONS = [
@@ -93,11 +94,11 @@ export function ChatPane({
             <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
               <div
                 aria-hidden
-                style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, background: "var(--color-neutral-700)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}
+                style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, background: "var(--color-neutral-700)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--fs-xs)", fontWeight: 700 }}
               >
                 You
               </div>
-              <div style={{ fontFamily: "var(--font-heading)", fontSize: 17, fontWeight: 600, paddingTop: 5 }}>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: "var(--fs-md)", fontWeight: 600, paddingTop: 5 }}>
                 {turn.question}
               </div>
             </div>
@@ -121,7 +122,7 @@ export function ChatPane({
           }}
         />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className="muted-2" style={{ fontSize: 11.5 }}>
+          <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
             {isReady ? "⌘↵ to send" : "Connecting to the agent…"}
           </span>
           <button
@@ -133,6 +134,7 @@ export function ChatPane({
             {isRunning ? "Working…" : "Ask Sangam"}
           </button>
         </div>
+        <ComposerNotice />
       </div>
     </div>
   );

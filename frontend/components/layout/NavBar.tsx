@@ -5,7 +5,7 @@ import { Nav } from "./Nav";
 
 // First prefix that matches wins, so /orgs and /funders read as Registry.
 const SECTIONS = [
-  ["/import", "import"],
+  ["/ask", "ask"],
   ["/registry", "registry"],
   ["/orgs", "registry"],
   ["/funders", "registry"],
@@ -16,7 +16,6 @@ const SECTIONS = [
 
 export function NavBar() {
   const pathname = usePathname() ?? "/";
-  if (pathname.startsWith("/ask")) return null; // the workspace owns the whole screen
   const current = SECTIONS.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? "home";
   return <Nav current={current} />;
 }

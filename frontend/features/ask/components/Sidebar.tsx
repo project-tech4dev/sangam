@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import type { ThreadMeta } from "../lib/threads";
 
-export type WorkspaceView = "ask" | "vault" | "media" | "rfpwatch";
+export type WorkspaceView = "ask" | "vault" | "media" | "rfpwatch" | "import";
 
 const CONTEXT_ITEMS: { id: WorkspaceView; label: string }[] = [
   { id: "vault", label: "Doc vault" },
@@ -30,19 +30,14 @@ export function Sidebar({
   onPickThread: (id: string) => void;
   onNewChat: () => void;
 }) {
+  const [toolsOpen, setToolsOpen] = useState(view === "import");
+
   if (collapsed) {
     return (
       <div style={{ width: 40, flexShrink: 0, borderRight: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 14, gap: 10 }}>
         <button className="btn btn-ghost" style={{ padding: 2 }} onClick={onToggle} title="Open workspace">
           ⟩
         </button>
-        <Link
-          href="/registry"
-          title="Back to Sangam"
-          style={{ writingMode: "vertical-rl", fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 14, color: "var(--color-accent-2-900)", textDecoration: "none" }}
-        >
-          sangam
-        </Link>
       </div>
     );
   }
@@ -56,10 +51,10 @@ export function Sidebar({
       background: active ? "var(--color-accent-2-100)" : "transparent",
       color: active ? "var(--color-accent-2-900)" : "var(--color-text)",
       fontFamily: "var(--font-body)",
-      fontSize: 13,
+      fontSize: "var(--fs-sm)",
       fontWeight: 600,
       padding: "8px 12px",
-      borderRadius: "var(--radius-sm)",
+      borderRadius: "var(--radius-row)",
       cursor: "pointer",
     }) as const;
 
@@ -75,23 +70,15 @@ export function Sidebar({
         flexDirection: "column",
         gap: 14,
         background: "var(--color-surface)",
-        overflowY: "auto",
+        minHeight: 0,
       }}
     >
+      {/* The global navbar carries the wordmark, site links and the signed-in user. */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Link
-          href="/registry"
-          style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 18, color: "var(--color-accent-2-900)", textDecoration: "none" }}
-        >
-          sangam
-        </Link>
+        <span className="eyebrow">Workspace</span>
         <button className="btn btn-ghost" style={{ padding: 2, marginLeft: "auto" }} onClick={onToggle} title="Collapse">
           ⟨
         </button>
-      </div>
-      <div style={{ display: "flex", gap: 10, fontSize: 12 }}>
-        <Link href="/registry">Registry</Link>
-        <Link href="/resources">Resources</Link>
       </div>
 
       <button
@@ -102,14 +89,12 @@ export function Sidebar({
         + New chat
       </button>
 
-      <button style={itemStyle(view === "ask")} onClick={() => onView("ask")}>
-        Ask Sangam
-      </button>
-
+      {/* Only the lists scroll, so Tools stays in view however many conversations there are. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <span className="eyebrow" style={{ padding: "0 12px" }}>Recent</span>
         {threads.length === 0 ? (
-          <span className="muted-2" style={{ fontSize: 12, padding: "4px 12px" }}>No past conversations yet.</span>
+          <span className="muted-2" style={{ fontSize: "var(--fs-xs)", padding: "4px 12px" }}>No past conversations yet.</span>
         ) : (
           threads.slice(0, 6).map((thread) => (
             <button
@@ -132,17 +117,30 @@ export function Sidebar({
           </button>
         ))}
       </div>
+      </div>
 
-      <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid var(--color-divider)", paddingTop: 12 }}>
-        <div
-          aria-hidden
-          style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--color-neutral-700)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}
+      {/* Tools that change the data, kept apart from conversations at the foot of the rail.
+          Everyone resolves to the staff dev user until real auth lands, so this is not yet
+          gated; Phase 3 shows it only when /api/me says is_staff. */}
+      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 4, borderTop: "1px solid var(--color-divider)", paddingTop: 12 }}>
+        <button
+          type="button"
+          aria-expanded={toolsOpen}
+          onClick={() => setToolsOpen(!toolsOpen)}
+          className="eyebrow"
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 12px", border: "none", background: "none", cursor: "pointer", textAlign: "left" }}
         >
-          DV
-        </div>
-        <div style={{ fontSize: 11.5 }} className="muted">
-          Signed in — dev workspace
-        </div>
+          Tools
+          {/* The design system's chevron glyph, turned to point down when open. */}
+          <span aria-hidden style={{ display: "inline-block", transform: toolsOpen ? "rotate(90deg)" : "none", transition: "transform 0.12s ease" }}>
+            ⟩
+          </span>
+        </button>
+        {toolsOpen && (
+          <button style={itemStyle(view === "import")} onClick={() => onView("import")}>
+            Import
+          </button>
+        )}
       </div>
     </div>
   );

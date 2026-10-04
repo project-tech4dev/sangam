@@ -4,12 +4,12 @@ import type { ReactNode } from "react";
 
 export function Breadcrumbs({ items }: { items: { label: string; href?: string }[] }) {
   return (
-    <div style={{ fontSize: 12, color: "var(--color-neutral-700)", display: "flex", gap: 6, flexWrap: "wrap" }}>
+    <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-neutral-700)", display: "flex", gap: 6, flexWrap: "wrap" }}>
       {items.map((item, i) => (
         <span key={i} style={{ display: "flex", gap: 6 }}>
           {i > 0 && <span>/</span>}
           {item.href ? (
-            <Link href={item.href} style={{ color: "var(--color-accent-700)" }}>
+            <Link href={item.href} style={{ color: "var(--color-accent-750)" }}>
               {item.label}
             </Link>
           ) : (
@@ -33,7 +33,7 @@ export function Tag({
 
 const MARK_COLORS = [
   "var(--color-accent-2-700)",
-  "var(--color-accent-700)",
+  "var(--color-accent-800)",
   "var(--color-accent-2-900)",
   "var(--color-accent-900)",
   "var(--color-neutral-700)",
@@ -113,14 +113,14 @@ export function StatRail({ stats }: { stats: { value: string | number | null; la
           <div
             style={{
               fontFamily: "var(--font-heading)",
-              fontSize: 28,
+              fontSize: "var(--fs-xl)",
               fontWeight: 700,
               color: stat.value === null ? "var(--color-neutral-500)" : "var(--color-text)",
             }}
           >
             {stat.value ?? "—"}
           </div>
-          <div style={{ fontSize: 12, color: "var(--color-neutral-700)" }}>
+          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-neutral-700)" }}>
             {stat.value === null ? `${stat.label} — not yet entered` : stat.label}
           </div>
         </div>

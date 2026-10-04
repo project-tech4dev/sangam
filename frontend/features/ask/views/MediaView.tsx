@@ -35,8 +35,8 @@ export function MediaView({ onDiscuss }: { onDiscuss: (seed: string) => void }) 
     <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <div className="eyebrow">Media & signals</div>
-        <h2 style={{ fontSize: 20 }}>Collected signals — all pending human review</h2>
-        <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+        <h2 style={{ fontSize: "var(--fs-lg)" }}>Collected signals — all pending human review</h2>
+        <p className="muted" style={{ margin: "4px 0 0", fontSize: "var(--fs-sm)" }}>
           Signals come from GDELT monitoring queries. None are auto-attached to organisations —
           linking is a manual vetting decision.
         </p>
@@ -52,17 +52,17 @@ export function MediaView({ onDiscuss }: { onDiscuss: (seed: string) => void }) 
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <Tag tone="neutral">Pending review</Tag>
                 {item.topic && <Tag tone="outline">{TOPIC_LABELS[item.topic] ?? item.topic}</Tag>}
-                <span className="muted-2" style={{ fontSize: 11.5 }}>
+                <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
                   {item.domain} · {item.seendate ? new Date(item.seendate).toLocaleDateString("en-IN") : "date unknown"}
                 </span>
               </div>
-              <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: 13.5, fontWeight: 600 }}>
+              <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: "var(--fs-sm)", fontWeight: 600 }}>
                 {item.title ?? item.url}
               </a>
               <div>
                 <button
                   className="btn btn-ghost"
-                  style={{ padding: "2px 0", fontSize: 12.5 }}
+                  style={{ padding: "2px 0", fontSize: "var(--fs-xs)" }}
                   onClick={() =>
                     onDiscuss(
                       `A news signal was collected: "${item.title ?? item.url}" (${item.domain}). Does this affect any organisation or funder in the base?`,
