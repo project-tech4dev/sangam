@@ -15,7 +15,7 @@ make smoke               # confirm the stack is wired end to end
 ```
 
 **Migrations are not automatic, and two things depend on them.** `db/init/` is a baseline only:
-12 of the SQL catalog's 40 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
+13 of the SQL catalog's 41 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
 at boot when one is missing, so the backend will not start against an unmigrated database.
 `seed.taxonomy_seed` needs `0002_taxonomy.sql` as well.
 
@@ -243,7 +243,7 @@ those tools are registered. Setting them changes no behaviour.
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
 
-- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 40 tables, and a column not
+- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 41 tables, and a column not
   listed there does not exist as far as the tool is concerned. It also carries `defects`:
   evidence-backed caveats about the *data* that get injected into every result touching the
   table, so the model cannot report "0 rows" as "none exist". Delete a defect line when a
@@ -277,8 +277,8 @@ baseline is what a brand-new database gets; migrations carry everything after it
 `db/migrations/README.md`. `0001_`–`0010_` carry the v3 data model on top of the v2 baseline:
 provenance columns, the taxonomy, geography, identity, credentials, funder activity, org facts,
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
-dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0019_`
-continue on top; there are 19 in total. The design and the before/after are in
+dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0021_`
+continue on top; there are 21 in total. The design and the before/after are in
 `docs/DATA_PLATFORM.md`.
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
@@ -339,7 +339,8 @@ deployed instance.
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
 reusable procedure, advertised by its frontmatter and read only when the model judges it
 relevant. There are seven, in three groups: **what to pull** (`funder-intake-research`,
-`ngo-credential-research` — ten cited fields each), **what to produce** (`entity-record` for one
+`ngo-credential-research` — ten cited fields each, and `funder-intake-research` also pulls
+the open call itself when it found one), **what to produce** (`entity-record` for one
 organisation, `funder-scan-for-fundraisers` and `ngo-brief-for-funders` for a comparison across
 several), and **what the catalog did with it** (`catalog-mapping` before a write,
 `catalog-write-report` after). The two outer groups split by entity kind because the kinds
