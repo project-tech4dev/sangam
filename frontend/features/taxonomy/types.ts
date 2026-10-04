@@ -1,44 +1,32 @@
 // Shapes of the taxonomy seed files (features-plans/data-model/seed/data/taxonomy).
 
-export type Source = { id: string; name: string; publisher: string; url: string | null; used_for: string };
+export type CsrRef = { clause: string; sector: string };
 
-export type Leaf = {
+export type SubTheme = {
   code: string;
   label: string;
+  /** SDG goal numbers this sub-theme reports against. */
   sdgs: string[];
-  sectors: string[];
-  /** A variant or modifier code → the extra SDGs a programme carrying it adds. */
-  adds: Record<string, string[]>;
-  note?: string;
-  refs: { sdg_targets?: string[]; india_programmes?: string[]; [key: string]: unknown };
+  /** Schedule VII clause and MCA sector: what a CSR filing for this work is filed under. */
+  csr: CsrRef[];
+  schemes: string[];
 };
 
-export type Area = { code: string; label: string; note?: string; children: Leaf[] };
+export type Theme = { code: string; label: string; sub_themes: SubTheme[] };
 
 export type Domain = {
   domain: string;
   label: string;
-  version: string;
-  status: "draft" | "active" | "deprecated";
-  tree_name: string;
+  status: "draft" | "active";
   source: string;
-  levels: string[];
-  variants: {
-    level: string;
-    apply_to_level: string;
-    note?: string;
-    items: { code: string; label: string; refs?: { note?: string } }[];
-  } | null;
-  modifiers: { code: string; label: string }[];
-  enabler_kinds: string[];
-  notes?: string[];
-  sources: Source[];
-  nodes: Area[];
+  themes: Theme[];
 };
+
+export type Lens = { code: string; label: string; adds_sdgs: string[] };
+
+export type Themes = { version: string; lenses: Lens[]; domains: Domain[] };
 
 export type Common = {
   sdgs: [string, string][];
-  sectors: [string, string][];
   population: [string, string][];
-  darpan_map: Record<string, string[]>;
 };

@@ -8,22 +8,25 @@ export function TaxonomyArticle() {
     <>
       <ArticleSection id="how-it-works" title="How the taxonomy works">
         <p className="measure m-0">
-          Each domain is a tree of areas and sub-areas. Every sub-area carries the SDGs and sector
-          labels it maps to. Cross-cutting layers add detail without growing the tree:
+          Work is classified by what it does, in the terms funders plan with: each domain has a few
+          themes, and each theme a handful of sub-themes. A programme, organisation, funder or call is
+          tagged with one or more sub-themes, and everything else follows from them.
         </p>
         <dl className="m-0 grid gap-x-6 gap-y-3 md:grid-cols-[max-content_minmax(0,1fr)]">
-          <dt className="font-semibold">Tracks and care levels</dt>
+          <dt className="font-semibold">Themes and sub-themes</dt>
+          <dd className="muted measure m-0">The tags themselves: two levels, kept deliberately short.</dd>
+          <dt className="font-semibold">Crosswalks</dt>
           <dd className="muted measure m-0">
-            Apply across every sub-area — occupation tracks in Livelihoods, levels of care in Health.
+            Each sub-theme carries the SDGs it reports against, the Schedule VII clause and MCA sector
+            CSR filings use, and the government schemes it connects to — so tagging once gives all three.
           </dd>
-          <dt className="font-semibold">Modifiers</dt>
+          <dt className="font-semibold">Lenses</dt>
           <dd className="muted measure m-0">
-            Added to a programme on top of its area, such as women-led or uses digital tools; some add SDGs.
+            Cross-cutting qualities tagged alongside a sub-theme, such as women &amp; girls or
+            climate-smart; some add an SDG.
           </dd>
-          <dt className="font-semibold">Enabling work</dt>
-          <dd className="muted measure m-0">Work that makes programmes possible rather than delivering one.</dd>
           <dt className="font-semibold">Shared vocabulary</dt>
-          <dd className="muted measure m-0">SDGs, sectors and population groups, common to every domain.</dd>
+          <dd className="muted measure m-0">SDGs, population groups and the Schedule VII sectors in use.</dd>
         </dl>
         <div className="flex flex-wrap gap-2">
           {DOMAINS.map((d) => (

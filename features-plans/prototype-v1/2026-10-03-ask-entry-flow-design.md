@@ -197,6 +197,12 @@ proxy ──► /auth/login?next=/import ──► Google ──► /auth/callba
   Registry · how an answer is made · how a fit score is made · what confidence means · known limits.
 - **Taxonomy sections:** how the taxonomy works · one per domain (drafts labelled) · shared
   vocabulary. Domains are sections, not nested tabs.
+- **Taxonomy is themes and sub-themes**, read from `features-plans/data-model/seed/data/taxonomy/themes.json`
+  (copied into `frontend/features/taxonomy/data/`). Livelihoods has three themes — skilling for jobs,
+  economic empowerment of SHGs, and nano & micro entrepreneurship (farm and natural-resource work
+  folded in) — and Health and Education four each, as drafts. Each sub-theme carries its SDGs,
+  Schedule VII clause and MCA sector, and schemes; lenses and population groups are shared. The
+  occupation and care-level trees stay in `features-plans/` as a parked optional layer.
 
 ## Verification
 

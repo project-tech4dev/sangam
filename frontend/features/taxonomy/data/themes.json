@@ -1,0 +1,1011 @@
+{
+  "version": "0.1",
+  "_help": "Themes and sub-themes are the primary tags. Each sub-theme carries its crosswalks: SDG goals, Schedule VII (clause and MCA sector, the CSR filings' own breakdown) and government schemes. Lenses are cross-cutting and some add SDGs. The occupation and care-level trees in <domain>.json are parked as an optional second layer. Crosswalks are a draft for review.",
+  "lenses": [
+    {
+      "code": "women_girls",
+      "label": "Women & girls",
+      "adds_sdgs": [
+        "5"
+      ]
+    },
+    {
+      "code": "tribal_remote",
+      "label": "Tribal & remote areas",
+      "adds_sdgs": [
+        "10"
+      ]
+    },
+    {
+      "code": "digital",
+      "label": "Uses digital tools",
+      "adds_sdgs": [
+        "9"
+      ]
+    },
+    {
+      "code": "climate_smart",
+      "label": "Climate-smart",
+      "adds_sdgs": [
+        "13"
+      ]
+    }
+  ],
+  "domains": [
+    {
+      "domain": "livelihoods",
+      "label": "Livelihoods",
+      "status": "active",
+      "source": "FFRH Batch 1 framing (livelihoods@scale), with farm and natural-resource work folded into entrepreneurship",
+      "themes": [
+        {
+          "code": "skilling",
+          "label": "Skilling for jobs & employment",
+          "sub_themes": [
+            {
+              "code": "vocational-foundational",
+              "label": "Vocational & foundational skilling",
+              "sdgs": [
+                "4",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Vocational Skills"
+                }
+              ],
+              "schemes": [
+                "PMKVY (Skill India)"
+              ]
+            },
+            {
+              "code": "apprenticeships",
+              "label": "Apprenticeships & on-the-job training",
+              "sdgs": [
+                "4",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Vocational Skills"
+                }
+              ],
+              "schemes": [
+                "National Apprenticeship Promotion Scheme"
+              ]
+            },
+            {
+              "code": "iti-transformation",
+              "label": "ITI transformation",
+              "sdgs": [
+                "4",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Vocational Skills"
+                }
+              ],
+              "schemes": [
+                "Craftsmen Training Scheme (ITIs)"
+              ]
+            },
+            {
+              "code": "certification-placement",
+              "label": "Certification & placement support",
+              "sdgs": [
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Vocational Skills"
+                },
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                }
+              ],
+              "schemes": [
+                "DDU-GKY"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "shg-empowerment",
+          "label": "Economic empowerment of SHGs",
+          "sub_themes": [
+            {
+              "code": "institution-building",
+              "label": "Institution building",
+              "sdgs": [
+                "1",
+                "5",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                },
+                {
+                  "clause": "iii",
+                  "sector": "Women Empowerment"
+                }
+              ],
+              "schemes": [
+                "DAY-NRLM"
+              ]
+            },
+            {
+              "code": "financial-inclusion",
+              "label": "Financial inclusion",
+              "sdgs": [
+                "1",
+                "5",
+                "8",
+                "10"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                },
+                {
+                  "clause": "iii",
+                  "sector": "Women Empowerment"
+                },
+                {
+                  "clause": "iii",
+                  "sector": "Socio-Economic Inequalities"
+                }
+              ],
+              "schemes": [
+                "DAY-NRLM (SHG–bank linkage)",
+                "PM Jan Dhan Yojana",
+                "MUDRA"
+              ]
+            },
+            {
+              "code": "livelihood-diversification",
+              "label": "Livelihood diversification",
+              "sdgs": [
+                "1",
+                "2",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                },
+                {
+                  "clause": "x",
+                  "sector": "Rural Development Projects"
+                }
+              ],
+              "schemes": [
+                "DAY-NRLM"
+              ]
+            },
+            {
+              "code": "marketing-support",
+              "label": "Marketing support",
+              "sdgs": [
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                },
+                {
+                  "clause": "x",
+                  "sector": "Rural Development Projects"
+                }
+              ],
+              "schemes": [
+                "DAY-NRLM"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "entrepreneurship",
+          "label": "Nano & micro entrepreneurship in farm & non-farm sectors",
+          "sub_themes": [
+            {
+              "code": "formal-capital",
+              "label": "Access to formal capital",
+              "sdgs": [
+                "8",
+                "9"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                }
+              ],
+              "schemes": [
+                "PMEGP",
+                "MUDRA",
+                "Stand-Up India"
+              ]
+            },
+            {
+              "code": "enterprise-skilling",
+              "label": "Enterprise skilling",
+              "sdgs": [
+                "4",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Vocational Skills"
+                }
+              ],
+              "schemes": [
+                "PM Vishwakarma"
+              ]
+            },
+            {
+              "code": "mentoring",
+              "label": "Psychosocial support & mentoring",
+              "sdgs": [
+                "3",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                }
+              ],
+              "schemes": []
+            },
+            {
+              "code": "market-access",
+              "label": "Market access & linkages",
+              "sdgs": [
+                "8",
+                "9"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                },
+                {
+                  "clause": "x",
+                  "sector": "Rural Development Projects"
+                }
+              ],
+              "schemes": [
+                "ONDC",
+                "GeM"
+              ]
+            },
+            {
+              "code": "fpo-value-chains",
+              "label": "FPOs & farm value chains",
+              "sdgs": [
+                "2",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                },
+                {
+                  "clause": "x",
+                  "sector": "Rural Development Projects"
+                }
+              ],
+              "schemes": [
+                "Formation & Promotion of 10,000 FPOs"
+              ]
+            },
+            {
+              "code": "nrm-water",
+              "label": "Natural resource management & water",
+              "sdgs": [
+                "6",
+                "13",
+                "15"
+              ],
+              "csr": [
+                {
+                  "clause": "iv",
+                  "sector": "Conservation Of Natural Resources"
+                },
+                {
+                  "clause": "iv",
+                  "sector": "Environmental Sustainability"
+                }
+              ],
+              "schemes": [
+                "MGNREGS (NRM works)",
+                "PMKSY (watershed)"
+              ]
+            },
+            {
+              "code": "climate-resilient-agriculture",
+              "label": "Climate-resilient agriculture",
+              "sdgs": [
+                "2",
+                "13"
+              ],
+              "csr": [
+                {
+                  "clause": "iv",
+                  "sector": "Agro Forestry"
+                },
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                }
+              ],
+              "schemes": [
+                "National Mission for Sustainable Agriculture"
+              ]
+            },
+            {
+              "code": "livestock-allied",
+              "label": "Livestock & allied",
+              "sdgs": [
+                "1",
+                "2",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Livelihood Enhancement Projects"
+                },
+                {
+                  "clause": "iv",
+                  "sector": "Animal Welfare"
+                }
+              ],
+              "schemes": [
+                "National Livestock Mission"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "health",
+      "label": "Health",
+      "status": "draft",
+      "source": "Drawn from the Health programme-areas draft, regrouped in funder-facing themes",
+      "themes": [
+        {
+          "code": "mch-nutrition",
+          "label": "Maternal, child & adolescent health and nutrition",
+          "sub_themes": [
+            {
+              "code": "anc-safe-delivery",
+              "label": "Antenatal care & safe delivery",
+              "sdgs": [
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "Janani Suraksha Yojana",
+                "PMSMA"
+              ]
+            },
+            {
+              "code": "newborn-child",
+              "label": "Newborn & child health, immunisation",
+              "sdgs": [
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "Mission Indradhanush"
+              ]
+            },
+            {
+              "code": "adolescent-reproductive",
+              "label": "Adolescent & reproductive health",
+              "sdgs": [
+                "3",
+                "5"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "Rashtriya Kishor Swasthya Karyakram"
+              ]
+            },
+            {
+              "code": "nutrition-anaemia",
+              "label": "Nutrition & anaemia",
+              "sdgs": [
+                "2",
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Poverty, Eradicating Hunger, Malnutrition"
+                }
+              ],
+              "schemes": [
+                "POSHAN Abhiyaan",
+                "Anaemia Mukt Bharat"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "primary-community",
+          "label": "Primary & community health systems",
+          "sub_themes": [
+            {
+              "code": "frontline-workers",
+              "label": "Frontline health workers (ASHA, ANM)",
+              "sdgs": [
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "National Health Mission"
+              ]
+            },
+            {
+              "code": "primary-care",
+              "label": "Primary care facilities (AAM, PHC)",
+              "sdgs": [
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "Ayushman Arogya Mandir"
+              ]
+            },
+            {
+              "code": "telehealth",
+              "label": "Mobile & tele-health",
+              "sdgs": [
+                "3",
+                "9"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "eSanjeevani"
+              ]
+            },
+            {
+              "code": "entitlements-insurance",
+              "label": "Health entitlements & insurance enrolment",
+              "sdgs": [
+                "1",
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "PM-JAY"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "prevention-control",
+          "label": "Disease prevention & control",
+          "sub_themes": [
+            {
+              "code": "tb-communicable",
+              "label": "TB & communicable diseases",
+              "sdgs": [
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "National TB Elimination Programme (Ni-kshay Mitra)"
+              ]
+            },
+            {
+              "code": "ncd",
+              "label": "NCD screening & management",
+              "sdgs": [
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "NP-NCD"
+              ]
+            },
+            {
+              "code": "eye-ear-oral",
+              "label": "Eye, ear & oral care",
+              "sdgs": [
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "NPCBVI",
+                "National Oral Health Programme"
+              ]
+            },
+            {
+              "code": "wash",
+              "label": "WASH & environmental health",
+              "sdgs": [
+                "3",
+                "6"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Sanitation"
+                },
+                {
+                  "clause": "i",
+                  "sector": "Safe Drinking Water"
+                }
+              ],
+              "schemes": [
+                "Swachh Bharat Mission",
+                "Jal Jeevan Mission"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "vulnerable-care",
+          "label": "Care for vulnerable groups",
+          "sub_themes": [
+            {
+              "code": "mental-health",
+              "label": "Mental health & substance use",
+              "sdgs": [
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "National Mental Health Programme",
+                "Tele-MANAS"
+              ]
+            },
+            {
+              "code": "disability-rehab",
+              "label": "Disability & rehabilitation",
+              "sdgs": [
+                "3",
+                "10"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                },
+                {
+                  "clause": "iii",
+                  "sector": "Socio-Economic Inequalities"
+                }
+              ],
+              "schemes": [
+                "ADIP scheme"
+              ]
+            },
+            {
+              "code": "elderly-palliative",
+              "label": "Elderly & palliative care",
+              "sdgs": [
+                "3"
+              ],
+              "csr": [
+                {
+                  "clause": "iii",
+                  "sector": "Senior Citizens Welfare"
+                },
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                }
+              ],
+              "schemes": [
+                "NPHCE"
+              ]
+            },
+            {
+              "code": "tribal-remote-health",
+              "label": "Health of tribal & remote communities",
+              "sdgs": [
+                "3",
+                "10"
+              ],
+              "csr": [
+                {
+                  "clause": "i",
+                  "sector": "Health Care"
+                },
+                {
+                  "clause": "x",
+                  "sector": "Rural Development Projects"
+                }
+              ],
+              "schemes": [
+                "National Sickle Cell Anaemia Elimination Mission"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "education",
+      "label": "Education",
+      "status": "draft",
+      "source": "Drawn from the Education programme-areas draft, regrouped in funder-facing themes",
+      "themes": [
+        {
+          "code": "early-foundational",
+          "label": "Early years & foundational learning",
+          "sub_themes": [
+            {
+              "code": "ecce",
+              "label": "Early childhood care & education (Anganwadi)",
+              "sdgs": [
+                "4"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "Saksham Anganwadi & POSHAN 2.0"
+              ]
+            },
+            {
+              "code": "fln",
+              "label": "Foundational literacy & numeracy",
+              "sdgs": [
+                "4"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "NIPUN Bharat"
+              ]
+            },
+            {
+              "code": "libraries-materials",
+              "label": "Libraries & learning materials",
+              "sdgs": [
+                "4"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "Samagra Shiksha"
+              ]
+            },
+            {
+              "code": "early-grade-teachers",
+              "label": "Teacher training for the early grades",
+              "sdgs": [
+                "4"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "NISHTHA"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "school-quality",
+          "label": "School quality",
+          "sub_themes": [
+            {
+              "code": "teacher-leadership",
+              "label": "Teacher development & school leadership",
+              "sdgs": [
+                "4"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "NISHTHA"
+              ]
+            },
+            {
+              "code": "stem-digital",
+              "label": "STEM, labs & digital classrooms",
+              "sdgs": [
+                "4",
+                "9"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "Atal Tinkering Labs",
+                "PM eVIDYA"
+              ]
+            },
+            {
+              "code": "infrastructure-wash",
+              "label": "School infrastructure & WASH",
+              "sdgs": [
+                "4",
+                "6"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                },
+                {
+                  "clause": "i",
+                  "sector": "Sanitation"
+                }
+              ],
+              "schemes": [
+                "Samagra Shiksha",
+                "Swachh Vidyalaya"
+              ]
+            },
+            {
+              "code": "smc-community",
+              "label": "School management committees & community",
+              "sdgs": [
+                "4",
+                "16"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "Samagra Shiksha"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "access-inclusion",
+          "label": "Access, inclusion & retention",
+          "sub_themes": [
+            {
+              "code": "girls-education",
+              "label": "Girls' education & retention",
+              "sdgs": [
+                "4",
+                "5"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                },
+                {
+                  "clause": "iii",
+                  "sector": "Gender Equality"
+                }
+              ],
+              "schemes": [
+                "Beti Bachao Beti Padhao",
+                "Kasturba Gandhi Balika Vidyalaya"
+              ]
+            },
+            {
+              "code": "special-education",
+              "label": "Special education & disability",
+              "sdgs": [
+                "4",
+                "10"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Special Education"
+                }
+              ],
+              "schemes": [
+                "Samagra Shiksha (inclusive education)"
+              ]
+            },
+            {
+              "code": "tribal-remote-schooling",
+              "label": "Tribal & remote-area schooling",
+              "sdgs": [
+                "4",
+                "10"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "Eklavya Model Residential Schools"
+              ]
+            },
+            {
+              "code": "scholarships-bridge",
+              "label": "Scholarships & bridge programmes",
+              "sdgs": [
+                "4",
+                "10"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "National Means-cum-Merit Scholarship"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "pathways",
+          "label": "Pathways beyond school",
+          "sub_themes": [
+            {
+              "code": "career-life-skills",
+              "label": "Career guidance & life skills",
+              "sdgs": [
+                "4",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "Samagra Shiksha"
+              ]
+            },
+            {
+              "code": "higher-education",
+              "label": "Higher-education access & scholarships",
+              "sdgs": [
+                "4",
+                "10"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "Central Sector Scholarship Scheme"
+              ]
+            },
+            {
+              "code": "adult-learning",
+              "label": "Adult & lifelong learning",
+              "sdgs": [
+                "4"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Education"
+                }
+              ],
+              "schemes": [
+                "ULLAS (New India Literacy Programme)"
+              ]
+            },
+            {
+              "code": "vocational-in-school",
+              "label": "Vocational education in schools",
+              "sdgs": [
+                "4",
+                "8"
+              ],
+              "csr": [
+                {
+                  "clause": "ii",
+                  "sector": "Vocational Skills"
+                }
+              ],
+              "schemes": [
+                "Samagra Shiksha (vocationalisation)"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

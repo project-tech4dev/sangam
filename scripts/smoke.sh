@@ -66,15 +66,14 @@ check_json    "documents: 96+ on file"    "$BACKEND/api/documents?limit=1" "d['t
 check_status  "agent AG-UI health"         "$BACKEND/agent/health" 200 5
 
 say "── frontend ─────────────────────────────────────"
-# /taxonomy reads copies of the seed files; the originals in features-plans are the source.
+# /resources/taxonomy reads copies of the seed files; the originals in features-plans are the source.
 TAX_SRC="features-plans/data-model/seed/data/taxonomy" TAX_COPY="frontend/features/taxonomy/data"
-if diff -q "$TAX_SRC/common.json" "$TAX_COPY/common.json" >/dev/null && diff -q "$TAX_SRC/livelihoods.json" "$TAX_COPY/livelihoods.json" >/dev/null \
-   && diff -q "$TAX_SRC/education.json" "$TAX_COPY/education.json" >/dev/null && diff -q "$TAX_SRC/health.json" "$TAX_COPY/health.json" >/dev/null; then
+if diff -q "$TAX_SRC/themes.json" "$TAX_COPY/themes.json" >/dev/null && diff -q "$TAX_SRC/common.json" "$TAX_COPY/common.json" >/dev/null; then
   ok "taxonomy copies match their seed files"
 else
   bad "taxonomy copies differ from $TAX_SRC — see $TAX_COPY/README.md"
 fi
-check_contains "taxonomy shows the health tree" "$FRONTEND/resources/taxonomy" "Reproductive health and family planning" 90
+check_contains "taxonomy shows the SHG theme" "$FRONTEND/resources/taxonomy" "Economic empowerment of SHGs" 90
 check_status  "home page renders"          "$FRONTEND/" 200 60
 check_contains "registry lists KABIL"      "$FRONTEND/registry" "KABIL" 90
 check_contains "org profile renders"       "$FRONTEND/registry/kabil" "Registered December 2012" 90
