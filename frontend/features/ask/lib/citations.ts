@@ -1,10 +1,14 @@
 export type CitationKind = "org" | "funder" | "grant" | "score" | "graph";
 
+/** Where an entity's row was read from. Optional throughout: most tables record it,
+ *  some rows do not, and the rail says "no source recorded" rather than hiding the gap. */
+export type Provenance = { sourceUrl?: string | null; sourceName?: string | null; fetchedAt?: string | null };
+
 export type RegistryIndex = {
-  orgs: Map<number, { slug: string; name: string }>;
-  funders: Map<number, { slug: string; name: string }>;
-  scores: Map<number, { funderSlug: string; orgName: string; funderName: string }>;
-  grants: Map<number, { orgSlug: string; title: string }>;
+  orgs: Map<number, { slug: string; name: string } & Provenance>;
+  funders: Map<number, { slug: string; name: string } & Provenance>;
+  scores: Map<number, { funderSlug: string; orgName: string; funderName: string; rubricVersion?: string | null }>;
+  grants: Map<number, { orgSlug: string; title: string } & Provenance>;
 };
 
 const CITE_RE = /\[(org|funder|grant|score|graph):([a-zA-Z0-9]+)\]/g;

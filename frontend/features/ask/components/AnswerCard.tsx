@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { citationTarget, linkifyCitations, type CitationKind, type RegistryIndex } from "../lib/citations";
 
@@ -9,6 +9,10 @@ export function CitationChip({ href: raw, index }: { href: string; index: Regist
   const [, kind, id] = raw.match(/^sangam:\/\/([a-z]+)\/(.+)$/) ?? [];
   if (!kind || !id) return null;
   const { href, label } = citationTarget(kind as CitationKind, id, index);
+  // The marker the agent emitted is what the chip shows. The model has just written the
+  // entity's name in the prose beside it, so repeating the name here would say it twice —
+  // and in a table it would widen the column. The name goes in the title instead.
+  const marker = `${kind}:${id}`;
   const chipStyle = {
     display: "inline-flex",
     alignItems: "center",
@@ -24,14 +28,14 @@ export function CitationChip({ href: raw, index }: { href: string; index: Regist
   } as const;
   if (!href) {
     return (
-      <span style={chipStyle} title={`${kind} evidence in the base`}>
-        {label}
+      <span style={chipStyle} title={`${label} — ${kind} evidence in the base`}>
+        {marker}
       </span>
     );
   }
   return (
     <Link href={href} style={chipStyle} title={`Open ${label} in the Registry`}>
-      {label}
+      {marker}
     </Link>
   );
 }
@@ -61,6 +65,11 @@ export function AnswerCard({ answer, index }: { answer: string; index: RegistryI
       <div className="answer-md" style={{ fontSize: "var(--fs-sm)", lineHeight: 1.6, minWidth: 0, flex: 1 }}>
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
+          // react-markdown sanitises every scheme outside /^(https?|ircs?|mailto|xmpp)$/,
+          // rewriting `sangam://funder/22` to "". That silently defeated the check below,
+          // so every citation rendered as a dead <a> showing its raw marker and no chip
+          // ever appeared. Let our own scheme through; everything else keeps the default.
+          urlTransform={(url) => (url.startsWith("sangam://") ? url : defaultUrlTransform(url))}
           components={{
             a: ({ href, children }) =>
               href?.startsWith("sangam://") ? (

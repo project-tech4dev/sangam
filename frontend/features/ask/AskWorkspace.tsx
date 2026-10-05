@@ -16,11 +16,13 @@ import dynamic from "next/dynamic";
 // Most visits never open Tools, so the ingest UI downloads only when Import is first opened.
 const ImportView = dynamic(() => import("./views/ImportView").then((m) => m.ImportView));
 
+type Sourced = { sourceUrl: string | null; sourceName: string | null; fetchedAt: string | null };
+
 export type IndexPayload = {
-  orgs: { id: number; slug: string; name: string }[];
-  funders: { id: number; slug: string; name: string }[];
-  scores: { id: number; funderSlug: string; orgName: string; funderName: string }[];
-  grants: { id: number; orgSlug: string; title: string }[];
+  orgs: ({ id: number; slug: string; name: string } & Sourced)[];
+  funders: ({ id: number; slug: string; name: string } & Sourced)[];
+  scores: { id: number; funderSlug: string; orgName: string; funderName: string; rubricVersion: string | null }[];
+  grants: ({ id: number; orgSlug: string; title: string } & Sourced)[];
   stats: Record<string, number>;
 };
 

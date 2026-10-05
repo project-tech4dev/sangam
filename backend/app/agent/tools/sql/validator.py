@@ -15,6 +15,8 @@ from sqlglot.optimizer.scope import build_scope
 from app.agent.tools.sql.catalog import (
     CITE_COLUMNS,
     COLUMNS,
+    PROVENANCE_COLUMNS,
+    PROVENANCE_ROLES,
     SQLGLOT_SCHEMA,
     STAR_COLUMNS,
     TABLE_NAMES,
@@ -32,6 +34,10 @@ HARD_MAX_ROWS = 200
 MAX_SQL_CHARS = 8_000
 
 DIALECT = "postgres"
+
+# Output names the validator appends for itself. Reserved rather than merely unlikely: a
+# projection aliased into this namespace would be read back as a source, so it is rejected.
+PROVENANCE_PREFIX = "__prov__"
 
 # Statements that write or change state, wherever they appear in the tree — a DELETE inside a CTE is still a
 # DELETE. Verified present in sqlglot 27.x; note COPY/TRUNCATE/GRANT are their own node types, NOT.
@@ -109,6 +115,16 @@ class CitationPlan:
 
 
 @dataclass(frozen=True, slots=True)
+class ProvenancePlan:
+    """A result column carrying where one of the query's tables got its rows."""
+
+    output_column: str
+    table: str
+    role: str
+    """One of catalog.PROVENANCE_ROLES: 'url' | 'name' | 'fetched'."""
+
+
+@dataclass(frozen=True, slots=True)
 class ValidatedQuery:
     sql: str
     """The regenerated statement. This, and only this, is what executes."""
@@ -118,6 +134,9 @@ class ValidatedQuery:
     rewrites: tuple[str, ...] = ()
     """What validation changed, told to the model so it can learn the shape."""
     aggregate: bool = False
+    provenance: tuple[ProvenancePlan, ...] = ()
+    provenance_skipped: str | None = None
+    """Why the rows carry no source, when they do not. Shown instead of nothing."""
 
 
 def _reject(message: str) -> None:
@@ -152,13 +171,17 @@ def validate(
     had_star = _has_star_projection(root)
     qualified = _qualify(root, root_tables=_referenced_tables(root, cte_names), dialect=dialect)
     _recheck_columns(qualified)
+    _reject_reserved_aliases(qualified)
     if had_star:
         _trim_expanded_star(qualified, rewrites)
     _dedupe_output_names(qualified, rewrites)
 
+    aggregate = _is_aggregate(qualified)
+    # After deduping (the reserved prefix cannot collide with a renamed column) and before the
+    # limit, which does not touch the projection list.
+    provenance, provenance_skipped = _plan_provenance(qualified, aggregate=aggregate)
     limit = _apply_limit(qualified, max_rows, rewrites)
     citations = _plan_citations(qualified)
-    aggregate = _is_aggregate(qualified)
 
     return ValidatedQuery(
         sql=qualified.sql(dialect=dialect, comments=False),
@@ -167,6 +190,8 @@ def validate(
         citations=tuple(citations),
         rewrites=tuple(rewrites),
         aggregate=aggregate,
+        provenance=tuple(provenance),
+        provenance_skipped=provenance_skipped,
     )
 
 
@@ -495,3 +520,83 @@ def _is_aggregate(qualified: exp.Query) -> bool:
         for projection in qualified.expressions
         for node in projection.walk()
     )
+
+
+def _reject_reserved_aliases(qualified: exp.Query) -> None:
+    """`__prov__…` is the validator's own output namespace, not the model's."""
+    for projection in qualified.expressions:
+        if projection.alias_or_name.startswith(PROVENANCE_PREFIX):
+            _reject(
+                f"output names starting with {PROVENANCE_PREFIX!r} are reserved for the "
+                "source columns the tool adds for you. Alias that column something else — "
+                "sources are reported without being asked for."
+            )
+
+
+def _plan_provenance(
+    qualified: exp.Query, *, aggregate: bool
+) -> tuple[list[ProvenancePlan], str | None]:
+    """Make every row's source reachable, by mapping what is projected then adding what is not.
+
+    Mapping first matters: `source_url` is not heavy, so `SELECT *` expands to it and
+    `_trim_expanded_star` keeps it. Appending blindly would put the URL in the row body AND in
+    the sources block, and the output budget would pay for it twice.
+    """
+    if not isinstance(qualified, exp.Select):
+        return [], "the query combines results with UNION/INTERSECT/EXCEPT, which carry no single source"
+    if aggregate:
+        return [], "the rows are aggregated, so they belong to no single source row"
+    if qualified.args.get("distinct"):
+        return [], "SELECT DISTINCT collapses rows, so a per-row source would be wrong"
+
+    root_scope = build_scope(qualified)
+    if root_scope is None:
+        return [], None
+
+    # Keyed by ALIAS, not table name: a self-join has two aliases on one table, and one output
+    # name for both would collapse under psycopg's dict_row.
+    aliases = {
+        alias: source.name.lower()
+        for alias, source in root_scope.sources.items()
+        if isinstance(source, exp.Table) and source.name.lower() in PROVENANCE_COLUMNS
+    }
+    opaque = sorted(
+        alias for alias, source in root_scope.sources.items() if not isinstance(source, exp.Table)
+    )
+
+    plans: list[ProvenancePlan] = []
+    mapped: set[tuple[str, str]] = set()
+    for projection in qualified.expressions:
+        inner = projection.this if isinstance(projection, exp.Alias) else projection
+        if not isinstance(inner, exp.Column) or inner.table not in aliases:
+            continue
+        table = aliases[inner.table]
+        for role, column in PROVENANCE_COLUMNS[table].items():
+            if inner.name == column:
+                plans.append(
+                    ProvenancePlan(output_column=projection.alias_or_name, table=table, role=role)
+                )
+                mapped.add((inner.table, role))
+
+    for alias, table in sorted(aliases.items()):
+        for role in PROVENANCE_ROLES:
+            column = PROVENANCE_COLUMNS[table].get(role)
+            if column is None or (alias, role) in mapped:
+                continue
+            name = f"{PROVENANCE_PREFIX}{alias}__{role}"
+            qualified.select(
+                exp.alias_(exp.column(column, table=alias, quoted=True), name, quoted=True),
+                append=True,
+                copy=False,
+            )
+            plans.append(ProvenancePlan(output_column=name, table=table, role=role))
+
+    skipped = None
+    if opaque:
+        skipped = (
+            f"rows coming through {', '.join(opaque)} carry no source — a CTE or subquery hides "
+            "which table row they came from"
+        )
+    elif not plans:
+        skipped = "none of the tables read record a source URL"
+    return plans, skipped

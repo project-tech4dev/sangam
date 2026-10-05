@@ -203,7 +203,8 @@ class TestLimits:
         """M0 finding: FETCH occupies args['limit'], and Query.limit() replaces it."""
         result = validate("SELECT id FROM orgs FETCH FIRST 10000 ROWS ONLY")
         assert result.limit == 50
-        assert "FETCH" not in result.sql.upper()
+        # Not a bare "FETCH" check: the provenance columns put fetched_at in every result.
+        assert "FETCH FIRST" not in result.sql.upper()
 
     def test_limit_applies_at_the_top_of_a_union(self):
         result = validate("SELECT id FROM orgs UNION SELECT id FROM funders")
@@ -347,3 +348,62 @@ class TestUsefulQueriesTheCuratedToolsCannotAnswer:
         result = validate(sql)
         assert result.aggregate is True
         assert result.sql
+
+
+class TestProvenanceIsPlannedNotAsked:
+    """Sources are added for the model, so an answer can say where a row came from."""
+
+    def test_every_joined_table_that_records_a_source_gets_one(self):
+        result = validate("SELECT o.id, o.name FROM orgs o JOIN org_locations ol ON ol.org_id = o.id")
+        assert {p.table for p in result.provenance} == {"orgs", "org_locations"}
+        assert {p.role for p in result.provenance} == {"url", "name", "fetched"}
+        assert result.provenance_skipped is None
+        # The row body is untouched; the added columns live in a reserved namespace.
+        assert '"o"."source_url" AS "__prov__o__url"' in result.sql
+
+    def test_a_star_projection_is_absorbed_not_duplicated(self):
+        """source_url is not heavy, so `*` already expands to it. Appending would select it twice."""
+        result = validate("SELECT * FROM orgs")
+        assert result.sql.count('"orgs"."source_url"') == 1
+        assert [p.output_column for p in result.provenance if p.role == "url"] == ["source_url"]
+
+    def test_a_column_the_model_selected_itself_is_absorbed(self):
+        result = validate("SELECT o.id, o.source_url FROM orgs o")
+        assert result.sql.count('"o"."source_url"') == 1
+        urls = [p.output_column for p in result.provenance if p.role == "url"]
+        assert urls == ["source_url"]
+        # The other two roles were still missing, so they are added.
+        assert '"__prov__o__name"' in result.sql and '"__prov__o__fetched"' in result.sql
+
+    def test_a_self_join_keys_on_the_alias_so_the_names_stay_distinct(self):
+        """Keyed on the table name, both sides would collide under psycopg's dict_row."""
+        result = validate("SELECT a.id, b.id AS other FROM orgs a JOIN orgs b ON b.cohort = a.cohort")
+        names = [p.output_column for p in result.provenance]
+        assert len(names) == len(set(names)) == 6
+        assert "__prov__a__url" in names and "__prov__b__url" in names
+
+    def test_a_table_with_no_source_columns_gets_none(self):
+        result = validate("SELECT l.id, l.name FROM locations l")
+        assert result.provenance == ()
+        assert "record a source" in result.provenance_skipped
+
+    @pytest.mark.parametrize(
+        ("sql", "because"),
+        [
+            ("SELECT count(*) FROM orgs", "aggregated"),
+            ("SELECT o.cohort, count(*) AS n FROM orgs o GROUP BY o.cohort", "aggregated"),
+            ("SELECT DISTINCT o.cohort FROM orgs o", "DISTINCT"),
+            ("SELECT f.id FROM funders f UNION SELECT o.id FROM orgs o", "UNION"),
+            ("WITH a AS (SELECT id FROM orgs) SELECT a.id FROM a", "CTE"),
+        ],
+    )
+    def test_shapes_that_cannot_carry_a_per_row_source_say_why(self, sql, because):
+        """Adding a projection to any of these would change the result. Silence would read as a bug."""
+        result = validate(sql)
+        assert result.provenance == ()
+        assert result.provenance_skipped and because in result.provenance_skipped
+
+    def test_the_reserved_namespace_is_fail_closed(self):
+        """Aliasing into it would be read back as a source, so it is rejected, not renamed."""
+        with pytest.raises(SqlRejected, match="reserved"):
+            validate("SELECT o.name AS __prov__o__url FROM orgs o")

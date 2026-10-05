@@ -8,10 +8,15 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from app.agent.tools.sql.validator import CitationPlan
+from app.agent.tools.sql.validator import CitationPlan, ProvenancePlan
 
 MAX_CELL_CHARS = 200
 MAX_OUTPUT_CHARS = 6_000
+
+# Distinct sources named per query. The block is deduped and budgeted separately from the
+# rows, so adding provenance never costs the model a row of data.
+MAX_SOURCES = 8
+MAX_SOURCE_NAME_CHARS = 60
 
 NO_ROWS = (
     "The query ran and matched nothing. For these filters that is a real "
@@ -41,6 +46,7 @@ def render_rows(
     rows: Sequence[dict[str, Any]],
     *,
     citations: Sequence[CitationPlan] = (),
+    provenance: Sequence[ProvenancePlan] = (),
     limit: int | None = None,
     truncated: bool = False,
 ) -> str:
@@ -50,7 +56,11 @@ def render_rows(
 
     plans = [p for p in citations if p.output_column in rows[0]]
     cited_columns = {p.output_column for p in plans}
-    body_columns = [c for c in rows[0] if c not in cited_columns]
+    # Source columns are reported once in the sources block, not repeated on every row —
+    # including one the model selected itself, which is why this covers more than the
+    # aliases the validator appended.
+    source_columns = {p.output_column for p in provenance if p.output_column in rows[0]}
+    body_columns = [c for c in rows[0] if c not in cited_columns and c not in source_columns]
 
     lines: list[str] = []
     if body_columns:
@@ -96,3 +106,55 @@ def render_caveats(defects: Sequence[str]) -> str:
     if not defects:
         return ""
     return "caveats: " + " ".join(defects)
+
+
+def _as_day(value: Any) -> str:
+    """A fetch date, day precision — the hour is noise in a source line."""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    return value.isoformat() if isinstance(value, date) else ""
+
+
+def render_sources(
+    rows: Sequence[dict[str, Any]],
+    *,
+    provenance: Sequence[ProvenancePlan],
+    skipped: str | None = None,
+) -> str:
+    """Where the rows came from: one line per distinct source, deduped across rows.
+
+    The grammar is a contract — the Ask workspace parses it to build its Sources list.
+    `frontend/features/ask/lib/sources.ts` reads it, and
+    `tests/test_sql_render.py::TestSources::test_the_line_grammar_is_a_contract` pins it.
+    """
+    if not rows or not provenance:
+        return f"sources: none — {skipped}" if skipped else ""
+
+    by_table: dict[str, dict[str, str]] = {}
+    for plan in provenance:
+        by_table.setdefault(plan.table, {})[plan.role] = plan.output_column
+
+    seen: set[tuple[str, str, str, str]] = set()
+    lines: list[str] = []
+    for row in rows:
+        for table, roles in by_table.items():
+            url = row.get(roles.get("url", ""))
+            if not url:
+                continue
+            name = row.get(roles.get("name", "")) or ""
+            fetched = row.get(roles.get("fetched", ""))
+            entry = (table, str(url), str(name)[:MAX_SOURCE_NAME_CHARS], _as_day(fetched))
+            if entry in seen:
+                continue
+            seen.add(entry)
+            # The URL is never passed through render_cell: a truncated link is a dead link.
+            lines.append("  " + " · ".join(part for part in entry if part))
+            if len(lines) == MAX_SOURCES:
+                break
+        if len(lines) == MAX_SOURCES:
+            break
+
+    if not lines:
+        return "sources: none recorded for these rows — the source columns are empty"
+    header = f"sources: {len(lines)}" + (f" of {MAX_SOURCES}+ shown" if len(lines) == MAX_SOURCES else "")
+    return "\n".join([header, *lines])

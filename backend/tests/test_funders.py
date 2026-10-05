@@ -9,8 +9,11 @@ ROW = {
     "latest_scores": {"v1": 93, "v2": 93}, "total": 1,
 }
 
+# Frozen against renames and removals, not additions: the three provenance fields moved from
+# FunderDetail onto the list shape so the Ask workspace can link a funder to its source document.
 LEGACY_KEYS = {"id", "slug", "name", "funder_type", "website", "focus_sectors",
-               "geographies", "profile", "latest_scores"}
+               "geographies", "profile", "latest_scores",
+               "source_name", "source_url", "fetched_at"}
 
 
 async def test_list_is_legacy_array_shape(client_for, monkeypatch):
