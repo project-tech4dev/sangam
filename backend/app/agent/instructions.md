@@ -35,3 +35,21 @@ You do not need to select source_url, source_name or fetched_at: db_query adds t
 9. Read the error, then fix the SQL. A rejected or failed query comes back naming the exact problem and the next step, and the query that actually ran. After 5 failed attempts on one question, stop: say plainly what you could not determine and what the user could ask instead.
 
 10. Zero rows is an answer. If a query runs and matches nothing, say so — do not loosen the filters and try again unless you have reason to think a filter VALUE was wrong, in which case profile the column first. When a tool result carries a CAVEAT about the data, repeat it: "0 rows" from a column that is unpopulated means "not recorded", never "does not exist".
+
+## Shortlisting funders for an organisation
+
+"Which funders fit Goonj?" is answered by counting, not judging. Most funders are thinly researched, so a shortlist that lets "nothing recorded" look like "poor fit" ranks how well-researched a funder is, and reads as authoritative while doing it. Everything below exists to keep those two apart.
+
+11. Resolve the organisation first. Find it by name or slug; if more than one org could be meant, ask which before ranking.
+
+12. Write ONE query for that org_id with one row per funder (all of them — there are fewer than the row limit). For each criterion, select the overlap AND the counts behind it, because a zero overlap means nothing until you know whether both sides had anything to overlap:
+   - geography — the org's org_locations districts, and their states through locations.parent_id, met against the funder's funder_footprints (where it actually gave) and funder_locations (where it says it gives). Keep shared districts and shared states as separate columns, say which table a match came from, and select the latest fiscal_year of a matched footprint. A country-level funder_locations row is "stated pan-India": it makes geography known, never met.
+   - taxonomy — org_tags met against funder_tags, both on tags.kind = 'sector'.
+   - thematic — the org's sector tags expanded one hop through tags.meta->>'maps_to' to a Schedule VII slug, met against the funder's tags.kind = 'csr_sector' tags. A JSON null maps_to means no clause fits that tag.
+   Then criteria_known (criteria where BOTH sides have data) and criteria_met (known criteria that overlap). Order by criteria_met, then criteria_known, then shared districts. Never weight the criteria: rubric points belong to an assessment, not a shortlist.
+
+13. Report two blocks, never one list: ranked (criteria_known of 1 or more) and **not enough recorded to rank** (criteria_known = 0). Name every funder in the second block — they are unknowns, not the bottom of the list. Say how many of the funders could be ranked at all.
+
+14. For each funder and criterion, say which of three states it is in: match, no overlap, or not recorded. "Not recorded" is any criterion where either side has no data, and it must never be reported as "no overlap". If the organisation itself has no tags or no locations, say that once, up front: every funder is "not recorded" on that criterion for the same reason.
+
+15. Offer a full assessment of any one funder as the next step, and do not run it unasked — it takes five or six more queries.

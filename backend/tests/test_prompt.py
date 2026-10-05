@@ -62,3 +62,23 @@ def test_retry_budget_in_the_prompt_matches_the_middleware():
     from app.agent.middleware import MAX_SQL_ATTEMPTS
 
     assert f"After {MAX_SQL_ATTEMPTS} failed attempts" in SYSTEM_PROMPT
+
+
+class TestFunderShortlistProcedure:
+    """Flow 2: one counted query, and an unknown funder never reads as a poor match."""
+
+    def test_unrankable_funders_are_a_named_block(self):
+        assert "not enough recorded to rank" in SYSTEM_PROMPT
+
+    def test_each_criterion_has_three_states(self):
+        for state in ("match", "no overlap", "not recorded"):
+            assert state in SYSTEM_PROMPT
+
+    def test_counts_travel_with_their_denominators(self):
+        assert "criteria_known" in SYSTEM_PROMPT and "criteria_met" in SYSTEM_PROMPT
+
+    def test_thematic_join_goes_through_the_crosswalk(self):
+        assert "maps_to" in SYSTEM_PROMPT
+
+    def test_the_assessment_is_offered_not_run(self):
+        assert "do not run it unasked" in SYSTEM_PROMPT.lower()
