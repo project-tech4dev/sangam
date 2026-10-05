@@ -331,6 +331,28 @@ class ContactFinding(FindingBase):
         return self
 
 
+class FunderEligibilityFinding(FindingBase):
+    """What the funder requires of an applicant, one condition per finding.
+
+    Not rfps.eligibility: this is the standing bar, and a requirement printed
+    in one open call belongs on that call. The same sentence can be true in
+    both places and that is two findings, not a duplicate.
+    """
+
+    concept: Literal["funder_eligibility"] = "funder_eligibility"
+    # `kind` is the records' own discriminator, hence the rename in promote.py.
+    kind: Literal["statutory_restatement", "own_bar", "disqualifier"] = Field(
+        description="statutory_restatement is Rule 4 copied into the policy and is NOT the "
+                    "funder's own bar; disqualifier is a stated ground for outright rejection"
+    )
+    criterion: str = Field(
+        min_length=10,
+        description="the condition in the funder's own words, verbatim. 'Various documents' "
+                    "is not a criterion; the sentence that states the bar is",
+    )
+    notes: str | None = None
+
+
 class DocumentFinding(FindingBase):
     concept: Literal["document"] = "document"
     title: str = Field(min_length=2)
@@ -419,7 +441,7 @@ class OrgLocationFinding(PlacedFinding):
 Finding = Annotated[
     IdentityFinding | IdentifierFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
     | StatedGeographyFinding | PartnerFinding | ProgramFinding | GrantFinding | MetricFinding
-    | ContactFinding | DocumentFinding | RfpFinding
+    | ContactFinding | DocumentFinding | RfpFinding | FunderEligibilityFinding
     | OrgIdentityFinding | OrgIdentifierFinding | OrgFinancialsFinding | OrgLocationFinding,
     Field(discriminator="concept"),
 ]
@@ -430,6 +452,7 @@ FINDING_MODELS: dict[str, type[FindingBase]] = {
     "stated_geography": StatedGeographyFinding, "partner": PartnerFinding,
     "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,
     "contact": ContactFinding, "document": DocumentFinding, "rfp": RfpFinding,
+    "funder_eligibility": FunderEligibilityFinding,
     "org_identity": OrgIdentityFinding, "org_identifier": OrgIdentifierFinding,
     "org_financials": OrgFinancialsFinding, "org_location": OrgLocationFinding,
 }

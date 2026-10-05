@@ -284,6 +284,20 @@ class ContactRecord(Provenance):
     _org = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
+class FunderEligibilityRecord(Provenance):
+    """One condition a funder sets for applicants. Its standing bar, not a call's."""
+
+    kind: Literal["funder_eligibility"] = "funder_eligibility"
+    funder_name: str = Field(min_length=2)
+    # `kind` is taken by the discriminator above, so the finding's own `kind`
+    # arrives renamed — same reason program_kind and contact_kind are renamed.
+    criterion_kind: Literal["statutory_restatement", "own_bar", "disqualifier"]
+    criterion: str = Field(min_length=10)
+    notes: str | None = None
+
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
 class RfpRecord(Provenance):
     """An open call for proposals. The one concept an NGO can act on today."""
 

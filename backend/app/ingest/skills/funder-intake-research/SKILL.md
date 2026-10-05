@@ -1,11 +1,12 @@
 ---
 name: funder-intake-research
-description: Use when someone names one or more companies, corporate foundations, trusts or grantmakers and wants to know what it would actually take to reach their money. Pulls exactly ten fields per funder, in intake order — route and whether it is live, the receiving legal entity, grantmaker or implementer, eligibility split into statutory restatement and the funder's own bar, the document checklist verbatim, hard disqualifiers, district-level geography, grant size and co-funding, live call or historical disclosure, and provenance with access state. Raw field-value-source only; no verdicts, no tables, no scoring. Not for an organisation that receives money — use ngo-credential-research. Not for a single fact about a funder already in the catalog, which funder_dossier answers in one call.
+description: Use when someone names one or more companies, corporate foundations, trusts or grantmakers and wants to know what it would actually take to reach their money. Pulls ten fields per funder, in intake order — route and whether it is live, the receiving legal entity, grantmaker or implementer, eligibility split into statutory restatement and the funder's own bar, the document checklist verbatim, hard disqualifiers, district-level geography, grant size and co-funding, live call or historical disclosure, and provenance with access state — plus the open call itself when field 9 found one. Raw field-value-source only; no verdicts, no tables, no scoring. Not for an organisation that receives money — use ngo-credential-research. Not for a single fact about a funder already in the catalog, which funder_dossier answers in one call.
 ---
 
 # What we want pulled for a funder
 
-Ten fields, every one of them, in the order below. The order is how much not
+Ten fields, every one of them, in the order below, and an eleventh that
+fires only when field 9 says there is a live call. The order is how much not
 knowing the field stalls an NGO — not how prominently the funder writes about
 it. Fields 1 and 2 are "is there a door here at all"; get those wrong and
 every other field describes the wrong body.
@@ -33,7 +34,7 @@ funder, fields in the order below. No summary, no verdict, no comparison
 table, no "strong fit" — all of that is downstream and belongs to whoever
 reads this.
 
-## The ten
+## The ten, and the eleventh
 
 1. **Intake route, and whether it is still live.** Portal URL, email address,
    or RFP process. Actually check it: does the portal load, is the form from
@@ -52,6 +53,10 @@ reads this.
    policy (12A/80G/CSR-1, three years track record). Flag it as restatement,
    not as the funder's own bar. Second, *the funder's own additional bar* —
    anything beyond the statutory minimum, in the funder's own words.
+   Both land in `funder_eligibility`, one row per condition, as
+   `kind='statutory_restatement'` and `kind='own_bar'`. Keeping them apart
+   is the point of that column: a funder that only restates the law has set
+   no bar of its own, and one merged list says it did.
 5. **The document checklist, verbatim, item by item.** When one is published
    this is the single richest artefact on the page. "Lists 32 items" is the
    right precision; "requires various documents" is not. List them.
@@ -59,7 +64,10 @@ reads this.
    rejected outright: minimum revenue, minimum years running, minimum or
    maximum board size, political or religious bars, donor concentration
    limits, employee count floors. These are rejections, not credentials; keep
-   them out of field 4.
+   them out of field 4. They land in `funder_eligibility` as
+   `kind='disqualifier'` — the same table, because all three are conditions
+   on the applicant; a separate kind, because a rejection ground is not a
+   credential.
 7. **Geography at district granularity.** Districts, blocks or named work
    centres exactly as listed — state level is not an answer. If the finer list
    sits behind a login, say that explicitly rather than reporting the state.
@@ -83,6 +91,24 @@ reads this.
     - **archived** — read from web.archive.org because the live domain blocks
       or 403s. Flag it; it may be stale.
 
+11. **The open call itself — only when field 9 found one.** Its title as the
+    funder names it, the deadline, the grant band, and each stated requirement
+    on its own line. It is last because the ten above decide whether to bother
+    with this funder at all, and a specific call matters only once they have.
+    Three rules, because this is the field most easily invented:
+    - **A programme page is not a call.** "Partner with us", a themes page, a
+      past-projects list — none of these is an open call, and which one it is
+      is field 3's question. No title and no deadline means no call; say so
+      rather than manufacturing one.
+    - **A closed or expired call is still worth recording**, marked closed. A
+      funder that ran a call last year is a funder with a door, and next
+      year's re-issue is a new opportunity rather than an edit of this one.
+    - **The call's requirements are the call's, not the funder's standing
+      bar.** These land in `rfps.eligibility`; field 4's land in
+      `funder_eligibility`. The same sentence can be true in both places, and
+      recording it twice is correct — one is what this call asks, the other is
+      what the funder asks of everyone.
+
 ## When a source will not open
 
 Try the Internet Archive snapshot of the same URL before giving up, and label
@@ -94,5 +120,5 @@ weaker evidence and is labelled as such, not presented as equivalent.
 ## What this skill does not do
 
 It does not decide fit, score a funder, rank a list or lay out a comparison.
-It does not write to the catalog. It produces ten cited fields per funder and
-stops.
+It does not write to the catalog. It produces ten cited fields per funder,
+plus any open call it found, and stops.

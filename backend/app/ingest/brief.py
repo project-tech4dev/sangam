@@ -47,6 +47,16 @@ def _join(*bits: Any) -> str:
     return " · ".join(str(b) for b in bits if b)
 
 
+# Field 4's split, in words. A funder that only restates Rule 4 has set no
+# bar of its own, and the brief has to say so rather than listing three
+# conditions as if the funder wrote them.
+_ELIGIBILITY_KINDS = {
+    "statutory_restatement": "restates the statutory minimum",
+    "own_bar": "its own bar",
+    "disqualifier": "DISQUALIFIER",
+}
+
+
 def headline(f: dict[str, Any]) -> str:
     """One line per finding, from the typed fields of its concept."""
     # A v1 finding is a flat label/value pair and has no typed fields to read.
@@ -103,6 +113,12 @@ def headline(f: dict[str, Any]) -> str:
             None if f.get("status", "open") == "open" else f.get("status"),
             f"{len(f['eligibility'])} eligibility rules" if f.get("eligibility") else None,
         )
+    if concept == "funder_eligibility":
+        # The kind leads, because "restates the law" and "sets its own bar"
+        # read completely differently to a fundraiser and the criterion text
+        # alone does not say which it is.
+        return _join(_ELIGIBILITY_KINDS.get(f.get("kind"), f.get("kind")),
+                     f.get("criterion"), f.get("notes"))
     if concept == "org_identity":
         return _join(f.get("name"), f.get("org_kind"), f.get("legal_form"),
                      f"registered {f['registration_date']}" if f.get("registration_date") else None)
