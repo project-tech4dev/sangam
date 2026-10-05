@@ -8,6 +8,30 @@ The plan does the minimum first: everything is built on one branch, one step at 
 changes one thing, has a quick check, and leaves the branch working.
 Fuller tests and the extras come later, in their own PRs (Part 2).
 
+## How we use the `users` table
+
+Supabase handles the sign-in; our `users` table holds who that person is inside Sangam.
+
+```
+Sign in with Google ──► Supabase creates a row in auth.users
+                              │  trigger (step 2)
+                              ▼
+                        we create a row in users, linked by users.auth_user_id = auth.users.id
+```
+
+- **One row per person**: `id` (our id, used everywhere in Sangam), `auth_user_id` (their Supabase
+  account), `email`, `display_name`, `is_staff`.
+- **Created at sign-up** by a trigger on `auth.users` (step 2). If the trigger missed someone, the
+  backend creates the row on their first request (step 1). If staff already made a row with that
+  email, it is linked instead of a second one being created.
+- **Every request** reads the token, finds the row by `auth_user_id`, and so knows who is calling and
+  whether they are staff.
+- **What it decides**: `is_staff` gives staff access, `org_members` links the row to organisations and
+  so to their private rows, and `threads.user_id` makes each chat its owner's.
+
+In short: Supabase says "this person signed in"; `users` says who they are in Sangam and what they
+may see.
+
 ## Part 1: the minimum, step by step
 
 ### Step 1: The backend reads the Supabase token
