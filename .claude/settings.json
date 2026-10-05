@@ -21,5 +21,9 @@
       "Bash(vim .env*)",
       "Bash(open .env*)"
     ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true
   }
 }
