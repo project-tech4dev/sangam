@@ -34,14 +34,14 @@ Two flows were asked for, and the ask is explicit that they stay separate:
 
 **Everything happens inside Ask Sangam.** No new screen, no new REST endpoint, no frontend
 change at all. Both flows are questions asked in the existing chat, which means the whole
-feature is a database view, a prompt section, and the crosswalk that makes either worth
-running.
+feature is **a tag backfill, a crosswalk migration and two prompt sections.** No new table,
+no new view, no new tool.
 
 That constraint does not dissolve the separation the ask called for — it relocates it:
 
-- **Flow 2 is one cheap SELECT.** All the arithmetic lives in the view; the agent runs a
-  single `db_query`, sorts on columns the view already computed, and reports. It reads no
-  rubric, fetches nothing per funder, and makes no judgement.
+- **Flow 2 is one cheap SELECT.** One `db_query` over tables that are already catalogued,
+  counting overlaps and their denominators in the same statement. It reads no rubric,
+  fetches nothing per funder, and makes no judgement.
 - **Flow 1 is the agent working.** It reads the rubric from the database, gathers evidence
   per criterion with citations, and weighs it.
 
@@ -97,7 +97,8 @@ though they were poor matches. That is `instructions.md` rule 10's trap — a ze
 *unrecorded* — in the place it does the most damage, because a ranking reads as authoritative.
 
 So the tag data is fixed before anything is built on it — the research run first, then the
-crosswalk — and the view is built so that **unknown and poor are different columns**.
+crosswalk — and the shortlist query is written so that **unknown and poor are different
+columns**, never one number that could mean either.
 
 ## Architecture
 
@@ -112,45 +113,49 @@ crosswalk — and the view is built so that **unknown and poor are different col
 │  six tools, unchanged.  Two new procedures in agent/instructions.md: │
 │                                                                      │
 │   FLOW 2 — shortlist            │   FLOW 1 — assessment              │
-│   1 × db_query, no rubric,      │   read rubric_criteria (weights)   │
-│   no judgement. Order by        │   read the pair's fit_signals row  │
-│   criteria_met, then            │   read evidence rows, cite each    │
-│   criteria_known.               │   score · matched criteria · gaps  │
+│   one SELECT, no rubric,        │   read rubric_criteria (weights)   │
+│   no judgement. Counts each     │   read the same overlap counts     │
+│   criterion AND the coverage    │   for the one pair                 │
+│   behind it, in one statement.  │   read evidence rows, cite each    │
 │   ~1 tool call                  │   ~5–6 tool calls                  │
 └───────────────┬─────────────────────────────────┬────────────────────┘
                 │ db_query — catalog allowlist, read-only txn, ≤50 rows
                 ▼                                 ▼
-    ┌───────────────────────────────┐   ┌────────────────────────┐
-    │ fit_signals — VIEW            │   │ rubrics                │
-    │ one row per org × funder      │   │ rubric_criteria        │
-    │ counts + the coverage         │   │  (weights — read by    │
-    │ behind every count            │   │   the agent, never     │
-    │ + criteria_met/known (0–3)    │   │   by the view)         │
-    └───────────────┬───────────────┘   └────────────────────────┘
-                    │ built from
-   ┌────────────────┴──────────────────────────────┐
-   │ NGO side              │ funder side           │
-   │ orgs                  │ funders               │
-   │ org_tags ─┐           │ funder_tags           │
-   │ org_locations         │ funder_footprints     │
-   │ org_identifiers       │ funder_eligibility    │
-   └───────────┼───────────┤ grants                │
-               │           └───────────────────────┘
+   ┌────────────────────────────────────┐   ┌────────────────────────┐
+   │ tables already in the SQL catalog  │   │ rubrics                │
+   │                                    │   │ rubric_criteria        │
+   │ NGO side        │ funder side      │   │  (weights — read by    │
+   │ orgs            │ funders          │   │   the agent, never     │
+   │ org_tags ─┐     │ funder_tags      │   │   computed in SQL)     │
+   │ org_locations   │ funder_footprints│   └────────────────────────┘
+   │ org_identifiers │ funder_eligibility
+   └───────────┼─────┤ grants           │
+               │     └──────────────────┘
                │ one hop through
         ┌──────┴────────────────────────┐
-        │ tags.meta->>'maps_to'         │  ← Deliverable 0: the crosswalk
-        │ sector tag → Schedule VII     │     that makes the two facets meet
+        │ tags.meta->>'maps_to'         │  ← Deliverable 0: the crosswalk,
+        │ sector tag → Schedule VII     │     the one thing being added
         └───────────────────────────────┘
 ```
 
-**Where the line falls.** The view does arithmetic and no judgement; the agent does judgement
-and as little arithmetic as possible. Rubric weights live in `rubric_criteria.points` and
-nowhere else — the first `CASE WHEN … THEN 7` inside `fit_signals` would give the rubric two
-homes. That is why flow 2 ranks by **counting criteria met**, not by scoring them.
+**Where the line falls.** SQL counts; the agent judges. Rubric weights live in
+`rubric_criteria.points` and nowhere else — the first `CASE WHEN … THEN 7` written into the
+shortlist query would give the rubric two homes. That is why flow 2 ranks by **counting
+criteria met**, not by scoring them.
+
+**Why there is no `fit_signals` view.** An earlier draft put all of this in one, as a shared
+substrate for both flows. Every table it would have read is already in the SQL catalog, so a
+view adds no reach — it is a second path to rows the agent can already join, which is the
+precise failure `CLAUDE.md` records for `search_orgs`: *"a cached query plan rather than a
+capability, and a worse one"*, and *"two paths to the same rows also meant two places to keep
+correct."* The one thing a view would genuinely guarantee is that a count never arrives
+without its denominator. That is worth having, but it is worth having as evidence: if the
+model turns out to report *no overlap* where the truth is *not recorded*, that failure
+justifies a view and we add it then, with the case in hand.
 
 ## Deliverables
 
-Order matters here, so: **save the plan → 0a research run → 0b crosswalk → view → prompts →
+Order matters here, so: **save the plan → 0a research run → 0b crosswalk → prompts →
 evals.**
 
 ### Before anything: save the plan
@@ -219,46 +224,45 @@ The 10 funders with neither tags nor footprints stay *unknown* until someone res
 An interactive HTML diagram via the archify skill (`architecture` type), written to
 `.archify/architecture-funder-matching-<timestamp>/`, showing both flows end to end — the
 single-query shortlist path and the multi-call assessment path visually separated, with
-`fit_signals` as the shared substrate and the crosswalk feeding it. Produced first, before
-any code.
+the catalogued tables both read and the crosswalk that makes the thematic join possible.
+Produced first, before any code.
 
-### 2. `fit_signals` — the shared substrate
+### 2. The signals, and the rule that every count carries its denominator
 
-`db/migrations/0023_fit_signals.sql`, after the crosswalk. A view, so nothing is materialised
-and nothing is stored. One row per `orgs × funders`, carrying deterministic counts **and the
-denominator behind each one**:
+Nothing is built here. This is the contract both prompt procedures are written against, and
+it belongs in the plan because the column list is the thinking, not the SQL.
 
-| group | columns |
-|---|---|
-| geography | `shared_district_count`, `shared_state_count`, `org_location_count`, `funder_footprint_count` |
-| taxonomy | `shared_sector_tag_count`, `org_sector_tag_count`, `funder_sector_tag_count` |
-| thematic | `shared_csr_sector_tag_count` (org side expanded one hop via `tags.meta->>'maps_to'`), `org_mapped_tag_count`, `funder_csr_tag_count` |
-| history | `direct_grant_count`, `funder_partner_count` |
-| bars | `funder_disqualifier_count`, `funder_eligibility_count` |
-| credentials | `org_has_12a/80g/csr1/fcra`, `org_identifier_count` |
-| money | `funder_grant_size_min`, `funder_grant_size_max` — carried **so the agent sees they are null** rather than inferring a mismatch |
-| ordering | `criteria_met` (0–3), `criteria_known` (0–3) |
+For one `org × funder` pair, the three criteria and where they come from:
 
-`criteria_met` / `criteria_known` are what make flow 2 a single query. A criterion is *known*
-when both sides have data for it and *met* when they overlap; a funder with no footprints and
-no tags scores `criteria_known = 0`, which sorts it into an **unknown** bucket rather than the
-bottom of the ranking. The two are kept separate columns precisely so the agent cannot
-collapse them.
+| criterion | overlap | the denominator that must travel with it |
+|---|---|---|
+| geography | `org_locations` ∩ `funder_footprints` on district, then state | how many locations the org has, how many footprints the funder has |
+| taxonomy | `org_tags` ∩ `funder_tags` where `tags.kind = 'sector'` | each side's `sector` tag count |
+| thematic | org `sector` tags expanded one hop through `tags.meta->>'maps_to'`, met against funder `csr_sector` tags | how many org tags mapped at all, how many `csr_sector` tags the funder has |
 
-Then its entry in `app/agent/tools/sql/catalog.py` (41 → 42 tables), with
-`ForeignKey("org_id", "orgs.id")` and `ForeignKey("funder_id", "funders.id")` so rows come
-back citable as `[org:N]` and `[funder:N]` with no other change — the inheritance is pinned by
-`test_foreign_keys_inherit_the_kind_they_point_at`. Add a `defects` line recording the tag
-coverage above, so every result touching the view carries it.
+Supporting signals flow 1 also reads: `grants` for direct history, `funder_eligibility` for
+bars (shipped empty in #89, so *no bars recorded* ≠ *sets no bars*), `org_identifiers` for
+12A/80G/CSR-1/FCRA, and `funders.grant_size_min/max` — **always null today**, so the agent
+must see the null rather than infer a mismatch.
 
-Verified, not assumed: `undeclared_tables()` is fed `information_schema.tables WHERE
-table_type = 'BASE TABLE'` (`core/lifespan.py:146`), so a view is never flagged as
-undeclared; `verify_against_db()` reads `information_schema.columns` with no type filter
-(`catalog.py:1070`), so the view's columns **are** drift-checked exactly like a table's.
+> **The rule:** never select a count without the denominator behind it.
+> **Example:** Priya asks which funders fit Goonj. Oil India Limited has no footprints and no
+> tags, so its overlap counts are all zero — the same zero that an actively mismatched funder
+> would produce. With the denominators in the row, the agent can see the difference and say
+> *not recorded* instead of *no overlap*.
+> **Why it matters:** a ranking reads as authoritative, so a wrong zero does more damage here
+> than anywhere else in the product.
 
-**Row cap.** `validator.DEFAULT_MAX_ROWS = 50` and 42 funders fit — the 51st would silently
-truncate a one-org shortlist. An integration test asserts `count(*) FROM funders` stays under
-it, so the day it stops being true is a failing test rather than a quietly short list.
+Ordering comes from counting, not scoring: **criteria met** first, then **criteria known**.
+A criterion is *known* when both sides have data and *met* when they overlap. A funder with
+nothing recorded has zero known criteria and is reported in a separate block, not at the
+bottom of the list. Counting rather than weighting is what keeps the rubric living only in
+`rubric_criteria.points`.
+
+**Row cap.** `validator.DEFAULT_MAX_ROWS = 50`, and there are 45 funders. The 51st would
+silently truncate a one-org shortlist, so an integration test asserts `count(*) FROM funders`
+stays under the cap — the day it stops being true is a failing test rather than a quietly
+short list.
 
 ### 3. Flow 2 — the shortlist, as a prompt procedure
 
@@ -268,8 +272,9 @@ A new section in `app/agent/instructions.md`. **No new tool** — `TOOLS` in
 The procedure, in the prompt's own voice:
 
 - Resolve the org by name or slug, and **confirm which org** before ranking if ambiguous.
-- One query against `fit_signals` for that `org_id`, ordered `criteria_met DESC,
-  criteria_known DESC, shared_district_count DESC`.
+- One query over the tables in Deliverable 2 for that `org_id`, returning each criterion's
+  overlap **and** its denominator, ordered by criteria met, then criteria known, then shared
+  districts.
 - Report in two blocks, never one list: **ranked** (`criteria_known >= 1`) and **not enough
   recorded to rank** (`criteria_known = 0`), with the second block's funders named, not
   hidden.
@@ -285,7 +290,7 @@ Another section in the same file, same six tools. The procedure:
 
 - Read the rubric from `rubric_criteria` rather than carrying it in the prompt, so a rubric
   v3 needs no deploy.
-- Read the pair's `fit_signals` row for the cheap signals.
+- Read the pair's overlap counts and denominators for the cheap signals.
 - Score the semantic criteria from the underlying rows, citing each.
 - Report every criterion it could **not** score as unscorable **with the reason** — this is
   the "major gaps" half of what was asked for, and it is the half that is usually wrong.
@@ -344,7 +349,7 @@ make psql
 #     where t.kind='csr_sector' group by 1 order by 2 desc;          -- the live distribution
 #                                                                       0b is curated against
 
-make migrate && make migrate-status            # 0022 and 0023 listed
+make migrate && make migrate-status            # 0022 listed
 make psql                                      # spot-check 0b:
 #   select count(*) from tags where kind='sector' and meta ? 'maps_to';   -- expect 40
 #   select label, meta->>'maps_to' from tags where kind='sector' order by 2;  -- read it
@@ -354,7 +359,7 @@ pytest -m "not integration"
 pytest tests/test_sql_integration.py           # needs the compose Postgres on :5433
 ruff check .
 
-make up && make logs | grep -i "catalog\|undeclared"   # boot must not raise on 0023
+make up && make logs | grep -i "catalog\|undeclared"   # catalog still verifies clean
 
 make evals TAG=canary                          # COSTS MONEY — the real agent
 ```
@@ -389,7 +394,8 @@ No frontend change, so no `npm run build` gate for this work.
   endpoint, pinned a 21-column `fit_signals` contract without the crosswalk-expanded thematic
   columns or `criteria_met`/`criteria_known`, and assumed tag overlap was computable today.
   Their task-level TDD breakdown was written against that shape, so none of it survives the
-  change; a fresh one belongs with the view, not before it. Recoverable from git if wanted.
+  change; a fresh one belongs with the prompt sections, not ahead of them. Recoverable from
+  git if wanted.
 - Pre-existing and not caused by this work: 3 failures in `tests/test_migration_integrity.py`
   and 72 `ruff check .` errors reproduce identically on `master`.
 - Both Vercel projects are paused (`DEPLOYMENT_PAUSED`); production has served 503 since
