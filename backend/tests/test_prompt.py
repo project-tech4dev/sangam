@@ -109,3 +109,35 @@ class TestStoredAndComputedScoresStayApart:
     def test_rule_2_allows_an_uncited_total_only_when_labelled(self):
         rule_2 = SYSTEM_PROMPT.split("2. Cite everything.")[1].split("\n3. ")[0]
         assert "computed" in rule_2
+
+
+def _rule(n: int) -> str:
+    return SYSTEM_PROMPT.split(f"\n{n}. ")[1].split(f"\n{n + 1}. ")[0]
+
+
+class TestShortlistGeographyAndLimits:
+    """Review fixes: what the shortlist's columns must say about real rows."""
+
+    def test_org_states_include_state_rows_not_just_district_parents(self):
+        # Goonj has 7 state-level org_locations rows; a state's parent is India, a country.
+        assert "kind = 'state'" in _rule(12)
+
+    def test_a_region_is_known_never_met(self):
+        # "Northeast India" has no child states in locations, so it cannot be expanded.
+        assert "stated regional" in _rule(12)
+
+    def test_a_cut_result_is_requeried_not_reported_short(self):
+        assert "not shown" in _rule(12)
+
+    def test_a_missing_maps_to_key_is_not_a_decided_null(self):
+        # ->> reads NULL for both; only the JSON null is a decision.
+        assert "'null'::jsonb" in _rule(12)
+
+
+class TestAssessmentArithmetic:
+    def test_available_points_come_from_sub_criteria_only(self):
+        # rubric_criteria holds parent rows too; summing both double-counts M.
+        assert "parent_id IS NOT NULL" in _rule(16)
+
+    def test_a_stored_score_keeps_its_own_scale(self):
+        assert "own scale" in _rule(19)

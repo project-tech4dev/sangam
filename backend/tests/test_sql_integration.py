@@ -188,11 +188,12 @@ def test_the_pool_is_sized_by_the_setting_not_a_constant():
 
 def test_a_one_org_shortlist_fits_under_the_row_cap(conn):
     """The funder shortlist is one row per funder; past the cap it would truncate silently."""
-    from app.agent.tools.sql.validator import DEFAULT_MAX_ROWS
+    from app.core.config import get_settings
 
+    cap = get_settings().sql_max_rows  # what db_query passes to validate(), not the validator's default
     funders = conn.execute("SELECT count(*) AS n FROM funders").fetchone()["n"]
-    assert funders < DEFAULT_MAX_ROWS, (
-        f"{funders} funders reach db_query's {DEFAULT_MAX_ROWS}-row cap — "
+    assert funders < cap, (
+        f"{funders} funders reach db_query's {cap}-row cap — "
         "the shortlist procedure needs paging before it can list them all"
     )
 
