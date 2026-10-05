@@ -1,7 +1,6 @@
-/* Transport to the FastAPI backend, used from server components.
+/* Transport to the FastAPI backend, used from server components. */
 
-   The bearer token is the dev stub that app/core/security.py accepts from
-   anyone; client components send the same literal from their own fetches. */
+import { serverAuthHeaders } from "./auth-headers.server";
 
 const BASE =
   process.env.AGENT_URL?.replace(/\/agent$/, "") ??
@@ -16,7 +15,7 @@ export class NotFoundError extends Error {
 
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { Authorization: "Bearer dev" },
+    headers: await serverAuthHeaders(),
     cache: "no-store",
   });
   if (res.status === 404) throw new NotFoundError(path);

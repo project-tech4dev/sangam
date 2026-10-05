@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import PageParams
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_user
 from app.db.pool import PoolDep
 from app.repositories import contacts as repo
 from app.schemas.common import Page
@@ -48,7 +48,7 @@ async def get_contact(
 async def create_contact(
     body: ContactCreate,
     pool: PoolDep,
-    user_id: UUID = Depends(get_current_user),
+    user_id: UUID = Depends(require_user),
 ) -> ContactOut:
     row = await repo.create_contact(pool, body.model_dump())
     if row is None:
@@ -61,7 +61,7 @@ async def update_contact(
     contact_id: int,
     body: ContactUpdate,
     pool: PoolDep,
-    user_id: UUID = Depends(get_current_user),
+    user_id: UUID = Depends(require_user),
 ) -> ContactOut:
     if await repo.get_contact(pool, contact_id) is None:
         raise HTTPException(404, f"contact {contact_id} not found")

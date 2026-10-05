@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { EntityMark, ProgressBar } from "@/components/ui";
 import type { ScoreRow } from "@/lib/api";
+import { authHeaders } from "@/lib/api/auth-headers";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 
@@ -22,9 +23,7 @@ export function ScoreCard({ score, headline }: { score: ScoreRow; headline: stri
     if (!open && !detail) {
       setLoading(true);
       try {
-        const res = await fetch(`${API}/api/scores/${score.id}`, {
-          headers: { Authorization: "Bearer dev" },
-        });
+        const res = await fetch(`${API}/api/scores/${score.id}`, { headers: await authHeaders() });
         if (res.ok) setDetail(await res.json());
       } finally {
         setLoading(false);
