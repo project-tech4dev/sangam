@@ -70,6 +70,11 @@ async def search_public_sources(query: str, max_results: int = 6) -> str:
         return f"search failed: {type(exc).__name__}: {exc}"
 
     results = raw.get("results", []) if isinstance(raw, dict) else raw
+    # Tavily can answer with a bare string instead of a result list. Iterating that
+    # yields characters, and the AttributeError ended the whole run rather than the turn.
+    if not isinstance(results, list):
+        return f"search returned {type(results).__name__}, not results, for {query!r}: {str(results)[:300]}"
+    results = [r for r in results if isinstance(r, dict)]
     if not results:
         return f"No results for {query!r}. Try the funder's own domain, or different wording."
     lines = [f"{len(results)} results for {query!r}:"]
