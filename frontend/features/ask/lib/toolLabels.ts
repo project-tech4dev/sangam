@@ -3,8 +3,6 @@ type ToolLabel = { label: string; detail: (args: any) => string };
 const TOOL_LABELS: Record<string, ToolLabel> = {
   search_graph: { label: "Querying the knowledge graph", detail: (a) => `search_graph · “${a?.query ?? ""}”` },
   fetch_url: { label: "Fetching a web page", detail: (a) => a?.url ?? "" },
-  write_todos: { label: "Planning the approach", detail: () => "write_todos" },
-  task: { label: "Delegating a sub-task", detail: () => "task" },
   db_list_tables: { label: "Checking what data exists", detail: () => "db_list_tables" },
   db_describe_table: {
     label: "Reading the table structure",
@@ -14,12 +12,10 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Checking how values are stored",
     detail: (a) => `db_profile_column · ${[a?.table, a?.column].filter(Boolean).join(".")}`,
   },
-  // `purpose` reads better than raw SQL in a one-line label; the query itself is
-  // shown in full by the evidence rail, which is what makes the answer auditable.
+  // `purpose` reads better than raw SQL in a one-line label. The rail shows the SQL that
+  // actually ran, which is the half that makes the answer auditable.
   db_query: { label: "Running a query", detail: (a) => a?.purpose ?? a?.sql ?? "" },
 };
-
-/** deepagents filesystem built-ins — noise in a trace, hidden by default. */
 
 export function humanizeTool(name: string): ToolLabel {
   return (

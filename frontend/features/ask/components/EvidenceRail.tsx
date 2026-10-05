@@ -1,9 +1,9 @@
 "use client";
 
-import { extractCitations, citationTarget, type RegistryIndex } from "../lib/citations";
-import { humanizeTool } from "../lib/toolLabels";
-import type { TraceStep, Turn } from "../lib/useSangamChat";
-import { CitationChip } from "./AnswerCard";
+import type { RegistryIndex } from "../lib/citations";
+import { phasesFor } from "../lib/phases";
+import { executedSql, hostOf, sourcesFor, sourcesSkipped, tablesRead, type Source } from "../lib/sources";
+import type { Turn } from "../lib/useSangamChat";
 
 type Stats = Record<string, number>;
 
@@ -30,12 +30,25 @@ function IndexCard({ stats }: { stats: Stats | null }) {
   );
 }
 
-/** The SQL a db_query step actually ran — read from the RESULT, not the step's
- *  arguments, because the validator regenerates the statement before executing it. */
-function executedSql(step: TraceStep): string | null {
-  if (step.tool !== "db_query" || !step.result) return null;
-  const match = step.result.match(/^executed: (.+)$/m);
-  return match ? match[1] : null;
+const ROW = { display: "flex", flexDirection: "column", gap: 3, fontSize: "var(--fs-xs)" } as const;
+
+function SourceRow({ source }: { source: Source }) {
+  const title = source.fetchedAt ? `${source.label} · fetched ${source.fetchedAt}` : source.label;
+  return (
+    <div style={ROW}>
+      {source.url ? (
+        <a href={source.url} target="_blank" rel="noreferrer" style={{ fontWeight: 600 }}>
+          {hostOf(source.url)}
+        </a>
+      ) : (
+        <span className="muted" style={{ fontWeight: 600 }}>
+          {source.label}
+        </span>
+      )}
+      <span className="muted-2">{source.url ? title : source.detail}</span>
+      {source.url && <span className="muted-2">{source.detail}</span>}
+    </div>
+  );
 }
 
 export function EvidenceRail({
@@ -47,34 +60,108 @@ export function EvidenceRail({
   stats: Stats | null;
   index: RegistryIndex | null;
 }) {
-  const steps = latest?.steps.filter((s) => s.result) ?? [];
+  const phases = phasesFor(latest);
+  const sources = sourcesFor(latest, index);
+  const queries = (latest?.steps ?? []).filter((s) => s.tool === "db_query");
+  // Named even when provenance could not be: an aggregate still read something.
+  const tables = [...new Set(queries.flatMap(tablesRead))];
+  const skipped = [...new Set(queries.map(sourcesSkipped).filter(Boolean))] as string[];
 
   return (
     <aside style={{ width: 340, flexShrink: 0, height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
-      {steps.length === 0 ? (
-        <IndexCard stats={stats} />
-      ) : (
+      {phases.length === 0 && <IndexCard stats={stats} />}
+
+      {phases.length > 0 && (
         <div className="card" style={{ gap: 10 }}>
-          <div className="card-kicker">What this answer read</div>
-          {steps.map((step) => {
-            const label = humanizeTool(step.tool);
-            const cites = extractCitations(step.result ?? "").slice(0, 6);
-            return (
-              <div key={step.id} style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ fontSize: "var(--fs-xs)", fontWeight: 600 }}>{label.label}</div>
-                <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>{label.detail(step.args)}</div>
-                {cites.length > 0 && (
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {cites.map((cite) => (
-                      <CitationChip key={`${cite.kind}:${cite.id}`} href={`sangam://${cite.kind}/${cite.id}`} index={index} />
-                    ))}
-                  </div>
-                )}
+          <div className="card-kicker">What Sangam is doing</div>
+          {phases.map((phase) => (
+            <div key={phase.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span
+                className={phase.state === "active" ? "ask-pulse" : undefined}
+                aria-hidden
+                style={{
+                  width: 18,
+                  height: 18,
+                  marginTop: 1,
+                  borderRadius: "50%",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "var(--fs-xs)",
+                  color: "#fff",
+                  background:
+                    phase.state === "active" ? "var(--color-accent-500)" : "var(--color-accent-2-600)",
+                }}
+              >
+                {phase.state === "active" ? "" : "✓"}
+              </span>
+              <div style={{ ...ROW, minWidth: 0 }}>
+                <span style={{ fontWeight: 600 }}>
+                  {phase.title}
+                  {phase.steps > 1 && <span className="muted-2"> · {phase.steps}</span>}
+                </span>
+                {phase.note && <span className="muted-2">{phase.note}</span>}
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(sources.length > 0 || tables.length > 0) && (
+        <div className="card" style={{ gap: 10 }}>
+          <div className="card-kicker">Sources</div>
+          {sources.map((source) => (
+            <div
+              key={source.url ?? `${source.label}|${source.detail}`}
+              style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 8 }}
+            >
+              <SourceRow source={source} />
+            </div>
+          ))}
+          {skipped.length > 0 && (
+            <div className="muted-2" style={{ fontSize: "var(--fs-xs)", borderTop: "1px solid var(--color-divider)", paddingTop: 8 }}>
+              Some rows carry no source of their own: {skipped.join("; ")}.
+              {tables.length > 0 && ` Read from ${tables.join(", ")}.`}
+            </div>
+          )}
+          {sources.length === 0 && skipped.length === 0 && tables.length > 0 && (
+            <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
+              Read from {tables.join(", ")}; no source URL is recorded for those rows.
+            </div>
+          )}
+        </div>
+      )}
+
+      {queries.length > 0 && (
+        <div className="card" style={{ gap: 8 }}>
+          <div className="card-kicker">How it was queried</div>
+          {queries.map((step, i) => {
+            const sql = executedSql(step);
+            if (!sql) return null;
+            return (
+              <details key={step.id} style={{ fontSize: "var(--fs-xs)" }}>
+                <summary style={{ cursor: "pointer" }}>
+                  Query {i + 1}
+                  {queries.length > 1 ? ` of ${queries.length}` : ""}
+                </summary>
+                <pre
+                  style={{
+                    margin: "6px 0 0",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    fontSize: "var(--fs-xs)",
+                    color: "var(--color-neutral-700)",
+                  }}
+                >
+                  {sql}
+                </pre>
+              </details>
             );
           })}
         </div>
       )}
+
       <div className="card" style={{ background: "var(--color-accent-2-100)", border: "none", padding: 14 }}>
         <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-accent-2-900)" }}>
           Every claim in an answer carries a citation into the Registry. If it isn&apos;t in the base,

@@ -4,8 +4,9 @@ import { useState } from "react";
 import { humanizeTool } from "../lib/toolLabels";
 import type { TraceStep } from "../lib/useSangamChat";
 
-export function TraceCard({ steps, streaming }: { steps: TraceStep[]; streaming: boolean }) {
-  const visible = steps;
+/** The per-step activity log: what Sangam is doing, one line each. The high-level task,
+ *  the sources and the SQL live in the rail, so nothing here is repeated there. */
+export function TraceCard({ steps: visible, streaming }: { steps: TraceStep[]; streaming: boolean }) {
   const [open, setOpen] = useState(false);
   const expanded = streaming || open;
   if (visible.length === 0 && !streaming) return null;
