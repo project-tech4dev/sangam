@@ -72,12 +72,28 @@ changes for users yet**.
 
 ### Step 6: Requests run as the caller
 
-**What changes:** each API request runs as `anon` or `authenticated` instead of the owner. A table the
-role cannot use returns 403 instead of 500.
+**What changes**
+- One middleware handles the token for every request: it reads `Authorization`, checks the token,
+  finds or creates the `users` row, and keeps who is calling for the rest of the request. It does this
+  as the owner, because it writes `users` rows no caller may write.
+- `get_pool()` returns the pool as that caller: `anon` when signed out, `authenticated` with their
+  claims when signed in. Routers keep `pool: PoolDep`, so no route file changes and a new route runs
+  as the caller without having to ask.
+- `get_current_user`, `require_user` and `require_staff` read the caller the middleware kept instead of
+  checking the token again.
+- A table the role cannot use returns 403 instead of 500.
+
+**Keep it simple**
+- A plain ASGI middleware, not `BaseHTTPMiddleware`, which buffers responses and breaks the chat's
+  streaming.
+- It answers a bad token with its own 401: FastAPI's exception handlers never see errors raised there.
+- It sits inside `CORSMiddleware`, so preflight requests are answered before it runs, and it skips
+  `/health` and `/docs`.
 
 **How to test**
 - `make smoke`.
 - Click through the registry signed out and signed in.
+- Unit test: no token runs as `anon`, a valid one as `authenticated`, a bad one gets 401.
 
 ### Step 7: RLS rules
 
