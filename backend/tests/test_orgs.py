@@ -9,8 +9,10 @@ ROW = {
     "fetched_at": datetime(2026, 9, 21, tzinfo=UTC), "total": 1,
 }
 
+# Frozen against renames and removals, not additions: source_url joined source_name and
+# fetched_at so the Ask workspace can link an organisation's row to where it was read.
 LEGACY_KEYS = {"id", "slug", "name", "darpan_id", "cohort", "state", "district",
-               "sectors", "source_name", "fetched_at"}
+               "sectors", "source_name", "source_url", "fetched_at"}
 
 
 async def test_list_is_legacy_array_shape(client_for, monkeypatch):

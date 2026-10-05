@@ -20,6 +20,7 @@ COALESCE(
 
 LIST_SQL = f"""
 SELECT f.id, f.slug, f.name, f.funder_type, f.website, f.profile,
+       f.source_name, f.source_url, f.fetched_at,
        COALESCE(t.focus_sectors, '{{}}') AS focus_sectors,
        COALESCE(l.geographies, '{{}}') AS geographies,
        {LATEST_SCORES_SQL},

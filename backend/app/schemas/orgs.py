@@ -15,6 +15,7 @@ class OrgListItem(ReadModel):
     district: str | None = None       # computed: registered location
     sectors: list[str] = []           # computed: org_tags labels, primary first
     source_name: str | None = None
+    source_url: str | None = None
     fetched_at: datetime | None = None
 
 

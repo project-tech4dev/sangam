@@ -671,6 +671,13 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
             Column("registry_status", "text", note="'hidden' rows are staff-only; 'placeholder' is a stub, not a profile", values=('placeholder', 'in_vetting', 'full_profile', 'hidden')),
         ),
+        defects=(
+            "source_url is the NGO Darpan portal's SEARCH page, not a per-organisation record: "
+            "11 rows share 4 URLs. Treat it as where the row was looked up, NOT as evidence for "
+            "any particular field, and never cite it as the organisation's own page.",
+            "fetched_at is NULL on 8 of 11 rows, so the freshness rule cannot fire for them. "
+            "Say the date is not recorded rather than implying the data is current.",
+        ),
     ),
     Table(
         name="program_locations",

@@ -12,6 +12,7 @@ export type OrgListItem = {
   district: string | null;
   sectors: string[];
   source_name: string | null;
+  source_url: string | null;
   fetched_at: string | null;
 };
 
@@ -25,6 +26,9 @@ export type FunderListItem = {
   geographies: string[];
   profile: Record<string, unknown>;
   latest_scores: Record<string, number>;
+  source_name: string | null;
+  source_url: string | null;
+  fetched_at: string | null;
 };
 
 /* Shared sub-shapes. */
@@ -46,7 +50,6 @@ export type OrgDetail = OrgListItem & {
 export type FunderDetail = FunderListItem & {
   section_135_bound: boolean | null;
   identifiers: Identifier[]; tags: TagRef[]; locations: LocationRef[]; contacts: Contact[];
-  source_name: string | null; fetched_at: string | null;
 };
 
 export type ScoreRow = {
@@ -60,7 +63,7 @@ export type GrantRow = {
   program_id: number | null; program_name: string | null; title: string;
   amount: number | null; currency: string; start_date: string | null; end_date: string | null;
   status: string; outcomes: Record<string, unknown>; notes: string | null;
-  source_name: string | null; source_url: string | null;
+  source_name: string | null; source_url: string | null; fetched_at: string | null;
 };
 
 export type ProgramRow = {

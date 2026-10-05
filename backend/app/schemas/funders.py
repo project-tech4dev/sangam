@@ -16,6 +16,9 @@ class FunderListItem(ReadModel):
     geographies: list[str] = []       # computed: funder_locations names
     profile: dict = {}
     latest_scores: dict = {}          # {"v1": 93, "v2": 93} per rubric version
+    source_name: str | None = None
+    source_url: str | None = None
+    fetched_at: datetime | None = None
 
 
 class GrantSummary(ReadModel):
@@ -33,8 +36,6 @@ class FunderDetail(FunderListItem):
     tags: list[TagRef] = []
     locations: list[LocationRef] = []
     contacts: list[ContactOut] = []
-    source_name: str | None = None
-    fetched_at: datetime | None = None
 
 
 class FunderScoreRow(ReadModel):

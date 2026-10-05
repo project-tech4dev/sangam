@@ -6,7 +6,7 @@ from __future__ import annotations
 from psycopg_pool import AsyncConnectionPool
 
 LIST_SQL = """
-SELECT o.id, o.slug, o.name, o.cohort, o.source_name, o.fetched_at,
+SELECT o.id, o.slug, o.name, o.cohort, o.source_name, o.source_url, o.fetched_at,
        di.id_value AS darpan_id,
        dl.name AS district, sl.name AS state,
        COALESCE(t.sectors, '{}') AS sectors,
