@@ -1,403 +1,449 @@
-# Funder matching in Ask Sangam: a deterministic shortlist, then an agent assessment
+# Funder matching in Ask Sangam: a counted shortlist, then an agent assessment
 
-## Goal
+*Draft v1 — 2026-10-06. Restructured in place from the 2026-10-05 spec; see Notes.*
 
-**Let a fundraiser ask Ask Sangam which funders fit their organisation, and then ask how well
-they fit one of them — and have both answers be honest about what Sangam does not know.**
+## 1. Goal
+
+**A fundraiser asks Ask Sangam which funders fit their organisation, then asks how well one of
+them fits. Neither answer ever presents a funder Sangam knows nothing about as a bad match.**
 
 Two questions, asked in the chat that already exists:
 
-| | the question | what it costs | what comes back |
+| | the question | cost | what comes back |
 |---|---|---|---|
-| **Flow 2** | *"Which funders fit Goonj?"* | one SQL query, no rubric | ~45 funders split into ranked and not-enough-recorded, with each of the three criteria marked match / no overlap / not recorded |
-| **Flow 1** | *"How does Goonj score against HDFC Bank?"* | five or six tool calls, reads the rubric | a score out of the points that could be scored, the criteria that matched, and the gaps — including every criterion it could not score, and why |
+| **Flow 2 — shortlist** | *"Which funders fit KABIL?"* | one `db_query`, no rubric | 42 funders in two blocks — *ranked* and *not enough recorded to rank* — with each criterion marked **match / no overlap / not recorded** |
+| **Flow 1 — assessment** | *"How does KABIL score against HDFC Bank?"* | five or six tool calls, reads the rubric | a total out of the points that could be scored, the matched criteria, and every criterion it could not score, with the reason |
 
-The measure of success is not that a number appears. It is that **a funder Sangam knows
-nothing about never reads as a bad match.** Four of 45 funders carry a sector tag and none of
-the organisations carry a thematic one, so any ranking built today is mostly ranking how
-well-researched a funder is. A list that hides that is worse than no list, because a ranking
-reads as authoritative. Every deliverable below exists to keep *unrecorded* and *absent*
-visibly different answers.
+Success is not that a number appears. Success is that **unrecorded and absent stay visibly
+different answers.** Today four of 42 funders carry a sector tag, and zero organisations carry a
+Schedule VII one. A ranking built on that ranks *how well-researched a funder is*. A ranking reads
+as authoritative, so hiding that is worse than having no ranking.
 
-Scope: no UI, no REST endpoint, nothing stored. The feature is a tag backfill, a taxonomy
-crosswalk, and two procedures in the agent's prompt.
+Scope: no UI, no REST endpoint, nothing stored, no new tool. The work is one research run, one
+migration, two catalog caveats and two prompt sections.
 
-## Context
+## 2. Blast radius
 
-Two flows were asked for, and the ask is explicit that they stay separate:
+Built by hand — this repo has no `domain-map.md`. Sources: `catalog.py` (the 41 tables and their
+foreign keys), `CLAUDE.md`'s Architecture section, `db/migrations/README.md` and
+`docs/DATA_PLATFORM.md:229` (where `0002_taxonomy.sql` added `tags.meta`). Every figure below is
+from the **local compose database, measured 2026-10-06**. Staging may differ.
 
-1. **Score one NGO against one funder.** Pull both sides, score against the predefined
-   rubric, and report the score, the matched criteria and the major gaps.
-2. **Find the best funders for an NGO.** The user names their org; the system ranks ~50
-   funders on three criteria — taxonomy/tags, thematic area, geography — and the user can
-   then ask for a deeper assessment of any one of them.
+| surface | hop | why affected | status | notes |
+|---|---|---|---|---|
+| `tags` (40 `sector`, 12 `csr_sector`) | 0 | `0022` writes `meta.maps_to` on every sector tag | in scope | M1 |
+| `funder_tags` | 1 | the 0a run adds `csr_sector` rows | in scope | data operation, not a PR |
+| `org_tags` | 1 | read only; 10 of 11 orgs tagged, **Goonj has none** | in scope (read) | no writer added |
+| `funder_footprints` · `funder_locations` · `org_locations` · `locations` | 1 | the geography criterion | in scope (read) | the spec missed `funder_locations` — see §3 |
+| `rubrics` · `rubric_criteria` | 1 | Flow 1 reads the weights | in scope (read) | v2, 7 criteria, 15 sub-criteria, 100 points |
+| `funder_eligibility` · `org_identifiers` · `grants` | 1 | Flow 1 supporting evidence | in scope (read) | `funder_eligibility` has 0 rows |
+| `funders.grant_size_min/max` | 1 | rubric 6a | **unaffected** | not in the SQL catalog, so the agent cannot see them; 6a is unscorable |
+| SQL catalog `defects` on `funder_tags`, `org_tags` | 1 | caveats travel with every row | in scope | M2 — not a new table, so no new reach |
+| Ask Sangam prompt `app/agent/instructions.md` | 1 | two procedures, rule 4 and rule 2 | in scope | M2, M3 |
+| Ask Sangam tool list `app/agent/build.py` | 1 | stays at six | unaffected | validator accepts both query shapes — checked |
+| Sangam Import | 1 | can read `tags.meta` via the catalog | unaffected | nothing it does reads `maps_to` |
+| `repositories/funders.py` → `ProfileTabs.tsx:273` | 2 | registry page renders every `funder_tags` label, no kind filter | **accepted as-is** | confirmed in conversation, 2026-10-06: funders gain Schedule VII chips after 0a |
+| `/meta/tags` (`schemas/meta.py` `TagOut`) | 2 | serialises tags | unaffected | `TagOut` does not expose `meta` |
+| `seed/seed.py:128` | 2 | inserts the sector tags **after** migrations run | in scope | drives the shape of `0022` — see §4 |
+| `seed/graph_seed.py` | 2 | reads tag labels | unaffected | only if someone re-runs `make graph-seed` |
+| `fit_scores` · `fit_score_items` · `score_adjustments` | 2 | Flow 1 can quote the 8 stored scores | unaffected | nothing written |
+| Frontend `features/ask/` | 2 | renders the answer | unaffected | no new tool, so no new label in `toolLabels.ts` |
 
-**Everything happens inside Ask Sangam.** No new screen, no new REST endpoint, no frontend
-change at all. Both flows are questions asked in the existing chat, which means the whole
-feature is **a tag backfill, a crosswalk migration and two prompt sections.** No new table,
-no new view, no new tool.
-
-That constraint does not dissolve the separation the ask called for — it relocates it:
-
-- **Flow 2 is one cheap SELECT.** One `db_query` over tables that are already catalogued,
-  counting overlaps and their denominators in the same statement. It reads no rubric,
-  fetches nothing per funder, and makes no judgement.
-- **Flow 1 is the agent working.** It reads the rubric from the database, gathers evidence
-  per criterion with citations, and weighs it.
-
-One shortlist turn ≈ one tool call. One assessment turn ≈ five or six.
-
-### What already exists
-
-Most of the pieces are built. The v2 rubric is **data, not prose** — `rubrics` +
-`rubric_criteria`, 7 criteria and 15 sub-criteria, 100 points, each row carrying its `points`
-and a plain-English `guiding_question`. Every table this needs is already in the SQL catalog,
-so Ask Sangam can read the rubric and write the joins today. `fit_scores` / `fit_score_items`
-/ `score_adjustments` model a scored pair end to end, with 8 hand-made rows.
-
-**Nothing is stored by this feature** — carried forward from the earlier decision. An
-assessment is an answer, not a row.
-
-### The finding that must shape the design
-
-The three criteria map onto `tags.kind`, which has exactly two inhabited values in live data:
-`sector` (40 tags) and `csr_sector` (12, the Schedule VII list). **Two of the three criteria
-have almost no data behind them:**
-
-| criterion | maps to | coverage | org–funder pairs with any overlap (of 462) |
-|---|---|---|---|
-| taxonomy / tags | `tags.kind = 'sector'` | **4 of 42 funders** tagged | **11** |
-| thematic area | `tags.kind = 'csr_sector'` | 15 funders tagged, **0 orgs** | **0 — structurally impossible** |
-| geography | `org_locations` ∩ `funder_footprints` | 32 of 42 funders, 11 of 11 orgs | 29 |
-
-**The split is structural, not an oversight.** `org_tags` is written only by
-`seed/seed.py:155` (`kind='sector'`); the ingest pipeline refuses to write it at all —
-`backend/app/ingest/promote.py:595` says *"org_tags is not a concept, and nothing on the org
-side resolves a sector anyway."* `funder_tags` is written by the seed (`sector`) **and** by
-`backend/app/ingest/writer.py:563` (`write_funder_tag`), which always resolves through
-`taxonomy.resolve_csr_sector()` and therefore always writes `csr_sector`. Every tag Sangam
-Import will ever add to a funder is on the facet orgs do not use.
-
-`tags.kind` permits nine values and two are ever written, so "taxonomy/tags" and "thematic
-area" are not two separable facets in live data either: themes (`Education & Literacy`) and
-population groups (`Children`, `Tribal Affairs`, `Differently Abled`) are **all filed under
-`kind='sector'`**, with the Schedule VII list as the only other inhabitant.
-
-The join the two sides need exists in the repo but not in Postgres. Two sector→Schedule VII
-crosswalks: `backend/app/ingest/taxonomy.py:21-54` (`CLAUSES`, free text → csr slug, consulted
-at write time only) and `frontend/features/taxonomy/data/themes.json` (domains → themes →
-sub-themes, each carrying `csr: [{clause, sector}]`, `sdgs[]`, `schemes[]`). `tags.parent_id`
-and `tags.meta` were added to hold it; nothing populates either. The unbuilt design at
-`features-plans/data-model/2026-09-27-data-platform-architecture-design.md:120-127` specifies
-exactly this — `org_tag_set` expanded one hop through `meta.maps_to`, Theme signal worth 20.
-
-A shortlist built on these three today would rank funders by **how well-tagged they are**, not
-by how well they fit, and would show 10 untagged, un-footprinted funders at the bottom as
-though they were poor matches. That is `instructions.md` rule 10's trap — a zero that means
-*unrecorded* — in the place it does the most damage, because a ranking reads as authoritative.
-
-So the tag data is fixed before anything is built on it — the research run first, then the
-crosswalk — and the shortlist query is written so that **unknown and poor are different
-columns**, never one number that could mean either.
-
-## Architecture
+## 3. High-level design (HLD)
 
 ```
 ┌─ Ask workspace — unchanged ──────────────────────────────────────────┐
-│  ChatPane (CopilotKit)   ·   /ask?q= deep links already exist        │
-│  "Which funders fit Goonj?"      "How does Goonj score against X?"   │
+│  "Which funders fit KABIL?"      "How does KABIL score against X?"   │
 └────────────────────────────────┬─────────────────────────────────────┘
                                  │ AG-UI (SSE) · /api/copilotkit → /agent
                                  ▼
-┌─ Ask Sangam — LangGraph deep agent ──────────────────────────────────┐
-│  six tools, unchanged.  Two new procedures in agent/instructions.md: │
-│                                                                      │
+┌─ Ask Sangam — six tools, unchanged ──────────────────────────────────┐
 │   FLOW 2 — shortlist            │   FLOW 1 — assessment              │
-│   one SELECT, no rubric,        │   read rubric_criteria (weights)   │
-│   no judgement. Counts each     │   read the same overlap counts     │
-│   criterion AND the coverage    │   for the one pair                 │
-│   behind it, in one statement.  │   read evidence rows, cite each    │
+│   one SELECT. Counts each       │   reads rubric_criteria (weights)  │
+│   criterion AND its coverage.   │   reads the pair's overlap counts  │
+│   No rubric, no judgement.      │   reads evidence rows, cites each  │
 │   ~1 tool call                  │   ~5–6 tool calls                  │
 └───────────────┬─────────────────────────────────┬────────────────────┘
-                │ db_query — catalog allowlist, read-only txn, ≤50 rows
+                │ db_query: catalog allowlist · read-only txn · ≤50 rows
                 ▼                                 ▼
-   ┌────────────────────────────────────┐   ┌────────────────────────┐
-   │ tables already in the SQL catalog  │   │ rubrics                │
-   │                                    │   │ rubric_criteria        │
-   │ NGO side        │ funder side      │   │  (weights — read by    │
-   │ orgs            │ funders          │   │   the agent, never     │
-   │ org_tags ─┐     │ funder_tags      │   │   computed in SQL)     │
-   │ org_locations   │ funder_footprints│   └────────────────────────┘
-   │ org_identifiers │ funder_eligibility
-   └───────────┼─────┤ grants           │
-               │     └──────────────────┘
-               │ one hop through
-        ┌──────┴────────────────────────┐
-        │ tags.meta->>'maps_to'         │  ← Deliverable 0: the crosswalk,
-        │ sector tag → Schedule VII     │     the one thing being added
-        └───────────────────────────────┘
+   NGO side             funder side               rubric
+   org_tags ──┐         funder_tags               rubrics
+   org_locations        funder_footprints (gave)  rubric_criteria
+   org_identifiers      funder_locations (stated)
+              │         funder_eligibility · grants
+              │ one hop
+   tags.meta->>'maps_to'   ← M1: the crosswalk, the one thing added
+   sector tag → Schedule VII slug
 ```
 
-**Where the line falls.** SQL counts; the agent judges. Rubric weights live in
-`rubric_criteria.points` and nowhere else — the first `CASE WHEN … THEN 7` written into the
-shortlist query would give the rubric two homes. That is why flow 2 ranks by **counting
-criteria met**, not by scoring them.
+Touched: **Postgres only.** No Neo4j, no Supabase Storage. The model is touched only through the
+prompt.
 
-**Why there is no `fit_signals` view.** An earlier draft put all of this in one, as a shared
-substrate for both flows. Every table it would have read is already in the SQL catalog, so a
-view adds no reach — it is a second path to rows the agent can already join, which is the
-precise failure `CLAUDE.md` records for `search_orgs`: *"a cached query plan rather than a
-capability, and a worse one"*, and *"two paths to the same rows also meant two places to keep
-correct."* The one thing a view would genuinely guarantee is that a count never arrives
-without its denominator. That is worth having, but it is worth having as evidence: if the
-model turns out to report *no overlap* where the truth is *not recorded*, that failure
-justifies a view and we add it then, with the case in hand.
+> **The rule:** SQL counts; the agent judges.
+> **Example:** the shortlist ranks HDFC above Oil India because it meets two criteria to one. It
+> never ranks it because 15 + 8 > 15. Only Flow 1 reads `rubric_criteria.points`.
+> **Why it matters:** the first `CASE WHEN … THEN 15` in a query gives the rubric a second home.
 
-## Deliverables
+**The key trade-off: no `fit_signals` view.** Every table the shortlist reads is already
+catalogued, so a view adds no reach. It adds a second path to the same rows, which is the failure
+`CLAUDE.md` records for `search_orgs`. The one guarantee a view would give — a count never arrives
+without its denominator — is enforced instead by the prompt, the catalog caveats and the evals.
+If evals show the model reporting *no overlap* where the truth is *not recorded*, that is the
+evidence for a view, and it gets added then.
 
-Order matters here, so: **save the plan → 0a research run → 0b crosswalk → prompts →
-evals.**
+### The three criteria, and the denominator each must carry
 
-### Before anything: save the plan
-
-Commit this plan as a dated doc on the feature branch before any code — the house rule. It
-goes to `docs/features/2026-10-05-funder-matching-in-ask-sangam.md`. It is the only design
-document for this work: the two earlier ones on this branch were written against a shape that
-no longer holds and have been deleted rather than left to contradict it.
-
-### 0. Fix the tag data — first, and the real blocker
-
-**Backfill first, then the crosswalk.** Two steps, in that order.
-
-**0a — pull tags and taxonomy for every funder.** Run Sangam Import's funder research over
-all 42, not just the 27 with no `csr_sector` tag: re-running the tagged 15 confirms or
-corrects what is there, and `write_funder_tag` is an upsert. At `MAX_PARALLEL_RESEARCH=8`
-that is six waves. This is a real model spend and the largest single cost in the plan.
-
-Know what it can and cannot move:
-
-- It writes **`csr_sector` only**. `backend/app/ingest/writer.py:563` resolves every tag
-  through `taxonomy.resolve_csr_sector()`, so the output is Schedule VII clauses and nothing
-  else. It will not add a single `kind='sector'` tag to any funder.
-- It never touches `org_tags` — `backend/app/ingest/promote.py:595` declines on purpose.
-- So after 0a the two sides are *better populated and still not joinable*. That is expected,
-  not a failed run. 0b is what connects them.
-
-**Doing this first is the better order, and not only because it is the ask.** The crosswalk
-is 40 hand-curated rows, and curating them against the clauses the funders have actually been
-tagged with beats curating them against a static file and hoping. 0a tells us which of the 12
-Schedule VII clauses are live and how the funders distribute across them; 0b is then written
-with that distribution in front of us. The cost of the flip is that there is no working
-shortlist until 0b lands — acceptable, since the shortlist is not being shipped to anyone
-mid-sequence.
-
-**0b — materialise the crosswalk.** `db/migrations/0022_taxonomy_crosswalk.sql`. For each
-`kind='sector'` tag, write the Schedule VII clause it maps to into `tags.meta->>'maps_to'`
-(the v3 spec's own wording), leaving `parent_id` for a real hierarchy later.
-
-- **It is 40 hand-written `UPDATE tags SET meta = …` statements, transcribed.**
-  `app/db/migrate.py` applies `db/migrations/*.sql` and nothing more, so a migration cannot
-  read `frontend/features/taxonomy/data/themes.json` at runtime. That file and the `CLAUSES`
-  keyword table at `backend/app/ingest/taxonomy.py:21-54` are **sources to transcribe from**,
-  not inputs the migration loads.
-- Expect the vocabularies not to line up. `themes.json` mirrors the unpromoted
-  `features-plans/` seed, while the live 40 `sector` slugs are Darpan free text
-  (`Women's Development & Empowerment`, `Micro Finance (SHGs)`) alongside lowercase rubric
-  labels (`sustainable livelihoods`). The mapping is curated by hand either way; the two
-  files and 0a's output are three cross-checks on each other.
-- **Every one of the 40 gets either a clause or an explicit "no clause."** A silent null
-  reintroduces unrecorded-looks-like-absent one layer up, which is the bug this whole design
-  exists to avoid.
-
-It is a data migration and not a query-time judgement on purpose: a crosswalk the model
-re-derives per request is a different answer per request.
-
-**What this does not fix, and must not be described as backlog:** criterion 1 (sector↔sector)
-is **capped by design**. No writer anywhere adds `kind='sector'` to `funder_tags` except
-`seed/seed.py`, so that overlap is permanently limited to the 14 seed-era rows and no amount
-of research changes it. After 0b, **thematic area is the criterion that actually carries
-tag-based matching**, and criterion 1 should be read as a bonus signal on the seeded subset.
-The 10 funders with neither tags nor footprints stay *unknown* until someone researches them.
-
-### 1. The architecture diagram
-
-An interactive HTML diagram via the archify skill (`architecture` type), written to
-`.archify/architecture-funder-matching-<timestamp>/`, showing both flows end to end — the
-single-query shortlist path and the multi-call assessment path visually separated, with
-the catalogued tables both read and the crosswalk that makes the thematic join possible.
-Produced first, before any code.
-
-### 2. The signals, and the rule that every count carries its denominator
-
-Nothing is built here. This is the contract both prompt procedures are written against, and
-it belongs in the plan because the column list is the thinking, not the SQL.
-
-For one `org × funder` pair, the three criteria and where they come from:
-
-| criterion | overlap | the denominator that must travel with it |
+| criterion | overlap | denominator in the same row |
 |---|---|---|
-| geography | `org_locations` ∩ `funder_footprints` on district, then state | how many locations the org has, how many footprints the funder has |
-| taxonomy | `org_tags` ∩ `funder_tags` where `tags.kind = 'sector'` | each side's `sector` tag count |
-| thematic | org `sector` tags expanded one hop through `tags.meta->>'maps_to'`, met against funder `csr_sector` tags | how many org tags mapped at all, how many `csr_sector` tags the funder has |
-
-Supporting signals flow 1 also reads: `grants` for direct history, `funder_eligibility` for
-bars (shipped empty in #89, so *no bars recorded* ≠ *sets no bars*), `org_identifiers` for
-12A/80G/CSR-1/FCRA, and `funders.grant_size_min/max` — **always null today**, so the agent
-must see the null rather than infer a mismatch.
+| **geography** | org districts and their parent states, met against funder footprints (where it *gave*) and `funder_locations` (where it *says* it gives) | org location count · funder footprint count · funder stated-location count |
+| **taxonomy** | `org_tags` ∩ `funder_tags`, both `kind='sector'` | each side's sector tag count |
+| **thematic** | org sector tags expanded through `tags.meta->>'maps_to'`, met against funder `csr_sector` tags | org tags that mapped · funder `csr_sector` count |
 
 > **The rule:** never select a count without the denominator behind it.
-> **Example:** Priya asks which funders fit Goonj. Oil India Limited has no footprints and no
-> tags, so its overlap counts are all zero — the same zero that an actively mismatched funder
-> would produce. With the denominators in the row, the agent can see the difference and say
-> *not recorded* instead of *no overlap*.
-> **Why it matters:** a ranking reads as authoritative, so a wrong zero does more damage here
-> than anywhere else in the product.
+> **Example:** Priya asks which funders fit Goonj. Goonj has eight locations and no tags. Every
+> funder's taxonomy overlap is 0 — the same 0 an active mismatch gives. With `org_sector_n = 0` in
+> the row, the agent says *thematic: not recorded for Goonj*, not *no overlap*.
+> **Why it matters:** a wrong zero does more damage in a ranking than anywhere else in the product.
 
-Ordering comes from counting, not scoring: **criteria met** first, then **criteria known**.
-A criterion is *known* when both sides have data and *met* when they overlap. A funder with
-nothing recorded has zero known criteria and is reported in a separate block, not at the
-bottom of the list. Counting rather than weighting is what keeps the rubric living only in
-`rubric_criteria.points`.
+A criterion is **known** when both sides have data and **met** when they overlap. Order by
+criteria met, then criteria known, then shared districts. A funder with zero known criteria goes
+in a separate, named block — not at the bottom of the list.
 
-**Row cap.** `validator.DEFAULT_MAX_ROWS = 50`, and there are 45 funders. The 51st would
-silently truncate a one-org shortlist, so an integration test asserts `count(*) FROM funders`
-stays under the cap — the day it stops being true is a failing test rather than a quietly
-short list.
+### Three geography decisions the spec left open
 
-### 3. Flow 2 — the shortlist, as a prompt procedure
+| decision | resolved as | the alternative and its cost |
+|---|---|---|
+| Is `funder_locations` evidence? | **Yes, as a separate sub-signal.** Geography is *known* if either table has a row. A match reports which table. | footprints only: the 3 funders with only stated geography read *not recorded*, which is false |
+| Pan-India (`kind='country'`, 4 of 27 rows) | **A third state: "stated pan-India".** Counts as known, not as met | counting it as a match puts every pan-India funder above every regional one |
+| District vs state | **District match and state match are separate columns**, via `locations.parent_id` (rubric 2b vs 2a) | one `geo_overlap` column hides whether a funder works in the org's district or only in its state |
 
-A new section in `app/agent/instructions.md`. **No new tool** — `TOOLS` in
-`app/agent/build.py` stays at six.
+Footprints carry `fiscal_year`. The row surfaces the latest matched year, so "gave in Kokrajhar in
+FY2019-20" never reads as current.
 
-The procedure, in the prompt's own voice:
+### What the data can and cannot become
 
-- Resolve the org by name or slug, and **confirm which org** before ranking if ambiguous.
-- One query over the tables in Deliverable 2 for that `org_id`, returning each criterion's
-  overlap **and** its denominator, ordered by criteria met, then criteria known, then shared
-  districts.
-- Report in two blocks, never one list: **ranked** (`criteria_known >= 1`) and **not enough
-  recorded to rank** (`criteria_known = 0`), with the second block's funders named, not
-  hidden.
-- Per funder, per criterion, say which of three states it is in: *match* / *no overlap* /
-  **not recorded**. Never let the third read as the second.
-- State the denominator — how many of the funders could be ranked at all.
-- Offer the deeper assessment as the next step, and **do not perform it unasked**: it is five
-  or six more tool calls.
+| | 4 funders, 14 rows | 12 funders | 0 orgs |
+|---|---|---|---|
+| `kind='sector'` on funders | **capped** — only `seed/seed.py` writes it | | |
+| `kind='csr_sector'` on funders | | grows with 0a | |
+| `kind='csr_sector'` on orgs | | | **never** — `promote.py:595` declines on purpose |
 
-### 4. Flow 1 — the assessment, as a prompt procedure
+After M1, **thematic is the criterion that carries tag matching.** Taxonomy is a bonus signal on
+the seeded subset, and that is a permanent cap, not backlog.
 
-Another section in the same file, same six tools. The procedure:
+## 4. Low-level design (LLD)
 
-- Read the rubric from `rubric_criteria` rather than carrying it in the prompt, so a rubric
-  v3 needs no deploy.
-- Read the pair's overlap counts and denominators for the cheap signals.
-- Score the semantic criteria from the underlying rows, citing each.
-- Report every criterion it could **not** score as unscorable **with the reason** — this is
-  the "major gaps" half of what was asked for, and it is the half that is usually wrong.
-- Total as `N / M available points`, never out of 100.
+### 0a — the research run (a data operation, not a PR)
 
-Criterion 6a (grant size, 5 pts) is unscorable for every funder in the database: `0019` added
-`funders.grant_size_min/max` and nothing has ever written them.
+Sangam Import's funder research over the funders with no `csr_sector` tag (30 locally) — see Open
+question 1. Locally first, then `ENV=staging` after a backup — confirmed in conversation,
+2026-10-06.
 
-Rule 4 of `instructions.md` extends too. It currently reads *"Fit scores are rubric-based
-assessments by a single human rater, not ground truth."* There are now two kinds of number
-with that name and only one is in the database, so the citation convention separates them: a
-stored score cites `[score:N]`; a computed assessment carries no marker and says so.
+What it can move, stated plainly:
 
-A test already asserts every registered tool is named in `instructions.md`; neither section
-adds a tool, so that stays green. The new assertions are eval cases (below).
+- It writes `csr_sector` only. `writer.py:563` (`write_funder_tag`) resolves every theme through
+  `taxonomy.CLAUSES` (`taxonomy.py:21-54`).
+- It is **`ON CONFLICT DO NOTHING`**, not an upsert. A re-run adds missing clauses and never
+  corrects or removes a wrong one. (The 2026-10-05 spec said otherwise.)
+- It never touches `org_tags`. After 0a the two sides are better populated and **still not
+  joinable**. That is expected. M1 connects them.
 
-### 5. Evals
+Running 0a before writing M1 means the crosswalk is curated against the clauses funders actually
+carry, not against a static file.
 
-`backend/tests/evals/cases/golden.jsonl` gains cases in the existing format — `id`,
-`question`, `required_citations`, `must_mention`, `must_not_mention`, `tags`. The harness
-skips gold-SQL comparison when `gold_sql` is absent, so assertion-only cases work.
+### M1 — `db/migrations/0022_taxonomy_crosswalk.sql`
 
-- a shortlist question must mention the unrankable funders and must **not** present them as
-  low-fit;
-- an assessment must mention grant size as unscorable and must not state a number for it;
-- an org with no locations must produce *geography not recorded*, never *no overlap*;
-- every funder must read *no eligibility bars recorded*, never *sets no bars* —
-  `funder_eligibility` shipped empty in #89.
+The spec wrote this as 40 `UPDATE tags SET meta = …` statements. **That is a no-op on every fresh
+database:** `make up` and `make seed` run `migrate` first (`Makefile:83-89, 110-119`), and only
+then does `seed/seed.py:128` insert the sector tags. The 40 UPDATEs would match zero rows, be
+recorded as applied, and never run again.
 
-Tag the cheap ones `canary` so `make evals TAG=canary` covers the regression surface.
+So `0022` inserts the rows it annotates:
 
-## Verification
-
-### Before 0a — which database is this writing to?
-
-The research run is the one step here that **writes rows**, and `ENV` decides where they
-land. `make up ENV=staging` points the local stack at the managed Supabase database the
-deployed app serves; the default `ENV=local` writes to the compose Postgres and those tags
-exist only on this machine. Two further consequences from CLAUDE.md worth settling before
-the run, not after:
-
-- `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` are **not** environment-scoped, so on `ENV=local`
-  the `documents` rows are local while the archived files go to the cloud bucket.
-- `make migrate ENV=staging` is already owed for #89's `funder_eligibility` —
-  `_verify_sql_catalog` raises at boot against an unmigrated database, so staging needs that
-  migration (after a backup) before anything else runs there.
-
-### After each step
-
-```bash
-# after 0a — did the research actually land?
-make psql
-#   select count(distinct funder_id) from funder_tags ft
-#     join tags t on t.id = ft.tag_id where t.kind = 'csr_sector';   -- was 15, expect ~42
-#   select t.label, count(*) from funder_tags ft join tags t on t.id = ft.tag_id
-#     where t.kind='csr_sector' group by 1 order by 2 desc;          -- the live distribution
-#                                                                       0b is curated against
-
-make migrate && make migrate-status            # 0022 listed
-make psql                                      # spot-check 0b:
-#   select count(*) from tags where kind='sector' and meta ? 'maps_to';   -- expect 40
-#   select label, meta->>'maps_to' from tags where kind='sector' order by 2;  -- read it
-
-cd backend
-pytest -m "not integration"
-pytest tests/test_sql_integration.py           # needs the compose Postgres on :5433
-ruff check .
-
-make up && make logs | grep -i "catalog\|undeclared"   # catalog still verifies clean
-
-make evals TAG=canary                          # COSTS MONEY — the real agent
+```sql
+INSERT INTO tags (slug, label, kind, meta) VALUES
+  ('education-literacy', 'Education & Literacy', 'sector',
+     '{"maps_to": "csr-education-and-livelihoods"}'),
+  ('micro-finance-shgs', 'Micro Finance (SHGs)', 'sector',
+     '{"maps_to": "csr-hunger-poverty-health"}'),
+  ('tribal-affairs',     'Tribal Affairs',       'sector',
+     '{"maps_to": null}'),                       -- an explicit "no clause"
+  ...
+ON CONFLICT (slug) DO UPDATE SET meta = tags.meta || EXCLUDED.meta;
 ```
 
-Then by hand in the Ask chat, because no test catches tone:
+*(The mappings above illustrate the shape. The real ones are curated in M1.)*
 
-- *"Which funders fit Goonj?"* — one tool call, two blocks, the unrankable funders **named**;
-- *"How does Goonj score against <funder>?"* — a total out of available points, with the
-  unscorable criteria listed and grant size among them;
-- an org with no `org_locations` row — reads **"geography not recorded"**, never "no overlap".
+- **Order-independent.** `seed.py:128`'s own conflict clause updates `label` only, and
+  `tags.meta` is `NOT NULL DEFAULT '{}'` (`0002_taxonomy.sql:10`), so either order leaves `meta`
+  intact.
+- **Every one of the 40 carries the `maps_to` key**, set to a slug or JSON `null`. `->>` returns
+  SQL NULL for both a missing key and a JSON null, so the shortlist cannot tell them apart.
+  `meta ? 'maps_to'` can: it is the check that every tag was *decided*.
+- **Slugs are copied from the live table, never re-derived.** `seed.py:128` computes
+  `slugify(label)`. A hand-typed slug one character off (`education-literacy` vs
+  `education-and-literacy`) never conflicts, and a fresh database ends up with 80 sector tags —
+  40 annotated, 40 bare. Transcribe `slug` and `label` from
+  `select slug, label from tags where kind='sector'` on the seeded local database, and escape the
+  `'` in `Women's Development` on paste.
+- **`maps_to` is a slug of a `csr_sector` tag**, joined by `slug`, not by id. Ids differ between
+  local and staging. There is no foreign key, so `0022` running before `taxonomy_seed` creates
+  those 12 rows breaks nothing.
+- Sources to transcribe from, not files the migration loads: `taxonomy.py:21-54` (`CLAUSES`),
+  `frontend/features/taxonomy/data/themes.json`, and 0a's output. `app/db/migrate.py` runs SQL
+  and nothing else.
+- `parent_id` stays unused, kept for a real hierarchy later.
 
-No frontend change, so no `npm run build` gate for this work.
+Only 33 of the 40 sector tags are used by any org. All 40 get mapped anyway: the seven unused ones
+will be used the day an org is tagged with them.
 
-## Out of scope
+### M2 — the catalog caveats and the Flow 2 procedure
 
-- **Any UI.** No new Ask view, no REST endpoint, no component. `RfpWatchView.tsx` stays the
-  stub it is. (Noted for later: it is a 20-line placeholder already wired into the sidebar and
-  already claiming this concept, so it is the natural home the day a screen is wanted — and
-  `MediaView`'s `onDiscuss` → `newChat(seed)` is the ready-made "assess this one" handoff.)
-- **Storing anything** — no `fit_scores`, `fit_score_items`, `score_adjustments` or
-  `rfp_matches` write. If persistence is wanted later, Sangam Import's `save_research` →
-  `promote_research` → hand-written writers is the shape, and that is a third agent.
-- Weekly RFP triage. `rfp_matches` keeps its zero rows.
-- Populating `grant_size_min/max`. Highest-value follow-up — `funder-intake-research` field 8
-  already asks for hard numbers and `0019` built the columns; only the finding→record→writer
-  path between them is missing.
+**Catalog (`backend/app/agent/tools/sql/catalog.py`)** — `defects` lines only. No table and no
+column added, so no new reach.
+
+- `funder_tags` (`:374`): *"Two kinds live here. `sector` rows came from the seed and cover 4
+  funders; `csr_sector` rows come from research. A funder with no rows of a kind has not been
+  researched for it — never 'has no focus'."*
+- `org_tags` (`:635`): *"`kind='sector'` only; nothing writes `csr_sector` for an org. Reach
+  Schedule VII through `tags.meta->>'maps_to'`. An org with no rows is untagged, not unfocused."*
+
+These reach both flows, and any free-form tag question, through the mechanism rule 10 already
+relies on.
+
+**Prompt (`backend/app/agent/instructions.md`)** — a new section, *"Shortlisting funders for an
+organisation"*, after rule 10:
+
+1. Resolve the org by name or slug. Confirm which one if the name is ambiguous.
+2. One query for that `org_id`: per funder, each criterion's overlap **and** its denominators,
+   plus `criteria_met` and `criteria_known`. Order by met, then known, then shared districts.
+3. Report two blocks: **ranked** (`criteria_known >= 1`) and **not enough recorded to rank**
+   (`criteria_known = 0`), the second block's funders named.
+4. Per funder, per criterion, one of: *match* / *no overlap* / *not recorded* (and for geography,
+   *stated pan-India*).
+5. Say how many of the 42 could be ranked at all.
+6. Offer the assessment as the next step. **Do not run it unasked** — it is five more tool calls.
+
+The query is the model's to write. The prompt gives the column contract, not the SQL.
+
+### M3 — the Flow 1 procedure, and rules 2 and 4
+
+A second section, *"Assessing one organisation against one funder"*:
+
+1. Read the rubric from `rubric_criteria` (v2 unless asked), so rubric v3 needs no deploy.
+2. Read the pair's overlap counts and denominators — the Flow 2 columns, for one funder.
+3. Score each sub-criterion from the underlying rows, citing each.
+4. List every criterion it could **not** score, with the reason. Always among them: **6a, grant
+   size** — Sangam holds no grant size for any funder. **4b, hard gates**, reads *no eligibility
+   bars recorded*, never *sets no bars*.
+5. Total as **N / M available points**, never out of 100.
+
+**Rule 4** today: *"Fit scores are rubric-based assessments by a single human rater."* There are
+now two kinds of score. The extension: a **stored** score cites `[score:N]`; a **computed**
+assessment carries no marker and says so in words.
+
+**Rule 2** says *"a sentence without a marker must not contain a database fact."* The total has no
+marker. The reconciliation, written into the prompt: **each input to the total cites its row; the
+total is labelled as computed from them** — *"28 / 70 available points, computed by Ask Sangam
+from the rows cited above."*
+
+### What does not change
+
+- `app/agent/build.py` — six tools. `test_prompt.py:50` (`test_prompt_names_every_registered_tool`)
+  stays green.
+- `validator.py` — both query shapes were run through `validate()` on 2026-10-06: a CTE using
+  `meta->>'maps_to'`, and a geography roll-up with `UNION ALL`, `FILTER` and `bool_or`. Both pass.
+- Frontend — nothing. The registry chips are accepted as-is.
+
+## 5. Security review
+
+| check | finding |
+|---|---|
+| New endpoints | **None.** Nothing to put `Depends(get_current_user)` on. |
+| Input validation | No new boundary. User text reaches SQL only through `db_query`, whose validator regenerates the AST — the model's string never executes (`docs/SQL_AGENT.md`). |
+| New catalog reach | **None.** Every table read is already catalogued. M2 adds `defects` text only. `grant_size_min/max` stay out. |
+| Migration | `0022` is additive (`INSERT … ON CONFLICT`). It writes vocabulary, not user data. |
+| PII, credentials, tokens | None touched. Tags, locations and rubric weights are public reference data. |
+| Secrets | 0a reads `ANTHROPIC_API_KEY` and Tavily's key from the environment, as Import already does. |
+| Write path | 0a writes into whichever database `ENV` selects. `ENV=staging` writes into the database the deployed app serves — hence local first, then staging after a backup. |
+
+The standing caveat, unchanged by this work: the app connects as a superuser, and the catalog is
+the only thing keeping model SQL away from checkpoint tables (`CLAUDE.md`, SQL tools).
+
+## 6. Testing
+
+**Unit (no database):** none needed. No tool, router or repository changes. The prompt-loading
+tests in `tests/test_prompt.py` must stay green.
+
+**Integration (`integration` mark, compose Postgres on :5433), in `tests/test_sql_integration.py`:**
+
+- *already landed (93585c1):* `funders` stays under the row cap. Correction to the spec: truncation
+  is **not** silent — `render.py:92` tells the model *"the LIMIT truncated the result"*. The test
+  still earns its place: past 50, the shortlist is visibly short, not complete.
+- **new, M1:** every `kind='sector'` tag has the `maps_to` key (`meta ? 'maps_to'`).
+- **new, M1:** every non-null `maps_to` names an existing `csr_sector` slug — no dangling crosswalk.
+  This assumes a **seeded** database; on a half-set-up checkout it fails for that reason, not
+  because of migration order.
+
+**File-shape test (no database), M1, in `tests/test_migration_integrity.py`:** `0022` contains
+`ON CONFLICT (slug)` and no bare `UPDATE tags`. That pins the exact bug the spec's design had.
+
+**Manual gate, M1:** survival of seed order is checked on a fresh volume (below), not by an
+automated test. Emptying the sector tags inside a test would mean deleting `org_tags` and
+`funder_tags` rows first.
+
+**Evals (`eval` mark, cost money)**, in `tests/evals/cases/golden.jsonl`. Assertion-only
+cases (`must_mention`, `must_not_mention`; no `gold_sql`):
+
+| id | question | must | must not | tags |
+|---|---|---|---|---|
+| `shortlist-unrankable-named` | Which funders fit KABIL? | name the not-enough-recorded block | present those funders as low fit | `canary` |
+| `shortlist-org-untagged` | Which funders fit Goonj? | *not recorded* for thematic | *no overlap* for thematic | `canary` |
+| `assess-grant-size-unscorable` | How does KABIL score against HDFC Bank? | 6a / grant size as unscorable | a number for grant size; *out of 100* | — |
+| `assess-no-bars-recorded` | Does HDFC Bank set eligibility bars KABIL fails? | *no eligibility bars recorded* | *sets no bars* | `canary` |
+| `shortlist-pan-india` | (a funder with only a country-level location) | *pan-India* | that funder as a geography match | — |
+
+**Zero-means-unrecorded — where it bites:**
+
+| zero | means |
+|---|---|
+| Goonj's 0 `org_tags` | untagged, not unfocused |
+| 8 funders with no tag, footprint or stated location | unresearched, not a poor fit |
+| `funder_eligibility` 0 rows | nobody read the policy, not "no bars" |
+| `grant_size_min/max` all null and uncatalogued | unknown, not "any size" |
+| `maps_to: null` | curated as "no Schedule VII clause" — **the one zero that is a real answer** |
+
+## 7. Milestones
+
+| | what ships | PR? | gate |
+|---|---|---|---|
+| M0 | plan, diagram, row-cap test | done | committed on this branch |
+| 0a | research tags for the untagged funders | no — a data run | psql counts |
+| M1 | the crosswalk migration | yes | integration tests |
+| M2 | catalog caveats + the shortlist procedure | yes | canary evals |
+| M3 | the assessment procedure + rules 2 and 4 | yes | evals |
+
+The order has a reason. 0a before M1, so the crosswalk is curated against real tags. M1 before M2,
+so the shortlist has a thematic join to describe. M2 before M3, because Flow 1 reuses Flow 2's
+columns.
+
+#### Milestone 0: the plan and the diagram — done
+
+- **Deliverable**: this document; the archify diagram (8917b09,
+  `.archify/architecture-funder-matching-20261005-235522/`); the row-cap test (93585c1).
+- **Touches**: docs, one test.
+
+#### Data run 0a: Schedule VII tags for the untagged funders
+
+- **Deliverable**: every researched funder carries at least one `csr_sector` tag, or a recorded
+  reason it got none.
+- **Touches**: db (rows only), money (model and Tavily spend).
+- **Key tasks**:
+  - [ ] locally, run Import's funder research in waves of `MAX_PARALLEL_RESEARCH` (8)
+  - [ ] record the clause distribution — it is M1's curation input
+  - [ ] back up staging; `make migrate ENV=staging` (owed for #89); repeat the run with `ENV=staging`
+- **Acceptance criteria**:
+  ```bash
+  make psql   # select count(distinct ft.funder_id) from funder_tags ft
+              #   join tags t on t.id = ft.tag_id where t.kind = 'csr_sector';   -- was 12
+  ```
+
+#### Milestone 1: the sector → Schedule VII crosswalk
+
+- **Deliverable**: every sector tag says which Schedule VII clause it maps to, or says it maps to
+  none, on fresh and existing databases alike.
+- **Touches**: db, backend tests.
+- **Key tasks**:
+  - [ ] transcribe the 40 `slug`/`label` pairs from the seeded local `tags` table — never re-slugify
+  - [ ] curate 40 mappings from `CLAUSES`, `themes.json` and 0a's distribution
+  - [ ] write `0022_taxonomy_crosswalk.sql` as `INSERT … ON CONFLICT (slug) DO UPDATE SET meta`
+  - [ ] add the two integration tests and the file-shape test in §6
+- **Acceptance criteria**:
+  ```bash
+  make migrate && make migrate-status          # 0022 applied
+  make psql   # select count(*) from tags where kind='sector' and meta ? 'maps_to';   -- 40
+  cd backend && pytest tests/test_sql_integration.py && pytest -m "not integration"
+  ```
+  Then the same on a fresh volume (`make down -v && make up && make seed`) — the case the spec's
+  `UPDATE` design would have failed.
+
+#### Milestone 2: the shortlist
+
+- **Deliverable**: *"Which funders fit KABIL?"* returns two blocks in about one tool call, with
+  every criterion in one of the three states.
+- **Touches**: backend (catalog `defects`), prompt, evals.
+- **Key tasks**:
+  - [ ] the two `defects` lines in `catalog.py`
+  - [ ] the shortlist section in `instructions.md`
+  - [ ] eval cases `shortlist-unrankable-named`, `shortlist-org-untagged`, `shortlist-pan-india`
+- **Acceptance criteria**:
+  ```bash
+  cd backend && pytest -m "not integration" && ruff check app/agent
+  make up && make logs | grep -i "catalog\|undeclared"   # catalog verifies clean
+  make evals TAG=canary                                   # COSTS MONEY
+  ```
+  By hand: ask about KABIL and about Goonj. Count the tool calls; read the second block.
+
+#### Milestone 3: the assessment
+
+- **Deliverable**: *"How does KABIL score against HDFC Bank?"* returns N / M available points,
+  each input cited, every unscorable criterion listed with its reason.
+- **Touches**: prompt, evals.
+- **Key tasks**:
+  - [ ] the assessment section in `instructions.md`
+  - [ ] extend rule 4 (stored vs computed scores); reconcile rule 2 (inputs cite, total is labelled)
+  - [ ] eval cases `assess-grant-size-unscorable`, `assess-no-bars-recorded`
+- **Acceptance criteria**:
+  ```bash
+  cd backend && pytest tests/test_prompt.py
+  make evals                                              # COSTS MONEY
+  ```
+  By hand: one stored pair (KABIL has 8 `fit_scores`) — the answer must separate the stored
+  `[score:N]` from the computed total.
+
+No milestone touches the frontend, so none has an `npm run build` gate.
+
+## 8. Open questions and risks
+
+1. **0a scope — open.** Research the 30 untagged funders, or all 42? Because `write_funder_tag` is
+   `DO NOTHING`, re-running the 12 tagged ones can add clauses but cannot fix wrong ones.
+   *Recommendation:* the 30 untagged — about four waves instead of six. Left open in conversation,
+   2026-10-06.
+2. **0a spend is the largest cost here**, and it is paid twice (local, then staging). No figure yet;
+   measure the local run before starting staging.
+3. **Staging is not verifiable right now.** Both Vercel projects are paused (`DEPLOYMENT_PAUSED`)
+   and production has served 503 since 1 October.
+4. **Vocabularies will not line up.** Live sector slugs mix Darpan free text (`Women's Development
+   & Empowerment`) with lowercase rubric labels (`sustainable livelihoods`). Curation is by hand
+   either way; the three sources check each other.
+5. **Crosswalk drift.** A sector tag added after `0022` arrives with no `maps_to` key. The M1
+   integration test catches it, but only when the integration suite runs.
+6. **The prompt is the only guarantee of denominators.** If evals show *no overlap* reported for
+   *not recorded*, the `fit_signals` view returns as the fix (§3).
+7. **Row cap.** 42 of 50. The test fails the day it reaches 50; paging the shortlist is the answer
+   then, not a raised cap.
+8. **Pre-existing and not caused by this work:** 3 failures in `tests/test_migration_integrity.py`
+   and 72 `ruff check .` errors reproduce identically on `master`.
 
 ## Notes
 
-- Two earlier documents on this branch — `2026-10-05-funder-cso-matching.md` and its
-  implementation plan — were deleted when this one landed. They described flow 2 as a REST
-  endpoint, pinned a 21-column `fit_signals` contract without the crosswalk-expanded thematic
-  columns or `criteria_met`/`criteria_known`, and assumed tag overlap was computable today.
-  Their task-level TDD breakdown was written against that shape, so none of it survives the
-  change; a fresh one belongs with the prompt sections, not ahead of them. Recoverable from
-  git if wanted.
-- Pre-existing and not caused by this work: 3 failures in `tests/test_migration_integrity.py`
-  and 72 `ruff check .` errors reproduce identically on `master`.
-- Both Vercel projects are paused (`DEPLOYMENT_PAUSED`); production has served 503 since
-  1 Oct. Nothing here can be verified against the deployed stack until that clears, and
-  `make migrate ENV=staging` is owed for #89's `funder_eligibility` before it does.
+- **This document is the live one.** It was restructured in place on 2026-10-06 into the
+  feature-planning format; it is a revision of the 2026-10-05 spec, not a replacement.
+- **Superseded, and still on other branches:** `docs/features/2026-10-04-rubric-matching-skill.md`
+  on `origin/feat/rubric-matching-skill` proposed a seventh tool (`propose_fit_score`), a
+  `POST /scores` endpoint and stored `scored_by = 'model:<name>'` rows. This plan rules out all
+  three. Its persistence design is the right starting point if storing assessments is ever wanted.
+- **Deleted earlier on this branch:** `2026-10-05-funder-cso-matching.md` and its implementation
+  plan, which put Flow 2 behind a REST endpoint. Recoverable from git.
+- **Corrections to the 2026-10-05 spec**, all checked against code or the local database:
+  - 42 funders, not 45; 12 `csr_sector`-tagged, not 15; 8 with nothing recorded, not 10.
+  - `write_funder_tag` is `DO NOTHING`, not an upsert.
+  - Truncation at the row cap is flagged, not silent.
+  - `grant_size_min/max` are not catalogued, so the agent cannot "see the null".
+  - `0022` as `UPDATE`s would not run on a fresh database.
+  - Geography omitted `funder_locations`.
+  - Goonj, the running example, has no tags. KABIL is now the example for matching, and Goonj the
+    example for "not recorded".
+- **Out of scope:** any UI (`RfpWatchView.tsx` is the natural home later); storing anything;
+  weekly RFP triage (`rfp_matches` keeps its zero rows); populating `grant_size_min/max` — the
+  highest-value follow-up, since `funder-intake-research` field 8 already asks for the numbers.
