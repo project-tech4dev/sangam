@@ -1,5 +1,27 @@
 # Funder matching in Ask Sangam: a deterministic shortlist, then an agent assessment
 
+## Goal
+
+**Let a fundraiser ask Ask Sangam which funders fit their organisation, and then ask how well
+they fit one of them — and have both answers be honest about what Sangam does not know.**
+
+Two questions, asked in the chat that already exists:
+
+| | the question | what it costs | what comes back |
+|---|---|---|---|
+| **Flow 2** | *"Which funders fit Goonj?"* | one SQL query, no rubric | ~45 funders split into ranked and not-enough-recorded, with each of the three criteria marked match / no overlap / not recorded |
+| **Flow 1** | *"How does Goonj score against HDFC Bank?"* | five or six tool calls, reads the rubric | a score out of the points that could be scored, the criteria that matched, and the gaps — including every criterion it could not score, and why |
+
+The measure of success is not that a number appears. It is that **a funder Sangam knows
+nothing about never reads as a bad match.** Four of 45 funders carry a sector tag and none of
+the organisations carry a thematic one, so any ranking built today is mostly ranking how
+well-researched a funder is. A list that hides that is worse than no list, because a ranking
+reads as authoritative. Every deliverable below exists to keep *unrecorded* and *absent*
+visibly different answers.
+
+Scope: no UI, no REST endpoint, nothing stored. The feature is a tag backfill, a taxonomy
+crosswalk, and two procedures in the agent's prompt.
+
 ## Context
 
 Two flows were asked for, and the ask is explicit that they stay separate:
