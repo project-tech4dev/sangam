@@ -129,13 +129,14 @@ homes. That is why flow 2 ranks by **counting criteria met**, not by scoring the
 ## Deliverables
 
 Order matters here, so: **save the plan → 0a research run → 0b crosswalk → view → prompts →
-evals → reconcile PR #90's docs.**
+evals.**
 
 ### Before anything: save the plan
 
 Commit this plan as a dated doc on the feature branch before any code — the house rule. It
-goes to `docs/features/2026-10-05-funder-matching-in-ask-sangam.md` on a branch off `master`,
-alongside the PR #90 reconciliation in Deliverable 6.
+goes to `docs/features/2026-10-05-funder-matching-in-ask-sangam.md`. It is the only design
+document for this work: the two earlier ones on this branch were written against a shape that
+no longer holds and have been deleted rather than left to contradict it.
 
 ### 0. Fix the tag data — first, and the real blocker
 
@@ -294,19 +295,6 @@ skips gold-SQL comparison when `gold_sql` is absent, so assertion-only cases wor
 
 Tag the cheap ones `canary` so `make evals TAG=canary` covers the regression surface.
 
-### 6. Bring PR #90's documents in line
-
-An approved plan is a committed doc before any code, and PR #90's two already exist on branch
-`docs/funder-cso-matching`. Both need updating in the same PR, before the migration lands:
-
-- `docs/features/2026-10-05-funder-cso-matching.md` — the spec gains Deliverable 0 as a
-  prerequisite, and loses the assumption that tag overlap is computable today.
-- `docs/features/2026-10-05-funder-cso-matching-implementation.md` — its Task 1 pins a
-  **21-column** `fit_signals` contract that this plan changes: `criteria_met` /
-  `criteria_known` are new, the thematic columns are now crosswalk-expanded
-  (`org_mapped_tag_count`), and Task 2's catalog entry must match. Leaving two contradictory
-  contracts in `docs/features/` is worse than having neither.
-
 ## Verification
 
 ### Before 0a — which database is this writing to?
@@ -374,10 +362,12 @@ No frontend change, so no `npm run build` gate for this work.
 
 ## Notes
 
-- `docs/features/2026-10-05-funder-cso-matching.md` and its implementation plan are on branch
-  `docs/funder-cso-matching` (PR #90). This supersedes them on one point: the crosswalk
-  becomes Deliverable 0 rather than an assumption, and `fit_signals`' thematic columns depend
-  on it. The frontend stays out of scope in both.
+- Two earlier documents on this branch — `2026-10-05-funder-cso-matching.md` and its
+  implementation plan — were deleted when this one landed. They described flow 2 as a REST
+  endpoint, pinned a 21-column `fit_signals` contract without the crosswalk-expanded thematic
+  columns or `criteria_met`/`criteria_known`, and assumed tag overlap was computable today.
+  Their task-level TDD breakdown was written against that shape, so none of it survives the
+  change; a fresh one belongs with the view, not before it. Recoverable from git if wanted.
 - Pre-existing and not caused by this work: 3 failures in `tests/test_migration_integrity.py`
   and 72 `ruff check .` errors reproduce identically on `master`.
 - Both Vercel projects are paused (`DEPLOYMENT_PAUSED`); production has served 503 since
