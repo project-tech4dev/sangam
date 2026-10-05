@@ -1001,6 +1001,40 @@ DEFECTS: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {name: t.defects for name, t in CATALOG.items() if t.defects}
 )
 
+# The three provenance roles the SQL tools surface, and the column each is normally stored in.
+# Twenty-five of the catalogued tables carry this set; the rest are join tables, Sangam's own
+# rubric output, or reference data, and have no external source to point at.
+PROVENANCE_ROLES: tuple[str, ...] = ("url", "name", "fetched")
+
+_ROLE_COLUMNS: Mapping[str, str] = MappingProxyType(
+    {"url": "source_url", "name": "source_name", "fetched": "fetched_at"}
+)
+
+# One table names its link differently. Spelled out rather than left to miss silently:
+# news_mentions.url predates the source_url convention and is the link all the same.
+_ROLE_ALIASES: Mapping[str, Mapping[str, str]] = MappingProxyType(
+    {"news_mentions": MappingProxyType({"url": "url"})}
+)
+
+
+def _provenance_of(table: Table) -> Mapping[str, str]:
+    names = {c.name for c in table.columns}
+    aliases = _ROLE_ALIASES.get(table.name, {})
+    found: dict[str, str] = {}
+    for role in PROVENANCE_ROLES:
+        column = aliases.get(role, _ROLE_COLUMNS[role])
+        if column in names:
+            found[role] = column
+    # A source name or a date with no link cites nothing a reader can open.
+    return MappingProxyType(found) if "url" in found else MappingProxyType({})
+
+
+# table -> {role: column}. Derived, never hand-listed, so a table added to the catalog with the
+# provenance columns the conventions require gets its sources surfaced without a second edit.
+PROVENANCE_COLUMNS: Mapping[str, Mapping[str, str]] = MappingProxyType(
+    {name: cols for name, t in CATALOG.items() if (cols := _provenance_of(t))}
+)
+
 # Tables that exist in the database and are deliberately NOT in the catalog. Named so verify_against_db()
 # can stay quiet about them while still reporting a genuinely new table that nobody has made a decision.
 KNOWN_EXCLUDED: frozenset[str] = frozenset(

@@ -267,10 +267,12 @@ class TestMasking:
     holding those is only acceptable on a Langfuse"""
 
     RESULT = (
-        "3 row(s).\n"
+        "3 row(s). tables: orgs.\n"
         "adjusted: no LIMIT was given, so LIMIT 50 was applied.\n"
         "caveats: All 10 districts currently parent to Assam.\n"
         'executed: SELECT "o"."id", "o"."name" FROM "orgs" AS "o" LIMIT 51\n'
+        "sources: 1\n"
+        "  orgs · https://ngodarpan.gov.in/home/profile/ABC · NGO Darpan · 2026-09-12\n"
         "columns: name\n"
         "[org:9] KABIL\n"
         "[org:1] AJAGAR SOCIAL CIRCLE\n"
@@ -303,6 +305,16 @@ class TestMasking:
         assert "SELECT" in out and "orgs" in out
         assert "3 row(s)." in out
         assert "caveats:" in out
+
+    def test_sources_survive_because_they_sit_above_the_cut(self, monkeypatch):
+        """Why db_query puts the block before `columns:` — _redact_rows cuts everything after
+        it, and a source is debugging material like the SQL, not a warehouse row."""
+        monkeypatch.setenv("LANGFUSE_MASK_TOOL_RESULTS", "true")
+        from app.integrations.tracing import mask_payload
+
+        out = mask_payload(data=self.RESULT)
+        assert "https://ngodarpan.gov.in/home/profile/ABC" in out
+        assert "tables: orgs." in out
 
     def test_nested_payloads_are_masked(self, monkeypatch):
         """The handler sends dicts and lists, not just strings."""

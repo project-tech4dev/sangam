@@ -172,17 +172,26 @@ async def db_query(sql: str, purpose: str) -> str:
         return explain_db_error(exc, executed_sql=query.sql, tables=query.tables)
 
     truncated = len(rows) > query.limit
+    shown = rows[: query.limit]
     body = render.render_rows(
-        rows[: query.limit],
+        shown,
         citations=query.citations,
+        provenance=query.provenance,
         limit=query.limit,
         truncated=truncated,
     )
 
-    header = [f"{len(rows[: query.limit])} row(s)."]
+    header = [f"{len(shown)} row(s). tables: {', '.join(query.tables)}."]
     if query.rewrites:
         header.append("adjusted: " + "; ".join(query.rewrites) + ".")
     caveats = _caveats_for(query.tables)
     if caveats:
         header.append(caveats)
-    return "\n".join([*header, f"executed: {query.sql}", body])
+    sources = render.render_sources(
+        shown, provenance=query.provenance, skipped=query.provenance_skipped
+    )
+    # Above the `columns:` line on purpose: tracing._redact_rows cuts everything below it, and
+    # a source is debugging material like the SQL, not a warehouse row.
+    return "\n".join(
+        [*header, f"executed: {query.sql}", *([sources] if sources else []), body]
+    )
