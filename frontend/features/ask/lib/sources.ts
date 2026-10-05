@@ -12,6 +12,10 @@ import type { TraceStep, Turn } from "./useSangamChat";
  * backend/tests/test_sql_render.py::TestSources::test_the_line_grammar_is_a_contract.
  */
 
+/* The rail shows at most this many; the caller renders the remainder as a count rather
+ * than dropping it, because a source that vanishes reads as a source that does not exist. */
+export const MAX_SOURCES = 10;
+
 export type Source = {
   url: string | null;
   label: string;
@@ -19,6 +23,12 @@ export type Source = {
   fetchedAt: string | null;
   grain: "fact" | "web" | "entity";
 };
+
+/** The fact grain already arrives as a day; an entity's comes from the REST payload as a
+ *  full ISO timestamp. Same list, so same shape. */
+function day(value: string | null | undefined): string | null {
+  return value ? value.slice(0, 10) : null;
+}
 
 /** A tool result is typed `string` here, but the AG-UI protocol also permits content parts. */
 function text(step: TraceStep): string {
@@ -89,7 +99,7 @@ function entitySources(answer: string, index: RegistryIndex | null): Source[] {
       url: row.sourceUrl ?? null,
       label: row.sourceName || (row.sourceUrl ? "source on file" : "no source recorded"),
       detail: name,
-      fetchedAt: row.fetchedAt ?? null,
+      fetchedAt: day(row.fetchedAt),
       grain: "entity",
     });
   }

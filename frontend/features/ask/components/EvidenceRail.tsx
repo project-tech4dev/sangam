@@ -2,7 +2,7 @@
 
 import type { RegistryIndex } from "../lib/citations";
 import { phasesFor } from "../lib/phases";
-import { executedSql, hostOf, sourcesFor, sourcesSkipped, tablesRead, type Source } from "../lib/sources";
+import { MAX_SOURCES, executedSql, hostOf, sourcesFor, sourcesSkipped, tablesRead, type Source } from "../lib/sources";
 import type { Turn } from "../lib/useSangamChat";
 
 type Stats = Record<string, number>;
@@ -111,7 +111,7 @@ export function EvidenceRail({
       {(sources.length > 0 || tables.length > 0) && (
         <div className="card" style={{ gap: 10 }}>
           <div className="card-kicker">Sources</div>
-          {sources.map((source) => (
+          {sources.slice(0, MAX_SOURCES).map((source) => (
             <div
               key={source.url ?? `${source.label}|${source.detail}`}
               style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 8 }}
@@ -119,6 +119,11 @@ export function EvidenceRail({
               <SourceRow source={source} />
             </div>
           ))}
+          {sources.length > MAX_SOURCES && (
+            <div className="muted-2" style={{ fontSize: "var(--fs-xs)", borderTop: "1px solid var(--color-divider)", paddingTop: 8 }}>
+              …and {sources.length - MAX_SOURCES} more source(s) behind this answer.
+            </div>
+          )}
           {skipped.length > 0 && (
             <div className="muted-2" style={{ fontSize: "var(--fs-xs)", borderTop: "1px solid var(--color-divider)", paddingTop: 8 }}>
               Some rows carry no source of their own: {skipped.join("; ")}.
