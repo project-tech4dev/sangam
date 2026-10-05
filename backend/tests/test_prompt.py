@@ -82,3 +82,30 @@ class TestFunderShortlistProcedure:
 
     def test_the_assessment_is_offered_not_run(self):
         assert "do not run it unasked" in SYSTEM_PROMPT.lower()
+
+
+class TestFunderAssessmentProcedure:
+    """Flow 1: the rubric is read from the database, and what could not be scored is half the answer."""
+
+    def test_weights_come_from_the_rubric_table(self):
+        assert "rubric_criteria" in SYSTEM_PROMPT
+
+    def test_total_is_out_of_available_points(self):
+        assert "available points" in SYSTEM_PROMPT and "never out of 100" in SYSTEM_PROMPT
+
+    def test_grant_size_is_named_unscorable(self):
+        # funders.grant_size_min/max are not catalogued and never written, so 6a cannot be scored.
+        assert "6a" in SYSTEM_PROMPT and "grant size" in SYSTEM_PROMPT.lower()
+
+    def test_empty_eligibility_reads_as_unrecorded(self):
+        assert "no eligibility bars recorded" in SYSTEM_PROMPT
+
+
+class TestStoredAndComputedScoresStayApart:
+    def test_rule_4_separates_a_stored_score_from_a_computed_one(self):
+        rule_4 = SYSTEM_PROMPT.split("4. Be honest about scores.")[1].split("\n5. ")[0]
+        assert "[score:" in rule_4 and "computed" in rule_4
+
+    def test_rule_2_allows_an_uncited_total_only_when_labelled(self):
+        rule_2 = SYSTEM_PROMPT.split("2. Cite everything.")[1].split("\n3. ")[0]
+        assert "computed" in rule_2
