@@ -1,0 +1,48 @@
+# Funder matching criteria. Edit, open a PR, then:
+#   make criteria-load && make match-diff FROM=<active> TO=<draft> && make criteria-activate VERSION=<draft>
+# The loader refuses anything it cannot evaluate: see app/matching/config.py.
+set: funder-matching
+version: 1
+engine: 1
+
+checks:
+  # Fit: what the NGO does and where, against what the funder funds and where.
+  - {code: area,  label: Gives where the NGO works, evaluator: shares_place}
+  - {code: theme, label: Funds the NGO's theme, evaluator: shares_theme}
+  - {code: prog,  label: Runs a programme in the NGO's theme, evaluator: shares_programme_theme}
+  # Compliance.
+  - {code: reg_12a, label: 12A registration, evaluator: has_identifier, params: {id_type: 12a}}
+  - {code: reg_80g, label: 80G registration, evaluator: has_identifier, params: {id_type: 80g}}
+  - {code: csr_1,   label: CSR-1 registration, evaluator: has_identifier,
+     params: {id_type: csr1, doc_type: csr1_certificate}}
+  # Financial, governance, programme evidence.
+  - {code: audits, label: 3 years of audited accounts, evaluator: min_audited_years, params: {years: 3}}
+  - {code: board,  label: Board of 3 or more, evaluator: min_board, params: {count: 3}}
+  - {code: projects_3, label: "3+ completed projects with funder, amount, theme, duration and results",
+     evaluator: min_projects, params: {count: 3}}
+  # Waiting on schema: team CVs (M4, a Vault doc_type vocabulary) and the funder's turnover bar
+  # (M5, funder_eligibility.requirement_code). Their weight sits with board and audits until then.
+
+groups:
+  fit:       {min_met: 1, of: [area, theme, prog]}
+  statutory: {all: [reg_12a, reg_80g, csr_1, audits]}
+
+roles:
+  gate:     [fit, statutory]   # a fail removes the funder; an unknown marks it "unverified"
+  advisory: []                 # shown as a gap, carries no weight
+
+applies:
+  # The CSR Rules registrations bind corporate givers. M6 replaces this with a funder_type vocabulary.
+  statutory: {funder_type: [corporate_csr, corporate_foundation]}
+
+weights:                       # ranks the funders the gates let in; must total 100
+  fit:        {weight: 40, checks: {area: 20, theme: 12, prog: 8}}
+  compliance: {weight: 25, checks: {reg_12a: 8, reg_80g: 7, csr_1: 10}}
+  financial:  {weight: 15, checks: {audits: 15}}
+  governance: {weight: 10, checks: {board: 10}}
+  programme:  {weight: 10, checks: {projects_3: 10}}
+
+partial:                       # a met check earns this share of its weight
+  area: {district: 1.0, state: 0.6, pan_india_stated: 0.3}
+
+ranking: [gate_status, score_min, coverage, shared_districts, funder_id]
