@@ -3,11 +3,15 @@
 With SUPABASE_URL unset every request is the seeded dev user. With it set, a request with no
 Authorization header is anonymous, a valid Supabase access token is that user, `Bearer dev` is the
 dev user when DEV_AUTH is on (local only), and anything else is 401.
+
+AuthMiddleware decides this once per request and leaves it on the request: get_principal and the gates
+read it, and PoolDep runs the request's queries as that caller (anon or authenticated).
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -20,9 +24,12 @@ from ag_ui.core.types import RunAgentInput
 from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
 from pydantic import ValidationError
+from starlette.datastructures import Headers
+from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import get_settings
-from app.db.pool import PoolDep
+from app.db.pool import OwnerPoolDep, get_pool
 from app.repositories import threads
 from app.repositories import users as repo
 
@@ -43,7 +50,8 @@ class CurrentUser:
         return self.id is None
 
 
-DEV_USER = CurrentUser(id=DEV_USER_ID, is_staff=True, email="dev@sangam.local")
+# The dev user has no Supabase account; 0026 gives its row this auth_user_id so the access functions know it.
+DEV_USER = CurrentUser(id=DEV_USER_ID, is_staff=True, auth_user_id=DEV_USER_ID, email="dev@sangam.local")
 ANONYMOUS = CurrentUser(id=None, is_staff=False)
 
 
@@ -77,9 +85,8 @@ _authorization_header = APIKeyHeader(
 )
 
 
-async def get_principal(
-    pool: PoolDep, authorization: Annotated[str | None, Security(_authorization_header)] = None
-) -> CurrentUser:
+async def resolve_principal(authorization: str | None) -> CurrentUser:
+    """Who an Authorization header is. Runs as the owner: it writes users rows no caller may write."""
     settings = get_settings()
     if not settings.auth_enabled:
         return DEV_USER
@@ -107,7 +114,7 @@ async def get_principal(
     meta = claims.get("user_metadata") or {}
     try:
         row = await repo.resolve_auth_user(
-            pool,
+            get_pool(),
             auth_user_id=auth_user_id,
             email=email,
             display_name=meta.get("full_name") or meta.get("name"),
@@ -123,6 +130,52 @@ async def get_principal(
             status.HTTP_409_CONFLICT, "This email is already linked to another account"
         ) from exc
     return CurrentUser(id=row["id"], is_staff=row["is_staff"], auth_user_id=auth_user_id, email=email)
+
+
+def _db_identity(principal: CurrentUser) -> tuple[str, str]:
+    """The Postgres role and the request.jwt.claims a caller's queries run with."""
+    if principal.is_anonymous:
+        return "anon", ""
+    claims = {"sub": str(principal.auth_user_id), "role": "authenticated", "email": principal.email}
+    return "authenticated", json.dumps(claims)
+
+
+# Nothing here reads data, and /docs must load before anyone can press Authorize.
+_OPEN_PATHS = frozenset({"/health", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"})
+
+
+class AuthMiddleware:
+    """Resolves the caller once per request and leaves it in the request state.
+
+    Plain ASGI rather than BaseHTTPMiddleware, which buffers responses and would break the chat's
+    streaming. It answers a bad token itself, since FastAPI's exception handlers never see what is
+    raised here. Add it before CORSMiddleware, so CORS wraps it and answers preflights first.
+    """
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope["path"] in _OPEN_PATHS:
+            await self.app(scope, receive, send)
+            return
+        try:
+            principal = await resolve_principal(Headers(scope=scope).get("authorization"))
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers=exc.headers)
+            await response(scope, receive, send)
+            return
+        state = scope.setdefault("state", {})
+        state["principal"] = principal
+        state["db_role"], state["db_claims"] = _db_identity(principal)
+        await self.app(scope, receive, send)
+
+
+async def get_principal(
+    request: Request, authorization: Annotated[str | None, Security(_authorization_header)] = None
+) -> CurrentUser:
+    """The caller AuthMiddleware resolved; anonymous without it. The header is declared for /docs' Authorize."""
+    return getattr(request.state, "principal", ANONYMOUS)
 
 
 async def get_current_user(principal: Annotated[CurrentUser, Depends(get_principal)]) -> UUID | None:
@@ -153,7 +206,7 @@ async def require_staff(principal: Annotated[CurrentUser, Depends(require_princi
 chat_user_id: ContextVar[UUID | None] = ContextVar("chat_user_id", default=None)
 
 
-async def _own_thread(request: Request, pool: PoolDep, principal: CurrentUser) -> None:
+async def _own_thread(request: Request, pool: OwnerPoolDep, principal: CurrentUser) -> None:
     try:
         thread_id = RunAgentInput.model_validate(await request.json()).thread_id
     except (ValueError, ValidationError):
@@ -165,13 +218,13 @@ async def _own_thread(request: Request, pool: PoolDep, principal: CurrentUser) -
 
 
 async def chat_access(
-    request: Request, pool: PoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
+    request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
 ) -> None:
     """Signed in, and the thread is new or yours (staff may open any); someone else's thread is 404."""
     await _own_thread(request, pool, principal)
 
 
 async def staff_chat_access(
-    request: Request, pool: PoolDep, principal: Annotated[CurrentUser, Depends(require_staff)]
+    request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_staff)]
 ) -> None:
     await _own_thread(request, pool, principal)
