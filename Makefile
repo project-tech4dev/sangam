@@ -1,7 +1,6 @@
 .PHONY: help up down logs seed taxonomy-seed graph-seed smoke client-docs db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
-        dev-backend dev-frontend frontend-reinstall evals \
-        criteria-load criteria-activate criteria-sets match match-explain programme-themes
+        dev-backend dev-frontend frontend-reinstall evals
 
 SHELL := /bin/bash
 
@@ -137,30 +136,6 @@ migrate:  ## Apply db/migrations/*.sql
 
 migrate-status:  ## Show which migrations would run
 	$(COMPOSE) run --rm --no-deps backend python -m app.db.migrate --status
-
-##@ Matching
-# Criteria live in backend/app/matching/criteria/*.yaml and reach the engine only through
-# criteria_sets: load stores a draft, activate makes it live, and rollback is activating an
-# older version. Like migrate, these honour ENV and are deliberate steps against staging.
-MATCH = $(COMPOSE) run --rm --no-deps -e GIT_SHA=$(shell git rev-parse --short HEAD 2>/dev/null) backend python -m app.matching
-
-criteria-load:  ## Validate the criteria YAML and store it as a draft (FILE= to override)
-	$(MATCH) load $(if $(FILE),--file $(FILE),)
-
-criteria-activate:  ## Make criteria VERSION= the live one (rollback = an older VERSION)
-	$(MATCH) activate --version $(VERSION)
-
-criteria-sets:  ## List loaded criteria versions and which is active
-	$(MATCH) sets
-
-match:  ## Shortlist funders for ORG= (an id, slug or name)
-	$(MATCH) match --org "$(ORG)" $(if $(LIMIT),--limit $(LIMIT),)
-
-match-explain:  ## Every check for ORG= against FUNDER=
-	$(MATCH) explain --org "$(ORG)" --funder "$(FUNDER)"
-
-programme-themes:  ## Tag untagged programmes with a Schedule VII clause (idempotent)
-	$(MATCH) backfill-programme-themes
 
 ##@ Check it works
 # End-to-end smoke test of the running stack (backend, frontend, chat wire).

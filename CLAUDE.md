@@ -41,15 +41,7 @@ make smoke               # end-to-end check of backend + frontend + chat wire
                          # SMOKE_SKIP_LLM=1 make smoke  → skips the one real agent call
 make migrate             # apply db/migrations/*.sql   (make migrate-status to inspect)
 make psql                # interactive shell against whichever DB ENV selects
-make criteria-load       # validate matching criteria YAML, store as a draft
-make criteria-activate VERSION=N   # make it live; rollback = an older VERSION
-make match ORG=kabil     # shortlist funders (make match-explain ORG= FUNDER= for one pair)
-make programme-themes    # tag programmes with a Schedule VII clause; stage 1 reads them
 ```
-
-The matching targets need `pyyaml` in the backend image. `make up` builds, so an image that
-predates it fails `load` on `import yaml` until the next `make up`. Design and rulings:
-`docs/features/2026-10-06-funder-matching-*.md`.
 
 Running a piece outside Docker:
 
@@ -135,8 +127,6 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
                           │          tools: db_list_tables · db_describe_table
                           │                 db_profile_column · db_query
                           │                 search_graph · fetch_url
-                          │                 match_funders · explain_match · find_funders
-                          │                 get_org · get_funder   (→ app/matching)
                           ▼
               Postgres + pgvector        Neo4j (optional)
 ```
@@ -156,9 +146,6 @@ backend/app/
   ingest/          agent.py (builds Sangam Import) · instructions.md · skills/
                    tools/ every tool it has, and nothing else in ingest/ is one
                    the rest is the pipeline: runner · writer · promote · matcher
-  matching/        funder matching, deterministic: evidence.py (loaders, stage-1 SQL) ·
-                   evaluators.py (pure checks) · engine.py · config.py (criteria schema) ·
-                   registry.py (criteria_sets) · service.py · __main__.py (CLI) · criteria/*.yaml
   integrations/    graphiti.py (Neo4j client lifecycle)
 
 frontend/
@@ -210,12 +197,9 @@ middleware stack over `langchain.agents.create_agent` and returns a compiled Lan
 graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 `add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
 
-**The agent has exactly eleven tools, and each question has ONE path to the database.**
+**The agent has exactly six tools, and there is ONE path to the database.**
 `app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
-`db_query`, `search_graph`, `fetch_url`, and the five matching tools — `match_funders`,
-`explain_match`, `get_org`, `get_funder`, `find_funders`. Nothing else. Facts go through
-model-written SQL. A judgement of fit, a profile, or a list of funders by place, theme or type goes
-through `app/matching/`, and the prompt forbids re-deriving any of them in `db_query` (rules 11–15).
+`db_query`, `search_graph`, `fetch_url`. Nothing else.
 
 That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
 `create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`
@@ -227,7 +211,7 @@ two different mechanisms, and the difference matters: a `HarnessProfile` is regi
 **provider**, so it is global to every agent sharing a model — right for the subagent, wrong for
 tools, since Sangam Import needs `read_file` to load a skill and Ask Sangam must not. So
 `install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
-preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its eleven plus `read_file`,
+preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its six plus `read_file`,
 which `FilesystemMiddleware` refuses to be built without; Sangam Import adds `ls`. Nothing that
 writes survives on either.
 
@@ -250,13 +234,6 @@ and returned all ten; the model writing its own SQL found `org_locations`, cross
 relationships and answered seven. Two paths to the same rows also meant two places to keep
 correct — a data caveat added to the catalog reached `db_query` and not `search_orgs`. The cost
 is latency: a curated lookup was one tool call, the same question in SQL is three to five.
-
-The matching tools look like that mistake and are not. A `get_funder` came back in M3, but it has
-no query of its own: `get_org` and `get_funder` render the same evidence bundle the matching
-evaluators read (`app/matching/evidence.py`), so a profile and a match cannot disagree.
-`tests/test_tools_registered.py` holds the line by failing on any `SELECT`, `FROM` or `execute(`
-in `match_tools.py`, `profile_tools.py` or `match_render.py`, and on any import of the engine's
-internals. Put a new matching read in `evidence.py`, never in a tool module.
 
 `app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) and `web.make_web_search` (Tavily)
 are complete but imported nowhere, and the `Settings` fields that feed them — `tavily_api_key`,

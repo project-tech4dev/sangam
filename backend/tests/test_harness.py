@@ -103,15 +103,14 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         # because a general-purpose subagent was inserted carrying db_query.
         assert "task" not in tools
 
-    def test_ask_sangam_holds_its_eleven_tools_and_the_mandatory_one(self):
+    def test_ask_sangam_holds_its_six_tools_and_the_mandatory_one(self):
         from app.agent.build import build_agent
         from app.core.config import get_settings
 
         tools = set(build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name)
         assert tools == {
             "db_list_tables", "db_describe_table", "db_profile_column", "db_query",
-            "search_graph", "fetch_url", "match_funders", "explain_match", "get_org",
-            "get_funder", "find_funders", "read_file",
+            "search_graph", "fetch_url", "read_file",
         }
 
     def test_neither_agent_can_write_a_file_or_run_a_command(self):

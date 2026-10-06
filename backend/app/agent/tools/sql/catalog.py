@@ -1073,8 +1073,6 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         "ingest_source_proposals",
         "entity_research",
         "resolution_queue",
-        # Matching-engine configuration, read through the matching tools, not registry data.
-        "criteria_sets",
         # Infrastructure.
         "schema_migrations",
         "graph_ingest_log",
