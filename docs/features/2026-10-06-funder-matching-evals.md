@@ -114,10 +114,15 @@ org × funder pairs. The pairs mix strong fits, clear non-fits and thin-data fun
 | precision@10 | of each org's top 10, the share labelled *yes* | tracked, no threshold yet |
 | gap recall | of `must_flag` checks, the share the engine reports as unmet or unknown | ≥ 0.9 |
 | unknown honesty | of pairs labelled *not enough known*, the share the engine puts in the *not enough recorded* block | 1.0 |
+| weight ordering | of pairs where the team ranks funder A above B for one org, the share where `score_min` agrees | tracked; a weights PR must not lower it |
 
 **The 8 hand scores as a sanity check.** `fit_scores` holds 8 manual rubric scores for KABIL
 against four funders. The engine's ordering of those four should broadly agree with them. This is
-reported, not gated: rubric v2 and the criteria file measure different things.
+reported, not gated: rubric v2 and the weighted score measure different things, and the weighted
+score is the only one any answer uses.
+
+**A weights change is reviewed like a rule change.** `make match-diff` shows each org's top 10
+before and after, and the PR states the *weight ordering* figure for both versions.
 
 Stage-1 recall is the gate. A funnel that drops a funder the team would approach is worse than
 one that keeps too many, because stage 2 and the fundraiser can still discard the extras.

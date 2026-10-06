@@ -1,6 +1,6 @@
 # Funder matching: production architecture
 
-*Draft v3 — 2026-10-06. v3: thirteen specific tools, one call per job (§1b). Supersedes v1 of this file and the prompt-only design in `2026-10-05-funder-matching-in-ask-sangam.md`. Evals: `2026-10-06-funder-matching-evals.md`.*
+*Draft v3 — 2026-10-06. v3: thirteen specific tools, one call per job (§1b); weighted score as a range (§3). Supersedes v1 of this file and the prompt-only design in `2026-10-05-funder-matching-in-ask-sangam.md`. Evals: `2026-10-06-funder-matching-evals.md`.*
 
 ## Context
 
@@ -195,7 +195,7 @@ stage-1 fit query against a stated profile.
 
 - *Comparison* is `assess_many` with two or three ids. The skill lays the results side by side.
 - *Readiness* is `assess(...).gaps`, an ordered list the service computes. Ordering is a business
-  rule, so it lives in code: gate checks first, then rank, then advisory; within a role, `fail`
+  rule, so it lives in code: gate checks first, then weighted checks by weight (largest first), then advisory; within a role, `fail`
   before `unknown`; ties broken by the criteria file's `sort_order`. The skill only renders it.
 
 A new operation is justified only when it needs data or logic the existing ones do not have.
@@ -228,22 +228,32 @@ checks:
      params: {threshold_from: funder_requirement}}
   - {code: board,    label: Board of 3 or more, evaluator: min_board, params: {count: 3}}
   - {code: cvs,      label: Team CVs on file, evaluator: has_document, params: {doc_type: team_cv}}
+  - {code: projects_3, label: 3+ completed projects, evaluator: min_projects,
+     params: {count: 3, fields: [funder, amount, theme, duration, results]}}
 
 groups:
   fit:        {min_met: 1, of: [area, theme, prog]}
   statutory:  {all: [reg_12a, reg_80g, csr_1, audits]}
-  readiness:  {all: [board, cvs]}
 
 roles:                          # what each result does
   gate:     [fit, statutory, turnover]   # a fail removes; unknown marks "unverified"
-  rank:     [area, theme, prog]          # orders the list
-  advisory: [readiness]                  # shown as gaps, never reorders
+  advisory: []                           # shown as a gap, carries no weight
 
 applies:                        # which funders a check or group counts for
   statutory: {funder_type: [corporate_csr]}
   turnover:  {funder_requirement: turnover}   # only funders with a recorded turnover bar
 
-ranking: [gate_status, fit.met, rank.met, evidence_coverage, shared_districts, funder_id]
+weights:                        # ranks the funders that got in; totals 100, one table for all funders (v1)
+  fit:        {weight: 40, checks: {area: 20, theme: 12, prog: 8}}
+  compliance: {weight: 25, checks: {reg_12a: 8, reg_80g: 7, csr_1: 10}}
+  financial:  {weight: 15, checks: {audits: 10, turnover: 5}}
+  governance: {weight: 10, checks: {board: 6, cvs: 4}}
+  programme:  {weight: 10, checks: {projects_3: 10}}
+
+partial:                        # a met check may earn part of its weight
+  area: {district: 1.0, state: 0.6, pan_india_stated: 0.3}
+
+ranking: [gate_status, score_min, coverage, shared_districts, funder_id]
 ```
 
 **Three-valued combinators** (Kleene logic), so there is no expression language:
@@ -262,15 +272,54 @@ Groups may nest groups. That covers *"12A **and** 80G **and** (CSR-1 **or** regi
 | role | effect of `fail` | effect of `unknown` |
 |---|---|---|
 | `gate` | funder moves to *did not pass*, with the failing check named | `gate_status = unverified` — kept, flagged, ranked below `passed` |
-| `rank` | counts as not met in the ranking key | counts as not met; adds to the coverage gap |
+| weighted (in `weights`) | earns 0 | earns 0 in `score_min`, its full weight in `score_max` |
 | `advisory` | listed in `advisory_gaps` | listed in `advisory_gaps` |
 
 **`applies` selectors are a closed vocabulary:** `funder_type`, `funder_requirement`, `always`.
 A new selector is code, like a new evaluator.
 
-**Ranking is a lexicographic key from a closed vocabulary**, ending in `funder_id`, so ties are
-deterministic. No weights in v1. Weights reintroduce the rubric's second-home problem and are
-easy to add later as a `weighted_rank` key.
+A check can be both a gate and weighted. Take 12A for a CSR funder: the gate decides whether
+the funder is in, and the weight separates *passed* from *unverified* funders by how much is known.
+
+### Weights and the score
+
+> **The rule:** weights only order the funders the gates let in. A weight never lets a funder in.
+> **Example:** an HDFC programme that requires 12A gets nothing from KABIL's district match while
+> KABIL's 12A is unknown. It stays *unverified*, and no score lifts it to *passed*.
+> **Why it matters:** a legal requirement cannot be made up for with a good fit somewhere else.
+
+**Unknown is not zero.** Each funder gets a range, not one number:
+
+| KABIL × HDFC | weight | result |
+|---|---|---|
+| area (same district), theme | 32 | met → 32 |
+| 12A, 80G | 15 | met → 15 |
+| programme, CSR-1, audits, board, CVs, 3 projects | 48 | unknown |
+| turnover | 5 | does not apply, because HDFC has no recorded bar → drops out |
+
+```
+score_min = met points / applicable weight     = 47 / 95 → 49
+score_max = (met + unknown) / applicable weight = 95 / 95 → 100
+coverage  = weight with evidence / applicable   = 47 / 95 → 49%
+```
+
+- **The ranking uses `score_min`**, the score the evidence supports. The answer shows both
+  numbers: *"at least 49, up to 100 once KABIL's audits and CSR-1 are recorded"*.
+- **The fix-first hint comes from the gap between the two.** The unknown check with the largest
+  weight is the most valuable thing to research or upload next.
+- **A check that does not apply drops out**, and scores are computed out of what applies, so a
+  funder is never penalised for a bar it does not have.
+- **Partial credit** comes from `partial`: sharing a district earns the full 20 for `area`,
+  sharing only a state earns 12, and a funder that only states *pan-India* earns 6.
+- **Every score carries its breakdown by category**:
+  `fit 32/40 · compliance 15/25 (CSR-1 ?) · financial ?/10 · governance ?/10 · programme ?/10`.
+- **One table for every funder in v1.** Tables per funder type can be added later through
+  `applies`, without a redesign. They are deferred until labelled pairs exist for each type.
+- **The weighted score is the only score.** The rubric scores in `fit_scores` are not used in any
+  matching answer. Two scores for one pair would drift apart, which is the second-home problem.
+  Whether the table and its `[score:N]` marker are removed is a separate decision.
+
+The ranking key comes from a closed vocabulary and ends in `funder_id`, so ties are deterministic.
 
 **The loader** (`app/matching/config.py`, Pydantic) refuses:
 - an unknown evaluator, selector or ranking key;
@@ -278,7 +327,9 @@ easy to add later as a `weighted_rank` key.
 - a cycle in groups;
 - a code used in two places;
 - a `has_document` type missing from `document_types`;
-- `engine` ≠ the code's evaluator API version.
+- `engine` ≠ the code's evaluator API version;
+- weights that do not total 100, or category weights that do not equal the sum of their checks;
+- a weight on a check the file does not define, or a `partial` level the evaluator does not emit.
 
 ## 4. Evidence resolver — `backend/app/matching/evidence.py`
 
@@ -366,7 +417,7 @@ set, so the research agent can only propose codes the engine can evaluate.
 
 ```python
 class CheckResult(BaseModel):
-    code: str; label: str; group: str | None; role: Literal["gate", "rank", "advisory"]
+    code: str; label: str; group: str | None; role: Literal["gate", "weighted", "advisory"]; weight: int
     outcome: Literal["met", "fail", "unknown"]
     basis: Literal["recorded", "on_file", "not_researched", "searched_not_found", "not_on_file"]
     reason_code: str                 # "below_threshold", "expired", "count_short", ...
@@ -378,8 +429,10 @@ class Assessment(BaseModel):
     funder: FunderRef                # id, name, funder_type
     gate_status: Literal["passed", "unverified", "failed"]
     fit_checks: list[CheckResult]; eligibility_checks: list[CheckResult]
-    fit_score: tuple[int, int]       # (met, known) — counts, never a float
-    evidence_coverage: tuple[int, int]   # checks with evidence / checks that apply
+    score_min: int                   # 0–100, from met weight only; the ranking uses this
+    score_max: int                   # 0–100, if every unknown were met
+    coverage: int                    # % of the applicable weight backed by evidence
+    breakdown: dict[str, CategoryScore]  # "fit" → CategoryScore(earned, unknown, applicable)
     gaps: list[CheckResult]          # ordered (§2)
     advisory_gaps: list[CheckResult]
     citations: list[str]
@@ -500,7 +553,7 @@ label and parameters, and a skill only arranges them.
 | | ships | gate |
 |---|---|---|
 | M1 | `matching/` package: models, evidence resolver, criteria loader + `criteria_sets` lifecycle, stage-1 evaluators, `program_tags` backfill, CLI | `make criteria-load && make criteria-activate && make match ORG=kabil` |
-| M2 | stage-2 evaluators, combinators, roles, `applies`, ranking key, gaps ordering | unit tests: three-valued truth tables; zero rows → unknown |
+| M2 | stage-2 evaluators, combinators, roles, `applies`, weights + `partial`, score range and breakdown, ranking key, gaps ordering | unit tests: three-valued truth tables; zero rows → unknown; a funder with nothing recorded scores 0–100, never 0 |
 | M3 | funder-side tools (`match_funders`, `explain_match`, `get_org`, `get_funder`, `find_funders`) over the service; prompt routing rule replaces rules 11–19; tool pins 6 → 11; a no-SQL-in-tool-modules test | one tool call per job in the trace; canary evals |
 | M3c | org-side tools (`match_orgs`, `find_orgs`); `shortlist_orgs`, `find_orgs` in the service; tool pins 11 → 13 | a both-directions-agree property test; `find_orgs(has=[12a])` reports *unknown* separately |
 | M3b | Ask Sangam skills (shortlist brief, readiness, comparison) + `/skills/` mechanism | skill read in the trace; no write tool |
