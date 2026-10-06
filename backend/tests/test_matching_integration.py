@@ -8,8 +8,10 @@ from unittest.mock import patch
 import psycopg
 import pytest
 
-from app.matching import evidence, registry
+from app.matching import __main__ as cli
+from app.matching import evidence, registry, service
 from app.matching.config import CriteriaError, load_yaml
+from app.matching.models import Ambiguous, Resolved
 from app.matching.themes import backfill_programme_themes
 
 pytestmark = pytest.mark.integration
@@ -285,3 +287,100 @@ class TestQueryCount:
             await evidence.enrich_funders(db, funders, evidence.FUNDER_KINDS)
         assert spy.call_count <= 6
         assert sum(1 for f in funders.values() if f.fit.shared_districts == ("Tdist1",)) == 200
+
+
+# --- service and CLI ------------------------------------------------------------------------
+
+@pytest.fixture
+async def active(db):
+    """The repo's criteria file, active inside this test's transaction."""
+    raw = load_yaml()[1]
+    await registry.load_draft(db, raw)
+    await registry.activate(db, raw["set"], raw["version"])
+    return raw["version"]
+
+
+async def place_funder(db, world, slug):
+    f = await funder(db, slug)
+    await db.execute("INSERT INTO funder_locations (funder_id, location_id, role) VALUES (%s, %s, 'funds')",
+                     (f, world["d1"]))
+    return f
+
+
+class TestService:
+    async def test_a_district_match_ranks_first_and_an_empty_funder_is_not_enough_recorded(
+            self, db, world, active):
+        near, empty = await place_funder(db, world, "t-s-near"), await funder(db, "t-s-empty")
+        sl = await service.shortlist(db, world["org"], limit=500)
+        assert sl.criteria_version == active
+        assert sl.ranked[0].funder.id == near
+        assert empty in [f.id for f in sl.not_enough_recorded]
+        assert empty not in [a.funder.id for a in sl.ranked + sl.did_not_pass]
+        assert sl.total_funders == len(sl.ranked) + len(sl.not_enough_recorded) + len(sl.did_not_pass)
+
+    async def test_an_org_with_nothing_recorded_fails_no_one_and_ranks_no_one(self, db, active):
+        bare = await one(db, "INSERT INTO orgs (slug, name) VALUES ('t-bare', 'T Bare')")
+        sl = await service.shortlist(db, bare, limit=500)
+        assert (sl.ranked, sl.did_not_pass) == ([], [])
+        assert len(sl.not_enough_recorded) == sl.total_funders
+
+    async def test_paging_slices_the_ranked_list_in_rank_order(self, db, world, active):
+        await place_funder(db, world, "t-s-p1")
+        await place_funder(db, world, "t-s-p2")
+        everything = (await service.shortlist(db, world["org"], limit=500)).ranked
+        page = await service.shortlist(db, world["org"], limit=1, offset=1)
+        assert [a.funder.id for a in page.ranked] == [everything[1].funder.id]
+
+    async def test_a_tie_breaks_on_funder_id(self, db, world, active):
+        a, b = await place_funder(db, world, "t-s-tie-a"), await place_funder(db, world, "t-s-tie-b")
+        ids = [x.funder.id for x in (await service.shortlist(db, world["org"], limit=500)).ranked]
+        assert ids.index(a) < ids.index(b)
+
+    async def test_assess_many_keeps_the_order_given(self, db, world, active):
+        a, b = await place_funder(db, world, "t-s-am-a"), await funder(db, "t-s-am-b")
+        got = await service.assess_many(db, world["org"], [b, a])
+        assert [x.funder.id for x in got] == [b, a]
+
+    async def test_assessing_a_missing_funder_raises(self, db, world, active):
+        with pytest.raises(LookupError):
+            await service.assess(db, world["org"], -1)
+
+    async def test_no_active_criteria_is_a_clear_error(self, db, world):
+        await db.execute("UPDATE criteria_sets SET status = 'retired' WHERE status = 'active'")
+        with pytest.raises(registry.NoActiveCriteria):
+            await service.shortlist(db, world["org"])
+
+
+class TestResolve:
+    async def test_slug_id_and_name_resolve_to_one(self, db, world):
+        for text in ("t-org", str(world["org"]), "T ORG"):
+            got = await service.resolve(db, "org", text)
+            assert isinstance(got, Resolved) and got.id == world["org"], text
+
+    async def test_a_partial_name_shared_by_two_is_ambiguous(self, db):
+        await db.execute("INSERT INTO funders (slug, name) VALUES ('t-zq-one', 'Zqx Alpha Trust'), "
+                         "('t-zq-two', 'Zqx Alpha Society')")
+        got = await service.resolve(db, "funder", "zqx alpha")
+        assert isinstance(got, Ambiguous)
+        assert sorted(c.slug for c in got.candidates) == ["t-zq-one", "t-zq-two"]
+
+    async def test_nothing_close_gives_no_candidates(self, db):
+        got = await service.resolve(db, "funder", "qqqqqqqqqqqqqq")
+        assert isinstance(got, Ambiguous) and got.candidates == []
+
+
+class TestCli:
+    async def test_match_prints_the_criteria_version_and_the_top_funder(self, db, world, active, capsys):
+        await place_funder(db, world, "t-cli-near")
+        assert await cli.run(["match", "--org", "t-org"], db) == 0
+        out = capsys.readouterr().out
+        assert f"criteria v{active}" in out and "T-CLI-NEAR" in out
+
+    async def test_an_unresolved_org_exits_nonzero(self, db, active, capsys):
+        assert await cli.run(["match", "--org", "qqqqqqqqqqqqqq"], db) == 1
+
+    async def test_explain_lists_every_check(self, db, world, active, capsys):
+        await place_funder(db, world, "t-cli-ex")
+        assert await cli.run(["explain", "--org", "t-org", "--funder", "t-cli-ex"], db) == 0
+        out = capsys.readouterr().out
+        assert "area" in out and "met" in out and "not_applicable" in out

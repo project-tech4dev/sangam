@@ -54,6 +54,7 @@ met / fail / unknown checks and a weighted score range. M1 and M2 of the engine 
 | R9 | **Programme themes are backfilled by a CLI command** (`backfill-programme-themes`) into `program_tags`, with `is_inferred=true` and `tagged_by='taxonomy.clause_for'`. | `ingest/writer.py` writes no programmes, so there is no writer to hook |
 | R10 | **`check_blocked` is skipped when picking a credential's latest event.** A `registered` in 2020 followed by `check_blocked` in 2025 still reads as registered. | the check could not run, so it says nothing either way |
 | R11 | **Every org place counts**, whatever its role, plus `orgs.registered_location_id`. On both sides, a `valid_to` in the past drops the row. The registered-office exclusion (R4) is funder-side only. | an NGO's registered district is where it works; a funder's head office is not where it gives |
+| R12 | **The shortlist has three blocks.** Any gate *fail* → *did not pass*. Otherwise the `fit` group *unknown* → *not enough recorded*. Everything else is ranked, including *unverified*. | the spec names the blocks but not the line between them; a funder we cannot place or theme cannot be ranked against one we can |
 
 ## File structure
 

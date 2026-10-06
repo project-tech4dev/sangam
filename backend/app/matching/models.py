@@ -77,3 +77,18 @@ class Shortlist(BaseModel):
     total_funders: int
     offset: int
     limit: int
+
+
+class Resolved(BaseModel):
+    kind: Literal["org", "funder"]
+    id: int
+    name: str
+    slug: str | None = None
+
+
+class Ambiguous(BaseModel):
+    """Text that named no single org or funder; the caller asks which one was meant."""
+
+    kind: Literal["org", "funder"]
+    text: str
+    candidates: list[Resolved]
