@@ -133,7 +133,7 @@ function Tabs({ active }: { active: Tab }) {
 }
 
 async function MyAccess() {
-  const data = await apiGet<AccessCheck>("/api/me/access-check");
+  const data = await apiGet<AccessCheck>("/api/access-check");
   return (
     <>
       <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
@@ -158,7 +158,7 @@ async function MyAccess() {
 }
 
 async function PublicTablesTab() {
-  const data = await apiGet<PublicTables>("/api/me/access-check/public");
+  const data = await apiGet<PublicTables>("/api/access-check/public");
   const groups = [...new Set(data.tables.map((t) => t.group))];
   return (
     <>
@@ -189,7 +189,7 @@ function staffVerdict(role: string, isStaff: boolean): string {
 }
 
 async function StaffOnlyTab() {
-  const data = await apiGet<PublicTables>("/api/me/access-check/staff");
+  const data = await apiGet<PublicTables>("/api/access-check/staff");
   return (
     <>
       <div className="flex flex-col gap-2 rounded-lg border border-neutral-300 bg-neutral-100 p-4 text-sm">
@@ -279,7 +279,7 @@ function FlagCounts({ counts, role, isStaff }: { counts: FlagCount[]; role: stri
 }
 
 async function FlagTab() {
-  const data = await apiGet<FlagTables>("/api/me/access-check/flag");
+  const data = await apiGet<FlagTables>("/api/access-check/flag");
   const who =
     data.db_role === "anon"
       ? "signed out, so only public rows come back"

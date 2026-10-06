@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.routes import (
+    access_check,
     contacts,
     documents,
     funders,
@@ -34,6 +35,7 @@ OPENAPI_TAGS = [
 api_router = APIRouter(prefix="/api")
 
 for _router in (
+    access_check.router,
     orgs.router,
     funders.router,
     grants.router,
