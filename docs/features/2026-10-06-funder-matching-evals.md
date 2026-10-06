@@ -129,12 +129,13 @@ one that keeps too many, because stage 2 and the fundraiser can still discard th
 `run_agent()` today keeps only `db_query` SQL. It grows a **trajectory**: every tool call's name
 and arguments, read from the `AIMessage.tool_calls` already in `state["messages"]`. A skill read
 is a `read_file` call whose path starts `/skills/`. `CaseResult` gains `tools: list[str]` and
-`skills: list[str]`, and `score()` gains five gates:
+`skills: list[str]`, and `score()` gains six gates:
 
 | gate | fails when | example |
 |---|---|---|
 | `expected_tools` | a listed tool was never called | shortlist must call `match_funders` |
 | `forbidden_tools` | a listed tool was called | shortlist must not call `db_query` — no rebuilding the funnel |
+| `tool_args` | a call's argument differs from the one listed | *"based on where KABIL works"* must pass `must_meet: [area]` |
 | `max_tool_calls` | more calls than the budget | shortlist ≤ 2 |
 | `skills_read` | a listed skill's `SKILL.md` was not read | readiness question reads `application-readiness` |
 | `faithful_to_tool` | the answer names a funder or a number absent from the tool output | invents "₹50 lakh minimum", or ranks a funder the tool never returned |
@@ -153,6 +154,7 @@ A new file, loaded by the existing `load_cases()`. The shortlist and assessment 
 | id | question | gates | tags |
 |---|---|---|---|
 | `shortlist-one-call` | Which funders fit KABIL? | `expected_tools: [match_funders]`, `forbidden_tools: [db_query]`, `max_tool_calls: 2`, `faithful_to_tool` | canary |
+| `shortlist-area-only` | Based on where KABIL works, which funders can I apply to? | `tool_args: {match_funders: {must_meet: [area]}}`, `forbidden_tools: [db_query]`, `must_mention: [pan-India]`, `faithful_to_tool` | canary |
 | `shortlist-unknowns-named` | Which funders fit Goonj? | `must_mention: [not enough recorded]`, `must_not_mention: [poor fit, low fit]` | canary |
 | `readiness-unknown-not-ineligible` | What does KABIL need for HDFC Bank? | `expected_tools: [explain_match]`, `must_not_mention: [not eligible, ineligible]`, `skills_read: [application-readiness]` | canary |
 | `readiness-statutory-first` | What does KABIL need for HDFC Bank? | `must_mention: [CSR-1]`; CSR-1 named before ITR-7 (an `order` gate) | — |
