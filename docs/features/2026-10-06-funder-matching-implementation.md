@@ -52,6 +52,8 @@ met / fail / unknown checks and a weighted score range. M1 and M2 of the engine 
 | R7 | **`projects_3` reads `org.projects`.** These are grants with `org_id` set, and org-owned programmes. A project is complete when funder, amount, theme, duration and results are all present. | the weights commit named the check but no evidence row |
 | R8 | **Evidence is a typed bundle** (`OrgEvidence`, `FunderEvidence`), not a flat list of records. Each evaluator still declares its `reads`, and the resolver loads only the kinds that are read. | typed fields make the pure evaluators readable and their tests small |
 | R9 | **Programme themes are backfilled by a CLI command** (`backfill-programme-themes`) into `program_tags`, with `is_inferred=true` and `tagged_by='taxonomy.clause_for'`. | `ingest/writer.py` writes no programmes, so there is no writer to hook |
+| R10 | **`check_blocked` is skipped when picking a credential's latest event.** A `registered` in 2020 followed by `check_blocked` in 2025 still reads as registered. | the check could not run, so it says nothing either way |
+| R11 | **Every org place counts**, whatever its role, plus `orgs.registered_location_id`. On both sides, a `valid_to` in the past drops the row. The registered-office exclusion (R4) is funder-side only. | an NGO's registered district is where it works; a funder's head office is not where it gives |
 
 ## File structure
 

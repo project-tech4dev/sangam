@@ -5,7 +5,17 @@ from __future__ import annotations
 from datetime import date
 
 from app.matching.evaluators import REGISTRY, run
-from app.matching.evidence import Doc, Fact, FunderEvidence, OrgEvidence, PairFit, Project
+from app.matching.evidence import (
+    FUNDER_KINDS,
+    ORG_KINDS,
+    PAIR_KINDS,
+    Doc,
+    Fact,
+    FunderEvidence,
+    OrgEvidence,
+    PairFit,
+    Project,
+)
 from app.matching.models import FunderRef, OrgRef
 
 KABIL = OrgRef(id=9, name="KABIL")
@@ -213,3 +223,8 @@ class TestMinProjects:
 
     def test_none_recorded_is_not_researched(self):
         assert check("min_projects", org(), count=3).basis == "not_researched"
+
+
+def test_every_kind_an_evaluator_reads_has_a_loader():
+    loadable = ORG_KINDS | FUNDER_KINDS | PAIR_KINDS
+    assert {name: spec.reads - loadable for name, spec in REGISTRY.items() if spec.reads - loadable} == {}
