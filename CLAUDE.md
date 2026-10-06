@@ -41,7 +41,15 @@ make smoke               # end-to-end check of backend + frontend + chat wire
                          # SMOKE_SKIP_LLM=1 make smoke  → skips the one real agent call
 make migrate             # apply db/migrations/*.sql   (make migrate-status to inspect)
 make psql                # interactive shell against whichever DB ENV selects
+make criteria-load       # validate matching criteria YAML, store as a draft
+make criteria-activate VERSION=N   # make it live; rollback = an older VERSION
+make match ORG=kabil     # shortlist funders (make match-explain ORG= FUNDER= for one pair)
+make programme-themes    # tag programmes with a Schedule VII clause; stage 1 reads them
 ```
+
+The matching targets need `pyyaml` in the backend image. `make up` builds, so an image that
+predates it fails `load` on `import yaml` until the next `make up`. Design and rulings:
+`docs/features/2026-10-06-funder-matching-*.md`.
 
 Running a piece outside Docker:
 
@@ -146,6 +154,9 @@ backend/app/
   ingest/          agent.py (builds Sangam Import) · instructions.md · skills/
                    tools/ every tool it has, and nothing else in ingest/ is one
                    the rest is the pipeline: runner · writer · promote · matcher
+  matching/        funder matching, deterministic: evidence.py (loaders, stage-1 SQL) ·
+                   evaluators.py (pure checks) · engine.py · config.py (criteria schema) ·
+                   registry.py (criteria_sets) · service.py · __main__.py (CLI) · criteria/*.yaml
   integrations/    graphiti.py (Neo4j client lifecycle)
 
 frontend/
