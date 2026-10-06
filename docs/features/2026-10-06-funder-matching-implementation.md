@@ -449,6 +449,10 @@ Two existing rules are adjusted to fit:
 - [ ] Run `pytest -m "not integration"` in full: `test_sql_compare` reads the prompt too.
 - [ ] Commit `feat(agent): route judgements to the matching tools`.
 
+*(Ruling while implementing: Tasks 11 and 12 ship as one commit. Registering the tools makes
+`test_prompt_names_every_registered_tool` fail until the prompt names them, so committing
+them separately would leave one commit red.)*
+
 ### Task 13: eval trajectory gates (E4, minus skills)
 
 **Files:**

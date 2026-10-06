@@ -23,7 +23,7 @@ REASONS = {
     "pan_india_stated": "says it funds across India",
     "region_membership_not_recorded": "states a region ({regions}); which states it covers is not recorded",
     "no_overlap_stated": "funds only elsewhere: {stated} stated places, none shared",
-    "no_overlap_observed": "has given elsewhere ({observed} places) but never states a limit",
+    "no_overlap_observed": "has given elsewhere (places given: {observed}) but never states a limit",
     "funder_places_not_recorded": "where it gives is not recorded",
     "org_places_not_recorded": "the organisation's places are not recorded",
     # theme and programme
@@ -77,8 +77,14 @@ class _Params(dict):
         return "?"
 
 
+def _plain(value) -> str:
+    """A Schedule VII slug as words: csr-education-and-livelihoods → education & livelihoods."""
+    s = str(value)
+    return s[4:].replace("-and-", " & ").replace("-", " ") if s.startswith("csr-") else s
+
+
 def phrase(code: str, params: dict) -> str:
-    shown = _Params({k: ", ".join(map(str, v)) if isinstance(v, list | tuple) else v for k, v in params.items()})
+    shown = _Params({k: ", ".join(map(_plain, v)) if isinstance(v, list | tuple) else v for k, v in params.items()})
     return REASONS.get(code, code.replace("_", " ")).format_map(shown)
 
 
@@ -121,9 +127,14 @@ def _cap(lines: list[str]) -> str:
     return "\n".join(out)
 
 
+def _outcome(outcome: str, basis: str, code: str, params: dict) -> str:
+    m, p = mark(outcome, basis), phrase(code, params)
+    return m if m.endswith(p) else f"{m} — {p}"
+
+
 def _check_line(c: CheckResult) -> str:
     cites = (" " + " ".join(c.cites)) if c.cites else ""
-    return f"  {c.label}: {mark(c.outcome, c.basis)} — {phrase(c.reason_code, c.reason_params)}{cites}"
+    return f"  {c.label}: {_outcome(c.outcome, c.basis, c.reason_code, c.reason_params)}{cites}"
 
 
 def _score(a: Assessment) -> str:
@@ -151,7 +162,7 @@ def render_shortlist(sl: Shortlist) -> str:
     first = sl.offset + 1
     lines.append(f"\nRANKED ({ranked_total})" + (f", showing {first}–{sl.offset + len(sl.ranked)}" if sl.ranked else ""))
     for i, a in enumerate(sl.ranked, start=first):
-        fit = "; ".join(f"{c.label.lower()} {mark(c.outcome, c.basis)}: {phrase(c.reason_code, c.reason_params)}"
+        fit = "; ".join(f"{c.code} {_outcome(c.outcome, c.basis, c.reason_code, c.reason_params)}"
                         for c in a.checks if c.category == "fit")
         lines.append(f"{i}. {_funder(a.funder)} · {a.gate_status} · {_score(a)} · {fit}")
     lines.append(f"\nNOT ENOUGH RECORDED TO RANK ({len(sl.not_enough_recorded)}): fit is unknown, not poor")
@@ -254,7 +265,7 @@ def render_funder(pf: FunderProfile) -> str:
 # --- search and resolution ---------------------------------------------------------------------
 
 def _dims(dims: dict[str, Dimension]) -> str:
-    return "; ".join(f"{k} {mark(d.outcome, d.basis)}: {phrase(d.reason_code, d.reason_params)}"
+    return "; ".join(f"{k} {_outcome(d.outcome, d.basis, d.reason_code, d.reason_params)}"
                      for k, d in dims.items())
 
 

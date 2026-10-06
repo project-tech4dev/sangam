@@ -12,6 +12,8 @@ from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry
 from app.agent.models import resolve_model
 from app.agent.prompt import SYSTEM_PROMPT
 from app.agent.tools.graph_tools import search_graph
+from app.agent.tools.match_tools import explain_match, match_funders
+from app.agent.tools.profile_tools import find_funders, get_funder, get_org
 from app.agent.tools.sql_tools import (
     db_describe_table,
     db_list_tables,
@@ -22,8 +24,8 @@ from app.agent.tools.web import fetch_url
 from app.core.config import Settings
 from app.integrations.tracing import trace_config
 
-# The agent reaches the database ONE way: it discovers the schema, then writes a SELECT. There used to be
-# four hand-written tools alongside these (search_orgs, get_funder, get_grants, get_fit_scores) wrapping.
+# Facts come through model-written SQL; judgements of fit and profiles come through the matching engine,
+# whose tools read the same bundle its evaluators do — one reader, not a curated second query (R17).
 TOOLS = [
     db_list_tables,
     db_describe_table,
@@ -31,6 +33,11 @@ TOOLS = [
     db_query,
     search_graph,
     fetch_url,
+    match_funders,
+    explain_match,
+    get_org,
+    get_funder,
+    find_funders,
 ]
 
 

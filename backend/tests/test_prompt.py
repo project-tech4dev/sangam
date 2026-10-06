@@ -64,41 +64,32 @@ def test_retry_budget_in_the_prompt_matches_the_middleware():
     assert f"After {MAX_SQL_ATTEMPTS} failed attempts" in SYSTEM_PROMPT
 
 
-class TestFunderShortlistProcedure:
-    """Flow 2: one counted query, and an unknown funder never reads as a poor match."""
+class TestRouting:
+    """Judgements and profiles go to the matching tools; SQL keeps every other fact (M3)."""
 
-    def test_unrankable_funders_are_a_named_block(self):
-        assert "not enough recorded to rank" in SYSTEM_PROMPT
+    MATCHING = ("match_funders", "explain_match", "get_org", "get_funder", "find_funders")
 
-    def test_each_criterion_has_three_states(self):
-        for state in ("match", "no overlap", "not recorded"):
-            assert state in SYSTEM_PROMPT
+    def test_rule_11_names_every_matching_tool_and_db_query(self):
+        assert all(t in _rule(11) for t in (*self.MATCHING, "db_query"))
 
-    def test_counts_travel_with_their_denominators(self):
-        assert "criteria_known" in SYSTEM_PROMPT and "criteria_met" in SYSTEM_PROMPT
+    def test_a_judgement_is_never_rebuilt_in_sql(self):
+        assert "Never re-derive a judgement" in _rule(12)
 
-    def test_thematic_join_goes_through_the_crosswalk(self):
-        assert "maps_to" in SYSTEM_PROMPT
+    def test_an_ambiguous_name_is_asked_about(self):
+        assert "ask the user which one" in _rule(13) and "Never pick" in _rule(13)
 
-    def test_the_assessment_is_offered_not_run(self):
-        assert "do not run it unasked" in SYSTEM_PROMPT.lower()
+    def test_unrankable_funders_are_a_named_block_and_the_version_is_stated(self):
+        assert "not enough recorded to rank" in _rule(14) and "criteria version" in _rule(14)
 
-
-class TestFunderAssessmentProcedure:
-    """Flow 1: the rubric is read from the database, and what could not be scored is half the answer."""
-
-    def test_weights_come_from_the_rubric_table(self):
-        assert "rubric_criteria" in SYSTEM_PROMPT
-
-    def test_total_is_out_of_available_points(self):
-        assert "available points" in SYSTEM_PROMPT and "never out of 100" in SYSTEM_PROMPT
-
-    def test_grant_size_is_named_unscorable(self):
-        # funders.grant_size_min/max are not catalogued and never written, so 6a cannot be scored.
-        assert "6a" in SYSTEM_PROMPT and "grant size" in SYSTEM_PROMPT.lower()
+    def test_only_a_marked_fail_is_a_failure(self):
+        assert "Only a check the tool marks fail" in _rule(14)
 
     def test_empty_eligibility_reads_as_unrecorded(self):
-        assert "no eligibility bars recorded" in SYSTEM_PROMPT
+        assert "no eligibility bars recorded" in _rule(15)
+
+    def test_sql_no_longer_claims_every_data_question(self):
+        assert "Every data question is answered by writing SQL" not in SYSTEM_PROMPT
+        assert "compare, rank" not in SYSTEM_PROMPT
 
 
 class TestStoredAndComputedScoresStayApart:
@@ -113,31 +104,3 @@ class TestStoredAndComputedScoresStayApart:
 
 def _rule(n: int) -> str:
     return SYSTEM_PROMPT.split(f"\n{n}. ")[1].split(f"\n{n + 1}. ")[0]
-
-
-class TestShortlistGeographyAndLimits:
-    """Review fixes: what the shortlist's columns must say about real rows."""
-
-    def test_org_states_include_state_rows_not_just_district_parents(self):
-        # Goonj has 7 state-level org_locations rows; a state's parent is India, a country.
-        assert "kind = 'state'" in _rule(12)
-
-    def test_a_region_is_known_never_met(self):
-        # "Northeast India" has no child states in locations, so it cannot be expanded.
-        assert "stated regional" in _rule(12)
-
-    def test_a_cut_result_is_requeried_not_reported_short(self):
-        assert "not shown" in _rule(12)
-
-    def test_a_missing_maps_to_key_is_not_a_decided_null(self):
-        # ->> reads NULL for both; only the JSON null is a decision.
-        assert "'null'::jsonb" in _rule(12)
-
-
-class TestAssessmentArithmetic:
-    def test_available_points_come_from_sub_criteria_only(self):
-        # rubric_criteria holds parent rows too; summing both double-counts M.
-        assert "parent_id IS NOT NULL" in _rule(16)
-
-    def test_a_stored_score_keeps_its_own_scale(self):
-        assert "own scale" in _rule(19)
