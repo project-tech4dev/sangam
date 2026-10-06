@@ -22,7 +22,8 @@ END $$;
 REVOKE ALL ON FUNCTION app.assert_no_other_org(bigint, uuid, text) FROM public;
 
 -- 3. The two functions that can make someone an admin or member (0028) now ask it first. CREATE OR REPLACE
--- keeps their grants; only the PERFORM line is new in each.
+-- keeps their grants; only the PERFORM line is new in each, and add_org_member also finds only people who
+-- have signed in: a users row with no auth_user_id is not an account yet.
 CREATE OR REPLACE FUNCTION app.add_org_member(p_org_id bigint, p_email text, p_role text) RETURNS uuid
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -31,7 +32,7 @@ BEGIN
   IF NOT app.can_manage_org(p_org_id) THEN
     RAISE EXCEPTION 'Only an admin of this organisation can add members.' USING ERRCODE = '42501';
   END IF;
-  SELECT id INTO v_user FROM users WHERE lower(email) = lower(trim(p_email));
+  SELECT id INTO v_user FROM users WHERE lower(email) = lower(trim(p_email)) AND auth_user_id IS NOT NULL;
   IF v_user IS NULL THEN
     RAISE EXCEPTION 'No Sangam account uses %. They need to sign in once first.', trim(p_email);
   END IF;

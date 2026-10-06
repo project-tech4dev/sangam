@@ -45,12 +45,12 @@ def _world(conn) -> dict:
     people = {}
     for name, staff in [("member_a", False), ("steward_a", False), ("admin_a", False), ("member_b", False),
                         ("nobody", False), ("staff", True)]:
-        auth_id = uuid4()
+        auth_id, email = uuid4(), f"{name}-{tag}@rls.test"
         user_id = one(
             "INSERT INTO users (email, auth_user_id, is_staff) VALUES (%s, %s, %s) RETURNING id",
-            (f"{name}-{tag}@rls.test", auth_id, staff),
+            (email, auth_id, staff),
         )["id"]
-        people[name] = {"user_id": user_id, "sub": str(auth_id)}
+        people[name] = {"user_id": user_id, "sub": str(auth_id), "email": email}
     for name, org, role in [("member_a", a, "member"), ("steward_a", a, "steward"), ("admin_a", a, "admin"),
                             ("member_b", b, "member")]:
         conn.execute("INSERT INTO org_members (user_id, org_id, role) VALUES (%s, %s, %s)",
@@ -194,6 +194,11 @@ def _call(conn, who, sql, params=()):
     return None
 
 
+
+def _add(conn, who, org_id, email, role="member"):
+    return _call(conn, who, "SELECT app.add_org_member(%s, %s, %s)", (org_id, email, role))
+
+
 @pytest.mark.parametrize(
     "name, expected",
     [("admin_a", None), ("staff", None), ("member_a", errors.InsufficientPrivilege),
@@ -201,59 +206,51 @@ def _call(conn, who, sql, params=()):
 )
 def test_only_an_admin_or_staff_manages_an_orgs_members(db, name, expected):
     conn, world = db
-    people = world["people"]
-    who = people[name]
-    nobody = conn.execute("SELECT email FROM users WHERE id = %s", (people["nobody"]["user_id"],)).fetchone()
-    a = world["a"]
-    assert _call(conn, who, "SELECT app.add_org_member(%s, %s, 'member')", (a, nobody["email"])) is expected
-    assert _call(conn, who, "SELECT app.set_org_member_role(%s, %s, 'steward')",
-                 (a, people["member_a"]["user_id"])) is expected
-    assert _call(conn, who, "SELECT app.remove_org_member(%s, %s)", (a, people["member_a"]["user_id"])) is expected
+    people, a = world["people"], world["a"]
+    who, member = people[name], people["member_a"]["user_id"]
+    assert _add(conn, who, a, people["nobody"]["email"]) is expected
+    assert _call(conn, who, "SELECT app.set_org_member_role(%s, %s, 'steward')", (a, member)) is expected
+    assert _call(conn, who, "SELECT app.remove_org_member(%s, %s)", (a, member)) is expected
 
 
 def test_an_org_keeps_its_last_admin(db):
     conn, world = db
-    admin = world["people"]["admin_a"]
-    a = world["a"]
+    admin, a = world["people"]["admin_a"], world["a"]
     assert _call(conn, admin, "SELECT app.set_org_member_role(%s, %s, 'member')",
                  (a, admin["user_id"])) is errors.RaiseException
     assert _call(conn, admin, "SELECT app.remove_org_member(%s, %s)", (a, admin["user_id"])) is errors.RaiseException
 
 
-def test_adding_needs_an_existing_account_and_no_duplicate(db):
+def test_adding_someone_already_in_the_org_is_refused(db):
     conn, world = db
     people = world["people"]
-    admin = people["admin_a"]
-    a = world["a"]
-    assert _call(conn, admin, "SELECT app.add_org_member(%s, 'no-such@rls.test', 'member')",
-                 (a,)) is errors.RaiseException
-    member = conn.execute("SELECT email FROM users WHERE id = %s", (people["member_a"]["user_id"],)).fetchone()
-    assert _call(conn, admin, "SELECT app.add_org_member(%s, %s, 'member')",
-                 (a, member["email"])) is errors.RaiseException
+    assert _add(conn, people["admin_a"], world["a"], people["member_a"]["email"]) is errors.RaiseException
 
 
-def test_an_admin_or_member_belongs_to_one_org_only(db):
+@pytest.mark.parametrize("name", ["admin_a", "staff"])
+@pytest.mark.parametrize("users_row", [False, True], ids=["no users row", "users row, never signed in"])
+def test_only_someone_who_has_signed_in_can_be_added(db, name, users_row):
+    conn, world = db
+    email = f"never-{uuid4().hex[:8]}@rls.test"
+    if users_row:
+        conn.execute("INSERT INTO users (email) VALUES (%s)", (email,))
+    assert _add(conn, world["people"][name], world["a"], email) is errors.RaiseException
+
+
+@pytest.mark.parametrize("role", ["member", "admin"])
+def test_an_admin_or_member_belongs_to_one_org_only(db, role):
     conn, world = db
     people = world["people"]
-    admin = people["admin_a"]
-    a = world["a"]
-    member_b = conn.execute("SELECT email FROM users WHERE id = %s", (people["member_b"]["user_id"],)).fetchone()
-    assert _call(conn, admin, "SELECT app.add_org_member(%s, %s, 'member')",
-                 (a, member_b["email"])) is errors.RaiseException
-    assert _call(conn, admin, "SELECT app.add_org_member(%s, %s, 'admin')",
-                 (a, member_b["email"])) is errors.RaiseException
+    assert _add(conn, people["admin_a"], world["a"], people["member_b"]["email"], role) is errors.RaiseException
 
 
 def test_a_steward_may_support_another_org_but_not_join_it(db):
     conn, world = db
-    people = world["people"]
-    admin = people["admin_a"]
-    a = world["a"]
+    people, a = world["people"], world["a"]
     member_b = people["member_b"]
-    email = conn.execute("SELECT email FROM users WHERE id = %s", (member_b["user_id"],)).fetchone()["email"]
     with conn.transaction(force_rollback=True):
-        _as(conn, admin)
-        conn.execute("SELECT app.add_org_member(%s, %s, 'steward')", (a, email))
+        _as(conn, people["admin_a"])
+        conn.execute("SELECT app.add_org_member(%s, %s, 'steward')", (a, member_b["email"]))
         with pytest.raises(errors.RaiseException), conn.transaction():
             conn.execute("SELECT app.set_org_member_role(%s, %s, 'member')", (a, member_b["user_id"]))
 

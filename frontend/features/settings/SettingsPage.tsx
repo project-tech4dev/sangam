@@ -1,6 +1,8 @@
 import { apiGet } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
-import { OrgMembersCard, type OrgMember } from "./OrgMembersCard";
+import { OrgMembersCard } from "./OrgMembersCard";
+import type { OrgMember } from "./members-api";
+import { StaffMembersCard, type OrgOption } from "./StaffMembersCard";
 
 type Me = {
   id: string;
@@ -17,6 +19,7 @@ export async function SettingsPage() {
   const members = await Promise.all(
     adminOrgs.map((m) => apiGet<OrgMember[]>(`/api/orgs/${m.org_id}/members`)),
   );
+  const allOrgs = me?.is_staff ? await apiGet<OrgOption[]>("/api/orgs") : [];
 
   return (
     <div className="sangam-ui">
@@ -60,8 +63,12 @@ export async function SettingsPage() {
               orgName={m.org_name}
               meId={me.id}
               initialMembers={members[i]}
+              note="You manage this list because you are an admin of the organisation."
             />
           ))}
+        {me?.is_staff && (
+          <StaffMembersCard orgs={allOrgs.map((o) => ({ id: o.id, name: o.name }))} meId={me.id} />
+        )}
       </main>
     </div>
   );
