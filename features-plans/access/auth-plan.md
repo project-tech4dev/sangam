@@ -86,9 +86,10 @@ may see.
 
 ### Step 5: Database roles and the access functions
 
-**What changes:** one migration adds the `app.*` functions and removes Supabase's default access to
-every table, then grants access table by table. The app still connects as the owner, so **nothing
-changes for users yet**.
+**What changes:** three migrations. `0023` adds the `anon` and `authenticated` roles, `0024` the
+`app.*` functions, and `0025` removes Supabase's default access to every table, then grants access
+table by table; a table left out of its lists fails the migration. The app still connects as the
+owner, so **nothing changes for users yet**.
 
 **How to test**
 - `make migrate`.
@@ -100,9 +101,12 @@ changes for users yet**.
 - One middleware handles the token for every request: it reads `Authorization`, checks the token,
   finds or creates the `users` row, and keeps who is calling for the rest of the request. It does this
   as the owner, because it writes `users` rows no caller may write.
-- `get_pool()` returns the pool as that caller: `anon` when signed out, `authenticated` with their
+- `PoolDep` becomes the pool as that caller: `anon` when signed out, `authenticated` with their
   claims when signed in. Routers keep `pool: PoolDep`, so no route file changes and a new route runs
-  as the caller without having to ask.
+  as the caller without having to ask. Identity code takes `OwnerPoolDep`.
+- `get_pool()` stays the owner. The agent tools and the Import runner call it outside any request, and
+  Import writes the catalog as the owner; running them as the caller is step 8.
+- `0026` gives the seeded dev user an `auth_user_id`, so the access functions still recognise it.
 - `get_current_user`, `require_user` and `require_staff` read the caller the middleware kept instead of
   checking the token again.
 - A table the role cannot use returns 403 instead of 500.
@@ -121,11 +125,90 @@ changes for users yet**.
 
 ### Step 7: RLS rules
 
-**What changes:** RLS is turned on, with one rule per kind of table (see "Which rule each table gets"
-in the roles doc).
+**What changes:** `0027` turns RLS on for every table, with one rule per kind of table (see "Which rule
+each table gets" in the roles doc), and fails if a table either role can read has no rule. A row of an
+`org_*` or `funder_*` table follows its org or funder, so a hidden org hides its rows too, and a chunk
+follows its document. Writes go to orgs in `app.my_writable_org_ids()`, and staff may write wherever a
+route already lets them.
 
-**How to test:** open the same org page as a member of Org A, a member of Org B, and staff. Each sees
-only what they should.
+**How to test**
+- `pytest tests/test_rls.py` runs each role against each kind of table, in a transaction that is rolled
+  back.
+- Open the same org page as a member of Org A, a member of Org B, and staff. Each sees only what they
+  should.
+
+#### Public tables: everyone, signed out too
+
+These 23 tables are granted to `anon` and `authenticated`, and their rule is `USING (true)`: everyone,
+signed out or signed in, sees every row. Nobody writes to them through the app, except a member adding a
+score adjustment to their own org's score.
+
+| Group | Tables |
+|---|---|
+| Programs | `programs`, `program_locations`, `program_tags` |
+| Grants | `grants`, `grant_locations` |
+| RFPs | `rfps`, `rfp_locations`, `rfp_tags` |
+| Scoring | `rubrics`, `rubric_criteria`, `fit_scores`, `fit_score_items`, `score_adjustments` |
+| Signals | `credential_events`, `news_mentions`, `metrics`, `reference_figures`, `extraction_log` |
+| Reference | `tags`, `locations`, `location_designations`, `proposal_templates`, `template_items` |
+
+#### Every other table: who reads
+
+"Their org" means the org the row belongs to. A member, admin or steward of it is one of "its people".
+
+| Kind | Tables | Signed out | Signed in, no org | Its people | Staff |
+|---|---|---|---|---|---|
+| Public unless hidden | `orgs` | ✔ not hidden | ✔ not hidden | ✔ also their hidden org | ✔ all |
+| | `funders` | ✔ not hidden | ✔ not hidden | ✔ not hidden | ✔ all |
+| Follows its org | `org_locations`, `org_tags`, `org_financials` | as `orgs` | as `orgs` | as `orgs` | ✔ all |
+| Follows its funder | `funder_csr_spend`, `funder_csr_years`, `funder_footprints`, `funder_identifiers`, `funder_locations`, `funder_partners`, `funder_tags`, `funder_eligibility` | as `funders` | as `funders` | as `funders` | ✔ all |
+| Public by flag | `contacts`, `documents`, `org_identifiers` | ✔ public rows | ✔ public rows | ✔ public + their org's private | ✔ all |
+| Follows its document | `chunks` | as `documents` | as `documents` | as `documents` | ✔ all |
+| Org-private | `proposals`, `rfp_matches` | ✘ 403 | 0 rows | ✔ their org's | ✔ all |
+| Own rows | `users`, `org_members` | ✘ 403 | ✔ own row | ✔ own rows | ✔ all |
+| | `threads` | ✘ 403 | ✔ own chats | ✔ own + shared with them¹ | ✔ all |
+| Staff only (Import) | `ingest_runs`, `ingest_run_items`, `ingest_source_proposals`, `entity_research`, `resolution_queue` | ✘ 403 | 0 rows | 0 rows | ✔ all |
+| Closed | `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations`, `schema_migrations`, `graph_ingest_log` | ✘ 403 | ✘ 403 | ✘ 403 | ✘ 403² |
+
+¹ A chat shared with `team` opens for the org's members and admins; one shared with `team_and_stewards`
+for its stewards too.
+² Through the app. The backend reads them as the owner, which RLS does not apply to.
+
+#### Who writes
+
+Signed out writes nothing: `anon` has no write grant. There is no DELETE anywhere. "Member or admin"
+means of the row's org; a steward never writes.
+
+| Table | Insert | Update | Who | Route |
+|---|---|---|---|---|
+| `contacts` | ✔ | ✔ | Member or admin, staff | `POST`/`PATCH /api/contacts` |
+| `documents` | ✔ | ✘ | Member or admin, staff | `POST /api/documents` (vault upload) |
+| `score_adjustments` | ✔ | ✘ | Member or admin of the score's org, staff | `POST /api/scores/{id}/adjustments` |
+| `rfp_matches` | ✘ | ✔ | Member or admin, staff | `PATCH /api/rfps/{id}/matches/{org_id}` |
+| `proposals` | ✔ | ✔ | Member or admin only, **not staff** (open question) | none yet |
+| `threads` | ✔ | ✘ | Anyone signed in, only as themselves | claiming a new chat |
+| Every other table | ✘ | ✘ | Nobody through the app; Import and the seeds write as the owner | — |
+
+#### Contacts, documents and org identifiers
+
+These are public by flag: a row with `is_public = true` goes to everyone, one with `is_public = false`
+only to that org's people and staff. A private funder contact has no org, so only staff see it.
+
+What a person sees, for public rows and for the private rows of Org 1:
+
+| Who | Public rows | Org 1's private rows | Org 2's private rows | Can add or edit Org 1's contacts |
+|---|---|---|---|---|
+| Signed out | ✔ | ✘ | ✘ | ✘ |
+| Signed in, no org | ✔ | ✘ | ✘ | ✘ |
+| Member of Org 1 | ✔ | ✔ | ✘ | ✔ |
+| Admin of Org 1 | ✔ | ✔ | ✘ | ✔ |
+| Steward of Org 1 | ✔ | ✔ | ✘ | ✘ (reads only) |
+| Member of Org 2 | ✔ | ✘ | ✔ | ✘ |
+| Staff | ✔ | ✔ | ✔ | ✔ |
+
+So a member of Org 1 who signs in sees every public contact plus Org 1's private ones, and none of any other
+org's. The same holds for documents (a member or admin may also upload to their own org's vault) and org
+identifiers (read only).
 
 #### How public and private tables are set up
 

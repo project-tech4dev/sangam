@@ -7,12 +7,11 @@ import httpx
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 
 from app.core import security
 from app.core.config import Settings
-from app.core.security import DEV_USER_ID, CurrentUser, get_principal
-from app.db.pool import get_pool
+from app.core.security import DEV_USER_ID, AuthMiddleware, CurrentUser, get_principal
 from tests.conftest import _SentinelPool
 
 PROJECT = "https://testproject.supabase.co"
@@ -53,26 +52,31 @@ def auth(monkeypatch):
         return {"id": USER_ID, "is_staff": False}
 
     monkeypatch.setattr(security.repo, "resolve_auth_user", fake_resolve)
+    monkeypatch.setattr(security, "get_pool", _SentinelPool)
     return SimpleNamespace(use=use, calls=calls)
 
 
-async def call(authorization: str | None = None) -> httpx.Response:
+async def call(authorization: str | None = None, path: str = "/whoami") -> httpx.Response:
     app = FastAPI()
+    app.add_middleware(AuthMiddleware)
 
     @app.get("/whoami")
-    async def whoami(user: Annotated[CurrentUser, Depends(get_principal)]):
-        return {"id": user.id and str(user.id), "email": user.email}
+    async def whoami(request: Request, user: Annotated[CurrentUser, Depends(get_principal)]):
+        return {"id": user.id and str(user.id), "email": user.email, "role": request.state.db_role}
 
-    app.dependency_overrides[get_pool] = _SentinelPool
+    @app.get("/health")
+    async def health():
+        return {"status": "ok"}
+
     headers = {"Authorization": authorization} if authorization else {}
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
-        return await c.get("/whoami", headers=headers)
+        return await c.get(path, headers=headers)
 
 
 async def test_valid_token_resolves_the_users_row(auth):
     response = await call(f"Bearer {token()}")
     assert response.status_code == 200
-    assert response.json() == {"id": str(USER_ID), "email": "person@ngo.org"}
+    assert response.json() == {"id": str(USER_ID), "email": "person@ngo.org", "role": "authenticated"}
     assert auth.calls == [{"auth_user_id": SUB, "email": "person@ngo.org", "display_name": "A Person"}]
 
 
@@ -85,7 +89,7 @@ async def test_expired_token_is_401(auth):
 async def test_no_header_is_anonymous(auth):
     response = await call(None)
     assert response.status_code == 200
-    assert response.json() == {"id": None, "email": None}
+    assert response.json() == {"id": None, "email": None, "role": "anon"}
 
 
 async def test_auth_off_means_the_dev_user(auth):
@@ -93,3 +97,15 @@ async def test_auth_off_means_the_dev_user(auth):
     response = await call(f"Bearer {token()}")
     assert response.json()["id"] == str(DEV_USER_ID)
     assert auth.calls == []
+
+
+async def test_a_bad_token_is_answered_by_the_middleware(auth):
+    response = await call("Bearer not-a-token")
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+async def test_open_paths_skip_the_token(auth):
+    response = await call("Bearer not-a-token", path="/health")
+    assert response.status_code == 200
+
