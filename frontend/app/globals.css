@@ -24,6 +24,7 @@
 @source "../features/ask";
 @source "../features/taxonomy";
 @source "../features/resources";
+@source "../features/access-check";
 
 @custom-variant dark (&:is(.dark *));
 
