@@ -5,7 +5,9 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict
 
@@ -61,8 +63,13 @@ def _unknown(reason: str, basis: Basis = "not_researched", **params) -> Check:
 # --- credentials ---------------------------------------------------------------------------
 
 _ACTIVE = {"registered", "renewed", "checked_active", "restored"}
-_LAPSED = {"expired", "suspended", "cancelled", "surrendered", "superseded"}
+_LAPSED = {"expired", "suspended", "cancelled", "surrendered"}
+"""`superseded` is not here: a 12A re-registered as 12AB is superseded, not lapsed."""
 _SEARCHED = {"not_found", "not_available"}
+
+
+def _today():
+    return datetime.now(ZoneInfo("Asia/Kolkata")).date()
 
 
 class HasIdentifierParams(Params):
@@ -79,14 +86,20 @@ def _mentions(text: str, term: str) -> bool:
                                     "org.research"}, params=HasIdentifierParams)
 def has_identifier(org: OrgEvidence, _f, p: HasIdentifierParams) -> Check:
     event = org.credential_events.get(p.id_type)
-    if event and event.value in _LAPSED:
-        return Check("fail", event.basis, event.value, {"as_of": event.as_of}, (event.cite,))
     vault = [d for d in org.documents.get(p.doc_type or "", ()) if d.vault]
+    ident = org.identifiers.get(p.id_type)
+    if event and event.value in _LAPSED:
+        if vault or ident:  # two sources disagree; neither is positive evidence of a fail
+            return _unknown("conflicting_evidence", "recorded", event=event.value, as_of=event.as_of)
+        return Check("fail", event.basis, event.value, {"as_of": event.as_of}, (event.cite,))
     if vault:
         return Check("met", "on_file", "document_on_file", {"document_id": vault[0].id}, (org.cite,))
-    ident = org.identifiers.get(p.id_type)
     if ident:
         return Check("met", ident.basis, "recorded", {"value": ident.value}, (ident.cite,))
+    if event and event.value == "superseded":
+        return _unknown("superseded", "recorded", as_of=event.as_of)
+    if event and event.value in _ACTIVE and event.valid_until and event.valid_until < _today():
+        return _unknown("validity_ended", "recorded", valid_until=event.valid_until.isoformat())
     if event and event.value in _ACTIVE:
         return Check("met", event.basis, event.value, {"as_of": event.as_of}, (event.cite,))
     if event and event.value in _SEARCHED:
@@ -132,9 +145,11 @@ def shares_theme(org: OrgEvidence, f: FunderEvidence | None, _p) -> Check:
     if f.fit.shared_tag_clauses:
         return Check("met", "recorded", "shared_theme", {"shared": list(f.fit.shared_tag_clauses)},
                      (org.cite, f.cite))
-    if f.fit.tag_clauses:
-        return Check("fail", "recorded", "no_shared_theme", {"funder_themes": list(f.fit.tag_clauses)},
+    if f.fit.asserted_tag_clauses:  # only tags a person set can rule a theme out
+        return Check("fail", "recorded", "no_shared_theme", {"funder_themes": list(f.fit.asserted_tag_clauses)},
                      (org.cite, f.cite))
+    if f.fit.tag_clauses:
+        return _unknown("funder_themes_inferred_only", "recorded", funder_themes=list(f.fit.tag_clauses))
     return _unknown("funder_themes_not_recorded")
 
 
@@ -145,9 +160,11 @@ def shares_programme_theme(org: OrgEvidence, f: FunderEvidence | None, _p) -> Ch
     if f.fit.shared_programmes:
         return Check("met", "recorded", "shared_programme_theme",
                      {"programmes": list(f.fit.shared_programmes)}, (org.cite, f.cite))
-    if f.fit.tagged_programmes:
-        return Check("fail", "recorded", "no_programme_in_theme", {"tagged": f.fit.tagged_programmes},
+    if f.fit.asserted_programmes:
+        return Check("fail", "recorded", "no_programme_in_theme", {"tagged": f.fit.asserted_programmes},
                      (org.cite, f.cite))
+    if f.fit.tagged_programmes:
+        return _unknown("funder_programmes_inferred_only", "recorded", tagged=f.fit.tagged_programmes)
     return _unknown("funder_programmes_not_tagged")
 
 

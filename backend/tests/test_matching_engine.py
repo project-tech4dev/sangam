@@ -119,7 +119,8 @@ def test_zero_evidence_is_zero_to_a_hundred_never_zero():
 
 def test_a_failed_gate_names_itself():
     o = OrgEvidence(org=KABIL, districts={1: "Udalguri"}, clauses={"x": "X"})
-    a = assess(CRITERIA, o, hdfc(stated_places=2, tag_clauses=("Sports",), tagged_programmes=1))
+    a = assess(CRITERIA, o, hdfc(stated_places=2, tag_clauses=("Sports",), asserted_tag_clauses=("Sports",),
+                                tagged_programmes=1, asserted_programmes=1))
     assert (a.gate_status, a.failed_gates) == ("failed", ["fit"])
 
 
@@ -155,3 +156,10 @@ def test_the_shipped_criteria_assess():
     a = assess(criteria, KABIL_EV, hdfc(shared_districts=("Udalguri",)))
     assert a.criteria_version == criteria.version
     assert sum(b.applicable for b in a.breakdown.values()) == 100
+
+
+def test_an_unrecorded_funder_type_keeps_the_statutory_gate():
+    a = assess(CRITERIA, OrgEvidence(org=KABIL, districts={1: "Udalguri"}, states={2: "Assam"}),
+               hdfc(ftype=None, shared_districts=("Udalguri",)))
+    assert next(c for c in a.checks if c.code == "csr_1").basis == "not_researched"
+    assert a.gate_status == "unverified"

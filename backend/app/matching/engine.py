@@ -49,7 +49,8 @@ def _containers(criteria: Criteria) -> dict[str, set[str]]:
 def _selected(selector: dict, funder: FunderEvidence) -> bool:
     if "always" in selector:
         return bool(selector["always"])
-    return funder.funder.funder_type in selector["funder_type"]
+    # An unrecorded type keeps the check: skipping it would read "type unknown" as a pass.
+    return funder.funder.funder_type is None or funder.funder.funder_type in selector["funder_type"]
 
 
 def assess(criteria: Criteria, org: OrgEvidence, funder: FunderEvidence, *, criteria_hash: str = "") -> Assessment:

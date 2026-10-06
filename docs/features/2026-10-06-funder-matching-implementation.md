@@ -46,7 +46,7 @@ met / fail / unknown checks and a weighted score range. M1 and M2 of the engine 
 | R1 | **Org places walk up**: a district also counts as its parent state. KABIL has only Udalguri (district) and is matched on Assam as well. | the district → state → country chain is complete (132/132, 34/34) |
 | R2 | **Funder places walk up the same way.** A funder district in Kamrup shares *state* Assam with KABIL. | otherwise state-level overlap is invisible whenever a funder records only districts |
 | R3 | **`area` levels**: district 1.0, state 0.6, `pan_india_stated` (a `funder_locations` row at India, the country) 0.3. **Region** (Northeast India) gives *unknown*, `region_membership_not_recorded`. | no table records which states a region contains |
-| R4 | **`area` fails only on stated geography.** A funder with `funder_locations` rows (role ≠ `registered`) and no overlap → *fail*. A funder with footprints alone and no overlap → *unknown*, `no_overlap_observed`. | footprints are sparse: spending elsewhere is not a statement that it won't fund here |
+| R4 | **`area` fails only on stated geography: `funder_locations` rows with role `funds`.** No overlap with those → *fail*. `operates`, `priority` and footprints with no overlap → *unknown*, `no_overlap_observed`. Any non-registered row still counts toward overlap, pan-India and regions. *(Amended after review: `operates` is where a plant is and `priority` is a preference; neither says it won't fund elsewhere.)* | footprints are sparse: spending elsewhere is not a statement that it won't fund here |
 | R5 | **`statutory` applies to `funder_type IN (corporate_csr, corporate_foundation)`.** M6 revisits this. | the real values; `section_135_bound` is NULL for 30 of 43 |
 | R6 | **`cvs` waits for M4** (it needs the doc vocabulary) and **`turnover` for M5** (it needs `requirement_code`). Their weight moves: governance becomes `board` 10, financial becomes `audits` 15. The total stays 100. | the loader refuses a doc type or selector that does not exist yet |
 | R7 | **`projects_3` reads `org.projects`.** These are grants with `org_id` set, and org-owned programmes. A project is complete when funder, amount, theme, duration and results are all present. | the weights commit named the check but no evidence row |
@@ -55,6 +55,10 @@ met / fail / unknown checks and a weighted score range. M1 and M2 of the engine 
 | R10 | **`check_blocked` is skipped when picking a credential's latest event.** A `registered` in 2020 followed by `check_blocked` in 2025 still reads as registered. | the check could not run, so it says nothing either way |
 | R11 | **Every org place counts**, whatever its role, plus `orgs.registered_location_id`. On both sides, a `valid_to` in the past drops the row. The registered-office exclusion (R4) is funder-side only. | an NGO's registered district is where it works; a funder's head office is not where it gives |
 | R12 | **The shortlist has three blocks.** Any gate *fail* → *did not pass*. Otherwise the `fit` group *unknown* → *not enough recorded*. Everything else is ranked, including *unverified*. | the spec names the blocks but not the line between them; a funder we cannot place or theme cannot be ranked against one we can |
+| R13 | **Inferred tags never produce *fail*.** `theme` and `prog` fail only on tags with `is_inferred = false`. Inferred-only tags give *unknown* `funder_themes_inferred_only` / `funder_programmes_inferred_only`; a shared inferred clause still counts as *met*. | 34 of 48 funder tags and every backfilled programme tag are classifier output, and a classifier is not positive evidence |
+| R14 | **An unrecorded `funder_type` keeps every `funder_type`-scoped check.** For 4 funders, statutory runs and is mostly *unknown* → *unverified*. | skipping it made "type not recorded" read as *passed* and rank above every CSR funder |
+| R15 | **Credential conflicts are *unknown*.** A lapsed event alongside a current identifier or a Vault certificate → `conflicting_evidence`. `superseded` is not lapsed (12A → 12AB). An active event past its `valid_until` → `validity_ended`. | only positive, uncontradicted evidence against the bar may fail |
+| R16 | **A check that does not apply leaves the denominator.** A private foundation is scored out of 60 (fit, governance, programme), a CSR funder out of 100. Kept: *passed* versus *unverified* sorts before the score, so a CSR funder with statutory unknowns never competes with one on score alone. | the spec says not-applicable checks drop out; scaling them in would charge a foundation for law it is not bound by |
 
 ## File structure
 
@@ -239,7 +243,9 @@ async def enrich_funders(conn, funders: dict[int, FunderEvidence], reads) -> Non
   - `load_fit` returns one row per funder, with shared districts, states, pan-India, region
     flags, stated vs observed place counts, and shared tag and programme clauses.
   - **Query count:** with 200 synthetic funders, `load_fit` + `enrich_funders` issue ≤ 6
-    queries. Counted by wrapping `conn.execute`.
+    queries, counted by wrapping `conn.execute`. Today that is 1, because `enrich_funders` loads
+    nothing until M5. A whole shortlist is about 12 (criteria 1, org 1 + 9 kinds, stage 1); the
+    claim is that this stays constant as funders grow.
 - [ ] Run. Expected: fail. Implement. Run. Expected: pass.
 - [ ] Commit `feat(matching): evidence resolver and one-query stage 1`.
 

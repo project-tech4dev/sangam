@@ -237,7 +237,7 @@ class TestLoadFit:
         await db.execute("INSERT INTO funder_locations (funder_id, location_id, role) VALUES "
                          "(%s, %s, 'funds'), (%s, %s, 'priority')", (f, world["india"], f, world["region"]))
         ev = await self.fit(db, world, f)
-        assert (ev.fit.pan_india, ev.fit.regions, ev.fit.stated_places) == (True, ("Tregion",), 2)
+        assert (ev.fit.pan_india, ev.fit.regions, ev.fit.stated_places) == (True, ("Tregion",), 1)
 
     async def test_the_registered_office_is_not_a_stated_place(self, db, world):
         f = await funder(db, "t-f-reg")
@@ -301,7 +301,7 @@ async def active(db):
 
 
 async def place_funder(db, world, slug):
-    f = await funder(db, slug)
+    f = await funder(db, slug, "private_foundation")
     await db.execute("INSERT INTO funder_locations (funder_id, location_id, role) VALUES (%s, %s, 'funds')",
                      (f, world["d1"]))
     return f
@@ -384,3 +384,34 @@ class TestCli:
         assert await cli.run(["explain", "--org", "t-org", "--funder", "t-cli-ex"], db) == 0
         out = capsys.readouterr().out
         assert "area" in out and "met" in out and "not_applicable" in out
+
+
+class TestActivateRevalidates:
+    async def test_stored_content_from_another_engine_cannot_be_activated(self, db):
+        await registry.load_draft(db, raw_criteria(1))
+        await db.execute("UPDATE criteria_sets SET engine_api = 99, content = content || '{\"engine\": 99}' "
+                         "WHERE set_name = 'test-set'")
+        with pytest.raises(CriteriaError):
+            await registry.activate(db, "test-set", 1)
+        assert (await registry.list_sets(db, "test-set"))[0]["status"] == "draft"
+
+
+class TestFitStatedVsInferred:
+    async def test_priority_and_operates_rows_are_observed_not_stated(self, db, world):
+        f = await funder(db, "t-f-prio")
+        await db.execute("INSERT INTO funder_locations (funder_id, location_id, role) VALUES "
+                         "(%s, %s, 'priority'), (%s, %s, 'operates')", (f, world["other_state"], f, world["region"]))
+        ev = (await evidence.load_fit(db, await load(db, world)))[f]
+        assert (ev.fit.stated_places, ev.fit.observed_places, ev.fit.regions) == (0, 2, ("Tregion",))
+
+    async def test_only_non_inferred_tags_are_asserted(self, db, world):
+        f = await funder(db, "t-f-inf")
+        await db.execute("INSERT INTO funder_tags (funder_id, tag_id, role, is_inferred) VALUES "
+                         "(%s, %s, 'primary', true), (%s, %s, 'secondary', false)",
+                         (f, world["csr_a"], f, world["csr_b"]))
+        p = await one(db, "INSERT INTO programs (funder_id, name) VALUES (%s, 'P')", (f,))
+        await db.execute("INSERT INTO program_tags (program_id, tag_id, role, is_inferred) VALUES "
+                         "(%s, %s, 'primary', true)", (p, world["csr_b"]))
+        ev = (await evidence.load_fit(db, await load(db, world)))[f]
+        assert ev.fit.asserted_tag_clauses == ("csr-test-b",)
+        assert (ev.fit.tagged_programmes, ev.fit.asserted_programmes) == (1, 0)

@@ -76,10 +76,14 @@ class PairFit:
     pan_india: bool = False
     regions: tuple[str, ...] = ()
     stated_places: int = 0
+    """funder_locations rows with role 'funds': the only rows that can rule a place out (R4)."""
     observed_places: int = 0
     tag_clauses: tuple[str, ...] = ()
+    asserted_tag_clauses: tuple[str, ...] = ()
+    """From tags a person set (is_inferred false): the only ones that can rule a theme out."""
     shared_tag_clauses: tuple[str, ...] = ()
     tagged_programmes: int = 0
+    asserted_programmes: int = 0
     shared_programmes: tuple[str, ...] = ()
 
 
@@ -232,11 +236,12 @@ async def load_org(conn: Any, org_id: int, reads) -> OrgEvidence:
 # Stage 1: every funder against one org's places and clauses, in one query (R2, R3, R4).
 FIT_SQL = f"""
 WITH place AS (
-    SELECT fl.funder_id, l.id, l.kind, l.name, p.id AS parent_id, p.name AS parent_name, true AS stated
+    SELECT fl.funder_id, l.id, l.kind, l.name, p.id AS parent_id, p.name AS parent_name,
+           fl.role = 'funds' AS stated, true AS declared
     FROM funder_locations fl JOIN locations l ON l.id = fl.location_id LEFT JOIN locations p ON p.id = l.parent_id
     WHERE fl.role <> 'registered' AND (fl.valid_to IS NULL OR fl.valid_to >= current_date)
     UNION ALL
-    SELECT ff.funder_id, l.id, l.kind, l.name, p.id, p.name, false
+    SELECT ff.funder_id, l.id, l.kind, l.name, p.id, p.name, false, false
     FROM funder_footprints ff JOIN locations l ON l.id = ff.location_id LEFT JOIN locations p ON p.id = l.parent_id
 ), places AS (
     SELECT funder_id,
@@ -245,24 +250,26 @@ WITH place AS (
                   ORDER BY CASE WHEN kind = 'state' THEN name ELSE parent_name END)
             FILTER (WHERE (kind = 'state' AND id = ANY(%(s)s))
                        OR (kind = 'district' AND parent_id = ANY(%(s)s))) AS shared_states,
-        coalesce(bool_or(stated AND kind = 'country'), false) AS pan_india,
-        array_agg(DISTINCT name ORDER BY name) FILTER (WHERE stated AND kind = 'region') AS regions,
+        coalesce(bool_or(declared AND kind = 'country'), false) AS pan_india,
+        array_agg(DISTINCT name ORDER BY name) FILTER (WHERE declared AND kind = 'region') AS regions,
         count(DISTINCT id) FILTER (WHERE stated) AS stated_places,
         count(DISTINCT id) FILTER (WHERE NOT stated) AS observed_places
     FROM place GROUP BY funder_id
 ), funder_clauses AS (
     SELECT ft.funder_id, array_agg(DISTINCT cs.slug ORDER BY cs.slug) AS tag_clauses,
+        array_agg(DISTINCT cs.slug ORDER BY cs.slug) FILTER (WHERE NOT ft.is_inferred) AS asserted_tag_clauses,
         array_agg(DISTINCT cs.slug ORDER BY cs.slug) FILTER (WHERE cs.slug = ANY(%(c)s)) AS shared_tag_clauses
     FROM funder_tags ft JOIN tags t ON t.id = ft.tag_id {_CLAUSE_JOIN} GROUP BY ft.funder_id
 ), programmes AS (
     SELECT p.funder_id, count(DISTINCT p.id) AS tagged_programmes,
+        count(DISTINCT p.id) FILTER (WHERE NOT pt.is_inferred) AS asserted_programmes,
         array_agg(DISTINCT p.name ORDER BY p.name) FILTER (WHERE cs.slug = ANY(%(c)s)) AS shared_programmes
     FROM programs p JOIN program_tags pt ON pt.program_id = p.id JOIN tags t ON t.id = pt.tag_id {_CLAUSE_JOIN}
     WHERE p.funder_id IS NOT NULL GROUP BY p.funder_id
 )
 SELECT f.id, f.name, f.slug, f.funder_type, pl.shared_districts, pl.shared_states, pl.pan_india, pl.regions,
-    pl.stated_places, pl.observed_places, fc.tag_clauses, fc.shared_tag_clauses,
-    pr.tagged_programmes, pr.shared_programmes
+    pl.stated_places, pl.observed_places, fc.tag_clauses, fc.asserted_tag_clauses, fc.shared_tag_clauses,
+    pr.tagged_programmes, pr.asserted_programmes, pr.shared_programmes
 FROM funders f
 LEFT JOIN places pl ON pl.funder_id = f.id
 LEFT JOIN funder_clauses fc ON fc.funder_id = f.id
@@ -276,8 +283,9 @@ def _fit(r: dict) -> PairFit:
         shared_districts=tuple(r["shared_districts"] or ()), shared_states=tuple(r["shared_states"] or ()),
         pan_india=bool(r["pan_india"]), regions=tuple(r["regions"] or ()),
         stated_places=r["stated_places"] or 0, observed_places=r["observed_places"] or 0,
-        tag_clauses=tuple(r["tag_clauses"] or ()), shared_tag_clauses=tuple(r["shared_tag_clauses"] or ()),
-        tagged_programmes=r["tagged_programmes"] or 0, shared_programmes=tuple(r["shared_programmes"] or ()))
+        tag_clauses=tuple(r["tag_clauses"] or ()), asserted_tag_clauses=tuple(r["asserted_tag_clauses"] or ()),
+        shared_tag_clauses=tuple(r["shared_tag_clauses"] or ()), tagged_programmes=r["tagged_programmes"] or 0,
+        asserted_programmes=r["asserted_programmes"] or 0, shared_programmes=tuple(r["shared_programmes"] or ()))
 
 
 async def load_fit(conn: Any, org: OrgEvidence) -> dict[int, FunderEvidence]:

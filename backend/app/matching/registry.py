@@ -48,10 +48,13 @@ async def load_draft(conn: Any, raw: dict, *, git_sha: str | None = None) -> int
 async def activate(conn: Any, set_name: str, version: int, *, by: str | None = None) -> None:
     async with conn.transaction():
         row = await (await conn.execute(
-            "SELECT status FROM criteria_sets WHERE set_name = %s AND version = %s FOR UPDATE",
+            "SELECT content, engine_api FROM criteria_sets WHERE set_name = %s AND version = %s FOR UPDATE",
             (set_name, version))).fetchone()
         if row is None:
             raise LookupError(f"{set_name} v{version} is not loaded")
+        if row["engine_api"] != ENGINE_API:
+            raise CriteriaError(f"{set_name} v{version} needs engine {row['engine_api']}, this code is {ENGINE_API}")
+        parse_criteria(row["content"])  # a version this code cannot read must never go live
         await conn.execute(
             "UPDATE criteria_sets SET status = 'retired', retired_at = now() "
             "WHERE set_name = %s AND status = 'active' AND version <> %s", (set_name, version))

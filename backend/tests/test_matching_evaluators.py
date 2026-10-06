@@ -47,7 +47,6 @@ class TestHasIdentifier:
 
     def test_a_cancelled_event_is_a_fail(self):
         o = org(
-            identifiers={"12a": Fact(key="12a", value="AAAT1234E", basis="recorded", cite="[org:9]")},
             credential_events={"12a": Fact(key="12a", value="cancelled", basis="recorded", cite="[org:9]",
                                            as_of="2026-01-04")},
         )
@@ -80,6 +79,26 @@ class TestHasIdentifier:
         c = check("has_identifier", o, id_type="12a", doc_type="12a_certificate")
         assert (c.outcome, c.basis) == ("met", "on_file")
 
+    def test_a_lapsed_event_against_a_current_identifier_is_unknown_not_fail(self):
+        o = org(identifiers={"80g": Fact(key="80g", value="AAAT1", basis="recorded", cite="[org:9]")},
+                credential_events={"80g": Fact(key="80g", value="expired", basis="recorded", cite="[org:9]",
+                                               as_of="2022-03-31")})
+        c = check("has_identifier", o, id_type="80g")
+        assert (c.outcome, c.reason_code) == ("unknown", "conflicting_evidence")
+
+    def test_superseded_alone_is_unknown_not_fail(self):
+        o = org(credential_events={"12a": Fact(key="12a", value="superseded", basis="recorded", cite="[org:9]",
+                                               as_of="2021-04-01")})
+        c = check("has_identifier", o, id_type="12a")
+        assert (c.outcome, c.reason_code) == ("unknown", "superseded")
+
+    def test_an_active_event_past_its_validity_is_unknown(self):
+        o = org(credential_events={"80g": Fact(key="80g", value="registered", basis="recorded", cite="[org:9]",
+                                               as_of="2019-04-01", valid_until=date(2022, 3, 31))})
+        c = check("has_identifier", o, id_type="80g")
+        assert (c.outcome, c.reason_code, c.reason_params["valid_until"]) == (
+            "unknown", "validity_ended", "2022-03-31")
+
     def test_registry_declares_what_it_reads(self):
         assert "org.identifiers" in REGISTRY["has_identifier"].reads
 
@@ -104,6 +123,10 @@ class TestSharesPlace:
     def test_stated_pan_india_is_met_at_its_own_level(self):
         c = check("shares_place", self.o, funder(pan_india=True, stated_places=1))
         assert (c.outcome, c.level) == ("met", "pan_india_stated")
+
+    def test_only_funds_rows_are_stated_so_priority_elsewhere_is_unknown(self):
+        c = check("shares_place", self.o, funder(observed_places=2))
+        assert (c.outcome, c.reason_code) == ("unknown", "no_overlap_observed")
 
     def test_stated_places_with_no_overlap_fail(self):
         c = check("shares_place", self.o, funder(stated_places=3, observed_places=5))
@@ -139,9 +162,13 @@ class TestSharesTheme:
         assert c.outcome == "met"
         assert c.reason_params["shared"] == ["Education and livelihoods"]
 
-    def test_tagged_but_none_shared_fails(self):
-        c = check("shares_theme", self.o, funder(tag_clauses=("Sports",)))
+    def test_asserted_tags_none_shared_fails(self):
+        c = check("shares_theme", self.o, funder(tag_clauses=("Sports",), asserted_tag_clauses=("Sports",)))
         assert (c.outcome, c.reason_code) == ("fail", "no_shared_theme")
+
+    def test_inferred_tags_alone_never_fail(self):
+        c = check("shares_theme", self.o, funder(tag_clauses=("Sports",)))
+        assert (c.outcome, c.reason_code) == ("unknown", "funder_themes_inferred_only")
 
     def test_untagged_funder_or_org_is_unknown(self):
         assert check("shares_theme", self.o, funder()).outcome == "unknown"
@@ -153,9 +180,13 @@ class TestSharesProgrammeTheme:
 
     def test_met_fail_and_unknown(self):
         met = check("shares_programme_theme", self.o, funder(tagged_programmes=3, shared_programmes=("Parivartan",)))
-        fail = check("shares_programme_theme", self.o, funder(tagged_programmes=3))
+        fail = check("shares_programme_theme", self.o, funder(tagged_programmes=3, asserted_programmes=1))
         unknown = check("shares_programme_theme", self.o, funder())
         assert (met.outcome, fail.outcome, unknown.outcome) == ("met", "fail", "unknown")
+
+    def test_inferred_programme_tags_alone_never_fail(self):
+        c = check("shares_programme_theme", self.o, funder(tagged_programmes=3))
+        assert (c.outcome, c.reason_code) == ("unknown", "funder_programmes_inferred_only")
 
 
 def fy(year, audited=True):
