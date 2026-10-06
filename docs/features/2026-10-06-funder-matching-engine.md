@@ -1,5 +1,9 @@
 # Funder matching: production architecture
 
+> **Superseded 2026-10-06** by `2026-10-06-funder-matching-agentic.md`: matching moves from this
+> deterministic engine to an assessor subagent whose prompt is the criteria. The engine was built
+> through M3 and then removed; this file is kept for the reasoning.
+
 *Draft v3 — 2026-10-06. v3: thirteen specific tools, one call per job (§1b); weighted score as a range (§3). Supersedes v1 of this file and the prompt-only design in `2026-10-05-funder-matching-in-ask-sangam.md`. Evals: `2026-10-06-funder-matching-evals.md`.*
 
 ## Context

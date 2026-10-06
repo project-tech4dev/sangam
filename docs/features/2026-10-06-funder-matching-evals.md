@@ -1,5 +1,8 @@
 # Evaluating funder matching: is the code right, is the matching good, does the agent say it right
 
+> **Superseded 2026-10-06** by milestone A4 of `2026-10-06-funder-matching-agentic.md`. The
+> engine tiers (1–2) no longer apply; tier 3's labelled pairs and tier 4's trajectory gates carry over.
+
 *Draft v1 — 2026-10-06. Companion to `2026-10-06-funder-matching-engine.md`.*
 
 ## Goal
