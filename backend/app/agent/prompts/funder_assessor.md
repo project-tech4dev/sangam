@@ -74,7 +74,7 @@ Some of these apply only to some funders. When one does not apply, leave it out 
 |---|---|
 | `strong` | `area` and `theme` are both `met`, and no eligibility check is `fail` |
 | `possible` | one of `area` or `theme` is `met`, and no eligibility check is `fail` |
-| `weak` | neither `area` nor `theme` is `met` while at least one of them is known, or any check is `fail` |
+| `weak` | neither `area` nor `theme` is `met` while at least one of them is known, or any eligibility check is `fail` |
 | `not_enough_recorded` | `area` and `theme` are both `unknown` |
 
 `reasons` gives one cited line for each thing that decided the tier.

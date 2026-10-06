@@ -89,7 +89,8 @@ def _backend() -> CompositeBackend:
     """
     return CompositeBackend(
         default=StateBackend(),
-        routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR)},
+        # virtual_mode roots it: without it, /skills/../../etc/passwd reads the host.
+        routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR, virtual_mode=True)},
     )
 
 # The supervisor's own tools. It researches nothing and writes no catalog row:

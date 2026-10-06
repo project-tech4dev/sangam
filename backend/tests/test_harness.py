@@ -345,6 +345,21 @@ class TestTheAssessorReadsAndNothingElse:
         assert not assessor & {"fetch_url", "search_graph", "task"}
 
 
+class TestAnInvalidAssessmentIsRetriedNotRaised:
+    """ProviderStrategy raises on a validation error; one bad cite would abort the task."""
+
+    def test_the_assessor_uses_a_tool_strategy_that_feeds_errors_back(self):
+        from langchain.agents.structured_output import ToolStrategy
+
+        from app.agent.assessment import FunderAssessment
+        from app.agent.build import ASSESSOR
+
+        fmt = ASSESSOR["response_format"]
+        assert isinstance(fmt, ToolStrategy)
+        assert fmt.schema is FunderAssessment
+        assert fmt.handle_errors is True
+
+
 class TestTheAssessorModelIsOptional:
     def test_unset_leaves_the_spec_on_the_main_model(self):
         from app.agent.build import ASSESSOR, build_agent
@@ -393,6 +408,28 @@ class TestAskSangamLoadsItsMatchingProcedureFromSkills:
         assert paths and all(p.startswith(SKILLS_ROUTE) for p in paths)
         downloaded = backend.download_files([f"{paths[0].rstrip('/')}/SKILL.md"])[0]
         assert downloaded.error is None
+
+    @pytest.mark.parametrize("module", ["app.agent.build", "app.ingest.agent"])
+    @pytest.mark.parametrize("path", [
+        "/skills/../../../../etc/passwd", "/skills//etc/passwd", "/skills/../../.env", "/skills/~/.ssh/id_rsa",
+    ])
+    def test_the_skills_route_cannot_read_outside_its_directory(self, module, path):
+        # Ask has no auth, so a prompt can name any path; the route is the one real-disk read.
+        import importlib
+
+        backend = importlib.import_module(module)._backend()
+        try:
+            result = backend.download_files([path])[0]
+        except ValueError:
+            return
+        assert result.error is not None or not result.content, f"{module} read {path}"
+
+    def test_the_skills_disk_is_virtual_rooted(self):
+        from app.agent.build import SKILLS_ROUTE, _backend
+        from app.ingest.agent import _backend as ingest_backend
+
+        for backend in (_backend(), ingest_backend()):
+            assert backend.routes[SKILLS_ROUTE].virtual_mode is True
 
     def test_the_three_matching_skills_and_no_others(self):
         from app.agent.build import SKILLS_DIR

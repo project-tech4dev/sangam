@@ -126,6 +126,13 @@ class TestTheAssessorPromptIsTheCriteria:
 
         assert "never `fail`" in ASSESSOR["system_prompt"]
 
+    def test_only_an_eligibility_fail_makes_a_shared_theme_weak(self):
+        # area fail + theme met is possible; "any check is fail" also made it weak.
+        from app.agent.build import ASSESSOR
+
+        weak = next(line for line in ASSESSOR["system_prompt"].splitlines() if line.startswith("| `weak`"))
+        assert "any eligibility check is `fail`" in weak
+
     def test_a_short_count_is_not_a_fail(self):
         # The A3 gate: 1 of 4 grants concluded failed projects_3 and capped 14 funders at weak.
         from app.agent.build import ASSESSOR

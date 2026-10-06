@@ -9,6 +9,7 @@ from deepagents import create_deep_agent
 from deepagents.backends.composite import CompositeBackend
 from deepagents.backends.filesystem import FilesystemBackend
 from deepagents.backends.state import StateBackend
+from langchain.agents.structured_output import ToolStrategy
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from app.agent.assessment import FunderAssessment
@@ -53,7 +54,8 @@ ASSESSOR: dict = {
     ),
     "mode": "isolated",
     "tools": ASSESSOR_TOOLS,
-    "response_format": FunderAssessment,
+    # ToolStrategy feeds a validation error back for a retry; the native strategy raises and loses the task.
+    "response_format": ToolStrategy(FunderAssessment, handle_errors=True),
     "system_prompt": subagent_prompt("funder_assessor"),
 }
 
@@ -64,9 +66,10 @@ SKILLS_ROUTE = "/skills/"
 
 def _backend() -> CompositeBackend:
     """Virtual state for everything, real disk for /skills/ alone — read-only, as on Import."""
+    # virtual_mode roots it: without it, /skills/../../etc/passwd reads the host. Ask has no auth.
     return CompositeBackend(
         default=StateBackend(),
-        routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR)},
+        routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR, virtual_mode=True)},
     )
 
 
