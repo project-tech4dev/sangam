@@ -1,6 +1,6 @@
 # Funder matching: production architecture
 
-*Draft v2 — 2026-10-06. Supersedes v1 of this file and the prompt-only design in `2026-10-05-funder-matching-in-ask-sangam.md`. Evals: `2026-10-06-funder-matching-evals.md`.*
+*Draft v3 — 2026-10-06. v3: thirteen specific tools, one call per job (§1b). Supersedes v1 of this file and the prompt-only design in `2026-10-05-funder-matching-in-ask-sangam.md`. Evals: `2026-10-06-funder-matching-evals.md`.*
 
 ## Context
 
@@ -36,7 +36,8 @@ replaces.
 ┌─ ASK SANGAM AGENT ─────────────────────▼───────────────────────────────────────┐
 │ understand intent · resolve which org/funder · pick a tool · explain result    │
 │ instructions.md = constraints (always)   skills = presentation (on demand)     │
-│ tools: match_funders · explain_match  ║  db_query · db_* · search_graph · fetch_url│
+│ tools: match_funders · explain_match · get_org · get_funder · find_funders    │
+│        ║ db_query · db_* · search_graph · fetch_url  (facts outside a profile) │
 └──────────────┬─────────────────────────╨──────────────────────┬────────────────┘
                │ domain calls                                    │ factual follow-ups
 ┌─ MATCHING SERVICE  app/matching/service.py ────────────┐       │ (read-only SQL)
@@ -90,6 +91,82 @@ judgements.
 > **Why it matters:** two paths to one judgement give two answers. The `search_orgs` lesson in
 > `CLAUDE.md` applies in reverse here — the judgement gets one home, and facts keep theirs.
 
+## 1b. Tool set — one call per job
+
+**Verdict:** use specific tools, each **complete for its job**, and have all of them read through
+the evidence resolver. Skills shape the write-up only. They never chain tools.
+
+| job | tool | returns | service call |
+|---|---|---|---|
+| which funders can this NGO apply to | `match_funders(org, limit=10)` | ranked shortlist, the org's own gaps, counts of *did not pass* / *not recorded* | `shortlist` |
+| why this funder, or how these 2–3 compare | `explain_match(org, funders)` | every check per funder and the ordered gaps; side by side when there is more than one | `assess_many` |
+| tell me about this NGO | `get_org(org)` | places, themes, credentials, audits, board, Vault files; each field marked recorded or not recorded, with a citation | `profile("org")` |
+| tell me about this funder | `get_funder(funder)` | where it gives, themes, programmes, requirements, spend, open calls | `profile("funder")` |
+| funders giving in X for Y | `find_funders(places, themes, funder_types)` | the stage-1 fit query run against a stated profile, all matches plus counts | `find_funders` |
+| which NGOs fit this funder | `match_orgs(funder, limit=10)` | ranked NGOs: the same checks, run in the other direction | `shortlist_orgs` |
+| NGOs working in X on Y, holding Z | `find_orgs(places, themes, has)` | stage 1 over orgs; `has` filters on credentials (`12a`, `80g`, `csr1`, `audits_3y`) through their evaluators | `find_orgs` |
+| any other fact | `db_query` (kept) | — | — |
+
+The tools are symmetric: two per side (`get_*`, `find_*`), plus matching in both directions.
+`explain_match` already takes one pair, so it serves both directions. *"Why does KABIL fit HDFC?"*
+and *"Why is KABIL on HDFC's list?"* are the same assessment.
+
+> **The rule:** `match_orgs` runs the same checks as `match_funders`, with the pair reversed.
+> **Example:** if `match_funders(KABIL)` ranks HDFC as *passed*, then `match_orgs(HDFC)` lists
+> KABIL as *passed*, with the identical check results.
+> **Why it matters:** a pair judged differently depending on which side asked would be two
+> matching engines. A property test asserts that the two directions agree for every pair.
+
+`find_orgs(has=[...])` reads each credential through its evaluator. So `has: [12a]` returns orgs
+where `has_identifier(12a)` is *met*, and reports *unknown* ones as a separate count, never as
+absent.
+
+**Decision 1: tools are complete, and skills do not chain them.**
+
+> **The rule:** if a job needs a piece of data, the job's tool returns it. A skill never says
+> "call X first".
+> **Example:** *"Who can KABIL apply to?"* takes one call. `match_funders` already carries KABIL's
+> gaps, so the answer does not need `get_org` → `match_funders` → `explain_match` (three calls).
+> **Why it matters:** the model decides whether to load a skill, so a step written in a skill
+> sometimes doesn't happen. A required step cannot live in optional text, for the same reason
+> constraints stay in the prompt.
+
+**Decision 2: there is one reader.** `get_org` and `get_funder` are rendered views of the
+resolver's `EvidenceBundle`, which is the same object the evaluators read.
+- This is what the removed `search_orgs` lacked. It had a query of its own and read only
+  `registered_location_id`.
+- A test enforces it: `agent/tools/match_tools.py` and `profile_tools.py` contain no SQL and import
+  only `matching.service`.
+
+**Decision 3: `find_funders` is stage 1 without an org.**
+- *"Gives in Assam"* has one definition, and it lives in the `area` evaluator: footprints plus
+  `funder_locations` plus stated pan-India, with *not recorded* counted separately.
+- `find_funders` builds a stated profile, for example `{places: [Assam], themes: [livelihoods]}`,
+  and runs the same fit query.
+- It has no 50-row cap. It returns counts plus a page of results.
+
+**Routing rule** (in `instructions.md`; it replaces rules 11–19):
+
+| question | tool |
+|---|---|
+| a profile of one org or funder | `get_org` / `get_funder` |
+| a list of funders or orgs by place, theme, type or credential | `find_funders` / `find_orgs` |
+| a judgement about fit, eligibility or rank | `match_funders` / `match_orgs` / `explain_match` |
+| any other fact | `db_query`, never to re-derive a profile field or a judgement |
+
+The agent goes from 6 tools to 13. Each tool renders within an output budget, the way
+`sql/render.py` does.
+
+**Skills: presentation only, and each formats the output of one tool.**
+
+| skill | formats the output of |
+|---|---|
+| `funder-shortlist-brief` | `match_funders` |
+| `application-readiness` | the gaps from `explain_match` |
+| `funder-comparison` | `explain_match` with more than one funder |
+| `funder-profile-brief` | `get_funder` |
+| `ngo-shortlist-brief` | `match_orgs` |
+
 ## 2. Matching service — `backend/app/matching/service.py`
 
 Yes: both tools call one service, as does every other client (the CLI, evals, a future REST
@@ -97,13 +174,22 @@ endpoint). Three operations:
 
 ```python
 async def shortlist(org_id: int, *, criteria: CriteriaRef = ACTIVE,
-                    must_meet: Sequence[str] = (),
                     limit: int = 20, offset: int = 0) -> Shortlist: ...
 async def assess(org_id: int, funder_id: int, *, criteria: CriteriaRef = ACTIVE) -> Assessment: ...
 async def assess_many(org_id: int, funder_ids: list[int], *,
                       criteria: CriteriaRef = ACTIVE) -> list[Assessment]: ...
 async def resolve(kind: Literal["org", "funder"], text: str) -> Resolved | Ambiguous: ...
+async def profile(kind: Literal["org", "funder"], ref: int) -> OrgProfile | FunderProfile: ...
+async def find_funders(*, places: list[str] = [], themes: list[str] = [],
+                       funder_types: list[str] = [], limit: int = 20, offset: int = 0) -> FunderList: ...
+async def shortlist_orgs(funder_id: int, *, criteria: CriteriaRef = ACTIVE,
+                         limit: int = 20, offset: int = 0) -> OrgShortlist: ...
+async def find_orgs(*, places: list[str] = [], themes: list[str] = [],
+                    has: list[str] = [], limit: int = 20, offset: int = 0) -> OrgList: ...
 ```
+
+`profile` renders the resolver's bundle and contains no query of its own. `find_funders` runs the
+stage-1 fit query against a stated profile.
 
 **Comparison and readiness stay compositions**, not operations:
 
@@ -112,28 +198,9 @@ async def resolve(kind: Literal["org", "funder"], text: str) -> Resolved | Ambig
   rule, so it lives in code: gate checks first, then rank, then advisory; within a role, `fail`
   before `unknown`; ties broken by the criteria file's `sort_order`. The skill only renders it.
 
-**`must_meet` — the question decides which fit checks are required.** *"Based on where KABIL
-works, which funders can I apply to?"* is a geography-first question. The default funnel
-(`min_met: 1` of area, theme, programme) would also return a funder that shares only a theme.
-
-> **The rule:** `must_meet` names fit-check codes that become gates for this one call.
-> **Example:** `shortlist(kabil, must_meet=["area"])` keeps only funders whose `area` check is met.
-> A funder with no places recorded goes to `not_recorded_for` with the reason, and one that only
-> *says* it funds anywhere in India goes to `stated_only`. Neither is mixed into the ranked list,
-> and neither is dropped silently.
-> **Why it matters:** the filter is applied by the engine, not the model, so *"based on where it
-> works"* gives one deterministic answer.
-
-- Only codes in the active criteria's `fit` group are accepted. Anything else returns an error
-  naming the valid codes, and the tool passes that back as a string so the model can correct it.
-- An empty `must_meet` is the default funnel, unchanged.
-- The eligibility stage (§3) still runs on the survivors, so *"can I apply"* is answered with
-  `gate_status`, the same way as any other shortlist.
-- `must_meet` is not a general filter language. It takes check codes only, and an outcome other
-  than `met` is never accepted.
-
-A new operation is justified only when it needs data or logic the three do not have — for
-example, *"which orgs fit this funder"* (the reverse direction) would be `shortlist_orgs`.
+A new operation is justified only when it needs data or logic the existing ones do not have.
+`shortlist_orgs` is the reverse direction. It reuses the evaluators unchanged; only stage 1's
+candidate query runs over orgs instead of funders.
 
 `CriteriaRef` is `ACTIVE`, or a specific version id. Only the CLI and evals may pass a draft; the
 agent's tools hard-code `ACTIVE`.
@@ -319,10 +386,7 @@ class Assessment(BaseModel):
 
 class Shortlist(BaseModel):
     criteria_version: int; criteria_hash: str; org: OrgRef
-    must_meet: list[str]             # echoed, so the answer can say what it filtered on
     ranked: list[Assessment]; did_not_pass: list[FunderRef]; not_enough_recorded: list[FunderRef]
-    not_recorded_for: dict[str, list[FunderRef]]   # must_meet code → funders with no evidence for it
-    stated_only: dict[str, list[FunderRef]]        # must_meet code → stated (e.g. pan-India), not shown
     total_funders: int; offset: int; limit: int
 ```
 
@@ -394,21 +458,24 @@ Four layers, one job each.
 
 **`instructions.md`** — rules 11–19 become about six lines:
 
-1. To find funders for an org, call `match_funders`. To check one funder, call `explain_match`.
-   Never rebuild the funnel in `db_query`.
+1. Route by the §1b table: profiles to `get_org` / `get_funder`, lists to `find_funders` /
+   `find_orgs`, judgements to `match_funders` / `match_orgs` / `explain_match`. Never rebuild a
+   profile field or the funnel in `db_query`.
 2. Repeat each state as the tool gives it. Unknown is *not recorded*, never *not eligible*.
 3. Name the funders in the *not enough recorded* block; they are not the bottom of the list.
 4. State the criteria version the tool reports.
 5. Cite `[funder:N]` and `[org:N]` as the tool returns them.
 6. Offer `explain_match` as the next step; do not run it unasked.
 
-**Skills — three, all Ask Sangam's**, in `backend/app/agent/skills/<name>/SKILL.md`:
+**Skills — five, all Ask Sangam's**, each formatting one tool's output (§1b; they never chain tools), in `backend/app/agent/skills/<name>/SKILL.md`:
 
 | skill | loaded when | what it adds | reads |
 |---|---|---|---|
 | `funder-shortlist-brief` | *"Which funders fit KABIL?"* | the write-up for a fundraiser: lead with the top few and why each fits, then the research that would let the unknowns be ranked | `match_funders` |
 | `application-readiness` | *"What does KABIL need for HDFC?"* | turns `explain_match` gaps into an ordered to-do list — statutory gaps first, then funder bars, then readiness: *upload ITR-7 for FY2022-23 · renew 80G · add two board members* | `explain_match` |
-| `funder-comparison` | *"Compare HDFC and SBI Foundation for KABIL"* | two or three funders' checks side by side, with the differences put first | `explain_match` × 2–3 |
+| `funder-comparison` | *"Compare HDFC and SBI Foundation for KABIL"* | two or three funders' checks side by side, with the differences put first | `explain_match` with 2–3 funders |
+| `funder-profile-brief` | *"Tell me about HDFC"* | where it gives, what it funds, what it requires, and what is not recorded | `get_funder` |
+| `ngo-shortlist-brief` | *"Which NGOs fit HDFC Parivartan?"* | the funder-side write-up: top NGOs, why each fits, the credentials still unverified | `match_orgs` |
 
 Sangam Import already has `funder-scan-for-fundraisers` and `ngo-brief-for-funders`. They are
 written for research output, so the Ask skills borrow their structure but read from the tools.
@@ -434,7 +501,8 @@ label and parameters, and a skill only arranges them.
 |---|---|---|
 | M1 | `matching/` package: models, evidence resolver, criteria loader + `criteria_sets` lifecycle, stage-1 evaluators, `program_tags` backfill, CLI | `make criteria-load && make criteria-activate && make match ORG=kabil` |
 | M2 | stage-2 evaluators, combinators, roles, `applies`, ranking key, gaps ordering | unit tests: three-valued truth tables; zero rows → unknown |
-| M3 | `match_funders(org, must_meet=[], top=20)` / `explain_match` over the service; prompt routing rule replaces rules 11–19 and maps "based on where it works" to `must_meet=["area"]`; tool pins 6 → 8 | one tool call per shortlist in the trace; canary evals |
+| M3 | funder-side tools (`match_funders`, `explain_match`, `get_org`, `get_funder`, `find_funders`) over the service; prompt routing rule replaces rules 11–19; tool pins 6 → 11; a no-SQL-in-tool-modules test | one tool call per job in the trace; canary evals |
+| M3c | org-side tools (`match_orgs`, `find_orgs`); `shortlist_orgs`, `find_orgs` in the service; tool pins 11 → 13 | a both-directions-agree property test; `find_orgs(has=[12a])` reports *unknown* separately |
 | M3b | Ask Sangam skills (shortlist brief, readiness, comparison) + `/skills/` mechanism | skill read in the trace; no write tool |
 | M4 | Vault `doc_type` vocabulary + fiscal year; `on_file` basis | an uploaded certificate flips `recorded` → `on_file` |
 | M5 | `funder_eligibility.requirement_code/params`; research proposes, writer validates against the active vocabulary | HDFC's recorded bar drives `turnover` |
@@ -444,7 +512,7 @@ Evals: `docs/features/2026-10-06-funder-matching-evals.md`, tiers E1–E6 alongs
 
 #### M3b — Ask Sangam skills
 
-- `backend/app/agent/skills/{funder-shortlist-brief,application-readiness,funder-comparison}/SKILL.md`.
+- `backend/app/agent/skills/{funder-shortlist-brief,application-readiness,funder-comparison,funder-profile-brief,ngo-shortlist-brief}/SKILL.md`.
   Frontmatter is the advertisement, the body is the procedure (`docs/SKILLS.md`). Each body names
   the tool it reads, and none restates a constraint as if it lived only there.
 - `agent/build.py`: a composite backend routing `/skills/` to that folder, plus
@@ -456,7 +524,7 @@ Evals: `docs/features/2026-10-06-funder-matching-evals.md`, tiers E1–E6 alongs
   - every skill's frontmatter parses, and its `name` matches its folder;
   - **a tool is never reachable only through a skill** — Ask's twin of
     `test_a_tool_is_never_reachable_only_through_a_skill`;
-  - the tool set is still the eight tools plus `read_file` (and `ls` if needed) — no write tool
+  - the tool set is still the thirteen tools plus `read_file` (and `ls` if needed) — no write tool
     appears (`test_harness.py:106`);
   - `read_file("/skills/application-readiness/SKILL.md")` returns the file.
 - Update `docs/SKILLS.md` (it describes Import's skills only) and `CLAUDE.md`'s skills paragraph.
@@ -467,6 +535,7 @@ Evals: `docs/features/2026-10-06-funder-matching-evals.md`, tiers E1–E6 alongs
 
 - New: `backend/app/matching/{service,engine,evidence,evaluators,config,models,__main__}.py`,
   `backend/app/matching/criteria/funder_matching.yaml`, `backend/app/agent/tools/match_tools.py`,
+  `backend/app/agent/tools/profile_tools.py`,
   `db/migrations/0023_criteria_sets.sql`.
 - Changed: `backend/app/agent/build.py` (TOOLS), `backend/app/agent/instructions.md` (routing rule
   replaces 11–19), `backend/app/ingest/writer.py` (programme themes, requirement codes),

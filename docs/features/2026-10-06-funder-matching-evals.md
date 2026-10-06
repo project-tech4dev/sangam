@@ -129,13 +129,12 @@ one that keeps too many, because stage 2 and the fundraiser can still discard th
 `run_agent()` today keeps only `db_query` SQL. It grows a **trajectory**: every tool call's name
 and arguments, read from the `AIMessage.tool_calls` already in `state["messages"]`. A skill read
 is a `read_file` call whose path starts `/skills/`. `CaseResult` gains `tools: list[str]` and
-`skills: list[str]`, and `score()` gains six gates:
+`skills: list[str]`, and `score()` gains five gates:
 
 | gate | fails when | example |
 |---|---|---|
 | `expected_tools` | a listed tool was never called | shortlist must call `match_funders` |
 | `forbidden_tools` | a listed tool was called | shortlist must not call `db_query` — no rebuilding the funnel |
-| `tool_args` | a call's argument differs from the one listed | *"based on where KABIL works"* must pass `must_meet: [area]` |
 | `max_tool_calls` | more calls than the budget | shortlist ≤ 2 |
 | `skills_read` | a listed skill's `SKILL.md` was not read | readiness question reads `application-readiness` |
 | `faithful_to_tool` | the answer names a funder or a number absent from the tool output | invents "₹50 lakh minimum", or ranks a funder the tool never returned |
@@ -154,7 +153,6 @@ A new file, loaded by the existing `load_cases()`. The shortlist and assessment 
 | id | question | gates | tags |
 |---|---|---|---|
 | `shortlist-one-call` | Which funders fit KABIL? | `expected_tools: [match_funders]`, `forbidden_tools: [db_query]`, `max_tool_calls: 2`, `faithful_to_tool` | canary |
-| `shortlist-area-only` | Based on where KABIL works, which funders can I apply to? | `tool_args: {match_funders: {must_meet: [area]}}`, `forbidden_tools: [db_query]`, `must_mention: [pan-India]`, `faithful_to_tool` | canary |
 | `shortlist-unknowns-named` | Which funders fit Goonj? | `must_mention: [not enough recorded]`, `must_not_mention: [poor fit, low fit]` | canary |
 | `readiness-unknown-not-ineligible` | What does KABIL need for HDFC Bank? | `expected_tools: [explain_match]`, `must_not_mention: [not eligible, ineligible]`, `skills_read: [application-readiness]` | canary |
 | `readiness-statutory-first` | What does KABIL need for HDFC Bank? | `must_mention: [CSR-1]`; CSR-1 named before ITR-7 (an `order` gate) | — |
@@ -162,6 +160,11 @@ A new file, loaded by the existing `load_cases()`. The shortlist and assessment 
 | `criteria-version-stated` | Which funders fit KABIL? | `must_mention: [criteria v]` plus the active version number | — |
 | `no-threshold-invented` | What turnover does HDFC require? | `faithful_to_tool`, `must_mention: [no bar recorded]` | canary |
 | `ambiguous-org` | Which funders fit the Assam trust? | `max_tool_calls: 1`, asks which org | — |
+| `profile-one-call` | Tell me about KABIL | `expected_tools: [get_org]`, `forbidden_tools: [db_query]`, `max_tool_calls: 1`, `must_mention: [not recorded]` | canary |
+| `find-funders-by-place` | Which CSR funders give in Assam? | `expected_tools: [find_funders]`, `forbidden_tools: [db_query]`, `faithful_to_tool` | canary |
+| `find-orgs-unknown-separate` | Which NGOs in Assam have 12A? | `expected_tools: [find_orgs]`, `must_mention: [not recorded]`, `must_not_mention: [do not have 12A]` | — |
+| `match-orgs-reverse` | Which NGOs fit HDFC Bank? | `expected_tools: [match_orgs]`, `forbidden_tools: [db_query]`, `skills_read: [ngo-shortlist-brief]` | — |
+| `fact-stays-sql` | How much did HDFC spend in FY23? | `expected_tools: [db_query]`, `forbidden_tools: [match_funders]` | — |
 
 **Gate on behaviour, not on exact rankings.** Tier 4 runs against the seeded local database,
 and research changes that data every week. A case asserting *"HDFC is ranked 3rd"* goes red for
