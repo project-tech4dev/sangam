@@ -13,6 +13,7 @@ from app.api.routes import (
     me,
     meta,
     news,
+    org_members,
     orgs,
     programs,
     rfps,
@@ -37,6 +38,7 @@ api_router = APIRouter(prefix="/api")
 
 for _router in (
     orgs.router,
+    org_members.router,
     funders.router,
     grants.router,
     programs.router,

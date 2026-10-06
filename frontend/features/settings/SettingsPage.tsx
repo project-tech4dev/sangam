@@ -1,13 +1,22 @@
 import { apiGet } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
+import { OrgMembersCard, type OrgMember } from "./OrgMembersCard";
 
-type Me = { is_staff: boolean; memberships: { org_id: number; org_name: string; role: string }[] };
+type Me = {
+  id: string;
+  is_staff: boolean;
+  memberships: { org_id: number; org_name: string; role: string }[];
+};
 
 export async function SettingsPage() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   const user = data.user;
   const me = user ? await apiGet<Me>("/api/me") : null;
+  const adminOrgs = me && !me.is_staff ? me.memberships.filter((m) => m.role === "admin") : [];
+  const members = await Promise.all(
+    adminOrgs.map((m) => apiGet<OrgMember[]>(`/api/orgs/${m.org_id}/members`)),
+  );
 
   return (
     <div className="sangam-ui">
@@ -43,6 +52,16 @@ export async function SettingsPage() {
             )}
           </section>
         ) : null}
+        {me &&
+          adminOrgs.map((m, i) => (
+            <OrgMembersCard
+              key={m.org_id}
+              orgId={m.org_id}
+              orgName={m.org_name}
+              meId={me.id}
+              initialMembers={members[i]}
+            />
+          ))}
       </main>
     </div>
   );

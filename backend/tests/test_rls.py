@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import psycopg
 import pytest
+from psycopg import errors
 from psycopg.errors import InsufficientPrivilege
 from psycopg.rows import dict_row
 
@@ -42,7 +43,7 @@ def _world(conn) -> dict:
     )["id"]
 
     people = {}
-    for name, staff in [("member_a", False), ("steward_a", False), ("member_b", False),
+    for name, staff in [("member_a", False), ("steward_a", False), ("admin_a", False), ("member_b", False),
                         ("nobody", False), ("staff", True)]:
         auth_id = uuid4()
         user_id = one(
@@ -50,7 +51,8 @@ def _world(conn) -> dict:
             (f"{name}-{tag}@rls.test", auth_id, staff),
         )["id"]
         people[name] = {"user_id": user_id, "sub": str(auth_id)}
-    for name, org, role in [("member_a", a, "member"), ("steward_a", a, "steward"), ("member_b", b, "member")]:
+    for name, org, role in [("member_a", a, "member"), ("steward_a", a, "steward"), ("admin_a", a, "admin"),
+                            ("member_b", b, "member")]:
         conn.execute("INSERT INTO org_members (user_id, org_id, role) VALUES (%s, %s, %s)",
                      (people[name]["user_id"], org, role))
 
@@ -143,6 +145,19 @@ def test_a_user_sees_only_their_own_user_and_membership_rows(db):
     assert _sees(conn, me, "SELECT 1 FROM org_members") == 1
 
 
+@pytest.mark.parametrize(
+    "name, expected", [("member_a", 1), ("steward_a", 1), ("member_b", 1), ("admin_a", 3)]
+)
+def test_only_an_admin_sees_the_rest_of_their_org(db, name, expected):
+    conn, world = db
+    who = world["people"][name]
+    members = f"SELECT 1 FROM org_members WHERE org_id IN ({world['a']}, {world['b']})"
+    users = (f"SELECT 1 FROM users u JOIN org_members m ON m.user_id = u.id "
+             f"WHERE m.org_id IN ({world['a']}, {world['b']})")
+    assert _sees(conn, who, members) == expected
+    assert _sees(conn, who, users) == expected
+
+
 def test_a_steward_cannot_write_to_the_org_it_reads(db):
     conn, world = db
     with pytest.raises(InsufficientPrivilege), conn.transaction(force_rollback=True):
@@ -166,3 +181,85 @@ def test_an_import_table_reaches_only_staff(db):
     with conn.transaction(force_rollback=True):
         owner_count = conn.execute("SELECT count(*) AS n FROM ingest_runs").fetchone()["n"]
     assert _sees(conn, world["people"]["staff"], "SELECT 1 FROM ingest_runs") == owner_count
+
+
+def _call(conn, who, sql, params=()):
+    """Run one statement as this caller and roll it back; returns the error class, or None when it worked."""
+    try:
+        with conn.transaction(force_rollback=True):
+            _as(conn, who)
+            conn.execute(sql, params)
+    except psycopg.Error as exc:
+        return type(exc)
+    return None
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [("admin_a", None), ("staff", None), ("member_a", errors.InsufficientPrivilege),
+     ("steward_a", errors.InsufficientPrivilege), ("member_b", errors.InsufficientPrivilege)],
+)
+def test_only_an_admin_or_staff_manages_an_orgs_members(db, name, expected):
+    conn, world = db
+    people = world["people"]
+    who = people[name]
+    nobody = conn.execute("SELECT email FROM users WHERE id = %s", (people["nobody"]["user_id"],)).fetchone()
+    a = world["a"]
+    assert _call(conn, who, "SELECT app.add_org_member(%s, %s, 'member')", (a, nobody["email"])) is expected
+    assert _call(conn, who, "SELECT app.set_org_member_role(%s, %s, 'steward')",
+                 (a, people["member_a"]["user_id"])) is expected
+    assert _call(conn, who, "SELECT app.remove_org_member(%s, %s)", (a, people["member_a"]["user_id"])) is expected
+
+
+def test_an_org_keeps_its_last_admin(db):
+    conn, world = db
+    admin = world["people"]["admin_a"]
+    a = world["a"]
+    assert _call(conn, admin, "SELECT app.set_org_member_role(%s, %s, 'member')",
+                 (a, admin["user_id"])) is errors.RaiseException
+    assert _call(conn, admin, "SELECT app.remove_org_member(%s, %s)", (a, admin["user_id"])) is errors.RaiseException
+
+
+def test_adding_needs_an_existing_account_and_no_duplicate(db):
+    conn, world = db
+    people = world["people"]
+    admin = people["admin_a"]
+    a = world["a"]
+    assert _call(conn, admin, "SELECT app.add_org_member(%s, 'no-such@rls.test', 'member')",
+                 (a,)) is errors.RaiseException
+    member = conn.execute("SELECT email FROM users WHERE id = %s", (people["member_a"]["user_id"],)).fetchone()
+    assert _call(conn, admin, "SELECT app.add_org_member(%s, %s, 'member')",
+                 (a, member["email"])) is errors.RaiseException
+
+
+def test_an_admin_or_member_belongs_to_one_org_only(db):
+    conn, world = db
+    people = world["people"]
+    admin = people["admin_a"]
+    a = world["a"]
+    member_b = conn.execute("SELECT email FROM users WHERE id = %s", (people["member_b"]["user_id"],)).fetchone()
+    assert _call(conn, admin, "SELECT app.add_org_member(%s, %s, 'member')",
+                 (a, member_b["email"])) is errors.RaiseException
+    assert _call(conn, admin, "SELECT app.add_org_member(%s, %s, 'admin')",
+                 (a, member_b["email"])) is errors.RaiseException
+
+
+def test_a_steward_may_support_another_org_but_not_join_it(db):
+    conn, world = db
+    people = world["people"]
+    admin = people["admin_a"]
+    a = world["a"]
+    member_b = people["member_b"]
+    email = conn.execute("SELECT email FROM users WHERE id = %s", (member_b["user_id"],)).fetchone()["email"]
+    with conn.transaction(force_rollback=True):
+        _as(conn, admin)
+        conn.execute("SELECT app.add_org_member(%s, %s, 'steward')", (a, email))
+        with pytest.raises(errors.RaiseException), conn.transaction():
+            conn.execute("SELECT app.set_org_member_role(%s, %s, 'member')", (a, member_b["user_id"]))
+
+
+def test_the_index_holds_even_for_the_owner(db):
+    conn, world = db
+    with pytest.raises(errors.UniqueViolation), conn.transaction(force_rollback=True):
+        conn.execute("INSERT INTO org_members (user_id, org_id, role) VALUES (%s, %s, 'member')",
+                     (world["people"]["member_b"]["user_id"], world["a"]))
