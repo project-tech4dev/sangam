@@ -6,11 +6,12 @@ from deepagents import create_deep_agent
 from deepagents.backends.state import StateBackend
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from app.agent.assessment import FunderAssessment
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
 from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry_limiter
 from app.agent.models import resolve_model
-from app.agent.prompt import SYSTEM_PROMPT
+from app.agent.prompt import SYSTEM_PROMPT, subagent_prompt
 from app.agent.tools.graph_tools import search_graph
 from app.agent.tools.sql_tools import (
     db_describe_table,
@@ -33,6 +34,23 @@ TOOLS = [
     fetch_url,
 ]
 
+# One funder per subagent, so 25 candidates never share one context window. Read-only SQL
+# and nothing else: its prompt is the matching criteria, and its reply is validated JSON.
+ASSESSOR_TOOLS = [db_list_tables, db_describe_table, db_query]
+
+ASSESSOR: dict = {
+    "name": "funder-assessor",
+    "description": (
+        "Judges ONE organisation against ONE funder from the database and returns a tier "
+        "(strong / possible / weak / not_enough_recorded) with every check cited. Give it the "
+        "org_id and funder_id. Launch one per candidate funder, several in one message."
+    ),
+    "mode": "isolated",
+    "tools": ASSESSOR_TOOLS,
+    "response_format": FunderAssessment,
+    "system_prompt": subagent_prompt("funder_assessor"),
+}
+
 
 def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Before create_deep_agent: the profile is read while the graph is built,
@@ -42,7 +60,13 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # generative UI, none of which this app uses. Removing it cost 4 fewer graph nodes.
     # Replaces the preset's FilesystemMiddleware, which brings eight tools
     # bound to virtual state. read_file is the floor the library enforces.
-    middleware = [filesystem_tools(StateBackend()), sql_retry_limiter, clear_old_tool_results()]
+    backend = StateBackend()
+    middleware = [filesystem_tools(backend), sql_retry_limiter, clear_old_tool_results()]
+    # Isolated, so it builds its own stack: without its own filesystem it would run all eight.
+    # No sql_retry_limiter: its jump to the end would leave no FunderAssessment to return.
+    assessor = {**ASSESSOR, "middleware": [filesystem_tools(backend)]}
+    if settings.assessor_model:
+        assessor["model"] = resolve_model(settings.assessor_model)
     if settings.sql_audit_model:
         # Off unless configured: a real extra model call per SQL turn.
         middleware.append(answer_audit(settings.sql_audit_model))
@@ -50,6 +74,8 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,
+        subagents=[assessor],
+        backend=backend,
         # sql_retry_limiter comes first: it can jump to the end of the graph, and
         # a hook that jumps has to run before the ones that do work.
         middleware=middleware,

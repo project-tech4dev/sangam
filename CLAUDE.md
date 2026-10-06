@@ -199,7 +199,16 @@ graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 
 **The agent has exactly six tools, and there is ONE path to the database.**
 `app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
-`db_query`, `search_graph`, `fetch_url`. Nothing else.
+`db_query`, `search_graph`, `fetch_url`. Nothing else — plus deepagents' `task`, which exists for
+one declared subagent, `funder-assessor`.
+
+**Funder matching is agentic.** The `funder-assessor` subagent judges one org against one funder
+with three read-only SQL tools, and returns a `FunderAssessment` (`app/agent/assessment.py`).
+Its prompt, `app/agent/prompts/funder_assessor.md`, **is the matching criteria**: changing a rule
+means editing that checklist. The schema refuses a `fail` without cited evidence, so "not
+recorded" cannot become "ineligible". `ASSESSOR_MODEL` points it at a cheaper model. Design:
+`docs/features/2026-10-06-funder-matching-agentic.md`. The earlier deterministic engine was built
+and removed; its plan is kept beside that file for the reasoning.
 
 That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
 `create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`
@@ -218,7 +227,8 @@ writes survives on either.
 **A subagent inherits none of that and must say so itself.** `create_deep_agent` builds an
 isolated subagent's middleware from scratch with an *unrestricted* `FilesystemMiddleware`, and
 folds the parent's in only for `mode="fork"`. So `entity-researcher` and `catalog-writer` each
-carry their own `middleware=[filesystem(backend, keep=...)]` in `app/ingest/agent.py` — without
+carry their own `middleware=[filesystem(backend, keep=...)]` in `app/ingest/agent.py`, as
+`funder-assessor` does in `app/agent/build.py` — without
 it they run all eight tools, and `write_file`/`edit_file`/`delete` reach real disk through the
 `/skills/` route. A test that reads only `build(...).nodes["tools"]` cannot see this: it is the
 parent's tool node. `TestASubagentRunsOnlyTheToolsItsSpecDeclares` walks the compiled subagent

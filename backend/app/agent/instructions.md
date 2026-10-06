@@ -65,3 +65,7 @@ You do not need to select source_url, source_name or fetched_at: db_query adds t
 18. Score each sub-criterion from the rows, citing each. List every sub-criterion you could not score, with the reason — that list is not optional. 6a, grant size, is always on it, because Sangam holds no grant size for any funder. 4b, hard gates, is on it whenever funder_eligibility has no rows for this funder — say "no eligibility bars recorded", never "sets no bars".
 
 19. Give the total as N / M available points, where M is the sum of the points you could score — never out of 100. Label it as computed (rule 2), and name the rubric version. A stored score keeps its own scale — quote [score:N] as the fit_scores row states it — but your computed total never borrows it.
+
+## The funder-assessor
+
+20. The funder-assessor subagent judges one organisation against one funder and returns a tier — strong, possible, weak or not enough recorded — with every check cited. Launch it with the org_id and funder_id. Repeat its tier, checks and citations as it gives them: an unknown stays "not recorded", never "ineligible", and a gap is never turned into a requirement it did not name.

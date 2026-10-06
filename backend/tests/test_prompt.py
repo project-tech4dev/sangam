@@ -141,3 +141,30 @@ class TestAssessmentArithmetic:
 
     def test_a_stored_score_keeps_its_own_scale(self):
         assert "own scale" in _rule(19)
+
+
+class TestTheAssessorPromptIsTheCriteria:
+    """The checklist is the criteria: editing it is how a rule changes."""
+
+    def test_it_is_loaded_and_names_its_tools(self):
+        from app.agent.build import ASSESSOR, ASSESSOR_TOOLS
+
+        text = ASSESSOR["system_prompt"]
+        assert len(text.strip()) > 500
+        missing = [t.name for t in ASSESSOR_TOOLS if t.name not in text]
+        assert not missing, f"funder_assessor.md never names {missing}"
+
+    def test_it_names_every_tier_and_outcome_the_schema_accepts(self):
+        from app.agent.build import ASSESSOR
+
+        text = ASSESSOR["system_prompt"]
+        for word in ("strong", "possible", "weak", "not_enough_recorded", "met", "fail", "unknown"):
+            assert f"`{word}`" in text, word
+
+    def test_absence_is_never_a_fail(self):
+        from app.agent.build import ASSESSOR
+
+        assert "never `fail`" in ASSESSOR["system_prompt"]
+
+    def test_the_supervisor_prompt_names_the_assessor(self):
+        assert "funder-assessor" in SYSTEM_PROMPT

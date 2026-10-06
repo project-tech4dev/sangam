@@ -15,6 +15,8 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
   // `purpose` reads better than raw SQL in a one-line label. The rail shows the SQL that
   // actually ran, which is the half that makes the answer auditable.
   db_query: { label: "Running a query", detail: (a) => a?.purpose ?? a?.sql ?? "" },
+  // The only subagent is funder-assessor; its description names the pair.
+  task: { label: "Assessing a funder", detail: (a) => a?.description ?? "" },
 };
 
 export function humanizeTool(name: string): ToolLabel {

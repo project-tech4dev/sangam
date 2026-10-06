@@ -94,23 +94,29 @@ class TestTheFilesystemMiddlewareIsReplaced:
 
 
 class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
-    def test_ask_sangam_has_no_subagents(self):
+    def test_ask_sangam_advertises_exactly_the_funder_assessor(self):
         from app.agent.build import build_agent
         from app.core.config import get_settings
 
         tools = build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name
-        # It declares none, so the task tool should not exist at all. It did,
-        # because a general-purpose subagent was inserted carrying db_query.
-        assert "task" not in tools
+        # The task tool exists for the assessor alone. It once carried a
+        # general-purpose subagent with db_query and no instructions.
+        advertised = {
+            line.strip()[2:].split(":", 1)[0]
+            for line in tools["task"].description.splitlines()
+            if line.strip().startswith("- ") and ":" in line
+        }
+        assert "funder-assessor" in advertised
+        assert "general-purpose" not in advertised
 
-    def test_ask_sangam_holds_its_six_tools_and_the_mandatory_one(self):
+    def test_ask_sangam_holds_its_six_tools_the_mandatory_one_and_task(self):
         from app.agent.build import build_agent
         from app.core.config import get_settings
 
         tools = set(build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name)
         assert tools == {
             "db_list_tables", "db_describe_table", "db_profile_column", "db_query",
-            "search_graph", "fetch_url", "read_file",
+            "search_graph", "fetch_url", "read_file", "task",
         }
 
     def test_neither_agent_can_write_a_file_or_run_a_command(self):
@@ -319,3 +325,37 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         # pointing at the one backend route that is real disk.
         for name, tools in subagents.items():
             assert "ls" not in tools, name
+
+
+class TestTheAssessorReadsAndNothingElse:
+    """An isolated subagent builds its own stack, so Ask's restricted filesystem
+    does not reach it. Unset, it would run write_file and execute."""
+
+    @pytest.fixture(scope="class")
+    def assessor(self) -> set[str]:
+        from app.agent.build import build_agent
+        from app.core.config import get_settings
+
+        return _subagent_tools(build_agent(get_settings(), None))["funder-assessor"]
+
+    def test_it_runs_three_read_only_sql_tools_and_the_floor(self, assessor):
+        assert assessor == {"db_list_tables", "db_describe_table", "db_query", "read_file"}
+
+    def test_it_cannot_fetch_the_web_or_launch_another_subagent(self, assessor):
+        assert not assessor & {"fetch_url", "search_graph", "task"}
+
+
+class TestTheAssessorModelIsOptional:
+    def test_unset_leaves_the_spec_on_the_main_model(self):
+        from app.agent.build import ASSESSOR, build_agent
+        from app.core.config import Settings
+
+        build_agent(Settings(assessor_model=""), None)
+        assert "model" not in ASSESSOR
+
+    def test_set_is_not_written_into_the_shared_spec(self):
+        from app.agent.build import ASSESSOR, build_agent
+        from app.core.config import Settings
+
+        build_agent(Settings(assessor_model="anthropic:claude-haiku-4-5"), None)
+        assert "model" not in ASSESSOR
