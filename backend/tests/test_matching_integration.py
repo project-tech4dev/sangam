@@ -415,3 +415,136 @@ class TestFitStatedVsInferred:
         ev = (await evidence.load_fit(db, await load(db, world)))[f]
         assert ev.fit.asserted_tag_clauses == ("csr-test-b",)
         assert (ev.fit.tagged_programmes, ev.fit.asserted_programmes) == (1, 0)
+
+
+# --- M3: funder profile and stated-profile search --------------------------------------------
+
+class TestLoadFunder:
+    async def test_every_field_is_read(self, db, world):
+        f = await funder(db, "t-pf-full", "corporate_csr")
+        org = world["org"]
+        await db.execute("INSERT INTO funder_locations (funder_id, location_id, role) VALUES "
+                         "(%s, %s, 'funds'), (%s, %s, 'registered')", (f, world["d1"], f, world["other_state"]))
+        await db.execute("INSERT INTO funder_footprints (funder_id, location_id, fiscal_year) VALUES "
+                         "(%s, %s, 'FY2022-23'), (%s, %s, 'FY2023-24')", (f, world["d1"], f, world["state"]))
+        await db.execute("INSERT INTO funder_tags (funder_id, tag_id, role, is_inferred) VALUES "
+                         "(%s, %s, 'primary', true)", (f, world["sector_a"]))
+        p = await one(db, "INSERT INTO programs (funder_id, name, kind) VALUES (%s, 'Prog A', 'programme')", (f,))
+        await db.execute("INSERT INTO program_tags (program_id, tag_id, role) VALUES (%s, %s, 'primary')",
+                         (p, world["csr_b"]))
+        await db.execute("INSERT INTO funder_eligibility (funder_id, kind, criterion) VALUES "
+                         "(%s, 'own_bar', 'three years of audited accounts')", (f,))
+        await db.execute("INSERT INTO funder_csr_years (funder_id, fiscal_year, prescribed_csr, total_spent) "
+                         "VALUES (%s, 'FY2023-24', 1000000, 1200000)", (f,))
+        await db.execute("INSERT INTO funder_csr_spend (funder_id, fiscal_year, amount, state_location_id, "
+                         "csr_sector_id) VALUES (%s, 'FY2023-24', 500000, %s, %s)", (f, world["state"], world["csr_a"]))
+        await db.execute("INSERT INTO funder_partners (funder_id, fiscal_year, partner_name, partner_kind, org_id) "
+                         "VALUES (%s, 'FY2023-24', 'T Org', 'ngo', %s)", (f, org))
+        await db.execute("INSERT INTO rfps (funder_id, title, status, deadline) VALUES "
+                         "(%s, 'Call one', 'open', '2020-01-01'), (%s, 'Call two', 'closed', NULL)", (f, f))
+        pf = await evidence.load_funder(db, f)
+        assert (pf.funder.id, pf.funder.funder_type) == (f, "corporate_csr")
+        assert [(x.name, x.role) for x in pf.places] == [("Tdist1", "funds")]
+        assert [x.name for x in pf.registered] == ["Ostate"]
+        assert (pf.footprint_places, pf.footprint_latest_year) == (2, "FY2023-24")
+        assert [(t.slug, t.inferred) for t in pf.themes] == [("csr-test-a", True)]
+        assert [(x.name, x.clauses) for x in pf.programmes] == [("Prog A", ["Test B"])]
+        assert [(r.kind, r.criterion) for r in pf.requirements] == [("own_bar", "three years of audited accounts")]
+        assert [(y.fiscal_year, y.prescribed_csr, y.total_spent) for y in pf.csr_years] == [
+            ("FY2023-24", 1000000, 1200000)]
+        assert (pf.spend_rows, pf.spend_by_state, pf.spend_by_sector) == (
+            1, [("Tstate", 500000)], [("Test A", 500000)])
+        assert [(x.name, x.org_id) for x in pf.partners] == [("T Org", org)] and pf.partner_kinds == {"ngo": 1}
+        assert [(c.title, c.deadline_passed) for c in pf.calls] == [("Call one", True)]
+
+    async def test_a_funder_with_nothing_recorded_has_empty_fields(self, db):
+        pf = await evidence.load_funder(db, await funder(db, "t-pf-empty"))
+        assert (pf.places, pf.themes, pf.programmes, pf.requirements, pf.csr_years, pf.partners, pf.calls) == (
+            [], [], [], [], [], [], [])
+        assert (pf.footprint_places, pf.spend_rows, pf.footprint_latest_year) == (0, 0, None)
+
+    async def test_an_unknown_funder_raises(self, db):
+        with pytest.raises(LookupError):
+            await evidence.load_funder(db, -1)
+
+
+class TestStatedProfile:
+    async def test_a_district_resolves_case_insensitively_and_adds_its_state(self, db, world):
+        ev = await evidence.stated_profile(db, ["tdist1"], [])
+        assert (ev.districts, ev.states) == ({world["d1"]: "Tdist1"}, {world["state"]: "Tstate"})
+
+    async def test_a_theme_resolves_to_its_clause(self, db, world):
+        ev = await evidence.stated_profile(db, [], ["Sector A"])
+        assert ev.clauses == {"csr-test-a": "Test A"}
+
+    async def test_an_unknown_place_names_near_matches(self, db, world):
+        with pytest.raises(ValueError, match="Tdist1"):
+            await evidence.stated_profile(db, ["Tdist"], [])
+
+    async def test_a_country_is_refused(self, db, world):
+        with pytest.raises(ValueError, match="district or state"):
+            await evidence.stated_profile(db, ["india"], [])
+
+    async def test_an_unmapped_theme_is_refused(self, db, world):
+        with pytest.raises(ValueError, match="Sector N"):
+            await evidence.stated_profile(db, [], ["Sector N"])
+
+
+class TestFindFunders:
+    async def test_district_first_state_second_empty_unrecorded_elsewhere_counted(self, db, world):
+        near = await place_funder(db, world, "t-ff-near")
+        sib = await funder(db, "t-ff-sib")
+        await db.execute("INSERT INTO funder_locations (funder_id, location_id, role) VALUES (%s, %s, 'funds')",
+                         (sib, world["d2"]))
+        empty = await funder(db, "t-ff-empty")
+        far = await funder(db, "t-ff-far")
+        await db.execute("INSERT INTO funder_locations (funder_id, location_id, role) VALUES (%s, %s, 'funds')",
+                         (far, world["other_state"]))
+        got = await service.find_funders(db, places=["Tdist1"], limit=500)
+        ids = [m.funder.id for m in got.matched]
+        assert ids.index(near) < ids.index(sib)
+        assert got.matched[ids.index(sib)].dims["place"].level == "state"
+        assert empty in [m.funder.id for m in got.not_recorded] and far not in ids
+        assert got.matched_total + len(got.not_recorded) + got.no_overlap == got.total_funders
+
+    async def test_funder_type_filters_and_an_unrecorded_type_is_not_recorded(self, db, world):
+        csr = await funder(db, "t-ff-csr", "corporate_csr")
+        untyped = await funder(db, "t-ff-untyped")
+        found = await place_funder(db, world, "t-ff-found")
+        for f in (csr, untyped):
+            await db.execute("INSERT INTO funder_locations (funder_id, location_id, role) VALUES (%s, %s, 'funds')",
+                             (f, world["d1"]))
+        got = await service.find_funders(db, places=["Tdist1"], funder_types=["corporate_csr"], limit=500)
+        assert csr in [m.funder.id for m in got.matched]
+        assert untyped in [m.funder.id for m in got.not_recorded]
+        assert found not in [m.funder.id for m in got.matched + got.not_recorded]
+
+    async def test_a_programme_in_the_theme_meets_the_theme(self, db, world):
+        f = await funder(db, "t-ff-prog")
+        p = await one(db, "INSERT INTO programs (funder_id, name) VALUES (%s, 'P')", (f,))
+        await db.execute("INSERT INTO program_tags (program_id, tag_id, role) VALUES (%s, %s, 'primary')",
+                         (p, world["csr_a"]))
+        got = await service.find_funders(db, themes=["csr-test-a"], limit=500)
+        assert f in [m.funder.id for m in got.matched]
+
+    async def test_nothing_asked_is_refused(self, db):
+        with pytest.raises(ValueError):
+            await service.find_funders(db)
+
+    async def test_at_most_four_queries_at_200_funders(self, db, world):
+        await db.execute("INSERT INTO funders (slug, name) SELECT 't-ffb-' || i, 'Ffb ' || i "
+                         "FROM generate_series(1, 200) i")
+        with patch.object(db, "execute", wraps=db.execute) as spy:
+            await service.find_funders(db, places=["Tdist1"], themes=["Sector A"])
+        assert spy.call_count <= 4
+
+
+class TestProfile:
+    async def test_org_profile_loads_every_kind_and_the_registered_place(self, db, world):
+        await db.execute("UPDATE orgs SET registered_location_id = %s WHERE id = %s", (world["d2"], world["org"]))
+        op = await service.profile(db, "org", world["org"])
+        assert op.registered == "Tdist2" and op.evidence.districts.keys() == {world["d1"], world["d2"]}
+
+    async def test_funder_profile_is_load_funder(self, db):
+        f = await funder(db, "t-pr-f")
+        assert (await service.profile(db, "funder", f)).funder.id == f

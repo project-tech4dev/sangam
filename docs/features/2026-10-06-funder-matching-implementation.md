@@ -336,8 +336,10 @@ The `FunderProfile` fields and the columns behind each:
   - `find_funders(places=["Udalguri"])` puts a district funder first, a state funder second
     with level `state`, a no-rows funder in `not_recorded`, and a `funds`-elsewhere funder in
     the `no_overlap` count.
-  - `funder_types=["corporate_csr"]` excludes other types. Funders whose type is not recorded
-    are counted as `type_not_recorded`, never excluded silently.
+  - `funder_types=["corporate_csr"]` excludes other types. A funder whose type is not recorded
+    goes to `not_recorded`, because the type is a dimension like place and theme and is *unknown*
+    for it. It is never excluded silently. *(Ruling while implementing: this replaces a separate
+    `type_not_recorded` count, so all three dimensions follow one Kleene rule.)*
   - Query count: `find_funders` issues at most 4 queries at 200 funders.
 - [ ] Run. Expected: fail. Implement. Run. Expected: pass.
 - [ ] Commit `feat(matching): funder profile and stated-profile search`.

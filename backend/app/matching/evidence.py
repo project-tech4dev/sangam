@@ -6,7 +6,19 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from app.matching.models import Basis, FunderRef, OrgRef
+from app.matching.models import (
+    Basis,
+    Call,
+    CsrYear,
+    FunderProfile,
+    FunderRef,
+    OrgRef,
+    Partner,
+    Place,
+    Programme,
+    Requirement,
+    Theme,
+)
 
 
 @dataclass(frozen=True)
@@ -298,3 +310,138 @@ async def load_fit(conn: Any, org: OrgEvidence) -> dict[int, FunderEvidence]:
 async def enrich_funders(conn: Any, funders: dict[int, FunderEvidence], reads) -> None:
     """Stage 2 for the funders stage 1 kept: one query per funder-side kind, never per funder."""
     _refuse_unknown(reads, "funder.", FUNDER_KINDS)
+
+
+# --- profiles and the stated profile (M3) ----------------------------------------------------
+
+@dataclass(frozen=True)
+class OrgProfile:
+    """The org bundle with every kind loaded: what `get_org` renders, and what the evaluators read."""
+
+    evidence: OrgEvidence
+    registered: str | None = None
+
+
+async def load_org_profile(conn: Any, org_id: int) -> OrgProfile:
+    ev = await load_org(conn, org_id, ORG_KINDS)
+    rows = await _rows(conn, "SELECT l.name FROM orgs o JOIN locations l ON l.id = o.registered_location_id "
+                             "WHERE o.id = %s", (org_id,))
+    return OrgProfile(ev, rows[0]["name"] if rows else None)
+
+
+def _rupees(value) -> int | None:
+    return None if value is None else int(value)
+
+
+_SPEND_SQL = """
+SELECT CASE WHEN grouping(st.name) = 0 THEN 'state' WHEN grouping(cs.label) = 0 THEN 'sector' ELSE 'all'
+       END AS axis, coalesce(st.name, cs.label) AS name, sum(s.amount) AS amount, count(*) AS n
+FROM funder_csr_spend s LEFT JOIN locations st ON st.id = s.state_location_id
+LEFT JOIN tags cs ON cs.id = s.csr_sector_id WHERE s.funder_id = %(f)s
+GROUP BY GROUPING SETS ((st.name), (cs.label), ()) ORDER BY axis, amount DESC NULLS LAST, name"""
+
+
+async def load_funder(conn: Any, funder_id: int) -> FunderProfile:
+    """One funder's recorded facts, one query per table; an empty field means nothing is recorded."""
+    rows = await _rows(conn, "SELECT id, name, slug, funder_type, website, section_135_bound FROM funders "
+                             "WHERE id = %s", (funder_id,))
+    if not rows:
+        raise LookupError(f"funder {funder_id} not found")
+    f, p = rows[0], {"f": funder_id}
+    out = FunderProfile(funder=FunderRef(id=f["id"], name=f["name"], slug=f["slug"], funder_type=f["funder_type"]),
+                        website=f["website"], section_135_bound=f["section_135_bound"])
+    for r in await _rows(conn, "SELECT l.name, l.kind, fl.role FROM funder_locations fl "
+                               "JOIN locations l ON l.id = fl.location_id WHERE fl.funder_id = %(f)s "
+                               "AND (fl.valid_to IS NULL OR fl.valid_to >= current_date) "
+                               "ORDER BY fl.role, l.kind, l.name", p):
+        (out.registered if r["role"] == "registered" else out.places).append(Place(**r))
+    fp = (await _rows(conn, "SELECT count(DISTINCT location_id) AS n, max(fiscal_year) AS latest "
+                            "FROM funder_footprints WHERE funder_id = %(f)s", p))[0]
+    out.footprint_places, out.footprint_latest_year = fp["n"], fp["latest"]
+    out.themes = [Theme(**r) for r in await _rows(
+        conn, f"SELECT cs.slug, cs.label, bool_and(ft.is_inferred) AS inferred FROM funder_tags ft "
+              f"JOIN tags t ON t.id = ft.tag_id {_CLAUSE_JOIN} WHERE ft.funder_id = %(f)s "
+              f"GROUP BY cs.slug, cs.label ORDER BY cs.slug", p)]
+    out.programmes = [Programme(**r) for r in await _rows(
+        conn, f"SELECT p.id, p.name, p.kind, array_remove(array_agg(DISTINCT cs.label), NULL) AS clauses "
+              f"FROM programs p LEFT JOIN program_tags pt ON pt.program_id = p.id "
+              f"LEFT JOIN tags t ON t.id = pt.tag_id LEFT {_CLAUSE_JOIN} "
+              f"WHERE p.funder_id = %(f)s GROUP BY p.id ORDER BY p.name, p.id", p)]
+    out.requirements = [Requirement(**r) for r in await _rows(
+        conn, "SELECT kind, criterion FROM funder_eligibility WHERE funder_id = %(f)s ORDER BY kind, id", p)]
+    out.csr_years = [CsrYear(fiscal_year=r["fiscal_year"], prescribed_csr=_rupees(r["prescribed_csr"]),
+                             total_spent=_rupees(r["total_spent"])) for r in await _rows(
+        conn, "SELECT fiscal_year, prescribed_csr, total_spent FROM funder_csr_years WHERE funder_id = %(f)s "
+              "ORDER BY fiscal_year DESC LIMIT 3", p)]
+    spend = await _rows(conn, _SPEND_SQL, p)
+    out.spend_rows = next((r["n"] for r in spend if r["axis"] == "all"), 0)
+    out.spend_by_state = [(r["name"], int(r["amount"])) for r in spend if r["axis"] == "state" and r["name"]][:5]
+    out.spend_by_sector = [(r["name"], int(r["amount"])) for r in spend if r["axis"] == "sector" and r["name"]][:5]
+    partners = await _rows(conn, "SELECT partner_name AS name, partner_kind AS kind, org_id, "
+                                 "count(*) OVER (PARTITION BY partner_kind) AS per_kind FROM funder_partners "
+                                 "WHERE funder_id = %(f)s ORDER BY partner_name, id", p)
+    out.partner_kinds = {r["kind"] or "unrecorded": r["per_kind"] for r in partners}
+    out.partners = [Partner(name=r["name"], kind=r["kind"], org_id=r["org_id"]) for r in partners[:10]]
+    out.calls = [Call(id=r["id"], title=r["title"], url=r["url"], amount_min=_rupees(r["amount_min"]),
+                      amount_max=_rupees(r["amount_max"]),
+                      deadline=r["deadline"].isoformat() if r["deadline"] else None,
+                      deadline_passed=bool(r["passed"])) for r in await _rows(
+        conn, "SELECT id, title, url, amount_min, amount_max, deadline, deadline < current_date AS passed "
+              "FROM rfps WHERE funder_id = %(f)s AND status = 'open' ORDER BY deadline NULLS LAST, id", p)]
+    return out
+
+
+async def _near(conn, sql: str, text: str) -> str:
+    rows = await _rows(conn, sql, {"t": text, "like": f"%{text}%"})
+    return ", ".join(r["name"] for r in rows) or "nothing close"
+
+
+async def _stated_place(conn, text: str) -> dict:
+    rows = await _rows(conn, "SELECT l.id, l.kind, l.name, p.id AS parent_id, p.kind AS parent_kind, "
+                             "p.name AS parent_name FROM locations l LEFT JOIN locations p ON p.id = l.parent_id "
+                             "WHERE lower(l.name) = lower(%s) ORDER BY l.id", (text,))
+    usable = [r for r in rows if r["kind"] in ("district", "state")]
+    if rows and not usable:
+        raise ValueError(f"{text!r} is a {rows[0]['kind']}; name a district or state")
+    if len(usable) > 1:
+        raise ValueError(f"{text!r} names {len(usable)} places: "
+                         + ", ".join(f"{r['name']} ({r['kind']}, in {r['parent_name']})" for r in usable))
+    if not usable:
+        near = await _near(conn, "SELECT name FROM locations WHERE kind IN ('district', 'state') AND "
+                                 "(name ILIKE %(like)s OR similarity(name, %(t)s) > 0.3) "
+                                 "ORDER BY similarity(name, %(t)s) DESC, name LIMIT 5", text)
+        raise ValueError(f"no district or state named {text!r}; near: {near}")
+    return usable[0]
+
+
+async def _stated_theme(conn, text: str) -> dict[str, str]:
+    rows = await _rows(conn, f"SELECT t.label AS tag, cs.slug, cs.label FROM tags t LEFT {_CLAUSE_JOIN} "
+                             f"WHERE t.kind IN ('sector', 'csr_sector') "
+                             f"AND (lower(t.slug) = lower(%s) OR lower(t.label) = lower(%s))", (text, text))
+    if not rows:
+        near = await _near(conn, "SELECT label AS name FROM tags WHERE kind IN ('sector', 'csr_sector') AND "
+                                 "(label ILIKE %(like)s OR similarity(label, %(t)s) > 0.3) "
+                                 "ORDER BY similarity(label, %(t)s) DESC, label LIMIT 5", text)
+        raise ValueError(f"no theme named {text!r}; near: {near}")
+    if not any(r["slug"] for r in rows):
+        raise ValueError(f"theme {rows[0]['tag']!r} has no Schedule VII clause mapped")
+    return {r["slug"]: r["label"] for r in rows if r["slug"]}
+
+
+async def stated_profile(conn: Any, places: list[str], themes: list[str]) -> OrgEvidence:
+    """A profile from names alone, so stage 1 answers "who gives in X for Y" with no org."""
+    districts: dict[int, str] = {}
+    states: dict[int, str] = {}
+    clauses: dict[str, str] = {}
+    for text in places:
+        r = await _stated_place(conn, text.strip())
+        if r["kind"] == "state":
+            states[r["id"]] = r["name"]
+            continue
+        districts[r["id"]] = r["name"]
+        if r["parent_kind"] == "state":  # R1: a district also counts as its state
+            states[r["parent_id"]] = r["parent_name"]
+    for text in themes:
+        clauses |= await _stated_theme(conn, text.strip())
+    return OrgEvidence(org=OrgRef(id=0, name="stated profile"), districts=districts, states=states,
+                       clauses=clauses)

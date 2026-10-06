@@ -7,10 +7,28 @@ from typing import Any, Literal
 from app.matching import registry
 from app.matching.config import Criteria
 from app.matching.engine import assess as assess_pair
-from app.matching.engine import rank_key
-from app.matching.evaluators import REGISTRY
-from app.matching.evidence import enrich_funders, load_fit, load_org
-from app.matching.models import Ambiguous, Assessment, Resolved, Shortlist
+from app.matching.engine import combine, rank_key
+from app.matching.evaluators import REGISTRY, Check
+from app.matching.evaluators import run as run_check
+from app.matching.evidence import (
+    OrgProfile,
+    enrich_funders,
+    load_fit,
+    load_funder,
+    load_org,
+    load_org_profile,
+    stated_profile,
+)
+from app.matching.models import (
+    Ambiguous,
+    Assessment,
+    Dimension,
+    FunderList,
+    FunderMatch,
+    FunderProfile,
+    Resolved,
+    Shortlist,
+)
 
 CriteriaRef = str | int
 ACTIVE = registry.ACTIVE
@@ -82,3 +100,69 @@ async def resolve(conn: Any, kind: Literal["org", "funder"], text: str) -> Resol
     near = like or await rows("similarity(name, %s) > 0.3 OR similarity(slug, %s) > 0.3", (text,) * 4,
                               order="greatest(similarity(name, %s), similarity(slug, %s)) DESC, id")
     return Ambiguous(kind=kind, text=text, candidates=near)
+
+
+async def profile(conn: Any, kind: Literal["org", "funder"], ref_id: int) -> OrgProfile | FunderProfile:
+    """The bundle the evaluators read, for `get_org` and `get_funder` to render."""
+    return await (load_org_profile(conn, ref_id) if kind == "org" else load_funder(conn, ref_id))
+
+
+def _dim(c: Check) -> Dimension:
+    return Dimension(outcome=c.outcome, basis=c.basis, reason_code=c.reason_code,
+                     reason_params=c.reason_params, level=c.level)
+
+
+def _either(*checks: Check) -> Check:
+    """Kleene any, keeping the check that decided it."""
+    for want in ("met", "unknown"):
+        for c in checks:
+            if c.outcome == want:
+                return c
+    return checks[0]
+
+
+def _type_dim(funder_type: str | None, wanted) -> Dimension:
+    if funder_type is None:
+        return Dimension(outcome="unknown", basis="not_researched", reason_code="funder_type_not_recorded")
+    return Dimension(outcome="met" if funder_type in wanted else "fail", basis="recorded",
+                     reason_code="funder_type", reason_params={"funder_type": funder_type})
+
+
+_LEVEL_ORDER = {"district": 0, "state": 1, "pan_india_stated": 2}
+
+
+def _match_key(m: FunderMatch) -> tuple:
+    place = m.dims.get("place")
+    return (_LEVEL_ORDER.get(place.level, 3) if place else 0, m.funder.id)
+
+
+async def find_funders(conn: Any, *, places=(), themes=(), funder_types=(), limit: int = 20,
+                       offset: int = 0) -> FunderList:
+    """Stage 1 against a stated place, theme or type (R20): one definition of "gives in X"."""
+    if not (places or themes or funder_types):
+        raise ValueError("name at least one place, theme or funder type")
+    stated = await stated_profile(conn, list(places), list(themes))
+    matched, unrecorded, no_overlap = [], [], 0
+    for f in (await load_fit(conn, stated)).values():
+        dims: dict[str, Dimension] = {}
+        if funder_types:
+            dims["type"] = _type_dim(f.funder.funder_type, funder_types)
+        if places:
+            dims["place"] = _dim(run_check("shares_place", stated, f, {}))
+        if themes:
+            dims["theme"] = _dim(_either(run_check("shares_theme", stated, f, {}),
+                                         run_check("shares_programme_theme", stated, f, {})))
+        m = FunderMatch(funder=f.funder, outcome=combine({"all": True}, [d.outcome for d in dims.values()]),
+                        dims=dims)
+        if m.outcome == "met":
+            matched.append(m)
+        elif m.outcome == "unknown":
+            unrecorded.append(m)
+        else:
+            no_overlap += 1
+    matched.sort(key=_match_key)
+    return FunderList(places=[*stated.districts.values(), *stated.states.values()],
+                      themes=list(stated.clauses.values()), funder_types=list(funder_types),
+                      matched=matched[offset:offset + limit], matched_total=len(matched),
+                      not_recorded=unrecorded, no_overlap=no_overlap,
+                      total_funders=len(matched) + len(unrecorded) + no_overlap, offset=offset, limit=limit)
