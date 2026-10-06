@@ -120,8 +120,7 @@ export function Sidebar({
       </div>
 
       {/* Tools that change the data, kept apart from conversations at the foot of the rail.
-          Everyone resolves to the staff dev user until real auth lands, so this is not yet
-          gated; Phase 3 shows it only when /api/me says is_staff. */}
+          Shown to everyone: the backend answers non-staff with 403 and ImportView says "Staff only". */}
       <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 4, borderTop: "1px solid var(--color-divider)", paddingTop: 12 }}>
         <button
           type="button"
