@@ -27,6 +27,13 @@ on no funder table and decides whether a funder may give at all. The middle
 group does not split: one organisation's record, one mapping onto the
 catalog, one report, either kind.
 
+Ask Sangam has three of its own, under `backend/app/agent/skills/`, with the
+same mechanism (`app/agent/build.py`): `funder-matching` (how to get from an
+organisation to verdicts), `funder-comparison` (named funders) and
+`funder-shortlist-brief` (the write-up). The judging is the
+`funder-assessor` subagent's, whose prompt is the criteria, so none of the
+three holds a matching rule.
+
 ```markdown
 ---
 name: funder-intake-research

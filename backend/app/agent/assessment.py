@@ -10,12 +10,18 @@ Outcome = Literal["met", "fail", "unknown"]
 # Why a check came out as it did. met/fail rest on evidence; unknown says what was missing.
 Basis = Literal["recorded", "on_file", "not_researched", "searched_not_found", "not_on_file"]
 EVIDENCE: frozenset[str] = frozenset({"recorded", "on_file"})
+# The checklist in prompts/funder_assessor.md; a code outside it splits a comparison table.
+CheckCode = Literal[
+    "area", "theme", "programme",
+    "reg_12a", "reg_80g", "darpan", "pan", "reg_no", "csr_1", "fcra",
+    "audits_3y", "itr_7", "turnover", "board", "team_cvs", "projects_3", "funder_bar",
+]
 
 
 class Check(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    code: str = Field(description="the checklist item, e.g. area, theme, reg_12a, audits")
+    code: CheckCode = Field(description="the checklist item, e.g. area, theme, reg_12a, audits_3y")
     outcome: Outcome
     basis: Basis
     note: str = Field(default="", description="one line: what was found, e.g. 'board of 2, needs 3'")

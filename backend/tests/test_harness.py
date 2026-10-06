@@ -50,9 +50,9 @@ class TestTheProfileIsInstalled:
 
     def test_the_profile_does_not_decide_tools(self):
         # A profile is registered per PROVIDER, so it is global to every agent
-        # sharing a model. Sangam Import needs read_file to load a skill and
-        # Ask Sangam must not have it, so the tool surface is per-agent
-        # middleware instead.
+        # sharing a model. Both supervisors need ls to find a skill and no
+        # subagent may hold it, so the tool surface is per-agent middleware
+        # instead.
         from deepagents.profiles.harness.harness_profiles import _harness_profile_for_model
 
         from app.agent.models import resolve_model
@@ -109,14 +109,14 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         assert "funder-assessor" in advertised
         assert "general-purpose" not in advertised
 
-    def test_ask_sangam_holds_its_six_tools_the_mandatory_one_and_task(self):
+    def test_ask_sangam_holds_its_six_tools_the_skill_readers_and_task(self):
         from app.agent.build import build_agent
         from app.core.config import get_settings
 
         tools = set(build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name)
         assert tools == {
             "db_list_tables", "db_describe_table", "db_profile_column", "db_query",
-            "search_graph", "fetch_url", "read_file", "task",
+            "search_graph", "fetch_url", "read_file", "ls", "task",
         }
 
     def test_neither_agent_can_write_a_file_or_run_a_command(self):
@@ -359,3 +359,58 @@ class TestTheAssessorModelIsOptional:
 
         build_agent(Settings(assessor_model="anthropic:claude-haiku-4-5"), None)
         assert "model" not in ASSESSOR
+
+
+class TestAskSangamLoadsItsMatchingProcedureFromSkills:
+    """Import's mechanism, Ask's own directory: procedures load on demand, rules stay in the prompt."""
+
+    def test_the_skills_directory_ships_inside_the_package(self):
+        from app.agent.build import SKILLS_DIR
+
+        assert SKILLS_DIR.is_dir()
+        assert "app/agent/skills" in SKILLS_DIR.as_posix()
+
+    def test_every_skill_has_frontmatter_that_says_when(self):
+        import yaml
+
+        from app.agent.build import SKILLS_DIR
+
+        found = list(SKILLS_DIR.glob("*/SKILL.md"))
+        assert found
+        for path in found:
+            meta = yaml.safe_load(path.read_text(encoding="utf-8").split("---")[1])
+            assert meta["name"] == path.parent.name
+            assert len(meta["description"]) <= 1024
+            assert "use when" in meta["description"].lower()
+
+    def test_the_route_round_trips(self):
+        from app.agent.build import SKILLS_ROUTE, _backend
+
+        backend = _backend()
+        listed = backend.ls(SKILLS_ROUTE)
+        assert listed.error is None
+        paths = [e["path"] for e in (listed.entries or [])]
+        assert paths and all(p.startswith(SKILLS_ROUTE) for p in paths)
+        downloaded = backend.download_files([f"{paths[0].rstrip('/')}/SKILL.md"])[0]
+        assert downloaded.error is None
+
+    def test_the_three_matching_skills_and_no_others(self):
+        from app.agent.build import SKILLS_DIR
+
+        names = {d.name for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()}
+        assert names == {"funder-matching", "funder-shortlist-brief", "funder-comparison"}
+
+    def test_the_assessor_declares_none(self):
+        # Its prompt is the criteria; a skill it might not load cannot be one.
+        from app.agent.build import ASSESSOR
+
+        assert "skills" not in ASSESSOR
+
+    def test_a_skill_never_names_a_wave_size(self):
+        # SKILL.md is read raw from disk, so a number there would ignore MAX_PARALLEL_RESEARCH.
+        import re
+
+        from app.agent.build import SKILLS_DIR
+
+        for path in SKILLS_DIR.glob("*/SKILL.md"):
+            assert not re.search(r"waves? of \d", path.read_text(encoding="utf-8")), path

@@ -64,41 +64,33 @@ def test_retry_budget_in_the_prompt_matches_the_middleware():
     assert f"After {MAX_SQL_ATTEMPTS} failed attempts" in SYSTEM_PROMPT
 
 
-class TestFunderShortlistProcedure:
-    """Flow 2: one counted query, and an unknown funder never reads as a poor match."""
+class TestMatchingGoesThroughTheAssessor:
+    """The supervisor narrows and reports; only the funder-assessor judges fit."""
+
+    def test_fit_is_never_judged_in_db_query(self):
+        assert "never judge fit yourself" in SYSTEM_PROMPT
+
+    def test_unknowns_stay_not_recorded_never_ineligible(self):
+        assert 'never "ineligible"' in SYSTEM_PROMPT
 
     def test_unrankable_funders_are_a_named_block(self):
-        assert "not enough recorded to rank" in SYSTEM_PROMPT
+        assert "not enough recorded" in SYSTEM_PROMPT
 
-    def test_each_criterion_has_three_states(self):
-        for state in ("match", "no overlap", "not recorded"):
-            assert state in SYSTEM_PROMPT
-
-    def test_counts_travel_with_their_denominators(self):
-        assert "criteria_known" in SYSTEM_PROMPT and "criteria_met" in SYSTEM_PROMPT
-
-    def test_thematic_join_goes_through_the_crosswalk(self):
-        assert "maps_to" in SYSTEM_PROMPT
-
-    def test_the_assessment_is_offered_not_run(self):
-        assert "do not run it unasked" in SYSTEM_PROMPT.lower()
+    def test_the_procedure_is_the_skill(self):
+        assert "funder-matching" in SYSTEM_PROMPT
 
 
-class TestFunderAssessmentProcedure:
-    """Flow 1: the rubric is read from the database, and what could not be scored is half the answer."""
+class TestTheWaveSizeIsTheSetting:
+    """A number frozen in prose would make MAX_PARALLEL_RESEARCH decorative."""
 
-    def test_weights_come_from_the_rubric_table(self):
-        assert "rubric_criteria" in SYSTEM_PROMPT
+    def test_the_shipped_prompt_has_no_placeholder_left(self):
+        assert "{{" not in SYSTEM_PROMPT
 
-    def test_total_is_out_of_available_points(self):
-        assert "available points" in SYSTEM_PROMPT and "never out of 100" in SYSTEM_PROMPT
+    def test_the_prompt_renders_from_the_settings_it_is_given(self):
+        from app.agent.prompt import render_prompt
+        from app.core.config import Settings
 
-    def test_grant_size_is_named_unscorable(self):
-        # funders.grant_size_min/max are not catalogued and never written, so 6a cannot be scored.
-        assert "6a" in SYSTEM_PROMPT and "grant size" in SYSTEM_PROMPT.lower()
-
-    def test_empty_eligibility_reads_as_unrecorded(self):
-        assert "no eligibility bars recorded" in SYSTEM_PROMPT
+        assert "at most 3 funder-assessor" in render_prompt(Settings(max_parallel_research=3))
 
 
 class TestStoredAndComputedScoresStayApart:
@@ -109,38 +101,6 @@ class TestStoredAndComputedScoresStayApart:
     def test_rule_2_allows_an_uncited_total_only_when_labelled(self):
         rule_2 = SYSTEM_PROMPT.split("2. Cite everything.")[1].split("\n3. ")[0]
         assert "computed" in rule_2
-
-
-def _rule(n: int) -> str:
-    return SYSTEM_PROMPT.split(f"\n{n}. ")[1].split(f"\n{n + 1}. ")[0]
-
-
-class TestShortlistGeographyAndLimits:
-    """Review fixes: what the shortlist's columns must say about real rows."""
-
-    def test_org_states_include_state_rows_not_just_district_parents(self):
-        # Goonj has 7 state-level org_locations rows; a state's parent is India, a country.
-        assert "kind = 'state'" in _rule(12)
-
-    def test_a_region_is_known_never_met(self):
-        # "Northeast India" has no child states in locations, so it cannot be expanded.
-        assert "stated regional" in _rule(12)
-
-    def test_a_cut_result_is_requeried_not_reported_short(self):
-        assert "not shown" in _rule(12)
-
-    def test_a_missing_maps_to_key_is_not_a_decided_null(self):
-        # ->> reads NULL for both; only the JSON null is a decision.
-        assert "'null'::jsonb" in _rule(12)
-
-
-class TestAssessmentArithmetic:
-    def test_available_points_come_from_sub_criteria_only(self):
-        # rubric_criteria holds parent rows too; summing both double-counts M.
-        assert "parent_id IS NOT NULL" in _rule(16)
-
-    def test_a_stored_score_keeps_its_own_scale(self):
-        assert "own scale" in _rule(19)
 
 
 class TestTheAssessorPromptIsTheCriteria:
@@ -165,6 +125,12 @@ class TestTheAssessorPromptIsTheCriteria:
         from app.agent.build import ASSESSOR
 
         assert "never `fail`" in ASSESSOR["system_prompt"]
+
+    def test_a_short_count_is_not_a_fail(self):
+        # The A3 gate: 1 of 4 grants concluded failed projects_3 and capped 14 funders at weak.
+        from app.agent.build import ASSESSOR
+
+        assert "A count below a bar is not evidence against it" in ASSESSOR["system_prompt"]
 
     def test_the_supervisor_prompt_names_the_assessor(self):
         assert "funder-assessor" in SYSTEM_PROMPT

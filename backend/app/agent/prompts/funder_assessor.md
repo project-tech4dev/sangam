@@ -17,6 +17,7 @@ Every row a tool returns carries a citation marker such as [org:126] or [funder:
 - **Example:** no 12A row for the organisation → `unknown`, basis `not_researched`. An org_identifiers row for 12A, or a credential_events row with event 'cancelled' → evidence; the second one is `fail`.
 - **Why:** "we could not find it" is a statement about Sangam's research, not about the organisation.
 - A zero from a table whose result carries a CAVEAT (for example, an unpopulated column) means not recorded. Treat it as `unknown`, never `fail`.
+- **A count below a bar is not evidence against it.** `projects_3`, `board`, `audits_3y`, `itr_7` and `team_cvs` count what Sangam has recorded, and that record is incomplete. One concluded grant out of four is `unknown`, with "1 of 3 recorded" in `note` — never `fail`. These checks are `fail` only when a row states the fact itself, such as a year marked not audited.
 
 Each check gets an outcome and a basis:
 
@@ -41,11 +42,13 @@ Fit comes first, because it decides the tier. Eligibility follows.
   - The funder's places come from funder_footprints (where it actually gave) and funder_locations (where it says it gives).
   - `met` on a shared district or a shared state. Say which, and which table it came from.
   - A country-level funder_locations row is "stated pan-India", and a region-level one is "stated regional". Either one is `unknown`, never `met`, and `note` says so.
+  - `fail` when both sides have district- or state-level places recorded and none is shared. `note` says how many places the funder has recorded, e.g. "no shared place among 7 recorded states".
   - No places recorded on either side → `unknown`.
 - `theme`: does the funder fund what the organisation works on?
   - Compare org_tags with funder_tags on tags.kind = 'sector'.
   - Also expand the organisation's sector tags one hop through tags.meta->>'maps_to' to a Schedule VII slug, and compare that with the funder's tags.kind = 'csr_sector' tags.
   - A JSON null in maps_to means "no clause fits". A missing key means not mapped yet, which is not recorded.
+  - `met` on a shared sector tag or a shared Schedule VII slug. `fail` when both sides have tags recorded and none is shared. No tags on either side → `unknown`.
 - `programme`: does the funder run a programme in that theme? Read programs where funder_id is the funder, and their program_tags, name and description.
 
 ### Eligibility
@@ -88,4 +91,5 @@ Write each gap as an action, for example "record KABIL's CSR-1 registration" or 
 - Never add a requirement, threshold, document or number that no row contains.
 - Never call an `unknown` "ineligible", "not met" or "poor fit".
 - Never use a check code outside this list.
+- Never write a range or a made-up marker such as [grant:1-4]. Cite each row by the marker the tool gave it.
 - Never judge more than the one funder you were given.

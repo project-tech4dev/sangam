@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+from importlib.resources import files
+from pathlib import Path
+
 from deepagents import create_deep_agent
+from deepagents.backends.composite import CompositeBackend
+from deepagents.backends.filesystem import FilesystemBackend
 from deepagents.backends.state import StateBackend
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from app.agent.assessment import FunderAssessment
+from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
 from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry_limiter
 from app.agent.models import resolve_model
-from app.agent.prompt import SYSTEM_PROMPT, subagent_prompt
+from app.agent.prompt import render_prompt, subagent_prompt
 from app.agent.tools.graph_tools import search_graph
 from app.agent.tools.sql_tools import (
     db_describe_table,
@@ -51,6 +57,18 @@ ASSESSOR: dict = {
     "system_prompt": subagent_prompt("funder_assessor"),
 }
 
+# Procedures the supervisor loads on demand; the rules they rely on stay in instructions.md.
+SKILLS_DIR = Path(str(files("app.agent") / "skills"))
+SKILLS_ROUTE = "/skills/"
+
+
+def _backend() -> CompositeBackend:
+    """Virtual state for everything, real disk for /skills/ alone — read-only, as on Import."""
+    return CompositeBackend(
+        default=StateBackend(),
+        routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR)},
+    )
+
 
 def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Before create_deep_agent: the profile is read while the graph is built,
@@ -58,10 +76,14 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     install_harness()
     # CopilotKitMiddleware was here: it serves frontend-declared tools, setState and
     # generative UI, none of which this app uses. Removing it cost 4 fewer graph nodes.
-    # Replaces the preset's FilesystemMiddleware, which brings eight tools
-    # bound to virtual state. read_file is the floor the library enforces.
-    backend = StateBackend()
-    middleware = [filesystem_tools(backend), sql_retry_limiter, clear_old_tool_results()]
+    # Replaces the preset's FilesystemMiddleware, which brings eight tools.
+    # read_file and ls are what loading a skill needs; nothing that writes.
+    backend = _backend()
+    middleware = [
+        filesystem_tools(backend, keep=SKILL_READING_TOOLS),
+        sql_retry_limiter,
+        clear_old_tool_results(),
+    ]
     # Isolated, so it builds its own stack: without its own filesystem it would run all eight.
     # No sql_retry_limiter: its jump to the end would leave no FunderAssessment to return.
     assessor = {**ASSESSOR, "middleware": [filesystem_tools(backend)]}
@@ -76,10 +98,11 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         tools=TOOLS,
         subagents=[assessor],
         backend=backend,
-        # sql_retry_limiter comes first: it can jump to the end of the graph, and
-        # a hook that jumps has to run before the ones that do work.
+        skills=[SKILLS_ROUTE],
+        # sql_retry_limiter comes before the hooks that do work: it can jump to the
+        # end of the graph. The filesystem only adds tools, so its place is free.
         middleware=middleware,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=render_prompt(settings),
         checkpointer=checkpointer,
     )
     # Langfuse v3 reads LANGFUSE_PUBLIC_KEY/SECRET_KEY/HOST from the env; attaching the handler at graph

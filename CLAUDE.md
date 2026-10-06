@@ -218,11 +218,11 @@ fifteen tools; Sangam Import twenty-one, with a subagent that could call `run_im
 `promote_research` under none of its instructions. `app/agent/harness.py` removes both, by
 two different mechanisms, and the difference matters: a `HarnessProfile` is registered per
 **provider**, so it is global to every agent sharing a model — right for the subagent, wrong for
-tools, since Sangam Import needs `read_file` to load a skill and Ask Sangam must not. So
+tools, since both supervisors need `ls` to find a skill and no subagent may hold it. So
 `install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
-preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its six plus `read_file`,
-which `FilesystemMiddleware` refuses to be built without; Sangam Import adds `ls`. Nothing that
-writes survives on either.
+preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its six plus `task`,
+`read_file` and `ls`; a subagent keeps only `read_file`, which `FilesystemMiddleware` refuses to
+be built without. Nothing that writes survives on any of them.
 
 **A subagent inherits none of that and must say so itself.** `create_deep_agent` builds an
 isolated subagent's middleware from scratch with an *unrestricted* `FilesystemMiddleware`, and
@@ -337,9 +337,11 @@ a test walks the package to prove every tool defined is also registered.
 **How many organisations Import researches at once is a setting, not a number in the
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
 above it the agent researches in waves until every organisation asked for is done.
-`app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder — **the only
-substitution any prompt in this repo gets** — because a number frozen in prose made the
-setting decorative. It is a plain `.replace()`, not `.format()`: the file is full of literal
+`app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder, and so does
+`app/agent/instructions.md`, where the same setting bounds one wave of `funder-assessor` tasks —
+**the only substitution any prompt in this repo gets** — because a number frozen in prose made the
+setting decorative. A SKILL.md is read raw from disk and never substituted, so no skill names a
+wave size. It is a plain `.replace()`, not `.format()`: the file is full of literal
 braces. The fan-out is bounded by connections, so `DB_POOL_MAX_SIZE` (default 10) moves with
 it; the pool is shared with the checkpointer, which writes on every graph step, so the
 concurrency gates in `sql/executor.py` and `ingest/runner.py` derive from it and sit under
@@ -360,6 +362,12 @@ researcher's targets come from `research_goals` and the schema, and it returns a
 means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and
 the access rules cannot be optional. `docs/SKILLS.md` has the mechanism, the discovery rules and
 the honest cost.
+
+**Ask Sangam loads its matching procedures the same way**, from `app/agent/skills/`:
+`funder-matching` (organisation → one narrowing `db_query` → waves of `funder-assessor`),
+`funder-comparison` (named funders, no narrowing) and `funder-shortlist-brief` (the write-up).
+The rules they lean on — the assessor judges, an unknown is "not recorded", the wave size —
+stay in `instructions.md`, rules 11–15.
 
 **Optional subsystems degrade, they do not crash.** The graph activates only when
 `NEO4J_URI` and an OpenAI key are both set (`Settings.graph_enabled`); `graphiti_core` is

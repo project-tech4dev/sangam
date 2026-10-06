@@ -45,6 +45,23 @@ def test_a_tier_outside_the_four_is_refused():
         FunderAssessment.model_validate(_assessment(fit_tier="excellent"))
 
 
+def test_a_check_code_outside_the_checklist_is_refused():
+    # The A3 gate returned csr1 for csr_1; a comparison table keyed on codes splits on that.
+    with pytest.raises(ValidationError):
+        FunderAssessment.model_validate(_assessment(checks=[_check(code="csr1")]))
+
+
+def test_every_code_the_checklist_names_is_accepted():
+    from typing import get_args
+
+    from app.agent.assessment import CheckCode
+    from app.agent.build import ASSESSOR
+
+    for code in get_args(CheckCode):
+        assert f"`{code}`" in ASSESSOR["system_prompt"], code
+        FunderAssessment.model_validate(_assessment(checks=[_check(code=code)]))
+
+
 def test_a_bare_cite_is_bracketed_so_the_supervisor_repeats_a_real_marker():
     a = FunderAssessment.model_validate(_assessment(checks=[_check(cites=["org:9", "[funder:2]"])]))
     assert a.checks[0].cites == ["[org:9]", "[funder:2]"]

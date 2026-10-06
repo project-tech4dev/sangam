@@ -19,8 +19,8 @@ offering the same tools.
 
 The two are removed by different mechanisms, and the difference matters. A
 harness profile is registered per **provider**, so it is global to every agent
-sharing a model — right for the subagent, wrong for tools, since Sangam Import
-needs `read_file` to load a skill and Ask Sangam must not have it.
+sharing a model — right for the subagent, wrong for tools, since both
+supervisors need `ls` to find a skill and no subagent may hold it.
 `FilesystemMiddleware` passed in `middleware=` replaces the default one **per
 agent**, which is where the tool surface is decided — and per *subagent* too:
 an isolated one builds its own stack and inherits none of the parent's, so
@@ -45,11 +45,11 @@ FILESYSTEM_TOOLS: frozenset[str] = frozenset(
 )
 
 # FilesystemMiddleware refuses to be built without read_file, so one of the
-# eight always remains. On Ask Sangam it is inert — it reads virtual files in
-# graph state — and it is the floor the library imposes, not a choice.
+# eight always remains. On a subagent it is the floor the library imposes, not
+# a capability it uses.
 REQUIRED_MINIMUM: tuple[str, ...] = ("read_file",)
 
-# Sangam Import keeps ls as well. deepagents has no dedicated tool for loading
+# Both supervisors keep ls as well. deepagents has no dedicated tool for loading
 # a skill: the model reads a SKILL.md with read_file, and ls is how it recovers
 # when a path in the prompt has gone stale. Nothing that writes is kept — on
 # the parent, or on a subagent, whose spec has to ask for this separately.
