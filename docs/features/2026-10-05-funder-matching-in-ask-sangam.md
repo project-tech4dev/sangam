@@ -1,5 +1,7 @@
 # Funder matching in Ask Sangam: a counted shortlist, then an agent assessment
 
+> **Superseded 2026-10-06** by `2026-10-06-funder-matching-engine.md`: matching moves from prompt procedures to a deterministic engine behind tools. The crosswalk (`0022`) described here is kept.
+
 *Draft v1 — 2026-10-06. Restructured in place from the 2026-10-05 spec; see Notes.*
 
 ## 1. Goal
