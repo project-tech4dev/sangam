@@ -23,7 +23,7 @@ from pydantic import ValidationError
 
 from app.ingest.expectations import PROMOTABLE
 from app.ingest.geography import resolve_location
-from app.ingest.matcher import Match, resolve_funder, resolve_org
+from app.ingest.matcher import Match, _is_foundation, resolve_funder, resolve_org
 from app.ingest.records import (
     ContactRecord,
     FunderCsrSpendRecord,
@@ -688,43 +688,45 @@ async def _reconcile_with_stored(
     funders_grant_band orders the band. A CIN already stored on this row is not overwritten.
     """
     update: dict[str, Any] = {}
-    if record.cin:
-        holder = await cin_holder(conn, record.cin)
-        if holder is not None and holder["id"] != match.entity_id:
-            report["held"].append(
-                f"CIN {record.cin} is already recorded on {holder['name']!r} [funder:{holder['id']}], "
-                f"so it is not written on {record.name!r}. One CIN is one company: a foundation's "
-                f"research often carries its parent's CIN, and the parent is its own row linked by "
-                f"parent_id."
-            )
-            update["cin"] = None
-        elif match.entity_id is not None:
-            stored = await (
-                await conn.execute("SELECT cin FROM funders WHERE id = %s", (match.entity_id,))
-            ).fetchone()
-            if stored and stored["cin"] and stored["cin"] != record.cin:
-                report["held"].append(
-                    f"CIN {record.cin} differs from {stored['cin']} already stored on "
-                    f"{record.name!r}. Not written — a person decides which is current."
-                )
-                update["cin"] = None
-    one_sided = (record.grant_size_min is None) != (record.grant_size_max is None)
-    if match.entity_id is not None and one_sided:
+    stored = None
+    if match.entity_id is not None:
         stored = await (
             await conn.execute(
-                "SELECT grant_size_min, grant_size_max FROM funders WHERE id = %s", (match.entity_id,)
+                "SELECT cin, grant_size_min, grant_size_max FROM funders WHERE id = %s",
+                (match.entity_id,),
             )
         ).fetchone()
-        if stored:
-            lo = record.grant_size_min if record.grant_size_min is not None else stored["grant_size_min"]
-            hi = record.grant_size_max if record.grant_size_max is not None else stored["grant_size_max"]
-            if lo is not None and hi is not None and float(hi) < float(lo):
-                report["held"].append(
-                    f"grant band for {record.name!r}: the research inverts the stored band "
-                    f"({stored['grant_size_min']} to {stored['grant_size_max']}). Not written — a "
-                    f"person decides which is current."
-                )
-                update.update(grant_size_min=None, grant_size_max=None)
+    if record.cin:
+        holder = await cin_holder(conn, record.cin)
+        if _is_foundation(record.name):
+            report["held"].append(
+                f"CIN {record.cin} is not written on {record.name!r}: a CIN names a company, and a "
+                f"foundation's research usually carries its parent's. Link the parent by parent_id."
+            )
+            update["cin"] = None
+        elif holder is not None and holder["id"] != match.entity_id:
+            report["held"].append(
+                f"CIN {record.cin} is already recorded on {holder['name']!r} [funder:{holder['id']}], "
+                f"so it is not written on {record.name!r}. One CIN is one company."
+            )
+            update["cin"] = None
+        elif stored and stored["cin"] and stored["cin"] != record.cin:
+            report["held"].append(
+                f"CIN {record.cin} differs from {stored['cin']} already stored on "
+                f"{record.name!r}. Not written — a person decides which is current."
+            )
+            update["cin"] = None
+    one_sided = (record.grant_size_min is None) != (record.grant_size_max is None)
+    if stored and one_sided:
+        lo = record.grant_size_min if record.grant_size_min is not None else stored["grant_size_min"]
+        hi = record.grant_size_max if record.grant_size_max is not None else stored["grant_size_max"]
+        if lo is not None and hi is not None and float(hi) < float(lo):
+            report["held"].append(
+                f"grant band for {record.name!r}: the research inverts the stored band "
+                f"({stored['grant_size_min']} to {stored['grant_size_max']}). Not written — a "
+                f"person decides which is current."
+            )
+            update.update(grant_size_min=None, grant_size_max=None)
     return record.model_copy(update=update) if update else record
 
 

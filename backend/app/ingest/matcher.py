@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Any, Literal
 
+from app.ingest.records import normalise_cin
+
 Method = Literal["identifier", "exact", "alias", "boilerplate", "trigram", "none"]
 
 # A wide net in SQL, then a strict re-rank on the distinctive part of the name.
@@ -77,11 +79,17 @@ def _is_foundation(name: str) -> bool:
 
 
 def _same_organisation(name: str, held: str, aliases: list[str]) -> bool:
-    """Same distinctive name and on the same side of the company/foundation line."""
-    return any(
-        n.lower() == name.lower() or (core(name) == core(n) and _is_foundation(name) == _is_foundation(n))
-        for n in (held, *aliases)
-    )
+    """Same distinctive name; two foundations need a multi-token core ('Tata Trusts' is not 'Tata Foundation')."""
+    def same(n: str) -> bool:
+        if n.lower() == name.lower():
+            return True
+        if _is_foundation(name) != _is_foundation(n):
+            return False
+        if _is_foundation(name):
+            return same_but_for_boilerplate(name, n)
+        return core(name) == core(n)
+
+    return any(same(n) for n in (held, *aliases))
 
 
 async def resolve_funder(conn: Any, name: str, cin: str | None = None) -> Match:
@@ -93,7 +101,7 @@ async def resolve_funder(conn: Any, name: str, cin: str | None = None) -> Match:
     if cin:
         row = await (
             await conn.execute(
-                "SELECT id, name, aliases FROM funders WHERE cin = %s", (cin.strip().upper(),)
+                "SELECT id, name, aliases FROM funders WHERE cin = %s", (normalise_cin(cin),)
             )
         ).fetchone()
         if row and _same_organisation(name, row["name"], row["aliases"] or []):
