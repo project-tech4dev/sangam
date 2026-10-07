@@ -28,8 +28,8 @@ STATUTORY = ("reg_12a", "reg_80g", "csr_1", "audits_3y")
 # CSR money routed through a company's foundation still needs a CSR-1 registered implementer.
 STATUTORY_FUNDER_TYPES = frozenset({"corporate_csr", "corporate_foundation"})
 UNTYPED = frozenset({None, "", "other"})
-# Scored only when the assessor returned them: they apply to some funders only.
-CONDITIONAL = frozenset({"fcra", "turnover"})
+# Scored only when returned: only some funders record a turnover bar.
+CONDITIONAL = frozenset({"turnover"})
 
 _GATE_RANK = {"pass": 0, "unverified": 1, "fail": 2}
 
@@ -94,6 +94,7 @@ def evaluate(
     *,
     funder_type: str | None,
     section_135_bound: bool | None,
+    foreign_funder: bool | None = None,
     shared_districts: int,
     funder_id: int,
 ) -> Result:
@@ -113,6 +114,8 @@ def evaluate(
             c: s for c, s in shares.items()
             if not (c in CONDITIONAL and c not in outcome)
             and not (c == "csr_1" and statutory is False)
+            # FCRA governs foreign money only; readiness returns it for every funder.
+            and not (c == "fcra" and foreign_funder is not True)
         }
         total = sum(live.values())
         earned = 0.0

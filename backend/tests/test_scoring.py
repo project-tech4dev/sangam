@@ -34,8 +34,8 @@ def _without(facts, *codes):
     return [f for f in facts if f[0] not in codes]
 
 
-def _eval(facts, funder_type="corporate_csr", s135=None, shared_districts=0, funder_id=2):
-    return evaluate(facts, funder_type=funder_type, section_135_bound=s135,
+def _eval(facts, funder_type="corporate_csr", s135=None, shared_districts=0, funder_id=2, foreign=None):
+    return evaluate(facts, funder_type=funder_type, section_135_bound=s135, foreign_funder=foreign,
                     shared_districts=shared_districts, funder_id=funder_id)
 
 
@@ -124,6 +124,16 @@ class TestConditionalGates:
 
 
 class TestApplicability:
+    def test_fcra_counts_only_for_a_foreign_funder(self):
+        # Readiness always returns fcra, never seeing the funder; the pair says whether it applies.
+        facts = ALL_MET + [("fcra", "unknown", None)]
+        assert _eval(facts).breakdown["compliance"] == 25
+        assert _eval(facts, foreign=False).breakdown["compliance"] == 25
+        assert _eval(facts, foreign=True).breakdown["compliance"] == pytest.approx(25 * 6 / 7, abs=0.1)
+
+    def test_a_foreign_funder_with_fcra_left_out_counts_it_unknown(self):
+        assert _eval(ALL_MET, foreign=True).coverage < 1
+
     def test_csr_1_drops_out_of_compliance_for_a_non_csr_funder(self):
         # Six compliance checks remain, all met: the full 25.
         facts = _without(ALL_MET, "csr_1")
