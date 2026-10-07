@@ -473,6 +473,11 @@ The three plans in `plans/` settled these. Each is argued in its plan:
   "draft" is deleted from their `source` strings, with no other rewording. No Draft badge or label
   remains.
 
+- **Confirmed lines are not frozen.** `classification_confirmed` protects only the domain and
+  theme. A re-import could still update a confirmed line's amount, but re-importing an entity is
+  stopped at the agent level today, so freezing amounts is not built. Revisit if re-import is
+  enabled.
+
 ## Out of scope
 
 - Bulk-loading all 14,000+ MCA lines. Lines are read per funder, on demand.
