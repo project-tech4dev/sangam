@@ -103,7 +103,7 @@ means adding it to the JSON with a basis and a robots check, in a pull request.
 
 ## The agents
 
-One main agent and three subagents, built in `app/ingest/agent.py`.
+One main agent and two subagents, built in `app/ingest/agent.py`.
 
 **Every tool lives in `app/ingest/tools/`, and nothing else in `app/ingest/` is a tool** — the
 rest of the folder is the pipeline the tools drive. Three modules, by what the tool touches,
@@ -136,16 +136,14 @@ tool calls and never reached its report, because each document displaced the las
 An isolated subagent returns its conclusion, not its reading. It hands back a thin
 `ResearchSummary` — counts and status, not the findings, which it has already saved itself.
 
-**`staff-reader`** — one per corporate funder, `mode: "isolated"`, launched after its
-`entity-researcher` with the slug that researcher saved. `save_research` merges by origin (a staff
-URL or the web), so its findings join that row; a staff-only save with no row for the slug today is
-refused. Its tools are `read_source_rows`, `research_goals` and `save_research`, and nothing that
-reaches the network: a researcher reads untrusted pages and can fetch any URL, so a prompt injection
-could have it carry a confidential row out in one. `read_source_rows` reads the workbooks a person
-uploaded with `make staff-source` from the private `staff-sources` bucket with openpyxl and returns
-header rows and matching rows as `cell=value`, each cited `[source:<document>#<sheet>!<cell>]`.
-There is no layout parser: how each sheet is laid out, and its unit, is in `prompts/staff_reader.md`
-under "The staff sheets" (a subagent loads no skill). Contact columns are dropped. Promoted facts
+**Staff workbooks.** `read_source_rows` is the researcher's eighth tool (the supervisor's five
+pipeline tools do not include it). It reads the workbooks a person uploaded with `make staff-source`
+from the private `staff-sources` bucket with openpyxl and returns header rows and matching rows as
+`cell=value`, each cited `[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each
+sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". **Staff
+rows last:** `StaffLastLock` (`app/agent/middleware.py`) refuses `search_public_sources`,
+`read_page` and `fetch_document` once a run has called `read_source_rows`, so an injected page
+cannot have a staff row carried out in a URL or query. Contact columns are dropped. Promoted facts
 are public (D14); the files and their `documents` rows stay staff-only, and `promote` holds a staff
 finding without its marker. Tool output reaches the model provider and, with tracing on, Langfuse,
 like every tool output.

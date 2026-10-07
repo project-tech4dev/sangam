@@ -271,7 +271,7 @@ class TestIngestAgentIsSelfDescribing:
                 f"makes it invisible whenever that skill is not loaded."
             )
 
-    @pytest.mark.parametrize("spec_name", ["ENTITY_RESEARCHER", "STAFF_READER", "CATALOG_WRITER"])
+    @pytest.mark.parametrize("spec_name", ["ENTITY_RESEARCHER", "CATALOG_WRITER"])
     def test_a_subagent_prompt_names_every_tool_its_spec_declares(self, spec_name):
         """The same rule, one level down, and it is easier to break here: a
         subagent is isolated, so instructions.md naming a tool does nothing for
@@ -345,12 +345,11 @@ class TestIngestAgentIsSelfDescribing:
         # not on the main agent. Both subagents count: the parent researches
         # nothing and writes nothing, so save_research reaches the model only
         # through the researcher and promote_research only through the writer.
-        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, STAFF_READER
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER
 
         registered = (
             {t.name for t in TOOLS}
             | {t.name for t in ENTITY_RESEARCHER["tools"]}
-            | {t.name for t in STAFF_READER["tools"]}
             | {t.name for t in CATALOG_WRITER["tools"]}
         )
         assert not defined - registered, f"defined but never registered: {sorted(defined - registered)}"
@@ -964,13 +963,12 @@ class TestTheCatalogWriterCannotResearch:
         from app.ingest import agent as agent_module
 
         source = inspect.getsource(agent_module.build_ingest_agent)
-        assert "ENTITY_RESEARCHER" in source and "CATALOG_WRITER" in source and "STAFF_READER" in source
+        assert "ENTITY_RESEARCHER" in source and "CATALOG_WRITER" in source
 
     def test_the_instructions_tell_the_main_agent_to_launch_it(self):
         from app.ingest.agent import INSTRUCTIONS
 
         assert "catalog-writer" in INSTRUCTIONS
-        assert "staff-reader" in INSTRUCTIONS
 
     def test_a_report_must_say_how_many_rows_it_wrote(self):
         with pytest.raises(ValidationError):

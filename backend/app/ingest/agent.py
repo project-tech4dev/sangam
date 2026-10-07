@@ -14,7 +14,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results
+from app.agent.middleware import clear_old_tool_results, staff_last_lock
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.research_records import PromotionReport, ResearchSummary
@@ -130,6 +130,8 @@ TOOLS = [
 RESEARCH_TOOLS = [
     research_goals,
     funder_dossier,
+    # Staff-only workbooks; the gate is the require_staff Import route this agent sits behind.
+    read_source_rows,
     search_public_sources,
     read_page,
     fetch_document,
@@ -164,23 +166,6 @@ ENTITY_RESEARCHER = {
 }
 
 
-# Staff-only workbooks, read by a subagent with no network tool: a researcher reads
-# untrusted pages and fetches any URL, so it could be steered into carrying a row out.
-# The gate is the require_staff Import route this agent sits behind.
-STAFF_READER = {
-    "name": "staff-reader",
-    "description": (
-        "Reads the staff-only workbooks (statutory CSR filing exports, the CSO funder workbook) "
-        "for ONE funder and saves cited findings. Launch one per corporate funder, alongside its "
-        "entity-researcher. It has no web access and cannot write to the catalog."
-    ),
-    "mode": "isolated",
-    "tools": [research_goals, read_source_rows, save_research],
-    "response_format": ResearchSummary,
-    "system_prompt": prompt("staff_reader"),
-}
-
-
 # The second kind of subagent. It researches nothing and cannot: its only
 # tools are the promoter and the dossier, so every value it writes came out of
 # a saved entity_research row through fixed SQL. What it adds over calling
@@ -208,12 +193,12 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # is the only thing that writes. Ask Sangam reads; this one imports.
     backend = _backend()
     # An isolated subagent builds its own middleware stack, so the parent's restricted
-    # filesystem never reaches it: unset, each runs write_file and delete against /skills/.
-    # No subagent loads a skill now, so none gets `ls`. read_file is
+    # filesystem never reaches it: unset, both run write_file and delete against /skills/.
+    # Neither subagent loads a skill now, so neither gets `ls`. read_file is
     # the floor FilesystemMiddleware refuses to be constructed below, not a
-    # capability any of them uses.
-    researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend)]}
-    reader = {**STAFF_READER, "middleware": [filesystem_tools(backend)]}
+    # capability either of them uses.
+    # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
+    researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend), staff_last_lock()]}
     writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend)]}
     # It formats what two tools return, so it needs no reasoning about sources.
     if settings.utility_model:
@@ -221,7 +206,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,
-        subagents=[researcher, reader, writer],
+        subagents=[researcher, writer],
         backend=backend,
         skills=[SKILLS_ROUTE],
         middleware=[filesystem_tools(backend, keep=SKILL_READING_TOOLS), clear_old_tool_results()],
