@@ -119,8 +119,8 @@ ifeq ($(ENV),local)
 seed: migrate
 endif
 
-# Schedule VII on its own. Idempotent; `make seed` already runs it.
-taxonomy-seed:  ## Load just the Schedule VII taxonomy (make seed already does)
+# Schedule VII and the theme taxonomy (tags + tag_links). Idempotent; `make seed` already runs it.
+taxonomy-seed:  ## Load just the taxonomy (make seed already does)
 	$(COMPOSE) run --rm --no-deps backend python -m seed.taxonomy_seed
 
 # Build the Neo4j knowledge graph from Postgres (needs OPENAI_API_KEY in .env).
