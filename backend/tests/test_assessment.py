@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -17,7 +19,9 @@ def _assessment(**over) -> dict:
         "org_id": 126,
         "funder_id": 2,
         "funder_name": "HDFC Bank Limited",
-        "fit_tier": "strong",
+        "funder_type": "corporate_csr",
+        "section_135_bound": True,
+        "shared_districts": 1,
         "reasons": ["Both work in Kokrajhar [org:126] [funder:2]"],
         "checks": [_check()],
         "gaps": [],
@@ -26,23 +30,59 @@ def _assessment(**over) -> dict:
 
 def test_a_complete_assessment_validates():
     a = FunderAssessment.model_validate(_assessment())
-    assert a.fit_tier == "strong"
     assert a.checks[0].outcome == "met"
+    assert a.gate == "unverified"  # one check of fourteen is recorded
 
 
-def test_an_unknown_field_is_refused():
+@pytest.mark.parametrize("field", ["score", "gate", "rank_key", "fit_tier"])
+def test_a_computed_or_retired_field_sent_by_the_model_is_refused(field):
+    # extra="forbid": a score the model made up cannot ride in beside the computed one.
     with pytest.raises(ValidationError):
-        FunderAssessment.model_validate(_assessment(score=82))
+        FunderAssessment.model_validate(_assessment(**{field: "x"}))
 
 
-@pytest.mark.parametrize("tier", ["strong", "possible", "weak", "not_enough_recorded"])
-def test_the_four_tiers_are_accepted(tier):
-    assert FunderAssessment.model_validate(_assessment(fit_tier=tier)).fit_tier == tier
+class TestTheVerdictIsComputed:
+    COMPUTED = ("gate", "gate_reasons", "score", "breakdown", "coverage", "rank_key")
+
+    def test_the_model_is_never_asked_for_it(self):
+        # ToolStrategy builds the model's tool from the validation schema.
+        props = FunderAssessment.model_json_schema()["properties"]
+        assert not set(self.COMPUTED) & set(props)
+
+    def test_the_supervisor_receives_it(self):
+        # deepagents hands a subagent's structured_response back as model_dump_json().
+        data = json.loads(FunderAssessment.model_validate(_assessment()).model_dump_json())
+        assert set(self.COMPUTED) <= set(data)
+
+    def test_it_follows_the_checks(self):
+        a = FunderAssessment.model_validate(
+            _assessment(checks=[_check(code="area", level="district", cites=["[org:126]"]),
+                                _check(code="reg_80g", outcome="fail")])
+        )
+        assert a.gate == "fail"
+        assert a.breakdown["fit"] == 20
 
 
-def test_a_tier_outside_the_four_is_refused():
-    with pytest.raises(ValidationError):
-        FunderAssessment.model_validate(_assessment(fit_tier="excellent"))
+class TestAreaLevel:
+    def test_a_met_area_needs_a_level(self):
+        with pytest.raises(ValidationError, match="level"):
+            FunderAssessment.model_validate(_assessment(checks=[_check(code="area")]))
+
+    def test_a_level_belongs_only_on_a_met_area(self):
+        with pytest.raises(ValidationError, match="level"):
+            FunderAssessment.model_validate(_assessment(checks=[_check(level="state")]))
+        with pytest.raises(ValidationError, match="level"):
+            FunderAssessment.model_validate(
+                _assessment(checks=[_check(code="area", outcome="unknown", basis="not_researched",
+                                           cites=[], level="state")])
+            )
+
+
+def test_a_code_twice_is_refused_except_funder_bar():
+    with pytest.raises(ValidationError, match="twice"):
+        FunderAssessment.model_validate(_assessment(checks=[_check(), _check()]))
+    bars = [_check(code="funder_bar", note="id 4"), _check(code="funder_bar", note="id 5")]
+    assert len(FunderAssessment.model_validate(_assessment(checks=bars)).checks) == 2
 
 
 def test_a_check_code_outside_the_checklist_is_refused():
@@ -59,7 +99,8 @@ def test_every_code_the_checklist_names_is_accepted():
 
     for code in get_args(CheckCode):
         assert f"`{code}`" in ASSESSOR["system_prompt"], code
-        FunderAssessment.model_validate(_assessment(checks=[_check(code=code)]))
+        level = "state" if code == "area" else None
+        FunderAssessment.model_validate(_assessment(checks=[_check(code=code, level=level)]))
 
 
 def test_a_bare_cite_is_bracketed_so_the_supervisor_repeats_a_real_marker():

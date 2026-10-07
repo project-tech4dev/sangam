@@ -48,9 +48,10 @@ ASSESSOR_TOOLS = [db_list_tables, db_describe_table, db_query]
 ASSESSOR: dict = {
     "name": "funder-assessor",
     "description": (
-        "Judges ONE organisation against ONE funder from the database and returns a tier "
-        "(strong / possible / weak / not_enough_recorded) with every check cited. Give it the "
-        "org_id and funder_id. Launch one per candidate funder, several in one message."
+        "Judges ONE organisation against ONE funder from the database: every check met, failed "
+        "or unknown, cited. Its reply carries a gate, score, coverage and rank_key computed from "
+        "those checks. Give it the org_id and funder_id. Launch one per candidate funder, several "
+        "in one message."
     ),
     "mode": "isolated",
     "tools": ASSESSOR_TOOLS,
