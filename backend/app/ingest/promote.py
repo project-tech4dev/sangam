@@ -21,6 +21,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.ingest import staff_sources
 from app.ingest.expectations import PROMOTABLE, activity_kind
 from app.ingest.geography import resolve_location
 from app.ingest.matcher import Match, _is_foundation, resolve_funder, resolve_org
@@ -315,6 +316,8 @@ async def _write_documents(
 
     by_url: dict[str, int] = {}
     for f in _validated(findings, "document", report):
+        if staff_sources.is_staff_source_url(f.source_url):
+            continue  # the dataset's private row exists; ensure_document would add a public one
         shim = type("Doc", (), {
             "source_url": f.source_url, "title": f.title,
             "source_name": f.source_name or "research",
@@ -335,7 +338,24 @@ async def _write_documents(
         )
         by_url[f.source_url] = document_id
         _count(report, "documents", status)
+    by_url.update(await _staff_datasets(conn, findings))
     return by_url
+
+
+async def _staff_datasets(conn: Any, findings: list[dict[str, Any]]) -> dict[str, int]:
+    """source_url -> the private row of each staff dataset cited, so its lines carry document_id."""
+    urls = sorted({f["source_url"] for f in findings if staff_sources.is_staff_source_url(f.get("source_url"))})
+    if not urls:
+        return {}
+    rows = await (await conn.execute(
+        "SELECT id, source_url FROM documents WHERE doc_type = 'source_dataset' AND source_url = ANY(%s) "
+        "ORDER BY id",
+        (urls,),
+    )).fetchall()
+    found: dict[str, int] = {}
+    for row in rows:
+        found.setdefault(row["source_url"], row["id"])
+    return found
 
 
 async def _shelve(
@@ -902,6 +922,9 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
             f"fields to map. Re-run the research for {row['slug']} and promote that."
         )
         return report
+
+    findings, unmarked = staff_sources.hold_unmarked(findings)
+    report["held"].extend(unmarked)
 
     # An NGO is not a funder, and the two kinds reach different tables through
     # different resolvers. Nothing below this line is shared but the report.

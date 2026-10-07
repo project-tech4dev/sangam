@@ -241,3 +241,19 @@ async def read_rows(pool: Any, name: str, *, sheet: str = "") -> str:
         text = (text[:cut] + f"\n… output cut at {MAX_CHARS} characters. Call again with `sheet` "
                 "(e.g. one fiscal year) to read the rest.")
     return text + tail
+
+
+_MARKER = re.compile(r"\[source:\d+#[^\]]+![A-Z]{1,3}\d+\]")
+
+
+def hold_unmarked(findings: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+    """Promotable findings, and a held reason for each staff-dataset finding with no cell marker."""
+    kept: list[dict[str, Any]] = []
+    held: list[str] = []
+    for f in findings:
+        if is_staff_source_url(f.get("source_url")) and not _MARKER.search(str(f.get("evidence", ""))):
+            held.append(f"{f.get('concept')}: cites a staff dataset without its [source:…] marker — quote "
+                        f"the row's line with the marker of the cell that holds the fact")
+        else:
+            kept.append(f)
+    return kept, held
