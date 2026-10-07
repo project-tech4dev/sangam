@@ -1,4 +1,4 @@
-.PHONY: help up down logs seed taxonomy-seed graph-seed smoke client-docs db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs seed taxonomy-seed graph-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -168,6 +168,15 @@ client-docs:  ## Render docs/entities from the research table (host venv)
 	@set -a; [ -f .env ] && . ./.env; set +a; \
 	cd backend && DATABASE_URL="$(if $(filter staging,$(ENV)),$(DB_URL),postgresql://sangam:sangam@localhost:5433/sangam)" \
 	.venv/bin/python -m app.ingest.render_docs
+
+# Upload one staff-only workbook (spec §4). Host venv: the file is on this machine. Staging only:
+# Storage is global, so a local row would name a cloud object.
+staff-source:  ## Upload a staff workbook: make staff-source ENV=staging FILE="<xlsx>" KEY=<registry key>
+	@test "$(ENV)" = staging || { echo 'staff-source runs with ENV=staging only (Storage is global).'; exit 2; }
+	@test -n "$(FILE)" && test -n "$(KEY)" || { echo 'usage: make staff-source ENV=staging FILE="<xlsx>" KEY=<key>'; exit 2; }
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+	DATABASE_URL="$(DB_URL)" PYTHONPATH=backend backend/.venv/bin/python scripts/upload_staff_source.py \
+	  "$(FILE)" --source-key "$(KEY)"
 
 ##@ Managed database (ENV=staging)
 # Print the resolved connection string (password included — do not paste it
