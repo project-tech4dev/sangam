@@ -1,6 +1,6 @@
 ---
 name: funder-matching
-description: Use when someone asks which funders an organisation could apply to, should approach, or fits — "Which funders can KABIL apply to?", "find funders for Goonj", "who should we pitch?". The procedure from the organisation's name to a set of funder-assessor verdicts, ready to write up. The write-up itself is funder-shortlist-brief. When the user names the funders to judge, use funder-comparison instead.
+description: Use when someone asks which funders an organisation could apply to, should approach, or fits — "Which funders can KABIL apply to?", "find funders for Goonj", "who should we pitch?". The procedure from the organisation's name to a set of funder-assessor replies, each with a computed gate and score, ready to write up. The write-up itself is funder-shortlist-brief. When the user names the funders to judge, use funder-comparison instead.
 ---
 
 # From an organisation to a shortlist
@@ -43,8 +43,9 @@ Then sort every funder into one of three groups:
 | nothing in common recorded | has places or themes, and shares none | counted, not assessed |
 | nothing recorded | no places and no themes at all | counted and named, not assessed |
 
-A pan-India or regional funder shares no place, so it is a candidate only
-when it shares a theme.
+A funder that states pan-India or regional coverage counts as sharing a place:
+it is a candidate, and the assessor decides whether a region includes the
+organisation's states.
 
 ## 4. Assess every candidate
 

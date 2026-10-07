@@ -202,13 +202,18 @@ graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 `db_query`, `search_graph`, `fetch_url`. Nothing else — plus deepagents' `task`, which exists for
 one declared subagent, `funder-assessor`.
 
-**Funder matching is agentic.** The `funder-assessor` subagent judges one org against one funder
-with three read-only SQL tools, and returns a `FunderAssessment` (`app/agent/assessment.py`).
-Its prompt, `app/agent/prompts/funder_assessor.md`, **is the matching criteria**: changing a rule
-means editing that checklist. The schema refuses a `fail` without cited evidence, so "not
-recorded" cannot become "ineligible". `ASSESSOR_MODEL` points it at a cheaper model. Design:
-`docs/features/2026-10-06-funder-matching-agentic.md`. The earlier deterministic engine was built
-and removed; its plan is kept beside that file for the reasoning.
+**Funder matching: the agent finds the facts, code scores them.** The `funder-assessor` subagent
+judges one org against one funder with three read-only SQL tools, and returns a `FunderAssessment`
+(`app/agent/assessment.py`) of cited checks. Its prompt, `app/agent/prompts/funder_assessor.md`,
+**defines the checks**; `app/agent/scoring.py` turns them into a gate (pass / unverified / fail), a
+score out of 100, a coverage and a `rank_key` — pure arithmetic, exposed as Pydantic computed
+fields, so the model never fills them and deepagents' `model_dump_json()` hands them to the
+supervisor. Changing a check is the prompt; changing a weight or a gate is `scoring.py`. The schema
+refuses a `fail` without cited evidence, so "not recorded" cannot become "ineligible", and only a
+`fail` closes a gate. `ASSESSOR_MODEL` points it at a cheaper model. Design:
+`docs/features/2026-10-07-funder-matching-scored.md`, on top of
+`docs/features/2026-10-06-funder-matching-agentic.md`. The earlier deterministic engine — which
+also fetched and judged in code — was built and removed; its plan is kept beside them.
 
 That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
 `create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`

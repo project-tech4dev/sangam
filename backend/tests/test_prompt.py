@@ -73,8 +73,12 @@ class TestMatchingGoesThroughTheAssessor:
     def test_unknowns_stay_not_recorded_never_ineligible(self):
         assert 'never "ineligible"' in SYSTEM_PROMPT
 
-    def test_unrankable_funders_are_a_named_block(self):
-        assert "not enough recorded" in SYSTEM_PROMPT
+    def test_unverified_funders_are_a_named_block(self):
+        assert "Unverified funders are named in their own block" in SYSTEM_PROMPT
+
+    def test_the_verdict_is_repeated_never_computed(self):
+        assert "never compute, adjust or round one" in SYSTEM_PROMPT
+        assert "rank_key" in SYSTEM_PROMPT
 
     def test_the_procedure_is_the_skill(self):
         assert "funder-matching" in SYSTEM_PROMPT
@@ -103,8 +107,8 @@ class TestStoredAndComputedScoresStayApart:
         assert "computed" in rule_2
 
 
-class TestTheAssessorPromptIsTheCriteria:
-    """The checklist is the criteria: editing it is how a rule changes."""
+class TestTheAssessorPromptDefinesTheChecks:
+    """The prompt defines each check; scoring.py turns checks into a verdict."""
 
     def test_it_is_loaded_and_names_its_tools(self):
         from app.agent.build import ASSESSOR, ASSESSOR_TOOLS
@@ -114,24 +118,46 @@ class TestTheAssessorPromptIsTheCriteria:
         missing = [t.name for t in ASSESSOR_TOOLS if t.name not in text]
         assert not missing, f"funder_assessor.md never names {missing}"
 
-    def test_it_names_every_tier_and_outcome_the_schema_accepts(self):
+    def test_it_names_every_outcome_and_area_level_the_schema_accepts(self):
+        from typing import get_args
+
+        from app.agent.assessment import AreaLevel, Outcome
         from app.agent.build import ASSESSOR
 
         text = ASSESSOR["system_prompt"]
-        for word in ("strong", "possible", "weak", "not_enough_recorded", "met", "fail", "unknown"):
+        for word in (*get_args(Outcome), *get_args(AreaLevel)):
             assert f"`{word}`" in text, word
+
+    def test_it_asks_for_the_funder_facts_the_scorer_reads(self):
+        from app.agent.build import ASSESSOR
+
+        text = ASSESSOR["system_prompt"]
+        for field in ("funder_type", "section_135_bound", "shared_districts"):
+            assert f"`{field}`" in text, field
+
+    def test_it_names_no_verdict_or_weight(self):
+        # Weights live in scoring.py; a model told about a score starts returning one, which extra="forbid" rejects.
+        import re
+
+        from app.agent.build import ASSESSOR
+        from app.agent.scoring import WEIGHTS
+
+        text = ASSESSOR["system_prompt"]
+        assert not re.search(r"\b(score|gate|rank_key|tier)\b", text, re.IGNORECASE)
+        for points, _ in WEIGHTS.values():
+            assert f"{points} points" not in text
 
     def test_absence_is_never_a_fail(self):
         from app.agent.build import ASSESSOR
 
         assert "never `fail`" in ASSESSOR["system_prompt"]
 
-    def test_only_an_eligibility_fail_makes_a_shared_theme_weak(self):
-        # area fail + theme met is possible; "any check is fail" also made it weak.
+    def test_programme_is_the_organisations_own_and_follows_theme(self):
         from app.agent.build import ASSESSOR
 
-        weak = next(line for line in ASSESSOR["system_prompt"].splitlines() if line.startswith("| `weak`"))
-        assert "any eligibility check is `fail`" in weak
+        text = ASSESSOR["system_prompt"]
+        assert "programs where org_id is the organisation" in text
+        assert "when `theme` is `fail` there is no shared theme" in text
 
     def test_a_short_count_is_not_a_fail(self):
         # The A3 gate: 1 of 4 grants concluded failed projects_3 and capped 14 funders at weak.
