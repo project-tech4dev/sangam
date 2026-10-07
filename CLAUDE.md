@@ -200,25 +200,15 @@ graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 **The agent has exactly six tools, and there is ONE path to the database.**
 `app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
 `db_query`, `search_graph`, `fetch_url`. Nothing else — plus deepagents' `task`, which exists for
-two declared subagents, `org-readiness` and `funder-assessor`.
+one declared subagent, `funder-assessor`.
 
-**Funder matching: the agent finds the facts, code scores them.** Two subagents with three
-read-only SQL tools judge cited checks. `org-readiness` judges the organisation's own twelve
-(registrations, audits, board, track record) **once**, and an `after_agent` hook files them in graph
-state under `org_readiness` (`app/agent/state.py`, `AskState`); `funder-assessor` judges only what
-depends on one funder, and its hook joins that `PairAssessment` with the stored readiness into a
-`FunderAssessment` (`app/agent/assessment.py`). The join is code, so every funder sees identical
-readiness and no model copies another's output. Their prompts, `app/agent/prompts/org_readiness.md`
-and `funder_assessor.md`, **define the checks**; `app/agent/scoring.py` turns them into a gate (pass / unverified / fail), a
-score out of 100, a coverage and a `rank_key` — pure arithmetic, exposed as Pydantic computed
-fields, so the model never fills them and deepagents' `model_dump_json()` hands them to the
-supervisor. Changing a check is the prompt; changing a weight or a gate is `scoring.py`. The schema
-refuses a `fail` without cited evidence, so "not recorded" cannot become "ineligible", and only a
-`fail` closes a gate. `ASSESSOR_MODEL` points both subagents at a cheaper model. Design:
-`docs/features/2026-10-07-funder-matching-readiness-once.md` and
-`docs/features/2026-10-07-funder-matching-scored.md`, on top of
-`docs/features/2026-10-06-funder-matching-agentic.md`. The earlier deterministic engine — which
-also fetched and judged in code — was built and removed; its plan is kept beside them.
+**Funder matching is agentic.** The `funder-assessor` subagent judges one org against one funder
+with three read-only SQL tools, and returns a `FunderAssessment` (`app/agent/assessment.py`).
+Its prompt, `app/agent/prompts/funder_assessor.md`, **is the matching criteria**: changing a rule
+means editing that checklist. The schema refuses a `fail` without cited evidence, so "not
+recorded" cannot become "ineligible". `ASSESSOR_MODEL` points it at a cheaper model. Design:
+`docs/features/2026-10-06-funder-matching-agentic.md`. The earlier deterministic engine was built
+and removed; its plan is kept beside that file for the reasoning.
 
 That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
 `create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`
@@ -238,7 +228,7 @@ be built without. Nothing that writes survives on any of them.
 isolated subagent's middleware from scratch with an *unrestricted* `FilesystemMiddleware`, and
 folds the parent's in only for `mode="fork"`. So `entity-researcher` and `catalog-writer` each
 carry their own `middleware=[filesystem(backend, keep=...)]` in `app/ingest/agent.py`, as
-`org-readiness` and `funder-assessor` do in `app/agent/build.py` — without
+`funder-assessor` does in `app/agent/build.py` — without
 it they run all eight tools, and `write_file`/`edit_file`/`delete` reach real disk through the
 `/skills/` route. A test that reads only `build(...).nodes["tools"]` cannot see this: it is the
 parent's tool node. `TestASubagentRunsOnlyTheToolsItsSpecDeclares` walks the compiled subagent
@@ -374,7 +364,7 @@ the access rules cannot be optional. `docs/SKILLS.md` has the mechanism, the dis
 the honest cost.
 
 **Ask Sangam loads its matching procedures the same way**, from `app/agent/skills/`:
-`funder-matching` (organisation → one narrowing `db_query` → `org-readiness` once → waves of `funder-assessor`),
+`funder-matching` (organisation → one narrowing `db_query` → waves of `funder-assessor`),
 `funder-comparison` (named funders, no narrowing) and `funder-shortlist-brief` (the write-up).
 The rules they lean on — the assessor judges, an unknown is "not recorded", the wave size —
 stay in `instructions.md`, rules 11–15.

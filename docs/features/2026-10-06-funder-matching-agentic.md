@@ -4,9 +4,6 @@
 built through M3 on `feat/matching-engine` and then removed) and its evals plan
 `2026-10-06-funder-matching-evals.md`, whose agent-eval tier becomes milestone A4 here.*
 
-*2026-10-07: the tiers below are superseded by `2026-10-07-funder-matching-scored.md` — the
-assessor still judges each check; code now turns the checks into a gate, a score and an order.*
-
 ## Context
 
 `feat/matching-engine` has the deterministic engine committed through M3: about 4,100 lines,

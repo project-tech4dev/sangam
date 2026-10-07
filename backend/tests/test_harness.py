@@ -94,19 +94,19 @@ class TestTheFilesystemMiddlewareIsReplaced:
 
 
 class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
-    def test_ask_sangam_advertises_exactly_its_two_matching_subagents(self):
+    def test_ask_sangam_advertises_exactly_the_funder_assessor(self):
         from app.agent.build import build_agent
         from app.core.config import get_settings
 
         tools = build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name
-        # The task tool exists for matching alone. It once carried a
+        # The task tool exists for the assessor alone. It once carried a
         # general-purpose subagent with db_query and no instructions.
         advertised = {
             line.strip()[2:].split(":", 1)[0]
             for line in tools["task"].description.splitlines()
             if line.strip().startswith("- ") and ":" in line
         }
-        assert {"org-readiness", "funder-assessor"} <= advertised
+        assert "funder-assessor" in advertised
         assert "general-purpose" not in advertised
 
     def test_ask_sangam_holds_its_six_tools_the_skill_readers_and_task(self):
@@ -267,25 +267,21 @@ class TestTheSkillIsFoundAndIsProgressive:
         }
 
 
-def _compiled_subagents(graph) -> dict:
+def _subagent_tools(graph) -> dict[str, set[str]]:
+    """What each subagent's own graph runs — which is not what its spec declares."""
     # deepagents 0.7.16 keeps compiled subagents only in the task tool's
     # closure; an upgrade that moves them must fail here, not pass silently.
     task = graph.nodes["tools"].bound.tools_by_name["task"]
-    found: dict = {}
+    found: dict[str, set[str]] = {}
     for cell in (task.func or task.coroutine).__closure__ or ():
         value = cell.cell_contents
         if not isinstance(value, dict):
             continue
         for name, sub in value.items():
             if "tools" in getattr(sub, "nodes", {}):
-                found[name] = sub
+                found[name] = set(sub.nodes["tools"].bound.tools_by_name)
     assert found, "no compiled subagent graphs found — deepagents moved them"
     return found
-
-
-def _subagent_tools(graph) -> dict[str, set[str]]:
-    """What each subagent's own graph runs — which is not what its spec declares."""
-    return {name: set(sub.nodes["tools"].bound.tools_by_name) for name, sub in _compiled_subagents(graph).items()}
 
 
 @pytest.fixture(scope="module")
@@ -331,63 +327,53 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
             assert "ls" not in tools, name
 
 
-MATCHING = ("org-readiness", "funder-assessor")
-
-
-@pytest.fixture(scope="module")
-def ask_subagents() -> dict:
-    from app.agent.build import build_agent
-    from app.core.config import get_settings
-
-    graph = build_agent(get_settings(), None)
-    return {"supervisor": graph, **_compiled_subagents(graph)}
-
-
-class TestTheMatchingSubagentsReadAndNothingElse:
+class TestTheAssessorReadsAndNothingElse:
     """An isolated subagent builds its own stack, so Ask's restricted filesystem
     does not reach it. Unset, it would run write_file and execute."""
 
-    def test_exactly_the_two_are_compiled(self, ask_subagents):
-        assert set(ask_subagents) - {"supervisor"} == set(MATCHING)
+    @pytest.fixture(scope="class")
+    def assessor(self) -> set[str]:
+        from app.agent.build import build_agent
+        from app.core.config import get_settings
 
-    @pytest.mark.parametrize("name", MATCHING)
-    def test_each_runs_three_read_only_sql_tools_and_the_floor(self, ask_subagents, name):
-        tools = set(ask_subagents[name].nodes["tools"].bound.tools_by_name)
-        assert tools == {"db_list_tables", "db_describe_table", "db_query", "read_file"}
+        return _subagent_tools(build_agent(get_settings(), None))["funder-assessor"]
 
+    def test_it_runs_three_read_only_sql_tools_and_the_floor(self, assessor):
+        assert assessor == {"db_list_tables", "db_describe_table", "db_query", "read_file"}
 
-class TestReadinessTravelsThroughState:
-    """org-readiness writes org_readiness; funder-assessor reads it. Both need the channel."""
-
-    @pytest.mark.parametrize("name", ("supervisor", *MATCHING))
-    def test_every_graph_has_the_channel(self, ask_subagents, name):
-        assert "org_readiness" in ask_subagents[name].channels
+    def test_it_cannot_fetch_the_web_or_launch_another_subagent(self, assessor):
+        assert not assessor & {"fetch_url", "search_graph", "task"}
 
 
 class TestAnInvalidAssessmentIsRetriedNotRaised:
     """ProviderStrategy raises on a validation error; one bad cite would abort the task."""
 
-    @pytest.mark.parametrize(("spec", "schema"), [("READINESS", "ReadinessAssessment"), ("ASSESSOR", "PairAssessment")])
-    def test_each_uses_a_tool_strategy_that_feeds_errors_back(self, spec, schema):
+    def test_the_assessor_uses_a_tool_strategy_that_feeds_errors_back(self):
         from langchain.agents.structured_output import ToolStrategy
 
-        from app.agent import assessment, build
+        from app.agent.assessment import FunderAssessment
+        from app.agent.build import ASSESSOR
 
-        fmt = getattr(build, spec)["response_format"]
+        fmt = ASSESSOR["response_format"]
         assert isinstance(fmt, ToolStrategy)
-        assert fmt.schema is getattr(assessment, schema)
+        assert fmt.schema is FunderAssessment
         assert fmt.handle_errors is True
 
 
 class TestTheAssessorModelIsOptional:
-    @pytest.mark.parametrize("model", ["", "anthropic:claude-haiku-4-5"])
-    def test_it_is_never_written_into_the_shared_specs(self, model):
-        from app.agent.build import ASSESSOR, READINESS, build_agent
+    def test_unset_leaves_the_spec_on_the_main_model(self):
+        from app.agent.build import ASSESSOR, build_agent
         from app.core.config import Settings
 
-        build_agent(Settings(assessor_model=model), None)
+        build_agent(Settings(assessor_model=""), None)
         assert "model" not in ASSESSOR
-        assert "model" not in READINESS
+
+    def test_set_is_not_written_into_the_shared_spec(self):
+        from app.agent.build import ASSESSOR, build_agent
+        from app.core.config import Settings
+
+        build_agent(Settings(assessor_model="anthropic:claude-haiku-4-5"), None)
+        assert "model" not in ASSESSOR
 
 
 class TestAskSangamLoadsItsMatchingProcedureFromSkills:
@@ -451,12 +437,11 @@ class TestAskSangamLoadsItsMatchingProcedureFromSkills:
         names = {d.name for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()}
         assert names == {"funder-matching", "funder-shortlist-brief", "funder-comparison"}
 
-    def test_neither_matching_subagent_declares_any(self):
-        # Their prompts are the criteria; a skill they might not load cannot be one.
-        from app.agent.build import ASSESSOR, READINESS
+    def test_the_assessor_declares_none(self):
+        # Its prompt is the criteria; a skill it might not load cannot be one.
+        from app.agent.build import ASSESSOR
 
         assert "skills" not in ASSESSOR
-        assert "skills" not in READINESS
 
     def test_a_skill_never_names_a_wave_size(self):
         # SKILL.md is read raw from disk, so a number there would ignore MAX_PARALLEL_RESEARCH.
