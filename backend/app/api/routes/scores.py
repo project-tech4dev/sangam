@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import PageParams
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_user
 from app.db.pool import PoolDep
 from app.repositories import scores as repo
 from app.schemas.common import Page
@@ -46,7 +46,7 @@ async def get_score(
              summary="Record a manual score adjustment (audit log)")
 async def create_adjustment(
     fit_score_id: int, body: AdjustmentCreate,
-    pool: PoolDep, user_id: UUID = Depends(get_current_user)
+    pool: PoolDep, user_id: UUID = Depends(require_user)
 ) -> AdjustmentOut:
     row = await repo.create_adjustment(pool, fit_score_id, body.model_dump(), user_id)
     if row is None:

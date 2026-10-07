@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Tag } from "@/components/ui";
+import { authHeaders } from "@/lib/api/auth-headers";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 
@@ -25,7 +26,8 @@ export function MediaView({ onDiscuss }: { onDiscuss: (seed: string) => void }) 
   const [items, setItems] = useState<NewsItem[] | null>(null);
 
   useEffect(() => {
-    fetch(`${API}/api/news?limit=25`, { headers: { Authorization: "Bearer dev" } })
+    authHeaders()
+      .then((headers) => fetch(`${API}/api/news?limit=25`, { headers }))
       .then((res) => res.json())
       .then((page) => setItems(page.items))
       .catch(() => setItems([]));

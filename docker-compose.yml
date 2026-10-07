@@ -52,6 +52,7 @@ services:
       # to point the same tooling at the managed database.
       DATABASE_URL: ${LOCAL_DATABASE_URL:-host=${LOCAL_DB_HOST:-postgres} port=${LOCAL_DB_PORT:-5432} user=${LOCAL_DB_USER:-sangam} password=${LOCAL_DB_PASSWORD:-${POSTGRES_PASSWORD:-sangam}} dbname=${LOCAL_DB_NAME:-sangam} sslmode=${LOCAL_DB_SSLMODE:-prefer}}
       MODEL: ${MODEL:-anthropic:claude-sonnet-5}
+      DEV_AUTH: ${DEV_AUTH:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
@@ -66,7 +67,7 @@ services:
       # else runs. Forwarded here because a variable absent from this block
       # never reaches the container however it is set in .env — which is how
       # LangSmith tracing stayed silently dead.
-      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_URL: ${SUPABASE_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
