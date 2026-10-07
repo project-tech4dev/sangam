@@ -11,6 +11,10 @@ assessor reply carries a `gate`, `gate_reasons`, a `score` out of 100, its
 cited checks. The score is Sangam's arithmetic, not a sourced fact: say so
 once, at the top.
 
+The organisation's own checks — registrations, audits, board, track record —
+were judged once by org-readiness and are the same in every reply. Say what
+they found once, in the "what to record next" section, not in every entry.
+
 ## Order
 
 1. **One line up front:** how many funders were in the catalog, how many were

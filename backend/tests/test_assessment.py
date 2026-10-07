@@ -91,14 +91,16 @@ def test_a_check_code_outside_the_checklist_is_refused():
         FunderAssessment.model_validate(_assessment(checks=[_check(code="csr1")]))
 
 
-def test_every_code_the_checklist_names_is_accepted():
+@pytest.mark.parametrize(("spec", "codes"), [("READINESS", "ReadinessCode"), ("ASSESSOR", "PairCode")])
+def test_each_prompt_defines_its_own_half_and_none_of_the_other(spec, codes):
     from typing import get_args
 
-    from app.agent.assessment import CheckCode
-    from app.agent.build import ASSESSOR
+    from app.agent import assessment, build
 
-    for code in get_args(CheckCode):
-        assert f"`{code}`" in ASSESSOR["system_prompt"], code
+    prompt = getattr(build, spec)["system_prompt"]
+    own = get_args(getattr(assessment, codes))
+    for code in get_args(assessment.CheckCode):
+        assert (f"`{code}`" in prompt) == (code in own), code
         level = "state" if code == "area" else None
         FunderAssessment.model_validate(_assessment(checks=[_check(code=code, level=level)]))
 

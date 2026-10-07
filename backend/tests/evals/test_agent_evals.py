@@ -74,7 +74,9 @@ async def test_case(case, eval_settings, slug_ids, db, agent_pool):
     # A shortlist assesses funders in waves of subagents; it needs longer than one SQL question.
     timeout = case.get("timeout_seconds", CASE_TIMEOUT_SECONDS)
     try:
-        answer, agent_sql, citations, assessments = await run_agent(case["question"], eval_settings, timeout)
+        answer, agent_sql, citations, assessments, order = await run_agent(
+            case["question"], eval_settings, timeout
+        )
     except TimeoutError:
         pytest.fail(
             f"[{case['id']}] timed out after {timeout}s — either the model "
@@ -82,7 +84,8 @@ async def test_case(case, eval_settings, slug_ids, db, agent_pool):
             pytrace=False,
         )
     result = CaseResult(
-        case_id=case["id"], answer=answer, agent_sql=agent_sql, citations=citations, assessments=assessments
+        case_id=case["id"], answer=answer, agent_sql=agent_sql, citations=citations, assessments=assessments,
+        task_order=order,
     )
 
     gold_rows, agent_rows = None, None

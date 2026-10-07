@@ -6,7 +6,7 @@ import json
 
 from langchain_core.messages import ToolMessage
 
-from tests.evals.harness import CaseResult, assessments_in, score
+from tests.evals.harness import CaseResult, assessments_in, score, task_order
 
 
 def _a(funder_id: int, gate: str, rank_key: str) -> dict:
@@ -57,3 +57,39 @@ class TestRemovedAfterShortlist:
 
     def test_a_failed_funder_listed_before_removed_fails(self):
         assert _score(REMOVED, "Eligible: [funder:9] [funder:2]\nRemoved: none", list(REMOVED_REPLIES))
+
+
+READY = {"readiness_before_pairs": True}
+
+
+def _ready(order: list[str], assessments: list[dict] | None = None) -> list[str]:
+    result = CaseResult(case_id="t", task_order=order, assessments=assessments or [])
+    return score(READY, result, gold_rows=None, agent_rows=None).failures
+
+
+class TestReadinessBeforePairs:
+    def test_the_task_order_is_read_from_task_messages(self):
+        readiness = json.dumps({"org_id": 9, "org_name": "KABIL", "checks": []})
+        messages = [
+            ToolMessage(content=readiness, name="task", tool_call_id="1"),
+            ToolMessage(content=json.dumps(_a(2, "pass", "0")), name="task", tool_call_id="2"),
+            ToolMessage(content="funder-assessor failed: x", name="task", tool_call_id="3"),
+        ]
+        assert task_order(messages) == ["readiness:9", "assessment:2", "other"]
+
+    def test_readiness_then_a_wave_passes(self):
+        assert not _ready(["readiness:9", "assessment:2", "assessment:7"])
+
+    def test_no_readiness_fails(self):
+        assert _ready(["assessment:2"])
+
+    def test_a_pair_before_readiness_fails(self):
+        assert _ready(["assessment:2", "readiness:9"])
+
+    def test_readiness_twice_for_one_org_fails(self):
+        assert _ready(["readiness:9", "assessment:2", "readiness:9"])
+
+    def test_org_checks_that_differ_between_funders_fail(self):
+        met = {**_a(2, "pass", "0"), "checks": [{"code": "reg_12a", "outcome": "met"}]}
+        unknown = {**_a(7, "pass", "1"), "checks": [{"code": "reg_12a", "outcome": "unknown"}]}
+        assert _ready(["readiness:9", "assessment:2", "assessment:7"], [met, unknown])

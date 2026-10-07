@@ -11,14 +11,20 @@ Find the organisation and each named funder by name. If a name could mean two
 funders, ask which. A company and its foundation are different funders:
 never merge Axis Bank Limited with Axis Bank Foundation.
 
-## 2. Assess every named funder
+## 2. Judge the organisation once
+
+Launch org-readiness for the organisation, alone in its own message, and wait
+for it. Reuse it instead if it already ran for this organisation earlier in
+this conversation and nothing has been imported for it since.
+
+## 3. Assess every named funder
 
 Launch one funder-assessor per funder with the task tool, all in one message
 when your instructions allow that many. Each description names both sides
 with their ids. If a task fails, report that funder as "not assessed" with
 the error, and never judge it yourself.
 
-## 3a. One funder: explain it
+## 4a. One funder: explain it
 
 - The gate first, with its gate_reasons, then the score out of 100 with its
   breakdown and coverage, then the assessor's reasons with their citations.
@@ -26,7 +32,7 @@ the error, and never judge it yourself.
   recorded, each with its note and citations.
 - Then the gaps, as actions, in the assessor's order.
 
-## 3b. Two or more: one table
+## 4b. Two or more: one table
 
 | check | HDFC Bank Limited [funder:2] | Funder B [funder:N] |
 |---|---|---|

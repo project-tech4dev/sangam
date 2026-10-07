@@ -47,7 +47,19 @@ A funder that states pan-India or regional coverage counts as sharing a place:
 it is a candidate, and the assessor decides whether a region includes the
 organisation's states.
 
-## 4. Assess every candidate
+## 4. Judge the organisation once
+
+Launch org-readiness for the organisation with the task tool, alone in its own
+message, and wait for it. It judges the organisation's own registrations,
+audits, board and track record once, and Sangam hands that judgement to every
+funder-assessor, so they never re-judge it.
+
+If org-readiness already ran for this organisation earlier in this
+conversation, reuse it: say "readiness assessed earlier in this conversation"
+with its time. Run it again only when the user has imported or recorded new
+data for the organisation since.
+
+## 5. Assess every candidate
 
 Launch one funder-assessor per candidate with the task tool. Each task's
 description names the organisation and the funder, with both ids:
@@ -59,10 +71,12 @@ wait for that wave, then launch the next, until every candidate is done.
 With more candidates than three waves' worth, assess those sharing the most
 first, and say how many remain unassessed and that you can continue.
 
-If a task fails or returns no assessment, list that funder as "not
-assessed" with the error. Never judge it yourself instead.
+If a reply says org-readiness has not run for the organisation, go back to
+step 4, then assess those funders again. If a task fails any other way or
+returns no assessment, list that funder as "not assessed" with the error.
+Never judge it yourself instead.
 
-## 5. Write it up
+## 6. Write it up
 
 Load funder-shortlist-brief and follow it. Bring the two counted groups from
 step 3 with you: they are part of the answer.

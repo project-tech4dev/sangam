@@ -36,6 +36,8 @@ class CaseResult:
     failures: list[str] = field(default_factory=list)
     # The funder-assessor replies, as the supervisor received them: computed gate, score, rank_key included.
     assessments: list[dict] = field(default_factory=list)
+    # Every task reply in order, e.g. ["readiness:9", "assessment:2", "other"].
+    task_order: list[str] = field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -58,24 +60,40 @@ def message_text(message: Any) -> str:
     return ""
 
 
-def assessments_in(messages: list[Any]) -> list[dict]:
-    """Every task reply that is a scored FunderAssessment; other subagent text is skipped."""
-    found = []
+def _task_replies(messages: list[Any]) -> list[Any]:
+    """Each task reply, parsed as JSON where it is JSON; None where it is not."""
+    replies = []
     for message in messages:
         if isinstance(message, ToolMessage) and message.name == "task" and isinstance(message.content, str):
             try:
-                data = json.loads(message.content)
+                replies.append(json.loads(message.content))
             except ValueError:
-                continue
-            if isinstance(data, dict) and "rank_key" in data:
-                found.append(data)
-    return found
+                replies.append(None)
+    return replies
+
+
+def assessments_in(messages: list[Any]) -> list[dict]:
+    """Every task reply that is a scored FunderAssessment; other subagent text is skipped."""
+    return [d for d in _task_replies(messages) if isinstance(d, dict) and "rank_key" in d]
+
+
+def task_order(messages: list[Any]) -> list[str]:
+    """What each task returned, in order: an org-readiness, a scored assessment, or anything else."""
+    order = []
+    for d in _task_replies(messages):
+        if isinstance(d, dict) and "rank_key" in d:
+            order.append(f"assessment:{d['funder_id']}")
+        elif isinstance(d, dict) and "org_name" in d and "funder_id" not in d:
+            order.append(f"readiness:{d['org_id']}")
+        else:
+            order.append("other")
+    return order
 
 
 async def run_agent(
     question: str, settings: Settings, timeout: float = CASE_TIMEOUT_SECONDS
-) -> tuple[str, list[str], set[str], list[dict]]:
-    """(answer, SQL the agent actually ran, citation markers it emitted, assessor replies)."""
+) -> tuple[str, list[str], set[str], list[dict], list[str]]:
+    """(answer, SQL the agent actually ran, citation markers it emitted, assessor replies, task order)."""
     graph = build_agent(settings, InMemorySaver())
     state = await asyncio.wait_for(
         graph.ainvoke(
@@ -100,7 +118,7 @@ async def run_agent(
             if text.strip() and not text.startswith(CAVEAT_PREFIX):
                 answer = text
     cites = {f"{k}:{v}" for k, v in CITATION.findall(answer)}
-    return answer, sqls, cites, assessments_in(state["messages"])
+    return answer, sqls, cites, assessments_in(state["messages"]), task_order(state["messages"])
 
 
 def score(case: dict[str, Any], result: CaseResult, *, gold_rows, agent_rows) -> CaseResult:
@@ -175,6 +193,19 @@ def _score_matching(case: dict[str, Any], result: CaseResult, answer_lower: str)
         as_written = [a["funder_id"] for a in sorted(listed, key=lambda a: _first_seen(result.answer, a["funder_id"]))]
         if by_key != as_written:
             result.failures.append(f"funders not in rank_key order: wrote {as_written}, key gives {by_key}")
+
+    if case.get("readiness_before_pairs"):
+        readiness = [t for t in result.task_order if t.startswith("readiness:")]
+        first_pair = next((i for i, t in enumerate(result.task_order) if t.startswith("assessment:")), None)
+        if not readiness:
+            result.failures.append("org-readiness never ran")
+        elif first_pair is not None and result.task_order.index(readiness[0]) > first_pair:
+            result.failures.append("a funder was assessed before org-readiness ran")
+        if len(readiness) != len(set(readiness)):
+            result.failures.append(f"org-readiness ran more than once for one organisation: {readiness}")
+        sides = [[c for c in a["checks"] if c["code"] == "reg_12a"] for a in result.assessments]
+        if any(side != sides[0] for side in sides):
+            result.failures.append("the organisation's own checks differ between funders")
 
     if case.get("removed_after_shortlist"):
         removed_at = answer_lower.find("removed")
