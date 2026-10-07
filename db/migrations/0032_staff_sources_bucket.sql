@@ -20,7 +20,7 @@ BEGIN
   -- 100 MB: one filing export is ~59 MB and is stored whole. storage.STAFF_SOURCES_MAX_BYTES matches.
   INSERT INTO storage.buckets (id, name, public, file_size_limit)
   VALUES ('staff-sources', 'staff-sources', false, 104857600)
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = EXCLUDED.file_size_limit;
 
   -- The app reads with the service key; this policy is only for a staff client reading directly.
   IF to_regprocedure('app.is_staff()') IS NULL THEN

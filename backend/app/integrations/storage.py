@@ -87,7 +87,10 @@ def split(storage_path: str) -> tuple[str, str] | None:
     of ours — a path we did not write is not one we will hand out a URL for.
     """
     bucket, _, key = storage_path.partition("/")
-    return (bucket, key) if key and bucket in BUCKETS else None
+    # Dot and empty segments are normalised away by the HTTP client, so they could cross buckets.
+    if not key or bucket not in BUCKETS or any(seg in ("", ".", "..") for seg in key.split("/")):
+        return None
+    return bucket, key
 
 
 def url_prefix(source_url: str) -> str:
