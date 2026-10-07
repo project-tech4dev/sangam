@@ -186,8 +186,10 @@ ALTER TABLE funder_activity
 - `grant_locations` is dropped.
 
 **API and front end:**
-- `/api/grants` becomes a compatibility view over `funder_activity` partner rows, returning the
-  same JSON shape, so the Registry's "Known funders" tab and the smoke check keep working.
+- `/api/grants` becomes a repository query over `funder_activity` partner rows, returning the
+  same JSON shape, so the Registry's "Known funders" tab and the smoke check keep working. A
+  query rather than a SQL view, because a view runs with its owner's rights and would bypass
+  the RLS policies on `funder_activity`.
 - The seed's `grants.json` loads through the same mapping.
 
 ### Dropped
@@ -229,14 +231,14 @@ Before running against Supabase:
 
 | Area | Change |
 |---|---|
-| `ingest/expectations.py`, `records.py`, `research_records.py` | `org_identity` gains `website`, `description`, `aliases`, `staff_count` and its note. `org_identifier` gains `status`, `valid_from`, `valid_until`, `application_ref` and `check_method`. `org_financials` gains `foreign_unspent`. Every org finding carries `source_type` and `evidence`. |
+| `ingest/expectations.py`, `records.py`, `research_records.py` | `org_identity` gains `website`, `description`, `aliases`, `staff_count` and its note. `org_identifier` gains `status`, `valid_from`, `valid_until`, `application_ref` and `check_method`. `org_financials` gains `foreign_unspent`. Every org finding carries `source_type` and an `evidence_tier`, stored in the `evidence` column. |
 | `ingest/writer.py` | One precedence check, `_may_overwrite(stored, incoming)`, used by every org writer. Conflicts are returned to the caller. `write_org` stops being fill-empty-only and follows precedence instead. |
 | `ingest/promote.py` | Promotion reports `conflicts` alongside `held`. Grant findings write `funder_activity` partner rows. |
 | `ingest/matcher.py` | `resolve_org` adds an alias step (`orgs.aliases`) between exact name and trigram. Name normalisation folds "North East" / "Northeast" and strips "The", brackets and punctuation. |
 | `ingest/tools/` | New staff-only tool `record_registry_check(org, id_type, status, evidence_document_id, note)`, which writes a manual check. It never raises, cites the evidence document, is registered, named in the instructions and labelled in `toolLabels.ts`. |
 | `ingest/data/sources/ngos.json` | Adds `give_do` and `guidestar_india` with `access_rule: "manual_aggregator"` and a basis that names the allowed paths: Give.do's public `/discover/` pages, never `/api/`; GuideStar's public search API, nothing behind sign-in. `manual_aggregator` is added to the access-rule enum. `DISPATCHABLE` is unchanged: aggregators are read by the researcher's fetch tools, one CSO at a time, never by an adapter. |
 | `agent/tools/sql/catalog.py` | New columns. Drop the 4 tables. `funder_activity`'s grant columns. A defect note: aggregator values are `claimed` and are never presented as fact. |
-| `repositories/`, `schemas/`, routes | Org detail returns `website`, `description`, `aliases`, `staff_count`, identifier `status` and `valid_until`. `/api/grants` reads the compatibility view. |
+| `repositories/`, `schemas/`, routes | Org detail returns `website`, `description`, `aliases`, `staff_count`, identifier `status` and `valid_until`. `/api/grants` reads partner lines through the repository. |
 | Frontend registry | The Diligence tab shows identifier **status** (Registered · Applied · Check blocked · Not found) instead of labelling every identifier "Verified". It also shows the website. |
 | Seed | `seed.py` writes `source_type = 'seed'`. `grants.json` loads into `funder_activity`. |
 | Tests, docs | Model-vs-table parametrisations. Matcher alias tests. Precedence and conflict tests. The migration integration test. `docs/DATA_PLATFORM.md`, `docs/INGEST.md`, `docs/SKILLS.md`. |
