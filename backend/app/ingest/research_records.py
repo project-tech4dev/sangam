@@ -21,6 +21,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.ingest.expectations import CONCEPTS as _REGISTRY
+from app.ingest.records import CIN_FORMAT, normalise_cin
 
 # The vocabulary is the registry's, in its order. A `Concept = Literal[...]`
 # alias used to sit here repeating all thirteen; it was imported nowhere.
@@ -124,6 +125,44 @@ class IdentityFinding(FindingBase):
         default=None,
         description="the company a foundation belongs to. NEVER merge the two — they are two rows",
     )
+    cin: str | None = Field(
+        default=None,
+        description="the Corporate Identity Number of a COMPANY funder, 21 characters as the MCA prints "
+                    "it. A trust or society has none. Never guess one, and never put a parent company's "
+                    "CIN on its foundation",
+    )
+    aliases: list[str] = Field(
+        default_factory=list,
+        description="other names it files or is reported under, e.g. the name on its MCA filings",
+    )
+    intake_mode: (
+        Literal["open", "rolling", "invitation_only", "rfp_only", "closed", "unknown"] | None
+    ) = Field(default=None, description="how an NGO can approach it at all, as it says so")
+    funds_external: bool | None = Field(
+        default=None, description="what it SAYS about funding other organisations; null means it does not say"
+    )
+    typical_duration_months: int | None = Field(default=None, gt=0, description="a stated typical grant duration")
+    grant_size_min: Money | None = Field(default=None, description="the bottom of a stated grant band")
+    grant_size_max: Money | None = Field(default=None, description="the top of a stated grant band")
+
+    @field_validator("cin")
+    @classmethod
+    def _cin(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        cin = normalise_cin(v)
+        if not CIN_FORMAT.fullmatch(cin):
+            raise ValueError(
+                f"{v!r} is not a CIN: 21 characters, e.g. 'L65110GJ1993PLC020769'. Never guess one"
+            )
+        return cin
+
+    @model_validator(mode="after")
+    def _band_is_the_right_way_round(self) -> IdentityFinding:
+        lo, hi = self.grant_size_min, self.grant_size_max
+        if lo is not None and hi is not None and hi.inr < lo.inr:
+            raise ValueError(f"grant band is inverted: {lo.text} above {hi.text}")
+        return self
 
 
 class IdentifierFinding(FindingBase):

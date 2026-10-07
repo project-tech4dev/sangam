@@ -39,7 +39,8 @@ class Owner(NamedTuple):
 # Columns a re-import may overwrite on an existing funder. Everything else on the
 # row was either hand-vetted or set by a different source, so an importer leaves it.
 FUNDER_UPDATABLE = (
-    "funder_type", "website", "section_135_bound", "parent_id",
+    "funder_type", "website", "section_135_bound", "parent_id", "cin",
+    "intake_mode", "funds_external", "typical_duration_months", "grant_size_min", "grant_size_max",
     "source_url", "source_name", "fetched_at", "as_of", "content_hash", "extractor_version",
 )
 # All ten statutory items, not the four this used to carry. The researcher
@@ -139,17 +140,32 @@ async def ensure_document(
     return row["id"], "added"
 
 
+def new_aliases(held: list[str], found: list[str], name: str) -> list[str]:
+    """Spellings not already held and not the funder's own name, case-insensitively, in found order."""
+    seen = {a.lower() for a in held} | {name.lower()}
+    out: list[str] = []
+    for alias in found:
+        if alias.lower() not in seen:
+            seen.add(alias.lower())
+            out.append(alias)
+    return out
+
+
 async def write_funder(
     conn: Any, rec: FunderRecord, match: Match, *, parent_id: int | None = None
 ) -> tuple[str, int, dict]:
     """Returns (status, funder_id, changes). Status is added | updated | matched.
 
-    parent_id is resolved by the caller, which can report a parent it could not
-    find; this writer only stores what it is given.
+    parent_id is resolved by the caller, which can report a parent it could not find; this writer
+    only stores what it is given. Aliases are appended, never replaced: a spelling one source used
+    is still a way to find this funder.
     """
     proposed = {
         "funder_type": rec.funder_type, "website": rec.website,
-        "section_135_bound": rec.section_135_bound, "parent_id": parent_id,
+        "section_135_bound": rec.section_135_bound, "parent_id": parent_id, "cin": rec.cin,
+        "intake_mode": rec.intake_mode, "funds_external": rec.funds_external,
+        "typical_duration_months": rec.typical_duration_months,
+        "grant_size_min": rec.grant_size_min, "grant_size_max": rec.grant_size_max,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
         "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
@@ -157,16 +173,23 @@ async def write_funder(
     if match.resolved:
         existing = await (
             await conn.execute(
-                f"SELECT {', '.join(FUNDER_UPDATABLE)} FROM funders WHERE id = %s", (match.entity_id,)
+                f"SELECT name, aliases, {', '.join(FUNDER_UPDATABLE)} FROM funders WHERE id = %s",
+                (match.entity_id,),
             )
         ).fetchone()
-        changes = _diff(dict(existing), proposed)
-        if not changes:
+        changes = _diff({c: existing[c] for c in FUNDER_UPDATABLE}, proposed)
+        held = list(existing["aliases"] or [])
+        added = new_aliases(held, rec.aliases, existing["name"])
+        if not changes and not added:
             return "matched", match.entity_id, {}
-        sets = ", ".join(f"{c} = %s" for c in changes)
+        sets = [f"{c} = %s" for c in changes]
+        values = [proposed[c] for c in changes]
+        if added:
+            sets.append("aliases = aliases || %s::text[]")
+            values.append(added)
+            changes["aliases"] = {"old": held, "new": [*held, *added]}
         await conn.execute(
-            f"UPDATE funders SET {sets} WHERE id = %s",
-            (*[proposed[c] for c in changes], match.entity_id),
+            f"UPDATE funders SET {', '.join(sets)} WHERE id = %s", (*values, match.entity_id)
         )
         await _write_identifiers(conn, match.entity_id, rec)
         return "updated", match.entity_id, changes
@@ -174,11 +197,15 @@ async def write_funder(
     slug = await _free_slug(conn, slugify(rec.name))
     row = await (
         await conn.execute(
-            "INSERT INTO funders (slug, name, funder_type, website, section_135_bound, "
-            "parent_id, registry_status, source_url, source_name, fetched_at, as_of, "
+            "INSERT INTO funders (slug, name, funder_type, website, section_135_bound, parent_id, cin, "
+            "aliases, intake_mode, funds_external, typical_duration_months, grant_size_min, "
+            "grant_size_max, registry_status, source_url, source_name, fetched_at, as_of, "
             "content_hash, extractor_version) "
-            "VALUES (%s, %s, %s, %s, %s, %s, 'placeholder', %s, %s, %s, %s, %s, %s) RETURNING id",
-            (slug, rec.name, rec.funder_type, rec.website, rec.section_135_bound, parent_id,
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'placeholder', "
+            "%s, %s, %s, %s, %s, %s) RETURNING id",
+            (slug, rec.name, rec.funder_type, rec.website, rec.section_135_bound, parent_id, rec.cin,
+             new_aliases([], rec.aliases, rec.name), rec.intake_mode, rec.funds_external,
+             rec.typical_duration_months, rec.grant_size_min, rec.grant_size_max,
              rec.source_url, rec.source_name, rec.fetched_at, rec.as_of,
              rec.content_hash, rec.extractor_version),
         )

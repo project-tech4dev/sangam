@@ -456,6 +456,13 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
             Column("registry_status", "text", note="'hidden' rows are staff-only; 'placeholder' is a stub, not a profile", values=('placeholder', 'in_vetting', 'full_profile', 'hidden')),
             Column("parent_id", "bigint", note="the company a foundation belongs to, e.g. Axis Bank Foundation -> Axis Bank Limited"),
+            Column("intake_mode", "text", note="how an NGO can approach the funder at all, as it says so", values=('open', 'rolling', 'invitation_only', 'rfp_only', 'closed', 'unknown')),
+            Column("funds_external", "boolean", note="what the funder SAYS about funding other organisations; funder_activity.implementation_mode is what it did. Report both, never reconcile them"),
+            Column("typical_duration_months", "integer", note="a stated typical grant duration"),
+            Column("grant_size_min", "numeric", note="a stated grant band, INR: the funder's posture across all its giving, not one call's (that is rfps.amount_min)"),
+            Column("grant_size_max", "numeric", note="the top of the stated grant band, INR"),
+            Column("cin", "text", note="Corporate Identity Number of a company funder, 21 characters; a trust or society has none. One CIN, one row"),
+            Column("aliases", "text[]", note="other names the funder files or is reported under; match names against these too"),
         ),
     ),
     Table(

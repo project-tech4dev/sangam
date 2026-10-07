@@ -9,6 +9,13 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
+# A company's Corporate Identity Number: listing status, industry code, state, year, type, serial.
+CIN_FORMAT = re.compile(r"[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}")
+
+
+def normalise_cin(v: str) -> str:
+    """One spelling per CIN: upper case, no spaces. The MCA prints it both ways."""
+    return re.sub(r"\s+", "", v).upper()
 
 
 class Provenance(BaseModel):
@@ -74,6 +81,31 @@ class FunderRecord(Provenance):
     never one row, and a placeholder parent is a fact nobody sourced."""
     identifiers: dict[str, str] = Field(default_factory=dict)
     """Deterministic keys: cin, pan, csr1, darpan, reg_no, domain."""
+    cin: str | None = None
+    """Corporate funders only. Normalised here and refused on the finding, so a malformed CIN costs
+    one field at save time rather than the whole funder at promotion."""
+    aliases: list[str] = Field(default_factory=list)
+    intake_mode: Literal["open", "rolling", "invitation_only", "rfp_only", "closed", "unknown"] | None = None
+    funds_external: bool | None = None
+    typical_duration_months: int | None = Field(default=None, gt=0)
+    grant_size_min: float | None = Field(default=None, ge=0, description="INR")
+    grant_size_max: float | None = Field(default=None, ge=0, description="INR")
+
+    @field_validator("cin")
+    @classmethod
+    def _one_spelling(cls, v: str | None) -> str | None:
+        return normalise_cin(v) if v else None
+
+    @field_validator("aliases")
+    @classmethod
+    def _distinct(cls, v: list[str]) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        for alias in (a.strip() for a in v):
+            if alias and alias.lower() not in seen:
+                seen.add(alias.lower())
+                out.append(alias)
+        return out
 
     @field_validator("name")
     @classmethod
