@@ -129,6 +129,7 @@ class FunderCsrYearRecord(Provenance):
     admin_overheads: float | None = None
     impact_assessment_cost: float | None = None
     excess_spent: float | None = None
+    local_area_spent: float | None = None
     impact_assessment_done: bool | None = None
     section_135_applicable: bool | None = None
     notes: str | None = None
@@ -148,6 +149,7 @@ class FunderCsrYearRecord(Provenance):
     @field_validator(
         "prescribed_csr", "total_spent", "average_net_profit", "unspent_transferred",
         "spent_on_projects", "admin_overheads", "impact_assessment_cost", "excess_spent",
+        "local_area_spent",
     )
     @classmethod
     def _non_negative(cls, v: float | None) -> float | None:

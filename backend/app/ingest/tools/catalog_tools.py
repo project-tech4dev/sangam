@@ -132,7 +132,7 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         "funder_csr_years (amounts in INR)",
         """
         SELECT fiscal_year, prescribed_csr, total_spent, average_net_profit, unspent_transferred,
-               source_name
+               local_area_spent, source_name
         FROM funder_csr_years WHERE funder_id = %s ORDER BY fiscal_year
         """,
     ),

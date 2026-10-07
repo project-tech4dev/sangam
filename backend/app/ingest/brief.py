@@ -79,7 +79,7 @@ def headline(f: dict[str, Any]) -> str:
     if concept == "csr_year":
         money = {k: _money(f.get(k)) for k in
                  ("prescribed_csr", "total_spent", "spent_on_projects", "average_net_profit",
-                  "unspent_transferred", "excess_spent", "admin_overheads",
+                  "unspent_transferred", "excess_spent", "local_area_spent", "admin_overheads",
                   "impact_assessment_cost")}
         return _join(*(f"{k.replace('_', ' ')} {v}" for k, v in money.items() if v)) or "recorded"
     if concept == "csr_spend":

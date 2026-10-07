@@ -244,6 +244,10 @@ _TABLES: tuple[Table, ...] = (
             Column("total_spent", "numeric"),
             Column("unspent_transferred", "numeric"),
             Column("excess_spent", "numeric"),
+            Column(
+                "local_area_spent", "numeric",
+                note="spent in the local area of the company's operations, INR, as the MCA return reports it",
+            ),
             Column("impact_assessment_done", "boolean"),
             Column("notes", "text"),
             Column("source_url", "text"),

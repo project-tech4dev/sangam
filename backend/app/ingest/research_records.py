@@ -179,6 +179,9 @@ class CsrYearFinding(YearlyFinding):
     total_spent: Money | None = Field(default=None, description="item 6(d)")
     unspent_transferred: Money | None = None
     excess_spent: Money | None = None
+    local_area_spent: Money | None = Field(
+        default=None, description="spent in the local area of its operations, as the MCA return reports it",
+    )
     impact_assessment_done: bool | None = None
     notes: str | None = None
 

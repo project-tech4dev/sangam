@@ -48,7 +48,7 @@ FUNDER_UPDATABLE = (
 CSR_YEAR_UPDATABLE = (
     "prescribed_csr", "total_spent", "average_net_profit", "unspent_transferred",
     "spent_on_projects", "admin_overheads", "impact_assessment_cost", "excess_spent",
-    "impact_assessment_done", "section_135_applicable", "notes",
+    "local_area_spent", "impact_assessment_done", "section_135_applicable", "notes",
     "source_url", "source_name", "fetched_at", "as_of",
 )
 
@@ -237,6 +237,7 @@ async def write_csr_year(
         "average_net_profit": rec.average_net_profit, "unspent_transferred": rec.unspent_transferred,
         "spent_on_projects": rec.spent_on_projects, "admin_overheads": rec.admin_overheads,
         "impact_assessment_cost": rec.impact_assessment_cost, "excess_spent": rec.excess_spent,
+        "local_area_spent": rec.local_area_spent,
         "impact_assessment_done": rec.impact_assessment_done,
         "section_135_applicable": rec.section_135_applicable, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,

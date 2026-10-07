@@ -253,6 +253,7 @@ def csr_years_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> list[
                     admin_overheads=to_inr(f.get("admin_overheads")),
                     impact_assessment_cost=to_inr(f.get("impact_assessment_cost")),
                     excess_spent=to_inr(f.get("excess_spent")),
+                    local_area_spent=to_inr(f.get("local_area_spent")),
                     impact_assessment_done=f.get("impact_assessment_done"),
                     section_135_applicable=f.get("section_135_applicable"),
                     notes=f.get("notes") or f"Promoted from research: {f.get('evidence', '')[:200]}",
