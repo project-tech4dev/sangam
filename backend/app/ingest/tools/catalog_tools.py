@@ -170,6 +170,16 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
+        "funder_activity kind='programme' (the funder's OWN programme totals; never add them to spend)",
+        """
+        SELECT a.fiscal_year, p.name AS programme, a.amount, d.code AS domain, t.code AS theme,
+               a.classification_confirmed
+        FROM funder_activity a JOIN programs p ON p.id = a.program_id
+        LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
+        WHERE a.funder_id = %s AND a.kind = 'programme' ORDER BY a.fiscal_year, p.name
+        """,
+    ),
+    (
         "programs",
         """
         SELECT name, kind, status, start_date, end_date FROM programs

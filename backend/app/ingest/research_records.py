@@ -305,6 +305,27 @@ class PartnerFinding(YearlyFinding):
     notes: str | None = None
 
 
+class ProgrammeSpendFinding(YearlyFinding):
+    """The funder's own figure for one programme component in a year (D12). It is the funder's total,
+    never a sum of filing lines and never spread across them."""
+
+    concept: Literal["programme_spend"] = "programme_spend"
+    program_name: str = Field(min_length=2, description="the programme as the funder names it; also a program finding")
+    amount: Money
+    domain: DomainCode
+    theme: str | None = None
+    classified_by: ClassifiedBy = Field(description="usually 'report': the funder's own programme naming")
+    classification_note: str | None = None
+    notes: str | None = None
+
+    _codes = field_validator("domain", "theme", mode="before")(lambda v: _code(v))
+
+    @model_validator(mode="after")
+    def _classified(self) -> ProgrammeSpendFinding:
+        _check_classification(self)
+        return self
+
+
 class ProgramFinding(FindingBase):
     concept: Literal["program"] = "program"
     name: str = Field(min_length=2)
@@ -523,7 +544,7 @@ class OrgLocationFinding(PlacedFinding):
 
 Finding = Annotated[
     IdentityFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
-    | StatedGeographyFinding | PartnerFinding | ProgramFinding | GrantFinding | MetricFinding
+    | StatedGeographyFinding | PartnerFinding | ProgrammeSpendFinding | ProgramFinding | GrantFinding | MetricFinding
     | ContactFinding | DocumentFinding | RfpFinding | FunderEligibilityFinding
     | OrgIdentityFinding | OrgIdentifierFinding | OrgFinancialsFinding | OrgLocationFinding,
     Field(discriminator="concept"),
@@ -533,6 +554,7 @@ FINDING_MODELS: dict[str, type[FindingBase]] = {
     "identity": IdentityFinding, "csr_year": CsrYearFinding,
     "csr_spend": CsrSpendFinding, "footprint": FootprintFinding,
     "stated_geography": StatedGeographyFinding, "partner": PartnerFinding,
+    "programme_spend": ProgrammeSpendFinding,
     "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,
     "contact": ContactFinding, "document": DocumentFinding, "rfp": RfpFinding,
     "funder_eligibility": FunderEligibilityFinding,

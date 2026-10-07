@@ -264,6 +264,25 @@ class FunderPartnerRecord(Provenance):
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
 
 
+class FunderProgrammeSpendRecord(Provenance):
+    """The funder's own programme total for a year (D12)."""
+
+    kind: Literal["funder_programme_spend"] = "funder_programme_spend"
+    activity_kind: ClassVar[str] = activity_kind("programme_spend")
+    funder_name: str = Field(min_length=2)
+    fiscal_year: str
+    program_name: str = Field(min_length=2)
+    amount: float = Field(ge=0, description="INR")
+    domain: str
+    theme: str | None = None
+    classified_by: ClassifiedBy
+    classification_note: str | None = None
+    notes: str | None = None
+
+    _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
 class ProgramRecord(Provenance):
     kind: Literal["program"] = "program"
     entity_name: str = Field(min_length=2)
@@ -441,6 +460,7 @@ class OrgLocationRecord(Provenance):
 Record = (
     FunderRecord | OrgRecord | OrgFinancialsRecord | OrgLocationRecord
     | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
-    | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | ProgramRecord
+    | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | FunderProgrammeSpendRecord
+    | ProgramRecord
     | MetricRecord | ContactRecord | RfpRecord
 )

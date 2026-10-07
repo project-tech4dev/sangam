@@ -494,6 +494,20 @@ async def write_partner(
     return await _write_activity(conn, key, proposed, document_id)
 
 
+async def write_programme_spend(
+    conn: Any, rec: Any, funder_id: int, *, program_id: int, domain_id: int | None,
+    theme_id: int | None, document_id: int | None,
+) -> tuple[str, dict]:
+    key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id)
+    proposed = {
+        "domain_tag_id": domain_id, "theme_tag_id": theme_id, "classified_by": rec.classified_by,
+        "classification_note": rec.classification_note, "amount": rec.amount, "notes": rec.notes,
+        "source_url": rec.source_url, "source_name": rec.source_name,
+        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+    }
+    return await _write_activity(conn, key, proposed, document_id)
+
+
 async def write_program(
     conn: Any, rec: Any, owner: Owner, *, parent_id: int | None, document_id: int | None
 ) -> tuple[str, int, dict]:

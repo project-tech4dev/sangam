@@ -100,6 +100,13 @@ CONCEPTS: dict[str, ConceptSpec] = {
         columns=("fiscal_year", "program_id", "partner_name", "partner_canonical", "partner_csr1",
                  "partner_kind", "outlay", "amount", "notes"),
     ),
+    # D12: the funder's OWN figure per programme component. Never summed with spend lines and never
+    # spread onto them; the two are reported side by side.
+    "programme_spend": ConceptSpec(
+        "funder_activity", "The funder's own programme split", row_filter=("kind", "programme"),
+        columns=("fiscal_year", "program_id", "domain_tag_id", "theme_tag_id", "classified_by",
+                 "classification_note", "amount", "notes"),
+    ),
     # The funder's standing bar, which is NOT rfps.eligibility: that one is a
     # requirement printed in one call, and the same sentence can be true in
     # both places. funder-intake-research pulls this as fields 4 and 6.
@@ -231,6 +238,7 @@ REQUIRED: dict[str, frozenset[str]] = {
     "footprint": frozenset({"fiscal_year", "state"}),
     "stated_geography": frozenset({"state"}),
     "partner": frozenset({"fiscal_year", "partner_name"}),
+    "programme_spend": frozenset({"fiscal_year", "program_name", "amount", "domain", "classified_by"}),
     "funder_eligibility": frozenset({"kind", "criterion"}),
     "program": frozenset({"name"}),
     "grant": frozenset({"title", "recipient_name"}),

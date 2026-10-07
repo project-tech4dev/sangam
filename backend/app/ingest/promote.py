@@ -33,6 +33,7 @@ from app.ingest.records import (
     FunderFootprintRecord,
     FunderLocationRecord,
     FunderPartnerRecord,
+    FunderProgrammeSpendRecord,
     FunderRecord,
     MetricRecord,
     OrgFinancialsRecord,
@@ -63,6 +64,7 @@ from app.ingest.writer import (
     write_org_location,
     write_partner,
     write_program,
+    write_programme_spend,
     write_rfp,
 )
 from app.integrations import storage
@@ -77,8 +79,8 @@ MERGEABLE = ("identifier", "exact", "alias", "boilerplate")
 # Programmes next, because every remaining concept can name one and a spend row
 # whose program_id is null for want of ordering is a quietly weaker row.
 WRITE_ORDER = (
-    "csr_spend", "footprint", "stated_geography", "partner", "metric", "contact", "rfp",
-    "funder_eligibility",
+    "csr_spend", "footprint", "stated_geography", "partner", "programme_spend", "metric", "contact",
+    "rfp", "funder_eligibility",
 )
 
 # The org side's own order. Separate rather than appended: the funder path
@@ -104,6 +106,7 @@ CONCEPT_RECORDS: dict[str, type] = {
     "footprint": FunderFootprintRecord,
     "stated_geography": FunderLocationRecord,
     "partner": FunderPartnerRecord,
+    "programme_spend": FunderProgrammeSpendRecord,
     "program": ProgramRecord,
     "metric": MetricRecord,
     "contact": ContactRecord,
@@ -386,6 +389,13 @@ async def _write_programs(
     return ids
 
 
+async def _funder_program(conn: Any, funder_id: int, name: str) -> int | None:
+    row = await (
+        await conn.execute("SELECT id FROM programs WHERE funder_id = %s AND name = %s", (funder_id, name))
+    ).fetchone()
+    return row["id"] if row else None
+
+
 def _activity_identity(
     kind: str, year: str | None, program_id: int | None, sector_id: int | None,
     state_id: int | None, location_id: int | None, designation: str | None,
@@ -418,6 +428,8 @@ def _row_identity(
     if concept == "partner":
         return _activity_identity("partner", year, program_id, None, None, None, None, None,
                                   f.partner_name)
+    if concept == "programme_spend":
+        return ("programme", year, f.program_name)
     if concept == "metric":
         return (concept, f.name, f.period, program_id)
     if concept == "contact":
@@ -558,6 +570,31 @@ async def _write_facts(
                         conn, rec, funder_id, program_id=program_id, document_id=document_id
                     )
                     _count(report, "funder_activity (partner)", status)
+
+                elif concept == "programme_spend":
+                    program_id = program_id or await _funder_program(conn, funder_id, f.program_name)
+                    if program_id is None:
+                        report["held"].append(
+                            f"programme_spend {f.program_name!r} {f.fiscal_year}: no programme of that "
+                            f"name for this funder, and the funder's own figure has to hang off one. "
+                            f"Add it as a program finding and promote again."
+                        )
+                        continue
+                    domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
+                    report["held"].extend(f"programme_spend {f.program_name!r}: {r}" for r in why)
+                    if domain_id is None:
+                        continue
+                    rec = FunderProgrammeSpendRecord(
+                        fiscal_year=f.fiscal_year, program_name=f.program_name, amount=f.amount.inr,
+                        domain=f.domain, theme=f.theme, classified_by=f.classified_by,
+                        classification_note=f.classification_note, notes=f.notes,
+                        as_of=f.fiscal_year, **base,
+                    )
+                    status, _ = await write_programme_spend(
+                        conn, rec, funder_id, program_id=program_id, domain_id=domain_id,
+                        theme_id=theme_id, document_id=document_id,
+                    )
+                    _count(report, "funder_activity (programme)", status)
 
                 elif concept == "metric":
                     rec = MetricRecord(

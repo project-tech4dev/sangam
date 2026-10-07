@@ -94,6 +94,9 @@ def headline(f: dict[str, Any]) -> str:
         return _join(_place(f), f.get("role"))
     if concept == "partner":
         return _join(f.get("partner_name"), f.get("partner_kind"), f.get("program_name"))
+    if concept == "programme_spend":
+        return _join(f.get("program_name"), _money(f.get("amount")), "the funder's own figure",
+                     "/".join(b for b in (f.get("domain"), f.get("theme")) if b))
     if concept == "program":
         return _join(f.get("name"), f.get("kind"),
                      f"under {f['parent_name']}" if f.get("parent_name") else None)
