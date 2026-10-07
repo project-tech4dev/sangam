@@ -36,7 +36,7 @@ _ORG = frozenset({"org"})
 
 # grants.org_id is NOT NULL, so a recipient the catalog does not already hold
 # cannot become a grant row — and promoting a funder's research does not write
-# the NGOs it names. The relationship goes to funder_partners, whose org_id is
+# the NGOs it names. The relationship goes to funder_activity (kind 'partner'), whose org_id is
 # nullable, and which is the more honest claim anyway: a named partner is not
 # proof that money changed hands.
 _GRANT_NEEDS_A_RECIPIENT = (
@@ -90,9 +90,16 @@ CONCEPTS: dict[str, ConceptSpec] = {
                       "and kept in notes in the funder's own words either way",
         },
     ),
-    "footprint": ConceptSpec("funder_footprints", "Where the work ran"),
+    "footprint": ConceptSpec(
+        "funder_activity", "Where the work ran", row_filter=("kind", "footprint"),
+        columns=("fiscal_year", "program_id", "state_location_id", "name_as_printed", "notes"),
+    ),
     "stated_geography": ConceptSpec("funder_locations", "Where it says it prioritises"),
-    "partner": ConceptSpec("funder_partners", "Implementing partners"),
+    "partner": ConceptSpec(
+        "funder_activity", "Implementing partners", row_filter=("kind", "partner"),
+        columns=("fiscal_year", "program_id", "partner_name", "partner_canonical", "partner_csr1",
+                 "partner_kind", "outlay", "amount", "notes"),
+    ),
     # The funder's standing bar, which is NOT rfps.eligibility: that one is a
     # requirement printed in one call, and the same sentence can be true in
     # both places. funder-intake-research pulls this as fields 4 and 6.
@@ -259,7 +266,7 @@ _DISTRICT = Expected(
 )
 
 EXTRA: dict[str, tuple[Expected, ...]] = {
-    "footprint": (_STATE, _DISTRICT),
+    "footprint": (_DISTRICT,),
     "stated_geography": (_STATE, _DISTRICT),
     # org_locations has one location_id and no NAMED_AS entry, so the
     # derivation drops it entirely — the pair is how a place gets stated.
@@ -277,7 +284,7 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
             name="recipient_name",
             type="text",
             note="the organisation that received the money, as printed. grants.org_id is NOT "
-                 "NULL, so a recipient not in orgs belongs in funder_partners instead",
+                 "NULL, so a recipient not in orgs belongs in funder_activity (kind 'partner') instead",
             values=(),
             required=True,
         ),

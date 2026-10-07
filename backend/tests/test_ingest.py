@@ -520,7 +520,9 @@ class TestExpectationsComeFromTheSchema:
         # A priority is not a spend. Collapsing them is the error the whole
         # agent brief is built to prevent.
         assert CONCEPT_TABLES["stated_geography"] == "funder_locations"
-        assert CONCEPT_TABLES["footprint"] == "funder_footprints"
+        from app.ingest.expectations import CONCEPTS
+        assert (CONCEPT_TABLES["footprint"], CONCEPTS["footprint"].row_filter) == (
+            "funder_activity", ("kind", "footprint"))
 
     def test_surrogate_keys_and_provenance_are_never_research_targets(self):
         for concept in CONCEPT_TABLES:

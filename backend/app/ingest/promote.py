@@ -276,7 +276,7 @@ def csr_years_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> list[
 
 async def _place(conn: Any, f: Any, report: dict[str, Any]) -> tuple[int | None, int | None]:
     """(state_id, district_id). A place that will not resolve is reported, not
-    guessed at — funder_footprints.location_id is NOT NULL, so the alternative
+    guessed at — a footprint line needs a place, so the alternative
     to naming the problem is a missing row nobody hears about."""
     state = getattr(f, "state", None)
     if not state:
@@ -411,11 +411,13 @@ def _row_identity(
         return _activity_identity(activity_kind(concept), year, program_id, sector_id, state_id,
                                   district_id, f.designation, f.project_name, f.partner_name)
     if concept == "footprint":
-        return (concept, program_id, year, district_id or state_id)
+        return _activity_identity("footprint", year, program_id, None, state_id, district_id, None,
+                                  None, None)
     if concept == "stated_geography":
         return (concept, district_id or state_id)
     if concept == "partner":
-        return (concept, program_id, year, f.partner_name)
+        return _activity_identity("partner", year, program_id, None, None, None, None, None,
+                                  f.partner_name)
     if concept == "metric":
         return (concept, f.name, f.period, program_id)
     if concept == "contact":
@@ -513,11 +515,10 @@ async def _write_facts(
                     _count(report, "funder_activity (spend)", status)
 
                 elif concept == "footprint":
-                    location_id = district_id or state_id
-                    if location_id is None:
+                    if state_id is None and district_id is None:
                         report["held"].append(
-                            f"footprint {f.state!r}: no place to attach it to, and "
-                            f"funder_footprints requires one"
+                            f"footprint {f.state!r}: no place to attach it to, and a footprint line "
+                            f"needs one"
                         )
                         continue
                     rec = FunderFootprintRecord(
@@ -526,10 +527,10 @@ async def _write_facts(
                         notes=f.notes, as_of=f.fiscal_year, **base,
                     )
                     status, _ = await write_footprint(
-                        conn, rec, funder_id, program_id=program_id,
-                        location_id=location_id, document_id=document_id,
+                        conn, rec, funder_id, program_id=program_id, state_id=state_id,
+                        district_id=district_id, document_id=document_id,
                     )
-                    _count(report, "funder_footprints", status)
+                    _count(report, "funder_activity (footprint)", status)
 
                 elif concept == "stated_geography":
                     location_id = district_id or state_id
@@ -548,12 +549,15 @@ async def _write_facts(
                     rec = FunderPartnerRecord(
                         fiscal_year=f.fiscal_year, partner_name=f.partner_name,
                         partner_canonical=f.partner_canonical, partner_kind=f.partner_kind,
-                        partner_csr1=f.partner_csr1, notes=f.notes, as_of=f.fiscal_year, **base,
+                        partner_csr1=f.partner_csr1,
+                        outlay=f.outlay.inr if f.outlay else None,
+                        amount=f.amount.inr if f.amount else None,
+                        notes=f.notes, as_of=f.fiscal_year, **base,
                     )
                     status, _ = await write_partner(
                         conn, rec, funder_id, program_id=program_id, document_id=document_id
                     )
-                    _count(report, "funder_partners", status)
+                    _count(report, "funder_activity (partner)", status)
 
                 elif concept == "metric":
                     rec = MetricRecord(

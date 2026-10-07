@@ -333,14 +333,8 @@ FUNDER_ACTIVITY_UPDATABLE = ("domain_tag_id", "theme_tag_id", "classified_by", "
                              "partner_csr1", "partner_kind", "outlay", "amount", "project_count",
                              "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of")
 _CLASSIFICATION = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note")
-FOOTPRINT_KEY = ("funder_id", "program_id", "fiscal_year", "location_id")
-FOOTPRINT_UPDATABLE = ("name_as_printed", "notes", "source_url", "source_name",
-                       "fetched_at", "as_of")
 FUNDER_LOCATION_KEY = ("funder_id", "location_id")
 FUNDER_LOCATION_UPDATABLE = ("role", "note", "source_url", "source_name", "fetched_at", "as_of")
-PARTNER_KEY = ("funder_id", "program_id", "fiscal_year", "partner_name")
-PARTNER_UPDATABLE = ("partner_canonical", "partner_kind", "partner_csr1", "notes",
-                     "source_url", "source_name", "fetched_at", "as_of")
 PROGRAM_KEY = ("funder_id", "name")
 PROGRAM_UPDATABLE = ("description", "status", "start_date", "end_date", "parent_id", "kind",
                      "is_enabler", "source_url", "source_name", "fetched_at", "as_of",
@@ -460,16 +454,16 @@ async def write_csr_spend(
 
 async def write_footprint(
     conn: Any, rec: Any, funder_id: int, *, program_id: int | None,
-    location_id: int, document_id: int | None,
+    state_id: int | None, district_id: int | None, document_id: int | None,
 ) -> tuple[str, dict]:
-    key = {"funder_id": funder_id, "program_id": program_id,
-           "fiscal_year": rec.fiscal_year, "location_id": location_id}
+    key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
+                        state_location_id=state_id, location_id=district_id)
     proposed = {
         "name_as_printed": rec.name_as_printed, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
-    return await _upsert(conn, "funder_footprints", key, FOOTPRINT_UPDATABLE, proposed, document_id)
+    return await _write_activity(conn, key, proposed, document_id)
 
 
 async def write_funder_location(
@@ -488,15 +482,16 @@ async def write_funder_location(
 async def write_partner(
     conn: Any, rec: Any, funder_id: int, *, program_id: int | None, document_id: int | None
 ) -> tuple[str, dict]:
-    key = {"funder_id": funder_id, "program_id": program_id,
-           "fiscal_year": rec.fiscal_year, "partner_name": rec.partner_name}
+    key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
+                        partner_name=rec.partner_name)
     proposed = {
         "partner_canonical": rec.partner_canonical or rec.partner_name,
-        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1, "notes": rec.notes,
+        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1,
+        "outlay": rec.outlay, "amount": rec.amount, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
-    return await _upsert(conn, "funder_partners", key, PARTNER_UPDATABLE, proposed, document_id)
+    return await _write_activity(conn, key, proposed, document_id)
 
 
 async def write_program(
@@ -610,7 +605,7 @@ async def write_rfp(
 
 FUNDER_ELIGIBILITY_KEY = ("funder_id", "kind", "criterion")
 # No content_hash or extractor_version: funder_eligibility carries the same
-# provenance set as funder_partners, and _upsert names its columns.
+# provenance set as funder_activity, and _upsert names its columns.
 FUNDER_ELIGIBILITY_UPDATABLE = ("notes", "source_url", "source_name", "fetched_at", "as_of")
 
 

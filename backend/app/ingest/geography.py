@@ -1,8 +1,8 @@
 """Resolving a place name from a report to a row in `locations`.
 
 Two things make this more than a lookup. Reports name places loosely — "Orissa",
-"NCT of Delhi", "Kamrup Metropolitan" — and `funder_footprints.location_id` is
-NOT NULL, so a footprint with an unresolvable place cannot be written at all.
+"NCT of Delhi", "Kamrup Metropolitan" — and a footprint line needs a
+place, so a footprint with an unresolvable place cannot be written at all.
 
 The state list is closed and the district list is not. A state that is not one
 of the thirty-six is a refusal, because a typo becoming a state row is a

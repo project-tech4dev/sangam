@@ -21,7 +21,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.ingest.expectations import CONCEPTS as _REGISTRY
-from app.ingest.records import CIN_FORMAT, ClassifiedBy, normalise_cin
+from app.ingest.records import CIN_FORMAT, ClassifiedBy, ImplementationMode, normalise_cin
 from app.ingest.taxonomy import DOMAINS, NO_THEMES
 
 # The vocabulary is the registry's, in its order. A `Concept = Literal[...]`
@@ -230,9 +230,7 @@ class CsrSpendFinding(YearlyFinding):
     designation: str | None = Field(
         default=None, description="e.g. 'aspirational_district', when the total is limited to those"
     )
-    implementation_mode: (
-        Literal["direct", "implementing_agency", "own_trust_or_section8", "not_stated"] | None
-    ) = None
+    implementation_mode: ImplementationMode | None = None
     partner_name: str | None = Field(default=None, description="the implementing agency or partner, as printed")
     partner_csr1: str | None = Field(default=None, description="the PARTNER's CSR-1, when filed")
     is_ongoing: bool | None = None
@@ -295,6 +293,14 @@ class PartnerFinding(YearlyFinding):
                 "armed_forces", "hospital", "network", "company", "other"] | None
     ) = None
     partner_csr1: str | None = None
+    outlay: Money | None = Field(
+        default=None, description="the amount committed or sanctioned to the partner, when stated beside the grant"
+    )
+    amount: Money | None = Field(
+        default=None,
+        description="what the partner received from this funder in the year, as printed with its unit; "
+                    "usually from the recipient's own record. Null means not stated, never zero",
+    )
     program_name: str | None = None
     notes: str | None = None
 

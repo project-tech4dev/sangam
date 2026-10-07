@@ -147,11 +147,12 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "funder_footprints",
+        "funder_activity kind='footprint' (where the work actually ran)",
         """
-        SELECT f.fiscal_year, f.name_as_printed, l.name AS location
-        FROM funder_footprints f LEFT JOIN locations l ON l.id = f.location_id
-        WHERE f.funder_id = %s ORDER BY f.fiscal_year
+        SELECT a.fiscal_year, a.name_as_printed, s.name AS state, l.name AS location
+        FROM funder_activity a
+        LEFT JOIN locations s ON s.id = a.state_location_id LEFT JOIN locations l ON l.id = a.location_id
+        WHERE a.funder_id = %s AND a.kind = 'footprint' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (
@@ -162,10 +163,10 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "funder_partners",
+        "funder_activity kind='partner' (named; an amount, INR, is what the partner received)",
         """
-        SELECT fiscal_year, partner_name, partner_canonical, partner_kind
-        FROM funder_partners WHERE funder_id = %s ORDER BY fiscal_year
+        SELECT fiscal_year, partner_name, partner_canonical, partner_kind, outlay, amount
+        FROM funder_activity WHERE funder_id = %s AND kind = 'partner' ORDER BY fiscal_year, id
         """,
     ),
     (

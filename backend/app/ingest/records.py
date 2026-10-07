@@ -13,6 +13,7 @@ from app.ingest.expectations import activity_kind
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
 # What an inferred domain and theme rest on (funder_activity.classified_by).
 ClassifiedBy = Literal["filed_sector", "project_name", "partner", "report"]
+ImplementationMode = Literal["direct", "implementing_agency", "own_trust_or_section8", "not_stated"]
 # A company's Corporate Identity Number: listing status, industry code, state, year, type, serial.
 CIN_FORMAT = re.compile(r"[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}")
 
@@ -197,9 +198,7 @@ class FunderCsrSpendRecord(Provenance):
     district: str | None = None
     program_name: str | None = None
     designation: str | None = None
-    implementation_mode: (
-        Literal["direct", "implementing_agency", "own_trust_or_section8", "not_stated"] | None
-    ) = None
+    implementation_mode: ImplementationMode | None = None
     partner_name: str | None = None
     partner_csr1: str | None = None
     is_ongoing: bool | None = None
@@ -214,10 +213,11 @@ class FunderCsrSpendRecord(Provenance):
 
 
 class FunderFootprintRecord(Provenance):
-    """Where a theme actually ran. location_id is NOT NULL, so a place that
-    will not resolve is a row that cannot be written — say so, do not guess."""
+    """Where a theme actually ran. A line needs a place, so a place that will not resolve is a line
+    that cannot be written — say so, do not guess."""
 
     kind: Literal["funder_footprint"] = "funder_footprint"
+    activity_kind: ClassVar[str] = activity_kind("footprint")
     funder_name: str = Field(min_length=2)
     fiscal_year: str
     state: str = Field(min_length=2)
@@ -244,15 +244,19 @@ class FunderLocationRecord(Provenance):
 
 
 class FunderPartnerRecord(Provenance):
-    """A named partner. NOT proof that money changed hands — that is a grant."""
+    """A named partner. With an amount, what the partner received from this funder that year (INR);
+    without one, NOT proof that money changed hands."""
 
     kind: Literal["funder_partner"] = "funder_partner"
+    activity_kind: ClassVar[str] = activity_kind("partner")
     funder_name: str = Field(min_length=2)
     fiscal_year: str
     partner_name: str = Field(min_length=2)
     partner_canonical: str | None = None
     partner_kind: str | None = None
     partner_csr1: str | None = None
+    outlay: float | None = Field(default=None, ge=0, description="INR")
+    amount: float | None = Field(default=None, ge=0, description="INR")
     program_name: str | None = None
     notes: str | None = None
 

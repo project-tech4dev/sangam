@@ -63,8 +63,8 @@ correct, cited, and still not become the stored value. Say which.
 | receiving legal entity, and its parent | `funders.name`, `funders.parent_id` |
 | district-level geography | `funder_locations` with `role`, plus `locations` |
 | CSR position by year | `funder_csr_years` |
-| project and sector spend | `funder_csr_spend` |
-| implementing partners | `funder_partners` |
+| project and sector spend | `funder_activity` (kind spend) |
+| implementing partners | `funder_activity` (kind partner) |
 | the funder's standing eligibility — statutory restatement, its own bar | `funder_eligibility`, `kind='statutory_restatement'` / `'own_bar'`, one row per condition |
 | hard disqualifiers | `funder_eligibility`, `kind='disqualifier'` |
 | open call, its deadline, amount band | `rfps` |
