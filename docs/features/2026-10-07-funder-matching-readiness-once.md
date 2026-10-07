@@ -3,6 +3,9 @@
 *Approved 2026-10-07. Builds on `2026-10-07-funder-matching-scored.md`: the gates, weights and
 scorer stay; who judges which check, and how the halves meet, changes.*
 
+*Superseded 2026-10-07 by `2026-10-07-funder-matching-in-code.md`: one org-readiness run still
+made ~35 open-ended queries, so code now fetches both profiles and judges every check.*
+
 ## Context
 
 Scored matching shipped on `feat/matching-engine` (`424a71f..676f103`, design in
