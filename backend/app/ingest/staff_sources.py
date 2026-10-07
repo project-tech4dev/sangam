@@ -243,17 +243,26 @@ async def read_rows(pool: Any, name: str, *, sheet: str = "") -> str:
     return text + tail
 
 
-_MARKER = re.compile(r"\[source:\d+#[^\]]+![A-Z]{1,3}\d+\]")
+_MARKER = re.compile(r"\[source:(\d+)#[^\]]+![A-Z]{1,3}\d+\]", re.IGNORECASE)
 
 
-def hold_unmarked(findings: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
-    """Promotable findings, and a held reason for each staff-dataset finding with no cell marker."""
+def hold_unmarked(
+    findings: list[dict[str, Any]], dataset_ids: dict[str, int]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Promotable findings, and a held reason for each staff finding not marked with its own dataset's cell."""
     kept: list[dict[str, Any]] = []
     held: list[str] = []
     for f in findings:
-        if is_staff_source_url(f.get("source_url")) and not _MARKER.search(str(f.get("evidence", ""))):
+        url = f.get("source_url")
+        if not is_staff_source_url(url):
+            kept.append(f)
+            continue
+        ids = {int(m) for m in _MARKER.findall(str(f.get("evidence", "")))}
+        if not ids:
             held.append(f"{f.get('concept')}: cites a staff dataset without its [source:…] marker — quote "
                         f"the row's line with the marker of the cell that holds the fact")
+        elif dataset_ids.get(url) not in ids:
+            held.append(f"{f.get('concept')}: the citation names a different staff dataset")
         else:
             kept.append(f)
     return kept, held

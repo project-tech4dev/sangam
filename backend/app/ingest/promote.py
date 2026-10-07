@@ -317,7 +317,9 @@ async def _write_documents(
     by_url: dict[str, int] = {}
     for f in _validated(findings, "document", report):
         if staff_sources.is_staff_source_url(f.source_url):
-            continue  # the dataset's private row exists; ensure_document would add a public one
+            # the dataset's private row exists; ensure_document would add a public one
+            report["held"].append("document: skipped: staff dataset row already on file")
+            continue
         shim = type("Doc", (), {
             "source_url": f.source_url, "title": f.title,
             "source_name": f.source_name or "research",
@@ -344,7 +346,9 @@ async def _write_documents(
 
 async def _staff_datasets(conn: Any, findings: list[dict[str, Any]]) -> dict[str, int]:
     """source_url -> the private row of each staff dataset cited, so its lines carry document_id."""
-    urls = sorted({f["source_url"] for f in findings if staff_sources.is_staff_source_url(f.get("source_url"))})
+    urls = sorted({
+        f["source_url"] for f in findings if staff_sources.is_staff_source_url(f.get("source_url"))
+    })
     if not urls:
         return {}
     rows = await (await conn.execute(
@@ -923,7 +927,7 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
         )
         return report
 
-    findings, unmarked = staff_sources.hold_unmarked(findings)
+    findings, unmarked = staff_sources.hold_unmarked(findings, await _staff_datasets(conn, findings))
     report["held"].extend(unmarked)
 
     # An NGO is not a funder, and the two kinds reach different tables through
