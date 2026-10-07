@@ -8,7 +8,8 @@
 --
 -- DESTRUCTIVE: drops seven tables. Safe because every row with a home is copied first (identifiers,
 -- activity lines, eligibility rows), and the one table with no mechanical home - template_items, and
--- proposal_templates with it - stops the migration if it holds anything. documents.doc_type is free
+-- proposal_templates with it - stops the migration if it holds anything. Not carried: an eligibility
+-- row's document_id (the new documents row is itself the page) and the identifiers D1 discards. documents.doc_type is free
 -- text, so the three new doc_type values need no DDL; the writer keeps them reserved.
 --
 -- Numbered after #98's 0030. Renumber at merge if another branch takes 0031.
@@ -38,10 +39,16 @@ ALTER TABLE funders
 -- 2. funder_identifiers -> columns.
 UPDATE funders f SET aliases = a.names
 FROM (
-  SELECT fi.funder_id, array_agg(DISTINCT btrim(fi.id_value) ORDER BY btrim(fi.id_value)) AS names
-  FROM funder_identifiers fi JOIN funders own ON own.id = fi.funder_id
-  WHERE fi.id_type = 'name' AND lower(btrim(fi.id_value)) <> lower(own.name)
-  GROUP BY fi.funder_id
+  SELECT funder_id, array_agg(spelling ORDER BY spelling) AS names
+  FROM (
+    SELECT DISTINCT ON (fi.funder_id, lower(btrim(fi.id_value))) fi.funder_id, btrim(fi.id_value) AS spelling
+    FROM funder_identifiers fi JOIN funders own ON own.id = fi.funder_id
+    WHERE fi.id_type = 'name' AND lower(btrim(fi.id_value)) <> lower(btrim(own.name))
+    -- keep the mixed-case spelling over an all-caps or all-lower one
+    ORDER BY fi.funder_id, lower(btrim(fi.id_value)), btrim(fi.id_value) = upper(btrim(fi.id_value)),
+      btrim(fi.id_value) = lower(btrim(fi.id_value)), btrim(fi.id_value)
+  ) d
+  GROUP BY funder_id
 ) a
 WHERE a.funder_id = f.id;
 
@@ -152,17 +159,20 @@ FROM funder_partners;
 -- headings EligibilityGuidelineRecord.content_md() writes.
 INSERT INTO documents (funder_id, title, doc_type, content_md, source_url, source_name, fetched_at, as_of,
                        archive_url, is_public, status)
-SELECT funder_id, 'Eligibility for applicants', 'funder_eligibility',
+SELECT e.funder_id, 'Eligibility for applicants', 'funder_eligibility',
   concat_ws(E'\n\n',
     '## Statutory restatement' || E'\n\n'
-      || string_agg(criterion, E'\n\n' ORDER BY id) FILTER (WHERE kind = 'statutory_restatement'),
+      || string_agg(e.criterion, E'\n\n' ORDER BY e.id) FILTER (WHERE e.kind = 'statutory_restatement'),
     '## Its own bar' || E'\n\n'
-      || string_agg(criterion, E'\n\n' ORDER BY id) FILTER (WHERE kind = 'own_bar'),
+      || string_agg(e.criterion, E'\n\n' ORDER BY e.id) FILTER (WHERE e.kind = 'own_bar'),
     '## Disqualifiers' || E'\n\n'
-      || string_agg(criterion, E'\n\n' ORDER BY id) FILTER (WHERE kind = 'disqualifier')),
-  source_url, min(source_name), max(fetched_at), max(as_of), min(archive_url), true, 'read'
-FROM funder_eligibility
-GROUP BY funder_id, source_url;
+      || string_agg(e.criterion, E'\n\n' ORDER BY e.id) FILTER (WHERE e.kind = 'disqualifier'),
+    '## Notes' || E'\n\n'
+      || string_agg(btrim(e.notes), E'\n\n' ORDER BY e.id) FILTER (WHERE btrim(coalesce(e.notes, '')) <> '')),
+  e.source_url, min(e.source_name), max(e.fetched_at), max(e.as_of), min(e.archive_url),
+  f.registry_status <> 'hidden', 'read'
+FROM funder_eligibility e JOIN funders f ON f.id = e.funder_id
+GROUP BY e.funder_id, e.source_url, f.registry_status;
 
 -- 4. The MCA return reports local-area spend; the table lacked it.
 ALTER TABLE funder_csr_years ADD COLUMN local_area_spent numeric;
