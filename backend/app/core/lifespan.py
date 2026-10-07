@@ -7,11 +7,12 @@ import os
 from contextlib import AsyncExitStack, asynccontextmanager
 
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from app.agent.build import build_agent
 from app.agent.tools.sql import catalog as sql_catalog
 from app.core.config import Settings, get_settings
+from app.core.security import chat_access, staff_chat_access
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
 from app.ingest.agent import build_ingest_agent
@@ -80,6 +81,7 @@ def build_lifespan(settings: Settings | None = None):
                     config={"recursion_limit": resolved.recursion_limit},
                 ),
                 path="/agent",
+                dependencies=[Depends(chat_access)],
             )
             # Sangam Import: a separate graph and a separate conversation. It shares
             # the checkpointer, so its threads live beside Ask Sangam's and are told
@@ -93,6 +95,7 @@ def build_lifespan(settings: Settings | None = None):
                     config={"recursion_limit": resolved.recursion_limit},
                 ),
                 path="/ingest",
+                dependencies=[Depends(staff_chat_access)],
             )
 
             if tracing_live:

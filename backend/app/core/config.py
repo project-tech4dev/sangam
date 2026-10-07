@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # changes nothing. Point it at the cheapest model of the same provider.
     utility_model: str = ""
 
+    # Local only: also accept `Authorization: Bearer dev` as the seeded dev user. Never set when deployed.
+    dev_auth: bool = False
+
     # Postgres connection string; holds app data AND LangGraph checkpoints.
     database_url: str = "postgresql://sangam:sangam@localhost:5433/sangam"
 
@@ -60,6 +63,8 @@ class Settings(BaseSettings):
     # Doc Vault for org uploads. The service-role key bypasses RLS, so it never
     # reaches the browser. Both empty = archiving is skipped and the upload
     # routes return 503; nothing else changes.
+    # supabase_url also turns auth on: set, requests must carry a Supabase
+    # access token; empty keeps the single seeded dev user.
     supabase_url: str = ""
     supabase_service_key: str = ""
 
@@ -124,11 +129,20 @@ class Settings(BaseSettings):
         """
         return max(2, self.db_pool_max_size - 3)
 
+    @field_validator("dev_auth", mode="before")
+    @classmethod
+    def _empty_dev_auth_is_off(cls, value: object) -> object:
+        return False if value == "" else value
+
     @property
     def github_allowlist(self) -> list[str]:
         if self.github_tool_allowlist.strip():
             return [t.strip() for t in self.github_tool_allowlist.split(",") if t.strip()]
         return DEFAULT_GITHUB_TOOL_ALLOWLIST
+
+    @property
+    def auth_enabled(self) -> bool:
+        return bool(self.supabase_url)
 
     @property
     def graph_enabled(self) -> bool:

@@ -90,7 +90,7 @@ say "── chat wire (runtime → backend → agent) ────────"
 if [[ "${SMOKE_SKIP_LLM:-0}" == "1" ]]; then
   say "  ‣ skipped (SMOKE_SKIP_LLM=1)"
 else
-  RESP=$(curl -sN --max-time 120 -X POST "$FRONTEND/api/copilotkit/agent/sangam_agent/run" \
+  RESP=$(curl -sN --max-time 120 -X POST "$FRONTEND/api/copilotkit/agent/sangam_agent/run" "${AUTH[@]}" \
     -H 'Content-Type: application/json' -H 'Accept: text/event-stream' \
     -d '{"threadId":"smoke-'"$(date +%s)"'","runId":"smoke-1","messages":[{"id":"m1","role":"user","content":"Reply with the single word: ok"}],"tools":[],"context":[],"state":{},"forwardedProps":{}}' | head -c 4000)
   if grep -q "RUN_STARTED" <<<"$RESP"; then

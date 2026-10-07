@@ -7,7 +7,6 @@
 -- link is a foreign key rather than a slug inside tags.meta.
 --
 -- No relation column: the linked tag's kind says what the link means.
--- Numbered 0030 because open branches already claim 0022-0029.
 -- Loaded by: python -m seed.taxonomy_seed
 
 CREATE TABLE tag_links (
@@ -19,6 +18,11 @@ CREATE TABLE tag_links (
 );
 
 CREATE INDEX tag_links_linked_idx ON tag_links (linked_tag_id);
+
+-- Public, like tags: 0025's default privileges leave a new table closed until granted, 0027 the rule.
+GRANT SELECT ON tag_links TO anon, authenticated;
+ALTER TABLE tag_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tag_links_read ON tag_links FOR SELECT TO anon, authenticated USING (true);
 
 ALTER TABLE tags DROP CONSTRAINT tags_kind_check;
 ALTER TABLE tags ADD CONSTRAINT tags_kind_check CHECK (kind IN (

@@ -14,7 +14,7 @@ from copilotkit import LangGraphAGUIAgent
 from langchain_core.runnables import RunnableConfig
 
 from app.core.config import Settings
-from app.core.security import DEV_USER_ID
+from app.core.security import DEV_USER_ID, chat_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
             "metadata": {
                 **(config.get("metadata") or {}),
                 "langfuse_session_id": input.thread_id,
-                "langfuse_user_id": str(DEV_USER_ID),
+                "langfuse_user_id": str(chat_user_id.get() or DEV_USER_ID),
                 # Request context, per Langfuse's metadata guidance: lets a
                 # trace be tied back to the AG-UI run that produced it.
                 "agui_run_id": input.run_id,

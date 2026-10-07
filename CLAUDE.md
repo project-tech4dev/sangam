@@ -277,9 +277,9 @@ baseline is what a brand-new database gets; migrations carry everything after it
 `db/migrations/README.md`. `0001_`–`0010_` carry the v3 data model on top of the v2 baseline:
 provenance columns, the taxonomy, geography, identity, credentials, funder activity, org facts,
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
-dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0021_`
-continue on top, and `0030_tag_links` (numbered past the `0022`–`0029` that open branches
-claim) adds the theme taxonomy's join table. The design and the before/after are in
+dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
+continue on top, and `0030_tag_links` adds the theme taxonomy's join table; there are 30 in
+total. The design and the before/after are in
 `docs/DATA_PLATFORM.md`.
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
@@ -372,12 +372,14 @@ load-bearing in ways the Langfuse docs do not advertise:
 `LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, they share
 a bucket.
 
-**Auth is a deliberate stub.** `backend/app/core/security.py::get_current_user` resolves every
-request to one seeded user. Every route already does `Depends(get_current_user)`, so
-swapping in Supabase JWT verification changes only that function. The frontend sends a
-hardcoded `Authorization: Bearer dev` from six call sites: `lib/api/client.ts`,
-`lib/AgentProviders.tsx`, `features/registry/ScoreCard.tsx` and the Ask workspace's Vault, Media
-and Import views. Count them with `grep -rn "Bearer dev" frontend` before swapping the stub out.
+**Auth verifies Supabase tokens, and `SUPABASE_URL` turns it on.** `backend/app/core/security.py::get_principal`
+checks the access token against the project's JWKS and finds or creates the `users` row for it;
+no header is anonymous. With `SUPABASE_URL` empty every request is the seeded dev user, and
+`DEV_AUTH=1` accepts `Bearer dev` locally — which `make smoke` sends, so it needs that set.
+`require_user` (401) gates saving and editing, `require_staff` (403) gates Import, and a chat
+someone else owns is 404. The frontend sends the token from `lib/api/auth-headers.ts` (browser)
+and `auth-headers.server.ts` (server components). The plan, and what comes next (requests running
+as the caller, then RLS), is `features-plans/access/auth-plan.md`.
 
 ## Deployment
 
