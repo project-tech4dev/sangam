@@ -41,6 +41,7 @@ an internal CSO sheet) reached about 70% completeness, and showed three things a
 | D13 | Each staff dataset has a **layout profile**. The reader goes through every sheet of every file, whatever its layout, and returns normalised rows in rupees. |
 | D14 | Figures from the internal CSO workbook's funder sheets may be stored, cited and **shown publicly**, under the same `funder_activity.is_public` rule as every other row (public by default). The raw files stay in the staff-only bucket; only promoted facts are public. |
 | D15 | All three PRs are built **subagent-driven** (`superpowers:subagent-driven-development`): a fresh implementer per task, a fresh reviewer per task before the next starts, and a whole-branch review at the end. |
+| D16 | The team's earlier research repo, **org-grant-intelligence** (public, GitHub), is a funder source. The researcher reads a funder's dossier first, re-fetches the links it cites, and stores dossier-only facts as `claimed` prior research. Its proposal templates and RFPs become `documents` (`proposal_template`) or `rfps` rows where a named funder publishes them. |
 
 ## 1. Taxonomy (on top of #98)
 
@@ -401,6 +402,22 @@ a staff dataset without its sheet and cell marker is held, because its provenanc
 CSO funder sheets also serve CSO research. `ngo-credential-research` names them as a source: read
 them through `read_source_rows` with the CSO's name, cite the sheet, and treat them as the
 organisation's self-reported record.
+
+**Prior research (D16).** Before step 1, read the funder's dossier in the org-grant-intelligence
+repository:
+- the files are `Funder/<funder>/*.md`, read from `raw.githubusercontent.com`, pinned to a commit;
+- save its facts as findings marked `claimed`, citing the dossier file and the commit;
+- treat every link it cites as a lead and re-read primary links (the funder's own site, annual
+  reports, CSR annexures) under their own access rules. What is re-read is stored with its own
+  evidence and outranks the dossier value;
+- where a dossier and a primary source disagree, keep both and report the disagreement;
+- proposal templates and RFPs in the repository's `downloads/` folder become `proposal_template`
+  documents or `rfps` rows when a named funder publishes them. Generic templates (by funder type)
+  stay as references.
+
+Registry: the existing `hand_vetting_sheets` entry is widened, or replaced by
+`org_grant_intelligence`, to cover the whole repository, under an `internal_research` access rule.
+The same repository and rule serve CSO research (companion CSO spec, C14).
 
 **Kept unchanged:** the rules on provenance (URL, fetch date, access state), on `evidenced` vs
 `claimed`, and on never citing an aggregator. Recipient-side figures cite the recipient's
