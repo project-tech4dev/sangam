@@ -56,6 +56,10 @@ class ConceptSpec:
     # Researched deliberately and deliberately not stored as its own column.
     # Each entry is a decision; an undocumented gap is a bug.
     not_written: dict[str, str] = field(default_factory=dict)
+    # For a concept sharing its table: the rows it owns, e.g. ("kind", "spend"), and the columns it
+    # may fill. None means the whole table; expected_fields, research_goals and the writers all read it.
+    row_filter: tuple[str, str] | None = None
+    columns: tuple[str, ...] | None = None
 
 
 # A concept is a research finding; a table is where it lands. 'identity' is the
@@ -337,11 +341,14 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
 
 def expected_fields(concept: str) -> tuple[Expected, ...]:
     """The fields a researcher can fill for one concept, in column order."""
-    table = CATALOG[CONCEPT_TABLES[concept]]
+    spec = CONCEPTS[concept]
+    table = CATALOG[spec.table]
     required = REQUIRED.get(concept, frozenset())
     out: list[Expected] = []
     for column in table.columns:
         name = column.name
+        if spec.columns is not None and name not in spec.columns:
+            continue
         if name == "id" or name in PROVENANCE or name in INTERNAL or column.heavy:
             continue
         if name in OURS.get(concept, frozenset()):

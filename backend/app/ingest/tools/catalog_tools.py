@@ -15,7 +15,7 @@ from langchain_core.tools import tool
 from app.agent.tools.sql.catalog import CATALOG
 from app.db.pool import get_pool
 from app.ingest.expectations import (
-    CONCEPT_TABLES,
+    CONCEPTS,
     concepts_for,
     expected_fields,
     recent_fiscal_years,
@@ -352,7 +352,8 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                 "overwrites a value somebody entered by hand."
             )
         for concept in wanted_concepts:
-            table = CONCEPT_TABLES[concept]
+            spec = CONCEPTS[concept]
+            target = spec.table + (f" ({spec.row_filter[0]}='{spec.row_filter[1]}')" if spec.row_filter else "")
             fields = expected_fields(concept)
             count, seen_years = held.get(concept, (0, []))
             state = f"{count} row(s) held" if count else "NOT RECORDED"
@@ -360,7 +361,7 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                 missing = [y for y in wanted if y not in seen_years]
                 state += f", years {', '.join(sorted(seen_years))}"
                 state += f" — still missing {', '.join(missing)}" if missing else " — years covered"
-            out.append(f"\n{concept} -> {table}: {state}")
+            out.append(f"\n{concept} -> {target}: {state}")
             out += [f"    {f.describe()}" for f in fields]
 
         out.append(
@@ -389,18 +390,22 @@ async def _held_per_concept(
     entity_table, fk, _ = _BY_KIND[entity_kind]
     out: dict[str, tuple[int, list[str]]] = {}
     for concept in concepts_for(entity_kind):
-        table = CONCEPT_TABLES[concept]
+        spec = CONCEPTS[concept]
+        table = spec.table
         # The entity's own row, which is the match we already have in hand.
         if table == entity_table:
             out[concept] = (1, [])
             continue
-        # Table and column names come from module constants, never a caller.
         has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
         years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
+        # Table, column and filter column come from module constants, never a caller.
+        where, params = f"{fk} = %s", [entity_id]
+        if spec.row_filter:
+            where += f" AND {spec.row_filter[0]} = %s"
+            params.append(spec.row_filter[1])
         found = await (
             await conn.execute(
-                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE {fk} = %s",
-                (entity_id,),
+                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE {where}", tuple(params)
             )
         ).fetchone()
         out[concept] = (found["n"], [y for y in (found["years"] or []) if y])

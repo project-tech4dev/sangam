@@ -140,10 +140,11 @@ def _provenance(finding: dict[str, Any] | Any, fetched: datetime) -> dict[str, A
     }
 
 
-def _validated(findings: list[dict[str, Any]], concept: str) -> list[Any]:
-    """Findings come back out of jsonb as plain dicts. Re-validating each one
-    through its own model is what lets the writers map instead of parse, and
-    catches a row stored before a field became required."""
+def _validated(
+    findings: list[dict[str, Any]], concept: str, report: dict[str, Any] | None = None
+) -> list[Any]:
+    """Findings come back out of jsonb as plain dicts; re-validating lets the writers map, not parse.
+    A finding refused here goes into report["held"], or it would be a fact that silently never lands."""
     out = []
     for f in findings:
         if f.get("concept") != concept:
@@ -151,7 +152,14 @@ def _validated(findings: list[dict[str, Any]], concept: str) -> list[Any]:
         try:
             out.append(FINDING_MODELS[concept].model_validate(f))
         except ValidationError as exc:
-            logger.info("finding refused (%s): %s", concept, exc.errors()[0].get("msg"))
+            err = exc.errors()[0]
+            where = ".".join(str(p) for p in err.get("loc", ())) or "finding"
+            msg = f"{concept} finding refused ({where}): {err.get('msg')}"
+            logger.info(msg)
+            if report is not None:
+                report["held"].append(
+                    f"{msg}. It stays on the research row; re-research it in the current shape to promote it."
+                )
     return out
 
 
@@ -299,7 +307,7 @@ async def _write_documents(
     )).fetchone())["slug"]
 
     by_url: dict[str, int] = {}
-    for f in _validated(findings, "document"):
+    for f in _validated(findings, "document", report):
         shim = type("Doc", (), {
             "source_url": f.source_url, "title": f.title,
             "source_name": f.source_name or "research",
@@ -358,7 +366,7 @@ async def _write_programs(
     # A theme has to exist before a phase can point at it, so shallowest first.
     depth = {"theme": 0, "programme": 1, "phase": 2, "project": 3}
     ids: dict[str, int] = {}
-    for f in sorted(_validated(findings, "program"), key=lambda f: depth.get(f.kind, 9)):
+    for f in sorted(_validated(findings, "program", report), key=lambda f: depth.get(f.kind, 9)):
         try:
             rec = ProgramRecord(
                 entity_name=row["canonical_name"] or row["entity_name"], name=f.name,
@@ -440,7 +448,7 @@ async def _write_facts(
     themes: dict[int, str] = {}
 
     for concept in order:
-        for f in _validated(findings, concept):
+        for f in _validated(findings, concept, report):
             program_id = programs.get(getattr(f, "program_name", None) or "")
             document_id = docs.get(f.source_url)
             state_id, district_id = await _place(conn, f, report)
