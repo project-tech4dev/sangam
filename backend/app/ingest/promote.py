@@ -183,6 +183,11 @@ def _legacy_identifiers(findings: list[dict[str, Any]]) -> dict[str, list[str]]:
     return out
 
 
+def _with_scheme(domain: str) -> str:
+    """A legacy domain as a website; one already carrying http(s):// is kept as is (0031 does the same)."""
+    return domain if domain.lower().startswith(("http://", "https://")) else f"https://{domain}"
+
+
 def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRecord | None:
     """One funder record, from the identity finding and any identifiers saved before 0031."""
     identity = next((f for f in findings if f["concept"] == "identity"), None)
@@ -199,7 +204,7 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
             name=ident.get("name") or row["canonical_name"] or row["entity_name"],
             funder_type=ident.get("funder_type"),
             website=ident.get("website") or row.get("website")
-            or (f"https://{domains[0]}" if domains else None),
+            or (_with_scheme(domains[0]) if domains else None),
             section_135_bound=ident.get("section_135_bound"),
             parent_name=ident.get("parent_name"),
             cin=ident.get("cin") or (cins[0] if cins else None),

@@ -4,8 +4,9 @@ Decision, 2026-09-29. We take the **v3 tables** from
 `origin/docs/data-platform-architecture-spec` (`features-plans/data-model/`) and land them as
 additive migrations, not as a new baseline.
 
-The v3 write-up proposes wiping and reseeding. We do not need to: the diff is purely additive —
-23 tables gain columns, 14 tables are new, **nothing is dropped and no column is removed**. So
+The v3 write-up proposes wiping and reseeding. We do not need to: the diff in 0001–0010 is purely
+additive — 23 tables gain columns, 14 tables are new, **nothing is dropped and no column is removed**
+(0031 later drops seven funder tables, copying their rows first). So
 `db/init/02_schema.sql` stays at v2 and `db/migrations/` carries everything, which is the rule
 CLAUDE.md already states. The 96 documents and the Supabase data survive untouched, and v3's
 `02_schema.sql` becomes the reference we derive each migration from rather than a file we copy in.

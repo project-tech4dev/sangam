@@ -105,7 +105,7 @@ CREATE TABLE funder_activity (
   funder_id bigint NOT NULL REFERENCES funders(id) ON DELETE CASCADE,
   kind text NOT NULL CHECK (kind IN ('spend', 'footprint', 'partner', 'programme')),
   fiscal_year text NOT NULL CHECK (fiscal_year ~ '^FY\d{4}-\d{2}$'),
-  program_id bigint REFERENCES programs(id) ON DELETE SET NULL,
+  program_id bigint REFERENCES programs(id) ON DELETE RESTRICT,  -- fix wave: SET NULL contradicted the programme CHECK
   domain_tag_id bigint REFERENCES tags(id),            -- kind 'domain': one of the five
   theme_tag_id bigint REFERENCES tags(id),             -- kind 'theme' or 'sub_theme'; NULL when the
                                                        -- evidence supports no theme

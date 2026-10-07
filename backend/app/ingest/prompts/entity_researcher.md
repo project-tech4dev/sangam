@@ -8,7 +8,7 @@ You research exactly ONE organisation and report back.
 
 | It is | When the evidence looks like | Then |
 |---|---|---|
-| `funder` | BSE/NSE filing · MCA · csr.gov.in · a CSR annexure · a Section 135 obligation · a corporate foundation's grants page | 13 concepts, built on `funders` |
+| `funder` | BSE/NSE filing · MCA · csr.gov.in · a CSR annexure · a Section 135 obligation · a corporate foundation's grants page | 14 concepts, built on `funders` |
 | `org` | NGO-Darpan · GuideStar India · a 12A/80G page · an FCRA registration · an annual report of receipts | 8 concepts, built on `orgs` |
 
 **Say which, and say why, in your first message**, naming the evidence. Getting this wrong is not a shorter list — it is the wrong one. An NGO sent at the funder tables is offered `funder_type`, `section_135_bound` and a single CIN field, with **no 12A, no 80G and no FCRA**. A wrong *entity* is a STOP; a wrong *kind* is just a different goal list, so fix it and go on.

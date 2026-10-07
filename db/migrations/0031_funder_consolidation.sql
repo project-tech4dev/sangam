@@ -9,15 +9,32 @@
 -- DESTRUCTIVE: drops seven tables. Safe because every row with a home is copied first (identifiers,
 -- activity lines, eligibility rows), and the one table with no mechanical home - template_items, and
 -- proposal_templates with it - stops the migration if it holds anything. Not carried: an eligibility
--- row's document_id (the new documents row is itself the page) and the identifiers D1 discards. documents.doc_type is free
--- text, so the three new doc_type values need no DDL; the writer keeps them reserved.
+-- row's document_id (the new documents row is itself the page), the identifiers D1 discards, and a CIN
+-- on a foundation-named funder (step 0 lists each in a NOTICE). Negative spend and CIN collisions stop it
+-- too. documents.doc_type is free text, so the three new doc_type values need no DDL; the writer keeps
+-- them reserved.
 --
 -- Numbered after #98's 0030. Renumber at merge if another branch takes 0031.
 -- Before running against Supabase: SELECT count(*) on each dropped table, and take a backup.
 
+-- A CIN names a company, and a foundation's legacy CIN is usually its parent's: the SQL twin of
+-- matcher._is_foundation. pg_temp, so it goes with the session.
+CREATE FUNCTION pg_temp.is_foundation(name text) RETURNS boolean LANGUAGE sql IMMUTABLE AS $f$
+  SELECT regexp_split_to_array(lower(name), '[^a-z0-9]+') && ARRAY['foundation', 'foundations', 'trust',
+    'trusts', 'charitable', 'charities', 'society', 'sansthan', 'samiti']
+$f$;
+
+-- The one CIN each funder would keep, normalised as the writer does; a table, so step 6 can drop the source.
+CREATE TEMP TABLE legacy_cin ON COMMIT DROP AS
+SELECT DISTINCT ON (fi.funder_id) fi.funder_id, upper(regexp_replace(fi.id_value, '\s', '', 'g')) AS cin,
+  pg_temp.is_foundation(f.name) AS on_foundation
+FROM funder_identifiers fi JOIN funders f ON f.id = fi.funder_id
+WHERE fi.id_type = 'cin'
+ORDER BY fi.funder_id, fi.is_current DESC, fi.verified DESC, fi.id_value;
+
 -- 0. Refuse to drop what this file cannot carry across.
 DO $$
-DECLARE n bigint;
+DECLARE n bigint; r record;
 BEGIN
   SELECT count(*) INTO n FROM template_items;
   IF n > 0 THEN
@@ -28,6 +45,25 @@ BEGIN
   IF n > 0 THEN
     RAISE EXCEPTION 'proposal_templates holds % rows; a template is now a documents row '
                     '(doc_type ''proposal_template''). Move them by hand before 0031', n;
+  END IF;
+  SELECT count(*) INTO n FROM funder_csr_spend WHERE amount < 0;
+  IF n > 0 THEN
+    RAISE EXCEPTION 'funder_csr_spend holds % rows with a negative amount and funder_activity.amount must be '
+                    '>= 0; correct or delete them by hand before 0031', n;
+  END IF;
+  SELECT count(*) INTO n FROM (
+    SELECT cin FROM legacy_cin WHERE NOT on_foundation GROUP BY cin HAVING count(*) > 1) d;
+  IF n > 0 THEN
+    RAISE EXCEPTION '% CIN value(s) are each held by more than one funder once case and whitespace are ignored, and '
+                    'funders.cin is UNIQUE; merge or correct those funders by hand before 0031', n;
+  END IF;
+  FOR r IN SELECT lc.funder_id, lc.cin FROM legacy_cin lc WHERE lc.on_foundation LOOP
+    RAISE NOTICE 'CIN % not copied onto foundation-named funder %: a CIN names a company', r.cin, r.funder_id;
+  END LOOP;
+  SELECT count(DISTINCT funder_id) INTO n FROM funder_eligibility WHERE source_url IS NULL;
+  IF n > 0 THEN
+    RAISE NOTICE '% funders have eligibility rows with no source_url; their document is keyed '
+                 '''legacy:funder_eligibility/<funder_id>''', n;
   END IF;
 END $$;
 
@@ -52,15 +88,10 @@ FROM (
 ) a
 WHERE a.funder_id = f.id;
 
-UPDATE funders f SET cin = c.cin
-FROM (
-  SELECT DISTINCT ON (funder_id) funder_id, upper(regexp_replace(id_value, '\s', '', 'g')) AS cin
-  FROM funder_identifiers WHERE id_type = 'cin'
-  ORDER BY funder_id, is_current DESC, verified DESC, id_value
-) c
-WHERE c.funder_id = f.id;
+-- A foundation-named funder keeps no CIN (step 0 listed them); the parent gets its own on promote.
+UPDATE funders f SET cin = c.cin FROM legacy_cin c WHERE c.funder_id = f.id AND NOT c.on_foundation;
 
-UPDATE funders f SET website = 'https://' || d.domain
+UPDATE funders f SET website = CASE WHEN d.domain ~* '^https?://' THEN d.domain ELSE 'https://' || d.domain END
 FROM (
   SELECT DISTINCT ON (funder_id) funder_id, btrim(id_value) AS domain
   FROM funder_identifiers WHERE id_type = 'domain'
@@ -74,7 +105,7 @@ CREATE TABLE funder_activity (
   funder_id bigint NOT NULL REFERENCES funders(id) ON DELETE CASCADE,
   kind text NOT NULL CHECK (kind IN ('spend', 'footprint', 'partner', 'programme')),
   fiscal_year text NOT NULL CHECK (fiscal_year ~ '^FY\d{4}-\d{2}$'),
-  program_id bigint REFERENCES programs(id) ON DELETE SET NULL,
+  program_id bigint REFERENCES programs(id) ON DELETE RESTRICT,  -- in the key, and required on 'programme'
   domain_tag_id bigint REFERENCES tags(id),            -- kind 'domain': one of the five
   theme_tag_id bigint REFERENCES tags(id),             -- kind 'theme' or 'sub_theme'; NULL when the
                                                        -- evidence supports no theme
@@ -169,10 +200,12 @@ SELECT e.funder_id, 'Eligibility for applicants', 'funder_eligibility',
       || string_agg(e.criterion, E'\n\n' ORDER BY e.id) FILTER (WHERE e.kind = 'disqualifier'),
     '## Notes' || E'\n\n'
       || string_agg(btrim(e.notes), E'\n\n' ORDER BY e.id) FILTER (WHERE btrim(coalesce(e.notes, '')) <> '')),
-  e.source_url, min(e.source_name), max(e.fetched_at), max(e.as_of), min(e.archive_url),
+  -- no URL: a stable synthetic key, so the text survives and the row can be found to re-source
+  coalesce(e.source_url, 'legacy:funder_eligibility/' || e.funder_id),
+  min(e.source_name), max(e.fetched_at), max(e.as_of), min(e.archive_url),
   f.registry_status <> 'hidden', 'read'
 FROM funder_eligibility e JOIN funders f ON f.id = e.funder_id
-GROUP BY e.funder_id, e.source_url, f.registry_status;
+GROUP BY e.funder_id, coalesce(e.source_url, 'legacy:funder_eligibility/' || e.funder_id), f.registry_status;
 
 -- 4. The MCA return reports local-area spend; the table lacked it.
 ALTER TABLE funder_csr_years ADD COLUMN local_area_spent numeric;
