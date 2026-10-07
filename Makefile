@@ -174,8 +174,9 @@ client-docs:  ## Render docs/entities from the research table (host venv)
 staff-source:  ## Upload a staff workbook: make staff-source ENV=staging FILE="<xlsx>" KEY=<registry key>
 	@test "$(ENV)" = staging || { echo 'staff-source runs with ENV=staging only (Storage is global).'; exit 2; }
 	@test -n "$(FILE)" && test -n "$(KEY)" || { echo 'usage: make staff-source ENV=staging FILE="<xlsx>" KEY=<key>'; exit 2; }
+	@test -n "$(DB_URL)" || { echo 'staff-source: could not resolve the staging database URL (see scripts/db-url.sh).'; exit 2; }
 	@set -a; [ -f .env ] && . ./.env; set +a; \
-	DATABASE_URL="$(DB_URL)" PYTHONPATH=backend backend/.venv/bin/python scripts/upload_staff_source.py \
+	STAFF_SOURCE_ENV=staging DATABASE_URL="$(DB_URL)" PYTHONPATH=backend backend/.venv/bin/python scripts/upload_staff_source.py \
 	  "$(FILE)" --source-key "$(KEY)"
 
 ##@ Managed database (ENV=staging)

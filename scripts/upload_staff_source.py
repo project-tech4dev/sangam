@@ -11,8 +11,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import io
+import os
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
@@ -32,17 +34,41 @@ def _sheet_count(data: bytes) -> int:
         wb.close()
 
 
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "postgres"}
+
+
+def _refusal(database_url: str) -> str | None:
+    """Storage is global, so only a managed database may pair with it."""
+    if os.environ.get("STAFF_SOURCE_ENV") != "staging":
+        return "run this through `make staff-source ENV=staging` (STAFF_SOURCE_ENV=staging)."
+    if (urlsplit(database_url).hostname or "") in _LOCAL_HOSTS:
+        return "DATABASE_URL points at a local database; refusing, since Storage is global."
+    return None
+
+
 async def main(path: Path, source_key: str) -> int:
     settings = get_settings()
+    if (reason := _refusal(settings.database_url)):
+        print(reason)
+        return 2
     if not settings.storage_enabled:
         print("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set: staff datasets live only in Storage.")
         return 2
     if source_key not in SOURCES:
         print(f"{source_key!r} is not a registered source key.")
         return 2
-    data = path.read_bytes()
-    if len(data) > storage.STAFF_SOURCES_MAX_BYTES:
-        print(f"{len(data) / 1024 / 1024:.1f} MB is over the 100 MB staff-sources limit.")
+    try:
+        size = path.stat().st_size
+    except OSError:
+        print("the file could not be found or read.")
+        return 2
+    if size > storage.STAFF_SOURCES_MAX_BYTES:
+        print(f"{size / 1024 / 1024:.1f} MB is over the 100 MB staff-sources limit.")
+        return 2
+    try:
+        data = path.read_bytes()
+    except OSError:
+        print("the file could not be found or read.")
         return 2
     try:
         sheets = _sheet_count(data)
@@ -50,20 +76,29 @@ async def main(path: Path, source_key: str) -> int:
         print(f"not a readable .xlsx workbook ({type(exc).__name__}); nothing stored.")
         return 2
     key = staff_sources.object_key(source_key, path.name)
-    stored = await storage.upload(storage.STAFF_SOURCES, key, data, staff_sources.XLSX, replace=True,
-                                  max_bytes=storage.STAFF_SOURCES_MAX_BYTES)
-    if stored is None:
-        print("storing the workbook failed - does 0032's bucket exist, and is the project's global "
-              "upload limit at least 100 MB?")
-        return 1
     pool = make_pool(settings.database_url, max_size=2)
-    await pool.open()
     try:
-        document_id, status = await documents_repo.upsert_source_dataset(
-            pool, title=staff_sources.title(source_key, path.name), source_key=source_key,
-            storage_path=storage.qualify(storage.STAFF_SOURCES, key),
-            source_url=staff_sources.source_url(path.name), content_hash=storage.content_hash(data),
-        )
+        await pool.open()
+        async with pool.connection() as conn:
+            await conn.execute("SELECT 1")
+    except Exception as exc:  # noqa: BLE001
+        print(f"the database is unreachable ({type(exc).__name__}); nothing stored.")
+        return 1
+    try:
+        stored = await storage.upload(storage.STAFF_SOURCES, key, data, staff_sources.XLSX, replace=True,
+                                      max_bytes=storage.STAFF_SOURCES_MAX_BYTES)
+        if stored is None:
+            print("the upload failed - check that the bucket exists, its size limit and the service key.")
+            return 1
+        try:
+            document_id, status = await documents_repo.upsert_source_dataset(
+                pool, title=staff_sources.title(source_key, path.name), source_key=source_key,
+                storage_path=storage.qualify(storage.STAFF_SOURCES, key),
+                source_url=staff_sources.source_url(path.name), content_hash=storage.content_hash(data),
+            )
+        except Exception:  # noqa: BLE001
+            print("object stored, row not written - re-run to retry.")
+            return 1
     finally:
         await pool.close()
     print(f"{status}: document {document_id} · {storage.qualify(storage.STAFF_SOURCES, key)} · {sheets} sheets")
