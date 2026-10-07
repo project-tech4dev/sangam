@@ -78,13 +78,6 @@ async def get_funder(pool: AsyncConnectionPool, slug_or_id: str) -> dict | None:
         if row is None:
             return None
         funder_id = row["id"]
-        row["identifiers"] = await (
-            await conn.execute(
-                "SELECT id_type, id_value, verified, source_url FROM funder_identifiers "
-                "WHERE funder_id = %s ORDER BY id_type",
-                (funder_id,),
-            )
-        ).fetchall()
         row["tags"] = await (
             await conn.execute(
                 "SELECT tg.slug, tg.label, ft.role FROM funder_tags ft "

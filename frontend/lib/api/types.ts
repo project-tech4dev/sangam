@@ -48,8 +48,8 @@ export type OrgDetail = OrgListItem & {
 };
 
 export type FunderDetail = FunderListItem & {
-  section_135_bound: boolean | null;
-  identifiers: Identifier[]; tags: TagRef[]; locations: LocationRef[]; contacts: Contact[];
+  section_135_bound: boolean | null; cin: string | null; aliases: string[];
+  tags: TagRef[]; locations: LocationRef[]; contacts: Contact[];
 };
 
 export type ScoreRow = {
