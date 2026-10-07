@@ -102,7 +102,9 @@ def answer_audit(model_spec: str):
 # The researcher reads untrusted pages and the staff workbooks; once it has seen a staff row, no
 # outbound tool runs, so an injected instruction cannot carry a row out in a URL or query.
 STAFF_TOOL = "read_source_rows"
-NETWORK_TOOLS = frozenset({"search_public_sources", "read_page", "fetch_document"})
+# An allowlist, so an outbound tool added to the researcher later is closed by default.
+OPEN_AFTER_STAFF = frozenset({STAFF_TOOL, "save_research", "read_document_pages", "research_goals",
+                              "funder_dossier", "read_file"})
 STAFF_LOCK_REPLY = "web tools are closed for this run: staff rows have been read. Save what you have."
 
 
@@ -117,11 +119,11 @@ def staff_rows_requested(messages: list[BaseMessage]) -> bool:
 
 
 class StaffLastLock(AgentMiddleware):
-    """Refuses every network tool for the rest of a run once read_source_rows has been called."""
+    """Refuses every tool but OPEN_AFTER_STAFF for the rest of a run once read_source_rows has been called."""
 
     def _refusal(self, request) -> ToolMessage | None:
         call = request.tool_call
-        if call.get("name") not in NETWORK_TOOLS:
+        if call.get("name") in OPEN_AFTER_STAFF:
             return None
         try:
             state = request.state

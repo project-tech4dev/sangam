@@ -261,7 +261,9 @@ def hold_unmarked(
         if not ids:
             held.append(f"{f.get('concept')}: cites a staff dataset without its [source:…] marker — quote "
                         f"the row's line with the marker of the cell that holds the fact")
-        elif dataset_ids.get(url) not in ids:
+        elif url not in dataset_ids:
+            held.append(f"{f.get('concept')}: its source_url names no staff dataset on file")
+        elif dataset_ids[url] not in ids:
             held.append(f"{f.get('concept')}: the citation names a different staff dataset")
         else:
             kept.append(f)

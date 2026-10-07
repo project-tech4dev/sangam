@@ -41,7 +41,10 @@ def _refusal(database_url: str) -> str | None:
     """Storage is global, so only a managed database may pair with it."""
     if os.environ.get("STAFF_SOURCE_ENV") != "staging":
         return "run this through `make staff-source ENV=staging` (STAFF_SOURCE_ENV=staging)."
-    host = (conninfo_to_dict(database_url).get("host") or "").split(",")[0]
+    try:
+        host = (conninfo_to_dict(database_url).get("host") or "").split(",")[0]
+    except Exception as exc:  # noqa: BLE001 - the type only; the DSN holds a password
+        return f"DATABASE_URL could not be parsed ({type(exc).__name__})."
     if not host or host.startswith("/") or host in _LOCAL_HOSTS:
         return "DATABASE_URL points at a local database; refusing, since Storage is global."
     return None

@@ -1,6 +1,6 @@
 ---
 name: funder-intake-research
-description: Use when someone names one or more companies, corporate foundations, trusts or grantmakers and wants to know where their CSR money goes and what it would take to reach it. Sets the source order — by strength of evidence — statutory CSR filings under the corporate filer, then the funder's own publications, then recipient-side records — with the staff workbooks (read_source_rows) read once, after all web reads — and pulls ten fields per funder in intake order — route and whether it is live, the receiving legal entity, grantmaker or implementer, eligibility split into statutory restatement and the funder's own bar, the document checklist, hard disqualifiers, district geography, grant size, live call or historical disclosure, provenance with access state; plus the open call and the rule for classifying spend lines. Raw field-value-source only; no verdicts, no scoring. Not for an organisation that receives money — use ngo-credential-research. Not for one fact already in the catalog — funder_dossier answers that.
+description: Use when someone names one or more companies, corporate foundations, trusts or grantmakers and wants to know where their CSR money goes and what it would take to reach it. Sets the source order — by strength of evidence — statutory CSR filings under the corporate filer, then the funder's own publications, then recipient-side records — with the staff workbooks (read_source_rows) read after all web reads — and pulls ten fields per funder in intake order — route and whether it is live, the receiving legal entity, grantmaker or implementer, eligibility split into statutory restatement and the funder's own bar, the document checklist, hard disqualifiers, district geography, grant size, live call or historical disclosure, provenance with access state; plus the open call and the rule for classifying spend lines. Raw field-value-source only; no verdicts, no scoring. Not for an organisation that receives money — use ngo-credential-research. Not for one fact already in the catalog — funder_dossier answers that.
 ---
 
 # What we want pulled for a funder
@@ -14,7 +14,7 @@ every other field describes the wrong body.
 ## Where to look, in this order
 
 The order is strength of evidence for money, not the order of reading. The researcher's STEP 1
-confirmation search always comes first. **`read_source_rows` is called once, AFTER every web
+confirmation search always comes first. **`read_source_rows` is called AFTER every web
 read** — its first call closes the web tools for the rest of the run — so the staff workbooks
 below (#1 filings, #3 CSO workbook) are read last, together, whatever their rank here.
 
@@ -42,7 +42,7 @@ below (#1 filings, #3 CSO workbook) are read last, together, whatever their rank
 
 ### Reading the staff workbooks
 
-Call `read_source_rows` once, after all web reads: the first call closes the web tools for the run.
+Call `read_source_rows` only after all web reads: the first call closes the web tools for the run.
 It returns rows as `cell=value` with a `[source:<document>#<sheet>!<cell>]`
 marker. Cite the cell that holds the fact. The dataset's `source_url` (a `.invalid` address) is
 cited, never fetched. The tool does not convert units; these notes say how each kind of sheet reads.
