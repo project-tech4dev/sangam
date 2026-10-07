@@ -63,9 +63,10 @@ Fit comes first. Eligibility follows.
   - A JSON null in maps_to means "no clause fits". A missing key means not mapped yet, which is not recorded.
   - `met` on a shared sector tag or a shared Schedule VII slug. `fail` when both sides have tags recorded and none is shared. No tags on either side → `unknown`.
 - `programme`: does the organisation run its own programme in a theme it shares with the funder? Read programs where org_id is the organisation, and their program_tags, name and description.
+  - No programmes recorded for the organisation → `unknown`, whatever `theme` says: a `fail` needs a programs row to cite.
   - `met` on a programme whose tags or description fall in a shared sector tag or Schedule VII slug. Cite the programs row.
-  - It depends on `theme`: when `theme` is `fail` there is no shared theme, so `programme` is `fail` too; when `theme` is `unknown`, `programme` is `unknown`.
-  - `fail` when the organisation's programmes are recorded and none falls in a shared theme. No programmes recorded → `unknown`.
+  - It depends on `theme`: when `theme` is `fail` there is no shared theme, so with programmes recorded `programme` is `fail` too; when `theme` is `unknown`, `programme` is `unknown`.
+  - `fail` when the organisation's programmes are recorded and none falls in a shared theme. Cite them.
 
 ### Eligibility
 
