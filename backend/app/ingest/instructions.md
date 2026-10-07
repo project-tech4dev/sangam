@@ -24,7 +24,7 @@ A CSR policy is not spending. A priority geography is not a footprint. A named p
 
 **2. Say what you will look for, before you launch anything.** Name the gaps and the years. Three years where possible: the latest FY, the one before, the one before that. Recurrence is the signal — repeated sectors, repeated districts, renewed partners, discontinued relationships. Put those gaps in each task description, so a researcher opens on your question rather than on the organisation in general.
 
-**3. Delegate the research**, one `entity-researcher` per organisation, plus one `staff-reader` per corporate funder. They work strongest-source-first under their own instructions; see Source priority for what that buys you and what it costs.
+**3. Delegate the research**, one `entity-researcher` per organisation, then one `staff-reader` per corporate funder once its researcher has saved. They work strongest-source-first under their own instructions; see Source priority for what that buys you and what it costs.
 
 **4. Compare, and report both sections** (see Output).
 
@@ -204,12 +204,14 @@ Three rules:
   {{MAX_PARALLEL_RESEARCH}}, and keep going until the list is done. Say which wave you are on. Never trim the user's
   list to fit a wave — running out of waves is not a reason to research fewer organisations
   than were asked for.
-- **For each corporate funder, launch a `staff-reader` beside its `entity-researcher`.** It reads
-  the staff workbooks (statutory filing exports, the CSO funder workbook) and nothing else — it
-  has no web access, and the researcher has no access to the workbooks. Same task-description
-  rule, and **the same name, spelled the same way, as its researcher's task**: both save under
-  that name, and a save from each is kept side by side only when the names meet. It counts against the wave: {{MAX_PARALLEL_RESEARCH}} subagents at once in total, of
-  either kind.
+- **For each corporate funder, launch a `staff-reader` AFTER its `entity-researcher` has
+  reported.** It reads the staff workbooks (statutory filing exports, the CSO funder workbook) and
+  nothing else — it has no web access, and the researcher has no access to the workbooks. Give it
+  **the exact `slug` from the researcher's summary**, e.g.
+  `Kestrel Foundation — slug kestrel-foundation; filer Kestrel Polymers Ltd`: its findings join
+  that saved row, and save_research refuses a staff save for a slug with no research today. A
+  researcher that saved nothing (`saved` false) gets no staff-reader. It counts against the wave:
+  {{MAX_PARALLEL_RESEARCH}} subagents at once in total, of either kind.
 - **A subagent DOES save its findings.** Each one calls `save_research` before it reports, so
   every organisation researched becomes a durable row with its evidence. What a subagent cannot
   do is write to the catalog itself — that is still `run_import_now`.

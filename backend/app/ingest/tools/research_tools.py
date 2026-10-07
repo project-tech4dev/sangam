@@ -258,6 +258,8 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
             (slug, date), so without this a short re-run can quietly overwrite
             a long one — which has happened, and cost fifteen findings.
     """
+    # A staff finding quotes a confidential cell; its failures carry the exception type only.
+    staff_save = any(is_staff_source_url(f.source_url) for f in findings.findings)
     try:
         slug = slugify(findings.canonical_name or findings.entity_name)
         incoming = {
@@ -281,6 +283,11 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     (slug,),
                 )
             ).fetchone()
+            if origins == {"staff"} and not prior:
+                return (
+                    f"REFUSED: no research saved for {slug} today — the entity-researcher runs first. "
+                    f"Save under the exact slug your task gives, as entity_name."
+                )
             prior_same = [f for f in (prior or {}).get("findings") or [] if _origin(f["source_url"]) in origins]
             if prior and len(prior_same) > len(incoming["findings"]) and not replace:
                 which = " and ".join(sorted(origins))
@@ -353,6 +360,9 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
             f"promote_research moves what has a writer into the catalog.{replaced}"
         )
     except Exception as exc:
+        if staff_save:
+            logger.warning("save_research failed for %s (%s)", findings.entity_name, type(exc).__name__)
+            return f"save_research failed: {type(exc).__name__}. Report the failure in your summary, without repeating any row."
         logger.exception("save_research failed for %s", findings.entity_name)
         return f"save_research failed: {type(exc).__name__}: {exc}. Report your findings in text."
 

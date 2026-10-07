@@ -136,15 +136,17 @@ tool calls and never reached its report, because each document displaced the las
 An isolated subagent returns its conclusion, not its reading. It hands back a thin
 `ResearchSummary` — counts and status, not the findings, which it has already saved itself.
 
-**`staff-reader`** — one per corporate funder, `mode: "isolated"`, launched beside its
-`entity-researcher`. Its tools are `read_source_rows`, `research_goals` and `save_research`, and
-nothing that reaches the network: a researcher reads untrusted pages and can fetch any URL, so a
-prompt injection could have it carry a confidential row out in one. `read_source_rows` reads the
-workbooks a person uploaded with `make staff-source` from the private `staff-sources` bucket with
-openpyxl and returns header rows and matching rows as `cell=value`, each cited
-`[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each sheet is laid out, and
-its unit, is in `prompts/staff_reader.md` under "The staff sheets" (a subagent loads no skill). Contact columns are dropped. Promoted facts are
-public (D14); the files and their `documents` rows stay staff-only, and `promote` holds a staff
+**`staff-reader`** — one per corporate funder, `mode: "isolated"`, launched after its
+`entity-researcher` with the slug that researcher saved. `save_research` merges by origin (a staff
+URL or the web), so its findings join that row; a staff-only save with no row for the slug today is
+refused. Its tools are `read_source_rows`, `research_goals` and `save_research`, and nothing that
+reaches the network: a researcher reads untrusted pages and can fetch any URL, so a prompt injection
+could have it carry a confidential row out in one. `read_source_rows` reads the workbooks a person
+uploaded with `make staff-source` from the private `staff-sources` bucket with openpyxl and returns
+header rows and matching rows as `cell=value`, each cited `[source:<document>#<sheet>!<cell>]`.
+There is no layout parser: how each sheet is laid out, and its unit, is in `prompts/staff_reader.md`
+under "The staff sheets" (a subagent loads no skill). Contact columns are dropped. Promoted facts
+are public (D14); the files and their `documents` rows stay staff-only, and `promote` holds a staff
 finding without its marker. Tool output reaches the model provider and, with tracing on, Langfuse,
 like every tool output.
 
