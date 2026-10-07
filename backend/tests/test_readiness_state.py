@@ -70,26 +70,19 @@ def _task(subagent: str, call_id: str) -> dict:
             "id": call_id, "type": "tool_call"}
 
 
-def test_readiness_reaches_a_whole_wave_through_state():
-    """Pins the deepagents behaviour this design rests on: an isolated subagent's state update flows back
-    to the parent, and subagents launched later inherit it. A library upgrade that breaks this fails here."""
+def _graph(supervisor_turns: list[AIMessage], funders: tuple[int, ...]):
     from deepagents import create_deep_agent
     from langchain.agents.structured_output import ToolStrategy
     from langgraph.checkpoint.memory import InMemorySaver
 
     from app.agent.state import AskState, merge_with_readiness, record_readiness
 
-    funders = (2, 7, 9)
-    supervisor = _Scripted(messages=iter([
-        AIMessage(content="", tool_calls=[_task("org-readiness", "r")]),
-        AIMessage(content="", tool_calls=[_task("funder-assessor", f"f{f}") for f in funders]),
-        AIMessage(content="done"),
-    ]))
+    supervisor = _Scripted(messages=iter(supervisor_turns))
     readiness_model = _Scripted(messages=iter([_call("ReadinessAssessment", _readiness(), "r1")]))
     pair_model = _Scripted(messages=iter(
         [_call("PairAssessment", _pair(funder_id=f, funder_name=f"Funder {f}"), f"p{f}") for f in funders]
     ))
-    graph = create_deep_agent(
+    return create_deep_agent(
         model=supervisor,
         tools=[],
         state_schema=AskState,
@@ -104,6 +97,17 @@ def test_readiness_reaches_a_whole_wave_through_state():
         checkpointer=InMemorySaver(),
     )
 
+
+def test_readiness_reaches_a_whole_wave_through_state():
+    """Pins the deepagents behaviour this design rests on: an isolated subagent's state update flows back
+    to the parent, and subagents launched later inherit it. A library upgrade that breaks this fails here."""
+    funders = (2, 7, 9)
+    graph = _graph([
+        AIMessage(content="", tool_calls=[_task("org-readiness", "r")]),
+        AIMessage(content="", tool_calls=[_task("funder-assessor", f"f{f}") for f in funders]),
+        AIMessage(content="done"),
+    ], funders)
+
     out = graph.invoke({"messages": [("user", "Which funders can KABIL apply to?")]},
                        {"configurable": {"thread_id": "t"}})
 
@@ -112,3 +116,17 @@ def test_readiness_reaches_a_whole_wave_through_state():
     assert sorted(r["funder_id"] for r in replies) == list(funders)
     org_sides = [[c for c in r["checks"] if c["code"] == "reg_12a"] for r in replies]
     assert all(side == org_sides[0] for side in org_sides)
+
+
+def test_a_pair_without_readiness_is_an_error_the_supervisor_reads_not_a_crash():
+    # deepagents json.dumps a non-model structured_response, so the string reaches the supervisor.
+    graph = _graph([
+        AIMessage(content="", tool_calls=[_task("funder-assessor", "f2")]),
+        AIMessage(content="done"),
+    ], (2,))
+
+    out = graph.invoke({"messages": [("user", "How does KABIL fit HDFC?")]}, {"configurable": {"thread_id": "t"}})
+
+    replies = [m.content for m in out["messages"] if m.type == "tool"]
+    assert any("org-readiness has not run for org 126" in r for r in replies)
+    assert not any("rank_key" in r for r in replies)

@@ -55,8 +55,8 @@ audits, board and track record once, and Sangam hands that judgement to every
 funder-assessor, so they never re-judge it.
 
 If org-readiness already ran for this organisation earlier in this
-conversation, reuse it: say "readiness assessed earlier in this conversation"
-with its time. Run it again only when the user has imported or recorded new
+conversation, reuse it and say "readiness assessed earlier in this
+conversation". Run it again only when the user has imported or recorded new
 data for the organisation since.
 
 ## 5. Assess every candidate
