@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from psycopg.errors import InsufficientPrivilege
 
 from app.api.router import OPENAPI_TAGS, api_router
 from app.core.config import Settings, get_settings
 from app.core.lifespan import build_lifespan
 from app.core.logging import configure_logging
+from app.core.security import AuthMiddleware
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -21,6 +24,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=build_lifespan(resolved),
         openapi_tags=OPENAPI_TAGS,
     )
+    # Added first, so CORS wraps it: preflights are answered before it runs, and its 401s carry CORS headers.
+    app.add_middleware(AuthMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=resolved.origins,
@@ -30,6 +35,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(api_router)
+
+    # A request runs as anon or authenticated; a table that role was not granted is a refusal, not a crash.
+    @app.exception_handler(InsufficientPrivilege)
+    async def _not_allowed(request: Request, exc: InsufficientPrivilege) -> JSONResponse:
+        return JSONResponse({"detail": "Not allowed"}, status_code=403)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
