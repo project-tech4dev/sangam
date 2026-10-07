@@ -14,7 +14,6 @@ import io
 import os
 import sys
 from pathlib import Path
-from urllib.parse import urlsplit
 
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
@@ -22,6 +21,7 @@ from app.ingest import staff_sources
 from app.ingest.sources import SOURCES
 from app.integrations import storage
 from app.repositories import documents as documents_repo
+from psycopg.conninfo import conninfo_to_dict
 
 
 def _sheet_count(data: bytes) -> int:
@@ -41,7 +41,8 @@ def _refusal(database_url: str) -> str | None:
     """Storage is global, so only a managed database may pair with it."""
     if os.environ.get("STAFF_SOURCE_ENV") != "staging":
         return "run this through `make staff-source ENV=staging` (STAFF_SOURCE_ENV=staging)."
-    if (urlsplit(database_url).hostname or "") in _LOCAL_HOSTS:
+    host = (conninfo_to_dict(database_url).get("host") or "").split(",")[0]
+    if not host or host.startswith("/") or host in _LOCAL_HOSTS:
         return "DATABASE_URL points at a local database; refusing, since Storage is global."
     return None
 
