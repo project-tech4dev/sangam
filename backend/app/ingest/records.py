@@ -342,18 +342,38 @@ class ContactRecord(Provenance):
     _org = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
-class FunderEligibilityRecord(Provenance):
-    """One condition a funder sets for applicants. Its standing bar, not a call's."""
+# The headings an eligibility document's text sits under. Matched BY HAND to 0031, which writes the
+# same three when it moves funder_eligibility rows into documents, plus "## Notes" for migrated rows only.
+ELIGIBILITY_SECTIONS = (
+    ("statutory_restatement", "Statutory restatement"),
+    ("own_bar", "Its own bar"),
+    ("disqualifiers", "Disqualifiers"),
+)
+NOT_STATED = "Not stated. The page was read and sets out no eligibility for applicants."
 
-    kind: Literal["funder_eligibility"] = "funder_eligibility"
+
+class EligibilityGuidelineRecord(Provenance):
+    """One funder_eligibility documents row: the guideline text, verbatim."""
+
+    kind: Literal["eligibility_guideline"] = "eligibility_guideline"
+    doc_type: ClassVar[str] = "funder_eligibility"
     funder_name: str = Field(min_length=2)
-    # `kind` is taken by the discriminator above, so the finding's own `kind`
-    # arrives renamed — same reason program_kind and contact_kind are renamed.
-    criterion_kind: Literal["statutory_restatement", "own_bar", "disqualifier"]
-    criterion: str = Field(min_length=10)
-    notes: str | None = None
+    title: str = Field(min_length=4)
+    statutory_restatement: str | None = None
+    own_bar: str | None = None
+    disqualifiers: str | None = None
+    not_stated: bool = False
 
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+    def content_md(self) -> str:
+        if self.not_stated:
+            return NOT_STATED
+        return "\n\n".join(
+            f"## {heading}\n\n{text.strip()}"
+            for field, heading in ELIGIBILITY_SECTIONS
+            if (text := getattr(self, field))
+        )
 
 
 class RfpRecord(Provenance):
@@ -462,5 +482,5 @@ Record = (
     | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
     | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | FunderProgrammeSpendRecord
     | ProgramRecord
-    | MetricRecord | ContactRecord | RfpRecord
+    | MetricRecord | ContactRecord | RfpRecord | EligibilityGuidelineRecord
 )

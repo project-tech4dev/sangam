@@ -27,9 +27,9 @@ from app.ingest.matcher import Match, _is_foundation, resolve_funder, resolve_or
 from app.ingest.records import (
     CIN_FORMAT,
     ContactRecord,
+    EligibilityGuidelineRecord,
     FunderCsrSpendRecord,
     FunderCsrYearRecord,
-    FunderEligibilityRecord,
     FunderFootprintRecord,
     FunderLocationRecord,
     FunderPartnerRecord,
@@ -53,9 +53,9 @@ from app.ingest.writer import (
     write_contact,
     write_csr_spend,
     write_csr_year,
+    write_eligibility_document,
     write_footprint,
     write_funder,
-    write_funder_eligibility,
     write_funder_location,
     write_funder_tag,
     write_metric,
@@ -80,7 +80,7 @@ MERGEABLE = ("identifier", "exact", "alias", "boilerplate")
 # whose program_id is null for want of ordering is a quietly weaker row.
 WRITE_ORDER = (
     "csr_spend", "footprint", "stated_geography", "partner", "programme_spend", "metric", "contact",
-    "rfp", "funder_eligibility",
+    "rfp", "eligibility_guideline",
 )
 
 # The org side's own order. Separate rather than appended: the funder path
@@ -111,7 +111,7 @@ CONCEPT_RECORDS: dict[str, type] = {
     "metric": MetricRecord,
     "contact": ContactRecord,
     "rfp": RfpRecord,
-    "funder_eligibility": FunderEligibilityRecord,
+    "eligibility_guideline": EligibilityGuidelineRecord,
     "org_identity": OrgRecord,
     "org_identifier": OrgRecord,
     "org_financials": OrgFinancialsRecord,
@@ -123,7 +123,6 @@ CONCEPT_RECORDS: dict[str, type] = {
 RENAMED: dict[tuple[str, str], str] = {
     ("program", "kind"): "program_kind",
     ("contact", "kind"): "contact_kind",
-    ("funder_eligibility", "kind"): "criterion_kind",
     ("org_identifier", "id_type"): "identifiers",
     ("org_identifier", "id_value"): "identifiers",
 }
@@ -436,8 +435,8 @@ def _row_identity(
         return (concept, f.name, f.role)
     if concept == "rfp":
         return (concept, f.title, f.deadline)
-    if concept == "funder_eligibility":
-        return (concept, f.kind, f.criterion)
+    if concept == "eligibility_guideline":
+        return (concept, f.source_url)
     if concept == "org_location":
         return (concept, district_id or state_id)
     if concept == "org_financials":
@@ -446,8 +445,7 @@ def _row_identity(
 
 
 def _describe(concept: str, f: Any) -> str:
-    for attr in ("project_name", "partner_name", "title", "name", "criterion",
-                 "sector", "state"):
+    for attr in ("project_name", "partner_name", "title", "name", "sector", "state"):
         value = getattr(f, attr, None)
         if value:
             return f"{attr}={value!r}"
@@ -625,15 +623,14 @@ async def _write_facts(
                     )
                     _count(report, "rfps", status)
 
-                elif concept == "funder_eligibility":
-                    rec = FunderEligibilityRecord(
-                        criterion_kind=f.kind, criterion=f.criterion, notes=f.notes,
-                        as_of=None, **base,
+                elif concept == "eligibility_guideline":
+                    rec = EligibilityGuidelineRecord(
+                        title=f.title, statutory_restatement=f.statutory_restatement,
+                        own_bar=f.own_bar, disqualifiers=f.disqualifiers, not_stated=f.not_stated,
+                        as_of=f.as_of, **base,
                     )
-                    status, _ = await write_funder_eligibility(
-                        conn, rec, funder_id, document_id=document_id,
-                    )
-                    _count(report, "funder_eligibility", status)
+                    _, status = await write_eligibility_document(conn, rec, funder_id)
+                    _count(report, "documents (funder_eligibility)", status)
 
                 elif concept == "org_financials":
                     rec = OrgFinancialsRecord(

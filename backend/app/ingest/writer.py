@@ -101,7 +101,7 @@ async def ensure_document(
     conn: Any, rec: Any, *, owner: Owner | None, doc_type: str,
     storage_path: str | None = None, content_hash: str | None = None,
 ) -> tuple[int, str]:
-    """One documents row per source URL and kind of document, so many facts can cite one report.
+    """One documents row per source URL and kind of document (and owner, for a reserved kind).
 
     The kind is the doc_type itself for the three reserved types and one shared class for every
     other type: a policy page can be both the archived source and the funder's eligibility document
@@ -110,11 +110,15 @@ async def ensure_document(
     that predates archiving, and only where the row is empty.
     """
     kind = doc_type if doc_type in RESERVED_DOC_TYPES else ""
+    # A reserved kind is also per owner: two funders citing one policy page each get their own
+    # eligibility text. The column is one of two literals from Owner, never a caller's string.
+    mine = f" AND {owner.column} = %s" if kind and owner else ""
     row = await (
         await conn.execute(
             "SELECT id, storage_path, content_hash FROM documents WHERE source_url = %s "
-            "AND (CASE WHEN doc_type = ANY(%s) THEN doc_type ELSE '' END) = %s ORDER BY id LIMIT 1",
-            (rec.source_url, sorted(RESERVED_DOC_TYPES), kind),
+            "AND (CASE WHEN doc_type = ANY(%s) THEN doc_type ELSE '' END) = %s" + mine
+            + " ORDER BY id LIMIT 1",
+            (rec.source_url, sorted(RESERVED_DOC_TYPES), kind, *([owner.id] if mine else [])),
         )
     ).fetchone()
     if row:
@@ -622,30 +626,29 @@ async def write_rfp(
     return status, rfp_id, changes
 
 
-FUNDER_ELIGIBILITY_KEY = ("funder_id", "kind", "criterion")
-# No content_hash or extractor_version: funder_eligibility carries the same
-# provenance set as funder_activity, and _upsert names its columns.
-FUNDER_ELIGIBILITY_UPDATABLE = ("notes", "source_url", "source_name", "fetched_at", "as_of")
+async def write_eligibility_document(conn: Any, rec: Any, funder_id: int) -> tuple[int, str]:
+    """The funder's standing eligibility as one documents row, text verbatim (D3).
 
-
-async def write_funder_eligibility(
-    conn: Any, rec: Any, funder_id: int, *, document_id: int | None
-) -> tuple[str, dict]:
-    """One condition the funder sets for applicants.
-
-    The criterion itself is part of the key: a funder restating the same bar
-    in different words is two conditions as far as this table is concerned,
-    and collapsing them would silently pick one source's wording over another.
+    Keyed by ensure_document on (source_url, 'funder_eligibility', funder). The text follows the newest
+    research, and is_public follows the funder (D14): a hidden funder's guideline is staff-only.
     """
-    key = {"funder_id": funder_id, "kind": rec.criterion_kind, "criterion": rec.criterion}
-    proposed = {
-        "notes": rec.notes,
-        "source_url": rec.source_url, "source_name": rec.source_name,
-        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
-    }
-    return await _upsert(
-        conn, "funder_eligibility", key, FUNDER_ELIGIBILITY_UPDATABLE, proposed, document_id
+    document_id, status = await ensure_document(
+        conn, rec, owner=Owner.funder(funder_id), doc_type=rec.doc_type
     )
+    content = rec.content_md()
+    changed = await (
+        await conn.execute(
+            "UPDATE documents d SET content_md = %s, title = %s, as_of = coalesce(%s, d.as_of), "
+            "fetched_at = %s, is_public = f.registry_status <> 'hidden' "
+            "FROM funders f WHERE d.id = %s AND f.id = d.funder_id "
+            "AND (d.content_md IS DISTINCT FROM %s OR d.is_public IS DISTINCT FROM "
+            "(f.registry_status <> 'hidden')) RETURNING d.id",
+            (content, rec.title, rec.as_of, rec.fetched_at, document_id, content),
+        )
+    ).fetchone()
+    if status == "matched" and changed is not None:
+        status = "updated"
+    return document_id, status
 
 
 async def write_funder_tag(conn: Any, funder_id: int, tag_id: int, *, note: str | None) -> None:

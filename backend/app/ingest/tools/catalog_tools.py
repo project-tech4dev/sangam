@@ -111,10 +111,11 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         # Its standing bar, which is NOT the same question as whether a call is
         # open. Labelled so a reader cannot mistake "what the funder requires"
         # for "whether anybody qualifies" — nothing here judges an applicant.
-        "funder_eligibility (what the funder REQUIRES of applicants; not a judgement on any)",
+        "eligibility (the funder_eligibility document: what it REQUIRES of applicants; not a judgement on any)",
         """
-        SELECT kind, criterion, source_name FROM funder_eligibility
-        WHERE funder_id = %s ORDER BY kind, id
+        SELECT id AS document_id, title, as_of, source_url, left(content_md, 1500) AS text
+        FROM documents WHERE funder_id = %s AND doc_type = 'funder_eligibility'
+        ORDER BY fetched_at DESC NULLS LAST, id DESC LIMIT 1
         """,
     ),
     (

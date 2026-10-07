@@ -436,26 +436,37 @@ class ContactFinding(FindingBase):
         return self
 
 
-class FunderEligibilityFinding(FindingBase):
-    """What the funder requires of an applicant, one condition per finding.
+class EligibilityGuidelineFinding(FindingBase):
+    """A funder's standing eligibility for applicants, verbatim, from one page (D3).
 
-    Not rfps.eligibility: this is the standing bar, and a requirement printed
-    in one open call belongs on that call. The same sentence can be true in
-    both places and that is two findings, not a duplicate.
+    Not rfps.eligibility: that is one call's. The same sentence can be true in both places and that
+    is two findings, not a duplicate.
     """
 
-    concept: Literal["funder_eligibility"] = "funder_eligibility"
-    # `kind` is the records' own discriminator, hence the rename in promote.py.
-    kind: Literal["statutory_restatement", "own_bar", "disqualifier"] = Field(
-        description="statutory_restatement is Rule 4 copied into the policy and is NOT the "
-                    "funder's own bar; disqualifier is a stated ground for outright rejection"
+    concept: Literal["eligibility_guideline"] = "eligibility_guideline"
+    title: str = Field(min_length=4, description="what the page is, e.g. 'CSR Policy — partner selection'")
+    as_of: str | None = Field(default=None, description="the period or version the guideline describes")
+    statutory_restatement: str | None = Field(
+        default=None, description="Rule 4 copied into the policy, VERBATIM. Not the funder's own bar"
     )
-    criterion: str = Field(
-        min_length=10,
-        description="the condition in the funder's own words, verbatim. 'Various documents' "
-                    "is not a criterion; the sentence that states the bar is",
+    own_bar: str | None = Field(default=None, description="beyond the statutory minimum, verbatim")
+    disqualifiers: str | None = Field(default=None, description="stated grounds for rejection, verbatim")
+    not_stated: bool = Field(
+        default=False, description="true when the page was read and states no eligibility"
     )
-    notes: str | None = None
+
+    @model_validator(mode="after")
+    def _text_or_an_honest_absence(self) -> EligibilityGuidelineFinding:
+        texts = [t for t in (self.statutory_restatement, self.own_bar, self.disqualifiers) if t and t.strip()]
+        if self.not_stated and texts:
+            raise ValueError("not_stated with eligibility text is a contradiction — drop one")
+        if not self.not_stated and not texts:
+            raise ValueError(
+                "no eligibility text: quote the page verbatim, or set not_stated=true if it states none"
+            )
+        if any(len(t.strip()) < 10 for t in texts):
+            raise ValueError("eligibility text is the sentence that states the bar, not a label")
+        return self
 
 
 class DocumentFinding(FindingBase):
@@ -556,7 +567,7 @@ class OrgLocationFinding(PlacedFinding):
 Finding = Annotated[
     IdentityFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
     | StatedGeographyFinding | PartnerFinding | ProgrammeSpendFinding | ProgramFinding | GrantFinding | MetricFinding
-    | ContactFinding | DocumentFinding | RfpFinding | FunderEligibilityFinding
+    | ContactFinding | DocumentFinding | RfpFinding | EligibilityGuidelineFinding
     | OrgIdentityFinding | OrgIdentifierFinding | OrgFinancialsFinding | OrgLocationFinding,
     Field(discriminator="concept"),
 ]
@@ -568,7 +579,7 @@ FINDING_MODELS: dict[str, type[FindingBase]] = {
     "programme_spend": ProgrammeSpendFinding,
     "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,
     "contact": ContactFinding, "document": DocumentFinding, "rfp": RfpFinding,
-    "funder_eligibility": FunderEligibilityFinding,
+    "eligibility_guideline": EligibilityGuidelineFinding,
     "org_identity": OrgIdentityFinding, "org_identifier": OrgIdentifierFinding,
     "org_financials": OrgFinancialsFinding, "org_location": OrgLocationFinding,
 }

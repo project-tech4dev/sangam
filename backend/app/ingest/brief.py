@@ -60,6 +60,7 @@ _ELIGIBILITY_KINDS = {
 # as themselves (promote.funder_from folds `identifier` into the funder record).
 LEGACY_TITLES: dict[str, str] = {
     "identifier": "Registrations and identifiers (saved before 0031)",
+    "funder_eligibility": "Eligibility it sets for applicants (saved before 0031)",
 }
 
 
@@ -123,8 +124,16 @@ def headline(f: dict[str, Any]) -> str:
             None if f.get("status", "open") == "open" else f.get("status"),
             f"{len(f['eligibility'])} eligibility rules" if f.get("eligibility") else None,
         )
+    if concept == "eligibility_guideline":
+        if f.get("not_stated"):
+            return _join(f.get("title"), "states no eligibility")
+        return _join(f.get("title"), *(
+            f"{label}: {f[key][:160]}" for key, label in (
+                ("statutory_restatement", "restates the statutory minimum"),
+                ("own_bar", "its own bar"), ("disqualifiers", "DISQUALIFIERS"))
+            if f.get(key)))
     if concept == "funder_eligibility":
-        # The kind leads, because "restates the law" and "sets its own bar"
+        # Research saved before 0031. The kind leads, because "restates the law" and "sets its own bar"
         # read completely differently to a fundraiser and the criterion text
         # alone does not say which it is.
         return _join(_ELIGIBILITY_KINDS.get(f.get("kind"), f.get("kind")),

@@ -107,11 +107,11 @@ CONCEPTS: dict[str, ConceptSpec] = {
         columns=("fiscal_year", "program_id", "domain_tag_id", "theme_tag_id", "classified_by",
                  "classification_note", "amount", "notes"),
     ),
-    # The funder's standing bar, which is NOT rfps.eligibility: that one is a
-    # requirement printed in one call, and the same sentence can be true in
-    # both places. funder-intake-research pulls this as fields 4 and 6.
-    "funder_eligibility": ConceptSpec(
-        "funder_eligibility", "Eligibility it sets for applicants"
+    # The funder's standing eligibility (D3): one documents row per page, the text verbatim, keeping
+    # the split funder-intake-research field 4 makes. NOT rfps.eligibility, which is one call's.
+    "eligibility_guideline": ConceptSpec(
+        "documents", "Eligibility guidelines",
+        row_filter=("doc_type", "funder_eligibility"), columns=("title",),
     ),
     "program": ConceptSpec("programs", "Programmes", kinds=_BOTH),
     "grant": ConceptSpec(
@@ -243,7 +243,7 @@ REQUIRED: dict[str, frozenset[str]] = {
     "stated_geography": frozenset({"state"}),
     "partner": frozenset({"fiscal_year", "partner_name"}),
     "programme_spend": frozenset({"fiscal_year", "program_name", "amount", "domain", "classified_by"}),
-    "funder_eligibility": frozenset({"kind", "criterion"}),
+    "eligibility_guideline": frozenset({"title"}),
     "program": frozenset({"name"}),
     "grant": frozenset({"title", "recipient_name"}),
     "metric": frozenset({"name"}),
@@ -356,6 +356,21 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
             values=(),
             required=False,
         ),
+    ),
+    "eligibility_guideline": (
+        Expected(name="as_of", type="text", note="the period or version the guideline describes",
+                 values=(), required=False),
+        Expected(name="statutory_restatement", type="text",
+                 note="Rule 4 of the CSR Rules copied into the policy, VERBATIM. Not the funder's own bar",
+                 values=(), required=False),
+        Expected(name="own_bar", type="text",
+                 note="anything beyond the statutory minimum, in the funder's own words, verbatim",
+                 values=(), required=False),
+        Expected(name="disqualifiers", type="text",
+                 note="stated grounds for outright rejection, verbatim", values=(), required=False),
+        Expected(name="not_stated", type="boolean",
+                 note="the page was read and states no eligibility; source_url is still that page",
+                 values=(), required=False),
     ),
     "csr_spend": (
         _DISTRICT,
