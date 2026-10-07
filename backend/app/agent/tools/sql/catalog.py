@@ -955,7 +955,7 @@ _TABLES: tuple[Table, ...] = (
             Column("kind", "text", values=('sdg', 'sector', 'population', 'darpan_sector', 'theme', 'domain', 'cell', 'csr_sector', 'scheme', 'sub_theme', 'lens')),
             Column("parent_id", "bigint", note="the taxonomy tree: a sub_theme's parent is its theme, a theme's is its domain"),
             Column("taxonomy_ref", "text"),
-            Column("domain", "text", note="'livelihoods' | 'health' | 'education'; required for kind 'domain' and 'cell'"),
+            Column("domain", "text", note="'livelihoods' | 'health' | 'education' | 'environment' | 'others'; required for kind 'domain' and 'cell'"),
             Column("code", "text"),
             Column("level", "text"),
             Column("description", "text"),

@@ -15,7 +15,7 @@ from seed.taxonomy_seed import DATA, TAXONOMY, seed_schedule_vii, seed_taxonomy,
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
 
-TAG_COUNTS = {"sdg": 17, "population": 10, "scheme": 54, "lens": 4, "domain": 3, "theme": 11, "sub_theme": 48}
+TAG_COUNTS = {"sdg": 17, "population": 10, "scheme": 54, "lens": 4, "domain": 5, "theme": 11, "sub_theme": 48}
 
 
 def load() -> tuple[dict, dict]:

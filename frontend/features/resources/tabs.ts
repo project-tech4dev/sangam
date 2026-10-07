@@ -16,7 +16,7 @@ export const METHODOLOGY_SECTIONS: IndexEntry[] = [
 
 export const TAXONOMY_SECTIONS: IndexEntry[] = [
   { id: "how-it-works", label: "How the taxonomy works" },
-  ...DOMAINS.map((d) => ({ id: d.domain, label: d.status === "draft" ? `${d.label} (draft)` : d.label })),
+  ...DOMAINS.map((d) => ({ id: d.domain, label: d.label })),
   { id: "shared-vocabulary", label: "Shared vocabulary" },
 ];
 
