@@ -29,6 +29,10 @@ logger = logging.getLogger(__name__)
 
 SOURCE_ARCHIVE = "source-archive"
 ORG_VAULT = "org-vault"
+# Staff-only workbooks uploaded by scripts/upload_staff_source.py; 0032 creates it at 100 MB.
+STAFF_SOURCES = "staff-sources"
+STAFF_SOURCES_MAX_BYTES = 100 * 1024 * 1024
+BUCKETS: tuple[str, ...] = (SOURCE_ARCHIVE, ORG_VAULT, STAFF_SOURCES)
 
 # The bucket's own ceiling, from 0020_storage_buckets.sql. Checked before the
 # upload so a 55 MB report fails here with a readable line rather than as an
@@ -79,11 +83,11 @@ def qualify(bucket: str, key: str) -> str:
 
 
 def split(storage_path: str) -> tuple[str, str] | None:
-    """`documents.storage_path` back into (bucket, key). None if it is neither
+    """`documents.storage_path` back into (bucket, key). None if it is not one
     of ours — a path we did not write is not one we will hand out a URL for.
     """
     bucket, _, key = storage_path.partition("/")
-    return (bucket, key) if key and bucket in (SOURCE_ARCHIVE, ORG_VAULT) else None
+    return (bucket, key) if key and bucket in BUCKETS else None
 
 
 def url_prefix(source_url: str) -> str:
@@ -232,7 +236,8 @@ def _is_duplicate(response: httpx.Response) -> bool:
 
 
 async def upload(
-    bucket: str, key: str, data: bytes, content_type: str, *, replace: bool = False
+    bucket: str, key: str, data: bytes, content_type: str, *, replace: bool = False,
+    max_bytes: int = MAX_ARCHIVE_BYTES,
 ) -> str | None:
     """Store bytes and return the key, or None if it did not happen.
 
@@ -246,10 +251,10 @@ async def upload(
     """
     if _disabled():
         return None
-    if len(data) > MAX_ARCHIVE_BYTES:
+    if len(data) > max_bytes:
         logger.warning(
             "not archiving %s: %.1f MB exceeds the %d MB bucket limit",
-            key, len(data) / 1024 / 1024, MAX_ARCHIVE_BYTES // 1024 // 1024,
+            key, len(data) / 1024 / 1024, max_bytes // 1024 // 1024,
         )
         return None
     try:
