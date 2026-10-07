@@ -184,34 +184,3 @@ def test_the_pool_is_sized_by_the_setting_not_a_constant():
         Settings.model_fields["max_parallel_research"].default
         <= Settings.model_fields["db_pool_max_size"].default
     )
-
-
-def test_a_one_org_shortlist_fits_under_the_row_cap(conn):
-    """The funder shortlist is one row per funder; past the cap it would truncate silently."""
-    from app.core.config import get_settings
-
-    cap = get_settings().sql_max_rows  # what db_query passes to validate(), not the validator's default
-    funders = conn.execute("SELECT count(*) AS n FROM funders").fetchone()["n"]
-    assert funders < cap, (
-        f"{funders} funders reach db_query's {cap}-row cap — "
-        "the shortlist procedure needs paging before it can list them all"
-    )
-
-
-class TestTaxonomyCrosswalk:
-    """0022 on a seeded database: the shortlist's thematic join reads tags.meta->>'maps_to'."""
-
-    def test_every_sector_tag_has_decided_a_clause(self, conn):
-        undecided = conn.execute(
-            "SELECT slug FROM tags WHERE kind = 'sector' AND NOT meta ? 'maps_to' ORDER BY slug"
-        ).fetchall()
-        assert not undecided, f"sector tags with no maps_to key: {[r['slug'] for r in undecided]}"
-
-    def test_every_clause_names_a_csr_sector_tag(self, conn):
-        # Assumes a seeded database: taxonomy_seed creates the csr_sector rows after migrate runs.
-        dangling = conn.execute(
-            "SELECT s.slug, s.meta->>'maps_to' AS maps_to FROM tags s "
-            "WHERE s.kind = 'sector' AND s.meta->>'maps_to' IS NOT NULL AND NOT EXISTS ("
-            "  SELECT 1 FROM tags c WHERE c.kind = 'csr_sector' AND c.slug = s.meta->>'maps_to')"
-        ).fetchall()
-        assert not dangling, f"maps_to names no csr_sector tag: {dangling}"

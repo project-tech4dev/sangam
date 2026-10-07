@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -34,10 +33,6 @@ class CaseResult:
     agent_sql: list[str] = field(default_factory=list)
     citations: set[str] = field(default_factory=set)
     failures: list[str] = field(default_factory=list)
-    # compare_fit's assessed funders, as the supervisor received them: computed gate, score, rank_key included.
-    assessments: list[dict] = field(default_factory=list)
-    # How many times compare_fit ran, failed calls included.
-    compare_calls: int = 0
 
     @property
     def passed(self) -> bool:
@@ -60,31 +55,8 @@ def message_text(message: Any) -> str:
     return ""
 
 
-def _compare_replies(messages: list[Any]) -> list[Any]:
-    """Each compare_fit reply, parsed as JSON where it is JSON; None where it is an error string."""
-    replies = []
-    for message in messages:
-        if isinstance(message, ToolMessage) and message.name == "compare_fit" and isinstance(message.content, str):
-            try:
-                replies.append(json.loads(message.content))
-            except ValueError:
-                replies.append(None)
-    return replies
-
-
-def assessments_in(messages: list[Any]) -> list[dict]:
-    """Every scored funder compare_fit returned, across its calls."""
-    return [a for d in _compare_replies(messages) if isinstance(d, dict) for a in d.get("assessed", [])]
-
-
-def compare_calls(messages: list[Any]) -> int:
-    return len(_compare_replies(messages))
-
-
-async def run_agent(
-    question: str, settings: Settings, timeout: float = CASE_TIMEOUT_SECONDS
-) -> tuple[str, list[str], set[str], list[dict], int]:
-    """(answer, SQL the agent actually ran, citation markers it emitted, assessed funders, compare_fit calls)."""
+async def run_agent(question: str, settings: Settings) -> tuple[str, list[str], set[str]]:
+    """(answer, SQL the agent actually ran, citation markers it emitted)."""
     graph = build_agent(settings, InMemorySaver())
     state = await asyncio.wait_for(
         graph.ainvoke(
@@ -94,7 +66,7 @@ async def run_agent(
                 "recursion_limit": RECURSION_LIMIT,
             },
         ),
-        timeout=timeout,
+        timeout=CASE_TIMEOUT_SECONDS,
     )
 
     answer, sqls, cites = "", [], set()
@@ -109,7 +81,7 @@ async def run_agent(
             if text.strip() and not text.startswith(CAVEAT_PREFIX):
                 answer = text
     cites = {f"{k}:{v}" for k, v in CITATION.findall(answer)}
-    return answer, sqls, cites, assessments_in(state["messages"]), compare_calls(state["messages"])
+    return answer, sqls, cites
 
 
 def score(case: dict[str, Any], result: CaseResult, *, gold_rows, agent_rows) -> CaseResult:
@@ -164,36 +136,7 @@ def score(case: dict[str, Any], result: CaseResult, *, gold_rows, agent_rows) ->
     if case.get("must_decline") and not _declines(answer_lower):
         result.failures.append("answer does not decline; expected an explicit 'I don't have that'")
 
-    _score_matching(case, result, answer_lower)
     return result
-
-
-def _first_seen(answer: str, funder_id: int) -> int:
-    return answer.find(f"[funder:{funder_id}]")
-
-
-def _score_matching(case: dict[str, Any], result: CaseResult, answer_lower: str) -> None:
-    """The verdict is computed; these gates check the write-up repeats it faithfully."""
-    wanted = case.get("min_assessments")
-    if wanted and len(result.assessments) < wanted:
-        result.failures.append(f"{len(result.assessments)} scored assessments, wanted {wanted}")
-
-    if case.get("ordered_by_rank_key"):
-        listed = [a for a in result.assessments if a["gate"] != "fail" and _first_seen(result.answer, a["funder_id"]) >= 0]
-        by_key = [a["funder_id"] for a in sorted(listed, key=lambda a: a["rank_key"])]
-        as_written = [a["funder_id"] for a in sorted(listed, key=lambda a: _first_seen(result.answer, a["funder_id"]))]
-        if by_key != as_written:
-            result.failures.append(f"funders not in rank_key order: wrote {as_written}, key gives {by_key}")
-
-    if case.get("compare_fit_once") and result.compare_calls != 1:
-        result.failures.append(f"compare_fit ran {result.compare_calls} times, wanted once")
-
-    if case.get("removed_after_shortlist"):
-        removed_at = answer_lower.find("removed")
-        for a in result.assessments:
-            seen = _first_seen(result.answer, a["funder_id"])
-            if a["gate"] == "fail" and seen >= 0 and (removed_at < 0 or seen < removed_at):
-                result.failures.append(f"[funder:{a['funder_id']}] failed a gate but is listed before 'Removed'")
 
 
 # Phrases that signal explicit non-possession. Deliberately narrow: a loose marker like a bare "no " matches

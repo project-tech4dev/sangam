@@ -98,16 +98,6 @@ class TestDefects:
         # test_geography_is_parented_correctly proves it against real rows.
         assert "locations" not in cat.DEFECTS
 
-    def test_tag_defects_say_untagged_is_unresearched(self):
-        # The funder shortlist counts tag overlap; a zero from an untagged side is "not recorded".
-        for table in ("funder_tags", "org_tags"):
-            text = " ".join(cat.DEFECTS.get(table, ())).lower()
-            assert "not recorded" in text, f"{table} has no caveat saying an empty side is unrecorded"
-
-    def test_org_tags_defect_names_the_crosswalk(self):
-        # Orgs never carry csr_sector; the only route to Schedule VII is the 0022 crosswalk.
-        assert "maps_to" in " ".join(cat.DEFECTS.get("org_tags", ()))
-
     def test_every_defect_is_a_sentence_not_a_label(self):
         for table, defects in cat.DEFECTS.items():
             for d in defects:

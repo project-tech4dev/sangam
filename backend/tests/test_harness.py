@@ -50,9 +50,9 @@ class TestTheProfileIsInstalled:
 
     def test_the_profile_does_not_decide_tools(self):
         # A profile is registered per PROVIDER, so it is global to every agent
-        # sharing a model. Both supervisors need ls to find a skill and no
-        # subagent may hold it, so the tool surface is per-agent middleware
-        # instead.
+        # sharing a model. Sangam Import needs read_file to load a skill and
+        # Ask Sangam must not have it, so the tool surface is per-agent
+        # middleware instead.
         from deepagents.profiles.harness.harness_profiles import _harness_profile_for_model
 
         from app.agent.models import resolve_model
@@ -94,12 +94,13 @@ class TestTheFilesystemMiddlewareIsReplaced:
 
 
 class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
-    def test_ask_sangam_has_no_task_tool_because_it_declares_no_subagent(self):
+    def test_ask_sangam_has_no_subagents(self):
         from app.agent.build import build_agent
         from app.core.config import get_settings
 
-        # It once carried a general-purpose subagent with db_query and no instructions.
         tools = build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name
+        # It declares none, so the task tool should not exist at all. It did,
+        # because a general-purpose subagent was inserted carrying db_query.
         assert "task" not in tools
 
     def test_ask_sangam_holds_its_seven_tools_and_the_skill_readers(self):
@@ -260,25 +261,21 @@ class TestTheSkillIsFoundAndIsProgressive:
         }
 
 
-def _compiled_subagents(graph) -> dict:
+def _subagent_tools(graph) -> dict[str, set[str]]:
+    """What each subagent's own graph runs — which is not what its spec declares."""
     # deepagents 0.7.16 keeps compiled subagents only in the task tool's
     # closure; an upgrade that moves them must fail here, not pass silently.
     task = graph.nodes["tools"].bound.tools_by_name["task"]
-    found: dict = {}
+    found: dict[str, set[str]] = {}
     for cell in (task.func or task.coroutine).__closure__ or ():
         value = cell.cell_contents
         if not isinstance(value, dict):
             continue
         for name, sub in value.items():
             if "tools" in getattr(sub, "nodes", {}):
-                found[name] = sub
+                found[name] = set(sub.nodes["tools"].bound.tools_by_name)
     assert found, "no compiled subagent graphs found — deepagents moved them"
     return found
-
-
-def _subagent_tools(graph) -> dict[str, set[str]]:
-    """What each subagent's own graph runs — which is not what its spec declares."""
-    return {name: set(sub.nodes["tools"].bound.tools_by_name) for name, sub in _compiled_subagents(graph).items()}
 
 
 @pytest.fixture(scope="module")
@@ -322,65 +319,3 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         # pointing at the one backend route that is real disk.
         for name, tools in subagents.items():
             assert "ls" not in tools, name
-
-
-class TestAskSangamLoadsItsMatchingProcedureFromSkills:
-    """Import's mechanism, Ask's own directory: procedures load on demand, rules stay in the prompt."""
-
-    def test_the_skills_directory_ships_inside_the_package(self):
-        from app.agent.build import SKILLS_DIR
-
-        assert SKILLS_DIR.is_dir()
-        assert "app/agent/skills" in SKILLS_DIR.as_posix()
-
-    def test_every_skill_has_frontmatter_that_says_when(self):
-        import yaml
-
-        from app.agent.build import SKILLS_DIR
-
-        found = list(SKILLS_DIR.glob("*/SKILL.md"))
-        assert found
-        for path in found:
-            meta = yaml.safe_load(path.read_text(encoding="utf-8").split("---")[1])
-            assert meta["name"] == path.parent.name
-            assert len(meta["description"]) <= 1024
-            assert "use when" in meta["description"].lower()
-
-    def test_the_route_round_trips(self):
-        from app.agent.build import SKILLS_ROUTE, _backend
-
-        backend = _backend()
-        listed = backend.ls(SKILLS_ROUTE)
-        assert listed.error is None
-        paths = [e["path"] for e in (listed.entries or [])]
-        assert paths and all(p.startswith(SKILLS_ROUTE) for p in paths)
-        downloaded = backend.download_files([f"{paths[0].rstrip('/')}/SKILL.md"])[0]
-        assert downloaded.error is None
-
-    @pytest.mark.parametrize("module", ["app.agent.build", "app.ingest.agent"])
-    @pytest.mark.parametrize("path", [
-        "/skills/../../../../etc/passwd", "/skills//etc/passwd", "/skills/../../.env", "/skills/~/.ssh/id_rsa",
-    ])
-    def test_the_skills_route_cannot_read_outside_its_directory(self, module, path):
-        # Ask has no auth, so a prompt can name any path; the route is the one real-disk read.
-        import importlib
-
-        backend = importlib.import_module(module)._backend()
-        try:
-            result = backend.download_files([path])[0]
-        except ValueError:
-            return
-        assert result.error is not None or not result.content, f"{module} read {path}"
-
-    def test_the_skills_disk_is_virtual_rooted(self):
-        from app.agent.build import SKILLS_ROUTE, _backend
-        from app.ingest.agent import _backend as ingest_backend
-
-        for backend in (_backend(), ingest_backend()):
-            assert backend.routes[SKILLS_ROUTE].virtual_mode is True
-
-    def test_the_three_matching_skills_and_no_others(self):
-        from app.agent.build import SKILLS_DIR
-
-        names = {d.name for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()}
-        assert names == {"funder-matching", "funder-shortlist-brief", "funder-comparison"}

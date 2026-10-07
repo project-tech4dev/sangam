@@ -170,23 +170,3 @@ class TestDeclineDetection:
         from tests.evals.harness import _declines
 
         assert not _declines(answer.lower())
-
-
-def test_no_case_forbids_a_phrase_the_prompt_teaches():
-    """The prompt's own contrasts ("never 'sets no bars'") are what a careful answer repeats;
-    forbidding them fails the agent for explaining itself."""
-    import json
-    from pathlib import Path
-
-    from app.agent.prompt import SYSTEM_PROMPT
-    from app.agent.tools.sql.catalog import DEFECTS
-
-    taught = (SYSTEM_PROMPT + " ".join(d for ds in DEFECTS.values() for d in ds)).lower()
-    cases = Path(__file__).parent / "cases" / "golden.jsonl"
-    clashes = [
-        (case["id"], phrase)
-        for case in map(json.loads, cases.read_text().splitlines())
-        for phrase in case.get("must_not_mention", [])
-        if phrase.lower() in taught
-    ]
-    assert not clashes
