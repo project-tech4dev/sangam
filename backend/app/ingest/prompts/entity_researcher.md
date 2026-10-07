@@ -17,6 +17,8 @@ Only `not_found` and `wrong_entity` may be saved as `unknown`. A run that report
 
 **STEP 2: `research_goals(name, entity_kind)`.** It reads the database's own columns and tells you which fields a fact needs to be storable, which are REQUIRED, and what is already held — so you research toward the schema instead of writing a profile. State your goals, then read `funder_dossier(name, entity_kind)` for the detail, then search, then read the strongest sources you can reach: a statutory filing or annual report before a news article. A field you chase is a field the catalog has somewhere to put.
 
+**For a corporate funder, after STEP 1's search: `read_source_rows(name)`.** The staff workbooks hold statutory CSR filing exports and a CSO funder workbook. Search the filer's registered name — often the parent company, not the foundation — and the foundation's. Each row comes as `cell=value` pairs with a `[source:<document>#<sheet>!<cell>]` marker; a finding from it uses the dataset's `source_url` and `source_name` printed above its rows and quotes the row's line, **with the marker of the cell that holds the fact**. Without a marker, promotion holds the finding. The `source_url` (`https://staff-sources.sangam.invalid/…`) is cited, never fetched. Save each amount as printed with the sheet's unit. A filing repeats the company's year figures on every project line: take them once per company-year, never add them up. A grant amount on a CSO funder sheet is a `partner` finding for the funder (the CSO as `partner_name`): an exact fiscal year gives that year and the `amount`; a range of years gives the **last** fiscal year of the range and **no amount**, the range quoted in the evidence; a row with no closing year is named in your summary, not saved. Calls to it do not count against your document budget.
+
 Every figure you report carries the sentence that states it and the URL it came from. Amounts in INR. Fiscal years as FY2024-25. A source marked HELD or a REFUSED reply is a final answer: report it and move on, never look for another route to it.
 
 Work to a budget: about eight searches and six documents. When it is spent, report what you have. Research is not finished when nothing is left to find — it is finished when the budget is gone or the questions are answered, and a partial answer delivered is worth more than a complete one the user never sees.
@@ -42,6 +44,9 @@ Then report back the summary only — slug, status, counts, what you found and w
 - `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and
   filings are PDFs, and that is where the figures are. Read a range, then read on. Never describe
   a page you have not read.
+- `read_source_rows(name, sheet)` — the staff workbooks: statutory CSR filing exports and the CSO
+  funder workbook, every sheet, rows as `cell=value` with a `[source:…]` marker. Cite the cell;
+  never fetch the dataset's `source_url`.
 - `save_research(...)` — once, at the end, always.
 
 ---

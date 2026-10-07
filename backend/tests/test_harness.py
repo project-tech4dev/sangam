@@ -302,9 +302,9 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         for name, tools in subagents.items():
             assert not tools & forbidden, f"{name}: {sorted(tools & forbidden)}"
 
-    def test_the_researcher_gets_its_seven_and_nothing_of_the_filesystem(self, subagents):
+    def test_the_researcher_gets_its_eight_and_nothing_of_the_filesystem(self, subagents):
         assert subagents["entity-researcher"] == {
-            "research_goals", "funder_dossier", "search_public_sources",
+            "research_goals", "funder_dossier", "read_source_rows", "search_public_sources",
             "read_page", "fetch_document", "read_document_pages", "save_research",
             "read_file",
         }

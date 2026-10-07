@@ -116,3 +116,20 @@ async def funder_scores(pool: AsyncConnectionPool, funder_id: int) -> list[dict]
                 (funder_id,),
             )
         ).fetchall()
+
+
+def _like(text: str) -> str:
+    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+async def name_variants(pool: AsyncConnectionPool, *, match: str, limit: int = 5) -> list[dict]:
+    """Funders whose name or an alias contains `match`, with every name they go by."""
+    sql = """
+    SELECT name, aliases FROM funders
+    WHERE name ILIKE %(p)s OR EXISTS (SELECT 1 FROM unnest(aliases) a WHERE a ILIKE %(p)s)
+    ORDER BY similarity(name, %(m)s) DESC, id
+    LIMIT %(limit)s
+    """
+    async with pool.connection() as conn:
+        return await (await conn.execute(sql, {"p": _like(match), "m": match, "limit": limit})).fetchall()

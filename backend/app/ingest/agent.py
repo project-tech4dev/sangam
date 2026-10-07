@@ -24,6 +24,7 @@ from app.ingest.tools.pipeline_tools import (
     list_import_sources,
     pending_resolutions,
     plan_import,
+    read_source_rows,
     run_import_now,
 )
 from app.ingest.tools.research_tools import (
@@ -129,6 +130,8 @@ TOOLS = [
 RESEARCH_TOOLS = [
     research_goals,
     funder_dossier,
+    # Staff-only workbooks; the gate is the require_staff Import route this agent sits behind.
+    read_source_rows,
     search_public_sources,
     read_page,
     fetch_document,
