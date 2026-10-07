@@ -1,6 +1,6 @@
 """What the database expects, per research concept, derived from the SQL catalog.
 
-The catalog is already the schema as data — 40 tables with their columns, the
+The catalog is already the schema as data — 36 tables with their columns, the
 CHECK-constraint value lists and the gotchas — and `verify_against_db()` raises
 at boot when it drifts from the live schema. So a researcher's targets are
 derived from it rather than written down a second time and left to rot.
