@@ -1,7 +1,9 @@
 # Funder model consolidation, spend domains, and staff-only CSR sources
 
-Status: proposal for review. It builds on PR #98 (theme taxonomy in `tags`, cross-references in
-`tag_links`), which must merge first. Server-side enforcement of "staff only" depends on PR #92.
+Status: proposal for review, with implementation plans in `plans/`. It builds on PR #98 (theme
+taxonomy in `tags`, cross-references in `tag_links`), which must merge first. PR #92 (sign-in, table
+grants, RLS) and #97 (`/api/me`, settings) merged on 2026-10-07, so "staff only" is enforced
+server-side wherever the deployment sets `SUPABASE_URL`.
 
 ## Why
 
@@ -213,8 +215,8 @@ reassigned at merge time if they land in a different order. Steps:
 5. Repoint `proposals.template_id`.
 6. Drop `funder_identifiers`, `funder_eligibility`, `funder_csr_spend`, `funder_footprints`,
    `funder_partners`, `template_items` and `proposal_templates`, in FK order.
-7. If #92 has merged, classify `funder_activity` in its grants and RLS migrations: public read,
-   like the tables it replaces. #92's migrations fail on an unclassified table.
+7. Classify `funder_activity` under #92's grants and RLS (merged): public read, like the tables
+   it replaces, with a policy that hides a hidden funder's rows.
 
 Before running against Supabase:
 - `SELECT count(*)` on each dropped table.
@@ -268,11 +270,15 @@ thread.
   A `require_staff` route can follow once #92 lands.
 - **Who can read:**
   - Staff only. Org admins (`org_members.role = 'admin'`) are not staff and cannot read these.
-  - Enforced by `readable_document()` (`is_public` false and no org → staff only).
-  - After #92: by `documents_read` RLS and staff-only Import, plus a `storage.objects` policy
-    limited to `app.is_staff()`.
-  - Until #92 merges every caller is the staff dev user, so "staff only" is marked but not
-    enforced. Say so in the PR.
+  - Enforced today (#92 merged):
+    - the `documents_read` RLS policy and `readable_document()` give a row with `is_public` false
+      and no org to staff only;
+    - the Import chat and `/ingest` routes require staff.
+  - PR (c) adds a `storage.objects` read policy limited to `app.is_staff()`. #92 has none.
+  - Agent tools still run as the database owner, so for `read_source_rows` the staff-only Import
+    route is the gate.
+  - Rows the tool returns are sent to the model provider and, when tracing is on, to Langfuse.
+    The PR says so.
 
 ### Layout profiles (D13)
 
@@ -427,6 +433,29 @@ document or the internal sheet's document id.
 - The eligibility change reverses part of #89's design, so #89's author reviews (§2, §3).
 - Migration numbering is settled with the open branches holding 0022–0030.
 - #92's grants and RLS migrations classify `funder_activity` and the new bucket's documents.
+
+## Resolved during planning
+
+The three plans in `plans/` settled these. Each is argued in its plan:
+
+- **Document dedupe (§2):** `ensure_document` keys on the source URL plus a *class* of document.
+  The reserved types (`funder_eligibility`, `proposal_template`, `source_dataset`) each key
+  separately. All other types share one class, so one PDF read twice under different doc types
+  stays one row.
+- **Funder matching on CIN (D7):** a CIN match merges only when the names agree and both or
+  neither are a foundation or trust. A foundation carrying its parent's CIN is never merged into
+  the parent.
+- **Large datasets (§4):** a file over the 50 MB bucket limit is stored one sheet per object. The
+  upload also stores a gzipped sidecar of normalised rows, keyed by the layout profile's version,
+  so the tool does not re-parse a large workbook on every call.
+- **Citations point at a cell**, not a row (`[source:<id>#<sheet>:<cell>]`), because side-by-side
+  blocks share row numbers.
+- **The CSO workbook is split by sheet.** The profile sheet is citable as the organisation's own
+  claims. The two funder sheets are **lead-only**: the researcher may use them to find where to
+  look, but promotion holds any finding that cites them. This follows the source registry's
+  consent wording. **This needs a product decision before PR (c) merges.**
+- **Draft wording (§1):** the "draft" text on the page comes from the Health and Education
+  `source` strings. They are reworded; `status` stays `draft`.
 
 ## Out of scope
 
