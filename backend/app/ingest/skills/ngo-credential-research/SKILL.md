@@ -89,7 +89,8 @@ no comparison table — downstream.
 ## A staff source: the CSO workbook
 
 Sangam holds an internal workbook on partner CSOs, shared under partner permission. Read it with
-`read_source_rows` and the organisation's name, after the confirmation search.
+`read_source_rows` and the organisation's name — **last, once, after all web research**: the
+first call closes the web tools for the rest of the run.
 
 - **Cite the cell.** Each row carries a `[source:<document>#<sheet>!<cell>]` marker; a finding uses
   the dataset's `source_url` and `source_name` printed by the tool. Never fetch that URL.

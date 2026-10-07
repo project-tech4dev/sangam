@@ -1,6 +1,6 @@
 ---
 name: funder-intake-research
-description: Use when someone names one or more companies, corporate foundations, trusts or grantmakers and wants to know where their CSR money goes and what it would take to reach it. Sets the source order — statutory CSR filings under the corporate filer first (staff workbooks, via read_source_rows), then the funder's own publications, then recipient-side records — and pulls ten fields per funder in intake order — route and whether it is live, the receiving legal entity, grantmaker or implementer, eligibility split into statutory restatement and the funder's own bar, the document checklist verbatim, hard disqualifiers, district-level geography, grant size and co-funding, live call or historical disclosure, provenance with access state; plus the open call when field 9 found one, and the rule for classifying spend lines. Raw field-value-source only; no verdicts, no scoring. Not for an organisation that receives money — use ngo-credential-research. Not for one fact already in the catalog — funder_dossier answers that.
+description: Use when someone names one or more companies, corporate foundations, trusts or grantmakers and wants to know where their CSR money goes and what it would take to reach it. Sets the source order — by strength of evidence — statutory CSR filings under the corporate filer, then the funder's own publications, then recipient-side records — with the staff workbooks (read_source_rows) read once, after all web reads — and pulls ten fields per funder in intake order — route and whether it is live, the receiving legal entity, grantmaker or implementer, eligibility split into statutory restatement and the funder's own bar, the document checklist, hard disqualifiers, district geography, grant size, live call or historical disclosure, provenance with access state; plus the open call and the rule for classifying spend lines. Raw field-value-source only; no verdicts, no scoring. Not for an organisation that receives money — use ngo-credential-research. Not for one fact already in the catalog — funder_dossier answers that.
 ---
 
 # What we want pulled for a funder
@@ -13,12 +13,14 @@ every other field describes the wrong body.
 
 ## Where to look, in this order
 
-The order is strength of evidence for money, not convenience. The researcher's STEP 1
-confirmation search always comes first; this is the order after it.
+The order is strength of evidence for money, not the order of reading. The researcher's STEP 1
+confirmation search always comes first. **`read_source_rows` is called once, AFTER every web
+read** — its first call closes the web tools for the rest of the run — so the staff workbooks
+below (#1 filings, #3 CSO workbook) are read last, together, whatever their rank here.
 
 1. **Statutory CSR filings for the corporate entity.** The filer carries the Section 135
    obligation — often the parent company, not the foundation that runs the programmes.
-   - Read them with `read_source_rows`, under the filer's registered name, then the foundation's.
+   - Read them with `read_source_rows` (last, see above), under the filer's registered name, then the foundation's.
    - Record the filer as the parent and the foundation as its child (`funders.parent_id`). Never merge them.
    - Per fiscal year, the company-level figures (average net profit, prescribed CSR, spent,
      local-area spent) go to `funder_csr_years`, once per company-year.
@@ -31,7 +33,7 @@ confirmation search always comes first; this is the order after it.
 3. **Recipient-side records** — the staff CSO workbook and recipients' own annual reports — for
    grant amounts per partner, which funders rarely publish. Each is a `partner` finding for the
    funder: the recipient as `partner_name`, the amount as printed with its unit.
-   - **An exact fiscal year** (`2023-24`) gives that fiscal year and the amount.
+   - **An exact fiscal year** (`FY2023-24`) gives that fiscal year and the amount.
    - **A range** (`2021–2024`, `2023-26`, `2022-2025 (Closed)`) gives the **last** fiscal year of
      the range — the one ending in its closing year — and **no amount**; the range is quoted in
      the evidence. A multi-year figure on one year's line would misstate it.
@@ -40,7 +42,8 @@ confirmation search always comes first; this is the order after it.
 
 ### Reading the staff workbooks
 
-`read_source_rows` returns rows as `cell=value` with a `[source:<document>#<sheet>!<cell>]`
+Call `read_source_rows` once, after all web reads: the first call closes the web tools for the run.
+It returns rows as `cell=value` with a `[source:<document>#<sheet>!<cell>]`
 marker. Cite the cell that holds the fact. The dataset's `source_url` (a `.invalid` address) is
 cited, never fetched. The tool does not convert units; these notes say how each kind of sheet reads.
 The researcher reads the sheets itself, web first and staff last, from the same notes in its own
@@ -176,8 +179,8 @@ Every domain and theme on a line is an **inference**. Record it as one.
   one, a theme when only the broad area is clear, none otherwise. Environment and others have none.
 - **Record what it rests on**: `classified_by` (`filed_sector` only where unambiguous,
   `project_name`, `partner`, or `report`) and a one-line `classification_note` quoting the
-  evidence. Leave `classification_confirmed` false.
-- **The filed sector is stored as filed** in `csr_sector_id`, whatever the classification says.
+  evidence.
+- **The filed sector is saved as filed** in `sector`, whatever the classification says.
 - A `programme` row is classified the same way, `classified_by = 'report'`.
 
 ## When a source will not open
@@ -191,4 +194,5 @@ weaker evidence and is labelled as such, not presented as equivalent.
 ## What this skill does not do
 
 It does not decide fit, score a funder, rank a list or lay out a comparison.
-It does not write to the catalog. It produces ten cited fields per funder, the classified lines, and any open call it found, and stops.
+It does not write to the catalog. It produces ten cited fields per funder, the classified
+lines, and any open call it found, and stops.
