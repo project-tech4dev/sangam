@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED: execute this plan with superpowers:subagent-driven-development — a fresh implementer subagent per task, a fresh reviewer subagent checking each task before the next starts, and a whole-branch review at the end. Do not use executing-plans or implement inline. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Three confidential spreadsheets go into a private `staff-sources` bucket. Each file gets a private `documents` row. The Import researcher reads every sheet of every file through a declared **layout profile**, using one tool, `read_source_rows`. Rows come back normalised to rupees, and every row is cited. The `funder-intake-research` skill is rewritten generically: source order, the eligibility guideline, the classification rule and programme rows. The `ngo-credential-research` skill names the staff CSO workbook as a source.
+**Goal:** Three confidential spreadsheets go into a private `staff-sources` bucket. Each file gets a private `documents` row. The Import researcher reads every sheet of every file through a declared **layout profile**, using one tool, `read_source_rows`. Rows come back normalised to rupees, and every row is cited. The `funder-intake-research` skill is rewritten generically: source order, the eligibility guideline, the classification rule and programme rows. The `ngo-credential-research` skill names the staff CSO workbook as a source. The team's earlier research repository, org-grant-intelligence, becomes a registered source (D16). It is read only as raw files pinned to a commit. Its dossier facts are saved as `claimed` prior research and lose to the same fact re-read from its primary source. A funder's own proposal template gets a write path as a `proposal_template` document.
 
 **Architecture:** The pieces, in order of the data path:
 
@@ -15,10 +15,16 @@
 - **Read path.** `app/ingest/staff_sources.py` lists the datasets (`repositories/documents.py`), finds a funder's aliases (`repositories/funders.py`), streams the sidecar and filters by name. It falls back to re-parsing the workbook when the sidecar is stale. It renders cited lines.
 - **The tool.** `read_source_rows` in `app/ingest/tools/pipeline_tools.py` wraps that read path. It goes on the `entity-researcher` subagent.
 - **Promotion.** It maps a finding that cites a staff dataset onto that dataset's existing private row. Facts promoted from any sheet are public like any other row (D14); only the files stay staff-only. It holds a finding that cites a staff dataset without its `[source:…]` marker, because then the fact cannot be traced to its sheet and cell.
+- **Prior research (D16).** `app/ingest/prior_research.py` is pure, like `source_layouts.py`.
+  - `pinned(url)` accepts exactly `https://raw.githubusercontent.com/project-tech4dev/org-grant-intelligence/<40- or 7-hex commit>/<path>` and nothing else on that host.
+  - `access.check_url` asks it for every URL on `raw.githubusercontent.com`, because the registry entry `org_grant_intelligence` (rule `internal_research`, replacing `hand_vetting_sheets`) owns the whole host.
+  - `rank(findings)` runs at the top of `promote()`, next to `hold_unmarked`. It stamps a dossier finding's `source_name`. It drops a dossier finding when a finding from any other source has the same key, and reports the disagreement when their values differ.
+  - The researcher still reads with `read_page` and `fetch_document`. No tool is added.
+- **Templates.** A new `proposal_template` concept writes a funder-owned `documents` row with `doc_type = 'proposal_template'`, the reserved type plan (b) left without a writer.
 
 **Tech Stack:** Python 3.12, openpyxl (new runtime dependency), psycopg 3, FastAPI, deepagents/LangGraph, Supabase Storage REST (`app/integrations/storage.py`), Postgres migrations (`db/migrations/*.sql`), Next.js (one label in `toolLabels.ts`), pytest (`asyncio_mode = "auto"`).
 
-**Spec:** features-plans/data-model/2026-10-07-funder-model-consolidation.md (§4, §5; D8, D9, D11, D12, D13, D14)
+**Spec:** features-plans/data-model/2026-10-07-funder-model-consolidation.md (§4, §5; D8, D9, D11, D12, D13, D14, D16). Companion: `2026-10-07-cso-model-consolidation.md` §4a (C14) and C8 (`manual_aggregator`)
 
 ## Global Constraints
 
@@ -46,7 +52,19 @@
   - every row is cited, as `[source:<document_id>#<sheet>:<cell>]`;
   - the tool is registered, named in the prompt that owns it, and labelled in `frontend/features/ingest/lib/toolLabels.ts`.
 - **No row content in any log line or error string.** A `LayoutError` names a sheet, a cell and a header text, never a data value.
-- **`DISPATCHABLE` stays unchanged, and so does every `access_rule` in the source registry JSON.** The one registry edit is the `basis` text of `ffrh_funder_datasets` (Task 10, spec D14).
+- **`DISPATCHABLE` stays unchanged.** The registry gets exactly two edits:
+  - the `basis` text of `ffrh_funder_datasets` (Task 10, spec D14);
+  - `hand_vetting_sheets` is replaced by `org_grant_intelligence`, under a new rule, `internal_research` (Task 10A, spec D16).
+
+  `internal_research` is not dispatchable: no adapter ever runs against the repository. Every other `access_rule` stays as it is.
+- **Prior research is read pinned, from one repository, and from nowhere else on that host (D16).**
+  - The research fetch tools (`read_page`, `fetch_document`) may read `https://raw.githubusercontent.com/project-tech4dev/org-grant-intelligence/<commit>/<path>`, where `<commit>` is 40 or 7 lowercase hex characters.
+  - Anything else on `raw.githubusercontent.com` is refused. That covers other repositories, a branch or `HEAD`, `refs/…`, a `..` or empty segment, `%2e` / `%2f` / `%5c`, a query string, a port and userinfo.
+  - `github.com`, `api.github.com` and the GitHub contents API are not added.
+  - The pin Sangam's seed was copied from is `414cd6968765bcfff758632797dcbb8d00363ab2` (`414cd69`, `seed/data/README.md`). It lives in `prior_research.PINNED_COMMIT`, the registry `basis` and the researcher's prompt. The skill names no commit.
+  - Sangam never writes to the repository.
+- **A dossier fact is `claimed` and never outranks a primary source.** There is no `evidenced`/`claimed` column on funder findings (`FindingBase` has `confidence` and `basis`). This PR does not add one. A dossier finding is identified by its `source_url`, the pinned raw URL that carries the commit. Promotion stamps its `source_name` as `org_grant_intelligence`. A non-dossier finding with the same key replaces it at promotion, and a disagreement is reported in `held`. Both findings stay in `entity_research.findings`. This ranking holds **within one research run**. Across runs, the newest research wins, as it does for every source today. A later run that saves only a dossier value would overwrite a stored primary-sourced row. The prompt asks for a re-read on every run, and the PR says so.
+- **Coordination with the CSO plan.** The companion CSO spec (C14) uses the same repository and rule, and accepts either registry shape. Whichever PR lands second drops its own copy of the `internal_research` enum value and the `org_grant_intelligence` entry, and keeps the other's. `manual_aggregator` (C8) belongs to the CSO plan. This plan's skill refers to it only conditionally: "where the registry lists it under `manual_aggregator`".
 - **The files are staff-only; promoted facts are not (D14).** The workbooks, their sidecars and their `documents` rows are readable by staff alone. A fact a researcher saves from any sheet, with its marker, is promoted as a public row like any other. No sheet is withheld and none is labelled internal.
 - **Schema changes go in `db/migrations/`, never `db/init/02_schema.sql`.** The migration is numbered after (b)'s; renumber it at merge if branches land in a different order.
 - **Unit tests never touch a database.** Monkeypatch `repositories/` functions. Only tests marked `integration` use the compose Postgres.
@@ -59,7 +77,7 @@
 
 ## Review Focus
 
-Five failure modes the happy-path tests would miss. Each one has a test in the task that owns it.
+Six failure modes the happy-path tests would miss. Each one has a test in the task that owns it.
 
 1. **Repeated column names mis-mapped, or repeated figures summed.**
    - The analytics report has two `State` columns: column D is the filer's state, column P is the project's. A name-keyed map silently keeps one of them.
@@ -87,6 +105,19 @@ Five failure modes the happy-path tests would miss. Each one has a test in the t
    - A finding citing a staff dataset without its sheet/cell marker is held, since its provenance stops at the file: `test_a_staff_finding_without_its_marker_is_held` (Task 10). A finding citing a CSO funder sheet with its marker is promoted like any other: `test_a_finding_citing_a_cso_funder_sheet_is_kept` (Task 10).
    - A staff URL never creates a public `documents` row: `test_a_document_finding_at_a_staff_url_adds_no_row` (Task 10).
    - Contact details are dropped at parse time: `test_contact_details_never_leave_the_parser` (Task 4).
+6. **An unpinned or foreign GitHub path is fetched, or a dossier outranks a primary source.**
+   - `raw.githubusercontent.com` serves every public repository. A rule keyed on the host alone would let the researcher read any of them.
+   - A branch path (`main`, `HEAD`) is moving input: the same URL would cite different text on different days.
+   - httpx normalises dot segments before sending. A naive prefix check therefore passes `…/<commit>/../../other/repo/main/x`, and the request reaches a foreign repository.
+   - A 7-hex pin is also a valid branch or tag name on GitHub. Only a 40-hex pin is unambiguous, so the prompt asks for the full SHA and the 7-hex form is tolerated only because the brief requires it.
+   - `follow_redirects=True` in `read_page`/`fetch_document` is existing behaviour and is not re-checked per hop. A pinned blob does not redirect. Changing that for every host is out of scope; the PR text says so.
+   - Tests:
+     - `test_a_pinned_dossier_is_readable` and `test_a_short_pin_is_readable` (Task 10A);
+     - `test_anything_else_on_the_host_is_refused`, parametrised over: another owner, another repository, `main`, `HEAD`, `refs/heads/main`, `..`, `%2e%2e`, `%2F`, an empty segment, a query string, `http://`, and a port (Task 10A);
+     - `test_read_page_refuses_a_branch_path_before_any_request` (Task 10A);
+     - `test_internal_research_is_one_source_on_one_host` (Task 10A);
+     - `test_a_primary_fact_outranks_the_dossier` and `test_a_disagreement_is_reported_and_both_are_kept` (Task 10B);
+     - acceptance check 8 (Task 12).
 
 ---
 
@@ -109,18 +140,27 @@ Five failure modes the happy-path tests would miss. Each one has a test in the t
 | `Makefile` | modify | `staff-source` target (host venv, honours `ENV`) |
 | `backend/app/ingest/tools/pipeline_tools.py` | modify | `read_source_rows` tool |
 | `backend/app/ingest/agent.py` | modify | Register on `RESEARCH_TOOLS` |
-| `backend/app/ingest/prompts/entity_researcher.md` | modify | Name the tool and its rules |
-| `backend/app/ingest/instructions.md` | modify | Source priority line; "Tools you do NOT have" row |
-| `backend/app/ingest/promote.py` | modify | Staff URLs map to the dataset row; a staff finding without its marker is held |
+| `backend/app/ingest/prompts/entity_researcher.md` | modify | Name the tool and its rules (Task 9); prior research, pinned, read first (Task 11) |
+| `backend/app/ingest/instructions.md` | modify | Source priority line; "Tools you do NOT have" row (Task 9); prior research paragraph (Task 11) |
+| `backend/app/ingest/promote.py` | modify | Staff URLs map to the dataset row; a staff finding without its marker is held (Task 10) |
 | `backend/app/ingest/data/sources/funders.json` | modify | `ffrh_funder_datasets.basis`: FFRH has cleared the figures for display (D14) |
 | `frontend/features/ingest/lib/toolLabels.ts` | modify | Label |
-| `backend/app/ingest/skills/funder-intake-research/SKILL.md` | rewrite | §4 "The skill" |
+| `backend/app/ingest/skills/funder-intake-research/SKILL.md` | rewrite | §4 "The skill", including "Prior research" (D16) |
 | `backend/app/ingest/skills/ngo-credential-research/SKILL.md` | modify | The staff CSO workbook as a source |
 | `backend/tests/staff_source_fixtures.py` | create | Synthetic workbooks in all three shapes |
 | `backend/tests/test_source_layouts.py` | create | Parser tests |
 | `backend/tests/test_staff_sources.py` | create | Read path, tool, upload, promotion tests |
 | `backend/tests/test_storage.py`, `test_vault.py`, `test_rls.py`, `test_harness.py`, `test_ingest.py` | modify | Bucket, route, RLS, tool-list pins |
 | `docs/INGEST.md`, `docs/SKILLS.md`, `.gitignore` | modify | Docs; ignore `*.xlsx` |
+| `backend/app/ingest/prior_research.py` | create | Pure. `SOURCE_KEY`, `HOST`, `REPO`, `PINNED_COMMIT`, `pinned`, `is_prior_research_url`, `refusal`, `rank` (Tasks 10A, 10B) |
+| `backend/app/ingest/sources.py` | modify | `AccessRule.INTERNAL_RESEARCH`, placed in `_STRICTNESS`; not in `DISPATCHABLE` (Task 10A) |
+| `backend/app/ingest/data/sources/ngos.json` | modify | `hand_vetting_sheets` replaced by `org_grant_intelligence`, host `raw.githubusercontent.com` (Task 10A) |
+| `backend/app/ingest/access.py` | modify | `check_url`: an `internal_research` host is decided by `prior_research.refusal`, before the dispatchable check and without robots (Task 10A) |
+| `backend/app/ingest/tools/research_tools.py` | modify | `read_page` returns `text/plain` and `text/markdown` bodies as they are, without trafilatura (Task 10A) |
+| `frontend/features/ingest/components/SourcePanel.tsx` | modify | `RULE_TEXT.internal_research` (Task 10A) |
+| `backend/app/ingest/promote.py` | modify | `prior_research.rank` at the top of `promote()` (Task 10B); the `proposal_template` branch, `WRITE_ORDER`, `CONCEPT_RECORDS`, `_row_identity` (Task 10C) |
+| `backend/app/ingest/expectations.py`, `research_records.py`, `records.py` | modify | `proposal_template` concept, `ProposalTemplateFinding`, `ProposalTemplateRecord` (Task 10C) |
+| `backend/tests/test_prior_research.py` | create | Access, ranking and template tests (Tasks 10A–10C) |
 
 ---
 
@@ -3469,15 +3509,785 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 11: The skills
+### Task 10A: The research repository as a source, readable only pinned (D16)
+
+**Files:**
+- Create: `backend/app/ingest/prior_research.py`
+- Modify: `backend/app/ingest/sources.py`, `backend/app/ingest/data/sources/ngos.json`
+- Modify: `backend/app/ingest/access.py`, `backend/app/ingest/tools/research_tools.py`
+- Modify: `frontend/features/ingest/components/SourcePanel.tsx`
+- Modify: `docs/INGEST.md`
+- Test: `backend/tests/test_prior_research.py` (create)
+
+**Interfaces:**
+
+```python
+# prior_research.py
+SOURCE_KEY = "org_grant_intelligence"
+HOST = "raw.githubusercontent.com"
+REPO = "project-tech4dev/org-grant-intelligence"
+PINNED_COMMIT = "414cd6968765bcfff758632797dcbb8d00363ab2"
+def pinned(url: str | None) -> tuple[str, str] | None        # (commit, path in the repository)
+def is_prior_research_url(url: str | None) -> bool
+def refusal(url: str) -> str | None                          # None when readable
+# sources.py
+AccessRule.INTERNAL_RESEARCH = "internal_research"
+```
+
+**Registry: replace, not widen.** `hand_vetting_sheets` is replaced by `org_grant_intelligence`, for three reasons:
+- **The entry now covers the whole repository.** That includes the funder and CSO dossiers, `hand-vetting/` and `deep-agent-app/downloads/`. A key that names one folder would mislead every reader of `list_import_sources`.
+- **Nothing reads the old key.** `ngos.json:204` is its only occurrence. `seed/data/*.json` cites the repository with `source_name: "hand-vetting"`, which is a citation label, not a registry key, and stays.
+- **The entry must gain a host.** With `host: ""`, `rule_for_host("raw.githubusercontent.com")` matches nothing, so every repository on that host falls through to robots.txt. That is the exact hole this task closes.
+
+The companion CSO spec (C14) accepts either shape, and its plan uses this key and rule.
+
+**Why `check_url` needs a branch.** Today any registered non-dispatchable source is refused, so the allowed path would be refused too. The new branch runs before that check and before robots.txt. On this host the path rule is the whole permission. `raw.githubusercontent.com/robots.txt` returns 404, which RFC 9309 reads as allow-all, so robots.txt could never refuse a foreign repository.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `backend/tests/test_prior_research.py`:
+
+```python
+"""Prior research (spec D16): the team's research repository, read only at a pinned commit."""
+
+from __future__ import annotations
+
+import re
+from datetime import UTC, datetime
+
+import httpx
+import pytest
+
+from app.ingest import access, prior_research
+from app.ingest.sources import SOURCES, AccessRule, rule_for_host
+from app.ingest.tools import research_tools
+
+NOW = datetime(2026, 10, 7, tzinfo=UTC)
+SHA = "0123456789abcdef0123456789abcdef01234567"  # invented; tests never use the real pin
+BASE = "https://raw.githubusercontent.com/project-tech4dev/org-grant-intelligence"
+DOSSIER = f"{BASE}/{SHA}/Funder/kestrel-foundation/Kestrel_Foundation_Profile.md"
+
+
+@pytest.fixture(autouse=True)
+def no_robots(monkeypatch):
+    """Nothing on this host may depend on robots.txt: the path rule is the whole permission."""
+
+    async def consulted(*a, **k):
+        raise AssertionError("robots.txt was consulted for the research repository's host")
+
+    monkeypatch.setattr(access, "_robots_allows", consulted)
+
+
+def _serve(monkeypatch, body: str, content_type: str, seen: list[str]) -> None:
+    real = httpx.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(200, text=body, headers={"content-type": content_type})
+
+    def client(*a, **k):
+        return real(*a, transport=httpx.MockTransport(handler), **k)
+
+    monkeypatch.setattr(research_tools.httpx, "AsyncClient", client)
+
+
+class TestTheRegistry:
+    def test_internal_research_is_one_source_on_one_host(self):
+        found = [s for s in SOURCES.values() if s.access_rule is AccessRule.INTERNAL_RESEARCH]
+        assert [s.key for s in found] == [prior_research.SOURCE_KEY]
+        assert found[0].host == prior_research.HOST
+        assert not found[0].dispatchable
+
+    def test_the_hand_vetting_key_is_replaced(self):
+        assert "hand_vetting_sheets" not in SOURCES
+        assert {"funder", "ngo", "rfp"} <= {c.value for c in SOURCES["org_grant_intelligence"].categories}
+
+    def test_the_host_resolves_to_the_repository_rule(self):
+        rule, source = rule_for_host("raw.githubusercontent.com")
+        assert rule is AccessRule.INTERNAL_RESEARCH and source.key == "org_grant_intelligence"
+
+    def test_the_pin_is_a_full_commit_and_the_basis_names_it(self):
+        assert re.fullmatch(r"[0-9a-f]{40}", prior_research.PINNED_COMMIT)
+        assert prior_research.PINNED_COMMIT in SOURCES["org_grant_intelligence"].basis
+
+
+class TestOnlyAPinnedPathIsReadable:
+    def test_pinned_returns_the_commit_and_the_path(self):
+        assert prior_research.pinned(DOSSIER) == (SHA, "Funder/kestrel-foundation/Kestrel_Foundation_Profile.md")
+
+    def test_a_github_page_is_not_a_pinned_url(self):
+        assert prior_research.pinned(f"https://github.com/project-tech4dev/org-grant-intelligence/blob/{SHA}/a.md") is None
+
+    async def test_a_pinned_dossier_is_readable(self):
+        assert await access.check_url(DOSSIER) is None
+
+    async def test_a_short_pin_is_readable(self):
+        url = f"{BASE}/0123abc/deep-agent-app/downloads/Trust_Template_Example.pdf"
+        assert await access.check_url(url) is None
+
+    @pytest.mark.parametrize("url", [
+        f"https://raw.githubusercontent.com/someone-else/org-grant-intelligence/{SHA}/Funder/x/a.md",
+        f"https://raw.githubusercontent.com/project-tech4dev/another-repo/{SHA}/Funder/x/a.md",
+        f"{BASE}/main/Funder/x/a.md",
+        f"{BASE}/HEAD/Funder/x/a.md",
+        f"{BASE}/refs/heads/main/Funder/x/a.md",
+        f"{BASE}/{SHA}/../../another-repo/main/a.md",
+        f"{BASE}/{SHA}/%2e%2e/%2e%2e/another-repo/main/a.md",
+        f"{BASE}/{SHA}/Funder%2Fx/a.md",
+        f"{BASE}/{SHA}//a.md",
+        f"{BASE}/{SHA}/Funder/x/a.md?token=1",
+        f"{BASE}/{SHA.upper()}/a.md",
+        f"{BASE}/{SHA}",
+        f"http://raw.githubusercontent.com/project-tech4dev/org-grant-intelligence/{SHA}/a.md",
+        f"https://raw.githubusercontent.com:8443/project-tech4dev/org-grant-intelligence/{SHA}/a.md",
+    ])
+    async def test_anything_else_on_the_host_is_refused(self, url):
+        out = await access.check_url(url)
+        assert out is not None
+        assert "pinned" in out and prior_research.PINNED_COMMIT in out
+
+
+class TestReadingTheRepository:
+    async def test_a_dossier_is_read_as_its_text(self, monkeypatch):
+        seen: list[str] = []
+        body = "# Kestrel Foundation\n\n| Field | Value |\n|---|---|\n| CSR spent FY2023-24 | 1.2 crore |\n"
+        _serve(monkeypatch, body, "text/plain; charset=utf-8", seen)
+        out = await research_tools.read_page.ainvoke({"url": DOSSIER})
+        assert out == body and seen == [DOSSIER]
+
+    async def test_read_page_refuses_a_branch_path_before_any_request(self, monkeypatch):
+        seen: list[str] = []
+        _serve(monkeypatch, "x", "text/plain", seen)
+        out = await research_tools.read_page.ainvoke({"url": f"{BASE}/main/Funder/x/a.md"})
+        assert out.startswith("REFUSED:") and seen == []
+
+    async def test_fetch_document_refuses_another_repository(self, monkeypatch):
+        seen: list[str] = []
+        _serve(monkeypatch, "%PDF-1.4", "application/pdf", seen)
+        url = f"https://raw.githubusercontent.com/project-tech4dev/another-repo/{SHA}/a.pdf"
+        out = await research_tools.fetch_document.ainvoke({"url": url})
+        assert out.startswith("REFUSED:") and seen == []
+```
+
+- [ ] **Step 2: Run the tests and confirm they fail**
+
+Run: `cd backend && pytest tests/test_prior_research.py -q`
+Expected: `ImportError: cannot import name 'prior_research' from 'app.ingest'`.
+
+- [ ] **Step 3: The access rule**
+
+In `backend/app/ingest/sources.py`, in `AccessRule`, after `PARTNER_PERMISSION = "partner_permission_internal"`:
+
+```python
+    # The team's own research repository, read by the research tools at a pinned commit only
+    # (prior_research.py, spec D16). Never dispatched: no adapter runs against it.
+    INTERNAL_RESEARCH = "internal_research"
+```
+
+In `_STRICTNESS`, insert `AccessRule.INTERNAL_RESEARCH,` directly after `AccessRule.REFERENCE_ONLY,`. It must be in the tuple, because `rule_for_host` calls `_STRICTNESS.index()` and raises `ValueError` on a missing rule. It is the only product on its host, so its position decides nothing today. Ranking it below `PARTNER_PERMISSION` means a partner-permission product added to the same host would still win.
+
+`DISPATCHABLE` is not touched.
+
+- [ ] **Step 4: The registry entry**
+
+In `backend/app/ingest/data/sources/ngos.json`, replace the whole `hand_vetting_sheets` object with:
+
+```json
+    {
+      "key": "org_grant_intelligence",
+      "name": "org-grant-intelligence research repository",
+      "host": "raw.githubusercontent.com",
+      "access_rule": "internal_research",
+      "categories": [
+        "ngo",
+        "funder",
+        "rfp"
+      ],
+      "yields": [
+        "org",
+        "funder",
+        "rfp"
+      ],
+      "basis": "The team's own earlier research, public on GitHub as project-tech4dev/org-grant-intelligence: funder and CSO dossiers, the hand-vetting sheets, and proposal templates and RFPs under deep-agent-app/downloads. Read only as raw files pinned to a commit (Sangam's seed was copied at 414cd6968765bcfff758632797dcbb8d00363ab2), never a branch and never another repository on this host. Each fact carries the dossier's cited source and stays claimed until that source is re-read.",
+      "robots_checked_at": null
+    },
+```
+
+The object stays in `ngos.json`, where the old one was, so the CSO plan finds it in the same place.
+
+- [ ] **Step 5: `prior_research.py`, access half**
+
+Create `backend/app/ingest/prior_research.py`:
+
+```python
+"""Prior research: the team's earlier research repository, read at a pinned commit (spec D16).
+
+Pure: no pool, no network, no settings. access.check_url hands every URL on the repository's host
+to `refusal`, because raw.githubusercontent.com serves every public repository and a rule keyed on
+the host alone would let the researcher read any of them. Only a file of this repository at a
+commit is a source a citation can point at: a branch path is different text on a different day.
+"""
+
+from __future__ import annotations
+
+import re
+from urllib.parse import urlparse
+
+SOURCE_KEY = "org_grant_intelligence"
+HOST = "raw.githubusercontent.com"
+REPO = "project-tech4dev/org-grant-intelligence"
+# The commit Sangam's seed data was copied from (seed/data/README.md). Moving it is a reviewed change.
+PINNED_COMMIT = "414cd6968765bcfff758632797dcbb8d00363ab2"
+
+_COMMIT = re.compile(r"[0-9a-f]{40}|[0-9a-f]{7}")
+# An encoded dot, slash or backslash is a path the server will normalise into something this
+# check never saw. httpx removes literal dot segments before sending, so `..` is refused too.
+_ESCAPES = re.compile(r"%(2e|2f|5c)", re.IGNORECASE)
+
+
+def pinned(url: str | None) -> tuple[str, str] | None:
+    """(commit, path in the repository) when `url` is one file of the repository at a commit."""
+    if not url:
+        return None
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.netloc != HOST:
+        return None  # netloc, not hostname: a port or userinfo is refused here too
+    if parsed.params or parsed.query or parsed.fragment:
+        return None
+    if "\\" in parsed.path or _ESCAPES.search(parsed.path):
+        return None
+    segments = parsed.path.split("/")
+    # '', owner, repo, commit, *path
+    if len(segments) < 5 or segments[0] != "" or "/".join(segments[1:3]) != REPO:
+        return None
+    commit, path = segments[3], segments[4:]
+    if not _COMMIT.fullmatch(commit):
+        return None
+    if any(part in ("", ".", "..") for part in path):
+        return None
+    return commit, "/".join(path)
+
+
+def is_prior_research_url(url: str | None) -> bool:
+    return pinned(url) is not None
+
+
+def refusal(url: str) -> str | None:
+    """None when `url` may be read; otherwise the reason, with the form that would be allowed."""
+    if pinned(url) is not None:
+        return None
+    return (
+        f"{HOST} is registered as internal_research for one repository only, and only pinned: "
+        f"https://{HOST}/{REPO}/<commit>/<path>, with a 40-character commit. {url} is another "
+        f"repository, a branch, or a path that is not a plain file. Rewrite a github.com link to the "
+        f"pinned form, e.g. https://{HOST}/{REPO}/{PINNED_COMMIT}/<path>. Never read a branch."
+    )
+```
+
+- [ ] **Step 6: The `check_url` branch**
+
+In `backend/app/ingest/access.py`:
+- change `from app.ingest.sources import rule_for_host` to `from app.ingest.sources import AccessRule, rule_for_host`;
+- add `from app.ingest import prior_research`;
+- directly after `source = found[1] if found else None`, insert:
+
+```python
+    if source is not None and source.access_rule is AccessRule.INTERNAL_RESEARCH:
+        # The team's own research repository (D16). Its registry entry owns the whole host, so
+        # every other repository there is refused here, and so is a branch: only a file at a
+        # commit is a citable, unchanging source. robots.txt is not the question - the host
+        # serves none, which RFC 9309 reads as allow-all - so the path rule is the whole permission.
+        return prior_research.refusal(url)
+```
+
+`test_internal_research_is_one_source_on_one_host` is what keeps this branch from silently covering a second `internal_research` source it was not written for.
+
+- [ ] **Step 7: `read_page` returns a raw text file as text**
+
+`raw.githubusercontent.com` serves a dossier as `text/plain; charset=utf-8`. `trafilatura.extract` looks for an HTML article and drops most of a markdown table. In `backend/app/ingest/tools/research_tools.py`, in `read_page`, replace:
+
+```python
+    text = trafilatura.extract(response.text, url=url) or ""
+```
+
+with:
+
+```python
+    content_type = response.headers.get("content-type", "").lower()
+    if content_type.startswith(("text/plain", "text/markdown")):
+        # Already text (the prior-research dossiers are markdown served raw). trafilatura looks
+        # for an HTML article and would drop most of a table.
+        text = response.text
+    else:
+        text = trafilatura.extract(response.text, url=url) or ""
+```
+
+The truncation at `MAX_CONTENT_CHARS` below it applies unchanged.
+
+- [ ] **Step 8: Label the rule**
+
+In `frontend/features/ingest/components/SourcePanel.tsx`, in `RULE_TEXT`, after `partner_permission_internal: "Partner data",`:
+
+```ts
+  internal_research: "Team research (pinned)",
+```
+
+- [ ] **Step 9: Document it**
+
+In `docs/INGEST.md`, in "## Sources: access rules are config, not comments":
+
+(a) In the category table, change the `rfp` row to `| rfp | 12 | 2 |`. The total stays 74: one entry is replaced, and it gains the `rfp` category. Recount with:
+
+```bash
+cd backend && python -c "import collections,json;c=collections.Counter();[c.update(s['categories']) for f in ('funders','ngos','rfps','media') for s in json.load(open(f'app/ingest/data/sources/{f}.json'))['sources']];print(sum(1 for f in ('funders','ngos','rfps','media') for _ in json.load(open(f'app/ingest/data/sources/{f}.json'))['sources']),dict(c))"
+```
+
+Expected: `74 {'funder': 32, …, 'ngo': 21, 'rfp': 12, 'media': 26}` (key order may differ).
+
+(b) After the paragraph that begins ``` `read_page` and `fetch_document` check twice before fetching```, add:
+
+```markdown
+**One host is decided by path, not by robots.txt.** `raw.githubusercontent.com` belongs to
+`org_grant_intelligence` (`internal_research`), the team's earlier research repository
+(`app/ingest/prior_research.py`). `check_url` hands every URL on that host to
+`prior_research.refusal`. It allows a file of that repository at a 40- or 7-hex commit and refuses
+everything else: another repository, a branch or `HEAD`, a dot segment, an encoded slash or dot,
+a query string, a port. A branch is refused because a citation has to point at text that does not
+change. The rule is not dispatchable, so it counts among the 51 held: no adapter reads the
+repository, and only the researcher's fetch tools do, one file at a time. Sangam never writes
+to it.
+```
+
+- [ ] **Step 10: Run the tests**
+
+Run: `cd backend && pytest tests/test_prior_research.py tests/test_ingest.py tests/test_storage.py -q -m "not integration" && ruff check .`
+Expected: all pass, including `TestSourcesGateOnAccessRules` (the registry still self-checks, nothing new is dispatchable) and `test_the_strictest_rule_on_a_host_wins`.
+
+Run: `cd frontend && npm run lint && npm run build`
+Expected: clean.
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add backend/app/ingest/prior_research.py backend/app/ingest/sources.py backend/app/ingest/data/sources/ngos.json backend/app/ingest/access.py backend/app/ingest/tools/research_tools.py frontend/features/ingest/components/SourcePanel.tsx docs/INGEST.md backend/tests/test_prior_research.py
+git commit -m "feat(ingest): the research repository as a source, read only pinned
+
+org_grant_intelligence replaces hand_vetting_sheets and covers the whole
+repository under a new rule, internal_research, which is never dispatched.
+The entry owns raw.githubusercontent.com, so check_url refuses every other
+repository there, every branch and every path that is not a plain file at a
+commit. read_page returns a raw markdown file as its text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 10B: Promotion ranks a dossier below the primary source it cites (D16)
+
+**Files:**
+- Modify: `backend/app/ingest/prior_research.py` (add `rank_key`, `rank`)
+- Modify: `backend/app/ingest/promote.py`
+- Test: `backend/tests/test_prior_research.py`
+
+**Interfaces:**
+
+```python
+def rank_key(f: dict) -> tuple
+def rank(findings: list[dict]) -> tuple[list[dict], list[str]]   # (to promote, held lines)
+```
+
+**Why this is needed.** Within one payload `_write_facts` holds the second of two findings with the same `_row_identity` as "two findings resolve to the same row". So whichever finding comes first wins, and that is often the dossier, which the researcher reads first. `rank` runs before any writer. It is pure and works on the unresolved dict, because `_row_identity` needs ids that do not exist yet. It also covers `csr_year` and `identity`, which never reach `_write_facts`.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `backend/tests/test_prior_research.py`:
+
+```python
+PRIMARY = "https://kestrel.example/csr-annexure-2023-24.pdf"
+
+
+def _year(url, prescribed, unit="crore", fy="FY2023-24"):
+    return {"concept": "csr_year", "fiscal_year": fy, "prescribed_csr": {"value": prescribed, "unit": unit},
+            "evidence": "The CSR annexure states the prescribed CSR obligation for the year.",
+            "source_url": url, "confidence": "high"}
+
+
+class TestAPrimarySourceOutranksTheDossier:
+    def test_a_dossier_fact_alone_is_promoted_and_labelled(self):
+        kept, held = prior_research.rank([_year(DOSSIER, 1.2)])
+        assert kept == [{**_year(DOSSIER, 1.2), "source_name": "org_grant_intelligence"}]
+        assert held == []
+
+    def test_a_primary_fact_outranks_the_dossier(self):
+        primary = _year(PRIMARY, 1.2)
+        kept, held = prior_research.rank([_year(DOSSIER, 1.2), primary])
+        assert kept == [primary] and held == []
+
+    def test_a_disagreement_is_reported_and_both_are_kept(self):
+        primary = _year(PRIMARY, 1.35)
+        findings = [_year(DOSSIER, 1.2), primary]
+        kept, held = prior_research.rank(findings)
+        assert kept == [primary]
+        assert len(held) == 1
+        assert "prescribed_csr" in held[0] and PRIMARY in held[0] and DOSSIER in held[0]
+        assert len(findings) == 2  # the research record itself is never edited
+
+    def test_a_value_only_the_dossier_states_is_reported_not_dropped(self):
+        dossier = {**_year(DOSSIER, 1.2), "average_net_profit": {"value": 60, "unit": "crore"}}
+        primary = _year(PRIMARY, 1.2)
+        kept, held = prior_research.rank([dossier, primary])
+        assert kept == [primary]
+        assert len(held) == 1 and "also states average_net_profit" in held[0]
+
+    def test_the_same_amount_in_another_unit_agrees(self):
+        kept, held = prior_research.rank([_year(DOSSIER, 120, unit="lakh"), _year(PRIMARY, 1.2)])
+        assert [f["source_url"] for f in kept] == [PRIMARY] and held == []
+
+    def test_another_year_is_another_fact(self):
+        kept, _ = prior_research.rank([_year(DOSSIER, 1.0, fy="FY2022-23"), _year(PRIMARY, 1.2)])
+        assert len(kept) == 2
+
+    def test_one_identity_per_entity(self):
+        base = {"concept": "identity", "evidence": "The page names the foundation and its registered office.",
+                "confidence": "high"}
+        dossier = {**base, "name": "Kestrel Foundation Trust", "source_url": DOSSIER}
+        primary = {**base, "name": "Kestrel Foundation", "source_url": "https://kestrel.example/about"}
+        kept, held = prior_research.rank([dossier, primary])
+        assert kept == [primary] and "name" in held[0]
+
+
+async def test_promote_writes_the_primary_value(monkeypatch):
+    from app.ingest import promote
+    from app.ingest.research_records import SCHEMA_VERSION
+
+    seen = {}
+
+    async def capture(conn, row, findings, report):
+        seen["findings"] = findings
+
+    monkeypatch.setattr(promote, "_promote_funder", capture)
+    primary = _year(PRIMARY, 1.35)
+    row = {"slug": "kestrel-foundation", "entity_kind": "funder", "schema_version": SCHEMA_VERSION,
+           "findings": [_year(DOSSIER, 1.2), primary]}
+    report = await promote.promote(object(), row)
+    assert seen["findings"] == [primary]
+    assert any("prior-research dossier disagrees" in h for h in report["held"])
+```
+
+- [ ] **Step 2: Run the tests and confirm they fail**
+
+Run: `cd backend && pytest tests/test_prior_research.py -q -k "Outranks or promote_writes"`
+Expected: `AttributeError: module 'app.ingest.prior_research' has no attribute 'rank'`.
+
+- [ ] **Step 3: `rank`**
+
+In `backend/app/ingest/prior_research.py`, add `from typing import Any` and `from app.ingest.research_records import to_inr` to the imports, then append:
+
+```python
+# What says where a finding came from or how it was labelled, not what it states. Two findings
+# that differ only here agree.
+_PROVENANCE = frozenset({
+    "concept", "evidence", "source_url", "source_name", "confidence", "basis", "notes",
+    "classified_by", "classification_note", "classification_confirmed",
+})
+# What names the row a finding is about, before anything is resolved to an id.
+_KEY = ("fiscal_year", "program_name", "project_name", "partner_name", "recipient_name", "name",
+        "title", "role", "period", "state", "district", "id_type", "kind")
+# One row per entity: two of these are the same fact whatever they say.
+_ONE_PER_ENTITY = frozenset({"identity"})
+
+
+def _norm(v: Any) -> Any:
+    return " ".join(v.lower().split()) if isinstance(v, str) else v
+
+
+def _value(v: Any) -> Any:
+    if isinstance(v, dict) and "unit" in v:
+        return to_inr(v)  # 120 lakh and 1.2 crore agree
+    return _norm(v)
+
+
+def rank_key(f: dict[str, Any]) -> tuple:
+    if f.get("concept") in _ONE_PER_ENTITY:
+        return (f.get("concept"),)
+    return (f.get("concept"), *(_norm(f.get(k)) for k in _KEY))
+
+
+def rank(findings: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+    """The findings to promote, and a held line for each dossier value a primary source contradicts.
+
+    A finding read from the repository is the dossier's claim, kept as a lead until its own source
+    is re-read. It is promoted under source_name = SOURCE_KEY when nothing else states the same
+    fact. When a finding from any other source does, that one is written, and a dossier that said
+    something different is reported, not silently lost. This filters what promote writes, never
+    what research saved: both findings stay in entity_research.findings.
+    """
+    primary: dict[tuple, dict[str, Any]] = {}
+    for f in findings:
+        if not is_prior_research_url(f.get("source_url")):
+            primary.setdefault(rank_key(f), f)
+
+    kept: list[dict[str, Any]] = []
+    held: list[str] = []
+    for f in findings:
+        if not is_prior_research_url(f.get("source_url")):
+            kept.append(f)
+            continue
+        other = primary.get(rank_key(f))
+        if other is None:
+            kept.append({**f, "source_name": SOURCE_KEY})
+            continue
+        differs = sorted(
+            k for k in f.keys() & other.keys()
+            if k not in _PROVENANCE and (k not in _KEY or f.get("concept") in _ONE_PER_ENTITY)
+            and f[k] is not None and other[k] is not None and _value(f[k]) != _value(other[k])
+        )
+        label = " ".join(str(x) for x in (f.get("concept"), f.get("fiscal_year")) if x)
+        if differs:
+            held.append(
+                f"{label}: the prior-research dossier disagrees with {other['source_url']} on "
+                f"{', '.join(differs)}. The primary source is written; the dossier value stays in the "
+                f"research record ({f['source_url']})."
+            )
+        # Fields only the dossier states. Not merged onto the primary row, which would cite the
+        # primary URL for a value it never stated; reported, so the claim is not lost in silence.
+        only_dossier = sorted(
+            k for k in f
+            if k not in _PROVENANCE and k not in _KEY and f[k] is not None and other.get(k) is None
+        )
+        if only_dossier:
+            held.append(
+                f"{label}: the prior-research dossier also states {', '.join(only_dossier)}, which "
+                f"{other['source_url']} does not. Not written, because the row cites that source; "
+                f"re-read it from a primary source to store it ({f['source_url']})."
+            )
+    return kept, held
+```
+
+`research_records` imports nothing from `access` or `prior_research`, so there is no import cycle.
+
+- [ ] **Step 4: Wire it into `promote()`**
+
+In `backend/app/ingest/promote.py`, add `from app.ingest import prior_research` to the imports. Directly after the two lines Task 10 inserted (`findings, unmarked = staff_sources.hold_unmarked(findings)` / `report["held"].extend(unmarked)`), insert:
+
+```python
+    # A dossier fact loses to the same fact re-read from its own source (D16).
+    findings, outranked = prior_research.rank(findings)
+    report["held"].extend(outranked)
+```
+
+- [ ] **Step 5: Run the tests**
+
+Run: `cd backend && pytest tests/test_prior_research.py tests/test_staff_sources.py tests/test_ingest.py -q -m "not integration" && ruff check .`
+Expected: all pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add backend/app/ingest/prior_research.py backend/app/ingest/promote.py backend/tests/test_prior_research.py
+git commit -m "feat(ingest): a fact re-read from its source outranks the dossier
+
+promote ranks findings before any writer: a finding from the research
+repository is promoted as claimed prior research only when nothing else states
+the same fact, and a dossier that disagrees with the primary source is reported
+in held. The research record keeps both.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 10C: A funder's proposal template is a `proposal_template` document (D5, D16)
+
+**Files:**
+- Modify: `backend/app/ingest/expectations.py`, `backend/app/ingest/research_records.py`, `backend/app/ingest/records.py`
+- Modify: `backend/app/ingest/promote.py`, `backend/app/ingest/brief.py`
+- Test: `backend/tests/test_prior_research.py`
+
+**Interfaces:**
+- Produces: concept `"proposal_template"` → `ConceptSpec("documents", "Proposal templates", row_filter=("doc_type", "proposal_template"), columns=("title",))`, `ProposalTemplateFinding`, `ProposalTemplateRecord` (`doc_type` ClassVar `"proposal_template"`).
+- Consumes: plan (b) Task 13 (`RESERVED_DOC_TYPES`, `ensure_document` keyed on the reserved type) and Task 14 (the `eligibility_guideline` concept this mirrors).
+
+**Why.** Plan (b) reserves `proposal_template` and refuses it on a `document` finding. It also says templates have "no writer yet". The skill cannot tell the researcher to save one until something writes it.
+
+The concept writes one funder-owned `documents` row per URL. It archives the file when `fetch_document` archived it, the same way `_write_documents` does. A generic template, one named by funder type rather than by a funder, has no funder to own it. It is therefore never a finding: the skill keeps it as a reference in the summary.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `backend/tests/test_prior_research.py`:
+
+```python
+TEMPLATE = {"concept": "proposal_template", "title": "Kestrel Foundation grant application form",
+            "evidence": "The form is headed 'Kestrel Foundation: Application for CSR Support'.",
+            "source_url": "https://kestrel.example/apply/application-form.pdf", "confidence": "high"}
+
+
+class TestTheTemplateConcept:
+    def test_it_owns_template_documents(self):
+        from app.ingest.expectations import CONCEPTS, expected_fields
+
+        assert CONCEPTS["proposal_template"].row_filter == ("doc_type", "proposal_template")
+        assert {f.name for f in expected_fields("proposal_template")} == {"title", "as_of"}
+
+    def test_a_document_finding_still_cannot_claim_the_type(self):
+        from pydantic import ValidationError
+
+        from app.ingest.research_records import DocumentFinding
+
+        with pytest.raises(ValidationError, match="reserved"):
+            DocumentFinding(title="Application form", doc_type="proposal_template",
+                            evidence="The form is headed with the funder's name.",
+                            source_url="https://a.b/c", confidence="high")
+
+    async def test_a_template_is_one_funder_document(self, recording_conn, monkeypatch):
+        from app.ingest import promote
+        from app.ingest.writer import Owner
+
+        async def not_archived(*a, **k):
+            return None
+
+        monkeypatch.setattr(promote.storage, "archived_key", not_archived)
+        conn = recording_conn([None, {"id": 31}])
+        row = {"slug": "kestrel-foundation", "entity_name": "Kestrel Foundation", "canonical_name": None,
+               "researched_at": NOW}
+        report = {"held": [], "written": {}}
+        await promote._write_facts(conn, row, [TEMPLATE, {**TEMPLATE, "title": "The same form again"}],
+                                   Owner.funder(1), {}, {}, report, order=("proposal_template",))
+        inserts = [i for i, q in enumerate(conn.sql) if q.startswith("INSERT INTO documents")]
+        assert len(inserts) == 1
+        assert conn.sql[inserts[0]].startswith("INSERT INTO documents (funder_id,")
+        assert conn.params[inserts[0]][0] == 1 and conn.params[inserts[0]][2] == "proposal_template"
+        assert report["written"]["documents (proposal_template)"]["added"] == 1
+        assert any("same row" in h for h in report["held"])
+```
+
+- [ ] **Step 2: Run the tests and confirm they fail**
+
+Run: `cd backend && pytest tests/test_prior_research.py -q -k Template`
+Expected: `KeyError: 'proposal_template'`, and the promote test finding no INSERT.
+
+- [ ] **Step 3: Expectations**
+
+In `backend/app/ingest/expectations.py`, after the `eligibility_guideline` entry in `CONCEPTS`:
+
+```python
+    # A funder's own application form or proposal template (D5): one documents row per URL, owned
+    # by the funder. A template named only by funder type has no owner and is not a finding.
+    "proposal_template": ConceptSpec(
+        "documents", "Proposal templates",
+        row_filter=("doc_type", "proposal_template"), columns=("title",),
+    ),
+```
+
+`REQUIRED["proposal_template"] = frozenset({"title"})`. In `EXTRA`:
+
+```python
+    "proposal_template": (
+        Expected(name="as_of", type="text", note="the year or version printed on the form",
+                 values=(), required=False),
+    ),
+```
+
+- [ ] **Step 4: Finding and record**
+
+In `backend/app/ingest/research_records.py`, after `EligibilityGuidelineFinding`:
+
+```python
+class ProposalTemplateFinding(FindingBase):
+    """A named funder's own proposal template or application form (D5).
+
+    source_url is where the funder publishes it, or the pinned research-repository file when that
+    is the only copy left. The evidence quotes what on the form names the funder.
+    """
+
+    concept: Literal["proposal_template"] = "proposal_template"
+    title: str = Field(min_length=4, description="the form's title as printed")
+    as_of: str | None = Field(default=None, description="the year or version printed on the form")
+```
+
+Add it to the `Finding` union and to `FINDING_MODELS` (`"proposal_template": ProposalTemplateFinding`).
+
+In `backend/app/ingest/records.py`, after `EligibilityGuidelineRecord`:
+
+```python
+class ProposalTemplateRecord(Provenance):
+    """One proposal_template documents row, owned by the funder that publishes the form."""
+
+    kind: Literal["proposal_template"] = "proposal_template"
+    doc_type: ClassVar[str] = "proposal_template"
+    funder_name: str = Field(min_length=2)
+    title: str = Field(min_length=4)
+
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+```
+
+Add it to `Record`.
+
+- [ ] **Step 5: Promote and brief**
+
+In `backend/app/ingest/promote.py`:
+- import `ProposalTemplateRecord`;
+- append `"proposal_template"` to `WRITE_ORDER`;
+- `CONCEPT_RECORDS["proposal_template"] = ProposalTemplateRecord`;
+- in `_row_identity`: `if concept == "proposal_template": return (concept, f.source_url)`;
+- next to the `eligibility_guideline` branch in `_write_facts`:
+
+```python
+                elif concept == "proposal_template":
+                    rec = ProposalTemplateRecord(title=f.title, as_of=f.as_of, **base)
+                    # Archived when fetch_document read it, as _write_documents does; a page read
+                    # with read_page never was, and claiming a storage_path would misstate provenance.
+                    key = await storage.archived_key(storage.SOURCE_ARCHIVE, f.source_url)
+                    _, status = await ensure_document(
+                        conn, rec, owner=owner, doc_type=rec.doc_type,
+                        storage_path=storage.qualify(storage.SOURCE_ARCHIVE, key) if key else None,
+                        content_hash=storage.hash_from_key(key) if key else None,
+                    )
+                    _count(report, "documents (proposal_template)", status)
+```
+
+It is not added to `_write_documents`' `by_url`, so no fact cites the template as its source.
+
+In `backend/app/ingest/brief.py`, in `headline`, after the `document` branch:
+
+```python
+    if concept == "proposal_template":
+        return _join(f.get("title"), "proposal template", f.get("as_of"))
+```
+
+- [ ] **Step 6: Run the tests**
+
+Run: `cd backend && pytest -q -m "not integration" && ruff check .`
+Expected: all pass. That includes every `CONCEPT_TABLES` / `FINDING_MODELS` parametrisation, which now includes `proposal_template`, and plan (b)'s `test_a_reserved_doc_type_is_refused_on_a_document_finding`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add backend/app/ingest/expectations.py backend/app/ingest/research_records.py backend/app/ingest/records.py backend/app/ingest/promote.py backend/app/ingest/brief.py backend/tests/test_prior_research.py
+git commit -m "feat(ingest): a funder's proposal template is a documents row
+
+The proposal_template concept writes one funder-owned documents row per URL,
+archived when the file was fetched. A document finding still cannot claim the
+reserved type; a template named only by funder type is not a finding.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 11: The skills, and prior research in the prompts
 
 **Files:**
 - Rewrite: `backend/app/ingest/skills/funder-intake-research/SKILL.md`
 - Modify: `backend/app/ingest/skills/ngo-credential-research/SKILL.md`
-- Modify: `docs/SKILLS.md`
-- Test: `backend/tests/test_harness.py`
+- Modify: `backend/app/ingest/prompts/entity_researcher.md`, `backend/app/ingest/instructions.md` (prior research, D16)
+- Modify: `docs/SKILLS.md`, `docs/INGEST.md`
+- Test: `backend/tests/test_harness.py`, `backend/tests/test_prior_research.py`
 
 **Interfaces:** none. These are prose files.
+
+**Where the commit lives.** The skill is generic (D9). It names the repository's folders and the rule, never a commit and never a funder. The researcher's prompt carries the pinned address, `prior_research.PINNED_COMMIT`, and a test holds the two together. Moving the pin is therefore one constant, one prompt line and the registry `basis`, all in one reviewed diff.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -3528,12 +4338,48 @@ class TestTheIntakeSkills:
     def test_the_ngo_skill_names_the_staff_workbook(self):
         text = self.text("ngo-credential-research")
         assert "read_source_rows" in text and "funder sheets" in text and "`claimed`" in text
+
+    def test_prior_research_comes_first_and_stays_claimed(self):
+        text = self.text("funder-intake-research")
+        heading = "## Prior research, before anything else"
+        assert text.index(heading) < text.index("## Where to look, in this order")
+        section = text.split(heading, 1)[1].split("\n## ", 1)[0]
+        for word in ("`Funder/<funder>/*.md`", "pinned", "never at a branch", "`claimed`", "re-read",
+                     "outranks", "`manual_aggregator`", "keep both", "`proposal_template`", "`rfp`",
+                     "generic", "deep-agent-app/downloads/"):
+            assert word in section, word
+
+    def test_the_funder_skill_names_no_commit(self):
+        import re
+
+        text = self.text("funder-intake-research")
+        assert not re.search(r"\b(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b", text)
+```
+
+Append to `backend/tests/test_prior_research.py`:
+
+```python
+def test_the_researcher_is_told_to_read_the_dossier_pinned():
+    from app.ingest.agent import ENTITY_RESEARCHER, INSTRUCTIONS
+
+    prompt = ENTITY_RESEARCHER["system_prompt"]
+    assert f"{BASE}/{prior_research.PINNED_COMMIT}/" in prompt
+    assert "`claimed`" in prompt and "outranks" in prompt and "never a branch" in prompt
+    assert "org_grant_intelligence" in INSTRUCTIONS
 ```
 
 - [ ] **Step 2: Run the tests and confirm they fail**
 
-Run: `cd backend && pytest tests/test_harness.py -q -k IntakeSkills`
-Expected: 4 failures (no "Where to look" section, the old eligibility rows text, no classification rule, and no staff workbook in the NGO skill). `test_the_funder_skill_names_no_funder_and_no_file` already passes.
+Run: `cd backend && pytest tests/test_harness.py tests/test_prior_research.py -q -k "IntakeSkills or dossier_pinned"`
+Expected: 6 failures:
+- no "Where to look" section;
+- the old eligibility rows text;
+- no classification rule;
+- no staff workbook in the NGO skill;
+- no "Prior research" section;
+- no pinned address in the researcher's prompt.
+
+`test_the_funder_skill_names_no_funder_and_no_file` and `test_the_funder_skill_names_no_commit` already pass.
 
 - [ ] **Step 3: Rewrite `funder-intake-research/SKILL.md`**
 
@@ -3542,7 +4388,7 @@ Replace the whole file with:
 ````markdown
 ---
 name: funder-intake-research
-description: Use when someone names one or more companies, corporate foundations, trusts or grantmakers and wants to know where their CSR money goes and what it would take to reach it. Sets the order to read sources in — statutory CSR filings under the corporate filer first (staff datasets, via read_source_rows), then the funder's own publications, then recipient-side records — and pulls ten fields per funder in intake order — route and whether it is live, receiving legal entity, grantmaker or implementer, eligibility guidelines verbatim, document checklist, hard disqualifiers, district-level geography, grant size and co-funding, live call or historical disclosure, provenance with access state; plus any open call, and the rule for classifying spend lines by domain and theme. Raw field-value-source only; no verdicts, no scoring. Not for an organisation that receives money — use ngo-credential-research. Not for one fact already in the catalog — funder_dossier answers that.
+description: Use when someone names one or more companies, corporate foundations, trusts or grantmakers and wants to know where their CSR money goes and what it would take to reach it. Sets the reading order — the team's prior-research dossier first, as leads; statutory CSR filings under the corporate filer (read_source_rows); the funder's own publications; recipient-side records — and pulls ten fields per funder in intake order — route and whether it is live, receiving legal entity, grantmaker or implementer, eligibility verbatim, document checklist, hard disqualifiers, district-level geography, grant size and co-funding, live call or historical disclosure, provenance with access state; plus any open call or proposal template, and the rule for classifying spend lines by domain and theme. Raw field-value-source only; no verdicts, no scoring. Not for an organisation that receives money — use ngo-credential-research. Not for one fact already in the catalog — funder_dossier answers that.
 ---
 
 # What we want pulled for a funder
@@ -3551,9 +4397,58 @@ A researcher does the reading, under its own rules. What follows is what to put 
 researcher's task description: where to look, in which order, what to pull, and how to label
 what it finds. No funder is special-cased here, and none should be.
 
+## Prior research, before anything else
+
+The team researched funders before Sangam existed, in its own repository (registry key
+`org_grant_intelligence`, rule `internal_research`). Read the funder's dossier there first. It is
+a map of leads, not a source of record.
+
+- **Find it, pinned.**
+  - The dossier is `Funder/<funder>/*.md`: one folder per funder, its name in lowercase with
+    hyphens. It holds a profile table, programmes, annual-report summaries and the links each fact
+    came from.
+  - Read every file in the folder with `read_page`, at the pinned commit the researcher's prompt
+    gives, never at a branch. Rewrite a `github.com/…/blob/<branch>/…` link to the pinned raw
+    address before reading it. Anything else on that host is refused.
+  - The raw host lists no folders. Find file names with `search_public_sources`, using
+    `site:github.com`, the repository name and the funder's name, then rewrite each hit.
+  - A dossier path given in the task is read directly.
+  - No folder for the funder is an answer ("no prior research"), not a reason to stop.
+- **Save what it says as `claimed` prior research.**
+  - Each fact is a finding whose `source_url` is the dossier file at its commit, and whose
+    evidence quotes the dossier's line.
+  - It is `claimed`: the dossier is our own earlier reading, not the funder's document.
+  - Promotion records it under `org_grant_intelligence`.
+- **Re-read what it cites.**
+  - Every link in a dossier is a lead. Re-read the primary ones with `read_page` and
+    `fetch_document`, under their own access rules: the funder's own site, its annual reports,
+    the CSR annexure, the CSR policy.
+  - A `REFUSED:` there is final, and the dossier's value stays `claimed`.
+  - A fact you re-read is saved with its own source and evidence. At promotion it outranks the
+    dossier value for the same fact.
+- **An aggregator link is read only where the registry lists it under `manual_aggregator`.**
+  Otherwise it is a lead to the funder's own page and nothing more, and the never-cite-an-aggregator
+  rule below holds.
+- **Where the dossier and the primary source disagree, keep both.**
+  - Save the dossier finding and the primary finding, and do not edit either to agree.
+  - Promotion writes the primary value and reports the disagreement.
+  - Your summary names it: the field, both values and both sources. A dossier can be out of date.
+- **Templates and RFPs.** The repository's `deep-agent-app/downloads/` folder holds proposal
+  templates and RFPs as PDFs. Read them with `fetch_document` at the same commit.
+  - **A template that a named funder publishes** becomes a `proposal_template` finding for that
+    funder. A funder publishes it when its name is on the form, or on the page the form comes
+    from. Save the form's title as printed, the year if one is printed, and the line naming the
+    funder as evidence. Use the funder's own copy as `source_url` when it can still be read; the
+    pinned file is the source only when it is the only copy.
+  - **An RFP that a named funder issued** becomes an `rfp` finding (field 11). Mark it `closed`
+    when its deadline has passed.
+  - **A generic template**, one named by funder type with no funder on it, is a reference, not a
+    finding. Mention it in the summary as a drafting reference, tied to no funder.
+
 ## Where to look, in this order
 
-The order is strength of evidence for money, not convenience.
+The order is strength of evidence for money, not convenience. The dossier above supplies leads;
+these supply the evidence.
 
 1. **Statutory CSR filings for the corporate entity.** The filer is the company that carries the
    Section 135 obligation — often the parent company, not the foundation that runs the
@@ -3602,13 +4497,14 @@ URL means we did not look, and those are different answers.
 
 **Mark every value `evidenced` or `claimed`, and never silently upgrade one to the other.**
 Evidenced is a document, a number, a filing, a dated page that says it. Claimed is a bare sentence
-with nothing behind it. "We fund across India" on an about-us page is claimed. A district list in
+with nothing behind it, or a value read only in the prior-research dossier. "We fund across India" on an about-us page is claimed. A district list in
 a published call is evidenced.
 
 **Never cite an aggregator.** NGOBox, Devex, CSR trackers, LinkedIn, news coverage of a grant —
 these may point you to the funder's page; they are never the source of a fact. Only the funder's
 own domain, a primary document it hosts, or a staff dataset — which is the statutory filing, or
-the recipient's own record, held privately.
+the recipient's own record, held privately. The prior-research dossier may be cited, always as
+`claimed`. An aggregator page it links to does not become citable by being linked.
 
 **Pull raw.** Field, value, source, evidenced-or-claimed. One block per funder, fields in the
 order below. No summary, no verdict, no comparison table, no "strong fit" — all of that is
@@ -3732,7 +4628,7 @@ read directly. That is weaker evidence, and it is labelled as such, not presente
 ## What this skill does not do
 
 It does not decide fit, score a funder, rank a list or lay out a comparison. It does not write to
-the catalog. It produces ten cited fields per funder, the classified lines, and any open call it
+the catalog, and nothing writes to the research repository. It produces ten cited fields per funder, the classified lines, and any open call it
 found, and stops.
 ````
 
@@ -3777,23 +4673,76 @@ datasets. That is detail added to a tool the prompts already name. `instructions
 researcher's own prompt both carry it, so `test_a_tool_is_never_reachable_only_through_a_skill`
 still holds. Neither skill names a funder or a file: what to read, in which order, and how to
 label it is the procedure, and the procedure is generic.
+
+`funder-intake-research` opens with prior research (D16): the team's earlier dossier on the
+funder, read from the `org_grant_intelligence` repository at a pinned commit, saved as `claimed`,
+its links re-read under their own rules. The skill names the folders and the rule, never the
+commit. The pinned address is in the researcher's prompt, beside `prior_research.PINNED_COMMIT`,
+so moving the pin never touches a skill.
+```
+
+- [ ] **Step 5a: Prior research in the researcher's prompt**
+
+In `backend/app/ingest/prompts/entity_researcher.md`, directly after the paragraph Task 9 inserted (it begins `**For a corporate funder, read the staff datasets before the web: \`read_source_rows(match)\`.**`), insert:
+
+```markdown
+**Prior research comes first, as leads: the team's own dossier, pinned.** The team's earlier research repository (`org_grant_intelligence`) may hold a dossier on this entity. Read it only at `https://raw.githubusercontent.com/project-tech4dev/org-grant-intelligence/414cd6968765bcfff758632797dcbb8d00363ab2/<path>`, never a branch: `read_page` refuses any other repository, any branch and `HEAD`. A funder's files are under `Funder/<folder>/`, and an organisation's under `ngos/<folder>/`. The host lists no folders, so find the file names with `search_public_sources` (`site:github.com project-tech4dev/org-grant-intelligence` and the name), and rewrite each hit to the pinned address. A pinned path given in your task description is read directly. Save each dossier fact as a finding with that pinned file as `source_url`, quoting the dossier's line. It is `claimed`, our own earlier reading. Then re-read every primary link the dossier cites, under that source's own rules, and save what you read with its own source: at promotion it outranks the dossier value. If the two disagree, save both, edit neither, and name the disagreement in your summary. Proposal templates and RFPs are under `deep-agent-app/downloads/`. A named funder's template is a `proposal_template` finding, and its RFP an `rfp` finding. A template named only by funder type is a reference for the summary, not a finding. Calls to the repository count against your document budget like any other read.
+```
+
+In "## Access rules are absolute", after the paragraph that begins ``` `read_page` and `fetch_document` check the registry```, add:
+
+```markdown
+`raw.githubusercontent.com` is readable for one repository at one kind of address: the pinned prior-research files above. Every other repository on that host, and every branch, is refused.
+```
+
+- [ ] **Step 5b: Prior research in the supervisor's instructions**
+
+In `backend/app/ingest/instructions.md`, at the end of "## Source priority", after the paragraph Task 9 appended, append:
+
+```markdown
+
+Before any of that, a researcher reads the team's own prior research, the `org_grant_intelligence`
+repository, pinned to a commit. It is a map of leads. Its facts are saved as `claimed`, and a fact
+re-read from the source the dossier cites outranks the dossier's value. When the two disagree,
+promotion writes the primary value and reports the dossier's under `held`; pass that disagreement
+on rather than resolving it yourself.
+```
+
+- [ ] **Step 5c: Prior research in `docs/INGEST.md`**
+
+In "## The research path in detail", directly before the paragraph that begins `**1. \`research_goals(name, entity_kind, years)\`**`, add:
+
+```markdown
+**0a. Prior research.** The researcher reads the entity's dossier in the team's earlier research
+repository (`org_grant_intelligence`, `internal_research`) at the commit pinned in
+`prior_research.PINNED_COMMIT`. It saves the dossier's facts with the pinned file as
+`source_url`; they are `claimed`. Then it re-reads the primary links the dossier cites. At
+promotion `prior_research.rank` runs before any writer. A dossier finding is written under
+`source_name = 'org_grant_intelligence'` only when no other finding states the same fact. When
+one does, the other finding is written, and a disagreement is reported under `held`. Both stay
+in `entity_research.findings`. A named funder's proposal template from the repository's
+`downloads/` folder becomes a `proposal_template` document owned by that funder. A generic
+template becomes neither a finding nor a row.
 ```
 
 - [ ] **Step 6: Run the tests**
 
-Run: `cd backend && pytest tests/test_harness.py -q`
-Expected: all pass, including `test_every_skill_is_one_directory_deep_with_matching_frontmatter` (the description is 971 characters and starts with "Use when").
+Run: `cd backend && pytest tests/test_harness.py tests/test_prior_research.py -q`
+Expected: all pass, including `test_every_skill_is_one_directory_deep_with_matching_frontmatter` (the description is 986 characters, under the 1024 limit, and starts with "Use when"), `test_a_subagent_prompt_names_every_tool_its_spec_declares[ENTITY_RESEARCHER]` and `test_the_researcher_is_told_to_read_the_dossier_pinned`.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add backend/app/ingest/skills/funder-intake-research/SKILL.md backend/app/ingest/skills/ngo-credential-research/SKILL.md docs/SKILLS.md backend/tests/test_harness.py
-git commit -m "docs(skills): where to look, eligibility verbatim, classification as inference
+git add backend/app/ingest/skills/funder-intake-research/SKILL.md backend/app/ingest/skills/ngo-credential-research/SKILL.md backend/app/ingest/prompts/entity_researcher.md backend/app/ingest/instructions.md docs/SKILLS.md docs/INGEST.md backend/tests/test_harness.py backend/tests/test_prior_research.py
+git commit -m "docs(skills): prior research first, where to look, eligibility verbatim, classification
 
-The intake skill reads statutory filings under the corporate filer first, records
-the funder's own programme split as programme rows, keeps eligibility as one
-verbatim document, and classifies every spend line with its basis. Generic: no
-funder, file or company named. The NGO skill reads the staff CSO workbook.
+The intake skill reads the team's prior-research dossier first, pinned, as
+claimed leads whose cited links are re-read, then statutory filings under the
+corporate filer; records the funder's own programme split as programme rows;
+keeps eligibility as one verbatim document; and classifies every spend line
+with its basis. Generic: no funder, file, company or commit named. The
+researcher's prompt carries the pinned address. The NGO skill reads the staff
+CSO workbook.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -3908,6 +4857,16 @@ Pick one corporate funder present in both MCA datasets. Ask Import to research i
 6. **Partner amounts.** For a funder named in the CSO funder sheets, `SELECT count(*) FROM funder_activity WHERE funder_id = <funder> AND kind = 'partner' AND amount IS NOT NULL` is at least the number of sheet rows for that funder with a stated amount and an exact fiscal year, and each `amount` equals the rupee figure the tool printed beside the sheet's value (lakh and crore applied once). Rows giving a period, not one fiscal year, are reported, not written.
 7. **Markers and public rows.** `promote`'s report lists under `held` any finding that cited a staff dataset without its marker. `SELECT count(*) FROM funder_activity a JOIN documents d ON d.id = a.document_id WHERE d.doc_type = 'source_dataset' AND NOT a.is_public` returns 0: facts promoted from the staff datasets are public rows (D14), while `SELECT is_public FROM documents WHERE doc_type = 'source_dataset'` is false on every row.
 
+8. **Prior research (D16).** Pick a funder that has a dossier under `Funder/` in the repository at the pin, and research and push it in the same chat. Name it nowhere in the PR. Search may not index the repository's files. Put the dossier folder's profile file path in the Import task (`Funder/<folder>/<file>.md`), so the check tests the code and not the search index. Let `<slug>` be its slug, `<f>` its `funders.id`, and `R` the latest research row: `SELECT findings FROM entity_research WHERE slug = '<slug>' ORDER BY id DESC LIMIT 1`.
+   - **Dossier facts land as claimed, with the commit cited.**
+     - `SELECT count(*) FROM jsonb_array_elements(R.findings) f WHERE f->>'source_url' LIKE 'https://raw.githubusercontent.com/project-tech4dev/org-grant-intelligence/414cd6968765bcfff758632797dcbb8d00363ab2/Funder/%'` is at least 1.
+     - Every catalog row written from the dossier carries the pinned file and the registry key. `SELECT count(*) FROM (SELECT source_url, source_name FROM funder_csr_years WHERE funder_id = <f> UNION ALL SELECT source_url, source_name FROM funder_activity WHERE funder_id = <f> UNION ALL SELECT source_url, source_name FROM programs WHERE funder_id = <f>) x WHERE source_url LIKE 'https://raw.githubusercontent.com/%' AND (source_name <> 'org_grant_intelligence' OR source_url NOT LIKE '%/414cd6968765bcfff758632797dcbb8d00363ab2/%')` returns 0.
+   - **Nothing unpinned or foreign was cited.** `SELECT count(*) FROM jsonb_array_elements(R.findings) f WHERE f->>'source_url' LIKE 'https://raw.githubusercontent.com/%' AND f->>'source_url' !~ '^https://raw\.githubusercontent\.com/project-tech4dev/org-grant-intelligence/([0-9a-f]{40}|[0-9a-f]{7})/'` returns 0.
+   - **A re-read primary fact outranks the dossier value.** Find a year for which `R` holds two `csr_year` findings, one at a dossier URL and one at a primary URL. If the researcher re-read none, ask Import to re-read the annual report or CSR annexure the dossier cites for one year, and push again.
+     - `SELECT source_url FROM funder_csr_years WHERE funder_id = <f> AND fiscal_year = '<FY>'` returns the primary URL, not a `raw.githubusercontent.com` one.
+     - If the two findings' values differ, `promote`'s report lists `the prior-research dossier disagrees with <primary URL> on <field>` under `held`, `R` still holds both findings, and the researcher's summary names the disagreement.
+   - **Templates.** `SELECT count(*) FROM documents WHERE doc_type = 'proposal_template' AND funder_id IS NULL` returns 0. If the repository's `deep-agent-app/downloads/` holds a template that names this funder, `SELECT count(*) FROM documents WHERE funder_id = <f> AND doc_type = 'proposal_template'` is at least 1. No generic, type-named template appears as a row.
+
 Record pass/fail per check in the PR. Use counts only — no names or figures.
 
 - [ ] **Step 8: PR description must say**
@@ -3923,6 +4882,16 @@ Record pass/fail per check in the PR. Use counts only — no names or figures.
   - a staff-dataset finding without its sheet/cell marker is held;
   - facts from every sheet, the CSO funder sheets included, are promoted as public rows (D14), and the `ffrh_funder_datasets` basis says FFRH has cleared them for display;
   - the tool sits on the researcher, not the supervisor.
+- **Prior research (D16).**
+  - `hand_vetting_sheets` is replaced by `org_grant_intelligence`, under the new non-dispatchable rule `internal_research`. It owns `raw.githubusercontent.com`, so the fetch tools read only that repository's files at a 40- or 7-hex commit. Other repositories, branches, `HEAD`, dot segments and encoded slashes are refused.
+  - Redirects are followed and not re-checked per hop, as for every host today. A pinned blob does not redirect.
+  - Coordination: the CSO plan adds the same rule and entry, and whichever PR lands second drops its own copy.
+- **Spec refinements (D16):**
+  - "claimed" is carried by the pinned `source_url` and `source_name = 'org_grant_intelligence'`, not by a new column;
+  - "outranks" is `prior_research.rank`, which runs before any writer. It holds within one research run; across runs the newest research wins, as for every source today;
+  - a funder's template needed a writer, the `proposal_template` concept, because plan (b) reserved the type without one;
+  - `read_page` returns a `text/plain` body as it is;
+  - the researcher finds dossier file names through `search_public_sources`, because the raw host lists no folders.
 - **Migration.** The number (0032) follows (b) and is reassigned at merge if needed.
 
 ---
@@ -3943,7 +4912,7 @@ Record pass/fail per check in the PR. Use counts only — no names or figures.
 | §4 tool: matches `match` or the funder's aliases; rupees with the raw value and unit; cited `[source:<document_id>#<sheet>:<row>]`; never raises | 7, 9 |
 | §4 tool: registered in the Import agent, named in instructions, labelled in `toolLabels.ts` | 9 |
 | §4: `openpyxl` in runtime dependencies (`pyproject` and `uv.lock`, image verified) | 1 |
-| §4: `DISPATCHABLE` unchanged | Global Constraints (no task touches `sources.py` or the registry) |
+| §4: `DISPATCHABLE` unchanged | Global Constraints. `sources.py` gains `INTERNAL_RESEARCH`, which is not dispatchable (10A, `test_internal_research_is_one_source_on_one_host`, `test_only_open_api_and_crawl_allowed_are_dispatchable`) |
 | D9: skill generic, no funder, file or company named (tested) | 11 |
 | §4 skill: "Where to look, in this order". Filings under the corporate parent via `read_source_rows`, parent/child, `funder_csr_years`, `kind='spend'`; own publications (list); recipient-side records | 11 |
 | D12: the programme split as `kind='programme'` rows, never spread onto filing lines | 11 (skill); acceptance check 4 in 12 |
@@ -3958,6 +4927,13 @@ Record pass/fail per check in the PR. Use counts only — no names or figures.
 | §5: `make smoke`, unit and integration tests | 12 |
 | §4 recipient-side records give grant amounts per partner: saved on `partner` findings, written in rupees to `funder_activity` `kind = 'partner'` | 9 (prompt, tool docstring), 11 (skills and test), 12 (acceptance check 6); the column wiring is plan (b) Task 11 |
 | D14: every sheet citable and promotable; facts promoted from them public under the default `is_public`; the files stay staff-only; the `ffrh_funder_datasets` basis updated | 7 (no sheet withheld), 9 (prompt), 10 (`hold_unmarked`, basis), 11 (skills), 12 (acceptance check 7) |
+| D16: org-grant-intelligence is a funder source. Registry: `hand_vetting_sheets` replaced by `org_grant_intelligence` under `internal_research`, covering the whole repository and shared with the CSO spec (C14) | 10A |
+| D16: fetch only `raw.githubusercontent.com/project-tech4dev/org-grant-intelligence/<commit>/…`; any other repository or path, and any unpinned `main`/`HEAD` path, refused | 10A (`test_a_pinned_dossier_is_readable`, `test_a_short_pin_is_readable`, `test_anything_else_on_the_host_is_refused`, `test_read_page_refuses_a_branch_path_before_any_request`, `test_fetch_document_refuses_another_repository`); 12 (acceptance check 8) |
+| D16: the dossier is read first; facts saved as `claimed`, citing the dossier file and its commit | 10B (`source_name` stamp), 11 (skill "Prior research", researcher prompt, instructions); 12 (acceptance check 8) |
+| D16: cited links re-fetched under their own rules; a re-read primary fact outranks the dossier; on disagreement both kept and reported | 10B (`rank`, `test_a_primary_fact_outranks_the_dossier`, `test_a_disagreement_is_reported_and_both_are_kept`), 11 (skill, prompt); 12 (acceptance check 8) |
+| D16 / C8: aggregator links only under `manual_aggregator` | 11 (skill, conditional on the CSO plan's rule; otherwise a lead only) |
+| D16 / D5: templates and RFPs in `downloads/` become `proposal_template` documents or `rfps` rows when a named funder publishes them; generic ones stay references | 10C (the concept and writer), 11 (skill); 12 (acceptance check 8) |
+| D9 with D16: the skill names no funder and no commit | 11 (`test_the_funder_skill_names_no_funder_and_no_file`, `test_the_funder_skill_names_no_commit`) |
 
 ### Ambiguities resolved
 
@@ -3975,5 +4951,11 @@ Record pass/fail per check in the PR. Use counts only — no names or figures.
 9. **Every sheet is citable and promotable (D14).** FFRH has cleared the CSO workbook's figures for display, so facts from its funder sheets are promoted as public rows like the filings', and the registry's `basis` now says so. The profiles carry no per-sheet display flag. The raw files stay in the staff-only bucket. What promotion still holds is a staff-dataset finding without its `[source:…]` marker, which could not be traced to its sheet and cell.
 10. **Neutral names.** Stored keys and titles carry the profile name, never the original file name, because Ask's SQL catalog shows `documents.title` and `storage_path`. `Contact & Address` is declared `omit`.
 11. **The upload script runs on the host venv,** because the image mounts only `app/`, `seed/` and `db/`. It runs via `make staff-source`, which honours `ENV`.
-````
 12. **Where a recipient-side amount lands.** `grants` has no writer, so a grant amount from a CSO funder sheet is saved as a `partner` finding with its `amount`, and plan (b) Task 11 writes it to `funder_activity.amount` on the `kind = 'partner'` line, in rupees, as a public row. The finding keeps the figure as printed with its unit; `Money.inr` is the one conversion.
+13. **Prior research: replace, not widen.** `hand_vetting_sheets` becomes `org_grant_intelligence`. The entry covers the whole repository, nothing reads the old key, and the entry needs `host: raw.githubusercontent.com` for a foreign repository on that host to be refused at all. The CSO spec accepts either shape.
+14. **"Claimed" has no column.** Funder findings carry `confidence` and `basis`, not an `evidenced`/`claimed` field, and this PR adds none. A dossier fact is identified by its pinned `source_url`, which carries the commit, and by `source_name = 'org_grant_intelligence'`, which promotion stamps. The CSO plan's `source_type = 'prior_research'` can later be derived from the same URL.
+15. **"Outranks" needed a mechanism, and it is scoped to one run.** Within one payload, `_write_facts` kept whichever finding came first. `prior_research.rank` runs before any writer and keys on the unresolved finding. That covers `csr_year` and `identity`, which never reach `_write_facts`. A field that only the dossier states, on a row the primary source also covers, is reported rather than merged, so no value cites a source that never stated it. Across runs, the newest research wins, as for every source today. Making a stored primary value survive a later dossier-only run would need a stored precedence column. That is the CSO spec's `_may_overwrite` territory, and it is not built here.
+16. **Templates needed a writer.** Plan (b) reserved `proposal_template` and refused it on `document` findings, leaving no path. Task 10C adds the concept. A generic template is never a finding.
+17. **File discovery.** The raw host lists no folders, and the brief allows raw only. The researcher therefore finds file names with `search_public_sources`, or takes a pinned path from its task description, and rewrites each to the pinned address. Whether the search index covers the repository is unverified, so acceptance check 8 passes the path in the task. No manifest is committed, because one would put funder names in the repository. A miss means "no prior research".
+18. **Task numbering.** The D16 work is inserted as Tasks 10A–10C, so that every existing reference to Tasks 11 and 12 stays valid.
+
