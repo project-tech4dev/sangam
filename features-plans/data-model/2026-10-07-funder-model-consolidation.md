@@ -35,10 +35,12 @@ an internal CSO sheet) reached about 70% completeness, and showed three things a
 | D7 | Filings attach to the **corporate parent** (the MCA filer); a foundation is its child through `funders.parent_id`. |
 | D8 | Three source spreadsheets live in a new private **`staff-sources`** bucket, readable by staff (`users.is_staff`) only, never by org admins. |
 | D9 | The `funder-intake-research` skill stays generic: what to pull, from which kinds of source, in which order, including eligibility guidelines. No funder is named in it. |
-| D10 | "Draft" labels come off the front-end taxonomy pages. `status` stays in the data. |
+| D10 | "Draft" is removed from the taxonomy: every domain is `status = "active"`, and no Draft label or wording remains on the pages. |
 | D11 | Every domain and theme on a line is an **inferred label**: it records what it rests on, a short evidence note, and whether a person has confirmed it. |
 | D12 | A funder's own programme split ("₹X on programme A this year") is stored **at funder level**, never spread onto filing lines. |
 | D13 | Each staff dataset has a **layout profile**. The reader goes through every sheet of every file, whatever its layout, and returns normalised rows in rupees. |
+| D14 | Figures from the internal CSO workbook's funder sheets may be stored, cited and **shown publicly**, under the same `funder_activity.is_public` rule as every other row (public by default). The raw files stay in the staff-only bucket; only promoted facts are public. |
+| D15 | All three PRs are built **subagent-driven** (`superpowers:subagent-driven-development`): a fresh implementer per task, a fresh reviewer per task before the next starts, and a whole-branch review at the end. |
 
 ## 1. Taxonomy (on top of #98)
 
@@ -62,8 +64,10 @@ links). Copy the file to `frontend/features/taxonomy/data/` (the smoke check dif
 - `/resources/taxonomy` renders all five domains. Environment and Others show their one-line
   `source` and no theme cards.
 - The section index lists all five.
-- Remove every "Draft" mention: the status badges on domain headings, the status tags in "How the
-  taxonomy works", and "Health and Education are drafts" wording.
+- Remove "Draft" entirely (D10):
+  - set Health and Education to `status: "active"` in `themes.json`;
+  - delete the word "draft" from their `source` strings, with no other rewording;
+  - remove every Draft badge, status tag and "(draft)" label on the pages.
 
 ## 2. Funder schema: nine tables to five
 
@@ -129,6 +133,7 @@ CREATE TABLE funder_activity (
   project_count integer,
   is_ongoing boolean,
   notes text,
+  is_public boolean NOT NULL DEFAULT true,             -- false keeps a row staff-only (D14)
   source_key text,                                     -- source registry key, e.g. 'mca_csr'
   source_url text, source_name text, fetched_at timestamptz, as_of text,
   document_id bigint REFERENCES documents(id), archive_url text,
@@ -153,7 +158,7 @@ CREATE INDEX funder_activity_partner_org_idx ON funder_activity (partner_org_id)
 |---|---|---|
 | `spend` | A filing line with an amount | Statutory CSR filing, CSR annexure |
 | `footprint` | A place where the work ran in a year | Annual or impact report district lists |
-| `partner` | A named partner in a year | Partner lists in reports, filing project names |
+| `partner` | A named partner in a year, with the amount it received from this funder when a source states it (`amount`, in rupees) | Partner lists in reports, filing project names, recipient-side grant records |
 | `programme` | **The funder's own figure** for one programme component in a year, e.g. a foundation reporting ₹X on rural livelihoods and ₹Y on skilling. Attached to a `programs` row (`funder_id` set, with `parent_id` for components) | The funder's annual report |
 
 `programme` rows are the funder's totals. They are never summed with `spend` lines and never
@@ -215,8 +220,8 @@ reassigned at merge time if they land in a different order. Steps:
 5. Repoint `proposals.template_id`.
 6. Drop `funder_identifiers`, `funder_eligibility`, `funder_csr_spend`, `funder_footprints`,
    `funder_partners`, `template_items` and `proposal_templates`, in FK order.
-7. Classify `funder_activity` under #92's grants and RLS (merged): public read, like the tables
-   it replaces, with a policy that hides a hidden funder's rows.
+7. Classify `funder_activity` under #92's grants and RLS (merged). Read policy: `is_public OR
+   app.is_staff()`, combined with the rule that hides a hidden funder's rows (D14).
 
 Before running against Supabase:
 - `SELECT count(*)` on each dropped table.
@@ -253,7 +258,7 @@ thread.
 |---|---|---|
 | CSR Analytics report, FY2014-15 to FY2024-25 (one sheet per year) | MCA CSR filings: company-level obligation and spend, plus project lines (sector, state, district, outlay, spend, mode) | `mca_csr` (manual export or licensed mirror) |
 | Dataful CSR data subset | MCA CSR project lines for 51 groups, all 11 years | `mca_csr` |
-| CSO programmes and current funders | 12 CSOs' funders, projects, years and grant amounts, seen from the receiving side | `ffrh_funder_datasets` (`partner_permission_internal`: CSO consent needed before any public display) |
+| CSO programmes and current funders | 12 CSOs' funders, projects, years and grant amounts, seen from the receiving side | `ffrh_funder_datasets` (its registry entry says CSO consent is needed before public display; per D14 that basis text is updated in PR (c) to record that FFRH has cleared the figures for display) |
 
 ### Storage
 
@@ -387,6 +392,11 @@ the funder's own bar, and disqualifiers.
   `classification_confirmed` false.
 - The filed sector is still stored in `csr_sector_id`.
 
+**Promoted figures are public (D14).** Every sheet of every staff dataset is citable. A finding
+built on them is promoted like any other, with `is_public = true`. `is_public = false` exists for a
+row that must stay staff-only. The read policy is `is_public OR app.is_staff()`. A finding that cites
+a staff dataset without its sheet and cell marker is held, because its provenance can't be traced.
+
 **CSO side.** The staff CSO profile sheet (registration, programmes, geography, leadership) and the
 CSO funder sheets also serve CSO research. `ngo-credential-research` names them as a source: read
 them through `read_source_rows` with the CSO's name, cite the sheet, and treat them as the
@@ -396,7 +406,14 @@ organisation's self-reported record.
 `claimed`, and on never citing an aggregator. Recipient-side figures cite the recipient's
 document or the internal sheet's document id.
 
-## 5. Order, testing, coordination
+## 5. Order, execution, testing, coordination
+
+**Execution (D15).** Whoever builds these PRs uses `superpowers:subagent-driven-development` with
+the plans in `plans/`. That means a fresh implementer subagent per task, and a fresh reviewer
+subagent that checks each task against its plan and this spec before the next task starts. A
+whole-branch review follows the last task. Not inline execution, and not `executing-plans`: plan
+(b)'s 18 tasks depend on each other's names and interfaces, and a schema mistake is expensive to
+undo.
 
 **Order.**
 1. #98 (taxonomy in tags).
@@ -450,15 +467,13 @@ The three plans in `plans/` settled these. Each is argued in its plan:
   so the tool does not re-parse a large workbook on every call.
 - **Citations point at a cell**, not a row (`[source:<id>#<sheet>:<cell>]`), because side-by-side
   blocks share row numbers.
-- **The CSO workbook is split by sheet.** The profile sheet is citable as the organisation's own
-  claims. The two funder sheets are **lead-only**: the researcher may use them to find where to
-  look, but promotion holds any finding that cites them. This follows the source registry's
-  consent wording. **This needs a product decision before PR (c) merges.**
-- **Draft wording (§1):** the "draft" text on the page comes from the Health and Education
-  `source` strings. They are reworded; `status` stays `draft`.
+- **The CSO workbook.** The profile sheet is the organisation's own record. The two funder sheets
+  give grant figures from the receiving side. Both are citable and promoted as public facts (D14).
+- **Draft removed (§1), decided:** Health and Education become `status = "active"`. The word
+  "draft" is deleted from their `source` strings, with no other rewording. No Draft badge or label
+  remains.
 
 ## Out of scope
 
 - Bulk-loading all 14,000+ MCA lines. Lines are read per funder, on demand.
-- Public display of recipient-side grant amounts; that needs CSO consent.
 - A staff upload screen.

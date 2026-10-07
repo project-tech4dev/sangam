@@ -1,6 +1,6 @@
 # Funder schema consolidation — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: execute this plan with superpowers:subagent-driven-development — a fresh implementer subagent per task, a fresh reviewer subagent checking each task before the next starts, and a whole-branch review at the end. Do not use executing-plans or implement inline. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Collapse the nine funder tables to five: `funders` gains `cin` and `aliases` (and its five 0019 posture columns become reachable), `funder_csr_spend` / `funder_footprints` / `funder_partners` merge into one `funder_activity` table with a `kind` and inferred-classification columns, eligibility and proposal templates become `documents` rows. Every reader and writer (Import concepts, records, writer, promote, matcher, dossier, brief, SQL catalog, funder API, seed, prompts, skills, docs) moves with the schema.
 
@@ -58,6 +58,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 3. **Eligibility documents collide with source documents.** A policy page must be able to be both the archived source and the eligibility document (two rows), while a PDF called `annual_report` by one run and `csr_annexure` by another stays one row; a `document` finding must not create a text-less `funder_eligibility` row. → Task 13 `test_a_page_can_be_source_and_eligibility_document`, `test_two_wordings_of_a_source_type_are_one_row`, `test_a_reserved_doc_type_is_refused_on_a_document_finding`; Task 14 `test_one_eligibility_document_per_page`.
 4. **`NULLS NOT DISTINCT` keys collide across kinds, or a DB constraint aborts a whole promotion.** `_write_facts` catches only `ValidationError`; a `CheckViolation`/`UniqueViolation` loses every fact for that funder. `_row_identity` must mirror `FUNDER_ACTIVITY_KEY` (which includes `kind` and `partner_name`), and each kind's CHECK must be mirrored before the write (spend ⇒ amount, footprint ⇒ a place, partner ⇒ name, programme ⇒ resolved programme + amount, domain ⇒ classified_by, grant band order). → Task 1 `test_one_line_per_key_across_nulls_but_not_across_kinds`; Task 10 `test_row_identity_mirrors_the_activity_key`, `test_two_partners_on_one_project_are_two_lines`; Task 11 `test_a_footprint_with_no_place_is_held_not_written`; Task 12 `test_a_programme_figure_with_no_programme_is_held`; Task 4 `test_an_inverted_band_against_the_stored_one_is_held`.
 5. **Supabase holds rows the local DB does not.** The migration must copy eligibility and activity rows, refuse (not silently drop) templates with content, and grant/RLS-classify `funder_activity` — 0025/0027 will not run again. → Task 1 `test_eligibility_rows_become_one_document_per_page`, `test_a_template_with_content_stops_the_migration`, `test_a_hidden_funders_activity_reaches_only_staff`; Task 18 pre-flight counts on Supabase before `make migrate ENV=staging`.
+6. **An internal line leaks, or a writer quietly makes it public again.** `funder_activity.is_public` (D14) is a general gate: every row the writers produce is public (`DEFAULT true`), and a person may set a line to `false`. RLS must hide such a line from anon and from signed-in non-staff, while the hidden-funder rule still applies on top; no writer may touch the column, so a re-promote never flips a line a person made internal back to public. The SQL agent runs as the owner and RLS does not reach it, so the catalog note is its only guard. → Task 1 `test_an_internal_line_reaches_only_staff`; Task 2 `test_an_internal_line_is_flagged_to_the_agent`; Task 10 `test_no_writer_touches_is_public`.
 
 ---
 
@@ -65,7 +66,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 
 | File | Change | Responsibility |
 |---|---|---|
-| `db/migrations/0031_funder_consolidation.sql` | create | All of §2: funders columns, copies, `funder_activity`, `local_area_spent`, `proposals.template_id` → documents, drops, grants + RLS |
+| `db/migrations/0031_funder_consolidation.sql` | create | All of §2: funders columns, copies, `funder_activity` (with `is_public`), `local_area_spent`, `proposals.template_id` → documents, drops, grants + RLS (`is_public OR app.is_staff()`, and the hidden-funder rule) |
 | `backend/tests/test_funder_consolidation_migration.py` | create | Integration: the copy (rolled back, pre-0031 DB), the post-state, RLS |
 | `backend/tests/conftest.py` | modify | `RecordingConn`, `RecordingPool` fakes + fixtures |
 | `backend/tests/test_funder_identity.py` | create | Unit: CIN/aliases/posture, `write_funder`, matcher, legacy fold |
@@ -101,7 +102,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 
 **Interfaces:**
 - Consumes: tables `funder_identifiers` (02_schema.sql:95-103 + 0001:45), `funder_csr_spend` / `funder_footprints` / `funder_partners` (0007), `proposal_templates` / `template_items` / `proposals.template_id` (0009, constraint `proposals_template_id_fkey`), `funder_eligibility` (0021); roles `anon`, `authenticated` and `app.is_staff()` (0023–0027).
-- Produces: `funders.cin text UNIQUE`, `funders.aliases text[] NOT NULL DEFAULT '{}'`, table `funder_activity` (spec DDL verbatim), `funder_csr_years.local_area_spent numeric`, `proposals.template_id → documents(id)`, policy `funder_activity_read`; documents rows `doc_type = 'funder_eligibility'` with `content_md` sections headed exactly `## Statutory restatement`, `## Its own bar`, `## Disqualifiers` (Task 14's `EligibilityGuidelineRecord.content_md()` uses the same headings).
+- Produces: `funders.cin text UNIQUE`, `funders.aliases text[] NOT NULL DEFAULT '{}'`, table `funder_activity` (spec DDL verbatim, including `is_public boolean NOT NULL DEFAULT true`), `funder_csr_years.local_area_spent numeric`, `proposals.template_id → documents(id)`, policy `funder_activity_read`; documents rows `doc_type = 'funder_eligibility'` with `content_md` sections headed exactly `## Statutory restatement`, `## Its own bar`, `## Disqualifiers` (Task 14's `EligibilityGuidelineRecord.content_md()` uses the same headings).
 
 - [ ] **Step 1: Create the scratch database at the base migration head.**
   ```bash
@@ -366,6 +367,8 @@ Five failure modes the unit suite can pass straight through. Each has a named te
     project_count integer,
     is_ongoing boolean,
     notes text,
+    is_public boolean NOT NULL DEFAULT true,             -- false for a line a person marked internal
+                                                         -- (D14); RLS gives it to staff only
     source_key text,                                     -- source registry key, e.g. 'mca_csr'
     source_url text, source_name text, fetched_at timestamptz, as_of text,
     document_id bigint REFERENCES documents(id), archive_url text,
@@ -451,10 +454,12 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 
   -- 7. Access, as 0025 and 0027 would have classified it: a funder child, public read, hidden with a hidden
   -- funder. Their guard blocks never run again, and 0025's default privileges leave a new table closed.
+  -- On top of that, a line marked internal (is_public = false, D14) is staff-only, like documents_read.
   GRANT SELECT ON funder_activity TO anon, authenticated;
   ALTER TABLE funder_activity ENABLE ROW LEVEL SECURITY;
   CREATE POLICY funder_activity_read ON funder_activity FOR SELECT TO anon, authenticated
-    USING (EXISTS (SELECT 1 FROM public.funders f WHERE f.id = funder_id));
+    USING ((is_public OR (SELECT app.is_staff()))
+           AND EXISTS (SELECT 1 FROM public.funders f WHERE f.id = funder_id));
   ```
 - [ ] **Step 5: Run the copy tests — they pass.** `bti tests/test_funder_consolidation_migration.py -q` → `4 passed`.
 - [ ] **Step 6: Apply 0031 to the scratch DB and add the post-state tests.** `mig` → reports `0031_funder_consolidation` applied. Append to the test file:
@@ -516,8 +521,34 @@ Five failure modes the unit suite can pass straight through. Each has a named te
       assert sees("anon", "", hidden) == 0
       assert sees("anon", "", public) == 1
       assert sees("authenticated", staff_claims, hidden) == 1
+
+
+  def test_an_internal_line_reaches_only_staff(after):
+      """D14: is_public = false is staff-only; a public line stays readable to anyone."""
+      conn = after
+      f = _funder(conn, "Open Funder")
+      for partner, is_public in (("Public Partner", True), ("Internal Partner", False)):
+          conn.execute("INSERT INTO funder_activity (funder_id, kind, fiscal_year, partner_name, is_public) "
+                       "VALUES (%s, 'partner', 'FY2023-24', %s, %s)", (f, partner, is_public))
+      staff, member = uuid4(), uuid4()
+      for who, is_staff in ((staff, True), (member, False)):
+          conn.execute("INSERT INTO users (email, auth_user_id, is_staff) VALUES (%s, %s, %s)",
+                       (f"fc-{who}@rls.test", who, is_staff))
+
+      def names(role, claims):
+          with conn.transaction(force_rollback=True):
+              conn.execute("SELECT set_config('role', %s, true), set_config('request.jwt.claims', %s, true)",
+                           (role, claims))
+              return {r["partner_name"] for r in conn.execute(
+                  "SELECT partner_name FROM funder_activity WHERE funder_id = %s", (f,)).fetchall()}
+
+      assert names("anon", "") == {"Public Partner"}
+      assert names("authenticated", json.dumps({"sub": str(member)})) == {"Public Partner"}
+      assert names("authenticated", json.dumps({"sub": str(staff)})) == {"Public Partner", "Internal Partner"}
+      assert conn.execute("SELECT column_default FROM information_schema.columns WHERE table_name = "
+                          "'funder_activity' AND column_name = 'is_public'").fetchone()["column_default"] == "true"
   ```
-- [ ] **Step 7: Run.** `bti tests/test_funder_consolidation_migration.py -q` → `4 skipped` (the `before` tests, now that 0031 is applied) and `9 passed`. `bt -m "'not integration'" -q` → 0 failed (no code changed).
+- [ ] **Step 7: Run.** `bti tests/test_funder_consolidation_migration.py -q` → `4 skipped` (the `before` tests, now that 0031 is applied) and `10 passed`. `bt -m "'not integration'" -q` → 0 failed (no code changed).
 - [ ] **Step 8: Commit.**
   ```bash
   git add db/migrations/0031_funder_consolidation.sql backend/tests/test_funder_consolidation_migration.py
@@ -533,7 +564,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 - Modify: `backend/tests/test_sql_catalog.py` (append a class)
 
 **Interfaces:**
-- Produces: `CATALOG["funder_activity"]` with the columns in DDL order, `kind.values == ("spend", "footprint", "partner", "programme")`, citations `funder_id`/`partner_funder_id` → funder, `partner_org_id` → org; `DEFECTS["funder_activity"]`. Later tasks' `ConceptSpec.columns` name these columns.
+- Produces: `CATALOG["funder_activity"]` with the columns in DDL order (`is_public` after `notes`), `kind.values == ("spend", "footprint", "partner", "programme")`, citations `funder_id`/`partner_funder_id` → funder, `partner_org_id` → org; `DEFECTS["funder_activity"]`. Later tasks' `ConceptSpec.columns` name these columns.
 
 - [ ] **Step 1: Failing test.** Append to `backend/tests/test_sql_catalog.py`:
   ```python
@@ -556,6 +587,12 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 
       def test_its_sources_are_surfaced(self):
           assert "funder_activity" in cat.PROVENANCE_COLUMNS
+
+      def test_an_internal_line_is_flagged_to_the_agent(self):
+          """The SQL agent runs as the owner, so RLS never hides an internal line from it."""
+          assert cat.COLUMNS["funder_activity"]["is_public"].type == "boolean"
+          text = " ".join(cat.DEFECTS["funder_activity"]).lower()
+          assert "is_public = false" in text and "internal" in text and "where is_public" in text
   ```
   Run `bt tests/test_sql_catalog.py -q` → `KeyError: 'funder_activity'`.
 - [ ] **Step 2: Add the table.** In `_TABLES`, after the `funder_csr_years` entry:
@@ -594,6 +631,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
               Column("project_count", "integer", note="set on an aggregate: how many projects the amount covers"),
               Column("is_ongoing", "boolean"),
               Column("notes", "text"),
+              Column("is_public", "boolean", note="false for a line a person marked internal (D14): staff may read it, it is never shown publicly. Every line a writer produces is true"),
               Column("source_key", "text", note="the source registry key, e.g. 'mca_csr'"),
               Column("source_url", "text"),
               Column("source_name", "text"),
@@ -606,7 +644,8 @@ Five failure modes the unit suite can pass straight through. Each has a named te
               "Sparse: lines arrive one funder at a time from promoted research, so a missing year or kind means 'not recorded', never 'spent nothing' or 'no partners'.",
               "Rows of kind 'programme' are the funder's own programme totals: never sum them with 'spend' lines and never spread them across them; report the two side by side.",
               "domain_tag_id and theme_tag_id are inferences unless classification_confirmed is true, so a total by domain or theme must say whether it is confirmed or includes inferred lines.",
-              "A 'partner' line is a named relationship, NOT evidence that money changed hands; that is a grant.",
+              "A 'partner' line is a named relationship. Only when its amount is set does it say money changed hands: the amount (INR) is what the source, usually the recipient's own record, says the partner received from this funder that year. A partner line with no amount is not evidence of a grant.",
+              "Rows with is_public = false are internal: this tool runs as the owner, so row security does not hide them here. Add WHERE is_public to any answer that may be shown publicly, and when an internal row is shown, say it is internal and must not be shown publicly.",
           ),
       ),
   ```
@@ -1336,7 +1375,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
       locations: list[LocationRef] = []
       contacts: list[ContactOut] = []
   ```
-  `repositories/funders.py`: delete the `row["identifiers"] = …` query (`SELECT f.*` already returns `cin` and `aliases`). `frontend/lib/api/types.ts`:
+  `repositories/funders.py`: delete the `row["identifiers"] = …` query (`SELECT f.*` already returns `cin` and `aliases`). No REST route reads `funder_activity` in this plan. When one does, it reads through `PoolDep` as the caller, and the RLS policy from Task 1 (`test_an_internal_line_reaches_only_staff`) is what filters `is_public = false` lines from non-staff; it must not add its own `WHERE is_public`, which would hide them from staff too. `frontend/lib/api/types.ts`:
   ```ts
   export type FunderDetail = FunderListItem & {
     section_135_bound: boolean | null; cin: string | null; aliases: string[];
@@ -1748,6 +1787,11 @@ Five failure modes the unit suite can pass straight through. Each has a named te
           update = next(q for q in conn.sql if q.startswith("UPDATE funder_activity"))
           assert "amount = %s" in update and "domain_tag_id" not in update
 
+      def test_no_writer_touches_is_public(self):
+          from app.ingest.writer import FUNDER_ACTIVITY_KEY, FUNDER_ACTIVITY_UPDATABLE
+
+          assert "is_public" not in FUNDER_ACTIVITY_UPDATABLE and "is_public" not in FUNDER_ACTIVITY_KEY
+
       async def test_promotion_writes_the_line_with_its_domain(self, recording_conn, monkeypatch):
           from app.ingest import promote
           from app.ingest.writer import Owner
@@ -1921,6 +1965,8 @@ Five failure modes the unit suite can pass straight through. Each has a named te
                                "partner_csr1", "partner_kind", "outlay", "amount", "project_count",
                                "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of")
   _CLASSIFICATION = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note")
+  # is_public is deliberately absent: a new line takes the column's DEFAULT true, and no writer ever
+  # updates it, so a line a person marked internal (D14) stays internal through every re-promote.
   ```
   and replace `write_csr_spend` with:
   ```python
@@ -2056,7 +2102,8 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 
 **Files:**
 - Modify: `backend/app/ingest/expectations.py` (`CONCEPTS["footprint"]` 79, `["partner"]` 81; `EXTRA["footprint"]` 248; `_GRANT_NEEDS_A_RECIPIENT` 39-47; `EXTRA["grant"]` note 265-266)
-- Modify: `backend/app/ingest/records.py` (`FunderFootprintRecord` 181-195, `FunderPartnerRecord` 211-225: add `activity_kind`)
+- Modify: `backend/app/ingest/research_records.py` (`PartnerFinding` 208-222: add `amount`, `outlay`)
+- Modify: `backend/app/ingest/records.py` (`FunderFootprintRecord` 181-195, `FunderPartnerRecord` 211-225: add `activity_kind`; partner gains `amount`, `outlay`)
 - Modify: `backend/app/ingest/writer.py` (`FOOTPRINT_*`, `PARTNER_*` 306-313; `write_footprint` 387-398; `write_partner` 414-425)
 - Modify: `backend/app/ingest/promote.py` (`_row_identity` footprint/partner; branches 441-484; `_place` docstring 254-256)
 - Modify: `backend/app/ingest/brief.py` (no change to headlines), `tools/catalog_tools.py` (sections 152-159, 167-173)
@@ -2065,7 +2112,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 - Modify: `backend/tests/test_funder_activity.py`
 
 **Interfaces:**
-- Produces: `write_footprint(conn, rec, funder_id, *, program_id, state_id, district_id, document_id)`; `write_partner(conn, rec, funder_id, *, program_id, document_id)` (signature unchanged); `FunderFootprintRecord.activity_kind = "footprint"`, `FunderPartnerRecord.activity_kind = "partner"`; `catalog_baseline()` key `funder_activity` replaces three keys.
+- Produces: `write_footprint(conn, rec, funder_id, *, program_id, state_id, district_id, document_id)`; `write_partner(conn, rec, funder_id, *, program_id, document_id)` (signature unchanged); `FunderFootprintRecord.activity_kind = "footprint"`, `FunderPartnerRecord.activity_kind = "partner"`; `PartnerFinding.amount`, `.outlay: Money | None` and `FunderPartnerRecord.amount`, `.outlay: float | None` (INR), both optional, mapped to `funder_activity.amount` / `outlay`; `catalog_baseline()` key `funder_activity` replaces three keys.
 
 - [ ] **Step 1: Failing tests.** In `test_ingest.py` replace the body of `test_stated_geography_and_footprint_are_different_concepts`:
   ```python
@@ -2079,6 +2126,16 @@ Five failure modes the unit suite can pass straight through. Each has a named te
   FOOTPRINT = {"concept": "footprint", "fiscal_year": "FY2024-25", "state": "Atlantis",
                "evidence": "The programme ran in Atlantis during the year under review.",
                "source_url": "https://a.b/c", "confidence": "high"}
+  PARTNER = {"concept": "partner", "fiscal_year": "FY2024-25", "partner_name": "Harsha Trust",
+             "amount": {"value": 7.5, "unit": "lakh", "text": "Rs 7.5 lakh"},
+             "evidence": "Harsha Trust received Rs 7.5 lakh from Acme Ltd in FY2024-25.",
+             "source_url": "https://a.b/c", "confidence": "high"}
+
+
+  def _inserted(conn):
+      i = next(i for i, q in enumerate(conn.sql) if q.startswith("INSERT INTO funder_activity"))
+      cols = conn.sql[i].split("(")[1].split(")")[0].replace(" ", "").split(",")
+      return dict(zip(cols, conn.params[i], strict=True))
 
 
   class TestFootprintsAndPartners:
@@ -2118,6 +2175,46 @@ Five failure modes the unit suite can pass straight through. Each has a named te
           values = conn.params[insert]
           assert values[cols.index("state_location_id")] == 3 and values[cols.index("location_id")] == 8
 
+      def test_a_partner_line_may_carry_an_amount_and_need_not(self):
+          names = {f.name: f for f in expected_fields("partner")}
+          assert {"amount", "outlay"} <= set(names)
+          assert not names["amount"].required and not names["outlay"].required
+
+      async def test_a_partner_amount_lands_on_the_partner_line(self, recording_conn):
+          from app.ingest import promote
+          from app.ingest.writer import Owner
+
+          conn = recording_conn([None, None])
+          report = {"held": [], "written": {}}
+          await promote._write_facts(conn, ROW, [PARTNER], Owner.funder(1), {}, {}, report, order=("partner",))
+          row = _inserted(conn)
+          assert (row["kind"], row["partner_name"], row["amount"]) == ("partner", "Harsha Trust", 750_000)
+          assert report["written"]["funder_activity (partner)"]["added"] == 1
+
+      async def test_a_partner_without_an_amount_is_still_written(self, recording_conn):
+          from app.ingest import promote
+          from app.ingest.writer import Owner
+
+          conn = recording_conn([None, None])
+          report = {"held": [], "written": {}}
+          bare = {k: v for k, v in PARTNER.items() if k != "amount"}
+          await promote._write_facts(conn, ROW, [bare], Owner.funder(1), {}, {}, report, order=("partner",))
+          row = _inserted(conn)
+          assert row["kind"] == "partner" and "amount" not in row     # NULL: only spend requires one
+          assert report["held"] == []
+
+      async def test_a_re_promote_updates_a_partner_amount(self, recording_conn):
+          from app.ingest.records import FunderPartnerRecord
+          from app.ingest.writer import FUNDER_ACTIVITY_UPDATABLE, write_partner
+
+          held = {**dict.fromkeys(FUNDER_ACTIVITY_UPDATABLE), "amount": 500_000}
+          conn = recording_conn([{"classification_confirmed": False}, held])
+          rec = FunderPartnerRecord(funder_name="Acme Ltd", fiscal_year="FY2024-25", partner_name="Harsha Trust",
+                                    amount=750_000, source_url="https://a.b/c", source_name="t", fetched_at=NOW)
+          assert (await write_partner(conn, rec, 1, program_id=None, document_id=None))[0] == "updated"
+          update = next(q for q in conn.sql if q.startswith("UPDATE funder_activity"))
+          assert "amount = %s" in update
+
       async def test_the_baseline_counts_funder_activity(self, recording_conn, recording_pool, monkeypatch):
           from app.ingest import runner
 
@@ -2137,11 +2234,23 @@ Five failure modes the unit suite can pass straight through. Each has a named te
       "partner": ConceptSpec(
           "funder_activity", "Implementing partners", row_filter=("kind", "partner"),
           columns=("fiscal_year", "program_id", "partner_name", "partner_canonical", "partner_csr1",
-                   "partner_kind", "notes"),
+                   "partner_kind", "outlay", "amount", "notes"),
       ),
   ```
+  `REQUIRED["partner"]` is unchanged: `amount` and `outlay` are optional on a partner line (the 0031 CHECK requires an amount only on `kind = 'spend'`). The catalog columns, the finding fields and the record fields move together, so the `[partner]` case of the model-vs-table parametrisation in `test_ingest.py` stays green.
   `EXTRA["footprint"] = (_DISTRICT,)` (state now comes from `state_location_id` through `NAMED_AS`, required by `REQUIRED["footprint"]`). In the `_GRANT_NEEDS_A_RECIPIENT` comment and string replace `funder_partners` with `funder_activity (kind 'partner')`; in `EXTRA["grant"]`'s note likewise.
-- [ ] **Step 3: Records.** Add `activity_kind: ClassVar[str] = "footprint"` to `FunderFootprintRecord` and `activity_kind: ClassVar[str] = "partner"` to `FunderPartnerRecord`; footprint docstring → `"""Where a theme actually ran. A line needs a place, so a place that will not resolve is a line that cannot be written — say so, do not guess."""`.
+- [ ] **Step 3: Findings and records.** In `research_records.py`, `PartnerFinding` gains, after `partner_csr1`:
+  ```python
+      outlay: Money | None = Field(
+          default=None, description="the amount committed or sanctioned to the partner, when stated beside the grant"
+      )
+      amount: Money | None = Field(
+          default=None,
+          description="what the partner received from this funder in the year, as printed with its unit; "
+                      "usually from the recipient's own record. Null means not stated, never zero",
+      )
+  ```
+  In `records.py`, `FunderPartnerRecord` gains `outlay: float | None = Field(default=None, ge=0, description="INR")` and `amount: float | None = Field(default=None, ge=0, description="INR")`, and its docstring becomes `"""A named partner. With an amount, what the partner received from this funder that year (INR); without one, NOT proof that money changed hands."""`. Add `activity_kind: ClassVar[str] = "footprint"` to `FunderFootprintRecord` and `activity_kind: ClassVar[str] = "partner"` to `FunderPartnerRecord`; footprint docstring → `"""Where a theme actually ran. A line needs a place, so a place that will not resolve is a line that cannot be written — say so, do not guess."""`.
 - [ ] **Step 4: Writer.** Delete `FOOTPRINT_KEY`, `FOOTPRINT_UPDATABLE`, `PARTNER_KEY`, `PARTNER_UPDATABLE`. Replace the two writers:
   ```python
   async def write_footprint(
@@ -2165,12 +2274,14 @@ Five failure modes the unit suite can pass straight through. Each has a named te
                           partner_name=rec.partner_name)
       proposed = {
           "partner_canonical": rec.partner_canonical or rec.partner_name,
-          "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1, "notes": rec.notes,
+          "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1,
+          "outlay": rec.outlay, "amount": rec.amount, "notes": rec.notes,
           "source_url": rec.source_url, "source_name": rec.source_name,
           "fetched_at": rec.fetched_at, "as_of": rec.as_of,
       }
       return await _write_activity(conn, key, proposed, document_id)
   ```
+  `amount` and `outlay` are already in `FUNDER_ACTIVITY_UPDATABLE` and not in `FUNDER_ACTIVITY_KEY`, so a re-promote with a new figure updates the line in place, exactly as a spend amount does; `classification_confirmed` protects only the four classification columns, on partner lines as on spend lines. A proposed NULL never erases a stored amount (`_diff`).
 - [ ] **Step 5: Promote.** `_row_identity`: footprint → `_activity_identity("footprint", year, program_id, None, state_id, district_id, None, None, None)`; partner → `_activity_identity("partner", year, program_id, None, None, None, None, None, f.partner_name)`. Footprint branch:
   ```python
                   elif concept == "footprint":
@@ -2191,7 +2302,23 @@ Five failure modes the unit suite can pass straight through. Each has a named te
                       )
                       _count(report, "funder_activity (footprint)", status)
   ```
-  Partner branch: `_count(report, "funder_activity (partner)", status)`. `_place` docstring: replace "funder_footprints.location_id is NOT NULL" with "a footprint line needs a place".
+  Partner branch:
+  ```python
+                  elif concept == "partner":
+                      rec = FunderPartnerRecord(
+                          fiscal_year=f.fiscal_year, partner_name=f.partner_name,
+                          partner_canonical=f.partner_canonical, partner_kind=f.partner_kind,
+                          partner_csr1=f.partner_csr1,
+                          outlay=f.outlay.inr if f.outlay else None,
+                          amount=f.amount.inr if f.amount else None,
+                          notes=f.notes, as_of=f.fiscal_year, **base,
+                      )
+                      status, _ = await write_partner(
+                          conn, rec, funder_id, program_id=program_id, document_id=document_id
+                      )
+                      _count(report, "funder_activity (partner)", status)
+  ```
+  The finding keeps the figure as printed with its unit; `Money.inr` is the one conversion to rupees. `_place` docstring: replace "funder_footprints.location_id is NOT NULL" with "a footprint line needs a place".
 - [ ] **Step 6: Dossier, runner, geography.** Dossier sections:
   ```python
       (
@@ -2205,16 +2332,16 @@ Five failure modes the unit suite can pass straight through. Each has a named te
       ),
       …
       (
-          "funder_activity kind='partner' (named, not proof money changed hands)",
+          "funder_activity kind='partner' (named; an amount, INR, is what the partner received)",
           """
-          SELECT fiscal_year, partner_name, partner_canonical, partner_kind
+          SELECT fiscal_year, partner_name, partner_canonical, partner_kind, outlay, amount
           FROM funder_activity WHERE funder_id = %s AND kind = 'partner' ORDER BY fiscal_year, id
           """,
       ),
   ```
   `runner.catalog_baseline`: replace the three count lines with `"(SELECT count(*) FROM funder_activity) AS funder_activity, "`. `geography.py` docstring line 4-5: "…and a footprint line needs a place, so a footprint with an unresolvable place cannot be written at all."
 - [ ] **Step 7: Run.** `bt -m "'not integration'" -q` → 0 failed. Then `bti tests/test_funder_activity.py -m integration -q` → `TestTheKeyAgainstPostgres` passes on `sangam_fc`. `ruff check .` clean.
-- [ ] **Step 8: Commit.** `git add -A backend && git commit -m "feat(ingest): footprints and partners are funder_activity rows" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`
+- [ ] **Step 8: Commit.** `git add -A backend && git commit -m "feat(ingest): footprints and partners are funder_activity rows; a partner line may carry its amount" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"`
 
 ---
 
@@ -2768,7 +2895,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
   3. **funder_activity, kind `spend`** (`csr_spend`) — the highest-value target. Per project *or* per aggregate: FY, project name, filed sector, state, district, designation, partner name and the partner's CSR-1, implementation mode, outlay, amount, project count. An aggregate has `project_name = null` and a `project_count`. **Never divide an aggregate across projects.** Every line carries a **domain** — `livelihoods`, `health`, `education`, `environment` or `others` — chosen from the project name and the named partner, not the filed sector; relief, sports, administration, unlabelled and multi-sector lines are `others`. Add a **theme** (a theme or sub-theme code) only where the evidence supports one, with `classification_note` quoting it. `classified_by` says what it rests on. These are inferences: say so.
   4. **funder_activity, kind `footprint`** (`footprint`) — where a theme actually ran, by FY, at the most precise level the source states. "Barpeta and Kamrup districts of Assam" is two districts, not one state. **Never invent a district from a city or a programme name.**
   5. **funder_locations** (`stated_geography`) — where the funder *says* it prioritises, role `priority`. Not proof of spending.
-  6. **funder_activity, kind `partner`** (`partner`) — per FY and programme: partner name as printed, a canonical spelling, kind (`ngo`, `foundation`, `university`, `research`, `government`, `armed_forces`, `hospital`, `network`, `company`, `other`), the partner's CSR-1 if stated. Search both directions. Keep the year — repeated appearances mean renewal.
+  6. **funder_activity, kind `partner`** (`partner`) — per FY and programme: partner name as printed, a canonical spelling, kind (`ngo`, `foundation`, `university`, `research`, `government`, `armed_forces`, `hospital`, `network`, `company`, `other`), the partner's CSR-1 if stated, and the **amount** the partner received from this funder in the year when a source states it (as printed, with its unit — usually the recipient's own record). Search both directions. Keep the year — repeated appearances mean renewal.
   7. **funder_activity, kind `programme`** (`programme_spend`) — the funder's **own** figure for a programme component in a year, from its own report. It is never added to the spend lines and never spread across them.
   ```
   Renumber the remaining items 8-15 and change "thirteen concepts across fourteen entries" to "fourteen concepts across fifteen entries". Add after the rfps item: "15. **eligibility** (`eligibility_guideline`) — the funder's standing eligibility, **verbatim**, one finding per page: the statutory restatement, its own bar, and disqualifiers, each in its own field. It becomes a document of type `funder_eligibility`. A page that states none is `not_stated` with its URL."
@@ -2776,7 +2903,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 - [ ] **Step 3: Skills.** `catalog-mapping/SKILL.md` funder table — replace the rows from "project and sector spend" to "hard disqualifiers" with:
   ```markdown
   | project and sector spend | `funder_activity`, `kind='spend'`, with `domain_tag_id` / `theme_tag_id` inferred and `classified_by`, `classification_note` saying from what |
-  | implementing partners | `funder_activity`, `kind='partner'` |
+  | implementing partners, and what each received in a year when stated | `funder_activity`, `kind='partner'`, with `amount` (INR) |
   | the funder's own programme split | `funder_activity`, `kind='programme'` — never summed with spend lines |
   | the funder's standing eligibility — statutory restatement, its own bar, disqualifiers | one `documents` row, `doc_type='funder_eligibility'`, the text verbatim under three headings, per page |
   | CIN and other names it files under | `funders.cin`, `funders.aliases` |
@@ -2910,7 +3037,7 @@ Five failure modes the unit suite can pass straight through. Each has a named te
   SELECT upper(regexp_replace(id_value, '\s', '', 'g')) cin, count(DISTINCT funder_id)
   FROM funder_identifiers WHERE id_type = 'cin' GROUP BY 1 HAVING count(DISTINCT funder_id) > 1;
   ```
-  Templates or template items above zero stop the migration by design; a CIN shared by two funders would violate `funders.cin UNIQUE` — resolve it first. Then a backup, then `make migrate ENV=staging`. Note in the PR that "staff only" and RLS for the new table follow #92's rules (granted public read, hidden with a hidden funder), and that #89's author reviews the eligibility change.
+  Templates or template items above zero stop the migration by design; a CIN shared by two funders would violate `funders.cin UNIQUE` — resolve it first. Then a backup, then `make migrate ENV=staging`. Note in the PR that "staff only" and RLS for the new table follow #92's rules (granted public read, hidden with a hidden funder), that a line with `is_public = false` is readable by staff only (D14) while every line the writers produce is public, and that #89's author reviews the eligibility change.
 - [ ] **Step 7: Clean up.** `docker exec sangam-postgres-1 dropdb -U sangam sangam_fc`; `rm /Users/vinod/GitHub/fc-env.sh`.
 
 ---
@@ -2947,6 +3074,8 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 | §3 tests (`test_ingest.py` parametrisations, `WRITE_ORDER`, `_row_identity`, `MERGEABLE`, `apart`, identifier rejection; `test_sql_catalog.py`; `test_migration_integrity.py`; `test_sql_integration.py`) | 4, 5, 9-14, 17, 18. `test_migration_integrity.py` needs no edit (it asserts documents, orgs and funders, which 0031 keeps); the migration's own integrity is the new `test_funder_consolidation_migration.py`. |
 | §3 docs `DATA_PLATFORM.md`, `INGEST.md`; CLAUDE.md, SQL_AGENT.md counts | 16, 17 |
 | §2 step 7 / #92 — classify `funder_activity` | 1 (grant, RLS, policy, test) |
+| §4 recipient-side grant amounts per partner reach `funder_activity` | 11 (`partner` concept gains `amount`/`outlay`; `test_a_partner_amount_lands_on_the_partner_line`, `test_a_partner_without_an_amount_is_still_written`, `test_a_re_promote_updates_a_partner_amount`), 2 (defect wording), 15 (prompt, skill) |
+| D14 — `funder_activity.is_public`; read policy `is_public OR app.is_staff()` with the hidden-funder rule | 1 (column, policy, `test_an_internal_line_reaches_only_staff`), 2 (catalog column and note), 6 (RLS filters for REST), 10 (no writer touches it) |
 
 **Ambiguities resolved:**
 1. **Dedupe key.** The spec says `(source_url, doc_type)`. Taken literally, one PDF that two research runs call `annual_report` and `csr_annexure` becomes two rows. The plan keys on `(source_url, doc-type class)`: the class is the doc_type itself for the three reserved types and one shared class for all other types. The spec's stated purpose still holds — a policy page can be both the source document and the eligibility document.
@@ -2959,3 +3088,5 @@ Five failure modes the unit suite can pass straight through. Each has a named te
 8. **CIN matching (D7).** A CIN hit merges only when the names agree apart from boilerplate and both or neither are a foundation or trust. Anything else falls through to the name steps. Promotion holds back a CIN that another row already has, rather than violating `UNIQUE`.
 9. **Detail API** adds `aliases` as well as `cin`. Dropping `identifiers` would otherwise lose the name aliases the API returned before.
 10. **Counts** assume #98 is merged: 36 catalog tables, 9 of them from migrations, 21 with provenance. Task 17 has the executor print them, so a different base shows up as a mismatch.
+11. **`is_public` is a mechanism, not a source rule.** The spec adds the column and the policy. This plan gives every written line the default `true`, keeps the column out of every writer so a person's `false` survives re-promotion, and adds no source whose rows default to internal.
+12. **A partner line may carry its amount.** Recipient-side grant figures, per partner and year, need a catalog home, and `grants` has no writer (its `org_id` is NOT NULL and the recipient is not resolved at promotion). The `partner` concept therefore gains optional `amount` and `outlay`, mapped to `funder_activity.amount` / `outlay`, which 0031 already has. Only `kind = 'spend'` requires an amount. A re-promote updates a partner amount as it updates a spend amount; `classification_confirmed` guards only the classification columns, on every kind.

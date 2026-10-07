@@ -1,6 +1,6 @@
 # Staff-only CSR sources, layout profiles and the intake skill — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: execute this plan with superpowers:subagent-driven-development — a fresh implementer subagent per task, a fresh reviewer subagent checking each task before the next starts, and a whole-branch review at the end. Do not use executing-plans or implement inline. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Three confidential spreadsheets go into a private `staff-sources` bucket. Each file gets a private `documents` row. The Import researcher reads every sheet of every file through a declared **layout profile**, using one tool, `read_source_rows`. Rows come back normalised to rupees, and every row is cited. The `funder-intake-research` skill is rewritten generically: source order, the eligibility guideline, the classification rule and programme rows. The `ngo-credential-research` skill names the staff CSO workbook as a source.
 
@@ -14,17 +14,18 @@
   - inserts one private `documents` row per object.
 - **Read path.** `app/ingest/staff_sources.py` lists the datasets (`repositories/documents.py`), finds a funder's aliases (`repositories/funders.py`), streams the sidecar and filters by name. It falls back to re-parsing the workbook when the sidecar is stale. It renders cited lines.
 - **The tool.** `read_source_rows` in `app/ingest/tools/pipeline_tools.py` wraps that read path. It goes on the `entity-researcher` subagent.
-- **Promotion.** It maps a finding that cites a staff dataset onto that dataset's existing private row. It withholds any finding that cites a lead-only sheet.
+- **Promotion.** It maps a finding that cites a staff dataset onto that dataset's existing private row. Facts promoted from any sheet are public like any other row (D14); only the files stay staff-only. It holds a finding that cites a staff dataset without its `[source:…]` marker, because then the fact cannot be traced to its sheet and cell.
 
 **Tech Stack:** Python 3.12, openpyxl (new runtime dependency), psycopg 3, FastAPI, deepagents/LangGraph, Supabase Storage REST (`app/integrations/storage.py`), Postgres migrations (`db/migrations/*.sql`), Next.js (one label in `toolLabels.ts`), pytest (`asyncio_mode = "auto"`).
 
-**Spec:** features-plans/data-model/2026-10-07-funder-model-consolidation.md (§4, §5; D8, D9, D11, D12, D13)
+**Spec:** features-plans/data-model/2026-10-07-funder-model-consolidation.md (§4, §5; D8, D9, D11, D12, D13, D14)
 
 ## Global Constraints
 
 - **This PR comes after PR (b).** It assumes all of the following exist:
   - `funders.aliases text[]`;
   - `funder_activity` with kinds `spend|footprint|partner|programme` and the columns `classified_by`, `classification_note` and `classification_confirmed`;
+  - a `partner` finding with optional `amount` and `outlay` (`Money`), written to `funder_activity.amount` / `outlay` in rupees (plan (b) Task 11);
   - eligibility as a `documents` row with `doc_type = 'funder_eligibility'`;
   - `doc_type = 'source_dataset'` permitted wherever (b) constrains `doc_type`.
 
@@ -45,7 +46,8 @@
   - every row is cited, as `[source:<document_id>#<sheet>:<cell>]`;
   - the tool is registered, named in the prompt that owns it, and labelled in `frontend/features/ingest/lib/toolLabels.ts`.
 - **No row content in any log line or error string.** A `LayoutError` names a sheet, a cell and a header text, never a data value.
-- **`DISPATCHABLE` and the source registry JSON stay unchanged.**
+- **`DISPATCHABLE` stays unchanged, and so does every `access_rule` in the source registry JSON.** The one registry edit is the `basis` text of `ffrh_funder_datasets` (Task 10, spec D14).
+- **The files are staff-only; promoted facts are not (D14).** The workbooks, their sidecars and their `documents` rows are readable by staff alone. A fact a researcher saves from any sheet, with its marker, is promoted as a public row like any other. No sheet is withheld and none is labelled internal.
 - **Schema changes go in `db/migrations/`, never `db/init/02_schema.sql`.** The migration is numbered after (b)'s; renumber it at merge if branches land in a different order.
 - **Unit tests never touch a database.** Monkeypatch `repositories/` functions. Only tests marked `integration` use the compose Postgres.
 - **Code style:** ruff, line length 110, py312. `cd backend && ruff check .` is clean after every task.
@@ -78,11 +80,11 @@ Five failure modes the happy-path tests would miss. Each one has a test in the t
      - `test_a_staff_object_on_a_public_row_is_never_signed`, for the route (Task 6);
      - `test_the_bucket_policy_is_staff_and_select_only` (Task 6);
      - `test_read_source_rows_is_the_researchers_not_the_supervisors` (Task 9).
-5. **Confidential data leaks into fixtures, logs, `content_md` or public tables.**
+5. **The raw files leak into fixtures, logs, `content_md` or a public `documents` row, or a promoted fact loses its trail to the sheet.**
    - The dataset row has no `content_md`: `test_the_dataset_row_holds_no_content` (Task 7).
    - Nothing is logged: `test_nothing_from_a_row_reaches_the_log` (Task 7).
    - No spreadsheet is tracked: `test_no_spreadsheet_is_tracked` (Task 12).
-   - A lead-only (CSO-consent) row cannot be promoted to a public table: `test_a_finding_citing_a_lead_only_sheet_is_held` and `test_a_staff_finding_without_its_marker_is_held` (Task 10).
+   - A finding citing a staff dataset without its sheet/cell marker is held, since its provenance stops at the file: `test_a_staff_finding_without_its_marker_is_held` (Task 10). A finding citing a CSO funder sheet with its marker is promoted like any other: `test_a_finding_citing_a_cso_funder_sheet_is_kept` (Task 10).
    - A staff URL never creates a public `documents` row: `test_a_document_finding_at_a_staff_url_adds_no_row` (Task 10).
    - Contact details are dropped at parse time: `test_contact_details_never_leave_the_parser` (Task 4).
 
@@ -97,7 +99,7 @@ Five failure modes the happy-path tests would miss. Each one has a test in the t
 | `backend/app/ingest/data/source_layouts/mca_csr_analytics_report.json` | create | Profile: 11 per-year sheets, table, crore, D and P both `State` |
 | `backend/app/ingest/data/source_layouts/mca_csr_dataful_subset.json` | create | Profile: one sheet, table, crore |
 | `backend/app/ingest/data/source_layouts/cso_programmes_and_funders.json` | create | Profile: `CSO Profile` table, `CSO Funder Details` blocks, `CSO Current funder and Partners` sections |
-| `backend/app/ingest/staff_sources.py` | create | Keys, the `.invalid` source URL, sidecar encode/decode with cache, `register_dataset`, `search` and rendering, `withhold_lead_only` |
+| `backend/app/ingest/staff_sources.py` | create | Keys, the `.invalid` source URL, sidecar encode/decode with cache, `register_dataset`, `search` and rendering, `hold_unmarked` |
 | `backend/app/repositories/documents.py` | modify | `insert_source_dataset`, `source_dataset_by_hash`, `list_source_datasets` |
 | `backend/app/repositories/funders.py` | modify | `name_variants` |
 | `backend/app/integrations/storage.py` | modify | `STAFF_SOURCES`, `BUCKETS`; `split()` learns the bucket |
@@ -109,7 +111,8 @@ Five failure modes the happy-path tests would miss. Each one has a test in the t
 | `backend/app/ingest/agent.py` | modify | Register on `RESEARCH_TOOLS` |
 | `backend/app/ingest/prompts/entity_researcher.md` | modify | Name the tool and its rules |
 | `backend/app/ingest/instructions.md` | modify | Source priority line; "Tools you do NOT have" row |
-| `backend/app/ingest/promote.py` | modify | Staff URLs map to the dataset row; lead-only findings are held |
+| `backend/app/ingest/promote.py` | modify | Staff URLs map to the dataset row; a staff finding without its marker is held |
+| `backend/app/ingest/data/sources/funders.json` | modify | `ffrh_funder_datasets.basis`: FFRH has cleared the figures for display (D14) |
 | `frontend/features/ingest/lib/toolLabels.ts` | modify | Label |
 | `backend/app/ingest/skills/funder-intake-research/SKILL.md` | rewrite | §4 "The skill" |
 | `backend/app/ingest/skills/ngo-credential-research/SKILL.md` | modify | The staff CSO workbook as a source |
@@ -210,14 +213,13 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```python
 Layout = Literal["table", "blocks_by_column", "sections_by_heading"]
 Unit = Literal["inr", "lakh", "crore"]
-Use = Literal["citable", "lead_only"]
 class LayoutError(ValueError): ...
 @dataclass(frozen=True) class Money: rupees: Decimal | None; raw: str; unit: Unit
 @dataclass(frozen=True) class ColumnRule: field: str; header: tuple[str, ...]; label: str; column: str | None
 @dataclass(frozen=True) class TableSpec: heading: tuple[str, ...]; kind: str; columns: tuple[ColumnRule, ...]
 @dataclass(frozen=True) class SheetProfile: ...   # see code
 @dataclass(frozen=True) class LayoutProfile: name; source_key; filename_pattern; load; sheets; digest
-@dataclass class SourceRow: sheet; cell; kind; use; text; money; fiscal_year; period; mode; details; context
+@dataclass class SourceRow: sheet; cell; kind; text; money; fiscal_year; period; mode; details; context
 def parse_amount(value: Any, unit: Unit) -> Money
 def parse_fiscal_year(value: Any) -> tuple[str | None, str | None]   # (FY2023-24, None) or (None, raw period)
 def parse_mode(value: Any) -> str                                      # one of MODES
@@ -327,7 +329,7 @@ def test_a_term_under_three_letters_is_dropped():
 
 
 def _minimal(**sheet):
-    base = {"layout": "table", "sheet": "S", "use": "citable", "amount_unit": "crore",
+    base = {"layout": "table", "sheet": "S", "amount_unit": "crore",
             "columns": [{"column": "A", "header": "Name", "field": "company"}]}
     return {"name": "x", "source_key": "mca_csr", "filename_pattern": "x", "sheets": [{**base, **sheet}]}
 
@@ -410,7 +412,6 @@ from openpyxl.utils import column_index_from_string, get_column_letter
 
 Layout = Literal["table", "blocks_by_column", "sections_by_heading"]
 Unit = Literal["inr", "lakh", "crore"]
-Use = Literal["citable", "lead_only"]
 
 LAYOUTS: tuple[str, ...] = ("table", "blocks_by_column", "sections_by_heading")
 RUPEES_PER: dict[str, Decimal] = {"inr": Decimal(1), "lakh": Decimal(100_000), "crore": Decimal(10_000_000)}
@@ -574,7 +575,6 @@ class SourceRow:
     sheet: str
     cell: str
     kind: str
-    use: Use
     text: dict[str, str] = field(default_factory=dict)
     money: dict[str, Money] = field(default_factory=dict)
     fiscal_year: str | None = None
@@ -592,7 +592,7 @@ class SourceRow:
 
     def to_json(self) -> dict[str, Any]:
         return {
-            "sheet": self.sheet, "cell": self.cell, "kind": self.kind, "use": self.use,
+            "sheet": self.sheet, "cell": self.cell, "kind": self.kind,
             "text": self.text, "money": {k: m.to_json() for k, m in self.money.items()},
             "fiscal_year": self.fiscal_year, "period": self.period, "mode": self.mode,
             "details": self.details, "context": self.context, "k": self.search_key(),
@@ -601,7 +601,7 @@ class SourceRow:
     @classmethod
     def from_json(cls, d: dict[str, Any]) -> SourceRow:
         return cls(
-            sheet=d["sheet"], cell=d["cell"], kind=d["kind"], use=d["use"], text=d["text"],
+            sheet=d["sheet"], cell=d["cell"], kind=d["kind"], text=d["text"],
             money={k: Money.from_json(m) for k, m in d["money"].items()},
             fiscal_year=d["fiscal_year"], period=d["period"], mode=d["mode"],
             details=d["details"], context=d["context"],
@@ -629,7 +629,6 @@ class TableSpec:
 @dataclass(frozen=True)
 class SheetProfile:
     layout: Layout
-    use: Use
     amount_unit: Unit
     kind: str = "line"
     sheet: str | None = None
@@ -712,8 +711,6 @@ def parse_profile(raw: dict[str, Any]) -> LayoutProfile:
             raise LayoutError(f"{where}: give exactly one of sheet, sheet_pattern")
         if s.get("amount_unit") not in RUPEES_PER:
             raise LayoutError(f"{where}: amount_unit must be inr, lakh or crore")
-        if s.get("use") not in ("citable", "lead_only"):
-            raise LayoutError(f"{where}: use must be citable or lead_only")
         positional = layout != "blocks_by_column"
         columns = tuple(_rule(c, positional=positional, where=where) for c in s.get("columns", ()))
         tables = tuple(
@@ -734,7 +731,7 @@ def parse_profile(raw: dict[str, Any]) -> LayoutProfile:
             if len(set(letters)) != len(letters):
                 raise LayoutError(f"{where}: a column letter is mapped twice")
         sheets.append(SheetProfile(
-            layout=layout, use=s["use"], amount_unit=s["amount_unit"], kind=s.get("kind", "line"),
+            layout=layout, amount_unit=s["amount_unit"], kind=s.get("kind", "line"),
             sheet=s.get("sheet"), sheet_pattern=s.get("sheet_pattern"),
             header_row=s.get("header_row", 1), title_row=s.get("title_row"),
             block_start_header=tuple(_norm(h) for h in s.get("block_start_header", ())),
@@ -799,7 +796,7 @@ def _row(
     context: dict[str, str] | None = None, fixed: dict[str, str | None] | None = None,
 ) -> SourceRow | None:
     """One SourceRow from (rule, value) pairs, or None when every mapped cell is empty."""
-    row = SourceRow(sheet=sheet, cell=cell, kind=kind, use=spec.use, context=dict(context or {}))
+    row = SourceRow(sheet=sheet, cell=cell, kind=kind, context=dict(context or {}))
     seen = False
     for rule, value in cells:
         if rule.field == "omit":
@@ -1121,7 +1118,6 @@ def test_the_dataful_subset_reads():
     assert foundation.money["amount"].rupees == Decimal("0")      # a filed zero stays zero
     assert "state" not in foundation.text and foundation.mode == "not_stated"
     assert foundation.details == {"Group Company": "Kestrel", "Notes": "filed late"}
-    assert all(r.use == "citable" for r in rows)
 ```
 
 - [ ] **Step 3: Run the tests and confirm they fail**
@@ -1145,7 +1141,6 @@ Create `backend/app/ingest/data/source_layouts/mca_csr_analytics_report.json`:
       "layout": "table",
       "header_row": 1,
       "amount_unit": "crore",
-      "use": "citable",
       "kind": "line",
       "columns": [
         {"column": "A", "header": "Year", "field": "fiscal_year"},
@@ -1188,7 +1183,6 @@ Create `backend/app/ingest/data/source_layouts/mca_csr_dataful_subset.json`:
       "layout": "table",
       "header_row": 1,
       "amount_unit": "crore",
-      "use": "citable",
       "kind": "line",
       "columns": [
         {"column": "A", "header": "Group Company", "field": "detail"},
@@ -1412,11 +1406,11 @@ def _blocks(**kw):
     return {r.cell: r for r in rows if r.sheet == "CSO Funder Details"}
 
 
-def test_the_profile_sheet_is_one_citable_row_per_cso():
+def test_the_profile_sheet_is_one_row_per_cso():
     rows = [r for r in layouts.read_rows(cso_workbook(include=("profile",)), _cso()) if r.sheet == "CSO Profile"]
-    assert [(r.cell, r.text["cso"], r.use, r.kind) for r in rows] == [
-        ("A3", "Larkspur Learning Trust", "citable", "profile"),
-        ("A4", "Riverbend Collective", "citable", "profile"),
+    assert [(r.cell, r.text["cso"], r.kind) for r in rows] == [
+        ("A3", "Larkspur Learning Trust", "profile"),
+        ("A4", "Riverbend Collective", "profile"),
     ]
     assert rows[0].details["Legal Status & Registration"] == "Public Charitable Trust, reg. TEST-0001"
     assert rows[0].details["Leadership"] == "Founder: A. Example"
@@ -1433,7 +1427,7 @@ def test_blocks_are_found_by_their_header_not_their_merge():
     assert {c for c in found} == {"B3", "B4", "B6", "B10", "B11", "F3", "K3", "K4", "K5"}
     assert found["K3"].text["cso"] == "Moss Valley Society"      # title merge K1:M1, block K..N
     assert found["K3"].money["amount"].rupees == Decimal("12000000")
-    assert all(r.use == "lead_only" and r.kind == "funder" for r in found.values())
+    assert all(r.kind == "funder" for r in found.values())
 
 
 def test_a_five_column_block_keeps_its_purpose():
@@ -1497,7 +1491,6 @@ Create `backend/app/ingest/data/source_layouts/cso_programmes_and_funders.json`:
       "layout": "table",
       "header_row": 2,
       "amount_unit": "inr",
-      "use": "citable",
       "kind": "profile",
       "columns": [
         {"column": "A", "header": "S.No", "field": "omit"},
@@ -1523,7 +1516,6 @@ Create `backend/app/ingest/data/source_layouts/cso_programmes_and_funders.json`:
       "block_start_header": ["Funder"],
       "title_field": "cso",
       "amount_unit": "inr",
-      "use": "lead_only",
       "kind": "funder",
       "columns": [
         {"header": "Funder", "field": "funder"},
@@ -1702,7 +1694,6 @@ def test_the_sheet_note_and_type_codes_travel_with_every_row():
     assert row.text["funder_type"] == "corporate CSR (CSR)"
     assert _sections()["A16"].text["funder_type"] == "foreign (F)"
     assert (row.fiscal_year, row.period) == (None, "2023–2024")
-    assert row.use == "lead_only"
 
 
 def test_an_unknown_section_heading_is_an_error():
@@ -1734,7 +1725,6 @@ Append this object to `"sheets"` in `cso_programmes_and_funders.json`:
       "title_field": "cso",
       "note_cell": "A2",
       "amount_unit": "lakh",
-      "use": "lead_only",
       "kind": "funder",
       "codes": {"funder_type": {"D": "domestic", "F": "foreign", "G": "government", "CSR": "corporate CSR"}},
       "tables": [
@@ -2195,10 +2185,12 @@ async def test_company_figures_appear_once_per_company_year(world):
     assert "CSR spent ₹3,000,000 (as printed: '0.3' crore)" in out
 
 
-async def test_lead_only_sheets_say_so(world):
+async def test_every_sheet_is_headed_and_none_is_withheld(world):
+    """D14: the CSO funder sheets are cited and saved like the filings; no sheet carries a warning."""
     out = await staff_sources.search(object(), "Kestrel Foundation", source_keys=["ffrh_funder_datasets"])
-    assert "### sheet 'CSO Funder Details' — LEAD ONLY" in out
-    assert "do not save them as findings" in out
+    assert "### sheet 'CSO Funder Details'" in out
+    assert "### sheet 'CSO Current funder and Partners'" in out
+    assert "do not save" not in out
     assert "### sheet 'CSO Profile'" not in out  # Kestrel is not a CSO
 
 
@@ -2457,10 +2449,6 @@ LABEL = {
     "outlay": "outlay", "amount": "amount", "avg_net_profit": "average net profit",
     "prescribed_csr": "prescribed CSR", "csr_spent": "CSR spent", "local_area_spent": "local-area spent",
 }
-LEAD_ONLY = (
-    "LEAD ONLY — {basis} Use these rows to decide what to look for; do not save them as findings "
-    "and do not repeat them in a summary."
-)
 
 
 def object_key(data: bytes, stored_name: str) -> str:
@@ -2571,13 +2559,9 @@ def render_company_year(doc_id: int, row: layouts.SourceRow) -> str:
             f"(the filing repeats these on every project line; stated once here)")
 
 
-def _sheet_heading(sheet: str, use: str, source_key: str, note: str | None) -> str:
-    if use == "citable":
-        head = f"### sheet {sheet!r} — CITABLE"
-    else:
-        basis = SOURCES[source_key].basis if source_key in SOURCES else ""
-        head = f"### sheet {sheet!r} — " + LEAD_ONLY.format(basis=basis)
-    return head + (f"\nSheet note: {note}" if note else "")
+def _sheet_heading(sheet: str, note: str | None) -> str:
+    """Every sheet is cited and saved alike (D14); its own note, e.g. a unit or a caveat, travels."""
+    return f"### sheet {sheet!r}" + (f"\nSheet note: {note}" if note else "")
 
 
 async def search(
@@ -2636,7 +2620,7 @@ async def search(
                 matched.setdefault(name, doc["source_name"])
             if row.sheet != sheet:
                 sheet = row.sheet
-                lines.append(_sheet_heading(sheet, row.use, doc["source_name"], row.context.get("note")))
+                lines.append(_sheet_heading(sheet, row.context.get("note")))
             for line in ([render_company_year(doc["id"], row)] if id(row) in company_years else []) + [
                 render_row(doc["id"], row)
             ]:
@@ -2686,8 +2670,8 @@ git add backend/app/ingest/staff_sources.py backend/app/repositories/documents.p
 git commit -m "feat(ingest): read staff datasets by name, every sheet, cited and in rupees
 
 Rows come from a sidecar normalised once at upload, keyed by the profile's digest;
-a stale one falls back to the workbook. Lead-only sheets say so. The dataset row
-holds no content, and RLS gives it to staff alone.
+a stale one falls back to the workbook. Every sheet is cited alike. The dataset
+row holds no content, and RLS gives it to staff alone.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -3034,11 +3018,12 @@ def test_read_source_rows_is_the_researchers_not_the_supervisors():
     assert "`read_source_rows`" in INSTRUCTIONS
 
 
-def test_the_researcher_is_told_the_lead_only_rule():
+def test_the_researcher_is_told_to_quote_the_marker():
     from app.ingest.agent import ENTITY_RESEARCHER
 
     prompt = ENTITY_RESEARCHER["system_prompt"]
-    assert "LEAD ONLY" in prompt and "read_source_rows" in prompt
+    assert "read_source_rows" in prompt and "marker included" in prompt
+    assert "`partner` finding" in prompt and "`amount`" in prompt
 
 
 def test_the_frontend_labels_the_tool():
@@ -3122,8 +3107,9 @@ async def read_source_rows(
     a row uses the dataset's source_url and source_name, printed at the head of each
     dataset, and quotes the row's line as its evidence.
 
-    Rows under a LEAD ONLY sheet are partner-permission data: use them to decide what to
-    look for; never save them as findings and never repeat them in a summary.
+    Every sheet is citable. A finding from a row quotes the row's line, marker included;
+    promotion holds a staff-dataset finding without its marker. A grant amount from a CSO
+    funder sheet is saved on a `partner` finding (funder, CSO as partner_name, year, amount).
 
     The MCA filer is often the parent company, not the foundation: search both names.
 
@@ -3168,7 +3154,7 @@ In `backend/app/ingest/prompts/entity_researcher.md`:
 (a) After the paragraph that begins `**STEP 2: \`research_goals(name, entity_kind)\`.**`, insert:
 
 ```markdown
-**For a corporate funder, read the staff datasets before the web: `read_source_rows(match)`.** They hold the statutory CSR filings, every sheet of every file, under the filer's registered name — often the parent company, not the foundation, so search both. Each row comes with a `[source:<document>#<sheet>:<cell>]` marker; a finding from it uses the dataset's `source_url` and `source_name` printed above it, and quotes the row's line as its evidence. Save the amount **as printed, with its unit** — the rupee figure beside it is for reading, not for saving. The company-year line states the obligation and spend once; never add them up across project lines. Rows under a sheet marked **LEAD ONLY** are partner-permission data: use them to decide what to look for, never save them as findings, and never repeat them in your summary. Calls to it do not count against your document budget.
+**For a corporate funder, read the staff datasets before the web: `read_source_rows(match)`.** They hold the statutory CSR filings, every sheet of every file, under the filer's registered name — often the parent company, not the foundation, so search both. Each row comes with a `[source:<document>#<sheet>:<cell>]` marker; a finding from it uses the dataset's `source_url` and `source_name` printed above it, and quotes the row's line as its evidence. Save the amount **as printed, with its unit** — the rupee figure beside it is for reading, not for saving. The company-year line states the obligation and spend once; never add them up across project lines. Every sheet is citable, the CSO funder sheets included: a finding from any row quotes the row's line, marker included — without the marker, promotion holds it, because the dataset's `source_url` alone does not say which sheet and cell the fact came from. A grant amount from a CSO funder sheet goes on a `partner` finding for the funder: the CSO as `partner_name`, the fiscal year, and the `amount` as printed with its unit (`{value: 7.5, unit: 'lakh'}`); promotion normalises it to rupees on the `kind = 'partner'` line. Calls to it do not count against your document budget.
 ```
 
 (b) In "## Your tools", insert before the `save_research` bullet:
@@ -3176,13 +3162,8 @@ In `backend/app/ingest/prompts/entity_researcher.md`:
 ```markdown
 - `read_source_rows(match, source_keys, fiscal_years, limit)` — the staff datasets: statutory CSR
   filings and the CSO funder workbook, every sheet, in rupees beside the figure as printed, every
-  row cited. LEAD ONLY rows are leads, never findings.
-```
-
-(c) In "## What to extract — an `org`", after the sentence `So **name its funders in your \`summary\`**, with the year and the amount if the source gives them.`, append:
-
-```markdown
-The one exception: a funder you saw only in a **LEAD ONLY** staff row stays out of the summary until a public source — the organisation's own report — names it. The summary becomes the published brief.
+  row cited. Quote the row's line, marker included, in every finding from it. A CSO funder sheet's
+  grant amount is a `partner` finding with its `amount`.
 ```
 
 - [ ] **Step 6: Tell the supervisor**
@@ -3237,8 +3218,10 @@ person uploaded with `make staff-source` — statutory CSR filings and the CSO f
 from the private `staff-sources` bucket, through a layout profile per file
 (`app/ingest/data/source_layouts/`). Every sheet is read; a sheet with no profile entry fails the
 upload, not the read. Rows come back in rupees beside the figure as printed, cited
-`[source:<document>#<sheet>:<cell>]`. Sheets marked `lead_only` (funder–CSO links, which need the
-CSO's consent before public display) are leads: `promote` holds any finding that cites one. The
+`[source:<document>#<sheet>:<cell>]`. Every sheet is citable, and a fact promoted from one is a
+public row like any other (FFRH has cleared the CSO workbook's figures for display); only the
+files stay staff-only. `promote` holds a finding that cites a staff dataset without its marker,
+because the dataset URL alone does not say which sheet and cell the fact came from. The
 documents row of a dataset holds no content, so Ask's SQL tool cannot read it; RLS and
 `readable_document` give the row to staff alone. Tool output does reach the model provider and,
 when tracing is on, Langfuse, like every tool output.
@@ -3266,22 +3249,22 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 10: Promotion — staff URLs map to the dataset row; lead-only findings are held
+### Task 10: Promotion — staff URLs map to the dataset row; a finding without its marker is held; the FFRH basis
 
 **Files:**
-- Modify: `backend/app/ingest/staff_sources.py` (add `cited_lead_only_sheet`, `withhold_lead_only`)
+- Modify: `backend/app/ingest/staff_sources.py` (add `hold_unmarked`)
 - Modify: `backend/app/ingest/promote.py`
+- Modify: `backend/app/ingest/data/sources/funders.json` (`ffrh_funder_datasets.basis`)
 - Test: `backend/tests/test_staff_sources.py`
 
 **Interfaces:**
 
 ```python
-def cited_lead_only_sheet(evidence: str) -> str | None
-def withhold_lead_only(findings: list[dict]) -> tuple[list[dict], list[str]]
+def hold_unmarked(findings: list[dict]) -> tuple[list[dict], list[str]]   # staff_sources.py
 async def _staff_datasets(conn, findings: list[dict]) -> dict[str, int]   # promote.py, source_url -> id
 ```
 
-The §5 acceptance run loads filing lines into `funder_activity` through `read_source_rows`. Promotion therefore has to accept a finding whose `source_url` is a staff URL. It must link that finding to the existing private row, and never add a public one.
+The §5 acceptance run loads filing lines into `funder_activity` through `read_source_rows`. Promotion therefore has to accept a finding whose `source_url` is a staff URL. It must link that finding to the existing private row, and never add a public one. Every sheet is promotable (D14): a fact from the CSO funder sheets becomes a public row under the same `funder_activity.is_public` default as any other. The one thing held is a staff finding without its `[source:…]` marker: one dataset URL covers every sheet of a file, so without the marker the fact could not be traced to its sheet and cell.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -3289,38 +3272,38 @@ Append to `backend/tests/test_staff_sources.py`:
 
 ```python
 from app.ingest import promote
+from app.ingest.sources import SOURCES
 
 
 def _finding(concept, evidence, url="https://staff-sources.sangam.invalid/0123456789ab"):
     return {"concept": concept, "evidence": evidence, "source_url": url}
 
 
-def test_a_citation_names_its_sheet():
-    assert staff_sources.cited_lead_only_sheet("[source:42#CSO Funder Details:F3] FY …") == "CSO Funder Details"
-    assert staff_sources.cited_lead_only_sheet("[source:41#2023-24:A2] FY2023-24 …") is None
-    assert staff_sources.cited_lead_only_sheet("the annual report says so") is None
-
-
-def test_a_finding_citing_a_lead_only_sheet_is_held():
-    kept, held = staff_sources.withhold_lead_only([
+def test_a_finding_citing_a_cso_funder_sheet_is_kept():
+    """D14: the CSO funder sheets are promoted like the filings, as public facts."""
+    findings = [
         _finding("partner", "[source:42#CSO Current funder and Partners:A7] period '2023–2024' · funder …"),
         _finding("csr_spend", "[source:41#2023-24:A2] FY2023-24 · company 'Kestrel Polymers Limited' …"),
-    ])
-    assert [f["concept"] for f in kept] == ["csr_spend"]
-    assert held == ["partner: cites the lead-only staff sheet 'CSO Current funder and Partners' — "
-                    "funder–CSO links need the CSO's consent before any public row; find a public "
-                    "source that states it"]
+    ]
+    kept, held = staff_sources.hold_unmarked(findings)
+    assert kept == findings and held == []
 
 
 def test_a_staff_finding_without_its_marker_is_held():
-    """The dataset URL is shared by citable and lead-only sheets; no marker, no telling which."""
-    kept, held = staff_sources.withhold_lead_only([
+    """One dataset URL covers every sheet of a file; no marker, no trail to the sheet and cell."""
+    kept, held = staff_sources.hold_unmarked([
         _finding("partner", "the CSO's sheet lists this funder for 2023-24, seven lakh"),
         _finding("grant", "the recipient's annual report names this funder", url="https://example.org/report"),
     ])
     assert [f["concept"] for f in kept] == ["grant"]
     assert held == ["partner: cites a staff dataset without its [source:…] marker — quote the row's line, "
-                    "marker included, so its sheet can be checked"]
+                    "marker included, so the fact traces to its sheet and cell"]
+
+
+def test_the_ffrh_basis_records_that_the_figures_are_cleared_for_display():
+    basis = SOURCES["ffrh_funder_datasets"].basis
+    assert "cleared" in basis and "display" in basis
+    assert "consent" not in basis
 
 
 class _Conn:
@@ -3377,10 +3360,10 @@ async def test_a_document_finding_at_a_staff_url_adds_no_row(monkeypatch):
 
 - [ ] **Step 2: Run the tests and confirm they fail**
 
-Run: `cd backend && pytest tests/test_staff_sources.py -q -k "citation or lead_only or staff_url"`
-Expected: `AttributeError: … has no attribute 'cited_lead_only_sheet'` / `'_staff_datasets'`.
+Run: `cd backend && pytest tests/test_staff_sources.py -q -k "marker or cso_funder_sheet or staff_url or basis"`
+Expected: `AttributeError: … has no attribute 'hold_unmarked'` / `'_staff_datasets'`, and the basis test failing on `"cleared" in basis`.
 
-- [ ] **Step 3: Add the withholding helpers**
+- [ ] **Step 3: Add the marker check**
 
 Append to `backend/app/ingest/staff_sources.py`. Also add `import re` to the imports.
 
@@ -3388,58 +3371,36 @@ Append to `backend/app/ingest/staff_sources.py`. Also add `import re` to the imp
 _CITATION = re.compile(r"\[source:\d+#(?P<sheet>[^\]]+):[A-Z]{1,3}\d+\]")
 
 
-def _lead_only_sheets() -> list[layouts.SheetProfile]:
-    return [s for p in layouts.load_profiles().values() for s in p.sheets if s.use == "lead_only"]
-
-
-def cited_lead_only_sheet(evidence: str) -> str | None:
-    """The lead-only sheet a finding's evidence cites, if any. Sheet names are matched against
-    every profile's lead-only entries; a year sheet like '2023-24' matches none of them."""
-    sheets = _lead_only_sheets()
-    for m in _CITATION.finditer(evidence or ""):
-        if any(s.matches(m["sheet"]) for s in sheets):
-            return m["sheet"]
-    return None
-
-
-def withhold_lead_only(findings: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+def hold_unmarked(findings: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
     """Findings that may be promoted, and a held reason for each one that may not.
 
-    The prompt tells the researcher not to save these; this is what holds if it does. A
-    promoted row lands in a publicly readable table, and a funder-CSO link from a partner's
-    sheet needs the CSO's consent before it is public.
+    Every sheet of every staff dataset is promotable (D14). What is not is a finding that cites
+    a staff dataset's URL without the row's [source:<document>#<sheet>:<cell>] marker: one URL
+    covers every sheet of a file, so the promoted row could not be traced to its sheet and cell,
+    and every field has to trace to a source.
     """
     kept: list[dict[str, Any]] = []
     held: list[str] = []
     for f in findings:
-        evidence = str(f.get("evidence", ""))
-        sheet = cited_lead_only_sheet(evidence)
-        if sheet is not None:
-            held.append(
-                f"{f.get('concept')}: cites the lead-only staff sheet {sheet!r} — funder–CSO links need the "
-                f"CSO's consent before any public row; find a public source that states it"
-            )
-        elif is_staff_source_url(f.get("source_url")) and not _CITATION.search(evidence):
-            # One dataset URL covers citable and lead-only sheets alike, so without its marker
-            # there is no telling which sheet a finding came from. Held, never guessed.
+        if is_staff_source_url(f.get("source_url")) and not _CITATION.search(str(f.get("evidence", ""))):
             held.append(
                 f"{f.get('concept')}: cites a staff dataset without its [source:…] marker — quote the "
-                f"row's line, marker included, so its sheet can be checked"
+                f"row's line, marker included, so the fact traces to its sheet and cell"
             )
         else:
             kept.append(f)
     return kept, held
 ```
 
-- [ ] **Step 4: Wire them into `promote.py`**
+- [ ] **Step 4: Wire it into `promote.py`**
 
 Add `from app.ingest import staff_sources` to the imports.
 
 In `promote()`, right after the `schema_version` check and its `return report`, insert:
 
 ```python
-    findings, withheld = staff_sources.withhold_lead_only(findings)
-    report["held"].extend(withheld)
+    findings, unmarked = staff_sources.hold_unmarked(findings)
+    report["held"].extend(unmarked)
 ```
 
 In `_write_documents`, make the first statement inside `for f in _validated(findings, "document"):` the following:
@@ -3475,22 +3436,33 @@ async def _staff_datasets(conn: Any, findings: list[dict[str, Any]]) -> dict[str
     return found
 ```
 
-Every writer already resolves `docs.get(f.source_url)`. A spend, csr-year or programme finding citing a staff URL therefore now carries `document_id` = the dataset row. Its `source_url` is the non-identifying `.invalid` URL, and its `source_name` is the registry key.
+Every writer already resolves `docs.get(f.source_url)`. A spend, csr-year, partner or programme finding citing a staff URL therefore now carries `document_id` = the dataset row. Its `source_url` is the non-identifying `.invalid` URL, and its `source_name` is the registry key. It is written with the writers' default, `is_public = true`: the fact is public, the file it came from is not.
 
-- [ ] **Step 5: Run the tests**
+- [ ] **Step 5: Record FFRH's clearance in the registry**
+
+In `backend/app/ingest/data/sources/funders.json`, in the `ffrh_funder_datasets` entry, replace the `basis` value with:
+
+```json
+      "basis": "Shared by FFRH for this project through Drive. Use follows the FFRH agreement; FFRH has cleared its figures, funder-CSO links and grant amounts included, for display. The files stay in the staff-only bucket; facts promoted from them are public.",
+```
+
+Leave `access_rule` (`partner_permission_internal`), `categories`, `yields` and `robots_checked_at` as they are: the rule governs reading the files, which stays staff-only, and `DISPATCHABLE` is unchanged. No existing test pins the old wording; `test_every_source_states_the_basis_for_its_rule` (length over 40) and `sources.py`'s own load check still pass, and `test_the_ffrh_basis_records_that_the_figures_are_cleared_for_display` pins the new one.
+
+- [ ] **Step 6: Run the tests**
 
 Run: `cd backend && pytest tests/test_staff_sources.py tests/test_ingest.py tests/test_storage.py -q -m "not integration"`
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add backend/app/ingest/staff_sources.py backend/app/ingest/promote.py backend/tests/test_staff_sources.py
-git commit -m "feat(ingest): promote filing lines read from a staff dataset
+git add backend/app/ingest/staff_sources.py backend/app/ingest/promote.py backend/app/ingest/data/sources/funders.json backend/tests/test_staff_sources.py
+git commit -m "feat(ingest): promote facts read from a staff dataset
 
 A finding at a staff URL links to the dataset's private row and never creates a
-public one; a finding citing a lead-only sheet, or a staff dataset without its
-marker, is held with its reason.
+public one; facts from every sheet are promoted as public rows. A finding that
+cites a staff dataset without its sheet/cell marker is held with its reason.
+The FFRH registry basis records that its figures are cleared for display.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -3538,6 +3510,7 @@ class TestTheIntakeSkills:
         first, second, third = (section.index(s) for s in ("1. **Statutory", "2. **The funder's own", "3. **Recipient"))
         assert first < second < third
         assert "read_source_rows" in section and "kind = 'programme'" in section
+        assert "`partner` finding" in section and "`amount`" in section
         assert "funder_csr_years" in section and "kind = 'spend'" in section
 
     def test_eligibility_is_one_verbatim_document(self):
@@ -3554,7 +3527,7 @@ class TestTheIntakeSkills:
 
     def test_the_ngo_skill_names_the_staff_workbook(self):
         text = self.text("ngo-credential-research")
-        assert "read_source_rows" in text and "LEAD ONLY" in text and "`claimed`" in text
+        assert "read_source_rows" in text and "funder sheets" in text and "`claimed`" in text
 ```
 
 - [ ] **Step 2: Run the tests and confirm they fail**
@@ -3609,9 +3582,10 @@ The order is strength of evidence for money, not convenience.
    the two are reported side by side.
 3. **Recipient-side records** — the staff CSO funder sheets, through `read_source_rows`, and
    recipients' own annual reports — for grant amounts per partner, which funders rarely publish.
-   Rows the tool marks **LEAD ONLY** are partner-permission data: a funder–CSO link needs the
-   CSO's consent before any public display. Use them to know which recipient to look up; save the
-   fact only from a public source that states it — the recipient's own report — and cite that.
+   Save each as a `partner` finding for the funder: the recipient as `partner_name`, the fiscal
+   year, and the `amount` as printed with its unit (`7.5`, `lakh`); promotion normalises it to
+   rupees on the funder's `kind = 'partner'` line. Cite each figure by its row's marker. Where the
+   recipient's own report states the same grant, cite that as well.
 
 **Every fact names the file and sheet, or the page, it came from.** A staff-dataset row is cited
 by its `[source:<document>#<sheet>:<cell>]` marker, with the dataset's `source_url` and its
@@ -3746,7 +3720,7 @@ Every domain and theme on a line is an **inference**. Record it as one.
 
 The staff CSO workbook also serves research on an organisation that receives money;
 `ngo-credential-research` names it as a source. A recipient-side figure cites the recipient's own
-document, or the staff dataset's marker for a sheet the tool marks CITABLE — never a LEAD ONLY one.
+document, or the staff dataset's marker for the sheet and cell it came from.
 
 ## When a source will not open
 
@@ -3785,9 +3759,11 @@ before the web, with `read_source_rows` and the organisation's name.
 - **It is the organisation's self-reported record.** Every value from the profile sheet is
   `claimed`. A legal status or registration number written there is a lead to the certificate, not
   the certificate; field 1 still needs the number or the certificate itself.
-- **The funder sheets are LEAD ONLY.** A funder–CSO link needs the CSO's consent before any public
-  display. Use them to know which funders to look for in the organisation's own annual report;
-  never save them as findings, and never repeat them in a summary.
+- **The funder sheets give its funders by year, with amounts.** Cite each by its marker. They
+  are the organisation's own account of who funds it, so a funder named only there is `claimed`
+  until the funder's or the organisation's published document confirms it. A grant amount is
+  saved on the funder's side, as a `partner` finding with the `amount` as printed and its unit;
+  promotion stores it in rupees on that funder's `kind = 'partner'` line.
 - Contact details are not in what the tool returns, by design.
 ```
 
@@ -3929,7 +3905,8 @@ Pick one corporate funder present in both MCA datasets. Ask Import to research i
 3. **Themes.** `SELECT count(*) … WHERE theme_tag_id IS NOT NULL AND (classification_note IS NULL OR classification_note = '')` returns 0.
 4. **Programme rows.** Any `kind = 'programme'` rows appear in `funder_dossier` beside the filing totals and are not included in check 1's sum.
 5. **Others.** Lines whose project is relief, sports, administration, unlabelled or multi-sector carry `domain-others`.
-6. **Lead-only rows.** `promote`'s report shows any finding that cited a lead-only sheet under `held`, and no `funder_activity` row has a `partner_name` that appears only in the CSO funder sheets.
+6. **Partner amounts.** For a funder named in the CSO funder sheets, `SELECT count(*) FROM funder_activity WHERE funder_id = <funder> AND kind = 'partner' AND amount IS NOT NULL` is at least the number of sheet rows for that funder with a stated amount and an exact fiscal year, and each `amount` equals the rupee figure the tool printed beside the sheet's value (lakh and crore applied once). Rows giving a period, not one fiscal year, are reported, not written.
+7. **Markers and public rows.** `promote`'s report lists under `held` any finding that cited a staff dataset without its marker. `SELECT count(*) FROM funder_activity a JOIN documents d ON d.id = a.document_id WHERE d.doc_type = 'source_dataset' AND NOT a.is_public` returns 0: facts promoted from the staff datasets are public rows (D14), while `SELECT is_public FROM documents WHERE doc_type = 'source_dataset'` is false on every row.
 
 Record pass/fail per check in the PR. Use counts only — no names or figures.
 
@@ -3943,7 +3920,8 @@ Record pass/fail per check in the PR. Use counts only — no names or figures.
   - the sidecar;
   - `--split-sheets`;
   - the `.invalid` source URL;
-  - lead-only sheets;
+  - a staff-dataset finding without its sheet/cell marker is held;
+  - facts from every sheet, the CSO funder sheets included, are promoted as public rows (D14), and the `ffrh_funder_datasets` basis says FFRH has cleared them for display;
   - the tool sits on the researcher, not the supervisor.
 - **Migration.** The number (0032) follows (b) and is reassigned at merge if needed.
 
@@ -3978,6 +3956,8 @@ Record pass/fail per check in the PR. Use counts only — no names or figures.
 | §5: real files never committed | 12 (`test_no_spreadsheet_is_tracked`, `.gitignore`) |
 | §5: the acceptance run: totals per FY, domain and `classified_by` on every line, themes only with a note, programme rows beside not summed, Others | 12 (Step 7), made possible by 10 |
 | §5: `make smoke`, unit and integration tests | 12 |
+| §4 recipient-side records give grant amounts per partner: saved on `partner` findings, written in rupees to `funder_activity` `kind = 'partner'` | 9 (prompt, tool docstring), 11 (skills and test), 12 (acceptance check 6); the column wiring is plan (b) Task 11 |
+| D14: every sheet citable and promotable; facts promoted from them public under the default `is_public`; the files stay staff-only; the `ffrh_funder_datasets` basis updated | 7 (no sheet withheld), 9 (prompt), 10 (`hold_unmarked`, basis), 11 (skills), 12 (acceptance check 7) |
 
 ### Ambiguities resolved
 
@@ -3992,7 +3972,8 @@ Record pass/fail per check in the PR. Use counts only — no names or figures.
 6. **Implementation mode.** "Set up by Central or State Government" maps to `implementing_agency`.
 7. **The tool lives on `entity-researcher`, not the supervisor**, which researches nothing. Instructions name it in the not-yours table.
 8. **Findings need an http(s) `source_url`.** Each dataset gets a non-resolving `https://staff-sources.sangam.invalid/<sha12>`. Promotion links it to the private row and never creates a public one.
-9. **Lead-only sheets.** The CSO funder sheets are lead-only, per the registry's own consent basis and the spec's out-of-scope note on public display. Prompts say so, and `promote` holds any finding that cites them.
+9. **Every sheet is citable and promotable (D14).** FFRH has cleared the CSO workbook's figures for display, so facts from its funder sheets are promoted as public rows like the filings', and the registry's `basis` now says so. The profiles carry no per-sheet display flag. The raw files stay in the staff-only bucket. What promotion still holds is a staff-dataset finding without its `[source:…]` marker, which could not be traced to its sheet and cell.
 10. **Neutral names.** Stored keys and titles carry the profile name, never the original file name, because Ask's SQL catalog shows `documents.title` and `storage_path`. `Contact & Address` is declared `omit`.
 11. **The upload script runs on the host venv,** because the image mounts only `app/`, `seed/` and `db/`. It runs via `make staff-source`, which honours `ENV`.
 ````
+12. **Where a recipient-side amount lands.** `grants` has no writer, so a grant amount from a CSO funder sheet is saved as a `partner` finding with its `amount`, and plan (b) Task 11 writes it to `funder_activity.amount` on the `kind = 'partner'` line, in rupees, as a public row. The finding keeps the figure as printed with its unit; `Money.inr` is the one conversion.

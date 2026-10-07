@@ -1,10 +1,10 @@
 # Taxonomy domains: Environment and Others — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: execute this plan with superpowers:subagent-driven-development — a fresh implementer subagent per task, a fresh reviewer subagent checking each task before the next starts, and a whole-branch review at the end. Do not use executing-plans or implement inline. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add Environment and Others to the theme taxonomy as theme-less domains, so every CSR spend line can carry one of five domains, and take every "Draft" label off the `/resources/taxonomy` page.
 
-**Architecture:** The taxonomy's source of truth is `seed/data/taxonomy/themes.json`. `seed/taxonomy_seed.py` (from PR #98) turns it into `tags` rows. The frontend reads a byte-identical copy in `frontend/features/taxonomy/data/`. This PR appends two domains to the JSON, re-copies it, widens the SQL catalog's `tags.domain` note, and changes three frontend files: empty domains show only their `source` line, and no status label appears anywhere. `status` stays in the data and in `tags.status`.
+**Architecture:** The taxonomy's source of truth is `seed/data/taxonomy/themes.json`. `seed/taxonomy_seed.py` (from PR #98) turns it into `tags` rows. The frontend reads a byte-identical copy in `frontend/features/taxonomy/data/`. This PR appends two domains to the JSON, re-copies it, widens the SQL catalog's `tags.domain` note, and changes three frontend files: empty domains show only their `source` line, and no status label appears anywhere. Health and Education move from `status: "draft"` to `"active"`, so no domain is draft; the `status` field stays in the data and in `tags.status`.
 
 **Tech Stack:** Python 3.12 (pytest, psycopg 3), JSON seed files, Next.js 16 / React 19 / TypeScript, bash smoke script.
 
@@ -24,18 +24,19 @@
 - `/resources/taxonomy` renders all five domains. Environment and Others show only their one-line `source` and no theme cards.
 - The section index ("In this article") lists all five domains.
 - No visible "Draft" or "draft" remains on `/resources/taxonomy`. That covers the badges on domain headings, the status tags in "How the taxonomy works", the `(draft)` index labels, and the "programme-areas draft" wording inside the Health and Education `source` strings.
-- `status` stays in the JSON, in `tags.status`, and in the frontend type (`Domain.status: "draft" | "active"`).
+- No domain is draft: Health and Education's `status` becomes `"active"`, like the other three. The `status` field stays in the JSON, in `tags.status`, and in the frontend type, which is left as `Domain.status: "draft" | "active"` (unchanged, so `tsc` stays green and nothing else needs touching).
+- The two `source` strings lose only the word: "programme-areas draft, regrouped" becomes "programme areas, regrouped". No other rewording.
 - Design system: only `--fs-*` sizes and existing classes and components (`Tag`, `.muted`, `.measure`, `.card`). No new tokens.
 - Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Review Focus
 
-1. **"Draft" leaking through data, not code.** The Health and Education `source` strings say "programme-areas draft", and `DomainSection` renders `{domain.source}` verbatim. Removing the badges alone leaves "draft" on the page. The checks:
-   - a backend test, `test_no_domain_source_says_draft` (Task 4), checks the data;
+1. **"Draft" leaking through data, not code.** The Health and Education `source` strings say "programme-areas draft", and `DomainSection` renders `{domain.source}` verbatim; their `status` is `"draft"`. Removing the badges alone leaves "draft" on the page and in `tags`. The checks:
+   - two backend tests, `test_no_domain_source_says_draft` and `test_no_domain_is_draft` (Task 4), check the data;
    - a frontend visible-text check on the built HTML (Task 4) checks the page;
    - a smoke `check_lacks` (Task 5) checks the live site.
 
-   All three strip `<script>` first. `DomainSection` is a client component that receives the whole domain object, so the RSC payload always contains `\"status\":\"draft\"`, and a raw `grep -i draft` would fail forever.
+   The page checks strip `<script>` first. `DomainSection` is a client component that receives the whole domain object, so the RSC payload carries raw data that is never shown; the checks are about what a reader sees.
 2. **The empty-domain rendering path.** With `themes: []`, the current `DomainSection` prints "0 themes, 0 sub-themes." and an empty card container. The fix is in Task 3, and the built-HTML check asserts that no " 0 themes" text and no `class="card"` appear inside `#environment` or `#others`.
 3. **The seed copy and the frontend copy drifting apart.** `make smoke` notices only against a running stack. Task 1 adds a byte-equality pytest (`test_frontend_copy_matches_seed_file`) that fails in CI before smoke ever runs. A `json.dump` round-trip would also silently re-escape the file, so Task 1 inserts the new text and checks `git diff --numstat` (14 added, 0 deleted).
 4. **A domain tag with no children going wrong in the seed.** The risks are a parent or link on a childless root, the wrong `status` or `description`, or the wrong order. Task 1 adds a unit test, `test_spend_only_domains_are_childless_active_roots`, and an order test, `test_domain_order_appends_the_new_domains`. It also adds an integration test that checks the rows as written: zero children, zero links, `active`.
@@ -47,9 +48,9 @@
 
 | File | Change | Responsibility |
 |---|---|---|
-| `seed/data/taxonomy/themes.json` | Modify | Source of truth. Appends the two domains (end of file, after line 1009) and rewords the Health and Education `source` (lines 389, 705). |
+| `seed/data/taxonomy/themes.json` | Modify | Source of truth. Appends the two domains (end of file, after line 1009), sets Health and Education `status` to `active` (lines 388, 704) and deletes "draft" from their `source` (lines 389, 705). |
 | `frontend/features/taxonomy/data/themes.json` | Modify (by `cp`) | The frontend's build-time copy, byte-identical to the seed file. |
-| `backend/tests/test_taxonomy_seed.py` | Modify | `TAG_COUNTS` domain 5, plus tests for the new domains, the copy, the catalog note and the source wording. |
+| `backend/tests/test_taxonomy_seed.py` | Modify | `TAG_COUNTS` domain 5, plus tests for the new domains, the copy, the catalog note, the source wording and no draft status. |
 | `backend/app/agent/tools/sql/catalog.py` | Modify (line 958 on #98) | The `tags.domain` column note lists five domains. |
 | `frontend/features/taxonomy/TaxonomySections.tsx` | Modify (lines 12–36) | `DomainSection`: no status badge, and an empty domain renders only its source line. |
 | `frontend/features/resources/TaxonomyArticle.tsx` | Modify (lines 9–37) | "How the taxonomy works": domain tags without status, and intro prose that covers theme-less domains. |
@@ -59,7 +60,7 @@
 No new files are committed. The frontend has no test runner, so Task 3 creates one throwaway checker, `../taxonomy-page-check.py`, **outside** the worktree. It reads the prerendered `frontend/.next/server/app/resources/taxonomy.html` (`/resources/[tab]` is static: `generateStaticParams` and `dynamicParams = false`).
 
 Not touched, on purpose:
-- `frontend/features/taxonomy/types.ts`: `status` stays.
+- `frontend/features/taxonomy/types.ts`: `status` stays, typed `"draft" | "active"`; no value in the data is `"draft"` any more.
 - `frontend/app/taxonomy/page.tsx`: its `?domain=` regex `/^[a-z]+$/` already accepts `environment` and `others`.
 - `seed/taxonomy_seed.py`: its loops handle `themes: []` already.
 - `db/migrations/`: the `0002` check `kind NOT IN ('domain','cell') OR domain IS NOT NULL` is satisfied.
@@ -415,8 +416,8 @@ import sys
 
 PAGE = pathlib.Path("frontend/.next/server/app/resources/taxonomy.html")
 raw = PAGE.read_text(encoding="utf-8")
-# Visible text only: the RSC payload in <script> always carries "status":"draft" (a client component
-# receives the whole domain object), so it must not count.
+# Visible text only: the RSC payload in <script> carries raw data (a client component receives the
+# whole domain object) that a reader never sees, so it must not count.
 body = re.sub(r"<(script|style)\b.*?</\1>", " ", raw, flags=re.S | re.I)
 text = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"<!--.*?-->", "", body, flags=re.S))).split())
 
@@ -554,17 +555,17 @@ EOF
 ### Task 4: No "Draft" on the taxonomy page
 
 **Files:**
-- Modify `seed/data/taxonomy/themes.json`: line 389 (Health `source`) and line 705 (Education `source`). Then `cp` it to `frontend/features/taxonomy/data/themes.json`.
-- Modify `backend/tests/test_taxonomy_seed.py`, adding a method to `TestTaxonomyRows`.
+- Modify `seed/data/taxonomy/themes.json`: lines 388–389 (Health `status` and `source`) and lines 704–705 (Education `status` and `source`). Then `cp` it to `frontend/features/taxonomy/data/themes.json`.
+- Modify `backend/tests/test_taxonomy_seed.py`, adding two methods to `TestTaxonomyRows`.
 - Modify `frontend/features/taxonomy/TaxonomySections.tsx`, lines 17–20 (the heading row with the status badge).
 - Modify `frontend/features/resources/TaxonomyArticle.tsx`, lines 31–37 (the domain tag row).
 - Modify `frontend/features/resources/tabs.ts`, line 19.
 
 **Interfaces:**
 - Consumes:
-  - `Domain.status`, still in the data and the type, now read by no component;
+  - `Domain.status`, still in the data and the type, `"active"` on every domain, now read by no component;
   - `Tag` from `@/components/ui`, still used in both `.tsx` files.
-- Produces: page text with no `\bdrafts?\b`. The Health source becomes "Drawn from the Health programme areas, regrouped in funder-facing themes", and Education's becomes the same with "Education".
+- Produces: page text with no `\bdrafts?\b`, and no domain with `status` `"draft"`. The Health source becomes "Drawn from the Health programme areas, regrouped in funder-facing themes", and Education's becomes the same with "Education".
 
 - [ ] **Step 1: Write the failing backend test (the data half)**
 
@@ -572,24 +573,31 @@ Append to `class TestTaxonomyRows` in `backend/tests/test_taxonomy_seed.py`:
 
 ```python
     def test_no_domain_source_says_draft(self):
-        """`source` renders on /resources/taxonomy and becomes tags.description; status alone says draft (D10)."""
+        """`source` renders on /resources/taxonomy and becomes tags.description, so it never says draft."""
         themes, _ = load()
         drafty = {d["domain"]: d["source"] for d in themes["domains"] if "draft" in d["source"].lower()}
         assert not drafty, drafty
+
+    def test_no_domain_is_draft(self):
+        """No domain is draft any more: every status is active, in the file and so in tags.status."""
+        themes, common = load()
+        assert {d["domain"]: d["status"] for d in themes["domains"] if d["status"] != "active"} == {}
+        tags, _ = taxonomy_rows(themes, common)
+        assert {t.slug: t.status for t in tags if t.kind == "domain" and t.status != "active"} == {}
 ```
 
 - [ ] **Step 2: Run both checks and watch them fail**
 
 ```bash
-cd "$WT/backend" && .venv/bin/python -m pytest tests/test_taxonomy_seed.py -k no_domain_source_says_draft -q
+cd "$WT/backend" && .venv/bin/python -m pytest tests/test_taxonomy_seed.py -k "no_domain_source_says_draft or no_domain_is_draft" -q
 cd "$WT" && python3 ../taxonomy-page-check.py draft
 ```
 
 Expected:
-- pytest: FAILED, listing `health` and `education` with "…programme-areas draft…";
+- pytest: 2 failed. `test_no_domain_source_says_draft` lists `health` and `education` with "…programme-areas draft…"; `test_no_domain_is_draft` lists `{'health': 'draft', 'education': 'draft'}`;
 - the page check exits 1. It lists `Health (draft)` and `Education (draft)` (the index), `Health · Draft` and `Education · Draft` (the tag row), the two `Draft` badges, and the two "programme-areas draft" source lines.
 
-- [ ] **Step 3: Reword the two `source` strings (status untouched) and re-copy**
+- [ ] **Step 3: Make Health and Education active, delete "draft" from their `source`, and re-copy**
 
 ```bash
 cd "$WT" && python3 - <<'EOF'
@@ -597,13 +605,16 @@ import pathlib
 p = pathlib.Path("seed/data/taxonomy/themes.json")
 s = p.read_text(encoding="utf-8")
 assert s.count("programme-areas draft, regrouped") == 2
-p.write_text(s.replace("programme-areas draft, regrouped", "programme areas, regrouped"), encoding="utf-8")
+assert s.count('"status": "draft",') == 2
+s = s.replace("programme-areas draft, regrouped", "programme areas, regrouped")
+s = s.replace('"status": "draft",', '"status": "active",')
+p.write_text(s, encoding="utf-8")
 EOF
 cp seed/data/taxonomy/themes.json frontend/features/taxonomy/data/themes.json
-git diff --numstat HEAD -- seed/data/taxonomy/themes.json && grep -c '"status": "draft"' seed/data/taxonomy/themes.json
+git diff --numstat HEAD -- seed/data/taxonomy/themes.json; grep -c '"status": "draft"' seed/data/taxonomy/themes.json
 ```
 
-Expected: `2	2	seed/data/taxonomy/themes.json`, then `2`. Health and Education still have `"status": "draft"`.
+Expected: `4	4	seed/data/taxonomy/themes.json` (two `status` lines and two `source` lines), then `0`. Text replacement, not a `json.dump` round-trip, so nothing else in the file is re-escaped.
 
 - [ ] **Step 4: Remove the status badge from domain headings**
 
@@ -671,7 +682,8 @@ cd "$WT" && git grep -n 'status === "draft"\|"Draft"\|(draft)' -- frontend/featu
 ```
 
 Expected:
-- pytest: `12 passed, 3 deselected`. That is 11 from Tasks 1–2 plus this one; the copy test stays green because Step 3 re-copied.
+- pytest: `13 passed, 3 deselected`. That is 11 from Tasks 1–2 plus these two; the copy test stays green because Step 3 re-copied.
+- `npx tsc --noEmit` is clean with `Domain.status` still typed `"draft" | "active"`: no component reads it now, and the data holds only `"active"`.
 - The page check prints `taxonomy page check (all): ok`.
 - `git grep` prints nothing and exits 1.
 
@@ -680,13 +692,13 @@ Expected:
 ```bash
 cd "$WT" && git add seed/data/taxonomy/themes.json frontend/features/taxonomy/data/themes.json backend/tests/test_taxonomy_seed.py frontend/features/taxonomy/TaxonomySections.tsx frontend/features/resources/TaxonomyArticle.tsx frontend/features/resources/tabs.ts
 git -C "$WT" commit -F - <<'EOF'
-feat(taxonomy-page): no Draft labels; status stays in the data
+feat(taxonomy-page): no domain is draft, and no Draft labels
 
 Removes the Draft/Active badge on domain headings, the status in the "How
-the taxonomy works" tags and the "(draft)" index labels (spec D10). The
-Health and Education source lines said "programme-areas draft" and render
-verbatim, so they are reworded. Their status is still 'draft' in themes.json
-and tags.status.
+the taxonomy works" tags and the "(draft)" index labels (spec D10). Health
+and Education become active, and the word "draft" is deleted from their
+source lines, which render verbatim. The status field stays in themes.json,
+tags.status and the frontend type.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
@@ -694,8 +706,8 @@ EOF
 
 **Deliverable:**
 - the built page has no visible "draft";
-- the data keeps `status`;
-- a backend test stops a `source` from reintroducing the word.
+- every domain's `status` is `active`, and the field stays in the data;
+- backend tests stop a `source` from reintroducing the word and a domain from going back to draft.
 
 ---
 
@@ -718,7 +730,7 @@ In `scripts/smoke.sh`, insert after the closing `}` of `check_json`:
 check_lacks() { # name url regex [max-time] — fails when the page's VISIBLE text matches (case-insensitive)
   local name="$1" url="$2" pattern="$3" t="${4:-90}"
   local hits
-  # Scripts are stripped first: the RSC payload carries raw data (e.g. "status":"draft") that is never shown.
+  # Scripts are stripped first: the RSC payload carries raw data that is never shown.
   if ! hits=$(curl -sf --max-time "$t" "${AUTH[@]}" "$url" | PATTERN="$pattern" python3 -c '
 import html, os, re, sys
 page = sys.stdin.read()
@@ -809,7 +821,7 @@ git -C "$WT" commit -F - <<'EOF'
 test(smoke): taxonomy shows Environment and Others and no Draft
 
 check_lacks matches visible text only. The RSC payload keeps the raw
-domain objects, status included, so a plain grep would always find "draft".
+data, which is never shown, so a plain grep would test the wrong thing.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
@@ -832,7 +844,7 @@ The PR stacks on #98:
 
 It needs a retarget to `master` once #98 merges. Put three things in the PR description:
 - Step 4's outcome: re-seeded, or waiting for `0030` on the dev DB;
-- that the Health and Education `source` strings were reworded, while their `status` is still `draft`;
+- that Health and Education are now `active` and the word "draft" was deleted from their `source` strings, so a re-seed updates `tags.status` and `tags.description` for both;
 - that the `localhost:3000` smoke checks go green only once that server runs this branch.
 
 **Deliverable:** five commits on `feat/taxonomy-domains`, ready to push, where:
@@ -855,7 +867,8 @@ It needs a retarget to `master` once #98 merges. Put three things in the PR desc
 | Section index lists all five | Task 3 check (`href="#<code>"` ×5); Task 4 Step 6 plain labels |
 | Remove the status badges on domain headings | Task 4 Step 4 |
 | Remove the status tags in "How the taxonomy works" | Task 4 Step 5 |
-| Remove "Health and Education are drafts" wording: the `(draft)` index labels and the "programme-areas draft" source text | Task 4 Steps 3 and 6 |
-| `status` stays in the data (D10) | Task 4 Step 3 (`grep -c '"status": "draft"'` = 2); `types.ts` untouched |
+| Remove "Health and Education are drafts" wording: the `(draft)` index labels and the word "draft" in their source text | Task 4 Steps 3 and 6 |
+| No domain is draft: Health and Education `status` becomes `active` | Task 4 Step 3 (`grep -c '"status": "draft"'` = 0); `test_no_domain_is_draft` |
+| The `status` field stays in the data and `tags.status` (D10) | Task 4 Step 3; `types.ts` untouched (`"draft"` or `"active"` kept, so `tsc` stays green) |
 
-Decision taken beyond the spec's letter: the Health and Education `source` strings are reworded ("programme-areas draft" becomes "programme areas"). The page renders them verbatim, so "remove every Draft mention" cannot hold otherwise. The change also reaches `tags.description` on re-seed, and leaves `status` as it is. The reviewer may prefer a different wording; the test asserts only that "draft" is absent.
+Decisions (from the user): draft is removed from the taxonomy, not reworded. Health and Education become `active`, and their `source` strings lose only the word "draft" ("programme-areas draft, regrouped" becomes "programme areas, regrouped"). Both changes reach `tags` on re-seed. The frontend type keeps `"draft" | "active"`; narrowing it to `"active"` would also compile, but keeping it touches nothing. The file's `_help` note ("Crosswalks are a draft for review") is not a domain `source`, is not rendered on the page, and is left alone.
