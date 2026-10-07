@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 from app.agent.prompt import SYSTEM_PROMPT
 
 TOOLS_DIR = Path(__file__).resolve().parents[1] / "app" / "agent" / "tools"
@@ -66,8 +64,8 @@ def test_retry_budget_in_the_prompt_matches_the_middleware():
     assert f"After {MAX_SQL_ATTEMPTS} failed attempts" in SYSTEM_PROMPT
 
 
-class TestMatchingGoesThroughTheAssessor:
-    """The supervisor narrows and reports; only the funder-assessor judges fit."""
+class TestMatchingGoesThroughCompareFit:
+    """The supervisor resolves and reports; only compare_fit judges fit."""
 
     def test_fit_is_never_judged_in_db_query(self):
         assert "never judge fit yourself" in SYSTEM_PROMPT
@@ -85,18 +83,13 @@ class TestMatchingGoesThroughTheAssessor:
     def test_the_procedure_is_the_skill(self):
         assert "funder-matching" in SYSTEM_PROMPT
 
+    def test_it_is_called_once_and_never_rechecked(self):
+        assert "Call compare_fit once per question" in SYSTEM_PROMPT
+        assert "never re-check what compare_fit returned" in SYSTEM_PROMPT
 
-class TestTheWaveSizeIsTheSetting:
-    """A number frozen in prose would make MAX_PARALLEL_RESEARCH decorative."""
 
-    def test_the_shipped_prompt_has_no_placeholder_left(self):
-        assert "{{" not in SYSTEM_PROMPT
-
-    def test_the_prompt_renders_from_the_settings_it_is_given(self):
-        from app.agent.prompt import render_prompt
-        from app.core.config import Settings
-
-        assert "at most 3 funder-assessor" in render_prompt(Settings(max_parallel_research=3))
+def test_the_shipped_prompt_has_no_placeholder_left():
+    assert "{{" not in SYSTEM_PROMPT
 
 
 class TestStoredAndComputedScoresStayApart:
@@ -107,84 +100,3 @@ class TestStoredAndComputedScoresStayApart:
     def test_rule_2_allows_an_uncited_total_only_when_labelled(self):
         rule_2 = SYSTEM_PROMPT.split("2. Cite everything.")[1].split("\n3. ")[0]
         assert "computed" in rule_2
-
-
-def _matching_prompt(spec: str) -> str:
-    from app.agent import build
-
-    return getattr(build, spec)["system_prompt"]
-
-
-@pytest.mark.parametrize("spec", ["READINESS", "ASSESSOR"])
-class TestTheMatchingPromptsDefineTheChecks:
-    """The prompts define each check; scoring.py turns checks into a verdict."""
-
-    def test_it_is_loaded_and_names_its_tools(self, spec):
-        from app.agent.build import ASSESSOR_TOOLS
-
-        text = _matching_prompt(spec)
-        assert len(text.strip()) > 500
-        missing = [t.name for t in ASSESSOR_TOOLS if t.name not in text]
-        assert not missing, f"{spec} prompt never names {missing}"
-
-    def test_it_names_every_outcome_the_schema_accepts(self, spec):
-        from typing import get_args
-
-        from app.agent.assessment import Outcome
-
-        for word in get_args(Outcome):
-            assert f"`{word}`" in _matching_prompt(spec), word
-
-    def test_it_names_no_verdict_or_weight(self, spec):
-        # Weights live in scoring.py; a model told about a score starts returning one, which extra="forbid" rejects.
-        from app.agent.scoring import WEIGHTS
-
-        text = _matching_prompt(spec)
-        assert not re.search(r"\b(score|gate|rank_key|tier)\b", text, re.IGNORECASE)
-        for points, _ in WEIGHTS.values():
-            assert f"{points} points" not in text
-
-    def test_absence_is_never_a_fail(self, spec):
-        assert "never `fail`" in _matching_prompt(spec)
-
-    def test_it_lists_its_tables_so_no_describe_is_needed(self, spec):
-        # Describing each table before querying it was most of the 50 queries per shortlist.
-        text = _matching_prompt(spec)
-        assert "### Tables" in text
-        assert "db_describe_table only when a query fails" in text
-
-
-class TestTheAssessorPromptJudgesOnlyTheFunderSide:
-    def test_it_names_every_area_level_the_schema_accepts(self):
-        from typing import get_args
-
-        from app.agent.assessment import AreaLevel
-
-        for word in get_args(AreaLevel):
-            assert f"`{word}`" in _matching_prompt("ASSESSOR"), word
-
-    def test_it_asks_for_the_funder_facts_the_scorer_reads(self):
-        text = _matching_prompt("ASSESSOR")
-        for field in ("funder_type", "section_135_bound", "foreign_funder", "shared_districts"):
-            assert f"`{field}`" in text, field
-
-    def test_programme_is_the_organisations_own_and_follows_theme(self):
-        text = _matching_prompt("ASSESSOR")
-        assert "programs where org_id is the organisation" in text
-        assert "when `theme` is `fail` there is no shared theme" in text
-
-
-class TestTheReadinessPromptJudgesOnlyTheOrganisation:
-    def test_a_short_count_is_not_a_fail(self):
-        # The A3 gate: 1 of 4 grants concluded failed projects_3 and capped 14 funders at weak.
-        assert "A count below a bar is not evidence against it" in _matching_prompt("READINESS")
-
-    def test_it_never_sees_the_funder(self):
-        text = _matching_prompt("READINESS")
-        assert "funder_footprints" not in text
-        assert "funder_eligibility" not in text
-
-
-def test_the_supervisor_prompt_names_both_matching_subagents():
-    assert "funder-assessor" in SYSTEM_PROMPT
-    assert "org-readiness" in SYSTEM_PROMPT

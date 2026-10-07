@@ -20,8 +20,10 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     detail: (a) => (a?.file_path ?? "").split("/").at(-2) ?? "",
   },
   ls: { label: "Listing skills", detail: () => "" },
-  // The only subagent is funder-assessor; its description names the pair.
-  task: { label: "Assessing a funder", detail: (a) => a?.description ?? "" },
+  compare_fit: {
+    label: "Comparing funders",
+    detail: (a) => `org ${a?.org_id ?? ""}` + (a?.funder_ids?.length ? ` · funders ${a.funder_ids.join(", ")}` : " · every funder"),
+  },
 };
 
 export function humanizeTool(name: string): ToolLabel {

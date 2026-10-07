@@ -74,7 +74,7 @@ async def test_case(case, eval_settings, slug_ids, db, agent_pool):
     # A shortlist assesses funders in waves of subagents; it needs longer than one SQL question.
     timeout = case.get("timeout_seconds", CASE_TIMEOUT_SECONDS)
     try:
-        answer, agent_sql, citations, assessments, order = await run_agent(
+        answer, agent_sql, citations, assessments, calls = await run_agent(
             case["question"], eval_settings, timeout
         )
     except TimeoutError:
@@ -85,7 +85,7 @@ async def test_case(case, eval_settings, slug_ids, db, agent_pool):
         )
     result = CaseResult(
         case_id=case["id"], answer=answer, agent_sql=agent_sql, citations=citations, assessments=assessments,
-        task_order=order,
+        compare_calls=calls,
     )
 
     gold_rows, agent_rows = None, None

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from langchain_core.messages import ToolMessage
 
-from tests.evals.harness import CaseResult, assessments_in, score, task_order
+from tests.evals.harness import CaseResult, assessments_in, compare_calls, score
 
 
 def _a(funder_id: int, gate: str, rank_key: str) -> dict:
@@ -18,14 +19,15 @@ def _score(case: dict, answer: str, assessments: list[dict]) -> list[str]:
     return score(case, result, gold_rows=None, agent_rows=None).failures
 
 
-def test_assessor_replies_are_read_from_task_messages():
-    reply = json.dumps(_a(2, "pass", "0-000"))
+def test_assessments_are_read_from_compare_fit_messages():
+    reply = json.dumps({"assessed": [_a(2, "pass", "0-000")]})
     messages = [
-        ToolMessage(content=reply, name="task", tool_call_id="1"),
-        ToolMessage(content="KABIL works in Assam", name="task", tool_call_id="2"),
+        ToolMessage(content=reply, name="compare_fit", tool_call_id="1"),
+        ToolMessage(content="compare_fit failed: x", name="compare_fit", tool_call_id="2"),
         ToolMessage(content=reply, name="db_query", tool_call_id="3"),
     ]
     assert assessments_in(messages) == [_a(2, "pass", "0-000")]
+    assert compare_calls(messages) == 2
 
 
 def test_too_few_assessments_fail():
@@ -59,37 +61,10 @@ class TestRemovedAfterShortlist:
         assert _score(REMOVED, "Eligible: [funder:9] [funder:2]\nRemoved: none", list(REMOVED_REPLIES))
 
 
-READY = {"readiness_before_pairs": True}
+ONCE = {"compare_fit_once": True}
 
 
-def _ready(order: list[str], assessments: list[dict] | None = None) -> list[str]:
-    result = CaseResult(case_id="t", task_order=order, assessments=assessments or [])
-    return score(READY, result, gold_rows=None, agent_rows=None).failures
-
-
-class TestReadinessBeforePairs:
-    def test_the_task_order_is_read_from_task_messages(self):
-        readiness = json.dumps({"org_id": 9, "org_name": "KABIL", "checks": []})
-        messages = [
-            ToolMessage(content=readiness, name="task", tool_call_id="1"),
-            ToolMessage(content=json.dumps(_a(2, "pass", "0")), name="task", tool_call_id="2"),
-            ToolMessage(content="funder-assessor failed: x", name="task", tool_call_id="3"),
-        ]
-        assert task_order(messages) == ["readiness:9", "assessment:2", "other"]
-
-    def test_readiness_then_a_wave_passes(self):
-        assert not _ready(["readiness:9", "assessment:2", "assessment:7"])
-
-    def test_no_readiness_fails(self):
-        assert _ready(["assessment:2"])
-
-    def test_a_pair_before_readiness_fails(self):
-        assert _ready(["assessment:2", "readiness:9"])
-
-    def test_readiness_twice_for_one_org_fails(self):
-        assert _ready(["readiness:9", "assessment:2", "readiness:9"])
-
-    def test_org_checks_that_differ_between_funders_fail(self):
-        met = {**_a(2, "pass", "0"), "checks": [{"code": "reg_12a", "outcome": "met"}]}
-        unknown = {**_a(7, "pass", "1"), "checks": [{"code": "reg_12a", "outcome": "unknown"}]}
-        assert _ready(["readiness:9", "assessment:2", "assessment:7"], [met, unknown])
+@pytest.mark.parametrize(("calls", "fails"), [(0, True), (1, False), (2, True)])
+def test_compare_fit_runs_exactly_once(calls, fails):
+    result = CaseResult(case_id="t", compare_calls=calls)
+    assert bool(score(ONCE, result, gold_rows=None, agent_rows=None).failures) is fails

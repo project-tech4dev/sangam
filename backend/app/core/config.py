@@ -37,10 +37,6 @@ class Settings(BaseSettings):
     # changes nothing. Point it at the cheapest model of the same provider.
     utility_model: str = ""
 
-    # The funder-assessor subagent, run once per candidate funder in a shortlist, so
-    # ~25 calls per question. Empty falls back to `model`. A cheaper one cuts the cost.
-    assessor_model: str = ""
-
     # Postgres connection string; holds app data AND LangGraph checkpoints.
     database_url: str = "postgresql://sangam:sangam@localhost:5433/sangam"
 

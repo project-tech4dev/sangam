@@ -1,13 +1,8 @@
-"""What the matching subagents hand back. The models judge each check; scoring.py computes the verdict.
-
-org-readiness judges the organisation's own checks once; funder-assessor judges the rest per funder;
-merge() joins the two into a FunderAssessment.
-"""
+"""One organisation against one funder. rules.py judges each check; scoring.py computes the verdict."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from typing import Literal, get_args
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
@@ -17,16 +12,15 @@ Outcome = Literal["met", "fail", "unknown"]
 # Why a check came out as it did. met/fail rest on evidence; unknown says what was missing.
 Basis = Literal["recorded", "on_file", "not_researched", "searched_not_found", "not_on_file"]
 EVIDENCE: frozenset[str] = frozenset({"recorded", "on_file"})
-# About the organisation alone (prompts/org_readiness.md): the same for every funder.
+# About the organisation alone: the same for every funder.
 ReadinessCode = Literal[
     "reg_12a", "reg_80g", "csr_1", "darpan", "pan", "reg_no", "fcra",
     "audits_3y", "itr_7", "board", "team_cvs", "projects_3",
 ]
-# Depend on the funder (prompts/funder_assessor.md).
+# Depend on the funder.
 PairCode = Literal["area", "theme", "programme", "turnover", "funder_bar"]
 # A code outside these splits a comparison table.
 CheckCode = Literal[ReadinessCode, PairCode]
-PAIR_REQUIRED = ("area", "theme", "programme")
 # How close a shared place is; scoring.py grades the area points by it.
 AreaLevel = Literal["district", "state", "pan_india", "regional"]
 
@@ -46,7 +40,7 @@ class Check(BaseModel):
     @field_validator("cites")
     @classmethod
     def _bracketed(cls, cites: list[str]) -> list[str]:
-        # The model sometimes drops the brackets; the supervisor must repeat a real marker.
+        # The supervisor must repeat a real marker, brackets included.
         return [c if c.startswith("[") else f"[{c.strip()}]" for c in cites]
 
     @model_validator(mode="after")
@@ -64,65 +58,8 @@ class Check(BaseModel):
         return self
 
 
-class ReadinessCheck(Check):
-    code: ReadinessCode = Field(description="an organisation-only check, e.g. reg_12a, audits_3y, board")
-
-
-class PairCheck(Check):
-    code: PairCode = Field(description="a check that depends on the funder: area, theme, programme, turnover, funder_bar")
-
-
-def _one_per_code(checks: Iterable[Check], required: Iterable[str]) -> None:
-    # A funder can record several bars; every other code is one row of a comparison table.
-    seen: set[str] = set()
-    for c in checks:
-        if c.code != "funder_bar" and c.code in seen:
-            raise ValueError(f"{c.code}: returned twice; return each check once")
-        seen.add(c.code)
-    if missing := [code for code in required if code not in seen]:
-        raise ValueError(f"missing checks {missing}: return every one, unknown when not recorded")
-
-
-class ReadinessAssessment(BaseModel):
-    """One organisation's own checks, judged once and reused for every funder."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    org_id: int
-    org_name: str
-    checks: list[ReadinessCheck]
-    gaps: list[str] = Field(default_factory=list, description="what to record or upload next, most important first")
-
-    @model_validator(mode="after")
-    def _complete(self) -> ReadinessAssessment:
-        _one_per_code(self.checks, get_args(ReadinessCode))
-        return self
-
-
-class PairAssessment(BaseModel):
-    """What depends on one funder, for an organisation whose readiness is already judged."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    org_id: int
-    funder_id: int
-    funder_name: str
-    funder_type: str | None = Field(description="funders.funder_type as recorded, or null")
-    section_135_bound: bool | None = Field(description="funders.section_135_bound as recorded, or null")
-    foreign_funder: bool | None = Field(description="true when the money is a foreign contribution; null if unknown")
-    shared_districts: int = Field(default=0, ge=0, description="districts both sides have recorded")
-    reasons: list[str] = Field(description="the facts that matter most, one line each, cited")
-    checks: list[PairCheck]
-    gaps: list[str] = Field(default_factory=list, description="what to record next for this funder, most important first")
-
-    @model_validator(mode="after")
-    def _complete(self) -> PairAssessment:
-        _one_per_code(self.checks, PAIR_REQUIRED)
-        return self
-
-
 class FunderAssessment(BaseModel):
-    """One organisation against one funder: readiness and pair checks joined, then scored."""
+    """One organisation against one funder: its checks, then the computed verdict."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -139,7 +76,10 @@ class FunderAssessment(BaseModel):
 
     @model_validator(mode="after")
     def _one_check_per_code(self) -> FunderAssessment:
-        _one_per_code(self.checks, ())
+        # A funder can record several bars; every other code is one row of a comparison table.
+        codes = [c.code for c in self.checks if c.code != "funder_bar"]
+        if dupes := sorted({c for c in codes if codes.count(c) > 1}):
+            raise ValueError(f"{dupes}: returned twice; each check once")
         return self
 
     @property
@@ -153,7 +93,7 @@ class FunderAssessment(BaseModel):
             funder_id=self.funder_id,
         )
 
-    # Computed, so absent from the schema the model fills and present in the JSON the supervisor reads.
+    # Computed, so they are always arithmetic on the checks and never set by hand.
     @computed_field
     @property
     def gate(self) -> Gate:
@@ -184,15 +124,3 @@ class FunderAssessment(BaseModel):
     def rank_key(self) -> str:
         return self._result.rank_key
 
-
-def merge(readiness: dict, pair: PairAssessment) -> FunderAssessment:
-    """Join the organisation's stored readiness with one funder's checks. Code, so nothing is re-typed."""
-    stored = ReadinessAssessment.model_validate(readiness)
-    if stored.org_id != pair.org_id:
-        raise ValueError(f"readiness is for org {stored.org_id}, the funder check for org {pair.org_id}")
-    gaps = list(dict.fromkeys([*pair.gaps, *stored.gaps]))
-    return FunderAssessment(
-        **pair.model_dump(exclude={"checks", "gaps"}),
-        checks=[*pair.checks, *stored.checks],
-        gaps=gaps,
-    )

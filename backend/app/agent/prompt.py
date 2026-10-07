@@ -18,18 +18,10 @@ if not _INSTRUCTIONS_MD.strip():
 
 
 def render_prompt(settings: Settings) -> str:
-    """The wave size, as Import does it: a plain replace, because the file is full of literal braces."""
-    return _INSTRUCTIONS_MD.replace("{{MAX_PARALLEL_RESEARCH}}", str(settings.max_parallel_research))
+    """The prompt as shipped: nothing in it depends on settings now that matching runs no waves."""
+    return _INSTRUCTIONS_MD
 
 
 # For tests and tooling; build_agent renders from the Settings it was given.
 SYSTEM_PROMPT = render_prompt(get_settings())
 
-
-def subagent_prompt(name: str) -> str:
-    """A subagent's instructions, from prompts/<name>.md beside this module."""
-    path = Path(__file__).parent / "prompts" / f"{name}.md"
-    text = path.read_text(encoding="utf-8")
-    if not text.strip():
-        raise RuntimeError(f"subagent prompt is empty: {path}")
-    return text

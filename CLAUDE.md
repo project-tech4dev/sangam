@@ -197,28 +197,28 @@ middleware stack over `langchain.agents.create_agent` and returns a compiled Lan
 graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 `add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
 
-**The agent has exactly six tools, and there is ONE path to the database.**
+**The agent has exactly seven tools, and there is ONE open path to the database.**
 `app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
-`db_query`, `search_graph`, `fetch_url`. Nothing else — plus deepagents' `task`, which exists for
-two declared subagents, `org-readiness` and `funder-assessor`.
+`db_query`, `search_graph`, `fetch_url` and `compare_fit`. Nothing else, and no subagent, so there
+is no `task` tool. `compare_fit` is the one exception to "the model writes its own SELECT": funder
+matching is a fixed checklist, so its queries are fixed too (`app/repositories/matching.py`, in a
+read-only transaction with the same `statement_timeout`).
 
-**Funder matching: the agent finds the facts, code scores them.** Two subagents with three
-read-only SQL tools judge cited checks. `org-readiness` judges the organisation's own twelve
-(registrations, audits, board, track record) **once**, and an `after_agent` hook files them in graph
-state under `org_readiness` (`app/agent/state.py`, `AskState`); `funder-assessor` judges only what
-depends on one funder, and its hook joins that `PairAssessment` with the stored readiness into a
-`FunderAssessment` (`app/agent/assessment.py`). The join is code, so every funder sees identical
-readiness and no model copies another's output. Their prompts, `app/agent/prompts/org_readiness.md`
-and `funder_assessor.md`, **define the checks**; `app/agent/scoring.py` turns them into a gate (pass / unverified / fail), a
-score out of 100, a coverage and a `rank_key` — pure arithmetic, exposed as Pydantic computed
-fields, so the model never fills them and deepagents' `model_dump_json()` hands them to the
-supervisor. Changing a check is the prompt; changing a weight or a gate is `scoring.py`. The schema
-refuses a `fail` without cited evidence, so "not recorded" cannot become "ineligible", and only a
-`fail` closes a gate. `ASSESSOR_MODEL` points both subagents at a cheaper model. Design:
-`docs/features/2026-10-07-funder-matching-readiness-once.md` and
-`docs/features/2026-10-07-funder-matching-scored.md`, on top of
-`docs/features/2026-10-06-funder-matching-agentic.md`. The earlier deterministic engine — which
-also fetched and judged in code — was built and removed; its plan is kept beside them.
+**Funder matching is judged in code, not by a model.** `compare_fit(org_id, funder_ids=None)` loads
+an `OrgProfile` and `FunderProfile`s with fixed SQL (`repositories/matching.py`), and
+`app/agent/rules.py` — pure, no I/O — judges every check: the organisation's own twelve
+(registrations, audits, board, track record) once, and place, theme, programme and the funder's
+recorded bars per funder. Each funder becomes a `FunderAssessment` (`app/agent/assessment.py`), whose
+computed fields call `app/agent/scoring.py` for a gate (pass / unverified / fail), a score out of
+100, a coverage and a `rank_key`. Without `funder_ids` it considers the whole catalog, assesses
+every funder sharing a place or a theme and counts the rest, so a shortlist is one call in
+milliseconds and the same answer every run. Changing a check is `rules.py`; changing a weight or a
+gate is `scoring.py`. A missing row is `unknown` ("not recorded"), never `fail`, and `Check` refuses
+a `fail` without a cited row. A `funder_eligibility` criterion is free text, so it is always
+`unknown`, "needs review". Design: `docs/features/2026-10-07-funder-matching-in-code.md`. Two
+model-judged versions came before it — a `funder-assessor` subagent per pair, then
+`org-readiness` once plus assessors — and were removed for running ~35 open-ended queries per
+subagent; their plans are kept beside it.
 
 That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
 `create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`
@@ -230,15 +230,14 @@ two different mechanisms, and the difference matters: a `HarnessProfile` is regi
 **provider**, so it is global to every agent sharing a model — right for the subagent, wrong for
 tools, since both supervisors need `ls` to find a skill and no subagent may hold it. So
 `install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
-preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its six plus `task`,
+preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its seven plus
 `read_file` and `ls`; a subagent keeps only `read_file`, which `FilesystemMiddleware` refuses to
 be built without. Nothing that writes survives on any of them.
 
 **A subagent inherits none of that and must say so itself.** `create_deep_agent` builds an
 isolated subagent's middleware from scratch with an *unrestricted* `FilesystemMiddleware`, and
 folds the parent's in only for `mode="fork"`. So `entity-researcher` and `catalog-writer` each
-carry their own `middleware=[filesystem(backend, keep=...)]` in `app/ingest/agent.py`, as
-`org-readiness` and `funder-assessor` do in `app/agent/build.py` — without
+carry their own `middleware=[filesystem(backend, keep=...)]` in `app/ingest/agent.py` — without
 it they run all eight tools, and `write_file`/`edit_file`/`delete` reach real disk through the
 `/skills/` route. A test that reads only `build(...).nodes["tools"]` cannot see this: it is the
 parent's tool node. `TestASubagentRunsOnlyTheToolsItsSpecDeclares` walks the compiled subagent
@@ -347,8 +346,7 @@ a test walks the package to prove every tool defined is also registered.
 **How many organisations Import researches at once is a setting, not a number in the
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
 above it the agent researches in waves until every organisation asked for is done.
-`app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder, and so does
-`app/agent/instructions.md`, where the same setting bounds one wave of `funder-assessor` tasks —
+`app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder —
 **the only substitution any prompt in this repo gets** — because a number frozen in prose made the
 setting decorative. A SKILL.md is read raw from disk and never substituted, so no skill names a
 wave size. It is a plain `.replace()`, not `.format()`: the file is full of literal
@@ -374,10 +372,10 @@ the access rules cannot be optional. `docs/SKILLS.md` has the mechanism, the dis
 the honest cost.
 
 **Ask Sangam loads its matching procedures the same way**, from `app/agent/skills/`:
-`funder-matching` (organisation → one narrowing `db_query` → `org-readiness` once → waves of `funder-assessor`),
-`funder-comparison` (named funders, no narrowing) and `funder-shortlist-brief` (the write-up).
-The rules they lean on — the assessor judges, an unknown is "not recorded", the wave size —
-stay in `instructions.md`, rules 11–15.
+`funder-matching` (resolve the organisation → one `compare_fit` over the catalog),
+`funder-comparison` (named funders → one `compare_fit` with their ids) and `funder-shortlist-brief`
+(the write-up). The rules they lean on — compare_fit judges, call it once, an unknown is "not
+recorded" — stay in `instructions.md`, rules 11–15.
 
 **Optional subsystems degrade, they do not crash.** The graph activates only when
 `NEO4J_URI` and an OpenAI key are both set (`Settings.graph_enabled`); `graphiti_core` is

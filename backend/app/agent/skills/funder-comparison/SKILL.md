@@ -11,26 +11,22 @@ Find the organisation and each named funder by name. If a name could mean two
 funders, ask which. A company and its foundation are different funders:
 never merge Axis Bank Limited with Axis Bank Foundation.
 
-## 2. Judge the organisation once
+## 2. Call compare_fit once
 
-Launch org-readiness for the organisation, alone in its own message, and wait
-for it. Reuse it instead if it already ran for this organisation earlier in
-this conversation and nothing has been imported for it since.
-
-## 3. Assess every named funder
-
-Launch one funder-assessor per funder with the task tool, all in one message
-when your instructions allow that many. Each description names both sides
-with their ids. If a task fails, report that funder as "not assessed" with
-the error, and never judge it yourself.
+`compare_fit(org_id, [funder_id, ...])` with every named funder in one call.
+It judges exactly those, even one with nothing in common, and returns them in
+`assessed` sorted by rank_key, with the organisation's own checks once in
+`readiness`. If it returns "compare_fit failed", report the error and never
+judge the funders yourself.
 
 ## 4a. One funder: explain it
 
 - The gate first, with its gate_reasons, then the score out of 100 with its
-  breakdown and coverage, then the assessor's reasons with their citations.
-- Then every check, grouped as fit and eligibility: met, fail, or not
-  recorded, each with its note and citations.
-- Then the gaps, as actions, in the assessor's order.
+  breakdown and coverage, then the reasons with their citations.
+- Then every check — the funder's own `checks`, then `readiness` — met, fail,
+  or not recorded, each with its note and citations. A `funder_bar` is the
+  funder's own criterion, awaiting review: name it, never decide it.
+- Then the gaps, as actions, in the order given.
 
 ## 4b. Two or more: one table
 
@@ -41,17 +37,18 @@ the error, and never judge it yourself.
 | area | met, state — Assam [org:9] [funder:2] | not recorded |
 | reg_12a | met [org:9] | met [org:9] |
 
-- Rows are the check codes either assessment returned. Fit rows come first,
-  then eligibility, with the gate and score on top.
-- A check one assessment returned and the other did not, because it does not
-  apply to that funder, reads "does not apply" — not "not recorded".
+- Rows are the funder checks first, with the gate and score on top. The
+  `readiness` checks are the same for every funder: list them once under the
+  table, not as columns.
+- A funder_bar one funder recorded and the other did not reads "none
+  recorded" for the second.
 - Under the table: where to start, in one or two sentences, from the gates, scores
   and the first gap of each. A funder whose gate is `pass` comes before one
   that is `unverified`, whatever the scores.
 
 ## Rules that keep it honest
 
-- Repeat each gate, score, coverage and outcome exactly as the reply gives
+- Repeat each gate, score, coverage and outcome exactly as compare_fit gives
   them. Never compute, adjust or round one yourself.
 - An `unknown` is "not recorded". Never "ineligible", "not met" or "poor fit".
 - A gate `fail` rests on a cited row; name that row. `unverified` means

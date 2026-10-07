@@ -94,29 +94,22 @@ class TestTheFilesystemMiddlewareIsReplaced:
 
 
 class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
-    def test_ask_sangam_advertises_exactly_its_two_matching_subagents(self):
+    def test_ask_sangam_has_no_task_tool_because_it_declares_no_subagent(self):
         from app.agent.build import build_agent
         from app.core.config import get_settings
 
+        # It once carried a general-purpose subagent with db_query and no instructions.
         tools = build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name
-        # The task tool exists for matching alone. It once carried a
-        # general-purpose subagent with db_query and no instructions.
-        advertised = {
-            line.strip()[2:].split(":", 1)[0]
-            for line in tools["task"].description.splitlines()
-            if line.strip().startswith("- ") and ":" in line
-        }
-        assert {"org-readiness", "funder-assessor"} <= advertised
-        assert "general-purpose" not in advertised
+        assert "task" not in tools
 
-    def test_ask_sangam_holds_its_six_tools_the_skill_readers_and_task(self):
+    def test_ask_sangam_holds_its_seven_tools_and_the_skill_readers(self):
         from app.agent.build import build_agent
         from app.core.config import get_settings
 
         tools = set(build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name)
         assert tools == {
             "db_list_tables", "db_describe_table", "db_profile_column", "db_query",
-            "search_graph", "fetch_url", "read_file", "ls", "task",
+            "search_graph", "fetch_url", "compare_fit", "read_file", "ls",
         }
 
     def test_neither_agent_can_write_a_file_or_run_a_command(self):
@@ -331,65 +324,6 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
             assert "ls" not in tools, name
 
 
-MATCHING = ("org-readiness", "funder-assessor")
-
-
-@pytest.fixture(scope="module")
-def ask_subagents() -> dict:
-    from app.agent.build import build_agent
-    from app.core.config import get_settings
-
-    graph = build_agent(get_settings(), None)
-    return {"supervisor": graph, **_compiled_subagents(graph)}
-
-
-class TestTheMatchingSubagentsReadAndNothingElse:
-    """An isolated subagent builds its own stack, so Ask's restricted filesystem
-    does not reach it. Unset, it would run write_file and execute."""
-
-    def test_exactly_the_two_are_compiled(self, ask_subagents):
-        assert set(ask_subagents) - {"supervisor"} == set(MATCHING)
-
-    @pytest.mark.parametrize("name", MATCHING)
-    def test_each_runs_three_read_only_sql_tools_and_the_floor(self, ask_subagents, name):
-        tools = set(ask_subagents[name].nodes["tools"].bound.tools_by_name)
-        assert tools == {"db_list_tables", "db_describe_table", "db_query", "read_file"}
-
-
-class TestReadinessTravelsThroughState:
-    """org-readiness writes org_readiness; funder-assessor reads it. Both need the channel."""
-
-    @pytest.mark.parametrize("name", ("supervisor", *MATCHING))
-    def test_every_graph_has_the_channel(self, ask_subagents, name):
-        assert "org_readiness" in ask_subagents[name].channels
-
-
-class TestAnInvalidAssessmentIsRetriedNotRaised:
-    """ProviderStrategy raises on a validation error; one bad cite would abort the task."""
-
-    @pytest.mark.parametrize(("spec", "schema"), [("READINESS", "ReadinessAssessment"), ("ASSESSOR", "PairAssessment")])
-    def test_each_uses_a_tool_strategy_that_feeds_errors_back(self, spec, schema):
-        from langchain.agents.structured_output import ToolStrategy
-
-        from app.agent import assessment, build
-
-        fmt = getattr(build, spec)["response_format"]
-        assert isinstance(fmt, ToolStrategy)
-        assert fmt.schema is getattr(assessment, schema)
-        assert fmt.handle_errors is True
-
-
-class TestTheAssessorModelIsOptional:
-    @pytest.mark.parametrize("model", ["", "anthropic:claude-haiku-4-5"])
-    def test_it_is_never_written_into_the_shared_specs(self, model):
-        from app.agent.build import ASSESSOR, READINESS, build_agent
-        from app.core.config import Settings
-
-        build_agent(Settings(assessor_model=model), None)
-        assert "model" not in ASSESSOR
-        assert "model" not in READINESS
-
-
 class TestAskSangamLoadsItsMatchingProcedureFromSkills:
     """Import's mechanism, Ask's own directory: procedures load on demand, rules stay in the prompt."""
 
@@ -450,19 +384,3 @@ class TestAskSangamLoadsItsMatchingProcedureFromSkills:
 
         names = {d.name for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()}
         assert names == {"funder-matching", "funder-shortlist-brief", "funder-comparison"}
-
-    def test_neither_matching_subagent_declares_any(self):
-        # Their prompts are the criteria; a skill they might not load cannot be one.
-        from app.agent.build import ASSESSOR, READINESS
-
-        assert "skills" not in ASSESSOR
-        assert "skills" not in READINESS
-
-    def test_a_skill_never_names_a_wave_size(self):
-        # SKILL.md is read raw from disk, so a number there would ignore MAX_PARALLEL_RESEARCH.
-        import re
-
-        from app.agent.build import SKILLS_DIR
-
-        for path in SKILLS_DIR.glob("*/SKILL.md"):
-            assert not re.search(r"waves? of \d", path.read_text(encoding="utf-8")), path

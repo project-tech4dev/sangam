@@ -1,4 +1,4 @@
-"""Gate, score and order from a funder-assessor's checks. The model judges each check; this only does arithmetic.
+"""Gate, score and order from the matching checks. rules.py judges each check; this only does arithmetic.
 
 Pure: no pool, no async, no settings. Takes plain (code, outcome, level) tuples so it never imports assessment.py.
 """
