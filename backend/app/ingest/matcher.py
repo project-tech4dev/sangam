@@ -65,17 +65,39 @@ class Match:
         return self.entity_id is not None
 
 
-async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | None = None) -> Match:
-    """Four steps in order: identifier, exact name, alias, trigram."""
-    for id_type, id_value in (identifiers or {}).items():
+# Words that make a name a foundation or trust rather than the company itself.
+_FOUNDATION_WORDS = frozenset({
+    "foundation", "foundations", "trust", "trusts", "charitable", "charities", "society",
+    "sansthan", "samiti",
+})
+
+
+def _is_foundation(name: str) -> bool:
+    return bool(set(re.findall(r"[a-z0-9]+", name.lower())) & _FOUNDATION_WORDS)
+
+
+def _same_organisation(name: str, held: str, aliases: list[str]) -> bool:
+    """Same distinctive name and on the same side of the company/foundation line."""
+    return any(
+        n.lower() == name.lower() or (core(name) == core(n) and _is_foundation(name) == _is_foundation(n))
+        for n in (held, *aliases)
+    )
+
+
+async def resolve_funder(conn: Any, name: str, cin: str | None = None) -> Match:
+    """Four steps in order: CIN, exact name, alias, trigram.
+
+    A CIN hit must also look like the same organisation: filings attach to the parent (D7), so a
+    foundation's research often carries its parent's CIN. Such a hit falls through to the name steps.
+    """
+    if cin:
         row = await (
             await conn.execute(
-                "SELECT funder_id FROM funder_identifiers WHERE id_type = %s AND lower(id_value) = lower(%s)",
-                (id_type, id_value),
+                "SELECT id, name, aliases FROM funders WHERE cin = %s", (cin.strip().upper(),)
             )
         ).fetchone()
-        if row:
-            return Match("identifier", row["funder_id"])
+        if row and _same_organisation(name, row["name"], row["aliases"] or []):
+            return Match("identifier", row["id"])
 
     row = await (
         await conn.execute("SELECT id FROM funders WHERE lower(name) = lower(%s)", (name,))
@@ -83,16 +105,16 @@ async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | Non
     if row:
         return Match("exact", row["id"])
 
-    # funders has no aliases column; a known alternative spelling is stored as an
-    # identifier of type 'name', which is what that id_type is for.
-    row = await (
+    # One funder per spelling. Two rows sharing an alias is a case a person settles.
+    rows = await (
         await conn.execute(
-            "SELECT funder_id FROM funder_identifiers WHERE id_type = 'name' AND lower(id_value) = lower(%s)",
+            "SELECT id FROM funders WHERE EXISTS "
+            "(SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = lower(%s)) ORDER BY id LIMIT 2",
             (name,),
         )
-    ).fetchone()
-    if row:
-        return Match("alias", row["funder_id"])
+    ).fetchall()
+    if len(rows) == 1:
+        return Match("alias", rows[0]["id"])
 
     # Same name plus "Limited" or "Trust" is the same funder, so it resolves
     # rather than waiting for a person. Only names that genuinely differ queue.
@@ -103,7 +125,9 @@ async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | Non
         )
     ).fetchall()
     for row in rows:
-        if same_but_for_boilerplate(name, row["name"]):
+        if same_but_for_boilerplate(name, row["name"]) and _is_foundation(name) == _is_foundation(
+            row["name"]
+        ):
             return Match("boilerplate", row["id"], 1.0)
 
     rows = await (
@@ -133,9 +157,8 @@ async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | Non
 async def resolve_org(conn: Any, name: str, identifiers: dict[str, str] | None = None) -> Match:
     """Three steps, not four: identifier, exact name, trigram.
 
-    `resolve_funder` has an alias step reading `funder_identifiers` rows of
-    id_type 'name'. org_identifiers' CHECK is pan|12a|80g|fcra|csr1|darpan|
-    cin|reg_no, so there is no such row to read and no alias step to port.
+    `resolve_funder` has an alias step reading `funders.aliases`; `orgs` has no such column, so
+    there is no alias step to port.
     Everything else is the funder path: the same boilerplate rule, the same
     floors, the same trigram re-rank on the distinctive part of the name.
     """

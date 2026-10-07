@@ -23,7 +23,7 @@ from pydantic import ValidationError
 
 from app.ingest.expectations import PROMOTABLE
 from app.ingest.geography import resolve_location
-from app.ingest.matcher import resolve_funder, resolve_org
+from app.ingest.matcher import Match, resolve_funder, resolve_org
 from app.ingest.records import (
     ContactRecord,
     FunderCsrSpendRecord,
@@ -44,6 +44,7 @@ from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
 from app.ingest.taxonomy import resolve_csr_sector
 from app.ingest.writer import (
     Owner,
+    cin_holder,
     ensure_document,
     set_registered_location,
     write_contact,
@@ -678,6 +679,55 @@ def _hold_unstorable(row: dict[str, Any], findings: list[dict[str, Any]], report
             )
 
 
+async def _reconcile_with_stored(
+    conn: Any, record: FunderRecord, match: Match, report: dict[str, Any]
+) -> FunderRecord:
+    """Drop what the funders row's own constraints would refuse, and say so.
+
+    A constraint violation aborts this funder's whole promotion: funders.cin is UNIQUE and
+    funders_grant_band orders the band. A CIN already stored on this row is not overwritten.
+    """
+    update: dict[str, Any] = {}
+    if record.cin:
+        holder = await cin_holder(conn, record.cin)
+        if holder is not None and holder["id"] != match.entity_id:
+            report["held"].append(
+                f"CIN {record.cin} is already recorded on {holder['name']!r} [funder:{holder['id']}], "
+                f"so it is not written on {record.name!r}. One CIN is one company: a foundation's "
+                f"research often carries its parent's CIN, and the parent is its own row linked by "
+                f"parent_id."
+            )
+            update["cin"] = None
+        elif match.entity_id is not None:
+            stored = await (
+                await conn.execute("SELECT cin FROM funders WHERE id = %s", (match.entity_id,))
+            ).fetchone()
+            if stored and stored["cin"] and stored["cin"] != record.cin:
+                report["held"].append(
+                    f"CIN {record.cin} differs from {stored['cin']} already stored on "
+                    f"{record.name!r}. Not written — a person decides which is current."
+                )
+                update["cin"] = None
+    one_sided = (record.grant_size_min is None) != (record.grant_size_max is None)
+    if match.entity_id is not None and one_sided:
+        stored = await (
+            await conn.execute(
+                "SELECT grant_size_min, grant_size_max FROM funders WHERE id = %s", (match.entity_id,)
+            )
+        ).fetchone()
+        if stored:
+            lo = record.grant_size_min if record.grant_size_min is not None else stored["grant_size_min"]
+            hi = record.grant_size_max if record.grant_size_max is not None else stored["grant_size_max"]
+            if lo is not None and hi is not None and float(hi) < float(lo):
+                report["held"].append(
+                    f"grant band for {record.name!r}: the research inverts the stored band "
+                    f"({stored['grant_size_min']} to {stored['grant_size_max']}). Not written — a "
+                    f"person decides which is current."
+                )
+                update.update(grant_size_min=None, grant_size_max=None)
+    return record.model_copy(update=update) if update else record
+
+
 async def _promote_funder(
     conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any]
 ) -> None:
@@ -686,13 +736,14 @@ async def _promote_funder(
         report["reasons"].append("no identity or identifier finding to build a funder from")
         return
 
-    match = await resolve_funder(conn, record.name, record.identifiers)
+    match = await resolve_funder(conn, record.name, record.cin)
     if match.method == "trigram":
         names = ", ".join(c["name"] for c in match.candidates)
         report["reasons"].append(
             f"{record.name!r} resembles {names} without matching. Not merged — a person decides."
         )
         return
+    record = await _reconcile_with_stored(conn, record, match, report)
     parent_id = await _parent(conn, record, report)
     status, funder_id, _ = await write_funder(conn, record, match, parent_id=parent_id)
     report["entity"] = {

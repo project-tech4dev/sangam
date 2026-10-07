@@ -224,6 +224,13 @@ async def _free_slug(conn: Any, base: str, table: str = "funders") -> str:
     return slug
 
 
+async def cin_holder(conn: Any, cin: str) -> dict | None:
+    """The funder already holding this CIN, if any. funders.cin is UNIQUE."""
+    return await (
+        await conn.execute("SELECT id, name FROM funders WHERE cin = %s", (cin,))
+    ).fetchone()
+
+
 async def _write_identifiers(conn: Any, funder_id: int, rec: FunderRecord) -> None:
     for id_type, id_value in rec.identifiers.items():
         await conn.execute(
