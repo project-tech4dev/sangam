@@ -179,7 +179,8 @@ async def _workbook(doc: dict[str, Any]) -> bytes | None:
 
 async def read_rows(pool: Any, name: str, *, sheet: str = "") -> str:
     name = (name or "").strip()
-    funders = await funders_repo.name_variants(pool, match=name) if len(name) >= 3 else []
+    asked = search_terms([name])
+    funders = await funders_repo.name_variants(pool, match=asked[0]) if asked else []
     terms = search_terms([name, *(n for f in funders for n in (f["name"], *(f["aliases"] or [])))])
     if not terms:
         return "read_source_rows needs a name of at least three letters."
@@ -201,6 +202,9 @@ async def read_rows(pool: Any, name: str, *, sheet: str = "") -> str:
         if sheets:
             parts.append(render(doc, sheets))
     logger.info("read_source_rows: %d of %d datasets matched", len(parts), len(datasets))
+    if len(problems) == len(datasets):
+        return "\n".join([f"read_source_rows could not read {len(datasets)} staff file(s). Nothing was searched.",
+                          *problems])
     head = [f"read_source_rows: {len(parts)} of {len(datasets)} staff datasets name one of: {'; '.join(terms)}."]
     if not parts:
         head.append("No row matched. The filer is often the parent company, not the foundation: try its "

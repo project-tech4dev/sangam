@@ -118,18 +118,21 @@ async def funder_scores(pool: AsyncConnectionPool, funder_id: int) -> list[dict]
         ).fetchall()
 
 
-def _like(text: str) -> str:
-    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return f"%{escaped}%"
+
+def _folded(column: str) -> str:
+    """SQL folding a name as staff_sources.search_terms does: words only, no Ltd/Pvt tail, no leading The."""
+    words = f"btrim(regexp_replace(lower({column}), '[^[:alnum:]]+', ' ', 'g'))"
+    return (f"regexp_replace(regexp_replace({words}, '( (ltd|limited|pvt|private))+$', ''), "
+            "'^the ', '')")
 
 
 async def name_variants(pool: AsyncConnectionPool, *, match: str, limit: int = 5) -> list[dict]:
-    """Funders whose name or an alias contains `match`, with every name they go by."""
-    sql = """
+    """Funders whose whole folded name or alias equals `match` (already folded), with every name they go by."""
+    sql = f"""
     SELECT name, aliases FROM funders
-    WHERE name ILIKE %(p)s OR EXISTS (SELECT 1 FROM unnest(aliases) a WHERE a ILIKE %(p)s)
-    ORDER BY similarity(name, %(m)s) DESC, id
+    WHERE {_folded("name")} = %(m)s OR EXISTS (SELECT 1 FROM unnest(aliases) a WHERE {_folded("a")} = %(m)s)
+    ORDER BY id
     LIMIT %(limit)s
     """
     async with pool.connection() as conn:
-        return await (await conn.execute(sql, {"p": _like(match), "m": match, "limit": limit})).fetchall()
+        return await (await conn.execute(sql, {"m": match, "limit": limit})).fetchall()

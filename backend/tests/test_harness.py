@@ -138,6 +138,7 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         }
         assert "entity-researcher" in advertised
         assert "catalog-writer" in advertised
+        assert "staff-reader" in advertised
         assert "general-purpose" not in advertised
 
 
@@ -230,9 +231,9 @@ class TestTheSkillIsFoundAndIsProgressive:
         a ResearchSummary with no prose. The supervisor writes the brief, so
         the supervisor holds the skills.
         """
-        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, STAFF_READER
 
-        for spec in (ENTITY_RESEARCHER, CATALOG_WRITER):
+        for spec in (ENTITY_RESEARCHER, STAFF_READER, CATALOG_WRITER):
             assert "skills" not in spec, spec["name"]
 
     def test_every_skill_is_advertised_to_the_supervisor(self):
@@ -294,20 +295,23 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
     delete against the backend whose /skills/ route is real disk.
     """
 
-    def test_both_subagents_are_compiled_and_found(self, subagents):
-        assert set(subagents) == {"entity-researcher", "catalog-writer"}
+    def test_every_subagent_is_compiled_and_found(self, subagents):
+        assert set(subagents) == {"entity-researcher", "staff-reader", "catalog-writer"}
 
     def test_neither_subagent_can_write_a_file_or_run_a_command(self, subagents):
         forbidden = {"write_file", "edit_file", "delete", "execute", "glob", "grep"}
         for name, tools in subagents.items():
             assert not tools & forbidden, f"{name}: {sorted(tools & forbidden)}"
 
-    def test_the_researcher_gets_its_eight_and_nothing_of_the_filesystem(self, subagents):
+    def test_the_researcher_gets_its_seven_and_nothing_of_the_filesystem(self, subagents):
         assert subagents["entity-researcher"] == {
-            "research_goals", "funder_dossier", "read_source_rows", "search_public_sources",
+            "research_goals", "funder_dossier", "search_public_sources",
             "read_page", "fetch_document", "read_document_pages", "save_research",
             "read_file",
         }
+
+    def test_the_staff_reader_gets_the_workbooks_and_nothing_of_the_network(self, subagents):
+        assert subagents["staff-reader"] == {"research_goals", "read_source_rows", "save_research", "read_file"}
 
     def test_the_writer_gets_the_floor_and_not_the_skill_reader(self, subagents):
         assert subagents["catalog-writer"] == {"promote_research", "funder_dossier", "read_file"}
