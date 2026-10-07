@@ -10,8 +10,10 @@ from app.api.routes import (
     funders,
     grants,
     ingest,
+    me,
     meta,
     news,
+    org_members,
     orgs,
     programs,
     rfps,
@@ -29,12 +31,14 @@ OPENAPI_TAGS = [
     {"name": "scores", "description": "Rubric-based funder-fit assessments and adjustment audit log"},
     {"name": "ingest", "description": "Sangam Import: sources, run history and the review queue"},
     {"name": "meta", "description": "Shared vocabularies: tags and locations"},
+    {"name": "me", "description": "The signed-in user and their org roles"},
 ]
 
 api_router = APIRouter(prefix="/api")
 
 for _router in (
     orgs.router,
+    org_members.router,
     funders.router,
     grants.router,
     programs.router,
@@ -45,5 +49,6 @@ for _router in (
     news.router,
     documents.router,
     ingest.router,
+    me.router,
 ):
     api_router.include_router(_router)
