@@ -122,7 +122,7 @@ _TABLES: tuple[Table, ...] = (
             Column("org_id", "bigint", cites="org"),
             Column("funder_id", "bigint", cites="funder"),
             Column("title", "text"),
-            Column("doc_type", "text"),
+            Column("doc_type", "text", note="free text, except three values written by their own path: 'funder_eligibility' (a funder's standing eligibility, verbatim in content_md), 'proposal_template' (a funder's application form), 'source_dataset' (a staff-only file with no content_md)"),
             Column("content_md", "text", heavy=True),
             Column("source_url", "text"),
             Column("source_name", "text"),

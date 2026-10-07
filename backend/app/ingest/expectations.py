@@ -173,6 +173,10 @@ PROVENANCE = frozenset({
     "archive_url", "content_hash", "extractor_version",
 })
 
+# doc_type values written only by their own path: the eligibility concept, the template path and the
+# staff-source upload. A `document` finding may not use them, and ensure_document keys them apart.
+RESERVED_DOC_TYPES = frozenset({"funder_eligibility", "proposal_template", "source_dataset"})
+
 # Foreign keys a source does state, in words. The writer resolves each name to
 # an id; the researcher only ever reports what the report printed.
 # A single location_id is deliberately absent: a table with one place column

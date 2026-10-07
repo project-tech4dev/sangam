@@ -6,6 +6,7 @@ import json
 import re
 from typing import Any, NamedTuple
 
+from app.ingest.expectations import RESERVED_DOC_TYPES
 from app.ingest.matcher import Match
 from app.ingest.records import (
     FunderCsrYearRecord,
@@ -100,16 +101,20 @@ async def ensure_document(
     conn: Any, rec: Any, *, owner: Owner | None, doc_type: str,
     storage_path: str | None = None, content_hash: str | None = None,
 ) -> tuple[int, str]:
-    """One documents row per source URL, so many facts can cite one report.
+    """One documents row per source URL and kind of document, so many facts can cite one report.
 
-    Returns (id, added | updated | matched), like the other writers here. The
-    archive columns backfill onto a row that predates archiving, and only where
-    the row is empty - a re-promote never overwrites what is already recorded.
+    The kind is the doc_type itself for the three reserved types and one shared class for every
+    other type: a policy page can be both the archived source and the funder's eligibility document
+    (two rows), while one PDF that two research runs called 'annual_report' and 'csr_annexure' is
+    still one row. Returns (id, added | updated | matched). The archive columns backfill onto a row
+    that predates archiving, and only where the row is empty.
     """
+    kind = doc_type if doc_type in RESERVED_DOC_TYPES else ""
     row = await (
         await conn.execute(
-            "SELECT id, storage_path, content_hash FROM documents WHERE source_url = %s",
-            (rec.source_url,),
+            "SELECT id, storage_path, content_hash FROM documents WHERE source_url = %s "
+            "AND (CASE WHEN doc_type = ANY(%s) THEN doc_type ELSE '' END) = %s ORDER BY id LIMIT 1",
+            (rec.source_url, sorted(RESERVED_DOC_TYPES), kind),
         )
     ).fetchone()
     if row:

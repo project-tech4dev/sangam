@@ -21,6 +21,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.ingest.expectations import CONCEPTS as _REGISTRY
+from app.ingest.expectations import RESERVED_DOC_TYPES
 from app.ingest.records import CIN_FORMAT, ClassifiedBy, ImplementationMode, normalise_cin
 from app.ingest.taxonomy import DOMAINS, NO_THEMES
 
@@ -464,6 +465,16 @@ class DocumentFinding(FindingBase):
     as_of: str | None = Field(
         default=None, description="the period the document describes — not when you read it"
     )
+
+    @field_validator("doc_type")
+    @classmethod
+    def _not_reserved(cls, v: str) -> str:
+        if v in RESERVED_DOC_TYPES:
+            raise ValueError(
+                f"doc_type {v!r} is reserved: eligibility is an eligibility_guideline finding, and "
+                f"templates and staff datasets have their own paths"
+            )
+        return v
 
 
 class RfpFinding(FindingBase):
