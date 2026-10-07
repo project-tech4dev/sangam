@@ -50,11 +50,15 @@ def title(source_key: str, filename: str) -> str:
 HEADER_ROWS = 3            # top rows of a sheet shown with any match
 SECTION_ROWS = 40          # rows a matching numbered heading brings with it
 MAX_CHARS = 60_000         # ~15k tokens of tool output
-CONTACT_HEADERS = ("phone", "mobile", "email", "e mail", "contact person", "address")
+# Matched as whole words after folding, so "tel." is "tel" and "e-mail" is "e mail".
+CONTACT_HEADERS = ("phone", "mobile", "email", "e mail", "contact person", "address", "telephone", "tel",
+                   "contact no", "contact number", "landline", "fax", "whatsapp")
 _SUFFIXES = {"ltd", "limited", "pvt", "private"}
 _NON_WORD = re.compile(r"[^\w]+")
 _NUMBERED = re.compile(r"^\s*\d+\s*[.)]\s*\S")
 _EMAIL = re.compile(r"\S+@\S+\.\w+")
+_PHONE = re.compile(r"\+?\d[\d \-()]{8,}\d")
+_YEARS = re.compile(r"^(?:(?:19|20)\d\d[\s\-–/]*)+$")
 _CACHE_MAX_BYTES = 200 * 1024 * 1024
 _cache: OrderedDict[tuple[str, str], bytes] = OrderedDict()
 _locks: dict[str, asyncio.Lock] = {}
@@ -137,9 +141,18 @@ def scan(data: bytes, terms: list[str], only_sheet: str = "") -> list[tuple[str,
     return out
 
 
+def _phone(text: str) -> bool:
+    """A run of 10+ digits in a text cell (numbers are amounts); a run of years is not one."""
+    return any(sum(ch.isdigit() for ch in m) >= 10 and not _YEARS.match(m) for m in _PHONE.findall(text))
+
+
 def _cell(value: Any) -> str:
     text = " ".join(str(value).split())
-    return "[email removed]" if _EMAIL.search(text) else text[:300]
+    if _EMAIL.search(text):
+        return "[email removed]"
+    if isinstance(value, str) and _phone(text):
+        return "[phone removed]"
+    return text[:300]
 
 
 def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple]], set[int]]]) -> str:
@@ -190,8 +203,16 @@ async def read_rows(pool: Any, name: str, *, sheet: str = "") -> str:
     parts: list[str] = []
     problems: list[str] = []
     for doc in datasets:
-        data = await _workbook(doc)
+        try:
+            data = await _workbook(doc)
+        except Exception as exc:  # noqa: BLE001 - one file failing is listed, not fatal
+            data, kind = None, type(exc).__name__
+        else:
+            kind = ""
         if data is None:
+            if kind:
+                problems.append(f"document {doc['id']} ({doc['source_name']}) could not be read ({kind}).")
+                continue
             problems.append(f"document {doc['id']} ({doc['source_name']}) could not be downloaded.")
             continue
         try:
@@ -212,9 +233,11 @@ async def read_rows(pool: Any, name: str, *, sheet: str = "") -> str:
         return "\n".join(head + problems)
     head.append("Cite a fact by the marker of the cell that holds it: [source:<document>#<sheet>!<cell>]. "
                 "Amounts are as printed; the sheet's unit is in \"The staff sheets\" in your instructions.")
-    text = "\n\n".join(["\n".join(head), *parts, *problems])
-    if len(text) > MAX_CHARS:
-        cut = text.rfind("\n", 0, MAX_CHARS)
+    text = "\n\n".join(["\n".join(head), *parts])
+    tail = "\n\n" + "\n".join(problems) if problems else ""
+    room = MAX_CHARS - len(tail)
+    if len(text) > room:  # cut rows, never the failure lines
+        cut = text.rfind("\n", 0, room)
         text = (text[:cut] + f"\n… output cut at {MAX_CHARS} characters. Call again with `sheet` "
                 "(e.g. one fiscal year) to read the rest.")
-    return text
+    return text + tail

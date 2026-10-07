@@ -118,7 +118,6 @@ async def funder_scores(pool: AsyncConnectionPool, funder_id: int) -> list[dict]
         ).fetchall()
 
 
-
 def _folded(column: str) -> str:
     """SQL folding a name as staff_sources.search_terms does: words only, no Ltd/Pvt tail, no leading The."""
     words = f"btrim(regexp_replace(lower({column}), '[^[:alnum:]]+', ' ', 'g'))"

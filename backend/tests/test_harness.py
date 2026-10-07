@@ -308,6 +308,24 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
             "read_page", "fetch_document", "read_document_pages", "save_research",
             "read_file",
         }
+        # Staff rows last: once the run has asked for read_source_rows, the compiled node refuses read_page.
+        from langchain_core.messages import AIMessage, ToolMessage
+        from langgraph.prebuilt.tool_node import ToolCallRequest
+
+        from app.agent.middleware import STAFF_LOCK_REPLY
+        from app.core.config import get_settings
+        from app.ingest.agent import build_ingest_agent
+
+        task = build_ingest_agent(get_settings(), None).nodes["tools"].bound.tools_by_name["task"]
+        graphs = next(c.cell_contents for c in (task.func or task.coroutine).__closure__
+                      if isinstance(c.cell_contents, dict) and "entity-researcher" in c.cell_contents)
+        node = graphs["entity-researcher"].nodes["tools"].bound
+        staff = [AIMessage("", tool_calls=[{"name": "read_source_rows", "args": {"name": "x"}, "id": "1"}]),
+                 ToolMessage("rows", tool_call_id="1", name="read_source_rows")]
+        call = {"name": "read_page", "args": {"url": "https://example.org"}, "id": "2", "type": "tool_call"}
+        request = ToolCallRequest(tool_call=call, tool=node.tools_by_name["read_page"],
+                                  state={"messages": staff}, runtime=None)
+        assert node._wrap_tool_call(request, lambda r: None).content == STAFF_LOCK_REPLY
 
     def test_the_writer_gets_the_floor_and_not_the_skill_reader(self, subagents):
         assert subagents["catalog-writer"] == {"promote_research", "funder_dossier", "read_file"}
