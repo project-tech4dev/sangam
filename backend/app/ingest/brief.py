@@ -56,6 +56,12 @@ _ELIGIBILITY_KINDS = {
     "disqualifier": "DISQUALIFIER",
 }
 
+# Concepts saved before 0031. Rendered so old research keeps its facts on the page; never promoted
+# as themselves (promote.funder_from folds `identifier` into the funder record).
+LEGACY_TITLES: dict[str, str] = {
+    "identifier": "Registrations and identifiers (saved before 0031)",
+}
+
 
 def headline(f: dict[str, Any]) -> str:
     """One line per finding, from the typed fields of its concept."""
@@ -166,7 +172,7 @@ def entity_markdown(row: dict[str, Any]) -> str:
             "",
         ]
 
-    for concept, title in CONCEPT_TITLES.items():
+    for concept, title in {**CONCEPT_TITLES, **LEGACY_TITLES}.items():
         group = [f for f in findings if f.get("concept") == concept]
         if not group:
             continue
@@ -183,7 +189,7 @@ def entity_markdown(row: dict[str, Any]) -> str:
         out.append("")
 
     if row["not_found"]:
-        missing = ", ".join(CONCEPT_TITLES.get(c, c).lower() for c in row["not_found"])
+        missing = ", ".join({**CONCEPT_TITLES, **LEGACY_TITLES}.get(c, c).lower() for c in row["not_found"])
         out += ["## Looked for, not found", "",
                 f"{missing}. Not recorded is not the same as not existing.", ""]
     if row["sources_read"]:

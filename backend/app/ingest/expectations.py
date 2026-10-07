@@ -26,12 +26,10 @@ from datetime import UTC, date, datetime
 
 from app.agent.tools.sql.catalog import CATALOG
 
-# Which kind of entity offers a concept. programs, metrics, contacts and
-# documents each carry both an org_id and a funder_id, so they are the same
-# concept either way and only the foreign key changes. Everything else hangs
-# off one or the other — including identity and identifiers, which is the bug
-# this split fixes: an NGO used to be sent at funder_identifiers, whose id_type
-# enum is pan|cin|csr1|darpan|reg_no|domain|name and holds no 12A, 80G or FCRA.
+# Which kind of entity offers a concept. programs, metrics, contacts and documents each carry both an
+# org_id and a funder_id, so they are the same concept either way and only the foreign key changes.
+# Everything else hangs off one or the other: an NGO's 12A, 80G and FCRA live in org_identifiers, and
+# a funder keeps only a CIN, on its own row.
 _BOTH = frozenset({"funder", "org"})
 _FUNDER = frozenset({"funder"})
 _ORG = frozenset({"org"})
@@ -66,7 +64,6 @@ class ConceptSpec:
 # where money demonstrably went: two concepts and two tables, never one.
 CONCEPTS: dict[str, ConceptSpec] = {
     "identity": ConceptSpec("funders", "Identity"),
-    "identifier": ConceptSpec("funder_identifiers", "Registrations and identifiers"),
     "csr_year": ConceptSpec("funder_csr_years", "CSR position by year"),
     "csr_spend": ConceptSpec(
         "funder_csr_spend",
@@ -204,7 +201,6 @@ class Expected:
 # exists to prevent.
 REQUIRED: dict[str, frozenset[str]] = {
     "identity": frozenset({"name"}),
-    "identifier": frozenset({"id_type", "id_value"}),
     "csr_year": frozenset({"fiscal_year"}),
     "csr_spend": frozenset({"fiscal_year", "amount"}),
     "footprint": frozenset({"fiscal_year", "state"}),

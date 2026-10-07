@@ -155,9 +155,10 @@ class TestRecordsRefuseWhatTheWriterCannotUse:
         with pytest.raises(ValidationError):
             FunderCsrYearRecord(funder_name="Acme Ltd", fiscal_year="FY2024-25", total_spent=-1, **prov())
 
-    def test_an_unknown_identifier_type_is_rejected(self):
-        with pytest.raises(ValidationError, match="unknown identifier types"):
-            FunderRecord(name="Acme", identifiers={"aadhaar": "1234"}, **prov())
+    def test_a_funder_record_has_no_identifier_map(self):
+        # funder_identifiers is gone (0031): a CIN and other spellings are columns on funders.
+        with pytest.raises(ValidationError, match="identifiers"):
+            FunderRecord(name="Acme", identifiers={"cin": "L12345MH2001PLC123456"}, **prov())
 
     def test_a_good_record_carries_its_provenance_through(self):
         rec = FunderCsrYearRecord(
@@ -846,7 +847,7 @@ class TestPromotionCoversEveryConceptWithAWriter:
 
         # Handled outside the fact loops: the entity itself, its identifiers,
         # its documents and its programmes each have their own step.
-        apart = {"identity", "identifier", "csr_year", "program", "document",
+        apart = {"identity", "csr_year", "program", "document",
                  "org_identity", "org_identifier"}
         assert set(PROMOTABLE) - apart == set(WRITE_ORDER) | set(ORG_WRITE_ORDER)
 

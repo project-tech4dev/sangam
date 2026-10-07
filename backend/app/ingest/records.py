@@ -79,8 +79,6 @@ class FunderRecord(Provenance):
     caller, which reports it rather than inventing a row when it will not
     resolve: Axis Bank Foundation and Axis Bank Limited are two rows and a link,
     never one row, and a placeholder parent is a fact nobody sourced."""
-    identifiers: dict[str, str] = Field(default_factory=dict)
-    """Deterministic keys: cin, pan, csr1, darpan, reg_no, domain."""
     cin: str | None = None
     """Corporate funders only. Normalised here and refused on the finding, so a malformed CIN costs
     one field at save time rather than the whole funder at promotion."""
@@ -111,15 +109,6 @@ class FunderRecord(Provenance):
     @classmethod
     def _one_organisation(cls, v: str) -> str:
         return reject_if_aggregate(v)
-
-    @field_validator("identifiers")
-    @classmethod
-    def _known_types(cls, v: dict[str, str]) -> dict[str, str]:
-        allowed = {"pan", "cin", "csr1", "darpan", "reg_no", "domain", "name"}
-        unknown = sorted(set(v) - allowed)
-        if unknown:
-            raise ValueError(f"unknown identifier types: {unknown}; allowed: {sorted(allowed)}")
-        return v
 
 
 class FunderCsrYearRecord(Provenance):
@@ -380,7 +369,7 @@ class OrgRecord(Provenance):
     legal_form: str | None = None
     registration_date: date | None = None
     identifiers: dict[str, str] = Field(default_factory=dict)
-    """12A, 80G and FCRA, which funder_identifiers has no room for."""
+    """12A, 80G and FCRA; a funder has no room for them."""
 
     @field_validator("name")
     @classmethod

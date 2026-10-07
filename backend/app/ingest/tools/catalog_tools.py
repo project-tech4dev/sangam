@@ -50,7 +50,8 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
     # Both tables carry these; funder_type and section_135_bound are a funder's
     # and org_kind and legal_form are an NGO's, so the head line differs.
     head = (
-        "id, name, slug, registry_status, funder_type, website, parent_id, section_135_bound"
+        "id, name, slug, registry_status, funder_type, website, parent_id, section_135_bound, cin, aliases, "
+        "intake_mode, funds_external, typical_duration_months, grant_size_min, grant_size_max"
         if entity_kind == "funder"
         else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort"
     )
@@ -106,13 +107,6 @@ def _row(r: Any) -> str:
 # Read-only, fixed SQL, one query per concept the research brief targets.
 # contacts deliberately omits email and phone: the catalog withholds them.
 _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
-    (
-        "funder_identifiers",
-        """
-        SELECT id_type, id_value, verified FROM funder_identifiers
-        WHERE funder_id = %s ORDER BY id_type
-        """,
-    ),
     (
         # Its standing bar, which is NOT the same question as whether a call is
         # open. Labelled so a reader cannot mistake "what the funder requires"
@@ -284,7 +278,7 @@ def _reject_unknown(entity_kind: str) -> str | None:
     It is what a not_found or wrong_entity row is saved as, and legacy rows
     hold it, so the column keeps it. But a run that has not decided which kind
     it is researching cannot be given a target list: it would get a funder's,
-    which is how an NGO ended up aimed at funder_identifiers.
+    which is how an NGO ended up aimed at the funder tables.
     """
     if entity_kind in _BY_KIND:
         return None
@@ -420,7 +414,7 @@ async def promote_research(slug: str = "") -> str:
     Research and the catalog are different: a finding is what a source said,
     a catalog row is what the product answers from. This is the step between.
 
-    Works on either kind. A funder's findings reach funders, funder_identifiers
+    Works on either kind. A funder's findings reach funders
     and the funder fact tables; an NGO's reach orgs, org_identifiers,
     org_financials and org_locations, and both kinds write the shared
     programmes, metrics, contacts and documents. `grant` is the one concept

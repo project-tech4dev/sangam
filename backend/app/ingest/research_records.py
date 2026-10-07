@@ -165,12 +165,6 @@ class IdentityFinding(FindingBase):
         return self
 
 
-class IdentifierFinding(FindingBase):
-    concept: Literal["identifier"] = "identifier"
-    id_type: Literal["pan", "cin", "csr1", "darpan", "reg_no", "domain", "name"]
-    id_value: str = Field(min_length=2, description="exactly as printed. Never guess an identifier")
-
-
 class CsrYearFinding(YearlyFinding):
     """One fiscal year of the statutory CSR annexure. Obligation, budget, spend,
     overhead and unspent are separate items and are never interchangeable."""
@@ -447,7 +441,7 @@ class OrgIdentityFinding(FindingBase):
 
 
 class OrgIdentifierFinding(FindingBase):
-    """12A, 80G and FCRA live here and nowhere else — funder_identifiers has no room for them."""
+    """12A, 80G and FCRA live here and nowhere else — a funder keeps only a CIN."""
 
     concept: Literal["org_identifier"] = "org_identifier"
     id_type: Literal["pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"]
@@ -478,7 +472,7 @@ class OrgLocationFinding(PlacedFinding):
 
 
 Finding = Annotated[
-    IdentityFinding | IdentifierFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
+    IdentityFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
     | StatedGeographyFinding | PartnerFinding | ProgramFinding | GrantFinding | MetricFinding
     | ContactFinding | DocumentFinding | RfpFinding | FunderEligibilityFinding
     | OrgIdentityFinding | OrgIdentifierFinding | OrgFinancialsFinding | OrgLocationFinding,
@@ -486,7 +480,7 @@ Finding = Annotated[
 ]
 
 FINDING_MODELS: dict[str, type[FindingBase]] = {
-    "identity": IdentityFinding, "identifier": IdentifierFinding, "csr_year": CsrYearFinding,
+    "identity": IdentityFinding, "csr_year": CsrYearFinding,
     "csr_spend": CsrSpendFinding, "footprint": FootprintFinding,
     "stated_geography": StatedGeographyFinding, "partner": PartnerFinding,
     "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,

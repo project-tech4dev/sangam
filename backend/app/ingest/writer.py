@@ -191,7 +191,6 @@ async def write_funder(
         await conn.execute(
             f"UPDATE funders SET {', '.join(sets)} WHERE id = %s", (*values, match.entity_id)
         )
-        await _write_identifiers(conn, match.entity_id, rec)
         return "updated", match.entity_id, changes
 
     slug = await _free_slug(conn, slugify(rec.name))
@@ -210,7 +209,6 @@ async def write_funder(
              rec.content_hash, rec.extractor_version),
         )
     ).fetchone()
-    await _write_identifiers(conn, row["id"], rec)
     return "added", row["id"], {"name": {"old": None, "new": rec.name}}
 
 
@@ -229,15 +227,6 @@ async def cin_holder(conn: Any, cin: str) -> dict | None:
     return await (
         await conn.execute("SELECT id, name FROM funders WHERE cin = %s", (cin,))
     ).fetchone()
-
-
-async def _write_identifiers(conn: Any, funder_id: int, rec: FunderRecord) -> None:
-    for id_type, id_value in rec.identifiers.items():
-        await conn.execute(
-            "INSERT INTO funder_identifiers (funder_id, id_type, id_value, source_url, source_name, "
-            "fetched_at) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (id_type, id_value) DO NOTHING",
-            (funder_id, id_type, id_value, rec.source_url, rec.source_name, rec.fetched_at),
-        )
 
 
 async def write_csr_year(
@@ -704,8 +693,8 @@ async def write_org(
 
 
 async def _write_org_identifiers(conn: Any, org_id: int, rec: OrgRecord) -> None:
-    """12A, 80G and FCRA among them — the three funder_identifiers has no room
-    for. `verified` is left at its default: research is not verification."""
+    """12A, 80G and FCRA among them — the registrations only an NGO carries. `verified` is left at
+    its default: research is not verification."""
     for id_type, id_value in rec.identifiers.items():
         await conn.execute(
             "INSERT INTO org_identifiers (org_id, id_type, id_value, source_url, source_name, "

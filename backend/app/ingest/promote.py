@@ -25,6 +25,7 @@ from app.ingest.expectations import PROMOTABLE
 from app.ingest.geography import resolve_location
 from app.ingest.matcher import Match, _is_foundation, resolve_funder, resolve_org
 from app.ingest.records import (
+    CIN_FORMAT,
     ContactRecord,
     FunderCsrSpendRecord,
     FunderCsrYearRecord,
@@ -39,6 +40,7 @@ from app.ingest.records import (
     OrgRecord,
     ProgramRecord,
     RfpRecord,
+    normalise_cin,
 )
 from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
 from app.ingest.taxonomy import resolve_csr_sector
@@ -97,7 +99,6 @@ EXTRACTOR_VERSION = f"research/v{SCHEMA_VERSION}"
 # seven of them were, until test_every_finding_field_reaches_a_record caught it.
 CONCEPT_RECORDS: dict[str, type] = {
     "identity": FunderRecord,
-    "identifier": FunderRecord,
     "csr_year": FunderCsrYearRecord,
     "csr_spend": FunderCsrSpendRecord,
     "footprint": FunderFootprintRecord,
@@ -120,8 +121,6 @@ RENAMED: dict[tuple[str, str], str] = {
     ("program", "kind"): "program_kind",
     ("contact", "kind"): "contact_kind",
     ("funder_eligibility", "kind"): "criterion_kind",
-    ("identifier", "id_type"): "identifiers",
-    ("identifier", "id_value"): "identifiers",
     ("org_identifier", "id_type"): "identifiers",
     ("org_identifier", "id_value"): "identifiers",
 }
@@ -161,28 +160,45 @@ def _count(report: dict[str, Any], table: str, status: str) -> None:
         report["written"].setdefault(table, collections.Counter())[status] += 1
 
 
+# Concepts from before 0031 that promotion still reads, so they are not reported as "no writer".
+FOLDED = frozenset({"identifier"})
+
+
+def _legacy_identifiers(findings: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """`identifier` findings saved before 0031, by type. Only cin, name and domain have a home now (D1)."""
+    out: dict[str, list[str]] = {}
+    for f in findings:
+        if f.get("concept") == "identifier" and f.get("id_value"):
+            out.setdefault(f.get("id_type") or "", []).append(str(f["id_value"]).strip())
+    return out
+
+
 def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRecord | None:
-    """One funder record, from the identity finding and any identifiers."""
+    """One funder record, from the identity finding and any identifiers saved before 0031."""
     identity = next((f for f in findings if f["concept"] == "identity"), None)
-    identifiers = [f for f in findings if f["concept"] == "identifier"]
-    anchor = identity or (identifiers[0] if identifiers else None)
+    legacy = [f for f in findings if f["concept"] == "identifier"]
+    anchor = identity or (legacy[0] if legacy else None)
     if anchor is None:
         return None
+    ident = identity or {}
+    old = _legacy_identifiers(legacy)
+    cins = [c for c in map(normalise_cin, old.get("cin", [])) if CIN_FORMAT.fullmatch(c)]
+    domains = old.get("domain", [])
     try:
         return FunderRecord(
-            name=(identity or {}).get("name") or row["canonical_name"] or row["entity_name"],
-            funder_type=(identity or {}).get("funder_type"),
-            website=(identity or {}).get("website") or row.get("website"),
-            section_135_bound=(identity or {}).get("section_135_bound"),
-            parent_name=(identity or {}).get("parent_name"),
-            cin=(identity or {}).get("cin"),
-            aliases=(identity or {}).get("aliases") or [],
-            intake_mode=(identity or {}).get("intake_mode"),
-            funds_external=(identity or {}).get("funds_external"),
-            typical_duration_months=(identity or {}).get("typical_duration_months"),
-            grant_size_min=to_inr((identity or {}).get("grant_size_min")),
-            grant_size_max=to_inr((identity or {}).get("grant_size_max")),
-            identifiers={f["id_type"]: f["id_value"] for f in identifiers},
+            name=ident.get("name") or row["canonical_name"] or row["entity_name"],
+            funder_type=ident.get("funder_type"),
+            website=ident.get("website") or row.get("website")
+            or (f"https://{domains[0]}" if domains else None),
+            section_135_bound=ident.get("section_135_bound"),
+            parent_name=ident.get("parent_name"),
+            cin=ident.get("cin") or (cins[0] if cins else None),
+            aliases=[*(ident.get("aliases") or []), *old.get("name", [])],
+            intake_mode=ident.get("intake_mode"),
+            funds_external=ident.get("funds_external"),
+            typical_duration_months=ident.get("typical_duration_months"),
+            grant_size_min=to_inr(ident.get("grant_size_min")),
+            grant_size_max=to_inr(ident.get("grant_size_max")),
             as_of=None,
             **_provenance(anchor, row["researched_at"]),
         )
@@ -735,7 +751,7 @@ async def _promote_funder(
 ) -> None:
     record = funder_from(row, findings)
     if record is None:
-        report["reasons"].append("no identity or identifier finding to build a funder from")
+        report["reasons"].append("no identity finding to build a funder from")
         return
 
     match = await resolve_funder(conn, record.name, record.cin)
@@ -805,7 +821,7 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
         "written": {}, "held": [], "skipped": {}, "reasons": [],
     }
     for concept in sorted({f["concept"] for f in findings}):
-        if concept not in PROMOTABLE:
+        if concept not in PROMOTABLE and concept not in FOLDED:
             report["skipped"][concept] = len([f for f in findings if f["concept"] == concept])
 
     # Before the kind branch, not after it. An org row researched under the old
