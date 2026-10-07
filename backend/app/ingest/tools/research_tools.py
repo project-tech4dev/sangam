@@ -24,6 +24,7 @@ from app.ingest.access import check_url
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish
 from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
+from app.ingest.staff_sources import is_staff_source_url
 from app.ingest.writer import slugify
 from app.integrations import storage
 
@@ -194,6 +195,48 @@ def read_document_pages(filename: str, start_page: int = 1, end_page: int | None
     return f"[{filename}: {total_pages} pages]\n\n{text}"
 
 
+STAFF_SUMMARY = "\n\nFrom the staff workbooks: "
+
+
+def _origin(url: str | None) -> str:
+    return "staff" if is_staff_source_url(url) else "web"
+
+
+def _merge(prior: dict, incoming: dict, origins: set[str]) -> dict:
+    """A save replaces only the stored findings of its own origin (web or staff) and keeps the rest."""
+    if origins >= {"web", "staff"}:
+        return incoming
+    stored = prior["findings"] if isinstance(prior["findings"], list) else json.loads(prior["findings"] or "[]")
+    kept = [f for f in stored if _origin(f["source_url"]) not in origins]
+    findings = kept + incoming["findings"]
+    web_text, _, staff_text = (prior["summary"] or "").partition(STAFF_SUMMARY)
+    staff_only = origins == {"staff"}
+    if staff_only:
+        staff_text = incoming["summary"]
+    else:
+        web_text = incoming["summary"]
+    summary = (web_text + STAFF_SUMMARY + staff_text) if web_text and staff_text else (
+        web_text or STAFF_SUMMARY.lstrip() + staff_text)
+    # The web researcher confirms the entity, so its identity and status govern once it has saved.
+    lead, other = (prior, incoming) if staff_only and web_text else (incoming, prior)
+    out = {k: lead[k] or other[k] for k in ("entity_name", "canonical_name", "website")}
+    out["entity_kind"] = lead["entity_kind"] if lead["entity_kind"] != "unknown" else other["entity_kind"]
+    out["status"], out["stopped_reason"] = lead["status"], lead["stopped_reason"]
+    if out["status"] == "not_found" and findings:
+        out["status"] = "partial"
+        out["stopped_reason"] = out["stopped_reason"] or "only one source kind had findings"
+    found = {f["concept"] for f in findings}
+    prior_goals = prior["goals"] if isinstance(prior["goals"], list) else json.loads(prior["goals"] or "[]")
+    sources = [u for u in prior["sources_read"] or [] if _origin(u) not in origins] + incoming["sources_read"]
+    return {
+        **out, "summary": summary, "findings": findings,
+        "not_found": [c for c in dict.fromkeys([*(prior["not_found"] or []), *incoming["not_found"]])
+                      if c not in found],
+        "sources_read": list(dict.fromkeys(sources)),
+        "goals": list(dict.fromkeys([*prior_goals, *incoming["goals"]])),
+    }
+
+
 @tool
 async def save_research(findings: EntityResearch, replace: bool = False) -> str:
     """Save what you found. Call this LAST, once, before you report back.
@@ -217,23 +260,37 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
     """
     try:
         slug = slugify(findings.canonical_name or findings.entity_name)
+        incoming = {
+            "entity_name": findings.entity_name, "canonical_name": findings.canonical_name,
+            "entity_kind": findings.entity_kind, "website": findings.website, "status": findings.status,
+            "stopped_reason": findings.stopped_reason, "summary": findings.summary,
+            "findings": [f.model_dump(mode="json") for f in findings.findings],
+            "not_found": list(findings.not_found), "sources_read": list(findings.sources_read),
+            "goals": list(findings.goals),
+        }
+        origins = {_origin(f["source_url"]) for f in incoming["findings"]}
+        origins |= {_origin(u) for u in incoming["sources_read"]}
+        origins = origins or {"web"}
         pool = get_pool()
-        async with pool.connection() as conn:
+        async with pool.connection() as conn, conn.transaction():
+            # A staff-reader and a researcher save the same slug at once; serialise them.
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (f"entity_research:{slug}",))
             prior = await (
                 await conn.execute(
-                    "SELECT fact_count FROM entity_research "
-                    "WHERE slug = %s AND researched_on = current_date",
+                    "SELECT * FROM entity_research WHERE slug = %s AND researched_on = current_date",
                     (slug,),
                 )
             ).fetchone()
-        if prior and prior["fact_count"] > len(findings.findings) and not replace:
-            return (
-                f"REFUSED: {slug} already has {prior['fact_count']} findings saved today and "
-                f"you are offering {len(findings.findings)}. Saving would replace the fuller "
-                f"result. If you meant to, call again with replace=true; otherwise report what "
-                f"you found and say the earlier research is already on file."
-            )
-        async with pool.connection() as conn, conn.transaction():
+            prior_same = [f for f in (prior or {}).get("findings") or [] if _origin(f["source_url"]) in origins]
+            if prior and len(prior_same) > len(incoming["findings"]) and not replace:
+                which = " and ".join(sorted(origins))
+                return (
+                    f"REFUSED: {slug} already has {len(prior_same)} {which} findings saved today and "
+                    f"you are offering {len(incoming['findings'])}. Saving would replace the fuller "
+                    f"result. If you meant to, call again with replace=true; otherwise report what "
+                    f"you found and say the earlier research is already on file."
+                )
+            merged = _merge(dict(prior), incoming, origins) if prior else incoming
             row = await (
                 await conn.execute(
                     """
@@ -261,12 +318,10 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     RETURNING *
                     """,
                     (
-                        findings.entity_name, findings.canonical_name, findings.entity_kind, slug,
-                        findings.website, findings.status, findings.stopped_reason,
-                        findings.summary,
-                        json.dumps([f.model_dump(mode="json") for f in findings.findings]),
-                        findings.not_found, findings.sources_read, len(findings.findings),
-                        json.dumps(findings.goals), SCHEMA_VERSION,
+                        merged["entity_name"], merged["canonical_name"], merged["entity_kind"], slug,
+                        merged["website"], merged["status"], merged["stopped_reason"], merged["summary"],
+                        json.dumps(merged["findings"]), merged["not_found"], merged["sources_read"],
+                        len(merged["findings"]), json.dumps(merged["goals"]), SCHEMA_VERSION,
                     ),
                 )
             ).fetchone()
@@ -277,8 +332,10 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
         published = await publish(dict(row))
 
         found = ", ".join(findings.concepts_found()) or "nothing"
+        kept = len(merged["findings"]) - len(incoming["findings"])
         replaced = (
-            f" Replaced {prior['fact_count']} findings saved earlier today."
+            f" Replaced {len(prior_same)} findings saved earlier today"
+            + (f"; kept {kept} from the other source kind." if kept else ".")
             if prior else ""
         )
         # Only claim what happened. With Storage unconfigured the brief exists
@@ -291,7 +348,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
         )
         return (
             f"Saved as entity_research #{row['id']} ({slug}): {len(findings.findings)} findings "
-            f"across {found}; status {findings.status}. Report back with slug={slug!r} and "
+            f"across {found} ({row['fact_count']} on the row); status {row['status']}. Report back with slug={slug!r} and "
             f"saved=true. {where}"
             f"promote_research moves what has a writer into the catalog.{replaced}"
         )

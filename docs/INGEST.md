@@ -143,7 +143,7 @@ prompt injection could have it carry a confidential row out in one. `read_source
 workbooks a person uploaded with `make staff-source` from the private `staff-sources` bucket with
 openpyxl and returns header rows and matching rows as `cell=value`, each cited
 `[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each sheet is laid out, and
-its unit, is in the `funder-intake-research` skill. Contact columns are dropped. Promoted facts are
+its unit, is in `prompts/staff_reader.md` under "The staff sheets" (a subagent loads no skill). Contact columns are dropped. Promoted facts are
 public (D14); the files and their `documents` rows stay staff-only, and `promote` holds a staff
 finding without its marker. Tool output reaches the model provider and, with tracing on, Langfuse,
 like every tool output.

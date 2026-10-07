@@ -211,7 +211,7 @@ async def read_rows(pool: Any, name: str, *, sheet: str = "") -> str:
                     "registered name.")
         return "\n".join(head + problems)
     head.append("Cite a fact by the marker of the cell that holds it: [source:<document>#<sheet>!<cell>]. "
-                "Amounts are as printed; the sheet's unit is in your skill's sheet notes.")
+                "Amounts are as printed; the sheet's unit is in \"The staff sheets\" in your instructions.")
     text = "\n\n".join(["\n".join(head), *parts, *problems])
     if len(text) > MAX_CHARS:
         cut = text.rfind("\n", 0, MAX_CHARS)

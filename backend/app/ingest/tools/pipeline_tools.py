@@ -340,7 +340,8 @@ async def read_source_rows(name: str, sheet: str = "") -> str:
     Cite a fact by the marker of the CELL that holds it (change the cell in the marker),
     with the dataset's source_url and source_name printed above its rows. The source_url
     is cited, never fetched. Amounts are as printed: save the figure with the sheet's
-    unit (crore, lakh or a unit written in the cell), as your skill's sheet notes say.
+    unit (crore, lakh or a unit written in the cell), as "The staff sheets" in your
+    instructions says.
 
     Contact columns are removed by design. The filer is often the parent company, not
     the foundation: search both names.

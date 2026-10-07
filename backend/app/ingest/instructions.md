@@ -207,7 +207,8 @@ Three rules:
 - **For each corporate funder, launch a `staff-reader` beside its `entity-researcher`.** It reads
   the staff workbooks (statutory filing exports, the CSO funder workbook) and nothing else — it
   has no web access, and the researcher has no access to the workbooks. Same task-description
-  rule. It counts against the wave: {{MAX_PARALLEL_RESEARCH}} subagents at once in total, of
+  rule, and **the same name, spelled the same way, as its researcher's task**: both save under
+  that name, and a save from each is kept side by side only when the names meet. It counts against the wave: {{MAX_PARALLEL_RESEARCH}} subagents at once in total, of
   either kind.
 - **A subagent DOES save its findings.** Each one calls `save_research` before it reports, so
   every organisation researched becomes a durable row with its evidence. What a subagent cannot
