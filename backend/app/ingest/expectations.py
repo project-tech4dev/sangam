@@ -62,6 +62,14 @@ class ConceptSpec:
     columns: tuple[str, ...] | None = None
 
 
+def activity_kind(concept: str) -> str:
+    """The funder_activity.kind a concept owns, from its row_filter; the writers key on it."""
+    column, value = CONCEPTS[concept].row_filter or (None, None)
+    if column != "kind" or value is None:
+        raise KeyError(f"{concept!r} owns no funder_activity kind")
+    return value
+
+
 # A concept is a research finding; a table is where it lands. 'identity' is the
 # entity itself, which is why it maps to funders rather than to a fact table.
 # 'stated_geography' is where a funder SAYS it prioritises and 'footprint' is
@@ -70,11 +78,16 @@ CONCEPTS: dict[str, ConceptSpec] = {
     "identity": ConceptSpec("funders", "Identity"),
     "csr_year": ConceptSpec("funder_csr_years", "CSR position by year"),
     "csr_spend": ConceptSpec(
-        "funder_csr_spend",
+        "funder_activity",
         "Project and sector spend",
+        row_filter=("kind", "spend"),
+        columns=("fiscal_year", "program_id", "domain_tag_id", "theme_tag_id", "classified_by",
+                 "classification_note", "state_location_id", "project_name", "designation",
+                 "implementation_mode", "partner_name", "partner_csr1", "outlay", "amount",
+                 "project_count", "is_ongoing", "notes"),
         not_written={
-            "sector": "kept in funder_csr_spend.notes: tags.kind allows 'csr_sector' but no "
-                      "Schedule VII taxonomy is seeded to normalise against",
+            "sector": "resolved to funder_activity.csr_sector_id when it names a Schedule VII clause, "
+                      "and kept in notes in the funder's own words either way",
         },
     ),
     "footprint": ConceptSpec("funder_footprints", "Where the work ran"),
@@ -153,8 +166,9 @@ PROVENANCE = frozenset({
 # be resolved and "Barpeta, Assam" can. It is added as a pair in EXTRA.
 NAMED_AS: dict[str, str] = {
     "state_location_id": "state",
-    "district_location_id": "district",
     "program_id": "program_name",
+    "domain_tag_id": "domain",
+    "theme_tag_id": "theme",
     "parent_id": "parent_name",
 }
 
@@ -206,7 +220,7 @@ class Expected:
 REQUIRED: dict[str, frozenset[str]] = {
     "identity": frozenset({"name"}),
     "csr_year": frozenset({"fiscal_year"}),
-    "csr_spend": frozenset({"fiscal_year", "amount"}),
+    "csr_spend": frozenset({"fiscal_year", "amount", "domain", "classified_by"}),
     "footprint": frozenset({"fiscal_year", "state"}),
     "stated_geography": frozenset({"state"}),
     "partner": frozenset({"fiscal_year", "partner_name"}),
@@ -325,13 +339,12 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
         ),
     ),
     "csr_spend": (
+        _DISTRICT,
         Expected(
             name="sector",
             type="text",
-            note=(
-                "the funder's own words for the theme. Kept in notes: tags.kind allows "
-                "'csr_sector' but no Schedule VII taxonomy is seeded to normalise against"
-            ),
+            note="the Schedule VII sector the line was FILED under, as printed; stored in csr_sector_id "
+                 "when it names a clause",
             values=(),
             required=False,
         ),

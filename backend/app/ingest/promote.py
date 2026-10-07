@@ -21,7 +21,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.ingest.expectations import PROMOTABLE
+from app.ingest.expectations import PROMOTABLE, activity_kind
 from app.ingest.geography import resolve_location
 from app.ingest.matcher import Match, _is_foundation, resolve_funder, resolve_org
 from app.ingest.records import (
@@ -43,7 +43,7 @@ from app.ingest.records import (
     normalise_cin,
 )
 from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
-from app.ingest.taxonomy import resolve_csr_sector
+from app.ingest.taxonomy import resolve_classification, resolve_csr_sector
 from app.ingest.writer import (
     Owner,
     cin_holder,
@@ -386,6 +386,16 @@ async def _write_programs(
     return ids
 
 
+def _activity_identity(
+    kind: str, year: str | None, program_id: int | None, sector_id: int | None,
+    state_id: int | None, location_id: int | None, designation: str | None,
+    project_name: str | None, partner_name: str | None,
+) -> tuple:
+    """writer.FUNDER_ACTIVITY_KEY without funder_id, in its order."""
+    return (kind, year, program_id, sector_id, state_id, location_id, designation, project_name,
+            partner_name)
+
+
 def _row_identity(
     concept: str, f: Any, program_id: int | None, state_id: int | None,
     district_id: int | None, sector_id: int | None,
@@ -398,8 +408,8 @@ def _row_identity(
     """
     year = getattr(f, "fiscal_year", None)
     if concept == "csr_spend":
-        return (concept, year, program_id, sector_id, state_id, district_id,
-                f.designation, f.project_name)
+        return _activity_identity(activity_kind(concept), year, program_id, sector_id, state_id,
+                                  district_id, f.designation, f.project_name, f.partner_name)
     if concept == "footprint":
         return (concept, program_id, year, district_id or state_id)
     if concept == "stated_geography":
@@ -479,20 +489,28 @@ async def _write_facts(
             seen.add(identity)
             try:
                 if concept == "csr_spend":
+                    domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
+                    report["held"].extend(f"csr_spend {_describe(concept, f)}: {r}" for r in why)
+                    if domain_id is None:
+                        continue
                     rec = FunderCsrSpendRecord(
                         fiscal_year=f.fiscal_year, amount=f.amount.inr,
+                        outlay=f.outlay.inr if f.outlay else None,
                         project_name=f.project_name, project_count=f.project_count,
-                        designation=f.designation, implementing_agency=f.implementing_agency,
-                        agency_csr1=f.agency_csr1, via_agency=f.via_agency,
-                        is_ongoing=f.is_ongoing, as_of=f.fiscal_year,
-                        notes=_with_sector(f), **base,
+                        designation=f.designation, partner_name=f.partner_name,
+                        partner_csr1=f.partner_csr1, implementation_mode=f.implementation_mode,
+                        is_ongoing=f.is_ongoing, domain=f.domain, theme=f.theme,
+                        classified_by=f.classified_by, classification_note=f.classification_note,
+                        as_of=f.fiscal_year, notes=_with_sector(f), **base,
                     )
-                    status, _ = await write_csr_spend(
+                    status, change = await write_csr_spend(
                         conn, rec, funder_id, program_id=program_id, state_id=state_id,
-                        district_id=district_id,
-                        csr_sector_id=sector_id, document_id=document_id,
+                        district_id=district_id, csr_sector_id=sector_id,
+                        domain_id=domain_id, theme_id=theme_id, document_id=document_id,
                     )
-                    _count(report, "funder_csr_spend", status)
+                    if status == "held":
+                        report["held"].append(f"csr_spend {_describe(concept, f)}: {change['reason']}")
+                    _count(report, "funder_activity (spend)", status)
 
                 elif concept == "footprint":
                     location_id = district_id or state_id
@@ -635,9 +653,8 @@ async def _write_facts(
 
 
 def _with_sector(f: Any) -> str | None:
-    """The funder's own words for a theme. tags.kind allows 'csr_sector' but
-    nothing seeds that taxonomy, so normalising here would invent the mapping
-    — "Building Human Capital" is not Education until someone decides it is."""
+    """The sector as filed, in the funder's own words, kept in notes beside whatever csr_sector_id
+    resolved to: "Building Human Capital" is not Education until someone decides it is."""
     bits = [b for b in (f.sector, f.notes) if b]
     return " · ".join(bits) or None
 

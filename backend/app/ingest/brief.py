@@ -85,8 +85,9 @@ def headline(f: dict[str, Any]) -> str:
     if concept == "csr_spend":
         what = f.get("project_name") or f.get("sector") or "aggregate"
         count = f"{f['project_count']} projects" if f.get("project_count") else None
-        return _join(what, _money(f.get("amount")), _place(f), count,
-                     f.get("implementing_agency"))
+        label = "/".join(b for b in (f.get("domain"), f.get("theme")) if b) or None
+        return _join(what, _money(f.get("amount")), _place(f), count, f.get("partner_name"),
+                     f"{label} (inferred)" if label else None)
     if concept == "footprint":
         return _join(_place(f) or f.get("name_as_printed"), f.get("program_name"))
     if concept == "stated_geography":

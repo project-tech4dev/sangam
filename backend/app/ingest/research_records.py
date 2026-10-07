@@ -21,7 +21,8 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.ingest.expectations import CONCEPTS as _REGISTRY
-from app.ingest.records import CIN_FORMAT, normalise_cin
+from app.ingest.records import CIN_FORMAT, ClassifiedBy, normalise_cin
+from app.ingest.taxonomy import DOMAINS, NO_THEMES
 
 # The vocabulary is the registry's, in its order. A `Concept = Literal[...]`
 # alias used to sit here repeating all thirteen; it was imported nowhere.
@@ -33,6 +34,26 @@ SCHEMA_VERSION = 2
 pairs: still readable, not promotable, re-researched rather than migrated."""
 
 _UNITS: dict[str, int] = {"inr": 1, "lakh": 1_00_000, "crore": 1_00_00_000}
+
+DomainCode = Literal[*DOMAINS]
+
+
+def _check_classification(f: Any) -> None:
+    """D11: a domain and theme are inferences, and a theme says what it rests on."""
+    if f.domain in NO_THEMES and f.theme:
+        raise ValueError(f"{f.domain!r} has no themes in the taxonomy; leave theme empty")
+    if f.theme and not (f.classification_note or "").strip():
+        raise ValueError(
+            "a theme needs a classification_note quoting what it rests on, e.g. "
+            "\"project 'Financial Literacy & Inclusion'; filed under Education\""
+        )
+
+
+def _code(v: Any) -> Any:
+    """Taxonomy codes are lower-case: ' Livelihoods ' is livelihoods, and a blank theme is none."""
+    if not isinstance(v, str):
+        return v
+    return v.strip().lower() or None
 
 
 class Money(BaseModel):
@@ -187,10 +208,13 @@ class CsrYearFinding(YearlyFinding):
 
 
 class CsrSpendFinding(YearlyFinding):
-    """A project, or an aggregate. Never divide an aggregate across projects."""
+    """One spend line: a project, or an aggregate. Never divide an aggregate across projects."""
 
     concept: Literal["csr_spend"] = "csr_spend"
     amount: Money
+    outlay: Money | None = Field(
+        default=None, description="the amount approved or budgeted for the line, when filed beside the spend"
+    )
     project_name: str | None = Field(
         default=None, description="null on an aggregate row; set for a single project"
     )
@@ -200,17 +224,33 @@ class CsrSpendFinding(YearlyFinding):
     state: str | None = None
     district: str | None = None
     sector: str | None = Field(
-        default=None, description="the funder's own words for the theme, not a normalised tag"
+        default=None, description="the Schedule VII sector the line was FILED under, as printed"
     )
     program_name: str | None = None
     designation: str | None = Field(
         default=None, description="e.g. 'aspirational_district', when the total is limited to those"
     )
-    implementing_agency: str | None = Field(default=None, description="as printed")
-    agency_csr1: str | None = None
-    via_agency: bool | None = Field(default=None, description="false means implemented directly")
+    implementation_mode: (
+        Literal["direct", "implementing_agency", "own_trust_or_section8", "not_stated"] | None
+    ) = None
+    partner_name: str | None = Field(default=None, description="the implementing agency or partner, as printed")
+    partner_csr1: str | None = Field(default=None, description="the PARTNER's CSR-1, when filed")
     is_ongoing: bool | None = None
     notes: str | None = None
+    domain: DomainCode = Field(
+        description="ALWAYS set, by project name and partner, not by the filed sector. 'others' for relief, "
+                    "sports, administration, unlabelled or multi-sector lines; 'environment' for "
+                    "conservation and animal welfare that is not a livelihood programme"
+    )
+    theme: str | None = Field(
+        default=None,
+        description="a theme or sub-theme code from the taxonomy, at the most specific level the evidence "
+                    "supports; null when the line gives nothing to go on. Never pick one to fill the field",
+    )
+    classified_by: ClassifiedBy = Field(description="what the domain and theme rest on")
+    classification_note: str | None = Field(default=None, description="the evidence in a few words")
+
+    _codes = field_validator("domain", "theme", mode="before")(lambda v: _code(v))
 
     @model_validator(mode="after")
     def _aggregate_or_project(self) -> CsrSpendFinding:
@@ -219,6 +259,7 @@ class CsrSpendFinding(YearlyFinding):
                 "a row is either one project or an aggregate of several, not both. Drop "
                 "project_count, or drop project_name and keep the total"
             )
+        _check_classification(self)
         return self
 
 

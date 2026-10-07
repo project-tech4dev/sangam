@@ -322,11 +322,17 @@ def _json(v: Any) -> str:
 # UNIQUE NULLS NOT DISTINCT constraints the schema already declares, so a
 # re-import updates a row rather than growing a second one.
 
-CSR_SPEND_KEY = ("funder_id", "fiscal_year", "program_id", "csr_sector_id",
-                 "state_location_id", "district_location_id", "designation", "project_name")
-CSR_SPEND_UPDATABLE = ("implementing_agency", "agency_csr1", "via_agency", "is_ongoing",
-                       "amount", "project_count", "notes", "source_url", "source_name",
-                       "fetched_at", "as_of")
+# funder_activity's UNIQUE NULLS NOT DISTINCT key, in its order. `kind` is part of it, so a spend
+# line and a partner line that agree on everything else are two lines (0031).
+FUNDER_ACTIVITY_KEY = ("funder_id", "kind", "fiscal_year", "program_id", "csr_sector_id",
+                       "state_location_id", "location_id", "designation", "project_name", "partner_name")
+# is_public is deliberately absent: a new line takes the column's DEFAULT true and no writer updates
+# it, so a line a person marked internal (D14) stays internal through every re-promote.
+FUNDER_ACTIVITY_UPDATABLE = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note",
+                             "name_as_printed", "implementation_mode", "partner_canonical",
+                             "partner_csr1", "partner_kind", "outlay", "amount", "project_count",
+                             "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of")
+_CLASSIFICATION = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note")
 FOOTPRINT_KEY = ("funder_id", "program_id", "fiscal_year", "location_id")
 FOOTPRINT_UPDATABLE = ("name_as_printed", "notes", "source_url", "source_name",
                        "fetched_at", "as_of")
@@ -388,24 +394,68 @@ async def _upsert(
     return "updated", changes
 
 
-async def write_csr_spend(
-    conn: Any, rec: Any, funder_id: int, *, program_id: int | None,
-    state_id: int | None, district_id: int | None, csr_sector_id: int | None,
-    document_id: int | None,
+def _activity_refusal(key: dict[str, Any], row: dict[str, Any]) -> str | None:
+    """funder_activity's CHECKs, asked before the write: a CheckViolation would abort the whole promotion."""
+    kind = key["kind"]
+    if kind == "spend" and row.get("amount") is None:
+        return "a spend line needs an amount"
+    if kind == "footprint" and key["location_id"] is None and key["state_location_id"] is None:
+        return "a footprint line needs a place"
+    if kind == "partner" and key["partner_name"] is None:
+        return "a partner line needs the partner's name"
+    if kind == "programme" and (key["program_id"] is None or row.get("amount") is None):
+        return "a programme line needs a resolved programme and an amount"
+    if row.get("domain_tag_id") is not None and row.get("classified_by") is None:
+        return "a domain needs classified_by, saying what it rests on"
+    return None
+
+
+async def _write_activity(
+    conn: Any, key: dict[str, Any], proposed: dict[str, Any], document_id: int | None
 ) -> tuple[str, dict]:
-    key = {
-        "funder_id": funder_id, "fiscal_year": rec.fiscal_year, "program_id": program_id,
-        "csr_sector_id": csr_sector_id, "state_location_id": state_id,
-        "district_location_id": district_id, "designation": rec.designation,
-        "project_name": rec.project_name,
-    }
+    """One funder_activity line. A classification a person confirmed is never re-inferred (D11).
+    Returns ("held", {"reason": ...}) for a line the table's CHECKs would refuse."""
+    where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
+    row = await (
+        await conn.execute(
+            f"SELECT classification_confirmed, amount, classified_by FROM funder_activity WHERE {where}",
+            tuple(key.values()),
+        )
+    ).fetchone()
+    if row and row["classification_confirmed"]:
+        proposed = {c: v for c, v in proposed.items() if c not in _CLASSIFICATION}
+    # A proposed NULL never erases, so the row as it will stand is the stored one under the proposal.
+    standing = {**(dict(row) if row else {}), **{c: v for c, v in proposed.items() if v is not None}}
+    if why := _activity_refusal(key, standing):
+        return "held", {"reason": why}
+    return await _upsert(conn, "funder_activity", key, FUNDER_ACTIVITY_UPDATABLE, proposed, document_id)
+
+
+def _activity_key(funder_id: int, kind: str, fiscal_year: str, **ids: Any) -> dict[str, Any]:
+    key = dict.fromkeys(FUNDER_ACTIVITY_KEY)
+    key.update(funder_id=funder_id, kind=kind, fiscal_year=fiscal_year, **ids)
+    return key
+
+
+async def write_csr_spend(
+    conn: Any, rec: Any, funder_id: int, *, program_id: int | None, state_id: int | None,
+    district_id: int | None, csr_sector_id: int | None, domain_id: int | None,
+    theme_id: int | None, document_id: int | None,
+) -> tuple[str, dict]:
+    key = _activity_key(
+        funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
+        csr_sector_id=csr_sector_id, state_location_id=state_id, location_id=district_id,
+        designation=rec.designation, project_name=rec.project_name, partner_name=rec.partner_name,
+    )
     proposed = {
-        "implementing_agency": rec.implementing_agency, "agency_csr1": rec.agency_csr1,
-        "via_agency": rec.via_agency, "is_ongoing": rec.is_ongoing, "amount": rec.amount,
-        "project_count": rec.project_count, "notes": rec.notes, "source_url": rec.source_url,
+        "domain_tag_id": domain_id, "theme_tag_id": theme_id,
+        "classified_by": rec.classified_by, "classification_note": rec.classification_note,
+        "implementation_mode": rec.implementation_mode, "partner_csr1": rec.partner_csr1,
+        "outlay": rec.outlay, "amount": rec.amount, "project_count": rec.project_count,
+        "is_ongoing": rec.is_ongoing, "notes": rec.notes, "source_url": rec.source_url,
         "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
-    return await _upsert(conn, "funder_csr_spend", key, CSR_SPEND_UPDATABLE, proposed, document_id)
+    return await _write_activity(conn, key, proposed, document_id)
 
 
 async def write_footprint(

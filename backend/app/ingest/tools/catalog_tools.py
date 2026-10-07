@@ -137,10 +137,13 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "funder_csr_spend",
+        "funder_activity kind='spend' (filed lines, INR; domain and theme are INFERRED unless confirmed)",
         """
-        SELECT fiscal_year, project_name, amount, implementing_agency, designation
-        FROM funder_csr_spend WHERE funder_id = %s ORDER BY fiscal_year
+        SELECT a.fiscal_year, a.project_name, a.amount, a.outlay, a.partner_name, a.implementation_mode,
+               a.designation, d.code AS domain, t.code AS theme, a.classified_by, a.classification_confirmed
+        FROM funder_activity a
+        LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
+        WHERE a.funder_id = %s AND a.kind = 'spend' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (

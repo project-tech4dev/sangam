@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.ingest.expectations import activity_kind
+
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
+# What an inferred domain and theme rest on (funder_activity.classified_by).
+ClassifiedBy = Literal["filed_sector", "project_name", "partner", "report"]
 # A company's Corporate Identity Number: listing status, industry code, state, year, type, serial.
 CIN_FORMAT = re.compile(r"[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}")
 
@@ -179,23 +183,31 @@ class NewsMentionRecord(Provenance):
 
 
 class FunderCsrSpendRecord(Provenance):
-    """A project, or an aggregate of several. Never both, and never divided."""
+    """One spend line: a project, or an aggregate of several. Never both, and never divided."""
 
     kind: Literal["funder_csr_spend"] = "funder_csr_spend"
+    activity_kind: ClassVar[str] = activity_kind("csr_spend")
     funder_name: str = Field(min_length=2)
     fiscal_year: str
     amount: float = Field(ge=0, description="INR")
+    outlay: float | None = Field(default=None, ge=0, description="INR")
     project_name: str | None = None
     project_count: int | None = None
     state: str | None = None
     district: str | None = None
     program_name: str | None = None
     designation: str | None = None
-    implementing_agency: str | None = None
-    agency_csr1: str | None = None
-    via_agency: bool | None = None
+    implementation_mode: (
+        Literal["direct", "implementing_agency", "own_trust_or_section8", "not_stated"] | None
+    ) = None
+    partner_name: str | None = None
+    partner_csr1: str | None = None
     is_ongoing: bool | None = None
     notes: str | None = None
+    domain: str
+    theme: str | None = None
+    classified_by: ClassifiedBy
+    classification_note: str | None = None
 
     _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
