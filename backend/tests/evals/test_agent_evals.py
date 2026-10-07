@@ -71,15 +71,22 @@ async def test_case(case, eval_settings, slug_ids, db, agent_pool):
     for key in ("required_citations", "forbidden_citations"):
         resolved[key] = [slug_ids.get(m, m) for m in case.get(key, [])]
 
+    # A shortlist assesses funders in waves of subagents; it needs longer than one SQL question.
+    timeout = case.get("timeout_seconds", CASE_TIMEOUT_SECONDS)
     try:
-        answer, agent_sql, citations = await run_agent(case["question"], eval_settings)
+        answer, agent_sql, citations, assessments, order = await run_agent(
+            case["question"], eval_settings, timeout
+        )
     except TimeoutError:
         pytest.fail(
-            f"[{case['id']}] timed out after {CASE_TIMEOUT_SECONDS}s — either the model "
+            f"[{case['id']}] timed out after {timeout}s — either the model "
             "request hung or the agent is looping",
             pytrace=False,
         )
-    result = CaseResult(case_id=case["id"], answer=answer, agent_sql=agent_sql, citations=citations)
+    result = CaseResult(
+        case_id=case["id"], answer=answer, agent_sql=agent_sql, citations=citations, assessments=assessments,
+        task_order=order,
+    )
 
     gold_rows, agent_rows = None, None
     if case.get("gold_sql"):
@@ -98,6 +105,8 @@ async def test_case(case, eval_settings, slug_ids, db, agent_pool):
         for sql in agent_sql:
             report.append(f"  agent sql : {sql[:220]}")
         report.append(f"  citations : {sorted(citations) or 'none'}")
+        for a in assessments:
+            report.append(f"  assessed  : [funder:{a['funder_id']}] {a['gate']} {a['score']} {a['rank_key']}")
         report.append(f"  answer    : {answer[:600]}")
         if case.get("note"):
             report += ["", f"  NOTE: {case['note']}"]
