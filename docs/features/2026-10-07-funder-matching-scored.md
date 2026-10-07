@@ -3,6 +3,10 @@
 *Approved 2026-10-07. Supersedes the tier decision ("tiers, no numbers") in
 `2026-10-06-funder-matching-agentic.md`; the assessor subagent and the skills from that plan stay.*
 
+*Later the same day, `2026-10-07-funder-matching-readiness-once.md` split the assessor: the 12
+organisation-only checks are judged once by `org-readiness`, and code merges them with each
+funder's checks before scoring.*
+
 ## Context
 
 Funder matching today (`feat/matching-engine`, approved 2026-10-06 in
