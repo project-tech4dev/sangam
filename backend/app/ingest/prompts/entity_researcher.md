@@ -137,4 +137,20 @@ An NGO keeps four of the concepts above unchanged — **programs**, **metrics**,
 
 How each staff sheet is laid out — where its header rows are, whether it is one table, blocks side by side or numbered sections — and the unit its amounts are printed in, one note per sheet. Read a sheet's note before saving an amount from it; a sheet with no note is read from its own header rows, and a unit that neither the note nor the cell states is not guessed.
 
-*(No sheet notes yet.)*
+- **Filing exports (`mca_csr`).** One row per project line per fiscal year; amounts in **crore**.
+  The filer's company-level figures repeat on every project line of a year — take them once. Where
+  two columns share the header `State`, the left one is the filer's registered state, the right
+  one the project's. One export has a sheet per fiscal year (pass the year as `sheet`); the other
+  has one sheet with a fiscal-year column and a group-company column beside the filer.
+- **The CSO workbook (`ffrh_funder_datasets`)** has three sheets:
+  - a **profile sheet**, one row per CSO, headers on row 2 — the CSO's own account, so `claimed`;
+  - a **funder-details sheet in side-by-side blocks**, one block per CSO: the CSO's name in row 1
+    above its block, the block's headers in row 2. A funder row belongs to the CSO named in row 1
+    at or left of its columns. Amounts are headed ₹ but a cell may carry its own unit
+    (`<n> Lakhs`, `<n>Cr`, `<n>,<nn>,<nnn>`): the cell's unit wins. A cell that is not a number
+    ("Not disclosed", "<n> and materials") has no amount;
+  - a **funders-and-partners sheet in numbered sections**, one per CSO, each with a funders table
+    and a partners table; amounts in **lakh**. The note in cell A2 states the unit and caveats —
+    read it. The type column uses codes D (domestic), F (foreign), G (government), CSR (corporate
+    CSR). The tool shows the section heading and the table's header row with each match.
+- Contact columns are removed by the tool, by design.

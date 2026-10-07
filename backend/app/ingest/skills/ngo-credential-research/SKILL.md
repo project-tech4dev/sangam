@@ -32,8 +32,8 @@ sections of the audited accounts specifically. A cancellation under appeal is
 still a cancellation; record the appeal status as its own value, never as a
 resolution.
 
-**Never cite an aggregator.** Only the organisation's own domain, or a
-primary document it has published.
+**Never cite an aggregator.** Only the organisation's own domain, a primary
+document it has published, or the staff CSO workbook below.
 
 **Pull raw.** Field, value, source URL, evidenced-or-claimed. One block per
 organisation, fields in the order below. No eligibility verdict, no summary,
@@ -85,6 +85,20 @@ no comparison table — downstream.
     recent board minutes, a feedback and grievance mechanism, and monitoring
     systems. Record which are published and which are absent. Never infer one
     from the organisation's size or maturity.
+
+## A staff source: the CSO workbook
+
+Sangam holds an internal workbook on partner CSOs, shared under partner permission. Read it with
+`read_source_rows` and the organisation's name, after the confirmation search.
+
+- **Cite the cell.** Each row carries a `[source:<document>#<sheet>!<cell>]` marker; a finding uses
+  the dataset's `source_url` and `source_name` printed by the tool. Never fetch that URL.
+- **It is the organisation's own account.** Every profile value is `claimed`. A registration number
+  written there is a lead to the certificate, not the certificate.
+- **Its funder sheets name who funds it**, by year. Name them in your summary — an NGO run does not
+  write partner findings. The amounts are saved as `partner` findings in a **funder** research run
+  for each funder (`funder-intake-research` has the year and unit rules).
+- Contact details are not in what the tool returns, by design.
 
 ## FCRA is not part of this chain
 
