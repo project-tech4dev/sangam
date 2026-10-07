@@ -172,7 +172,9 @@ def seed_taxonomy(cur) -> dict[str, int]:
         ids[t.slug] = cur.fetchone()[0]
 
     cur.execute(
-        "UPDATE tags SET status = 'deprecated' WHERE kind = ANY(%s) AND NOT slug = ANY(%s)",
+        # Only slugs of this seed's own shape (`<kind>-<code>`), so a row another writer adds is left alone.
+        "UPDATE tags SET status = 'deprecated' "
+        "WHERE kind = ANY(%s) AND slug LIKE kind || '-%%' AND NOT slug = ANY(%s)",
         (list(OWNED_KINDS), list(ids)),
     )
 

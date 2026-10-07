@@ -33,7 +33,9 @@ Then each sub-theme gets one link row per reference:
 | Vocational & foundational skilling | Schedule VII (ii) | Vocational Skills ← the MCA sector name |
 | Vocational & foundational skilling | PMKVY (Skill India) | |
 
-Totals across 48 sub-themes: **85 SDG links, 65 CSR links, 61 scheme links.**
+Totals across 48 sub-themes: **85 SDG links, 61 CSR links, 61 scheme links** (plus 4 lens → SDG: 211 in all).
+`themes.json` has 65 CSR references, but four sub-themes name two MCA sectors under one clause (e.g. `wash`:
+(i) Sanitation, (i) Safe Drinking Water); that is one link per clause, with both sector names in `note`.
 
 ### 3. 4 lenses = 4 `tags` rows (kind `lens`, no parent) + 4 links
 | kind | code | label | link |
@@ -73,7 +75,7 @@ You read `kind` + `code`; `slug` is just the upsert key. A link's meaning comes 
 4. **`backend/app/agent/tools/sql/catalog.py`**: add a `tag_links` Table entry (adding a table is a security
    decision — this one holds only vocabulary); add `sub_theme`, `lens` to `tags.kind` values; describe the tree.
 5. **Tests**: integration test runs the seed twice and asserts counts
-   (3 / 11 / 48 / 4 lenses / 17 / 54 / 10 rows; 85 / 65 / 61 / 4 links); unit test that every SDG/clause in
+   (3 / 11 / 48 / 4 lenses / 17 / 54 / 10 rows; 85 + 4 SDG / 61 CSR / 61 scheme links); unit test that every SDG/clause in
    `themes.json` resolves.
 
 Out of scope: moving `0022`'s `meta->>'maps_to'` sector→clause crosswalk into `tag_links`, and linking the
