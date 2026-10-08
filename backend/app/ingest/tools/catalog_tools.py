@@ -1,11 +1,12 @@
 """What the catalog already holds, what it expects, and the two steps that write to it.
 
-Read-only but for `promote_research`, which moves saved research through `promote.py`, and
+Read-only but for `promote_research`, which moves saved research through `promote.py` (a person answers what is not obvious), and
 `record_registry_check`, which records a staff member's own registry check through `manual_checks.py`.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -22,6 +23,7 @@ from app.ingest.expectations import (
     recent_fiscal_years,
 )
 from app.ingest.promote import promote
+from app.ingest.writer import Gate
 
 logger = logging.getLogger(__name__)
 
@@ -429,8 +431,79 @@ async def _held_per_concept(
     return out
 
 
+async def _research_rows(pool: Any, slug: str) -> list[dict[str, Any]]:
+    async with pool.connection() as conn:
+        rows = await (
+            await conn.execute(
+                "SELECT DISTINCT ON (slug) * FROM entity_research "
+                + ("WHERE slug = %s " if slug else "")
+                + "ORDER BY slug, researched_at DESC",
+                (slug,) if slug else (),
+            )
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _comparison(plan: dict[str, Any]) -> dict[str, Any]:
+    """The plan grouped the way a person reads it, case by case."""
+    items = plan.get("plan", {}).get("items", [])
+    group = {2: "updated", 3: "older_or_undated", 4: "close_match", 5: "new"}
+    out: dict[str, Any] = {"slug": plan["slug"], "entity": plan["entity"],
+                           "same": plan.get("plan", {}).get("same", 0),
+                           **{name: [] for name in group.values()},
+                           "held": plan["held"], "not_promoted": plan["reasons"]}
+    for item in items:
+        out[group[item["case"]]].append(item)
+    return out
+
+
 @tool
-async def promote_research(slug: str = "") -> str:
+async def compare_with_catalog(slug: str) -> str:
+    """Compare one entity's saved research with what the catalog already holds. Writes nothing.
+
+    Every finding lands in one of five cases. Same value: nothing to do. Same row, newer or
+    as-recent source: `updated`, saved without asking. Same row, older or undated source:
+    `older_or_undated`, a person chooses update or keep. A close but not exact name, e.g.
+    "Nanhi Kali" against a stored "Project Nanhi Kali": `close_match`, a person chooses update
+    that row, new row, or skip. Nothing close: `new`, saved without asking.
+
+    Call it after research is saved and before catalog-writer. Summarise `older_or_undated`
+    and `close_match` in one line each, citing the stored row; the person answers when the
+    writer asks. An NGO keeps its own rule (blanks are filled, conflicts are reported), so
+    this compares funders only.
+
+    Args:
+        slug: the researched entity, as save_research returned it.
+    """
+    try:
+        pool = get_pool()
+        rows = await _research_rows(pool, slug)
+        if not rows:
+            return f"No saved research for {slug!r}. Research first."
+        row = rows[0]
+        if row.get("entity_kind") == "org":
+            return (f"{slug} is an NGO: promotion fills its blanks and reports every conflict, so there "
+                    "is nothing to ask before saving.")
+        async with pool.connection() as conn:
+            plan = await promote(conn, row, gate=Gate(plan=True))
+        return json.dumps(_comparison(plan), default=str)
+    except Exception as exc:
+        logger.exception("compare_with_catalog failed")
+        return f"compare_with_catalog failed: {type(exc).__name__}: {exc}"
+
+
+async def open_questions(slug: str) -> list[dict[str, Any]]:
+    """The case 3 and 4 findings a funder's promotion would ask about; SaveQuestions puts them on the pause."""
+    rows = await _research_rows(get_pool(), slug)
+    if not rows or rows[0].get("entity_kind") == "org":
+        return []
+    async with get_pool().connection() as conn:
+        plan = await promote(conn, rows[0], gate=Gate(plan=True))
+    return plan.get("questions", [])
+
+
+@tool
+async def promote_research(slug: str = "", decisions: dict[str, str] | None = None) -> str:
     """Move saved research into the catalog, where a writer exists for it.
 
     Research and the catalog are different: a finding is what a source said,
@@ -447,28 +520,29 @@ async def promote_research(slug: str = "") -> str:
     anything held back is reported rather than silently dropped. A name that resembles an organisation we already hold
     without matching it is NOT merged; it is reported for a person.
 
+    A funder's values that differ from the catalog's are saved without asking
+    only when the research's source is as recent or newer. An older or undated
+    source, or a close-but-not-exact name, is asked about before this runs: the
+    person picks an answer per question, and their answers decide what is written.
+    Unanswered questions are held, not saved.
+    Only a single slug asks: with an empty slug those findings are held, and
+    promoting that slug on its own is how they get asked.
+
     Args:
         slug: one entity, or empty for every researched entity not yet promoted.
+        decisions: leave empty. The person's answers fill it; anything you put here is dropped.
     """
     try:
         pool = get_pool()
-        async with pool.connection() as conn:
-            rows = await (
-                await conn.execute(
-                    "SELECT DISTINCT ON (slug) * FROM entity_research "
-                    + ("WHERE slug = %s " if slug else "")
-                    + "ORDER BY slug, researched_at DESC",
-                    (slug,) if slug else (),
-                )
-            ).fetchall()
+        rows = await _research_rows(pool, slug)
         if not rows:
             return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
 
         reports = []
-        async with pool.connection() as conn:
-            for row in rows:
-                async with conn.transaction():
-                    reports.append(await promote(conn, dict(row)))
+        for row in rows:
+            # SaveQuestions asked the person before this ran and put their answers here.
+            async with pool.connection() as conn, conn.transaction():
+                reports.append(await promote(conn, row, gate=Gate(decisions or {})))
 
         lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
         for r in reports:
@@ -482,6 +556,10 @@ async def promote_research(slug: str = "") -> str:
             for table, counts in sorted(r.get("written", {}).items()):
                 tally = ", ".join(f"{n} {status}" for status, n in sorted(counts.items()))
                 lines.append(f"    {table}: {tally}")
+            for change in r.get("changes", []):
+                cols = ", ".join(f"{c} {v['old']!r} → {v['new']!r}" for c, v in change.get("changes", {}).items())
+                lines.append(f"    changed {change['table']} {change['label']} {change.get('row') or ''}: "
+                             + (cols or f"{change.get('stored_name')!r} → {change.get('new_name')!r}"))
             for reason in r["reasons"]:
                 lines.append(f"  {r['slug']}: not promoted — {reason}")
             for held in r.get("held", []):

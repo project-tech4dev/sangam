@@ -218,6 +218,11 @@ class IdentityFinding(FindingBase):
     typical_duration_months: int | None = Field(default=None, gt=0, description="a stated typical grant duration")
     grant_size_min: Money | None = Field(default=None, description="the bottom of a stated grant band")
     grant_size_max: Money | None = Field(default=None, description="the top of a stated grant band")
+    as_of: str | None = Field(
+        default=None,
+        description="when the source says this: a date (2025-04), a year (2025) or a fiscal year (FY2024-25). "
+                    "Without it a value that differs from the catalog's waits for a person",
+    )
 
     @field_validator("cin")
     @classmethod

@@ -14,11 +14,12 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results, staff_last_lock
+from app.agent.middleware import clear_old_tool_results, save_questions, staff_last_lock
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.research_records import PromotionReport, ResearchSummary, WorkbookEntities
 from app.ingest.tools.catalog_tools import (
+    compare_with_catalog,
     funder_dossier,
     promote_research,
     record_registry_check,
@@ -130,6 +131,7 @@ TOOLS = [
     select_source_files,
     # catalog_tools — what Sangam already holds; promote_research is the catalog-writer's.
     funder_dossier,
+    compare_with_catalog,
     # A person's check, recorded on their word; the researcher reads untrusted pages, so not its.
     record_registry_check,
     # save_research publishes the brief it saves; this is only for re-publishing.
@@ -244,7 +246,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # capability either of them uses.
     # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
     researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend), staff_last_lock()]}
-    writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend)]}
+    # save_questions pauses promote_research on what only a person can decide, with a button per answer.
+    writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend), save_questions()]}
     reader = {**WORKBOOK_READER, "middleware": [filesystem_tools(backend)]}
     # It formats what two tools return, so it needs no reasoning about sources.
     if settings.utility_model:

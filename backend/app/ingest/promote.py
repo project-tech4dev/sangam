@@ -50,7 +50,9 @@ from app.ingest.records import (
 from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
 from app.ingest.taxonomy import resolve_classification, resolve_csr_sector
 from app.ingest.writer import (
+    GATE,
     Conflict,
+    Gate,
     Owner,
     cin_holder,
     ensure_document,
@@ -285,7 +287,7 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
             typical_duration_months=ident.get("typical_duration_months"),
             grant_size_min=to_inr(ident.get("grant_size_min")),
             grant_size_max=to_inr(ident.get("grant_size_max")),
-            as_of=None,
+            as_of=ident.get("as_of"),
             **_provenance(anchor, row["researched_at"]),
         )
     except ValueError as exc:
@@ -504,7 +506,8 @@ async def _write_programs(
             conn, rec, owner, parent_id=ids.get(f.parent_name or ""),
             document_id=docs.get(f.source_url), conflicts=conflicts,
         )
-        ids[f.name] = program_id
+        if program_id is not None:
+            ids[f.name] = program_id
         _count(report, "programs", status)
     report["conflicts"].extend(c.describe() for c in conflicts)
     return ids
@@ -1052,7 +1055,9 @@ async def _promote_funder(
     }
 
     owner = Owner.funder(funder_id)
-    docs = await _write_documents(conn, row, findings, owner, report)
+    gate = GATE.get()
+    # A plan writes nothing, and archiving moves storage objects, which no rollback undoes.
+    docs = {} if gate and gate.plan else await _write_documents(conn, row, findings, owner, report)
     for year_record in csr_years_from(row, findings):
         state, _ = await write_csr_year(
             conn, year_record, funder_id, docs.get(year_record.source_url)
@@ -1061,7 +1066,8 @@ async def _promote_funder(
     programs = await _write_programs(conn, row, findings, owner, docs, report)
     findings = [*findings, *_legacy_grants(findings, report)]
     await _write_facts(conn, row, findings, owner, programs, docs, report)
-    await _link_research(conn, row, funder_id=funder_id)
+    if not (gate and gate.plan):
+        await _link_research(conn, row, funder_id=funder_id)
 
 
 async def _promote_org(
@@ -1098,8 +1104,34 @@ async def _promote_org(
     await _link_research(conn, row, org_id=org_id)
 
 
-async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
-    """Write what can be written from one research row. Returns a report."""
+async def promote(conn: Any, row: dict[str, Any], *, gate: Gate | None = None) -> dict[str, Any]:
+    """Write what can be written from one research row. Returns a report.
+
+    With a gate, a funder's facts follow the five cases (writer.Gate); an NGO keeps fill-blanks.
+    """
+    if row.get("entity_kind") == "org":
+        gate = None
+    token = GATE.set(gate)
+    try:
+        report = await _promote(conn, row)
+    finally:
+        GATE.reset(token)
+    if gate:
+        report["questions"] = gate.asked()
+        report["changes"] = [i for i in gate.items if i["case"] in (2, 3, 4)
+                             and i.get("outcome") in ("written", "planned")]
+        report["plan"] = {"same": gate.same, "items": gate.items}
+        report["held"].extend(
+            f"{i['table']} {i['label']}: waiting for a person ({' / '.join(i['choices'])})"
+            for i in report["questions"]
+        )
+        report["held"].extend(
+            f"{i['table']} {i['label']}: {i['reason']}" for i in gate.items if i.get("outcome") == "held"
+        )
+    return report
+
+
+async def _promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
     findings = row["findings"] if isinstance(row["findings"], list) else []
     report: dict[str, Any] = {
         "slug": row["slug"], "entity": None, "csr_years": [],

@@ -260,6 +260,18 @@ _DISTRICT = Expected(
 )
 
 EXTRA: dict[str, tuple[Expected, ...]] = {
+    # Without it, a funder value that differs from the catalog's cannot be shown to be newer,
+    # so promotion asks a person instead of saving it.
+    "identity": (
+        Expected(
+            name="as_of",
+            type="text",
+            note="when the source says this: a date (2025-04), a year (2025) or a fiscal year "
+                 "(FY2024-25). NOT when you read it",
+            values=(),
+            required=False,
+        ),
+    ),
     "footprint": (_DISTRICT,),
     "stated_geography": (_STATE, _DISTRICT),
     # org_locations has one location_id and no NAMED_AS entry, so the

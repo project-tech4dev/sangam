@@ -5,6 +5,7 @@ import { useAgentChat } from "@/lib/useAgentChat";
 import { Milestones } from "./components/Milestones";
 import { RunStatus } from "./components/RunStatus";
 import { PausedPick } from "./components/SourcePicker";
+import { SaveQuestions } from "./components/SaveQuestions";
 import { SubagentBoard } from "./components/SubagentBoard";
 import { failuresOf } from "./lib/failures";
 
@@ -98,6 +99,7 @@ export function ImportWorkspace() {
 
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
       {isReady && <PausedPick agentId={`sangam-import-${threadId}`} steps={lastSteps} />}
+      {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} />}
 
       <RunStatus running={isRunning} steps={lastSteps} />
 
