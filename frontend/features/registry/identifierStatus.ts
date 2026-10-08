@@ -14,10 +14,19 @@ export const STATUS_LABELS: Record<string, string> = {
   check_blocked: "Check blocked",
 };
 
-/* A current numbered row first, then whatever row of that type there is. */
+/* The writer's precedence; an unranked row is a person's entry and ranks with the registry. */
+const SOURCE_RANK: Record<string, number> = {
+  registry: 7, manual_check: 7, org_document: 6, funder: 5,
+  staff_dataset: 4, prior_research: 3, aggregator: 2, seed: 1,
+};
+
+/* Current first, then the stronger source (an aggregator never hides the org's own "applied"), then numbered. */
 export function pickIdentifier(ids: Identifier[], idType: string): Identifier | undefined {
-  const ofType = ids.filter((i) => i.id_type === idType);
-  return ofType.find((i) => i.is_current && i.id_value) ?? ofType[0];
+  const rank = (i: Identifier) => (i.source_type ? SOURCE_RANK[i.source_type] ?? 0 : 7);
+  return ids
+    .filter((i) => i.id_type === idType)
+    .sort((a, b) => Number(b.is_current) - Number(a.is_current) || rank(b) - rank(a)
+      || Number(!!b.id_value) - Number(!!a.id_value))[0];
 }
 
 /* "Check blocked" never means valid, and a claimed status says so on its face. */
