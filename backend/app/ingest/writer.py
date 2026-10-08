@@ -156,7 +156,10 @@ class Gate:
         self.same = 0
 
     def _item(self, case: int, table: str, key: dict[str, Any], **extra: Any) -> dict[str, Any]:
-        ident = json.dumps([case, table, key], sort_keys=True, default=str)
+        # Not the ids: a programme the plan has not written is UNWRITTEN there and real at apply,
+        # and an answer keyed on it would be lost between the two.
+        named = {c: v for c, v in key.items() if c not in ("funder_id", "program_id")}
+        ident = json.dumps([case, table, named], sort_keys=True, default=str)
         item = {"id": hashlib.sha1(ident.encode()).hexdigest()[:12], "case": case, "table": table,
                 "label": _label(key), **extra}
         if case in CHOICES:
@@ -584,26 +587,32 @@ async def _rename_into(
     """
     if gate.plan:
         return "updated", {}
-    where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
+    confirmed = ", classification_confirmed" if table == "funder_activity" else ""
+    existing = dict(await (
+        await conn.execute(
+            f"SELECT {', '.join([*key, *updatable])}{confirmed} FROM {table} WHERE id = %s", (row_id,)
+        )
+    ).fetchone())
+    if existing.get("classification_confirmed"):
+        proposed = {c: v for c, v in proposed.items() if c not in _CLASSIFICATION}
+    # A proposed NULL never erases, so the key the row ends up with keeps the row's own values there.
+    target = {c: existing[c] if v is None else v for c, v in key.items()}
+    where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in target)
     taken = await (
-        await conn.execute(f"SELECT id FROM {table} WHERE {where} AND id <> %s", (*key.values(), row_id))
+        await conn.execute(f"SELECT id FROM {table} WHERE {where} AND id <> %s", (*target.values(), row_id))
     ).fetchone()
     if taken:
         gate.items[-1]["outcome"] = "held"
         gate.items[-1]["reason"] = f"{_cite(table, taken['id'])} already holds that name"
         return "held", {"reason": gate.items[-1]["reason"]}
-    existing = await (
-        await conn.execute(
-            f"SELECT {', '.join([*key, *updatable])} FROM {table} WHERE id = %s", (row_id,)
-        )
-    ).fetchone()
-    changes = _diff(dict(existing), {**key, **proposed})
+    wanted = {**target, **proposed}
+    changes = _diff(existing, wanted)
     if not changes:
         return "matched", {}
     sets = ", ".join(f"{c} = %s" for c in changes)
     await conn.execute(
         f"UPDATE {table} SET {sets}, document_id = coalesce(document_id, %s) WHERE id = %s",
-        (*[{**key, **proposed}[c] for c in changes], document_id, row_id),
+        (*[wanted[c] for c in changes], document_id, row_id),
     )
     return "updated", changes
 

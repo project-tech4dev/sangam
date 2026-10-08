@@ -551,6 +551,8 @@ async def promote_research(slug: str = "") -> str:
     only when the research's source is as recent or newer. An older or undated
     source, or a close-but-not-exact name, PAUSES this call and asks the person;
     their answers decide what is written. Unanswered questions are held, not saved.
+    Only a single slug asks: with an empty slug those findings are held, and
+    promoting that slug on its own is how they get asked.
 
     Args:
         slug: one entity, or empty for every researched entity not yet promoted.
@@ -563,7 +565,10 @@ async def promote_research(slug: str = "") -> str:
 
         reports = []
         for row in rows:
-            decisions = await _decide(pool, row)
+            # One slug asks; the sweep over everything never does. A resume re-runs this body and
+            # matches answers to interrupts by position, so a sweep would hand one funder's answers
+            # to the next. Its questions are held for a per-slug promotion instead.
+            decisions = await _decide(pool, row) if slug else {}
             async with pool.connection() as conn, conn.transaction():
                 reports.append(await promote(conn, row, gate=Gate(decisions)))
 

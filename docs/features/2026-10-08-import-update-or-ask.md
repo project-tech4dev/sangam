@@ -9,7 +9,7 @@ Promoting funder research writes straight into the catalog, and the supervisor l
 - The old value is thrown away, because `_promote_funder` discards the `changes` dict.
 - A near-duplicate gets a second row instead of a question. Example: "Nanhi Kali" next to a stored "Project Nanhi Kali".
 
-Agreed with the user: no new table. Read tools pull what is already stored. A person is asked, in the chat, through LangChain's `HumanInTheLoopMiddleware`, only when the answer is not obvious.
+Agreed with the user: no new table. Read tools pull what is already stored. A person is asked, in the chat, through a LangGraph `interrupt()` (the mechanism `HumanInTheLoopMiddleware` is built on) raised inside `promote_research`, only when the answer is not obvious.
 
 ## The rule: five cases per finding
 
