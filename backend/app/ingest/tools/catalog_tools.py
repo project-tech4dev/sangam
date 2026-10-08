@@ -512,6 +512,7 @@ async def record_registry_check(
     application_ref: str = "",
     evidence_document_id: int | None = None,
     note: str = "",
+    checked_on: str = "",
 ) -> str:
     """Record a registry check a staff member made by hand. Staff only; it writes one catalog row.
 
@@ -521,9 +522,10 @@ async def record_registry_check(
     of this conversation, never an argument.
 
     The check is ranked like any other source: level with a registry read, above everything
-    else. A differing stored value of equal rank (a registry read, an earlier manual check, or a
-    row a person entered) is kept and reported as a conflict for a person to settle.
-    `check_blocked` never replaces a real status; the attempt is noted on the row.
+    else. Registrations lapse, so a NEWER check replaces a dated registry read or manual check
+    with a different status; an older or undated one is kept and the difference reported as a
+    conflict. A row a person entered (no tier) is never replaced. `check_blocked` never replaces
+    a real status, whatever its date; the attempt is noted on the row.
 
     Args:
         org: the organisation's slug, its exact name, or its id from [org:N].
@@ -539,12 +541,13 @@ async def record_registry_check(
             showing what was seen (a screenshot, a certificate). With it the check is evidenced;
             without it the check is stored as claimed, and the reply says so.
         note: what was checked, where and how, in the staff member's words.
+        checked_on: the date the staff member checked, as 2026-10-08. Omit for today.
     """
     try:
         return await manual_checks.record(
             get_pool(), org=org, id_type=id_type, status=status, source_url=source_url, id_value=id_value,
             application_ref=application_ref, document_id=evidence_document_id, note=note,
-            user_id=chat_user_id.get(),
+            checked_on=checked_on, user_id=chat_user_id.get(),
         )
     except Exception as exc:
         logger.exception("record_registry_check failed")
