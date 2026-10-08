@@ -143,7 +143,8 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
 
   // Writers only start once every researcher has returned, because parallel
   // tasks resolve together. Saying so beats looking idle.
-  const waiting = writers === 0 && working > 0 && done > 0;
+  const waiting =
+    writers === 0 && working > 0 && outcomes.some(([s, o]) => o.state === "done" && kindOf(s.args) === "researcher");
 
   return (
     <section

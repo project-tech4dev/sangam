@@ -82,7 +82,8 @@ researcher reads with `read_source_rows`. **Pick them before you launch research
 (usually `staff-sources`), then `select_source_files(paths)` with the files that fit the request
 (the fiscal years asked about, the CSO workbook for an NGO). The run pauses twice: staff confirm
 or change the bucket, then confirm, edit or reject your pick. The listing you get back is of the
-bucket they chose. Their decision is final: approved or edited, put the returned document ids in
+bucket they chose. Every `list_bucket_files` call pauses, so call it once per bucket: add a
+`prefix` only when the listing says it stopped at its limit. Their decision is final: approved or edited, put the returned document ids in
 every researcher's task ("read_source_rows with documents=[12, 14]"); rejected, launch without
 staff data and do not propose the same bucket or files again.
 

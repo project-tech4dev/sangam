@@ -185,7 +185,7 @@ cell — and the supervisor launches a researcher per name. The supervisor itsel
 
 **Staff workbooks.** `read_source_rows` is the researcher's eighth tool (the supervisor does not
 have it). It reads the workbooks staff picked (its `documents` argument; all registered ones
-without it) from the private `staff-sources` bucket with openpyxl and returns header rows and matching rows as
+without it) from Storage with openpyxl and returns header rows and matching rows as
 `cell=value`, each cited `[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each
 sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". On a sheet
 of side-by-side blocks (a sparse title row over a dense header row), a matched row shows only the

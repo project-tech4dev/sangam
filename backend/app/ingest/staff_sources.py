@@ -52,7 +52,7 @@ _ID = re.compile(r"^[0-9a-f]{12}$")
 PICKED_VERSION = "select_source_files/1"
 
 
-_BUCKET = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
+_BUCKET = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$")
 
 
 def picked_id(path: str) -> str:
