@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
 import { Milestones } from "./components/Milestones";
 import { RunStatus } from "./components/RunStatus";
+import { SaveQuestions } from "./components/SaveQuestions";
 import { SubagentBoard } from "./components/SubagentBoard";
 import { failuresOf } from "./lib/failures";
 
@@ -93,6 +94,9 @@ export function ImportWorkspace() {
           </article>
         ))}
       </div>
+
+      {/* Mounted once the agent is registered: useInterrupt needs it to exist. */}
+      {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} />}
 
       <RunStatus
         running={isRunning}
