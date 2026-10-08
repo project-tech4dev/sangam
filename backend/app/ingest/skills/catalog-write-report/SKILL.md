@@ -35,6 +35,11 @@ place that could not be resolved to a district, a parent company that did not
 match. Give the reason as written and name the organisation and field it
 concerns.
 
+**Coverage, verbatim, last.** After the counts, held-back rows and conflicts,
+print `coverage_report(slug)` for the same organisation as it returned it, in
+a code block. It is what was expected against what was found and written, with
+the reason for each gap; never paraphrase it or quote only the headline.
+
 **Conflicts, verbatim, like held-back rows.** From `conflicts`: each names both
 values and both sources. Never fold one into a total or say which is right.
 
