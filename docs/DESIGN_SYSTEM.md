@@ -87,7 +87,8 @@ design system for this PR" is enough of a prompt, given this file and `.design-s
    group card (`components/<group>/<group>.card.html`) and a line in `readme.md`.
 4. **Upload.** `DesignSync` `finalize_plan` (one approval), then `write_files`: first
    `_ds_needs_recompile` (`{"by":"design-sync-cli"}`), then the changed files, then
-   `_ds_needs_recompile` again. Don't write `_ds_bundle.js`, `_ds_manifest.json` or
+   `_ds_needs_recompile` again, each as its own call (one batch can't hold the same path
+   twice). Don't write `_ds_bundle.js`, `_ds_manifest.json` or
    `_adherence.oxlintrc.json`; Claude Design rebuilds them the next time the project is opened.
 5. **Check.** Open the project, look at the cards you touched and at
    `ui_kits/sangam-web/index.html`, and say in the PR which design-system files changed.

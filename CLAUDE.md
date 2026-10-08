@@ -321,6 +321,14 @@ the same PR** — its components, their `.d.ts`/`.prompt.md`, and the matching
 the step-by-step sync; `.design-sync/NOTES.md` has what a sync agent needs to know (the
 `/design-sync` converter does not fit this repo — sync by hand).
 
+**Styles go in classes, not `style={{…}}`.** A look belongs in a named class in `globals.css`
+(or a Tailwind utility), built from the design system's tokens, and mirrored in its
+`tokens/base.css`. Inline styles can't carry hover, focus or media queries, can't be reused,
+and can't be kept in step with the design system. An inline style needs a real reason: a value
+computed at runtime (a progress width, a measured height, a per-row colour from data). Some
+300 older ones remain; a PR that touches a component moves that component's styles to classes,
+as `features/ask/components/Sidebar.tsx` and the `.rail-*` classes did.
+
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is
 that every field traces to a source.
