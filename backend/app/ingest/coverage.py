@@ -198,3 +198,45 @@ def as_dict(cov: Coverage) -> dict[str, Any]:
             for line in cov.lines
         ],
     }
+
+
+def saved_record(prior: dict[str, Any] | None, report: dict[str, Any],
+                 rows_after: dict[str, int] | None) -> dict[str, Any] | None:
+    """What to store on the research row after a save, or None to keep the stored one.
+    A re-save that writes nothing would read before == after; one that writes more keeps the first before."""
+    changes = changes_by_concept(report)
+    if prior and not changes:
+        return None
+    if prior:
+        for concept, counts in (prior.get("changes") or {}).items():
+            mine = changes.setdefault(concept, {"added": 0, "updated": 0})
+            for status, n in counts.items():
+                mine[status] = mine.get(status, 0) + n
+    rows_before = (prior or {}).get("rows_before")
+    if rows_before is None and rows_after is not None:
+        rows_before = {c: max(n - changes.get(c, {}).get("added", 0), 0) for c, n in rows_after.items()}
+    return {
+        "entity": report.get("entity"), "changes": changes,
+        "rows_before": rows_before, "rows_after": rows_after,
+        "held": report.get("held", []), "skipped": dict(report.get("skipped", {})),
+        "reasons": report.get("reasons", []), "conflicts": report.get("conflicts", []),
+    }
+
+
+def view(row: dict[str, Any], *, stage: str, report: dict[str, Any] | None, entity: dict[str, Any] | None,
+         reasons: list[str], held: list[str], questions: int, changes: dict[str, dict[str, int]],
+         before: dict[str, int] | None, after: dict[str, int] | None) -> dict[str, Any]:
+    """The coverage endpoint's body, once the stage's numbers are in hand."""
+    cov = as_dict(compute(row, report=report))
+    for line in cov["concepts"]:
+        c = line["concept"]
+        line.update(changes.get(c, {"added": 0, "updated": 0}))
+        line["before"] = before.get(c) if before is not None else None
+        line["after"] = after.get(c) if after is not None else None
+    return {
+        "slug": row["slug"], "stage": stage, "saved_at": row.get("saved_at"),
+        "entity": entity, "reasons": reasons, "held": held, "questions": questions,
+        "facts_before": sum(before.values()) if before is not None else None,
+        "facts_after": sum(after.values()) if after is not None else None,
+        **cov,
+    }

@@ -90,7 +90,8 @@ export type ResearchCoverage = {
   /** saved: what the save recorded. planned: a funder's dry run. unsaved: an NGO, which cannot be dry-run. */
   stage: "saved" | "planned" | "unsaved";
   saved_at: string | null;
-  entity: { kind: string; status: string; id: number; name: string } | null;
+  /** id is null for a funder a plan would add: nothing to link to yet. */
+  entity: { kind: string; status: string; id: number | null; name: string } | null;
   reasons: string[];
   held: string[];
   questions: number;

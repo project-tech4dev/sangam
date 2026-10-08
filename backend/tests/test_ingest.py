@@ -1340,3 +1340,22 @@ class TestASaveIsCountedPerConcept:
             "csr_spend": {"added": 2, "updated": 1},
             "document": {"added": 3, "updated": 0},
         }
+
+    def test_a_second_save_that_writes_nothing_keeps_the_first(self):
+        from app.ingest.coverage import saved_record
+
+        first = saved_record(None, {"entity": {"kind": "funder", "status": "added", "id": 7},
+                                    "written": {"metrics": {"added": 4}}}, {"identity": 1, "metric": 4})
+        assert first["rows_before"] == {"identity": 0, "metric": 0}
+        again = {"entity": {"kind": "funder", "status": "matched", "id": 7}, "written": {}}
+        assert saved_record(first, again, {"identity": 1, "metric": 4}) is None
+
+    def test_a_later_save_that_writes_more_keeps_the_first_before(self):
+        from app.ingest.coverage import saved_record
+
+        first = saved_record(None, {"entity": {"kind": "funder", "status": "added", "id": 7},
+                                    "written": {"metrics": {"added": 4}}}, {"identity": 1, "metric": 4})
+        more = {"entity": {"kind": "funder", "status": "matched", "id": 7}, "written": {"metrics": {"added": 2}}}
+        second = saved_record(first, more, {"identity": 1, "metric": 6})
+        assert second["rows_before"] == {"identity": 0, "metric": 0}
+        assert second["changes"]["metric"] == {"added": 6, "updated": 0}

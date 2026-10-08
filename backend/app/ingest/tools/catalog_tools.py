@@ -569,15 +569,10 @@ async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -
     """Keep what this save wrote on the research row. Afterwards a plan reads every row as `same`,
     so this is the only record of what the profile held before."""
     entity = report.get("entity")
-    saved = {
-        "entity": entity,
-        "changes": coverage.changes_by_concept(report),
-        "rows_after": await _rows_now(conn, entity["kind"], entity["id"]) if entity else None,
-        "held": report.get("held", []),
-        "skipped": dict(report.get("skipped", {})),
-        "reasons": report.get("reasons", []),
-        "conflicts": report.get("conflicts", []),
-    }
+    after = await _rows_now(conn, entity["kind"], entity["id"]) if entity else None
+    saved = coverage.saved_record(row.get("saved"), report, after)
+    if saved is None:
+        return
     await conn.execute(
         "UPDATE entity_research SET saved = %s::jsonb, saved_at = now() WHERE id = %s",
         (json.dumps(saved, default=str), row["id"]),
@@ -585,11 +580,8 @@ async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -
 
 
 async def coverage_view(slug: str) -> dict[str, Any] | None:
-    """Import's coverage for one entity as data: expected vs found per concept, and rows before and after.
-
-    Saved: before and after come from what the save recorded. A funder not yet saved: from a plan.
-    An NGO not yet saved: no before/after, since its write cannot be dry-run.
-    """
+    """Coverage per concept, with rows before and after: from the stored save, else a funder's dry run.
+    An NGO not yet saved has no before/after: its write cannot be dry-run."""
     pool = get_pool()
     rows = await _research_rows(pool, slug)
     if not rows:
@@ -605,36 +597,25 @@ async def coverage_view(slug: str) -> dict[str, Any] | None:
     if saved:
         stage = "saved"
         entity, reasons, held = saved.get("entity"), saved.get("reasons", []), saved.get("held", [])
-        changes, after = saved.get("changes", {}), saved.get("rows_after")
+        changes, before, after = saved.get("changes", {}), saved.get("rows_before"), saved.get("rows_after")
         report = {"skipped": saved.get("skipped", {}), "held": held}
-        if after is not None:
-            before = {c: max(n - changes.get(c, {}).get("added", 0), 0) for c, n in after.items()}
     elif kind != "org":
         stage = "planned"
         async with pool.connection() as conn:
             report = await promote(conn, row, gate=Gate(plan=True))
             entity, reasons, held = report.get("entity"), report["reasons"], report["held"]
             questions = len(report.get("questions", []))
+            # A dry run does not archive documents, so a plan's document count reads 0.
             changes = coverage.changes_by_concept(report)
             if entity:
                 before = await _rows_now(conn, kind, entity["id"]) or {c: 0 for c in concepts_for(kind)}
                 after = {c: n + changes.get(c, {}).get("added", 0) for c, n in before.items()}
+        if entity and entity.get("id") == UNWRITTEN:
+            entity = {**entity, "id": None}  # a funder the plan would add has no id to link to yet
     else:
         stage = "unsaved"
-
-    cov = coverage.as_dict(coverage.compute(row, report=report))
-    for line in cov["concepts"]:
-        c = line["concept"]
-        line.update(changes.get(c, {"added": 0, "updated": 0}))
-        line["before"] = before.get(c) if before is not None else None
-        line["after"] = after.get(c) if after is not None else None
-    return {
-        "slug": row["slug"], "stage": stage, "saved_at": row.get("saved_at"),
-        "entity": entity, "reasons": reasons, "held": held, "questions": questions,
-        "facts_before": sum(before.values()) if before is not None else None,
-        "facts_after": sum(after.values()) if after is not None else None,
-        **cov,
-    }
+    return coverage.view(row, stage=stage, report=report, entity=entity, reasons=reasons, held=held,
+                         questions=questions, changes=changes, before=before, after=after)
 
 
 @tool
