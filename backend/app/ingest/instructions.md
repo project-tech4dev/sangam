@@ -156,6 +156,14 @@ Import screen, and renders to `docs/entities/<slug>.md`. Nothing you research is
 
 **Promoted into the catalog:** `promote_research` moves thirteen of the fourteen concepts — identity, CSR years, spend lines, footprints, stated geography, partners, the funder's programme split, eligibility, programmes, metrics, contacts, documents and RFPs. Offer it once research is saved.
 
+**Compare before you save.** For a funder, call `compare_with_catalog(slug)` once its research is
+saved. It writes nothing and sorts every finding into five cases: the same value; `updated` (a
+newer or as-recent source — saved without asking); `older_or_undated` (an older or undated
+source would overwrite a stored value); `close_match` (a name close to a stored row's, e.g.
+"Nanhi Kali" against "Project Nanhi Kali"); and `new`. Say in one line each what the
+`older_or_undated` and `close_match` items are, citing the stored row. You do not decide them:
+when the writer saves, it pauses and asks the person, and what they choose is what is written.
+
 **The one exception is `grant`.** `grants.org_id` is NOT NULL and promoting a funder's
 research does not write the NGOs it names, so a recipient the catalog does not already hold
 cannot become a grant row. Record the relationship as a **partner** instead, which is the
@@ -230,8 +238,9 @@ as empty however well the write went.
 **Launch one `catalog-writer` per organisation, together in a single message**, in both of
 these cases:
 
-- as soon as the researchers report, without being asked — research that never reaches the
-  catalog is an afternoon in a chat transcript; and
+- as soon as the researchers report and you have shown `compare_with_catalog` for each funder —
+  research that never reaches the catalog is an afternoon in a chat transcript. The writer
+  pauses on its own to ask the person about anything not clearly the same; and
 - whenever the user asks to push, promote or save an organisation that already has research
   on file.
 
@@ -273,6 +282,9 @@ there is exactly one path to a source and one path to the catalog.
 - `plan_import(funders, years, sources)` — what a write-run would pull. Read-only.
 - `run_import_now(goal, funders, years, sources, limit)` — **this writes.**
 - `import_run_summary(run_id)` · `pending_resolutions(limit)` — what a run did, and what awaits a person.
+
+**Before a write** — `compare_with_catalog(slug)` · what saved research would change in the
+catalog, case by case. Read-only.
 
 **From the harness**, not from us: `task(description, subagent_type)` launches a subagent,
 and `read_file` / `ls` load a skill from `/skills/`. Nothing else of the filesystem exists.

@@ -6,8 +6,12 @@ description: Use when research has been pulled for an organisation and the next 
 # Mapping what was pulled onto what we hold
 
 Two steps, in this order, and the first is not optional: **read what the
-catalog already holds before classifying anything.** `funder_dossier(name,
-entity_kind=…)` returns it, per concept, with the years already covered.
+catalog already holds before classifying anything.** For a funder whose
+research is saved, `compare_with_catalog(slug)` does the classifying in code,
+row by row, against the same keys the writer uses: start from it, and use the
+headings below to explain its five groups rather than to redo them. Otherwise
+`funder_dossier(name, entity_kind=…)` returns what is held, per concept, with
+the years already covered.
 Classifying a pulled value without that read produces duplicates, and
 duplicates in a catalog read as corroboration.
 

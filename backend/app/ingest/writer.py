@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+from contextvars import ContextVar
 from typing import Any, NamedTuple
 
 from app.ingest.expectations import RESERVED_DOC_TYPES
-from app.ingest.matcher import Match
+from app.ingest.matcher import TRIGRAM_FLOOR, Match
 from app.ingest.records import (
     FunderCsrYearRecord,
     FunderRecord,
@@ -97,6 +99,134 @@ def _plain(v: Any) -> Any:
     return v if v is None or isinstance(v, str | int | float | bool) else str(v)
 
 
+# --- Update what is clearly the same, ask about the rest ---------------------
+#
+# docs/features/2026-10-08-import-update-or-ask.md. A Gate, when set, sorts every
+# write into five cases; with none set every writer behaves exactly as before.
+
+# A change confined to these is the same fact re-read, never a question.
+NOT_FACTS = frozenset({"source_url", "source_name", "fetched_at", "as_of", "content_hash",
+                       "extractor_version", "notes", "classification_note"})
+# Tables whose rows carry an id, so a question can cite the row and a close match can name it.
+HAS_ID = frozenset({"funders", "funder_activity", "programs", "metrics", "contacts", "rfps"})
+# Where one real thing can be spelled two ways: table -> (name columns, key columns that must agree).
+CLOSE_MATCH = {
+    "programs": (("name",), ("funder_id",)),
+    "contacts": (("name",), ("funder_id", "role")),
+    "funder_activity": (("project_name", "partner_name"), ("funder_id", "kind", "fiscal_year")),
+}
+CHOICES = {3: ("update", "keep"), 4: ("update", "new", "skip")}
+# The funder or programme a plan has not written yet. No row has it, so every lookup under it is new.
+UNWRITTEN = -1
+_FY = re.compile(r"^FY(\d{4})-\d{2}$")
+_DATE = re.compile(r"^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?")
+
+
+def period_end(value: Any) -> str | None:
+    """A comparable ISO date for an as_of: FY2023-24 ends 2024-03-31; 2024-03 and 2024 pad out."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if m := _FY.match(text):
+        return f"{int(m[1]) + 1}-03-31"
+    if m := _DATE.match(text):
+        return f"{m[1]}-{m[2] or '12'}-{m[3] or '31'}"
+    return None
+
+
+# The citation marker each table's rows already carry elsewhere; the table name otherwise.
+CITE = {"funders": "funder", "funder_activity": "activity"}
+
+
+def _cite(table: str, row_id: Any) -> str | None:
+    return f"[{CITE.get(table, table)}:{row_id}]" if row_id is not None else None
+
+
+def _label(key: dict[str, Any]) -> str:
+    return " · ".join(str(v) for c, v in key.items() if v is not None and not c.endswith("_id")) or "row"
+
+
+class Gate:
+    """One promotion's decisions. plan=True writes nothing and only records what would happen."""
+
+    def __init__(self, decisions: dict[str, str] | None = None, *, plan: bool = False) -> None:
+        self.decisions = dict(decisions or {})
+        self.plan = plan
+        self.items: list[dict[str, Any]] = []
+        self.same = 0
+
+    def _item(self, case: int, table: str, key: dict[str, Any], **extra: Any) -> dict[str, Any]:
+        ident = json.dumps([case, table, key], sort_keys=True, default=str)
+        item = {"id": hashlib.sha1(ident.encode()).hexdigest()[:12], "case": case, "table": table,
+                "label": _label(key), **extra}
+        if case in CHOICES:
+            item["choices"] = list(CHOICES[case])
+            item["choice"] = self.decisions.get(item["id"])
+        self.items.append(item)
+        return item
+
+    def on_change(
+        self, table: str, key: dict[str, Any], existing: dict[str, Any], changes: dict[str, Any],
+        proposed: dict[str, Any],
+    ) -> str:
+        """update | keep | ask, for a stored row whose values differ from the research."""
+        facts = {c: v for c, v in changes.items() if c not in NOT_FACTS}
+        if not facts:
+            self.same += 1
+            return "update"
+        old, new = period_end(existing.get("as_of")), period_end(proposed.get("as_of"))
+        row = _cite(table, existing.get("id"))
+        common = {"row": row, "changes": facts, "stored_as_of": existing.get("as_of"),
+                  "new_as_of": proposed.get("as_of")}
+        if old and new and new >= old:
+            self._item(2, table, key, **common, outcome="planned" if self.plan else "written")
+            return "update"
+        item = self._item(3, table, key, **common)
+        choice = item["choice"] if item["choice"] in CHOICES[3] else None
+        item["outcome"] = "asked" if choice is None else ("written" if choice == "update" else "kept")
+        if self.plan and choice == "update":
+            item["outcome"] = "planned"
+        return choice or "ask"
+
+    async def on_new(
+        self, conn: Any, table: str, key: dict[str, Any], proposed: dict[str, Any]
+    ) -> tuple[str, int | None]:
+        """(insert | update | skip | ask, candidate_id) for a row no stored row has the key of."""
+        names, agree = CLOSE_MATCH.get(table, ((), ()))
+        column = next((c for c in names if key.get(c)), None)
+        candidate = None
+        if column and key.get("funder_id") not in (None, UNWRITTEN):
+            # Column names come from CLOSE_MATCH, never a caller; only values are parameterised.
+            where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in agree)
+            candidate = await (
+                await conn.execute(
+                    f"SELECT id, {column} AS name, similarity({column}, %s) AS score FROM {table} "
+                    f"WHERE {where} AND {column} IS DISTINCT FROM %s AND similarity({column}, %s) >= %s "
+                    "ORDER BY score DESC LIMIT 1",
+                    (key[column], *(key[c] for c in agree), key[column], key[column], TRIGRAM_FLOOR),
+                )
+            ).fetchone()
+        if candidate is None:
+            self._item(5, table, key, outcome="planned" if self.plan else "written",
+                       new={c: _plain(v) for c, v in proposed.items() if v is not None and c not in NOT_FACTS})
+            return "insert", None
+        item = self._item(
+            4, table, key, row=_cite(table, candidate["id"]), column=column,
+            stored_name=candidate["name"], new_name=key[column], score=round(float(candidate["score"]), 2),
+        )
+        choice = item["choice"] if item["choice"] in CHOICES[4] else None
+        item["outcome"] = {"update": "written", "new": "written", "skip": "skipped"}.get(choice or "", "asked")
+        if self.plan and choice in ("update", "new"):
+            item["outcome"] = "planned"
+        return {"update": "update", "new": "insert", "skip": "skip"}.get(choice or "", "ask"), candidate["id"]
+
+    def asked(self) -> list[dict[str, Any]]:
+        return [i for i in self.items if i.get("outcome") == "asked"]
+
+
+GATE: ContextVar[Gate | None] = ContextVar("import_gate", default=None)
+
+
 async def ensure_document(
     conn: Any, rec: Any, *, owner: Owner | None, doc_type: str,
     storage_path: str | None = None, content_hash: str | None = None,
@@ -179,18 +309,25 @@ async def write_funder(
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
         "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
     }
+    gate = GATE.get()
     if match.resolved:
         existing = await (
             await conn.execute(
-                f"SELECT name, aliases, {', '.join(FUNDER_UPDATABLE)} FROM funders WHERE id = %s",
+                f"SELECT id, name, aliases, {', '.join(FUNDER_UPDATABLE)} FROM funders WHERE id = %s",
                 (match.entity_id,),
             )
         ).fetchone()
         changes = _diff({c: existing[c] for c in FUNDER_UPDATABLE}, proposed)
+        if changes and gate and gate.on_change(
+            "funders", {"name": existing["name"]}, dict(existing), changes, proposed
+        ) != "update":
+            changes = {}
         held = list(existing["aliases"] or [])
         added = new_aliases(held, rec.aliases, existing["name"])
         if not changes and not added:
             return "matched", match.entity_id, {}
+        if gate and gate.plan:
+            return "updated", match.entity_id, changes
         sets = [f"{c} = %s" for c in changes]
         values = [proposed[c] for c in changes]
         if added:
@@ -202,6 +339,11 @@ async def write_funder(
         )
         return "updated", match.entity_id, changes
 
+    if gate:
+        gate._item(5, "funders", {"name": rec.name}, outcome="planned" if gate.plan else "written",
+                   new={c: _plain(v) for c, v in proposed.items() if v is not None and c not in NOT_FACTS})
+        if gate.plan:
+            return "added", UNWRITTEN, {"name": {"old": None, "new": rec.name}}
     slug = await _free_slug(conn, slugify(rec.name))
     row = await (
         await conn.execute(
@@ -259,8 +401,15 @@ async def write_csr_year(
             (funder_id, rec.fiscal_year),
         )
     ).fetchone()
+    gate = GATE.get()
+    key = {"funder_id": funder_id, "fiscal_year": rec.fiscal_year}
     if existing is None:
         cols = [c for c in CSR_YEAR_UPDATABLE if proposed[c] is not None]
+        if gate:
+            gate._item(5, "funder_csr_years", key, outcome="planned" if gate.plan else "written",
+                       new={c: _plain(proposed[c]) for c in cols if c not in NOT_FACTS})
+            if gate.plan:
+                return "added", {}
         await conn.execute(
             f"INSERT INTO funder_csr_years (funder_id, fiscal_year, document_id, {', '.join(cols)}) "
             f"VALUES (%s, %s, %s, {', '.join(['%s'] * len(cols))})",
@@ -269,7 +418,15 @@ async def write_csr_year(
         return "added", {c: {"old": None, "new": _plain(proposed[c])} for c in cols}
     changes = _diff(dict(existing), proposed)
     if not changes:
+        if gate:
+            gate.same += 1
         return "matched", {}
+    if gate:
+        verdict = gate.on_change("funder_csr_years", key, dict(existing), changes, proposed)
+        if verdict != "update":
+            return ("kept" if verdict == "keep" else "asked"), {}
+        if gate.plan:
+            return "updated", changes
     sets = ", ".join(f"{c} = %s" for c in changes)
     await conn.execute(
         f"UPDATE funder_csr_years SET {sets}, document_id = coalesce(document_id, %s) "
@@ -368,11 +525,22 @@ async def _upsert(
     caller; only values are parameterised.
     """
     where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
+    gate = GATE.get()
+    head = "id, " if gate and table in HAS_ID else ""
     existing = await (
         await conn.execute(
-            f"SELECT {', '.join(updatable)} FROM {table} WHERE {where}", tuple(key.values())
+            f"SELECT {head}{', '.join(updatable)} FROM {table} WHERE {where}", tuple(key.values())
         )
     ).fetchone()
+
+    if existing is None and gate:
+        verdict, candidate = await gate.on_new(conn, table, key, proposed)
+        if verdict in ("ask", "skip"):
+            return ("asked" if verdict == "ask" else "skipped"), {}
+        if verdict == "update":
+            return await _rename_into(conn, table, candidate, key, updatable, proposed, document_id, gate)
+        if gate.plan:
+            return "added", {}
 
     if existing is None:
         cols = list(key) + [c for c in updatable if proposed.get(c) is not None]
@@ -388,11 +556,54 @@ async def _upsert(
 
     changes = _diff(dict(existing), proposed)
     if not changes:
+        if gate:
+            gate.same += 1
         return "matched", {}
+    if gate:
+        verdict = gate.on_change(table, key, dict(existing), changes, proposed)
+        if verdict != "update":
+            return ("kept" if verdict == "keep" else "asked"), {}
+        if gate.plan:
+            return "updated", changes
     sets = ", ".join(f"{c} = %s" for c in changes)
     await conn.execute(
         f"UPDATE {table} SET {sets}, document_id = coalesce(document_id, %s) WHERE {where}",
         (*[proposed[c] for c in changes], document_id, *key.values()),
+    )
+    return "updated", changes
+
+
+async def _rename_into(
+    conn: Any, table: str, row_id: int, key: dict[str, Any], updatable: tuple[str, ...],
+    proposed: dict[str, Any], document_id: int | None, gate: Gate,
+) -> tuple[str, dict]:
+    """A person said the close match is this row: give it the researched key, then the values.
+
+    Refused, not raised, when another row already holds that key: the UNIQUE constraint would
+    abort the whole funder's promotion.
+    """
+    if gate.plan:
+        return "updated", {}
+    where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
+    taken = await (
+        await conn.execute(f"SELECT id FROM {table} WHERE {where} AND id <> %s", (*key.values(), row_id))
+    ).fetchone()
+    if taken:
+        gate.items[-1]["outcome"] = "held"
+        gate.items[-1]["reason"] = f"{_cite(table, taken['id'])} already holds that name"
+        return "held", {"reason": gate.items[-1]["reason"]}
+    existing = await (
+        await conn.execute(
+            f"SELECT {', '.join([*key, *updatable])} FROM {table} WHERE id = %s", (row_id,)
+        )
+    ).fetchone()
+    changes = _diff(dict(existing), {**key, **proposed})
+    if not changes:
+        return "matched", {}
+    sets = ", ".join(f"{c} = %s" for c in changes)
+    await conn.execute(
+        f"UPDATE {table} SET {sets}, document_id = coalesce(document_id, %s) WHERE id = %s",
+        (*[{**key, **proposed}[c] for c in changes], document_id, row_id),
     )
     return "updated", changes
 
@@ -539,6 +750,10 @@ async def write_program(
             (owner.id, rec.name),
         )
     ).fetchone()
+    if row is None:
+        # Unwritten: planned (a placeholder its facts can key on), or waiting on a person (None).
+        gate = GATE.get()
+        return status, UNWRITTEN if gate and gate.plan and status in ("added", "updated") else None, changes
     return status, row["id"], changes
 
 
@@ -601,6 +816,9 @@ async def write_rfp(
         "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
     }
     status, changes = await _upsert(conn, "rfps", key, RFP_UPDATABLE, proposed, document_id)
+    gate = GATE.get()
+    if gate and (gate.plan or status in ("asked", "skipped", "kept", "held")):
+        return status, None, changes
     row = await (
         await conn.execute(
             "SELECT id FROM rfps WHERE funder_id = %s AND title = %s "
@@ -632,6 +850,9 @@ async def write_eligibility_document(conn: Any, rec: Any, funder_id: int) -> tup
     Keyed by ensure_document on (source_url, 'funder_eligibility', funder). The text follows the newest
     research, and is_public follows the funder (D14): a hidden funder's guideline is staff-only.
     """
+    gate = GATE.get()
+    if gate and gate.plan:
+        return 0, "planned"
     document_id, status = await ensure_document(
         conn, rec, owner=Owner.funder(funder_id), doc_type=rec.doc_type
     )
@@ -659,6 +880,9 @@ async def write_funder_tag(conn: Any, funder_id: int, tag_id: int, *, note: str 
     wording by a keyword table, and the row should say that rather than read
     as the funder's own classification.
     """
+    gate = GATE.get()
+    if gate and gate.plan:
+        return
     await conn.execute(
         "INSERT INTO funder_tags (funder_id, tag_id, role, is_inferred, tagged_by, note) "
         "VALUES (%s, %s, 'primary', true, %s, %s) "
