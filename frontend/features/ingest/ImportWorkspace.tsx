@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
+import { CoverageChart } from "./components/CoverageChart";
 import { Milestones } from "./components/Milestones";
 import { RunStatus } from "./components/RunStatus";
 import { PausedPick } from "./components/SourcePicker";
@@ -62,6 +63,12 @@ export function ImportWorkspace({ threadId, onStartOver }: { threadId: string; o
             {/* Subagents get their own board: several run at once and a flat
                 list of "Delegating a sub-task" hides that entirely. */}
             <SubagentBoard steps={turn.steps.filter((s) => s.tool === "task")} />
+
+            {turn.steps
+              .filter((s) => s.tool === "coverage_report" && s.result)
+              .map((s) => (
+                <CoverageChart key={s.id} text={s.result} />
+              ))}
 
             {/* Refusals and failures only. The findings belong in the answer and
                 the stages belong above; a line per tool call buried both. */}

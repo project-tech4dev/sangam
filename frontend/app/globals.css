@@ -601,6 +601,10 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .import-form { display: flex; gap: 8px; margin-top: auto; }
 .import-form .input { flex: 1; }
 
+.coverage-card { padding: 16px; gap: 8px; }
+.coverage-head { display: grid; gap: 2px; }
+.coverage-tip { padding: 10px 12px; gap: 2px; font-size: var(--fs-sm); box-shadow: var(--shadow-md); }
+
 /* --- Import: the paused catalog write ------------------------------------------ */
 .save-card { padding: 16px; gap: 12px; }
 .save-head { display: grid; gap: 4px; }
