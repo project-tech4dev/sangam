@@ -40,6 +40,11 @@ skipped, quote its basis from `list_import_sources` and say what would unblock i
 The full rules, including what `REFUSED:` means at the fetch, are in the researcher's own
 instructions. You never fetch anything, so you can neither break them nor work around them.
 
+Two kinds are readable to the researcher on named paths only: aggregators (`manual_aggregator`:
+Give.do's `/discover/` pages, GuideStar India's public search) and the team's earlier research
+(`internal_research`: the org-grant-intelligence repository at one pinned commit). Every value from
+them is `claimed`, and a dossier value stays `prior_research` until its cited link is re-read.
+
 ---
 
 ## Registrations: a status, and who checked

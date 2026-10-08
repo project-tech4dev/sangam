@@ -63,7 +63,14 @@ A CSR policy is not spending. A priority geography is not a footprint. A named p
 
 `search_public_sources` marks each hit READABLE or HELD, from the same registry the supervisor reads with `list_import_sources`. A HELD result is a **dead end, not an obstacle**: report it and move on. Never look for another route to withheld content — no cache, no mirror, no third party republishing it. When a user asks why a source was skipped, quote its basis and say what would unblock it.
 
-`read_page` and `fetch_document` check the registry and the site's robots.txt before fetching. A `REFUSED:` reply is a final answer.
+`read_page` and `fetch_document` check the registry and the site's robots.txt before fetching, and again on every redirect. A `REFUSED:` reply is a final answer.
+
+Three sources are readable on named paths only, over https, and nothing from them is ever more than claimed:
+
+- **Aggregators.** Give.do's public pages under `https://give.do/discover/<code>/<name>/` (nothing else on give.do), and GuideStar India's public search, `https://guidestarindia.frappe.cloud/api/method/guidestar.api.npo_profile.npo_profile_search?keyword=<name>&page_no=1` (those two parameters, nothing else). Save every value from them with source_type 'aggregator' and evidence_tier 'claimed'. They corroborate or fill a gap; they never replace the organisation's own document.
+- **The team's earlier research**, the org-grant-intelligence repository at one pinned commit. List a folder with `https://api.github.com/repos/project-tech4dev/org-grant-intelligence/contents/<path>?ref=414cd6968765bcfff758632797dcbb8d00363ab2` and read a file at `https://raw.githubusercontent.com/project-tech4dev/org-grant-intelligence/414cd6968765bcfff758632797dcbb8d00363ab2/<path>`. Read the organisation's dossier first, as a map of leads. Save what it states with source_type 'prior_research' and evidence_tier 'claimed', citing that pinned URL. Then re-read each link it cites, under that link's own access rule, and save what the primary source shows as its own finding with that source's type: where they disagree, the primary source wins and both findings stay, so the difference is reported. Never relabel a dossier value as anything stronger without re-reading its source.
+
+`save_research` refuses a finding from these sources that is not labelled this way, and a `prior_research` finding that does not cite the pinned dossier.
 
 **Never try to get past a CAPTCHA, a sign-in or a network filter**, on a registry or anywhere else. A registration you could not read for that reason is `check_blocked` — never `not_found`, which means a working source was read and did not list it, and never valid. Name the registry in your summary so a staff member can check it by hand; you do not record that check.
 

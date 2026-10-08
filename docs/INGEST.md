@@ -59,13 +59,13 @@ and GDELT. It writes straight through and logs every record to `ingest_run_items
 ## Sources: access rules are config, not comments
 
 Every source carries the rule that governs it and the evidence for that rule — `access_rule`,
-`basis`, `robots_checked_at`. The inventory is **74 sources** in
+`basis`, `robots_checked_at`. The inventory is **77 sources** in
 `backend/app/ingest/data/sources/*.json`, across four overlapping categories:
 
 | Category | Sources | Dispatchable |
 |---|---:|---:|
-| funder | 32 | 8 |
-| ngo | 21 | 4 |
+| funder | 33 | 8 |
+| ngo | 24 | 3 |
 | rfp | 11 | 2 |
 | media | 26 | 15 |
 
@@ -79,17 +79,31 @@ Only `open_api` and `crawl_allowed` are dispatchable. Everything else is reporte
 with its basis, so "give.do: terms bar data mining" is a row in the report rather than a crawl
 that should never have happened.
 
-A source is a **product, not a host**: `mcacdm.nic.in` carries several. `rule_for_host()` resolves
-a host to the **strictest** rule among its products, so declaration order can never decide whether
-a crawler runs.
+A source is a **product, not a host**: `mcacdm.nic.in` carries several. `rule_for_url()` resolves
+a URL to the **strictest** rule among its host's products, so declaration order can never decide
+whether a crawler runs.
+
+**Two rules are path-scoped**: `manual_aggregator` (Give.do's `/discover/` pages, GuideStar India's
+public search method) and `internal_research` (the team's org-grant-intelligence repository at one
+pinned commit, and its directory listings). Neither is dispatchable; the researcher's fetch tools
+read them one URL at a time. An entry names its exact host, `allowed_paths` (a prefix ending in `/`
+needs a segment below it; anything else is exact) and `allowed_query` (the keys allowed, each with
+a pinned value or any). Before matching, the host is lower-cased with its trailing dot dropped and
+the path is decoded once with `.`, `..` and `//` resolved; a path still encoded after that, a
+backslash, a user name, a port, plain http or a sign-in segment is refused. A path the entry does
+not claim keeps the host's strictest other rule (`give.do/api/` stays `no_scraping`), and robots.txt
+is still asked for one it does. `read_page` and `fetch_document` run the same check on every
+redirect hop before requesting it. `source_guards.py` makes every value from these sources
+`claimed`, as `aggregator` or `prior_research`, at save and again at promote, where a finding
+whose table cannot mark it claimed is held.
 
 Three states, and they are not the same thing:
 
 | | Count | Meaning |
 |---|---:|---|
 | **pulls** | 2 | permitted *and* an adapter exists — India CSR, GDELT |
-| **permitted, not built** | 21 | legally readable, nothing reads it yet. Not a failure |
-| **held** | 51 | its rule forbids it; the basis says what would unblock it |
+| **permitted, not built** | 20 | legally readable, nothing reads it yet. Not a failure |
+| **held** | 55 | its rule forbids it; the basis says what would unblock it |
 
 `read_page` and `fetch_document` check twice before fetching: the registry decides the site,
 `robots.txt` decides the path. RFC 9309 semantics — a 4xx on robots means allow, a 5xx or an
