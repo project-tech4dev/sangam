@@ -166,7 +166,7 @@ agentic doc, add a header note that its "tiers, no numbers" decision is supersed
   shared place. Today's "pan-India is a candidate only when it shares a theme" goes, so those
   funders are assessed and can earn their 30%. That costs little: only 9 funders have
   `funder_locations` rows.
-- `app/agent/instructions.md` (rules 11–15): repeat the gate and score as computed; never compute
+- `app/agent/instructions.md` (rules 12–16): repeat the gate and score as computed; never compute
   or adjust one.
 - `CLAUDE.md` "Funder matching is agentic" paragraph: add the one-liner "the assessor judges checks;
   `scoring.py` turns them into gate, score and order".

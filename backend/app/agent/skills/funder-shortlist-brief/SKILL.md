@@ -56,7 +56,7 @@ Keep an entry to three lines.
 - A low score with low coverage means little is recorded, not a poor match:
   say so when coverage is under half.
 - Copy markers exactly as compare_fit gave them, one per row. Never write a
-  range such as [grant:1-4].
+  range such as [activity:1-4].
 - "No eligibility bars recorded for this funder" means nobody has recorded
   them, never that the funder sets none.
 - If fit_scores holds a stored score for one of these pairs, you may quote it

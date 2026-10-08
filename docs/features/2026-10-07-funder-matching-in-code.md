@@ -52,11 +52,11 @@ A dataclass, filled by about 8 fixed SELECTs on one connection.
 | `districts`, `states` | district → state through `locations.parent_id` |
 | `sector_tags`, `csr_slugs` | `tags.meta->>'maps_to'` |
 | `programs` | each with its tag ids |
-| `identifiers` | by id_type, plus the latest credential event per credential |
+| `identifiers` | by id_type: status, id_value, is_current, valid_until, evidence, source_type |
 | `financials` | fiscal_year, total_income, is_audited |
 | `documents` | doc_type |
 | `office_bearers` | count |
-| `grants` | id, status |
+| `partner_lines` | funder_activity partner lines naming the org: id, relationship_status, end_date |
 
 ### `funder_profiles(funder_ids | None)`
 
@@ -65,14 +65,14 @@ The same idea, in bulk (`= ANY(%s)`), so the cost is about 6 queries however man
 | field | contents |
 |---|---|
 | `funder` | id, name, funder_type, section_135_bound |
-| places | districts, states, pan-India, and regions with their member states; footprints plus funder_locations, excluding the `registered` role |
+| places | districts, states, pan-India, and regions with their member states; `funder_activity` footprint lines plus funder_locations, excluding the `registered` role |
 | `registered` | the registered location's country, which gives `foreign_funder` |
 | tags | sector tags, csr_sector slugs |
-| `eligibility` | funder_eligibility rows |
+| `eligibility` | the paragraphs under "Its own bar" and "Disqualifiers" in the `funder_eligibility` document |
 
 ### `rules.py`: profile pair → checks
 
-Pure functions, one per check. Every met or fail cites `[org:N]`, `[funder:N]` or `[grant:N]` from the profile, which satisfies `Check`'s validators.
+Pure functions, one per check. Every met or fail cites `[org:N]`, `[funder:N]` or `[activity:N]` from the profile, which satisfies `Check`'s validators.
 
 **Fit**
 
@@ -94,10 +94,11 @@ Pure functions, one per check. Every met or fail cites `[org:N]`, `[funder:N]` o
 **Organisation's own checks**
 
 - `reg_12a`, `reg_80g`, `csr_1`, `darpan`, `pan`, `reg_no`, `fcra`:
-  - `met` on an identifier row (id_type `12a`, `80g`, `csr1`, `darpan`, `pan`, `reg_no`, `fcra`) that is current;
-  - `fail` when the latest credential event is cancelled, expired, suspended or surrendered, or `valid_until` is past;
-  - `unknown` / `searched_not_found` on a `not_found` event;
-  - `unknown` / `not_researched` otherwise.
+  - `met` on a current identifier row (id_type `12a`, `80g`, `csr1`, `darpan`, `pan`, `reg_no`, `fcra`) with status `registered` or `provisional` and an id_value;
+  - `fail` when a current row is cancelled, expired, suspended or surrendered, or a held row's `valid_until` is past;
+  - `unknown` / `claimed` when the held row's evidence is `claimed`, and `unknown` when held and lapsed rows conflict;
+  - `unknown` / `searched_not_found` on `not_found`;
+  - `unknown` / `not_researched` otherwise (`applied`, `check_blocked`, no row).
 - `audits_3y`:
   - `met` on 3 audited years, or 3 audit documents (`audited_financials`, `financial_statement(s)`);
   - `fail` only when a recent year is recorded `is_audited = false`;
@@ -105,12 +106,12 @@ Pure functions, one per check. Every met or fail cites `[org:N]`, `[funder:N]` o
 - `itr_7`, `team_cvs`: `met` on a matching doc_type, otherwise `unknown`.
 - `board`: `met` on 3 or more office bearers, otherwise `unknown`, noting "N of 3".
 - `projects_3`:
-  - `met` on 3 or more concluded grants plus completed programs;
+  - `met` on 3 or more concluded partner lines (`relationship_status = concluded` or ended) plus completed programs;
   - otherwise `unknown`, noting "N of 3".
 
 **The funder's own bars**
 
-- `funder_bar`: one check per funder_eligibility row, always `unknown`, with note "needs review: <criterion>".
+- `funder_bar`: one check per bar paragraph, always `unknown`, with note "needs review (document N): <criterion>".
   - Free text cannot be judged in code, and the write-up names it. There are none locally today.
 - `turnover`: not emitted until bars are structured.
 
@@ -159,7 +160,7 @@ The doc-type and credential value sets are module constants, so a new spelling i
   - `funder-comparison`: resolve the ids, then `compare_fit(org_id, [ids])`.
   - `funder-shortlist-brief`: "needs review" bars go in their own line.
 - `instructions.md`:
-  - rules 11–15 now say "compare_fit judges; never judge fit yourself; repeat its output";
+  - rules 12–16 now say "compare_fit judges; never judge fit yourself; repeat its output";
   - describe the tool there (a test requires every tool to be named).
 - `frontend/features/ask/lib/toolLabels.ts`: `compare_fit`, labelled "Comparing funders".
 - `CLAUDE.md`:

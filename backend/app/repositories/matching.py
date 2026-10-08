@@ -7,10 +7,12 @@ from typing import Any
 
 from psycopg_pool import AsyncConnectionPool
 
-from app.agent.rules import FunderProfile, Location, OrgProfile, Places, Program
+from app.agent.rules import FunderProfile, Identifier, Location, OrgProfile, Places, Program
 
 # Tag kinds a theme is compared on; meta->>'maps_to' carries a sector's Schedule VII slug.
 SECTOR, CSR = "sector", "csr_sector"
+# The eligibility document's sections a person must review; the statutory ones are the credential checks.
+BAR_SECTIONS = ("## Its own bar", "## Disqualifiers")
 
 
 async def _rows(conn: Any, sql: str, params: Any = None) -> list[dict]:
@@ -75,13 +77,10 @@ async def _org(conn: Any, org_id: int) -> OrgProfile | None:
         sectors, csr = _tag_sets(tags[pid])
         org.programs.append(Program(pid, r["name"], r["status"], r["end_date"], frozenset(sectors | csr)))
 
-    for r in await _rows(conn, "SELECT id_type, is_current FROM org_identifiers WHERE org_id = %s", (org_id,)):
-        org.identifiers.setdefault(r["id_type"], []).append(r["is_current"])
     for r in await _rows(conn, """
-        SELECT DISTINCT ON (credential) credential, event, valid_until
-        FROM credential_events WHERE org_id = %s
-        ORDER BY credential, event_date DESC NULLS LAST, recorded_at DESC NULLS LAST""", (org_id,)):
-        org.events[r["credential"]] = (r["event"], r["valid_until"])
+        SELECT id_type, status, id_value, is_current, valid_until, evidence, source_type
+        FROM org_identifiers WHERE org_id = %s ORDER BY id""", (org_id,)):
+        org.identifiers.setdefault(r.pop("id_type"), []).append(Identifier(**r))
     org.financials = [
         (r["fiscal_year"], r["is_audited"]) for r in await _rows(conn, """
             SELECT fiscal_year, is_audited FROM org_financials
@@ -93,9 +92,11 @@ async def _org(conn: Any, org_id: int) -> OrgProfile | None:
     ]
     org.office_bearers = (await _rows(conn, """
         SELECT count(*) AS n FROM contacts WHERE org_id = %s AND kind = 'office_bearer'""", (org_id,)))[0]["n"]
-    org.grants = [
-        (r["id"], r["status"])
-        for r in await _rows(conn, "SELECT id, status FROM grants WHERE org_id = %s ORDER BY id", (org_id,))
+    # A grant to the organisation is a funder's partner line.
+    org.partner_lines = [
+        (r["id"], r["relationship_status"], r["end_date"]) for r in await _rows(conn, """
+            SELECT id, relationship_status, end_date FROM funder_activity
+            WHERE kind = 'partner' AND partner_org_id = %s ORDER BY id""", (org_id,))
     ]
     return org
 
@@ -114,8 +115,9 @@ async def _funders(conn: Any, funder_ids: list[int] | None) -> list[FunderProfil
     for r in await _rows(conn, f"""
         SELECT funder_id, location_id, role FROM funder_locations WHERE {where.format(col='funder_id')}
         UNION ALL
-        SELECT funder_id, location_id, 'footprint' FROM funder_footprints
-        WHERE location_id IS NOT NULL AND {where.format(col='funder_id')}""", params):
+        SELECT funder_id, place, 'footprint'
+        FROM funder_activity, LATERAL (VALUES (location_id), (state_location_id)) AS p(place)
+        WHERE kind = 'footprint' AND place IS NOT NULL AND {where.format(col='funder_id')}""", params):
         f = funders.get(r["funder_id"])
         if f is None:
             continue
@@ -133,8 +135,19 @@ async def _funders(conn: Any, funder_ids: list[int] | None) -> list[FunderProfil
             funders[fid].sector_tags, funders[fid].csr_slugs = _tag_sets(rows)
 
     for r in await _rows(conn, f"""
-        SELECT id, funder_id, criterion FROM funder_eligibility
-        WHERE {where.format(col='funder_id')} ORDER BY id""", params):
+        SELECT id, funder_id, content_md FROM documents
+        WHERE doc_type = 'funder_eligibility' AND {where.format(col='funder_id')} ORDER BY id""", params):
         if r["funder_id"] in funders:
-            funders[r["funder_id"]].bars.append((r["id"], r["criterion"]))
+            funders[r["funder_id"]].bars += [(r["id"], text) for text in _bars(r["content_md"] or "")]
     return list(funders.values())
+
+
+def _bars(content_md: str) -> list[str]:
+    """The criteria under the bar headings, one per paragraph, as EligibilityGuidelineRecord writes them."""
+    bars, keep = [], False
+    for para in (p.strip() for p in content_md.split("\n\n")):
+        if para.startswith("## "):
+            keep = para in BAR_SECTIONS
+        elif para and keep:
+            bars.append(para)
+    return bars

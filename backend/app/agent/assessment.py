@@ -10,7 +10,7 @@ from app.agent.scoring import Gate, Result, evaluate
 
 Outcome = Literal["met", "fail", "unknown"]
 # Why a check came out as it did. met/fail rest on evidence; unknown says what was missing.
-Basis = Literal["recorded", "on_file", "not_researched", "searched_not_found", "not_on_file"]
+Basis = Literal["recorded", "on_file", "not_researched", "searched_not_found", "not_on_file", "claimed"]
 EVIDENCE: frozenset[str] = frozenset({"recorded", "on_file"})
 # About the organisation alone: the same for every funder.
 ReadinessCode = Literal[

@@ -16,13 +16,14 @@ AUDIT_DOC_TYPES = frozenset({"audited_financials", "audit_report", "financial_st
 ITR_DOC_TYPES = frozenset({"itr", "itr_7", "itr7", "income_tax_return"})
 CV_DOC_TYPES = frozenset({"cv", "cvs", "team_cv", "team_cvs", "resume"})
 CONCLUDED = frozenset({"concluded", "completed", "closed", "ended"})
-# check code -> org_identifiers.id_type / credential_events.credential
+# check code -> org_identifiers.id_type
 CREDENTIALS = {
     "reg_12a": "12a", "reg_80g": "80g", "csr_1": "csr1", "darpan": "darpan",
     "pan": "pan", "reg_no": "reg_no", "fcra": "fcra",
 }
+# org_identifiers.status
+HELD = frozenset({"registered", "provisional"})
 LAPSED = frozenset({"cancelled", "expired", "suspended", "surrendered"})
-SEARCHED = frozenset({"not_found"})
 INDIA = "India"
 
 
@@ -43,6 +44,16 @@ class Program:
     tags: frozenset[str]  # sector slugs, csr slugs, and the csr slugs the sector tags map to
 
 
+@dataclass(frozen=True)
+class Identifier:
+    status: str
+    id_value: str | None
+    is_current: bool | None
+    valid_until: date | None
+    evidence: str | None
+    source_type: str | None
+
+
 @dataclass
 class OrgProfile:
     id: int
@@ -51,16 +62,14 @@ class OrgProfile:
     sector_tags: set[str] = field(default_factory=set)
     csr_slugs: set[str] = field(default_factory=set)
     programs: list[Program] = field(default_factory=list)
-    # id_type -> is_current of each row
-    identifiers: dict[str, list[bool | None]] = field(default_factory=dict)
-    # credential -> (latest event, valid_until)
-    events: dict[str, tuple[str, date | None]] = field(default_factory=dict)
+    # id_type -> its org_identifiers rows
+    identifiers: dict[str, list[Identifier]] = field(default_factory=dict)
     # (fiscal_year, is_audited), newest first
     financials: list[tuple[str, bool | None]] = field(default_factory=list)
     doc_types: list[str] = field(default_factory=list)
     office_bearers: int = 0
-    # (grant id, status)
-    grants: list[tuple[int, str | None]] = field(default_factory=list)
+    # funder_activity partner lines naming the org: (activity id, relationship_status, end_date)
+    partner_lines: list[tuple[int, str | None, date | None]] = field(default_factory=list)
 
 
 @dataclass
@@ -73,7 +82,7 @@ class FunderProfile:
     registered_ids: set[int] = field(default_factory=set)
     sector_tags: set[str] = field(default_factory=set)
     csr_slugs: set[str] = field(default_factory=set)
-    # (funder_eligibility id, criterion)
+    # (documents id, criterion) from the funder's 'funder_eligibility' document
     bars: list[tuple[int, str]] = field(default_factory=list)
 
 
@@ -145,18 +154,33 @@ def _unknown(code: str, note: str = "", basis: str = "not_researched") -> Check:
 def _credential(code: str, org: OrgProfile, today: date) -> Check:
     key = CREDENTIALS[code]
     cite = [f"[org:{org.id}]"]
-    event, valid_until = org.events.get(key, (None, None))
-    if event in LAPSED:
-        return Check(code=code, outcome="fail", basis="recorded", note=f"latest event: {event}", cites=cite)
-    if valid_until is not None and valid_until < today:
-        return Check(code=code, outcome="fail", basis="recorded", note=f"valid until {valid_until}", cites=cite)
-    rows = org.identifiers.get(key, [])
-    if any(current is not False for current in rows):
-        return Check(code=code, outcome="met", basis="recorded", note=f"{key} recorded", cites=cite)
-    if rows:
-        return _unknown(code, f"only a superseded {key} is recorded")
-    if event in SEARCHED:
+    rows = [r for r in org.identifiers.get(key, []) if r.is_current is not False]
+    lapsed = [r for r in rows if r.status in LAPSED or (r.status in HELD and r.valid_until and r.valid_until < today)]
+    held = [r for r in rows if r.status in HELD and r.id_value and r not in lapsed]
+    if held and lapsed:
+        # Conflicting evidence never passes or fails a gate.
+        return _unknown(code, f"conflicting {key} rows: {', '.join(sorted({r.status for r in rows}))}")
+    if lapsed:
+        r = lapsed[0]
+        note = f"{key} lapsed on {r.valid_until}" if r.status in HELD else f"{key} {r.status}"
+        return Check(code=code, outcome="fail", basis="recorded", note=note, cites=cite)
+    if held:
+        r = held[0]
+        if r.evidence == "claimed":
+            # Weak evidence never passes a gate.
+            return _unknown(code, f"{key} claimed by {r.source_type or 'an unnamed source'}, not evidenced",
+                            basis="claimed")
+        note = f"{key} {r.status}" + (" (time-limited)" if r.status == "provisional" else "")
+        return Check(code=code, outcome="met", basis="recorded", note=note, cites=cite)
+    statuses = {r.status for r in rows}
+    if "applied" in statuses:
+        return _unknown(code, f"{key} applied for, not yet granted")
+    if "not_found" in statuses:
         return _unknown(code, f"{key} searched for and not found", basis="searched_not_found")
+    if "check_blocked" in statuses:
+        return _unknown(code, f"{key} registry could not be read")
+    if org.identifiers.get(key):
+        return _unknown(code, f"no current {key} recorded")
     return _unknown(code, f"no {key} recorded")
 
 
@@ -188,11 +212,13 @@ def _board(org: OrgProfile) -> Check:
 
 
 def _projects(org: OrgProfile, today: date) -> Check:
-    grants = [g for g, s in org.grants if s in CONCLUDED]
+    # An unconfirmed line is a claim of a relationship, not a project.
+    grants = [a for a, status, end in org.partner_lines
+              if status != "unconfirmed" and (status in CONCLUDED or (end is not None and end < today))]
     programs = [p for p in org.programs if p.status in CONCLUDED or (p.end_date is not None and p.end_date < today)]
     done = len(grants) + len(programs)
     if done >= 3:
-        cites = [f"[grant:{g}]" for g in grants] or [f"[org:{org.id}]"]
+        cites = [f"[activity:{a}]" for a in grants] or [f"[org:{org.id}]"]
         return Check(code="projects_3", outcome="met", basis="recorded",
                      note=f"{len(grants)} concluded grants, {len(programs)} completed programmes", cites=cites)
     return _unknown("projects_3", f"{done} of 3 completed projects recorded")
@@ -286,7 +312,7 @@ def judge_pair(org: OrgProfile, funder: FunderProfile, places: Places) -> PairRe
     checks = [area, theme, _programme(org, theme, shared)]
     # Free-text criteria cannot be judged in code; each is named for a person to review.
     checks += [
-        Check(code="funder_bar", outcome="unknown", basis="not_researched", note=f"needs review (#{bar_id}): {text}")
+        Check(code="funder_bar", outcome="unknown", basis="not_researched", note=f"needs review (document {bar_id}): {text}")
         for bar_id, text in funder.bars
     ]
     reasons = [f"{c.code}: {c.note} {' '.join(c.cites)}" for c in checks if c.outcome != "unknown"]
