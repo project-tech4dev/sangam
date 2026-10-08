@@ -14,7 +14,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results, staff_last_lock
+from app.agent.middleware import clear_old_tool_results, save_questions, staff_last_lock
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.research_records import PromotionReport, ResearchSummary
@@ -205,7 +205,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # capability either of them uses.
     # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
     researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend), staff_last_lock()]}
-    writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend)]}
+    # save_questions pauses promote_research on what only a person can decide, with a button per answer.
+    writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend), save_questions()]}
     # It formats what two tools return, so it needs no reasoning about sources.
     if settings.utility_model:
         writer["model"] = resolve_model(settings.utility_model)

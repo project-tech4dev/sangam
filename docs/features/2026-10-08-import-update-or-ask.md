@@ -9,7 +9,7 @@ Promoting funder research writes straight into the catalog, and the supervisor l
 - The old value is thrown away, because `_promote_funder` discards the `changes` dict.
 - A near-duplicate gets a second row instead of a question. Example: "Nanhi Kali" next to a stored "Project Nanhi Kali".
 
-Agreed with the user: no new table. Read tools pull what is already stored. A person is asked, in the chat, through a LangGraph `interrupt()` (the mechanism `HumanInTheLoopMiddleware` is built on) raised inside `promote_research`, only when the answer is not obvious.
+Agreed with the user: no new table. Read tools pull what is already stored. A person is asked, in the chat, through LangChain's `HumanInTheLoopMiddleware`, only when the answer is not obvious, and answers by clicking a button per question.
 
 ## The rule: five cases per finding
 
@@ -60,13 +60,13 @@ Defaults chosen for the three open questions:
 - An undecided case 3 or 4 item is held with "waiting for a person", never written.
 - Keep the changes: add `report["changes"]` from every writer's returned `changes`, which `_promote_funder` currently discards.
 
-**4. One pause, per-item choices: LangGraph `interrupt()`, as `HumanInTheLoopMiddleware` uses it**
-- `promote_research(slug)` calls `classify` first.
-- If any case 3 or 4 item has no decision, the tool calls `interrupt({slug, questions})`.
-  - The pause happens only when there is something to ask, so `interrupt()` is called inside the tool rather than through static `interrupt_on`, which cannot be conditional.
-  - The resume value is the decisions map, and the tool continues into `promote(..., decisions)`.
-- The `AsyncPostgresSaver` checkpointer already holds the paused state, so no table is involved.
-- **M1 starts with a spike:** confirm an `interrupt()` raised inside the `catalog-writer` `task` subagent reaches the AG-UI stream (`ag_ui_langgraph/interrupts.py`) and resumes cleanly. If it does not, the interrupting tool moves to the supervisor and calls `promote()` directly.
+**4. One pause, a button per answer: `SaveQuestions(HumanInTheLoopMiddleware)`** (`app/agent/middleware.py`, on the `catalog-writer` spec)
+- `aafter_model` computes the open case 3 and 4 questions for a `promote_research(slug)` call (`open_questions`, a plan-mode read). Its `when` predicate pauses only if there are any.
+- The pause is LangChain's own `HITLRequest`. Its action request carries `questions`, each with an `id`, a `case` and its `choices`. The frontend reads the same shape every other Import pause uses.
+- The person resumes with an `edit` whose args hold `decisions: {question_id: choice}`, which the tool applies. A `reject` saves nothing. An `approve` saves the clear cases and holds the questions.
+- `awrap_tool_call` drops any `decisions` the model wrote itself; only a person's edit sets them.
+- An empty-slug sweep is never paused, and its questions are held.
+- The tool itself never interrupts and never raises.
 
 **5. Prompts**
 - `instructions.md`: replace "without being asked" with this sequence:
@@ -83,9 +83,10 @@ Defaults chosen for the three open questions:
   - Five groups, showing `column: old → new` with dates.
   - Marked "older source" when the new value's date is older.
   - New and same rows are shown as counts.
-- `components/SaveQuestions.tsx`: renders the interrupt via CopilotKit `useInterrupt` (`@copilotkit/react-core` 1.73).
-  - One line per question: *Update / Keep* for case 3, *Update that row / New row / Skip* for case 4.
-  - **Save choices** resumes with the map.
+- `components/SaveQuestions.tsx`: renders the `promote_research` pause via CopilotKit `useInterrupt` (`@copilotkit/react-core/v2`), the same way the other Import pauses do.
+  - One row per question, with a clickable button per choice: *Update / Keep* for case 3, *Update that row / New row / Skip* for case 4.
+  - **Save** resumes with `{decisions: [{type: "edit", edited_action: {name: "promote_research", args: {slug, decisions}}}]}`. It is enabled once every question has an answer.
+  - **Don't save** resumes with a `reject`.
 - Use only existing tokens and `components/ui/` primitives. Per CLAUDE.md, an Import screen change updates the "Sangam Design System v2" UI kit in the same PR.
 
 ## Milestones (one PR each, branch from latest `origin/master` in a worktree)

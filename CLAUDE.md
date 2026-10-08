@@ -292,8 +292,6 @@ product depends on and that a new tool silently breaks:
   `[grant:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces
   uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
-- *The one exception to never raising is `GraphBubbleUp`.* Import's `promote_research` pauses for a
-  person with LangGraph `interrupt()`, which raises; it re-raises that before its `except Exception`.
 
 Adding a tool: write the async function in `app/agent/tools/` with both conventions, register it
 in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asserts every

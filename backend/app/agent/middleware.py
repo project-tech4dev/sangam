@@ -8,6 +8,7 @@ from langchain.agents.middleware import (
     AgentMiddleware,
     ClearToolUsesEdit,
     ContextEditingMiddleware,
+    HumanInTheLoopMiddleware,
     after_agent,
     before_model,
 )
@@ -145,3 +146,68 @@ class StaffLastLock(AgentMiddleware):
 
 def staff_last_lock() -> StaffLastLock:
     return StaffLastLock()
+
+
+# Import's catalog-writer asks before promote_research writes a funder's case 3 or 4 findings
+# (docs/features/2026-10-08-import-update-or-ask.md). LangChain's own middleware does the pausing,
+# so the frontend reads the same HITLRequest shape every other Import pause uses.
+SAVE_TOOL = "promote_research"
+
+
+class SaveQuestions(HumanInTheLoopMiddleware):
+    """Pauses promote_research only when its funder has questions, and carries them on the request.
+
+    The person's answers arrive as an `edit` whose args hold `decisions`. Decisions the model wrote
+    itself are dropped: only a person's edit can set them.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(interrupt_on={SAVE_TOOL: {
+            "allowed_decisions": ["approve", "edit", "reject"],
+            "description": lambda call, state, runtime: self._describe(call),
+            "when": lambda request: bool(self._questions.get(request.tool_call.get("id"))),
+        }})
+        # tool_call id -> its questions, only for the length of one after-model step.
+        self._questions: dict[str, list[dict]] = {}
+
+    def _describe(self, call) -> str:
+        n = len(self._questions.get(call.get("id"), []))
+        return f"{n} question(s) before {call['args'].get('slug')} is saved"
+
+    def _create_action_and_config(self, tool_call, config, state, runtime):
+        action, review = super()._create_action_and_config(tool_call, config, state, runtime)
+        action["questions"] = self._questions.get(tool_call.get("id"), [])  # type: ignore[typeddict-unknown-key]
+        return action, review
+
+    async def aafter_model(self, state, runtime):
+        from app.ingest.tools.catalog_tools import open_questions  # the ingest package imports this module
+
+        last = next((m for m in reversed(state["messages"]) if isinstance(m, AIMessage)), None)
+        calls = [c for c in (last.tool_calls if last else []) if c["name"] == SAVE_TOOL]
+        for call in calls:
+            slug = call["args"].get("slug") or ""
+            # An empty slug sweeps everything and is never asked: its questions are held instead.
+            self._questions[call["id"]] = await open_questions(slug) if slug else []
+        try:
+            return self.after_model(state, runtime)
+        finally:
+            for call in calls:
+                self._questions.pop(call["id"], None)
+
+    async def awrap_tool_call(self, request, handler):
+        if request.tool_call["name"] != SAVE_TOOL:
+            return await handler(request)
+        edit = self._reviewer_edit(request)
+        answers = (edit or {}).get("args", {}).get("decisions")
+        args = {**request.tool_call["args"], "decisions": answers if isinstance(answers, dict) else {}}
+        return await handler(request.override(tool_call={**request.tool_call, "args": args}))
+
+    def wrap_tool_call(self, request, handler):
+        if request.tool_call["name"] != SAVE_TOOL:
+            return handler(request)
+        args = {**request.tool_call["args"], "decisions": {}}
+        return handler(request.override(tool_call={**request.tool_call, "args": args}))
+
+
+def save_questions() -> SaveQuestions:
+    return SaveQuestions()

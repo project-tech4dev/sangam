@@ -13,8 +13,6 @@ import logging
 from typing import Any
 
 from langchain_core.tools import tool
-from langgraph.errors import GraphBubbleUp
-from langgraph.types import interrupt
 
 from app.agent.tools.sql.catalog import CATALOG
 from app.db.pool import get_pool
@@ -432,11 +430,6 @@ async def _held_per_concept(
     return out
 
 
-# How many times one promotion may ask: an answer can surface a question the first plan could not see,
-# e.g. a programme a person matched to a stored one brings that programme's stored spend lines into view.
-MAX_ROUNDS = 3
-
-
 async def _research_rows(pool: Any, slug: str) -> list[dict[str, Any]]:
     async with pool.connection() as conn:
         rows = await (
@@ -498,42 +491,18 @@ async def compare_with_catalog(slug: str) -> str:
         return f"compare_with_catalog failed: {type(exc).__name__}: {exc}"
 
 
-def _answers(answer: Any, asked: list[dict[str, Any]]) -> dict[str, str]:
-    """{question id: choice} from the resume value; anything unrecognised stays unanswered."""
-    if isinstance(answer, str):
-        try:
-            answer = json.loads(answer)
-        except ValueError:
-            return {}
-    if isinstance(answer, dict) and isinstance(answer.get("decisions"), dict):
-        answer = answer["decisions"]
-    if not isinstance(answer, dict):
-        return {}
-    choices = {q["id"]: q["choices"] for q in asked}
-    return {k: v for k, v in answer.items() if v in choices.get(k, ())}
-
-
-async def _decide(pool: Any, row: dict[str, Any]) -> dict[str, str]:
-    """Ask the person, through a LangGraph interrupt, about every case 3 and 4 finding."""
-    decisions: dict[str, str] = {}
-    for _ in range(MAX_ROUNDS):
-        async with pool.connection() as conn:
-            plan = await promote(conn, row, gate=Gate(decisions, plan=True))
-        asked = [q for q in plan.get("questions", []) if q["id"] not in decisions]
-        if not asked:
-            break
-        name = (plan.get("entity") or {}).get("name") or row["slug"]
-        answer = interrupt({
-            "reason": "sangam:save-questions",
-            "message": f"{len(asked)} question(s) before {name} is saved",
-            "slug": row["slug"], "entity": plan.get("entity"), "questions": asked,
-        })
-        decisions.update(_answers(answer, asked))
-    return decisions
+async def open_questions(slug: str) -> list[dict[str, Any]]:
+    """The case 3 and 4 findings a funder's promotion would ask about; SaveQuestions puts them on the pause."""
+    rows = await _research_rows(get_pool(), slug)
+    if not rows or rows[0].get("entity_kind") == "org":
+        return []
+    async with get_pool().connection() as conn:
+        plan = await promote(conn, rows[0], gate=Gate(plan=True))
+    return plan.get("questions", [])
 
 
 @tool
-async def promote_research(slug: str = "") -> str:
+async def promote_research(slug: str = "", decisions: dict[str, str] | None = None) -> str:
     """Move saved research into the catalog, where a writer exists for it.
 
     Research and the catalog are different: a finding is what a source said,
@@ -549,13 +518,15 @@ async def promote_research(slug: str = "") -> str:
 
     A funder's values that differ from the catalog's are saved without asking
     only when the research's source is as recent or newer. An older or undated
-    source, or a close-but-not-exact name, PAUSES this call and asks the person;
-    their answers decide what is written. Unanswered questions are held, not saved.
+    source, or a close-but-not-exact name, is asked about before this runs: the
+    person picks an answer per question, and their answers decide what is written.
+    Unanswered questions are held, not saved.
     Only a single slug asks: with an empty slug those findings are held, and
     promoting that slug on its own is how they get asked.
 
     Args:
         slug: one entity, or empty for every researched entity not yet promoted.
+        decisions: leave empty. The person's answers fill it; anything you put here is dropped.
     """
     try:
         pool = get_pool()
@@ -565,12 +536,9 @@ async def promote_research(slug: str = "") -> str:
 
         reports = []
         for row in rows:
-            # One slug asks; the sweep over everything never does. A resume re-runs this body and
-            # matches answers to interrupts by position, so a sweep would hand one funder's answers
-            # to the next. Its questions are held for a per-slug promotion instead.
-            decisions = await _decide(pool, row) if slug else {}
+            # SaveQuestions asked the person before this ran and put their answers here.
             async with pool.connection() as conn, conn.transaction():
-                reports.append(await promote(conn, row, gate=Gate(decisions)))
+                reports.append(await promote(conn, row, gate=Gate(decisions or {})))
 
         lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
         for r in reports:
@@ -602,8 +570,6 @@ async def promote_research(slug: str = "") -> str:
             "waiting for a person, not a silent loss."
         )
         return "\n".join(lines)
-    except GraphBubbleUp:
-        raise  # the interrupt that pauses for a person; catching it would write without asking
     except Exception as exc:
         logger.exception("promote_research failed")
         return f"promote_research failed: {type(exc).__name__}: {exc}"
