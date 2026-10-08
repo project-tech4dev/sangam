@@ -748,6 +748,15 @@ class EntityResearch(BaseModel):
                 raise ValueError(f"an org's {tierless} findings need source_type and evidence_tier")
         return self
 
+    @model_validator(mode="after")
+    def _sources_are_labelled_honestly(self) -> EntityResearch:
+        from app.ingest import source_guards  # it reads FINDING_MODELS from here at promote
+
+        wrong = source_guards.check_research(self.findings, self.entity_kind)
+        if wrong:
+            raise ValueError("; ".join(wrong))
+        return self
+
     def by_concept(self, concept: str) -> list[FindingBase]:
         return [f for f in self.findings if f.concept == concept]
 

@@ -21,7 +21,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.ingest import staff_sources
+from app.ingest import source_guards, staff_sources
 from app.ingest.expectations import PROMOTABLE, activity_kind
 from app.ingest.geography import resolve_location
 from app.ingest.matcher import Match, _is_foundation, name_key, resolve_funder, resolve_org
@@ -1116,6 +1116,8 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
 
     findings, unmarked = staff_sources.hold_unmarked(findings, await _staff_datasets(conn, findings))
     report["held"].extend(unmarked)
+    findings, mislabelled = source_guards.hold_at_promote(findings, row.get("entity_kind"))
+    report["held"].extend(mislabelled)
 
     # An NGO is not a funder, and the two kinds reach different tables through
     # different resolvers. Nothing below this line is shared but the report.
