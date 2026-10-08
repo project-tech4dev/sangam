@@ -524,8 +524,10 @@ async def record_registry_check(
     The check is ranked like any other source: level with a registry read, above everything
     else. Registrations lapse, so a NEWER check replaces a dated registry read or manual check
     with a different status; an older or undated one is kept and the difference reported as a
-    conflict. A row a person entered (no tier) is never replaced. `check_blocked` never replaces
-    a real status, whatever its date; the attempt is noted on the row.
+    conflict. A newer check that AGREES updates the row's check date and checker; recorded again
+    with a document (same date or later) it upgrades claimed to evidenced. A row a person entered
+    (no tier) is never replaced. `check_blocked` never replaces a real status, whatever its date;
+    the attempt is noted on the row.
 
     Args:
         org: the organisation's slug, its exact name, or its id from [org:N].
