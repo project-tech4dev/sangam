@@ -65,7 +65,7 @@ class TestDerivedIndexes:
 
     def test_primary_keys_carry_their_citation_kind(self):
         for table, kind in [("orgs", "org"), ("funders", "funder"),
-                            ("grants", "grant"), ("fit_scores", "score")]:
+                            ("funder_activity", "activity"), ("fit_scores", "score")]:
             assert cat.CITE_COLUMNS[(table, "id")] == kind
 
     def test_foreign_keys_inherit_the_kind_they_point_at(self):
@@ -76,8 +76,8 @@ class TestDerivedIndexes:
         assert cat.CITE_COLUMNS[("fit_score_items", "fit_score_id")] == "score"
 
     def test_citation_kinds_stay_within_the_frontend_union(self):
-        """frontend/features/ask/lib/citations.ts hardcodes org|funder|grant|score|graph."""
-        assert set(cat.CITE_COLUMNS.values()) <= {"org", "funder", "grant", "score"}
+        """frontend/features/ask/lib/citations.ts must link every kind here, plus graph."""
+        assert set(cat.CITE_COLUMNS.values()) <= {"org", "funder", "activity", "score"}
 
 
 class TestDefects:
@@ -109,13 +109,13 @@ def test_self_check_rejects_a_dangling_foreign_key():
     import dataclasses
 
     broken = dataclasses.replace(
-        cat.CATALOG["grants"],
-        foreign_keys=(cat.ForeignKey("org_id", "nonexistent_table.id"),),
+        cat.CATALOG["funder_activity"],
+        foreign_keys=(cat.ForeignKey("partner_org_id", "nonexistent_table.id"),),
     )
     original = cat.CATALOG
     try:
-        cat.CATALOG = {**original, "grants": broken}
-        cat.COLUMNS = {**cat.COLUMNS, "grants": cat.COLUMNS["grants"]}
+        cat.CATALOG = {**original, "funder_activity": broken}
+        cat.COLUMNS = {**cat.COLUMNS, "funder_activity": cat.COLUMNS["funder_activity"]}
         with pytest.raises(ValueError, match="not in the catalog"):
             cat._self_check()
     finally:

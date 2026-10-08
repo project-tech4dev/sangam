@@ -165,9 +165,11 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "funder_activity kind='partner' (named; an amount, INR, is what the partner received)",
+        ("funder_activity kind='partner' (named partners and grants; an amount, INR, is what the partner "
+         "received, and a multi-year grant's whole amount sits on its start year)"),
         """
-        SELECT fiscal_year, partner_name, partner_canonical, partner_kind, outlay, amount
+        SELECT fiscal_year, partner_name, partner_canonical, partner_kind, project_name, outlay, amount,
+               start_date, end_date, relationship_status, partner_org_id
         FROM funder_activity WHERE funder_id = %s AND kind = 'partner' ORDER BY fiscal_year, id
         """,
     ),
@@ -186,13 +188,6 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """
         SELECT name, kind, status, start_date, end_date FROM programs
         WHERE funder_id = %s ORDER BY kind, name
-        """,
-    ),
-    (
-        "grants",
-        """
-        SELECT g.title, g.amount, g.status, g.start_date, o.name AS recipient
-        FROM grants g JOIN orgs o ON o.id = g.org_id WHERE g.funder_id = %s
         """,
     ),
     (
@@ -252,10 +247,12 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "grants received",
+        "funder_activity kind='partner' naming this organisation (grants received; amount INR)",
         """
-        SELECT g.title, g.amount, g.status, g.start_date, f.name AS funder
-        FROM grants g JOIN funders f ON f.id = g.funder_id WHERE g.org_id = %s
+        SELECT a.fiscal_year, f.name AS funder, a.project_name, a.amount, a.relationship_status,
+               a.start_date, a.end_date
+        FROM funder_activity a JOIN funders f ON f.id = a.funder_id
+        WHERE a.partner_org_id = %s AND a.kind = 'partner' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (

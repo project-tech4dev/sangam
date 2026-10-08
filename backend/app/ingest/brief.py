@@ -61,6 +61,7 @@ _ELIGIBILITY_KINDS = {
 LEGACY_TITLES: dict[str, str] = {
     "identifier": "Registrations and identifiers (saved before 0031)",
     "funder_eligibility": "Eligibility it sets for applicants (saved before 0031)",
+    "grant": "Grants (saved before 0034)",
 }
 
 

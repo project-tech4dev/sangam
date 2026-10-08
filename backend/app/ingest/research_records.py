@@ -392,21 +392,6 @@ class ProgramFinding(FindingBase, OptionallySourced):
     is_enabler: bool | None = None
 
 
-class GrantFinding(FindingBase):
-    """A funder gave money to a named organisation. A named partner is NOT a grant."""
-
-    concept: Literal["grant"] = "grant"
-    recipient_name: str = Field(min_length=2, description="the organisation that received it")
-    title: str = Field(min_length=2)
-    status: Literal["active", "concluded", "unconfirmed", "dormant"] = "unconfirmed"
-    amount: Money | None = Field(default=None, description="null means not public. Never zero")
-    currency: str = "INR"
-    start_date: date | None = None
-    end_date: date | None = None
-    program_name: str | None = None
-    notes: str | None = None
-
-
 class MetricFinding(FindingBase, OptionallySourced):
     concept: Literal["metric"] = "metric"
     name: str = Field(min_length=2)
@@ -658,7 +643,7 @@ class OrgLocationFinding(PlacedFinding, Sourced):
 
 Finding = Annotated[
     IdentityFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
-    | StatedGeographyFinding | PartnerFinding | ProgrammeSpendFinding | ProgramFinding | GrantFinding | MetricFinding
+    | StatedGeographyFinding | PartnerFinding | ProgrammeSpendFinding | ProgramFinding | MetricFinding
     | ContactFinding | DocumentFinding | RfpFinding | EligibilityGuidelineFinding
     | OrgIdentityFinding | OrgIdentifierFinding | OrgFinancialsFinding | OrgLocationFinding,
     Field(discriminator="concept"),
@@ -669,7 +654,7 @@ FINDING_MODELS: dict[str, type[FindingBase]] = {
     "csr_spend": CsrSpendFinding, "footprint": FootprintFinding,
     "stated_geography": StatedGeographyFinding, "partner": PartnerFinding,
     "programme_spend": ProgrammeSpendFinding,
-    "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,
+    "program": ProgramFinding, "metric": MetricFinding,
     "contact": ContactFinding, "document": DocumentFinding, "rfp": RfpFinding,
     "eligibility_guideline": EligibilityGuidelineFinding,
     "org_identity": OrgIdentityFinding, "org_identifier": OrgIdentifierFinding,
@@ -809,7 +794,7 @@ class PromotionReport(BaseModel):
                     "The stored value was kept",
     )
     still_research: list[str] = Field(
-        default_factory=list, description="concepts that stayed research, e.g. ['grant']"
+        default_factory=list, description="concepts saved under a shape no writer reads"
     )
     verified: bool = Field(
         default=False, description="true only if the dossier was read back and agreed"

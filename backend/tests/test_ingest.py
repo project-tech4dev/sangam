@@ -454,7 +454,7 @@ class TestResearchRecords:
             ],
         )
         assert len(r.by_concept("csr_year")) == 1
-        assert r.by_concept("grant") == []
+        assert r.by_concept("metric") == []
         assert r.concepts_found() == ["csr_year", "partner"]
 
 
@@ -829,17 +829,16 @@ class TestTheWriterSideRecords:
 
 class TestPromotionCoversEveryConceptWithAWriter:
     def test_what_is_left_out_is_left_out_for_one_reason(self):
-        # Sixteen of seventeen. The one exclusion left is `grant`: grants.org_id
-        # is NOT NULL and promoting a funder's research does not write the NGOs
-        # it names, so the recipient would have to be an orgs row first.
-        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == {"grant"}
+        # Every concept promotes. `grant` was the last exclusion; since 0034 a grant is a partner line,
+        # whose org link is nullable.
+        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == set()
 
     def test_a_funder_concept_is_never_the_one_left_out(self):
         # The reason above is the whole reason. A funder concept that stopped
         # being promotable would be a regression, not a design decision.
         from app.ingest.expectations import concepts_for
 
-        assert set(concepts_for("funder")) - set(PROMOTABLE) == {"grant"}
+        assert set(concepts_for("funder")) - set(PROMOTABLE) == set()
 
     def test_programmes_are_written_before_anything_that_names_one(self):
         # csr_spend, footprint, partner and metric all resolve program_name to

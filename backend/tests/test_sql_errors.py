@@ -101,7 +101,7 @@ class TestConnectionErrorsNeverLeakTheDsn:
 def test_message_is_capped():
     message = explain_db_error(
         FakePgError("42703", "x" * 5000), executed_sql=SQL,
-        tables=["orgs", "grants", "funders", "fit_scores"],
+        tables=["orgs", "funder_activity", "funders", "fit_scores"],
     )
     assert len(message) <= MAX_MESSAGE_CHARS
 
