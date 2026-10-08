@@ -412,8 +412,10 @@ async def _held_per_concept(
             continue
         has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
         years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
+        # funder_activity hangs off the funder; an NGO's lines are the ones naming it as the partner.
+        col = "partner_org_id" if entity_kind == "org" and table == "funder_activity" else fk
         # Table, column and filter column come from module constants, never a caller.
-        where, params = f"{fk} = %s", [entity_id]
+        where, params = f"{col} = %s", [entity_id]
         if spec.row_filter:
             where += f" AND {spec.row_filter[0]} = %s"
             params.append(spec.row_filter[1])

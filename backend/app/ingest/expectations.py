@@ -84,10 +84,10 @@ CONCEPTS: dict[str, ConceptSpec] = {
         columns=("fiscal_year", "program_id", "state_location_id", "name_as_printed", "notes"),
     ),
     "stated_geography": ConceptSpec("funder_locations", "Where it says it prioritises"),
-    # A named partner in a year and, since 0034, a grant: its amount, dates and status, and partner_org_id
-    # when the organisation is catalogued.
+    # A named partner in a year and, since 0034, a grant. Offered to both kinds: a funder names its partners,
+    # and an NGO's own records name its funders (funder_name), which lands on that funder's line.
     "partner": ConceptSpec(
-        "funder_activity", "Partners and grants", row_filter=("kind", "partner"),
+        "funder_activity", "Partners and grants", kinds=_BOTH, row_filter=("kind", "partner"),
         columns=("fiscal_year", "program_id", "project_name", "partner_name", "partner_canonical",
                  "partner_csr1", "partner_kind", "outlay", "amount", "start_date", "end_date",
                  "relationship_status", "notes"),
@@ -272,6 +272,16 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
         Expected(name="state", type="text", note="the state, when the figure is for one place",
                  values=(), required=False),
         _DISTRICT,
+    ),
+    "partner": (
+        Expected(
+            name="funder_name",
+            type="text",
+            note="org research only: the funder that gave to this organisation, as printed. Its line is "
+                 "written on that funder when Sangam already holds it; otherwise it is held for a person",
+            values=(),
+            required=False,
+        ),
     ),
     "document": (
         Expected(

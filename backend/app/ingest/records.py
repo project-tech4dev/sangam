@@ -320,7 +320,7 @@ class FunderLocationRecord(Provenance):
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
 
 
-class FunderPartnerRecord(Provenance):
+class FunderPartnerRecord(Provenance, Tiered):
     """A named partner and, with an amount, a grant: what the partner received (INR). Without one, NOT proof
     that money changed hands. A multi-year grant is one line: the whole amount, with both dates."""
 

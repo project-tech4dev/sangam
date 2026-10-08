@@ -332,10 +332,11 @@ class StatedGeographyFinding(PlacedFinding):
     note: str | None = None
 
 
-class PartnerFinding(YearlyFinding):
+class PartnerFinding(YearlyFinding, OptionallySourced):
     """A named partner and, with an amount, a grant. Keep the year: repeated appearances mean renewal."""
 
     concept: Literal["partner"] = "partner"
+    funder_name: str | None = Field(default=None, description="org research only: who gave the money, as printed")
     partner_name: str = Field(min_length=2, description="as printed in the source")
     partner_canonical: str | None = Field(
         default=None, description="one spelling per partner; count renewals on this"
@@ -736,7 +737,7 @@ class EntityResearch(BaseModel):
             )
         if self.entity_kind == "org":
             # An org's shared concepts are ranked at promotion, so the tier is required at save.
-            tierless = sorted({f.concept for f in self.findings if f.concept in ("program", "metric", "contact")
+            tierless = sorted({f.concept for f in self.findings if f.concept in ("program", "metric", "contact", "partner")
                                and (getattr(f, "source_type", None) is None
                                     or getattr(f, "evidence_tier", None) is None)})
             if tierless:

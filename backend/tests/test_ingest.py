@@ -860,9 +860,9 @@ class TestPromotionCoversEveryConceptWithAWriter:
     def test_the_funder_loop_never_tries_an_org_concept(self):
         from app.ingest.promote import ORG_WRITE_ORDER
 
-        # metric and contact sit on tables with both foreign keys; nothing else
-        # may overlap, or one kind writes the other's table.
-        assert set(WRITE_ORDER) & set(ORG_WRITE_ORDER) == {"metric", "contact"}
+        # metric and contact sit on tables with both foreign keys, and partner writes the funder's line from
+        # either side; nothing else may overlap, or one kind writes the other's table.
+        assert set(WRITE_ORDER) & set(ORG_WRITE_ORDER) == {"metric", "contact", "partner"}
 
 
 class TestResearchGoalsAsksTheRightTables:
@@ -903,7 +903,9 @@ class TestResearchGoalsAsksTheRightTables:
         queries = await self._sql_for(kind)
         assert queries, f"{kind} asked nothing"
         for sql in queries:
-            assert f"WHERE {fk} = %s" in sql, sql
+            # An NGO's funder_activity lines are the ones naming it as the partner.
+            via = "partner_org_id" if kind == "org" and "FROM funder_activity" in sql else fk
+            assert f"WHERE {via} = %s" in sql, sql
             assert other not in sql, sql
         # And only tables this kind actually offers — the entity's own row is
         # the match already in hand, so it is counted rather than queried.
