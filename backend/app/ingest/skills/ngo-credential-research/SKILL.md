@@ -1,123 +1,127 @@
 ---
 name: ngo-credential-research
-description: Use when someone names one or more NGOs, CSOs, trusts or societies — organisations that RECEIVE money — and wants their actual legal and operational standing rather than their sector and mission. Pulls exactly ten fields per organisation in dependency order — 12A and 80G, CSR-1 and its registration number, three years of audited accounts, three years of evidenced similar work, the registration deed, PAN and DARPAN with blacklist status, governing board, permanent staff, financial profile, institutional policies. Raw field-value-source only; no verdicts, no tables, no scoring. Not for a company, corporate foundation or CSR arm — use funder-intake-research. Not for a single fact about an organisation already in the catalog, which funder_dossier answers with entity_kind set to org.
+description: Use when someone names one or more NGOs, CSOs, trusts or societies — organisations that RECEIVE money — and wants their actual legal and operational standing rather than their sector and mission. Sets the order to read sources in (the CSO's own documents, readable registries, funders' pages and filings, staff datasets via read_source_rows, earlier research and aggregators last) and what to pull — statutory registrations as statuses (applied, registered, check_blocked), three years of audited financials with foreign contribution received and unspent, existing funders with amounts, programmes and metrics, governance and staff, name variants, website. Lists exactly which documents to request from the CSO when no public source can confirm them. Raw field-value-source only; no verdicts, no scoring. Not for a company, corporate foundation or CSR arm — use funder-intake-research. Not for a single fact already in the catalog — funder_dossier with entity_kind org answers that.
 ---
 
 # What we want pulled for an NGO
 
-Ten fields, every one of them, in the order below. The order is a dependency
-chain, not a priority list: fields 1 to 4 are the statutory gates, each one
-blocking regardless of the rest, and 5 to 10 are what funders' own published
-checklists ask for beyond a registration number.
+Put this in each researcher's task description: where to look, in which order, what to pull and
+how to label it. No organisation is special-cased here.
 
-## The rules that hold for all ten
+## The rules that hold for every value
 
-**Every value carries its exact source URL. Including "not stated".** A field
-with no findable URL is not reported as a fact.
+**Every value carries its exact source URL, including "not stated".** A field with no findable URL
+is not reported as a fact.
 
-**Mark every value `evidenced` or `claimed`, and never silently upgrade one to
-the other.** Evidenced means the organisation's own site, a certificate scan,
-a filing or an audited statement shows it — a number, a document, an ID.
-"We are 12A and 80G registered" on a webpage, with no number and no
-certificate, is **claimed**. It is explicit, it is quotable, and it is still
-not evidence.
+**Every value carries a source type and an evidence tier.** Source type: `org_document`,
+`registry`, `funder`, `staff_dataset`, `prior_research`, `aggregator`. Tier: `evidenced` only when
+the document itself states the fact — a certificate, an audited statement, a dated return, a
+registry record. "We are 12A and 80G registered" on a web page, with no number and no certificate,
+is `claimed`. Never upgrade one to the other.
 
-**A blank government search form is not a source.** An empty NGO Darpan
-search box renders identically for every organisation and proves nothing
-about this one. Never cite it for any field.
+**A weaker source never replaces a stronger one.** Strongest first: a registry or a staff
+member's manual check, the CSO's own documents, a funder's page, a staff dataset, earlier
+research, an aggregator. Where two disagree, save both, each with its source; the catalog keeps
+the stronger and reports the other under `conflicts`.
 
-**Adverse findings hide in audited statements, not on homepages.** A suspended
-FCRA, a cancelled 12AB, a show-cause notice — check the notes and credentials
-sections of the audited accounts specifically. A cancellation under appeal is
-still a cancellation; record the appeal status as its own value, never as a
-resolution.
+**A blank government search form is not a source.** It renders identically for every
+organisation and proves nothing about this one.
 
-**Never cite an aggregator.** Only the organisation's own domain, a primary
-document it has published, or the staff CSO workbook below.
+**Adverse findings hide in audited statements, not on homepages.** A suspended FCRA, a cancelled
+12AB, a show-cause notice: read the notes and credential sections of the audited accounts. A
+cancellation under appeal is still a cancellation; record the appeal as its own value.
 
-**Pull raw.** Field, value, source URL, evidenced-or-claimed. One block per
-organisation, fields in the order below. No eligibility verdict, no summary,
-no comparison table — downstream.
+**Pull raw.** Field, value, source URL, source type, tier. No eligibility verdict, no summary, no
+comparison table.
 
-## The ten
+## Where to look, in this order
 
-1. **12A and 80G registration** — number or certificate, not a claim. One
-   real exemption to check for: some funders, government PSUs especially,
-   exempt Section 8 companies from needing 12A/80G at all. If this
-   organisation is a Section 8 company, record that, because whether the gate
-   blocks depends on the funder.
-2. **Form CSR-1 and the CSR Registration Number.** This is the specific wall
-   for Section 135 money: an organisation can hold 12A, 80G, FCRA and
-   everything else and still be categorically unable to receive CSR funds
-   without it. The filing must be digitally certified by a practising CA, CS
-   or Cost Accountant — note whether a professional is named.
-3. **Three years of audited accounts, IT returns and annual reports.** Record
-   the actual years covered and whether each is findable and public, not
-   "audits exist". This is usually the real bottleneck, and it is the gate
-   that effort this quarter cannot fix — flag it explicitly even when 1 and 2
-   are clean.
-4. **Three years of similar work, evidenced by documents** — MoU, Work Order
-   or Completion Certificate. A self-declared track record is `claimed`. "We
-   have worked in this sector for years" with no document attached is not
-   this field being satisfied.
-5. **Registration certificate, MoA, trust deed or bye-laws.** Record the exact
-   registration type — society, trust, or Section 8 company — and whether a
-   certificate not in English has a translated copy available, which some
-   funders require explicitly.
-6. **PAN, and DARPAN ID checked against blacklist status.** DARPAN is a
-   negative-check key, not just an ID to copy down. Some funders bar engaging
-   any organisation blacklisted there, so check the status where a lookup is
-   possible; recording the ID as present is not checking it.
-7. **Governing board** — member count, whether bios or work profiles are
-   published, and any conflict-of-interest exposure such as a board member
-   with dealings at a funder the organisation is approaching.
-8. **Permanent staff and technical capacity** — headcount of permanent staff,
-   not contractors or volunteers, and whether sector-specific technical staff
-   are evidenced. Some funders bar sub-contracting outright and require the
-   capacity in-house.
-9. **Financial profile** — three-year revenue, donor concentration (is the
-   funding dependent on a small number of donors; some funders reject that),
-   whether a dedicated bank account exists, and whether a practising CA's
-   "no profit no loss" certificate exists where required.
-10. **Institutional policies**, the category no registration-number checklist
-    covers: child safeguarding policy or a written commitment to develop one,
-    HR and remuneration policy, finance and procurement policy, an organogram,
-    recent board minutes, a feedback and grievance mechanism, and monitoring
-    systems. Record which are published and which are absent. Never infer one
-    from the organisation's size or maturity.
+1. **The CSO's own documents** — uploads in the Doc Vault first, then those on its site: trust
+   deed or registration certificate, PAN card, 12AB/80G orders (Forms 10AC/10AD) or a Form 10AB
+   acknowledgement, CSR-1 approval, FCRA certificate, FCRA returns (FC-4), audited accounts,
+   annual reports, policies.
+2. **Registries, where a machine may read them.** Behind a CAPTCHA, a sign-in or a network
+   filter, do not try to get past it: the registration is `check_blocked`, never `not_found`, never
+   assumed valid. Name the registry so a staff member can check it by hand; the supervisor records
+   that check with `record_registry_check`.
+3. **Funders' own pages naming the CSO as a grantee**, and company CSR filings naming it as the
+   agency that did the work. Match on name **and** district or state: short names collide.
+4. **Staff datasets**, through `read_source_rows` with the organisation's name — **last of the
+   reads**, because the first call closes the web tools. Each row carries a
+   `[source:<document>#<sheet>!<cell>]` marker; quote the line with the marker of the cell that
+   holds the fact, and cite the dataset's `source_url` without fetching it. The profile sheet is
+   the CSO's own account, so every value from it is `claimed`; a registration number there is a
+   lead to the certificate, not the certificate. The funder sheets give its funders by year.
+5. **Earlier research and aggregators, as leads only.** Where the source registry lets one be
+   read, every value is `claimed` (`prior_research` or `aggregator`), and none replaces the CSO's
+   own document. An aggregator listing a registration the CSO's files show only as an application
+   is a conflict to report, not a registration.
 
-## A staff source: the CSO workbook
+## What to pull
 
-Sangam holds an internal workbook on partner CSOs, shared under partner permission. Read it with
-`read_source_rows` and the organisation's name — **last, after all web research**: the
-first call closes the web tools for the rest of the run.
+**Statutory status as a status, not a yes or a no.**
+- A Form 10AB acknowledgement is `applied`, never `registered`; its number is the
+  `application_ref`, and `id_value` stays empty.
+- `not_found` means a working source was read and does not list it. A registry nobody could read
+  is `check_blocked`.
+- When the FCRA portal cannot be read, take the number from the CSO's own FCRA returns and leave
+  its validity `check_blocked`.
+- A Section 8 company: say so. Some funders exempt them from 12A/80G, so whether the gate blocks
+  depends on the funder.
+- CSR-1: the registration number, and whether the filing names the certifying professional.
+- DARPAN: the ID, and the blacklist status where a lookup is possible. Copying the ID is not
+  checking it.
 
-- **Cite the cell.** Each row carries a `[source:<document>#<sheet>!<cell>]` marker; a finding uses
-  the dataset's `source_url` and `source_name` printed by the tool. Never fetch that URL.
-- **It is the organisation's own account.** Every profile value is `claimed`. A registration number
-  written there is a lead to the certificate, not the certificate.
-- **Its funder sheets name who funds it**, by year. Name them in your summary — an NGO run does not
-  write partner findings. The amounts are saved as `partner` findings in a **funder** research run
-  for each funder (`funder-intake-research` has the year and unit rules).
-- Contact details are not in what the tool returns, by design.
+**Financials by year, from the audited statements** — three years where they exist: income,
+expenditure, surplus or deficit; programme and non-programme spend where stated; foreign
+contribution received and left unspent at year end, from the FCRA returns. Quote any internal
+inconsistency in the audit verbatim in `notes`. Name the years covered and the years missing.
 
-## FCRA is not part of this chain
+**Existing funders, with amounts**, from grant lines in the audited accounts, donors in the FCRA
+returns, funders' grantee pages, and CSR filings and the staff funder sheets. Each is a `partner`
+finding: `funder_name` as printed, this CSO as `partner_name`, the fiscal year, and the amount as
+printed with its unit. It lands on that funder's partner line; a funder Sangam does not hold is
+held for a person.
 
-FCRA governs foreign contribution and is orthogonal to CSR and domestic-grant
-eligibility. Record it as its own field when the organisation also seeks
-foreign money, but its presence or absence does not move the CSR answer.
+**Programmes and metrics** from the annual reports, each with its year, `claimed`. A target only
+when the report states one.
 
-## Two things to confirm before anything else
+**Governance and capacity:**
+- the board, as `office_bearer` contacts — names and roles only, never a personal email or phone;
+- the staff count, with a note saying what was counted and where; permanent staff, not
+  volunteers or contractors, where the source says which;
+- each policy as a `policy` document: child safeguarding, HR, finance and procurement, grievance,
+  an organogram. Record which are published and which are absent; never infer one.
 
-**It is the right organisation.** Namesakes are common. Confirm against the
-organisation's own materials before any budget is spent.
+Where sources give different counts, record every count with its source. Do not pick one.
 
-**Where it actually works.** Registered in one state and operating mainly in
-another is common enough to check for explicitly, from the organisation's own
-materials rather than from whatever state a prior list assumed.
+**Name variants** as aliases: every spelling any source used, the filings' included.
+
+**Website, a short description in its own words, and social links.**
+
+## Documents to request from the CSO
+
+When no public source confirms a credential, ask the CSO to upload exactly these to the Doc Vault:
+
+- the registration certificate or trust deed;
+- the PAN card;
+- the 12AB and 80G orders (Forms 10AC/10AD), or the Form 10AB acknowledgement;
+- the CSR-1 approval;
+- the FCRA certificate and its latest renewal;
+- three years of audited accounts;
+- three years of FCRA returns;
+- the latest annual report.
+
+## Two things to confirm first
+
+**It is the right organisation.** Namesakes are common; confirm against its own materials before
+any budget is spent.
+
+**Where it actually works.** Registered in one state and working mainly in another is common;
+check from its own materials, not a prior list's assumption.
 
 ## What this skill does not do
 
-It does not produce an eligibility verdict, score the organisation, rank a
-list or lay out a comparison. It does not write to the catalog. It produces
-ten cited fields per organisation and stops.
+No eligibility verdict, no score, no ranking, no comparison. It does not write to the catalog and
+does not record a manual check. It produces cited values with their source types and tiers, and
+stops.

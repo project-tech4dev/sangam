@@ -344,8 +344,8 @@ deployed instance.
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
 reusable procedure, advertised by its frontmatter and read only when the model judges it
 relevant. There are seven, in three groups: **what to pull** (`funder-intake-research`,
-`ngo-credential-research` — ten cited fields each, and `funder-intake-research` also pulls
-the open call itself when it found one), **what to produce** (`entity-record` for one
+`ngo-credential-research` — cited fields in a set source order; `funder-intake-research` also
+pulls the open call itself, and `ngo-credential-research` lists the documents to request from a CSO), **what to produce** (`entity-record` for one
 organisation, `funder-scan-for-fundraisers` and `ngo-brief-for-funders` for a comparison across
 several), and **what the catalog did with it** (`catalog-mapping` before a write,
 `catalog-write-report` after). The two outer groups split by entity kind because the kinds
