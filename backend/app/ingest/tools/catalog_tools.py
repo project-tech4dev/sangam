@@ -15,7 +15,7 @@ from langchain_core.tools import tool
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import chat_user_id
 from app.db.pool import get_pool
-from app.ingest import manual_checks
+from app.ingest import coverage, manual_checks
 from app.ingest.expectations import (
     CONCEPTS,
     concepts_for,
@@ -383,7 +383,8 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
 
         out.append(
             "\nFields nothing can fill are as useful as fields you fill: say which you looked "
-            "for and did not find, and pass them to save_research as not_found."
+            "for and did not get, and pass each to save_research as a gap: blocked if the source "
+            "could not be read, not_stated if it was read and does not say."
         )
         return "\n".join(out)
     except Exception as exc:
@@ -490,6 +491,38 @@ async def compare_with_catalog(slug: str) -> str:
     except Exception as exc:
         logger.exception("compare_with_catalog failed")
         return f"compare_with_catalog failed: {type(exc).__name__}: {exc}"
+
+
+@tool
+async def coverage_report(slug: str) -> str:
+    """What one entity's research was expected to find, what it found, and why the rest is missing. Writes nothing.
+
+    Expected is the catalog's own list for that kind of organisation: every concept, each
+    year-bound concept once per year asked, and every field. Each missing cell carries one
+    reason: not attempted (no finding and no gap recorded), not stated (a source was read
+    and does not say), blocked (the source could not be read), or found, not written (the
+    catalog has nowhere to put it). Percentages are of the expected cells and fields.
+
+    Call it after each researcher returns and again after each catalog write, and print the
+    output exactly as returned. Never restate it as prose or recompute a number.
+
+    Args:
+        slug: the researched entity, as save_research returned it.
+    """
+    try:
+        pool = get_pool()
+        rows = await _research_rows(pool, slug)
+        if not rows:
+            return f"No saved research for {slug!r}. Research first."
+        row = rows[0]
+        report = None
+        if row.get("entity_kind") != "org":
+            async with pool.connection() as conn:
+                report = await promote(conn, row, gate=Gate(plan=True))
+        return coverage.render(coverage.compute(row, report=report))
+    except Exception as exc:
+        logger.exception("coverage_report failed")
+        return f"coverage_report failed: {type(exc).__name__}: {exc}"
 
 
 async def open_questions(slug: str) -> list[dict[str, Any]]:

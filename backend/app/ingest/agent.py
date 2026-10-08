@@ -20,6 +20,7 @@ from app.core.config import Settings, get_settings
 from app.ingest.research_records import PromotionReport, ResearchSummary, WorkbookEntities
 from app.ingest.tools.catalog_tools import (
     compare_with_catalog,
+    coverage_report,
     funder_dossier,
     promote_research,
     record_registry_check,
@@ -132,6 +133,7 @@ TOOLS = [
     # catalog_tools — what Sangam already holds; promote_research is the catalog-writer's.
     funder_dossier,
     compare_with_catalog,
+    coverage_report,
     # A person's check, recorded on their word; the researcher reads untrusted pages, so not its.
     record_registry_check,
     # save_research publishes the brief it saves; this is only for re-publishing.

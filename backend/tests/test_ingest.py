@@ -436,10 +436,10 @@ class TestResearchRecords:
                               summary="A" * 25)
 
     def test_unknown_concepts_are_refused(self):
-        with pytest.raises(ValidationError, match="unknown concepts"):
+        with pytest.raises(ValidationError, match="unknown concept"):
             EntityResearch(
                 entity_name="Acme Ltd", entity_kind="unknown", status="not_found",
-                summary="A" * 25, not_found=["csr_year", "vibes"],
+                summary="A" * 25, gaps=[{"concept": "vibes", "reason": "not_stated", "detail": "n/a"}],
             )
 
     def test_findings_are_reachable_by_concept(self):

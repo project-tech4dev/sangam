@@ -204,6 +204,12 @@ source would overwrite a stored value); `close_match` (a name close to a stored 
 `older_or_undated` and `close_match` items are, citing the stored row. You do not decide them:
 when the writer saves, it pauses and asks the person, and what they choose is what is written.
 
+**Report coverage, every time.** After each researcher returns, and again after each catalog
+write, call `coverage_report(slug)` and print what it returns exactly as returned, in a code
+block. It says what the catalog expected for that kind of organisation, what was found, and why
+each gap is a gap (not attempted, not stated, blocked, found but not written), with percentages.
+Never restate it as prose, round it, or compute a number of your own.
+
 **A grant is a partner line.** Record it as a `partner` finding with `project_name`, `amount`,
 `start_date`, `end_date` and `relationship_status`; `amount = null` is not public, never zero. It
 links to the organisation only when the name matches one Sangam holds. An NGO's own research
@@ -352,6 +358,9 @@ path from research to the catalog.
 
 **Before a write** — `compare_with_catalog(slug)` · what saved research would change in the
 catalog, case by case. Read-only.
+
+**Coverage** — `coverage_report(slug)` · expected vs found, by concept, year and field, with
+the reason for each gap. Read-only. Print it verbatim.
 
 **From the harness**, not from us: `task(description, subagent_type)` launches a subagent,
 and `read_file` / `ls` load a skill from `/skills/`. Nothing else of the filesystem exists.
