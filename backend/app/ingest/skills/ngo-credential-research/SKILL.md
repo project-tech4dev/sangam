@@ -97,7 +97,7 @@ Where sources give different counts, record every count with its source. Do not 
 
 **Name variants** as aliases: every spelling any source used, the filings' included.
 
-**Website, a short description in its own words, and social links.**
+**Website, and a short description in its own words.**
 
 ## Documents to request from the CSO
 

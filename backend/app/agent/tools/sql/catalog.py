@@ -506,7 +506,7 @@ _TABLES: tuple[Table, ...] = (
             Column("valid_from", "date"),
             Column("valid_until", "date", note="an FCRA or 12AB/80G approval's end date, when stated"),
             Column("checked_at", "timestamp with time zone", note="when a person or a registry read last confirmed the status"),
-            Column("check_method", "text", values=('document', 'registry', 'manual_check', 'aggregator')),
+            Column("check_method", "text", note="manual_check = a staff member checked by hand; checked_at is when, and it may sit on a registry-tier row", values=('document', 'registry', 'manual_check', 'aggregator')),
             Column("evidence_document_id", "bigint", note="the documents row holding the certificate, order or check evidence"),
             Column("application_ref", "text", note="e.g. a Form 10AB acknowledgement number"),
         ),

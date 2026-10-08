@@ -98,13 +98,12 @@ async def _target(conn: Any, org_id: int, id_type: str, id_value: str | None, *,
 
 
 def _replaced(row: dict) -> str:
-    parts = [f"replaced {row['status']}"]
+    parts = [f"replaced {row['status']}", row["source_type"] or "unranked", row["evidence"] or "no tier"]
     if row["valid_from"]:
         parts.append(f"valid from {row['valid_from']:%Y-%m-%d}")
     if row["valid_until"]:
         parts.append(f"valid to {row['valid_until']:%Y-%m-%d}")
     parts.append(f"source {row['source_url'] or 'none recorded'}")
-    parts.append(f"evidence {row['evidence'] or 'no tier'}")
     if row["evidence_document_id"]:
         parts.append(f"document {row['evidence_document_id']}")
     parts.append(f"checked {day(row['checked_at'])}" if row["checked_at"] else "never dated")
@@ -172,13 +171,15 @@ async def record(
                         "Upload the evidence to that organisation's Doc Vault, or record the check without "
                         "a document (it is then claimed). Nothing was written.")
 
-        current = await _current(conn, target["id"], id_type)
-        if len(current) > 1:
-            listed = ", ".join(f"row {r['id']} ({r['id_value'] or 'no number'}, {r['status']})" for r in current)
-            return (f"REFUSED: {cite} holds {len(current)} current {id_type} identifiers: {listed}. A person "
-                    "decides which is current before a check is recorded. Nothing was written.")
-        if not id_value and status in NEEDS_A_NUMBER and current and current[0]["id_value"]:
-            id_value = current[0]["id_value"]       # a status about the one registration on file
+        if not id_value:
+            # Only a numberless check borrows the number on file, so only it needs that number to be one.
+            current = await _current(conn, target["id"], id_type)
+            if len(current) > 1:
+                listed = ", ".join(f"row {r['id']} ({r['id_value'] or 'no number'}, {r['status']})" for r in current)
+                return (f"REFUSED: {cite} holds {len(current)} current {id_type} identifiers: {listed}. Pass the "
+                        "number the check was about, or a person decides which is current. Nothing was written.")
+            if status in NEEDS_A_NUMBER and current and current[0]["id_value"]:
+                id_value = current[0]["id_value"]       # a status about the one registration on file
         try:
             rec = OrgIdentifierRecord(
                 entity_name=target["name"], id_type=id_type, id_value=id_value or None, status=status,
@@ -237,7 +238,11 @@ async def record(
         else:
             outcome, changes, conflicts = await write_org_identifier(conn, rec, target["id"], None)
             row = None if outcome == "held" else await _target(conn, target["id"], id_type, rec.id_value)
-            if row is not None and (outcome == "added" or "source_type" in changes):
+            if (row is not None and stored is not None and row["id"] == stored["id"]
+                    and ("source_type" in changes or "status" in changes)):
+                replaced = _replaced(stored)
+                line = f"{line} ({replaced})"
+            if row is not None and (outcome == "added" or "source_type" in changes or "status" in changes):
                 outcome = "taken"
                 await _stamp(conn, row["id"], rec, checked_at=checked_at, user_id=user_id, doc=doc, line=line)
                 if doc is None:
@@ -261,7 +266,8 @@ async def record(
         head = (f"Recorded a manual check for {cite}: {id_type} ({number}) is {status}, {tier}. "
                 f"Identifier row {final['id']}.")
         if replaced:
-            head += f" A newer check of equal rank supersedes the earlier one: {replaced}."
+            head += (f" A newer check of equal rank supersedes the earlier one: {replaced}." if outcome == "replaced"
+                     else f" It supersedes the stored value: {replaced}.")
     elif outcome == "confirmed":
         kept = "evidenced" if final["evidence"] == "evidenced" else tier
         head = (f"Confirmed {cite}: {id_type} ({number}) is still {status} ({final['source_type']}, {kept}); "
