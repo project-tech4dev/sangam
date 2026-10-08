@@ -11,18 +11,20 @@ Python (docs/SQL_AGENT.md).
 from __future__ import annotations
 
 import json
+import posixpath
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 from importlib.resources import files
 from types import MappingProxyType
+from urllib.parse import parse_qsl, unquote, urlsplit
 
 _DATA = files("app.ingest") / "data" / "sources"
 _FILES = ("funders.json", "ngos.json", "rfps.json", "media.json")
 
 
 class AccessRule(StrEnum):
-    """The legend from the source inventory. Only the first two are dispatchable."""
+    """The legend from the source inventory. Only the first two are dispatchable; the last two are path-scoped."""
 
     OPEN_API = "open_api"
     CRAWL_ALLOWED = "crawl_allowed"
@@ -34,6 +36,8 @@ class AccessRule(StrEnum):
     PARTNER_PERMISSION = "partner_permission_internal"
     REFERENCE_ONLY = "reference_only"
     NOT_CHECKED = "not_checked"
+    MANUAL_AGGREGATOR = "manual_aggregator"
+    INTERNAL_RESEARCH = "internal_research"
 
 
 class Category(StrEnum):
@@ -47,11 +51,20 @@ class Category(StrEnum):
 # its basis, so an unsupported source is a row in the summary and not a silence.
 DISPATCHABLE: frozenset[AccessRule] = frozenset({AccessRule.OPEN_API, AccessRule.CRAWL_ALLOWED})
 
+# Read by the researcher's fetch tools on the paths an entry names and nowhere else; never dispatched.
+PATH_SCOPED: frozenset[AccessRule] = frozenset({AccessRule.MANUAL_AGGREGATOR, AccessRule.INTERNAL_RESEARCH})
+# Never read on a path-scoped source, whatever its allowlist says. Fixed in code, matched per segment.
+_SIGN_IN_SEGMENTS = frozenset({"login", "log-in", "logout", "signin", "sign-in", "signup", "sign-up", "auth",
+                               "oauth", "sso", "account", "accounts", "admin", "dashboard"})
+
 # Ordered permissive → restrictive. When several products share a host the
 # strictest wins, so a permissive product can never unlock a restricted one.
 _STRICTNESS: tuple[AccessRule, ...] = (
     AccessRule.OPEN_API,
     AccessRule.CRAWL_ALLOWED,
+    # On a host shared with a refusing rule, the refusal governs every path the scoped entry does not claim.
+    AccessRule.INTERNAL_RESEARCH,
+    AccessRule.MANUAL_AGGREGATOR,
     AccessRule.CRAWL_PER_SITE,
     AccessRule.CRAWL_WITH_PERMISSION,
     AccessRule.NOT_CHECKED,
@@ -81,6 +94,10 @@ class Source:
     categories: frozenset[Category]
     yields: tuple[str, ...]
     robots_checked_at: date | None = None
+    allowed_paths: tuple[str, ...] = ()
+    """Path-scoped only. Ending in "/" is a prefix that needs a segment below it; otherwise exact."""
+    allowed_query: tuple[tuple[str, str | None], ...] = ()
+    """Path-scoped only: the query keys allowed, each with its one required value or None for any."""
 
     @property
     def dispatchable(self) -> bool:
@@ -89,6 +106,70 @@ class Source:
     @property
     def is_site_class(self) -> bool:
         return not self.host
+
+    @property
+    def path_scoped(self) -> bool:
+        return self.access_rule in PATH_SCOPED
+
+    def claims_path(self, path: str) -> bool:
+        """Whether this entry governs a normalised path. Not whether it may be read: see path_refusal."""
+        return any(path.startswith(p) and len(path) > len(p) if p.endswith("/") else path == p
+                   for p in self.allowed_paths)
+
+    def path_refusal(self, url: str) -> str | None:
+        """None when this path-scoped source may read the URL, else why not. Default refuse."""
+        parts = urlsplit(url)
+        if parts.scheme != "https":
+            return "only https is read on this source"
+        if parts.username is not None or parts.password is not None:
+            return "a URL carrying a user name or password is not read"
+        try:
+            if parts.port is not None:
+                return "a URL naming a port is not read"
+        except ValueError:
+            return "a URL naming a port is not read"
+        if normal_host(parts.hostname) != self.host:
+            return f"only {self.host} itself is read under this entry"
+        path, why = normal_path(parts.path)
+        if why:
+            return why
+        if path != unquote(parts.path or "/"):
+            return "the path carries '.', '..' or '//', so it is not read; ask for its normal form"
+        if _SIGN_IN_SEGMENTS & {seg.lower() for seg in path.split("/")}:
+            return "it is a sign-in or account page, and nothing behind a sign-in is read"
+        if not self.claims_path(path):
+            return f"only {', '.join(self.allowed_paths)} may be read on {self.host}"
+        allowed = dict(self.allowed_query)
+        given = parse_qsl(parts.query, keep_blank_values=True)
+        keys = [k for k, _ in given]
+        if len(set(keys)) != len(keys):
+            return "a repeated query parameter is not read"
+        for key, value in given:
+            if key not in allowed:
+                return f"the query parameter {key!r} is not one this source allows"
+            if allowed[key] is not None and value != allowed[key]:
+                return f"{key} must be {allowed[key]!r} here"
+        missing = [k for k, v in allowed.items() if v is not None and k not in keys]
+        if missing:
+            return f"{', '.join(missing)} must be given, pinned to {', '.join(repr(allowed[k]) for k in missing)}"
+        return None
+
+
+def normal_host(host: str | None) -> str:
+    """Lower-case, no trailing dot, no www.: the form registry hosts are written in."""
+    return (host or "").lower().rstrip(".").removeprefix("www.")
+
+
+def normal_path(raw: str) -> tuple[str, str | None]:
+    """(path decoded once, . and .. resolved, // collapsed; the refusal or None). Still-encoded after one
+    decode (double encoding), a backslash or a control character is refused."""
+    path = unquote(raw or "/")
+    if "%" in path or "\\" in path or any(ord(c) < 32 or ord(c) == 127 for c in path):
+        return path, "the path is still encoded after one decode, or carries a backslash or control character"
+    norm = posixpath.normpath("/" + path.lstrip("/"))
+    if path.endswith("/") and norm != "/":
+        norm += "/"
+    return norm, None
 
 
 def _load() -> tuple[Source, ...]:
@@ -107,6 +188,8 @@ def _load() -> tuple[Source, ...]:
                     categories=frozenset(Category(c) for c in entry["categories"]),
                     yields=tuple(entry["yields"]),
                     robots_checked_at=date.fromisoformat(checked) if checked else None,
+                    allowed_paths=tuple(entry.get("allowed_paths", ())),
+                    allowed_query=tuple(entry.get("allowed_query", {}).items()),
                 )
             )
     return tuple(out)
@@ -126,7 +209,7 @@ def in_category(category: Category) -> list[Source]:
 
 def sources_on_host(host: str) -> list[Source]:
     """Every registered product on this host, including parent-domain matches."""
-    host = host.lower().removeprefix("www.")
+    host = normal_host(host)
     return [
         s for s in SOURCES.values()
         if s.host and (host == s.host or host.endswith("." + s.host))
@@ -143,6 +226,25 @@ def rule_for_host(host: str) -> tuple[AccessRule, Source] | None:
     if not found:
         return None
     strictest = max(found, key=lambda s: _STRICTNESS.index(s.access_rule))
+    return strictest.access_rule, strictest
+
+
+def rule_for_url(url: str) -> tuple[AccessRule, Source] | None:
+    """The rule governing a URL: a path-scoped entry on exactly this host when it claims the path,
+    else the host's strictest other rule. A host with only scoped entries returns one, so it refuses."""
+    parts = urlsplit(url)
+    host = normal_host(parts.hostname)
+    found = sources_on_host(host)
+    if not found:
+        return None
+    scoped = [s for s in found if s.path_scoped and s.host == host]
+    path, why = normal_path(parts.path)
+    if why is None:
+        for source in scoped:
+            if source.claims_path(path):
+                return source.access_rule, source
+    rest = [s for s in found if not s.path_scoped] or scoped or found
+    strictest = max(rest, key=lambda s: _STRICTNESS.index(s.access_rule))
     return strictest.access_rule, strictest
 
 
@@ -178,6 +280,16 @@ def _self_check() -> None:
             raise ValueError(f"{source.key}: dispatchable but names no host")
         if source.dispatchable and source.robots_checked_at is None:
             raise ValueError(f"{source.key}: dispatchable but nobody recorded a robots check")
+        if source.path_scoped:
+            if not source.host or not source.allowed_paths:
+                raise ValueError(f"{source.key}: a path-scoped source names one host and the paths it reads")
+            if source.robots_checked_at is None:
+                raise ValueError(f"{source.key}: path-scoped but nobody recorded a robots check")
+            for p in source.allowed_paths:
+                if p == "/" or normal_path(p) != (p, None):
+                    raise ValueError(f"{source.key}: {p!r} is not a normal path below the root")
+        elif source.allowed_paths or source.allowed_query:
+            raise ValueError(f"{source.key}: allowed_paths and allowed_query belong to path-scoped sources only")
 
 
 _self_check()

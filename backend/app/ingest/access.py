@@ -9,13 +9,11 @@ from urllib.robotparser import RobotFileParser
 import httpx
 
 from app.ingest.adapters._http import HEADERS, USER_AGENT
-from app.ingest.sources import rule_for_host
+from app.ingest.sources import AccessRule, rule_for_url
 
 logger = logging.getLogger(__name__)
 
 _ROBOTS: dict[str, RobotFileParser | None] = {}
-
-
 
 
 async def check_url(url: str) -> str | None:
@@ -24,15 +22,23 @@ async def check_url(url: str) -> str | None:
     if parsed.scheme not in ("http", "https"):
         return f"{url} is not an http(s) URL."
     host = parsed.hostname or ""
+    if parsed.username is not None or parsed.password is not None:
+        return f"{url} carries a user name or password, so it is not read: the host is not what it seems."
 
     # Two separate questions. The registry says whether this site may be read at
     # all; robots.txt says which paths. Being a permitted source is not a pass
     # for every URL on it - indiacsr.in is crawl_allowed and still bars /wp-admin/.
-    # rule_for_host, not the first match: several products share a host
-    # (mcacdm.nic.in has four), and the strictest of them decides.
-    found = rule_for_host(host)
+    # rule_for_url: the host's strictest rule, except on a path a path-scoped entry claims.
+    found = rule_for_url(url)
     source = found[1] if found else None
-    if source is not None and not source.dispatchable:
+    if source is not None and source.path_scoped:
+        why = source.path_refusal(url)
+        if why:
+            return (
+                f"{source.name} ({source.host}) is registered as {source.access_rule.value}, and {why}. "
+                f"{source.basis} Report this; do not look for another route to the same content."
+            )
+    elif source is not None and not source.dispatchable:
         return (
             f"{source.name} ({source.host}) is registered as {source.access_rule.value} and must "
             f"not be read automatically. {source.basis} Report this to the user; do not look for "
@@ -111,3 +117,24 @@ async def _note_proposal(host: str, url: str, *, robots_result: str) -> None:
             )
     except Exception:
         logger.debug("could not record a source proposal for %s", host, exc_info=True)
+
+
+def source_banner(url: str) -> str:
+    """The line a fetch tool puts above a page whose source decides how its values are labelled."""
+    found = rule_for_url(url)
+    if found is None:
+        return ""
+    rule, source = found
+    if rule is AccessRule.MANUAL_AGGREGATOR:
+        return (
+            f"[{source.name} is an aggregator. Every value below is claimed: save it with source_type "
+            f"'aggregator' and evidence_tier 'claimed', as a lead or a corroboration, never in place of "
+            f"the organisation's own document.]\n\n"
+        )
+    if rule is AccessRule.INTERNAL_RESEARCH:
+        return (
+            f"[{source.name}: the team's earlier research, pinned to one commit. Every value below is "
+            f"claimed: save it with source_type 'prior_research' and evidence_tier 'claimed', citing this "
+            f"URL, then re-read the links it cites under their own access rules.]\n\n"
+        )
+    return ""
