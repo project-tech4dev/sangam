@@ -52,9 +52,15 @@ LOW-confidence fact is a lead, and reporting it beside a filing's figure without
 is which is the error to watch for.
 
 For a corporate funder the statutory filing is often already here: the staff workbooks, which a
-researcher reads with `read_source_rows`. Put the filer's registered name in the task when you
-know it — the filer is often the parent company, not the foundation. The researcher reads them
-last: its first `read_source_rows` call closes its web tools for the rest of its run.
+researcher reads with `read_source_rows`. **Pick them before you launch researchers:**
+`list_storage_buckets`, then `list_bucket_files("staff-sources")`, then
+`select_source_files(paths)` with the files that fit the request (the fiscal years asked about,
+the CSO workbook for an NGO). The run pauses there while staff confirm, edit or reject your pick.
+Their decision is final: approved or edited, put the returned document ids in every
+researcher's task ("read_source_rows with documents=[12, 14]"); rejected, launch without staff
+data and do not propose the same files again. Put the filer's registered name in the task when
+you know it — the filer is often the parent company, not the foundation. The researcher reads
+them last: its first `read_source_rows` call closes its web tools for the rest of its run.
 
 ---
 
@@ -266,6 +272,13 @@ there is exactly one path to a source and one path to the catalog.
   RECORDED**, never zero.
 - `publish_brief(slug)` — re-publish a saved brief to the funder page. `save_research` already
   publishes the entity it saves, so this is for research saved before publishing existed.
+
+**The staff workbooks** — what is in Storage, and which files a run reads.
+
+- `list_storage_buckets()` · `list_bucket_files(bucket, prefix)` — the buckets, then the
+  `.xlsx` files in one, as paths.
+- `select_source_files(paths)` — **pauses for a person**, who approves, edits or rejects the
+  pick; then registers each file and returns its document id for the researchers.
 
 **The adapter path** — the two enumerated sources, pulled in bulk.
 

@@ -14,6 +14,7 @@ from collections.abc import Iterable
 from pathlib import PurePath
 from typing import Any
 
+from app.ingest.sources import SOURCES
 from app.integrations import storage
 from app.repositories import documents as documents_repo
 from app.repositories import funders as funders_repo
@@ -45,6 +46,60 @@ def is_staff_source_url(url: str | None) -> bool:
 
 def title(source_key: str, filename: str) -> str:
     return f"Staff dataset · {source_key} · {dataset_id(filename)}"
+
+
+_ID = re.compile(r"^[0-9a-f]{12}$")
+PICKED_VERSION = "select_source_files/1"
+
+
+def picked_id(key: str) -> str:
+    """A picked object's id: the script's own when it wrote the key, so one object keeps one source_url."""
+    stem = PurePath(key).stem
+    return stem if _ID.match(stem) else hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+def check_pick(path: str) -> tuple[str, str] | str:
+    """(registry key, object key) for a selectable path, or why it is not one."""
+    parts = storage.split(path)
+    if parts is None or parts[0] != storage.STAFF_SOURCES:
+        return f"{path!r}: only files in the {storage.STAFF_SOURCES} bucket can be selected."
+    key = parts[1]
+    if not key.lower().endswith(".xlsx"):
+        return f"{path!r}: only .xlsx workbooks can be read."
+    source_key = key.split("/", 1)[0]
+    if "/" not in key or source_key not in SOURCES:
+        return f"{path!r}: the first folder must be a registered source key (list_import_sources)."
+    return source_key, key
+
+
+async def register(pool: Any, path: str) -> int | str:
+    """Download a picked workbook, write its documents row, and keep the bytes for read_rows."""
+    checked = check_pick(path)
+    if isinstance(checked, str):
+        return checked
+    source_key, key = checked
+    data = await storage.download(storage.STAFF_SOURCES, key, max_bytes=storage.STAFF_SOURCES_MAX_BYTES)
+    if data is None:
+        return f"{path!r}: could not be downloaded."
+    try:
+        await asyncio.to_thread(_open_check, data)
+    except Exception as exc:  # noqa: BLE001 - type only: a message could quote a cell
+        return f"{path!r}: not a readable .xlsx workbook ({type(exc).__name__})."
+    digest = storage.content_hash(data)
+    ident = picked_id(key)
+    document_id, _ = await documents_repo.upsert_source_dataset(
+        pool, title=f"Staff dataset · {source_key} · {ident}", source_key=source_key,
+        storage_path=storage.qualify(storage.STAFF_SOURCES, key), source_url=SOURCE_URL_PREFIX + ident,
+        content_hash=digest, extractor_version=PICKED_VERSION,
+    )
+    _remember((storage.qualify(storage.STAFF_SOURCES, key), digest), data)
+    return document_id
+
+
+def _open_check(data: bytes) -> None:
+    from openpyxl import load_workbook
+
+    load_workbook(io.BytesIO(data), read_only=True).close()
 
 
 HEADER_ROWS = 3            # top rows of a sheet shown with any match
@@ -184,22 +239,29 @@ async def _workbook(doc: dict[str, Any]) -> bytes | None:
         data = await storage.download(*parts, max_bytes=storage.STAFF_SOURCES_MAX_BYTES)
         if data is None:
             return None
-        _cache[key] = data
-        while len(_cache) > 1 and sum(len(b) for b in _cache.values()) > _CACHE_MAX_BYTES:
-            _cache.popitem(last=False)
+        _remember(key, data)
         return data
 
 
-async def read_rows(pool: Any, name: str, *, sheet: str = "") -> str:
+def _remember(key: tuple[str, str], data: bytes) -> None:
+    _cache[key] = data
+    _cache.move_to_end(key)
+    while len(_cache) > 1 and sum(len(b) for b in _cache.values()) > _CACHE_MAX_BYTES:
+        _cache.popitem(last=False)
+
+
+async def read_rows(pool: Any, name: str, *, sheet: str = "", documents: list[int] | None = None) -> str:
     name = (name or "").strip()
     asked = search_terms([name])
     funders = await funders_repo.name_variants(pool, match=asked[0]) if asked else []
     terms = search_terms([name, *(n for f in funders for n in (f["name"], *(f["aliases"] or [])))])
     if not terms:
         return "read_source_rows needs a name of at least three letters."
-    datasets = await documents_repo.list_source_datasets(pool)
+    datasets = await documents_repo.list_source_datasets(pool, ids=documents or None)
     if not datasets:
-        return "No staff dataset is uploaded (make staff-source). Nothing was read."
+        if documents:
+            return f"None of documents {documents} is a staff dataset. Nothing was read."
+        return "No staff dataset is registered: pick files with select_source_files. Nothing was read."
     parts: list[str] = []
     problems: list[str] = []
     for doc in datasets:

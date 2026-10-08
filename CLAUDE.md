@@ -329,6 +329,13 @@ there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
 Both agents register their list in one place — `build.py` and `agent.py` respectively — and
 a test walks the package to prove every tool defined is also registered.
 
+**Sangam Import has one human-in-the-loop step: `select_source_files`.** It is in `INTERRUPT_ON`
+in `app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns into LangChain's
+`HumanInTheLoopMiddleware`; the Import screen answers it with CopilotKit's `useInterrupt` and
+resumes with `{decisions: [...]}`. Staff workbooks therefore need no script: a file under
+`staff-sources/<registry key>/` in the Supabase dashboard is listed, picked, confirmed, and
+registered as a `documents` row by that tool. `make staff-source` still works and writes the same row.
+
 **How many organisations Import researches at once is a setting, not a number in the
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
 above it the agent researches in waves until every organisation asked for is done.

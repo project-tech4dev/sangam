@@ -34,16 +34,17 @@ Worktree off `origin/master`, branch `feat/import-storage-picker`, and this plan
    - `list_all(bucket, prefix="")` pages `/object/list` recursively into folders, returning files
      with `key`, `size` and `updated_at`. The existing `list_prefix` caps at 20 and is one level
      deep.
-2. **`backend/app/ingest/tools/catalog_tools.py`** gets three supervisor tools. They return errors
+2. **`backend/app/ingest/tools/pipeline_tools.py`** (beside `read_source_rows`) gets three supervisor tools. They return errors
    and never raise; output is counts and paths, never cell values.
    - `list_storage_buckets()`
    - `list_bucket_files(bucket, prefix="")`: `.xlsx` only, since `read_source_rows` reads
      workbooks.
    - `select_source_files(paths: list[str])`: runs only after approval. For each path it downloads
      the file (existing `storage.download`), takes `storage.content_hash`, and calls the existing
-     `documents_repo.upsert_source_dataset`. It returns `path → document id`. A path outside
-     `staff-sources` is copied into `staff-sources/<key>/…` first (existing `storage.upload`), so
-     the private-bucket rule and the `0032` policy still hold.
+     `documents_repo.upsert_source_dataset`. It returns `path → document id`. Only
+     `staff-sources/<registry key>/….xlsx` is selectable; anything else is refused, not copied,
+     because `org-vault` holds orgs' private files and copying them would change who can read them.
+     The downloaded bytes prime `read_rows`' cache, so a wave of researchers does not re-download.
 3. **`backend/app/ingest/agent.py`**: add LangChain's `HumanInTheLoopMiddleware` (from
    `langchain.agents.middleware`) to the supervisor:
    `interrupt_on={"select_source_files": {"allowed_decisions": ["approve", "edit", "reject"],
@@ -66,13 +67,15 @@ Worktree off `origin/master`, branch `feat/import-storage-picker`, and this plan
 
 ## Milestone 2: frontend (exit gate: confirm/edit/reject works in the browser)
 1. **`frontend/features/ingest/components/SourcePicker.tsx`**: a checklist of the proposed paths
-   (pre-ticked), with "Add from bucket", Confirm and Reject buttons. It uses the existing
+   (pre-ticked) plus every other file the run's `list_bucket_files` printed, with Confirm and
+   "Continue without staff data" (reject) buttons. It uses the existing
    `components/ui` primitives and the design-system tokens only.
 2. **`ImportWorkspace.tsx`**: add `useInterrupt({ agentId: "sangam-import-<threadId>",
    renderInChat: false, enabled: e => tool is select_source_files, render })` from
    `@copilotkit/react-core/v2`, placing the element above the composer. It resolves with the
    HITL resume shape:
-   - `{decisions: [{type: "approve"}]}`
+   `{decisions: [<one decision>]}`, where the decision is
+   - `{type: "approve"}`
    - `{type: "edit", edited_action: {name: "select_source_files", args: {paths}}}` when the ticks
      changed
    - `{type: "reject", message}`

@@ -111,7 +111,7 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 
 | Module | Tools |
 |---|---|
-| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `read_source_rows` |
+| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `list_storage_buckets` · `list_bucket_files` · `select_source_files` · `read_source_rows` |
 | `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
@@ -136,9 +136,21 @@ tool calls and never reached its report, because each document displaced the las
 An isolated subagent returns its conclusion, not its reading. It hands back a thin
 `ResearchSummary` — counts and status, not the findings, which it has already saved itself.
 
-**Staff workbooks.** `read_source_rows` is the researcher's eighth tool (the supervisor's five
-pipeline tools do not include it). It reads the workbooks a person uploaded with `make staff-source`
-from the private `staff-sources` bucket with openpyxl and returns header rows and matching rows as
+**Picking the workbooks, with a person in the loop.** The supervisor lists the buckets
+(`list_storage_buckets`), then the `.xlsx` files in one (`list_bucket_files`), and proposes a pick
+with `select_source_files(paths)`. That tool is in `INTERRUPT_ON` (`app/ingest/agent.py`), which
+deepagents turns into LangChain's `HumanInTheLoopMiddleware`: the run pauses, the Import screen
+shows `SourcePicker` through CopilotKit's `useInterrupt`, and staff approve, edit (tick other
+files) or reject. The resume is `{decisions: [...]}`, delivered as `Command(resume=…)`. On approval
+the tool downloads each file, writes its `documents` row (`extractor_version
+'select_source_files/1'`) and returns the document ids the researchers' tasks carry. Only
+`staff-sources/<registry key>/….xlsx` is selectable, so a file dropped in through the Supabase
+dashboard under a registered key folder works with no script; `make staff-source` still writes the
+same row.
+
+**Staff workbooks.** `read_source_rows` is the researcher's eighth tool (the supervisor does not
+have it). It reads the workbooks staff picked (its `documents` argument; all registered ones
+without it) from the private `staff-sources` bucket with openpyxl and returns header rows and matching rows as
 `cell=value`, each cited `[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each
 sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". **Staff
 rows last:** `StaffLastLock` (`app/agent/middleware.py`) refuses `search_public_sources`,

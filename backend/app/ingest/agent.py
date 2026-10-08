@@ -21,11 +21,14 @@ from app.ingest.research_records import PromotionReport, ResearchSummary
 from app.ingest.tools.catalog_tools import funder_dossier, promote_research, research_goals
 from app.ingest.tools.pipeline_tools import (
     import_run_summary,
+    list_bucket_files,
     list_import_sources,
+    list_storage_buckets,
     pending_resolutions,
     plan_import,
     read_source_rows,
     run_import_now,
+    select_source_files,
 )
 from app.ingest.tools.research_tools import (
     fetch_document,
@@ -114,6 +117,10 @@ TOOLS = [
     run_import_now,
     import_run_summary,
     pending_resolutions,
+    # Staff workbooks: list, then propose a pick that a person confirms (HITL below).
+    list_storage_buckets,
+    list_bucket_files,
+    select_source_files,
     # catalog_tools — what Sangam already holds. Read-only; promote_research is
     # the catalog-writer's.
     funder_dossier,
@@ -186,6 +193,15 @@ CATALOG_WRITER: dict = {
 }
 
 
+# Staff see which files a run will read before it reads them.
+INTERRUPT_ON = {
+    "select_source_files": {
+        "allowed_decisions": ["approve", "edit", "reject"],
+        "description": "Confirm the staff workbooks Import will read",
+    },
+}
+
+
 def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Before create_deep_agent: the profile is read while the graph is built.
     install_harness()
@@ -211,6 +227,9 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         skills=[SKILLS_ROUTE],
         middleware=[filesystem_tools(backend, keep=SKILL_READING_TOOLS), clear_old_tool_results()],
         system_prompt=_render(_INSTRUCTIONS_MD, settings),
+        # deepagents turns this into LangChain's HumanInTheLoopMiddleware: the run pauses on the
+        # tool call and resumes with Command(resume={"decisions": [...]}) from the Import screen.
+        interrupt_on=INTERRUPT_ON,
         checkpointer=checkpointer,
     )
     # Its own trace name: Ask and Import are different graphs doing different

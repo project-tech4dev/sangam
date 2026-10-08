@@ -88,8 +88,9 @@ no comparison table — downstream.
 
 ## A staff source: the CSO workbook
 
-Sangam holds an internal workbook on partner CSOs, shared under partner permission. Read it with
-`read_source_rows` and the organisation's name — **last, after all web research**: the
+Sangam holds an internal workbook on partner CSOs, shared under partner permission. Pick it with
+`select_source_files` (staff confirm the pick), then read it with `read_source_rows`, its document id
+and the organisation's name — **last, after all web research**: the
 first call closes the web tools for the rest of the run.
 
 - **Cite the cell.** Each row carries a `[source:<document>#<sheet>!<cell>]` marker; a finding uses

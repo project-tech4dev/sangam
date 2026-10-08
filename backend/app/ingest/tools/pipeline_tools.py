@@ -18,6 +18,7 @@ from app.db.pool import get_pool
 from app.ingest import staff_sources
 from app.ingest.runner import catalog_baseline, run_import, summarise
 from app.ingest.sources import SOURCES, Category, resolve
+from app.integrations import storage
 
 logger = logging.getLogger(__name__)
 
@@ -329,7 +330,79 @@ def format_summary(s: dict[str, Any]) -> str:
 
 
 @tool
-async def read_source_rows(name: str, sheet: str = "") -> str:
+async def list_storage_buckets() -> str:
+    """List the Storage buckets, and say which one holds the staff workbooks you can pick from.
+
+    Call this when a request needs staff data (CSR filing exports, the CSO funder
+    workbook) and you do not yet know which files exist. Then list_bucket_files.
+    """
+    try:
+        buckets = await storage.list_buckets()
+        if not buckets:
+            return "No bucket is visible: Storage is off or unreachable. Staff workbooks cannot be picked."
+        lines = [f"{len(buckets)} bucket(s):"]
+        for b in sorted(buckets, key=lambda b: str(b.get("id"))):
+            note = " — staff workbooks; the only bucket select_source_files accepts" if (
+                b.get("id") == storage.STAFF_SOURCES) else ""
+            lines.append(f"- {b.get('id')} ({'public' if b.get('public') else 'private'}){note}")
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure
+        return f"list_storage_buckets failed: {type(exc).__name__}"
+
+
+@tool
+async def list_bucket_files(bucket: str, prefix: str = "") -> str:
+    """List the .xlsx workbooks in a bucket, with sizes and upload dates, to choose from.
+
+    Args:
+        bucket: a bucket from list_storage_buckets, usually "staff-sources".
+        prefix: optional folder, e.g. "mca_csr" (a registry source key).
+
+    Each line is a path to pass to select_source_files as-is.
+    """
+    try:
+        found = [f for f in await storage.list_all(bucket, prefix) if f["key"].lower().endswith(".xlsx")]
+        if not found:
+            return f"No .xlsx file under {bucket}/{prefix.strip('/')}."
+        lines = [f"{len(found)} workbook(s) in {bucket}:"]
+        for f in found:
+            size = f"{f['size'] / 1024 / 1024:.1f} MB" if isinstance(f.get("size"), int) else "size unknown"
+            lines.append(f"- {storage.qualify(bucket, f['key'])} · {size} · uploaded {str(f.get('updated_at'))[:10]}")
+        if len(found) >= storage.LIST_MAX_FILES:
+            lines.append(f"Listing stopped at {storage.LIST_MAX_FILES}: narrow it with prefix.")
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure
+        return f"list_bucket_files failed: {type(exc).__name__}"
+
+
+@tool
+async def select_source_files(paths: list[str]) -> str:
+    """Propose the staff workbooks this run should read. A person confirms or edits the list first.
+
+    The run pauses here until staff approve, edit or reject the selection in the
+    Import screen. On approval each file is registered and you get back its
+    document id: put those ids in each researcher's task, so it calls
+    read_source_rows(name, documents=[...]) on exactly those files.
+
+    Args:
+        paths: paths exactly as list_bucket_files printed them,
+            e.g. ["staff-sources/mca_csr/csr_2023-24.xlsx"]. Only staff-sources is accepted.
+    """
+    try:
+        if not paths:
+            return "select_source_files needs at least one path."
+        lines = []
+        for path in dict.fromkeys(paths):
+            refusal = staff_sources.check_pick(path)
+            outcome = refusal if isinstance(refusal, str) else await staff_sources.register(get_pool(), path)
+            lines.append(f"- {path} → document {outcome}" if isinstance(outcome, int) else f"- refused: {outcome}")
+        return "\n".join(["Selected by staff. Pass these document ids to read_source_rows:", *lines])
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure
+        return f"select_source_files failed: {type(exc).__name__}"
+
+
+@tool
+async def read_source_rows(name: str, sheet: str = "", documents: list[int] | None = None) -> str:
     """Read the staff-only workbooks — statutory CSR filing exports and the CSO funder workbook — for one name.
 
     Searches every sheet of every uploaded workbook for rows naming `name`, or any name
@@ -349,8 +422,10 @@ async def read_source_rows(name: str, sheet: str = "") -> str:
     Args:
         name: a company, funder or CSO name, at least three letters.
         sheet: optional part of a sheet name (e.g. "2023-24") to read one sheet only.
+        documents: the document ids select_source_files returned, as your task gives them.
+            Read only those files; omitted, every registered workbook is read.
     """
     try:
-        return await staff_sources.read_rows(get_pool(), name, sheet=sheet)
+        return await staff_sources.read_rows(get_pool(), name, sheet=sheet, documents=documents)
     except Exception as exc:  # noqa: BLE001 - a tool returns its failure; type only, never a value
         return f"read_source_rows failed: {type(exc).__name__}"

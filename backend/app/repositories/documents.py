@@ -107,14 +107,15 @@ async def readable_document(pool: AsyncConnectionPool, *, document_id: int, user
 
 async def upsert_source_dataset(
     pool: AsyncConnectionPool, *, title: str, source_key: str, storage_path: str, source_url: str,
-    content_hash: str,
+    content_hash: str, extractor_version: str = "upload_staff_source/1",
 ) -> tuple[int, str]:
     """A staff dataset's row: private, nobody's, no content. Keyed on storage_path, so re-upload updates it."""
-    params = {"title": title, "url": source_url, "key": source_key, "hash": content_hash, "path": storage_path}
+    params = {"title": title, "url": source_url, "key": source_key, "hash": content_hash, "path": storage_path,
+              "version": extractor_version}
     async with pool.connection() as conn, conn.transaction():
         row = await (await conn.execute(
             """UPDATE documents SET content_hash = %(hash)s, fetched_at = now(), title = %(title)s,
-                      source_url = %(url)s, source_name = %(key)s
+                      source_url = %(url)s, source_name = %(key)s, extractor_version = %(version)s
                WHERE doc_type = 'source_dataset' AND storage_path = %(path)s RETURNING id""",
             params,
         )).fetchone()
@@ -125,19 +126,20 @@ async def upsert_source_dataset(
                                       fetched_at, content_hash, extractor_version, storage_path,
                                       is_public, status)
                VALUES (NULL, NULL, %(title)s, 'source_dataset', %(url)s, %(key)s, now(), %(hash)s,
-                       'upload_staff_source/1', %(path)s, false, 'received')
+                       %(version)s, %(path)s, false, 'received')
                RETURNING id""",
             params,
         )).fetchone()
     return row["id"], "added"
 
 
-async def list_source_datasets(pool: AsyncConnectionPool) -> list[dict]:
-    """Every staff dataset row. Staff-only by construction: private and org-less."""
+async def list_source_datasets(pool: AsyncConnectionPool, ids: list[int] | None = None) -> list[dict]:
+    """Staff dataset rows, all or just `ids`. Staff-only by construction: private and org-less."""
     sql = """
     SELECT id, title, source_name, source_url, storage_path, content_hash FROM documents
     WHERE doc_type = 'source_dataset' AND NOT is_public AND org_id IS NULL AND funder_id IS NULL
+      AND (%(ids)s::bigint[] IS NULL OR id = ANY(%(ids)s::bigint[]))
     ORDER BY source_name, id
     """
     async with pool.connection() as conn:
-        return await (await conn.execute(sql)).fetchall()
+        return await (await conn.execute(sql, {"ids": ids})).fetchall()
