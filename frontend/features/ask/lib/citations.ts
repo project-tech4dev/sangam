@@ -1,4 +1,4 @@
-export type CitationKind = "org" | "funder" | "activity" | "score" | "graph";
+export type CitationKind = "org" | "funder" | "activity" | "grant" | "score" | "graph";
 
 /** Where an entity's row was read from. Optional throughout: most tables record it,
  *  some rows do not, and the rail says "no source recorded" rather than hiding the gap. */
@@ -11,7 +11,7 @@ export type RegistryIndex = {
   activities: Map<number, { href: string; title: string } & Provenance>;
 };
 
-const CITE_RE = /\[(org|funder|activity|score|graph):([a-zA-Z0-9]+)\]/g;
+const CITE_RE = /\[(org|funder|activity|grant|score|graph):([a-zA-Z0-9]+)\]/g;
 
 /** Rewrite [kind:id] markers into private-scheme links, skipping code spans. */
 export function linkifyCitations(md: string): string {
@@ -63,6 +63,9 @@ export function citationTarget(
       const line = index?.activities.get(numeric);
       return { href: line?.href ?? null, label: line?.title ?? `funder activity #${id}` };
     }
+    case "grant":
+      // Retired in 0034; a saved thread's marker shows as a chip, unlinked, rather than as raw brackets.
+      return { href: null, label: `grant #${id} (retired)` };
     case "graph":
       return { href: null, label: `graph evidence ${id.slice(0, 8)}` };
   }

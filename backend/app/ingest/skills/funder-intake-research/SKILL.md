@@ -34,11 +34,14 @@ below (#1 filings, #3 CSO workbook) are read last, together, whatever their rank
    grant amounts per partner, which funders rarely publish. Each is a `partner` finding for the
    funder: the recipient as `partner_name`, the amount as printed with its unit.
    - **An exact fiscal year** (`FY2023-24`) gives that fiscal year and the amount.
-   - **A range** (`2021–2024`, `2023-26`, `2022-2025 (Closed)`) gives the **last** fiscal year of
-     the range — the one ending in its closing year — and **no amount**; the range is quoted in
-     the evidence. A multi-year figure on one year's line would misstate it.
+   - **A range** (`2021–2024`, `2023-26`, `2022-2025 (Closed)`) is ONE finding on the **first**
+     fiscal year of the range — the one starting in its opening year — with `start_date` and
+     `end_date` set to the range's fiscal-year bounds (`2021–2024` is FY2021-22, 2021-04-01 to
+     2024-03-31) and **no amount**; the range is quoted in the evidence. That is where a dated
+     multi-year grant lands too, so the same grant from two sources is one line.
    - **No closing year** (`Post 2022`, `Ongoing`): no finding; name it in the summary.
-   - Partner findings are saved in a **funder** research run; an NGO run does not write them.
+   - In a funder run the recipient is `partner_name`; an NGO run records the same line from its
+     side, with `funder_name`.
 
 ### Reading the staff workbooks
 
