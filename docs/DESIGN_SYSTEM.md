@@ -88,8 +88,7 @@ design system for this PR" is enough of a prompt, given this file and `.design-s
 4. **Upload.** `DesignSync` `finalize_plan` (one approval), then `write_files`: first
    `_ds_needs_recompile` (`{"by":"design-sync-cli"}`), then the changed files, then
    `_ds_needs_recompile` again. Don't write `_ds_bundle.js`, `_ds_manifest.json` or
-   `_adherence.oxlintrc.json` by hand; Claude Design is expected to rebuild them when the
-   project is opened. (Unconfirmed for v2 as of 8 Oct 2026; `.design-sync/NOTES.md` tracks it.)
+   `_adherence.oxlintrc.json`; Claude Design rebuilds them the next time the project is opened.
 5. **Check.** Open the project, look at the cards you touched and at
    `ui_kits/sangam-web/index.html`, and say in the PR which design-system files changed.
 

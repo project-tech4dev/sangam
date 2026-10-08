@@ -15,12 +15,11 @@ Read `docs/DESIGN_SYSTEM.md` first; it has the mapping tables and the step-by-st
   one `<group>.card.html` per group (`dialog.card.html` is a second surfaces card). Every card
   and UI-kit page starts with a `<!-- @dsCard group="…" -->` line.
 - **Don't write `_ds_bundle.js`, `_ds_manifest.json`, `_adherence.oxlintrc.json` or
-  `_ds_sync.json`.** Claude Design is expected to compile the bundle from the `.jsx` sources when
-  the project is opened after `_ds_needs_recompile` is written — unconfirmed (see risks). If it
-  never does, the fallback is building `_ds_bundle.js` with esbuild the way the skill's
-  `lib/bundle.mjs` does, which needs a new upload plan that includes it. Upload order: sentinel, files, sentinel.
-- **Bundle global:** cards and UI-kit pages read the components from
-  `window.SangamDesignSystem…`. See "Re-sync risks" for the exact name.
+  `_ds_sync.json`.** Claude Design compiles the bundle from the `.jsx` sources (components and
+  UI-kit files) when the project is next opened after `_ds_needs_recompile` is written —
+  confirmed 8 Oct 2026. Nothing renders until someone opens it. Upload order: sentinel, files, sentinel.
+- **Bundle global:** `window.SangamDesignSystemV2_3b0e9a` (Claude Design derives it from the
+  project name and id). Every card and UI-kit page reads the components from it.
 - **Fonts:** `fonts/PublicSans-*.woff2` come from `@fontsource/public-sans` (npm), latin and
   latin-ext, 400/500/600/700 and 400 italic. The app itself loads Public Sans via `next/font`.
 - **Values come from the repo, not from rules of thumb:** read the repo component behind each
@@ -28,13 +27,8 @@ Read `docs/DESIGN_SYSTEM.md` first; it has the mapping tables and the step-by-st
 
 ## Re-sync risks
 
-- The bundle global name. The first v2 upload used a lookup by prefix
-  (`Object.keys(window).find((k) => k.startsWith("SangamDesignSystem"))`) because the bundle
-  had not been compiled yet; replace it with the exact name once `_ds_bundle.js` exists and
-  record the name here.
-- Bundle compilation was not verified at upload time: if a card shows old or missing
-  components, open the project once and re-check `_ds_bundle.js`'s `sourceHashes`.
-- No render check ran (the converter's `package-validate` only applies to its own layout).
-  Verification is opening the cards and `ui_kits/sangam-web/index.html`.
+- No render check runs (the converter's `package-validate` only applies to its own layout).
+  Verification is opening the project, then the cards you touched and
+  `ui_kits/sangam-web/index.html`.
 - Off-scale values that remain on purpose: `EntityMark` sizes its initials at `size × 0.34`;
   `tweaks-panel.jsx` is a Claude Design scaffold with its own literal sizes.
