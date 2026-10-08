@@ -121,7 +121,7 @@ async def _stamp(conn: Any, row_id: int, rec: OrgIdentifierRecord, *, checked_at
     if replace:
         sets += ["status = %s", "source_type = 'manual_check'", "evidence = %s", "evidence_document_id = %s",
                  "application_ref = coalesce(%s, application_ref)", "valid_from = NULL", "valid_until = NULL",
-                 "as_of = NULL", "source_url = %s", "source_name = %s", "fetched_at = %s"]
+                 "as_of = NULL", "document_id = NULL", "archive_url = NULL", "source_url = %s", "source_name = %s", "fetched_at = %s"]
         params += [rec.status, rec.evidence_tier, doc["id"] if doc else None, rec.application_ref,
                    rec.source_url, rec.source_name, rec.fetched_at]
     else:
@@ -194,12 +194,15 @@ async def record(
         conflicts: list[Conflict] = []
         replaced = ""
         stored = await _target(conn, target["id"], id_type, rec.id_value, lock=True)
-        # An equal-rank, unblocked row (or an untiered one) is decided here, so the writer never fills it.
+        # An equal-rank, unblocked row is decided here, so the writer never fills it. A numbered check leaves a
+        # person's row, and an open row dated after it, to the writer, which then keeps the number on its own row.
+        when = stored and stored["checked_at"]
+        newer = when is None or checked_at > when
         mine = (stored is not None and status != "applied" and stored["status"] != "check_blocked"
-                and (stored["source_type"] in _EQUAL or stored["source_type"] is None))
+                and (stored["source_type"] in _EQUAL or (stored["source_type"] is None and not rec.id_value))
+                and not (rec.id_value and stored["id_value"] is None and not newer))
         if mine:
-            equal, when = stored["source_type"] in _EQUAL, stored["checked_at"]
-            newer = when is None or checked_at > when
+            equal = stored["source_type"] in _EQUAL
             # A numbered check may take an undated open row only when that row names no live registration.
             fills_open = (rec.id_value is not None and stored["id_value"] is None and when is None
                           and stored["status"] in _OPEN_REPLACEABLE)
@@ -228,7 +231,7 @@ async def record(
                 await conn.execute(
                     "UPDATE org_identifiers SET notes = concat_ws(E'\\n', notes, %s::text), "
                     "application_ref = coalesce(application_ref, %s) WHERE id = %s",
-                    (line, rec.application_ref, stored["id"]),
+                    (line, rec.application_ref if stored["status"] == status else None, stored["id"]),
                 )
             row = stored
         else:
