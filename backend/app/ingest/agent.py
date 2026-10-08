@@ -18,7 +18,12 @@ from app.agent.middleware import clear_old_tool_results, staff_last_lock
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.research_records import PromotionReport, ResearchSummary
-from app.ingest.tools.catalog_tools import funder_dossier, promote_research, research_goals
+from app.ingest.tools.catalog_tools import (
+    funder_dossier,
+    promote_research,
+    record_registry_check,
+    research_goals,
+)
 from app.ingest.tools.pipeline_tools import (
     import_run_summary,
     list_import_sources,
@@ -93,9 +98,10 @@ def _backend() -> CompositeBackend:
         routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR)},
     )
 
-# The supervisor's own tools. It researches nothing and writes no catalog row:
-# both go through a subagent, so there is one path to a source and one path to
-# the catalog, each under the instructions written for it. Two paths to the
+# The supervisor's own tools. It researches nothing, and the only catalog row it
+# writes is a staff member's own registry check: research and promotion go through
+# a subagent, so there is one path to a source and one path from research to the
+# catalog, each under the instructions written for it. Two paths to the
 # same work is what CLAUDE.md killed with search_orgs, and these two had
 # already drifted — only the subagent runs under the researcher's budget,
 # entity-confirmation and money-unit rules.
@@ -114,9 +120,10 @@ TOOLS = [
     run_import_now,
     import_run_summary,
     pending_resolutions,
-    # catalog_tools — what Sangam already holds. Read-only; promote_research is
-    # the catalog-writer's.
+    # catalog_tools — what Sangam already holds; promote_research is the catalog-writer's.
     funder_dossier,
+    # A person's check, recorded on their word; the researcher reads untrusted pages, so not its.
+    record_registry_check,
     # save_research publishes the brief it saves; this is only for re-publishing.
     publish_brief,
 ]

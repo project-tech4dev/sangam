@@ -1,8 +1,7 @@
-"""What the catalog already holds, what it expects, and the step that writes to it.
+"""What the catalog already holds, what it expects, and the two steps that write to it.
 
-Read-only but for `promote_research`, which is the one tool here that changes a
-catalog row — and even that writes nothing of its own: it moves a saved
-`entity_research` finding through `app/ingest/promote.py`.
+Read-only but for `promote_research`, which moves saved research through `promote.py`, and
+`record_registry_check`, which records a staff member's own registry check through `manual_checks.py`.
 """
 
 from __future__ import annotations
@@ -13,7 +12,9 @@ from typing import Any
 from langchain_core.tools import tool
 
 from app.agent.tools.sql.catalog import CATALOG
+from app.core.security import chat_user_id
 from app.db.pool import get_pool
+from app.ingest import manual_checks
 from app.ingest.expectations import (
     CONCEPTS,
     concepts_for,
@@ -499,3 +500,52 @@ async def promote_research(slug: str = "") -> str:
     except Exception as exc:
         logger.exception("promote_research failed")
         return f"promote_research failed: {type(exc).__name__}: {exc}"
+
+
+@tool
+async def record_registry_check(
+    org: str,
+    id_type: str,
+    status: str,
+    source_url: str,
+    id_value: str = "",
+    application_ref: str = "",
+    evidence_document_id: int | None = None,
+    note: str = "",
+) -> str:
+    """Record a registry check a staff member made by hand. Staff only; it writes one catalog row.
+
+    Use it only when the staff member tells you what THEY saw on a registry Sangam cannot read
+    (a CAPTCHA, a sign-in or a network filter in the way). Never record a check from your own
+    reading or a researcher's: research is not a check. The checker is the signed-in staff member
+    of this conversation, never an argument.
+
+    The check is ranked like any other source: level with a registry read, above everything
+    else. A differing stored value of equal rank (a registry read, an earlier manual check, or a
+    row a person entered) is kept and reported as a conflict for a person to settle.
+    `check_blocked` never replaces a real status; the attempt is noted on the row.
+
+    Args:
+        org: the organisation's slug, its exact name, or its id from [org:N].
+        id_type: pan, 12a, 80g, fcra, csr1, darpan, cin or reg_no.
+        status: registered, provisional, expired, suspended, cancelled, surrendered (these need
+            the number), applied (needs the number or application_ref; applied is NOT registered),
+            not_available, not_found (the registry was read and does not list it), or
+            check_blocked (it could not be read even by hand; never not_found, never valid).
+        source_url: the http(s) address of the registry page that was checked.
+        id_value: the registration number. Omit to use the one number already on file.
+        application_ref: for 'applied', the acknowledgement number (e.g. Form 10AB).
+        evidence_document_id: the id of a document uploaded to THIS organisation's Doc Vault
+            showing what was seen (a screenshot, a certificate). With it the check is evidenced;
+            without it the check is stored as claimed, and the reply says so.
+        note: what was checked, where and how, in the staff member's words.
+    """
+    try:
+        return await manual_checks.record(
+            get_pool(), org=org, id_type=id_type, status=status, source_url=source_url, id_value=id_value,
+            application_ref=application_ref, document_id=evidence_document_id, note=note,
+            user_id=chat_user_id.get(),
+        )
+    except Exception as exc:
+        logger.exception("record_registry_check failed")
+        return f"record_registry_check failed: {type(exc).__name__}: {exc}"
