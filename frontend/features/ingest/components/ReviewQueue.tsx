@@ -16,7 +16,7 @@ export function ReviewQueue({ items }: { items: QueueItem[] }) {
             key={q.id}
             style={{
               border: "1px solid var(--color-divider)",
-              borderRadius: 8,
+              borderRadius: "var(--radius-surface)",
               padding: "10px 12px",
               fontSize: "var(--fs-sm)",
             }}

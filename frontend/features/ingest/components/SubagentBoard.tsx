@@ -129,7 +129,7 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
     <section
       style={{
         border: "1px solid var(--color-divider)",
-        borderRadius: 10,
+        borderRadius: "var(--radius-surface)",
         padding: "11px 13px",
         background: "var(--color-surface)",
       }}
@@ -159,7 +159,7 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
               style={{
                 border: "1px solid var(--color-divider)",
                 borderLeft: `3px solid ${TONE[o.state]}`,
-                borderRadius: 8,
+                borderRadius: "var(--radius-row)",
                 padding: isOpen ? "9px 11px" : "6px 11px",
               }}
             >

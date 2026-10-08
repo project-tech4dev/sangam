@@ -39,7 +39,7 @@ export function ResearchShelf({ items }: { items: ResearchRecord[] }) {
             style={{
               border: "1px solid var(--color-divider)",
               borderLeft: `3px solid ${TONE[r.status] ?? "var(--color-divider)"}`,
-              borderRadius: 8,
+              borderRadius: "var(--radius-surface)",
               padding: "9px 12px",
             }}
           >
@@ -55,7 +55,7 @@ export function ResearchShelf({ items }: { items: ResearchRecord[] }) {
                   fontSize: "var(--fs-xs)",
                   color: r.entity_kind === "unknown" ? "var(--color-muted)" : "inherit",
                   border: "1px solid var(--color-divider)",
-                  borderRadius: 999,
+                  borderRadius: "var(--radius-pill)",
                   padding: "0 7px",
                 }}
               >

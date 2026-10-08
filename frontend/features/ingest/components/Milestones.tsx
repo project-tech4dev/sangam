@@ -34,7 +34,7 @@ export function Milestones({ steps, running }: { steps: TraceStep[]; running: bo
       aria-label="What this run has done"
       style={{
         border: "1px solid var(--color-divider)",
-        borderRadius: 10,
+        borderRadius: "var(--radius-surface)",
         padding: "10px 13px",
         background: "var(--color-surface)",
         display: "grid",
@@ -77,7 +77,7 @@ export function Milestones({ steps, running }: { steps: TraceStep[]; running: bo
                       fontSize: "var(--fs-xs)",
                       color: "var(--color-muted)",
                       border: "1px solid var(--color-divider)",
-                      borderRadius: 999,
+                      borderRadius: "var(--radius-pill)",
                       padding: "1px 7px",
                     }}
                   >
