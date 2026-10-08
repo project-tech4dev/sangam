@@ -1,6 +1,6 @@
 """What the database expects, per research concept, derived from the SQL catalog.
 
-The catalog is already the schema as data — 36 tables with their columns, the
+The catalog is already the schema as data — 34 tables with their columns, the
 CHECK-constraint value lists and the gotchas — and `verify_against_db()` raises
 at boot when it drifts from the live schema. So a researcher's targets are
 derived from it rather than written down a second time and left to rot.
@@ -172,6 +172,10 @@ PROVENANCE = frozenset({
     "source_url", "source_name", "fetched_at", "as_of", "document_id",
     "archive_url", "content_hash", "extractor_version",
 })
+
+# The evidence tier: filled from a finding's own source and tier, never a target (`evidence` on a finding
+# is the quoted sentence).
+TIER = frozenset({"source_type", "evidence"})
 
 # doc_type values written only by their own path: the eligibility concept, the template path and the
 # staff-source upload. A `document` finding may not use them, and ensure_document keys them apart.
@@ -396,7 +400,7 @@ def expected_fields(concept: str) -> tuple[Expected, ...]:
         name = column.name
         if spec.columns is not None and name not in spec.columns:
             continue
-        if name == "id" or name in PROVENANCE or name in INTERNAL or column.heavy:
+        if name == "id" or name in PROVENANCE or name in TIER or name in INTERNAL or column.heavy:
             continue
         if name in OURS.get(concept, frozenset()):
             continue

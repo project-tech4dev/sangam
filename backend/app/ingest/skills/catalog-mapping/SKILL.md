@@ -42,7 +42,7 @@ correct, cited, and still not become the stored value. Say which.
 | 12A, 80G | `org_identifiers` (`id_type` 12a, 80g) |
 | CSR-1 and its number | `org_identifiers` (`id_type` csr1) |
 | PAN, DARPAN | `org_identifiers` (`id_type` pan, darpan) |
-| whether any of the above is current, cancelled, expired, suspended | `credential_events` — exists, holds the same credential enum, currently empty and **not yet writable by Import** |
+| whether any of the above is applied for, registered, expired, cancelled, suspended, or could not be checked | `org_identifiers.status` on the identifier's own row — `applied` (a Form 10AB acknowledgement, `application_ref`), `registered`, `expired`, `cancelled`, `suspended`, `not_found`, `check_blocked` (never means valid); **not yet writable by Import** |
 | three years of audited accounts | `org_financials.is_audited` per year, plus a `documents` row each |
 | registration type and date | `orgs.legal_form` (free text), `orgs.registration_date` |
 | the deed, MoA or bye-laws themselves | `documents` |
