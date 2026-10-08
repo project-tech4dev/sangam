@@ -44,6 +44,7 @@ Worktree off `origin/master`, branch `feat/import-storage-picker`, and this plan
      `documents_repo.upsert_source_dataset`. It returns `path → document id`. Only
      `staff-sources/<registry key>/….xlsx` is selectable; anything else is refused, not copied,
      because `org-vault` holds orgs' private files and copying them would change who can read them.
+     *(Superseded by both addenda below: any bucket, any folder.)*
      The downloaded bytes prime `read_rows`' cache, so a wave of researchers does not re-download.
 3. **`backend/app/ingest/agent.py`**: add LangChain's `HumanInTheLoopMiddleware` (from
    `langchain.agents.middleware`) to the supervisor:
@@ -122,9 +123,9 @@ Exit gate: the person picks the bucket, then the files; an `.xlsx` from a non-st
 read.
 - **The pause.** `list_bucket_files` joins `INTERRUPT_ON`, so `HumanInTheLoopMiddleware` pauses
   there. The person's bucket comes back as an `edit` of the `bucket` argument.
-- **Any bucket.** `check_pick`, `register` and `_workbook` accept any bucket. `staff-sources`
-  keeps its rule that the first folder is a registry key, and `picked_id` hashes the qualified
-  path.
+- **Any bucket.** `check_pick`, `register` and `_workbook` accept any bucket, and `picked_id`
+  hashes the qualified path. (`staff-sources` first kept its registry-key folder rule; the next
+  addendum drops it.)
 - **Frontend.** `BucketPicker` sits beside `SourcePicker`, and `PausedPick` routes on the action's
   name.
 
@@ -137,3 +138,17 @@ researcher per name.
   page of rows. It renders through `render`, so markers and redaction still apply.
 - **The supervisor.** It launches the reader, then a researcher per name with the same document
   ids.
+
+## Addendum, 2026-10-08: no folder rule
+
+Testing on staging, `staff-sources/CSRAnalytics-Report-FY-2014-2025.xlsx` was refused because it
+sits at the bucket root. The registry-key folder requirement was a hardcoded convention the
+upload script followed and a dashboard upload need not. The agent then guessed folder names.
+
+- **What changed.** `check_pick` accepts any `.xlsx` at any depth, in any bucket.
+- **What a folder still does.** A first folder named for a registry key (e.g. `mca_csr/`) still
+  sets the dataset's `source_name`, which selects the unit in `SOURCE_UNITS` (crore for
+  `mca_csr`). For any other file, `source_name` is the bucket.
+- **The cost.** A file with no registry-key folder gets no default unit. Its amounts promote only
+  when the cell states a unit, or when no unit can be checked against.
+- **Exit gate.** The root-level CSR workbook is picked, registered and read by `workbook-reader`.
