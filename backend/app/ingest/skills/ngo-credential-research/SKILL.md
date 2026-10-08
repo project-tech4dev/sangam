@@ -52,8 +52,10 @@ comparison table.
    holds the fact, and cite the dataset's `source_url` without fetching it. The profile sheet is
    the CSO's own account, so every value from it is `claimed`; a registration number there is a
    lead to the certificate, not the certificate. The funder sheets give its funders by year.
-5. **Earlier research and aggregators, as leads only.** Where the source registry lets one be
-   read, every value is `claimed` (`prior_research` or `aggregator`), and none replaces the CSO's
+5. **Earlier research and aggregators, as leads only.** The team's earlier research (the
+   org-grant-intelligence dossier, read first as a map of leads, its cited links then re-read) and
+   the registered aggregators (Give.do, GuideStar India) are readable on their named paths only.
+   Every value is `claimed` (`prior_research` or `aggregator`), and none replaces the CSO's
    own document. An aggregator listing a registration the CSO's files show only as an application
    is a conflict to report, not a registration.
 

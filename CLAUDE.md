@@ -136,7 +136,7 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
 ```
 backend/app/
   main.py          create_app() + `app = create_app()` — the ASGI entrypoint, wiring only
-  core/            config.py (Settings) · security.py (auth stub) · lifespan.py · logging.py
+  core/            config.py (Settings) · security.py (auth stub) · lifespan.py · logging.py · egress.py
   db/              pool.py (PoolDep) · checkpointer.py (LangGraph) · migrate.py (runner)
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
@@ -281,6 +281,9 @@ dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. 
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
 that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. There are 34 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
+
+**Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
+private, loopback and metadata addresses on every redirect hop.
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:

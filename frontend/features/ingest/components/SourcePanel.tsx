@@ -14,6 +14,8 @@ const RULE_TEXT: Record<string, string> = {
   partner_permission_internal: "Partner data",
   reference_only: "Reference only",
   not_checked: "Not checked",
+  manual_aggregator: "Aggregator, named paths",
+  internal_research: "Team research, pinned",
 };
 
 const CATEGORIES = ["all", "funder", "ngo", "rfp", "media"] as const;
