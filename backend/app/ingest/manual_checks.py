@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from typing import Any
 from uuid import UUID
 
@@ -15,7 +15,9 @@ from app.ingest.writer import write_org_identifier
 ID_TYPES: tuple[str, ...] = ("pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no")
 NOTE_MAX = 500
 _ORG_ID = re.compile(r"\[?org:(\d+)\]?|(\d+)")
-_ROW = "SELECT id, org_id, id_value, status, source_type, evidence FROM org_identifiers WHERE "
+_ROW = "SELECT id, org_id, id_value, status, source_type, evidence, checked_at FROM org_identifiers WHERE "
+# A dated check of equal rank supersedes an older one: registrations lapse.
+_DATED = frozenset({"registry", "manual_check"})
 
 
 def refusal(*, id_type: str, status: str, source_url: str, note: str, user_id: UUID | None) -> str | None:
@@ -69,7 +71,8 @@ async def _target(conn: Any, org_id: int, id_type: str, id_value: str | None) ->
 
 async def record(
     pool: Any, *, org: str, id_type: str, status: str, source_url: str, id_value: str = "",
-    application_ref: str = "", document_id: int | None = None, note: str = "", user_id: UUID | None,
+    application_ref: str = "", document_id: int | None = None, note: str = "", checked_on: str = "",
+    user_id: UUID | None,
 ) -> str:
     note = " ".join((note or "").split())
     id_type, status = (id_type or "").strip().lower(), (status or "").strip().lower()
@@ -77,6 +80,14 @@ async def record(
     why = refusal(id_type=id_type, status=status, source_url=source_url, note=note, user_id=user_id)
     if why:
         return why
+    now = datetime.now(UTC)
+    try:
+        checked_at = datetime.combine(date.fromisoformat(checked_on.strip()), time(12), UTC) if (
+            checked_on or "").strip() else now
+    except ValueError:
+        return f"REFUSED: checked_on must be a date like 2026-10-08, not {checked_on!r}. Nothing was written."
+    if checked_at > now:
+        return "REFUSED: checked_on is in the future. Nothing was written."
     async with pool.connection() as conn, conn.transaction():
         staff = await (await conn.execute("SELECT is_staff FROM users WHERE id = %s", (user_id,))).fetchone()
         if not (staff and staff["is_staff"]):
@@ -123,18 +134,31 @@ async def record(
         outcome, changes, conflicts = await write_org_identifier(conn, rec, target["id"], None)
         row = None if outcome == "held" else await _target(conn, target["id"], id_type, rec.id_value)
         took = row is not None and (outcome == "added" or "source_type" in changes)
+        replaced = None
+        if (outcome == "matched" and conflicts and row is not None and status not in ("check_blocked", "applied")
+                and row["source_type"] in _DATED and row["checked_at"] is not None
+                and checked_at > row["checked_at"]):
+            # Equal rank, newer check: it takes the row; validity dates belonged to the old status.
+            replaced = (row["status"], row["source_type"], row["checked_at"])
+            await conn.execute(
+                "UPDATE org_identifiers SET status = %s, source_type = 'manual_check', "
+                "application_ref = coalesce(%s, application_ref), valid_from = NULL, valid_until = NULL, "
+                "source_url = %s, source_name = %s, fetched_at = %s WHERE id = %s",
+                (status, rec.application_ref, rec.source_url, rec.source_name, rec.fetched_at, row["id"]),
+            )
+            conflicts, took = [], True
         # Same source, same status: a document now evidences what an earlier check only claimed.
         upgrade = (outcome == "matched" and not conflicts and doc is not None and row is not None
                    and row["source_type"] == "manual_check" and row["evidence"] == "claimed"
                    and row["status"] == status)
-        line = f"manual check {datetime.now(UTC):%Y-%m-%d}: {status}" + (f" — {note}" if note else "")
+        line = f"manual check {checked_at:%Y-%m-%d}: {status}" + (f" — {note}" if note else "")
         if row is not None:
             if took or upgrade:
                 await conn.execute(
-                    "UPDATE org_identifiers SET checked_at = now(), checked_by = %s, "
+                    "UPDATE org_identifiers SET checked_at = %s, checked_by = %s, "
                     "check_method = 'manual_check', evidence_document_id = %s, evidence = %s, "
                     "notes = concat_ws(E'\\n', notes, %s::text) WHERE id = %s",
-                    (user_id, doc["id"] if doc else None, rec.evidence_tier, line, row["id"]),
+                    (checked_at, user_id, doc["id"] if doc else None, rec.evidence_tier, line, row["id"]),
                 )
             else:
                 # The attempt is kept on the row; its status, tier and checker stay as they were.
@@ -154,6 +178,9 @@ async def record(
                 "uploaded to the Doc Vault and the check recorded again with it")
         head = (f"Recorded a manual check for {cite}: {id_type} ({number}) is {status}, {tier}. "
                 f"Identifier row {row['id']}.")
+        if replaced:
+            head += (f" It replaces the earlier {replaced[0]!r} ({replaced[1]}, checked "
+                     f"{replaced[2]:%Y-%m-%d}): a newer check of equal rank supersedes it.")
     else:
         kept = f"{final['status']} from {final['source_type'] or 'a person (unranked)'}" if final else "unchanged"
         head = (f"The manual check for {cite} did not change the stored {id_type} ({number}): it stays "

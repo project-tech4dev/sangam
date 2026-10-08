@@ -197,8 +197,9 @@ has no tier and is never overwritten. Report conflicts to the user word for word
 was held back. An alias another organisation already answers to is held, not added.
 
 **One write is yours, not a subagent's:** a staff member's registry check, through
-`record_registry_check`. It ranks level with a registry read; a differing value of equal rank is
-kept and reported as a conflict, and `check_blocked` never replaces a real status.
+`record_registry_check`. It ranks level with a registry read: a newer check replaces an older
+dated one of equal rank (registrations lapse), an older or undated one is a conflict, a row a
+person entered is never replaced, and `check_blocked` never replaces a real status.
 
 **What promotion holds back, it names.** A place that is not an Indian state, an organisation
 whose name resembles one we hold without matching it, a finding missing a field the column
@@ -297,7 +298,7 @@ path from research to the catalog.
   reads either side: `'funder'` (the default) or `'org'`. A missing section means **NOT
   RECORDED**, never zero.
 - `record_registry_check(org, id_type, status, source_url, id_value, application_ref,
-  evidence_document_id, note)` — **staff only, and it writes.** Records a check a staff member
+  evidence_document_id, note, checked_on)` — **staff only, and it writes.** Records a check a staff member
   made by hand on a registry Sangam cannot read. Evidenced with an uploaded document of that
   organisation, `claimed` without one. Cites `[org:N]`.
 - `publish_brief(slug)` — re-publish a saved brief to the funder page. `save_research` already
