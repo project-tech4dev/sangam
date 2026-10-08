@@ -58,7 +58,7 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
         gap: 10,
         padding: "9px 13px",
         border: "1px solid var(--color-divider)",
-        borderRadius: 999,
+        borderRadius: "var(--radius-pill)",
         background: "var(--color-surface)",
         fontSize: "var(--fs-sm)",
       }}
