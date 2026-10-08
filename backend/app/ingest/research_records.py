@@ -31,6 +31,7 @@ from app.ingest.records import (
     ImplementationMode,
     check_registration,
     check_tier,
+    http_url,
     normalise_cin,
 )
 from app.ingest.taxonomy import DOMAINS, NO_THEMES
@@ -596,6 +597,8 @@ class OrgIdentityFinding(FindingBase, Sourced):
         description="what was counted and where, e.g. '20+ full-time professionals (team page)'. A different "
                     "count from another page is its own finding",
     )
+
+    _site = field_validator("website")(lambda v: http_url(v))
 
 
 class OrgIdentifierFinding(FindingBase, Sourced):

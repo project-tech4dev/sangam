@@ -21,6 +21,17 @@ const TONE_COLOR = {
   bad: "var(--color-bad)", none: "var(--color-neutral-400)",
 } as const;
 
+/* orgs.website comes from web research: only an http(s) URL becomes a link. */
+function safeHref(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function fmtDate(value: string | null): string | null {
   if (!value) return null;
   return new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -86,9 +97,11 @@ export function OrgProfileTabs({
             kicker="Identity"
             title={org.website ? org.website.replace(/^https?:\/\/(www\.)?/, "") : "No website on record"}
           >
-            {org.website && (
-              <a href={org.website} target="_blank" rel="noreferrer" className="card-body">{org.website}</a>
-            )}
+            {org.website && (safeHref(org.website) ? (
+              <a href={safeHref(org.website)!} target="_blank" rel="noopener noreferrer" className="card-body">{org.website}</a>
+            ) : (
+              <div className="card-body">{org.website}</div>
+            ))}
             {org.description && <div className="card-body">{org.description}</div>}
             {org.aliases.length > 0 && (
               <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>Also known as: {org.aliases.join(" · ")}</div>

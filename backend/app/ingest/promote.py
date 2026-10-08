@@ -237,6 +237,11 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
         return None
 
 
+def _http_only(url: str | None) -> str | None:
+    """The research envelope's website, only when it is http(s); anything else must not refuse the org."""
+    return url if url and url.strip().lower().startswith(("http://", "https://")) else None
+
+
 def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord | None:
     """One org record, the same shape as funder_from; the anchor finding's tier ranks the write."""
     identity = next((f for f in findings if f["concept"] == "org_identity"), None)
@@ -251,7 +256,7 @@ def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord |
             org_kind=ident.get("org_kind"),
             legal_form=ident.get("legal_form"),
             registration_date=ident.get("registration_date"),
-            website=ident.get("website") or row.get("website"),
+            website=ident.get("website") or _http_only(row.get("website")),
             description=ident.get("description"),
             aliases=ident.get("aliases") or [],
             staff_count=ident.get("staff_count"),

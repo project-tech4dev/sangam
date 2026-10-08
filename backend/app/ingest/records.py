@@ -56,6 +56,16 @@ def check_registration(id_value: str | None, application_ref: str | None, status
         raise ValueError("an application needs its number or its acknowledgement (application_ref)")
 
 
+def http_url(v: str | None) -> str | None:
+    """A website is rendered as a link, so anything but an http(s) URL (javascript:, data:) is refused."""
+    if v is None or not v.strip():
+        return None
+    v = v.strip()
+    if not re.match(r"https?://[^\s/]", v, re.IGNORECASE):
+        raise ValueError(f"website must be an http(s) URL, got {v!r}")
+    return v
+
+
 def distinct_names(v: list[str]) -> list[str]:
     """Each spelling once, case-insensitively, in the order found; blanks dropped."""
     out: list[str] = []
@@ -496,6 +506,7 @@ class OrgRecord(Provenance, Tiered):
     evidence_tier: EvidenceTier
 
     _names = field_validator("aliases")(lambda v: distinct_names(v))
+    _site = field_validator("website")(lambda v: http_url(v))
 
     @field_validator("name")
     @classmethod
