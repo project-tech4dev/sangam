@@ -198,8 +198,10 @@ was held back. An alias another organisation already answers to is held, not add
 
 **One write is yours, not a subagent's:** a staff member's registry check, through
 `record_registry_check`. It ranks level with a registry read: a newer check replaces an older
-dated one of equal rank (registrations lapse), an older or undated one is a conflict, a row a
-person entered is never replaced, and `check_blocked` never replaces a real status.
+dated one of equal rank (registrations lapse), an older one is a conflict, an agreeing check
+confirms even an undated row, a numbered check takes an undated open `applied`, `provisional`
+or `not_found` row, a row a person entered is never replaced, and `check_blocked` never
+replaces a real status.
 
 **What promotion holds back, it names.** A place that is not an Indian state, an organisation
 whose name resembles one we hold without matching it, a finding missing a field the column

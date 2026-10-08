@@ -343,8 +343,8 @@ class TestIngestAgentIsSelfDescribing:
 
         # A subagent's tools are registered too — reachable through `task`,
         # not on the main agent. Both subagents count: the parent researches
-        # nothing and writes nothing, so save_research reaches the model only
-        # through the researcher and promote_research only through the writer.
+        # nothing and writes only record_registry_check, so save_research reaches
+        # the model only through the researcher and promote_research only through the writer.
         from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER
 
         registered = (
