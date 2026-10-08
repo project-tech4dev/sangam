@@ -274,6 +274,8 @@ _TABLES: tuple[Table, ...] = (
             "A 'partner' line is a named relationship. Only when its amount is set does it say money changed hands: the amount (INR) is what the source, usually the recipient's own record, says the partner received from this funder - in that fiscal_year, or, when start_date and end_date span more than one fiscal year, over the whole grant. A partner line with no amount is not evidence of a grant.",
             "A multi-year grant is ONE partner line: the whole grant amount sits on the fiscal_year it started, with start_date and end_date set. Never read it as that year's spend and never divide it across years yourself; say it is a multi-year total.",
             "There is no grants table: grants moved here in 0034 as 'partner' lines with partner_org_id set. Their notes end 'Moved from grants #N by 0034.', which is how a citation of an old grant number is traced.",
+            "Partner lines carry no evidence tier column: a line an organisation's own research added says its source type and tier in notes ('From the organisation's research: <source_type>, <tier>.'); a funder's own filing or report says nothing there.",
+            "A partner line whose notes say 'fiscal_year is the year the source was read' (or 'the year the row was recorded') had no stated date: it is NOT dated to that fiscal year, so never count it as that year's grant.",
             "Rows with is_public = false are internal: this tool runs as the owner, so row security does not hide them here. Add WHERE is_public to any answer that may be shown publicly, and when an internal row is shown, say it is internal and must not be shown publicly.",
         ),
     ),

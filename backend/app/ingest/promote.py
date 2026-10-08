@@ -227,7 +227,10 @@ def _legacy_grants(findings: list[dict[str, Any]], report: dict[str, Any]) -> li
             "partner_name": f.get("recipient_name"), "project_name": f.get("title"),
             "relationship_status": f.get("status"), "amount": f.get("amount"),
             "start_date": f.get("start_date"), "end_date": f.get("end_date"),
-            "program_name": f.get("program_name"), "notes": f.get("notes"),
+            "program_name": f.get("program_name"),
+            "notes": "\n".join(n for n in (f.get("notes"), None if f.get("start_date") else
+                                "fiscal_year is the year of the end date; the start date was not stated.") if n)
+            or None,
             **{k: f[k] for k in ("evidence", "source_url", "source_name", "confidence", "basis") if k in f},
         })
     return out
@@ -713,7 +716,8 @@ async def _write_facts(
                     )
                     status, _ = await write_partner(
                         conn, rec, line_funder, program_id=line_program, document_id=document_id,
-                        partner_org_id=partner_org_id,
+                        partner_org_id=partner_org_id, fill_only=owner.column == "org_id",
+                        conflicts=conflicts,
                     )
                     _count(report, "funder_activity (partner)", status)
 

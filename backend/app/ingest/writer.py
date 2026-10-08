@@ -492,12 +492,24 @@ async def write_funder_location(
     )
 
 
+# What an organisation's research may not change on a funder's line; a difference is a conflict.
+PARTNER_GUARDED = ("amount", "start_date", "end_date", "relationship_status", "source_url")
+
+
+def _appended(stored: str | None, incoming: str | None) -> str | None:
+    """Notes only grow: incoming lines not already stored go after the stored ones."""
+    fresh = [ln for ln in (incoming or "").splitlines() if ln.strip() and ln.strip() not in (stored or "")]
+    if not fresh:
+        return None
+    return "\n".join([stored, *fresh]) if stored else "\n".join(fresh)
+
+
 async def write_partner(
     conn: Any, rec: Any, funder_id: int, *, program_id: int | None, document_id: int | None,
-    partner_org_id: int | None = None,
+    partner_org_id: int | None = None, fill_only: bool = False, conflicts: list[Conflict] | None = None,
 ) -> tuple[str, dict]:
     """One partner line; a grant is one, so two projects with one partner in a year are two lines.
-    partner_org_id comes only from a merging match, and a proposed NULL never erases a stored link."""
+    fill_only (an organisation's research) fills blanks and reports a differing value as a conflict."""
     key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
                         project_name=rec.project_name, partner_name=rec.partner_name)
     proposed = {
@@ -508,6 +520,20 @@ async def write_partner(
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
+    where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
+    stored = await (
+        await conn.execute(f"SELECT id, {', '.join(proposed)} FROM funder_activity WHERE {where}",
+                           tuple(key.values()))
+    ).fetchone()
+    if stored:
+        proposed["notes"] = _appended(stored["notes"], rec.notes)
+        for c in (c for c in proposed if fill_only and c != "notes" and stored[c] is not None):
+            if c in PARTNER_GUARDED and _diff({c: stored[c]}, {c: proposed[c]}):
+                _sink(conflicts, [Conflict(
+                    "funder_activity", f"[activity:{stored['id']}] partner {rec.partner_name!r} {rec.fiscal_year}",
+                    c, _plain(stored[c]), None, stored["source_url"], _plain(proposed[c]),
+                    getattr(rec, "source_type", None) or "unranked", rec.source_url)])
+            proposed[c] = None
     return await _write_activity(conn, key, proposed, document_id)
 
 
