@@ -515,6 +515,7 @@ _TABLES: tuple[Table, ...] = (
             Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
             Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
             Column("archive_url", "text"),
+            Column("foreign_unspent", "numeric", note="INR: foreign contribution left unutilised at year end, from the FCRA return"),
             *_TIER,
         ),
         defects=(
@@ -607,6 +608,11 @@ _TABLES: tuple[Table, ...] = (
             Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
             Column("archive_url", "text"),
             Column("registry_status", "text", note="'hidden' rows are staff-only; 'placeholder' is a stub, not a profile", values=('placeholder', 'in_vetting', 'full_profile', 'hidden')),
+            Column("website", "text", note="the organisation's own site"),
+            Column("description", "text", note="a few sentences in the organisation's own words; claimed unless a document states it"),
+            Column("aliases", "text[]", note="every other spelling a source used: short names, filings, directories. Match names against these too"),
+            Column("staff_count", "integer", note="people employed, as the source states; staff_count_note says what was counted and where"),
+            Column("staff_count_note", "text", note="e.g. '20+ full-time professionals (team page)'. Differing counts across sources are reported as conflicts, not averaged"),
             *_TIER,
         ),
         defects=(

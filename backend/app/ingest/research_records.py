@@ -22,7 +22,15 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.ingest.expectations import CONCEPTS as _REGISTRY
 from app.ingest.expectations import RESERVED_DOC_TYPES
-from app.ingest.records import CIN_FORMAT, ClassifiedBy, ImplementationMode, normalise_cin
+from app.ingest.records import (
+    CIN_FORMAT,
+    ClassifiedBy,
+    EvidenceTier,
+    FindingSourceType,
+    ImplementationMode,
+    check_tier,
+    normalise_cin,
+)
 from app.ingest.taxonomy import DOMAINS, NO_THEMES
 
 # The vocabulary is the registry's, in its order. A `Concept = Literal[...]`
@@ -112,6 +120,46 @@ class FindingBase(BaseModel):
         if not v.startswith(("http://", "https://")):
             raise ValueError(f"source_url must be an http(s) URL, got {v!r}")
         return v
+
+
+_SOURCE_TYPE_HELP = (
+    "the KIND of source: registry (a government registry page read directly) · org_document (the "
+    "organisation's own document or site) · funder (a funder's page or CSR filing naming it) · "
+    "staff_dataset (a staff-uploaded sheet) · prior_research (the team's earlier dossier, not yet re-read "
+    "at its source) · aggregator (a third-party NGO directory or listing)"
+)
+_EVIDENCE_TIER_HELP = (
+    "'evidenced' only when the document itself states the fact: a certificate, an audited statement, a "
+    "dated return. A sentence on a web page is 'claimed'. aggregator and prior_research are always 'claimed'"
+)
+
+
+class Sourced(BaseModel):
+    """What kind of source an organisation's finding came from (C7); the writer ranks on it."""
+
+    source_type: FindingSourceType = Field(description=_SOURCE_TYPE_HELP)
+    evidence_tier: EvidenceTier = Field(description=_EVIDENCE_TIER_HELP)
+
+    @model_validator(mode="after")
+    def _tier(self) -> Sourced:
+        check_tier(self.source_type, self.evidence_tier)
+        return self
+
+
+class OptionallySourced(BaseModel):
+    """The same pair on a concept both kinds share: a funder's has none, an organisation's needs both."""
+
+    source_type: FindingSourceType | None = Field(
+        default=None, description="REQUIRED for an organisation. " + _SOURCE_TYPE_HELP
+    )
+    evidence_tier: EvidenceTier | None = Field(
+        default=None, description="REQUIRED for an organisation. " + _EVIDENCE_TIER_HELP
+    )
+
+    @model_validator(mode="after")
+    def _tier(self) -> OptionallySourced:
+        check_tier(self.source_type, self.evidence_tier)
+        return self
 
 
 class YearlyFinding(FindingBase):
@@ -327,7 +375,7 @@ class ProgrammeSpendFinding(YearlyFinding):
         return self
 
 
-class ProgramFinding(FindingBase):
+class ProgramFinding(FindingBase, OptionallySourced):
     concept: Literal["program"] = "program"
     name: str = Field(min_length=2)
     kind: Literal["theme", "programme", "phase", "project"] = "programme"
@@ -356,7 +404,7 @@ class GrantFinding(FindingBase):
     notes: str | None = None
 
 
-class MetricFinding(FindingBase):
+class MetricFinding(FindingBase, OptionallySourced):
     concept: Literal["metric"] = "metric"
     name: str = Field(min_length=2)
     value: float | None = None
@@ -391,7 +439,7 @@ class MetricFinding(FindingBase):
         return self
 
 
-class ContactFinding(FindingBase):
+class ContactFinding(FindingBase, OptionallySourced):
     """Publicly disclosed CSR roles only. No private personal data."""
 
     concept: Literal["contact"] = "contact"
@@ -521,8 +569,8 @@ class RfpFinding(FindingBase):
 # gets reintroduced on a new surface.
 
 
-class OrgIdentityFinding(FindingBase):
-    """An NGO, not a funder. orgs has no website column; EntityResearch carries it."""
+class OrgIdentityFinding(FindingBase, Sourced):
+    """An NGO, not a funder."""
 
     concept: Literal["org_identity"] = "org_identity"
     name: str = Field(min_length=2, description="the legal name as the strongest source writes it")
@@ -531,9 +579,24 @@ class OrgIdentityFinding(FindingBase):
         default=None, description="free text as printed, e.g. 'Public Charitable Trust'"
     )
     registration_date: date | None = None
+    website: str | None = Field(default=None, description="the organisation's own site")
+    description: str | None = Field(default=None, description="a few sentences in its own words")
+    aliases: list[str] = Field(
+        default_factory=list,
+        description="every other spelling a source used: short names, filings, directories. Never another "
+                    "organisation's name",
+    )
+    staff_count: int | None = Field(
+        default=None, ge=0, description="as the source states; '20+' is 20, with the wording in staff_count_note"
+    )
+    staff_count_note: str | None = Field(
+        default=None,
+        description="what was counted and where, e.g. '20+ full-time professionals (team page)'. A different "
+                    "count from another page is its own finding",
+    )
 
 
-class OrgIdentifierFinding(FindingBase):
+class OrgIdentifierFinding(FindingBase, Sourced):
     """12A, 80G and FCRA live here and nowhere else — a funder keeps only a CIN."""
 
     concept: Literal["org_identifier"] = "org_identifier"
@@ -542,7 +605,7 @@ class OrgIdentifierFinding(FindingBase):
     notes: str | None = None
 
 
-class OrgFinancialsFinding(YearlyFinding):
+class OrgFinancialsFinding(YearlyFinding, Sourced):
     concept: Literal["org_financials"] = "org_financials"
     total_income: Money | None = None
     program_spend: Money | None = Field(
@@ -552,11 +615,14 @@ class OrgFinancialsFinding(YearlyFinding):
     foreign_contribution: Money | None = Field(
         default=None, description="FCRA receipts for the year, when the return states them"
     )
+    foreign_unspent: Money | None = Field(
+        default=None, description="foreign contribution unutilised at year end, from the FCRA return"
+    )
     is_audited: bool | None = Field(default=None, description="null means unknown, not false")
     notes: str | None = None
 
 
-class OrgLocationFinding(PlacedFinding):
+class OrgLocationFinding(PlacedFinding, Sourced):
     """Where an NGO works. role='registered' is its registered address."""
 
     concept: Literal["org_location"] = "org_location"
@@ -703,6 +769,11 @@ class PromotionReport(BaseModel):
     rows_written: int
     held_back: list[str] = Field(
         default_factory=list, description="verbatim reasons, each a decision for a person"
+    )
+    conflicts: list[str] = Field(
+        default_factory=list,
+        description="a source that disagrees with a stored value: both values and both sources, verbatim. "
+                    "The stored value was kept",
     )
     still_research: list[str] = Field(
         default_factory=list, description="concepts that stayed research, e.g. ['grant']"

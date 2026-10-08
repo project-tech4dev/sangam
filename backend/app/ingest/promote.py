@@ -47,6 +47,7 @@ from app.ingest.records import (
 from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
 from app.ingest.taxonomy import resolve_classification, resolve_csr_sector
 from app.ingest.writer import (
+    Conflict,
     Owner,
     cin_holder,
     ensure_document,
@@ -143,6 +144,17 @@ def _provenance(finding: dict[str, Any] | Any, fetched: datetime) -> dict[str, A
     }
 
 
+def _untiered(owner: Owner, f: Any, what: str, report: dict[str, Any]) -> bool:
+    """An organisation's programme, metric or contact needs its tier; a funder's has none."""
+    if owner.column != "org_id" or (getattr(f, "source_type", None) and getattr(f, "evidence_tier", None)):
+        return False
+    report["held"].append(
+        f"{what}: an organisation's finding needs source_type and evidence_tier. It stays on the research "
+        f"row; re-research it to promote it."
+    )
+    return True
+
+
 def _validated(
     findings: list[dict[str, Any]], concept: str, report: dict[str, Any] | None = None
 ) -> list[Any]:
@@ -224,23 +236,27 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
 
 
 def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord | None:
-    """One org record, the same shape as funder_from on the other kind.
-
-    The website is deliberately absent: orgs has no column for one, and
-    _hold_unstorable reports it rather than letting it disappear here.
-    """
+    """One org record, the same shape as funder_from; the anchor finding's tier ranks the write."""
     identity = next((f for f in findings if f["concept"] == "org_identity"), None)
     identifiers = [f for f in findings if f["concept"] == "org_identifier"]
     anchor = identity or (identifiers[0] if identifiers else None)
     if anchor is None:
         return None
+    ident = identity or {}
     try:
         return OrgRecord(
-            name=(identity or {}).get("name") or row["canonical_name"] or row["entity_name"],
-            org_kind=(identity or {}).get("org_kind"),
-            legal_form=(identity or {}).get("legal_form"),
-            registration_date=(identity or {}).get("registration_date"),
+            name=ident.get("name") or row["canonical_name"] or row["entity_name"],
+            org_kind=ident.get("org_kind"),
+            legal_form=ident.get("legal_form"),
+            registration_date=ident.get("registration_date"),
+            website=ident.get("website") or row.get("website"),
+            description=ident.get("description"),
+            aliases=ident.get("aliases") or [],
+            staff_count=ident.get("staff_count"),
+            staff_count_note=ident.get("staff_count_note"),
             identifiers={f["id_type"]: f["id_value"] for f in identifiers},
+            source_type=anchor.get("source_type"),
+            evidence_tier=anchor.get("evidence_tier"),
             as_of=None,
             **_provenance(anchor, row["researched_at"]),
         )
@@ -397,12 +413,16 @@ async def _write_programs(
     # A theme has to exist before a phase can point at it, so shallowest first.
     depth = {"theme": 0, "programme": 1, "phase": 2, "project": 3}
     ids: dict[str, int] = {}
+    conflicts: list[Conflict] = []
     for f in sorted(_validated(findings, "program", report), key=lambda f: depth.get(f.kind, 9)):
+        if _untiered(owner, f, f"programme {f.name!r}", report):
+            continue
         try:
             rec = ProgramRecord(
                 entity_name=row["canonical_name"] or row["entity_name"], name=f.name,
                 program_kind=f.kind, description=f.description, status=f.status,
                 start_date=f.start_date, end_date=f.end_date, is_enabler=f.is_enabler,
+                source_type=f.source_type, evidence_tier=f.evidence_tier,
                 as_of=None, **_provenance(f, row["researched_at"]),
             )
         except ValidationError as exc:
@@ -410,10 +430,11 @@ async def _write_programs(
             continue
         status, program_id, _ = await write_program(
             conn, rec, owner, parent_id=ids.get(f.parent_name or ""),
-            document_id=docs.get(f.source_url),
+            document_id=docs.get(f.source_url), conflicts=conflicts,
         )
         ids[f.name] = program_id
         _count(report, "programs", status)
+    report["conflicts"].extend(c.describe() for c in conflicts)
     return ids
 
 
@@ -497,6 +518,7 @@ async def _write_facts(
     fetched = row["researched_at"]
     seen: set[tuple] = set()
     themes: dict[int, str] = {}
+    conflicts: list[Conflict] = []
 
     for concept in order:
         for f in _validated(findings, concept, report):
@@ -528,6 +550,8 @@ async def _write_facts(
                 )
                 continue
             seen.add(identity)
+            if concept in ("metric", "contact") and _untiered(owner, f, f"{concept} {_describe(concept, f)}", report):
+                continue
             try:
                 if concept == "csr_spend":
                     domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
@@ -629,11 +653,13 @@ async def _write_facts(
                         period=f.period, stage=f.stage, method=f.method,
                         is_self_reported=f.is_self_reported, baseline=f.baseline,
                         comparison_value=f.comparison_value, chain_key=f.chain_key,
-                        sequence=f.sequence, notes=f.notes, as_of=f.period, **shared,
+                        sequence=f.sequence, notes=f.notes, as_of=f.period,
+                        source_type=f.source_type, evidence_tier=f.evidence_tier, **shared,
                     )
                     status, _ = await write_metric(
                         conn, rec, owner, program_id=program_id,
                         location_id=district_id or state_id, document_id=document_id,
+                        conflicts=conflicts,
                     )
                     _count(report, "metrics", status)
 
@@ -672,11 +698,14 @@ async def _write_facts(
                         foreign_contribution=(
                             f.foreign_contribution.inr if f.foreign_contribution else None
                         ),
-                        is_audited=f.is_audited, notes=f.notes, as_of=f.fiscal_year, **shared,
+                        foreign_unspent=f.foreign_unspent.inr if f.foreign_unspent else None,
+                        is_audited=f.is_audited, notes=f.notes, as_of=f.fiscal_year,
+                        source_type=f.source_type, evidence_tier=f.evidence_tier, **shared,
                     )
-                    status, _ = await write_org_financials(
+                    status, _, found = await write_org_financials(
                         conn, rec, owner.id, document_id
                     )
+                    conflicts.extend(found)
                     _count(report, "org_financials", status)
 
                 elif concept == "org_location":
@@ -685,11 +714,12 @@ async def _write_facts(
                         continue
                     rec = OrgLocationRecord(
                         state=f.state, district=f.district, role=f.role, note=f.note,
-                        as_of=None, **shared,
+                        source_type=f.source_type, evidence_tier=f.evidence_tier, as_of=None, **shared,
                     )
-                    status, _ = await write_org_location(
+                    status, _, found = await write_org_location(
                         conn, rec, owner.id, location_id=location_id, document_id=document_id
                     )
+                    conflicts.extend(found)
                     _count(report, "org_locations", status)
                     # A registered address is this concept with role='registered',
                     # not a second field on org_identity — so the column that
@@ -700,15 +730,17 @@ async def _write_facts(
                 elif concept == "contact":
                     rec = ContactRecord(
                         name=f.name, contact_kind=f.kind, role=f.role, email=f.email,
-                        is_role_mailbox=f.is_role_mailbox, notes=f.notes, as_of=None, **shared,
+                        is_role_mailbox=f.is_role_mailbox, notes=f.notes, as_of=None,
+                        source_type=f.source_type, evidence_tier=f.evidence_tier, **shared,
                     )
                     status, _ = await write_contact(
-                        conn, rec, owner, document_id=document_id
+                        conn, rec, owner, document_id=document_id, conflicts=conflicts
                     )
                     _count(report, "contacts", status)
 
             except ValidationError as exc:
                 report["held"].append(f"{concept}: {exc.errors()[0]['msg']}")
+    report["conflicts"].extend(c.describe() for c in conflicts)
 
     # Every Schedule VII clause this funder's spending touched, recorded once
     # against the funder with the wording that placed it there. org_tags is
@@ -770,16 +802,7 @@ async def _link_research(
 
 
 def _hold_unstorable(row: dict[str, Any], findings: list[dict[str, Any]], report) -> None:
-    """Two org facts that are researched, correct, and have nowhere to go.
-
-    Reported rather than dropped, because "we never asked" and "there is no
-    column" are different answers and only one of them is ours to fix.
-    """
-    if row.get("website"):
-        report["held"].append(
-            f"website {row['website']!r}: orgs has no column for one and org_identifiers has "
-            f"no 'domain' type, so it stays on the research row."
-        )
+    """An identifier's note is researched, correct, and has nowhere to go yet: reported, not dropped."""
     for f in findings:
         if f["concept"] == "org_identifier" and f.get("notes"):
             report["held"].append(
@@ -877,11 +900,12 @@ async def _promote_org(
     conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any]
 ) -> None:
     """The NGO path. Same shape as the funder one bar two differences: there is
-    no parent link to resolve, and write_org fills blanks instead of winning."""
+    no parent link to resolve, and write_org ranks by evidence tier."""
     record = org_from(row, findings)
     if record is None:
         report["reasons"].append(
-            "no org_identity or org_identifier finding to build an organisation from"
+            "no org_identity or org_identifier finding with a source_type and evidence_tier to build an "
+            "organisation from (research saved before evidence tiers is re-researched, not promoted)"
         )
         return
 
@@ -894,7 +918,7 @@ async def _promote_org(
         return
     status, org_id, _, conflicts = await write_org(conn, record, match)
     report["entity"] = {"kind": "org", "status": status, "id": org_id, "name": record.name}
-    report["held"].extend(conflicts)
+    report["conflicts"].extend(c.describe() for c in conflicts)
     _hold_unstorable(row, findings, report)
 
     owner = Owner.org(org_id)
@@ -911,7 +935,7 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
     findings = row["findings"] if isinstance(row["findings"], list) else []
     report: dict[str, Any] = {
         "slug": row["slug"], "entity": None, "csr_years": [],
-        "written": {}, "held": [], "skipped": {}, "reasons": [],
+        "written": {}, "held": [], "conflicts": [], "skipped": {}, "reasons": [],
     }
     for concept in sorted({f["concept"] for f in findings}):
         if concept not in PROMOTABLE and concept not in FOLDED:
@@ -938,6 +962,7 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
         await _promote_funder(conn, row, findings, report)
     # Ten findings citing the same unresolvable state is one problem, not ten.
     report["held"] = list(dict.fromkeys(report["held"]))
+    report["conflicts"] = list(dict.fromkeys(report["conflicts"]))
     return report
 
 

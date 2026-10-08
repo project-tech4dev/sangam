@@ -597,7 +597,9 @@ class TestFindingsAreShapedLikeTheRowsTheyBecome:
     runs, and these fail until someone decides whether a researcher can find it.
     """
 
-    EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis"})
+    # The tier pair is the finding's own source, filled into source_type/evidence, never a target.
+    EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis",
+                          "source_type", "evidence_tier"})
 
     def fields_of(self, concept: str) -> set[str]:
         return set(FINDING_MODELS[concept].model_fields) - self.EVIDENCE
@@ -807,7 +809,8 @@ class TestTheWriterSideRecords:
             "PEOPLES RESOURCE DEVELOPMENT ASSOCIATION",
             "Bodoland Development Foundation (BDF)",
         ):
-            assert OrgRecord(name=name, **prov()).name == name
+            assert OrgRecord(name=name, source_type="org_document", evidence_tier="claimed",
+                             **prov()).name == name
 
     def test_fiscal_year_format_is_enforced_on_every_yearly_record(self):
         for model, extra in (
@@ -1192,8 +1195,8 @@ class TestJsonbColumnsCompareByValue:
 
 
 class TestTheOrgWriter:
-    """An NGO reaches the catalog the way a funder does, bar one rule: a row
-    somebody vetted by hand is filled, never overwritten."""
+    """An NGO reaches the catalog the way a funder does, bar one rule: a value from
+    an equal or weaker source is filled where blank, never overwritten."""
 
     class _Conn:
         """Replays a queued row per execute() and records the SQL."""
@@ -1215,7 +1218,15 @@ class TestTheOrgWriter:
     def rec(self, **kw):
         from app.ingest.records import OrgRecord
 
-        return OrgRecord(**{"name": "Goonj", **prov(), **kw})
+        return OrgRecord(**{"name": "Goonj", "source_type": "org_document", "evidence_tier": "claimed",
+                            **prov(), **kw})
+
+    @staticmethod
+    def stored(**kw):
+        from app.ingest.writer import ORG_UPDATABLE
+
+        return {"name": "Goonj", "aliases": [], "source_type": "org_document",
+                "source_url": "https://goonj.org", **dict.fromkeys(ORG_UPDATABLE), **kw}
 
     async def test_a_new_org_is_inserted_as_a_placeholder(self):
         from app.ingest.matcher import Match
@@ -1232,13 +1243,12 @@ class TestTheOrgWriter:
         assert "'placeholder'" in insert
 
     async def test_an_existing_org_is_filled_not_overwritten(self):
-        """The whole reason the org rule differs from write_funder's."""
+        """The whole reason the org rule differs from write_funder's: an equal source fills, never wins."""
         from app.ingest.matcher import Match
         from app.ingest.writer import write_org
 
         conn = self._Conn([
-            {"org_kind": "cso", "legal_form": "Registered Society "
-             "(Societies Registration Act)", "registration_date": None},
+            self.stored(org_kind="cso", legal_form="Registered Society (Societies Registration Act)"),
         ])
         status, _id, changes, conflicts = await write_org(
             conn, self.rec(legal_form="Society", registration_date=date(1999, 3, 12)),
@@ -1246,17 +1256,15 @@ class TestTheOrgWriter:
         )
         assert status == "updated"
         assert set(changes) == {"registration_date"}
-        assert len(conflicts) == 1 and "Registered Society" in conflicts[0]
+        assert len(conflicts) == 1 and "Registered Society" in conflicts[0].describe()
         update = next(q for q in conn.sql if q.startswith("UPDATE orgs"))
-        assert "legal_form" not in update
+        assert "legal_form" not in update and "source_type" not in update
 
     async def test_nothing_to_fill_writes_nothing_at_all(self):
         from app.ingest.matcher import Match
         from app.ingest.writer import write_org
 
-        conn = self._Conn([
-            {"org_kind": "cso", "legal_form": "Trust", "registration_date": None},
-        ])
+        conn = self._Conn([self.stored(org_kind="cso", legal_form="Trust")])
         status, _, changes, conflicts = await write_org(
             conn, self.rec(legal_form="Trust"), Match("exact", 9)
         )
@@ -1271,9 +1279,7 @@ class TestTheOrgWriter:
         from app.ingest.matcher import Match
         from app.ingest.writer import write_org
 
-        conn = self._Conn([
-            {"org_kind": "intermediary", "legal_form": "Trust", "registration_date": None},
-        ])
+        conn = self._Conn([self.stored(org_kind="intermediary", legal_form="Trust")])
         status, _id, changes, conflicts = await write_org(
             conn, self.rec(legal_form="Trust"), Match("exact", 9)
         )
