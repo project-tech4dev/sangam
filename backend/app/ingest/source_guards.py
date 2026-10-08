@@ -54,8 +54,8 @@ def problems(
     label = labelled_by(str(finding.get("source_url") or ""))
     if label is None:
         if finding.get("source_type") == "prior_research":
-            return [(f"{concept}: prior_research cites the dossier file at the pinned commit. A value re-read "
-                     f"at its own source takes that source's type; one only the dossier states cites the dossier.")]
+            return [(f"{concept}: prior_research cites the research repository (any copy). A value re-read at "
+                     f"its own source takes that source's type; one only the repository states cites the repository.")]
         return []
     source_type, name = label
     if TIER_FIELDS <= fields and (finding.get("source_type") != source_type

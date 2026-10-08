@@ -94,6 +94,10 @@ decoded once with `.`, `..` and `//` resolved, and a path still encoded after th
 backslash, a user name, a port, plain http or a sign-in segment is refused. A path the entry does
 not claim keeps the host's strictest other rule (`give.do/api/` stays `no_scraping`), and robots.txt
 is still asked for one it does: unreadable robots.txt refuses a path-scoped read (fail closed).
+`read_page` and `fetch_document` run the same check on every redirect hop before requesting it.
+`source_guards.py` makes every value from these sources `claimed`, as `aggregator` or
+`prior_research`, at save and again at promote, where a finding whose table cannot mark it claimed
+is held.
 The repository's other copies (github.com, codeload, jsDelivr) are refusing entries that govern
 only the repository's path (`governs_paths`), and a value citing any of them is still
 `prior_research`.
@@ -103,10 +107,7 @@ metadata, `localhost`, single-label hosts and any literal form of them (`2130706
 `[::ffff:127.0.0.1]`), then resolves the name and refuses if any address is not global. It runs
 on every redirect hop for the research tools, `fetch_url` and robots.txt. It does not pin the
 resolved address for the connection, so a name that rebinds between check and connect is not
-caught. `read_page` and `fetch_document` run the same check on every
-redirect hop before requesting it. `source_guards.py` makes every value from these sources
-`claimed`, as `aggregator` or `prior_research`, at save and again at promote, where a finding
-whose table cannot mark it claimed is held.
+caught. A NAT64 address (`64:ff9b::/96`) is judged by the IPv4 address in its last 32 bits.
 
 Three states, and they are not the same thing:
 

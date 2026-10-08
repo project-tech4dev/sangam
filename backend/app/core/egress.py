@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 
 _NUMERIC_HOST = re.compile(r"[0-9a-fA-Fx.]+")
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
 
 
 def _literal_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
@@ -30,6 +31,8 @@ def _literal_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | No
 
 def _is_public(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     if isinstance(ip, ipaddress.IPv6Address):
+        if ip in _NAT64:  # NAT64 reaches the IPv4 address in its last 32 bits
+            return _is_public(ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF))
         for inner in (ip.ipv4_mapped, ip.sixtofour, ip.teredo[1] if ip.teredo else None):
             if inner is not None and not _is_public(inner):
                 return False
