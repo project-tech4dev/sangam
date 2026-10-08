@@ -168,12 +168,17 @@ An isolated subagent returns its conclusion, not its reading. It hands back a th
 pipeline tools do not include it). It reads the workbooks a person uploaded with `make staff-source`
 from the private `staff-sources` bucket with openpyxl and returns header rows and matching rows as
 `cell=value`, each cited `[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each
-sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". **Staff
+sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". On a sheet
+of side-by-side blocks (a sparse title row over a dense header row), a matched row shows only the
+cells of the block its match sits in, so one CSO's funders never appear on another's line. **Staff
 rows last:** `StaffLastLock` (`app/agent/middleware.py`) refuses `search_public_sources`,
 `read_page` and `fetch_document` once a run has called `read_source_rows`, so an injected page
 cannot have a staff row carried out in a URL or query. Contact columns are dropped. Promoted facts
 are public (D14); the files and their `documents` rows stay staff-only, and `promote` holds a staff
-finding without its marker. Tool output reaches the model provider and, with tracing on, Langfuse,
+finding without its marker. It also re-opens the workbook and holds any staff amount that its cited
+row does not print, in the unit it was saved in: the cell's own unit (`12 Lakhs`, `3Cr`) when it
+states one, crore for the filing exports (`staff_sources.SOURCE_UNITS`), and the number alone
+otherwise (`hold_mismatched`). Tool output reaches the model provider and, with tracing on, Langfuse,
 like every tool output.
 
 **`catalog-writer`** — one per organisation, launched after the researchers report. Its only tools

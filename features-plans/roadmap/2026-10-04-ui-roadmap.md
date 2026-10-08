@@ -7,8 +7,9 @@ only what comes next, one line per planned PR, so it can be picked up without re
 
 ## Decisions that bind every phase
 
-- **The Claude Design project "Sangam Design System" is the system of record for design.**
-  Changes start there and flow into the repo (`docs/DESIGN_SYSTEM.md`, from PR #86).
+- **The Claude Design project "Sangam Design System v2" is the system of record for design.**
+  Changes start there and flow into the repo, and every UI PR syncs it back
+  (`docs/DESIGN_SYSTEM.md`). v2 replaced the first project on 8 Oct 2026.
 - **Where they disagree, the design system wins on look; the prototype wins on Registry content.**
 - **Reduce before you diverge:** reuse a token, size or component before adding one.
 - **"CSO" stays** in the UI. "Vetted", never "hand-vetted". No "North East India" framing in

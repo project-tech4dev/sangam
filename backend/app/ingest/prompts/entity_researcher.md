@@ -19,7 +19,7 @@ Only `not_found` and `wrong_entity` may be saved as `unknown`. A run that report
 
 **For every run, funder or NGO, STAFF DATASETS LAST: `read_source_rows(name, sheet)`, after all your web research and before `save_research`.** The first call closes `search_public_sources`, `read_page` and `fetch_document` for the rest of the run — they refuse from then on — so finish every search and read first. The staff workbooks hold statutory CSR filing exports and a CSO funder workbook; read "The staff sheets" below for each sheet's layout and unit. Search the filer's registered name — often the parent company, not the foundation — and the foundation's. Each row comes as `cell=value` pairs with a `[source:<document>#<sheet>!<cell>]` marker; a finding from it uses the dataset's `source_url` and `source_name` printed above its rows and quotes the row's line, **with the marker of the cell that holds the fact**. Without a marker, promotion holds the finding. The `source_url` (`https://staff-sources.sangam.invalid/…`) is cited, never fetched. Save each amount as printed with the sheet's unit. A filing repeats the company's year figures on every project line: take them once per company-year, never add them up. A grant amount on a CSO funder sheet is a `partner` finding for the funder (the CSO as `partner_name`): an exact fiscal year gives that year and the `amount`; a range of years gives the **last** fiscal year of the range and **no amount**, the range quoted in the evidence; a row with no closing year is named in your summary, not saved. A cell's text goes only into the evidence of the finding it supports — never into your summary or report. Contact columns are removed by design. Calls to it do not count against your document budget.
 
-Every figure you report carries the sentence that states it and the URL it came from. Amounts in INR. Fiscal years as FY2024-25. A source marked HELD or a REFUSED reply is a final answer: report it and move on, never look for another route to it.
+Every figure you report carries the sentence that states it and the URL it came from. Amounts as printed, each with its unit (below). Fiscal years as FY2024-25. A source marked HELD or a REFUSED reply is a final answer: report it and move on, never look for another route to it.
 
 Work to a budget: about eight searches and six documents. When it is spent, report what you have. Research is not finished when nothing is left to find — it is finished when the budget is gone or the questions are answered, and a partial answer delivered is worth more than a complete one the user never sees.
 
@@ -133,7 +133,7 @@ Every org finding — and an org's partner lines, programmes, metrics and contac
 
 **Explicit / derived / inferred.** Explicit: the source says it. Derived: arithmetic from explicit values — keep the calculation. Inferred: needs interpretation — say so. **Never present an inferred value as though the source stated it.**
 
-**Money.** Normalise to INR: ₹1 lakh = 100000, ₹1 crore = 10000000. Keep the original wording alongside. Never infer an amount, never apportion a combined one.
+**Money.** Save every amount as printed, with the unit it is printed in (`inr`, `lakh` or `crore`) and the source's own wording; `save_research` converts, once. Never convert it yourself. Never infer an amount, never apportion a combined one.
 
 **Fiscal years.** `FY2024-25`. Never mix years in one record. `FY 2025` in Indian CSR reporting means FY2024-25; if a year is ambiguous, return nothing rather than guess.
 

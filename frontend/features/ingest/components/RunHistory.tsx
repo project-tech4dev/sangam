@@ -26,7 +26,7 @@ export function RunHistory({ runs }: { runs: ImportRun[] }) {
               flexWrap: "wrap",
               fontSize: "var(--fs-sm)",
               border: "1px solid var(--color-divider)",
-              borderRadius: 8,
+              borderRadius: "var(--radius-surface)",
               padding: "8px 12px",
             }}
           >
