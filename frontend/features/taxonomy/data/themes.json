@@ -385,8 +385,8 @@
     {
       "domain": "health",
       "label": "Health",
-      "status": "draft",
-      "source": "Drawn from the Health programme-areas draft, regrouped in funder-facing themes",
+      "status": "active",
+      "source": "Drawn from the Health programme areas, regrouped in funder-facing themes",
       "themes": [
         {
           "code": "mch-nutrition",
@@ -701,8 +701,8 @@
     {
       "domain": "education",
       "label": "Education",
-      "status": "draft",
-      "source": "Drawn from the Education programme-areas draft, regrouped in funder-facing themes",
+      "status": "active",
+      "source": "Drawn from the Education programme areas, regrouped in funder-facing themes",
       "themes": [
         {
           "code": "early-foundational",
@@ -1006,6 +1006,20 @@
           ]
         }
       ]
+    },
+    {
+      "domain": "environment",
+      "label": "Environment",
+      "status": "active",
+      "source": "Spend on environmental sustainability, conservation and animal welfare that is not a livelihood programme",
+      "themes": []
+    },
+    {
+      "domain": "others",
+      "label": "Others",
+      "status": "active",
+      "source": "Spend that fits no programme domain: disaster relief, sports, central funds, administration, unlabelled or multi-sector lines",
+      "themes": []
     }
   ]
 }

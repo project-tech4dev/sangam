@@ -8,9 +8,10 @@ export function TaxonomyArticle() {
     <>
       <ArticleSection id="how-it-works" title="How the taxonomy works">
         <p className="measure m-0">
-          Work is classified by what it does, in the terms funders plan with: each domain has a few
-          themes, and each theme a handful of sub-themes. A programme, organisation, funder or call is
-          tagged with one or more sub-themes, and everything else follows from them.
+          Work is classified by what it does, in the terms funders plan with: each programme domain has
+          a few themes, and each theme a handful of sub-themes. A programme, organisation, funder or call
+          is tagged with one or more sub-themes, and everything else follows from them. Environment and
+          Others have no themes: they give a domain to CSR spend that fits no programme.
         </p>
         <dl className="m-0 grid gap-x-6 gap-y-3 md:grid-cols-[max-content_minmax(0,1fr)]">
           <dt className="font-semibold">Themes and sub-themes</dt>
@@ -30,9 +31,7 @@ export function TaxonomyArticle() {
         </dl>
         <div className="flex flex-wrap gap-2">
           {DOMAINS.map((d) => (
-            <Tag key={d.domain} tone={d.status === "draft" ? "accent" : "accent-2"}>
-              {d.label} · {d.status === "draft" ? "Draft" : "Active"}
-            </Tag>
+            <Tag key={d.domain} tone="accent-2">{d.label}</Tag>
           ))}
         </div>
       </ArticleSection>
