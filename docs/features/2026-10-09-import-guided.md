@@ -1,0 +1,204 @@
+# Import: guided flow for NGO staff
+
+Status: Draft v1 · 2026-10-09
+
+## Context
+
+The design is "Import — guided" in Claude Design, project "Sangam Design System v2"
+(`3b0e9aeb…`):
+- `templates/import-wizard/ImportWizard.dc.html` is the screen.
+- `templates/import-wizard/FLOW.md` is the audit and the today → guided map.
+
+This plan turns that design into code.
+
+`/import` today (after #127) is a chat:
+- **Start.** A blank input and 5 suggestion buttons (`ImportWorkspace.tsx`).
+- **Progress.** Shown by `Milestones`, `SubagentBoard`, `RunStatus` and the failure lines.
+- **Pauses.** `PausedPick` (folder, then files) and `SaveQuestions` (every
+  `promote_research`).
+- **Coverage.** `CoverageChart` regex-parses the `coverage_report` text.
+- **Around the chat.** `ImportView.tsx` shows ResearchShelf, RunHistory, ReviewQueue,
+  ProposalList and the 79-card SourcePanel.
+
+What breaks for a non-technical user:
+- Starting needs a prompt, not a choice.
+- Engine words show everywhere: bucket, catalog, promote, researcher, subagent, HTTP 403,
+  steps.
+- Progress is counted in tool calls.
+- The two source pauses ask the same thing twice.
+- Save questions show raw columns.
+- Nothing says how much of the profile is now filled in.
+
+Goal: a four-step flow, **Start → Working → Review → Done**, in plain words. Chat stays
+reachable as "Advanced". The agent, its tools and its interrupts stay as they are. This is
+a new client over the same run, plus one JSON endpoint.
+
+**Scope:** research runs (`entity-researcher` → `save_research` → `promote_research`).
+The adapter pipeline (`run_import_now`, `india_csr`, `gdelt`) keeps the chat for now. Its
+"news" task card composes the same prompt the suggestion button sends today.
+
+## Word list (applies to every milestone)
+
+| Engine | Staff see |
+|---|---|
+| bucket | folder |
+| catalog | Sangam / the profile |
+| promote / write | save |
+| research brief | research notes |
+| researcher, writer, subagent | hidden |
+| claimed | self-reported |
+| evidenced | confirmed |
+| refused / HTTP 4xx | couldn't open — the site said no |
+| scanned PDF | scanned — no text to read |
+| `not_found` status | couldn't find it |
+| `wrong_entity` | found a different organisation |
+| trigram queue item | "Is X the same as Y?" |
+
+These live in one module, `frontend/features/ingest/lib/words.ts`. `toolLabels.ts` and
+`failures.ts` read from it, so no component hard-codes engine terms.
+
+## Milestones (each is one PR)
+
+- **M1: coverage as JSON.**
+  - **Code**
+    - Add `GET /ingest/research/{slug}/coverage` to `api/routes/ingest.py`.
+    - It returns `coverage.compute()` (per concept: cells with reason, fields
+      filled/expected) and, for funders, the `compare_with_catalog` cases grouped by
+      concept (same / updated / older_or_undated / close_match / new).
+    - Factor the body of the `compare_with_catalog` tool into a function that returns
+      data. The tool keeps formatting it as text, so the agent's output does not change.
+    - NGOs have no compare. Use the org promotion rule instead: blanks filled, conflicts
+      kept and reported as "Different — Sangam's kept". The endpoint reads that from the
+      promotion report.
+    - Add a pydantic `CoverageOut` model and a matching `types.ts` entry.
+  - **Exit gate:**
+    - `pytest -m "not integration"` and `ruff check .` are green.
+    - The endpoint returns the worked SBI numbers from
+      `2026-10-08-import-coverage-report.md` (15/23 concepts) for local `sbi-foundation`.
+
+- **M2: Start step.**
+  - **Code**
+    - `ImportWorkspace` gets a `step` state (`start | working | review | done`) derived
+      from the turn and interrupt state, not stored separately.
+    - Start shows 3 task cards (funding profile · NGO profile · news), name chips
+      (Enter adds one), and for news "Where from?" and "How many articles?".
+    - A `composePrompt(task, names, opts)` helper produces the same text staff type today,
+      so the agent sees no change. Chat moves behind an "Advanced" link.
+    - `ImportView` start screen:
+      - **"Waiting for you":** ReviewQueue as one yes / no / not sure per name, with no
+        scores.
+      - **"Researched recently":** ResearchShelf as name, kind, answers/confirmed,
+        Saved / Not saved / Not found, and Research notes.
+      - **Sources:** a collapsed "Which websites is Sangam allowed to read?" with 3
+        groups: reads, allowed but not set up, not allowed.
+    - RunHistory, ProposalList and the full SourcePanel move behind an admin check, using
+      the org member role that `OrgMembersCard` already manages.
+  - **Exit gate:**
+    - Each task card starts a run whose first message matches today's suggestion text.
+    - Advanced chat still works.
+    - Both groups render on desktop and at 375px.
+
+- **M3: Working step.**
+  - **Code**
+    - Replace `Milestones`, `SubagentBoard` and `RunStatus` with `WorkingBoard`:
+      - a totals line ("3 of 8 ready · N pages read · N answers found") and one overall
+        bar;
+      - one 48px row per organisation in a fixed order (name · mini bar · now reading ·
+        "4 of 10 found" / ✓ Ready / Paused);
+      - a "Just now" list of the last 4 events.
+    - Data comes from the steps we already stream:
+      - The researcher `task` step per organisation gives the row and its status.
+      - `read_page` and `fetch_document` args and results give "now reading" and
+        ok/refused.
+      - `save_research` findings give answers found.
+      - The step for each row comes from the tool kind:
+        `research_goals` → `read_*` → `save_research` → `promote_research`.
+    - Move the row/step derivation into `lib/board.ts`, out of `lib/milestones.ts`, which
+      is deleted once nothing imports it.
+    - Each row expands to "What Sangam read": one line per page, labelled Read /
+      Couldn't open / Scanned through `stepNote()` in `words.ts`.
+    - A finished researcher whose writer is waiting shows "Done — waiting for the others
+      before you can review".
+  - **Exit gate:**
+    - One live local run with 3 funders shows 3 stable rows, at least one Couldn't open
+      line, and no tool name or HTTP code anywhere on screen.
+
+- **M4: the source pause as one card.**
+  - **Code**
+    - `PausedPick` becomes `SpreadsheetsCard`: "Should Sangam also look at your team's
+      spreadsheets?", then folder, then files (suggested ones pre-ticked), then "Use
+      these files" / "No, only public websites".
+    - It answers both interrupts from one card:
+      - approve, or edit-approve, `list_bucket_files` with the chosen folder;
+      - then answer `select_source_files` automatically with the ticked files.
+    - "No" rejects the first. #127 M3-B already makes that read nothing.
+    - The `sourcePick.ts` logic stays.
+  - **Exit gate:**
+    - Choosing files reads only those files.
+    - "No" reads none, and coverage shows `blocked: staff declined` for staff-sourced
+      cells.
+
+- **M5: Review step.**
+  - **Code**
+    - `SaveQuestions` becomes `ReviewCard`, one per paused organisation. It shows:
+      - up to 10 answers, each tagged Confirmed / Self-reported / Not mentioned /
+        Couldn't read, with "See proof" opening the quote, page and link from the
+        finding's evidence;
+      - then "Before saving, one question" for each open question, with keep / update /
+        new / skip relabelled: Keep what Sangam has / Use the new one / Add it
+        separately / Skip.
+    - Answers come from the `promote_research` interrupt payload plus the M1 endpoint.
+    - An existing NGO shows "Saving only fills in answers that are empty".
+    - Grant and amount values render as ₹ crore / lakh through a shared `formatInr()`,
+      never as JSON.
+    - **Verdict line:** see Open questions. It ships hidden unless decided.
+  - **Exit gate:**
+    - SBI review shows tagged answers with working proof links.
+    - Approve writes; Skip on every question writes none of those rows.
+    - No column names are visible.
+
+- **M6: Done step.**
+  - **Code**
+    - `CoverageChart` (recharts, regex) is replaced by `DoneReport`, fed by the M1
+      endpoint, with no text parsing. `lib/coverage.ts` is deleted.
+    - Each saved organisation shows:
+      - "16 → 41 facts" and one summary line;
+      - one bar per topic (Already in Sangam · Updated · New);
+      - for an empty topic, its reason instead of a bar: `not_stated` → "Not on their
+        website", `blocked` → "Couldn't read", `not_written` → "Found, nowhere to save
+        it", `not_attempted` → "Not looked for".
+    - More than 3 organisations get a run total ("142 → 236 facts") and a matrix: one row
+      per organisation, one square per topic from `concepts_for(kind)`, filter All /
+      Saved / Not saved, a row expands to its bars, and not-saved rows are dimmed.
+    - The page ends with Saved / Not saved, Open profile, Research notes, any queued
+      name ("Is X the same as Y?"), and "Research something else", which reuses Start
+      over.
+  - **Exit gate:**
+    - Done for a 1-organisation and a 4-organisation run matches the endpoint numbers.
+    - The `coverage_report` text in Advanced chat is unchanged.
+
+Order: M1 first, because M5 and M6 depend on it. M2–M4 can follow in any order. M5 then
+M6.
+
+## Verification
+
+- Every milestone runs locally against the local stack (`make up`):
+  - one 1-funder run and one 3-funder run;
+  - screenshots at 1280px and 375px;
+  - a check that the Advanced chat still produces today's output.
+- Backend: `pytest -m "not integration"`, `ruff check .`.
+- Frontend: `npm run lint` and `npm run build` (type errors fail the build).
+- No new test files unless a milestone adds a pure helper (`composePrompt`, `board.ts`,
+  `formatInr`), which gets a unit test.
+- Design parity: compare each step against `ImportWizard.dc.html` in the project. Copy is
+  taken from the template verbatim.
+
+## Open questions
+
+1. **Verdict line ("Can we approach them?").** It needs either a backend field, derived
+   from eligibility / RFP / contact coverage, or a one-line summary prompt.
+   Recommendation: derive it from coverage. It is deterministic and needs no model call.
+2. **"Queued" rows** for more than `MAX_PARALLEL_RESEARCH` (8) organisations are not
+   designed yet. M3 caps the start screen at 8 names until they are.
+3. **Admin check** for RunHistory, ProposalList and the full SourcePanel: reuse the org
+   member role (`OrgMembersCard`), or add a separate admin flag?
