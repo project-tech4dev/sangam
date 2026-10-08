@@ -17,7 +17,8 @@ record from `entity-record`. This skill is only the table across them.
 ## The table
 
 One row per organisation, in this order: **statutory standing** — 12A, 80G,
-CSR-1, each present or not, with the blocking one named · **FCRA, separately**
+CSR-1, each with its status, not a yes or a no (`applied` is not registered, `check_blocked` is
+not known), with the blocking one named · **FCRA, separately**
 · **DARPAN and blacklist status** · **three years of audited accounts, yes or
 which years are missing** · **latest programme spend with its year** ·
 **states and districts** · **primary themes** · **existing funders** ·
