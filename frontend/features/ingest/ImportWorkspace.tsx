@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
 import { Milestones } from "./components/Milestones";
 import { RunStatus } from "./components/RunStatus";
@@ -19,9 +19,9 @@ const SUGGESTIONS = [
   "What is waiting for review?",
 ];
 
-export function ImportWorkspace() {
-  const threadId = useMemo(() => `import-${crypto.randomUUID()}`, []);
-  const { turns, send, isRunning, isReady } = useAgentChat(threadId, "sangam_ingest", "sangam-import");
+/** One Import conversation. `onStartOver` hands the parent a fresh thread; this one is abandoned. */
+export function ImportWorkspace({ threadId, onStartOver }: { threadId: string; onStartOver: () => void }) {
+  const { turns, send, stop, isRunning, isReady } = useAgentChat(threadId, "sangam_ingest", "sangam-import");
   const [draft, setDraft] = useState("");
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
 
@@ -32,20 +32,19 @@ export function ImportWorkspace() {
     await send(value);
   }
 
+  function startOver() {
+    if (isRunning && !window.confirm("Stop the run and start over? Research already saved is kept.")) return;
+    if (isRunning) stop();
+    onStartOver();
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 420 }}>
-      <div style={{ display: "grid", gap: 18 }}>
+    <div className="import-ws">
+      <div className="import-turns">
         {turns.length === 0 && (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="import-suggest">
             {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className="btn"
-                style={{ fontSize: "var(--fs-sm)" }}
-                onClick={() => submit(s)}
-                disabled={!isReady}
-              >
+              <button key={s} type="button" className="btn" onClick={() => submit(s)} disabled={!isReady}>
                 {s}
               </button>
             ))}
@@ -53,8 +52,8 @@ export function ImportWorkspace() {
         )}
 
         {turns.map((turn) => (
-          <article key={turn.id} style={{ display: "grid", gap: 10 }}>
-            <p style={{ fontWeight: 700, margin: 0 }}>{turn.question}</p>
+          <article key={turn.id} className="import-turn">
+            <p className="import-question">{turn.question}</p>
 
             {/* The stages of the run, above the step-by-step. A reader wants
                 to know what was reached before they want to know how. */}
@@ -67,32 +66,15 @@ export function ImportWorkspace() {
             {/* Refusals and failures only. The findings belong in the answer and
                 the stages belong above; a line per tool call buried both. */}
             {failuresOf(turn.steps).map((f) => (
-              <div
-                key={f.id}
-                style={{
-                  borderLeft: "3px solid var(--color-bad)",
-                  paddingLeft: 12,
-                  fontSize: "var(--fs-sm)",
-                }}
-              >
-                <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 600 }}>{f.label}</span>
-                  <span style={{ color: "var(--color-muted)" }}>{f.detail}</span>
-                  <span style={{ color: "var(--color-bad)", fontSize: "var(--fs-xs)" }}>
-                    {f.note}
-                  </span>
-                  {f.count > 1 && (
-                    <span style={{ color: "var(--color-muted)", fontSize: "var(--fs-xs)" }}>
-                      ×{f.count}
-                    </span>
-                  )}
-                </div>
+              <div key={f.id} className="import-failure">
+                <span className="import-failure-label">{f.label}</span>
+                <span className="muted">{f.detail}</span>
+                <span className="import-failure-note">{f.note}</span>
+                {f.count > 1 && <span className="save-note">×{f.count}</span>}
               </div>
             ))}
 
-            {turn.answer && (
-              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{turn.answer}</div>
-            )}
+            {turn.answer && <div className="import-answer">{turn.answer}</div>}
           </article>
         ))}
       </div>
@@ -108,24 +90,29 @@ export function ImportWorkspace() {
           e.preventDefault();
           void submit(draft);
         }}
-        style={{ display: "flex", gap: 8, marginTop: "auto" }}
+        className="import-form"
       >
         <input
+          className="input"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={isReady ? "Ask Sangam Import to run or explain a source…" : "Connecting…"}
           disabled={!isReady}
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            borderRadius: "var(--radius-pill)",
-            border: "1px solid var(--color-divider)",
-            fontSize: "var(--fs-md)",
-          }}
         />
-        <button type="submit" className="btn btn-primary" disabled={!isReady || isRunning}>
-          {isRunning ? "Running…" : "Send"}
-        </button>
+        {isRunning ? (
+          <button type="button" className="btn btn-primary" onClick={stop}>
+            Stop
+          </button>
+        ) : (
+          <button type="submit" className="btn btn-primary" disabled={!isReady}>
+            Send
+          </button>
+        )}
+        {turns.length > 0 && (
+          <button type="button" className="btn btn-ghost" onClick={startOver}>
+            Start over
+          </button>
+        )}
       </form>
     </div>
   );

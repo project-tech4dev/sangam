@@ -572,7 +572,35 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 /* Attach and voice: shown, not built yet. */
 .composer-stub { display: grid; place-items: center; padding: 0; cursor: not-allowed; }
 
-||||||| parent of 148673f (fix(import): confirm every catalog write; no staff files means none read; dossier matches through the matcher (M3))
+/* --- Import workspace ---------------------------------------------------------- */
+.import-view { flex: 1; min-width: 0; }
+.import-view-open { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+.import-title { font-size: var(--fs-lg); }
+.import-lede { margin: 6px 0 0; }
+.import-cols { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.import-main { flex: 1 1 480px; min-width: 0; }
+.import-aside { flex: 1 1 300px; max-width: 400px; display: grid; gap: 24px; }
+.import-error { color: var(--color-bad); }
+.import-ws { display: flex; flex-direction: column; gap: 16px; min-height: 420px; }
+.import-turns { display: grid; gap: 18px; }
+.import-suggest { display: flex; gap: 8px; flex-wrap: wrap; }
+.import-turn { display: grid; gap: 10px; }
+.import-question { font-weight: 700; margin: 0; }
+.import-failure {
+  border-left: 3px solid var(--color-bad);
+  padding-left: 12px;
+  font-size: var(--fs-sm);
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.import-failure-label { font-weight: 600; }
+.import-failure-note { color: var(--color-bad); font-size: var(--fs-xs); }
+.import-answer { white-space: pre-wrap; line-height: 1.6; }
+.import-form { display: flex; gap: 8px; margin-top: auto; }
+.import-form .input { flex: 1; }
+
 /* --- Import: the paused catalog write ------------------------------------------ */
 .save-card { padding: 16px; gap: 12px; }
 .save-head { display: grid; gap: 4px; }
