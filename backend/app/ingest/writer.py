@@ -343,7 +343,8 @@ FUNDER_ACTIVITY_KEY = ("funder_id", "kind", "fiscal_year", "program_id", "csr_se
 FUNDER_ACTIVITY_UPDATABLE = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note",
                              "name_as_printed", "implementation_mode", "partner_canonical",
                              "partner_csr1", "partner_kind", "outlay", "amount", "project_count",
-                             "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of")
+                             "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of",
+                             "start_date", "end_date", "relationship_status", "partner_org_id")
 _CLASSIFICATION = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note")
 FUNDER_LOCATION_KEY = ("funder_id", "location_id")
 FUNDER_LOCATION_UPDATABLE = ("role", "note", "source_url", "source_name", "fetched_at", "as_of")
@@ -492,14 +493,18 @@ async def write_funder_location(
 
 
 async def write_partner(
-    conn: Any, rec: Any, funder_id: int, *, program_id: int | None, document_id: int | None
+    conn: Any, rec: Any, funder_id: int, *, program_id: int | None, document_id: int | None,
+    partner_org_id: int | None = None,
 ) -> tuple[str, dict]:
+    """One partner line; a grant is one, so two projects with one partner in a year are two lines.
+    partner_org_id comes only from a merging match, and a proposed NULL never erases a stored link."""
     key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
-                        partner_name=rec.partner_name)
+                        project_name=rec.project_name, partner_name=rec.partner_name)
     proposed = {
         "partner_canonical": rec.partner_canonical or rec.partner_name,
-        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1,
-        "outlay": rec.outlay, "amount": rec.amount, "notes": rec.notes,
+        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1, "partner_org_id": partner_org_id,
+        "outlay": rec.outlay, "amount": rec.amount, "start_date": rec.start_date, "end_date": rec.end_date,
+        "relationship_status": rec.relationship_status, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }

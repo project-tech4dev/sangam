@@ -144,6 +144,12 @@ def _fiscal_year(v: str) -> str:
     return v
 
 
+def fiscal_year_of(d: date) -> str:
+    """The Indian fiscal year (April to March) a date falls in, by 0034's rule: 2019-03-31 is 'FY2018-19'."""
+    y = d.year if d.month >= 4 else d.year - 1
+    return f"FY{y}-{(y + 1) % 100:02d}"
+
+
 class FunderRecord(Provenance):
     kind: Literal["funder"] = "funder"
     name: str = Field(min_length=2)
@@ -315,8 +321,8 @@ class FunderLocationRecord(Provenance):
 
 
 class FunderPartnerRecord(Provenance):
-    """A named partner. With an amount, what the partner received from this funder that year (INR);
-    without one, NOT proof that money changed hands."""
+    """A named partner and, with an amount, a grant: what the partner received (INR). Without one, NOT proof
+    that money changed hands. A multi-year grant is one line: the whole amount, with both dates."""
 
     kind: Literal["funder_partner"] = "funder_partner"
     activity_kind: ClassVar[str] = activity_kind("partner")
@@ -326,6 +332,10 @@ class FunderPartnerRecord(Provenance):
     partner_canonical: str | None = None
     partner_kind: str | None = None
     partner_csr1: str | None = None
+    project_name: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    relationship_status: Literal["active", "concluded", "unconfirmed", "dormant"] | None = None
     outlay: float | None = Field(default=None, ge=0, description="INR")
     amount: float | None = Field(default=None, ge=0, description="INR")
     program_name: str | None = None

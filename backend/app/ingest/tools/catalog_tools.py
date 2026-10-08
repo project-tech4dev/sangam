@@ -439,9 +439,9 @@ async def promote_research(slug: str = "") -> str:
     a weaker source never overwrites a stronger one, and a disagreement is
     reported as a conflict with both values and both sources, never resolved
     silently. Both kinds write the shared
-    programmes, metrics, contacts and documents. `grant` is the one concept
-    that still stays research, and anything held back is reported rather than
-    silently dropped. A name that resembles an organisation we already hold
+    programmes, metrics, contacts and documents. A grant is a partner line,
+    linked to the organisation only when the matcher would merge the name, and
+    anything held back is reported rather than silently dropped. A name that resembles an organisation we already hold
     without matching it is NOT merged; it is reported for a person.
 
     Args:
@@ -489,10 +489,9 @@ async def promote_research(slug: str = "") -> str:
                 skipped = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
                 lines.append(f"    still research only (no writer): {skipped}")
         lines.append(
-            "\nA grant needs its recipient to already be in orgs, and promoting a funder's "
-            "research does not put it there, so grant findings stay research — they are on "
-            "file and in docs/entities/. Anything held back is named above: it is a decision "
-            "waiting for a person, not a silent loss."
+            "\nA grant is a partner line on the funder: linked to the organisation only when the "
+            "name matches one we hold, never on a resemblance. Anything held back is named above: "
+            "it is a decision waiting for a person, not a silent loss."
         )
         return "\n".join(lines)
     except Exception as exc:

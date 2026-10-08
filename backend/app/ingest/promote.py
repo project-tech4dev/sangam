@@ -16,7 +16,7 @@ from __future__ import annotations
 import collections
 import hashlib
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from pydantic import ValidationError
@@ -43,6 +43,7 @@ from app.ingest.records import (
     OrgRecord,
     ProgramRecord,
     RfpRecord,
+    fiscal_year_of,
     http_url,
     normalise_cin,
 )
@@ -190,8 +191,8 @@ def _count(report: dict[str, Any], table: str, status: str) -> None:
         report["written"].setdefault(table, collections.Counter())[status] += 1
 
 
-# Concepts from before 0031 that promotion still reads, so they are not reported as "no writer".
-FOLDED = frozenset({"identifier"})
+# Concepts from before 0031 and 0034 that promotion still reads, so they are not reported as "no writer".
+FOLDED = frozenset({"identifier", "grant"})
 
 
 def _legacy_identifiers(findings: list[dict[str, Any]]) -> dict[str, list[str]]:
@@ -201,6 +202,41 @@ def _legacy_identifiers(findings: list[dict[str, Any]]) -> dict[str, list[str]]:
         if f.get("concept") == "identifier" and f.get("id_value"):
             out.setdefault(f.get("id_type") or "", []).append(str(f["id_value"]).strip())
     return out
+
+
+def _legacy_grants(findings: list[dict[str, Any]], report: dict[str, Any]) -> list[dict[str, Any]]:
+    """`grant` findings saved before 0034, as the partner findings they are now; one with no date or a
+    non-INR amount cannot be placed and is held, as 0034 refuses the same rows."""
+    out: list[dict[str, Any]] = []
+    for f in findings:
+        if f.get("concept") != "grant":
+            continue
+        when = f.get("start_date") or f.get("end_date")
+        why = None
+        if not when:
+            why = "no start or end date, so no fiscal year for its partner line"
+        elif f.get("amount") and (f.get("currency") or "INR") != "INR":
+            why = f"an amount in {f.get('currency')}, and a partner line's amount is INR"
+        if why:
+            report["held"].append(
+                f"grant {f.get('title')!r} (saved before 0034): {why}. Re-research it as a partner finding."
+            )
+            continue
+        out.append({
+            "concept": "partner", "fiscal_year": fiscal_year_of(date.fromisoformat(str(when)[:10])),
+            "partner_name": f.get("recipient_name"), "project_name": f.get("title"),
+            "relationship_status": f.get("status"), "amount": f.get("amount"),
+            "start_date": f.get("start_date"), "end_date": f.get("end_date"),
+            "program_name": f.get("program_name"), "notes": f.get("notes"),
+            **{k: f[k] for k in ("evidence", "source_url", "source_name", "confidence", "basis") if k in f},
+        })
+    return out
+
+
+async def _partner_org(conn: Any, name: str) -> int | None:
+    """The catalogued organisation a partner line names, only on a match the matcher would merge."""
+    match = await resolve_org(conn, name)
+    return match.entity_id if match.method in MERGEABLE else None
 
 
 def _with_scheme(domain: str) -> str:
@@ -491,7 +527,7 @@ def _row_identity(
     if concept == "stated_geography":
         return (concept, district_id or state_id)
     if concept == "partner":
-        return _activity_identity("partner", year, program_id, None, None, None, None, None,
+        return _activity_identity("partner", year, program_id, None, None, None, None, f.project_name,
                                   f.partner_name)
     if concept == "programme_spend":
         return ("programme", year, f.program_name)
@@ -630,13 +666,16 @@ async def _write_facts(
                     rec = FunderPartnerRecord(
                         fiscal_year=f.fiscal_year, partner_name=f.partner_name,
                         partner_canonical=f.partner_canonical, partner_kind=f.partner_kind,
-                        partner_csr1=f.partner_csr1,
+                        partner_csr1=f.partner_csr1, project_name=f.project_name,
+                        start_date=f.start_date, end_date=f.end_date,
+                        relationship_status=f.relationship_status,
                         outlay=f.outlay.inr if f.outlay else None,
                         amount=f.amount.inr if f.amount else None,
                         notes=f.notes, as_of=f.fiscal_year, **base,
                     )
                     status, _ = await write_partner(
-                        conn, rec, funder_id, program_id=program_id, document_id=document_id
+                        conn, rec, funder_id, program_id=program_id, document_id=document_id,
+                        partner_org_id=await _partner_org(conn, f.partner_name),
                     )
                     _count(report, "funder_activity (partner)", status)
 
@@ -931,6 +970,7 @@ async def _promote_funder(
         )
         report["csr_years"].append({"fiscal_year": year_record.fiscal_year, "status": state})
     programs = await _write_programs(conn, row, findings, owner, docs, report)
+    findings = [*findings, *_legacy_grants(findings, report)]
     await _write_facts(conn, row, findings, owner, programs, docs, report)
     await _link_research(conn, row, funder_id=funder_id)
 

@@ -333,7 +333,7 @@ class StatedGeographyFinding(PlacedFinding):
 
 
 class PartnerFinding(YearlyFinding):
-    """Keep the year: repeated appearances mean renewal, and collapsing them destroys that."""
+    """A named partner and, with an amount, a grant. Keep the year: repeated appearances mean renewal."""
 
     concept: Literal["partner"] = "partner"
     partner_name: str = Field(min_length=2, description="as printed in the source")
@@ -345,16 +345,35 @@ class PartnerFinding(YearlyFinding):
                 "armed_forces", "hospital", "network", "company", "other"] | None
     ) = None
     partner_csr1: str | None = None
+    project_name: str | None = Field(
+        default=None, description="the grant or project as the source titles it; two projects are two findings"
+    )
+    start_date: date | None = Field(default=None, description="when the grant or partnership began")
+    end_date: date | None = Field(
+        default=None,
+        description="when it ended or is due to. A multi-year grant is ONE finding with both dates and its "
+                    "whole amount, in the fiscal_year it started — never split it across years",
+    )
+    relationship_status: Literal["active", "concluded", "unconfirmed", "dormant"] | None = Field(
+        default=None, description="only when a source says whether it is running; null means not stated"
+    )
     outlay: Money | None = Field(
         default=None, description="the amount committed or sanctioned to the partner, when stated beside the grant"
     )
     amount: Money | None = Field(
         default=None,
-        description="what the partner received from this funder in the year, as printed with its unit; "
-                    "usually from the recipient's own record. Null means not stated, never zero",
+        description="what the partner received from this funder in the year, or over a multi-year grant, as "
+                    "printed with its unit; usually from the recipient's own record. Null means not stated, "
+                    "never zero",
     )
     program_name: str | None = None
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _dates_in_order(self) -> PartnerFinding:
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError(f"the partnership ends before it starts ({self.start_date} to {self.end_date})")
+        return self
 
 
 class ProgrammeSpendFinding(YearlyFinding):

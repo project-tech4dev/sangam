@@ -84,10 +84,13 @@ CONCEPTS: dict[str, ConceptSpec] = {
         columns=("fiscal_year", "program_id", "state_location_id", "name_as_printed", "notes"),
     ),
     "stated_geography": ConceptSpec("funder_locations", "Where it says it prioritises"),
+    # A named partner in a year and, since 0034, a grant: its amount, dates and status, and partner_org_id
+    # when the organisation is catalogued.
     "partner": ConceptSpec(
-        "funder_activity", "Implementing partners", row_filter=("kind", "partner"),
-        columns=("fiscal_year", "program_id", "partner_name", "partner_canonical", "partner_csr1",
-                 "partner_kind", "outlay", "amount", "notes"),
+        "funder_activity", "Partners and grants", row_filter=("kind", "partner"),
+        columns=("fiscal_year", "program_id", "project_name", "partner_name", "partner_canonical",
+                 "partner_csr1", "partner_kind", "outlay", "amount", "start_date", "end_date",
+                 "relationship_status", "notes"),
     ),
     # D12: the funder's OWN figure per programme component. Never summed with spend lines and never
     # spread onto them; the two are reported side by side.
