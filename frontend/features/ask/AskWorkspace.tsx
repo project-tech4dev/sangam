@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RegistryIndex } from "./lib/citations";
 import { takePendingQuestion } from "./lib/pendingQuestion";
-import { loadThreads, type ThreadMeta } from "./lib/threads";
+import { fetchThreads, loadThreads, type ThreadMeta } from "./lib/threads";
 import type { Turn } from "./lib/useSangamChat";
 import { ChatPane } from "./components/ChatPane";
 import { EvidenceRail } from "./components/EvidenceRail";
@@ -44,6 +44,8 @@ export function AskWorkspace({
   const [importOpened, setImportOpened] = useState(initialView === "import");
   if (view === "import" && !importOpened) setImportOpened(true);
   const [threadId, setThreadId] = useState(() => crypto.randomUUID());
+  // A chat picked from the list loads its saved messages; a new one has none.
+  const [resume, setResume] = useState(false);
   const [threads, setThreads] = useState<ThreadMeta[]>([]);
   const [latestTurn, setLatestTurn] = useState<Turn | null>(null);
   const [seed, setSeed] = useState<string | null>(null);
@@ -82,10 +84,19 @@ export function AskWorkspace({
     window.history.replaceState(null, "", url);
   }, [view]);
 
-  const refreshThreads = useCallback(() => setThreads(loadThreads()), []);
+  // The server's list once it answers; this browser's until then, or when it cannot.
+  const refreshThreads = useCallback(() => {
+    fetchThreads(threadId).then(setThreads, () => setThreads(loadThreads()));
+  }, [threadId]);
+
+  useEffect(() => {
+    refreshThreads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
+  }, []);
 
   function pickThread(id: string) {
     setThreadId(id);
+    setResume(true);
     setSeed(null);
     setLatestTurn(null);
     setView("ask");
@@ -93,6 +104,7 @@ export function AskWorkspace({
 
   function newChat(seedText: string | null = null) {
     setThreadId(crypto.randomUUID());
+    setResume(false);
     setSeed(seedText);
     setLatestTurn(null);
     setView("ask");
@@ -126,6 +138,7 @@ export function AskWorkspace({
             <ChatPane
               key={threadId}
               threadId={threadId}
+              resume={resume}
               seed={seed}
               onFirstSend={refreshThreads}
               index={index}

@@ -61,7 +61,7 @@ def owners(monkeypatch):
     """Thread ownership as a dict; claim_thread claims a thread no one owns yet."""
     table: dict[str, UUID] = {"theirs": OTHER}
 
-    async def claim(pool, *, thread_id, user_id):
+    async def claim(pool, *, thread_id, user_id, **_):
         return table.setdefault(thread_id, user_id)
 
     monkeypatch.setattr(security.threads, "claim_thread", claim)
