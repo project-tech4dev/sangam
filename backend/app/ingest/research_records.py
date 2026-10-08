@@ -21,7 +21,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.ingest.expectations import CONCEPTS as _REGISTRY
-from app.ingest.expectations import RESERVED_DOC_TYPES
+from app.ingest.expectations import RESERVED_DOC_TYPES, concepts_for
 from app.ingest.records import (
     CIN_FORMAT,
     ClassifiedBy,
@@ -691,6 +691,41 @@ FINDING_MODELS: dict[str, type[FindingBase]] = {
 }
 
 
+YEARLY: frozenset[str] = frozenset(c for c, m in FINDING_MODELS.items() if issubclass(m, YearlyFinding))
+
+
+class Gap(BaseModel):
+    """Something looked for and not got; the coverage report reads these."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    concept: str = Field(description="a concept from research_goals, e.g. 'rfp' or 'csr_year'")
+    fiscal_year: str | None = Field(
+        default=None, description="for a year-bound concept, the year missing; empty means every year asked"
+    )
+    field: str | None = Field(default=None, description="one field, when the concept was found without it")
+    reason: Literal["not_stated", "blocked"] = Field(
+        description="'blocked' if the source could not be read (403, JS-only page, a staff file that "
+                    "failed or was not selected); 'not_stated' if it was read and does not say"
+    )
+    detail: str = Field(min_length=3, description="one sentence: which source, and what happened")
+
+    @field_validator("concept")
+    @classmethod
+    def _known(cls, v: str) -> str:
+        if v not in CONCEPTS:
+            raise ValueError(f"unknown concept {v!r}; allowed: {list(CONCEPTS)}")
+        return v
+
+    @model_validator(mode="after")
+    def _year_only_when_yearly(self) -> Gap:
+        if self.fiscal_year and self.concept not in YEARLY:
+            raise ValueError(f"{self.concept!r} is not by year; leave fiscal_year empty")
+        if self.fiscal_year and not FISCAL_YEAR.match(self.fiscal_year):
+            raise ValueError(f"fiscal_year must look like 'FY2023-24', got {self.fiscal_year!r}")
+        return self
+
+
 class EntityResearch(BaseModel):
     """One organisation, researched once."""
 
@@ -712,19 +747,30 @@ class EntityResearch(BaseModel):
         default_factory=list,
         description="what you set out to find, from research_goals, one line each",
     )
+    years: list[str] = Field(
+        default_factory=list, description="the fiscal years you were asked to cover, e.g. ['FY2024-25']"
+    )
     findings: list[Finding] = Field(default_factory=list)
-    not_found: list[str] = Field(
-        default_factory=list, description="concepts looked for and not found"
+    gaps: list[Gap] = Field(
+        default_factory=list,
+        description="every concept, year or field you looked for and did not get, with why. "
+                    "Unlisted and unfound reads as 'not attempted'",
     )
     sources_read: list[str] = Field(default_factory=list)
 
-    @field_validator("not_found")
+    @field_validator("years")
     @classmethod
-    def _known_concepts(cls, v: list[str]) -> list[str]:
-        unknown = sorted(set(v) - set(CONCEPTS))
-        if unknown:
-            raise ValueError(f"unknown concepts in not_found: {unknown}; allowed: {list(CONCEPTS)}")
+    def _fiscal_years(cls, v: list[str]) -> list[str]:
+        bad = [y for y in v if not FISCAL_YEAR.match(y)]
+        if bad:
+            raise ValueError(f"years must look like 'FY2023-24', got {bad}")
         return v
+
+    @property
+    def not_found(self) -> list[str]:
+        """Concepts with no finding and at least one gap; the brief's 'Looked for, not found'."""
+        found = set(self.concepts_found())
+        return sorted({g.concept for g in self.gaps if g.concept not in found})
 
     @model_validator(mode="after")
     def _complete_means_something_was_found(self) -> EntityResearch:
@@ -751,6 +797,16 @@ class EntityResearch(BaseModel):
                                     or getattr(f, "evidence_tier", None) is None)})
             if tierless:
                 raise ValueError(f"an org's {tierless} findings need source_type and evidence_tier")
+        return self
+
+    @model_validator(mode="after")
+    def _gaps_fit_the_kind(self) -> EntityResearch:
+        if self.entity_kind == "unknown":
+            return self
+        wrong = sorted({g.concept for g in self.gaps} - set(concepts_for(self.entity_kind)))
+        if wrong:
+            raise ValueError(f"gaps name {wrong}, which a {self.entity_kind} is not researched for; "
+                             f"allowed: {list(concepts_for(self.entity_kind))}")
         return self
 
     @model_validator(mode="after")

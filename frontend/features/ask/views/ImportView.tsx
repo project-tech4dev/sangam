@@ -38,6 +38,8 @@ export function ImportView() {
   const [panels, setPanels] = useState<Panels | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [staffOnly, setStaffOnly] = useState(false);
+  // A new id is a new thread: a stopped or paused run is left behind, saved research is not.
+  const [threadId, setThreadId] = useState(() => `import-${crypto.randomUUID()}`);
 
   useEffect(() => {
     let live = true;
@@ -63,10 +65,10 @@ export function ImportView() {
 
   if (staffOnly) {
     return (
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="import-view">
         <div className="eyebrow">Tools · Import</div>
-        <h2 style={{ fontSize: "var(--fs-lg)" }}>Staff only</h2>
-        <p className="muted measure" style={{ margin: "6px 0 0" }}>
+        <h2 className="import-title">Staff only</h2>
+        <p className="muted measure import-lede">
           Sangam Import changes the catalog, so it is open to the Sangam team only. Ask Sangam is
           open to you.
         </p>
@@ -75,21 +77,25 @@ export function ImportView() {
   }
 
   return (
-    <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="import-view import-view-open">
       <div>
         <div className="eyebrow">Tools · Import</div>
-        <h2 style={{ fontSize: "var(--fs-lg)" }}>Bring funder data in, and see what could not come in</h2>
-        <p className="muted measure" style={{ margin: "6px 0 0" }}>
+        <h2 className="import-title">Bring funder data in, and see what could not come in</h2>
+        <p className="muted measure import-lede">
           Sangam Import reads the sources whose terms allow it, matches what it finds against the
           catalog, and writes what is safe to write. It is not Ask Sangam — it changes the data.
         </p>
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 28, alignItems: "flex-start" }}>
-        <div style={{ flex: "1 1 480px", minWidth: 0 }}>
-          <ImportWorkspace />
+      <div className="import-cols">
+        <div className="import-main">
+          <ImportWorkspace
+            key={threadId}
+            threadId={threadId}
+            onStartOver={() => setThreadId(`import-${crypto.randomUUID()}`)}
+          />
         </div>
-        <aside style={{ flex: "1 1 300px", maxWidth: 400, display: "grid", gap: 24 }}>
-          {error && <div className="card-body" style={{ color: "var(--color-bad)" }}>Could not load the import panels: {error}</div>}
+        <aside className="import-aside">
+          {error && <div className="card-body import-error">Could not load the import panels: {error}</div>}
           {!panels && !error && <div className="muted">Loading runs and research…</div>}
           {panels && (
             <>

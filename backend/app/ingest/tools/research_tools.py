@@ -317,9 +317,9 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     INSERT INTO entity_research (
                         entity_name, canonical_name, entity_kind, slug, website, status,
                         stopped_reason, summary, findings, not_found, sources_read, fact_count,
-                        goals, schema_version)
+                        goals, schema_version, gaps, years)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s,
-                            %s::jsonb, %s)
+                            %s::jsonb, %s, %s::jsonb, %s)
                     ON CONFLICT (slug, researched_on) DO UPDATE SET
                         entity_name = EXCLUDED.entity_name,
                         canonical_name = EXCLUDED.canonical_name,
@@ -334,6 +334,8 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         fact_count = EXCLUDED.fact_count,
                         goals = EXCLUDED.goals,
                         schema_version = EXCLUDED.schema_version,
+                        gaps = EXCLUDED.gaps,
+                        years = EXCLUDED.years,
                         researched_at = now()
                     RETURNING *
                     """,
@@ -344,6 +346,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         json.dumps([f.model_dump(mode="json") for f in findings.findings]),
                         findings.not_found, findings.sources_read, len(findings.findings),
                         json.dumps(findings.goals), SCHEMA_VERSION,
+                        json.dumps([g.model_dump(mode="json") for g in findings.gaps]), findings.years,
                     ),
                 )
             ).fetchone()

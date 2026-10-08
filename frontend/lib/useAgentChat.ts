@@ -113,5 +113,9 @@ export function useAgentChat(
     [agent, copilotkit],
   );
 
-  return { turns, send, isRunning, isReady, isLoadingHistory };
+  const stop = useCallback(() => {
+    if (agent) copilotkit.stopAgent({ agent });
+  }, [agent, copilotkit]);
+
+  return { turns, send, stop, isRunning, isReady, isLoadingHistory };
 }

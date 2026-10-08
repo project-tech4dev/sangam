@@ -20,7 +20,7 @@ type Question = {
   choices: string[];
 };
 
-type Paused = { slug: string; questions: Question[] };
+type Paused = { slug: string; questions: Question[]; planned: string[]; coverage: string };
 
 /** One of LangChain's HumanInTheLoopMiddleware decisions; the run resumes with `{decisions: [it]}`. */
 type SaveDecision =
@@ -34,7 +34,7 @@ const CHOICE_LABELS: Record<string, string> = {
   skip: "Skip",
 };
 
-/** The paused promote_research and its questions, or null when the interrupt is not one. */
+/** The paused promote_research and what it would write, or null when the interrupt is not one. */
 export function pausedSave(value: unknown): Paused | null {
   let request = value;
   if (typeof request === "string") {
@@ -48,7 +48,12 @@ export function pausedSave(value: unknown): Paused | null {
   const save = actions?.find((a) => a?.name === "promote_research" && Array.isArray(a?.questions));
   if (!save) return null;
   const args = (save.args ?? {}) as { slug?: unknown };
-  return { slug: typeof args.slug === "string" ? args.slug : "", questions: save.questions as Question[] };
+  return {
+    slug: typeof args.slug === "string" ? args.slug : "",
+    questions: save.questions as Question[],
+    planned: Array.isArray(save.planned) ? (save.planned as string[]) : [],
+    coverage: typeof save.coverage === "string" ? save.coverage : "",
+  };
 }
 
 function show(value: unknown): string {
@@ -62,31 +67,30 @@ function dated(as_of?: string | null): string {
 
 /** What the question is about: the changed values for case 3, the two names for case 4. */
 function Detail({ q }: { q: Question }) {
-  const muted = { color: "var(--color-muted)", fontSize: "var(--fs-xs)" } as const;
   if (q.case === 4) {
     return (
-      <span style={muted}>
+      <span className="save-note">
         Research says “{q.new_name}”; the catalog has “{q.stored_name}” {q.row}
       </span>
     );
   }
   return (
-    <span style={{ display: "grid", gap: 2 }}>
+    <span className="save-changes">
       {Object.entries(q.changes ?? {}).map(([column, c]) => (
-        <span key={column} style={{ fontSize: "var(--fs-sm)" }}>
+        <span key={column} className="save-change">
           {column}: {show(c.old)}
-          <span style={muted}>{dated(q.stored_as_of)}</span> → {show(c.new)}
-          <span style={muted}>{dated(q.new_as_of)}</span>
+          <span className="save-note">{dated(q.stored_as_of)}</span> → {show(c.new)}
+          <span className="save-note">{dated(q.new_as_of)}</span>
         </span>
       ))}
-      <span style={muted}>
+      <span className="save-note">
         The research source is older or undated, so it does not replace the stored value on its own. {q.row}
       </span>
     </span>
   );
 }
 
-/** The run is paused on promote_research. Staff answer each question with a button, then save. */
+/** The run is paused on promote_research. Staff approve the write, answering any question first. */
 export function SaveQuestionCard({
   paused,
   onDecide,
@@ -96,7 +100,9 @@ export function SaveQuestionCard({
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [sent, setSent] = useState(false);
+  const n = paused.questions.length;
   const answered = paused.questions.filter((q) => answers[q.id]).length;
+  const who = paused.slug || "this research";
 
   function decide(decision: SaveDecision) {
     setSent(true);
@@ -104,54 +110,56 @@ export function SaveQuestionCard({
   }
 
   return (
-    <section
-      aria-label="Questions before saving"
-      style={{
-        border: "1px solid var(--color-divider)",
-        borderRadius: "var(--radius-surface)",
-        background: "var(--color-surface)",
-        padding: 16,
-        display: "grid",
-        gap: 12,
-      }}
-    >
-      <div style={{ display: "grid", gap: 4 }}>
+    <section aria-label="Approve the catalog write" className="card save-card">
+      <div className="save-head">
         <strong>
-          {paused.questions.length === 1 ? "One question" : `${paused.questions.length} questions`} before{" "}
-          {paused.slug || "this research"} is saved
+          {n === 0
+            ? `Write ${who} to the catalog?`
+            : `${n === 1 ? "One question" : `${n} questions`} before ${who} is saved`}
         </strong>
-        <span style={{ color: "var(--color-muted)", fontSize: "var(--fs-sm)" }}>
-          The run is paused until you answer. Everything else is already decided.
+        <span className="save-sub">
+          The run is paused until you decide. Nothing is written without your approval.
         </span>
+        {paused.coverage && <span className="save-note">{paused.coverage}</span>}
       </div>
 
-      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12 }}>
-        {paused.questions.map((q) => (
-          <li key={q.id} style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontWeight: 600, fontSize: "var(--fs-sm)" }}>
-              {q.table.replace(/_/g, " ")} · {q.label}
-            </span>
-            <Detail q={q} />
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {q.choices.map((choice) => (
-                <button
-                  key={choice}
-                  type="button"
-                  className="pill"
-                  data-active={answers[q.id] === choice}
-                  aria-pressed={answers[q.id] === choice}
-                  onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: choice }))}
-                  disabled={sent}
-                >
-                  {CHOICE_LABELS[choice] ?? choice}
-                </button>
-              ))}
-            </div>
-          </li>
-        ))}
-      </ul>
+      {paused.planned.length > 0 && (
+        <ul className="save-plan">
+          {paused.planned.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {n > 0 && (
+        <ul className="save-list">
+          {paused.questions.map((q) => (
+            <li key={q.id} className="save-item">
+              <span className="save-item-title">
+                {q.table.replace(/_/g, " ")} · {q.label}
+              </span>
+              <Detail q={q} />
+              <div className="save-choices">
+                {q.choices.map((choice) => (
+                  <button
+                    key={choice}
+                    type="button"
+                    className="pill"
+                    data-active={answers[q.id] === choice}
+                    aria-pressed={answers[q.id] === choice}
+                    onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: choice }))}
+                    disabled={sent}
+                  >
+                    {CHOICE_LABELS[choice] ?? choice}
+                  </button>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="save-actions">
         <button
           type="button"
           className="btn btn-primary"
@@ -161,9 +169,9 @@ export function SaveQuestionCard({
               edited_action: { name: "promote_research", args: { slug: paused.slug, decisions: answers } },
             })
           }
-          disabled={sent || answered < paused.questions.length}
+          disabled={sent || answered < n}
         >
-          Save with these answers
+          {n === 0 ? "Approve and write" : "Save with these answers"}
         </button>
         <button
           type="button"

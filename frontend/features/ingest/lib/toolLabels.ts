@@ -59,6 +59,10 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Comparing research with the catalog",
     detail: (a) => a?.slug ?? "",
   },
+  coverage_report: {
+    label: "Coverage report",
+    detail: (a) => a?.slug ?? "",
+  },
   // Registry and import
   list_import_sources: {
     label: "Reading the source registry",

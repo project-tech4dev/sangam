@@ -15,13 +15,14 @@ from langchain_core.tools import tool
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import chat_user_id
 from app.db.pool import get_pool
-from app.ingest import manual_checks
+from app.ingest import coverage, manual_checks
 from app.ingest.expectations import (
     CONCEPTS,
     concepts_for,
     expected_fields,
     recent_fiscal_years,
 )
+from app.ingest.matcher import resolve_funder, resolve_org
 from app.ingest.promote import promote
 from app.ingest.writer import Gate
 
@@ -71,12 +72,22 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
                     (f"%{name}%", name, name),
                 )
             ).fetchall()
-            if not rows:
+            # A shared word is not a match: "Infosys Foundation" scored 0.48 against "SBI Foundation".
+            match = await (resolve_funder if entity_kind == "funder" else resolve_org)(conn, name)
+            top = next((r for r in rows if r["id"] == match.entity_id), None) if match.resolved else None
+            if match.resolved and top is None:
+                top = await (
+                    await conn.execute(f"SELECT {head} FROM {entity_table} WHERE id = %s", (match.entity_id,))
+                ).fetchone()
+            if top is None:
+                close = ", ".join(f"{r['name']} [{entity_kind}:{r['id']}]" for r in rows)
                 return (
                     f"No {noun} in the catalog matches {name!r}. Everything you find is a NEW "
                     f"RECORD. That is not evidence the {noun} is absent from the sector."
+                    + (f"\nClose names in the catalog, NOT the same {noun} unless a person confirms: "
+                       f"{close}" if close else "")
                 )
-            top = rows[0]
+            rows = [top, *(r for r in rows if r["id"] != top["id"])]
             fid = top["id"]
             out = [
                 f"{entity_table} [{entity_kind}:{fid}] {top['name']} ({top['slug']})",
@@ -383,7 +394,8 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
 
         out.append(
             "\nFields nothing can fill are as useful as fields you fill: say which you looked "
-            "for and did not find, and pass them to save_research as not_found."
+            "for and did not get, and pass each to save_research as a gap: blocked if the source "
+            "could not be read, not_stated if it was read and does not say."
         )
         return "\n".join(out)
     except Exception as exc:
@@ -492,14 +504,58 @@ async def compare_with_catalog(slug: str) -> str:
         return f"compare_with_catalog failed: {type(exc).__name__}: {exc}"
 
 
-async def open_questions(slug: str) -> list[dict[str, Any]]:
-    """The case 3 and 4 findings a funder's promotion would ask about; SaveQuestions puts them on the pause."""
+@tool
+async def coverage_report(slug: str) -> str:
+    """What one entity's research was expected to find, what it found, and why the rest is missing. Writes nothing.
+
+    Expected is the catalog's own list for that kind of organisation: every concept, each
+    year-bound concept once per year asked, and every field. Each missing cell carries one
+    reason: not attempted (no finding and no gap recorded), not stated (a source was read
+    and does not say), blocked (the source could not be read), or found, not written (the
+    catalog has nowhere to put it). Percentages are of the expected cells and fields.
+
+    Call it after each researcher returns and again after each catalog write, and print the
+    output exactly as returned. Never restate it as prose or recompute a number.
+
+    Args:
+        slug: the researched entity, as save_research returned it.
+    """
+    try:
+        pool = get_pool()
+        rows = await _research_rows(pool, slug)
+        if not rows:
+            return f"No saved research for {slug!r}. Research first."
+        row = rows[0]
+        report = None
+        if row.get("entity_kind") != "org":
+            async with pool.connection() as conn:
+                report = await promote(conn, row, gate=Gate(plan=True))
+        return coverage.render(coverage.compute(row, report=report))
+    except Exception as exc:
+        logger.exception("coverage_report failed")
+        return f"coverage_report failed: {type(exc).__name__}: {exc}"
+
+
+async def write_preview(slug: str) -> dict[str, Any]:
+    """What SaveQuestions puts on the pause: a funder's case 3 and 4 questions, the planned rows, and coverage."""
     rows = await _research_rows(get_pool(), slug)
-    if not rows or rows[0].get("entity_kind") == "org":
-        return []
+    if not rows:
+        return {"questions": [], "planned": [], "coverage": ""}
+    row = rows[0]
+    if row.get("entity_kind") == "org":
+        head = coverage.render(coverage.compute(row)).split("\n")[1]
+        return {"questions": [], "planned": ["An NGO: blanks are filled, conflicts are reported."], "coverage": head}
     async with get_pool().connection() as conn:
-        plan = await promote(conn, rows[0], gate=Gate(plan=True))
-    return plan.get("questions", [])
+        plan = await promote(conn, row, gate=Gate(plan=True))
+    counts: dict[str, int] = {}
+    for item in plan.get("plan", {}).get("items", []):
+        if item["case"] in (2, 5):
+            counts[item["table"]] = counts.get(item["table"], 0) + 1
+    planned = [f"{table}: {n} row(s)" for table, n in sorted(counts.items())]
+    if plan.get("held"):
+        planned.append(f"held back: {len(plan['held'])}")
+    head = coverage.render(coverage.compute(row, report=plan)).split("\n")[1]
+    return {"questions": plan.get("questions", []), "planned": planned, "coverage": head}
 
 
 @tool
