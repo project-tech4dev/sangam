@@ -235,10 +235,18 @@ relationships and answered seven. Two paths to the same rows also meant two plac
 correct — a data caveat added to the catalog reached `db_query` and not `search_orgs`. The cost
 is latency: a curated lookup was one tool call, the same question in SQL is three to five.
 
-`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) and `web.make_web_search` (Tavily)
-are complete but imported nowhere, and the `Settings` fields that feed them — `tavily_api_key`,
-`github_pat`, `github_mcp_url`, `playwright_mcp_url`, `mcp_servers` — therefore do nothing until
-those tools are registered. Setting them changes no behaviour.
+`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) is complete but imported nowhere,
+and the `Settings` fields that feed it — `github_pat`, `github_mcp_url`, `playwright_mcp_url`,
+`mcp_servers` — therefore do nothing until those tools are registered. Setting them changes no
+behaviour.
+
+`web.make_web_search` (Tavily) is not an Ask Sangam tool either, but Sangam Import uses it:
+`search_public_sources`, the entity researcher's way of finding a funder's reports before reading
+them, searches through it and marks each hit READABLE or HELD. **`TAVILY_API_KEY` is what lets
+Import search:** without it the tool answers "SEARCH UNAVAILABLE" and Import can only read URLs
+someone gives it. Claude's and OpenAI's server-side web search were compared against it on
+8 Oct 2026 and found fewer of the funders' own documents, more slowly; a server-side search also
+puts results in the model's context before `check_url` can hold any back.
 
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
