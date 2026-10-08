@@ -6,7 +6,7 @@ import type { ThreadMeta } from "../lib/threads";
 const MONTH = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" });
 const DAY = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" });
 
-/* Every saved chat, newest first and grouped by month. The sidebar shows only the last ten.
+/* Every saved chat, newest first and grouped by month. The sidebar shows only the last five.
    Search matches titles: the conversations themselves live in the checkpointer, not here. */
 export function ChatsView({ threads, onPick }: { threads: ThreadMeta[]; onPick: (id: string) => void }) {
   const [query, setQuery] = useState("");
@@ -53,7 +53,7 @@ export function ChatsView({ threads, onPick }: { threads: ThreadMeta[]; onPick: 
         </div>
       ) : (
         <div className="card chat-list">
-          {rows.length > 0 ? rows : <div className="chat-list-row muted">No chats match.</div>}
+          {rows.length > 0 ? rows : <div className="muted chat-list-empty">No chats match.</div>}
         </div>
       )}
     </div>

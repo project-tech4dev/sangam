@@ -430,6 +430,8 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 }
 .rail-mini:hover { background: var(--color-neutral-100); color: var(--color-text); }
 .rail-mini-new { border-radius: var(--radius-pill); background: var(--color-accent-2-100); color: var(--color-accent-2-900); }
+/* After .rail-mini:hover, so New Chat keeps its sage fill on hover. */
+.rail-mini-new:hover { background: var(--color-accent-2-200); color: var(--color-accent-2-900); }
 .rail-mini-foot { margin-top: auto; }
 .rail-mini-rule { width: 24px; height: 1px; margin: 4px 0; background: var(--color-divider); }
 .rail-head .rail-collapse { margin-left: auto; }
@@ -477,7 +479,7 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .rail-thread { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rail-soon { margin-left: auto; }
 .rail-empty { font-size: var(--fs-xs); padding: 4px 12px; }
-/* "Show all N chats": the sidebar lists the last ten. */
+/* "Show All N Chats": the sidebar lists the last five. */
 .rail-more {
   border: none;
   background: none;
@@ -518,6 +520,7 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
   cursor: pointer;
 }
 .chat-list-row:last-child { border-bottom: none; }
+.chat-list-empty { padding: 12px 18px; }
 .chat-list-row:hover { background: var(--color-neutral-100); }
 .chat-list-title { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-list-date { font-size: var(--fs-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -556,12 +559,13 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .chat-question-text { font-family: var(--font-heading); font-size: var(--fs-md); font-weight: 600; padding-top: 5px; }
 /* The question box: a card with a sage edge, so it reads as the place to start. */
 .composer { max-width: 860px; width: 100%; margin: 0 auto; flex-shrink: 0; border-color: var(--color-accent-2-700); }
-.composer-input { border: none; padding: 4px; min-height: 48px; font-size: var(--fs-md); }
+/* textarea.composer-input, to outrank textarea.input's 64px. */
+textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-size: var(--fs-md); }
 /* Nothing asked yet: heading, question box and suggestions, centred in the pane. */
-.chat-empty { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; gap: 18px; max-width: 860px; width: 100%; margin: 0 auto; }
+.chat-pane.is-empty { justify-content: center; gap: 18px; overflow-y: auto; max-width: 860px; width: 100%; margin: 0 auto; }
 .chat-empty-title { font-size: var(--fs-xl); text-align: center; }
-.chat-empty .composer-input { min-height: 72px; }
-.chat-empty .chat-suggestions { justify-content: center; }
+.chat-pane.is-empty textarea.composer-input { min-height: 72px; }
+.chat-pane.is-empty .chat-suggestions { justify-content: center; }
 .composer-row { display: flex; align-items: center; gap: 10px; }
 .composer-hint { font-size: var(--fs-xs); }
 .composer-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }

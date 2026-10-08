@@ -32,6 +32,7 @@ export function ChatPane({
   const { turns, send, isRunning, isReady } = useSangamChat(threadId);
   const [draft, setDraft] = useState(seed ?? "");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const sentTitle = useRef(false);
 
   useEffect(() => {
@@ -46,6 +47,8 @@ export function ChatPane({
     const question = (text ?? draft).trim();
     if (!question || isRunning) return;
     setDraft("");
+    // A suggestion pill disappears once sent; keep the cursor in the box for the follow-up.
+    inputRef.current?.focus();
     if (!sentTitle.current) {
       saveThread({ id: threadId, title: titleFrom(question), createdAt: Date.now() });
       sentTitle.current = true;
@@ -57,6 +60,7 @@ export function ChatPane({
   const composer = (
     <div className="card elev-sm composer">
       <textarea
+        ref={inputRef}
         className="input composer-input"
         placeholder="Ask about an organisation, a funder, or a fit…"
         value={draft}
@@ -84,45 +88,43 @@ export function ChatPane({
     </div>
   );
 
-  // Nothing asked yet: the question box is the screen, with the suggestions under it.
-  if (turns.length === 0) {
-    return (
-      <div className="chat-pane">
-        <div className="chat-empty">
-          <h2 className="chat-empty-title">What do you want to know?</h2>
-          {composer}
-          <div className="chat-suggestions">
-            {SUGGESTIONS.map((s) => (
-              <button key={s} className="pill" onClick={() => submit(s)} disabled={!isReady}>
-                {s}
-              </button>
+  const empty = turns.length === 0;
+
+  // One tree for both states, with the question box always the second child, so React keeps
+  // the same textarea when the first question is sent and the cursor stays in it.
+  return (
+    <div className={empty ? "chat-pane is-empty" : "chat-pane"}>
+      {empty ? (
+        <h2 className="chat-empty-title">What do you want to know?</h2>
+      ) : (
+        <div className="chat-scroll">
+          <div className="chat-turns">
+            {turns.map((turn) => (
+              <div key={turn.id} className="chat-turn">
+                <div className="chat-question">
+                  <div aria-hidden className="chat-you">
+                    You
+                  </div>
+                  <div className="chat-question-text">{turn.question}</div>
+                </div>
+                <TraceCard steps={turn.steps} streaming={turn.streaming && !turn.answer} />
+                {turn.answer && <AnswerCard answer={turn.answer} index={index} />}
+              </div>
             ))}
+            <div ref={bottomRef} />
           </div>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="chat-pane">
-      <div className="chat-scroll">
-        <div className="chat-turns">
-          {turns.map((turn) => (
-            <div key={turn.id} className="chat-turn">
-              <div className="chat-question">
-                <div aria-hidden className="chat-you">
-                  You
-                </div>
-                <div className="chat-question-text">{turn.question}</div>
-              </div>
-              <TraceCard steps={turn.steps} streaming={turn.streaming && !turn.answer} />
-              {turn.answer && <AnswerCard answer={turn.answer} index={index} />}
-            </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
-      </div>
+      )}
       {composer}
+      {empty && (
+        <div className="chat-suggestions">
+          {SUGGESTIONS.map((s) => (
+            <button key={s} className="pill" onClick={() => submit(s)} disabled={!isReady}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
