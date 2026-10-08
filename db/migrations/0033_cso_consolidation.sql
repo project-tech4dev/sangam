@@ -133,5 +133,17 @@ UPDATE contacts SET source_type = 'seed', evidence = 'claimed'
 DROP TABLE credential_events;
 DROP TABLE program_locations;
 
--- 7. Access: no new table. 0025's SELECT grants cover the new columns, org_identifiers_read (0027) reads
--- only is_public and org_id, and the new identity sequence stays ungranted (0025's default privileges).
+-- 7. Access: no new table, and 0025's SELECT grants cover the new columns, except two. checked_by names a
+-- staff member and evidence_document_id may point at a private upload, so both are closed to anon and
+-- authenticated by granting every other column instead of the table. org_identifiers_read (0027) reads only
+-- is_public and org_id, and the new identity sequence stays ungranted (0025's default privileges).
+DO $$
+DECLARE cols text;
+BEGIN
+  SELECT string_agg(quote_ident(column_name), ', ' ORDER BY ordinal_position) INTO cols
+  FROM information_schema.columns
+  WHERE table_schema = 'public' AND table_name = 'org_identifiers'
+    AND column_name NOT IN ('checked_by', 'evidence_document_id');
+  REVOKE SELECT ON org_identifiers FROM anon, authenticated;
+  EXECUTE format('GRANT SELECT (%s) ON org_identifiers TO anon, authenticated', cols);
+END $$;
