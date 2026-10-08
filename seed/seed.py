@@ -176,9 +176,19 @@ def _upsert_org_location(cur, org_id: int, location_id: int | None, role: str = 
         INSERT INTO org_locations (org_id, location_id, role, source_type, evidence)
         VALUES (%s, %s, %s, 'seed', 'claimed')
         ON CONFLICT (org_id, location_id) DO UPDATE SET role = EXCLUDED.role
+        WHERE org_locations.source_type = 'seed'
         """,
         (org_id, location_id, role),
     )
+
+
+def _seeded_org_id(cur, slug: str) -> int:
+    """The upsert's id, or the row's own when a stronger source holds it and the seed left it alone."""
+    row = cur.fetchone()
+    if row is None:
+        cur.execute("SELECT id FROM orgs WHERE slug = %s", (slug,))
+        row = cur.fetchone()
+    return row[0]
 
 
 SEED_TIER = ("seed", "claimed")  # org rows only: a funder's contact carries no tier
@@ -227,6 +237,7 @@ def seed_darpan_orgs(cur, locations, tags) -> int:
               source_url = EXCLUDED.source_url, source_name = EXCLUDED.source_name,
               content_hash = EXCLUDED.content_hash, extractor_version = EXCLUDED.extractor_version,
               source_type = EXCLUDED.source_type, evidence = EXCLUDED.evidence
+            WHERE orgs.source_type = 'seed'
             RETURNING id
             """,
             (
@@ -244,7 +255,7 @@ def seed_darpan_orgs(cur, locations, tags) -> int:
                 EXTRACTOR_VERSION,
             ),
         )
-        org_id = cur.fetchone()[0]
+        org_id = _seeded_org_id(cur, slug)
         _upsert_org_identifiers(
             cur, org_id,
             {"darpan": raw.get("darpan_id"), "reg_no": reg.get("registration_no")},
@@ -288,6 +299,7 @@ def seed_extra_orgs(cur, locations, tags) -> int:
               source_name = EXCLUDED.source_name, fetched_at = EXCLUDED.fetched_at,
               extractor_version = EXCLUDED.extractor_version,
               source_type = EXCLUDED.source_type, evidence = EXCLUDED.evidence
+            WHERE orgs.source_type = 'seed'
             RETURNING id
             """,
             (
@@ -298,7 +310,7 @@ def seed_extra_orgs(cur, locations, tags) -> int:
                 org.get("fetched_at"), EXTRACTOR_VERSION,
             ),
         )
-        org_id = cur.fetchone()[0]
+        org_id = _seeded_org_id(cur, org["slug"])
         _upsert_org_identifiers(
             cur, org_id,
             {
