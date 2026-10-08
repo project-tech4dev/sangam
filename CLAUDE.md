@@ -329,6 +329,11 @@ computed at runtime (a progress width, a measured height, a per-row colour from 
 300 older ones remain; a PR that touches a component moves that component's styles to classes,
 as `features/ask/components/Sidebar.tsx` and the `.rail-*` classes did.
 
+**Icons come from Lucide (`lucide-react`); never draw an SVG by hand.** Size, stroke and colour
+are set by the `.icon` classes in `globals.css`, never as props: one stroke weight everywhere,
+and the colour follows the surrounding text. Text-like marks stay as glyphs (⟨ ⟩ ✓ → ⌘↵), as
+the design system's iconography page says.
+
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is
 that every field traces to a source.
