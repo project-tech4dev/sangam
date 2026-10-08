@@ -1,4 +1,4 @@
-// Shapes of the taxonomy seed files (features-plans/data-model/seed/data/taxonomy).
+// Shapes of the taxonomy seed files (seed/data/taxonomy).
 
 export type CsrRef = { clause: string; sector: string };
 
