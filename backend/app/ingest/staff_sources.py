@@ -79,9 +79,8 @@ def check_pick(path: str) -> tuple[str, str, str] | str:
     bucket, key = parts
     if not key.lower().endswith(".xlsx"):
         return f"{path!r}: only .xlsx workbooks can be read."
+    # A registry-key folder names the source (and so its unit); any other file is named by its bucket.
     folder = key.split("/", 1)[0] if "/" in key else ""
-    if bucket == storage.STAFF_SOURCES and folder not in SOURCES:
-        return f"{path!r}: in {bucket}, the first folder must be a registered source key (list_import_sources)."
     return bucket, key, folder if folder in SOURCES else bucket
 
 

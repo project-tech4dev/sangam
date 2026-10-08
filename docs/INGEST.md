@@ -173,7 +173,8 @@ with `select_source_files(paths)`. Both `list_bucket_files` and `select_source_f
 other files) or reject. The resume is `{decisions: [...]}`, delivered as `Command(resume=…)`. On approval
 the tool downloads each file, writes its `documents` row (`extractor_version
 'select_source_files/1'`) and returns the document ids the researchers' tasks carry. Any
-bucket's `.xlsx` is selectable; in `staff-sources` the first folder must be a registry key. A file
+bucket's `.xlsx` is selectable, at any depth; a first folder named for a registry key also names
+the source (and its unit). A file
 dropped in through the Supabase dashboard therefore works with no script; `make staff-source`
 still writes the same row.
 

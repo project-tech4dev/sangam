@@ -337,7 +337,7 @@ and `select_source_files` (staff choose the files).** Both are in `INTERRUPT_ON`
 `app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns into LangChain's
 `HumanInTheLoopMiddleware`; the Import screen answers with CopilotKit's `useInterrupt`
 (`BucketPicker`, `SourcePicker`) and resumes with `{decisions: [...]}`. Any bucket's `.xlsx` can be
-picked; in `staff-sources` the first folder must still be a registry key. A picked file becomes a
+picked, in any folder or none. A picked file becomes a
 `documents` row, so no script is needed; `make staff-source` still writes the same row. The
 supervisor never reads rows: when a request is about everyone in a file, the `workbook-reader`
 subagent (one tool, `read_workbook`) returns the names, and a researcher per name follows.
