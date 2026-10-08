@@ -51,8 +51,9 @@ _TIER = (
     Column("evidence", "text", note="'evidenced' only when a document itself states the fact (a certificate, an audited statement, a dated return); 'claimed' otherwise. aggregator and prior_research rows are always 'claimed'", values=('evidenced', 'claimed')),
 )
 _TIER_DEFECT = (
-    "source_type and evidence describe the ROW: the strongest source that has written to it. A blank filled "
-    "later by a weaker source is not labelled separately. A row whose evidence is 'claimed' - every "
+    "source_type and evidence describe the ROW: they name the strongest source that has stated anything on "
+    "it, NOT the source of every column. Other columns of the same row may have been filled by weaker "
+    "sources and are not labelled separately. A row whose evidence is 'claimed' - every "
     "aggregator and prior_research row among them - is never presented as fact: say 'claimed by "
     "<source_type>' beside it, and never let it settle an eligibility question."
 )

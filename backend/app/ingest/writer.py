@@ -773,6 +773,14 @@ def _values(updatable: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(c for c in updatable if c not in RANKED_PROVENANCE)
 
 
+def _takes_row(stored: dict[str, Any], proposed: dict[str, Any], tier: Tier) -> dict[str, dict[str, Any]]:
+    """The tier change when a strictly stronger source states anything on the row, agreeing or not."""
+    if not _may_overwrite(stored["source_type"], tier.source_type) or all(v is None for v in proposed.values()):
+        return {}
+    return {"source_type": {"old": stored["source_type"], "new": tier.source_type},
+            "evidence": {"old": stored.get("evidence"), "new": tier.evidence}}
+
+
 def _sink(conflicts: list[Conflict] | None, found: list[Conflict]) -> None:
     if conflicts is not None:
         conflicts.extend(found)
@@ -788,7 +796,8 @@ async def _upsert_ranked(
     where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
     existing = await (
         await conn.execute(
-            f"SELECT {', '.join(values)}, source_type, source_url FROM {table} WHERE {where}",
+            f"SELECT {', '.join(values)}, source_type, evidence, source_url FROM {table} WHERE {where} "
+            "FOR UPDATE",
             tuple(key.values()),
         )
     ).fetchone()
@@ -805,17 +814,19 @@ async def _upsert_ranked(
         return "added", {c: {"old": None, "new": _plain(v)} for c, v in fresh.items()}, []
 
     stored_source = existing["source_type"]
-    write, kept = _ranked(dict(existing), {c: proposed.get(c) for c in values}, stored_source, tier.source_type)
+    stated = {c: proposed.get(c) for c in values}
+    write, kept = _ranked(dict(existing), stated, stored_source, tier.source_type)
+    retier = _takes_row(existing, stated, tier)
     conflicts = [
         Conflict(table, row, c, old, stored_source, existing["source_url"], new, tier.source_type,
                  provenance.get("source_url"))
         for c, old, new in kept
     ]
-    if not write:
+    if not write and not retier:
         return "matched", {}, conflicts
     sets = {c: proposed[c] for c in write}
     # A weaker or equal source's fill leaves the row's tier and provenance where they were.
-    if _may_overwrite(stored_source, tier.source_type):
+    if retier:
         sets.update({c: v for c, v in provenance.items() if v is not None})
         sets.update(source_type=tier.source_type, evidence=tier.evidence)
     await conn.execute(
@@ -823,7 +834,7 @@ async def _upsert_ranked(
         f"document_id = coalesce(document_id, %s) WHERE {where}",
         (*sets.values(), document_id, *key.values()),
     )
-    return "updated", write, conflicts
+    return "updated", {**write, **retier}, conflicts
 
 
 ORG_UPDATABLE = ("org_kind", "legal_form", "registration_date", "website", "description",
@@ -848,8 +859,8 @@ async def write_org(
     if match.resolved:
         existing = await (
             await conn.execute(
-                f"SELECT name, aliases, source_type, source_url, {', '.join(ORG_UPDATABLE)} "
-                "FROM orgs WHERE id = %s",
+                f"SELECT name, aliases, source_type, evidence, source_url, {', '.join(ORG_UPDATABLE)} "
+                "FROM orgs WHERE id = %s FOR UPDATE",
                 (match.entity_id,),
             )
         ).fetchone()
@@ -860,17 +871,18 @@ async def write_org(
                      existing["source_url"], new, tier.source_type, rec.source_url)
             for c, old, new in kept
         ]
+        retier = _takes_row(existing, proposed, tier)
         held = list(existing["aliases"] or [])
         added = new_aliases(held, rec.aliases, existing["name"])
-        if not write and not added:
+        if not write and not added and not retier:
             return "matched", match.entity_id, {}, conflicts
         sets = {c: proposed[c] for c in write}
-        if write and _may_overwrite(existing["source_type"], tier.source_type):
+        if retier:
             sets.update({c: v for c, v in provenance.items() if v is not None})
             sets.update(source_type=tier.source_type, evidence=tier.evidence)
         clauses = [f"{c} = %s" for c in sets]
         values = list(sets.values())
-        changes = dict(write)
+        changes = {**write, **retier}
         if added:
             clauses.append("aliases = aliases || %s::text[]")
             values.append(added)
