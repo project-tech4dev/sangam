@@ -6,6 +6,7 @@ import { EntityMark, PillTabs, ProgressBar, StatRail, Tag } from "@/components/u
 import type {
   Contact, FunderDetail, GrantRow, NewsRow, OrgDetail, ProgramRow, ScoreRow,
 } from "@/lib/api";
+import { isOnFile, pickIdentifier, statusLabel, statusTone } from "./identifierStatus";
 import { ScoreCard } from "./ScoreCard";
 
 const ID_LABELS: Record<string, string> = {
@@ -14,6 +15,11 @@ const ID_LABELS: Record<string, string> = {
 };
 
 const EXPECTED_IDS = ["pan", "12a", "80g", "fcra", "csr1", "darpan", "reg_no"];
+
+const TONE_COLOR = {
+  good: "var(--color-accent-2-600)", pending: "var(--color-accent-600)",
+  bad: "var(--color-bad)", none: "var(--color-neutral-400)",
+} as const;
 
 function fmtDate(value: string | null): string | null {
   if (!value) return null;
@@ -48,7 +54,7 @@ export function OrgProfileTabs({
 }) {
   const [tab, setTab] = useState("diligence");
   const completenessParts = [
-    org.identifiers.length > 0, org.contacts.length > 0, org.tags.length > 0,
+    org.identifiers.some((i) => isOnFile(i)), org.contacts.length > 0, org.tags.length > 0,
     org.locations.length > 0, programs.length > 0, grants.length > 0,
   ];
   const coverage = Math.round((completenessParts.filter(Boolean).length / completenessParts.length) * 100);
@@ -72,29 +78,48 @@ export function OrgProfileTabs({
           <SectionCard kicker="Base coverage" title={`${coverage} / 100`}>
             <ProgressBar pct={coverage} color={coverage >= 65 ? "var(--color-accent-2-600)" : "var(--color-accent-600)"} />
             <div className="card-body" style={{ fontSize: "var(--fs-xs)" }}>
-              Share of profile sections with verified data in the base — not a judgement of the organisation.
+              Share of profile sections with data in the base — not a judgement of the organisation.
             </div>
+          </SectionCard>
+
+          <SectionCard
+            kicker="Identity"
+            title={org.website ? org.website.replace(/^https?:\/\/(www\.)?/, "") : "No website on record"}
+          >
+            {org.website && (
+              <a href={org.website} target="_blank" rel="noreferrer" className="card-body">{org.website}</a>
+            )}
+            {org.description && <div className="card-body">{org.description}</div>}
+            {org.aliases.length > 0 && (
+              <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>Also known as: {org.aliases.join(" · ")}</div>
+            )}
+            {org.staff_count != null && (
+              <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
+                Staff: {org.staff_count}{org.staff_count_note ? ` — ${org.staff_count_note}` : ""}
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard kicker="Credentials" title="Registrations on file">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
               {EXPECTED_IDS.map((idType) => {
-                const found = org.identifiers.find((i) => i.id_type === idType);
+                const found = pickIdentifier(org.identifiers, idType);
+                const value = found?.id_value ?? (found?.application_ref ? `application ${found.application_ref}` : null);
                 return (
                   <div key={idType} className="card" style={{ padding: 14, gap: 4 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--fs-xs)", fontWeight: 600 }}>
                       <span
-                        style={{
-                          width: 8, height: 8, borderRadius: "50%",
-                          background: found ? "var(--color-accent-2-600)" : "var(--color-neutral-400)",
-                        }}
+                        style={{ width: 8, height: 8, borderRadius: "50%", background: TONE_COLOR[statusTone(found)] }}
                       />
-                      {found ? "Verified" : "Not entered"}
+                      {statusLabel(found)}
                       <span className="muted-2" style={{ marginLeft: "auto" }}>{ID_LABELS[idType]}</span>
                     </div>
-                    <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, fontStyle: found ? "normal" : "italic", color: found ? "var(--color-text)" : "var(--color-neutral-500)" }}>
-                      {found ? found.id_value : "— not in base"}
+                    <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, fontStyle: value ? "normal" : "italic", color: value ? "var(--color-text)" : "var(--color-neutral-500)" }}>
+                      {value ?? "— not in base"}
                     </div>
+                    {found?.valid_until && (
+                      <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>valid until {fmtDate(found.valid_until)}</div>
+                    )}
                   </div>
                 );
               })}
