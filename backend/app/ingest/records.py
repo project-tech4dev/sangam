@@ -38,6 +38,24 @@ def check_tier(source_type: str | None, evidence_tier: str | None) -> None:
         raise ValueError(f"a {source_type} value is always 'claimed', never 'evidenced'")
 
 
+# org_identifiers.status (0033). 'applied' is not a registration and 'check_blocked' never means valid.
+IDENTIFIER_STATUSES: tuple[str, ...] = (
+    "applied", "provisional", "registered", "expired", "suspended", "cancelled", "surrendered",
+    "not_available", "not_found", "check_blocked",
+)
+IdentifierStatus = Literal["applied", "provisional", "registered", "expired", "suspended", "cancelled",
+                           "surrendered", "not_available", "not_found", "check_blocked"]
+# A status about a number cannot be recorded without one.
+NEEDS_A_NUMBER = frozenset({"provisional", "registered", "expired", "suspended", "cancelled", "surrendered"})
+
+
+def check_registration(id_value: str | None, application_ref: str | None, status: str) -> None:
+    if status in NEEDS_A_NUMBER and not id_value:
+        raise ValueError(f"status {status!r} needs the registration's number; an application is 'applied'")
+    if status == "applied" and not (id_value or application_ref):
+        raise ValueError("an application needs its number or its acknowledgement (application_ref)")
+
+
 def distinct_names(v: list[str]) -> list[str]:
     """Each spelling once, case-insensitively, in the order found; blanks dropped."""
     out: list[str] = []
@@ -533,8 +551,35 @@ class OrgLocationRecord(Provenance, Tiered):
     _one = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
+class OrgIdentifierRecord(Provenance, Tiered):
+    """One registration of an NGO and what is known of it; an application has no number yet."""
+
+    kind: Literal["org_identifier"] = "org_identifier"
+    entity_name: str = Field(min_length=2)
+    id_type: Literal["pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"]
+    id_value: str | None = None
+    status: IdentifierStatus
+    valid_from: date | None = None
+    valid_until: date | None = None
+    check_method: Literal["document", "registry", "manual_check", "aggregator"] | None = None
+    application_ref: str | None = None
+    notes: str | None = None
+    source_type: SourceType
+    evidence_tier: EvidenceTier
+
+    @field_validator("id_value")
+    @classmethod
+    def _stripped(cls, v: str | None) -> str | None:
+        return (v.strip() or None) if v else None
+
+    @model_validator(mode="after")
+    def _a_status_has_what_it_needs(self) -> OrgIdentifierRecord:
+        check_registration(self.id_value, self.application_ref, self.status)
+        return self
+
+
 Record = (
-    FunderRecord | OrgRecord | OrgFinancialsRecord | OrgLocationRecord
+    FunderRecord | OrgRecord | OrgIdentifierRecord | OrgFinancialsRecord | OrgLocationRecord
     | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
     | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | FunderProgrammeSpendRecord
     | ProgramRecord

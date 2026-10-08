@@ -526,15 +526,15 @@ _TABLES: tuple[Table, ...] = (
     ),
     Table(
         name="org_identifiers",
-        description="Statutory registration IDs for an org (PAN, FCRA, Darpan...). One row per registration.",
+        description="Statutory registrations of an org (PAN, 12A, 80G, FCRA, Darpan...), one row each, with a status. A row may have no number yet (an application).",
         primary_key=('id',),
-        foreign_keys=(ForeignKey("org_id", "orgs.id"),),
+        foreign_keys=(ForeignKey("org_id", "orgs.id"), ForeignKey("evidence_document_id", "documents.id")),
         columns=(
             Column("id", "bigint"),
             Column("org_id", "bigint", cites="org"),
             Column("id_type", "text", values=('pan', '12a', '80g', 'fcra', 'csr1', 'darpan', 'cin', 'reg_no')),
-            Column("id_value", "text"),
-            Column("verified", "boolean"),
+            Column("id_value", "text", note="NULL while only applied for: see status and application_ref"),
+            Column("verified", "boolean", note="legacy flag from the seed; read status instead"),
             Column("source_url", "text"),
             Column("is_current", "boolean", note="false = superseded, e.g. an old 12A after re-registration"),
             Column("source_name", "text"),
@@ -545,8 +545,24 @@ _TABLES: tuple[Table, ...] = (
             Column("is_public", "boolean", note="false means the number is on file but not published"),
             Column("notes", "text"),
             *_TIER,
+            Column("status", "text", note="'applied' is NOT a registration; 'check_blocked' means nobody could read the registry, NEVER that it is valid; 'not_found' means a working source did not list it", values=('applied', 'provisional', 'registered', 'expired', 'suspended', 'cancelled', 'surrendered', 'not_available', 'not_found', 'check_blocked')),
+            Column("valid_from", "date"),
+            Column("valid_until", "date", note="an FCRA or 12AB/80G approval's end date, when stated"),
+            Column("checked_at", "timestamp with time zone", note="when a person or a registry read last confirmed the status"),
+            Column("checked_by", "uuid", note="the staff member who made a manual check"),
+            Column("check_method", "text", values=('document', 'registry', 'manual_check', 'aggregator')),
+            Column("evidence_document_id", "bigint", note="the documents row holding the certificate, order or check evidence"),
+            Column("application_ref", "text", note="e.g. a Form 10AB acknowledgement number"),
         ),
-        defects=(_TIER_DEFECT,),
+        defects=(
+            (
+                "Only a row with status = 'registered', an id_value and is_current is a current registration. "
+                "'applied' is an application, 'check_blocked' means the registry could not be read (never "
+                "'valid'), and 'not_found' means a working source did not list it. Filter on status, never on "
+                "the row existing."
+            ),
+            _TIER_DEFECT,
+        ),
     ),
     Table(
         name="org_locations",

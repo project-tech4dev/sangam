@@ -38,6 +38,7 @@ from app.ingest.records import (
     FunderRecord,
     MetricRecord,
     OrgFinancialsRecord,
+    OrgIdentifierRecord,
     OrgLocationRecord,
     OrgRecord,
     ProgramRecord,
@@ -64,6 +65,7 @@ from app.ingest.writer import (
     write_metric,
     write_org,
     write_org_financials,
+    write_org_identifier,
     write_org_location,
     write_partner,
     write_program,
@@ -89,7 +91,8 @@ WRITE_ORDER = (
 # The org side's own order. Separate rather than appended: the funder path
 # would otherwise try concepts whose findings it never has, and the shared
 # concepts — programme, metric, contact, document — are the only overlap.
-ORG_WRITE_ORDER = ("org_financials", "org_location", "metric", "contact")
+# Identifiers first: each is its own fact with its own source, and nothing else names one.
+ORG_WRITE_ORDER = ("org_identifier", "org_financials", "org_location", "metric", "contact")
 
 
 # The provenance convention in CLAUDE.md asks for content_hash and
@@ -116,7 +119,7 @@ CONCEPT_RECORDS: dict[str, type] = {
     "rfp": RfpRecord,
     "eligibility_guideline": EligibilityGuidelineRecord,
     "org_identity": OrgRecord,
-    "org_identifier": OrgRecord,
+    "org_identifier": OrgIdentifierRecord,
     "org_financials": OrgFinancialsRecord,
     "org_location": OrgLocationRecord,
 }
@@ -126,8 +129,6 @@ CONCEPT_RECORDS: dict[str, type] = {
 RENAMED: dict[tuple[str, str], str] = {
     ("program", "kind"): "program_kind",
     ("contact", "kind"): "contact_kind",
-    ("org_identifier", "id_type"): "identifiers",
-    ("org_identifier", "id_value"): "identifiers",
 }
 
 
@@ -255,7 +256,7 @@ def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord |
             aliases=ident.get("aliases") or [],
             staff_count=ident.get("staff_count"),
             staff_count_note=ident.get("staff_count_note"),
-            identifiers={f["id_type"]: f["id_value"] for f in identifiers},
+            identifiers={f["id_type"]: f["id_value"] for f in identifiers if f.get("id_value")},
             source_type=anchor.get("source_type"),
             evidence_tier=anchor.get("evidence_tier"),
             as_of=None,
@@ -488,6 +489,8 @@ def _row_identity(
         return (concept, f.title, f.deadline)
     if concept == "eligibility_guideline":
         return (concept, f.source_url)
+    if concept == "org_identifier":
+        return (concept, f.id_type, (f.id_value or "").strip().lower() or None)
     if concept == "org_location":
         return (concept, district_id or state_id)
     if concept == "org_financials":
@@ -496,7 +499,7 @@ def _row_identity(
 
 
 def _describe(concept: str, f: Any) -> str:
-    for attr in ("project_name", "partner_name", "title", "name", "sector", "state"):
+    for attr in ("project_name", "partner_name", "title", "name", "sector", "state", "id_type"):
         value = getattr(f, attr, None)
         if value:
             return f"{attr}={value!r}"
@@ -688,6 +691,17 @@ async def _write_facts(
                     _, status = await write_eligibility_document(conn, rec, funder_id)
                     _count(report, "documents (funder_eligibility)", status)
 
+                elif concept == "org_identifier":
+                    rec = OrgIdentifierRecord(
+                        entity_name=name, id_type=f.id_type, id_value=f.id_value, status=f.status,
+                        valid_from=f.valid_from, valid_until=f.valid_until, check_method=f.check_method,
+                        application_ref=f.application_ref, notes=f.notes, source_type=f.source_type,
+                        evidence_tier=f.evidence_tier, as_of=None, **prov,
+                    )
+                    status, _, found = await write_org_identifier(conn, rec, owner.id, document_id)
+                    conflicts.extend(found)
+                    _count(report, "org_identifiers", status)
+
                 elif concept == "org_financials":
                     rec = OrgFinancialsRecord(
                         fiscal_year=f.fiscal_year,
@@ -800,16 +814,6 @@ async def _link_research(
         "UPDATE entity_research SET resolved_org_id = %s, resolved_funder_id = %s WHERE id = %s",
         (org_id, funder_id, row["id"]),
     )
-
-
-def _hold_unstorable(row: dict[str, Any], findings: list[dict[str, Any]], report) -> None:
-    """An identifier's note is researched, correct, and has nowhere to go yet: reported, not dropped."""
-    for f in findings:
-        if f["concept"] == "org_identifier" and f.get("notes"):
-            report["held"].append(
-                f"{f['id_type']} note {f['notes']!r}: the identifier map carries a type and a "
-                f"value, so the note stays on the research row."
-            )
 
 
 async def _reconcile_org_aliases(
@@ -940,7 +944,6 @@ async def _promote_org(
     status, org_id, _, conflicts = await write_org(conn, record, match)
     report["entity"] = {"kind": "org", "status": status, "id": org_id, "name": record.name}
     report["conflicts"].extend(c.describe() for c in conflicts)
-    _hold_unstorable(row, findings, report)
 
     owner = Owner.org(org_id)
     docs = await _write_documents(conn, row, findings, owner, report)

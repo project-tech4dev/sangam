@@ -27,7 +27,9 @@ from app.ingest.records import (
     ClassifiedBy,
     EvidenceTier,
     FindingSourceType,
+    IdentifierStatus,
     ImplementationMode,
+    check_registration,
     check_tier,
     normalise_cin,
 )
@@ -597,12 +599,33 @@ class OrgIdentityFinding(FindingBase, Sourced):
 
 
 class OrgIdentifierFinding(FindingBase, Sourced):
-    """12A, 80G and FCRA live here and nowhere else — a funder keeps only a CIN."""
+    """One registration and its status. A Form 10AB acknowledgement is 'applied', never 'registered'; a
+    registry nobody could read is 'check_blocked', never assumed valid."""
 
     concept: Literal["org_identifier"] = "org_identifier"
     id_type: Literal["pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"]
-    id_value: str = Field(min_length=2, description="exactly as printed. Never guess an identifier")
+    id_value: str | None = Field(
+        default=None,
+        description="exactly as printed. Empty only while it is applied for. Never guess an identifier",
+    )
+    status: IdentifierStatus = Field(
+        description="what the source shows, not what you expect: registered · applied (an acknowledgement, "
+                    "put its number in application_ref) · provisional · expired · suspended · cancelled · "
+                    "surrendered · not_available · not_found (a working source did not list it) · "
+                    "check_blocked (the registry could not be read — never treat it as valid)"
+    )
+    valid_from: date | None = None
+    valid_until: date | None = Field(default=None, description="an approval's end date, when stated")
+    check_method: Literal["document", "registry", "aggregator"] | None = Field(
+        default=None, description="how the status was read: the CSO's own document, a registry, an aggregator"
+    )
+    application_ref: str | None = Field(default=None, description="e.g. a Form 10AB acknowledgement number")
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _a_status_has_what_it_needs(self) -> OrgIdentifierFinding:
+        check_registration(self.id_value, self.application_ref, self.status)
+        return self
 
 
 class OrgFinancialsFinding(YearlyFinding, Sourced):

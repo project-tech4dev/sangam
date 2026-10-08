@@ -15,6 +15,7 @@ from app.ingest.records import (
     FunderRecord,
     NewsMentionRecord,
     OrgFinancialsRecord,
+    OrgIdentifierRecord,
     OrgLocationRecord,
     OrgRecord,
 )
@@ -864,7 +865,6 @@ async def write_org(
                 (match.entity_id,),
             )
         ).fetchone()
-        await _write_org_identifiers(conn, match.entity_id, rec)
         write, kept = _ranked(dict(existing), proposed, existing["source_type"], tier.source_type)
         conflicts = [
             Conflict("orgs", f"[org:{match.entity_id}]", c, old, existing["source_type"],
@@ -905,7 +905,6 @@ async def write_org(
              rec.staff_count_note, tier.source_type, tier.evidence, *provenance.values()),
         )
     ).fetchone()
-    await _write_org_identifiers(conn, row["id"], rec)
     return "added", row["id"], {"name": {"old": None, "new": rec.name}}, []
 
 
@@ -930,16 +929,82 @@ async def org_alias_holders(conn: Any, spellings: list[str], org_id: int | None)
     return out
 
 
-async def _write_org_identifiers(conn: Any, org_id: int, rec: OrgRecord) -> None:
-    """12A, 80G and FCRA among them — the registrations only an NGO carries. `verified` is left at
-    its default: research is not verification."""
-    for id_type, id_value in rec.identifiers.items():
+ORG_IDENTIFIER_VALUES = ("id_value", "status", "valid_from", "valid_until", "application_ref",
+                         "check_method", "notes")
+# org_identifiers has no content_hash or extractor_version.
+ORG_IDENTIFIER_PROVENANCE = ("source_url", "source_name", "fetched_at", "as_of")
+
+
+async def write_org_identifier(
+    conn: Any, rec: OrgIdentifierRecord, org_id: int, document_id: int | None
+) -> tuple[str, dict, list[Conflict]]:
+    """One registration with its status: (added | updated | matched | held, changes, conflicts).
+    A number another org holds is a conflict, never a write that would trip 0033's unique index."""
+    cols = ", ".join(ORG_IDENTIFIER_VALUES)
+    head = f"SELECT id, org_id, {cols}, source_type, evidence, source_url FROM org_identifiers WHERE "
+    target = None
+    if rec.id_value:
+        target = await (
+            await conn.execute(head + "id_type = %s AND lower(id_value) = lower(%s) FOR UPDATE",
+                               (rec.id_type, rec.id_value))
+        ).fetchone()
+        if target is not None and target["org_id"] != org_id:
+            return "held", {}, [Conflict(
+                "org_identifiers", f"{rec.id_type} {rec.id_value}", "org_id", f"[org:{target['org_id']}]",
+                target["source_type"], target["source_url"], f"[org:{org_id}]", rec.source_type,
+                rec.source_url,
+            )]
+    if target is None:
+        # The open row (no number yet) is the one a number later fills.
+        target = await (
+            await conn.execute(head + "org_id = %s AND id_type = %s AND id_value IS NULL FOR UPDATE",
+                               (org_id, rec.id_type))
+        ).fetchone()
+    if target is None and not rec.id_value:
+        # A status with no number is about the one current registration of that type, if there is one.
+        rows = await (
+            await conn.execute(head + "org_id = %s AND id_type = %s AND is_current ORDER BY id LIMIT 2 "
+                               "FOR UPDATE", (org_id, rec.id_type))
+        ).fetchall()
+        target = rows[0] if len(rows) == 1 else None
+
+    proposed = {c: getattr(rec, c) for c in ORG_IDENTIFIER_VALUES}
+    provenance = {c: getattr(rec, c) for c in ORG_IDENTIFIER_PROVENANCE}
+    tier = Tier.of(rec)
+    if target is None:
+        fresh = {"org_id": org_id, "id_type": rec.id_type,
+                 **{c: v for c, v in proposed.items() if v is not None},
+                 **{c: v for c, v in provenance.items() if v is not None},
+                 "source_type": tier.source_type, "evidence": tier.evidence, "document_id": document_id}
         await conn.execute(
-            "INSERT INTO org_identifiers (org_id, id_type, id_value, source_url, source_name, "
-            "fetched_at) VALUES (%s, %s, %s, %s, %s, %s) "
-            "ON CONFLICT (id_type, id_value) WHERE id_value IS NOT NULL DO NOTHING",
-            (org_id, id_type, id_value, rec.source_url, rec.source_name, rec.fetched_at),
+            f"INSERT INTO org_identifiers ({', '.join(fresh)}) VALUES ({', '.join(['%s'] * len(fresh))})",
+            tuple(fresh.values()),
         )
+        return "added", {c: {"old": None, "new": _plain(v)} for c, v in fresh.items()}, []
+
+    if rec.status == "check_blocked":
+        proposed["status"] = None       # a check nobody could make says nothing about a known status
+    if target["id_value"] is not None:
+        proposed["id_value"] = None     # found by its number, case-insensitively: the spelling is not news
+    write, kept = _ranked(dict(target), proposed, target["source_type"], tier.source_type)
+    retier = _takes_row(target, proposed, tier)
+    conflicts = [
+        Conflict("org_identifiers", f"[org:{org_id}] {rec.id_type}", c, old, target["source_type"],
+                 target["source_url"], new, tier.source_type, rec.source_url)
+        for c, old, new in kept
+    ]
+    if not write and not retier:
+        return "matched", {}, conflicts
+    sets = {c: proposed[c] for c in write}
+    if retier:
+        sets.update({c: v for c, v in provenance.items() if v is not None})
+        sets.update(source_type=tier.source_type, evidence=tier.evidence)
+    await conn.execute(
+        f"UPDATE org_identifiers SET {', '.join(f'{c} = %s' for c in sets)}, "
+        "document_id = coalesce(document_id, %s) WHERE id = %s",
+        (*sets.values(), document_id, target["id"]),
+    )
+    return "updated", {**write, **retier}, conflicts
 
 
 async def write_org_financials(

@@ -853,10 +853,9 @@ class TestPromotionCoversEveryConceptWithAWriter:
         which is the failure the order was split in two to risk."""
         from app.ingest.promote import ORG_WRITE_ORDER
 
-        # Handled outside the fact loops: the entity itself, its identifiers,
-        # its documents and its programmes each have their own step.
-        apart = {"identity", "csr_year", "program", "document",
-                 "org_identity", "org_identifier"}
+        # Handled outside the fact loops: the entity itself, its documents and
+        # its programmes each have their own step.
+        apart = {"identity", "csr_year", "program", "document", "org_identity"}
         assert set(PROMOTABLE) - apart == set(WRITE_ORDER) | set(ORG_WRITE_ORDER)
 
     def test_the_funder_loop_never_tries_an_org_concept(self):
@@ -1286,9 +1285,8 @@ class TestTheOrgWriter:
         assert self.rec().org_kind is None
         assert (status, changes, conflicts) == ("matched", {}, [])
 
-    async def test_twelve_a_and_eighty_g_reach_org_identifiers(self):
-        """funder_identifiers has no room for either; this is the whole point
-        of researching an NGO against its own tables."""
+    async def test_write_org_writes_no_identifier(self):
+        """Each registration is its own finding with its own source and status (write_org_identifier)."""
         from app.ingest.matcher import Match
         from app.ingest.writer import write_org
 
@@ -1297,9 +1295,7 @@ class TestTheOrgWriter:
             conn, self.rec(identifiers={"12a": "AAATG5219M", "80g": "AAATG5219MF2021"}),
             Match("none"),
         )
-        wrote = [q for q in conn.sql if q.startswith("INSERT INTO org_identifiers")]
-        assert len(wrote) == 2
-        assert {p[1] for p in conn.params[-2:]} == {"12a", "80g"}
+        assert not any("org_identifiers" in q for q in conn.sql)
 
     async def test_a_free_slug_steps_aside_for_one_already_taken(self):
         from app.ingest.writer import _free_slug
