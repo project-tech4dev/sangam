@@ -343,7 +343,8 @@ FUNDER_ACTIVITY_KEY = ("funder_id", "kind", "fiscal_year", "program_id", "csr_se
 FUNDER_ACTIVITY_UPDATABLE = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note",
                              "name_as_printed", "implementation_mode", "partner_canonical",
                              "partner_csr1", "partner_kind", "outlay", "amount", "project_count",
-                             "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of")
+                             "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of",
+                             "start_date", "end_date", "relationship_status", "partner_org_id")
 _CLASSIFICATION = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note")
 FUNDER_LOCATION_KEY = ("funder_id", "location_id")
 FUNDER_LOCATION_UPDATABLE = ("role", "note", "source_url", "source_name", "fetched_at", "as_of")
@@ -491,18 +492,49 @@ async def write_funder_location(
     )
 
 
+# What an organisation's research may not change on a funder's line; a difference is a conflict.
+PARTNER_GUARDED = ("amount", "start_date", "end_date", "relationship_status", "source_url")
+
+
+def _appended(stored: str | None, incoming: str | None) -> str | None:
+    """Notes only grow: incoming lines not already stored go after the stored ones."""
+    have = {ln.strip() for ln in (stored or "").splitlines()}
+    fresh = [ln for ln in (incoming or "").splitlines() if ln.strip() and ln.strip() not in have]
+    if not fresh:
+        return None
+    return "\n".join([stored, *fresh]) if stored else "\n".join(fresh)
+
+
 async def write_partner(
-    conn: Any, rec: Any, funder_id: int, *, program_id: int | None, document_id: int | None
+    conn: Any, rec: Any, funder_id: int, *, program_id: int | None, document_id: int | None,
+    partner_org_id: int | None = None, fill_only: bool = False, conflicts: list[Conflict] | None = None,
 ) -> tuple[str, dict]:
+    """One partner line; a grant is one, so two projects with one partner in a year are two lines.
+    fill_only (an organisation's research) fills blanks and reports a differing value as a conflict."""
     key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
-                        partner_name=rec.partner_name)
+                        project_name=rec.project_name, partner_name=rec.partner_name)
     proposed = {
         "partner_canonical": rec.partner_canonical or rec.partner_name,
-        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1,
-        "outlay": rec.outlay, "amount": rec.amount, "notes": rec.notes,
+        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1, "partner_org_id": partner_org_id,
+        "outlay": rec.outlay, "amount": rec.amount, "start_date": rec.start_date, "end_date": rec.end_date,
+        "relationship_status": rec.relationship_status, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
+    where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
+    stored = await (
+        await conn.execute(f"SELECT id, {', '.join(proposed)} FROM funder_activity WHERE {where}",
+                           tuple(key.values()))
+    ).fetchone()
+    if stored:
+        proposed["notes"] = _appended(stored["notes"], rec.notes)
+        for c in (c for c in proposed if fill_only and c != "notes" and stored[c] is not None):
+            if c in PARTNER_GUARDED and _diff({c: stored[c]}, {c: proposed[c]}):
+                _sink(conflicts, [Conflict(
+                    "funder_activity", f"[activity:{stored['id']}] partner {rec.partner_name!r} {rec.fiscal_year}",
+                    c, _plain(stored[c]), None, stored["source_url"], _plain(proposed[c]),
+                    getattr(rec, "source_type", None) or "unranked", rec.source_url)])
+            proposed[c] = None
     return await _write_activity(conn, key, proposed, document_id)
 
 

@@ -1,5 +1,5 @@
 """Idempotent seed script (schema v2): vocabularies, darpan orgs, hand-vetted
-funders, programs, grants, rubrics, KABIL fit scores + adjustments, GDELT news.
+funders, programs, grants (as funder_activity partner lines), rubrics, KABIL fit scores + adjustments, GDELT news.
 
 Run inside the backend container (or any env with DATABASE_URL set):
     python -m seed.seed
@@ -18,7 +18,7 @@ import json
 import os
 import re
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import psycopg
@@ -376,7 +376,7 @@ def seed_funders(cur, locations, tags) -> int:
     return len(funders)
 
 
-# --- Phase 5/6: programs + grants ------------------------------------------
+# --- Phase 5/6: programs + grant lines ------------------------------------------
 
 
 def lookup_id(cur, table: str, key: str, value: str) -> int:
@@ -412,30 +412,53 @@ def seed_programs(cur) -> dict[tuple[int, str], int]:
     return ids
 
 
+def fiscal_year_of(d: date) -> str:
+    """The Indian fiscal year (April to March) a date falls in: 0034's rule and records.fiscal_year_of's."""
+    y = d.year if d.month >= 4 else d.year - 1
+    return f"FY{y}-{(y + 1) % 100:02d}"
+
+
+def _grant_year(grant: dict) -> tuple[str, str | None]:
+    """A grant's line year, and the note 0034 writes when it is not the start date's."""
+    for key, why in (
+        ("start_date", None),
+        ("end_date", "fiscal_year is the year of the end date; the start date was not stated."),
+        ("fetched_at", "fiscal_year is the year the source was read; the start date was not stated."),
+    ):
+        if grant.get(key):
+            return fiscal_year_of(date.fromisoformat(grant[key][:10])), why
+    sys.exit(f"seed error: grant {grant['title']!r} has no date to place it in a fiscal year")
+
+
 def seed_grants(cur, program_ids) -> int:
+    """grants.json as funder_activity partner lines, mapped the way 0034 moved the grants table."""
     grants = json.loads((DATA / "grants.json").read_text())
     for grant in grants:
         funder_id = lookup_id(cur, "funders", "slug", grant["funder"])
         org_id = lookup_id(cur, "orgs", "slug", grant["org"])
+        cur.execute("SELECT name FROM orgs WHERE id = %s", (org_id,))
+        org_name = cur.fetchone()[0]
         program_id = program_ids.get((funder_id, grant["program"])) if grant.get("program") else None
+        fiscal_year, why = _grant_year(grant)
+        outcomes = "; ".join(f"{k} {v}" for k, v in sorted(grant.get("outcomes", {}).items()))
+        notes = "\n".join(p for p in (grant.get("notes"), f"Outcomes: {outcomes}." if outcomes else None, why) if p)
+        # notes is written on insert only, so a line 0034 moved keeps its "Moved from grants #N" trace.
         cur.execute(
             """
-            INSERT INTO grants (funder_id, org_id, program_id, title, start_date, end_date,
-                                status, outcomes, notes, source_url, source_name,
-                                fetched_at, extractor_version)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (funder_id, org_id, title) DO UPDATE SET
-              program_id = EXCLUDED.program_id, start_date = EXCLUDED.start_date,
-              end_date = EXCLUDED.end_date, status = EXCLUDED.status,
-              outcomes = EXCLUDED.outcomes, notes = EXCLUDED.notes,
+            INSERT INTO funder_activity (funder_id, kind, fiscal_year, program_id, project_name, partner_name,
+                                         partner_canonical, partner_org_id, start_date, end_date,
+                                         relationship_status, notes, source_url, source_name, fetched_at)
+            VALUES (%s, 'partner', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (funder_id, kind, fiscal_year, program_id, csr_sector_id, state_location_id,
+                         location_id, designation, project_name, partner_name) DO UPDATE SET
+              partner_org_id = EXCLUDED.partner_org_id, start_date = EXCLUDED.start_date,
+              end_date = EXCLUDED.end_date, relationship_status = EXCLUDED.relationship_status,
               source_url = EXCLUDED.source_url, fetched_at = EXCLUDED.fetched_at
             """,
             (
-                funder_id, org_id, program_id, grant["title"],
-                grant.get("start_date"), grant.get("end_date"), grant["status"],
-                json.dumps(grant.get("outcomes", {})), grant.get("notes"),
-                grant.get("source_url"), grant.get("source_name"),
-                grant.get("fetched_at"), EXTRACTOR_VERSION,
+                funder_id, fiscal_year, program_id, grant["title"], org_name, org_name, org_id,
+                grant.get("start_date"), grant.get("end_date"), grant["status"], notes,
+                grant.get("source_url"), grant.get("source_name"), grant.get("fetched_at"),
             ),
         )
     return len(grants)
@@ -578,7 +601,7 @@ def main() -> None:
     print(
         f"seeded: {len(locations)} locations, {len(tags)} tags, "
         f"{n_darpan}+{n_extra} orgs, {n_funders} funders, {len(program_ids)} programs, "
-        f"{n_grants} grants, {len(criterion_ids)} rubric criteria, "
+        f"{n_grants} grant lines, {len(criterion_ids)} rubric criteria, "
         f"{n_scores} fit scores ({n_items} items), {n_news} news mentions"
     )
 

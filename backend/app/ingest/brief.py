@@ -61,6 +61,7 @@ _ELIGIBILITY_KINDS = {
 LEGACY_TITLES: dict[str, str] = {
     "identifier": "Registrations and identifiers (saved before 0031)",
     "funder_eligibility": "Eligibility it sets for applicants (saved before 0031)",
+    "grant": "Grants (saved before 0034)",
 }
 
 
@@ -94,8 +95,8 @@ def headline(f: dict[str, Any]) -> str:
     if concept == "stated_geography":
         return _join(_place(f), f.get("role"))
     if concept == "partner":
-        return _join(f.get("partner_name"), _money(f.get("amount")), f.get("partner_kind"),
-                     f.get("program_name"))
+        return _join(f.get("partner_name"), f.get("project_name"), _money(f.get("amount")),
+                     f.get("relationship_status"), f.get("partner_kind"), f.get("program_name"))
     if concept == "programme_spend":
         return _join(f.get("program_name"), _money(f.get("amount")), "the funder's own figure",
                      "/".join(b for b in (f.get("domain"), f.get("theme")) if b))

@@ -66,12 +66,15 @@ export type ScoreRow = {
   total_score: number; max_score: number; scored_by: string; scored_at: string; notes: string | null;
 };
 
-export type GrantRow = {
-  id: number; funder_id: number; funder_name: string | null; org_id: number; org_name: string | null;
-  program_id: number | null; program_name: string | null; title: string;
-  amount: number | null; currency: string; start_date: string | null; end_date: string | null;
-  status: string; outcomes: Record<string, unknown>; notes: string | null;
+// A funder_activity partner line (grants included); `id` is what [activity:N] cites. Amounts are INR.
+export type PartnerLineRow = {
+  id: number; funder_id: number; funder_slug: string; funder_name: string; fiscal_year: string;
+  partner_name: string; partner_org_id: number | null; partner_org_slug: string | null;
+  partner_org_name: string | null; project_name: string | null;
+  program_id: number | null; program_name: string | null; amount: number | null;
+  start_date: string | null; end_date: string | null; relationship_status: string | null; notes: string | null;
   source_name: string | null; source_url: string | null; fetched_at: string | null;
+  fy_is_dated: boolean; // false when fiscal_year is only when the source was read
 };
 
 export type ProgramRow = {

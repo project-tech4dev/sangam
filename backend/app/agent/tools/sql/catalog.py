@@ -19,7 +19,7 @@ class Column:
     values: tuple[str, ...] = ()
     """The column's CHECK-constraint enum, verbatim. Free, exact, no row sampling."""
     cites: str | None = None
-    """Citation kind this column's value yields: 'org' | 'funder' | 'grant' | 'score'."""
+    """Citation kind this column's value yields: 'org' | 'funder' | 'activity' | 'score'."""
     heavy: bool = False
     """Large payload: selectable by name, but excluded from `SELECT *` expansion."""
 
@@ -222,11 +222,11 @@ _TABLES: tuple[Table, ...] = (
     ),
     Table(
         name="funder_activity",
-        description="One line of a funder's CSR filing, annual report or partner list per fiscal year: a spend line, a place the work ran, a named partner, or the funder's own programme figure. `kind` says which.",
+        description="One line of a funder's CSR filing, annual report or partner list per fiscal year: a spend line, a place the work ran, a named partner, or the funder's own programme figure. `kind` says which. A grant to an organisation is a 'partner' line with partner_org_id set; there is no grants table.",
         primary_key=('id',),
         foreign_keys=(ForeignKey("funder_id", "funders.id"), ForeignKey("program_id", "programs.id"), ForeignKey("domain_tag_id", "tags.id"), ForeignKey("theme_tag_id", "tags.id"), ForeignKey("csr_sector_id", "tags.id"), ForeignKey("state_location_id", "locations.id"), ForeignKey("location_id", "locations.id"), ForeignKey("partner_org_id", "orgs.id"), ForeignKey("partner_funder_id", "funders.id"), ForeignKey("document_id", "documents.id")),
         columns=(
-            Column("id", "bigint"),
+            Column("id", "bigint", cites="activity"),
             Column("funder_id", "bigint", cites="funder", note="for a statutory filing, the corporate parent that filed it; a foundation is its child through funders.parent_id"),
             Column("kind", "text", note="'spend' a filing line with an amount; 'footprint' a place the work ran; 'partner' a named partner; 'programme' the funder's OWN total for one programme component. Always filter on kind", values=('spend', 'footprint', 'partner', 'programme')),
             Column("fiscal_year", "text", note="period label, always 'FYyyyy-yy'"),
@@ -240,7 +240,7 @@ _TABLES: tuple[Table, ...] = (
             Column("state_location_id", "bigint"),
             Column("location_id", "bigint", note="the most specific place below the state, usually a district"),
             Column("name_as_printed", "text", note="the place name as the source spelled it"),
-            Column("project_name", "text", note="NULL on an aggregate spend line; set on a single project"),
+            Column("project_name", "text", note="NULL on an aggregate spend line; set on a single project; on a partner line, the grant's title"),
             Column("designation", "text", note="the total covers only places with this designation, e.g. 'aspirational_district'"),
             Column("implementation_mode", "text", values=('direct', 'implementing_agency', 'own_trust_or_section8', 'not_stated')),
             Column("partner_name", "text", note="the implementing agency or named partner, as printed"),
@@ -253,6 +253,9 @@ _TABLES: tuple[Table, ...] = (
             Column("amount", "numeric", note="INR"),
             Column("project_count", "integer", note="set on an aggregate: how many projects the amount covers"),
             Column("is_ongoing", "boolean"),
+            Column("start_date", "date", note="kind 'partner': when the grant or partnership began, as a source states it"),
+            Column("end_date", "date", note="kind 'partner': when it ended or is due to end"),
+            Column("relationship_status", "text", note="kind 'partner': whether it is running, as a source says; NULL means no source said", values=('active', 'concluded', 'unconfirmed', 'dormant')),
             Column("notes", "text"),
             Column("is_public", "boolean", note="false for a line a person marked internal (D14): staff may read it, it is never shown publicly. Every line a writer produces is true"),
             Column("source_key", "text", note="the source registry key, e.g. 'mca_csr'"),
@@ -268,7 +271,11 @@ _TABLES: tuple[Table, ...] = (
             "Rows of kind 'programme' are the funder's own programme totals: never sum them with 'spend' lines and never spread them across them; report the two side by side.",
             "domain_tag_id and theme_tag_id are inferences unless classification_confirmed is true, so a total by domain or theme must say whether it is confirmed or includes inferred lines.",
             "Spend lines copied by migration 0031 from the old spend table carry no domain_tag_id. A NULL domain is unclassified, not 'Others' and not absent: never report 'no <domain> spend' for a funder that has spend lines with a NULL domain - say those lines are unclassified.",
-            "A 'partner' line is a named relationship. Only when its amount is set does it say money changed hands: the amount (INR) is what the source, usually the recipient's own record, says the partner received from this funder that year. A partner line with no amount is not evidence of a grant.",
+            "A 'partner' line is a named relationship. Only when its amount is set does it say money changed hands: the amount (INR) is what the source, usually the recipient's own record, says the partner received from this funder - in that fiscal_year, or, when start_date and end_date span more than one fiscal year, over the whole grant. A partner line with no amount is not evidence of a grant.",
+            "A multi-year grant is ONE partner line: the whole grant amount sits on the fiscal_year it started, with start_date and end_date set. Never read it as that year's spend and never divide it across years yourself; say it is a multi-year total.",
+            "There is no grants table: grants moved here in 0034 as 'partner' lines with partner_org_id set. Their notes end 'Moved from grants #N by 0034.', which is how a citation of an old grant number is traced.",
+            "Partner lines carry no evidence tier column: a line an organisation's own research added says its source type and tier in notes ('From the organisation's research: <source_type>, <tier>.'); a funder's own filing or report says nothing there.",
+            "A partner line whose notes say 'fiscal_year is the year the source was read' (or 'the year the row was recorded') had no stated date: it is NOT dated to that fiscal year, so never count it as that year's grant.",
             "Rows with is_public = false are internal: this tool runs as the owner, so row security does not hide them here. Add WHERE is_public to any answer that may be shown publicly, and when an internal row is shown, say it is internal and must not be shown publicly.",
         ),
     ),
@@ -280,7 +287,7 @@ _TABLES: tuple[Table, ...] = (
         columns=(
             Column("funder_id", "bigint", cites="funder"),
             Column("location_id", "bigint"),
-            Column("role", "text", note="'priority' is a STATED focus, not evidence of funding - see funder_activity footprint lines and grant_locations for where a funder actually gave", values=('registered', 'operates', 'funds', 'priority')),
+            Column("role", "text", note="'priority' is a STATED focus, not evidence of funding - see funder_activity (kind 'footprint' and 'partner') for where a funder actually gave", values=('registered', 'operates', 'funds', 'priority')),
             Column("valid_from", "date"),
             Column("valid_to", "date"),
             Column("note", "text"),
@@ -337,56 +344,6 @@ _TABLES: tuple[Table, ...] = (
         ),
     ),
     Table(
-        name="grant_locations",
-        description="Where a grant was actually spent. Join table.",
-        primary_key=('grant_id', 'location_id'),
-        foreign_keys=(ForeignKey("grant_id", "grants.id"), ForeignKey("location_id", "locations.id"), ForeignKey("document_id", "documents.id")),
-        columns=(
-            Column("grant_id", "bigint", cites="grant"),
-            Column("location_id", "bigint"),
-            Column("note", "text"),
-            Column("source_url", "text"),
-            Column("source_name", "text"),
-            Column("fetched_at", "timestamp with time zone"),
-            Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
-            Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
-            Column("archive_url", "text"),
-        ),
-        defects=(
-            "Table is empty (0 rows): no grant has a place yet, so an INNER JOIN from grants through this table returns nothing. Outer-join it, or read grants directly.",
-        ),
-    ),
-    Table(
-        name="grants",
-        description="Researched funding relationships: who funded whom, when, how much.",
-        primary_key=('id',),
-        foreign_keys=(ForeignKey("funder_id", "funders.id"), ForeignKey("org_id", "orgs.id"), ForeignKey("program_id", "programs.id"), ForeignKey("document_id", "documents.id")),
-        columns=(
-            Column("id", "bigint", cites="grant"),
-            Column("funder_id", "bigint", cites="funder"),
-            Column("org_id", "bigint", cites="org"),
-            Column("program_id", "bigint"),
-            Column("title", "text"),
-            Column("amount", "numeric", note="NULL where the amount was never made public - not zero"),
-            Column("currency", "text", note="defaults to INR"),
-            Column("start_date", "date"),
-            Column("end_date", "date"),
-            Column("status", "text", values=('active', 'concluded', 'unconfirmed', 'dormant')),
-            Column("outcomes", "jsonb", heavy=True),
-            Column("notes", "text"),
-            Column("valid_from", "timestamp with time zone"),
-            Column("valid_to", "timestamp with time zone"),
-            Column("source_url", "text"),
-            Column("source_name", "text"),
-            Column("fetched_at", "timestamp with time zone"),
-            Column("content_hash", "text"),
-            Column("extractor_version", "text"),
-            Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
-            Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
-            Column("archive_url", "text"),
-        ),
-    ),
-    Table(
         name="location_designations",
         description="Designations that funders prioritise: aspirational_district, north_east.",
         primary_key=('location_id', 'designation'),
@@ -429,13 +386,13 @@ _TABLES: tuple[Table, ...] = (
         name="metrics",
         description="Impact and reach figures for an org OR a funder. Rows sharing chain_key form one results chain.",
         primary_key=('id',),
-        foreign_keys=(ForeignKey("org_id", "orgs.id"), ForeignKey("funder_id", "funders.id"), ForeignKey("program_id", "programs.id"), ForeignKey("grant_id", "grants.id"), ForeignKey("location_id", "locations.id"), ForeignKey("document_id", "documents.id")),
+        foreign_keys=(ForeignKey("org_id", "orgs.id"), ForeignKey("funder_id", "funders.id"), ForeignKey("program_id", "programs.id"), ForeignKey("activity_id", "funder_activity.id"), ForeignKey("location_id", "locations.id"), ForeignKey("document_id", "documents.id")),
         columns=(
             Column("id", "bigint"),
             Column("org_id", "bigint", cites="org"),
             Column("funder_id", "bigint", cites="funder"),
             Column("program_id", "bigint"),
-            Column("grant_id", "bigint", cites="grant"),
+            Column("activity_id", "bigint", cites="activity", note="the funder_activity line (usually a partner line, i.e. a grant) this figure reports on"),
             Column("location_id", "bigint"),
             Column("name", "text"),
             Column("value", "numeric"),
@@ -460,14 +417,14 @@ _TABLES: tuple[Table, ...] = (
         ),
         defects=(
             _TIER_DEFECT,
-            "Sparse: figures arrive from promoted research and are mostly self-reported — check `method` before quoting one as evidence. grants.outcomes holds a little more as jsonb; a zero here is not evidence an organisation measures nothing.",
+            "Sparse: figures arrive from promoted research and are mostly self-reported — check `method` before quoting one as evidence. outcomes of the grants moved in 0034 sit as text in funder_activity.notes; a zero here is not evidence an organisation measures nothing.",
         ),
     ),
     Table(
         name="news_mentions",
         description="GDELT news hits. Rarely linked to an entity — read the caveat.",
         primary_key=('id',),
-        foreign_keys=(ForeignKey("funder_id", "funders.id"), ForeignKey("grant_id", "grants.id"), ForeignKey("org_id", "orgs.id")),
+        foreign_keys=(ForeignKey("funder_id", "funders.id"), ForeignKey("activity_id", "funder_activity.id"), ForeignKey("org_id", "orgs.id")),
         columns=(
             Column("id", "bigint"),
             Column("url", "text"),
@@ -479,7 +436,7 @@ _TABLES: tuple[Table, ...] = (
             Column("topic", "text"),
             Column("funder_id", "bigint", cites="funder"),
             Column("org_id", "bigint", cites="org"),
-            Column("grant_id", "bigint", cites="grant"),
+            Column("activity_id", "bigint", cites="activity", note="the funder_activity line a story is about"),
             Column("source_name", "text"),
             Column("fetched_at", "timestamp with time zone"),
             Column("kind", "text", values=('news', 'press', 'social')),
@@ -492,7 +449,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "org_id, funder_id and grant_id are NULL for all 118 rows. Any JOIN or filter on them returns zero rows. A zero result here means 'not linked in the data', NEVER 'no news exists'.",
+            "org_id, funder_id and activity_id are NULL for all 118 rows. Any JOIN or filter on them returns zero rows. A zero result here means 'not linked in the data', NEVER 'no news exists'.",
         ),
     ),
     Table(
@@ -1006,7 +963,7 @@ def _self_check() -> None:
             if target_col not in COLUMNS[target_table]:
                 raise ValueError(f"catalog: {name}.{fk.column} references missing {fk.references}")
         for column in table.columns:
-            if column.cites and column.cites not in {"org", "funder", "grant", "score"}:
+            if column.cites and column.cites not in {"org", "funder", "activity", "score"}:
                 raise ValueError(f"catalog: {name}.{column.name} cites unknown kind {column.cites!r}")
 
 

@@ -22,7 +22,7 @@ export type IndexPayload = {
   orgs: ({ id: number; slug: string; name: string } & Sourced)[];
   funders: ({ id: number; slug: string; name: string } & Sourced)[];
   scores: { id: number; funderSlug: string; orgName: string; funderName: string; rubricVersion: string | null }[];
-  grants: ({ id: number; orgSlug: string; title: string } & Sourced)[];
+  activities: ({ id: number; href: string; title: string } & Sourced)[];
   stats: Record<string, number>;
 };
 
@@ -65,7 +65,7 @@ export function AskWorkspace({
       orgs: new Map(payload.orgs.map((o) => [o.id, o])),
       funders: new Map(payload.funders.map((f) => [f.id, f])),
       scores: new Map(payload.scores.map((s) => [s.id, s])),
-      grants: new Map(payload.grants.map((g) => [g.id, g])),
+      activities: new Map(payload.activities.map((a) => [a.id, a])),
     }),
     [payload],
   );

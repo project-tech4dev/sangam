@@ -28,7 +28,9 @@ async def stats(pool: AsyncConnectionPool) -> dict:
     SELECT
       (SELECT count(*) FROM orgs)          AS orgs,
       (SELECT count(*) FROM funders)       AS funders,
-      (SELECT count(*) FROM grants)        AS grants,
+      (SELECT count(*) FROM funder_activity
+         WHERE kind = 'partner' AND partner_org_id IS NOT NULL
+           AND (amount IS NOT NULL OR relationship_status IS NOT NULL)) AS grants,
       (SELECT count(*) FROM fit_scores)    AS fit_scores,
       (SELECT count(*) FROM programs)      AS programs,
       (SELECT count(*) FROM contacts)      AS contacts,

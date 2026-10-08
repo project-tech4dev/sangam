@@ -43,7 +43,9 @@ def test_documents_sequence_advanced(conn):
 
 
 def test_v2_content_present(conn):
-    assert conn.execute("SELECT count(*) FROM grants").fetchone()[0] == 4
+    assert conn.execute(
+        "SELECT count(*) FROM funder_activity WHERE kind = 'partner' AND partner_org_id IS NOT NULL"
+    ).fetchone()[0] == 4
     assert conn.execute("SELECT count(*) FROM programs").fetchone()[0] == 4
     assert conn.execute(
         "SELECT count(*) FROM org_identifiers WHERE id_type = 'fcra'"

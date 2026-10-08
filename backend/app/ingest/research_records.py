@@ -31,6 +31,7 @@ from app.ingest.records import (
     ImplementationMode,
     check_registration,
     check_tier,
+    fiscal_year_of,
     http_url,
     normalise_cin,
 )
@@ -332,10 +333,11 @@ class StatedGeographyFinding(PlacedFinding):
     note: str | None = None
 
 
-class PartnerFinding(YearlyFinding):
-    """Keep the year: repeated appearances mean renewal, and collapsing them destroys that."""
+class PartnerFinding(YearlyFinding, OptionallySourced):
+    """A named partner and, with an amount, a grant. Keep the year: repeated appearances mean renewal."""
 
     concept: Literal["partner"] = "partner"
+    funder_name: str | None = Field(default=None, description="org research only: who gave the money, as printed")
     partner_name: str = Field(min_length=2, description="as printed in the source")
     partner_canonical: str | None = Field(
         default=None, description="one spelling per partner; count renewals on this"
@@ -345,16 +347,38 @@ class PartnerFinding(YearlyFinding):
                 "armed_forces", "hospital", "network", "company", "other"] | None
     ) = None
     partner_csr1: str | None = None
+    project_name: str | None = Field(
+        default=None, description="the grant or project as the source titles it; two projects are two findings"
+    )
+    start_date: date | None = Field(default=None, description="when the grant or partnership began")
+    end_date: date | None = Field(
+        default=None,
+        description="when it ended or is due to. A multi-year grant is ONE finding with both dates and its "
+                    "whole amount, in the fiscal_year it started — never split it across years",
+    )
+    relationship_status: Literal["active", "concluded", "unconfirmed", "dormant"] | None = Field(
+        default=None, description="only when a source says whether it is running; null means not stated"
+    )
     outlay: Money | None = Field(
         default=None, description="the amount committed or sanctioned to the partner, when stated beside the grant"
     )
     amount: Money | None = Field(
         default=None,
-        description="what the partner received from this funder in the year, as printed with its unit; "
-                    "usually from the recipient's own record. Null means not stated, never zero",
+        description="what the partner received from this funder in the year, or over a multi-year grant, as "
+                    "printed with its unit; usually from the recipient's own record. Null means not stated, "
+                    "never zero",
     )
     program_name: str | None = None
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _dates_in_order(self) -> PartnerFinding:
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError(f"the partnership ends before it starts ({self.start_date} to {self.end_date})")
+        if self.start_date and self.fiscal_year != fiscal_year_of(self.start_date):
+            raise ValueError(f"a line with a start date sits in the fiscal year it started: "
+                             f"{fiscal_year_of(self.start_date)}, not {self.fiscal_year}")
+        return self
 
 
 class ProgrammeSpendFinding(YearlyFinding):
@@ -390,21 +414,6 @@ class ProgramFinding(FindingBase, OptionallySourced):
     start_date: date | None = None
     end_date: date | None = None
     is_enabler: bool | None = None
-
-
-class GrantFinding(FindingBase):
-    """A funder gave money to a named organisation. A named partner is NOT a grant."""
-
-    concept: Literal["grant"] = "grant"
-    recipient_name: str = Field(min_length=2, description="the organisation that received it")
-    title: str = Field(min_length=2)
-    status: Literal["active", "concluded", "unconfirmed", "dormant"] = "unconfirmed"
-    amount: Money | None = Field(default=None, description="null means not public. Never zero")
-    currency: str = "INR"
-    start_date: date | None = None
-    end_date: date | None = None
-    program_name: str | None = None
-    notes: str | None = None
 
 
 class MetricFinding(FindingBase, OptionallySourced):
@@ -658,7 +667,7 @@ class OrgLocationFinding(PlacedFinding, Sourced):
 
 Finding = Annotated[
     IdentityFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
-    | StatedGeographyFinding | PartnerFinding | ProgrammeSpendFinding | ProgramFinding | GrantFinding | MetricFinding
+    | StatedGeographyFinding | PartnerFinding | ProgrammeSpendFinding | ProgramFinding | MetricFinding
     | ContactFinding | DocumentFinding | RfpFinding | EligibilityGuidelineFinding
     | OrgIdentityFinding | OrgIdentifierFinding | OrgFinancialsFinding | OrgLocationFinding,
     Field(discriminator="concept"),
@@ -669,7 +678,7 @@ FINDING_MODELS: dict[str, type[FindingBase]] = {
     "csr_spend": CsrSpendFinding, "footprint": FootprintFinding,
     "stated_geography": StatedGeographyFinding, "partner": PartnerFinding,
     "programme_spend": ProgrammeSpendFinding,
-    "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,
+    "program": ProgramFinding, "metric": MetricFinding,
     "contact": ContactFinding, "document": DocumentFinding, "rfp": RfpFinding,
     "eligibility_guideline": EligibilityGuidelineFinding,
     "org_identity": OrgIdentityFinding, "org_identifier": OrgIdentifierFinding,
@@ -732,7 +741,7 @@ class EntityResearch(BaseModel):
             )
         if self.entity_kind == "org":
             # An org's shared concepts are ranked at promotion, so the tier is required at save.
-            tierless = sorted({f.concept for f in self.findings if f.concept in ("program", "metric", "contact")
+            tierless = sorted({f.concept for f in self.findings if f.concept in ("program", "metric", "contact", "partner")
                                and (getattr(f, "source_type", None) is None
                                     or getattr(f, "evidence_tier", None) is None)})
             if tierless:
@@ -809,7 +818,7 @@ class PromotionReport(BaseModel):
                     "The stored value was kept",
     )
     still_research: list[str] = Field(
-        default_factory=list, description="concepts that stayed research, e.g. ['grant']"
+        default_factory=list, description="concepts saved under a shape no writer reads"
     )
     verified: bool = Field(
         default=False, description="true only if the dossier was read back and agreed"

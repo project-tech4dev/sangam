@@ -165,9 +165,11 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "funder_activity kind='partner' (named; an amount, INR, is what the partner received)",
+        ("funder_activity kind='partner' (named partners and grants; an amount, INR, is what the partner "
+         "received, and a multi-year grant's whole amount sits on its start year)"),
         """
-        SELECT fiscal_year, partner_name, partner_canonical, partner_kind, outlay, amount
+        SELECT fiscal_year, partner_name, partner_canonical, partner_kind, project_name, outlay, amount,
+               start_date, end_date, relationship_status, partner_org_id
         FROM funder_activity WHERE funder_id = %s AND kind = 'partner' ORDER BY fiscal_year, id
         """,
     ),
@@ -186,13 +188,6 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """
         SELECT name, kind, status, start_date, end_date FROM programs
         WHERE funder_id = %s ORDER BY kind, name
-        """,
-    ),
-    (
-        "grants",
-        """
-        SELECT g.title, g.amount, g.status, g.start_date, o.name AS recipient
-        FROM grants g JOIN orgs o ON o.id = g.org_id WHERE g.funder_id = %s
         """,
     ),
     (
@@ -252,10 +247,12 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "grants received",
+        "funder_activity kind='partner' naming this organisation (grants received; amount INR)",
         """
-        SELECT g.title, g.amount, g.status, g.start_date, f.name AS funder
-        FROM grants g JOIN funders f ON f.id = g.funder_id WHERE g.org_id = %s
+        SELECT a.fiscal_year, f.name AS funder, a.project_name, a.amount, a.relationship_status,
+               a.start_date, a.end_date
+        FROM funder_activity a JOIN funders f ON f.id = a.funder_id
+        WHERE a.partner_org_id = %s AND a.kind = 'partner' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (
@@ -415,8 +412,10 @@ async def _held_per_concept(
             continue
         has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
         years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
+        # funder_activity hangs off the funder; an NGO's lines are the ones naming it as the partner.
+        col = "partner_org_id" if entity_kind == "org" and table == "funder_activity" else fk
         # Table, column and filter column come from module constants, never a caller.
-        where, params = f"{fk} = %s", [entity_id]
+        where, params = f"{col} = %s", [entity_id]
         if spec.row_filter:
             where += f" AND {spec.row_filter[0]} = %s"
             params.append(spec.row_filter[1])
@@ -442,9 +441,9 @@ async def promote_research(slug: str = "") -> str:
     a weaker source never overwrites a stronger one, and a disagreement is
     reported as a conflict with both values and both sources, never resolved
     silently. Both kinds write the shared
-    programmes, metrics, contacts and documents. `grant` is the one concept
-    that still stays research, and anything held back is reported rather than
-    silently dropped. A name that resembles an organisation we already hold
+    programmes, metrics, contacts and documents. A grant is a partner line,
+    linked to the organisation only when the matcher would merge the name, and
+    anything held back is reported rather than silently dropped. A name that resembles an organisation we already hold
     without matching it is NOT merged; it is reported for a person.
 
     Args:
@@ -492,10 +491,9 @@ async def promote_research(slug: str = "") -> str:
                 skipped = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
                 lines.append(f"    still research only (no writer): {skipped}")
         lines.append(
-            "\nA grant needs its recipient to already be in orgs, and promoting a funder's "
-            "research does not put it there, so grant findings stay research — they are on "
-            "file and in docs/entities/. Anything held back is named above: it is a decision "
-            "waiting for a person, not a silent loss."
+            "\nA grant is a partner line on the funder: linked to the organisation only when the "
+            "name matches one we hold, never on a resemblance. Anything held back is named above: "
+            "it is a decision waiting for a person, not a silent loss."
         )
         return "\n".join(lines)
     except Exception as exc:
