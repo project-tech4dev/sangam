@@ -248,7 +248,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # capability either of them uses.
     # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
     researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend), staff_last_lock()]}
-    # save_questions pauses promote_research on what only a person can decide, with a button per answer.
+    # save_questions pauses every promote_research for staff to approve, with a button per open question.
     writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend), save_questions()]}
     reader = {**WORKBOOK_READER, "middleware": [filesystem_tools(backend)]}
     # It formats what two tools return, so it needs no reasoning about sources.

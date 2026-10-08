@@ -22,6 +22,7 @@ from app.ingest.expectations import (
     expected_fields,
     recent_fiscal_years,
 )
+from app.ingest.matcher import resolve_funder, resolve_org
 from app.ingest.promote import promote
 from app.ingest.writer import Gate
 
@@ -71,12 +72,22 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
                     (f"%{name}%", name, name),
                 )
             ).fetchall()
-            if not rows:
+            # A shared word is not a match: "Infosys Foundation" scored 0.48 against "SBI Foundation".
+            match = await (resolve_funder if entity_kind == "funder" else resolve_org)(conn, name)
+            top = next((r for r in rows if r["id"] == match.entity_id), None) if match.resolved else None
+            if match.resolved and top is None:
+                top = await (
+                    await conn.execute(f"SELECT {head} FROM {entity_table} WHERE id = %s", (match.entity_id,))
+                ).fetchone()
+            if top is None:
+                close = ", ".join(f"{r['name']} [{entity_kind}:{r['id']}]" for r in rows)
                 return (
                     f"No {noun} in the catalog matches {name!r}. Everything you find is a NEW "
                     f"RECORD. That is not evidence the {noun} is absent from the sector."
+                    + (f"\nClose names in the catalog, NOT the same {noun} unless a person confirms: "
+                       f"{close}" if close else "")
                 )
-            top = rows[0]
+            rows = [top, *(r for r in rows if r["id"] != top["id"])]
             fid = top["id"]
             out = [
                 f"{entity_table} [{entity_kind}:{fid}] {top['name']} ({top['slug']})",
@@ -525,14 +536,26 @@ async def coverage_report(slug: str) -> str:
         return f"coverage_report failed: {type(exc).__name__}: {exc}"
 
 
-async def open_questions(slug: str) -> list[dict[str, Any]]:
-    """The case 3 and 4 findings a funder's promotion would ask about; SaveQuestions puts them on the pause."""
+async def write_preview(slug: str) -> dict[str, Any]:
+    """What SaveQuestions puts on the pause: a funder's case 3 and 4 questions, the planned rows, and coverage."""
     rows = await _research_rows(get_pool(), slug)
-    if not rows or rows[0].get("entity_kind") == "org":
-        return []
+    if not rows:
+        return {"questions": [], "planned": [], "coverage": ""}
+    row = rows[0]
+    if row.get("entity_kind") == "org":
+        head = coverage.render(coverage.compute(row)).split("\n")[1]
+        return {"questions": [], "planned": ["An NGO: blanks are filled, conflicts are reported."], "coverage": head}
     async with get_pool().connection() as conn:
-        plan = await promote(conn, rows[0], gate=Gate(plan=True))
-    return plan.get("questions", [])
+        plan = await promote(conn, row, gate=Gate(plan=True))
+    counts: dict[str, int] = {}
+    for item in plan.get("plan", {}).get("items", []):
+        if item["case"] in (2, 5):
+            counts[item["table"]] = counts.get(item["table"], 0) + 1
+    planned = [f"{table}: {n} row(s)" for table, n in sorted(counts.items())]
+    if plan.get("held"):
+        planned.append(f"held back: {len(plan['held'])}")
+    head = coverage.render(coverage.compute(row, report=plan)).split("\n")[1]
+    return {"questions": plan.get("questions", []), "planned": planned, "coverage": head}
 
 
 @tool

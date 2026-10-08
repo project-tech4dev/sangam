@@ -572,6 +572,21 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 /* Attach and voice: shown, not built yet. */
 .composer-stub { display: grid; place-items: center; padding: 0; cursor: not-allowed; }
 
+||||||| parent of 148673f (fix(import): confirm every catalog write; no staff files means none read; dossier matches through the matcher (M3))
+/* --- Import: the paused catalog write ------------------------------------------ */
+.save-card { padding: 16px; gap: 12px; }
+.save-head { display: grid; gap: 4px; }
+.save-note { color: var(--color-muted); font-size: var(--fs-xs); }
+.save-sub { color: var(--color-muted); font-size: var(--fs-sm); }
+.save-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.save-item { display: grid; gap: 6px; }
+.save-item-title { font-weight: 600; font-size: var(--fs-sm); }
+.save-changes { display: grid; gap: 2px; }
+.save-change { font-size: var(--fs-sm); }
+.save-plan { margin: 0; padding-left: 18px; font-size: var(--fs-sm); }
+.save-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.save-choices { display: flex; gap: 6px; flex-wrap: wrap; }
+
 /* --- Responsive ------------------------------------------------------------- */
 .ask-main { padding: 22px 26px; }
 

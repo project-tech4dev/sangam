@@ -427,9 +427,13 @@ async def read_source_rows(name: str, sheet: str = "", documents: list[int] | No
         name: a company, funder or CSO name, at least three letters.
         sheet: optional part of a sheet name (e.g. "2023-24") to read one sheet only.
         documents: the document ids select_source_files returned, as your task gives them.
-            Read only those files; omitted, every registered workbook is read.
+            Only those files are read. With none, nothing is: staff chose no workbook.
     """
     try:
+        # Staff choose the files; an empty pick used to mean every workbook ever registered.
+        if not documents:
+            return ("No staff files were selected for this run, so nothing was read. Record a fact that "
+                    "only a staff workbook holds as a gap with reason 'blocked', detail 'no staff file selected'.")
         return await staff_sources.read_rows(get_pool(), name, sheet=sheet, documents=documents)
     except Exception as exc:  # noqa: BLE001 - a tool returns its failure; type only, never a value
         return f"read_source_rows failed: {type(exc).__name__}"

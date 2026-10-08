@@ -148,14 +148,13 @@ def staff_last_lock() -> StaffLastLock:
     return StaffLastLock()
 
 
-# Import's catalog-writer asks before promote_research writes a funder's case 3 or 4 findings
-# (docs/features/2026-10-08-import-update-or-ask.md). LangChain's own middleware does the pausing,
-# so the frontend reads the same HITLRequest shape every other Import pause uses.
+# Import's catalog-writer pauses before every promote_research: staff approve each write, and answer a
+# funder's case 3 or 4 questions on the same card (docs/features/2026-10-08-import-coverage-report.md).
 SAVE_TOOL = "promote_research"
 
 
 class SaveQuestions(HumanInTheLoopMiddleware):
-    """Pauses promote_research only when its funder has questions, and carries them on the request.
+    """Pauses every promote_research, carrying its questions, planned rows and coverage on the request.
 
     The person's answers arrive as an `edit` whose args hold `decisions`. Decisions the model wrote
     itself are dropped: only a person's edit can set them.
@@ -165,34 +164,37 @@ class SaveQuestions(HumanInTheLoopMiddleware):
         super().__init__(interrupt_on={SAVE_TOOL: {
             "allowed_decisions": ["approve", "edit", "reject"],
             "description": lambda call, state, runtime: self._describe(call),
-            "when": lambda request: bool(self._questions.get(request.tool_call.get("id"))),
         }})
-        # tool_call id -> its questions, only for the length of one after-model step.
-        self._questions: dict[str, list[dict]] = {}
+        # tool_call id -> its preview, only for the length of one after-model step.
+        self._previews: dict[str, dict] = {}
 
     def _describe(self, call) -> str:
-        n = len(self._questions.get(call.get("id"), []))
-        return f"{n} question(s) before {call['args'].get('slug')} is saved"
+        n = len(self._previews.get(call.get("id"), {}).get("questions", []))
+        what = call["args"].get("slug") or "every researched organisation"
+        return f"Approve writing {what} to the catalog" + (f" ({n} question(s))" if n else "")
 
     def _create_action_and_config(self, tool_call, config, state, runtime):
         action, review = super()._create_action_and_config(tool_call, config, state, runtime)
-        action["questions"] = self._questions.get(tool_call.get("id"), [])  # type: ignore[typeddict-unknown-key]
+        preview = self._previews.get(tool_call.get("id"), {})
+        action["questions"] = preview.get("questions", [])  # type: ignore[typeddict-unknown-key]
+        action["planned"] = preview.get("planned", [])  # type: ignore[typeddict-unknown-key]
+        action["coverage"] = preview.get("coverage", "")  # type: ignore[typeddict-unknown-key]
         return action, review
 
     async def aafter_model(self, state, runtime):
-        from app.ingest.tools.catalog_tools import open_questions  # the ingest package imports this module
+        from app.ingest.tools.catalog_tools import write_preview  # the ingest package imports this module
 
         last = next((m for m in reversed(state["messages"]) if isinstance(m, AIMessage)), None)
         calls = [c for c in (last.tool_calls if last else []) if c["name"] == SAVE_TOOL]
         for call in calls:
             slug = call["args"].get("slug") or ""
-            # An empty slug sweeps everything and is never asked: its questions are held instead.
-            self._questions[call["id"]] = await open_questions(slug) if slug else []
+            # An empty slug sweeps everything: still approved, but its questions are held instead.
+            self._previews[call["id"]] = await write_preview(slug) if slug else {}
         try:
             return self.after_model(state, runtime)
         finally:
             for call in calls:
-                self._questions.pop(call["id"], None)
+                self._previews.pop(call["id"], None)
 
     async def awrap_tool_call(self, request, handler):
         if request.tool_call["name"] != SAVE_TOOL:

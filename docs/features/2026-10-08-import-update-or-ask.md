@@ -74,7 +74,7 @@ Defaults chosen for the three open questions:
   - `compare_with_catalog`
   - summarise
   - launch `catalog-writer`
-- The pause, not the prompt, is what stops an unsafe write.
+- The pause, not the prompt, is what stops an unsafe write. Since the coverage-report plan (2026-10-08-import-coverage-report.md) every write pauses for staff to approve, questions or none.
 - `prompts/catalog_writer.md`: report held items verbatim, including "waiting for a person".
 - `skills/catalog-mapping/SKILL.md`: build the comparison on `compare_with_catalog`.
 
