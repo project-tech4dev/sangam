@@ -78,12 +78,20 @@ is which is the error to watch for.
 
 For a corporate funder the statutory filing is often already here: the staff workbooks, which a
 researcher reads with `read_source_rows`. **Pick them before you launch researchers:**
-`list_storage_buckets`, then `list_bucket_files("staff-sources")`, then
-`select_source_files(paths)` with the files that fit the request (the fiscal years asked about,
-the CSO workbook for an NGO). The run pauses there while staff confirm, edit or reject your pick.
-Their decision is final: approved or edited, put the returned document ids in every
-researcher's task ("read_source_rows with documents=[12, 14]"); rejected, launch without staff
-data and do not propose the same files again. Put the filer's registered name in the task when
+`list_storage_buckets`, then `list_bucket_files(bucket)` with the bucket you think fits
+(usually `staff-sources`), then `select_source_files(paths)` with the files that fit the request
+(the fiscal years asked about, the CSO workbook for an NGO). The run pauses twice: staff confirm
+or change the bucket, then confirm, edit or reject your pick. The listing you get back is of the
+bucket they chose. Their decision is final: approved or edited, put the returned document ids in
+every researcher's task ("read_source_rows with documents=[12, 14]"); rejected, launch without
+staff data and do not propose the same bucket or files again.
+
+**When the request is about everyone in a file** ("research every funder in the CSO workbook"),
+you have no names to give researchers, and you never read rows yourself. Launch one
+`workbook-reader` with the document ids and the request's own filter. It returns the
+organisations the sheets name, each with its cell's marker. Then launch one `entity-researcher`
+per name, in waves, with the same document ids. If it reports `complete: false`, say what was
+left unread. Put the filer's registered name in the task when
 you know it — the filer is often the parent company, not the foundation. The researcher reads
 them last: its first `read_source_rows` call closes its web tools for the rest of its run.
 
@@ -320,7 +328,8 @@ path from research to the catalog.
 **The staff workbooks** — what is in Storage, and which files a run reads.
 
 - `list_storage_buckets()` · `list_bucket_files(bucket, prefix)` — the buckets, then the
-  `.xlsx` files in one, as paths.
+  `.xlsx` files in one, as paths. `list_bucket_files` **pauses for a person**, who confirms
+  your bucket or picks another.
 - `select_source_files(paths)` — **pauses for a person**, who approves, edits or rejects the
   pick; then registers each file and returns its document id for the researchers.
 
@@ -341,6 +350,7 @@ to call them:
 |---|---|
 | `research_goals` · `read_source_rows` · `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` | `entity-researcher` |
 | `promote_research` | `catalog-writer` |
+| `read_workbook` | `workbook-reader` |
 
 `save_research` saves the findings **and** publishes the brief the funder page links, so
 after a researcher reports, the brief is already live.

@@ -137,7 +137,7 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 
 | Module | Tools |
 |---|---|
-| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `list_storage_buckets` · `list_bucket_files` · `select_source_files` · `read_source_rows` |
+| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `list_storage_buckets` · `list_bucket_files` · `select_source_files` · `read_source_rows` · `read_workbook` |
 | `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` · `record_registry_check` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
@@ -166,15 +166,22 @@ An isolated subagent returns its conclusion, not its reading. It hands back a th
 
 **Picking the workbooks, with a person in the loop.** The supervisor lists the buckets
 (`list_storage_buckets`), then the `.xlsx` files in one (`list_bucket_files`), and proposes a pick
-with `select_source_files(paths)`. That tool is in `INTERRUPT_ON` (`app/ingest/agent.py`), which
-deepagents turns into LangChain's `HumanInTheLoopMiddleware`: the run pauses, the Import screen
-shows `SourcePicker` through CopilotKit's `useInterrupt`, and staff approve, edit (tick other
-files) or reject. The resume is `{decisions: [...]}`, delivered as `Command(resume=…)`. On approval
+with `select_source_files(paths)`. Both `list_bucket_files` and `select_source_files` are in
+`INTERRUPT_ON` (`app/ingest/agent.py`), which deepagents turns into LangChain's
+`HumanInTheLoopMiddleware`: the run pauses twice, the Import screen shows `BucketPicker` then
+`SourcePicker` through CopilotKit's `useInterrupt`, and staff approve, edit (another bucket,
+other files) or reject. The resume is `{decisions: [...]}`, delivered as `Command(resume=…)`. On approval
 the tool downloads each file, writes its `documents` row (`extractor_version
-'select_source_files/1'`) and returns the document ids the researchers' tasks carry. Only
-`staff-sources/<registry key>/….xlsx` is selectable, so a file dropped in through the Supabase
-dashboard under a registered key folder works with no script; `make staff-source` still writes the
-same row.
+'select_source_files/1'`) and returns the document ids the researchers' tasks carry. Any
+bucket's `.xlsx` is selectable; in `staff-sources` the first folder must be a registry key. A file
+dropped in through the Supabase dashboard therefore works with no script; `make staff-source`
+still writes the same row.
+
+**`workbook-reader`** — for a request about everyone in a file ("research every funder in the CSO
+workbook"), where there is no name to give a researcher. Isolated, one tool: `read_workbook`
+(an outline of every sheet, then pages of rows, with the same markers and redaction as
+`read_source_rows`). It returns `WorkbookEntities` — names, kinds and the marker of each name's
+cell — and the supervisor launches a researcher per name. The supervisor itself never reads a row.
 
 **Staff workbooks.** `read_source_rows` is the researcher's eighth tool (the supervisor does not
 have it). It reads the workbooks staff picked (its `documents` argument; all registered ones

@@ -17,7 +17,7 @@ from app.agent.harness import install as install_harness
 from app.agent.middleware import clear_old_tool_results, staff_last_lock
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
-from app.ingest.research_records import PromotionReport, ResearchSummary
+from app.ingest.research_records import PromotionReport, ResearchSummary, WorkbookEntities
 from app.ingest.tools.catalog_tools import (
     funder_dossier,
     promote_research,
@@ -32,6 +32,7 @@ from app.ingest.tools.pipeline_tools import (
     pending_resolutions,
     plan_import,
     read_source_rows,
+    read_workbook,
     run_import_now,
     select_source_files,
 )
@@ -123,7 +124,7 @@ TOOLS = [
     run_import_now,
     import_run_summary,
     pending_resolutions,
-    # Staff workbooks: list, then propose a pick that a person confirms (HITL below).
+    # Staff workbooks: a person confirms the bucket, then the files (HITL below).
     list_storage_buckets,
     list_bucket_files,
     select_source_files,
@@ -200,8 +201,29 @@ CATALOG_WRITER: dict = {
 }
 
 
-# Staff see which files a run will read before it reads them.
+# The third kind. It reads the picked workbooks and returns the names in them, so the
+# parent can launch a researcher per name without ever holding a raw row itself.
+# No web tools, so the researcher's staff-last lock has nothing to guard here.
+WORKBOOK_READER: dict = {
+    "name": "workbook-reader",
+    "description": (
+        "Reads the staff workbooks select_source_files registered and returns every organisation "
+        "they name, with the cell that names it. Launch it when the request is about everyone in "
+        "a file; give it the document ids. It researches nothing and reports no figures."
+    ),
+    "mode": "isolated",
+    "tools": [read_workbook],
+    "response_format": WorkbookEntities,
+    "system_prompt": prompt("workbook_reader"),
+}
+
+
+# Staff choose the bucket, then the files, before anything is read.
 INTERRUPT_ON = {
+    "list_bucket_files": {
+        "allowed_decisions": ["approve", "edit", "reject"],
+        "description": "Choose the bucket Import picks workbooks from",
+    },
     "select_source_files": {
         "allowed_decisions": ["approve", "edit", "reject"],
         "description": "Confirm the staff workbooks Import will read",
@@ -223,13 +245,14 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
     researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend), staff_last_lock()]}
     writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend)]}
+    reader = {**WORKBOOK_READER, "middleware": [filesystem_tools(backend)]}
     # It formats what two tools return, so it needs no reasoning about sources.
     if settings.utility_model:
         writer["model"] = resolve_model(settings.utility_model)
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,
-        subagents=[researcher, writer],
+        subagents=[researcher, writer, reader],
         backend=backend,
         skills=[SKILLS_ROUTE],
         middleware=[filesystem_tools(backend, keep=SKILL_READING_TOOLS), clear_old_tool_results()],

@@ -52,33 +52,46 @@ _ID = re.compile(r"^[0-9a-f]{12}$")
 PICKED_VERSION = "select_source_files/1"
 
 
-def picked_id(key: str) -> str:
+_BUCKET = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
+
+
+def picked_id(path: str) -> str:
     """A picked object's id: the script's own when it wrote the key, so one object keeps one source_url."""
-    stem = PurePath(key).stem
-    return stem if _ID.match(stem) else hashlib.sha256(key.encode()).hexdigest()[:12]
+    stem = PurePath(path).stem
+    if _ID.match(stem) and path.startswith(storage.STAFF_SOURCES + "/"):
+        return stem
+    return hashlib.sha256(path.encode()).hexdigest()[:12]
 
 
-def check_pick(path: str) -> tuple[str, str] | str:
-    """(registry key, object key) for a selectable path, or why it is not one."""
-    parts = storage.split(path)
-    if parts is None or parts[0] != storage.STAFF_SOURCES:
-        return f"{path!r}: only files in the {storage.STAFF_SOURCES} bucket can be selected."
-    key = parts[1]
+def split_any(path: str) -> tuple[str, str] | None:
+    """(bucket, key) for a path in any bucket; storage.split stays limited to the buckets we hand URLs for."""
+    bucket, _, key = (path or "").partition("/")
+    if not _BUCKET.match(bucket) or not key or any(seg in ("", ".", "..") for seg in key.split("/")):
+        return None
+    return bucket, key
+
+
+def check_pick(path: str) -> tuple[str, str, str] | str:
+    """(bucket, key, source name) for a selectable path, or why it is not one."""
+    parts = split_any(path)
+    if parts is None:
+        return f"{path!r}: not a <bucket>/<file> path from list_bucket_files."
+    bucket, key = parts
     if not key.lower().endswith(".xlsx"):
         return f"{path!r}: only .xlsx workbooks can be read."
-    source_key = key.split("/", 1)[0]
-    if "/" not in key or source_key not in SOURCES:
-        return f"{path!r}: the first folder must be a registered source key (list_import_sources)."
-    return source_key, key
+    folder = key.split("/", 1)[0] if "/" in key else ""
+    if bucket == storage.STAFF_SOURCES and folder not in SOURCES:
+        return f"{path!r}: in {bucket}, the first folder must be a registered source key (list_import_sources)."
+    return bucket, key, folder if folder in SOURCES else bucket
 
 
 async def register(pool: Any, path: str) -> int | str:
-    """Download a picked workbook, write its documents row, and keep the bytes for read_rows."""
+    """Download a picked workbook, write its documents row, and keep the bytes for the readers."""
     checked = check_pick(path)
     if isinstance(checked, str):
         return checked
-    source_key, key = checked
-    data = await storage.download(storage.STAFF_SOURCES, key, max_bytes=storage.STAFF_SOURCES_MAX_BYTES)
+    bucket, key, source_name = checked
+    data = await storage.download(bucket, key, max_bytes=storage.STAFF_SOURCES_MAX_BYTES)
     if data is None:
         return f"{path!r}: could not be downloaded."
     try:
@@ -86,13 +99,14 @@ async def register(pool: Any, path: str) -> int | str:
     except Exception as exc:  # noqa: BLE001 - type only: a message could quote a cell
         return f"{path!r}: not a readable .xlsx workbook ({type(exc).__name__})."
     digest = storage.content_hash(data)
-    ident = picked_id(key)
+    qualified = storage.qualify(bucket, key)
+    ident = picked_id(qualified)
     document_id, _ = await documents_repo.upsert_source_dataset(
-        pool, title=f"Staff dataset · {source_key} · {ident}", source_key=source_key,
-        storage_path=storage.qualify(storage.STAFF_SOURCES, key), source_url=SOURCE_URL_PREFIX + ident,
+        pool, title=f"Staff dataset · {source_name} · {ident}", source_key=source_name,
+        storage_path=qualified, source_url=SOURCE_URL_PREFIX + ident,
         content_hash=digest, extractor_version=PICKED_VERSION,
     )
-    _remember((storage.qualify(storage.STAFF_SOURCES, key), digest), data)
+    _remember((qualified, digest), data)
     return document_id
 
 
@@ -257,8 +271,8 @@ def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple, s
 
 async def _workbook(doc: dict[str, Any]) -> bytes | None:
     """The workbook's bytes, downloaded once per process and per upload (content_hash)."""
-    parts = storage.split(doc["storage_path"] or "")
-    if parts is None or parts[0] != storage.STAFF_SOURCES:
+    parts = split_any(doc["storage_path"] or "")
+    if parts is None:
         return None
     key = (doc["storage_path"], doc["content_hash"] or "")
     async with _locks.setdefault(doc["storage_path"], asyncio.Lock()):
@@ -333,6 +347,82 @@ async def read_rows(pool: Any, name: str, *, sheet: str = "", documents: list[in
                 "(e.g. one fiscal year) to read the rest.")
     return text + tail
 
+
+
+BROWSE_MAX_ROWS = 200      # rows one read_workbook page may return
+
+
+def _browse(data: bytes, only_sheet: str, start_row: int, limit: int) -> tuple[list, list[str]]:
+    """Every sheet's header rows and size, or one sheet's header rows plus rows start_row.. of it."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    sheets, notes = [], []
+    try:
+        for ws in wb.worksheets:
+            if only_sheet and only_sheet.casefold() not in ws.title.casefold():
+                continue
+            ws.reset_dimensions()
+            rows: list[tuple[int, tuple, None]] = []
+            drop: set[int] = set()
+            seen = width = 0
+            more = None
+            for r, values in enumerate(ws.iter_rows(values_only=True), start=1):
+                if not any(v not in (None, "") for v in values):
+                    continue
+                seen += 1
+                width = max(width, max(c for c, v in enumerate(values, start=1) if v not in (None, "")))
+                if seen <= HEADER_ROWS:
+                    drop |= _contact_columns(values)
+                    rows.append((r, values, None))
+                elif only_sheet and start_row <= r < start_row + limit:
+                    rows.append((r, values, None))
+                elif only_sheet and r >= start_row + limit and more is None:
+                    more = r
+            sheets.append((ws.title, rows, drop))
+            notes.append(f"sheet {ws.title!r}: {seen} filled rows × {width} columns"
+                         + (f"; more rows: call again with start_row={more}" if more else ""))
+            if only_sheet:
+                break
+    finally:
+        wb.close()
+    return sheets, notes
+
+
+async def browse(pool: Any, documents: list[int], *, sheet: str = "", start_row: int = 1, limit: int = 100) -> str:
+    """read_workbook: an outline of each picked workbook, or one page of one sheet's rows."""
+    if not documents:
+        return "read_workbook needs the document ids select_source_files returned. Nothing was read."
+    datasets = await documents_repo.list_source_datasets(pool, ids=documents)
+    if not datasets:
+        return f"None of documents {documents} is a staff dataset. Nothing was read."
+    start_row, limit = max(1, start_row), max(1, min(limit, BROWSE_MAX_ROWS))
+    parts: list[str] = []
+    problems: list[str] = []
+    for doc in datasets:
+        try:
+            data = await _workbook(doc)
+            if data is None:
+                problems.append(f"document {doc['id']} ({doc['source_name']}) could not be downloaded.")
+                continue
+            sheets, notes = await asyncio.to_thread(_browse, data, sheet, start_row, limit)
+        except Exception as exc:  # noqa: BLE001 - type only: a message could quote a cell
+            problems.append(f"document {doc['id']} ({doc['source_name']}) could not be read ({type(exc).__name__}).")
+            continue
+        if not sheets:
+            problems.append(f"document {doc['id']} has no sheet matching {sheet!r}.")
+            continue
+        parts.append("\n".join([render(doc, sheets), *notes]))
+    head = ("Outline: each sheet's header rows and size. Call again with `sheet` to page through its rows."
+            if not sheet else f"Rows {start_row}–{start_row + limit - 1} of sheet {sheet!r}, under its header rows.")
+    head += " Contact columns are removed. Cite a cell by its [source:<document>#<sheet>!<cell>] marker."
+    text = "\n\n".join([head, *parts])
+    tail = "\n\n" + "\n".join(problems) if problems else ""
+    room = MAX_CHARS - len(tail)
+    if len(text) > room:  # cut rows, never the failure lines
+        cut = text.rfind("\n", 0, room)
+        text = text[:cut] + f"\n… output cut at {MAX_CHARS} characters. Call again with a smaller `limit`."
+    return text + tail
 
 _MARKER = re.compile(r"\[source:(\d+)#[^\]]+![A-Z]{1,3}\d+\]", re.IGNORECASE)
 

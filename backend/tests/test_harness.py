@@ -230,9 +230,9 @@ class TestTheSkillIsFoundAndIsProgressive:
         a ResearchSummary with no prose. The supervisor writes the brief, so
         the supervisor holds the skills.
         """
-        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER
 
-        for spec in (ENTITY_RESEARCHER, CATALOG_WRITER):
+        for spec in (ENTITY_RESEARCHER, CATALOG_WRITER, WORKBOOK_READER):
             assert "skills" not in spec, spec["name"]
 
     def test_every_skill_is_advertised_to_the_supervisor(self):
@@ -295,7 +295,7 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
     """
 
     def test_both_subagents_are_compiled_and_found(self, subagents):
-        assert set(subagents) == {"entity-researcher", "catalog-writer"}
+        assert set(subagents) == {"entity-researcher", "catalog-writer", "workbook-reader"}
 
     def test_neither_subagent_can_write_a_file_or_run_a_command(self, subagents):
         forbidden = {"write_file", "edit_file", "delete", "execute", "glob", "grep"}

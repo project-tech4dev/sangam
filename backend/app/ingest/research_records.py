@@ -793,6 +793,27 @@ class ResearchSummary(BaseModel):
     saved: bool = Field(default=False, description="true only if save_research returned success")
 
 
+
+class WorkbookEntity(BaseModel):
+    """One organisation a staff workbook names, and the cell that names it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    kind: Literal["funder", "org", "unknown"]
+    marker: str = Field(description="the [source:<document>#<sheet>!<cell>] marker of the cell holding the name")
+
+
+class WorkbookEntities(BaseModel):
+    """What the workbook-reader hands back: names to research, never figures."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    documents: list[int]
+    entities: list[WorkbookEntity]
+    complete: bool = Field(description="false when some rows were not read; say which in notes")
+    notes: list[str] = Field(default_factory=list)
+
 class TableWrite(BaseModel):
     """One catalog table, and how many rows of it a promotion produced."""
 

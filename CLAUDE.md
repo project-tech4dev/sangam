@@ -332,12 +332,15 @@ there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
 Both agents register their list in one place — `build.py` and `agent.py` respectively — and
 a test walks the package to prove every tool defined is also registered.
 
-**Sangam Import has one human-in-the-loop step: `select_source_files`.** It is in `INTERRUPT_ON`
-in `app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns into LangChain's
-`HumanInTheLoopMiddleware`; the Import screen answers it with CopilotKit's `useInterrupt` and
-resumes with `{decisions: [...]}`. Staff workbooks therefore need no script: a file under
-`staff-sources/<registry key>/` in the Supabase dashboard is listed, picked, confirmed, and
-registered as a `documents` row by that tool. `make staff-source` still works and writes the same row.
+**Sangam Import has two human-in-the-loop steps: `list_bucket_files` (staff choose the bucket)
+and `select_source_files` (staff choose the files).** Both are in `INTERRUPT_ON` in
+`app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns into LangChain's
+`HumanInTheLoopMiddleware`; the Import screen answers with CopilotKit's `useInterrupt`
+(`BucketPicker`, `SourcePicker`) and resumes with `{decisions: [...]}`. Any bucket's `.xlsx` can be
+picked; in `staff-sources` the first folder must still be a registry key. A picked file becomes a
+`documents` row, so no script is needed; `make staff-source` still writes the same row. The
+supervisor never reads rows: when a request is about everyone in a file, the `workbook-reader`
+subagent (one tool, `read_workbook`) returns the names, and a researcher per name follows.
 
 **How many organisations Import researches at once is a setting, not a number in the
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
