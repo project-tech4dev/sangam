@@ -213,13 +213,13 @@ it.
 
 ## What lands where
 
-Seventeen concepts, twelve with a writer — a funder is researched against thirteen of them
-and an NGO against eight, with four shared. The tables below are a copy; the source is
+Seventeen concepts, every one with a writer — a funder is researched against thirteen of them
+and an NGO against nine, with five shared. The tables below are a copy; the source is
 `CONCEPTS` in `app/ingest/expectations.py`, from which the table map, the brief's section
 titles, the promotable list, the "researched but not written" excuses and `concepts_for(kind)`
 are all derived.
 
-A **funder** (14):
+A **funder** (13):
 
 | Concept | Table |
 |---|---|
@@ -228,7 +228,7 @@ A **funder** (14):
 | csr_spend | `funder_activity`, `kind='spend'` |
 | footprint | `funder_activity`, `kind='footprint'` |
 | stated_geography | `funder_locations` |
-| partner | `funder_activity`, `kind='partner'` |
+| partner (grants included) | `funder_activity`, `kind='partner'`, from either side |
 | programme_spend | `funder_activity`, `kind='programme'` |
 | eligibility_guideline | `documents`, `doc_type='funder_eligibility'` |
 | program | `programs` |
@@ -236,17 +236,18 @@ A **funder** (14):
 | contact | `contacts` |
 | document | `documents` |
 | rfp | `rfps` |
-| **grant** | **`grants` — no writer** |
 
 Several concepts share one table. `ConceptSpec.row_filter` names the rows each owns and `ConceptSpec.columns` the columns it may fill; `expected_fields()`, `research_goals` and the writers read both.
 
-An **org** (8). `program`, `metric`, `contact` and `document` are the same four tables as
+An **org** (9). `program`, `metric`, `contact` and `document` are the same four tables as
 above, which each carry an `org_id` as well as a `funder_id`; only the foreign key changes.
+`partner` is each funder that gave the NGO money, written as that funder's partner line.
 The other four are the NGO's own:
 
 | Concept | Table |
 |---|---|
 | program · metric · contact · document | as above, on `org_id` |
+| partner | `funder_activity`, `kind='partner'`, on the funder named by `funder_name` with `partner_org_id` = the NGO; held when Sangam does not hold that funder |
 | org_identity | `orgs` |
 | org_identifier | `org_identifiers`, one row per registration with a `status`; an `applied` row needs no number. 12A, 80G and FCRA live here |
 | org_financials | `org_financials` |
@@ -262,11 +263,11 @@ hand.
 field naming its own subject. The org concepts are namespaced because `Finding` is a tagged
 union on `concept` and two members cannot both declare `Literal["identity"]`.
 
-`grant` is the exception on the funder side, deliberately: `grants.org_id` is `NOT NULL` and
-promoting a funder's research does not write the NGOs it names, so a recipient the catalog does
-not already hold cannot become a grant row.
-`funder_activity.partner_org_id` is nullable on a `partner` line, which is where such a relationship belongs — and the more
-honest claim anyway, since a named partner is not proof that money changed hands.
+A grant is a `partner` finding with `project_name`, `amount`, `start_date`, `end_date` and
+`relationship_status` (`0034` folded the `grants` table into these lines). A funder's research
+links the line to an organisation only on a merging match, never a trigram one; an NGO's research
+writes the line on a funder Sangam holds and holds it otherwise. `grant` findings saved before
+`0034` are promoted as the partner findings they are now.
 
 **`stated_geography` and `footprint` are two concepts on purpose.** Where a funder *says* it
 prioritises is not where money demonstrably went. Collapsing them destroys the distinction the
@@ -358,8 +359,6 @@ so keying off it made every unfinished researcher read as "done" the moment a ru
   aliases and staff live on `orgs`, and a registration is an `org_identifiers` row with a `status`
   and validity dates, so nothing here is held for want of a column. What is missing is a tool that
   records a staff registry check (`checked_by`, `checked_at`) apart from research.
-- **A grant writer.** Unblocked by the org writer and not built by it: `grants.org_id` is
-  `NOT NULL`, and a recipient named in a funder's research is still not an `orgs` row.
 - **`repositories/orgs.py::get_org` does not read `org_financials`**, so promoted figures do
   not appear on `/orgs/<slug>` yet.
 - **`csr_sector_id` is always NULL.** `tags.kind` allows `'csr_sector'` but no Schedule VII

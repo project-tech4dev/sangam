@@ -44,10 +44,10 @@ own note beside it, never a resolution.
 **Never treat a self-reported figure as independently verified**, and never
 report a cumulative reach number as an annual one.
 
-**Existing funders has no finding behind it.** `grant` is a funder-side
-concept and `grants.org_id` is NOT NULL, so this cell comes from the
-researcher's prose summary or from `funder_dossier` with `entity_kind='org'`.
-Say which, and write "not recorded" rather than leaving it out.
+**Existing funders** are the funders' `partner` lines naming the organisation,
+from `funder_dossier` with `entity_kind='org'` (grants received), or its
+`partner` findings when not yet promoted. Write "not recorded" rather than
+leaving the cell out.
 
 **Refuse to score.** A funder's own criteria decide fit, and a rating invented
 here is a judgement wearing a citation.

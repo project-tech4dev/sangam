@@ -61,9 +61,10 @@ last: its first `read_source_rows` call closes its web tools for the rest of its
 ## What a researcher is looking for
 
 **There are two lists, and which one a run used is the single most consequential thing on its
-summary.** A `funder` gives money and is researched against the fourteen concepts below. An
-`org` receives it and is researched against eight: `program`, `metric`, `contact` and
-`document` unchanged — the same tables with an `org_id` — plus four of its own.
+summary.** A `funder` gives money and is researched against the thirteen concepts below. An
+`org` receives it and is researched against nine: `program`, `metric`, `contact` and
+`document` unchanged — the same tables with an `org_id` — `partner` for each funder that gave
+it money, written as that funder's partner line, plus four of its own.
 
 | `org` concept | What it is |
 |---|---|
@@ -78,7 +79,7 @@ no funder table. An NGO sent at the funder list would be offered `funder_type`,
 summary comes back `unknown` for anything other than a `not_found` or `wrong_entity`, that is a
 run to question, not a result to report.
 
-The fourteen `funder` concepts, so you can say what a run covered and what it missed. Each
+The thirteen `funder` concepts, so you can say what a run covered and what it missed. Each
 one's fields, its enums and the traps in reading it are in the researcher's instructions — you
 judge coverage, not extraction.
 
@@ -89,10 +90,9 @@ judge coverage, not extraction.
 | `csr_spend` | the highest-value target — spend lines by FY and place, each with an inferred domain (and theme where evidenced) |
 | `footprint` | where a theme **actually ran**, by FY, at the most precise level stated |
 | `stated_geography` | where the funder **says** it prioritises. Not proof of spending |
-| `partner` | implementing partners per FY and programme |
+| `partner` | named partners and grants per FY — a grant is a partner line with project name, amount, dates and status; a multi-year grant is one line with its whole amount on its start year |
 | `programme_spend` | the funder's own programme split per FY — never summed with spend lines |
 | `program` | theme → programme → phase → project |
-| `grant` | funder → recipient, with amount and dates. `amount = null` is not public, never zero |
 | `metric` | beneficiaries, outputs, outcomes, SROI, with stage and method |
 | `contact` | publicly disclosed CSR roles and role mailboxes only |
 | `document` | every important source, with the period it describes and when it was read |
@@ -125,7 +125,7 @@ independently verified. Where something is not public, say so rather than smooth
 
 ## Output
 
-**1. Structured research results**, grouped by concept: `funder`, `csr_years`, `activity` (spend, footprints, partners, programme split), `eligibility`, `programs`, `grants`, `metrics`, `contacts`, `documents`. Only fields supported by evidence.
+**1. Structured research results**, grouped by concept: `funder`, `csr_years`, `activity` (spend, footprints, partners, programme split), `eligibility`, `programs`, `metrics`, `contacts`, `documents`. Only fields supported by evidence.
 
 **2. Database comparison** against the dossier, every item carrying its source:
 
@@ -154,12 +154,13 @@ There are **two** places work is kept, and they are different things.
 `save_research`. This is durable, carries the evidence sentence for each fact, shows on the
 Import screen, and renders to `docs/entities/<slug>.md`. Nothing you research is lost.
 
-**Promoted into the catalog:** `promote_research` moves thirteen of the fourteen concepts — identity, CSR years, spend lines, footprints, stated geography, partners, the funder's programme split, eligibility, programmes, metrics, contacts, documents and RFPs. Offer it once research is saved.
+**Promoted into the catalog:** `promote_research` moves all thirteen concepts — identity, CSR years, spend lines, footprints, stated geography, partners, the funder's programme split, eligibility, programmes, metrics, contacts, documents and RFPs. Offer it once research is saved.
 
-**The one exception is `grant`.** `grants.org_id` is NOT NULL and promoting a funder's
-research does not write the NGOs it names, so a recipient the catalog does not already hold
-cannot become a grant row. Record the relationship as a **partner** instead, which is the
-honest claim anyway: a named partner is not proof that money changed hands.
+**A grant is a partner line.** Record it as a `partner` finding with `project_name`, `amount`,
+`start_date`, `end_date` and `relationship_status`; `amount = null` is not public, never zero. It
+links to the organisation only when the name matches one Sangam holds. An NGO's own research
+records its funders the same way, with `funder_name`, and the line is written on that funder when
+Sangam holds it — otherwise it is held for a person, never created.
 
 **An NGO promotes too, down its own path.** It is researched against its own four concepts —
 `org_identity`, `org_identifier`, `org_financials`, `org_location` — which land in `orgs`,

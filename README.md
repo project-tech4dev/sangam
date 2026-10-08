@@ -34,7 +34,7 @@ flowchart TD
   end
 
   subgraph BE["Backend — FastAPI :8010"]
-    REST["REST API<br/><small>orgs · funders · grants · programs<br/>rfps · contacts · scores · meta</small>"]
+    REST["REST API<br/><small>orgs · funders · partner lines · programs<br/>rfps · contacts · scores · meta</small>"]
     AGENT["Ask Sangam agent<br/><small>Claude · 6 tools · cited answers</small>"]
     INGEST["Sangam Import agent<br/><small>fetch · extract · match · promote</small>"]
     GRT["Graphiti<br/><small>extraction · embeddings · dedup</small>"]
@@ -72,7 +72,7 @@ losing anything. If the two disagree, Postgres wins.
 
 | Store | Holds | Ask it |
 |---|---|---|
-| Postgres (typed tables) | registrations, identifiers, contacts, programs, **grants**, rubric scores + audit log, news | facts, filters, joins, "what's the score and why" |
+| Postgres (typed tables) | registrations, identifiers, contacts, programs, **funder activity** (spend, partners — a grant is a partner line), rubric scores + audit log, news | facts, filters, joins, "what's the score and why" |
 | Postgres (`documents`/`chunks`) | full document text; tsvector + pgvector indexes (chunks pipeline pending) | "what does the report actually say" |
 | Neo4j (via Graphiti) | entities + temporal relationship edges with validity windows | "what *connects* X to Y", multi-hop paths |
 
@@ -108,7 +108,7 @@ make seed                # load the cohort data — the app is empty without it
 ```
 
 **Migrations are not automatic, and two steps above depend on them.** `db/init/` is only a
-baseline; 8 of the 34 tables the agent's catalog expects arrive in `db/migrations/*.sql`, and
+baseline; 7 of the 32 tables the agent's catalog expects arrive in `db/migrations/*.sql`, and
 the backend refuses to boot when one is missing. The seeder needs migration `0002` too, or it
 fails on `column "code" of relation "tags" does not exist`.
 
@@ -312,10 +312,10 @@ Three conventions a new tool must not break:
 
 - **Tools never raise.** A raised exception aborts the whole agent run, so every tool body
   returns `"<tool> failed: …"` instead and lets the model adapt.
-- **Every row is cited.** Tool results embed `[org:N]`, `[funder:N]`, `[grant:N]`, `[score:N]`,
+- **Every row is cited.** Tool results embed `[org:N]`, `[funder:N]`, `[activity:N]`, `[score:N]`,
   `[graph:<uuid8>]`, and `instructions.md` requires the model to repeat them inline. A tool
   returning uncited rows produces uncitable answers.
-- **The model writes its own SQL, behind four layers.** An allowlist catalog of 34 tables, a
+- **The model writes its own SQL, behind four layers.** An allowlist catalog of 32 tables, a
   pure validator that regenerates the statement from a parsed AST so the model's string never
   executes, a read-only transaction with timeouts, and the extended protocol so the server
   itself refuses multi-command statements. `docs/SQL_AGENT.md` has the design.
