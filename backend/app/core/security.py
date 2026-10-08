@@ -206,12 +206,27 @@ async def require_staff(principal: Annotated[CurrentUser, Depends(require_princi
 chat_user_id: ContextVar[UUID | None] = ContextVar("chat_user_id", default=None)
 
 
+def _thread_title(run: RunAgentInput) -> str | None:
+    """The chat's first question, as one line, for the Recent Chats rail."""
+    for message in run.messages:
+        if message.role != "user":
+            continue
+        content = message.content
+        if not isinstance(content, str):
+            content = " ".join(getattr(part, "text", "") or "" for part in content)
+        text = " ".join(content.split())
+        return text[:120] or None
+    return None
+
+
 async def _own_thread(request: Request, pool: OwnerPoolDep, principal: CurrentUser) -> None:
     try:
-        thread_id = RunAgentInput.model_validate(await request.json()).thread_id
+        run = RunAgentInput.model_validate(await request.json())
     except (ValueError, ValidationError):
         return  # the endpoint's own body validation answers 422
-    owner = await threads.claim_thread(pool, thread_id=thread_id, user_id=principal.id)
+    owner = await threads.claim_thread(
+        pool, thread_id=run.thread_id, user_id=principal.id, title=_thread_title(run)
+    )
     if owner != principal.id and not principal.is_staff:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
     chat_user_id.set(principal.id)

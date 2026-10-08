@@ -68,12 +68,14 @@ def build_lifespan(settings: Settings | None = None):
             tracing_live = configure_langfuse(resolved)
 
             checkpointer = await stack.enter_async_context(open_checkpointer(pool))
+            # Kept for GET /api/threads/{id}/messages: only the graph can rebuild a thread's messages.
+            app.state.ask_graph = build_agent(resolved, checkpointer)
             add_langgraph_fastapi_endpoint(
                 app=app,
                 agent=SessionScopedAGUIAgent(
                     name="sangam_agent",
                     description=AGENT_DESCRIPTION,
-                    graph=build_agent(resolved, checkpointer),
+                    graph=app.state.ask_graph,
                     # Not redundant with the graph's own with_config. AG-UI
                     # builds each request's config from THIS one, and a config
                     # passed at invocation beats the one bound to the graph —

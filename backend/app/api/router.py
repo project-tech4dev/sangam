@@ -18,6 +18,7 @@ from app.api.routes import (
     programs,
     rfps,
     scores,
+    threads,
 )
 
 # Tag order here is the order resources appear in the OpenAPI docs.
@@ -32,6 +33,7 @@ OPENAPI_TAGS = [
     {"name": "ingest", "description": "Sangam Import: sources, run history and the review queue"},
     {"name": "meta", "description": "Shared vocabularies: tags and locations"},
     {"name": "me", "description": "The signed-in user and their org roles"},
+    {"name": "threads", "description": "Ask Sangam chats: the caller's list and one chat's saved messages"},
 ]
 
 api_router = APIRouter(prefix="/api")
@@ -50,5 +52,6 @@ for _router in (
     documents.router,
     ingest.router,
     me.router,
+    threads.router,
 ):
     api_router.include_router(_router)

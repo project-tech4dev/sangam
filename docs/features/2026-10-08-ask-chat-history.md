@@ -19,16 +19,16 @@ Built by hand from `CLAUDE.md`, `catalog.py` (`threads` is in `KNOWN_EXCLUDED`) 
 
 | surface | hop | why affected | status | notes |
 |---|---|---|---|---|
-| `threads` table | 0 | gets `title`, `updated_at` and a correct `use_case` at claim time | in scope | columns exist since `0005`; only the `use_case` check needs widening |
+| `threads` table | 0 | gets `title` and `updated_at` at claim time | in scope | columns exist since `0005`; no migration |
 | `checkpoints` / `checkpoint_*` | 0 | read back through the compiled graph | in scope | read only; the owner connection reads them, and callers never do |
-| `repositories/threads.py` `claim_thread` | 1 | writes the title and use case, and bumps `updated_at` | in scope | — |
-| `core/security.py` `_own_thread` | 1 | passes the first question and the use case to the claim | in scope | — |
+| `repositories/threads.py` `claim_thread` | 1 | writes the title and bumps `updated_at` | in scope | — |
+| `core/security.py` `_own_thread` | 1 | passes the first question to the claim | in scope | — |
 | `core/lifespan.py` | 1 | keeps the Ask graph on `app.state` for the read route | in scope | — |
 | new `routes/threads.py` + `schemas/threads.py` | 2 | list chats and read one chat | in scope | `api/router.py` gains one line and one tag |
 | `lib/useAgentChat.ts` | 2 | optional history loader, used by Ask only | in scope | Import passes none, so it is unchanged |
 | `features/ask/AskWorkspace.tsx`, `ChatPane.tsx`, `lib/threads.ts` | 2 | list from the server, hydrate on open | in scope | — |
 | `Sidebar.tsx`, `ChatsView.tsx` | 2 | same `ThreadMeta` shape, new source | in scope, no visual change | no design-system update needed |
-| Sangam Import chats | 2 | share `useAgentChat` and `threads` | deferred | confirmed with the user, 2026-10-08; they get `use_case='import'` so they leave the Ask list |
+| Sangam Import chats | 2 | share `useAgentChat` and `threads` | deferred | confirmed with the user, 2026-10-08; the Ask list leaves them out by their `import-` id prefix |
 | SQL catalog / both agents' prompts | — | `threads` and checkpoints stay invisible to model SQL | unaffected | deliberate: chat history must never be `db_query`-able |
 | Neo4j, Storage | — | not touched | unaffected | — |
 
@@ -47,14 +47,14 @@ open a past chat
                                      agent.setMessages(...)  → turns, trace, rail render
 
 list chats
-  AskWorkspace ─▶ GET /api/threads?use_case=ask ─▶ SELECT … FROM threads WHERE user_id = me  (caller pool, RLS)
+  AskWorkspace ─▶ GET /api/threads ─▶ SELECT … FROM threads WHERE user_id = me AND id NOT LIKE 'import-%'  (caller pool, RLS)
 
 save a chat (already happens; now also titled)
-  POST /agent ─▶ chat_access → claim_thread(id, user, use_case, title) ─▶ checkpointer writes turns
+  POST /agent ─▶ chat_access → claim_thread(id, user, title) ─▶ checkpointer writes turns
 ```
 
 New endpoints:
-- `GET /api/threads?use_case=ask`: the caller's chats, newest first, at most 50.
+- `GET /api/threads`: the caller's Ask chats, newest first, at most 50.
 - `GET /api/threads/{thread_id}/messages`: one chat's messages, in AG-UI shape.
 
 Touched: Postgres (`threads`, the checkpoint tables). Not touched: Neo4j, Storage, the model.
@@ -68,25 +68,27 @@ Touched: Postgres (`threads`, the checkpoint tables). Not touched: Neo4j, Storag
 
 ## 4. Low-level design (LLD)
 
-### Migration: `db/migrations/0036_thread_use_case_import.sql`
+### No migration
 
-`0035` is taken on `feat/import-coverage-report`.
+`0005_documents_threads.sql` already added `title`, `updated_by` and `updated_at`, with `threads_rail_idx (user_id, use_case, updated_at DESC)`.
 
-- Widen the check: drop `threads_use_case_check`, re-add it with `'import'` included.
-- Backfill: `UPDATE threads SET use_case = 'import' WHERE thread_id LIKE 'import-%'`. Import's ids are always `import-<uuid>` (`features/ingest/ImportWorkspace.tsx:23`). Locally, 6 of the 7 threads are Import threads stored as `'ask'`.
-- No title backfill. The title is not recoverable in SQL. The frontend falls back to the localStorage title, then to "Untitled chat".
+> **The rule:** the Ask list leaves out Import chats by id, `thread_id NOT LIKE 'import-%'`.
+> **Example:** Import claims its chats as `use_case='ask'` too (the column's check has no `'import'`), so `import-895253e4…` would otherwise show under Recent Chats. Its id is always `import-<uuid>` (`features/ingest/ImportWorkspace.tsx:23`).
+> **Why it matters:** widening the check would mean a migration that has to reach staging before the backend, or every Import chat fails.
+
+There is no title backfill: the title is not recoverable in SQL. The frontend falls back to the localStorage title, then to "Untitled chat".
 
 ### Backend
 
 - `repositories/threads.py`
-  - `claim_thread(pool, *, thread_id, user_id, use_case, title)`: on insert, write `use_case` and `title`. On conflict, for the owner only: bump `updated_at`/`updated_by` and fill `title` if it is still null. The `UNION ALL` fallback still returns the owner when the update is skipped (for example, staff opening someone else's chat).
-  - `list_threads(pool, *, user_id, use_case, limit)`: `thread_id, title, created_at, updated_at`, ordered `updated_at DESC`. Uses `threads_rail_idx`.
+  - `claim_thread(pool, *, thread_id, user_id, title)`: on insert, write `title`. On conflict, for the owner only: bump `updated_at`/`updated_by` and fill `title` if it is still null. The `UNION ALL` fallback still returns the owner when the update is skipped (for example, staff opening someone else's chat).
+  - `list_threads(pool, *, user_id, limit)`: `thread_id, title, created_at, updated_at` for `use_case = 'ask'` minus `import-` ids, ordered `updated_at DESC`. Uses `threads_rail_idx`.
   - `can_open(pool, *, thread_id, user_id) -> bool`: `SELECT app.can_open_thread(%s, %s)`.
-- `core/security.py`: `_own_thread` gets `use_case`. `chat_access` passes `'ask'`, `staff_chat_access` passes `'import'`. The title is the first `role == "user"` message, flattened to text, with whitespace collapsed and capped at 120 characters.
+- `core/security.py`: `_own_thread` passes a title to the claim. The title is the first `role == "user"` message, flattened to text, with whitespace collapsed and capped at 120 characters.
 - `core/lifespan.py`: build the Ask graph once, keep it as `app.state.ask_graph`, and hand the same object to `add_langgraph_fastapi_endpoint`.
 - `schemas/threads.py`: `ThreadOut {thread_id, title, created_at, updated_at}`, `ThreadMessagesOut {thread_id, messages: list[dict]}`.
 - `api/routes/threads.py`
-  - `GET /threads`: `require_user`, `PoolDep` (the caller pool; the `threads_read` policy applies), `use_case` restricted to a `Literal`.
+  - `GET /threads`: `require_user`, `PoolDep` (the caller pool; the `threads_read` policy applies).
   - `GET /threads/{thread_id}/messages`: `require_user`, `OwnerPoolDep` for `can_open`, 404 when false. Reads `request.app.state.ask_graph.aget_state(...)` and returns `model_dump(by_alias=True, exclude_none=True)`, so the frontend gets `toolCalls` and `toolCallId`. If the graph is not on `app.state` (a route-only app), it answers 503.
 - `api/router.py`: import `threads`, add one tag and one `include_router`.
 
@@ -106,7 +108,7 @@ Touched: Postgres (`threads`, the checkpoint tables). Not touched: Neo4j, Storag
 | Whose chat | Messages: `app.can_open_thread` (owner, staff, or a team-visible thread), otherwise 404, not 403, so an id's existence does not leak. List: filtered to `user_id = me` on top of RLS, so staff see their own list, not everyone's. |
 | Owner pool | The messages route reads checkpoints, which `0025` closes to `anon`/`authenticated`. It runs as owner, and only after `can_open_thread` passes. This is the one deliberate exception to "routers take `PoolDep`". |
 | Claiming | The read path never calls `claim_thread`, which inserts: a GET must not claim an unowned thread. |
-| Validation | `thread_id` is a path string bound as a parameter. `use_case` is a `Literal`. |
+| Validation | `thread_id` is a path string bound as a parameter. |
 | SQL catalog | Unchanged. `threads` stays in `KNOWN_EXCLUDED` and checkpoints stay closed, so no model-written SELECT reaches chat history. |
 | PII | Chat text is the user's own and returned only to people who may open the thread. The title is the first question, stored on a row RLS already guards. |
 | Secrets | None new. |
@@ -126,10 +128,10 @@ Verification, by hand, against the compose stack:
 ## 7. Milestones
 
 #### Milestone 1: the backend saves a titled chat and serves it back
-- **Deliverable**: `GET /api/threads` and `GET /api/threads/{id}/messages` work. New chats get a title and the right `use_case`.
-- **Touches**: db, backend
-- **Key tasks**: [ ] `0036` migration [ ] `claim_thread` / `list_threads` / `can_open` [ ] `_own_thread` passes title and use case [ ] `app.state.ask_graph` [ ] routes, schemas, router line
-- **Acceptance criteria**: `make migrate && cd backend && pytest -m "not integration" && ruff check .`; then `curl -H 'Authorization: Bearer dev' localhost:8010/api/threads/<id>/messages` returns the chat's messages.
+- **Deliverable**: `GET /api/threads` and `GET /api/threads/{id}/messages` work. New chats get a title.
+- **Touches**: backend
+- **Key tasks**: [ ] `claim_thread` / `list_threads` / `can_open` [ ] `_own_thread` passes the title [ ] `app.state.ask_graph` [ ] routes, schemas, router line
+- **Acceptance criteria**: `cd backend && pytest -m "not integration" && ruff check .`; then `curl -H 'Authorization: Bearer dev' localhost:8010/api/threads/<id>/messages` returns the chat's messages.
 
 #### Milestone 2: reopening a chat shows its messages
 - **Deliverable**: picking a chat hydrates it, and follow-ups work.

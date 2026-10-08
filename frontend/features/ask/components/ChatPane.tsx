@@ -18,22 +18,26 @@ const SUGGESTIONS = [
 
 export function ChatPane({
   threadId,
+  resume,
   seed,
   onFirstSend,
   index,
   onLatestTurn,
 }: {
   threadId: string;
+  resume: boolean;
   seed: string | null;
   onFirstSend: () => void;
   index: RegistryIndex | null;
   onLatestTurn: (turn: ReturnType<typeof useSangamChat>["turns"][number] | null) => void;
 }) {
-  const { turns, send, isRunning, isReady } = useSangamChat(threadId);
+  const { turns, send, isRunning, isReady: agentReady, isLoadingHistory } = useSangamChat(threadId, resume);
+  // Not ready while a past chat loads, so a question typed meanwhile is not replaced by its history.
+  const isReady = agentReady && !isLoadingHistory;
   const [draft, setDraft] = useState(seed ?? "");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const sentTitle = useRef(false);
+  const sentTitle = useRef(resume);
 
   useEffect(() => {
     onLatestTurn(turns.length > 0 ? turns[turns.length - 1]! : null);
@@ -70,7 +74,7 @@ export function ChatPane({
         }}
       />
       <div className="composer-row">
-        <span className="muted-2 composer-hint">{isReady ? "⌘↵ to send" : "Connecting to the agent…"}</span>
+        <span className="muted-2 composer-hint">{isReady ? "⌘↵ to send" : isLoadingHistory && agentReady ? "Loading this chat…" : "Connecting to the agent…"}</span>
         <div className="composer-actions">
           {/* Stubs: attaching a file and asking by voice are not built yet. */}
           <button type="button" className="btn btn-icon composer-stub" aria-disabled="true" title="Attach a file (coming soon)" aria-label="Attach a file (coming soon)">
@@ -88,7 +92,8 @@ export function ChatPane({
     </div>
   );
 
-  const empty = turns.length === 0;
+  // A past chat that is still loading is not a new one: no greeting or suggestions while it arrives.
+  const empty = turns.length === 0 && !isLoadingHistory;
 
   // One tree for both states, with the question box always the second child, so React keeps
   // the same textarea when the first question is sent and the cursor stays in it.
