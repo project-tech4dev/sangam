@@ -114,7 +114,7 @@ export function ImportWorkspace() {
           style={{
             flex: 1,
             padding: "10px 14px",
-            borderRadius: 10,
+            borderRadius: "var(--radius-pill)",
             border: "1px solid var(--color-divider)",
             fontSize: "var(--fs-md)",
           }}

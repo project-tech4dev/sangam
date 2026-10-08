@@ -16,7 +16,7 @@ export function ProposalList({ items }: { items: SourceProposal[] }) {
             key={p.id}
             style={{
               border: "1px solid var(--color-divider)",
-              borderRadius: 8,
+              borderRadius: "var(--radius-surface)",
               padding: "8px 12px",
               fontSize: "var(--fs-sm)",
             }}
