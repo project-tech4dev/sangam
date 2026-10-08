@@ -24,3 +24,4 @@ class PartnerLineOut(ReadModel):
     source_name: str | None = None
     source_url: str | None = None
     fetched_at: datetime | None = None
+    fy_is_dated: bool = True              # false: fiscal_year is when the source was read, not a grant date

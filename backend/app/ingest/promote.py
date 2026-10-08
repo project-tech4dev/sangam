@@ -236,10 +236,22 @@ def _legacy_grants(findings: list[dict[str, Any]], report: dict[str, Any]) -> li
     return out
 
 
-async def _partner_org(conn: Any, name: str) -> int | None:
-    """The catalogued organisation a partner line names, only on a match the matcher would merge."""
+async def _partner_org(conn: Any, name: str) -> tuple[int, str] | None:
+    """(id, orgs.name) of the organisation a partner line names, only on a match the matcher would merge."""
     match = await resolve_org(conn, name)
-    return match.entity_id if match.method in MERGEABLE else None
+    if match.method not in MERGEABLE:
+        return None
+    found = await (await conn.execute("SELECT name FROM orgs WHERE id = %s", (match.entity_id,))).fetchone()
+    return match.entity_id, found["name"]
+
+
+async def _org_line(conn: Any, funder_id: int, org_id: int, fiscal_year: str) -> list[dict[str, Any]]:
+    """A funder's partner lines for one organisation in one year, whatever programme or title they carry."""
+    return await (await conn.execute(
+        "SELECT id, program_id, project_name, partner_name FROM funder_activity WHERE funder_id = %s "
+        "AND kind = 'partner' AND partner_org_id = %s AND fiscal_year = %s ORDER BY id",
+        (funder_id, org_id, fiscal_year),
+    )).fetchall()
 
 
 def _with_scheme(domain: str) -> str:
@@ -697,16 +709,46 @@ async def _write_facts(
                         if f.partner_name != catalogued:
                             said.append(f"Named in the source as {f.partner_name!r}.")
                         line_funder, line_program, partner_org_id = match.entity_id, None, owner.id
-                        names = {"funder_name": f.funder_name, "partner_name": catalogued,
+                        line_name, project = catalogued, f.project_name
+                        # The funder's own record of this grant may carry a programme or another title.
+                        lines = await _org_line(conn, line_funder, owner.id, f.fiscal_year)
+                        if len(lines) > 1:
+                            report["held"].append(
+                                f"partner {f.funder_name!r} {f.fiscal_year}: the funder already has "
+                                f"{len(lines)} lines for this organisation that year ("
+                                + ", ".join(f"[activity:{x['id']}]" for x in lines)
+                                + "). A person says which one this finding is."
+                            )
+                            continue
+                        if lines:
+                            line = lines[0]
+                            line_program, line_name, project = (
+                                line["program_id"], line["partner_name"], line["project_name"])
+                            if f.project_name and project and f.project_name.strip() != project.strip():
+                                conflicts.append(Conflict(
+                                    "funder_activity",
+                                    f"[activity:{line['id']}] partner {line_name!r} {f.fiscal_year}",
+                                    "project_name", project, None, None, f.project_name,
+                                    f.source_type or "unranked", prov.get("source_url")))
+                            elif f.project_name and not project:
+                                said.append(f"The organisation's source titles it {f.project_name!r}.")
+                        names = {"funder_name": f.funder_name, "partner_name": line_name,
                                  "partner_canonical": catalogued, "notes": "\n".join(s for s in said if s)}
                     else:
-                        line_funder, line_program = funder_id, program_id
-                        partner_org_id = await _partner_org(conn, f.partner_name)
-                        names = {"funder_name": name, "partner_name": f.partner_name,
-                                 "partner_canonical": f.partner_canonical, "notes": f.notes}
+                        line_funder, line_program, project = funder_id, program_id, f.project_name
+                        org = await _partner_org(conn, f.partner_name)
+                        partner_org_id = org[0] if org else None
+                        # A catalogued partner is named as Sangam holds it, as 0034 and the seed do.
+                        line_name = org[1] if org else f.partner_name
+                        said = [f.notes]
+                        if line_name != f.partner_name:
+                            said.append(f"Named in the source as {f.partner_name!r}.")
+                        names = {"funder_name": name, "partner_name": line_name,
+                                 "partner_canonical": f.partner_canonical or f.partner_name,
+                                 "notes": "\n".join(s for s in said if s) or None}
                     rec = FunderPartnerRecord(
                         fiscal_year=f.fiscal_year, partner_kind=f.partner_kind,
-                        partner_csr1=f.partner_csr1, project_name=f.project_name,
+                        partner_csr1=f.partner_csr1, project_name=project,
                         start_date=f.start_date, end_date=f.end_date,
                         relationship_status=f.relationship_status,
                         outlay=f.outlay.inr if f.outlay else None,

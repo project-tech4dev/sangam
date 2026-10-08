@@ -498,7 +498,8 @@ PARTNER_GUARDED = ("amount", "start_date", "end_date", "relationship_status", "s
 
 def _appended(stored: str | None, incoming: str | None) -> str | None:
     """Notes only grow: incoming lines not already stored go after the stored ones."""
-    fresh = [ln for ln in (incoming or "").splitlines() if ln.strip() and ln.strip() not in (stored or "")]
+    have = {ln.strip() for ln in (stored or "").splitlines()}
+    fresh = [ln for ln in (incoming or "").splitlines() if ln.strip() and ln.strip() not in have]
     if not fresh:
         return None
     return "\n".join([stored, *fresh]) if stored else "\n".join(fresh)

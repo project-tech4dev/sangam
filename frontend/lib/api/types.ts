@@ -74,6 +74,7 @@ export type PartnerLineRow = {
   program_id: number | null; program_name: string | null; amount: number | null;
   start_date: string | null; end_date: string | null; relationship_status: string | null; notes: string | null;
   source_name: string | null; source_url: string | null; fetched_at: string | null;
+  fy_is_dated: boolean; // false when fiscal_year is only when the source was read
 };
 
 export type ProgramRow = {

@@ -43,7 +43,8 @@ function fmtAmount(line: PartnerLineRow): string {
 }
 
 function fmtSpan(line: PartnerLineRow): string {
-  return [fmtDate(line.start_date), fmtDate(line.end_date)].filter(Boolean).join(" – ") || line.fiscal_year;
+  const span = [fmtDate(line.start_date), fmtDate(line.end_date)].filter(Boolean).join(" – ");
+  return span || (line.fy_is_dated ? line.fiscal_year : "dates not public");
 }
 
 function SectionCard({ kicker, title, children }: { kicker?: string; title?: string; children: React.ReactNode }) {
@@ -289,9 +290,9 @@ export function OrgProfileTabs({
 /* --------------------------------------------------------------- funder --- */
 
 export function FunderProfileTabs({
-  funder, scores, partners, news,
+  funder, scores, partners, partnersTotal, news,
 }: {
-  funder: FunderDetail; scores: ScoreRow[]; partners: PartnerLineRow[]; news: NewsRow[];
+  funder: FunderDetail; scores: ScoreRow[]; partners: PartnerLineRow[]; partnersTotal: number; news: NewsRow[];
 }) {
   const [tab, setTab] = useState("mandate");
   const profileEntries = Object.entries(funder.profile ?? {}).filter(([, v]) => typeof v === "string");
@@ -344,7 +345,13 @@ export function FunderProfileTabs({
           {partners.length === 0 ? (
             <DegradedNote>No partners or grants recorded for this funder yet.</DegradedNote>
           ) : (
-            partners.map((line) => (
+            <>
+            {partnersTotal > partners.length && (
+              <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
+                Showing {partners.length} of {partnersTotal} lines.
+              </span>
+            )}
+            {partners.map((line) => (
               <div key={line.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 8, fontSize: "var(--fs-sm)" }}>
                 {line.partner_org_slug ? (
                   <Link href={`/registry/${line.partner_org_slug}`} style={{ fontWeight: 600 }}>{line.partner_org_name}</Link>
@@ -359,7 +366,8 @@ export function FunderProfileTabs({
                   {fmtSpan(line)} · {fmtAmount(line)}
                 </span>
               </div>
-            ))
+            ))}
+            </>
           )}
         </SectionCard>
       )}

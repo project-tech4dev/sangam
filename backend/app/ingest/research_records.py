@@ -31,6 +31,7 @@ from app.ingest.records import (
     ImplementationMode,
     check_registration,
     check_tier,
+    fiscal_year_of,
     http_url,
     normalise_cin,
 )
@@ -374,6 +375,9 @@ class PartnerFinding(YearlyFinding, OptionallySourced):
     def _dates_in_order(self) -> PartnerFinding:
         if self.start_date and self.end_date and self.end_date < self.start_date:
             raise ValueError(f"the partnership ends before it starts ({self.start_date} to {self.end_date})")
+        if self.start_date and self.fiscal_year != fiscal_year_of(self.start_date):
+            raise ValueError(f"a line with a start date sits in the fiscal year it started: "
+                             f"{fiscal_year_of(self.start_date)}, not {self.fiscal_year}")
         return self
 
 

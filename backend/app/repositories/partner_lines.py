@@ -2,18 +2,21 @@ from __future__ import annotations
 
 from typing import Any
 
-# A line naming an organisation the caller cannot see is left out, not shown by its printed name.
+# The backend connects as the owner, so RLS does not apply here: is_public is the filter.
+# fy_is_dated is false when 0034 or the seed fell back to the day the source was read or the row recorded.
 BASE = """
 SELECT a.id, a.funder_id, f.slug AS funder_slug, f.name AS funder_name, a.fiscal_year,
        a.partner_name, o.id AS partner_org_id, o.slug AS partner_org_slug, o.name AS partner_org_name,
        a.project_name, a.program_id, p.name AS program_name, a.amount, a.start_date, a.end_date,
        a.relationship_status, a.notes, a.source_name, a.source_url, a.fetched_at,
+       (strpos(coalesce(a.notes, ''), 'fiscal_year is the year the source was read') = 0
+        AND strpos(coalesce(a.notes, ''), 'fiscal_year is the year the row was recorded') = 0) AS fy_is_dated,
        COUNT(*) OVER () AS total
 FROM funder_activity a
 JOIN funders f ON f.id = a.funder_id
 LEFT JOIN orgs o ON o.id = a.partner_org_id
 LEFT JOIN programs p ON p.id = a.program_id
-WHERE a.kind = 'partner' AND (a.partner_org_id IS NULL OR o.id IS NOT NULL)
+WHERE a.kind = 'partner' AND a.is_public
 """
 
 
