@@ -8,6 +8,7 @@ from urllib.robotparser import RobotFileParser
 
 import httpx
 
+from app.core.egress import guarded_client, private_address_refusal
 from app.ingest.adapters._http import HEADERS, USER_AGENT
 from app.ingest.sources import AccessRule, rule_for_url
 
@@ -16,14 +17,29 @@ logger = logging.getLogger(__name__)
 _ROBOTS: dict[str, RobotFileParser | None] = {}
 
 
+def canonical_url(url: str) -> str:
+    """The URL exactly as httpx will send it (IDNA host, dot segments resolved): what is checked is what is fetched."""
+    return str(httpx.URL(url))
+
+
 async def check_url(url: str) -> str | None:
-    """None when the importer may read this URL, else the reason it may not."""
+    """None when the importer may read this URL, else the reason it may not. Never raises."""
+    try:
+        return await _check_url(canonical_url(url))
+    except Exception as exc:  # noqa: BLE001 - a URL that cannot be checked is not read
+        return f"{url} could not be checked ({type(exc).__name__}: {exc}), so it is not read."
+
+
+async def _check_url(url: str) -> str | None:
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         return f"{url} is not an http(s) URL."
     host = parsed.hostname or ""
     if parsed.username is not None or parsed.password is not None:
         return f"{url} carries a user name or password, so it is not read: the host is not what it seems."
+    private = await private_address_refusal(url)
+    if private:
+        return private
 
     # Two separate questions. The registry says whether this site may be read at
     # all; robots.txt says which paths. Being a permitted source is not a pass
@@ -51,10 +67,15 @@ async def check_url(url: str) -> str | None:
         # from what we actually read, rather than from guesswork.
         await _note_proposal(host, url, robots_result="allowed")
     if allowed is None:
-        if source is not None:
+        if source is not None and not source.path_scoped:
             # A person checked this host and recorded the basis, so an
             # unreadable robots.txt today does not overrule that decision.
             return None
+        if source is not None:
+            return (
+                f"{host} did not serve a readable robots.txt today, and {source.name} is read only on paths "
+                f"robots.txt leaves open, so it is not read now. Tell the user; do not look for another route."
+            )
         return (
             f"{host} did not serve a readable robots.txt, so whether it permits automated reading "
             f"is unknown. An unknown rule is not permission: leave it, and tell the user it needs "
@@ -80,9 +101,9 @@ async def _robots_allows(scheme: str, host: str, url: str) -> bool | None:
 async def _load_robots(scheme: str, host: str) -> RobotFileParser | None:
     parser = RobotFileParser()
     try:
-        async with httpx.AsyncClient(timeout=15, headers=HEADERS, follow_redirects=True) as client:
+        async with guarded_client(timeout=15, headers=HEADERS) as client:
             response = await client.get(f"{scheme}://{host}/robots.txt")
-    except httpx.HTTPError as exc:
+    except Exception as exc:  # noqa: BLE001 - unreadable is None, never a crash
         logger.info("robots.txt for %s could not be fetched: %s", host, exc)
         return None
     # RFC 9309: 4xx means no restrictions; 5xx means treat everything as

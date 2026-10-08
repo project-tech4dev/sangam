@@ -21,7 +21,7 @@ from app.agent.tools.files import _safe_name, downloads_dir, extract_pdf_text
 from app.agent.tools.web import make_web_search
 from app.core.config import get_settings
 from app.db.pool import get_pool
-from app.ingest.access import check_url, source_banner
+from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish
 from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
@@ -55,8 +55,8 @@ def _client(original: str, **kwargs: Any) -> httpx.AsyncClient:
 
     async def guard(request: httpx.Request) -> None:
         target = str(request.url)
-        if target == original:
-            return  # the caller checked this exact URL already
+        if target == canonical_url(original):
+            return  # the caller checked this exact URL already; both sides are httpx's form
         here = rule_for_url(target)
         if scoped is not None and (here is None or here[1].key != scoped.key):
             raise _Stop(f"REFUSED: {original} led to {target}, which is off {scoped.name}'s allowed paths "
@@ -112,18 +112,21 @@ async def search_public_sources(query: str, max_results: int = 6) -> str:
     except Exception as exc:  # noqa: BLE001 - a failed search must not end the run
         return f"search failed: {type(exc).__name__}: {exc}"
 
-    results = raw.get("results", []) if isinstance(raw, dict) else raw
-    if not results:
-        return f"No results for {query!r}. Try the funder's own domain, or different wording."
-    lines = [f"{len(results)} results for {query!r}:"]
-    for r in results[:max_results]:
-        url = r.get("url", "")
-        refusal = await check_url(url)
-        mark = "READABLE" if refusal is None else "HELD"
-        lines.append(f"\n[{mark}] {r.get('title', '(no title)')}\n  {url}")
-        if refusal:
-            lines.append(f"  why held: {refusal[:180]}")
-    return "\n".join(lines)
+    try:
+        results = raw.get("results", []) if isinstance(raw, dict) else raw
+        if not results:
+            return f"No results for {query!r}. Try the funder's own domain, or different wording."
+        lines = [f"{len(results)} results for {query!r}:"]
+        for r in results[:max_results]:
+            url = r.get("url", "")
+            refusal = await check_url(url)
+            mark = "READABLE" if refusal is None else "HELD"
+            lines.append(f"\n[{mark}] {r.get('title', '(no title)')}\n  {url}")
+            if refusal:
+                lines.append(f"  why held: {refusal[:180]}")
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001 - errors are return values
+        return f"search_public_sources failed: {type(exc).__name__}: {exc}"
 
 
 @tool
@@ -141,6 +144,14 @@ async def read_page(url: str) -> str:
     opens with a banner saying how to label every value from it. Every redirect
     is checked too: a REFUSED that names a redirect is still final.
     """
+    try:
+        return await _read_page(url)
+    except Exception as exc:  # noqa: BLE001 - errors are return values
+        return f"read_page failed: {type(exc).__name__}: {exc}"
+
+
+async def _read_page(url: str) -> str:
+    url = canonical_url(url)
     refusal = await check_url(url)
     if refusal:
         return f"REFUSED: {refusal}"
@@ -183,6 +194,14 @@ async def fetch_document(url: str, filename: str | None = None) -> str:
     the figures in them are reached. Saves the file and returns its name; read it
     with read_document_pages. Access is checked before anything is fetched.
     """
+    try:
+        return await _fetch_document(url, filename)
+    except Exception as exc:  # noqa: BLE001 - errors are return values
+        return f"fetch_document failed: {type(exc).__name__}: {exc}"
+
+
+async def _fetch_document(url: str, filename: str | None) -> str:
+    url = canonical_url(url)
     refusal = await check_url(url)
     if refusal:
         return f"REFUSED: {refusal}"

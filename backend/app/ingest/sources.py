@@ -19,6 +19,8 @@ from importlib.resources import files
 from types import MappingProxyType
 from urllib.parse import parse_qsl, unquote, urlsplit
 
+import httpx
+
 _DATA = files("app.ingest") / "data" / "sources"
 _FILES = ("funders.json", "ngos.json", "rfps.json", "media.json")
 
@@ -98,6 +100,8 @@ class Source:
     """Path-scoped only. Ending in "/" is a prefix that needs a segment below it; otherwise exact."""
     allowed_query: tuple[tuple[str, str | None], ...] = ()
     """Path-scoped only: the query keys allowed, each with its one required value or None for any."""
+    governs_paths: tuple[str, ...] = ()
+    """A refusing entry that governs only these paths on its host (any case, any ref after '/' or '@')."""
 
     @property
     def dispatchable(self) -> bool:
@@ -116,6 +120,11 @@ class Source:
         return any(path.startswith(p) and len(path) > len(p) if p.endswith("/") else path == p
                    for p in self.allowed_paths)
 
+    def governs(self, path: str) -> bool:
+        """Whether this entry applies to the path; an entry without governs_paths covers its whole host."""
+        p = path.lower()
+        return not self.governs_paths or any(p == g or p.startswith((g + "/", g + "@")) for g in self.governs_paths)
+
     def path_refusal(self, url: str) -> str | None:
         """None when this path-scoped source may read the URL, else why not. Default refuse."""
         parts = urlsplit(url)
@@ -128,11 +137,13 @@ class Source:
                 return "a URL naming a port is not read"
         except ValueError:
             return "a URL naming a port is not read"
-        if normal_host(parts.hostname) != self.host:
+        if url_host(url) != self.host:
             return f"only {self.host} itself is read under this entry"
         path, why = normal_path(parts.path)
         if why:
             return why
+        if ";" in path:
+            return "the path carries ';', so it is not read"
         if path != unquote(parts.path or "/"):
             return "the path carries '.', '..' or '//', so it is not read; ask for its normal form"
         if _SIGN_IN_SEGMENTS & {seg.lower() for seg in path.split("/")}:
@@ -158,6 +169,15 @@ class Source:
 def normal_host(host: str | None) -> str:
     """Lower-case, no trailing dot, no www.: the form registry hosts are written in."""
     return (host or "").lower().rstrip(".").removeprefix("www.")
+
+
+def url_host(url: str) -> str:
+    """The host as the fetcher will see it: IDNA-encoded by httpx (so give。do is give.do), then normal_host."""
+    try:
+        raw = httpx.URL(url).raw_host.decode("ascii")
+    except Exception:  # noqa: BLE001 - an unparseable URL is refused by the egress check, not here
+        raw = urlsplit(url).hostname or ""
+    return normal_host(raw)
 
 
 def normal_path(raw: str) -> tuple[str, str | None]:
@@ -190,6 +210,7 @@ def _load() -> tuple[Source, ...]:
                     robots_checked_at=date.fromisoformat(checked) if checked else None,
                     allowed_paths=tuple(entry.get("allowed_paths", ())),
                     allowed_query=tuple(entry.get("allowed_query", {}).items()),
+                    governs_paths=tuple(entry.get("governs_paths", ())),
                 )
             )
     return tuple(out)
@@ -233,12 +254,13 @@ def rule_for_url(url: str) -> tuple[AccessRule, Source] | None:
     """The rule governing a URL: a path-scoped entry on exactly this host when it claims the path,
     else the host's strictest other rule. A host with only scoped entries returns one, so it refuses."""
     parts = urlsplit(url)
-    host = normal_host(parts.hostname)
-    found = sources_on_host(host)
+    host = url_host(url)
+    path, why = normal_path(parts.path)
+    # A path that is not in normal form is governed by every entry on the host: the strict reading.
+    found = [s for s in sources_on_host(host) if why is not None or s.governs(path)]
     if not found:
         return None
     scoped = [s for s in found if s.path_scoped and s.host == host]
-    path, why = normal_path(parts.path)
     if why is None:
         for source in scoped:
             if source.claims_path(path):
@@ -290,6 +312,10 @@ def _self_check() -> None:
                     raise ValueError(f"{source.key}: {p!r} is not a normal path below the root")
         elif source.allowed_paths or source.allowed_query:
             raise ValueError(f"{source.key}: allowed_paths and allowed_query belong to path-scoped sources only")
+        if source.governs_paths and (source.dispatchable or source.path_scoped or not source.host
+                                     or any(normal_path(g) != (g, None) or g.endswith("/") or g != g.lower()
+                                            for g in source.governs_paths)):
+            raise ValueError(f"{source.key}: governs_paths is for a refusing entry on one host, lower-case normal paths")
 
 
 _self_check()

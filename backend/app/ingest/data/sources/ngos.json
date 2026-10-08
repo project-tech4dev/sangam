@@ -281,6 +281,44 @@
       }
     },
     {
+      "key": "org_grant_intelligence_github",
+      "name": "org-grant-intelligence on github.com (unpinned)",
+      "host": "github.com",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "ngo",
+        "funder"
+      ],
+      "yields": [
+        "org",
+        "funder"
+      ],
+      "basis": "A copy of the org-grant-intelligence repository outside its pinned path. Sangam reads that repository only at the pinned commit on raw.githubusercontent.com and api.github.com (org_grant_intelligence), so a citation never moves; this host serves other refs and copies of the same files. Its robots.txt is not consulted because nothing here is read.",
+      "robots_checked_at": null,
+      "governs_paths": [
+        "/project-tech4dev/org-grant-intelligence"
+      ]
+    },
+    {
+      "key": "org_grant_intelligence_jsdelivr",
+      "name": "org-grant-intelligence on jsDelivr (mirror)",
+      "host": "jsdelivr.net",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "ngo",
+        "funder"
+      ],
+      "yields": [
+        "org",
+        "funder"
+      ],
+      "basis": "A copy of the org-grant-intelligence repository outside its pinned path. Sangam reads that repository only at the pinned commit on raw.githubusercontent.com and api.github.com (org_grant_intelligence), so a citation never moves; this host serves other refs and copies of the same files. Its robots.txt is not consulted because nothing here is read.",
+      "robots_checked_at": null,
+      "governs_paths": [
+        "/gh/project-tech4dev/org-grant-intelligence"
+      ]
+    },
+    {
       "key": "social_stock_exchange",
       "name": "Social Stock Exchange registered NPOs",
       "host": "",

@@ -230,7 +230,7 @@
       "yields": [
         "funder"
       ],
-      "basis": "Give's terms bar data mining and limit content to non-commercial use. Manual entry with a source link stays allowed; a crawler needs Give's written permission.",
+      "basis": "Give's terms bar data mining and limit content to non-commercial use. Manual entry with a source link stays allowed; a crawler needs Give's written permission. One exception, under give_do: the public /discover/<profile>/ pages are read as an aggregator's claims; every other Give path stays under this rule.",
       "robots_checked_at": "2026-09-28"
     },
     {

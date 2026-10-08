@@ -4,9 +4,9 @@ Pure: no pool, no settings. Refused at save so the model relabels; re-checked an
 from __future__ import annotations
 
 from typing import Any, Literal
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
-from app.ingest.sources import AccessRule, normal_path, rule_for_url, sources_on_host
+from app.ingest.sources import SOURCES, AccessRule, normal_path, rule_for_url, sources_on_host, url_host
 
 TIER_FIELDS: frozenset[str] = frozenset({"source_type", "evidence_tier"})
 # The org concepts whose tables carry source_type and evidence (0033); anything else cannot be marked claimed.
@@ -15,18 +15,35 @@ TIERED_ORG_CONCEPTS: frozenset[str] = frozenset(
 )
 
 
+# The research repository read anywhere but its pinned path (a mirror, another ref) is still the team's research.
+_RESEARCH_REPO = "project-tech4dev/org-grant-intelligence"
+_RESEARCH_HOSTS = ("github.com", "githubusercontent.com", "jsdelivr.net")
+# Closed to reading, but a value copied from it is still the aggregator's account.
+_CLOSED_AGGREGATORS = ("guidestar_india_site",)
+
+
 def labelled_by(url: str) -> tuple[str, str] | None:
     """(the source_type a finding citing this URL must carry, the source's name), or None."""
+    host = url_host(url)
     found = rule_for_url(url)
     if found and found[0] is AccessRule.INTERNAL_RESEARCH:
         path, why = normal_path(urlsplit(url).path)
         if why is None and found[1].claims_path(path):
             return "prior_research", found[1].name
+    if any(host == h or host.endswith("." + h) for h in _RESEARCH_HOSTS) and _RESEARCH_REPO in _decoded(url):
+        return "prior_research", SOURCES["org_grant_intelligence"].name
     # Any page on an aggregator's host is the aggregator's account, whichever entry governs the path.
-    for source in sources_on_host(urlsplit(url).hostname or ""):
-        if source.access_rule is AccessRule.MANUAL_AGGREGATOR:
+    for source in sources_on_host(host):
+        if source.access_rule is AccessRule.MANUAL_AGGREGATOR or source.key in _CLOSED_AGGREGATORS:
             return "aggregator", source.name
     return None
+
+
+def _decoded(url: str) -> str:
+    path = urlsplit(url).path
+    for _ in range(3):
+        path = unquote(path)
+    return path.lower()
 
 
 def problems(

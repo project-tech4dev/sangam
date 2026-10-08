@@ -10,6 +10,7 @@ from langchain_core.tools import tool
 from pypdf import PdfReader
 
 from app.core.config import get_settings
+from app.core.egress import EgressRefused, guarded_client
 
 MAX_DOWNLOAD_MB = 100
 MAX_DOWNLOAD_BYTES = MAX_DOWNLOAD_MB * 1024 * 1024
@@ -71,11 +72,8 @@ async def download_file(url: str, filename: str | None = None) -> str:
     call read_pdf with the saved filename afterwards to extract the text.
     """
     try:
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=DOWNLOAD_TIMEOUT_SECONDS,
-            headers={"User-Agent": USER_AGENT},
-        ) as client, client.stream("GET", url) as response:
+        async with guarded_client(timeout=DOWNLOAD_TIMEOUT_SECONDS, headers={"User-Agent": USER_AGENT}) as client, \
+                client.stream("GET", url) as response:
             response.raise_for_status()
             default_name = url.split("?")[0].rstrip("/").rsplit("/", 1)[-1]
             name = _safe_name(filename or default_name)
@@ -92,8 +90,12 @@ async def download_file(url: str, filename: str | None = None) -> str:
                         return f"ERROR: {url} exceeds the {MAX_DOWNLOAD_MB} MB download limit."
                     fh.write(chunk)
             content_type = response.headers.get("content-type", "unknown")
+    except EgressRefused as refused:
+        return refused.reply
     except httpx.HTTPError as exc:
         return f"ERROR: download of {url} failed ({type(exc).__name__}: {exc}). Try a different URL."
+    except Exception as exc:  # noqa: BLE001 - an invalid URL must not end the run
+        return f"download_file failed: {type(exc).__name__}: {exc}"
 
     hint = f" Use read_pdf('{name}') to extract its text." if name.lower().endswith(".pdf") else ""
     return f"Saved to {destination} ({size:,} bytes, {content_type}).{hint}"
