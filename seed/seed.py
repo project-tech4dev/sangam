@@ -18,7 +18,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import psycopg
@@ -53,7 +53,7 @@ def parse_date(value) -> str | None:
     value = str(value).strip()
     for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
         try:
-            return datetime.strptime(value, fmt).date().isoformat()
+            return datetime.strptime(value, fmt).date().isoformat()  # noqa: DTZ007 - a date, no zone
         except ValueError:
             continue
     return None
@@ -144,9 +144,10 @@ def _upsert_org_identifiers(cur, org_id: int, identifiers: dict[str, str], sourc
             continue
         cur.execute(
             """
-            INSERT INTO org_identifiers (org_id, id_type, id_value, verified, source_url)
-            VALUES (%s, %s, %s, true, %s)
-            ON CONFLICT (id_type, id_value) DO NOTHING
+            INSERT INTO org_identifiers (org_id, id_type, id_value, verified, source_url,
+                                         source_type, evidence)
+            VALUES (%s, %s, %s, true, %s, 'seed', 'claimed')
+            ON CONFLICT (id_type, id_value) WHERE id_value IS NOT NULL DO NOTHING
             """,
             (org_id, id_type, str(id_value), source_url),
         )
@@ -172,11 +173,15 @@ def _upsert_org_location(cur, org_id: int, location_id: int | None, role: str = 
         return
     cur.execute(
         """
-        INSERT INTO org_locations (org_id, location_id, role) VALUES (%s, %s, %s)
+        INSERT INTO org_locations (org_id, location_id, role, source_type, evidence)
+        VALUES (%s, %s, %s, 'seed', 'claimed')
         ON CONFLICT (org_id, location_id) DO UPDATE SET role = EXCLUDED.role
         """,
         (org_id, location_id, role),
     )
+
+
+SEED_TIER = ("seed", "claimed")  # org rows only: a funder's contact carries no tier
 
 
 def _upsert_contact(cur, *, org_id=None, funder_id=None, name, role, kind, email=None,
@@ -184,12 +189,13 @@ def _upsert_contact(cur, *, org_id=None, funder_id=None, name, role, kind, email
     owner_col = "org_id" if org_id is not None else "funder_id"
     cur.execute(
         f"""
-        INSERT INTO contacts ({owner_col}, name, role, kind, email, phone, source_name, source_url, fetched_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, now())
+        INSERT INTO contacts ({owner_col}, name, role, kind, email, phone, source_name, source_url,
+                              source_type, evidence, fetched_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
         ON CONFLICT ({owner_col}, name, role) WHERE {owner_col} IS NOT NULL DO NOTHING
         """,
         (org_id if org_id is not None else funder_id, name, role, kind, email, phone,
-         source_name, source_url),
+         source_name, source_url, *(SEED_TIER if org_id is not None else (None, None))),
     )
 
 
@@ -210,15 +216,17 @@ def seed_darpan_orgs(cur, locations, tags) -> int:
             """
             INSERT INTO orgs (slug, name, org_kind, cohort, legal_form, registration_date,
                               registered_location_id, contact, sections,
-                              source_url, source_name, content_hash, extractor_version)
-            VALUES (%s, %s, 'cso', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                              source_url, source_name, content_hash, extractor_version,
+                              source_type, evidence)
+            VALUES (%s, %s, 'cso', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'seed', 'claimed')
             ON CONFLICT (slug) DO UPDATE SET
               name = EXCLUDED.name, cohort = EXCLUDED.cohort,
               legal_form = EXCLUDED.legal_form, registration_date = EXCLUDED.registration_date,
               registered_location_id = EXCLUDED.registered_location_id,
               contact = EXCLUDED.contact, sections = EXCLUDED.sections,
               source_url = EXCLUDED.source_url, source_name = EXCLUDED.source_name,
-              content_hash = EXCLUDED.content_hash, extractor_version = EXCLUDED.extractor_version
+              content_hash = EXCLUDED.content_hash, extractor_version = EXCLUDED.extractor_version,
+              source_type = EXCLUDED.source_type, evidence = EXCLUDED.evidence
             RETURNING id
             """,
             (
@@ -269,15 +277,17 @@ def seed_extra_orgs(cur, locations, tags) -> int:
             """
             INSERT INTO orgs (slug, name, org_kind, cohort, legal_form, registration_date,
                               registered_location_id, contact,
-                              source_url, source_name, fetched_at, extractor_version)
-            VALUES (%s, %s, 'cso', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                              source_url, source_name, fetched_at, extractor_version,
+                              source_type, evidence)
+            VALUES (%s, %s, 'cso', %s, %s, %s, %s, %s, %s, %s, %s, %s, 'seed', 'claimed')
             ON CONFLICT (slug) DO UPDATE SET
               name = EXCLUDED.name, cohort = EXCLUDED.cohort,
               legal_form = EXCLUDED.legal_form, registration_date = EXCLUDED.registration_date,
               registered_location_id = EXCLUDED.registered_location_id,
               contact = EXCLUDED.contact, source_url = EXCLUDED.source_url,
               source_name = EXCLUDED.source_name, fetched_at = EXCLUDED.fetched_at,
-              extractor_version = EXCLUDED.extractor_version
+              extractor_version = EXCLUDED.extractor_version,
+              source_type = EXCLUDED.source_type, evidence = EXCLUDED.evidence
             RETURNING id
             """,
             (
@@ -358,7 +368,7 @@ def seed_funders(cur, locations, tags) -> int:
 
 
 def lookup_id(cur, table: str, key: str, value: str) -> int:
-    cur.execute(f"SELECT id FROM {table} WHERE {key} = %s", (value,))  # noqa: S608 - fixed identifiers
+    cur.execute(f"SELECT id FROM {table} WHERE {key} = %s", (value,))
     row = cur.fetchone()
     if row is None:
         sys.exit(f"seed error: no {table} row with {key}={value!r}")
@@ -522,7 +532,7 @@ def seed_news(cur) -> int:
                     continue
                 seendate = None
                 if row.get("seendate"):
-                    seendate = datetime.strptime(row["seendate"], "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+                    seendate = datetime.strptime(row["seendate"], "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
                 cur.execute(
                     """
                     INSERT INTO news_mentions (url, title, seendate, domain, language,

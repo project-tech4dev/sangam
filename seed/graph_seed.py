@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import psycopg
 from psycopg.rows import dict_row
@@ -72,7 +72,7 @@ def collect_episodes(database_url: str) -> list[dict]:
             ) t ON true
             LEFT JOIN LATERAL (
               SELECT string_agg(upper(oi.id_type) || ' ' || oi.id_value, ', ') AS ids
-              FROM org_identifiers oi WHERE oi.org_id = o.id
+              FROM org_identifiers oi WHERE oi.org_id = o.id AND oi.id_value IS NOT NULL
             ) i ON true
             WHERE o.slug IN ('kabil', 'bdf')
             ORDER BY o.id
@@ -163,7 +163,7 @@ async def ingest(episodes: list[dict]) -> None:
                 episode_body=ep["body"],
                 source=EpisodeType.text,
                 source_description=ep["description"],
-                reference_time=ep.get("reference_time") or datetime.now(timezone.utc),
+                reference_time=ep.get("reference_time") or datetime.now(UTC),
             )
             print(f"[{i}/{len(episodes)}] ingested: {ep['name']}")
     finally:

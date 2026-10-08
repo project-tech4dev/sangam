@@ -767,7 +767,7 @@ async def _write_org_identifiers(conn: Any, org_id: int, rec: OrgRecord) -> None
         await conn.execute(
             "INSERT INTO org_identifiers (org_id, id_type, id_value, source_url, source_name, "
             "fetched_at) VALUES (%s, %s, %s, %s, %s, %s) "
-            "ON CONFLICT (id_type, id_value) DO NOTHING",
+            "ON CONFLICT (id_type, id_value) WHERE id_value IS NOT NULL DO NOTHING",
             (org_id, id_type, id_value, rec.source_url, rec.source_name, rec.fetched_at),
         )
 
