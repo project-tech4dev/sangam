@@ -31,6 +31,10 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
         .filter(Boolean)
         .join(" · "),
   },
+  read_source_rows: {
+    label: "Reading staff workbooks",
+    detail: (a) => [a?.name, a?.sheet].filter(Boolean).join(" · "),
+  },
   funder_dossier: {
     label: "Checking what the catalog holds",
     detail: (a) => a?.name ?? "",

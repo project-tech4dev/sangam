@@ -24,6 +24,7 @@ from app.ingest.access import check_url
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish
 from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
+from app.ingest.staff_sources import is_staff_source_url
 from app.ingest.writer import slugify
 from app.integrations import storage
 
@@ -215,6 +216,8 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
             (slug, date), so without this a short re-run can quietly overwrite
             a long one — which has happened, and cost fifteen findings.
     """
+    # A staff finding quotes a confidential cell; its failures carry the exception type only.
+    staff_save = any(is_staff_source_url(f.source_url) for f in findings.findings)
     try:
         slug = slugify(findings.canonical_name or findings.entity_name)
         pool = get_pool()
@@ -296,6 +299,9 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
             f"promote_research moves what has a writer into the catalog.{replaced}"
         )
     except Exception as exc:
+        if staff_save:
+            logger.warning("save_research failed for %s (%s)", findings.entity_name, type(exc).__name__)
+            return f"save_research failed: {type(exc).__name__}. Report the failure in your summary, without repeating any row."
         logger.exception("save_research failed for %s", findings.entity_name)
         return f"save_research failed: {type(exc).__name__}: {exc}. Report your findings in text."
 

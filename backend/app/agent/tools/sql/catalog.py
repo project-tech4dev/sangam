@@ -129,7 +129,7 @@ _TABLES: tuple[Table, ...] = (
             Column("fetched_at", "timestamp with time zone"),
             Column("content_hash", "text"),
             Column("extractor_version", "text"),
-            Column("is_public", "boolean", note="false = a private vault upload, or a hidden funder's eligibility document (staff only)"),
+            Column("is_public", "boolean", note="false = a private vault upload, a hidden funder's eligibility document, or a staff dataset (doc_type 'source_dataset') - all staff or owner only"),
             Column("status", "text", values=('requested', 'received', 'read', 'scored', 'verified')),
             Column("storage_path", "text"),
             Column("uploaded_by", "uuid"),
@@ -141,6 +141,7 @@ _TABLES: tuple[Table, ...] = (
         defects=(
             "53 of 96 rows have neither org_id nor funder_id set, so ownership filters silently under-count. There is no CHECK enforcing exactly-one-owner on this table.",
             "Rows with is_public = false are private Doc Vault uploads belonging to one organisation, or the eligibility document (doc_type 'funder_eligibility') of a hidden funder, which is staff only. This tool applies no per-caller filter: their content_md and storage_path are readable by every user. Deliberate and temporary - it ends when queries run as the caller (docs/DATA_PLATFORM.md, 'Authorization: run every query as the caller'). Until then, do not quote a private upload to anyone outside the organisation that owns it, nor a hidden funder's eligibility document to anyone but staff.",
+            "doc_type 'source_dataset' rows are staff-only workbooks with no content_md; their contents are read only by Sangam Import. Facts promoted from them cite a non-resolving https://staff-sources.sangam.invalid/ URL by design - never present that URL as a link.",
             "doc_type 'funder_eligibility' is sparse: filled from promoted research one funder at a time, so no eligibility document means nobody has read that funder's policy - never that it sets no conditions.",
             "doc_type 'funder_eligibility' is a funder's STANDING policy only. A requirement printed in one open call lives in rfps.eligibility, and the same sentence can legitimately appear in both. Counting across the two double-counts.",
             "doc_type 'funder_eligibility' states a bar; it does not apply it: these are the funder's published conditions, and nothing here judges whether any organisation meets them.",

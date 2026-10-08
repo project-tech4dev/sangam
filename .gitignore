@@ -24,3 +24,8 @@ skills-lock.json
 
 # Vercel CLI link (contains projectId/orgId)
 .vercel
+
+# Staff workbooks are confidential and live only in the private staff-sources bucket.
+*.xlsx
+*.xls
+*.xlsm

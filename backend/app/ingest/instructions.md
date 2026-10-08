@@ -51,6 +51,11 @@ labels live in the researcher's instructions. What matters to you is the consequ
 LOW-confidence fact is a lead, and reporting it beside a filing's figure without saying which
 is which is the error to watch for.
 
+For a corporate funder the statutory filing is often already here: the staff workbooks, which a
+researcher reads with `read_source_rows`. Put the filer's registered name in the task when you
+know it — the filer is often the parent company, not the foundation. The researcher reads them
+last: its first `read_source_rows` call closes its web tools for the rest of its run.
+
 ---
 
 ## What a researcher is looking for
@@ -277,7 +282,7 @@ to call them:
 
 | Tool | Whose it is |
 |---|---|
-| `research_goals` · `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` | `entity-researcher` |
+| `research_goals` · `read_source_rows` · `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` | `entity-researcher` |
 | `promote_research` | `catalog-writer` |
 
 `save_research` saves the findings **and** publishes the brief the funder page links, so

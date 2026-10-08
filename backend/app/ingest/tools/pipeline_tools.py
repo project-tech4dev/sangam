@@ -1,4 +1,4 @@
-"""The adapter path: the source registry, and the runs that pull from it.
+"""The adapter path: the source registry, the runs that pull from it, and the staff workbooks.
 
 One tool per step of a write-run — see which sources may be read, say what a
 run would pull, run it, read the summary back, and see what it queued for a
@@ -15,6 +15,7 @@ from langchain_core.tools import tool
 from app.agent.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
+from app.ingest import staff_sources
 from app.ingest.runner import catalog_baseline, run_import, summarise
 from app.ingest.sources import SOURCES, Category, resolve
 
@@ -325,3 +326,31 @@ def format_summary(s: dict[str, Any]) -> str:
         if len(s["needs_attention"]) > 15:
             parts.append(f"  … and {len(s['needs_attention']) - 15} more; ask for the run detail.")
     return "\n".join(parts)
+
+
+@tool
+async def read_source_rows(name: str, sheet: str = "") -> str:
+    """Read the staff-only workbooks — statutory CSR filing exports and the CSO funder workbook — for one name.
+
+    Searches every sheet of every uploaded workbook for rows naming `name`, or any name
+    the catalog holds for that funder (its aliases). Returns each sheet's header rows, the
+    matching rows, and the section heading and sub-table header above each match, every
+    row as cell=value pairs with a [source:<document>#<sheet>!<cell>] marker.
+
+    Cite a fact by the marker of the CELL that holds it (change the cell in the marker),
+    with the dataset's source_url and source_name printed above its rows. The source_url
+    is cited, never fetched. Amounts are as printed: save the figure with the sheet's
+    unit (crore, lakh or a unit written in the cell), as "The staff sheets" in your
+    instructions says.
+
+    Contact columns are removed by design. The filer is often the parent company, not
+    the foundation: search both names.
+
+    Args:
+        name: a company, funder or CSO name, at least three letters.
+        sheet: optional part of a sheet name (e.g. "2023-24") to read one sheet only.
+    """
+    try:
+        return await staff_sources.read_rows(get_pool(), name, sheet=sheet)
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure; type only, never a value
+        return f"read_source_rows failed: {type(exc).__name__}"

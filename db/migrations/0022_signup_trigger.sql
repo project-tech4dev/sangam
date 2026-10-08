@@ -3,13 +3,19 @@
 -- this misses.
 
 -- 1. auth.users is Supabase's. The local container has none, so it gets a stand-in with the columns the
--- triggers read; on Supabase the table exists and this is skipped.
-CREATE SCHEMA IF NOT EXISTS auth;
-CREATE TABLE IF NOT EXISTS auth.users (
-  id uuid PRIMARY KEY,
-  email text,
-  raw_user_meta_data jsonb NOT NULL DEFAULT '{}'
-);
+-- triggers read; on Supabase the table exists and this is skipped. Guarded rather than IF NOT EXISTS:
+-- Supabase denies CREATE on its auth schema, and Postgres checks that before it checks existence.
+DO $$
+BEGIN
+  IF to_regclass('auth.users') IS NULL THEN
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE TABLE auth.users (
+      id uuid PRIMARY KEY,
+      email text,
+      raw_user_meta_data jsonb NOT NULL DEFAULT '{}'
+    );
+  END IF;
+END $$;
 
 CREATE SCHEMA IF NOT EXISTS app;
 

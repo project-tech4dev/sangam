@@ -14,7 +14,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results
+from app.agent.middleware import clear_old_tool_results, staff_last_lock
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.research_records import PromotionReport, ResearchSummary
@@ -24,6 +24,7 @@ from app.ingest.tools.pipeline_tools import (
     list_import_sources,
     pending_resolutions,
     plan_import,
+    read_source_rows,
     run_import_now,
 )
 from app.ingest.tools.research_tools import (
@@ -129,6 +130,8 @@ TOOLS = [
 RESEARCH_TOOLS = [
     research_goals,
     funder_dossier,
+    # Staff-only workbooks; the gate is the require_staff Import route this agent sits behind.
+    read_source_rows,
     search_public_sources,
     read_page,
     fetch_document,
@@ -194,7 +197,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Neither subagent loads a skill now, so neither gets `ls`. read_file is
     # the floor FilesystemMiddleware refuses to be constructed below, not a
     # capability either of them uses.
-    researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend)]}
+    # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
+    researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend), staff_last_lock()]}
     writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend)]}
     # It formats what two tools return, so it needs no reasoning about sources.
     if settings.utility_model:

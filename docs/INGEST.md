@@ -111,7 +111,7 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 
 | Module | Tools |
 |---|---|
-| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` |
+| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `read_source_rows` |
 | `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
@@ -135,6 +135,18 @@ window. The reason is context, not speed: a single broad turn once read three PD
 tool calls and never reached its report, because each document displaced the last one's findings.
 An isolated subagent returns its conclusion, not its reading. It hands back a thin
 `ResearchSummary` — counts and status, not the findings, which it has already saved itself.
+
+**Staff workbooks.** `read_source_rows` is the researcher's eighth tool (the supervisor's five
+pipeline tools do not include it). It reads the workbooks a person uploaded with `make staff-source`
+from the private `staff-sources` bucket with openpyxl and returns header rows and matching rows as
+`cell=value`, each cited `[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each
+sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". **Staff
+rows last:** `StaffLastLock` (`app/agent/middleware.py`) refuses `search_public_sources`,
+`read_page` and `fetch_document` once a run has called `read_source_rows`, so an injected page
+cannot have a staff row carried out in a URL or query. Contact columns are dropped. Promoted facts
+are public (D14); the files and their `documents` rows stay staff-only, and `promote` holds a staff
+finding without its marker. Tool output reaches the model provider and, with tracing on, Langfuse,
+like every tool output.
 
 **`catalog-writer`** — one per organisation, launched after the researchers report. Its only tools
 are `promote_research` and `funder_dossier`. It cannot research and cannot author a value: it

@@ -154,6 +154,9 @@ async def document_file(
     parts = storage.split(row["storage_path"])
     if parts is None:
         raise HTTPException(404, f"document {document_id} has no readable file")
+    # Only the upload script writes staff-sources paths, always on a private, org-less row.
+    if parts[0] == storage.STAFF_SOURCES and (row["is_public"] or row["org_id"] is not None):
+        raise HTTPException(404, f"document {document_id} has no readable file")
     url = await storage.signed_url(*parts)
     if url is None:
         raise HTTPException(502, "could not reach document storage")
