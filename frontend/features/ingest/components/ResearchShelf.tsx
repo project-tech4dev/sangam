@@ -38,7 +38,6 @@ export function ResearchShelf({ items }: { items: ResearchRecord[] }) {
             key={r.id}
             style={{
               border: "1px solid var(--color-divider)",
-              borderLeft: `3px solid ${TONE[r.status] ?? "var(--color-divider)"}`,
               borderRadius: "var(--radius-surface)",
               padding: "9px 12px",
             }}
