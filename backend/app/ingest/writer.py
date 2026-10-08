@@ -9,7 +9,7 @@ from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from app.ingest.expectations import RESERVED_DOC_TYPES
-from app.ingest.matcher import Match
+from app.ingest.matcher import TRIGRAM_FLOOR, Match, name_key
 from app.ingest.records import (
     FunderCsrYearRecord,
     FunderRecord,
@@ -749,6 +749,11 @@ def _may_overwrite(stored_source: str | None, incoming_source: str) -> bool:
     return SOURCE_PRECEDENCE[incoming_source] > SOURCE_PRECEDENCE[stored_source]
 
 
+def _outranks(stored_source: str | None, incoming_source: str) -> bool:
+    """Whether the stored row's source is strictly stronger than the incoming one."""
+    return stored_source is not None and SOURCE_PRECEDENCE[stored_source] > SOURCE_PRECEDENCE[incoming_source]
+
+
 def _ranked(
     existing: dict[str, Any], proposed: dict[str, Any], stored_source: str | None, incoming_source: str
 ) -> tuple[dict[str, dict[str, Any]], list[tuple[str, Any, Any]]]:
@@ -909,23 +914,25 @@ async def write_org(
 
 
 async def org_alias_holders(conn: Any, spellings: list[str], org_id: int | None) -> dict[str, dict]:
-    """lower(spelling) -> {"id", "name"} of ANOTHER organisation that answers to it, by name or alias."""
-    lowered = sorted({s.lower() for s in spellings if s})
-    if not lowered:
+    """name_key(spelling) -> {"id", "name"} of ANOTHER organisation that answers to it, by name or alias.
+    Keyed as resolve_org compares, so a spelling it would resolve to that org is caught here too."""
+    keys = {name_key(s) for s in spellings if s and name_key(s)}
+    if not keys:
         return {}
+    texts = sorted({s for s in spellings if s})
     rows = await (
         await conn.execute(
-            "SELECT id, name, lower(name) AS lname, "
-            "ARRAY(SELECT lower(a) FROM unnest(aliases) AS a) AS laliases FROM orgs "
-            "WHERE id IS DISTINCT FROM %s AND (lower(name) = ANY(%s) "
-            "OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = ANY(%s))) ORDER BY id",
-            (org_id, lowered, lowered),
+            "SELECT id, name, aliases FROM orgs WHERE id IS DISTINCT FROM %s AND EXISTS ("
+            "SELECT 1 FROM unnest(%s::text[]) AS s WHERE lower(name) = lower(s) OR similarity(name, s) >= %s "
+            "OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = lower(s) "
+            "OR similarity(a, s) >= %s)) ORDER BY id",
+            (org_id, texts, TRIGRAM_FLOOR, TRIGRAM_FLOOR),
         )
     ).fetchall()
     out: dict[str, dict] = {}
     for r in rows:
-        for spelling in sorted({r["lname"], *(r["laliases"] or [])} & set(lowered)):
-            out.setdefault(spelling, {"id": r["id"], "name": r["name"]})
+        for key in sorted({name_key(n) for n in (r["name"], *(r["aliases"] or []))} & keys):
+            out.setdefault(key, {"id": r["id"], "name": r["name"]})
     return out
 
 
@@ -982,17 +989,24 @@ async def write_org_identifier(
         )
         return "added", {c: {"old": None, "new": _plain(v)} for c, v in fresh.items()}, []
 
+    def conflict(col: str, old: Any, new: Any) -> Conflict:
+        return Conflict("org_identifiers", f"[org:{org_id}] {rec.id_type}", col, old, target["source_type"],
+                        target["source_url"], new, tier.source_type, rec.source_url)
+
     if rec.status == "check_blocked":
-        proposed["status"] = None       # a check nobody could make says nothing about a known status
+        # A check nobody could make confirms nothing: no status, tier, method or provenance moves.
+        same = target["status"] == "check_blocked"
+        return "matched", {}, [] if same else [conflict("status", target["status"], "check_blocked")]
+    conflicts: list[Conflict] = []
     if target["id_value"] is not None:
         proposed["id_value"] = None     # found by its number, case-insensitively: the spelling is not news
+    elif proposed["id_value"] is not None and _outranks(target["source_type"], tier.source_type):
+        # The number is the fact: a weaker source never supplies it to a stronger row.
+        conflicts.append(conflict("id_value", None, proposed["id_value"]))
+        proposed["id_value"] = None
     write, kept = _ranked(dict(target), proposed, target["source_type"], tier.source_type)
     retier = _takes_row(target, proposed, tier)
-    conflicts = [
-        Conflict("org_identifiers", f"[org:{org_id}] {rec.id_type}", c, old, target["source_type"],
-                 target["source_url"], new, tier.source_type, rec.source_url)
-        for c, old, new in kept
-    ]
+    conflicts += [conflict(c, old, new) for c, old, new in kept]
     if not write and not retier:
         return "matched", {}, conflicts
     sets = {c: proposed[c] for c in write}

@@ -25,7 +25,7 @@ class IdentifierOut(ReadModel):
     id: int | None = None
     id_type: str
     id_value: str | None = None       # NULL while only applied for
-    status: str = "registered"
+    status: str
     valid_from: date | None = None
     valid_until: date | None = None
     application_ref: str | None = None

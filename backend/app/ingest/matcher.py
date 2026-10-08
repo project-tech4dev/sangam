@@ -13,6 +13,8 @@ Method = Literal["identifier", "exact", "alias", "boilerplate", "trigram", "none
 
 # A wide net in SQL, then a strict re-rank on the distinctive part of the name.
 TRIGRAM_FLOOR = 0.35
+# A state society's registration number ('26', '320/2000') repeats across registrars: never an identity.
+UNMATCHABLE_ID_TYPES = frozenset({"reg_no"})
 CORE_FLOOR = 0.62
 
 # Words that almost every Indian corporate and philanthropic name carries. Left in,
@@ -173,6 +175,8 @@ async def resolve_org(conn: Any, name: str, identifiers: dict[str, str] | None =
     """Identifier, exact name, alias, normalised name or alias, boilerplate, then trigram.
     A spelling two organisations share resolves neither and falls through to trigram, which only proposes."""
     for id_type, id_value in (identifiers or {}).items():
+        if id_type in UNMATCHABLE_ID_TYPES:
+            continue
         row = await (
             await conn.execute(
                 "SELECT org_id FROM org_identifiers WHERE id_type = %s AND lower(id_value) = lower(%s)",

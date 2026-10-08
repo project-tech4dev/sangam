@@ -24,7 +24,7 @@ from pydantic import ValidationError
 from app.ingest import staff_sources
 from app.ingest.expectations import PROMOTABLE, activity_kind
 from app.ingest.geography import resolve_location
-from app.ingest.matcher import Match, _is_foundation, resolve_funder, resolve_org
+from app.ingest.matcher import Match, _is_foundation, name_key, resolve_funder, resolve_org
 from app.ingest.records import (
     CIN_FORMAT,
     ContactRecord,
@@ -43,6 +43,7 @@ from app.ingest.records import (
     OrgRecord,
     ProgramRecord,
     RfpRecord,
+    http_url,
     normalise_cin,
 )
 from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
@@ -79,6 +80,10 @@ logger = logging.getLogger(__name__)
 # The matcher methods that mean "this is the same organisation". 'trigram'
 # proposes and a person accepts; 'none' is a new entity.
 MERGEABLE = ("identifier", "exact", "alias", "boilerplate")
+# Only a match made on the name makes the research's spelling an alias; a number match says nothing of names.
+NAME_MATCHES = ("exact", "alias", "boilerplate")
+# A number resolves an org only when a finding says it is a live registration, not a listing that was not found.
+MATCHING_STATUSES = frozenset({"registered", "provisional"})
 
 # Documents first, so every other fact can cite the report it was read from.
 # Programmes next, because every remaining concept can name one and a spend row
@@ -239,7 +244,10 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
 
 def _http_only(url: str | None) -> str | None:
     """The research envelope's website, only when it is http(s); anything else must not refuse the org."""
-    return url if url and url.strip().lower().startswith(("http://", "https://")) else None
+    try:
+        return http_url(url)
+    except ValueError:
+        return None
 
 
 def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord | None:
@@ -261,7 +269,8 @@ def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord |
             aliases=ident.get("aliases") or [],
             staff_count=ident.get("staff_count"),
             staff_count_note=ident.get("staff_count_note"),
-            identifiers={f["id_type"]: f["id_value"] for f in identifiers if f.get("id_value")},
+            identifiers={f["id_type"]: f["id_value"] for f in identifiers
+                         if f.get("id_value") and f.get("status") in MATCHING_STATUSES},
             source_type=anchor.get("source_type"),
             evidence_tier=anchor.get("evidence_tier"),
             as_of=None,
@@ -826,17 +835,18 @@ async def _reconcile_org_aliases(
 ) -> OrgRecord:
     """Aliases to add: the research's own spelling (on a matched org) and its aliases, less any another
     organisation already answers to. Those are held: a shared spelling resolves neither org."""
-    wanted = [*([record.name] if match.resolved else []), *record.aliases]
+    by_name = match.method in NAME_MATCHES
+    wanted = [*([record.name] if by_name else []), *record.aliases]
     holders = await org_alias_holders(conn, wanted, match.entity_id)
     for spelling in wanted:
-        holder = holders.get(spelling.lower())
+        holder = holders.get(name_key(spelling))
         if holder is not None:
             report["held"].append(
                 f"alias {spelling!r} is already the name or an alias of {holder['name']!r} "
                 f"[org:{holder['id']}], so it is not added to {record.name!r}. Two organisations "
                 f"sharing a spelling is a decision for a person."
             )
-    kept = [s for s in wanted if s.lower() not in holders]
+    kept = [s for s in wanted if name_key(s) not in holders]
     return record.model_copy(update={"aliases": kept})
 
 
