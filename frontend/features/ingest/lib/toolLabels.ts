@@ -35,6 +35,22 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Reading staff workbooks",
     detail: (a) => [a?.name, a?.sheet].filter(Boolean).join(" · "),
   },
+  list_storage_buckets: { label: "Listing storage buckets", detail: () => "" },
+  list_bucket_files: {
+    label: "Waiting for staff to choose a bucket · listing",
+    detail: (a) => [a?.bucket, a?.prefix].filter(Boolean).join("/"),
+  },
+  read_workbook: {
+    label: "Reading workbook",
+    detail: (a) =>
+      [Array.isArray(a?.documents) ? `document ${a.documents.join(", ")}` : "", a?.sheet]
+        .filter(Boolean)
+        .join(" · "),
+  },
+  select_source_files: {
+    label: "Waiting for staff to choose workbooks",
+    detail: (a) => (Array.isArray(a?.paths) ? `${a.paths.length} proposed` : ""),
+  },
   funder_dossier: {
     label: "Checking what the catalog holds",
     detail: (a) => a?.name ?? "",

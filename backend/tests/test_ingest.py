@@ -271,7 +271,7 @@ class TestIngestAgentIsSelfDescribing:
                 f"makes it invisible whenever that skill is not loaded."
             )
 
-    @pytest.mark.parametrize("spec_name", ["ENTITY_RESEARCHER", "CATALOG_WRITER"])
+    @pytest.mark.parametrize("spec_name", ["ENTITY_RESEARCHER", "CATALOG_WRITER", "WORKBOOK_READER"])
     def test_a_subagent_prompt_names_every_tool_its_spec_declares(self, spec_name):
         """The same rule, one level down, and it is easier to break here: a
         subagent is isolated, so instructions.md naming a tool does nothing for
@@ -345,12 +345,13 @@ class TestIngestAgentIsSelfDescribing:
         # not on the main agent. Both subagents count: the parent researches
         # nothing and writes only record_registry_check, so save_research reaches
         # the model only through the researcher and promote_research only through the writer.
-        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER
 
         registered = (
             {t.name for t in TOOLS}
             | {t.name for t in ENTITY_RESEARCHER["tools"]}
             | {t.name for t in CATALOG_WRITER["tools"]}
+            | {t.name for t in WORKBOOK_READER["tools"]}
         )
         assert not defined - registered, f"defined but never registered: {sorted(defined - registered)}"
         # The other direction, which is the property the package exists to give:

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
 import { Milestones } from "./components/Milestones";
 import { RunStatus } from "./components/RunStatus";
+import { PausedPick } from "./components/SourcePicker";
 import { SubagentBoard } from "./components/SubagentBoard";
 import { failuresOf } from "./lib/failures";
 
@@ -21,6 +22,7 @@ export function ImportWorkspace() {
   const threadId = useMemo(() => `import-${crypto.randomUUID()}`, []);
   const { turns, send, isRunning, isReady } = useAgentChat(threadId, "sangam_ingest", "sangam-import");
   const [draft, setDraft] = useState("");
+  const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
 
   async function submit(text: string) {
     const value = text.trim();
@@ -94,10 +96,10 @@ export function ImportWorkspace() {
         ))}
       </div>
 
-      <RunStatus
-        running={isRunning}
-        steps={turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : []}
-      />
+      {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
+      {isReady && <PausedPick agentId={`sangam-import-${threadId}`} steps={lastSteps} />}
+
+      <RunStatus running={isRunning} steps={lastSteps} />
 
       <form
         onSubmit={(e) => {
