@@ -307,12 +307,16 @@ parametrised test holds each spec against its own prompt.
 There used to be a `HIDDEN_TOOLS` set there suppressing the `deepagents` filesystem built-ins
 from the trace; the tools themselves are gone now, so hiding them is not needed.
 
-**Design changes start in the design system, not here.** The Claude Design project "Sangam
-Design System" is the system of record for colours, type, corners, spacing and component looks;
-changes flow from it into `frontend/app/globals.css` and `frontend/components/ui/`. Do not add a
-token, size or colour to `globals.css` that the design system lacks — reuse one, or change the
-design system first. `docs/DESIGN_SYSTEM.md` has the link, the file-by-file mapping and how to
-sync.
+**Design changes start in the design system, and the design system never drifts from the
+repo.** The Claude Design project "Sangam Design System v2" is the system of record for colours,
+type, corners, spacing and component looks. Do not add a token, size or colour to `globals.css`
+that the design system lacks — reuse one, or change the design system first. And **any PR that
+changes a component in `frontend/components/`, the classes or tokens in `globals.css`, or a
+screen the UI kit recreates (Home, Registry, profiles, Ask, Import) updates the design system in
+the same PR** — its components, their `.d.ts`/`.prompt.md`, and the matching
+`ui_kits/sangam-web/` page. `docs/DESIGN_SYSTEM.md` has the link, the file-by-file mapping and
+the step-by-step sync; `.design-sync/NOTES.md` has what a sync agent needs to know (the
+`/design-sync` converter does not fit this repo — sync by hand).
 
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is

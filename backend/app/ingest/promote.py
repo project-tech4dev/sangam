@@ -378,19 +378,24 @@ async def _write_documents(
 
 async def _staff_datasets(conn: Any, findings: list[dict[str, Any]]) -> dict[str, int]:
     """source_url -> the private row of each staff dataset cited, so its lines carry document_id."""
+    return {url: row["id"] for url, row in (await _staff_dataset_rows(conn, findings)).items()}
+
+
+async def _staff_dataset_rows(conn: Any, findings: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """source_url -> the staff dataset row it names, with what is needed to re-open the workbook."""
     urls = sorted({
         f["source_url"] for f in findings if staff_sources.is_staff_source_url(f.get("source_url"))
     })
     if not urls:
         return {}
     rows = await (await conn.execute(
-        "SELECT id, source_url FROM documents WHERE doc_type = 'source_dataset' AND source_url = ANY(%s) "
-        "ORDER BY id",
+        "SELECT id, source_url, source_name, storage_path, content_hash FROM documents "
+        "WHERE doc_type = 'source_dataset' AND source_url = ANY(%s) ORDER BY id",
         (urls,),
     )).fetchall()
-    found: dict[str, int] = {}
+    found: dict[str, dict[str, Any]] = {}
     for row in rows:
-        found.setdefault(row["source_url"], row["id"])
+        found.setdefault(row["source_url"], dict(row))
     return found
 
 
@@ -990,8 +995,12 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
         )
         return report
 
-    findings, unmarked = staff_sources.hold_unmarked(findings, await _staff_datasets(conn, findings))
+    datasets = await _staff_dataset_rows(conn, findings)
+    findings, unmarked = staff_sources.hold_unmarked(findings, {u: d["id"] for u, d in datasets.items()})
     report["held"].extend(unmarked)
+    # A marked staff figure is still held unless its cited row prints it, in the unit it was saved in.
+    findings, mismatched = await staff_sources.hold_mismatched(findings, datasets)
+    report["held"].extend(mismatched)
 
     # An NGO is not a funder, and the two kinds reach different tables through
     # different resolvers. Nothing below this line is shared but the report.
