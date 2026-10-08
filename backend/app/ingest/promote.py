@@ -534,6 +534,8 @@ async def _write_facts(
             base = {"funder_name": name, **prov}
             shared = {"entity_name": name, **prov}
 
+            if concept in ("metric", "contact") and _untiered(owner, f, f"{concept} {_describe(concept, f)}", report):
+                continue
             # Two findings can be distinct and still resolve to one row:
             # "Healthcare" and "Sanitation" are both Schedule VII clause (i),
             # and two programme names neither of which resolved are both a
@@ -550,8 +552,6 @@ async def _write_facts(
                 )
                 continue
             seen.add(identity)
-            if concept in ("metric", "contact") and _untiered(owner, f, f"{concept} {_describe(concept, f)}", report):
-                continue
             try:
                 if concept == "csr_spend":
                     domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
