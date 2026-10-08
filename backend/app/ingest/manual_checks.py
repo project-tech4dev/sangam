@@ -1,4 +1,4 @@
-"""A registry check a staff member made by hand, written through the identifier writer's precedence rule."""
+"""A registry check a staff member made by hand: equal-rank rows here, everything else through the writer."""
 
 from __future__ import annotations
 
@@ -6,18 +6,21 @@ import re
 from datetime import UTC, date, datetime, time
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
 from app.ingest.records import IDENTIFIER_STATUSES, NEEDS_A_NUMBER, OrgIdentifierRecord
-from app.ingest.writer import write_org_identifier
+from app.ingest.writer import Conflict, write_org_identifier
 
 ID_TYPES: tuple[str, ...] = ("pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no")
 NOTE_MAX = 500
+IST = ZoneInfo("Asia/Kolkata")
 _ORG_ID = re.compile(r"\[?org:(\d+)\]?|(\d+)")
-_ROW = "SELECT id, org_id, id_value, status, source_type, evidence, checked_at FROM org_identifiers WHERE "
-# A dated check of equal rank supersedes an older one: registrations lapse.
-_DATED = frozenset({"registry", "manual_check"})
+_ROW = ("SELECT id, org_id, id_value, status, source_type, evidence, checked_at, valid_from, valid_until, "
+        "application_ref, source_url FROM org_identifiers WHERE ")
+# Equal in rank to a manual check; between equals a newer dated check wins, since registrations lapse.
+_EQUAL = frozenset({"registry", "manual_check"})
 
 
 def refusal(*, id_type: str, status: str, source_url: str, note: str, user_id: UUID | None) -> str | None:
@@ -37,6 +40,20 @@ def refusal(*, id_type: str, status: str, source_url: str, note: str, user_id: U
     return None
 
 
+def check_instant(checked_on: str, now: datetime) -> datetime | str:
+    """When the check was made: today (IST) is now; an earlier date is its IST noon. A string is a refusal."""
+    if not (checked_on or "").strip():
+        return now
+    try:
+        day = date.fromisoformat(checked_on.strip())
+    except ValueError:
+        return f"REFUSED: checked_on must be a date like 2026-10-08, not {checked_on!r}. Nothing was written."
+    today = now.astimezone(IST).date()
+    if day > today:
+        return "REFUSED: checked_on is in the future. Nothing was written."
+    return now if day == today else datetime.combine(day, time(12), IST)
+
+
 async def _orgs(conn: Any, org: str) -> list[dict]:
     key = org.strip()
     m = _ORG_ID.fullmatch(key)
@@ -54,19 +71,53 @@ async def _current(conn: Any, org_id: int, id_type: str) -> list[dict]:
     )).fetchall())
 
 
-async def _target(conn: Any, org_id: int, id_type: str, id_value: str | None) -> dict | None:
-    """The row the writer landed on: by number, else the open row, else the one current row."""
+async def _target(conn: Any, org_id: int, id_type: str, id_value: str | None, *, lock: bool = False) -> dict | None:
+    """The row the writer would land on: by number, else the open row, else the one current row."""
+    tail = " FOR UPDATE" if lock else ""
     if id_value:
         return await (await conn.execute(
-            _ROW + "org_id = %s AND id_type = %s AND lower(id_value) = lower(%s)", (org_id, id_type, id_value)
+            _ROW + "org_id = %s AND id_type = %s AND lower(id_value) = lower(%s)" + tail,
+            (org_id, id_type, id_value),
         )).fetchone()
     open_row = await (await conn.execute(
-        _ROW + "org_id = %s AND id_type = %s AND id_value IS NULL", (org_id, id_type)
+        _ROW + "org_id = %s AND id_type = %s AND id_value IS NULL" + tail, (org_id, id_type)
     )).fetchone()
     if open_row is not None:
         return open_row
-    rows = await _current(conn, org_id, id_type)
+    rows = list(await (await conn.execute(
+        _ROW + "org_id = %s AND id_type = %s AND is_current ORDER BY id LIMIT 2" + tail, (org_id, id_type)
+    )).fetchall())
     return rows[0] if len(rows) == 1 else None
+
+
+def _replaced(row: dict) -> str:
+    parts = [f"replaced {row['status']}"]
+    if row["valid_from"]:
+        parts.append(f"valid from {row['valid_from']:%Y-%m-%d}")
+    if row["valid_until"]:
+        parts.append(f"valid to {row['valid_until']:%Y-%m-%d}")
+    parts.append(f"source {row['source_url'] or 'none recorded'}")
+    parts.append(f"checked {row['checked_at']:%Y-%m-%d}")
+    return ", ".join(parts)
+
+
+async def _stamp(conn: Any, row_id: int, *, checked_at: datetime, user_id: UUID, doc: dict | None, line: str,
+                 replace: OrgIdentifierRecord | None = None) -> None:
+    """Who checked and when. Without replace a document upgrades to evidenced and its absence never downgrades;
+    with it the check takes the row's status, tier, evidence, dates and provenance."""
+    sets = ["checked_at = %s", "checked_by = %s", "check_method = 'manual_check'",
+            "notes = concat_ws(E'\\n', notes, %s::text)"]
+    params: list[Any] = [checked_at, user_id, line]
+    if replace is not None:
+        sets += ["status = %s", "source_type = 'manual_check'", "evidence = %s", "evidence_document_id = %s",
+                 "application_ref = %s", "valid_from = NULL", "valid_until = NULL", "source_url = %s",
+                 "source_name = %s", "fetched_at = %s"]
+        params += [replace.status, replace.evidence_tier, doc["id"] if doc else None, replace.application_ref,
+                   replace.source_url, replace.source_name, replace.fetched_at]
+    elif doc is not None:
+        sets += ["evidence_document_id = %s", "evidence = 'evidenced'"]
+        params.append(doc["id"])
+    await conn.execute(f"UPDATE org_identifiers SET {', '.join(sets)} WHERE id = %s", (*params, row_id))
 
 
 async def record(
@@ -80,14 +131,9 @@ async def record(
     why = refusal(id_type=id_type, status=status, source_url=source_url, note=note, user_id=user_id)
     if why:
         return why
-    now = datetime.now(UTC)
-    try:
-        checked_at = datetime.combine(date.fromisoformat(checked_on.strip()), time(12), UTC) if (
-            checked_on or "").strip() else now
-    except ValueError:
-        return f"REFUSED: checked_on must be a date like 2026-10-08, not {checked_on!r}. Nothing was written."
-    if checked_at > now:
-        return "REFUSED: checked_on is in the future. Nothing was written."
+    checked_at = check_instant(checked_on, datetime.now(UTC))
+    if isinstance(checked_at, str):
+        return checked_at
     async with pool.connection() as conn, conn.transaction():
         staff = await (await conn.execute("SELECT is_staff FROM users WHERE id = %s", (user_id,))).fetchone()
         if not (staff and staff["is_staff"]):
@@ -104,7 +150,7 @@ async def record(
         doc = None
         if document_id is not None:
             doc = await (await conn.execute(
-                "SELECT id, org_id, title FROM documents WHERE id = %s", (document_id,)
+                "SELECT id, org_id, title FROM documents WHERE id = %s FOR SHARE", (document_id,)
             )).fetchone()
             if doc is None or doc["org_id"] != target["id"]:
                 owner = "does not exist" if doc is None else (
@@ -131,37 +177,49 @@ async def record(
             reason = "; ".join(e["msg"] for e in exc.errors())
             return f"REFUSED: {reason}. Pass id_value (or application_ref for 'applied'). Nothing was written."
 
-        outcome, changes, conflicts = await write_org_identifier(conn, rec, target["id"], None)
-        row = None if outcome == "held" else await _target(conn, target["id"], id_type, rec.id_value)
-        took = row is not None and (outcome == "added" or "source_type" in changes)
-        replaced = None
-        if (outcome == "matched" and conflicts and row is not None and status not in ("check_blocked", "applied")
-                and row["source_type"] in _DATED and row["checked_at"] is not None
-                and checked_at > row["checked_at"]):
-            # Equal rank, newer check: it takes the row; validity dates belonged to the old status.
-            replaced = (row["status"], row["source_type"], row["checked_at"])
-            await conn.execute(
-                "UPDATE org_identifiers SET status = %s, source_type = 'manual_check', "
-                "application_ref = coalesce(%s, application_ref), valid_from = NULL, valid_until = NULL, "
-                "source_url = %s, source_name = %s, fetched_at = %s WHERE id = %s",
-                (status, rec.application_ref, rec.source_url, rec.source_name, rec.fetched_at, row["id"]),
-            )
-            conflicts, took = [], True
-        # Same source, same status: a document now evidences what an earlier check only claimed.
-        upgrade = (outcome == "matched" and not conflicts and doc is not None and row is not None
-                   and row["source_type"] == "manual_check" and row["evidence"] == "claimed"
-                   and row["status"] == status)
-        line = f"manual check {checked_at:%Y-%m-%d}: {status}" + (f" — {note}" if note else "")
-        if row is not None:
-            if took or upgrade:
-                await conn.execute(
-                    "UPDATE org_identifiers SET checked_at = %s, checked_by = %s, "
-                    "check_method = 'manual_check', evidence_document_id = %s, evidence = %s, "
-                    "notes = concat_ws(E'\\n', notes, %s::text) WHERE id = %s",
-                    (checked_at, user_id, doc["id"] if doc else None, rec.evidence_tier, line, row["id"]),
-                )
+        line = f"{checked_at:%Y-%m-%d} manual_check: {status}" + (f" — {note}" if note else "")
+        conflicts: list[Conflict] = []
+        replaced = ""
+        stored = await _target(conn, target["id"], id_type, rec.id_value, lock=True)
+        # An equal-rank, unblocked row (or an untiered one) is decided here, so the writer never fills it.
+        mine = (stored is not None and status != "applied" and stored["status"] != "check_blocked"
+                and (stored["source_type"] in _EQUAL or stored["source_type"] is None))
+        if mine:
+            newer = stored["checked_at"] is None or checked_at > stored["checked_at"]
+            dated = stored["source_type"] in _EQUAL and stored["checked_at"] is not None
+            if stored["status"] == status and stored["source_type"] in _EQUAL and newer:
+                outcome = "confirmed"
+                if rec.application_ref and stored["application_ref"] not in (None, rec.application_ref):
+                    conflicts.append(Conflict(
+                        "org_identifiers", f"[org:{target['id']}] {id_type}", "application_ref",
+                        stored["application_ref"], stored["source_type"], stored["source_url"],
+                        rec.application_ref, "manual_check", source_url))
+                await _stamp(conn, stored["id"], checked_at=checked_at, user_id=user_id, doc=doc, line=line)
+            elif status != "check_blocked" and stored["status"] != status and dated and newer:
+                outcome, replaced = "replaced", _replaced(stored)
+                await _stamp(conn, stored["id"], checked_at=checked_at, user_id=user_id, doc=doc,
+                             line=f"{line} ({replaced})", replace=rec)
             else:
-                # The attempt is kept on the row; its status, tier and checker stay as they were.
+                outcome = "noted"
+                if stored["status"] != status:
+                    conflicts.append(Conflict(
+                        "org_identifiers", f"[org:{target['id']}] {id_type}", "status", stored["status"],
+                        stored["source_type"], stored["source_url"], status, "manual_check", source_url))
+                await conn.execute(
+                    "UPDATE org_identifiers SET notes = concat_ws(E'\\n', notes, %s::text) WHERE id = %s",
+                    (line, stored["id"]),
+                )
+            row = stored
+        else:
+            outcome, changes, conflicts = await write_org_identifier(conn, rec, target["id"], None)
+            row = None if outcome == "held" else await _target(conn, target["id"], id_type, rec.id_value)
+            if row is not None and (outcome == "added" or "source_type" in changes):
+                outcome = "taken"
+                await _stamp(conn, row["id"], checked_at=checked_at, user_id=user_id, doc=doc, line=line)
+                if doc is None:
+                    await conn.execute("UPDATE org_identifiers SET evidence_document_id = NULL WHERE id = %s",
+                                       (row["id"],))
+            elif row is not None:
                 await conn.execute(
                     "UPDATE org_identifiers SET notes = concat_ws(E'\\n', notes, %s::text) WHERE id = %s",
                     (line, row["id"]),
@@ -170,17 +228,20 @@ async def record(
             _ROW + "id = %s", (row["id"],))).fetchone()
 
     number = rec.id_value or (final and final["id_value"]) or "no number on file"
+    tier = (f"evidenced by document {doc['id']} ({doc['title'] or 'untitled'})" if doc else
+            "claimed — no evidence document was given, so it does not count as evidenced until one is "
+            "uploaded to the Doc Vault and the check recorded again with it")
     if outcome == "held":
         head = f"Not recorded for {cite}: {id_type} {number} is held by another organisation."
-    elif took or upgrade:
-        tier = (f"evidenced by document {doc['id']} ({doc['title'] or 'untitled'})" if doc else
-                "claimed — no evidence document was given, so it does not count as evidenced until one is "
-                "uploaded to the Doc Vault and the check recorded again with it")
+    elif outcome in ("taken", "replaced"):
         head = (f"Recorded a manual check for {cite}: {id_type} ({number}) is {status}, {tier}. "
-                f"Identifier row {row['id']}.")
+                f"Identifier row {final['id']}.")
         if replaced:
-            head += (f" It replaces the earlier {replaced[0]!r} ({replaced[1]}, checked "
-                     f"{replaced[2]:%Y-%m-%d}): a newer check of equal rank supersedes it.")
+            head += f" A newer check of equal rank supersedes the earlier one: {replaced}."
+    elif outcome == "confirmed":
+        kept = "evidenced" if final["evidence"] == "evidenced" else tier
+        head = (f"Confirmed {cite}: {id_type} ({number}) is still {status} ({final['source_type']}, {kept}); "
+                f"checked {checked_at:%Y-%m-%d} by a staff member. Identifier row {final['id']}.")
     else:
         kept = f"{final['status']} from {final['source_type'] or 'a person (unranked)'}" if final else "unchanged"
         head = (f"The manual check for {cite} did not change the stored {id_type} ({number}): it stays "

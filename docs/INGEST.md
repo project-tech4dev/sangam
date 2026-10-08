@@ -119,8 +119,8 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 `record_registry_check` and `publish_brief`. It supervises. It cannot open a web page, and the
 only catalog row it writes is a staff member's own registry check (`app/ingest/manual_checks.py`:
 checker from the chat's user, ranked as `manual_check`, evidenced only with a document of that
-organisation). Research and promotion go through a subagent, so there is one path to a source and one path to the catalog, each
-under the prompt written for it. The parent held all of them until 2026-10-03, and a
+organisation). Research and promotion go through a subagent, so there is one path to a source
+and one path from research to the catalog, each under the prompt written for it. The parent held all of them until 2026-10-03, and a
 single-organisation run then researched under `instructions.md`, without the researcher's
 budget, entity-confirmation or money-unit rules: two paths to the same work, already drifted.
 
