@@ -23,9 +23,11 @@ duplicates in a catalog read as corroboration.
   than one source twice.
 - **conflicts** — held, different value. **Never resolve this silently.**
   Report both, with both sources, and say which is stronger and why. The
-  precedence is: evidenced beats claimed; a primary document beats a page
-  about the document; more recent beats older *only when both are the same
-  strength*. A newer claim does not beat an older certificate.
+  precedence is the writer's, by source type: registry = manual check > the
+  organisation's own document > a funder's > a staff dataset > prior research
+  > an aggregator > the seed. Equal sources that disagree are a conflict,
+  never a choice; within one source type, more recent beats older only when a
+  person decides it. A newer claim does not beat an older certificate.
 - **supersedes** — the held value is stale rather than wrong: a registration
   re-issued, a later fiscal year, an `is_current=false` identifier. The old
   row stays, marked superseded; it is history, not an error.
@@ -36,27 +38,32 @@ duplicates in a catalog read as corroboration.
 ## Where each field lands
 
 **An NGO's fields.** These land, with one rule that changes what the map
-means: on an organisation the catalog already holds, a column is written only
-where it is currently empty. A value the catalog states and the research
-contradicts is **reported, never applied** — so a cell in this map can be
-correct, cited, and still not become the stored value. Say which.
+means: every value carries its source type and evidence tier, and on an
+organisation the catalog already holds a blank is always filled, a strictly
+stronger source replaces a weaker one, and anything else that differs is
+**reported as a conflict, never applied** — so a cell in this map can be
+correct, cited, and still not become the stored value. Say which. A row a
+person entered has no tier and is never overwritten.
 
 | Pulled | Lands in |
 |---|---|
 | 12A, 80G | `org_identifiers` (`id_type` 12a, 80g) |
 | CSR-1 and its number | `org_identifiers` (`id_type` csr1) |
 | PAN, DARPAN | `org_identifiers` (`id_type` pan, darpan) |
-| whether any of the above is current, cancelled, expired, suspended | `credential_events` — exists, holds the same credential enum, currently empty and **not yet writable by Import** |
+| whether any of the above is applied for, registered, expired, cancelled, suspended, or could not be checked | `org_identifiers.status` on the identifier's own row — `applied` (a Form 10AB acknowledgement, `application_ref`), `registered`, `expired`, `cancelled`, `suspended`, `not_found`, `check_blocked` (never means valid), with `valid_until` when stated |
 | three years of audited accounts | `org_financials.is_audited` per year, plus a `documents` row each |
 | registration type and date | `orgs.legal_form` (free text), `orgs.registration_date` |
 | the deed, MoA or bye-laws themselves | `documents` |
 | three-year revenue | `org_financials.total_income` per year |
+| foreign contribution unspent at year end | `org_financials.foreign_unspent` |
+| website, description, other spellings of the name | `orgs.website`, `orgs.description`, `orgs.aliases` (a spelling another organisation answers to is held) |
 | programme and non-programme spend, foreign contribution | `org_financials` |
 | where it works | `org_locations` with `role`, plus `locations` |
 | programmes, reach, people | `programs`, `metrics`, `contacts` |
 | **three years of similar work evidenced by MoU / Work Order / Completion Certificate** | **no home** |
 | **governing board: size, published bios, conflict of interest** | **no home** |
-| **permanent staff count and technical capacity** | **no home** |
+| permanent staff count, with what was counted | `orgs.staff_count`, `orgs.staff_count_note` |
+| **technical capacity** | **no home** |
 | **donor concentration, dedicated bank account, no-profit-no-loss certificate** | **no home** |
 | **institutional policies — safeguarding, HR, finance, organogram, board minutes, grievance, monitoring** | **no home** |
 

@@ -61,6 +61,7 @@ _ELIGIBILITY_KINDS = {
 LEGACY_TITLES: dict[str, str] = {
     "identifier": "Registrations and identifiers (saved before 0031)",
     "funder_eligibility": "Eligibility it sets for applicants (saved before 0031)",
+    "grant": "Grants (saved before 0034)",
 }
 
 
@@ -94,8 +95,8 @@ def headline(f: dict[str, Any]) -> str:
     if concept == "stated_geography":
         return _join(_place(f), f.get("role"))
     if concept == "partner":
-        return _join(f.get("partner_name"), _money(f.get("amount")), f.get("partner_kind"),
-                     f.get("program_name"))
+        return _join(f.get("partner_name"), f.get("project_name"), _money(f.get("amount")),
+                     f.get("relationship_status"), f.get("partner_kind"), f.get("program_name"))
     if concept == "programme_spend":
         return _join(f.get("program_name"), _money(f.get("amount")), "the funder's own figure",
                      "/".join(b for b in (f.get("domain"), f.get("theme")) if b))
@@ -143,7 +144,10 @@ def headline(f: dict[str, Any]) -> str:
         return _join(f.get("name"), f.get("org_kind"), f.get("legal_form"),
                      f"registered {f['registration_date']}" if f.get("registration_date") else None)
     if concept == "org_identifier":
-        return f"{f['id_type'].upper()} {f['id_value']}"
+        number = f.get("id_value") or (f"application {f['application_ref']}" if f.get("application_ref") else None)
+        tier = f"{f.get('evidence_tier')} ({f['source_type']})" if f.get("source_type") else None
+        return _join(f["id_type"].upper(), number, f.get("status"),
+                     f"valid until {f['valid_until']}" if f.get("valid_until") else None, tier)
     if concept == "org_financials":
         money = {k: _money(f.get(k)) for k in
                  ("total_income", "program_spend", "non_program_spend", "foreign_contribution")}

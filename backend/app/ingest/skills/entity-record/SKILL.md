@@ -32,11 +32,11 @@ conversation if the answer is wrong, so it goes first:
 4. **Where it works** — state and district, with the registered address shown
    as what it is rather than as a separate fact.
 5. **What it does** — programmes, then reach and outcomes.
-6. **Who funds it already** — named funders with year and amount. This has no
-   finding behind it: `grant` is funder-side and `grants.org_id` is NOT NULL,
-   so it comes from the researcher's summary or from `funder_dossier` with
-   `entity_kind='org'`. Say which, and write "not recorded" rather than
-   omitting the heading.
+6. **Who funds it already** — named funders with year and amount. These are the
+   funders' `partner` lines naming this organisation — `funder_dossier` with
+   `entity_kind='org'` lists them under grants received — or its `partner`
+   findings when not yet promoted. Write "not recorded" rather than omitting
+   the heading.
 7. **Governance and capacity** — board, permanent staff, institutional
    policies.
 8. **Contacts**, then **source documents**.

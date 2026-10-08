@@ -17,6 +17,65 @@ ImplementationMode = Literal["direct", "implementing_agency", "own_trust_or_sect
 # A company's Corporate Identity Number: listing status, industry code, state, year, type, serial.
 CIN_FORMAT = re.compile(r"[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}")
 
+# The evidence tier (C7), 0033's CHECK values. Research may not claim 'manual_check' (a staff member's
+# registry check) or 'seed' (seed.py's), so findings take the narrower FindingSourceType.
+SOURCE_TYPES: tuple[str, ...] = ("registry", "org_document", "funder", "staff_dataset", "manual_check",
+                                 "prior_research", "aggregator", "seed")
+SourceType = Literal["registry", "org_document", "funder", "staff_dataset", "manual_check",
+                     "prior_research", "aggregator", "seed"]
+FindingSourceType = Literal["registry", "org_document", "funder", "staff_dataset", "prior_research",
+                            "aggregator"]
+EvidenceTier = Literal["evidenced", "claimed"]
+# Never evidence on their own; the tables CHECK the same rule.
+ALWAYS_CLAIMED = frozenset({"aggregator", "prior_research"})
+
+
+def check_tier(source_type: str | None, evidence_tier: str | None) -> None:
+    """Both or neither, and an unverifiable source is only ever claimed: a CheckViolation would abort the promotion."""
+    if (source_type is None) != (evidence_tier is None):
+        raise ValueError("source_type and evidence_tier come together: name both or neither")
+    if source_type in ALWAYS_CLAIMED and evidence_tier != "claimed":
+        raise ValueError(f"a {source_type} value is always 'claimed', never 'evidenced'")
+
+
+# org_identifiers.status (0033). 'applied' is not a registration and 'check_blocked' never means valid.
+IDENTIFIER_STATUSES: tuple[str, ...] = (
+    "applied", "provisional", "registered", "expired", "suspended", "cancelled", "surrendered",
+    "not_available", "not_found", "check_blocked",
+)
+IdentifierStatus = Literal["applied", "provisional", "registered", "expired", "suspended", "cancelled",
+                           "surrendered", "not_available", "not_found", "check_blocked"]
+# A status about a number cannot be recorded without one.
+NEEDS_A_NUMBER = frozenset({"provisional", "registered", "expired", "suspended", "cancelled", "surrendered"})
+
+
+def check_registration(id_value: str | None, application_ref: str | None, status: str) -> None:
+    if status in NEEDS_A_NUMBER and not id_value:
+        raise ValueError(f"status {status!r} needs the registration's number; an application is 'applied'")
+    if status == "applied" and not (id_value or application_ref):
+        raise ValueError("an application needs its number or its acknowledgement (application_ref)")
+
+
+def http_url(v: str | None) -> str | None:
+    """A website is rendered as a link, so anything but an http(s) URL (javascript:, data:) is refused."""
+    if v is None or not v.strip():
+        return None
+    v = v.strip()
+    if not re.match(r"https?://[^\s/]", v, re.IGNORECASE):
+        raise ValueError(f"website must be an http(s) URL, got {v!r}")
+    return v
+
+
+def distinct_names(v: list[str]) -> list[str]:
+    """Each spelling once, case-insensitively, in the order found; blanks dropped."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for name in (n.strip() for n in v):
+        if name and name.lower() not in seen:
+            seen.add(name.lower())
+            out.append(name)
+    return out
+
 
 def normalise_cin(v: str) -> str:
     """One spelling per CIN: upper case, no spaces. The MCA prints it both ways."""
@@ -46,6 +105,18 @@ class Provenance(BaseModel):
         return v
 
 
+class Tiered(BaseModel):
+    """The evidence tier, optional; the org-only records redeclare it as required."""
+
+    source_type: SourceType | None = None
+    evidence_tier: EvidenceTier | None = None
+
+    @model_validator(mode="after")
+    def _a_whole_tier(self) -> Tiered:
+        check_tier(self.source_type, self.evidence_tier)
+        return self
+
+
 # An article's subject is often a market, not an organisation. "NSE-listed
 # companies spent Rs 22,212 crore" is a real sentence with a real number and no
 # funder in it, and writing it as one puts a fictional entity in the catalog.
@@ -71,6 +142,12 @@ def _fiscal_year(v: str) -> str:
     if not FISCAL_YEAR.match(v):
         raise ValueError(f"fiscal_year must look like 'FY2023-24', got {v!r}")
     return v
+
+
+def fiscal_year_of(d: date) -> str:
+    """The Indian fiscal year (April to March) a date falls in, by 0034's rule: 2019-03-31 is 'FY2018-19'."""
+    y = d.year if d.month >= 4 else d.year - 1
+    return f"FY{y}-{(y + 1) % 100:02d}"
 
 
 class FunderRecord(Provenance):
@@ -243,9 +320,9 @@ class FunderLocationRecord(Provenance):
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
 
 
-class FunderPartnerRecord(Provenance):
-    """A named partner. With an amount, what the partner received from this funder that year (INR);
-    without one, NOT proof that money changed hands."""
+class FunderPartnerRecord(Provenance, Tiered):
+    """A named partner and, with an amount, a grant: what the partner received (INR). Without one, NOT proof
+    that money changed hands. A multi-year grant is one line: the whole amount, with both dates."""
 
     kind: Literal["funder_partner"] = "funder_partner"
     activity_kind: ClassVar[str] = activity_kind("partner")
@@ -255,6 +332,10 @@ class FunderPartnerRecord(Provenance):
     partner_canonical: str | None = None
     partner_kind: str | None = None
     partner_csr1: str | None = None
+    project_name: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    relationship_status: Literal["active", "concluded", "unconfirmed", "dormant"] | None = None
     outlay: float | None = Field(default=None, ge=0, description="INR")
     amount: float | None = Field(default=None, ge=0, description="INR")
     program_name: str | None = None
@@ -283,7 +364,7 @@ class FunderProgrammeSpendRecord(Provenance):
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
 
 
-class ProgramRecord(Provenance):
+class ProgramRecord(Provenance, Tiered):
     kind: Literal["program"] = "program"
     entity_name: str = Field(min_length=2)
     name: str = Field(min_length=2)
@@ -298,7 +379,7 @@ class ProgramRecord(Provenance):
     _org = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
-class MetricRecord(Provenance):
+class MetricRecord(Provenance, Tiered):
     kind: Literal["metric"] = "metric"
     entity_name: str = Field(min_length=2)
     name: str = Field(min_length=2)
@@ -321,7 +402,7 @@ class MetricRecord(Provenance):
     _org = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
-class ContactRecord(Provenance):
+class ContactRecord(Provenance, Tiered):
     """Publicly disclosed roles, and a shared mailbox when one is published.
 
     Phone is still deliberately absent, and `email` reaches this record only
@@ -413,20 +494,29 @@ class RfpRecord(Provenance):
 ORG_ID_TYPES = frozenset({"pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"})
 
 
-class OrgRecord(Provenance):
-    """An NGO. No website field: `orgs` has no column for one, and promotion
-    reports that rather than dropping it quietly."""
+class OrgRecord(Provenance, Tiered):
+    """An NGO. `identifiers` is only the type-to-number map the matcher resolves on."""
 
     kind: Literal["org"] = "org"
     name: str = Field(min_length=2)
     org_kind: Literal["cso", "intermediary", "government"] | None = None
     """None, not "cso". orgs.org_kind is NOT NULL DEFAULT 'cso', so a default
-    here would reach _blanks as a stated finding and contradict every
+    here would reach write_org as a stated finding and contradict every
     intermediary and government row the cohort holds."""
     legal_form: str | None = None
     registration_date: date | None = None
+    website: str | None = None
+    description: str | None = None
+    aliases: list[str] = Field(default_factory=list)
+    staff_count: int | None = Field(default=None, ge=0)
+    staff_count_note: str | None = None
     identifiers: dict[str, str] = Field(default_factory=dict)
     """12A, 80G and FCRA; a funder has no room for them."""
+    source_type: SourceType
+    evidence_tier: EvidenceTier
+
+    _names = field_validator("aliases")(lambda v: distinct_names(v))
+    _site = field_validator("website")(lambda v: http_url(v))
 
     @field_validator("name")
     @classmethod
@@ -444,7 +534,7 @@ class OrgRecord(Provenance):
         return v
 
 
-class OrgFinancialsRecord(Provenance):
+class OrgFinancialsRecord(Provenance, Tiered):
     """Amounts are INR, like every other record here. The org analogue of
     FunderCsrYearRecord: one row per fiscal year, keyed on (org_id, fiscal_year)."""
 
@@ -455,14 +545,17 @@ class OrgFinancialsRecord(Provenance):
     program_spend: float | None = None
     non_program_spend: float | None = None
     foreign_contribution: float | None = None
+    foreign_unspent: float | None = None
     is_audited: bool | None = None
     notes: str | None = None
+    source_type: SourceType
+    evidence_tier: EvidenceTier
 
     _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
     _one = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
-class OrgLocationRecord(Provenance):
+class OrgLocationRecord(Provenance, Tiered):
     """Where an NGO is registered or works. org_locations.role has no
     'priority' value, unlike the funder side — an NGO states where it works,
     not where it would like to fund."""
@@ -473,12 +566,41 @@ class OrgLocationRecord(Provenance):
     district: str | None = None
     role: Literal["registered", "operates", "funds"] = "operates"
     note: str | None = None
+    source_type: SourceType
+    evidence_tier: EvidenceTier
 
     _one = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
+class OrgIdentifierRecord(Provenance, Tiered):
+    """One registration of an NGO and what is known of it; an application has no number yet."""
+
+    kind: Literal["org_identifier"] = "org_identifier"
+    entity_name: str = Field(min_length=2)
+    id_type: Literal["pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"]
+    id_value: str | None = None
+    status: IdentifierStatus
+    valid_from: date | None = None
+    valid_until: date | None = None
+    check_method: Literal["document", "registry", "manual_check", "aggregator"] | None = None
+    application_ref: str | None = None
+    notes: str | None = None
+    source_type: SourceType
+    evidence_tier: EvidenceTier
+
+    @field_validator("id_value")
+    @classmethod
+    def _stripped(cls, v: str | None) -> str | None:
+        return (v.strip() or None) if v else None
+
+    @model_validator(mode="after")
+    def _a_status_has_what_it_needs(self) -> OrgIdentifierRecord:
+        check_registration(self.id_value, self.application_ref, self.status)
+        return self
+
+
 Record = (
-    FunderRecord | OrgRecord | OrgFinancialsRecord | OrgLocationRecord
+    FunderRecord | OrgRecord | OrgIdentifierRecord | OrgFinancialsRecord | OrgLocationRecord
     | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
     | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | FunderProgrammeSpendRecord
     | ProgramRecord

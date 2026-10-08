@@ -1,6 +1,6 @@
 """What the database expects, per research concept, derived from the SQL catalog.
 
-The catalog is already the schema as data — 36 tables with their columns, the
+The catalog is already the schema as data — its tables with their columns, the
 CHECK-constraint value lists and the gotchas — and `verify_against_db()` raises
 at boot when it drifts from the live schema. So a researcher's targets are
 derived from it rather than written down a second time and left to rot.
@@ -33,17 +33,6 @@ from app.agent.tools.sql.catalog import CATALOG
 _BOTH = frozenset({"funder", "org"})
 _FUNDER = frozenset({"funder"})
 _ORG = frozenset({"org"})
-
-# grants.org_id is NOT NULL, so a recipient the catalog does not already hold
-# cannot become a grant row — and promoting a funder's research does not write
-# the NGOs it names. The relationship goes to funder_activity (kind 'partner'), whose org_id is
-# nullable, and which is the more honest claim anyway: a named partner is not
-# proof that money changed hands.
-_GRANT_NEEDS_A_RECIPIENT = (
-    "grants.org_id is NOT NULL and the recipient is not resolved here; "
-    "recorded as a partner instead"
-)
-
 
 @dataclass(frozen=True, slots=True)
 class ConceptSpec:
@@ -95,10 +84,13 @@ CONCEPTS: dict[str, ConceptSpec] = {
         columns=("fiscal_year", "program_id", "state_location_id", "name_as_printed", "notes"),
     ),
     "stated_geography": ConceptSpec("funder_locations", "Where it says it prioritises"),
+    # A named partner in a year and, since 0034, a grant. Offered to both kinds: a funder names its partners,
+    # and an NGO's own records name its funders (funder_name), which lands on that funder's line.
     "partner": ConceptSpec(
-        "funder_activity", "Implementing partners", row_filter=("kind", "partner"),
-        columns=("fiscal_year", "program_id", "partner_name", "partner_canonical", "partner_csr1",
-                 "partner_kind", "outlay", "amount", "notes"),
+        "funder_activity", "Partners and grants", kinds=_BOTH, row_filter=("kind", "partner"),
+        columns=("fiscal_year", "program_id", "project_name", "partner_name", "partner_canonical",
+                 "partner_csr1", "partner_kind", "outlay", "amount", "start_date", "end_date",
+                 "relationship_status", "notes"),
     ),
     # D12: the funder's OWN figure per programme component. Never summed with spend lines and never
     # spread onto them; the two are reported side by side.
@@ -114,18 +106,6 @@ CONCEPTS: dict[str, ConceptSpec] = {
         row_filter=("doc_type", "funder_eligibility"), columns=("title",),
     ),
     "program": ConceptSpec("programs", "Programmes", kinds=_BOTH),
-    "grant": ConceptSpec(
-        "grants",
-        "Grants",
-        promotable=False,
-        not_written=dict.fromkeys(
-            (
-                "recipient_name", "title", "status", "amount", "currency",
-                "start_date", "end_date", "program_name", "notes",
-            ),
-            _GRANT_NEEDS_A_RECIPIENT,
-        ),
-    ),
     "metric": ConceptSpec("metrics", "Reach and outcomes", kinds=_BOTH),
     "contact": ConceptSpec("contacts", "Contacts", kinds=_BOTH),
     "document": ConceptSpec(
@@ -146,12 +126,12 @@ CONCEPTS: dict[str, ConceptSpec] = {
     "org_identity": ConceptSpec("orgs", "Identity", kinds=_ORG),
     "org_identifier": ConceptSpec(
         "org_identifiers",
-        "Registrations and identifiers",
+        "Registrations and their status",
         kinds=_ORG,
-        not_written={
-            "notes": "OrgRecord.identifiers is a type-to-value map with no room for a third "
-                     "field, so promotion reports the note instead of storing it",
-        },
+        # valid_from is INTERNAL elsewhere (a place link's bookkeeping); here a certificate states it.
+        # checked_at, checked_by and evidence_document_id belong to a staff member's manual check.
+        columns=("id_type", "id_value", "status", "valid_from", "valid_until", "check_method",
+                 "application_ref", "notes"),
     ),
     "org_financials": ConceptSpec("org_financials", "Income and spending by year", kinds=_ORG),
     "org_location": ConceptSpec("org_locations", "Where it works", kinds=_ORG),
@@ -172,6 +152,10 @@ PROVENANCE = frozenset({
     "source_url", "source_name", "fetched_at", "as_of", "document_id",
     "archive_url", "content_hash", "extractor_version",
 })
+
+# The evidence tier: filled from a finding's own source and tier, never a target (`evidence` on a finding
+# is the quoted sentence).
+TIER = frozenset({"source_type", "evidence"})
 
 # doc_type values written only by their own path: the eligibility concept, the template path and the
 # staff-source upload. A `document` finding may not use them, and ensure_document keys them apart.
@@ -201,7 +185,7 @@ INTERNAL = frozenset({
 
 # Columns that are a research target on most tables but ours on one. A
 # document's status is our reading workflow, not something a source states;
-# a grant's and a programme's status are facts about the world.
+# a partner line's and a programme's status are facts about the world.
 OURS: dict[str, frozenset[str]] = {
     "document": frozenset({"status"}),
     # `details` is our own catch-all, not something a call publishes.
@@ -231,8 +215,7 @@ class Expected:
 # What a researcher must state for the row to be writable: NOT NULL, and with
 # nobody else to supply it. A NOT NULL column that carries a DDL default is not
 # here — programs.kind defaults to 'programme' and contacts.kind to 'other' —
-# and neither is grants.status, which has no default but whose 'unconfirmed'
-# value exists precisely so the writer can say "the source did not say".
+# and neither is a partner line's relationship_status, which is NULL when no source said.
 # Demanding those would make the model guess, which is the failure this file
 # exists to prevent.
 REQUIRED: dict[str, frozenset[str]] = {
@@ -245,13 +228,12 @@ REQUIRED: dict[str, frozenset[str]] = {
     "programme_spend": frozenset({"fiscal_year", "program_name", "amount", "domain", "classified_by"}),
     "eligibility_guideline": frozenset({"title"}),
     "program": frozenset({"name"}),
-    "grant": frozenset({"title", "recipient_name"}),
     "metric": frozenset({"name"}),
     "contact": frozenset({"name"}),
     "document": frozenset({"title", "doc_type"}),
     "rfp": frozenset({"title"}),
     "org_identity": frozenset({"name"}),
-    "org_identifier": frozenset({"id_type", "id_value"}),
+    "org_identifier": frozenset({"id_type", "status"}),
     "org_financials": frozenset({"fiscal_year"}),
     # org_locations.role is NOT NULL but defaults to 'operates', so it is not
     # demanded. `state` is, for the same reason stated_geography demands it.
@@ -303,14 +285,14 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
                  values=(), required=False),
         _DISTRICT,
     ),
-    "grant": (
+    "partner": (
         Expected(
-            name="recipient_name",
+            name="funder_name",
             type="text",
-            note="the organisation that received the money, as printed. grants.org_id is NOT "
-                 "NULL, so a recipient not in orgs belongs in funder_activity (kind 'partner') instead",
+            note="org research only: the funder that gave to this organisation, as printed. Its line is "
+                 "written on that funder when Sangam already holds it; otherwise it is held for a person",
             values=(),
-            required=True,
+            required=False,
         ),
     ),
     "document": (
@@ -408,7 +390,9 @@ def expected_fields(concept: str) -> tuple[Expected, ...]:
         name = column.name
         if spec.columns is not None and name not in spec.columns:
             continue
-        if name == "id" or name in PROVENANCE or name in INTERNAL or column.heavy:
+        if name == "id" or name in PROVENANCE or name in TIER or column.heavy:
+            continue
+        if name in INTERNAL and not (spec.columns is not None and name in spec.columns):
             continue
         if name in OURS.get(concept, frozenset()):
             continue
@@ -433,7 +417,6 @@ def concepts_for(entity_kind: str) -> tuple[str, ...]:
 
     Both kinds now promote: the shared concepts write the same table through a
     different foreign key, and each kind's own concepts write its own tables.
-    `grant` is the one that still stays research, for the reason above it.
     """
     return tuple(n for n, c in CONCEPTS.items() if entity_kind in c.kinds)
 

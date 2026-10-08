@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 SOURCE_ARCHIVE = "source-archive"
 ORG_VAULT = "org-vault"
-# Staff-only workbooks uploaded by scripts/upload_staff_source.py; 0032 creates it at 100 MB.
+# Staff-only workbooks, uploaded by scripts/upload_staff_source.py or the dashboard; 0032 creates it at 100 MB.
 STAFF_SOURCES = "staff-sources"
 STAFF_SOURCES_MAX_BYTES = 100 * 1024 * 1024
 BUCKETS: tuple[str, ...] = (SOURCE_ARCHIVE, ORG_VAULT, STAFF_SOURCES)
@@ -294,6 +294,63 @@ async def list_prefix(bucket: str, prefix: str, limit: int = 20) -> list[dict[st
         logger.warning("listing %s/%s failed (%s: %s)", bucket, prefix, type(exc).__name__, exc)
         return []
     return found if isinstance(found, list) else []
+
+
+async def list_buckets() -> list[dict[str, Any]]:
+    """Every bucket the service key sees, as Storage reports it. Empty on any failure."""
+    if _disabled():
+        return []
+    try:
+        async with _client() as client:
+            response = await client.get("/bucket")
+        response.raise_for_status()
+        found = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.warning("listing buckets failed (%s: %s)", type(exc).__name__, exc)
+        return []
+    return found if isinstance(found, list) else []
+
+
+LIST_PAGE = 100
+LIST_MAX_FILES = 1000
+
+
+async def list_all(bucket: str, prefix: str = "") -> list[dict[str, Any]]:
+    """Every file under a prefix, folders walked, as {key, size, updated_at}. Empty on any failure."""
+    if _disabled():
+        return []
+    files: list[dict[str, Any]] = []
+    folders = [prefix.strip("/")]
+    try:
+        async with _client() as client:
+            while folders and len(files) < LIST_MAX_FILES:
+                folder = folders.pop()
+                offset = 0
+                while True:
+                    response = await client.post(
+                        f"/object/list/{bucket}",
+                        json={"prefix": folder, "limit": LIST_PAGE, "offset": offset,
+                              "sortBy": {"column": "name", "order": "asc"}},
+                    )
+                    response.raise_for_status()
+                    page = response.json()
+                    if not isinstance(page, list):
+                        break
+                    for entry in page:
+                        key = f"{folder}/{entry['name']}" if folder else entry["name"]
+                        if entry.get("id") is None:  # a folder: Storage lists it without an id
+                            folders.append(key)
+                        elif not entry["name"].startswith("."):  # .emptyFolderPlaceholder
+                            meta = entry.get("metadata") or {}
+                            files.append({"key": key, "size": meta.get("size"),
+                                          "updated_at": entry.get("updated_at")})
+                    if len(page) < LIST_PAGE:
+                        break
+                    offset += LIST_PAGE
+    except (httpx.HTTPError, ValueError, KeyError) as exc:
+        logger.warning("listing %s/%s failed (%s: %s)", bucket, prefix, type(exc).__name__, exc)
+        return []
+    return sorted(files, key=lambda f: f["key"])[:LIST_MAX_FILES]
 
 
 async def archived_key(bucket: str, source_url: str) -> str | None:

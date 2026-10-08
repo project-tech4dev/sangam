@@ -5,16 +5,19 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from contextvars import ContextVar
+from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from app.ingest.expectations import RESERVED_DOC_TYPES
-from app.ingest.matcher import TRIGRAM_FLOOR, Match
+from app.ingest.matcher import TRIGRAM_FLOOR, Match, name_key
 from app.ingest.records import (
     FunderCsrYearRecord,
     FunderRecord,
     NewsMentionRecord,
     OrgFinancialsRecord,
+    OrgIdentifierRecord,
     OrgLocationRecord,
     OrgRecord,
 )
@@ -500,7 +503,8 @@ FUNDER_ACTIVITY_KEY = ("funder_id", "kind", "fiscal_year", "program_id", "csr_se
 FUNDER_ACTIVITY_UPDATABLE = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note",
                              "name_as_printed", "implementation_mode", "partner_canonical",
                              "partner_csr1", "partner_kind", "outlay", "amount", "project_count",
-                             "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of")
+                             "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of",
+                             "start_date", "end_date", "relationship_status", "partner_org_id")
 _CLASSIFICATION = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note")
 FUNDER_LOCATION_KEY = ("funder_id", "location_id")
 FUNDER_LOCATION_UPDATABLE = ("role", "note", "source_url", "source_name", "fetched_at", "as_of")
@@ -708,18 +712,49 @@ async def write_funder_location(
     )
 
 
+# What an organisation's research may not change on a funder's line; a difference is a conflict.
+PARTNER_GUARDED = ("amount", "start_date", "end_date", "relationship_status", "source_url")
+
+
+def _appended(stored: str | None, incoming: str | None) -> str | None:
+    """Notes only grow: incoming lines not already stored go after the stored ones."""
+    have = {ln.strip() for ln in (stored or "").splitlines()}
+    fresh = [ln for ln in (incoming or "").splitlines() if ln.strip() and ln.strip() not in have]
+    if not fresh:
+        return None
+    return "\n".join([stored, *fresh]) if stored else "\n".join(fresh)
+
+
 async def write_partner(
-    conn: Any, rec: Any, funder_id: int, *, program_id: int | None, document_id: int | None
+    conn: Any, rec: Any, funder_id: int, *, program_id: int | None, document_id: int | None,
+    partner_org_id: int | None = None, fill_only: bool = False, conflicts: list[Conflict] | None = None,
 ) -> tuple[str, dict]:
+    """One partner line; a grant is one, so two projects with one partner in a year are two lines.
+    fill_only (an organisation's research) fills blanks and reports a differing value as a conflict."""
     key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
-                        partner_name=rec.partner_name)
+                        project_name=rec.project_name, partner_name=rec.partner_name)
     proposed = {
         "partner_canonical": rec.partner_canonical or rec.partner_name,
-        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1,
-        "outlay": rec.outlay, "amount": rec.amount, "notes": rec.notes,
+        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1, "partner_org_id": partner_org_id,
+        "outlay": rec.outlay, "amount": rec.amount, "start_date": rec.start_date, "end_date": rec.end_date,
+        "relationship_status": rec.relationship_status, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
+    where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
+    stored = await (
+        await conn.execute(f"SELECT id, {', '.join(proposed)} FROM funder_activity WHERE {where}",
+                           tuple(key.values()))
+    ).fetchone()
+    if stored:
+        proposed["notes"] = _appended(stored["notes"], rec.notes)
+        for c in (c for c in proposed if fill_only and c != "notes" and stored[c] is not None):
+            if c in PARTNER_GUARDED and _diff({c: stored[c]}, {c: proposed[c]}):
+                _sink(conflicts, [Conflict(
+                    "funder_activity", f"[activity:{stored['id']}] partner {rec.partner_name!r} {rec.fiscal_year}",
+                    c, _plain(stored[c]), None, stored["source_url"], _plain(proposed[c]),
+                    getattr(rec, "source_type", None) or "unranked", rec.source_url)])
+            proposed[c] = None
     return await _write_activity(conn, key, proposed, document_id)
 
 
@@ -738,7 +773,8 @@ async def write_programme_spend(
 
 
 async def write_program(
-    conn: Any, rec: Any, owner: Owner, *, parent_id: int | None, document_id: int | None
+    conn: Any, rec: Any, owner: Owner, *, parent_id: int | None, document_id: int | None,
+    conflicts: list[Conflict] | None = None,
 ) -> tuple[str, int, dict]:
     """Returns (status, program_id, changes) — the id is needed by every fact
     that names a programme."""
@@ -750,9 +786,16 @@ async def write_program(
         "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
         "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
     }
-    status, changes = await _upsert(
-        conn, "programs", key, PROGRAM_UPDATABLE, proposed, document_id
-    )
+    if owner.column == "org_id" and rec.source_type is not None:
+        status, changes, found = await _upsert_ranked(
+            conn, "programs", key, _values(PROGRAM_UPDATABLE), proposed, Tier.of(rec), document_id,
+            row=f"[org:{owner.id}] programme {rec.name!r}",
+        )
+        _sink(conflicts, found)
+    else:
+        status, changes = await _upsert(
+            conn, "programs", key, PROGRAM_UPDATABLE, proposed, document_id
+        )
     row = await (
         await conn.execute(
             f"SELECT id FROM programs WHERE {owner.column} = %s AND name = %s",
@@ -768,7 +811,7 @@ async def write_program(
 
 async def write_metric(
     conn: Any, rec: Any, owner: Owner, *, program_id: int | None,
-    location_id: int | None, document_id: int | None,
+    location_id: int | None, document_id: int | None, conflicts: list[Conflict] | None = None,
 ) -> tuple[str, dict]:
     key = {owner.column: owner.id, "name": rec.name, "period": rec.period,
            "program_id": program_id}
@@ -780,11 +823,19 @@ async def write_metric(
         "notes": rec.notes, "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
+    if owner.column == "org_id" and rec.source_type is not None:
+        status, changes, found = await _upsert_ranked(
+            conn, "metrics", key, _values(METRIC_UPDATABLE), proposed, Tier.of(rec), document_id,
+            row=f"[org:{owner.id}] metric {rec.name!r} {rec.period or ''}".strip(),
+        )
+        _sink(conflicts, found)
+        return status, changes
     return await _upsert(conn, "metrics", key, METRIC_UPDATABLE, proposed, document_id)
 
 
 async def write_contact(
-    conn: Any, rec: Any, owner: Owner, *, document_id: int | None
+    conn: Any, rec: Any, owner: Owner, *, document_id: int | None,
+    conflicts: list[Conflict] | None = None,
 ) -> tuple[str, dict]:
     key = {owner.column: owner.id, "name": rec.name, "role": rec.role}
     proposed = {
@@ -796,6 +847,13 @@ async def write_contact(
         "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
         "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
     }
+    if owner.column == "org_id" and rec.source_type is not None:
+        status, changes, found = await _upsert_ranked(
+            conn, "contacts", key, _values(CONTACT_UPDATABLE), proposed, Tier.of(rec), document_id,
+            row=f"[org:{owner.id}] contact {rec.name!r}",
+        )
+        _sink(conflicts, found)
+        return status, changes
     return await _upsert(conn, "contacts", key, CONTACT_UPDATABLE, proposed, document_id)
 
 
@@ -901,144 +959,388 @@ async def write_funder_tag(conn: Any, funder_id: int, tag_id: int, *, note: str 
 
 
 # --- The org side ------------------------------------------------------------
-#
-# Same shape as the funder writers, with one deliberate difference: an org that
-# already exists is FILLED, not overwritten. The ten cohort rows were vetted by
-# hand, so a web page may supply a value nobody has yet and may not replace one
-# somebody chose. write_funder has the opposite rule because every funder row
-# was machine-made in the first place.
+# Ranked on the evidence tier (C7): blanks fill, a strictly stronger source replaces, the rest is a Conflict.
 
-ORG_UPDATABLE = ("org_kind", "legal_form", "registration_date")
-ORG_PROVENANCE = ("source_url", "source_name", "fetched_at", "as_of",
-                  "content_hash", "extractor_version")
-ORG_FINANCIALS_KEY = ("org_id", "fiscal_year")
-ORG_FINANCIALS_UPDATABLE = ("total_income", "program_spend", "non_program_spend",
-                            "foreign_contribution", "is_audited", "notes",
-                            "source_url", "source_name", "fetched_at", "as_of")
-ORG_LOCATION_KEY = ("org_id", "location_id")
-ORG_LOCATION_UPDATABLE = ("role", "note", "source_url", "source_name", "fetched_at", "as_of")
+# Strongest first. The one place the order lives; seed/seed.py's guard is the 'seed' end of it.
+SOURCE_PRECEDENCE: Mapping[str, int] = MappingProxyType({
+    "registry": 7, "manual_check": 7, "org_document": 6, "funder": 5,
+    "staff_dataset": 4, "prior_research": 3, "aggregator": 2, "seed": 1,
+})
+# Provenance moves with the tier, only when the incoming source takes the row.
+RANKED_PROVENANCE = ("source_url", "source_name", "fetched_at", "as_of", "content_hash", "extractor_version")
 
 
-def _blanks(existing: dict[str, Any], proposed: dict[str, Any]) -> tuple[dict, list[str]]:
-    """(what to write, what we refused to overwrite).
+class Tier(NamedTuple):
+    source_type: str
+    evidence: str
 
-    A column is written only where the stored value is NULL. Everything else a
-    source disagrees with is returned as prose for a person, because silently
-    preferring either one would be a guess dressed as a fact.
-    """
-    fill, conflicts = {}, []
+    @classmethod
+    def of(cls, rec: Any) -> Tier:
+        return cls(rec.source_type, rec.evidence_tier)
+
+
+class Conflict(NamedTuple):
+    """A disagreement the writer kept rather than resolved: both values, both sources."""
+
+    table: str
+    row: str
+    column: str
+    stored: Any
+    stored_source: str | None
+    stored_url: str | None
+    incoming: Any
+    incoming_source: str
+    incoming_url: str | None
+
+    def describe(self) -> str:
+        return (
+            f"{self.table} {self.row}: {self.column} is {self.stored!r} "
+            f"({self.stored_source or 'unranked'}, {self.stored_url or 'no source url'}) and this research "
+            f"says {self.incoming!r} ({self.incoming_source}, {self.incoming_url or 'no source url'}). "
+            f"The stored value was kept — a person decides."
+        )
+
+
+def _may_overwrite(stored_source: str | None, incoming_source: str) -> bool:
+    """Whether incoming_source may replace a DIFFERENT stored value: strictly stronger only.
+    NULL stored is unranked (a person's row, or one from before tiers): filled, never overwritten."""
+    if incoming_source not in SOURCE_PRECEDENCE:
+        raise ValueError(f"unknown source_type {incoming_source!r}")
+    if stored_source is None:
+        return False
+    return SOURCE_PRECEDENCE[incoming_source] > SOURCE_PRECEDENCE[stored_source]
+
+
+def _outranks(stored_source: str | None, incoming_source: str) -> bool:
+    """Whether the stored row's source is strictly stronger than the incoming one."""
+    return stored_source is not None and SOURCE_PRECEDENCE[stored_source] > SOURCE_PRECEDENCE[incoming_source]
+
+
+def _ranked(
+    existing: dict[str, Any], proposed: dict[str, Any], stored_source: str | None, incoming_source: str
+) -> tuple[dict[str, dict[str, Any]], list[tuple[str, Any, Any]]]:
+    """(columns to write as {col: {old, new}}, disagreements kept as (col, stored, incoming))."""
+    write: dict[str, dict[str, Any]] = {}
+    kept: list[tuple[str, Any, Any]] = []
     for col, new in proposed.items():
         if new is None:
             continue
         old = existing.get(col)
         if old is None:
-            fill[col] = {"old": None, "new": _plain(new)}
+            write[col] = {"old": None, "new": _plain(new)}
         elif _diff({col: old}, {col: new}):
-            conflicts.append(
-                f"{col}: the catalog says {_plain(old)!r} and this research says "
-                f"{_plain(new)!r}. The catalog value was kept — a person decides."
-            )
-    return fill, conflicts
+            if _may_overwrite(stored_source, incoming_source):
+                write[col] = {"old": _plain(old), "new": _plain(new)}
+            else:
+                kept.append((col, _plain(old), _plain(new)))
+    return write, kept
+
+
+def _values(updatable: tuple[str, ...]) -> tuple[str, ...]:
+    """An allowlist without its provenance columns, which _upsert_ranked moves with the tier."""
+    return tuple(c for c in updatable if c not in RANKED_PROVENANCE)
+
+
+def _takes_row(stored: dict[str, Any], proposed: dict[str, Any], tier: Tier) -> dict[str, dict[str, Any]]:
+    """The tier change when a strictly stronger source states anything on the row, agreeing or not."""
+    if not _may_overwrite(stored["source_type"], tier.source_type) or all(v is None for v in proposed.values()):
+        return {}
+    return {"source_type": {"old": stored["source_type"], "new": tier.source_type},
+            "evidence": {"old": stored.get("evidence"), "new": tier.evidence}}
+
+
+def _sink(conflicts: list[Conflict] | None, found: list[Conflict]) -> None:
+    if conflicts is not None:
+        conflicts.extend(found)
+
+
+async def _upsert_ranked(
+    conn: Any, table: str, key: dict[str, Any], values: tuple[str, ...], proposed: dict[str, Any],
+    tier: Tier, document_id: int | None, *, row: str,
+) -> tuple[str, dict, list[Conflict]]:
+    """_upsert under the precedence rule. Returns (added | updated | matched, changes, conflicts).
+    Table and column names come from module constants; only values are parameterised."""
+    provenance = {c: proposed[c] for c in RANKED_PROVENANCE if c in proposed}
+    where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
+    existing = await (
+        await conn.execute(
+            f"SELECT {', '.join(values)}, source_type, evidence, source_url FROM {table} WHERE {where} "
+            "FOR UPDATE",
+            tuple(key.values()),
+        )
+    ).fetchone()
+    if existing is None:
+        fresh = {**key, **{c: proposed[c] for c in values if proposed.get(c) is not None},
+                 **{c: v for c, v in provenance.items() if v is not None},
+                 "source_type": tier.source_type, "evidence": tier.evidence}
+        if document_id is not None:
+            fresh["document_id"] = document_id
+        await conn.execute(
+            f"INSERT INTO {table} ({', '.join(fresh)}) VALUES ({', '.join(['%s'] * len(fresh))})",
+            tuple(fresh.values()),
+        )
+        return "added", {c: {"old": None, "new": _plain(v)} for c, v in fresh.items()}, []
+
+    stored_source = existing["source_type"]
+    stated = {c: proposed.get(c) for c in values}
+    write, kept = _ranked(dict(existing), stated, stored_source, tier.source_type)
+    retier = _takes_row(existing, stated, tier)
+    conflicts = [
+        Conflict(table, row, c, old, stored_source, existing["source_url"], new, tier.source_type,
+                 provenance.get("source_url"))
+        for c, old, new in kept
+    ]
+    if not write and not retier:
+        return "matched", {}, conflicts
+    sets = {c: proposed[c] for c in write}
+    # A weaker or equal source's fill leaves the row's tier and provenance where they were.
+    if retier:
+        sets.update({c: v for c, v in provenance.items() if v is not None})
+        sets.update(source_type=tier.source_type, evidence=tier.evidence)
+    await conn.execute(
+        f"UPDATE {table} SET {', '.join(f'{c} = %s' for c in sets)}, "
+        f"document_id = coalesce(document_id, %s) WHERE {where}",
+        (*sets.values(), document_id, *key.values()),
+    )
+    return "updated", {**write, **retier}, conflicts
+
+
+ORG_UPDATABLE = ("org_kind", "legal_form", "registration_date", "website", "description",
+                 "staff_count", "staff_count_note")
+ORG_PROVENANCE = ("source_url", "source_name", "fetched_at", "as_of",
+                  "content_hash", "extractor_version")
+ORG_FINANCIALS_KEY = ("org_id", "fiscal_year")
+ORG_FINANCIALS_VALUES = ("total_income", "program_spend", "non_program_spend", "foreign_contribution",
+                         "foreign_unspent", "is_audited", "notes")
+ORG_LOCATION_KEY = ("org_id", "location_id")
+ORG_LOCATION_VALUES = ("role", "note")
 
 
 async def write_org(
     conn: Any, rec: OrgRecord, match: Match
-) -> tuple[str, int, dict, list[str]]:
+) -> tuple[str, int, dict, list[Conflict]]:
     """Returns (status, org_id, changes, conflicts). Status is added | updated | matched.
-
-    Unlike write_funder this returns a fourth value: the stated differences it
-    declined to apply, which promotion reports rather than discards.
-    """
-    proposed = {
-        "org_kind": rec.org_kind, "legal_form": rec.legal_form,
-        "registration_date": rec.registration_date,
-    }
-    provenance = {
-        "source_url": rec.source_url, "source_name": rec.source_name,
-        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
-        "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
-    }
+    Aliases are appended, never replaced, whatever the tier: a spelling a source used still finds the org."""
+    proposed = {c: getattr(rec, c) for c in ORG_UPDATABLE}
+    provenance = {c: getattr(rec, c) for c in ORG_PROVENANCE}
+    tier = Tier.of(rec)
     if match.resolved:
         existing = await (
             await conn.execute(
-                f"SELECT {', '.join(ORG_UPDATABLE)} FROM orgs WHERE id = %s", (match.entity_id,)
+                f"SELECT name, aliases, source_type, evidence, source_url, {', '.join(ORG_UPDATABLE)} "
+                "FROM orgs WHERE id = %s FOR UPDATE",
+                (match.entity_id,),
             )
         ).fetchone()
-        changes, conflicts = _blanks(dict(existing), proposed)
-        await _write_org_identifiers(conn, match.entity_id, rec)
-        if not changes:
+        write, kept = _ranked(dict(existing), proposed, existing["source_type"], tier.source_type)
+        conflicts = [
+            Conflict("orgs", f"[org:{match.entity_id}]", c, old, existing["source_type"],
+                     existing["source_url"], new, tier.source_type, rec.source_url)
+            for c, old, new in kept
+        ]
+        retier = _takes_row(existing, proposed, tier)
+        held = list(existing["aliases"] or [])
+        added = new_aliases(held, rec.aliases, existing["name"])
+        if not write and not added and not retier:
             return "matched", match.entity_id, {}, conflicts
-        # Provenance describes the write, not the entity, so it moves with an
-        # actual change and stays put when nothing was filled.
-        write = {**{c: changes[c]["new"] for c in changes}, **provenance}
-        sets = ", ".join(f"{c} = %s" for c in write)
+        sets = {c: proposed[c] for c in write}
+        if retier:
+            sets.update({c: v for c, v in provenance.items() if v is not None})
+            sets.update(source_type=tier.source_type, evidence=tier.evidence)
+        clauses = [f"{c} = %s" for c in sets]
+        values = list(sets.values())
+        changes = {**write, **retier}
+        if added:
+            clauses.append("aliases = aliases || %s::text[]")
+            values.append(added)
+            changes["aliases"] = {"old": held, "new": [*held, *added]}
         await conn.execute(
-            f"UPDATE orgs SET {sets} WHERE id = %s", (*write.values(), match.entity_id)
+            f"UPDATE orgs SET {', '.join(clauses)} WHERE id = %s", (*values, match.entity_id)
         )
         return "updated", match.entity_id, changes, conflicts
 
     slug = await _free_slug(conn, slugify(rec.name), "orgs")
     row = await (
         await conn.execute(
-            "INSERT INTO orgs (slug, name, org_kind, legal_form, registration_date, "
-            "registry_status, source_url, source_name, fetched_at, as_of, content_hash, "
-            "extractor_version) "
-            "VALUES (%s, %s, COALESCE(%s, 'cso'), %s, %s, 'placeholder', %s, %s, %s, %s, %s, "
-            "%s) RETURNING id",
-            (slug, rec.name, rec.org_kind, rec.legal_form, rec.registration_date,
-             *provenance.values()),
+            "INSERT INTO orgs (slug, name, org_kind, legal_form, registration_date, website, description, "
+            "aliases, staff_count, staff_count_note, registry_status, source_type, evidence, source_url, "
+            "source_name, fetched_at, as_of, content_hash, extractor_version) "
+            "VALUES (%s, %s, COALESCE(%s, 'cso'), %s, %s, %s, %s, %s, %s, %s, 'placeholder', %s, %s, "
+            "%s, %s, %s, %s, %s, %s) RETURNING id",
+            (slug, rec.name, rec.org_kind, rec.legal_form, rec.registration_date, rec.website,
+             rec.description, new_aliases([], rec.aliases, rec.name), rec.staff_count,
+             rec.staff_count_note, tier.source_type, tier.evidence, *provenance.values()),
         )
     ).fetchone()
-    await _write_org_identifiers(conn, row["id"], rec)
     return "added", row["id"], {"name": {"old": None, "new": rec.name}}, []
 
 
-async def _write_org_identifiers(conn: Any, org_id: int, rec: OrgRecord) -> None:
-    """12A, 80G and FCRA among them — the registrations only an NGO carries. `verified` is left at
-    its default: research is not verification."""
-    for id_type, id_value in rec.identifiers.items():
+async def org_alias_holders(conn: Any, spellings: list[str], org_id: int | None) -> dict[str, dict]:
+    """name_key(spelling) -> {"id", "name"} of ANOTHER organisation that answers to it, by name or alias.
+    Keyed as resolve_org compares, so a spelling it would resolve to that org is caught here too."""
+    keys = {name_key(s) for s in spellings if s and name_key(s)}
+    if not keys:
+        return {}
+    texts = sorted({s for s in spellings if s})
+    rows = await (
         await conn.execute(
-            "INSERT INTO org_identifiers (org_id, id_type, id_value, source_url, source_name, "
-            "fetched_at) VALUES (%s, %s, %s, %s, %s, %s) "
-            "ON CONFLICT (id_type, id_value) DO NOTHING",
-            (org_id, id_type, id_value, rec.source_url, rec.source_name, rec.fetched_at),
+            "SELECT id, name, aliases FROM orgs WHERE id IS DISTINCT FROM %s AND EXISTS ("
+            "SELECT 1 FROM unnest(%s::text[]) AS s WHERE lower(name) = lower(s) OR similarity(name, s) >= %s "
+            "OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = lower(s) "
+            "OR similarity(a, s) >= %s)) ORDER BY id",
+            (org_id, texts, TRIGRAM_FLOOR, TRIGRAM_FLOOR),
         )
+    ).fetchall()
+    out: dict[str, dict] = {}
+    for r in rows:
+        for key in sorted({name_key(n) for n in (r["name"], *(r["aliases"] or []))} & keys):
+            out.setdefault(key, {"id": r["id"], "name": r["name"]})
+    return out
+
+
+ORG_IDENTIFIER_VALUES = ("id_value", "status", "valid_from", "valid_until", "application_ref",
+                         "check_method", "notes")
+# org_identifiers has no content_hash or extractor_version.
+ORG_IDENTIFIER_PROVENANCE = ("source_url", "source_name", "fetched_at", "as_of")
+
+
+async def write_org_identifier(
+    conn: Any, rec: OrgIdentifierRecord, org_id: int, document_id: int | None
+) -> tuple[str, dict, list[Conflict]]:
+    """One registration with its status: (added | updated | matched | held, changes, conflicts).
+    Two sources' disagreeing facts are two rows; a strictly stronger source superseding a weaker one is one."""
+    cols = ", ".join(ORG_IDENTIFIER_VALUES)
+    head = f"SELECT id, org_id, {cols}, source_type, evidence, source_url FROM org_identifiers WHERE "
+    proposed = {c: getattr(rec, c) for c in ORG_IDENTIFIER_VALUES}
+    provenance = {c: getattr(rec, c) for c in ORG_IDENTIFIER_PROVENANCE}
+    tier = Tier.of(rec)
+
+    def conflict(stored: dict, col: str, old: Any, new: Any) -> Conflict:
+        return Conflict("org_identifiers", f"[org:{org_id}] {rec.id_type}", col, old, stored["source_type"],
+                        stored["source_url"], new, tier.source_type, rec.source_url)
+
+    async def insert(conflicts: list[Conflict]) -> tuple[str, dict, list[Conflict]]:
+        fresh = {"org_id": org_id, "id_type": rec.id_type,
+                 **{c: v for c, v in proposed.items() if v is not None},
+                 **{c: v for c, v in provenance.items() if v is not None},
+                 "source_type": tier.source_type, "evidence": tier.evidence, "document_id": document_id}
+        await conn.execute(
+            f"INSERT INTO org_identifiers ({', '.join(fresh)}) VALUES ({', '.join(['%s'] * len(fresh))})",
+            tuple(fresh.values()),
+        )
+        return "added", {c: {"old": None, "new": _plain(v)} for c, v in fresh.items()}, conflicts
+
+    async def open_row() -> dict | None:
+        return await (
+            await conn.execute(head + "org_id = %s AND id_type = %s AND id_value IS NULL FOR UPDATE",
+                               (org_id, rec.id_type))
+        ).fetchone()
+
+    pending: list[Conflict] = []
+    if rec.id_value:
+        target = await (
+            await conn.execute(head + "id_type = %s AND lower(id_value) = lower(%s) FOR UPDATE",
+                               (rec.id_type, rec.id_value))
+        ).fetchone()
+        if target is not None and target["org_id"] != org_id:
+            return "held", {}, [conflict(target, "org_id", f"[org:{target['org_id']}]", f"[org:{org_id}]")]
+        if target is None:
+            target = await open_row()
+            # A number fills the open row only when its source supersedes the row's; else it is its own fact.
+            if target is not None and not (target["status"] == "check_blocked"
+                                           or _may_overwrite(target["source_type"], tier.source_type)):
+                differs = target["status"] != rec.status
+                return await insert([conflict(target, "status", target["status"], rec.status)] if differs else [])
+    elif rec.status == "applied":
+        # An application never lands on a number; a live registration of the type is a conflict with it.
+        numbered = await (
+            await conn.execute(head + "org_id = %s AND id_type = %s AND id_value IS NOT NULL AND is_current "
+                               "AND status IN ('registered', 'provisional') ORDER BY id FOR UPDATE",
+                               (org_id, rec.id_type))
+        ).fetchall()
+        found = [conflict(r, "status", f"{r['status']} ({r['id_value']})", "applied") for r in numbered]
+        stronger = next((r for r in numbered if _outranks(r["source_type"], tier.source_type)), None)
+        if stronger is not None:
+            # The registration supersedes the application; only its acknowledgement number may fill a blank.
+            if stronger["application_ref"] is None and rec.application_ref:
+                await conn.execute("UPDATE org_identifiers SET application_ref = %s WHERE id = %s",
+                                   (rec.application_ref, stronger["id"]))
+                return "updated", {"application_ref": {"old": None, "new": rec.application_ref}}, found
+            return "matched", {}, found
+        target = await open_row()
+        if target is None:
+            return await insert(found)
+        pending = found
+    else:
+        target = await open_row()
+        if target is None:
+            # A status with no number is about the one current registration of that type, if there is one.
+            rows = await (
+                await conn.execute(head + "org_id = %s AND id_type = %s AND is_current ORDER BY id LIMIT 2 "
+                                   "FOR UPDATE", (org_id, rec.id_type))
+            ).fetchall()
+            target = rows[0] if len(rows) == 1 else None
+    if target is None:
+        return await insert([])
+
+    if target["id_value"] is not None:
+        proposed["id_value"] = None     # found by its number, case-insensitively: the spelling is not news
+    if rec.status == "check_blocked":
+        # A check nobody could make confirms nothing: no status, tier, method or provenance moves.
+        same = target["status"] == "check_blocked"
+        return "matched", {}, pending + ([] if same else [conflict(target, "status", target["status"],
+                                                                   "check_blocked")])
+    if target["status"] == "check_blocked":
+        # A stored blocked check knew nothing, so any real finding takes the row whatever its tier.
+        write = {c: {"old": _plain(target[c]), "new": _plain(v)} for c, v in proposed.items()
+                 if v is not None and (target[c] is None or _diff({c: target[c]}, {c: v}))}
+        retier = {"source_type": {"old": target["source_type"], "new": tier.source_type},
+                  "evidence": {"old": target["evidence"], "new": tier.evidence}}
+        kept: list[tuple[str, Any, Any]] = []
+    else:
+        write, kept = _ranked(dict(target), proposed, target["source_type"], tier.source_type)
+        retier = _takes_row(target, proposed, tier)
+    conflicts = pending + [conflict(target, c, old, new) for c, old, new in kept]
+    if not write and not retier:
+        return "matched", {}, conflicts
+    sets = {c: proposed[c] for c in write}
+    if retier:
+        sets.update({c: v for c, v in provenance.items() if v is not None})
+        sets.update(source_type=tier.source_type, evidence=tier.evidence)
+    await conn.execute(
+        f"UPDATE org_identifiers SET {', '.join(f'{c} = %s' for c in sets)}, "
+        "document_id = coalesce(document_id, %s) WHERE id = %s",
+        (*sets.values(), document_id, target["id"]),
+    )
+    return "updated", {**write, **retier}, conflicts
 
 
 async def write_org_financials(
     conn: Any, rec: OrgFinancialsRecord, org_id: int, document_id: int | None
-) -> tuple[str, dict]:
-    """The org analogue of write_csr_year, on UNIQUE (org_id, fiscal_year)."""
-    key = {"org_id": org_id, "fiscal_year": rec.fiscal_year}
-    proposed = {
-        "total_income": rec.total_income, "program_spend": rec.program_spend,
-        "non_program_spend": rec.non_program_spend,
-        "foreign_contribution": rec.foreign_contribution,
-        "is_audited": rec.is_audited, "notes": rec.notes,
-        "source_url": rec.source_url, "source_name": rec.source_name,
-        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
-    }
-    return await _upsert(
-        conn, "org_financials", key, ORG_FINANCIALS_UPDATABLE, proposed, document_id
+) -> tuple[str, dict, list[Conflict]]:
+    """One fiscal year on UNIQUE (org_id, fiscal_year). A directory's income never replaces the audited one."""
+    return await _upsert_ranked(
+        conn, "org_financials", {"org_id": org_id, "fiscal_year": rec.fiscal_year}, ORG_FINANCIALS_VALUES,
+        {c: getattr(rec, c) for c in (*ORG_FINANCIALS_VALUES, "source_url", "source_name", "fetched_at",
+                                      "as_of")},
+        Tier.of(rec), document_id, row=f"[org:{org_id}] {rec.fiscal_year}",
     )
 
 
 async def write_org_location(
     conn: Any, rec: OrgLocationRecord, org_id: int, *, location_id: int, document_id: int | None
-) -> tuple[str, dict]:
-    key = {"org_id": org_id, "location_id": location_id}
-    proposed = {
-        "role": rec.role, "note": rec.note, "source_url": rec.source_url,
-        "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
-    }
-    return await _upsert(
-        conn, "org_locations", key, ORG_LOCATION_UPDATABLE, proposed, document_id
+) -> tuple[str, dict, list[Conflict]]:
+    return await _upsert_ranked(
+        conn, "org_locations", {"org_id": org_id, "location_id": location_id}, ORG_LOCATION_VALUES,
+        {"role": rec.role, "note": rec.note, "source_url": rec.source_url, "source_name": rec.source_name,
+         "fetched_at": rec.fetched_at, "as_of": rec.as_of},
+        Tier.of(rec), document_id, row=f"[org:{org_id}] location {location_id}",
     )
 
 
 async def set_registered_location(conn: Any, org_id: int, location_id: int) -> bool:
-    """orgs.registered_location_id, from the org_location finding whose role is
-    'registered'. Fill-only, like every other column on an existing org."""
+    """orgs.registered_location_id from the 'registered' org_location finding: fill-only and untiered,
+    unlike the ranked columns beside it."""
     row = await (
         await conn.execute(
             "UPDATE orgs SET registered_location_id = %s "

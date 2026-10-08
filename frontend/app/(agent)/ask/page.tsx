@@ -2,9 +2,9 @@ import { apiGet } from "@/lib/api";
 import { titleCase } from "@/lib/format";
 import type {
   FunderListItem,
-  GrantRow,
   OrgListItem,
   PageOf,
+  PartnerLineRow,
   ScoreRow,
 } from "@/lib/api";
 import type { IndexPayload } from "@/features/ask/AskWorkspace";
@@ -36,16 +36,15 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
   const initialView = params.view === "import" ? "import" : "ask";
   if (!(await isSignedIn())) return <AskPreview initialQuestion={q} />;
 
-  const [orgs, funders, scores, grants, stats] = await Promise.all([
+  const [orgs, funders, scores, lines, stats] = await Promise.all([
     apiGet<OrgListItem[]>("/api/orgs"),
     apiGet<FunderListItem[]>("/api/funders"),
     apiGet<PageOf<ScoreRow>>("/api/scores?limit=100").then((p) => p.items),
-    apiGet<PageOf<GrantRow>>("/api/grants?limit=100").then((p) => p.items),
+    apiGet<PageOf<PartnerLineRow>>("/api/partner-lines?limit=100").then((p) => p.items),
     apiGet<Record<string, number>>("/api/meta/stats"),
   ]);
 
   const funderSlugById = new Map(funders.map((f) => [f.id, f.slug]));
-  const orgSlugById = new Map(orgs.map((o) => [o.id, o.slug]));
 
   // Provenance travels with the index so the workspace can say where a cited row came from
   // without a second round trip. A score has none: it is Sangam's own rubric judgement.
@@ -73,13 +72,14 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
       funderName: s.funder_name ?? `funder #${s.funder_id}`,
       rubricVersion: s.rubric_version,
     })),
-    grants: grants.map((g) => ({
-      id: g.id,
-      orgSlug: orgSlugById.get(g.org_id) ?? String(g.org_id),
-      title: g.title,
-      sourceUrl: g.source_url,
-      sourceName: g.source_name,
-      fetchedAt: g.fetched_at,
+    activities: lines.map((l) => ({
+      id: l.id,
+      // The partner organisation when Sangam holds it, else the funder whose line it is.
+      href: l.partner_org_slug ? `/registry/${l.partner_org_slug}` : `/registry/funders/${l.funder_slug}`,
+      title: `${l.funder_name} → ${l.partner_name}${l.project_name ? `: ${l.project_name}` : ""}`,
+      sourceUrl: l.source_url,
+      sourceName: l.source_name,
+      fetchedAt: l.fetched_at,
     })),
     stats,
   };

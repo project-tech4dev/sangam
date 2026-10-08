@@ -1,9 +1,7 @@
-"""What the catalog already holds, what it expects, and the step that writes to it.
+"""What the catalog already holds, what it expects, and the two steps that write to it.
 
-Read-only but for `promote_research`, which is the one tool here that changes a
-catalog row — and even that writes nothing of its own: it moves a saved
-`entity_research` finding through `app/ingest/promote.py`, asking a person first
-where the research would overwrite with an older source or near-match a stored row.
+Read-only but for `promote_research`, which moves saved research through `promote.py` (a person answers what is not obvious), and
+`record_registry_check`, which records a staff member's own registry check through `manual_checks.py`.
 """
 
 from __future__ import annotations
@@ -15,7 +13,9 @@ from typing import Any
 from langchain_core.tools import tool
 
 from app.agent.tools.sql.catalog import CATALOG
+from app.core.security import chat_user_id
 from app.db.pool import get_pool
+from app.ingest import manual_checks
 from app.ingest.expectations import (
     CONCEPTS,
     concepts_for,
@@ -56,7 +56,8 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
         "id, name, slug, registry_status, funder_type, website, parent_id, section_135_bound, cin, aliases, "
         "intake_mode, funds_external, typical_duration_months, grant_size_min, grant_size_max"
         if entity_kind == "funder"
-        else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort"
+        else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort, website, "
+        "aliases, staff_count, staff_count_note, source_type, evidence"
     )
     try:
         pool = get_pool()
@@ -167,9 +168,11 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "funder_activity kind='partner' (named; an amount, INR, is what the partner received)",
+        ("funder_activity kind='partner' (named partners and grants; an amount, INR, is what the partner "
+         "received, and a multi-year grant's whole amount sits on its start year)"),
         """
-        SELECT fiscal_year, partner_name, partner_canonical, partner_kind, outlay, amount
+        SELECT fiscal_year, partner_name, partner_canonical, partner_kind, project_name, outlay, amount,
+               start_date, end_date, relationship_status, partner_org_id
         FROM funder_activity WHERE funder_id = %s AND kind = 'partner' ORDER BY fiscal_year, id
         """,
     ),
@@ -188,13 +191,6 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """
         SELECT name, kind, status, start_date, end_date FROM programs
         WHERE funder_id = %s ORDER BY kind, name
-        """,
-    ),
-    (
-        "grants",
-        """
-        SELECT g.title, g.amount, g.status, g.start_date, o.name AS recipient
-        FROM grants g JOIN orgs o ON o.id = g.org_id WHERE g.funder_id = %s
         """,
     ),
     (
@@ -224,17 +220,18 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
 # metrics, contacts, documents) are the same query with the other foreign key.
 _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
-        "org_identifiers (12A, 80G and FCRA live here)",
+        ("org_identifiers (current = 'registered' or 'provisional' with a number; 'applied' is not a "
+         "registration; 'check_blocked' is not 'valid')"),
         """
-        SELECT id_type, id_value, verified, is_current FROM org_identifiers
-        WHERE org_id = %s ORDER BY id_type
+        SELECT id_type, id_value, status, valid_until, application_ref, is_current, source_type, evidence
+        FROM org_identifiers WHERE org_id = %s ORDER BY id_type, is_current DESC, id
         """,
     ),
     (
         "org_financials (amounts in INR)",
         """
         SELECT fiscal_year, total_income, program_spend, non_program_spend,
-               foreign_contribution, is_audited
+               foreign_contribution, foreign_unspent, is_audited, source_type, evidence
         FROM org_financials WHERE org_id = %s ORDER BY fiscal_year
         """,
     ),
@@ -253,10 +250,12 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "grants received",
+        "funder_activity kind='partner' naming this organisation (grants received; amount INR)",
         """
-        SELECT g.title, g.amount, g.status, g.start_date, f.name AS funder
-        FROM grants g JOIN funders f ON f.id = g.funder_id WHERE g.org_id = %s
+        SELECT a.fiscal_year, f.name AS funder, a.project_name, a.amount, a.relationship_status,
+               a.start_date, a.end_date
+        FROM funder_activity a JOIN funders f ON f.id = a.funder_id
+        WHERE a.partner_org_id = %s AND a.kind = 'partner' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (
@@ -365,9 +364,9 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
             out.append(
                 "\nThis is an NGO, so these are the org tables: its registrations are 12A, 80G "
                 "and FCRA, not a CSR-1, and its money is income and programme spend rather than "
-                "a Section 135 obligation. Every concept below promotes — with one rule: on an "
-                "organisation the catalog already holds, research fills blanks only and never "
-                "overwrites a value somebody entered by hand."
+                "a Section 135 obligation. Every concept below promotes, and every finding names "
+                "its source_type and evidence_tier: a blank is always filled, a stronger source "
+                "replaces a weaker one, and any other disagreement is kept and reported as a conflict."
             )
         for concept in wanted_concepts:
             spec = CONCEPTS[concept]
@@ -416,8 +415,10 @@ async def _held_per_concept(
             continue
         has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
         years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
+        # funder_activity hangs off the funder; an NGO's lines are the ones naming it as the partner.
+        col = "partner_org_id" if entity_kind == "org" and table == "funder_activity" else fk
         # Table, column and filter column come from module constants, never a caller.
-        where, params = f"{fk} = %s", [entity_id]
+        where, params = f"{col} = %s", [entity_id]
         if spec.row_filter:
             where += f" AND {spec.row_filter[0]} = %s"
             params.append(spec.row_filter[1])
@@ -510,10 +511,13 @@ async def promote_research(slug: str = "", decisions: dict[str, str] | None = No
 
     Works on either kind. A funder's findings reach funders
     and the funder fact tables; an NGO's reach orgs, org_identifiers,
-    org_financials and org_locations, and both kinds write the shared
-    programmes, metrics, contacts and documents. `grant` is the one concept
-    that still stays research, and anything held back is reported rather than
-    silently dropped. A name that resembles an organisation we already hold
+    org_financials and org_locations under the evidence-tier precedence rule —
+    a weaker source never overwrites a stronger one, and a disagreement is
+    reported as a conflict with both values and both sources, never resolved
+    silently. Both kinds write the shared
+    programmes, metrics, contacts and documents. A grant is a partner line,
+    linked to the organisation only when the matcher would merge the name, and
+    anything held back is reported rather than silently dropped. A name that resembles an organisation we already hold
     without matching it is NOT merged; it is reported for a person.
 
     A funder's values that differ from the catalog's are saved without asking
@@ -560,16 +564,73 @@ async def promote_research(slug: str = "", decisions: dict[str, str] | None = No
                 lines.append(f"  {r['slug']}: not promoted — {reason}")
             for held in r.get("held", []):
                 lines.append(f"    held back: {held}")
+            for conflict in r.get("conflicts", []):
+                lines.append(f"    conflict: {conflict}")
             if r["skipped"]:
                 skipped = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
                 lines.append(f"    still research only (no writer): {skipped}")
         lines.append(
-            "\nA grant needs its recipient to already be in orgs, and promoting a funder's "
-            "research does not put it there, so grant findings stay research — they are on "
-            "file and in docs/entities/. Anything held back is named above: it is a decision "
-            "waiting for a person, not a silent loss."
+            "\nA grant is a partner line on the funder: linked to the organisation only when the "
+            "name matches one we hold, never on a resemblance. Anything held back is named above: "
+            "it is a decision waiting for a person, not a silent loss."
         )
         return "\n".join(lines)
     except Exception as exc:
         logger.exception("promote_research failed")
         return f"promote_research failed: {type(exc).__name__}: {exc}"
+
+
+@tool
+async def record_registry_check(
+    org: str,
+    id_type: str,
+    status: str,
+    source_url: str,
+    id_value: str = "",
+    application_ref: str = "",
+    evidence_document_id: int | None = None,
+    note: str = "",
+    checked_on: str = "",
+) -> str:
+    """Record a registry check a staff member made by hand. Staff only; it writes one catalog row.
+
+    Use it only when the staff member tells you what THEY saw on a registry Sangam cannot read
+    (a CAPTCHA, a sign-in or a network filter in the way). Never record a check from your own
+    reading or a researcher's: research is not a check. The checker is the signed-in staff member
+    of this conversation, never an argument.
+
+    The check is ranked like any other source: level with a registry read, above everything
+    else. Registrations lapse, so a NEWER check replaces a dated registry read or manual check
+    with a different status. Against an older check, or an undated row with a different status,
+    the stored row is kept and the difference reported as a conflict, except that a numbered check
+    takes an undated open row (no number) whose status is applied, provisional or not_found. A
+    check that AGREES with a row dated earlier, or with an undated row, confirms it and updates its
+    check date and checker; recorded again with a document (same date or later) it upgrades
+    claimed to evidenced. A row a person entered (no tier) is never replaced. `check_blocked` never replaces a real status, whatever its date;
+    the attempt is noted on the row.
+
+    Args:
+        org: the organisation's slug, its exact name, or its id from [org:N].
+        id_type: pan, 12a, 80g, fcra, csr1, darpan, cin or reg_no.
+        status: registered, provisional, expired, suspended, cancelled, surrendered (these need
+            the number), applied (needs the number or application_ref; applied is NOT registered),
+            not_available, not_found (the registry was read and does not list it), or
+            check_blocked (it could not be read even by hand; never not_found, never valid).
+        source_url: the http(s) address of the registry page that was checked.
+        id_value: the registration number. Omit to use the one number already on file.
+        application_ref: for 'applied', the acknowledgement number (e.g. Form 10AB).
+        evidence_document_id: the id of a document uploaded to THIS organisation's Doc Vault
+            showing what was seen (a screenshot, a certificate). With it the check is evidenced;
+            without it the check is stored as claimed, and the reply says so.
+        note: what was checked, where and how, in the staff member's words.
+        checked_on: the date the staff member checked, as 2026-10-08. Omit for today.
+    """
+    try:
+        return await manual_checks.record(
+            get_pool(), org=org, id_type=id_type, status=status, source_url=source_url, id_value=id_value,
+            application_ref=application_ref, document_id=evidence_document_id, note=note,
+            checked_on=checked_on, user_id=chat_user_id.get(),
+        )
+    except Exception as exc:
+        logger.exception("record_registry_check failed")
+        return f"record_registry_check failed: {type(exc).__name__}: {exc}"

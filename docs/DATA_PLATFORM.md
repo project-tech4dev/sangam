@@ -22,7 +22,7 @@ CLAUDE.md already states. The 96 documents and the Supabase data survive untouch
 | Taxonomy | 40 tags, every one `kind='sector'`, free text | one `tags` tree: 17 SDGs, 24 sectors, 10 population groups, 30 CSR Schedule VII sectors, 221 domain cells; deprecate-and-replace, never delete |
 | Funder money | one `funders.profile` jsonb blob | `funder_csr_years` and `funder_activity` — one row per filing or report line, `kind` spend / footprint / partner / programme (0031 merged the three tables this began as) — for Axis alone: 4 CSR years, 58 spend lines, 705 footprints, 114 partner lines, each with its source |
 | Impact | `grants.outcomes` jsonb | `metrics` with stage, chain, baseline, comparison and method, plus the `impact_chains` view that shows where a chain stops |
-| Credentials | a number in `*_identifiers`, no history | number stays there and can be private; what happened to it goes in `credential_events`; current state reads from `credential_status` |
+| Credentials | a number in `*_identifiers`, no history | number stays there and can be private; since `0033` the row itself carries a `status` (applied, registered, check_blocked, …), validity dates and an evidence tier, and `credential_events` is gone |
 | Org finances | none | `org_financials`, one row per org per fiscal year |
 | Proposals | none | `proposals`; a funder's form is a `documents` row of `doc_type='proposal_template'` (0031) |
 | Membership | one dev user, no orgs | `org_members` with `admin`, `member`, `steward` |
@@ -48,10 +48,10 @@ write-up.
 | `users` | `auth_user_id`, `is_staff` | the link to Supabase Auth, and the staff flag every policy reads |
 | `contacts` | `is_public`, `as_of`, `document_id`, `archive_url` | office bearers stay public, other contacts do not |
 | `funders` | `cin`, `aliases` (0031) | a corporate funder's CIN and the other names it files under; funder_identifiers is gone |
-| `grants`, `rfps` | `as_of`, `document_id`, `archive_url` | provenance only |
+| `grants` (dropped in `0034`), `rfps` | `as_of`, `document_id`, `archive_url` | provenance only |
 | `rfp_matches` | `week_of` | which weekly batch flagged the match |
 | `org_tags`, `funder_tags`, `program_tags`, `rfp_tags` | `is_inferred`, `tagged_by`, `note` | separates what a source states from what a person or model inferred |
-| `org_locations`, `funder_locations`, `program_locations`, `rfp_locations` | `valid_from`, `valid_to`, `note` + full provenance | a place link is itself a sourced, dated fact. **`funder_locations.role` also gains `priority` and defaults to it** — the 14 seeded rows are stated focus, not actual funding |
+| `org_locations`, `funder_locations`, `program_locations` (dropped in `0033`), `rfp_locations` | `valid_from`, `valid_to`, `note` + full provenance | a place link is itself a sourced, dated fact. **`funder_locations.role` also gains `priority` and defaults to it** — the 14 seeded rows are stated focus, not actual funding |
 
 **Unchanged (7):** `chunks`, `extraction_log`, `rubrics`, `rubric_criteria`, `fit_scores`,
 `fit_score_items`, `score_adjustments`. The rubric family stays exactly as it is; scoring logic
@@ -101,12 +101,12 @@ changes. Design and milestones: `docs/features/2026-09-30-supabase-storage.md`.
 | | Table | Holds |
 |---|---|---|
 | **Who can see what** | `org_members` | a user's role in an org: `admin`, `member`, `steward`. Every private-read policy resolves through it, and deleting a row removes access |
-| **Credentials** | `credential_events` | what happened to a registration — registered, renewed, checked, expired, cancelled, `not_available` — dated and sourced, holding **no number**, so history can be public while the number stays private |
+| **Credentials** | `credential_events` (folded into `org_identifiers.status` and dropped in `0033`) | what happened to a registration — registered, renewed, checked, expired, cancelled, `not_available` — dated and sourced, holding **no number**, so history can be public while the number stays private |
 | **Org facts** | `org_financials` | income, programme spend, foreign contribution, one row per org per fiscal year — the ₹5 crore eligibility gates read this |
 | | `metrics` | impact and reach figures for an org **or** a funder, with `stage`, `chain_key`, `baseline`, `comparison_value` and `method` — a results chain rather than a headline number |
 | **Funder money and activity** | `funder_csr_years` | the statutory annual return per year: average net profit, the 2% obligation, spend, unspent transfer, excess |
 | | `funder_activity` | one line of a filing, report or partner list per year: `spend` (with outlay, partner and implementation mode), `footprint` (state and place), `partner`, or `programme` (the funder's own split, never summed with spend). Every spend and programme line carries an inferred domain and, where evidenced, a theme, with `classified_by`, a note and `classification_confirmed` |
-| **Places** | `grant_locations` | where a grant was actually spent — the difference between where a funder *says* it works and where it did |
+| **Places** | `grant_locations` (dropped in `0034`, never written) | where a grant was actually spent; since `0034` that is a `funder_activity` footprint or partner line |
 | | `location_designations` | aspirational district, North East, and the designations funders prioritise |
 | **Proposals** | `documents` (`doc_type='proposal_template'`) | a funder's application form, kept as a document; `proposals.template_id` points at it |
 | | `proposals` | an org's proposal, from drafting to awarded, linked to its thread and its draft documents |
@@ -239,6 +239,8 @@ That is all 23 changed tables and all 14 new ones. After `0010`, a fresh `make u
 
 **`0031_funder_consolidation` is the first migration that drops tables.** Nine funder tables became five: `funder_identifiers` → `funders.cin` / `aliases`; `funder_csr_spend`, `funder_footprints`, `funder_partners` → `funder_activity`; `funder_eligibility` and `proposal_templates` / `template_items` → `documents`. Every row with a home is copied; templates with content stop the migration. A `funder_eligibility` document's `is_public` is copied from the funder when written, so hiding a funder later leaves it public until its next promote. Spec: `features-plans/data-model/2026-10-07-funder-model-consolidation.md`.
 
+**`0034_grants_into_funder_activity` retires `grants` and `grant_locations`.** Each grant became one `funder_activity` line of kind `partner` with `partner_org_id` set, and the line gained `start_date`, `end_date` and `relationship_status`. A multi-year grant is one line with its whole amount on its start year; outcomes moved into `notes`, which end `Moved from grants #N by 0034.` `grant_locations` held no rows. References in `proposals`, `metrics` and `news_mentions` now point at the line, and `/api/partner-lines` serves them.
+
 **Three things make this safe to do one at a time.**
 
 - **Nothing existing breaks.** Every change is an added column, an added table, or a widened
@@ -299,7 +301,7 @@ and it is the first thing here that will go stale.
 | 20 | Application deadlines | `rfps.deadline` |
 | 21 | Contact details | `contacts.name` `role` `kind`; `email` only for a shared mailbox |
 | 22 | Major implementation partners | `funder_activity` `kind='partner'` |
-| 23 | Grants in the last 2 years | **`funder_activity` `kind='partner'`** — `grants` has no writer |
+| 23 | Grants in the last 2 years | `funder_activity` `kind='partner'`, with `amount`, `start_date`, `end_date`, `relationship_status` |
 | 24 | Amount per partnership | `funder_activity.amount` + `partner_name` on spend lines |
 | 25 | States / districts worked in | `funder_activity.state_location_id` / `location_id` → `locations` |
 | 26 | Schedule VII categories | `funder_activity.csr_sector_id` (as filed) → `tags(kind='csr_sector')`; what it was spent on is `domain_tag_id` / `theme_tag_id`, inferred |
@@ -332,11 +334,11 @@ is correct, not a duplicate — and counting across the two double-counts.
 
 ## Two answers that are honest rather than complete
 
-**Grants (23).** `grants.org_id` is `NOT NULL`, and promoting a funder's research does not
-write the NGOs it names, so a funded organisation we do not already hold cannot be a grant row. Such a relationship is recorded in
-`funder_activity` with `kind='partner'`, whose `partner_org_id` is nullable — which is the more careful claim anyway, since a
-named partner is not proof that money changed hands. The report says so rather than implying an
-empty `grants` table means no grants.
+**Grants (23).** Since `0034` a grant is a `funder_activity` line of kind `partner`, with
+`start_date`, `end_date` and `relationship_status`; `partner_org_id` is set only when the recipient
+is an organisation Sangam holds, and a line naming one we do not hold keeps the printed name. A
+named partner with no amount is still not proof that money changed hands, and the report says so
+rather than implying that no line means no grant.
 
 **Funds external NGOs (15).** Two columns, never reconciled. `funders.funds_external` is what the
 funder *says*; counting `funder_activity.implementation_mode = 'implementing_agency'` on spend lines is what it *did*. The report prints both —

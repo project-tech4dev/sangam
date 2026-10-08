@@ -254,7 +254,7 @@ class TestStarExpansion:
         assert '"profile"' in validate("SELECT profile FROM orgs LIMIT 1").sql
 
     def test_count_star_is_not_an_expansion(self):
-        result = validate("SELECT count(*) FROM grants")
+        result = validate("SELECT count(*) FROM funder_activity")
         assert result.aggregate is True
         assert "COUNT(*)" in result.sql.upper()
 
@@ -273,14 +273,14 @@ class TestCitations:
         """dict_row would otherwise keep only the last 'id' — silent data loss."""
         result = validate(
             "SELECT o.id, f.id FROM orgs o "
-            "JOIN grants g ON g.org_id = o.id JOIN funders f ON f.id = g.funder_id"
+            "JOIN funder_activity a ON a.partner_org_id = o.id JOIN funders f ON f.id = a.funder_id"
         )
         names = [p.output_column for p in result.citations]
         assert len(names) == len(set(names)) == 2
         assert any("called 'id'" in r for r in result.rewrites)
 
     def test_aggregate_has_no_row_citations(self):
-        assert validate("SELECT count(*) FROM grants").citations == ()
+        assert validate("SELECT count(*) FROM funder_activity").citations == ()
 
 
 class TestRealQueriesStillParse:
@@ -295,9 +295,9 @@ class TestRealQueriesStillParse:
               OR similarity(o.name, 'kabil') > 0.3
            ORDER BY similarity(o.name, 'kabil') DESC NULLS LAST, o.name
            LIMIT 15""",
-        """SELECT g.id, o.name AS org_name, g.title, g.status, g.start_date
-           FROM grants g JOIN orgs o ON o.id = g.org_id
-           WHERE g.funder_id = 1 ORDER BY g.start_date DESC NULLS LAST""",
+        """SELECT a.id, o.name AS org_name, a.project_name, a.relationship_status, a.start_date
+           FROM funder_activity a JOIN orgs o ON o.id = a.partner_org_id
+           WHERE a.funder_id = 1 AND a.kind = 'partner' ORDER BY a.start_date DESC NULLS LAST""",
         """SELECT fs.id, fs.total_score, o.name AS org_name, f.name AS funder_name, r.version
            FROM fit_scores fs
            JOIN orgs o ON o.id = fs.org_id
@@ -334,8 +334,8 @@ class TestUsefulQueriesTheCuratedToolsCannotAnswer:
     @pytest.mark.parametrize(
         "sql",
         [
-            ("SELECT f.name, count(g.id) AS n FROM funders f "
-            "LEFT JOIN grants g ON g.funder_id = f.id GROUP BY f.name ORDER BY n DESC"),
+            ("SELECT f.name, count(a.id) AS n FROM funders f LEFT JOIN funder_activity a "
+            "ON a.funder_id = f.id AND a.kind = 'partner' GROUP BY f.name ORDER BY n DESC"),
             ("SELECT l.name, count(o.id) AS orgs FROM locations l "
             "JOIN orgs o ON o.registered_location_id = l.id GROUP BY l.name"),
             ("SELECT t.label, count(*) AS n FROM org_tags ot "

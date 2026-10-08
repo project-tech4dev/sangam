@@ -271,7 +271,7 @@ class TestIngestAgentIsSelfDescribing:
                 f"makes it invisible whenever that skill is not loaded."
             )
 
-    @pytest.mark.parametrize("spec_name", ["ENTITY_RESEARCHER", "CATALOG_WRITER"])
+    @pytest.mark.parametrize("spec_name", ["ENTITY_RESEARCHER", "CATALOG_WRITER", "WORKBOOK_READER"])
     def test_a_subagent_prompt_names_every_tool_its_spec_declares(self, spec_name):
         """The same rule, one level down, and it is easier to break here: a
         subagent is isolated, so instructions.md naming a tool does nothing for
@@ -343,14 +343,15 @@ class TestIngestAgentIsSelfDescribing:
 
         # A subagent's tools are registered too — reachable through `task`,
         # not on the main agent. Both subagents count: the parent researches
-        # nothing and writes nothing, so save_research reaches the model only
-        # through the researcher and promote_research only through the writer.
-        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER
+        # nothing and writes only record_registry_check, so save_research reaches
+        # the model only through the researcher and promote_research only through the writer.
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER
 
         registered = (
             {t.name for t in TOOLS}
             | {t.name for t in ENTITY_RESEARCHER["tools"]}
             | {t.name for t in CATALOG_WRITER["tools"]}
+            | {t.name for t in WORKBOOK_READER["tools"]}
         )
         assert not defined - registered, f"defined but never registered: {sorted(defined - registered)}"
         # The other direction, which is the property the package exists to give:
@@ -454,7 +455,7 @@ class TestResearchRecords:
             ],
         )
         assert len(r.by_concept("csr_year")) == 1
-        assert r.by_concept("grant") == []
+        assert r.by_concept("metric") == []
         assert r.concepts_found() == ["csr_year", "partner"]
 
 
@@ -597,7 +598,9 @@ class TestFindingsAreShapedLikeTheRowsTheyBecome:
     runs, and these fail until someone decides whether a researcher can find it.
     """
 
-    EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis"})
+    # The tier pair is the finding's own source, filled into source_type/evidence, never a target.
+    EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis",
+                          "source_type", "evidence_tier"})
 
     def fields_of(self, concept: str) -> set[str]:
         return set(FINDING_MODELS[concept].model_fields) - self.EVIDENCE
@@ -807,7 +810,8 @@ class TestTheWriterSideRecords:
             "PEOPLES RESOURCE DEVELOPMENT ASSOCIATION",
             "Bodoland Development Foundation (BDF)",
         ):
-            assert OrgRecord(name=name, **prov()).name == name
+            assert OrgRecord(name=name, source_type="org_document", evidence_tier="claimed",
+                             **prov()).name == name
 
     def test_fiscal_year_format_is_enforced_on_every_yearly_record(self):
         for model, extra in (
@@ -826,17 +830,16 @@ class TestTheWriterSideRecords:
 
 class TestPromotionCoversEveryConceptWithAWriter:
     def test_what_is_left_out_is_left_out_for_one_reason(self):
-        # Sixteen of seventeen. The one exclusion left is `grant`: grants.org_id
-        # is NOT NULL and promoting a funder's research does not write the NGOs
-        # it names, so the recipient would have to be an orgs row first.
-        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == {"grant"}
+        # Every concept promotes. `grant` was the last exclusion; since 0034 a grant is a partner line,
+        # whose org link is nullable.
+        assert set(CONCEPT_TABLES) - set(PROMOTABLE) == set()
 
     def test_a_funder_concept_is_never_the_one_left_out(self):
         # The reason above is the whole reason. A funder concept that stopped
         # being promotable would be a regression, not a design decision.
         from app.ingest.expectations import concepts_for
 
-        assert set(concepts_for("funder")) - set(PROMOTABLE) == {"grant"}
+        assert set(concepts_for("funder")) - set(PROMOTABLE) == set()
 
     def test_programmes_are_written_before_anything_that_names_one(self):
         # csr_spend, footprint, partner and metric all resolve program_name to
@@ -850,18 +853,17 @@ class TestPromotionCoversEveryConceptWithAWriter:
         which is the failure the order was split in two to risk."""
         from app.ingest.promote import ORG_WRITE_ORDER
 
-        # Handled outside the fact loops: the entity itself, its identifiers,
-        # its documents and its programmes each have their own step.
-        apart = {"identity", "csr_year", "program", "document",
-                 "org_identity", "org_identifier"}
+        # Handled outside the fact loops: the entity itself, its documents and
+        # its programmes each have their own step.
+        apart = {"identity", "csr_year", "program", "document", "org_identity"}
         assert set(PROMOTABLE) - apart == set(WRITE_ORDER) | set(ORG_WRITE_ORDER)
 
     def test_the_funder_loop_never_tries_an_org_concept(self):
         from app.ingest.promote import ORG_WRITE_ORDER
 
-        # metric and contact sit on tables with both foreign keys; nothing else
-        # may overlap, or one kind writes the other's table.
-        assert set(WRITE_ORDER) & set(ORG_WRITE_ORDER) == {"metric", "contact"}
+        # metric and contact sit on tables with both foreign keys, and partner writes the funder's line from
+        # either side; nothing else may overlap, or one kind writes the other's table.
+        assert set(WRITE_ORDER) & set(ORG_WRITE_ORDER) == {"metric", "contact", "partner"}
 
 
 class TestResearchGoalsAsksTheRightTables:
@@ -902,7 +904,9 @@ class TestResearchGoalsAsksTheRightTables:
         queries = await self._sql_for(kind)
         assert queries, f"{kind} asked nothing"
         for sql in queries:
-            assert f"WHERE {fk} = %s" in sql, sql
+            # An NGO's funder_activity lines are the ones naming it as the partner.
+            via = "partner_org_id" if kind == "org" and "FROM funder_activity" in sql else fk
+            assert f"WHERE {via} = %s" in sql, sql
             assert other not in sql, sql
         # And only tables this kind actually offers — the entity's own row is
         # the match already in hand, so it is counted rather than queried.
@@ -1192,8 +1196,8 @@ class TestJsonbColumnsCompareByValue:
 
 
 class TestTheOrgWriter:
-    """An NGO reaches the catalog the way a funder does, bar one rule: a row
-    somebody vetted by hand is filled, never overwritten."""
+    """An NGO reaches the catalog the way a funder does, bar one rule: a value from
+    an equal or weaker source is filled where blank, never overwritten."""
 
     class _Conn:
         """Replays a queued row per execute() and records the SQL."""
@@ -1215,7 +1219,15 @@ class TestTheOrgWriter:
     def rec(self, **kw):
         from app.ingest.records import OrgRecord
 
-        return OrgRecord(**{"name": "Goonj", **prov(), **kw})
+        return OrgRecord(**{"name": "Goonj", "source_type": "org_document", "evidence_tier": "claimed",
+                            **prov(), **kw})
+
+    @staticmethod
+    def stored(**kw):
+        from app.ingest.writer import ORG_UPDATABLE
+
+        return {"name": "Goonj", "aliases": [], "source_type": "org_document",
+                "source_url": "https://goonj.org", **dict.fromkeys(ORG_UPDATABLE), **kw}
 
     async def test_a_new_org_is_inserted_as_a_placeholder(self):
         from app.ingest.matcher import Match
@@ -1232,13 +1244,12 @@ class TestTheOrgWriter:
         assert "'placeholder'" in insert
 
     async def test_an_existing_org_is_filled_not_overwritten(self):
-        """The whole reason the org rule differs from write_funder's."""
+        """The whole reason the org rule differs from write_funder's: an equal source fills, never wins."""
         from app.ingest.matcher import Match
         from app.ingest.writer import write_org
 
         conn = self._Conn([
-            {"org_kind": "cso", "legal_form": "Registered Society "
-             "(Societies Registration Act)", "registration_date": None},
+            self.stored(org_kind="cso", legal_form="Registered Society (Societies Registration Act)"),
         ])
         status, _id, changes, conflicts = await write_org(
             conn, self.rec(legal_form="Society", registration_date=date(1999, 3, 12)),
@@ -1246,17 +1257,15 @@ class TestTheOrgWriter:
         )
         assert status == "updated"
         assert set(changes) == {"registration_date"}
-        assert len(conflicts) == 1 and "Registered Society" in conflicts[0]
+        assert len(conflicts) == 1 and "Registered Society" in conflicts[0].describe()
         update = next(q for q in conn.sql if q.startswith("UPDATE orgs"))
-        assert "legal_form" not in update
+        assert "legal_form" not in update and "source_type" not in update
 
     async def test_nothing_to_fill_writes_nothing_at_all(self):
         from app.ingest.matcher import Match
         from app.ingest.writer import write_org
 
-        conn = self._Conn([
-            {"org_kind": "cso", "legal_form": "Trust", "registration_date": None},
-        ])
+        conn = self._Conn([self.stored(org_kind="cso", legal_form="Trust")])
         status, _, changes, conflicts = await write_org(
             conn, self.rec(legal_form="Trust"), Match("exact", 9)
         )
@@ -1271,18 +1280,15 @@ class TestTheOrgWriter:
         from app.ingest.matcher import Match
         from app.ingest.writer import write_org
 
-        conn = self._Conn([
-            {"org_kind": "intermediary", "legal_form": "Trust", "registration_date": None},
-        ])
+        conn = self._Conn([self.stored(org_kind="intermediary", legal_form="Trust")])
         status, _id, changes, conflicts = await write_org(
             conn, self.rec(legal_form="Trust"), Match("exact", 9)
         )
         assert self.rec().org_kind is None
         assert (status, changes, conflicts) == ("matched", {}, [])
 
-    async def test_twelve_a_and_eighty_g_reach_org_identifiers(self):
-        """funder_identifiers has no room for either; this is the whole point
-        of researching an NGO against its own tables."""
+    async def test_write_org_writes_no_identifier(self):
+        """Each registration is its own finding with its own source and status (write_org_identifier)."""
         from app.ingest.matcher import Match
         from app.ingest.writer import write_org
 
@@ -1291,9 +1297,7 @@ class TestTheOrgWriter:
             conn, self.rec(identifiers={"12a": "AAATG5219M", "80g": "AAATG5219MF2021"}),
             Match("none"),
         )
-        wrote = [q for q in conn.sql if q.startswith("INSERT INTO org_identifiers")]
-        assert len(wrote) == 2
-        assert {p[1] for p in conn.params[-2:]} == {"12a", "80g"}
+        assert not any("org_identifiers" in q for q in conn.sql)
 
     async def test_a_free_slug_steps_aside_for_one_already_taken(self):
         from app.ingest.writer import _free_slug

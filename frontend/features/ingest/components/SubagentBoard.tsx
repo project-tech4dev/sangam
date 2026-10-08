@@ -25,10 +25,11 @@ function numberOr(count: unknown, list: unknown): number | undefined {
 
 /** Which subagent this card is for. deepagents passes the type alongside the
  *  description; before this the board assumed every task was a researcher. */
-type Kind = "researcher" | "writer";
+type Kind = "researcher" | "writer" | "reader";
 
 function kindOf(args: any): Kind {
-  return args?.subagent_type === "catalog-writer" ? "writer" : "researcher";
+  if (args?.subagent_type === "catalog-writer") return "writer";
+  return args?.subagent_type === "workbook-reader" ? "reader" : "researcher";
 }
 
 type Outcome = {
@@ -38,6 +39,8 @@ type Outcome = {
   sources?: number;
   slug?: string;
   note?: string;
+  /** Reader only: how many organisations the workbooks name. */
+  names?: number;
   /** Writer only. */
   rows?: number;
   tables?: number;
@@ -59,7 +62,11 @@ function outcomeOf(step: TraceStep): Outcome {
     const parsed = JSON.parse(step.result);
     if (kindOf(step.args) === "writer") {
       const rows: number = parsed.rows_written ?? 0;
-      const held: string[] = Array.isArray(parsed.held_back) ? parsed.held_back : [];
+      // A conflict is a decision for a person too, so it is shown beside what was held back.
+      const held: string[] = [
+        ...(Array.isArray(parsed.held_back) ? parsed.held_back : []),
+        ...(Array.isArray(parsed.conflicts) ? parsed.conflicts : []),
+      ];
       const tables = Array.isArray(parsed.tables_written) ? parsed.tables_written.length : 0;
       // Nothing written and nothing explaining it is the report that reads as
       // success and is not one.
@@ -71,6 +78,17 @@ function outcomeOf(step: TraceStep): Outcome {
         held,
         slug: parsed.entity_name ?? parsed.slug,
         note: held[0] ?? (rows === 0 ? "nothing reached the catalog" : undefined),
+      };
+    }
+    // The reader returns WorkbookEntities: the names the next researchers get.
+    if (kindOf(step.args) === "reader") {
+      const names = Array.isArray(parsed.entities) ? parsed.entities.length : 0;
+      const notes: string[] = Array.isArray(parsed.notes) ? parsed.notes : [];
+      return {
+        state: names === 0 ? "stopped" : "done",
+        status: parsed.complete === false ? "partial" : undefined,
+        names,
+        note: notes[0] ?? (names === 0 ? "the workbooks named no organisation" : undefined),
       };
     }
     // The researcher returns a ResearchSummary: counts, not the findings
@@ -107,11 +125,13 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
   const done = outcomes.filter(([, o]) => o.state === "done").length;
   const stopped = outcomes.filter(([, o]) => o.state === "stopped").length;
   const researchers = steps.filter((s) => kindOf(s.args) === "researcher").length;
-  const writers = steps.length - researchers;
+  const readers = steps.filter((s) => kindOf(s.args) === "reader").length;
+  const writers = steps.length - researchers - readers;
   // Expanded while anything is working, a summary line once they have finished.
   const expanded = working > 0;
 
   const tally = [
+    readers > 0 ? `${readers} workbook reader${readers === 1 ? "" : "s"}` : null,
     researchers > 0 ? `${researchers} researcher${researchers === 1 ? "" : "s"}` : null,
     writers > 0 ? `${writers} writer${writers === 1 ? "" : "s"}` : null,
     working > 0 ? `${working} working` : null,
@@ -123,7 +143,8 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
 
   // Writers only start once every researcher has returned, because parallel
   // tasks resolve together. Saying so beats looking idle.
-  const waiting = writers === 0 && working > 0 && done > 0;
+  const waiting =
+    writers === 0 && working > 0 && outcomes.some(([s, o]) => o.state === "done" && kindOf(s.args) === "researcher");
 
   return (
     <section
@@ -190,23 +211,23 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
                   }}
                 />
                 <strong style={{ fontSize: "var(--fs-sm)" }}>{subjectOf(step.args)}</strong>
-                {kindOf(step.args) === "writer" && (
+                {kindOf(step.args) !== "researcher" && (
                   <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-muted)" }}>
-                    → catalog
+                    {kindOf(step.args) === "writer" ? "→ catalog" : "workbook"}
                   </span>
                 )}
                 <span
                   style={{ marginLeft: "auto", fontSize: "var(--fs-xs)", color: TONE[o.state] }}
                 >
                   {o.state === "working"
-                    ? kindOf(step.args) === "writer"
-                      ? "writing…"
-                      : "researching…"
+                    ? { writer: "writing…", reader: "reading…", researcher: "researching…" }[kindOf(step.args)]
                     : o.state === "stopped"
                       ? (o.status ?? "stopped")
                       : kindOf(step.args) === "writer"
                         ? `✓ ${o.rows ?? 0} row${o.rows === 1 ? "" : "s"} in ${o.tables ?? 0} table${o.tables === 1 ? "" : "s"}`
-                        : `✓ ${o.facts ?? 0} facts`}
+                        : kindOf(step.args) === "reader"
+                          ? `✓ ${o.names ?? 0} name${o.names === 1 ? "" : "s"}${o.status ? " · partial" : ""}`
+                          : `✓ ${o.facts ?? 0} facts`}
                 </span>
               </button>
 

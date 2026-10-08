@@ -43,7 +43,9 @@ export function RunStatus({ running, steps }: { running: boolean; steps: TraceSt
   // Two kinds of task now. Counting a writer as a researcher would report
   // "4/2 researchers" once the writers start.
   const tasks = steps.filter((s) => s.tool === "task");
-  const researchers = tasks.filter((s) => (s.args as any)?.subagent_type !== "catalog-writer");
+  const researchers = tasks.filter(
+    (s) => !["catalog-writer", "workbook-reader"].includes((s.args as any)?.subagent_type),
+  );
   const writers = tasks.filter((s) => (s.args as any)?.subagent_type === "catalog-writer");
   const active = steps.filter((s) => s.running);
   const current = active[active.length - 1];
