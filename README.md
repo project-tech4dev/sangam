@@ -108,7 +108,7 @@ make seed                # load the cohort data — the app is empty without it
 ```
 
 **Migrations are not automatic, and two steps above depend on them.** `db/init/` is only a
-baseline; 9 of the 36 tables the agent's catalog expects arrive in `db/migrations/*.sql`, and
+baseline; 8 of the 34 tables the agent's catalog expects arrive in `db/migrations/*.sql`, and
 the backend refuses to boot when one is missing. The seeder needs migration `0002` too, or it
 fails on `column "code" of relation "tags" does not exist`.
 
@@ -315,7 +315,7 @@ Three conventions a new tool must not break:
 - **Every row is cited.** Tool results embed `[org:N]`, `[funder:N]`, `[grant:N]`, `[score:N]`,
   `[graph:<uuid8>]`, and `instructions.md` requires the model to repeat them inline. A tool
   returning uncited rows produces uncitable answers.
-- **The model writes its own SQL, behind four layers.** An allowlist catalog of 36 tables, a
+- **The model writes its own SQL, behind four layers.** An allowlist catalog of 34 tables, a
   pure validator that regenerates the statement from a parsed AST so the model's string never
   executes, a read-only transaction with timeouts, and the extended protocol so the server
   itself refuses multi-command statements. `docs/SQL_AGENT.md` has the design.

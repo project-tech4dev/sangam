@@ -61,7 +61,7 @@ here is a judgement wearing a citation.
 ## What is stored and what is not
 
 An organisation's research promotes, so the comparison may well be describing
-rows the catalog holds. Two things it still does not hold, and a cell that
-depends on either says so: an NGO's **website**, which has no column, and any
-figure on an organisation the catalog already states differently — that
-difference is reported for a person, not stored.
+rows the catalog holds. A cell says so when the catalog holds a different
+figure from a source at least as strong — that difference is reported as a
+conflict for a person, not stored. A registration's cell gives its status:
+`applied` is not registered, and `check_blocked` is not valid.

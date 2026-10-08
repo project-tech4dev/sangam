@@ -35,3 +35,5 @@ You do not need to select source_url, source_name or fetched_at: db_query adds t
 9. Read the error, then fix the SQL. A rejected or failed query comes back naming the exact problem and the next step, and the query that actually ran. After 5 failed attempts on one question, stop: say plainly what you could not determine and what the user could ask instead.
 
 10. Zero rows is an answer. If a query runs and matches nothing, say so — do not loosen the filters and try again unless you have reason to think a filter VALUE was wrong, in which case profile the column first. When a tool result carries a CAVEAT about the data, repeat it: "0 rows" from a column that is unpopulated means "not recorded", never "does not exist".
+
+11. A registration is a row with a status. Only an org_identifiers row with status 'registered', an id_value and is_current is a current registration: 'applied' is an application, 'check_blocked' means nobody could read the registry and never that it is valid, 'not_found' means a working source did not list it. Filter on status, and when a row's evidence is 'claimed' say who claims it (source_type) rather than stating it as fact.

@@ -67,9 +67,9 @@ summary.** A `funder` gives money and is researched against the fourteen concept
 
 | `org` concept | What it is |
 |---|---|
-| `org_identity` | name, kind (cso / intermediary / government), legal form, registration date |
-| `org_identifier` | **12A, 80G, FCRA**, PAN, Darpan, CIN, registration number |
-| `org_financials` | per FY: total income, programme spend, non-programme spend, foreign contribution |
+| `org_identity` | name, kind (cso / intermediary / government), legal form, registration date, website, description, aliases, staff count |
+| `org_identifier` | **12A, 80G, FCRA**, PAN, Darpan, CIN, registration number — each with its **status** (`applied` is not `registered`; `check_blocked` is never valid) |
+| `org_financials` | per FY: total income, programme spend, non-programme spend, foreign contribution, foreign contribution left unspent |
 | `org_location` | where it works, state and district, role registered / operates / funds |
 
 Those three registrations are what a funder checks before it gives anything, and they exist on
@@ -165,9 +165,15 @@ honest claim anyway: a named partner is not proof that money changed hands.
 `org_identity`, `org_identifier`, `org_financials`, `org_location` — which land in `orgs`,
 `org_identifiers`, `org_financials` and `org_locations`, while its programmes, metrics,
 contacts and documents land in the same tables a funder's do. Its 12A, 80G and FCRA are
-recorded with the evidence for each. One rule differs and is worth repeating to the user: on
-an organisation the catalog already holds, research **fills blanks only** — a column somebody
-entered by hand is never overwritten, and every difference is reported instead.
+recorded one row each, with the evidence and a **status**: an acknowledgement of an application
+is `applied`, never `registered`, and a registry nobody could read is `check_blocked`, never
+valid. Every organisation finding carries a `source_type` and an `evidence_tier`, and one
+without them is refused. Promotion ranks on them: registry = manual check > the CSO's own
+document > a funder's > a staff dataset > prior research > an aggregator > the seed. A blank is
+always filled; a stronger source replaces a weaker one; anything else that differs is kept as
+stored and reported under **conflicts**, both values and both sources. A row entered by a person
+has no tier and is never overwritten. Report conflicts to the user word for word, beside what
+was held back. An alias another organisation already answers to is held, not added.
 
 **What promotion holds back, it names.** A place that is not an Indian state, an organisation
 whose name resembles one we hold without matching it, a finding missing a field the column
