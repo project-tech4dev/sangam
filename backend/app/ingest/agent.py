@@ -14,17 +14,29 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results
+from app.agent.middleware import clear_old_tool_results, save_questions, staff_last_lock
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
-from app.ingest.research_records import PromotionReport, ResearchSummary
-from app.ingest.tools.catalog_tools import funder_dossier, promote_research, research_goals
+from app.ingest.research_records import PromotionReport, ResearchSummary, WorkbookEntities
+from app.ingest.tools.catalog_tools import (
+    compare_with_catalog,
+    coverage_report,
+    funder_dossier,
+    promote_research,
+    record_registry_check,
+    research_goals,
+)
 from app.ingest.tools.pipeline_tools import (
     import_run_summary,
+    list_bucket_files,
     list_import_sources,
+    list_storage_buckets,
     pending_resolutions,
     plan_import,
+    read_source_rows,
+    read_workbook,
     run_import_now,
+    select_source_files,
 )
 from app.ingest.tools.research_tools import (
     fetch_document,
@@ -93,9 +105,10 @@ def _backend() -> CompositeBackend:
         routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR, virtual_mode=True)},
     )
 
-# The supervisor's own tools. It researches nothing and writes no catalog row:
-# both go through a subagent, so there is one path to a source and one path to
-# the catalog, each under the instructions written for it. Two paths to the
+# The supervisor's own tools. It researches nothing, and the only catalog row it
+# writes is a staff member's own registry check: research and promotion go through
+# a subagent, so there is one path to a source and one path from research to the
+# catalog, each under the instructions written for it. Two paths to the
 # same work is what CLAUDE.md killed with search_orgs, and these two had
 # already drifted — only the subagent runs under the researcher's budget,
 # entity-confirmation and money-unit rules.
@@ -114,9 +127,16 @@ TOOLS = [
     run_import_now,
     import_run_summary,
     pending_resolutions,
-    # catalog_tools — what Sangam already holds. Read-only; promote_research is
-    # the catalog-writer's.
+    # Staff workbooks: a person confirms the bucket, then the files (HITL below).
+    list_storage_buckets,
+    list_bucket_files,
+    select_source_files,
+    # catalog_tools — what Sangam already holds; promote_research is the catalog-writer's.
     funder_dossier,
+    compare_with_catalog,
+    coverage_report,
+    # A person's check, recorded on their word; the researcher reads untrusted pages, so not its.
+    record_registry_check,
     # save_research publishes the brief it saves; this is only for re-publishing.
     publish_brief,
 ]
@@ -130,6 +150,8 @@ TOOLS = [
 RESEARCH_TOOLS = [
     research_goals,
     funder_dossier,
+    # Staff-only workbooks; the gate is the require_staff Import route this agent sits behind.
+    read_source_rows,
     search_public_sources,
     read_page,
     fetch_document,
@@ -184,6 +206,36 @@ CATALOG_WRITER: dict = {
 }
 
 
+# The third kind. It reads the picked workbooks and returns the names in them, so the
+# parent can launch a researcher per name without ever holding a raw row itself.
+# No web tools, so the researcher's staff-last lock has nothing to guard here.
+WORKBOOK_READER: dict = {
+    "name": "workbook-reader",
+    "description": (
+        "Reads the staff workbooks select_source_files registered and returns every organisation "
+        "they name, with the cell that names it. Launch it when the request is about everyone in "
+        "a file; give it the document ids. It researches nothing and reports no figures."
+    ),
+    "mode": "isolated",
+    "tools": [read_workbook],
+    "response_format": WorkbookEntities,
+    "system_prompt": prompt("workbook_reader"),
+}
+
+
+# Staff choose the bucket, then the files, before anything is read.
+INTERRUPT_ON = {
+    "list_bucket_files": {
+        "allowed_decisions": ["approve", "edit", "reject"],
+        "description": "Choose the bucket Import picks workbooks from",
+    },
+    "select_source_files": {
+        "allowed_decisions": ["approve", "edit", "reject"],
+        "description": "Confirm the staff workbooks Import will read",
+    },
+}
+
+
 def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Before create_deep_agent: the profile is read while the graph is built.
     install_harness()
@@ -195,19 +247,25 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Neither subagent loads a skill now, so neither gets `ls`. read_file is
     # the floor FilesystemMiddleware refuses to be constructed below, not a
     # capability either of them uses.
-    researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend)]}
-    writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend)]}
+    # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
+    researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend), staff_last_lock()]}
+    # save_questions pauses every promote_research for staff to approve, with a button per open question.
+    writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend), save_questions()]}
+    reader = {**WORKBOOK_READER, "middleware": [filesystem_tools(backend)]}
     # It formats what two tools return, so it needs no reasoning about sources.
     if settings.utility_model:
         writer["model"] = resolve_model(settings.utility_model)
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,
-        subagents=[researcher, writer],
+        subagents=[researcher, writer, reader],
         backend=backend,
         skills=[SKILLS_ROUTE],
         middleware=[filesystem_tools(backend, keep=SKILL_READING_TOOLS), clear_old_tool_results()],
         system_prompt=_render(_INSTRUCTIONS_MD, settings),
+        # deepagents turns this into LangChain's HumanInTheLoopMiddleware: the run pauses on the
+        # tool call and resumes with Command(resume={"decisions": [...]}) from the Import screen.
+        interrupt_on=INTERRUPT_ON,
         checkpointer=checkpointer,
     )
     # Its own trace name: Ask and Import are different graphs doing different

@@ -1,80 +1,111 @@
-# Design system: the Claude Design project leads, the repo follows
+# Design system: one Claude Design project, kept in step with the repo
 
-Sangam's design system lives in a Claude Design project, **"Sangam Design System"**:
-https://claude.ai/design/p/aeaa7276-b5e7-41e1-b980-c5d8672c96ab
+Sangam's design system lives in a Claude Design project, **"Sangam Design System v2"**:
+https://claude.ai/design/p/3b0e9aeb-8b17-4fa0-9194-2882f6b39edd
 
-It is the **system of record for design**: colours, type, corners, spacing, component looks and
-the written rules (voice, layout, iconography). A design change is made there first and then
-synced into the repo. The repo never invents a token, size or colour the design system does not
-have.
+It holds the colours, type, corners, spacing, component looks and the written rules (voice,
+layout, iconography), plus a click-through UI kit of the main screens. Two things are true of
+it at once:
 
-The project began as a snapshot of this repo's code, and Phase 1 (PR #86) changed the repo first.
-So, once, the design system has to catch up with the repo; the list is in
-[`features-plans/prototype-v1/2026-10-03-ask-entry-flow-design.md`](../features-plans/prototype-v1/2026-10-03-ask-entry-flow-design.md),
-"After the PR merges". From then on, changes flow one way: design system → repo.
+- **It is where design is decided.** A new token, size, colour or component look is agreed
+  there first, then built here. The repo never invents a token, size or colour the design
+  system lacks.
+- **It never drifts from the repo.** Any pull request that changes a component in
+  `frontend/components/` or a screen the UI kit recreates also updates the design system, in
+  the same PR. "How to sync" below is the procedure.
+
+v2 was built on 8 Oct 2026 from the repo as it stood after PR #97. The first project, "Sangam
+Design System" (`aeaa7276…`, owned by Sid), predates Phase 1; v2 replaces it.
 
 ## What maps to what
 
-**Tokens map one to one.** Both sides are CSS variables with the same names, so a token sync is
-a mechanical copy of values.
+**Tokens map one to one.** Both sides are CSS variables with the same names, so a token change
+is a copy of values.
 
 | Design system | Repo |
 |---|---|
 | `tokens/colors.css` | `:root` colour ramps, semantic aliases and the shadcn variables in `frontend/app/globals.css` |
 | `tokens/typography.css` | `--fs-*`, `--font-*` in `globals.css`; the font itself is loaded by `next/font` in `frontend/app/layout.tsx` |
-| `tokens/spacing.css` | `--radius-*`, `--shadow-*`, `--page-max`, `--page-pad`, `--nav-h` in `globals.css` |
-| `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading` |
+| `tokens/spacing.css` | `--radius`, `--radius-pill/surface/row`, `--shadow-*`, `--page-max`, `--page-pad`, `--nav-h` in `globals.css` |
+| `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link` |
 | `guidelines/*.html` | Nothing; they are the specimen pages to check the repo against |
 
-The `@theme inline` block at the end of `globals.css` re-exposes the tokens as Tailwind utilities
-(`bg-terracotta-750`, `text-sand-700`, …). It is derived, so it changes only when a token is added
-or removed.
+The design system also carries tokens the repo does not use yet (`--surface-*`, `--text-*`,
+`--space-*`, `--lh-*`, `--tracking-*`, `--sidebar-w`, `--chat-max`, motion). The `@theme inline`
+block at the end of `globals.css` re-exposes the repo's tokens as Tailwind utilities
+(`bg-terracotta-750`, `text-sand-700`, …); it changes only when a token is added or removed.
 
-**Components are translated, not copied.** The design system's components are JSX reference
-implementations. The repo's are TypeScript, built on Radix and Tailwind. A component sync means
-making the repo's version look and behave like the reference.
+**Components are translated, not copied.** The design system's components are plain-JSX
+reference implementations (inline styles over the tokens). The repo's are TypeScript on Radix
+and Tailwind. A component change means making both look and behave the same.
 
 | Design system | Repo |
 |---|---|
 | `components/core/Button` | `frontend/components/ui/button.tsx` and the `.btn` classes |
 | `components/core/{Tag, StatusChip, EntityMark, ProgressBar, Breadcrumbs, StatRail}` | `frontend/components/ui/primitives.tsx` |
+| `components/core/Avatar` | `frontend/components/ui/avatar.tsx` |
 | `components/forms/{Input, Checkbox}` | `frontend/components/ui/{input,checkbox}.tsx` and `.input` |
 | `components/forms/{SegmentedControl, Pill, PillTabs}` | `.seg`, `.pill`, `frontend/components/ui/PillTabs.tsx` |
 | `components/surfaces/{Card, CardBody, Hero, Dialog}` | `frontend/components/ui/{card,Hero,dialog}.tsx` and `.card`, `.dialog` |
+| `components/surfaces/DropdownMenu` | `frontend/components/ui/dropdown-menu.tsx` |
 | `components/layout/{Nav, Footer}` | `frontend/components/layout/{Nav,NavBar,Footer}.tsx` |
-| `components/agent/{QuestionRow, AnswerCard, TraceCard, CitationChip}` | `frontend/features/ask/components/` |
+| `components/layout/UserMenu` | `frontend/features/auth/sign-in-button.tsx` (`UserMenu`) |
+| `components/layout/SectionIndex` | `frontend/components/ui/SectionIndex.tsx` |
+| `components/agent/{QuestionRow, AnswerCard, TraceCard, CitationChip, ComposerNotice}` | `frontend/features/ask/components/` |
 | `components/agent/RunStatus` | `frontend/features/ingest/components/RunStatus.tsx` |
 | `components/agent/ScoreCard` | `frontend/features/registry/ScoreCard.tsx` |
 
-Not in the design system yet: they arrive with the catch-up.
+**The UI kit recreates screens.** `ui_kits/sangam-web/` is a click-through of the app built
+from the components above, with sample data.
 
-| Repo | What it is |
+| UI kit file | Repo |
 |---|---|
-| `frontend/components/ui/avatar.tsx`, `dropdown-menu.tsx` | The signed-in user menu |
-| `frontend/components/ui/SectionIndex.tsx` | The "sections" index on Resources and Terms |
-| `frontend/features/ask/components/ComposerNotice.tsx` | The AI notice under the Ask composer |
+| `Home.jsx` | `features/home/HomePage.tsx`, `HeroSlides.tsx` |
+| `Registry.jsx` | `features/registry/RegistryClient.tsx` |
+| `Profile.jsx` | `app/registry/[slug]/page.tsx`, `features/registry/ProfileTabs.tsx` |
+| `AskWorkspace.jsx` | `features/ask/preview/AskPreview.tsx`, `features/ask/components/*`, `features/ask/views/*` |
+| `Import.jsx`, `importData.js` | `features/ask/views/ImportView.tsx`, `features/ingest/*` |
+| `index.html`, `import.html` | the routing and navbar behaviour in `app/` and `components/layout/` |
 
 ## How to sync
 
-There is no automatic sync. Ask an agent to "sync the design system", or do it by hand:
+There is no automatic sync, and `/design-sync`'s converter does **not** fit this repo: it
+rebuilds a design system from a compiled component package, and Sangam has none (most of its
+look is the classes in `globals.css`). Do it by hand, with an agent if you like — "sync the
+design system for this PR" is enough of a prompt, given this file and `.design-sync/NOTES.md`.
 
-1. **Read the project.** In Claude Code, the `DesignSync` tool reads a Claude Design project
-   (`list_files`, `get_file`); run `/design-login` once to authorise it.
-2. **Diff tokens.** Compare `tokens/*.css` with `:root` in `globals.css`. Copy changed values;
-   add new tokens, and their `@theme inline` entries if Tailwind should see them.
-3. **Diff components.** For each changed component, compare its `.jsx` and `.prompt.md` with the
-   repo file in the table above and update the repo's version to match.
-4. **Check.** `npm run lint` and `npm run build` in `frontend/`, then `make smoke`. Compare the
-   pages against the design system's `guidelines/` cards and `ui_kits/sangam-web/`.
-5. **Raise one PR** that names the design-system change it follows.
+**Repo → design system** (the same PR as the code change):
 
-Writing to the design system is a separate, deliberate step. Use `/design-sync`, and only with
-the project owner's agreement.
+1. **Find what changed.** `git diff master --stat -- frontend/app/globals.css frontend/components frontend/features`,
+   then use the tables above to name the design-system files it touches.
+2. **Read those files from the project.** The `DesignSync` tool's `get_file` (run `/design-login`
+   once). Save them under a scratch folder, keeping their paths.
+3. **Edit them to match.** Tokens: copy values. Components: change the `.jsx`, and its `.d.ts`
+   and `.prompt.md` when the props or the guidance change. Screens: the matching UI-kit file.
+   Use tokens (`var(--fs-sm)`, `var(--radius-surface)`, `var(--color-accent-750)`), never
+   literal sizes, radii or colours. A new component needs all three files plus a place in a
+   group card (`components/<group>/<group>.card.html`) and a line in `readme.md`.
+4. **Upload.** `DesignSync` `finalize_plan` (one approval), then `write_files`: first
+   `_ds_needs_recompile` (`{"by":"design-sync-cli"}`), then the changed files, then
+   `_ds_needs_recompile` again, each as its own call (one batch can't hold the same path
+   twice). Don't write `_ds_bundle.js`, `_ds_manifest.json` or
+   `_adherence.oxlintrc.json`; Claude Design rebuilds them the next time the project is opened.
+5. **Check.** Open the project, look at the cards you touched and at
+   `ui_kits/sangam-web/index.html`, and say in the PR which design-system files changed.
+
+**Design system → repo** (a design decision made there first):
+
+1. Read the changed tokens or components from the project, as above.
+2. Copy token values into `:root` in `globals.css`; add `@theme inline` entries if Tailwind
+   should see a new one.
+3. Make the repo's components look like the reference.
+4. `npm run lint` and `npm run build` in `frontend/`, then `make smoke`.
+
+Writing to a design-system project needs its owner's agreement.
 
 ## The rules in force
 
-The design system's `readme.md` is the full statement. As of PR #86, the rules most often needed
-when building:
+The design system's `readme.md` is the full statement. The ones most often needed when building:
 
 - **Corners:** pill (`--radius-pill`) for every button, chip, filter, toggle and single-line
   input; 14px (`--radius-surface`) for cards, dialogs, menus, heroes and multi-line inputs; 8px
@@ -85,7 +116,11 @@ when building:
 - **Colour:** text must clear WCAG AA (4.5:1). Terracotta text is `--color-accent-750`; an orange
   fill carries white text and is `accent-750`. Muted text is sand-700. Lighter tints are fills
   only.
+- **Icons:** Lucide (`lucide-react`), sized, stroked and coloured by the `.icon` classes, never by
+  props. Text-like marks (⟨ ⟩ ✓ → ⌘↵) stay glyphs.
 - **Layout:** one `--page-max` (1160px) column on every page; long text caps itself with
   `.measure` (72ch) rather than narrowing the page.
+- **Wording:** "CSO" in data and registry UI, "NGO" in marketing copy, "vetted" (never
+  "hand-vetted"), no "North East India" framing in product copy.
 - **Reduce before you diverge:** reuse an existing token, size or component before asking the
   design system for a new one.

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.agent.tools.files import extract_pdf_text
 from app.api.deps import PageParams
 from app.core.config import get_settings
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_user
 from app.db.pool import PoolDep
 from app.integrations import storage
 from app.repositories import documents as repo
@@ -64,7 +64,7 @@ def _require_storage() -> None:
 async def create_upload_url(
     body: UploadUrlIn,
     pool: PoolDep,
-    user_id: UUID = Depends(get_current_user),
+    user_id: UUID = Depends(require_user),
 ) -> UploadUrlOut:
     _require_storage()
     org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=True)
@@ -87,7 +87,7 @@ async def create_upload_url(
 async def confirm_upload(
     body: UploadConfirmIn,
     pool: PoolDep,
-    user_id: UUID = Depends(get_current_user),
+    user_id: UUID = Depends(require_user),
 ) -> DocumentOut:
     _require_storage()
     org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=True)
@@ -153,6 +153,9 @@ async def document_file(
         raise HTTPException(404, f"document {document_id} has no readable file")
     parts = storage.split(row["storage_path"])
     if parts is None:
+        raise HTTPException(404, f"document {document_id} has no readable file")
+    # Only the upload script writes staff-sources paths, always on a private, org-less row.
+    if parts[0] == storage.STAFF_SOURCES and (row["is_public"] or row["org_id"] is not None):
         raise HTTPException(404, f"document {document_id} has no readable file")
     url = await storage.signed_url(*parts)
     if url is None:

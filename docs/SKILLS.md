@@ -27,6 +27,11 @@ on no funder table and decides whether a funder may give at all. The middle
 group does not split: one organisation's record, one mapping onto the
 catalog, one report, either kind.
 
+Both "what to pull" skills name `select_source_files` (the supervisor's pick, which staff confirm)
+and `read_source_rows`, the researcher's reader for the staff workbooks, and the funder skill carries the per-sheet layout and unit notes the tool does not
+apply. The researcher's own prompt carries the same notes, since a subagent loads no skill. Neither
+skill names a funder, a CSO or a file.
+
 Ask Sangam has three of its own, under `backend/app/agent/skills/`, with the
 same mechanism (`app/agent/build.py`): `funder-matching` (how to get from an
 organisation to verdicts), `funder-comparison` (named funders) and

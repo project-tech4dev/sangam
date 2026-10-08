@@ -17,17 +17,38 @@
     },
     {
       "key": "guidestar_india",
-      "name": "GuideStar India (CSIS India)",
-      "host": "guidestarindia.org",
-      "access_rule": "crawl_allowed",
+      "name": "GuideStar India public search (CSIS India)",
+      "host": "guidestarindia.frappe.cloud",
+      "access_rule": "manual_aggregator",
       "categories": [
         "ngo"
       ],
       "yields": [
         "org"
       ],
-      "basis": "robots.txt allows all paths. Terms of use were not read, so check them before Sangam displays its certification levels publicly.",
-      "robots_checked_at": "2026-09-28"
+      "basis": "The search method behind guidestarindia.org's public search page answers without sign-in; robots.txt on this host was served empty (HTTP 200, 0 bytes) on 2026-10-08, so nothing is disallowed. Only that one method is read, with keyword and page_no, one CSO at a time on a staff request. Every value is claimed: it is GuideStar's account, not the CSO's own documents. Terms of use were not read, so check them before Sangam displays its certification levels publicly.",
+      "robots_checked_at": "2026-10-08",
+      "allowed_paths": [
+        "/api/method/guidestar.api.npo_profile.npo_profile_search"
+      ],
+      "allowed_query": {
+        "keyword": null,
+        "page_no": null
+      }
+    },
+    {
+      "key": "guidestar_india_site",
+      "name": "GuideStar India website",
+      "host": "guidestarindia.org",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "robots.txt allows all paths (re-read 2026-10-08), but Sangam reads GuideStar India only through its public search method (guidestar_india, on guidestarindia.frappe.cloud), where every value is labelled an aggregator's claim; a profile page read here would not be. A person may read a profile by hand and cite it.",
+      "robots_checked_at": "2026-10-08"
     },
     {
       "key": "ngo_websites",
@@ -56,6 +77,23 @@
       ],
       "basis": "Public PDFs published on each NGO's own site, so that host's robots.txt governs. Download politely and one host at a time.",
       "robots_checked_at": null
+    },
+    {
+      "key": "give_do",
+      "name": "Give.do public NGO pages",
+      "host": "give.do",
+      "access_rule": "manual_aggregator",
+      "categories": [
+        "ngo"
+      ],
+      "yields": [
+        "org"
+      ],
+      "basis": "Read as a manual aggregator (spec C8): one CSO's public page under /discover/ at a time, on a staff request, low volume. robots.txt read on 2026-10-08 disallows /api/, /activity, /pictures/, /info, /supporters-list, /login, /start-a-campaign, /discover/login and /fundraisers/edit/; none is read, and robots.txt is still asked on every URL. Every other path on give.do stays under the give entry's terms-based refusal. Every value is claimed and never replaces the CSO's own document.",
+      "robots_checked_at": "2026-10-08",
+      "allowed_paths": [
+        "/discover/"
+      ]
     },
     {
       "key": "ngo_darpan",
@@ -201,10 +239,10 @@
       "robots_checked_at": null
     },
     {
-      "key": "hand_vetting_sheets",
-      "name": "Hand-vetting fact-check sheets",
-      "host": "",
-      "access_rule": "partner_permission_internal",
+      "key": "org_grant_intelligence",
+      "name": "org-grant-intelligence research repository (pinned)",
+      "host": "raw.githubusercontent.com",
+      "access_rule": "internal_research",
       "categories": [
         "ngo",
         "funder"
@@ -213,8 +251,72 @@
         "org",
         "funder"
       ],
-      "basis": "Internal research in the org-grant-intelligence repo: each fact carries its source URL, date and verdict. The standard the importer is measured against.",
-      "robots_checked_at": null
+      "basis": "The team's own earlier research, a public GitHub repository of CSO and funder dossiers and hand-vetting sheets, read only at commit 414cd6968765bcfff758632797dcbb8d00363ab2 (the one the seed was copied from), so a citation never moves. Every fact is prior_research and claimed until the link it cites is re-read under that source's own rule. robots.txt on this host answered HTTP 404 on 2026-10-08, which RFC 9309 reads as no restrictions.",
+      "robots_checked_at": "2026-10-08",
+      "allowed_paths": [
+        "/project-tech4dev/org-grant-intelligence/414cd6968765bcfff758632797dcbb8d00363ab2/"
+      ]
+    },
+    {
+      "key": "org_grant_intelligence_index",
+      "name": "org-grant-intelligence directory listings (pinned)",
+      "host": "api.github.com",
+      "access_rule": "internal_research",
+      "categories": [
+        "ngo",
+        "funder"
+      ],
+      "yields": [
+        "org",
+        "funder"
+      ],
+      "basis": "Directory listings of the same repository at the same pinned commit (ref=414cd6968765bcfff758632797dcbb8d00363ab2), so a researcher can find a dossier's file names; each entry's download_url is the pinned raw URL. Nothing else on api.github.com is read. robots.txt answered HTTP 404 on 2026-10-08 (no restrictions). Unauthenticated, about sixty calls an hour.",
+      "robots_checked_at": "2026-10-08",
+      "allowed_paths": [
+        "/repos/project-tech4dev/org-grant-intelligence/contents",
+        "/repos/project-tech4dev/org-grant-intelligence/contents/"
+      ],
+      "allowed_query": {
+        "ref": "414cd6968765bcfff758632797dcbb8d00363ab2"
+      }
+    },
+    {
+      "key": "org_grant_intelligence_github",
+      "name": "org-grant-intelligence on github.com (unpinned)",
+      "host": "github.com",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "ngo",
+        "funder"
+      ],
+      "yields": [
+        "org",
+        "funder"
+      ],
+      "basis": "A copy of the org-grant-intelligence repository outside its pinned path. Sangam reads that repository only at the pinned commit on raw.githubusercontent.com and api.github.com (org_grant_intelligence), so a citation never moves; this host serves other refs and copies of the same files. Its robots.txt is not consulted because nothing here is read.",
+      "robots_checked_at": null,
+      "governs_paths": [
+        "/project-tech4dev/org-grant-intelligence"
+      ]
+    },
+    {
+      "key": "org_grant_intelligence_jsdelivr",
+      "name": "org-grant-intelligence on jsDelivr (mirror)",
+      "host": "jsdelivr.net",
+      "access_rule": "no_scraping_manual_entry_allowed",
+      "categories": [
+        "ngo",
+        "funder"
+      ],
+      "yields": [
+        "org",
+        "funder"
+      ],
+      "basis": "A copy of the org-grant-intelligence repository outside its pinned path. Sangam reads that repository only at the pinned commit on raw.githubusercontent.com and api.github.com (org_grant_intelligence), so a citation never moves; this host serves other refs and copies of the same files. Its robots.txt is not consulted because nothing here is read.",
+      "robots_checked_at": null,
+      "governs_paths": [
+        "/gh/project-tech4dev/org-grant-intelligence"
+      ]
     },
     {
       "key": "social_stock_exchange",

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Tag } from "@/components/ui";
+import { authHeaders } from "@/lib/api/auth-headers";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 
@@ -14,8 +15,6 @@ type Doc = {
   fetched_at: string | null;
 };
 
-const AUTH = { Authorization: "Bearer dev" };
-
 /* Upload in three steps, because the file never passes through the backend:
    ask for a signed URL, PUT straight to Supabase Storage, then tell the
    backend it landed. A Vercel Function caps its request body well below the
@@ -23,7 +22,7 @@ const AUTH = { Authorization: "Bearer dev" };
 async function uploadToVault(org: string, file: File) {
   const ask = await fetch(`${API}/api/documents/uploads`, {
     method: "POST",
-    headers: { ...AUTH, "Content-Type": "application/json" },
+    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
     body: JSON.stringify({ org, filename: file.name }),
   });
   if (ask.status === 503) throw new Error("Document storage is not configured on this deployment.");
@@ -40,7 +39,7 @@ async function uploadToVault(org: string, file: File) {
 
   const confirm = await fetch(`${API}/api/documents`, {
     method: "POST",
-    headers: { ...AUTH, "Content-Type": "application/json" },
+    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
     body: JSON.stringify({ org, storage_path, title: file.name }),
   });
   if (!confirm.ok) throw new Error(`Uploaded, but not recorded (${confirm.status}).`);
@@ -56,7 +55,8 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
   useEffect(() => {
     if (!orgSlug) return;
     setDocs(null);
-    fetch(`${API}/api/documents?org=${orgSlug}&limit=100`, { headers: AUTH })
+    authHeaders()
+      .then((headers) => fetch(`${API}/api/documents?org=${orgSlug}&limit=100`, { headers }))
       .then((res) => res.json())
       .then((page) => setDocs(page.items))
       .catch(() => setDocs([]));

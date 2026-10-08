@@ -4,8 +4,9 @@ Decision, 2026-09-29. We take the **v3 tables** from
 `origin/docs/data-platform-architecture-spec` (`features-plans/data-model/`) and land them as
 additive migrations, not as a new baseline.
 
-The v3 write-up proposes wiping and reseeding. We do not need to: the diff is purely additive —
-23 tables gain columns, 14 tables are new, **nothing is dropped and no column is removed**. So
+The v3 write-up proposes wiping and reseeding. We do not need to: the diff in 0001–0010 is purely
+additive — 23 tables gain columns, 14 tables are new, **nothing is dropped and no column is removed**
+(0031 later drops seven funder tables, copying their rows first). So
 `db/init/02_schema.sql` stays at v2 and `db/migrations/` carries everything, which is the rule
 CLAUDE.md already states. The 96 documents and the Supabase data survive untouched, and v3's
 `02_schema.sql` becomes the reference we derive each migration from rather than a file we copy in.
@@ -19,11 +20,11 @@ CLAUDE.md already states. The 96 documents and the Supabase data survive untouch
 | Provenance | `source_url`, `source_name`, `fetched_at`, `content_hash`, `extractor_version` | the same plus `as_of` (the period the source describes), `document_id`, `archive_url` — one row = one fact = one source |
 | Geography | 13 locations; all 10 districts parented to Assam, 3 of them wrongly | LGD codes, aliases, village level; 112 aspirational districts and 8 North East states as `location_designations` |
 | Taxonomy | 40 tags, every one `kind='sector'`, free text | one `tags` tree: 17 SDGs, 24 sectors, 10 population groups, 30 CSR Schedule VII sectors, 221 domain cells; deprecate-and-replace, never delete |
-| Funder money | one `funders.profile` jsonb blob | `funder_csr_years`, `funder_csr_spend`, `funder_footprints`, `funder_partners` — for Axis alone: 4 CSR years, 58 spend rows, 705 footprints, 114 partner rows, each with its source |
+| Funder money | one `funders.profile` jsonb blob | `funder_csr_years` and `funder_activity` — one row per filing or report line, `kind` spend / footprint / partner / programme (0031 merged the three tables this began as) — for Axis alone: 4 CSR years, 58 spend lines, 705 footprints, 114 partner lines, each with its source |
 | Impact | `grants.outcomes` jsonb | `metrics` with stage, chain, baseline, comparison and method, plus the `impact_chains` view that shows where a chain stops |
-| Credentials | a number in `*_identifiers`, no history | number stays there and can be private; what happened to it goes in `credential_events`; current state reads from `credential_status` |
+| Credentials | a number in `*_identifiers`, no history | number stays there and can be private; since `0033` the row itself carries a `status` (applied, registered, check_blocked, …), validity dates and an evidence tier, and `credential_events` is gone |
 | Org finances | none | `org_financials`, one row per org per fiscal year |
-| Proposals | none | `proposal_templates`, `template_items`, `proposals`, and `check_template()` returning pass / fail / missing / manual |
+| Proposals | none | `proposals`; a funder's form is a `documents` row of `doc_type='proposal_template'` (0031) |
 | Membership | one dev user, no orgs | `org_members` with `admin`, `member`, `steward` |
 | Threads | `thread_id` + `user_id` | plus title, `use_case`, `org_id`, `context`, `visibility` — the left rail's data |
 
@@ -46,11 +47,11 @@ write-up.
 | `locations` | `lgd_code`, `aliases` | districts match across sources despite spelling, and `village` becomes a valid kind |
 | `users` | `auth_user_id`, `is_staff` | the link to Supabase Auth, and the staff flag every policy reads |
 | `contacts` | `is_public`, `as_of`, `document_id`, `archive_url` | office bearers stay public, other contacts do not |
-| `funder_identifiers` | `is_current`, `source_name`, `fetched_at`, `archive_url` | provenance, and superseded numbers |
-| `grants`, `rfps` | `as_of`, `document_id`, `archive_url` | provenance only |
+| `funders` | `cin`, `aliases` (0031) | a corporate funder's CIN and the other names it files under; funder_identifiers is gone |
+| `grants` (dropped in `0034`), `rfps` | `as_of`, `document_id`, `archive_url` | provenance only |
 | `rfp_matches` | `week_of` | which weekly batch flagged the match |
 | `org_tags`, `funder_tags`, `program_tags`, `rfp_tags` | `is_inferred`, `tagged_by`, `note` | separates what a source states from what a person or model inferred |
-| `org_locations`, `funder_locations`, `program_locations`, `rfp_locations` | `valid_from`, `valid_to`, `note` + full provenance | a place link is itself a sourced, dated fact. **`funder_locations.role` also gains `priority` and defaults to it** — the 14 seeded rows are stated focus, not actual funding |
+| `org_locations`, `funder_locations`, `program_locations` (dropped in `0033`), `rfp_locations` | `valid_from`, `valid_to`, `note` + full provenance | a place link is itself a sourced, dated fact. **`funder_locations.role` also gains `priority` and defaults to it** — the 14 seeded rows are stated focus, not actual funding |
 
 **Unchanged (7):** `chunks`, `extraction_log`, `rubrics`, `rubric_criteria`, `fit_scores`,
 `fit_score_items`, `score_adjustments`. The rubric family stays exactly as it is; scoring logic
@@ -100,17 +101,14 @@ changes. Design and milestones: `docs/features/2026-09-30-supabase-storage.md`.
 | | Table | Holds |
 |---|---|---|
 | **Who can see what** | `org_members` | a user's role in an org: `admin`, `member`, `steward`. Every private-read policy resolves through it, and deleting a row removes access |
-| **Credentials** | `credential_events` | what happened to a registration — registered, renewed, checked, expired, cancelled, `not_available` — dated and sourced, holding **no number**, so history can be public while the number stays private |
+| **Credentials** | `credential_events` (folded into `org_identifiers.status` and dropped in `0033`) | what happened to a registration — registered, renewed, checked, expired, cancelled, `not_available` — dated and sourced, holding **no number**, so history can be public while the number stays private |
 | **Org facts** | `org_financials` | income, programme spend, foreign contribution, one row per org per fiscal year — the ₹5 crore eligibility gates read this |
 | | `metrics` | impact and reach figures for an org **or** a funder, with `stage`, `chain_key`, `baseline`, `comparison_value` and `method` — a results chain rather than a headline number |
 | **Funder money and activity** | `funder_csr_years` | the statutory annual return per year: average net profit, the 2% obligation, spend, unspent transfer, excess |
-| | `funder_csr_spend` | spend by sector and place — either an aggregate or a single project with its implementing agency and CSR-1 number |
-| | `funder_footprints` | where a funder's theme actually ran, by district and fiscal year. The strongest geographic matching signal we have |
-| | `funder_partners` | who a funder named as a partner, per theme and year, with one canonical spelling so renewals can be counted |
-| **Places** | `grant_locations` | where a grant was actually spent — the difference between where a funder *says* it works and where it did |
+| | `funder_activity` | one line of a filing, report or partner list per year: `spend` (with outlay, partner and implementation mode), `footprint` (state and place), `partner`, or `programme` (the funder's own split, never summed with spend). Every spend and programme line carries an inferred domain and, where evidenced, a theme, with `classified_by`, a note and `classification_confirmed` |
+| **Places** | `grant_locations` (dropped in `0034`, never written) | where a grant was actually spent; since `0034` that is a `funder_activity` footprint or partner line |
 | | `location_designations` | aspirational district, North East, and the designations funders prioritise |
-| **Proposals** | `proposal_templates` | a funder's application form, RFP, due-diligence checklist or budget format |
-| | `template_items` | one section, question, criterion, eligibility gate or required document, with a `check_rule` the database can test |
+| **Proposals** | `documents` (`doc_type='proposal_template'`) | a funder's application form, kept as a document; `proposals.template_id` points at it |
 | | `proposals` | an org's proposal, from drafting to awarded, linked to its thread and its draft documents |
 | | `reference_figures` | external benchmarks for budgeting — cost per beneficiary, overhead norms, salary ranges |
 
@@ -129,8 +127,8 @@ It is the table that prevents the failure the Graphiti spike produced — Christ
 Vellore merged into the registry org Better Life Foundation. The rule it enforces is that a new
 name is **never** merged into a registry org automatically unless it matched on an identifier or
 exactly; anything else waits for a reviewer. Accepted variants are written back to
-`locations.aliases` or `funder_partners.partner_canonical`, and resolving the queue is what
-finally fills `funder_partners.org_id` and `funder_csr_spend.agency_org_id`, both empty today.
+`locations.aliases`, `funders.aliases` or `funder_activity.partner_canonical`, and resolving the queue is what
+finally fills `funder_activity.partner_org_id`, empty today.
 
 It lands with the name-resolution work, not with the baseline. Everything else the spec adds is a
 view or a function — `org_places`, `org_tag_set`, `funder_signal_base` and `entity_edges` are
@@ -160,10 +158,10 @@ funders 'Axis Bank Limited'
    ├── documents  'Axis Bank Annual CSR Report FY2025-26'   (funder_id, doc_type='csr_report',
    │        ▲       source_url=axis.bank.in/…, fetched_at=2026-09-27, as_of='FY2025-26')
    │        │ document_id
-   │        ├── funder_footprints   Baksa · FY2025-26 · Lives & Livelihoods
-   │        ├── funder_footprints   … 705 rows across 3 reports
-   │        ├── funder_partners     'Ayang Trust' · Education · FY2025-26
-   │        ├── funder_csr_spend    ₹8 crore · sports · FY2024-25
+   │        ├── funder_activity     footprint · Baksa · FY2025-26
+   │        ├── funder_activity     … 705 footprint lines across 3 reports
+   │        ├── funder_activity     partner · 'Ayang Trust' · FY2025-26
+   │        ├── funder_activity     spend · ₹8 crore · others (sports) · FY2024-25
    │        └── metrics             0.71 million families reached · FY2025-26
    │
    └── funders 'Axis Bank Foundation'  (parent_id → Axis Bank Limited)
@@ -183,8 +181,8 @@ from FY2025-26 within one document.
 
 | | Path | Answers |
 |---|---|---|
-| The fact's subject | `funder_footprints.funder_id → funders.id` | "where did Axis work" |
-| The fact's evidence | `funder_footprints.document_id → documents.funder_id → funders.id` | "which Axis report says so" |
+| The fact's subject | `funder_activity.funder_id → funders.id` | "where did Axis work" |
+| The fact's evidence | `funder_activity.document_id → documents.funder_id → funders.id` | "which Axis report says so" |
 
 They are usually the same funder and sometimes are not — a news article about Axis is a
 `documents` row owned by Axis, but an SBI RFP naming Axis as a co-funder is not.
@@ -239,6 +237,10 @@ unblocks something concrete, and each runs in a single transaction.
 That is all 23 changed tables and all 14 new ones. After `0010`, a fresh `make up` plus
 `make migrate` produces the v3 table set from the v2 baseline.
 
+**`0031_funder_consolidation` is the first migration that drops tables.** Nine funder tables became five: `funder_identifiers` → `funders.cin` / `aliases`; `funder_csr_spend`, `funder_footprints`, `funder_partners` → `funder_activity`; `funder_eligibility` and `proposal_templates` / `template_items` → `documents`. Every row with a home is copied; templates with content stop the migration. A `funder_eligibility` document's `is_public` is copied from the funder when written, so hiding a funder later leaves it public until its next promote. Spec: `features-plans/data-model/2026-10-07-funder-model-consolidation.md`.
+
+**`0034_grants_into_funder_activity` retires `grants` and `grant_locations`.** Each grant became one `funder_activity` line of kind `partner` with `partner_org_id` set, and the line gained `start_date`, `end_date` and `relationship_status`. A multi-year grant is one line with its whole amount on its start year; outcomes moved into `notes`, which end `Moved from grants #N by 0034.` `grant_locations` held no rows. References in `proposals`, `metrics` and `news_mentions` now point at the line, and `/api/partner-lines` serves them.
+
 **Three things make this safe to do one at a time.**
 
 - **Nothing existing breaks.** Every change is an added column, an added table, or a widened
@@ -287,22 +289,22 @@ and it is the first thing here that will go stale.
 | 7 | Total CSR budget, if disclosed | **`funder_csr_years.notes`** — see below |
 | 8 | Key themes / focus sectors | `funder_tags` → `tags(kind='csr_sector')`, `is_inferred` true |
 | 9 | Major programmes | `programs`, theme → programme → phase via `parent_id` |
-| 10 | Geographic focus | `funder_locations` (stated) and `funder_footprints` (actual) |
+| 10 | Geographic focus | `funder_locations` (stated) and `funder_activity` `kind='footprint'` (actual) |
 | 11 | Target beneficiary groups | **no column** — `tags(kind='population')` exists, nothing seeds it |
 | 12–13 | Typical / min / max grant size | `funders.grant_size_min` `grant_size_max`; per call, `rfps.amount_min/max` |
 | 14 | Typical project duration | `funders.typical_duration_months` |
-| 15 | Funds external NGOs? | `funders.funds_external` (stated) vs `funder_csr_spend.via_agency` (done) |
-| 16 | NGO eligibility criteria | `funder_eligibility`, one row per condition, `kind` splitting statutory restatement from the funder's own bar from a hard disqualifier; per call, `rfps.eligibility` |
-| 17 | Application process | `proposal_templates` — **no writer yet** |
+| 15 | Funds external NGOs? | `funders.funds_external` (stated) vs `funder_activity.implementation_mode` (done) |
+| 16 | NGO eligibility criteria | the funder's `funder_eligibility` document, verbatim, under statutory restatement / its own bar / disqualifiers; per call, `rfps.eligibility` |
+| 17 | Application process | a `documents` row, `doc_type='proposal_template'` — **no writer yet** |
 | 18 | Open / rolling / invitation-only | `funders.intake_mode` |
 | 19 | Current or recent RFPs | `rfps` |
 | 20 | Application deadlines | `rfps.deadline` |
 | 21 | Contact details | `contacts.name` `role` `kind`; `email` only for a shared mailbox |
-| 22 | Major implementation partners | `funder_partners` |
-| 23 | Grants in the last 2 years | **`funder_partners`** — `grants` has no writer |
-| 24 | Amount per partnership | `funder_csr_spend.amount` + `implementing_agency` |
-| 25 | States / districts worked in | `funder_footprints.location_id` → `locations` |
-| 26 | Schedule VII categories | `funder_csr_spend.csr_sector_id` → `tags(kind='csr_sector')` |
+| 22 | Major implementation partners | `funder_activity` `kind='partner'` |
+| 23 | Grants in the last 2 years | `funder_activity` `kind='partner'`, with `amount`, `start_date`, `end_date`, `relationship_status` |
+| 24 | Amount per partnership | `funder_activity.amount` + `partner_name` on spend lines |
+| 25 | States / districts worked in | `funder_activity.state_location_id` / `location_id` → `locations` |
+| 26 | Schedule VII categories | `funder_activity.csr_sector_id` (as filed) → `tags(kind='csr_sector')`; what it was spent on is `domain_tag_id` / `theme_tag_id`, inferred |
 | 27 | Annual report / CSR policy links | `documents` |
 | 28 | Source links for everything | `source_url` + `source_name` + `fetched_at` on every fact row |
 
@@ -318,29 +320,27 @@ Letting a researcher's free text become tag rows is the "Building Human Capital 
 Education" failure, one level down. Until a controlled list exists the wording stays on the row
 it describes.
 
-**Application process (17).** `proposal_templates` and `template_items` are fully specified and
-have no writer. The URL of the form reaches `rfps.url`; the form's structure does not.
+**Application process (17).** A form is a `documents` row of `doc_type='proposal_template'` and has no writer. The URL of the form reaches `rfps.url`; the form's structure does not.
 
 ## One answer that is now two columns
 
 **Eligibility (16).** A funder's standing bar and one call's requirements are different
 claims, and `rfps.eligibility` could only hold the second — which meant a funder with a
 published policy and no open call had nowhere to put the first, and most funders have no
-open call. `funder_eligibility` holds the standing policy, one row per condition with its
-own source, `kind` carrying the split that `funder-intake-research` field 4 works to
+open call. The standing policy is a `funder_eligibility` document per page, the text verbatim under the split `funder-intake-research` field 4 works to
 produce: a funder that only restates Rule 4 has set no bar of its own. `rfps.eligibility`
 is unchanged and still means "this call asks for it". The same sentence appearing in both
 is correct, not a duplicate — and counting across the two double-counts.
 
 ## Two answers that are honest rather than complete
 
-**Grants (23).** `grants.org_id` is `NOT NULL`, and promoting a funder's research does not
-write the NGOs it names, so a funded organisation we do not already hold cannot be a grant row. Such a relationship is recorded in
-`funder_partners`, whose `org_id` is nullable — which is the more careful claim anyway, since a
-named partner is not proof that money changed hands. The report says so rather than implying an
-empty `grants` table means no grants.
+**Grants (23).** Since `0034` a grant is a `funder_activity` line of kind `partner`, with
+`start_date`, `end_date` and `relationship_status`; `partner_org_id` is set only when the recipient
+is an organisation Sangam holds, and a line naming one we do not hold keeps the printed name. A
+named partner with no amount is still not proof that money changed hands, and the report says so
+rather than implying that no line means no grant.
 
 **Funds external NGOs (15).** Two columns, never reconciled. `funders.funds_external` is what the
-funder *says*; counting `funder_csr_spend.via_agency` is what it *did*. The report prints both —
+funder *says*; counting `funder_activity.implementation_mode = 'implementing_agency'` on spend lines is what it *did*. The report prints both —
 *"States that it funds external NGOs; 3 of 18 recorded projects ran through an implementing
 agency"* — because the gap between them is itself the finding.

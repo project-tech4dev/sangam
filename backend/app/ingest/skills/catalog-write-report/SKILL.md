@@ -23,7 +23,7 @@ a claim, not a report.
 
 ## What to say
 
-**Per table, the count.** "`funder_csr_years` 3 rows, `funder_csr_spend` 11
+**Per table, the count.** "`funder_csr_years` 3 rows, `funder_activity (spend)` 11
 rows, `funder_locations` 4 rows." Name the tables. A person tracking what the
 catalog knows is tracking tables, and "17 rows written" tells them nothing
 about what they can now query.
@@ -34,6 +34,14 @@ duplicate where the first was kept, a validation failure naming the field, a
 place that could not be resolved to a district, a parent company that did not
 match. Give the reason as written and name the organisation and field it
 concerns.
+
+**Coverage, verbatim, last.** After the counts, held-back rows and conflicts,
+print `coverage_report(slug)` for the same organisation as it returned it, in
+a code block. It is what was expected against what was found and written, with
+the reason for each gap; never paraphrase it or quote only the headline.
+
+**Conflicts, verbatim, like held-back rows.** From `conflicts`: each names both
+values and both sources. Never fold one into a total or say which is right.
 
 **Still research.** Concepts with no writer. Say what they are and say that
 the facts exist, are published in the entity record, and are not in the
@@ -49,8 +57,8 @@ That number is the backlog, and the write report is where a person sees it.
 Two cases, and they are different:
 
 - **An organisation the catalog already holds in full.** Every column was
-  already filled by hand, so the write is a `matched` with no rows moved and
-  a list of differences. That is a complete, successful run — say what the
+  already stated by a source at least as strong, so the write is a `matched`
+  with no rows moved and a list of conflicts. That is a complete, successful run — say what the
   differences are and who decides them, not "nothing happened".
 - **Either kind where everything was held.** Say which gate stopped it — no
   match, a stale schema version, every value a duplicate — and what would

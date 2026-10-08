@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs, Hero, Tag } from "@/components/ui";
 import {
   apiGet, NotFoundError,
-  type GrantRow, type NewsRow, type OrgDetail, type PageOf, type ProgramRow, type ScoreRow,
+  type NewsRow, type OrgDetail, type PageOf, type PartnerLineRow, type ProgramRow, type ScoreRow,
 } from "@/lib/api";
 import { titleCase } from "@/lib/format";
+import { isOnFile, pickIdentifier, statusLabel } from "@/features/registry/identifierStatus";
 import { OrgProfileTabs } from "@/features/registry/ProfileTabs";
 
 export default async function OrgProfilePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -18,14 +19,14 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
     throw err;
   }
 
-  const [grants, programs, scores, news] = await Promise.all([
-    apiGet<PageOf<GrantRow>>(`/api/grants?org=${org.slug}&limit=50`).then((p) => p.items),
+  const [funding, programs, scores, news] = await Promise.all([
+    apiGet<PageOf<PartnerLineRow>>(`/api/partner-lines?org=${org.slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<ProgramRow>>(`/api/programs?org=${org.slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<ScoreRow>>(`/api/scores?org=${org.slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<NewsRow>>(`/api/news?org=${org.slug}&limit=10`).then((p) => p.items),
   ]);
 
-  const isFull = org.identifiers.length >= 4;
+  const isFull = org.identifiers.filter((i) => isOnFile(i)).length >= 4;
   const displayName = titleCase(org.name);
 
   return (
@@ -51,10 +52,10 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
           <>
             <Tag tone="ondark">{isFull ? "Base coverage — good" : "Base coverage — partial"}</Tag>
             {["fcra", "80g", "12a", "csr1"].map((idType) => {
-              const has = org.identifiers.some((i) => i.id_type === idType);
+              const found = pickIdentifier(org.identifiers, idType);
               return (
                 <Tag key={idType} tone="ondark">
-                  {idType.toUpperCase()} — {has ? "on file" : "not entered"}
+                  {`${idType.toUpperCase()} — ${statusLabel(found).toLowerCase()}`}
                 </Tag>
               );
             })}
@@ -68,7 +69,7 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
           </Link>
         }
       />
-      <OrgProfileTabs org={org} grants={grants} programs={programs} scores={scores} news={news} />
+      <OrgProfileTabs org={org} funding={funding} programs={programs} scores={scores} news={news} />
     </div>
   );
 }

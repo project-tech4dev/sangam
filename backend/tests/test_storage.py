@@ -256,7 +256,7 @@ class TestEnsureDocumentRecordsTheArchive:
     async def test_a_new_row_carries_the_key_and_the_hash(self, db):
         url = "https://test.invalid/test-new-row.pdf"
         doc_id, status = await ensure_document(
-            db, self.shim(url), funder_id=None, doc_type="csr_report",
+            db, self.shim(url), owner=None, doc_type="csr_report",
             storage_path="ab12cd34ef56/deadbeefcafe-r.pdf", content_hash="deadbeefcafe",
         )
         assert status == "added"
@@ -272,12 +272,12 @@ class TestEnsureDocumentRecordsTheArchive:
         """
         url = "https://test.invalid/test-backfill.pdf"
         first_id, first = await ensure_document(
-            db, self.shim(url), funder_id=None, doc_type="csr_report"
+            db, self.shim(url), owner=None, doc_type="csr_report"
         )
         assert first == "added"
 
         second_id, second = await ensure_document(
-            db, self.shim(url), funder_id=None, doc_type="csr_report",
+            db, self.shim(url), owner=None, doc_type="csr_report",
             storage_path="ab12cd34ef56/feedface1234-r.pdf", content_hash="feedface1234",
         )
         assert (second_id, second) == (first_id, "updated"), "the backfill must reuse the row"
@@ -289,11 +289,11 @@ class TestEnsureDocumentRecordsTheArchive:
     async def test_never_overwrites_an_archive_already_recorded(self, db):
         url = "https://test.invalid/test-no-overwrite.pdf"
         doc_id, _ = await ensure_document(
-            db, self.shim(url), funder_id=None, doc_type="csr_report",
+            db, self.shim(url), owner=None, doc_type="csr_report",
             storage_path="ab/original.pdf", content_hash="original1234",
         )
         _, status = await ensure_document(
-            db, self.shim(url), funder_id=None, doc_type="csr_report",
+            db, self.shim(url), owner=None, doc_type="csr_report",
             storage_path="ab/different.pdf", content_hash="different123",
         )
         assert status == "matched", "a second promote must not rewrite provenance"
@@ -308,7 +308,7 @@ class TestEnsureDocumentRecordsTheArchive:
         """
         url = "https://test.invalid/test-html-page"
         doc_id, _ = await ensure_document(
-            db, self.shim(url), funder_id=None, doc_type="webpage"
+            db, self.shim(url), owner=None, doc_type="webpage"
         )
         row = await (await db.execute(
             "SELECT storage_path, content_hash FROM documents WHERE id = %s", (doc_id,)

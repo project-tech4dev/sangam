@@ -1,26 +1,30 @@
-"""What the catalog already holds, what it expects, and the step that writes to it.
+"""What the catalog already holds, what it expects, and the two steps that write to it.
 
-Read-only but for `promote_research`, which is the one tool here that changes a
-catalog row — and even that writes nothing of its own: it moves a saved
-`entity_research` finding through `app/ingest/promote.py`.
+Read-only but for `promote_research`, which moves saved research through `promote.py` (a person answers what is not obvious), and
+`record_registry_check`, which records a staff member's own registry check through `manual_checks.py`.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
 from langchain_core.tools import tool
 
 from app.agent.tools.sql.catalog import CATALOG
+from app.core.security import chat_user_id
 from app.db.pool import get_pool
+from app.ingest import coverage, manual_checks
 from app.ingest.expectations import (
-    CONCEPT_TABLES,
+    CONCEPTS,
     concepts_for,
     expected_fields,
     recent_fiscal_years,
 )
+from app.ingest.matcher import resolve_funder, resolve_org
 from app.ingest.promote import promote
+from app.ingest.writer import Gate
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +54,11 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
     # Both tables carry these; funder_type and section_135_bound are a funder's
     # and org_kind and legal_form are an NGO's, so the head line differs.
     head = (
-        "id, name, slug, registry_status, funder_type, website, parent_id, section_135_bound"
+        "id, name, slug, registry_status, funder_type, website, parent_id, section_135_bound, cin, aliases, "
+        "intake_mode, funds_external, typical_duration_months, grant_size_min, grant_size_max"
         if entity_kind == "funder"
-        else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort"
+        else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort, website, "
+        "aliases, staff_count, staff_count_note, source_type, evidence"
     )
     try:
         pool = get_pool()
@@ -66,12 +72,22 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
                     (f"%{name}%", name, name),
                 )
             ).fetchall()
-            if not rows:
+            # A shared word is not a match: "Infosys Foundation" scored 0.48 against "SBI Foundation".
+            match = await (resolve_funder if entity_kind == "funder" else resolve_org)(conn, name)
+            top = next((r for r in rows if r["id"] == match.entity_id), None) if match.resolved else None
+            if match.resolved and top is None:
+                top = await (
+                    await conn.execute(f"SELECT {head} FROM {entity_table} WHERE id = %s", (match.entity_id,))
+                ).fetchone()
+            if top is None:
+                close = ", ".join(f"{r['name']} [{entity_kind}:{r['id']}]" for r in rows)
                 return (
                     f"No {noun} in the catalog matches {name!r}. Everything you find is a NEW "
                     f"RECORD. That is not evidence the {noun} is absent from the sector."
+                    + (f"\nClose names in the catalog, NOT the same {noun} unless a person confirms: "
+                       f"{close}" if close else "")
                 )
-            top = rows[0]
+            rows = [top, *(r for r in rows if r["id"] != top["id"])]
             fid = top["id"]
             out = [
                 f"{entity_table} [{entity_kind}:{fid}] {top['name']} ({top['slug']})",
@@ -107,20 +123,14 @@ def _row(r: Any) -> str:
 # contacts deliberately omits email and phone: the catalog withholds them.
 _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
-        "funder_identifiers",
-        """
-        SELECT id_type, id_value, verified FROM funder_identifiers
-        WHERE funder_id = %s ORDER BY id_type
-        """,
-    ),
-    (
         # Its standing bar, which is NOT the same question as whether a call is
         # open. Labelled so a reader cannot mistake "what the funder requires"
         # for "whether anybody qualifies" — nothing here judges an applicant.
-        "funder_eligibility (what the funder REQUIRES of applicants; not a judgement on any)",
+        "eligibility (the funder_eligibility document: what it REQUIRES of applicants; not a judgement on any)",
         """
-        SELECT kind, criterion, source_name FROM funder_eligibility
-        WHERE funder_id = %s ORDER BY kind, id
+        SELECT id AS document_id, title, as_of, source_url, left(content_md, 1500) AS text
+        FROM documents WHERE funder_id = %s AND doc_type = 'funder_eligibility'
+        ORDER BY fetched_at DESC NULLS LAST, id DESC LIMIT 1
         """,
     ),
     (
@@ -138,23 +148,27 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         "funder_csr_years (amounts in INR)",
         """
         SELECT fiscal_year, prescribed_csr, total_spent, average_net_profit, unspent_transferred,
-               source_name
+               local_area_spent, source_name
         FROM funder_csr_years WHERE funder_id = %s ORDER BY fiscal_year
         """,
     ),
     (
-        "funder_csr_spend",
+        "funder_activity kind='spend' (filed lines, INR; domain and theme are INFERRED unless confirmed)",
         """
-        SELECT fiscal_year, project_name, amount, implementing_agency, designation
-        FROM funder_csr_spend WHERE funder_id = %s ORDER BY fiscal_year
+        SELECT a.fiscal_year, a.project_name, a.amount, a.outlay, a.partner_name, a.implementation_mode,
+               a.designation, d.code AS domain, t.code AS theme, a.classified_by, a.classification_confirmed
+        FROM funder_activity a
+        LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
+        WHERE a.funder_id = %s AND a.kind = 'spend' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (
-        "funder_footprints",
+        "funder_activity kind='footprint' (where the work actually ran)",
         """
-        SELECT f.fiscal_year, f.name_as_printed, l.name AS location
-        FROM funder_footprints f LEFT JOIN locations l ON l.id = f.location_id
-        WHERE f.funder_id = %s ORDER BY f.fiscal_year
+        SELECT a.fiscal_year, a.name_as_printed, s.name AS state, l.name AS location
+        FROM funder_activity a
+        LEFT JOIN locations s ON s.id = a.state_location_id LEFT JOIN locations l ON l.id = a.location_id
+        WHERE a.funder_id = %s AND a.kind = 'footprint' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (
@@ -165,10 +179,22 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "funder_partners",
+        ("funder_activity kind='partner' (named partners and grants; an amount, INR, is what the partner "
+         "received, and a multi-year grant's whole amount sits on its start year)"),
         """
-        SELECT fiscal_year, partner_name, partner_canonical, partner_kind
-        FROM funder_partners WHERE funder_id = %s ORDER BY fiscal_year
+        SELECT fiscal_year, partner_name, partner_canonical, partner_kind, project_name, outlay, amount,
+               start_date, end_date, relationship_status, partner_org_id
+        FROM funder_activity WHERE funder_id = %s AND kind = 'partner' ORDER BY fiscal_year, id
+        """,
+    ),
+    (
+        "funder_activity kind='programme' (the funder's OWN programme totals; never add them to spend)",
+        """
+        SELECT a.fiscal_year, p.name AS programme, a.amount, d.code AS domain, t.code AS theme,
+               a.classification_confirmed
+        FROM funder_activity a JOIN programs p ON p.id = a.program_id
+        LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
+        WHERE a.funder_id = %s AND a.kind = 'programme' ORDER BY a.fiscal_year, p.name
         """,
     ),
     (
@@ -176,13 +202,6 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """
         SELECT name, kind, status, start_date, end_date FROM programs
         WHERE funder_id = %s ORDER BY kind, name
-        """,
-    ),
-    (
-        "grants",
-        """
-        SELECT g.title, g.amount, g.status, g.start_date, o.name AS recipient
-        FROM grants g JOIN orgs o ON o.id = g.org_id WHERE g.funder_id = %s
         """,
     ),
     (
@@ -212,17 +231,18 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
 # metrics, contacts, documents) are the same query with the other foreign key.
 _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
-        "org_identifiers (12A, 80G and FCRA live here)",
+        ("org_identifiers (current = 'registered' or 'provisional' with a number; 'applied' is not a "
+         "registration; 'check_blocked' is not 'valid')"),
         """
-        SELECT id_type, id_value, verified, is_current FROM org_identifiers
-        WHERE org_id = %s ORDER BY id_type
+        SELECT id_type, id_value, status, valid_until, application_ref, is_current, source_type, evidence
+        FROM org_identifiers WHERE org_id = %s ORDER BY id_type, is_current DESC, id
         """,
     ),
     (
         "org_financials (amounts in INR)",
         """
         SELECT fiscal_year, total_income, program_spend, non_program_spend,
-               foreign_contribution, is_audited
+               foreign_contribution, foreign_unspent, is_audited, source_type, evidence
         FROM org_financials WHERE org_id = %s ORDER BY fiscal_year
         """,
     ),
@@ -241,10 +261,12 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "grants received",
+        "funder_activity kind='partner' naming this organisation (grants received; amount INR)",
         """
-        SELECT g.title, g.amount, g.status, g.start_date, f.name AS funder
-        FROM grants g JOIN funders f ON f.id = g.funder_id WHERE g.org_id = %s
+        SELECT a.fiscal_year, f.name AS funder, a.project_name, a.amount, a.relationship_status,
+               a.start_date, a.end_date
+        FROM funder_activity a JOIN funders f ON f.id = a.funder_id
+        WHERE a.partner_org_id = %s AND a.kind = 'partner' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (
@@ -284,7 +306,7 @@ def _reject_unknown(entity_kind: str) -> str | None:
     It is what a not_found or wrong_entity row is saved as, and legacy rows
     hold it, so the column keeps it. But a run that has not decided which kind
     it is researching cannot be given a target list: it would get a funder's,
-    which is how an NGO ended up aimed at funder_identifiers.
+    which is how an NGO ended up aimed at the funder tables.
     """
     if entity_kind in _BY_KIND:
         return None
@@ -353,12 +375,13 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
             out.append(
                 "\nThis is an NGO, so these are the org tables: its registrations are 12A, 80G "
                 "and FCRA, not a CSR-1, and its money is income and programme spend rather than "
-                "a Section 135 obligation. Every concept below promotes — with one rule: on an "
-                "organisation the catalog already holds, research fills blanks only and never "
-                "overwrites a value somebody entered by hand."
+                "a Section 135 obligation. Every concept below promotes, and every finding names "
+                "its source_type and evidence_tier: a blank is always filled, a stronger source "
+                "replaces a weaker one, and any other disagreement is kept and reported as a conflict."
             )
         for concept in wanted_concepts:
-            table = CONCEPT_TABLES[concept]
+            spec = CONCEPTS[concept]
+            target = spec.table + (f" ({spec.row_filter[0]}='{spec.row_filter[1]}')" if spec.row_filter else "")
             fields = expected_fields(concept)
             count, seen_years = held.get(concept, (0, []))
             state = f"{count} row(s) held" if count else "NOT RECORDED"
@@ -366,12 +389,13 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                 missing = [y for y in wanted if y not in seen_years]
                 state += f", years {', '.join(sorted(seen_years))}"
                 state += f" — still missing {', '.join(missing)}" if missing else " — years covered"
-            out.append(f"\n{concept} -> {table}: {state}")
+            out.append(f"\n{concept} -> {target}: {state}")
             out += [f"    {f.describe()}" for f in fields]
 
         out.append(
             "\nFields nothing can fill are as useful as fields you fill: say which you looked "
-            "for and did not find, and pass them to save_research as not_found."
+            "for and did not get, and pass each to save_research as a gap: blocked if the source "
+            "could not be read, not_stated if it was read and does not say."
         )
         return "\n".join(out)
     except Exception as exc:
@@ -395,61 +419,186 @@ async def _held_per_concept(
     entity_table, fk, _ = _BY_KIND[entity_kind]
     out: dict[str, tuple[int, list[str]]] = {}
     for concept in concepts_for(entity_kind):
-        table = CONCEPT_TABLES[concept]
+        spec = CONCEPTS[concept]
+        table = spec.table
         # The entity's own row, which is the match we already have in hand.
         if table == entity_table:
             out[concept] = (1, [])
             continue
-        # Table and column names come from module constants, never a caller.
         has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
         years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
+        # funder_activity hangs off the funder; an NGO's lines are the ones naming it as the partner.
+        col = "partner_org_id" if entity_kind == "org" and table == "funder_activity" else fk
+        # Table, column and filter column come from module constants, never a caller.
+        where, params = f"{col} = %s", [entity_id]
+        if spec.row_filter:
+            where += f" AND {spec.row_filter[0]} = %s"
+            params.append(spec.row_filter[1])
         found = await (
             await conn.execute(
-                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE {fk} = %s",
-                (entity_id,),
+                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE {where}", tuple(params)
             )
         ).fetchone()
         out[concept] = (found["n"], [y for y in (found["years"] or []) if y])
     return out
 
 
+async def _research_rows(pool: Any, slug: str) -> list[dict[str, Any]]:
+    async with pool.connection() as conn:
+        rows = await (
+            await conn.execute(
+                "SELECT DISTINCT ON (slug) * FROM entity_research "
+                + ("WHERE slug = %s " if slug else "")
+                + "ORDER BY slug, researched_at DESC",
+                (slug,) if slug else (),
+            )
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _comparison(plan: dict[str, Any]) -> dict[str, Any]:
+    """The plan grouped the way a person reads it, case by case."""
+    items = plan.get("plan", {}).get("items", [])
+    group = {2: "updated", 3: "older_or_undated", 4: "close_match", 5: "new"}
+    out: dict[str, Any] = {"slug": plan["slug"], "entity": plan["entity"],
+                           "same": plan.get("plan", {}).get("same", 0),
+                           **{name: [] for name in group.values()},
+                           "held": plan["held"], "not_promoted": plan["reasons"]}
+    for item in items:
+        out[group[item["case"]]].append(item)
+    return out
+
+
 @tool
-async def promote_research(slug: str = "") -> str:
+async def compare_with_catalog(slug: str) -> str:
+    """Compare one entity's saved research with what the catalog already holds. Writes nothing.
+
+    Every finding lands in one of five cases. Same value: nothing to do. Same row, newer or
+    as-recent source: `updated`, saved without asking. Same row, older or undated source:
+    `older_or_undated`, a person chooses update or keep. A close but not exact name, e.g.
+    "Nanhi Kali" against a stored "Project Nanhi Kali": `close_match`, a person chooses update
+    that row, new row, or skip. Nothing close: `new`, saved without asking.
+
+    Call it after research is saved and before catalog-writer. Summarise `older_or_undated`
+    and `close_match` in one line each, citing the stored row; the person answers when the
+    writer asks. An NGO keeps its own rule (blanks are filled, conflicts are reported), so
+    this compares funders only.
+
+    Args:
+        slug: the researched entity, as save_research returned it.
+    """
+    try:
+        pool = get_pool()
+        rows = await _research_rows(pool, slug)
+        if not rows:
+            return f"No saved research for {slug!r}. Research first."
+        row = rows[0]
+        if row.get("entity_kind") == "org":
+            return (f"{slug} is an NGO: promotion fills its blanks and reports every conflict, so there "
+                    "is nothing to ask before saving.")
+        async with pool.connection() as conn:
+            plan = await promote(conn, row, gate=Gate(plan=True))
+        return json.dumps(_comparison(plan), default=str)
+    except Exception as exc:
+        logger.exception("compare_with_catalog failed")
+        return f"compare_with_catalog failed: {type(exc).__name__}: {exc}"
+
+
+@tool
+async def coverage_report(slug: str) -> str:
+    """What one entity's research was expected to find, what it found, and why the rest is missing. Writes nothing.
+
+    Expected is the catalog's own list for that kind of organisation: every concept, each
+    year-bound concept once per year asked, and every field. Each missing cell carries one
+    reason: not attempted (no finding and no gap recorded), not stated (a source was read
+    and does not say), blocked (the source could not be read), or found, not written (the
+    catalog has nowhere to put it). Percentages are of the expected cells and fields.
+
+    Call it after each researcher returns and again after each catalog write, and print the
+    output exactly as returned. Never restate it as prose or recompute a number.
+
+    Args:
+        slug: the researched entity, as save_research returned it.
+    """
+    try:
+        pool = get_pool()
+        rows = await _research_rows(pool, slug)
+        if not rows:
+            return f"No saved research for {slug!r}. Research first."
+        row = rows[0]
+        report = None
+        if row.get("entity_kind") != "org":
+            async with pool.connection() as conn:
+                report = await promote(conn, row, gate=Gate(plan=True))
+        return coverage.render(coverage.compute(row, report=report))
+    except Exception as exc:
+        logger.exception("coverage_report failed")
+        return f"coverage_report failed: {type(exc).__name__}: {exc}"
+
+
+async def write_preview(slug: str) -> dict[str, Any]:
+    """What SaveQuestions puts on the pause: a funder's case 3 and 4 questions, the planned rows, and coverage."""
+    rows = await _research_rows(get_pool(), slug)
+    if not rows:
+        return {"questions": [], "planned": [], "coverage": ""}
+    row = rows[0]
+    if row.get("entity_kind") == "org":
+        head = coverage.render(coverage.compute(row)).split("\n")[1]
+        return {"questions": [], "planned": ["An NGO: blanks are filled, conflicts are reported."], "coverage": head}
+    async with get_pool().connection() as conn:
+        plan = await promote(conn, row, gate=Gate(plan=True))
+    counts: dict[str, int] = {}
+    for item in plan.get("plan", {}).get("items", []):
+        if item["case"] in (2, 5):
+            counts[item["table"]] = counts.get(item["table"], 0) + 1
+    planned = [f"{table}: {n} row(s)" for table, n in sorted(counts.items())]
+    if plan.get("held"):
+        planned.append(f"held back: {len(plan['held'])}")
+    head = coverage.render(coverage.compute(row, report=plan)).split("\n")[1]
+    return {"questions": plan.get("questions", []), "planned": planned, "coverage": head}
+
+
+@tool
+async def promote_research(slug: str = "", decisions: dict[str, str] | None = None) -> str:
     """Move saved research into the catalog, where a writer exists for it.
 
     Research and the catalog are different: a finding is what a source said,
     a catalog row is what the product answers from. This is the step between.
 
-    Works on either kind. A funder's findings reach funders, funder_identifiers
+    Works on either kind. A funder's findings reach funders
     and the funder fact tables; an NGO's reach orgs, org_identifiers,
-    org_financials and org_locations, and both kinds write the shared
-    programmes, metrics, contacts and documents. `grant` is the one concept
-    that still stays research, and anything held back is reported rather than
-    silently dropped. A name that resembles an organisation we already hold
+    org_financials and org_locations under the evidence-tier precedence rule —
+    a weaker source never overwrites a stronger one, and a disagreement is
+    reported as a conflict with both values and both sources, never resolved
+    silently. Both kinds write the shared
+    programmes, metrics, contacts and documents. A grant is a partner line,
+    linked to the organisation only when the matcher would merge the name, and
+    anything held back is reported rather than silently dropped. A name that resembles an organisation we already hold
     without matching it is NOT merged; it is reported for a person.
+
+    A funder's values that differ from the catalog's are saved without asking
+    only when the research's source is as recent or newer. An older or undated
+    source, or a close-but-not-exact name, is asked about before this runs: the
+    person picks an answer per question, and their answers decide what is written.
+    Unanswered questions are held, not saved.
+    Only a single slug asks: with an empty slug those findings are held, and
+    promoting that slug on its own is how they get asked.
 
     Args:
         slug: one entity, or empty for every researched entity not yet promoted.
+        decisions: leave empty. The person's answers fill it; anything you put here is dropped.
     """
     try:
         pool = get_pool()
-        async with pool.connection() as conn:
-            rows = await (
-                await conn.execute(
-                    "SELECT DISTINCT ON (slug) * FROM entity_research "
-                    + ("WHERE slug = %s " if slug else "")
-                    + "ORDER BY slug, researched_at DESC",
-                    (slug,) if slug else (),
-                )
-            ).fetchall()
+        rows = await _research_rows(pool, slug)
         if not rows:
             return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
 
         reports = []
-        async with pool.connection() as conn:
-            for row in rows:
-                async with conn.transaction():
-                    reports.append(await promote(conn, dict(row)))
+        for row in rows:
+            # SaveQuestions asked the person before this ran and put their answers here.
+            async with pool.connection() as conn, conn.transaction():
+                reports.append(await promote(conn, row, gate=Gate(decisions or {})))
 
         lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
         for r in reports:
@@ -463,20 +612,81 @@ async def promote_research(slug: str = "") -> str:
             for table, counts in sorted(r.get("written", {}).items()):
                 tally = ", ".join(f"{n} {status}" for status, n in sorted(counts.items()))
                 lines.append(f"    {table}: {tally}")
+            for change in r.get("changes", []):
+                cols = ", ".join(f"{c} {v['old']!r} → {v['new']!r}" for c, v in change.get("changes", {}).items())
+                lines.append(f"    changed {change['table']} {change['label']} {change.get('row') or ''}: "
+                             + (cols or f"{change.get('stored_name')!r} → {change.get('new_name')!r}"))
             for reason in r["reasons"]:
                 lines.append(f"  {r['slug']}: not promoted — {reason}")
             for held in r.get("held", []):
                 lines.append(f"    held back: {held}")
+            for conflict in r.get("conflicts", []):
+                lines.append(f"    conflict: {conflict}")
             if r["skipped"]:
                 skipped = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
                 lines.append(f"    still research only (no writer): {skipped}")
         lines.append(
-            "\nA grant needs its recipient to already be in orgs, and promoting a funder's "
-            "research does not put it there, so grant findings stay research — they are on "
-            "file and in docs/entities/. Anything held back is named above: it is a decision "
-            "waiting for a person, not a silent loss."
+            "\nA grant is a partner line on the funder: linked to the organisation only when the "
+            "name matches one we hold, never on a resemblance. Anything held back is named above: "
+            "it is a decision waiting for a person, not a silent loss."
         )
         return "\n".join(lines)
     except Exception as exc:
         logger.exception("promote_research failed")
         return f"promote_research failed: {type(exc).__name__}: {exc}"
+
+
+@tool
+async def record_registry_check(
+    org: str,
+    id_type: str,
+    status: str,
+    source_url: str,
+    id_value: str = "",
+    application_ref: str = "",
+    evidence_document_id: int | None = None,
+    note: str = "",
+    checked_on: str = "",
+) -> str:
+    """Record a registry check a staff member made by hand. Staff only; it writes one catalog row.
+
+    Use it only when the staff member tells you what THEY saw on a registry Sangam cannot read
+    (a CAPTCHA, a sign-in or a network filter in the way). Never record a check from your own
+    reading or a researcher's: research is not a check. The checker is the signed-in staff member
+    of this conversation, never an argument.
+
+    The check is ranked like any other source: level with a registry read, above everything
+    else. Registrations lapse, so a NEWER check replaces a dated registry read or manual check
+    with a different status. Against an older check, or an undated row with a different status,
+    the stored row is kept and the difference reported as a conflict, except that a numbered check
+    takes an undated open row (no number) whose status is applied, provisional or not_found. A
+    check that AGREES with a row dated earlier, or with an undated row, confirms it and updates its
+    check date and checker; recorded again with a document (same date or later) it upgrades
+    claimed to evidenced. A row a person entered (no tier) is never replaced. `check_blocked` never replaces a real status, whatever its date;
+    the attempt is noted on the row.
+
+    Args:
+        org: the organisation's slug, its exact name, or its id from [org:N].
+        id_type: pan, 12a, 80g, fcra, csr1, darpan, cin or reg_no.
+        status: registered, provisional, expired, suspended, cancelled, surrendered (these need
+            the number), applied (needs the number or application_ref; applied is NOT registered),
+            not_available, not_found (the registry was read and does not list it), or
+            check_blocked (it could not be read even by hand; never not_found, never valid).
+        source_url: the http(s) address of the registry page that was checked.
+        id_value: the registration number. Omit to use the one number already on file.
+        application_ref: for 'applied', the acknowledgement number (e.g. Form 10AB).
+        evidence_document_id: the id of a document uploaded to THIS organisation's Doc Vault
+            showing what was seen (a screenshot, a certificate). With it the check is evidenced;
+            without it the check is stored as claimed, and the reply says so.
+        note: what was checked, where and how, in the staff member's words.
+        checked_on: the date the staff member checked, as 2026-10-08. Omit for today.
+    """
+    try:
+        return await manual_checks.record(
+            get_pool(), org=org, id_type=id_type, status=status, source_url=source_url, id_value=id_value,
+            application_ref=application_ref, document_id=evidence_document_id, note=note,
+            checked_on=checked_on, user_id=chat_user_id.get(),
+        )
+    except Exception as exc:
+        logger.exception("record_registry_check failed")
+        return f"record_registry_check failed: {type(exc).__name__}: {exc}"

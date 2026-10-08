@@ -61,13 +61,14 @@ check_json    "stats: cohort counts"       "$BACKEND/api/meta/stats" "d['orgs'] 
 check_json    "orgs: legacy array of 10"   "$BACKEND/api/orgs" "isinstance(d, list) and len(d) == 10"
 check_json    "funders: latest_scores"     "$BACKEND/api/funders" "d[0]['latest_scores'].get('v1') is not None"
 check_json    "scores: 8 assessments"      "$BACKEND/api/scores?limit=100" "d['total'] == 8"
-check_json    "grants: 4 relationships"    "$BACKEND/api/grants" "d['total'] == 4"
+# >= since 0034: a grant is a partner line, and Import adds partner lines too.
+check_json    "partner lines: 4+ grants"   "$BACKEND/api/partner-lines?org=kabil" "d['total'] >= 4"
 check_json    "documents: 96+ on file"    "$BACKEND/api/documents?limit=1" "d['total'] >= 96"
 check_status  "agent AG-UI health"         "$BACKEND/agent/health" 200 5
 
 say "── frontend ─────────────────────────────────────"
-# /resources/taxonomy reads copies of the seed files; the originals in features-plans are the source.
-TAX_SRC="features-plans/data-model/seed/data/taxonomy" TAX_COPY="frontend/features/taxonomy/data"
+# /resources/taxonomy reads copies of the seed files; seed/data/taxonomy is the source.
+TAX_SRC="seed/data/taxonomy" TAX_COPY="frontend/features/taxonomy/data"
 if diff -q "$TAX_SRC/themes.json" "$TAX_COPY/themes.json" >/dev/null && diff -q "$TAX_SRC/common.json" "$TAX_COPY/common.json" >/dev/null; then
   ok "taxonomy copies match their seed files"
 else
@@ -90,7 +91,7 @@ say "── chat wire (runtime → backend → agent) ────────"
 if [[ "${SMOKE_SKIP_LLM:-0}" == "1" ]]; then
   say "  ‣ skipped (SMOKE_SKIP_LLM=1)"
 else
-  RESP=$(curl -sN --max-time 120 -X POST "$FRONTEND/api/copilotkit/agent/sangam_agent/run" \
+  RESP=$(curl -sN --max-time 120 -X POST "$FRONTEND/api/copilotkit/agent/sangam_agent/run" "${AUTH[@]}" \
     -H 'Content-Type: application/json' -H 'Accept: text/event-stream' \
     -d '{"threadId":"smoke-'"$(date +%s)"'","runId":"smoke-1","messages":[{"id":"m1","role":"user","content":"Reply with the single word: ok"}],"tools":[],"context":[],"state":{},"forwardedProps":{}}' | head -c 4000)
   if grep -q "RUN_STARTED" <<<"$RESP"; then

@@ -1,4 +1,4 @@
-"""The adapter path: the source registry, and the runs that pull from it.
+"""The adapter path: the source registry, the runs that pull from it, and the staff workbooks.
 
 One tool per step of a write-run — see which sources may be read, say what a
 run would pull, run it, read the summary back, and see what it queued for a
@@ -15,8 +15,10 @@ from langchain_core.tools import tool
 from app.agent.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
+from app.ingest import staff_sources
 from app.ingest.runner import catalog_baseline, run_import, summarise
 from app.ingest.sources import SOURCES, Category, resolve
+from app.integrations import storage
 
 logger = logging.getLogger(__name__)
 
@@ -325,3 +327,136 @@ def format_summary(s: dict[str, Any]) -> str:
         if len(s["needs_attention"]) > 15:
             parts.append(f"  … and {len(s['needs_attention']) - 15} more; ask for the run detail.")
     return "\n".join(parts)
+
+
+@tool
+async def list_storage_buckets() -> str:
+    """List the Storage buckets a person can pick workbooks from.
+
+    Call this when a request needs staff data (CSR filing exports, the CSO funder
+    workbook) and you do not yet know which files exist. Then list_bucket_files with
+    the bucket you think fits: the person confirms or changes it.
+    """
+    try:
+        buckets = await storage.list_buckets()
+        if not buckets:
+            return "No bucket is visible: Storage is off or unreachable. Staff workbooks cannot be picked."
+        lines = [f"{len(buckets)} bucket(s):"]
+        for b in sorted(buckets, key=lambda b: str(b.get("id"))):
+            note = " — staff workbooks (CSR filings, the CSO workbook)" if (
+                b.get("id") == storage.STAFF_SOURCES) else ""
+            lines.append(f"- {b.get('id')} ({'public' if b.get('public') else 'private'}){note}")
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure
+        return f"list_storage_buckets failed: {type(exc).__name__}"
+
+
+@tool
+async def list_bucket_files(bucket: str, prefix: str = "") -> str:
+    """List the .xlsx workbooks in a bucket, with sizes and upload dates, to choose from.
+
+    The run pauses here first: a person confirms your bucket or picks another, and
+    the listing is of the bucket they chose.
+
+    Args:
+        bucket: your best guess from list_storage_buckets, usually "staff-sources".
+        prefix: optional folder, e.g. "mca_csr" (a registry source key).
+
+    Each line is a path to pass to select_source_files as-is.
+    """
+    try:
+        found = [f for f in await storage.list_all(bucket, prefix) if f["key"].lower().endswith(".xlsx")]
+        if not found:
+            return f"No .xlsx file under {bucket}/{prefix.strip('/')}."
+        lines = [f"{len(found)} workbook(s) in {bucket}:"]
+        for f in found:
+            size = f"{f['size'] / 1024 / 1024:.1f} MB" if isinstance(f.get("size"), int) else "size unknown"
+            lines.append(f"- {storage.qualify(bucket, f['key'])} · {size} · uploaded {str(f.get('updated_at'))[:10]}")
+        if len(found) >= storage.LIST_MAX_FILES:
+            lines.append(f"Listing stopped at {storage.LIST_MAX_FILES}: narrow it with prefix.")
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure
+        return f"list_bucket_files failed: {type(exc).__name__}"
+
+
+@tool
+async def select_source_files(paths: list[str]) -> str:
+    """Propose the staff workbooks this run should read. A person confirms or edits the list first.
+
+    The run pauses here until staff approve, edit or reject the selection in the
+    Import screen. On approval each file is registered and you get back its
+    document id: put those ids in each subagent's task — a researcher's
+    read_source_rows(name, documents=[...]), or the workbook-reader's.
+
+    Args:
+        paths: paths exactly as list_bucket_files printed them,
+            e.g. ["staff-sources/mca_csr/csr_2023-24.xlsx"]. Any bucket; .xlsx only.
+    """
+    try:
+        if not paths:
+            return "select_source_files needs at least one path."
+        lines = []
+        for path in dict.fromkeys(paths):
+            refusal = staff_sources.check_pick(path)
+            outcome = refusal if isinstance(refusal, str) else await staff_sources.register(get_pool(), path)
+            lines.append(f"- {path} → document {outcome}" if isinstance(outcome, int) else f"- refused: {outcome}")
+        return "\n".join(["Selected by staff. Pass these document ids to the subagents that read them:", *lines])
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure
+        return f"select_source_files failed: {type(exc).__name__}"
+
+
+@tool
+async def read_source_rows(name: str, sheet: str = "", documents: list[int] | None = None) -> str:
+    """Read the staff-only workbooks — statutory CSR filing exports and the CSO funder workbook — for one name.
+
+    Searches every sheet of every uploaded workbook for rows naming `name`, or any name
+    the catalog holds for that funder (its aliases). Returns each sheet's header rows, the
+    matching rows, and the section heading and sub-table header above each match, every
+    row as cell=value pairs with a [source:<document>#<sheet>!<cell>] marker.
+
+    Cite a fact by the marker of the CELL that holds it (change the cell in the marker),
+    with the dataset's source_url and source_name printed above its rows. The source_url
+    is cited, never fetched. Amounts are as printed: save the figure with the sheet's
+    unit (crore, lakh or a unit written in the cell), as "The staff sheets" in your
+    instructions says.
+
+    Contact columns are removed by design. The filer is often the parent company, not
+    the foundation: search both names.
+
+    Args:
+        name: a company, funder or CSO name, at least three letters.
+        sheet: optional part of a sheet name (e.g. "2023-24") to read one sheet only.
+        documents: the document ids select_source_files returned, as your task gives them.
+            Only those files are read. With none, nothing is: staff chose no workbook.
+    """
+    try:
+        # Staff choose the files; an empty pick used to mean every workbook ever registered.
+        if not documents:
+            return ("No staff files were selected for this run, so nothing was read. Record a fact that "
+                    "only a staff workbook holds as a gap with reason 'blocked', detail 'no staff file selected'.")
+        return await staff_sources.read_rows(get_pool(), name, sheet=sheet, documents=documents)
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure; type only, never a value
+        return f"read_source_rows failed: {type(exc).__name__}"
+
+
+@tool
+async def read_workbook(documents: list[int], sheet: str = "", start_row: int = 1, limit: int = 100) -> str:
+    """Open the picked staff workbooks and read what they hold, sheet by sheet.
+
+    Without `sheet`: an outline — every sheet's name, how many filled rows and columns it
+    has, and its top header rows. With `sheet`: the header rows plus `limit` rows from
+    `start_row`, and the start_row of the next page while rows remain. Every row comes as
+    cell=value pairs with a [source:<document>#<sheet>!<cell>] marker.
+
+    Contact columns are removed and emails and phone numbers are redacted by design.
+
+    Args:
+        documents: the document ids select_source_files returned, as your task gives them.
+        sheet: part of a sheet name from the outline (e.g. "Funders"); empty for the outline.
+        start_row: the spreadsheet row to start the page at (1 is the top).
+        limit: rows per page, at most 200.
+    """
+    try:
+        return await staff_sources.browse(get_pool(), documents, sheet=sheet, start_row=start_row, limit=limit)
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure; type only, never a value
+        return f"read_workbook failed: {type(exc).__name__}"

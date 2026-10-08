@@ -139,7 +139,7 @@ class Column:
     type: str                      # as written in db/init/02_schema.sql
     note: str = ""                 # meaning / gotcha, shown by db_describe_table
     values: tuple[str, ...] = ()   # verbatim CHECK enum — free, accurate, no row sampling
-    cites: str | None = None       # "org" | "funder" | "grant" | "score"
+    cites: str | None = None       # "org" | "funder" | "activity" | "score"
     heavy: bool = False            # selectable explicitly, excluded from `*` expansion
 
 @dataclass(frozen=True, slots=True)
@@ -155,9 +155,9 @@ class Table:
 Derived once at import: `TABLE_NAMES`, `COLUMNS`, `SQLGLOT_SCHEMA` (what `qualify()` wants),
 `STAR_COLUMNS` (non-heavy only), `CITE_COLUMNS`, `DEFECTS`.
 
-**In (41 tables after the v3 migrations; 28 when this was written):** orgs, funders, grants, programs, rfps, rfp_matches, fit_scores,
+**In (32 tables after the v3 migrations, `tag_links`, `0031`'s funder consolidation and `0033`'s and `0034`'s drops; 28 when this was written):** orgs, funders, programs, rfps, rfp_matches, fit_scores,
 fit_score_items, rubrics, rubric_criteria, score_adjustments, contacts, documents, chunks,
-news_mentions, tags, locations, extraction_log, the two `*_identifiers`, and all eight
+news_mentions, tags, tag_links, locations, extraction_log, `org_identifiers`, `funder_activity`, and all seven
 `*_tags` / `*_locations` join tables.
 
 **Out entirely** — a reference is an "unknown table" error: `checkpoints`, `checkpoint_blobs`,
@@ -339,7 +339,7 @@ rejection already tells the model everything a dry run would.
 *"ALWAYS use this before filtering on a text column — the stored values often differ from what
 the user said (e.g. the user says 'Maharashtra' but the column stores 'MH')."* Sangam has the
 identical hazard in at least four places: `orgs.legal_form` is free text (`Society | Trust |
-Section 8 | …`), `grants.status` is a four-value CHECK enum, `tags.label` is a 40-row
+Section 8 | …`), `funder_activity.relationship_status` is a four-value CHECK enum, `tags.label` is a 40-row
 vocabulary, and `locations.name` is upper-case (`DIMAPUR`, not `Dimapur`). A model filtering
 `WHERE legal_form = 'Trust'` against stored `'Public Charitable Trust'` gets a confident zero.
 Implementation is a server-constructed `SELECT col, count(*) … GROUP BY 1 ORDER BY 2 DESC
@@ -359,8 +359,8 @@ go through `PsycopgExecutor` here, so it inherits the read-only transaction, the
 the reader role. Don't reproduce the shortcut.
 
 `db_describe_table` is where the brief's "relationships" requirement lands: it renders foreign
-keys **in both directions** from the catalog (`grants.funder_id → funders.id`; and on
-`funders`, *referenced by* `grants.funder_id`, `rfps.funder_id`, `fit_scores.funder_id`, …),
+keys **in both directions** from the catalog (`funder_activity.funder_id → funders.id`; and on
+`funders`, *referenced by* `funder_activity.funder_id`, `rfps.funder_id`, `fit_scores.funder_id`, …),
 the CHECK enums verbatim, and the defect lines — at zero database round-trips.
 
 **No live sample rows** (unlike LangChain's `sample_rows_in_table_info=3`): they cost a query

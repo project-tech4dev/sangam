@@ -11,7 +11,7 @@ import pytest
 from fastapi import FastAPI
 from psycopg.rows import dict_row
 
-from app.core.security import DEV_USER_ID, get_current_user
+from app.core.security import DEV_USER, DEV_USER_ID, get_current_user, get_principal
 from app.db.pool import get_pool
 
 TEST_USER = UUID("00000000-0000-0000-0000-000000000001")
@@ -29,6 +29,7 @@ def make_app(*routers) -> FastAPI:
     for router in routers:
         app.include_router(router, prefix="/api")
     app.dependency_overrides[get_current_user] = lambda: TEST_USER
+    app.dependency_overrides[get_principal] = lambda: DEV_USER
     # Routers resolve the pool through Depends(get_pool), so one override covers
     # every router — no per-module list to keep in sync when a resource is added.
     app.dependency_overrides[get_pool] = _SentinelPool

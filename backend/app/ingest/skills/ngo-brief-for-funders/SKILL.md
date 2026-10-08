@@ -17,7 +17,8 @@ record from `entity-record`. This skill is only the table across them.
 ## The table
 
 One row per organisation, in this order: **statutory standing** — 12A, 80G,
-CSR-1, each present or not, with the blocking one named · **FCRA, separately**
+CSR-1, each with its status, not a yes or a no (`applied` is not registered, `check_blocked` is
+not known), with the blocking one named · **FCRA, separately**
 · **DARPAN and blacklist status** · **three years of audited accounts, yes or
 which years are missing** · **latest programme spend with its year** ·
 **states and districts** · **primary themes** · **existing funders** ·
@@ -44,10 +45,10 @@ own note beside it, never a resolution.
 **Never treat a self-reported figure as independently verified**, and never
 report a cumulative reach number as an annual one.
 
-**Existing funders has no finding behind it.** `grant` is a funder-side
-concept and `grants.org_id` is NOT NULL, so this cell comes from the
-researcher's prose summary or from `funder_dossier` with `entity_kind='org'`.
-Say which, and write "not recorded" rather than leaving it out.
+**Existing funders** are the funders' `partner` lines naming the organisation,
+from `funder_dossier` with `entity_kind='org'` (grants received), or its
+`partner` findings when not yet promoted. Write "not recorded" rather than
+leaving the cell out.
 
 **Refuse to score.** A funder's own criteria decide fit, and a rating invented
 here is a judgement wearing a citation.
@@ -61,7 +62,7 @@ here is a judgement wearing a citation.
 ## What is stored and what is not
 
 An organisation's research promotes, so the comparison may well be describing
-rows the catalog holds. Two things it still does not hold, and a cell that
-depends on either says so: an NGO's **website**, which has no column, and any
-figure on an organisation the catalog already states differently — that
-difference is reported for a person, not stored.
+rows the catalog holds. A cell says so when the catalog holds a different
+figure from a source at least as strong — that difference is reported as a
+conflict for a person, not stored. A registration's cell gives its status:
+`applied` is not registered, and `check_blocked` is not valid.

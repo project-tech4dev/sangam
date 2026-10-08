@@ -45,10 +45,8 @@ async def catalog_baseline() -> dict[str, int]:
             await conn.execute(
                 "SELECT (SELECT count(*) FROM funders) AS funders, "
                 "(SELECT count(*) FROM funder_csr_years) AS funder_csr_years, "
-                "(SELECT count(*) FROM funder_csr_spend) AS funder_csr_spend, "
-                "(SELECT count(*) FROM funder_footprints) AS funder_footprints, "
+                "(SELECT count(*) FROM funder_activity) AS funder_activity, "
                 "(SELECT count(*) FROM funder_locations) AS funder_locations, "
-                "(SELECT count(*) FROM funder_partners) AS funder_partners, "
                 "(SELECT count(*) FROM programs) AS programs, "
                 "(SELECT count(*) FROM metrics) AS metrics, "
                 "(SELECT count(*) FROM contacts) AS contacts, "
@@ -109,7 +107,17 @@ async def run_import(
         for name in (funders or [None])
         for year in (years or [None])
     ]
-    await asyncio.gather(*tasks)
+    try:
+        await asyncio.gather(*tasks)
+    except BaseException as exc:
+        # A stopped turn cancels this task; without the row update it would read 'running' forever.
+        note = "cancelled" if isinstance(exc, asyncio.CancelledError) else f"{type(exc).__name__}: {exc}"
+        async with pool.connection() as conn, conn.transaction():
+            await conn.execute(
+                "UPDATE ingest_runs SET finished_at = now(), status = 'failed', notes = %s WHERE id = %s",
+                (note, run_id),
+            )
+        raise
 
     async with pool.connection() as conn, conn.transaction():
         await conn.execute(

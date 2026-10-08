@@ -8,35 +8,41 @@ from app.api.routes import (
     contacts,
     documents,
     funders,
-    grants,
     ingest,
+    me,
     meta,
     news,
+    org_members,
     orgs,
+    partner_lines,
     programs,
     rfps,
     scores,
+    threads,
 )
 
 # Tag order here is the order resources appear in the OpenAPI docs.
 OPENAPI_TAGS = [
     {"name": "orgs", "description": "CSO/NGO registry: profiles, identifiers, sectors, locations"},
     {"name": "funders", "description": "Funder profiles and their fit scores"},
-    {"name": "grants", "description": "Actual funding relationships between funders and orgs"},
+    {"name": "partner-lines", "description": "Funder partner lines: named partners and grants, from funder_activity"},
     {"name": "programs", "description": "Programs run by orgs or funders"},
     {"name": "rfps", "description": "Funding opportunities and org matches (RFP Watch)"},
     {"name": "contacts", "description": "People at orgs and funders"},
     {"name": "scores", "description": "Rubric-based funder-fit assessments and adjustment audit log"},
     {"name": "ingest", "description": "Sangam Import: sources, run history and the review queue"},
     {"name": "meta", "description": "Shared vocabularies: tags and locations"},
+    {"name": "me", "description": "The signed-in user and their org roles"},
+    {"name": "threads", "description": "Ask Sangam chats: the caller's list and one chat's saved messages"},
 ]
 
 api_router = APIRouter(prefix="/api")
 
 for _router in (
     orgs.router,
+    org_members.router,
     funders.router,
-    grants.router,
+    partner_lines.router,
     programs.router,
     rfps.router,
     contacts.router,
@@ -45,5 +51,7 @@ for _router in (
     news.router,
     documents.router,
     ingest.router,
+    me.router,
+    threads.router,
 ):
     api_router.include_router(_router)

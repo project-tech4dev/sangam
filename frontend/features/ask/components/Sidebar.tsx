@@ -1,15 +1,68 @@
 "use client";
 
 import { useState } from "react";
+import {
+  ChevronDown,
+  Folder,
+  MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Target,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 import type { ThreadMeta } from "../lib/threads";
 
-export type WorkspaceView = "ask" | "vault" | "media" | "rfpwatch" | "import";
+export type WorkspaceView = "ask" | "chats" | "funder-match" | "rfpwatch" | "vault" | "media" | "import";
 
-const CONTEXT_ITEMS: { id: WorkspaceView; label: string }[] = [
-  { id: "vault", label: "Doc vault" },
-  { id: "media", label: "Media & signals" },
-  { id: "rfpwatch", label: "RFP watch" },
+type Item = { id: WorkspaceView; label: string; soon?: boolean };
+type SectionId = "recent" | "usecases" | "context" | "tools";
+
+const USE_CASES: Item[] = [
+  { id: "funder-match", label: "Funder Match", soon: true },
+  { id: "rfpwatch", label: "RFP Watch" },
+  { id: "media", label: "Media & Signals" },
 ];
+
+const CONTEXT_ITEMS: Item[] = [{ id: "vault", label: "Doc Vault" }];
+
+/* The sidebar lists this many recent chats; "Show all" opens the rest in the main area. */
+const RECENT_LIMIT = 5;
+
+/* Icons are Lucide's; size, stroke and colour come from .icon in globals.css. */
+const SECTION_ICONS: Record<SectionId, LucideIcon> = {
+  recent: MessageSquare,
+  usecases: Target,
+  context: Folder,
+  tools: Wrench,
+};
+
+/* A section that opens and closes. The whole header row is the target, and its chevron
+   points down when open (.rail-toggle in globals.css). */
+function Section({
+  label,
+  open,
+  onToggle,
+  className = "",
+  children,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`rail-section ${className}`}>
+      <button type="button" className="rail-toggle" aria-expanded={open} onClick={onToggle}>
+        <span className="eyebrow">{label}</span>
+        <ChevronDown className="icon rail-chevron" aria-hidden />
+      </button>
+      {open && children}
+    </div>
+  );
+}
 
 export function Sidebar({
   collapsed,
@@ -30,118 +83,112 @@ export function Sidebar({
   onPickThread: (id: string) => void;
   onNewChat: () => void;
 }) {
-  const [toolsOpen, setToolsOpen] = useState(view === "import");
+  // Held here rather than in each section, so the collapsed rail can open the sidebar at one.
+  const [open, setOpen] = useState<Record<SectionId, boolean>>({
+    recent: true,
+    usecases: true,
+    context: true,
+    tools: view === "import",
+  });
+  const toggle = (id: SectionId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
 
   if (collapsed) {
+    const jump = (id: SectionId) => {
+      setOpen((o) => ({ ...o, [id]: true }));
+      onToggle();
+    };
+    const sections: [SectionId, string][] = [
+      ["recent", "Recent Chats"],
+      ["usecases", "Use Cases"],
+      ["context", "Context"],
+    ];
     return (
-      <div style={{ width: 40, flexShrink: 0, borderRight: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 14, gap: 10 }}>
-        <button className="btn btn-ghost" style={{ padding: 2 }} onClick={onToggle} title="Open workspace">
-          ⟩
+      <div className="ask-sidebar-collapsed">
+        <button type="button" className="rail-mini" onClick={onToggle} title="Open Workspace" aria-label="Open Workspace">
+          <PanelLeftOpen className="icon" aria-hidden />
+        </button>
+        <button type="button" className="rail-mini rail-mini-new" onClick={onNewChat} title="New Chat" aria-label="New Chat">
+          <Plus className="icon" aria-hidden />
+        </button>
+        <span className="rail-mini-rule" aria-hidden />
+        {sections.map(([id, label]) => {
+          const SectionIcon = SECTION_ICONS[id];
+          return (
+            <button key={id} type="button" className="rail-mini" onClick={() => jump(id)} title={label} aria-label={label}>
+              <SectionIcon className="icon" aria-hidden />
+            </button>
+          );
+        })}
+        <button type="button" className="rail-mini rail-mini-foot" onClick={() => jump("tools")} title="Tools" aria-label="Tools">
+          <Wrench className="icon" aria-hidden />
         </button>
       </div>
     );
   }
 
-  const itemStyle = (active: boolean) =>
-    ({
-      display: "block",
-      width: "100%",
-      textAlign: "left",
-      border: "none",
-      background: active ? "var(--color-accent-2-100)" : "transparent",
-      color: active ? "var(--color-accent-2-900)" : "var(--color-text)",
-      fontFamily: "var(--font-body)",
-      fontSize: "var(--fs-sm)",
-      fontWeight: 600,
-      padding: "8px 12px",
-      borderRadius: "var(--radius-row)",
-      cursor: "pointer",
-    }) as const;
+  const items = (list: Item[]) =>
+    list.map((item) => (
+      <button key={item.id} className="rail-item" data-active={view === item.id} onClick={() => onView(item.id)}>
+        {item.label}
+        {item.soon && <span className="tag tag-outline rail-soon">Soon</span>}
+      </button>
+    ));
 
   return (
-    <div
-      className="ask-sidebar"
-      style={{
-        width: 250,
-        flexShrink: 0,
-        borderRight: "1px solid var(--color-divider)",
-        padding: 14,
-        display: "flex",
-        flexDirection: "column",
-        gap: 14,
-        background: "var(--color-surface)",
-        minHeight: 0,
-      }}
-    >
+    <div className="ask-sidebar">
       {/* The global navbar carries the wordmark, site links and the signed-in user. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="rail-head">
         <span className="eyebrow">Workspace</span>
-        <button className="btn btn-ghost" style={{ padding: 2, marginLeft: "auto" }} onClick={onToggle} title="Collapse">
-          ⟨
+        <button type="button" className="rail-mini rail-collapse" onClick={onToggle} title="Collapse" aria-label="Collapse Workspace">
+          <PanelLeftClose className="icon" aria-hidden />
         </button>
       </div>
 
-      <button
-        className="btn"
-        style={{ background: "var(--color-accent-2-100)", color: "var(--color-accent-2-900)", justifyContent: "flex-start" }}
-        onClick={onNewChat}
-      >
-        + New chat
+      <button className="btn btn-tint" onClick={onNewChat}>
+        + New Chat
       </button>
 
       {/* Only the lists scroll, so Tools stays in view however many conversations there are. */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span className="eyebrow" style={{ padding: "0 12px" }}>Recent</span>
-        {threads.length === 0 ? (
-          <span className="muted-2" style={{ fontSize: "var(--fs-xs)", padding: "4px 12px" }}>No past conversations yet.</span>
-        ) : (
-          threads.slice(0, 6).map((thread) => (
-            <button
-              key={thread.id}
-              style={{ ...itemStyle(view === "ask" && thread.id === activeThread), fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-              onClick={() => onPickThread(thread.id)}
-              title={thread.title}
-            >
-              {thread.title}
-            </button>
-          ))
-        )}
-      </div>
+      <div className="rail-scroll">
+        <Section label="Recent Chats" open={open.recent} onToggle={() => toggle("recent")}>
+          {threads.length === 0 ? (
+            <span className="muted-2 rail-empty">No past conversations yet.</span>
+          ) : (
+            <>
+              {threads.slice(0, RECENT_LIMIT).map((thread) => (
+                <button
+                  key={thread.id}
+                  className="rail-item rail-thread"
+                  data-active={view === "ask" && thread.id === activeThread}
+                  onClick={() => onPickThread(thread.id)}
+                  title={thread.title}
+                >
+                  {thread.title}
+                </button>
+              ))}
+              {threads.length > RECENT_LIMIT && (
+                <button type="button" className="rail-more" onClick={() => onView("chats")}>
+                  Show All {threads.length} Chats →
+                </button>
+              )}
+            </>
+          )}
+        </Section>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span className="eyebrow" style={{ padding: "0 12px" }}>Context</span>
-        {CONTEXT_ITEMS.map((item) => (
-          <button key={item.id} style={itemStyle(view === item.id)} onClick={() => onView(item.id)}>
-            {item.label}
-          </button>
-        ))}
-      </div>
+        <Section label="Use Cases" open={open.usecases} onToggle={() => toggle("usecases")}>
+          {items(USE_CASES)}
+        </Section>
+
+        <Section label="Context" open={open.context} onToggle={() => toggle("context")}>
+          {items(CONTEXT_ITEMS)}
+        </Section>
       </div>
 
       {/* Tools that change the data, kept apart from conversations at the foot of the rail.
-          Everyone resolves to the staff dev user until real auth lands, so this is not yet
-          gated; Phase 3 shows it only when /api/me says is_staff. */}
-      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 4, borderTop: "1px solid var(--color-divider)", paddingTop: 12 }}>
-        <button
-          type="button"
-          aria-expanded={toolsOpen}
-          onClick={() => setToolsOpen(!toolsOpen)}
-          className="eyebrow"
-          style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 12px", border: "none", background: "none", cursor: "pointer", textAlign: "left" }}
-        >
-          Tools
-          {/* The design system's chevron glyph, turned to point down when open. */}
-          <span aria-hidden style={{ display: "inline-block", transform: toolsOpen ? "rotate(90deg)" : "none", transition: "transform 0.12s ease" }}>
-            ⟩
-          </span>
-        </button>
-        {toolsOpen && (
-          <button style={itemStyle(view === "import")} onClick={() => onView("import")}>
-            Import
-          </button>
-        )}
-      </div>
+          Shown to everyone: the backend answers non-staff with 403 and ImportView says "Staff only". */}
+      <Section label="Tools" open={open.tools} onToggle={() => toggle("tools")} className="rail-foot">
+        {items([{ id: "import", label: "Import" }])}
+      </Section>
     </div>
   );
 }

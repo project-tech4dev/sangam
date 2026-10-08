@@ -7,10 +7,14 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Any, Literal
 
+from app.ingest.records import normalise_cin
+
 Method = Literal["identifier", "exact", "alias", "boilerplate", "trigram", "none"]
 
 # A wide net in SQL, then a strict re-rank on the distinctive part of the name.
 TRIGRAM_FLOOR = 0.35
+# A state society's registration number ('26', '320/2000') repeats across registrars: never an identity.
+UNMATCHABLE_ID_TYPES = frozenset({"reg_no"})
 CORE_FLOOR = 0.62
 
 # Words that almost every Indian corporate and philanthropic name carries. Left in,
@@ -49,6 +53,13 @@ def same_but_for_boilerplate(a: str, b: str) -> bool:
     return tokens_a == tokens_b and len(tokens_a) >= 2
 
 
+def name_key(name: str) -> str:
+    """One spelling per CSO name, for comparison only: folds North East/North-East/Northeast, drops 'The' and
+    punctuation, keeps bracket content ('Example Trust (North)' and '(South)' are two chapters)."""
+    folded = re.sub(r"north[\s\-]*east", "northeast", name.lower())
+    return " ".join(t for t in re.findall(r"[a-z0-9]+", folded) if t != "the")
+
+
 @dataclass(frozen=True, slots=True)
 class Match:
     """One dataclass for both kinds. `entity_id` is a funders.id or an orgs.id
@@ -65,17 +76,45 @@ class Match:
         return self.entity_id is not None
 
 
-async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | None = None) -> Match:
-    """Four steps in order: identifier, exact name, alias, trigram."""
-    for id_type, id_value in (identifiers or {}).items():
+# Words that make a name a foundation or trust rather than the company itself.
+_FOUNDATION_WORDS = frozenset({
+    "foundation", "foundations", "trust", "trusts", "charitable", "charities", "society",
+    "sansthan", "samiti",
+})
+
+
+def _is_foundation(name: str) -> bool:
+    return bool(set(re.findall(r"[a-z0-9]+", name.lower())) & _FOUNDATION_WORDS)
+
+
+def _same_organisation(name: str, held: str, aliases: list[str]) -> bool:
+    """Same distinctive name; two foundations need a multi-token core ('Tata Trusts' is not 'Tata Foundation')."""
+    def same(n: str) -> bool:
+        if n.lower() == name.lower():
+            return True
+        if _is_foundation(name) != _is_foundation(n):
+            return False
+        if _is_foundation(name):
+            return same_but_for_boilerplate(name, n)
+        return core(name) == core(n)
+
+    return any(same(n) for n in (held, *aliases))
+
+
+async def resolve_funder(conn: Any, name: str, cin: str | None = None) -> Match:
+    """Four steps in order: CIN, exact name, alias, trigram.
+
+    A CIN hit must also look like the same organisation: filings attach to the parent (D7), so a
+    foundation's research often carries its parent's CIN. Such a hit falls through to the name steps.
+    """
+    if cin:
         row = await (
             await conn.execute(
-                "SELECT funder_id FROM funder_identifiers WHERE id_type = %s AND lower(id_value) = lower(%s)",
-                (id_type, id_value),
+                "SELECT id, name, aliases FROM funders WHERE cin = %s", (normalise_cin(cin),)
             )
         ).fetchone()
-        if row:
-            return Match("identifier", row["funder_id"])
+        if row and _same_organisation(name, row["name"], row["aliases"] or []):
+            return Match("identifier", row["id"])
 
     row = await (
         await conn.execute("SELECT id FROM funders WHERE lower(name) = lower(%s)", (name,))
@@ -83,16 +122,16 @@ async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | Non
     if row:
         return Match("exact", row["id"])
 
-    # funders has no aliases column; a known alternative spelling is stored as an
-    # identifier of type 'name', which is what that id_type is for.
-    row = await (
+    # One funder per spelling. Two rows sharing an alias is a case a person settles.
+    rows = await (
         await conn.execute(
-            "SELECT funder_id FROM funder_identifiers WHERE id_type = 'name' AND lower(id_value) = lower(%s)",
+            "SELECT id FROM funders WHERE EXISTS "
+            "(SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = lower(%s)) ORDER BY id LIMIT 2",
             (name,),
         )
-    ).fetchone()
-    if row:
-        return Match("alias", row["funder_id"])
+    ).fetchall()
+    if len(rows) == 1:
+        return Match("alias", rows[0]["id"])
 
     # Same name plus "Limited" or "Trust" is the same funder, so it resolves
     # rather than waiting for a person. Only names that genuinely differ queue.
@@ -103,7 +142,9 @@ async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | Non
         )
     ).fetchall()
     for row in rows:
-        if same_but_for_boilerplate(name, row["name"]):
+        if same_but_for_boilerplate(name, row["name"]) and _is_foundation(name) == _is_foundation(
+            row["name"]
+        ):
             return Match("boilerplate", row["id"], 1.0)
 
     rows = await (
@@ -131,15 +172,11 @@ async def resolve_funder(conn: Any, name: str, identifiers: dict[str, str] | Non
 
 
 async def resolve_org(conn: Any, name: str, identifiers: dict[str, str] | None = None) -> Match:
-    """Three steps, not four: identifier, exact name, trigram.
-
-    `resolve_funder` has an alias step reading `funder_identifiers` rows of
-    id_type 'name'. org_identifiers' CHECK is pan|12a|80g|fcra|csr1|darpan|
-    cin|reg_no, so there is no such row to read and no alias step to port.
-    Everything else is the funder path: the same boilerplate rule, the same
-    floors, the same trigram re-rank on the distinctive part of the name.
-    """
+    """Identifier, exact name, alias, normalised name or alias, boilerplate, then trigram.
+    A spelling two organisations share resolves neither and falls through to trigram, which only proposes."""
     for id_type, id_value in (identifiers or {}).items():
+        if id_type in UNMATCHABLE_ID_TYPES:
+            continue
         row = await (
             await conn.execute(
                 "SELECT org_id FROM org_identifiers WHERE id_type = %s AND lower(id_value) = lower(%s)",
@@ -157,12 +194,29 @@ async def resolve_org(conn: Any, name: str, identifiers: dict[str, str] | None =
 
     rows = await (
         await conn.execute(
-            "SELECT id, name FROM orgs WHERE similarity(name, %s) >= %s", (name, TRIGRAM_FLOOR)
+            "SELECT id FROM orgs WHERE EXISTS "
+            "(SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = lower(%s)) ORDER BY id LIMIT 2",
+            (name,),
         )
     ).fetchall()
-    for row in rows:
-        if same_but_for_boilerplate(name, row["name"]):
-            return Match("boilerplate", row["id"], 1.0)
+    if len(rows) == 1:
+        return Match("alias", rows[0]["id"])
+
+    rows = await (
+        await conn.execute(
+            "SELECT id, name, aliases FROM orgs WHERE similarity(name, %s) >= %s "
+            "OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE similarity(a, %s) >= %s)",
+            (name, TRIGRAM_FLOOR, name, TRIGRAM_FLOOR),
+        )
+    ).fetchall()
+    key = name_key(name)
+    same = {r["id"] for r in rows if key in {name_key(n) for n in (r["name"], *(r.get("aliases") or []))}}
+    if len(same) == 1:
+        return Match("alias", same.pop())
+    if not same:
+        for row in rows:
+            if same_but_for_boilerplate(name, row["name"]):
+                return Match("boilerplate", row["id"], 1.0)
 
     rows = await (
         await conn.execute(

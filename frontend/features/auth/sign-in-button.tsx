@@ -48,6 +48,7 @@ function UserMenu({ user }: { user: User }) {
       <DropdownMenuContent>
         <DropdownMenuLabel className="truncate">Signed in — {user.email}</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => router.push('/settings')}>Settings</DropdownMenuItem>
         <DropdownMenuItem className="text-terracotta-750" onSelect={logOut}>
           Log out
         </DropdownMenuItem>

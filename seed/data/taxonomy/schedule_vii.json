@@ -1,5 +1,5 @@
 {
-  "note": "Schedule VII of the Companies Act 2013, the statutory list of activities a CSR spend may fall under. Clause numbering is the Act's own; wording is condensed from the Act and the MCA's later amendments. This is the vocabulary funder_csr_spend.csr_sector_id points at, so a funder's own words for a theme can be normalised without inventing a category.",
+  "note": "Schedule VII of the Companies Act 2013, the statutory list of activities a CSR spend may fall under. Clause numbering is the Act's own; wording is condensed from the Act and the MCA's later amendments. This is the vocabulary funder_activity.csr_sector_id points at, so a funder's own words for a theme can be normalised without inventing a category.",
   "source_url": "https://www.mca.gov.in/content/mca/global/en/acts-rules/ebooks/acts.html?act=NTk2MQ==",
   "categories": [
     {"code": "i", "slug": "hunger-poverty-health", "label": "Hunger, poverty, malnutrition, health, sanitation and safe drinking water"},

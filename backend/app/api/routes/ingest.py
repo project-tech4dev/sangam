@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_staff
 from app.db.pool import PoolDep
 from app.ingest.sources import SOURCES
 from app.repositories import ingest as repo
@@ -17,7 +17,7 @@ from app.schemas.ingest import (
     SourceProposalOut,
 )
 
-router = APIRouter(prefix="/ingest", tags=["ingest"])
+router = APIRouter(prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_staff)])
 
 
 @router.get("/sources", response_model=list[SourceOut], summary="Import sources and access rules")

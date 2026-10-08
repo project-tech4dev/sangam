@@ -121,19 +121,15 @@ the credential stays on Vercel.
 
 ## What triggers a deploy
 
-Nothing automatic happens on a branch push. `frontend/vercel.json` and
-`backend/vercel.json` set `git.deploymentEnabled: false`, which switches off Vercel's
-Git integration for both projects, and `.github/workflows/deploy.yml` is the only thing
-that deploys.
+Nothing deploys automatically. `frontend/vercel.json` and `backend/vercel.json` set
+`git.deploymentEnabled: false`, which switches off Vercel's Git integration for both projects,
+and `.github/workflows/deploy.yml` is the only thing that deploys — when someone runs it.
 
 | Event | Deploys |
 |---|---|
 | Push to any branch | nothing |
-| Merge to `master` touching `frontend/**` | `sangam` |
-| Merge to `master` touching `backend/**` | `sangam-backend` |
-| Merge to `master` touching both | both |
-| Merge to `master` touching neither (docs, Makefile, compose) | nothing |
-| Actions tab → Deploy → Run workflow | both |
+| Merge to `master` | nothing |
+| Actions tab → Deploy → Run workflow (on `master`) | both |
 
 There are **no preview deployments**. Before this, every push to any of the repo's twenty
 branches built both projects — 40 deployments in a day — because the Git integration cannot

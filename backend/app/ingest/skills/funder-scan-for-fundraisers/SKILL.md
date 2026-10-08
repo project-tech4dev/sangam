@@ -59,12 +59,12 @@ Writing "not disclosed" over a field we simply cannot store misrepresents the
 funder. Say which of the three the cell means.
 
 Two columns moved out of the middle category and the cells have to move with
-them. **Hard disqualifiers** and the **eligibility bar** are now stored, in
-`funder_eligibility`, split by `kind` — so an empty cell there means *not
-recorded* or *not disclosed*, never *found, not storable*. Read them from the
-dossier rather than from the research prose, and keep `kind` visible: a bar
-that only restates the statutory minimum is not a bar the funder chose, and a
-fundraiser comparing two funders needs to see which is which.
+them. **Hard disqualifiers** and the **eligibility bar** are now stored,
+verbatim, in the funder's `funder_eligibility` document, under separate
+headings — so an empty cell there means *not recorded* or *not disclosed*,
+never *found, not storable*. Read them from the dossier rather than from the
+research prose, and keep the headings visible: a bar that only restates the
+statutory minimum is not a bar the funder chose.
 
 **Open call and deadline come from `rfps`, and an empty section is "not
 recorded".** A funder we have never checked for calls and a funder with no

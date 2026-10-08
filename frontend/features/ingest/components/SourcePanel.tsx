@@ -14,6 +14,8 @@ const RULE_TEXT: Record<string, string> = {
   partner_permission_internal: "Partner data",
   reference_only: "Reference only",
   not_checked: "Not checked",
+  manual_aggregator: "Aggregator, named paths",
+  internal_research: "Team research, pinned",
 };
 
 const CATEGORIES = ["all", "funder", "ngo", "rfp", "media"] as const;
@@ -112,7 +114,7 @@ export function SourcePanel({ sources }: { sources: ImportSource[] }) {
               key={s.key}
               style={{
                 border: "1px solid var(--color-divider)",
-                borderRadius: 10,
+                borderRadius: "var(--radius-surface)",
                 padding: "12px 14px",
                 background: s.has_adapter ? "var(--color-surface)" : "transparent",
                 opacity: s.dispatchable ? 1 : 0.8,
@@ -129,7 +131,7 @@ export function SourcePanel({ sources }: { sources: ImportSource[] }) {
                     fontSize: "var(--fs-xs)",
                     fontWeight: 700,
                     padding: "2px 8px",
-                    borderRadius: 999,
+                    borderRadius: "var(--radius-pill)",
                     border: "1px solid var(--color-divider)",
                     color: s.dispatchable ? "var(--color-accent-900)" : "var(--color-muted)",
                   }}

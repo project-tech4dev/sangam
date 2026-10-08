@@ -7,11 +7,12 @@ import os
 from contextlib import AsyncExitStack, asynccontextmanager
 
 from ag_ui_langgraph import add_langgraph_fastapi_endpoint
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from app.agent.build import build_agent
 from app.agent.tools.sql import catalog as sql_catalog
 from app.core.config import Settings, get_settings
+from app.core.security import chat_access, staff_chat_access
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
 from app.ingest.agent import build_ingest_agent
@@ -67,12 +68,14 @@ def build_lifespan(settings: Settings | None = None):
             tracing_live = configure_langfuse(resolved)
 
             checkpointer = await stack.enter_async_context(open_checkpointer(pool))
+            # Kept for GET /api/threads/{id}/messages: only the graph can rebuild a thread's messages.
+            app.state.ask_graph = build_agent(resolved, checkpointer)
             add_langgraph_fastapi_endpoint(
                 app=app,
                 agent=SessionScopedAGUIAgent(
                     name="sangam_agent",
                     description=AGENT_DESCRIPTION,
-                    graph=build_agent(resolved, checkpointer),
+                    graph=app.state.ask_graph,
                     # Not redundant with the graph's own with_config. AG-UI
                     # builds each request's config from THIS one, and a config
                     # passed at invocation beats the one bound to the graph —
@@ -80,6 +83,7 @@ def build_lifespan(settings: Settings | None = None):
                     config={"recursion_limit": resolved.recursion_limit},
                 ),
                 path="/agent",
+                dependencies=[Depends(chat_access)],
             )
             # Sangam Import: a separate graph and a separate conversation. It shares
             # the checkpointer, so its threads live beside Ask Sangam's and are told
@@ -93,6 +97,7 @@ def build_lifespan(settings: Settings | None = None):
                     config={"recursion_limit": resolved.recursion_limit},
                 ),
                 path="/ingest",
+                dependencies=[Depends(staff_chat_access)],
             )
 
             if tracing_live:

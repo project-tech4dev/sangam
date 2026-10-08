@@ -15,7 +15,7 @@ make smoke               # confirm the stack is wired end to end
 ```
 
 **Migrations are not automatic, and two things depend on them.** `db/init/` is a baseline only:
-13 of the SQL catalog's 41 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
+7 of the SQL catalog's 32 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
 at boot when one is missing, so the backend will not start against an unmigrated database.
 `seed.taxonomy_seed` needs `0002_taxonomy.sql` as well.
 
@@ -136,7 +136,7 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
 ```
 backend/app/
   main.py          create_app() + `app = create_app()` — the ASGI entrypoint, wiring only
-  core/            config.py (Settings) · security.py (auth stub) · lifespan.py · logging.py
+  core/            config.py (Settings) · security.py (auth stub) · lifespan.py · logging.py · egress.py
   db/              pool.py (PoolDep) · checkpointer.py (LangGraph) · migrate.py (runner)
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
@@ -262,7 +262,7 @@ those tools are registered. Setting them changes no behaviour.
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
 
-- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 41 tables, and a column not
+- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 32 tables, and a column not
   listed there does not exist as far as the tool is concerned. It also carries `defects`:
   evidence-backed caveats about the *data* that get injected into every result touching the
   table, so the model cannot report "0 rows" as "none exist". Delete a defect line when a
@@ -296,9 +296,13 @@ baseline is what a brand-new database gets; migrations carry everything after it
 `db/migrations/README.md`. `0001_`–`0010_` carry the v3 data model on top of the v2 baseline:
 provenance columns, the taxonomy, geography, identity, credentials, funder activity, org facts,
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
-dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0021_`
-continue on top; there are 21 in total. The design and the before/after are in
-`docs/DATA_PLATFORM.md`.
+dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
+continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. There are 35 in total. The design and the
+before/after are in `docs/DATA_PLATFORM.md`.
+
+**Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
+private, loopback and metadata addresses on every redirect hop.
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:
@@ -307,7 +311,7 @@ product depends on and that a new tool silently breaks:
   error string lets the model see the failure and adapt. Every tool body in `app/agent/tools/` is
   wrapped in `try/except` returning `f"<tool> failed: {exc}"`.
 - *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
-  `[grant:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
+  `[activity:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces
   uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
 
@@ -325,12 +329,29 @@ parametrised test holds each spec against its own prompt.
 There used to be a `HIDDEN_TOOLS` set there suppressing the `deepagents` filesystem built-ins
 from the trace; the tools themselves are gone now, so hiding them is not needed.
 
-**Design changes start in the design system, not here.** The Claude Design project "Sangam
-Design System" is the system of record for colours, type, corners, spacing and component looks;
-changes flow from it into `frontend/app/globals.css` and `frontend/components/ui/`. Do not add a
-token, size or colour to `globals.css` that the design system lacks — reuse one, or change the
-design system first. `docs/DESIGN_SYSTEM.md` has the link, the file-by-file mapping and how to
-sync.
+**Design changes start in the design system, and the design system never drifts from the
+repo.** The Claude Design project "Sangam Design System v2" is the system of record for colours,
+type, corners, spacing and component looks. Do not add a token, size or colour to `globals.css`
+that the design system lacks — reuse one, or change the design system first. And **any PR that
+changes a component in `frontend/components/`, the classes or tokens in `globals.css`, or a
+screen the UI kit recreates (Home, Registry, profiles, Ask, Import) updates the design system in
+the same PR** — its components, their `.d.ts`/`.prompt.md`, and the matching
+`ui_kits/sangam-web/` page. `docs/DESIGN_SYSTEM.md` has the link, the file-by-file mapping and
+the step-by-step sync; `.design-sync/NOTES.md` has what a sync agent needs to know (the
+`/design-sync` converter does not fit this repo — sync by hand).
+
+**Styles go in classes, not `style={{…}}`.** A look belongs in a named class in `globals.css`
+(or a Tailwind utility), built from the design system's tokens, and mirrored in its
+`tokens/base.css`. Inline styles can't carry hover, focus or media queries, can't be reused,
+and can't be kept in step with the design system. An inline style needs a real reason: a value
+computed at runtime (a progress width, a measured height, a per-row colour from data). Some
+300 older ones remain; a PR that touches a component moves that component's styles to classes,
+as `features/ask/components/Sidebar.tsx` and the `.rail-*` classes did.
+
+**Icons come from Lucide (`lucide-react`); never draw an SVG by hand.** Size, stroke and colour
+are set by the `.icon` classes in `globals.css`, never as props: one stroke weight everywhere,
+and the colour follows the surrounding text. Text-like marks stay as glyphs (⟨ ⟩ ✓ → ⌘↵), as
+the design system's iconography page says.
 
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is
@@ -342,6 +363,16 @@ there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
 `catalog_tools.py` (what Sangam already holds), `research_tools.py` (the open web).
 Both agents register their list in one place — `build.py` and `agent.py` respectively — and
 a test walks the package to prove every tool defined is also registered.
+
+**Sangam Import has two human-in-the-loop steps: `list_bucket_files` (staff choose the bucket)
+and `select_source_files` (staff choose the files).** Both are in `INTERRUPT_ON` in
+`app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns into LangChain's
+`HumanInTheLoopMiddleware`; the Import screen answers with CopilotKit's `useInterrupt`
+(`BucketPicker`, `SourcePicker`) and resumes with `{decisions: [...]}`. Any bucket's `.xlsx` can be
+picked, in any folder or none. A picked file becomes a
+`documents` row, so no script is needed; `make staff-source` still writes the same row. The
+supervisor never reads rows: when a request is about everyone in a file, the `workbook-reader`
+subagent (one tool, `read_workbook`) returns the names, and a researcher per name follows.
 
 **How many organisations Import researches at once is a setting, not a number in the
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
@@ -359,12 +390,12 @@ deployed instance.
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
 reusable procedure, advertised by its frontmatter and read only when the model judges it
 relevant. There are seven, in three groups: **what to pull** (`funder-intake-research`,
-`ngo-credential-research` — ten cited fields each, and `funder-intake-research` also pulls
-the open call itself when it found one), **what to produce** (`entity-record` for one
-organisation, `funder-scan-for-fundraisers` and `ngo-brief-for-funders` for a comparison across
-several), and **what the catalog did with it** (`catalog-mapping` before a write,
-`catalog-write-report` after). The two outer groups split by entity kind because the kinds
-genuinely differ; the record, the mapping and the report do not. **They are the supervisor's, and no subagent declares one**: a
+`ngo-credential-research` — cited fields in a set source order; `funder-intake-research` also
+pulls the open call itself, and `ngo-credential-research` lists the documents to request from a
+CSO), **what to produce** (`entity-record` for one organisation, `funder-scan-for-fundraisers`
+and `ngo-brief-for-funders` for a comparison across several), and **what the catalog did
+with it** (`catalog-mapping` before a write, `catalog-write-report` after). The two outer
+groups split by entity kind because the kinds genuinely differ; the record, the mapping and the report do not. **They are the supervisor's, and no subagent declares one**: a
 researcher's targets come from `research_goals` and the schema, and it returns a
 `ResearchSummary` with no prose to shape. Constraints never live there: progressive disclosure
 means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and
@@ -375,7 +406,7 @@ the honest cost.
 `funder-matching` (resolve the organisation → one `compare_fit` over the catalog),
 `funder-comparison` (named funders → one `compare_fit` with their ids) and `funder-shortlist-brief`
 (the write-up). The rules they lean on — compare_fit judges, call it once, an unknown is "not
-recorded" — stay in `instructions.md`, rules 11–15.
+recorded" — stay in `instructions.md`, rules 12–16.
 
 **Optional subsystems degrade, they do not crash.** The graph activates only when
 `NEO4J_URI` and an OpenAI key are both set (`Settings.graph_enabled`); `graphiti_core` is
@@ -397,12 +428,14 @@ load-bearing in ways the Langfuse docs do not advertise:
 `LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, they share
 a bucket.
 
-**Auth is a deliberate stub.** `backend/app/core/security.py::get_current_user` resolves every
-request to one seeded user. Every route already does `Depends(get_current_user)`, so
-swapping in Supabase JWT verification changes only that function. The frontend sends a
-hardcoded `Authorization: Bearer dev` from six call sites: `lib/api/client.ts`,
-`lib/AgentProviders.tsx`, `features/registry/ScoreCard.tsx` and the Ask workspace's Vault, Media
-and Import views. Count them with `grep -rn "Bearer dev" frontend` before swapping the stub out.
+**Auth verifies Supabase tokens, and `SUPABASE_URL` turns it on.** `backend/app/core/security.py::get_principal`
+checks the access token against the project's JWKS and finds or creates the `users` row for it;
+no header is anonymous. With `SUPABASE_URL` empty every request is the seeded dev user, and
+`DEV_AUTH=1` accepts `Bearer dev` locally — which `make smoke` sends, so it needs that set.
+`require_user` (401) gates saving and editing, `require_staff` (403) gates Import, and a chat
+someone else owns is 404. The frontend sends the token from `lib/api/auth-headers.ts` (browser)
+and `auth-headers.server.ts` (server components). The plan, and what comes next (requests running
+as the caller, then RLS), is `features-plans/access/auth-plan.md`.
 
 ## Deployment
 
@@ -432,18 +465,17 @@ Non-obvious constraints:
 - **Vercel's Python bundle limit is 500 MB.** The backend's dependency tree is ~256 MB and
   fits with no trimming.
 
-**Only a merge to `master` deploys, and only `.github/workflows/deploy.yml` does it.**
-`frontend/vercel.json` and `backend/vercel.json` each set `git.deploymentEnabled: false`, so
-a branch push builds nothing — before this, every push to any of twenty branches built *both*
-projects, 40 deployments in one day. The workflow diffs the merge and deploys only the
-projects whose directory changed; a docs-only merge deploys nothing. There are no preview
+**Nothing deploys automatically; `.github/workflows/deploy.yml` is run by hand.** A merge to
+`master` deploys nothing — run Actions → Deploy → Run workflow on `master` when it should go
+out, and it deploys both projects. `frontend/vercel.json` and `backend/vercel.json` each set
+`git.deploymentEnabled: false`, so no push builds anything either — before that, every push to
+any of twenty branches built *both* projects, 40 deployments in one day. There are no preview
 deployments by design.
 
 Each `vercel.json` must stay in its project's **Root Directory** (`frontend` / `backend`) —
 that is where Vercel reads it from, which is why a repo-root one did nothing. The workflow
 needs one secret, `VERCEL_TOKEN`; the org and project IDs in it are identifiers, not
-credentials. Run it by hand from the Actions tab (`workflow_dispatch`) to redeploy `master`
-without a new commit.
+credentials.
 
 ## Working state
 

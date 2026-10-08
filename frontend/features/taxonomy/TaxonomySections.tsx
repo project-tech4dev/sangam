@@ -14,23 +14,24 @@ export function DomainSection({ domain }: { domain: Domain }) {
   const subThemes = domain.themes.reduce((n, t) => n + t.sub_themes.length, 0);
   return (
     <section id={domain.domain} className="flex scroll-mt-24 flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <h3 style={{ fontSize: "var(--fs-lg)" }}>{domain.label}</h3>
-        {domain.status === "draft" ? <Tag tone="accent">Draft</Tag> : <Tag tone="accent-2">Active</Tag>}
-      </div>
+      <h3 style={{ fontSize: "var(--fs-lg)" }}>{domain.label}</h3>
+      {/* Environment and Others have no themes: they show only what spend they hold. */}
       <p className="muted measure m-0">
-        {domain.themes.length} themes, {subThemes} sub-themes. {domain.source}.
+        {domain.themes.length > 0 && `${domain.themes.length} themes, ${subThemes} sub-themes. `}
+        {domain.source}.
       </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {domain.themes.map((theme) => (
-          <ThemeCard
-            key={theme.code}
-            theme={theme}
-            open={open[theme.code] ?? false}
-            onToggle={() => setOpen({ ...open, [theme.code]: !open[theme.code] })}
-          />
-        ))}
-      </div>
+      {domain.themes.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {domain.themes.map((theme) => (
+            <ThemeCard
+              key={theme.code}
+              theme={theme}
+              open={open[theme.code] ?? false}
+              onToggle={() => setOpen({ ...open, [theme.code]: !open[theme.code] })}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

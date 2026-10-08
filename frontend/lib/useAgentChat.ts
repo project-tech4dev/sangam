@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAgent, useCopilotKit } from "@copilotkit/react-core/v2";
+import type { Message } from "@ag-ui/client";
 
 export type TraceStep = {
   id: string;
@@ -35,7 +36,13 @@ function safeParse(value: string): unknown {
   }
 }
 
-export function useAgentChat(threadId: string, runtimeAgentId: string, prefix: string) {
+/** `loadHistory` fills a reopened chat with its saved messages; without it the chat starts empty. */
+export function useAgentChat(
+  threadId: string,
+  runtimeAgentId: string,
+  prefix: string,
+  loadHistory?: () => Promise<Message[]>,
+) {
   // Local agentId is per-thread (a thread is written onto a single agent instance);
   // runtimeAgentId picks the backend graph: sangam_agent or sangam_ingest.
   const { agent, isReady } = useAgent({
@@ -45,6 +52,25 @@ export function useAgentChat(threadId: string, runtimeAgentId: string, prefix: s
     throttleMs: 80,
   });
   const { copilotkit } = useCopilotKit();
+
+  const [isLoadingHistory, setLoadingHistory] = useState(Boolean(loadHistory));
+
+  // Only once the registered agent is ready: messages set on the provisional one are dropped.
+  useEffect(() => {
+    if (!loadHistory || !isReady || !agent) return;
+    let cancelled = false;
+    (agent.messages.length > 0 ? Promise.resolve(null) : loadHistory())
+      .then((history) => {
+        if (!cancelled && history && agent.messages.length === 0) agent.setMessages(history);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingHistory(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agent, isReady, loadHistory]);
 
   const messages = (agent?.messages ?? []) as AnyMessage[];
   const isRunning = Boolean(agent?.isRunning);
@@ -87,5 +113,9 @@ export function useAgentChat(threadId: string, runtimeAgentId: string, prefix: s
     [agent, copilotkit],
   );
 
-  return { turns, send, isRunning, isReady };
+  const stop = useCallback(() => {
+    if (agent) copilotkit.stopAgent({ agent });
+  }, [agent, copilotkit]);
+
+  return { turns, send, stop, isRunning, isReady, isLoadingHistory };
 }
