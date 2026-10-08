@@ -99,7 +99,7 @@ CREATE TABLE funder_matches (
   run_at         timestamptz NOT NULL,
   rubric_version text NOT NULL,                 -- the in-code rubric that scored it
   score          smallint CHECK (score BETWEEN 0 AND 100),  -- NULL: checked, nothing to score on
-  card           jsonb NOT NULL,                -- {"reasons": [{"kind": "fit"|"gap", "text": "…"}]}
+  card           jsonb NOT NULL,                -- {"reasons": [{"kind", "criterion", "text"}]}, see below
   UNIQUE (run_id, funder_id)
 );
 CREATE INDEX funder_matches_latest ON funder_matches (org_id, run_at DESC);
@@ -111,25 +111,133 @@ CREATE TABLE funder_match_details (
 );
 ```
 
-**What goes in `detail`**
+### The two JSON fields, worked through
+
+One match, end to end: **SeSTA × HDFC Bank Parivartan** in a run on 6 Oct 2026. The values are invented,
+but they are internally consistent: the score below is computed from the criteria shown.
+
+**The row in `funder_matches`.** This is what the list endpoint reads, one row per funder:
 
 ```json
 {
-  "summary": "A strong fit. Axis Bank Foundation funds rural livelihoods in Assam…",
-  "criteria": [
-    {"code": "geography", "label": "Geography", "points": 15, "max": 15,
-     "status": "met", "note": "Shares Kamrup, Udalguri and Baksa", "cites": ["org:3", "funder:12"]}
-  ],
-  "not_judged": ["Funding size: the funder publishes no grant range"],
-  "improve": ["Register CSR Form 1 and add it to the Doc Vault"]
+  "id": 1042,
+  "run_id": "6f1c2a9e-4b7d-4c1e-9a52-0d3b8e7f6a11",
+  "org_id": 3,
+  "funder_id": 7,
+  "run_at": "2026-10-06T02:30:00Z",
+  "rubric_version": "match-v1",
+  "score": 73,
+  "card": {
+    "reasons": [
+      {"kind": "fit", "criterion": "theme",       "text": "Rural livelihoods is a core theme"},
+      {"kind": "fit", "criterion": "geography",   "text": "Assam is one of its focus states"},
+      {"kind": "gap", "criterion": "eligibility", "text": "CSR Form 1 not on record"},
+      {"kind": "gap", "criterion": "relationship","text": "No past grant or contact recorded"}
+    ]
+  }
 }
 ```
 
-- `status` is `met`, `fail` or `unknown`.
-- An `unknown` criterion has `points: null` and is left out of the total. The score is the points
-  earned out of the points that could be judged, scaled to 100. Unknown is never zero.
-- The `card` reasons repeat the two to four most telling criteria in short form, so the list never needs
-  `detail`.
+**The `card` field**
+- Two to four short lines, written for a glance: a fact, not a sentence of analysis.
+- `kind: "fit"` lines come first and are drawn with ✓; `kind: "gap"` lines are drawn with !.
+- `criterion` names the criterion each line came from. The job writes it; the page doesn't show it,
+  but it ties every line to a criterion in `detail`, so the short version can never say something
+  the full version doesn't.
+- The job builds `card` from `detail`:
+  - the highest-scoring met criteria become the fit lines;
+  - the criteria that cost the most points become the gap lines.
+  - Nobody writes the card separately.
+
+**The row in `funder_match_details`.** This is read only when "Why this score" is opened:
+
+```json
+{
+  "match_id": 1042,
+  "detail": {
+    "summary": "A medium fit, close to strong. HDFC Bank Parivartan's rural development programme names Assam as a focus state and funds livelihoods, which is SeSTA's core work. Points are lost on CSR Form 1, which Section 135 money requires, and on the lack of any past relationship. Its grant range is not public, so funding size was not judged.",
+    "criteria": [
+      {"code": "theme", "label": "Theme alignment", "max": 25, "points": 22, "status": "met",
+       "note": "Both work on rural livelihoods; SeSTA's women's collectives sit inside Parivartan's 'sustainable livelihoods' theme.",
+       "cites": ["org:3", "funder:7"]},
+      {"code": "geography", "label": "Geography", "max": 15, "points": 12, "status": "met",
+       "note": "Assam is a focus state. No district is named on the funder's side, so this is a state-level match, not a district one.",
+       "cites": ["org:3", "funder:7"]},
+      {"code": "population", "label": "Target population", "max": 15, "points": 13, "status": "met",
+       "note": "Rural households and women; Parivartan does not single out women's groups.",
+       "cites": ["org:3", "funder:7"]},
+      {"code": "eligibility", "label": "Eligibility & compliance", "max": 20, "points": 14, "status": "partial",
+       "note": "12A, 80G and three audited years are on record. CSR Form 1 is not, and a Section 135 funder needs it.",
+       "cites": ["org:3"]},
+      {"code": "relationship", "label": "Relationship", "max": 10, "points": 0, "status": "fail",
+       "note": "No past grant, programme or contact between them is recorded.",
+       "cites": []},
+      {"code": "funding_size", "label": "Funding size", "max": 10, "points": null, "status": "unknown",
+       "note": "Parivartan does not publish a grant range.",
+       "cites": ["funder:7"]},
+      {"code": "capacity", "label": "Funder capacity", "max": 5, "points": 5, "status": "met",
+       "note": "CSR spend reported every year for the last five, and rising.",
+       "cites": ["activity:88"]}
+    ],
+    "score": {"earned": 66, "judged_max": 90, "of_100": 73},
+    "not_judged": ["Funding size: the funder publishes no grant range, so these 10 points are left out rather than scored as zero."],
+    "improve": [
+      "Register CSR Form 1 with the MCA and add it to the Doc Vault (up to 6 points).",
+      "Record any contact with HDFC Bank Parivartan; a warm introduction counts under Relationship (up to 10 points)."
+    ]
+  }
+}
+```
+
+**How the `detail` fields work**
+- `summary`: three or four plain sentences, for someone who reads nothing else. It names the tier, the
+  main reason it fits, the points lost, and anything not judged.
+- `criteria`: every criterion in the in-code rubric, always in the rubric's order, so two funders read
+  the same way side by side.
+  - `status` is `met` (full or nearly full points), `partial`, `fail` or `unknown`.
+  - An `unknown` criterion has `points: null` and is left out of the total. Unknown is never zero.
+  - `note` says what was found, in words, including what is missing.
+  - `cites` are the same `[org:N]`, `[funder:N]`, `[activity:N]` markers Ask Sangam uses. The page
+    shows them as chips, so every claim traces to a record. An empty list means the finding is an
+    absence: nothing was recorded.
+- `score`: the arithmetic, stored so the page can show it rather than recompute it.
+  - `earned` is the points earned over the judged criteria; `judged_max` is the points that could be
+    judged.
+  - `of_100` is `round(100 × earned / judged_max)`, and always equals the row's `score`. Here that is
+    66 of 90, so 73.
+- `not_judged`: each unknown criterion, explained in a sentence.
+- `improve`: concrete actions, each with the points it could win back. Shown under "What would raise
+  the score".
+
+**A funder with nothing to score on** still gets a row, so "43 funders checked" stays true. It has a
+`NULL` score, a one-line card, and a short detail:
+
+```json
+{"score": null,
+ "card": {"reasons": [{"kind": "gap", "criterion": "overlap", "text": "No shared place or theme recorded"}]}}
+```
+```json
+{"summary": "Not scored. The base records no place or theme in common between SeSTA and Infosys Foundation, so there was nothing to judge.",
+ "criteria": [], "score": null, "not_judged": [], "improve": []}
+```
+
+**Which field feeds which part of the page**
+
+| Page element | Field |
+|---|---|
+| Rank, score, bar, tier tag | `funder_matches.score` (tier computed) |
+| Name, initials disc, funder type | `funders`, joined by `funder_id` |
+| The ✓ and ! lines on the card | `card.reasons` |
+| "In short" | `detail.summary` |
+| "Criterion by criterion", with citation chips | `detail.criteria` |
+| The points arithmetic | `detail.score` |
+| "Not judged" | `detail.not_judged` |
+| "What would raise the score" | `detail.improve` |
+| "From the run of 6 Oct 2026 · match-v1" | `funder_matches.run_at`, `rubric_version` |
+| "Weak or no fit" rows | rows with `score < 55` or `NULL`; first line of `card.reasons` |
+
+**Size.** A card is about 0.3 KB; a detail about 2–3 KB. The list for 43 funders is about 15 KB, and a
+detail loads in one small request when its card is opened.
 
 **What the page derives instead of storing**
 - **Latest run:** the newest `run_at` for the organisation.
@@ -162,10 +270,14 @@ cannot see is a 404, the same answer as one that does not exist.
 - **`GET /api/funder-matches?org=<slug>`**, behind `require_user`. It returns the latest run:
   ```json
   {"org": {"slug": "sesta", "name": "SeSTA"},
-   "run": {"run_id": "…", "run_at": "…", "rubric_version": "v1", "funders_checked": 43, "earlier_runs": 3},
-   "counts": {"strong": 2, "medium": 3, "weak": 3, "not_scored": 35},
-   "matches": [{"id": 101, "funder": {"id": 12, "slug": "axis-bank-foundation", "name": "…",
-                "funder_type": "…"}, "score": 86, "tier": "strong", "card": {"reasons": […]}}]}
+   "run": {"run_id": "6f1c2a9e-4b7d-4c1e-9a52-0d3b8e7f6a11", "run_at": "2026-10-06T02:30:00Z",
+           "rubric_version": "match-v1", "funders_checked": 43, "earlier_runs": 3},
+   "counts": {"strong": 1, "medium": 2, "weak": 3, "not_scored": 37},
+   "matches": [{"id": 1042,
+                "funder": {"id": 7, "slug": "hdfc-bank-parivartan", "name": "HDFC Bank Parivartan",
+                           "funder_type": "corporate_csr"},
+                "score": 73, "tier": "medium",
+                "card": {"reasons": [{"kind": "fit", "criterion": "theme", "text": "Rural livelihoods is a core theme"}]}}]}
   ```
   - Ordered by score descending, with NULL scores last.
   - `run` is `null` when the organisation has never been run.
