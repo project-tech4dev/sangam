@@ -32,7 +32,12 @@ export type FunderListItem = {
 };
 
 /* Shared sub-shapes. */
-export type Identifier = { id_type: string; id_value: string; verified: boolean; source_url: string | null };
+export type Identifier = {
+  id?: number; id_type: string; id_value: string | null; status: string;
+  valid_from: string | null; valid_until: string | null; application_ref: string | null;
+  check_method: string | null; verified: boolean; is_current: boolean;
+  source_type: string | null; evidence: string | null; source_url: string | null;
+};
 export type TagRef = { slug: string; label: string; role: string | null };
 export type LocationRef = { id: number; kind: string; name: string; role: string | null };
 export type Contact = {
@@ -43,6 +48,9 @@ export type Contact = {
 /* Detail shapes (v2 API). */
 export type OrgDetail = OrgListItem & {
   org_kind: string; legal_form: string | null; registration_date: string | null;
+  website: string | null; description: string | null; aliases: string[];
+  staff_count: number | null; staff_count_note: string | null;
+  source_type: string | null; evidence: string | null;
   contact: Record<string, unknown>; profile: Record<string, unknown>;
   identifiers: Identifier[]; tags: TagRef[]; locations: LocationRef[]; contacts: Contact[];
 };

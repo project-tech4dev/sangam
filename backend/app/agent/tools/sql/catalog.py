@@ -43,6 +43,21 @@ class Table:
     """Known problems with the DATA in this table. See the module docstring."""
 
 
+# The evidence tier on every CSO table Import writes; values are 0033's CHECK enums, verbatim.
+_SOURCE_TYPES = ('registry', 'org_document', 'funder', 'staff_dataset', 'manual_check', 'prior_research',
+                 'aggregator', 'seed')
+_TIER = (
+    Column("source_type", "text", note="the kind of source the row's values came from. Strongest first: registry = manual_check > org_document > funder > staff_dataset > prior_research > aggregator > seed. NULL = not ranked: entered by a person, or written before tiers", values=_SOURCE_TYPES),
+    Column("evidence", "text", note="'evidenced' only when a document itself states the fact (a certificate, an audited statement, a dated return); 'claimed' otherwise. aggregator and prior_research rows are always 'claimed'", values=('evidenced', 'claimed')),
+)
+_TIER_DEFECT = (
+    "source_type and evidence describe the ROW: they name the strongest source that has stated anything on "
+    "it, NOT the source of every column. Other columns of the same row may have been filled by weaker "
+    "sources and are not labelled separately. A row whose evidence is 'claimed' - every "
+    "aggregator and prior_research row among them - is never presented as fact: say 'claimed by "
+    "<source_type>' beside it, and never let it settle an eligibility question."
+)
+
 _TABLES: tuple[Table, ...] = (
     Table(
         name="chunks",
@@ -82,35 +97,9 @@ _TABLES: tuple[Table, ...] = (
             Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
             Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
             Column("archive_url", "text"),
+            *_TIER,
         ),
-    ),
-    Table(
-        name="credential_events",
-        description="What happened to a registration - registered, renewed, expired, cancelled, or a source saying it does not exist. Holds no ID number.",
-        primary_key=('id',),
-        foreign_keys=(ForeignKey("org_id", "orgs.id"), ForeignKey("funder_id", "funders.id"), ForeignKey("document_id", "documents.id")),
-        columns=(
-            Column("id", "bigint"),
-            Column("org_id", "bigint", cites="org"),
-            Column("funder_id", "bigint", cites="funder"),
-            Column("credential", "text", values=('pan', '12a', '80g', 'fcra', 'csr1', 'darpan', 'cin', 'reg_no')),
-            Column("event", "text", note="'not_available' means a source says the registration does not exist", values=('registered', 'renewed', 'checked_active', 'restored', 'expired', 'suspended', 'cancelled', 'surrendered', 'superseded', 'not_available', 'not_found', 'check_blocked')),
-            Column("event_date", "date"),
-            Column("valid_until", "date"),
-            Column("verified", "boolean", note="only verified events set the current status"),
-            Column("notes", "text"),
-            Column("source_url", "text"),
-            Column("source_name", "text"),
-            Column("fetched_at", "timestamp with time zone"),
-            Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
-            Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
-            Column("archive_url", "text"),
-            Column("recorded_by", "uuid"),
-            Column("recorded_at", "timestamp with time zone"),
-        ),
-        defects=(
-            "Table is empty (0 rows): no credential history has been recorded, so every registration's current status is unknown rather than active.",
-        ),
+        defects=(_TIER_DEFECT,),
     ),
     Table(
         name="documents",
@@ -122,7 +111,7 @@ _TABLES: tuple[Table, ...] = (
             Column("org_id", "bigint", cites="org"),
             Column("funder_id", "bigint", cites="funder"),
             Column("title", "text"),
-            Column("doc_type", "text", note="free text, except three values written by their own path: 'funder_eligibility' (a funder's standing eligibility, verbatim in content_md), 'proposal_template' (a funder's application form), 'source_dataset' (a staff-only file with no content_md)"),
+            Column("doc_type", "text", note="free text, except three values written by their own path: 'funder_eligibility' (a funder's standing eligibility, verbatim in content_md), 'proposal_template' (a funder's application form), 'source_dataset' (a staff-only file with no content_md). A CSO's own: trust_deed, registration_certificate, exemption_order (12AB/80G: Forms 10AC/10AD), exemption_application (a Form 10AB acknowledgement), csr1_approval, fcra_certificate, fcra_return, audit_report, annual_report, policy, manual_check_evidence (a screenshot or archive of a registry check)"),
             Column("content_md", "text", heavy=True),
             Column("source_url", "text"),
             Column("source_name", "text"),
@@ -467,8 +456,10 @@ _TABLES: tuple[Table, ...] = (
             Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
             Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
             Column("archive_url", "text"),
+            *_TIER,
         ),
         defects=(
+            _TIER_DEFECT,
             "Sparse: figures arrive from promoted research and are mostly self-reported — check `method` before quoting one as evidence. grants.outcomes holds a little more as jsonb; a zero here is not evidence an organisation measures nothing.",
         ),
     ),
@@ -525,21 +516,25 @@ _TABLES: tuple[Table, ...] = (
             Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
             Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
             Column("archive_url", "text"),
+            Column("foreign_unspent", "numeric", note="INR: foreign contribution left unutilised at year end, from the FCRA return"),
+            *_TIER,
         ),
         defects=(
+            _TIER_DEFECT,
             "Table is empty (0 rows): no accounts have been loaded, so income and spend questions cannot be answered and eligibility gates on revenue cannot be evaluated.",
         ),
     ),
     Table(
         name="org_identifiers",
-        description="Statutory registration IDs for an org (PAN, FCRA, Darpan...). One row per ID.",
-        primary_key=('id_type', 'id_value'),
-        foreign_keys=(ForeignKey("org_id", "orgs.id"),),
+        description="Statutory registrations of an org (PAN, 12A, 80G, FCRA, Darpan...), one row each, with a status. A row may have no number yet (an application).",
+        primary_key=('id',),
+        foreign_keys=(ForeignKey("org_id", "orgs.id"), ForeignKey("evidence_document_id", "documents.id")),
         columns=(
+            Column("id", "bigint"),
             Column("org_id", "bigint", cites="org"),
             Column("id_type", "text", values=('pan', '12a', '80g', 'fcra', 'csr1', 'darpan', 'cin', 'reg_no')),
-            Column("id_value", "text"),
-            Column("verified", "boolean"),
+            Column("id_value", "text", note="NULL while only applied for: see status and application_ref"),
+            Column("verified", "boolean", note="legacy flag from the seed; read status instead"),
             Column("source_url", "text"),
             Column("is_current", "boolean", note="false = superseded, e.g. an old 12A after re-registration"),
             Column("source_name", "text"),
@@ -549,6 +544,24 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
             Column("is_public", "boolean", note="false means the number is on file but not published"),
             Column("notes", "text"),
+            *_TIER,
+            Column("status", "text", note="'applied' is NOT a registration; 'check_blocked' means nobody could read the registry, NEVER that it is valid; 'not_found' means a working source did not list it", values=('applied', 'provisional', 'registered', 'expired', 'suspended', 'cancelled', 'surrendered', 'not_available', 'not_found', 'check_blocked')),
+            Column("valid_from", "date"),
+            Column("valid_until", "date", note="an FCRA or 12AB/80G approval's end date, when stated"),
+            Column("checked_at", "timestamp with time zone", note="when a person or a registry read last confirmed the status"),
+            Column("check_method", "text", values=('document', 'registry', 'manual_check', 'aggregator')),
+            Column("evidence_document_id", "bigint", note="the documents row holding the certificate, order or check evidence"),
+            Column("application_ref", "text", note="e.g. a Form 10AB acknowledgement number"),
+        ),
+        defects=(
+            (
+                "Only a row with status IN ('registered', 'provisional'), an id_value and is_current is a current "
+                "registration. "
+                "'applied' is an application, 'check_blocked' means the registry could not be read (never "
+                "'valid'), and 'not_found' means a working source did not list it. Filter on status, never on "
+                "the row existing."
+            ),
+            _TIER_DEFECT,
         ),
     ),
     Table(
@@ -569,7 +582,9 @@ _TABLES: tuple[Table, ...] = (
             Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
             Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
             Column("archive_url", "text"),
+            *_TIER,
         ),
+        defects=(_TIER_DEFECT,),
     ),
     Table(
         name="org_tags",
@@ -610,36 +625,24 @@ _TABLES: tuple[Table, ...] = (
             Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
             Column("archive_url", "text"),
             Column("registry_status", "text", note="'hidden' rows are staff-only; 'placeholder' is a stub, not a profile", values=('placeholder', 'in_vetting', 'full_profile', 'hidden')),
+            Column("website", "text", note="the organisation's own site"),
+            Column("description", "text", note="a few sentences in the organisation's own words; claimed unless a document states it"),
+            Column("aliases", "text[]", note="every other spelling a source used: short names, filings, directories. Match names against these too"),
+            Column("staff_count", "integer", note="people employed, as the source states; staff_count_note says what was counted and where"),
+            Column("staff_count_note", "text", note="e.g. '20+ full-time professionals (team page)'. Differing counts across sources are reported as conflicts, not averaged"),
+            *_TIER,
         ),
         defects=(
-            "source_url is the NGO Darpan portal's SEARCH page, not a per-organisation record: "
-            "11 rows share 4 URLs. Treat it as where the row was looked up, NOT as evidence for "
-            "any particular field, and never cite it as the organisation's own page.",
-            "fetched_at is NULL on 8 of 11 rows, so the freshness rule cannot fire for them. "
-            "Say the date is not recorded rather than implying the data is current.",
-        ),
-    ),
-    Table(
-        name="program_locations",
-        description="Where a programme operates. Join table.",
-        primary_key=('program_id', 'location_id'),
-        foreign_keys=(ForeignKey("location_id", "locations.id"), ForeignKey("program_id", "programs.id")),
-        columns=(
-            Column("program_id", "bigint"),
-            Column("location_id", "bigint"),
-            Column("role", "text", values=('registered', 'operates', 'funds')),
-            Column("valid_from", "date"),
-            Column("valid_to", "date"),
-            Column("note", "text"),
-            Column("source_url", "text"),
-            Column("source_name", "text"),
-            Column("fetched_at", "timestamp with time zone"),
-            Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
-            Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
-            Column("archive_url", "text"),
-        ),
-        defects=(
-            "Table is empty (0 rows): no programme has a location, so an INNER JOIN from programs through this table silently returns nothing. Outer-join it, or read programs directly.",
+            _TIER_DEFECT,
+            (
+                "source_url is the NGO Darpan portal's SEARCH page, not a per-organisation record: "
+                "11 rows share 4 URLs. Treat it as where the row was looked up, NOT as evidence for "
+                "any particular field, and never cite it as the organisation's own page."
+            ),
+            (
+                "fetched_at is NULL on 8 of 11 rows, so the freshness rule cannot fire for them. "
+                "Say the date is not recorded rather than implying the data is current."
+            ),
         ),
     ),
     Table(
@@ -685,7 +688,9 @@ _TABLES: tuple[Table, ...] = (
             Column("parent_id", "bigint", note="hierarchy within one owner"),
             Column("kind", "text", note="a funder's own rows run theme > programme > phase, linked by parent_id", values=('theme', 'programme', 'phase', 'project')),
             Column("is_enabler", "boolean"),
+            *_TIER,
         ),
+        defects=(_TIER_DEFECT,),
     ),
     Table(
         name="reference_figures",

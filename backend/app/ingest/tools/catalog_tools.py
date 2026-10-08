@@ -53,7 +53,8 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
         "id, name, slug, registry_status, funder_type, website, parent_id, section_135_bound, cin, aliases, "
         "intake_mode, funds_external, typical_duration_months, grant_size_min, grant_size_max"
         if entity_kind == "funder"
-        else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort"
+        else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort, website, "
+        "aliases, staff_count, staff_count_note, source_type, evidence"
     )
     try:
         pool = get_pool()
@@ -221,17 +222,18 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
 # metrics, contacts, documents) are the same query with the other foreign key.
 _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
-        "org_identifiers (12A, 80G and FCRA live here)",
+        ("org_identifiers (current = 'registered' or 'provisional' with a number; 'applied' is not a "
+         "registration; 'check_blocked' is not 'valid')"),
         """
-        SELECT id_type, id_value, verified, is_current FROM org_identifiers
-        WHERE org_id = %s ORDER BY id_type
+        SELECT id_type, id_value, status, valid_until, application_ref, is_current, source_type, evidence
+        FROM org_identifiers WHERE org_id = %s ORDER BY id_type, is_current DESC, id
         """,
     ),
     (
         "org_financials (amounts in INR)",
         """
         SELECT fiscal_year, total_income, program_spend, non_program_spend,
-               foreign_contribution, is_audited
+               foreign_contribution, foreign_unspent, is_audited, source_type, evidence
         FROM org_financials WHERE org_id = %s ORDER BY fiscal_year
         """,
     ),
@@ -362,9 +364,9 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
             out.append(
                 "\nThis is an NGO, so these are the org tables: its registrations are 12A, 80G "
                 "and FCRA, not a CSR-1, and its money is income and programme spend rather than "
-                "a Section 135 obligation. Every concept below promotes — with one rule: on an "
-                "organisation the catalog already holds, research fills blanks only and never "
-                "overwrites a value somebody entered by hand."
+                "a Section 135 obligation. Every concept below promotes, and every finding names "
+                "its source_type and evidence_tier: a blank is always filled, a stronger source "
+                "replaces a weaker one, and any other disagreement is kept and reported as a conflict."
             )
         for concept in wanted_concepts:
             spec = CONCEPTS[concept]
@@ -436,7 +438,10 @@ async def promote_research(slug: str = "") -> str:
 
     Works on either kind. A funder's findings reach funders
     and the funder fact tables; an NGO's reach orgs, org_identifiers,
-    org_financials and org_locations, and both kinds write the shared
+    org_financials and org_locations under the evidence-tier precedence rule —
+    a weaker source never overwrites a stronger one, and a disagreement is
+    reported as a conflict with both values and both sources, never resolved
+    silently. Both kinds write the shared
     programmes, metrics, contacts and documents. `grant` is the one concept
     that still stays research, and anything held back is reported rather than
     silently dropped. A name that resembles an organisation we already hold
@@ -481,6 +486,8 @@ async def promote_research(slug: str = "") -> str:
                 lines.append(f"  {r['slug']}: not promoted — {reason}")
             for held in r.get("held", []):
                 lines.append(f"    held back: {held}")
+            for conflict in r.get("conflicts", []):
+                lines.append(f"    conflict: {conflict}")
             if r["skipped"]:
                 skipped = ", ".join(f"{n} {c}" for c, n in sorted(r["skipped"].items()))
                 lines.append(f"    still research only (no writer): {skipped}")

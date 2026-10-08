@@ -1,6 +1,6 @@
 """What the database expects, per research concept, derived from the SQL catalog.
 
-The catalog is already the schema as data — 36 tables with their columns, the
+The catalog is already the schema as data — 34 tables with their columns, the
 CHECK-constraint value lists and the gotchas — and `verify_against_db()` raises
 at boot when it drifts from the live schema. So a researcher's targets are
 derived from it rather than written down a second time and left to rot.
@@ -146,12 +146,12 @@ CONCEPTS: dict[str, ConceptSpec] = {
     "org_identity": ConceptSpec("orgs", "Identity", kinds=_ORG),
     "org_identifier": ConceptSpec(
         "org_identifiers",
-        "Registrations and identifiers",
+        "Registrations and their status",
         kinds=_ORG,
-        not_written={
-            "notes": "OrgRecord.identifiers is a type-to-value map with no room for a third "
-                     "field, so promotion reports the note instead of storing it",
-        },
+        # valid_from is INTERNAL elsewhere (a place link's bookkeeping); here a certificate states it.
+        # checked_at, checked_by and evidence_document_id belong to a staff member's manual check.
+        columns=("id_type", "id_value", "status", "valid_from", "valid_until", "check_method",
+                 "application_ref", "notes"),
     ),
     "org_financials": ConceptSpec("org_financials", "Income and spending by year", kinds=_ORG),
     "org_location": ConceptSpec("org_locations", "Where it works", kinds=_ORG),
@@ -172,6 +172,10 @@ PROVENANCE = frozenset({
     "source_url", "source_name", "fetched_at", "as_of", "document_id",
     "archive_url", "content_hash", "extractor_version",
 })
+
+# The evidence tier: filled from a finding's own source and tier, never a target (`evidence` on a finding
+# is the quoted sentence).
+TIER = frozenset({"source_type", "evidence"})
 
 # doc_type values written only by their own path: the eligibility concept, the template path and the
 # staff-source upload. A `document` finding may not use them, and ensure_document keys them apart.
@@ -251,7 +255,7 @@ REQUIRED: dict[str, frozenset[str]] = {
     "document": frozenset({"title", "doc_type"}),
     "rfp": frozenset({"title"}),
     "org_identity": frozenset({"name"}),
-    "org_identifier": frozenset({"id_type", "id_value"}),
+    "org_identifier": frozenset({"id_type", "status"}),
     "org_financials": frozenset({"fiscal_year"}),
     # org_locations.role is NOT NULL but defaults to 'operates', so it is not
     # demanded. `state` is, for the same reason stated_geography demands it.
@@ -396,7 +400,9 @@ def expected_fields(concept: str) -> tuple[Expected, ...]:
         name = column.name
         if spec.columns is not None and name not in spec.columns:
             continue
-        if name == "id" or name in PROVENANCE or name in INTERNAL or column.heavy:
+        if name == "id" or name in PROVENANCE or name in TIER or column.heavy:
+            continue
+        if name in INTERNAL and not (spec.columns is not None and name in spec.columns):
             continue
         if name in OURS.get(concept, frozenset()):
             continue

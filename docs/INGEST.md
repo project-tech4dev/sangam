@@ -253,7 +253,7 @@ The other four are the NGO's own:
 |---|---|
 | program · metric · contact · document | as above, on `org_id` |
 | org_identity | `orgs` |
-| org_identifier | `org_identifiers`. 12A, 80G and FCRA live here |
+| org_identifier | `org_identifiers`, one row per registration with a `status`; an `applied` row needs no number. 12A, 80G and FCRA live here |
 | org_financials | `org_financials` |
 | org_location | `org_locations`, and the `registered` one sets `orgs.registered_location_id` |
 
@@ -359,11 +359,10 @@ so keying off it made every unfinished researcher read as "done" the moment a ru
 
 ## Known gaps
 
-- **Two NGO facts still have nowhere to go.** An org's **website** has no column — `orgs`
-  has none and `org_identifiers` has no `domain` type — and a note on an identifier has no
-  room in a type-to-value map. Both are reported as held rather than dropped. `credential_events`
-  is the other half: the table exists and holds the same credential enum, but no finding
-  carries the dates that would fill it.
+- **Registry checks are not yet their own write.** Since `0033` an org's website, description,
+  aliases and staff live on `orgs`, and a registration is an `org_identifiers` row with a `status`
+  and validity dates, so nothing here is held for want of a column. What is missing is a tool that
+  records a staff registry check (`checked_by`, `checked_at`) apart from research.
 - **A grant writer.** Unblocked by the org writer and not built by it: `grants.org_id` is
   `NOT NULL`, and a recipient named in a funder's research is still not an `orgs` row.
 - **`repositories/orgs.py::get_org` does not read `org_financials`**, so promoted figures do

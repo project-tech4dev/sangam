@@ -22,7 +22,7 @@ CLAUDE.md already states. The 96 documents and the Supabase data survive untouch
 | Taxonomy | 40 tags, every one `kind='sector'`, free text | one `tags` tree: 17 SDGs, 24 sectors, 10 population groups, 30 CSR Schedule VII sectors, 221 domain cells; deprecate-and-replace, never delete |
 | Funder money | one `funders.profile` jsonb blob | `funder_csr_years` and `funder_activity` — one row per filing or report line, `kind` spend / footprint / partner / programme (0031 merged the three tables this began as) — for Axis alone: 4 CSR years, 58 spend lines, 705 footprints, 114 partner lines, each with its source |
 | Impact | `grants.outcomes` jsonb | `metrics` with stage, chain, baseline, comparison and method, plus the `impact_chains` view that shows where a chain stops |
-| Credentials | a number in `*_identifiers`, no history | number stays there and can be private; what happened to it goes in `credential_events`; current state reads from `credential_status` |
+| Credentials | a number in `*_identifiers`, no history | number stays there and can be private; since `0033` the row itself carries a `status` (applied, registered, check_blocked, …), validity dates and an evidence tier, and `credential_events` is gone |
 | Org finances | none | `org_financials`, one row per org per fiscal year |
 | Proposals | none | `proposals`; a funder's form is a `documents` row of `doc_type='proposal_template'` (0031) |
 | Membership | one dev user, no orgs | `org_members` with `admin`, `member`, `steward` |
@@ -51,7 +51,7 @@ write-up.
 | `grants`, `rfps` | `as_of`, `document_id`, `archive_url` | provenance only |
 | `rfp_matches` | `week_of` | which weekly batch flagged the match |
 | `org_tags`, `funder_tags`, `program_tags`, `rfp_tags` | `is_inferred`, `tagged_by`, `note` | separates what a source states from what a person or model inferred |
-| `org_locations`, `funder_locations`, `program_locations`, `rfp_locations` | `valid_from`, `valid_to`, `note` + full provenance | a place link is itself a sourced, dated fact. **`funder_locations.role` also gains `priority` and defaults to it** — the 14 seeded rows are stated focus, not actual funding |
+| `org_locations`, `funder_locations`, `program_locations` (dropped in `0033`), `rfp_locations` | `valid_from`, `valid_to`, `note` + full provenance | a place link is itself a sourced, dated fact. **`funder_locations.role` also gains `priority` and defaults to it** — the 14 seeded rows are stated focus, not actual funding |
 
 **Unchanged (7):** `chunks`, `extraction_log`, `rubrics`, `rubric_criteria`, `fit_scores`,
 `fit_score_items`, `score_adjustments`. The rubric family stays exactly as it is; scoring logic
@@ -101,7 +101,7 @@ changes. Design and milestones: `docs/features/2026-09-30-supabase-storage.md`.
 | | Table | Holds |
 |---|---|---|
 | **Who can see what** | `org_members` | a user's role in an org: `admin`, `member`, `steward`. Every private-read policy resolves through it, and deleting a row removes access |
-| **Credentials** | `credential_events` | what happened to a registration — registered, renewed, checked, expired, cancelled, `not_available` — dated and sourced, holding **no number**, so history can be public while the number stays private |
+| **Credentials** | `credential_events` (folded into `org_identifiers.status` and dropped in `0033`) | what happened to a registration — registered, renewed, checked, expired, cancelled, `not_available` — dated and sourced, holding **no number**, so history can be public while the number stays private |
 | **Org facts** | `org_financials` | income, programme spend, foreign contribution, one row per org per fiscal year — the ₹5 crore eligibility gates read this |
 | | `metrics` | impact and reach figures for an org **or** a funder, with `stage`, `chain_key`, `baseline`, `comparison_value` and `method` — a results chain rather than a headline number |
 | **Funder money and activity** | `funder_csr_years` | the statutory annual return per year: average net profit, the 2% obligation, spend, unspent transfer, excess |

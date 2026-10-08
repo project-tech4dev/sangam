@@ -12,7 +12,11 @@ SELECT o.id, o.slug, o.name, o.cohort, o.source_name, o.source_url, o.fetched_at
        COALESCE(t.sectors, '{}') AS sectors,
        COUNT(*) OVER () AS total
 FROM orgs o
-LEFT JOIN org_identifiers di ON di.org_id = o.id AND di.id_type = 'darpan'
+LEFT JOIN LATERAL (
+  SELECT id_value FROM org_identifiers
+  WHERE org_id = o.id AND id_type = 'darpan' AND id_value IS NOT NULL
+  ORDER BY is_current DESC, id LIMIT 1
+) di ON true
 LEFT JOIN locations dl ON dl.id = o.registered_location_id
 LEFT JOIN locations sl ON sl.id = dl.parent_id
 LEFT JOIN LATERAL (
@@ -48,7 +52,11 @@ async def get_org(pool: AsyncConnectionPool, slug_or_id: str) -> dict | None:
                 SELECT o.*, di.id_value AS darpan_id, dl.name AS district, sl.name AS state,
                        COALESCE(t.sectors, '{}') AS sectors
                 FROM orgs o
-                LEFT JOIN org_identifiers di ON di.org_id = o.id AND di.id_type = 'darpan'
+                LEFT JOIN LATERAL (
+                  SELECT id_value FROM org_identifiers
+                  WHERE org_id = o.id AND id_type = 'darpan' AND id_value IS NOT NULL
+                  ORDER BY is_current DESC, id LIMIT 1
+                ) di ON true
                 LEFT JOIN locations dl ON dl.id = o.registered_location_id
                 LEFT JOIN locations sl ON sl.id = dl.parent_id
                 LEFT JOIN LATERAL (
@@ -65,8 +73,10 @@ async def get_org(pool: AsyncConnectionPool, slug_or_id: str) -> dict | None:
         org_id = row["id"]
         row["identifiers"] = await (
             await conn.execute(
-                "SELECT id_type, id_value, verified, source_url FROM org_identifiers "
-                "WHERE org_id = %s ORDER BY id_type",
+                "SELECT id, id_type, id_value, status, valid_from, valid_until, application_ref, "
+                "check_method, verified, is_current, source_type, evidence, source_url "
+                "FROM org_identifiers WHERE org_id = %s "
+                "ORDER BY id_type, is_current DESC, (id_value IS NULL), id",
                 (org_id,),
             )
         ).fetchall()

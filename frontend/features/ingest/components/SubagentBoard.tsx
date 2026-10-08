@@ -59,7 +59,11 @@ function outcomeOf(step: TraceStep): Outcome {
     const parsed = JSON.parse(step.result);
     if (kindOf(step.args) === "writer") {
       const rows: number = parsed.rows_written ?? 0;
-      const held: string[] = Array.isArray(parsed.held_back) ? parsed.held_back : [];
+      // A conflict is a decision for a person too, so it is shown beside what was held back.
+      const held: string[] = [
+        ...(Array.isArray(parsed.held_back) ? parsed.held_back : []),
+        ...(Array.isArray(parsed.conflicts) ? parsed.conflicts : []),
+      ];
       const tables = Array.isArray(parsed.tables_written) ? parsed.tables_written.length : 0;
       // Nothing written and nothing explaining it is the report that reads as
       // success and is not one.
