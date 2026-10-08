@@ -351,16 +351,6 @@ def seed_funders(cur, locations, tags) -> int:
                     """,
                     (funder_id, loc_id),
                 )
-        if funder.get("website"):
-            domain = funder["website"].split("//")[-1].split("/")[0].removeprefix("www.")
-            cur.execute(
-                """
-                INSERT INTO funder_identifiers (funder_id, id_type, id_value)
-                VALUES (%s, 'domain', %s)
-                ON CONFLICT (id_type, id_value) DO NOTHING
-                """,
-                (funder_id, domain),
-            )
     return len(funders)
 
 

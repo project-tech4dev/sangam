@@ -2,7 +2,7 @@ from datetime import datetime
 
 from app.schemas.common import ReadModel
 from app.schemas.contacts import ContactOut
-from app.schemas.orgs import IdentifierOut, LocationRef, TagRef
+from app.schemas.orgs import LocationRef, TagRef
 
 
 class FunderListItem(ReadModel):
@@ -32,7 +32,8 @@ class GrantSummary(ReadModel):
 
 class FunderDetail(FunderListItem):
     section_135_bound: bool | None = None
-    identifiers: list[IdentifierOut] = []
+    cin: str | None = None            # corporate funders only (0031)
+    aliases: list[str] = []
     tags: list[TagRef] = []
     locations: list[LocationRef] = []
     contacts: list[ContactOut] = []

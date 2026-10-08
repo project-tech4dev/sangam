@@ -23,7 +23,7 @@ a claim, not a report.
 
 ## What to say
 
-**Per table, the count.** "`funder_csr_years` 3 rows, `funder_csr_spend` 11
+**Per table, the count.** "`funder_csr_years` 3 rows, `funder_activity (spend)` 11
 rows, `funder_locations` 4 rows." Name the tables. A person tracking what the
 catalog knows is tracking tables, and "17 rows written" tells them nothing
 about what they can now query.

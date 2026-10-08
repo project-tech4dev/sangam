@@ -108,7 +108,7 @@ make seed                # load the cohort data — the app is empty without it
 ```
 
 **Migrations are not automatic, and two steps above depend on them.** `db/init/` is only a
-baseline; 12 of the 40 tables the agent's catalog expects arrive in `db/migrations/*.sql`, and
+baseline; 9 of the 36 tables the agent's catalog expects arrive in `db/migrations/*.sql`, and
 the backend refuses to boot when one is missing. The seeder needs migration `0002` too, or it
 fails on `column "code" of relation "tags" does not exist`.
 
@@ -315,7 +315,7 @@ Three conventions a new tool must not break:
 - **Every row is cited.** Tool results embed `[org:N]`, `[funder:N]`, `[grant:N]`, `[score:N]`,
   `[graph:<uuid8>]`, and `instructions.md` requires the model to repeat them inline. A tool
   returning uncited rows produces uncitable answers.
-- **The model writes its own SQL, behind four layers.** An allowlist catalog of 40 tables, a
+- **The model writes its own SQL, behind four layers.** An allowlist catalog of 36 tables, a
   pure validator that regenerates the statement from a parsed AST so the model's string never
   executes, a read-only transaction with timeouts, and the extended protocol so the server
   itself refuses multi-command statements. `docs/SQL_AGENT.md` has the design.
@@ -336,10 +336,10 @@ Docker is local development only. Deployed, the stack splits across three hosts:
 | Postgres | Supabase |
 | Neo4j | Neo4j Aura, or omitted |
 
-**Only a merge to `master` deploys**, and only `.github/workflows/deploy.yml` does it. Both
-`vercel.json` files set `git.deploymentEnabled: false`, so a branch push builds nothing. The
-workflow deploys only the projects whose directory changed, so a docs-only merge deploys
-nothing. There are no preview deployments by design.
+**Nothing deploys automatically.** Run Actions → Deploy → Run workflow on `master` to deploy
+both projects; a merge deploys nothing. Both `vercel.json` files set
+`git.deploymentEnabled: false`, so no push builds anything either. There are no preview
+deployments by design.
 
 Two traps worth knowing before touching this:
 

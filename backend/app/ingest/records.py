@@ -4,11 +4,23 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.ingest.expectations import activity_kind
+
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
+# What an inferred domain and theme rest on (funder_activity.classified_by).
+ClassifiedBy = Literal["filed_sector", "project_name", "partner", "report"]
+ImplementationMode = Literal["direct", "implementing_agency", "own_trust_or_section8", "not_stated"]
+# A company's Corporate Identity Number: listing status, industry code, state, year, type, serial.
+CIN_FORMAT = re.compile(r"[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}")
+
+
+def normalise_cin(v: str) -> str:
+    """One spelling per CIN: upper case, no spaces. The MCA prints it both ways."""
+    return re.sub(r"\s+", "", v).upper()
 
 
 class Provenance(BaseModel):
@@ -72,22 +84,36 @@ class FunderRecord(Provenance):
     caller, which reports it rather than inventing a row when it will not
     resolve: Axis Bank Foundation and Axis Bank Limited are two rows and a link,
     never one row, and a placeholder parent is a fact nobody sourced."""
-    identifiers: dict[str, str] = Field(default_factory=dict)
-    """Deterministic keys: cin, pan, csr1, darpan, reg_no, domain."""
+    cin: str | None = None
+    """Corporate funders only. Normalised here and refused on the finding, so a malformed CIN costs
+    one field at save time rather than the whole funder at promotion."""
+    aliases: list[str] = Field(default_factory=list)
+    intake_mode: Literal["open", "rolling", "invitation_only", "rfp_only", "closed", "unknown"] | None = None
+    funds_external: bool | None = None
+    typical_duration_months: int | None = Field(default=None, gt=0)
+    grant_size_min: float | None = Field(default=None, ge=0, description="INR")
+    grant_size_max: float | None = Field(default=None, ge=0, description="INR")
+
+    @field_validator("cin")
+    @classmethod
+    def _one_spelling(cls, v: str | None) -> str | None:
+        return normalise_cin(v) if v else None
+
+    @field_validator("aliases")
+    @classmethod
+    def _distinct(cls, v: list[str]) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        for alias in (a.strip() for a in v):
+            if alias and alias.lower() not in seen:
+                seen.add(alias.lower())
+                out.append(alias)
+        return out
 
     @field_validator("name")
     @classmethod
     def _one_organisation(cls, v: str) -> str:
         return reject_if_aggregate(v)
-
-    @field_validator("identifiers")
-    @classmethod
-    def _known_types(cls, v: dict[str, str]) -> dict[str, str]:
-        allowed = {"pan", "cin", "csr1", "darpan", "reg_no", "domain", "name"}
-        unknown = sorted(set(v) - allowed)
-        if unknown:
-            raise ValueError(f"unknown identifier types: {unknown}; allowed: {sorted(allowed)}")
-        return v
 
 
 class FunderCsrYearRecord(Provenance):
@@ -108,6 +134,7 @@ class FunderCsrYearRecord(Provenance):
     admin_overheads: float | None = None
     impact_assessment_cost: float | None = None
     excess_spent: float | None = None
+    local_area_spent: float | None = None
     impact_assessment_done: bool | None = None
     section_135_applicable: bool | None = None
     notes: str | None = None
@@ -127,6 +154,7 @@ class FunderCsrYearRecord(Provenance):
     @field_validator(
         "prescribed_csr", "total_spent", "average_net_profit", "unspent_transferred",
         "spent_on_projects", "admin_overheads", "impact_assessment_cost", "excess_spent",
+        "local_area_spent",
     )
     @classmethod
     def _non_negative(cls, v: float | None) -> float | None:
@@ -156,33 +184,40 @@ class NewsMentionRecord(Provenance):
 
 
 class FunderCsrSpendRecord(Provenance):
-    """A project, or an aggregate of several. Never both, and never divided."""
+    """One spend line: a project, or an aggregate of several. Never both, and never divided."""
 
     kind: Literal["funder_csr_spend"] = "funder_csr_spend"
+    activity_kind: ClassVar[str] = activity_kind("csr_spend")
     funder_name: str = Field(min_length=2)
     fiscal_year: str
     amount: float = Field(ge=0, description="INR")
+    outlay: float | None = Field(default=None, ge=0, description="INR")
     project_name: str | None = None
     project_count: int | None = None
     state: str | None = None
     district: str | None = None
     program_name: str | None = None
     designation: str | None = None
-    implementing_agency: str | None = None
-    agency_csr1: str | None = None
-    via_agency: bool | None = None
+    implementation_mode: ImplementationMode | None = None
+    partner_name: str | None = None
+    partner_csr1: str | None = None
     is_ongoing: bool | None = None
     notes: str | None = None
+    domain: str
+    theme: str | None = None
+    classified_by: ClassifiedBy
+    classification_note: str | None = None
 
     _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
 
 
 class FunderFootprintRecord(Provenance):
-    """Where a theme actually ran. location_id is NOT NULL, so a place that
-    will not resolve is a row that cannot be written — say so, do not guess."""
+    """Where a theme actually ran. A line needs a place, so a place that will not resolve is a line
+    that cannot be written — say so, do not guess."""
 
     kind: Literal["funder_footprint"] = "funder_footprint"
+    activity_kind: ClassVar[str] = activity_kind("footprint")
     funder_name: str = Field(min_length=2)
     fiscal_year: str
     state: str = Field(min_length=2)
@@ -209,16 +244,39 @@ class FunderLocationRecord(Provenance):
 
 
 class FunderPartnerRecord(Provenance):
-    """A named partner. NOT proof that money changed hands — that is a grant."""
+    """A named partner. With an amount, what the partner received from this funder that year (INR);
+    without one, NOT proof that money changed hands."""
 
     kind: Literal["funder_partner"] = "funder_partner"
+    activity_kind: ClassVar[str] = activity_kind("partner")
     funder_name: str = Field(min_length=2)
     fiscal_year: str
     partner_name: str = Field(min_length=2)
     partner_canonical: str | None = None
     partner_kind: str | None = None
     partner_csr1: str | None = None
+    outlay: float | None = Field(default=None, ge=0, description="INR")
+    amount: float | None = Field(default=None, ge=0, description="INR")
     program_name: str | None = None
+    notes: str | None = None
+
+    _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
+    _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+
+class FunderProgrammeSpendRecord(Provenance):
+    """The funder's own programme total for a year (D12)."""
+
+    kind: Literal["funder_programme_spend"] = "funder_programme_spend"
+    activity_kind: ClassVar[str] = activity_kind("programme_spend")
+    funder_name: str = Field(min_length=2)
+    fiscal_year: str
+    program_name: str = Field(min_length=2)
+    amount: float = Field(ge=0, description="INR")
+    domain: str
+    theme: str | None = None
+    classified_by: ClassifiedBy
+    classification_note: str | None = None
     notes: str | None = None
 
     _fy = field_validator("fiscal_year")(lambda v: _fiscal_year(v))
@@ -284,18 +342,38 @@ class ContactRecord(Provenance):
     _org = field_validator("entity_name")(lambda v: reject_if_aggregate(v))
 
 
-class FunderEligibilityRecord(Provenance):
-    """One condition a funder sets for applicants. Its standing bar, not a call's."""
+# The headings an eligibility document's text sits under. Matched BY HAND to 0031, which writes the
+# same three when it moves funder_eligibility rows into documents, plus "## Notes" for migrated rows only.
+ELIGIBILITY_SECTIONS = (
+    ("statutory_restatement", "Statutory restatement"),
+    ("own_bar", "Its own bar"),
+    ("disqualifiers", "Disqualifiers"),
+)
+NOT_STATED = "Not stated. The page was read and sets out no eligibility for applicants."
 
-    kind: Literal["funder_eligibility"] = "funder_eligibility"
+
+class EligibilityGuidelineRecord(Provenance):
+    """One funder_eligibility documents row: the guideline text, verbatim."""
+
+    kind: Literal["eligibility_guideline"] = "eligibility_guideline"
+    doc_type: ClassVar[str] = "funder_eligibility"
     funder_name: str = Field(min_length=2)
-    # `kind` is taken by the discriminator above, so the finding's own `kind`
-    # arrives renamed — same reason program_kind and contact_kind are renamed.
-    criterion_kind: Literal["statutory_restatement", "own_bar", "disqualifier"]
-    criterion: str = Field(min_length=10)
-    notes: str | None = None
+    title: str = Field(min_length=4)
+    statutory_restatement: str | None = None
+    own_bar: str | None = None
+    disqualifiers: str | None = None
+    not_stated: bool = False
 
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
+
+    def content_md(self) -> str:
+        if self.not_stated:
+            return NOT_STATED
+        return "\n\n".join(
+            f"## {heading}\n\n{text.strip()}"
+            for field, heading in ELIGIBILITY_SECTIONS
+            if (text := getattr(self, field))
+        )
 
 
 class RfpRecord(Provenance):
@@ -348,7 +426,7 @@ class OrgRecord(Provenance):
     legal_form: str | None = None
     registration_date: date | None = None
     identifiers: dict[str, str] = Field(default_factory=dict)
-    """12A, 80G and FCRA, which funder_identifiers has no room for."""
+    """12A, 80G and FCRA; a funder has no room for them."""
 
     @field_validator("name")
     @classmethod
@@ -402,6 +480,7 @@ class OrgLocationRecord(Provenance):
 Record = (
     FunderRecord | OrgRecord | OrgFinancialsRecord | OrgLocationRecord
     | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
-    | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | ProgramRecord
-    | MetricRecord | ContactRecord | RfpRecord
+    | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | FunderProgrammeSpendRecord
+    | ProgramRecord
+    | MetricRecord | ContactRecord | RfpRecord | EligibilityGuidelineRecord
 )

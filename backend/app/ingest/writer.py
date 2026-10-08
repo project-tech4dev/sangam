@@ -6,6 +6,7 @@ import json
 import re
 from typing import Any, NamedTuple
 
+from app.ingest.expectations import RESERVED_DOC_TYPES
 from app.ingest.matcher import Match
 from app.ingest.records import (
     FunderCsrYearRecord,
@@ -39,7 +40,8 @@ class Owner(NamedTuple):
 # Columns a re-import may overwrite on an existing funder. Everything else on the
 # row was either hand-vetted or set by a different source, so an importer leaves it.
 FUNDER_UPDATABLE = (
-    "funder_type", "website", "section_135_bound", "parent_id",
+    "funder_type", "website", "section_135_bound", "parent_id", "cin",
+    "intake_mode", "funds_external", "typical_duration_months", "grant_size_min", "grant_size_max",
     "source_url", "source_name", "fetched_at", "as_of", "content_hash", "extractor_version",
 )
 # All ten statutory items, not the four this used to carry. The researcher
@@ -47,7 +49,7 @@ FUNDER_UPDATABLE = (
 CSR_YEAR_UPDATABLE = (
     "prescribed_csr", "total_spent", "average_net_profit", "unspent_transferred",
     "spent_on_projects", "admin_overheads", "impact_assessment_cost", "excess_spent",
-    "impact_assessment_done", "section_135_applicable", "notes",
+    "local_area_spent", "impact_assessment_done", "section_135_applicable", "notes",
     "source_url", "source_name", "fetched_at", "as_of",
 )
 
@@ -99,16 +101,24 @@ async def ensure_document(
     conn: Any, rec: Any, *, owner: Owner | None, doc_type: str,
     storage_path: str | None = None, content_hash: str | None = None,
 ) -> tuple[int, str]:
-    """One documents row per source URL, so many facts can cite one report.
+    """One documents row per source URL and kind of document (and owner, for a reserved kind).
 
-    Returns (id, added | updated | matched), like the other writers here. The
-    archive columns backfill onto a row that predates archiving, and only where
-    the row is empty - a re-promote never overwrites what is already recorded.
+    The kind is the doc_type itself for the three reserved types and one shared class for every
+    other type: a policy page can be both the archived source and the funder's eligibility document
+    (two rows), while one PDF that two research runs called 'annual_report' and 'csr_annexure' is
+    still one row. Returns (id, added | updated | matched). The archive columns backfill onto a row
+    that predates archiving, and only where the row is empty.
     """
+    kind = doc_type if doc_type in RESERVED_DOC_TYPES else ""
+    # A reserved kind is also per owner: two funders citing one policy page each get their own
+    # eligibility text. The column is one of two literals from Owner, never a caller's string.
+    mine = f" AND {owner.column} = %s" if kind and owner else ""
     row = await (
         await conn.execute(
-            "SELECT id, storage_path, content_hash FROM documents WHERE source_url = %s",
-            (rec.source_url,),
+            "SELECT id, storage_path, content_hash FROM documents WHERE source_url = %s "
+            "AND (CASE WHEN doc_type = ANY(%s) THEN doc_type ELSE '' END) = %s" + mine
+            + " ORDER BY id LIMIT 1",
+            (rec.source_url, sorted(RESERVED_DOC_TYPES), kind, *([owner.id] if mine else [])),
         )
     ).fetchone()
     if row:
@@ -139,17 +149,32 @@ async def ensure_document(
     return row["id"], "added"
 
 
+def new_aliases(held: list[str], found: list[str], name: str) -> list[str]:
+    """Spellings not already held and not the funder's own name, case-insensitively, in found order."""
+    seen = {a.lower() for a in held} | {name.lower()}
+    out: list[str] = []
+    for alias in found:
+        if alias.lower() not in seen:
+            seen.add(alias.lower())
+            out.append(alias)
+    return out
+
+
 async def write_funder(
     conn: Any, rec: FunderRecord, match: Match, *, parent_id: int | None = None
 ) -> tuple[str, int, dict]:
     """Returns (status, funder_id, changes). Status is added | updated | matched.
 
-    parent_id is resolved by the caller, which can report a parent it could not
-    find; this writer only stores what it is given.
+    parent_id is resolved by the caller, which can report a parent it could not find; this writer
+    only stores what it is given. Aliases are appended, never replaced: a spelling one source used
+    is still a way to find this funder.
     """
     proposed = {
         "funder_type": rec.funder_type, "website": rec.website,
-        "section_135_bound": rec.section_135_bound, "parent_id": parent_id,
+        "section_135_bound": rec.section_135_bound, "parent_id": parent_id, "cin": rec.cin,
+        "intake_mode": rec.intake_mode, "funds_external": rec.funds_external,
+        "typical_duration_months": rec.typical_duration_months,
+        "grant_size_min": rec.grant_size_min, "grant_size_max": rec.grant_size_max,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
         "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
@@ -157,33 +182,42 @@ async def write_funder(
     if match.resolved:
         existing = await (
             await conn.execute(
-                f"SELECT {', '.join(FUNDER_UPDATABLE)} FROM funders WHERE id = %s", (match.entity_id,)
+                f"SELECT name, aliases, {', '.join(FUNDER_UPDATABLE)} FROM funders WHERE id = %s",
+                (match.entity_id,),
             )
         ).fetchone()
-        changes = _diff(dict(existing), proposed)
-        if not changes:
+        changes = _diff({c: existing[c] for c in FUNDER_UPDATABLE}, proposed)
+        held = list(existing["aliases"] or [])
+        added = new_aliases(held, rec.aliases, existing["name"])
+        if not changes and not added:
             return "matched", match.entity_id, {}
-        sets = ", ".join(f"{c} = %s" for c in changes)
+        sets = [f"{c} = %s" for c in changes]
+        values = [proposed[c] for c in changes]
+        if added:
+            sets.append("aliases = aliases || %s::text[]")
+            values.append(added)
+            changes["aliases"] = {"old": held, "new": [*held, *added]}
         await conn.execute(
-            f"UPDATE funders SET {sets} WHERE id = %s",
-            (*[proposed[c] for c in changes], match.entity_id),
+            f"UPDATE funders SET {', '.join(sets)} WHERE id = %s", (*values, match.entity_id)
         )
-        await _write_identifiers(conn, match.entity_id, rec)
         return "updated", match.entity_id, changes
 
     slug = await _free_slug(conn, slugify(rec.name))
     row = await (
         await conn.execute(
-            "INSERT INTO funders (slug, name, funder_type, website, section_135_bound, "
-            "parent_id, registry_status, source_url, source_name, fetched_at, as_of, "
+            "INSERT INTO funders (slug, name, funder_type, website, section_135_bound, parent_id, cin, "
+            "aliases, intake_mode, funds_external, typical_duration_months, grant_size_min, "
+            "grant_size_max, registry_status, source_url, source_name, fetched_at, as_of, "
             "content_hash, extractor_version) "
-            "VALUES (%s, %s, %s, %s, %s, %s, 'placeholder', %s, %s, %s, %s, %s, %s) RETURNING id",
-            (slug, rec.name, rec.funder_type, rec.website, rec.section_135_bound, parent_id,
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'placeholder', "
+            "%s, %s, %s, %s, %s, %s) RETURNING id",
+            (slug, rec.name, rec.funder_type, rec.website, rec.section_135_bound, parent_id, rec.cin,
+             new_aliases([], rec.aliases, rec.name), rec.intake_mode, rec.funds_external,
+             rec.typical_duration_months, rec.grant_size_min, rec.grant_size_max,
              rec.source_url, rec.source_name, rec.fetched_at, rec.as_of,
              rec.content_hash, rec.extractor_version),
         )
     ).fetchone()
-    await _write_identifiers(conn, row["id"], rec)
     return "added", row["id"], {"name": {"old": None, "new": rec.name}}
 
 
@@ -197,13 +231,11 @@ async def _free_slug(conn: Any, base: str, table: str = "funders") -> str:
     return slug
 
 
-async def _write_identifiers(conn: Any, funder_id: int, rec: FunderRecord) -> None:
-    for id_type, id_value in rec.identifiers.items():
-        await conn.execute(
-            "INSERT INTO funder_identifiers (funder_id, id_type, id_value, source_url, source_name, "
-            "fetched_at) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (id_type, id_value) DO NOTHING",
-            (funder_id, id_type, id_value, rec.source_url, rec.source_name, rec.fetched_at),
-        )
+async def cin_holder(conn: Any, cin: str) -> dict | None:
+    """The funder already holding this CIN, if any. funders.cin is UNIQUE."""
+    return await (
+        await conn.execute("SELECT id, name FROM funders WHERE cin = %s", (cin,))
+    ).fetchone()
 
 
 async def write_csr_year(
@@ -214,6 +246,7 @@ async def write_csr_year(
         "average_net_profit": rec.average_net_profit, "unspent_transferred": rec.unspent_transferred,
         "spent_on_projects": rec.spent_on_projects, "admin_overheads": rec.admin_overheads,
         "impact_assessment_cost": rec.impact_assessment_cost, "excess_spent": rec.excess_spent,
+        "local_area_spent": rec.local_area_spent,
         "impact_assessment_done": rec.impact_assessment_done,
         "section_135_applicable": rec.section_135_applicable, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
@@ -298,19 +331,19 @@ def _json(v: Any) -> str:
 # UNIQUE NULLS NOT DISTINCT constraints the schema already declares, so a
 # re-import updates a row rather than growing a second one.
 
-CSR_SPEND_KEY = ("funder_id", "fiscal_year", "program_id", "csr_sector_id",
-                 "state_location_id", "district_location_id", "designation", "project_name")
-CSR_SPEND_UPDATABLE = ("implementing_agency", "agency_csr1", "via_agency", "is_ongoing",
-                       "amount", "project_count", "notes", "source_url", "source_name",
-                       "fetched_at", "as_of")
-FOOTPRINT_KEY = ("funder_id", "program_id", "fiscal_year", "location_id")
-FOOTPRINT_UPDATABLE = ("name_as_printed", "notes", "source_url", "source_name",
-                       "fetched_at", "as_of")
+# funder_activity's UNIQUE NULLS NOT DISTINCT key, in its order. `kind` is part of it, so a spend
+# line and a partner line that agree on everything else are two lines (0031).
+FUNDER_ACTIVITY_KEY = ("funder_id", "kind", "fiscal_year", "program_id", "csr_sector_id",
+                       "state_location_id", "location_id", "designation", "project_name", "partner_name")
+# is_public is deliberately absent: a new line takes the column's DEFAULT true and no writer updates
+# it, so a line a person marked internal (D14) stays internal through every re-promote.
+FUNDER_ACTIVITY_UPDATABLE = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note",
+                             "name_as_printed", "implementation_mode", "partner_canonical",
+                             "partner_csr1", "partner_kind", "outlay", "amount", "project_count",
+                             "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of")
+_CLASSIFICATION = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note")
 FUNDER_LOCATION_KEY = ("funder_id", "location_id")
 FUNDER_LOCATION_UPDATABLE = ("role", "note", "source_url", "source_name", "fetched_at", "as_of")
-PARTNER_KEY = ("funder_id", "program_id", "fiscal_year", "partner_name")
-PARTNER_UPDATABLE = ("partner_canonical", "partner_kind", "partner_csr1", "notes",
-                     "source_url", "source_name", "fetched_at", "as_of")
 PROGRAM_KEY = ("funder_id", "name")
 PROGRAM_UPDATABLE = ("description", "status", "start_date", "end_date", "parent_id", "kind",
                      "is_enabler", "source_url", "source_name", "fetched_at", "as_of",
@@ -364,38 +397,82 @@ async def _upsert(
     return "updated", changes
 
 
-async def write_csr_spend(
-    conn: Any, rec: Any, funder_id: int, *, program_id: int | None,
-    state_id: int | None, district_id: int | None, csr_sector_id: int | None,
-    document_id: int | None,
+def _activity_refusal(key: dict[str, Any], row: dict[str, Any]) -> str | None:
+    """funder_activity's CHECKs, asked before the write: a CheckViolation would abort the whole promotion."""
+    kind = key["kind"]
+    if kind == "spend" and row.get("amount") is None:
+        return "a spend line needs an amount"
+    if kind == "footprint" and key["location_id"] is None and key["state_location_id"] is None:
+        return "a footprint line needs a place"
+    if kind == "partner" and key["partner_name"] is None:
+        return "a partner line needs the partner's name"
+    if kind == "programme" and (key["program_id"] is None or row.get("amount") is None):
+        return "a programme line needs a resolved programme and an amount"
+    if row.get("domain_tag_id") is not None and row.get("classified_by") is None:
+        return "a domain needs classified_by, saying what it rests on"
+    return None
+
+
+async def _write_activity(
+    conn: Any, key: dict[str, Any], proposed: dict[str, Any], document_id: int | None
 ) -> tuple[str, dict]:
-    key = {
-        "funder_id": funder_id, "fiscal_year": rec.fiscal_year, "program_id": program_id,
-        "csr_sector_id": csr_sector_id, "state_location_id": state_id,
-        "district_location_id": district_id, "designation": rec.designation,
-        "project_name": rec.project_name,
-    }
+    """One funder_activity line. A classification a person confirmed is never re-inferred (D11).
+    Returns ("held", {"reason": ...}) for a line the table's CHECKs would refuse."""
+    where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
+    row = await (
+        await conn.execute(
+            f"SELECT classification_confirmed, amount, classified_by FROM funder_activity WHERE {where}",
+            tuple(key.values()),
+        )
+    ).fetchone()
+    if row and row["classification_confirmed"]:
+        proposed = {c: v for c, v in proposed.items() if c not in _CLASSIFICATION}
+    # A proposed NULL never erases, so the row as it will stand is the stored one under the proposal.
+    standing = {**(dict(row) if row else {}), **{c: v for c, v in proposed.items() if v is not None}}
+    if why := _activity_refusal(key, standing):
+        return "held", {"reason": why}
+    return await _upsert(conn, "funder_activity", key, FUNDER_ACTIVITY_UPDATABLE, proposed, document_id)
+
+
+def _activity_key(funder_id: int, kind: str, fiscal_year: str, **ids: Any) -> dict[str, Any]:
+    key = dict.fromkeys(FUNDER_ACTIVITY_KEY)
+    key.update(funder_id=funder_id, kind=kind, fiscal_year=fiscal_year, **ids)
+    return key
+
+
+async def write_csr_spend(
+    conn: Any, rec: Any, funder_id: int, *, program_id: int | None, state_id: int | None,
+    district_id: int | None, csr_sector_id: int | None, domain_id: int | None,
+    theme_id: int | None, document_id: int | None,
+) -> tuple[str, dict]:
+    key = _activity_key(
+        funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
+        csr_sector_id=csr_sector_id, state_location_id=state_id, location_id=district_id,
+        designation=rec.designation, project_name=rec.project_name, partner_name=rec.partner_name,
+    )
     proposed = {
-        "implementing_agency": rec.implementing_agency, "agency_csr1": rec.agency_csr1,
-        "via_agency": rec.via_agency, "is_ongoing": rec.is_ongoing, "amount": rec.amount,
-        "project_count": rec.project_count, "notes": rec.notes, "source_url": rec.source_url,
+        "domain_tag_id": domain_id, "theme_tag_id": theme_id,
+        "classified_by": rec.classified_by, "classification_note": rec.classification_note,
+        "implementation_mode": rec.implementation_mode, "partner_csr1": rec.partner_csr1,
+        "outlay": rec.outlay, "amount": rec.amount, "project_count": rec.project_count,
+        "is_ongoing": rec.is_ongoing, "notes": rec.notes, "source_url": rec.source_url,
         "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
-    return await _upsert(conn, "funder_csr_spend", key, CSR_SPEND_UPDATABLE, proposed, document_id)
+    return await _write_activity(conn, key, proposed, document_id)
 
 
 async def write_footprint(
     conn: Any, rec: Any, funder_id: int, *, program_id: int | None,
-    location_id: int, document_id: int | None,
+    state_id: int | None, district_id: int | None, document_id: int | None,
 ) -> tuple[str, dict]:
-    key = {"funder_id": funder_id, "program_id": program_id,
-           "fiscal_year": rec.fiscal_year, "location_id": location_id}
+    key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
+                        state_location_id=state_id, location_id=district_id)
     proposed = {
         "name_as_printed": rec.name_as_printed, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
-    return await _upsert(conn, "funder_footprints", key, FOOTPRINT_UPDATABLE, proposed, document_id)
+    return await _write_activity(conn, key, proposed, document_id)
 
 
 async def write_funder_location(
@@ -414,15 +491,30 @@ async def write_funder_location(
 async def write_partner(
     conn: Any, rec: Any, funder_id: int, *, program_id: int | None, document_id: int | None
 ) -> tuple[str, dict]:
-    key = {"funder_id": funder_id, "program_id": program_id,
-           "fiscal_year": rec.fiscal_year, "partner_name": rec.partner_name}
+    key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id,
+                        partner_name=rec.partner_name)
     proposed = {
         "partner_canonical": rec.partner_canonical or rec.partner_name,
-        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1, "notes": rec.notes,
+        "partner_kind": rec.partner_kind, "partner_csr1": rec.partner_csr1,
+        "outlay": rec.outlay, "amount": rec.amount, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
     }
-    return await _upsert(conn, "funder_partners", key, PARTNER_UPDATABLE, proposed, document_id)
+    return await _write_activity(conn, key, proposed, document_id)
+
+
+async def write_programme_spend(
+    conn: Any, rec: Any, funder_id: int, *, program_id: int, domain_id: int | None,
+    theme_id: int | None, document_id: int | None,
+) -> tuple[str, dict]:
+    key = _activity_key(funder_id, rec.activity_kind, rec.fiscal_year, program_id=program_id)
+    proposed = {
+        "domain_tag_id": domain_id, "theme_tag_id": theme_id, "classified_by": rec.classified_by,
+        "classification_note": rec.classification_note, "amount": rec.amount, "notes": rec.notes,
+        "source_url": rec.source_url, "source_name": rec.source_name,
+        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+    }
+    return await _write_activity(conn, key, proposed, document_id)
 
 
 async def write_program(
@@ -534,30 +626,29 @@ async def write_rfp(
     return status, rfp_id, changes
 
 
-FUNDER_ELIGIBILITY_KEY = ("funder_id", "kind", "criterion")
-# No content_hash or extractor_version: funder_eligibility carries the same
-# provenance set as funder_partners, and _upsert names its columns.
-FUNDER_ELIGIBILITY_UPDATABLE = ("notes", "source_url", "source_name", "fetched_at", "as_of")
+async def write_eligibility_document(conn: Any, rec: Any, funder_id: int) -> tuple[int, str]:
+    """The funder's standing eligibility as one documents row, text verbatim (D3).
 
-
-async def write_funder_eligibility(
-    conn: Any, rec: Any, funder_id: int, *, document_id: int | None
-) -> tuple[str, dict]:
-    """One condition the funder sets for applicants.
-
-    The criterion itself is part of the key: a funder restating the same bar
-    in different words is two conditions as far as this table is concerned,
-    and collapsing them would silently pick one source's wording over another.
+    Keyed by ensure_document on (source_url, 'funder_eligibility', funder). The text follows the newest
+    research, and is_public follows the funder (D14): a hidden funder's guideline is staff-only.
     """
-    key = {"funder_id": funder_id, "kind": rec.criterion_kind, "criterion": rec.criterion}
-    proposed = {
-        "notes": rec.notes,
-        "source_url": rec.source_url, "source_name": rec.source_name,
-        "fetched_at": rec.fetched_at, "as_of": rec.as_of,
-    }
-    return await _upsert(
-        conn, "funder_eligibility", key, FUNDER_ELIGIBILITY_UPDATABLE, proposed, document_id
+    document_id, status = await ensure_document(
+        conn, rec, owner=Owner.funder(funder_id), doc_type=rec.doc_type
     )
+    content = rec.content_md()
+    changed = await (
+        await conn.execute(
+            "UPDATE documents d SET content_md = %s, title = %s, as_of = coalesce(%s, d.as_of), "
+            "fetched_at = %s, is_public = f.registry_status <> 'hidden' "
+            "FROM funders f WHERE d.id = %s AND f.id = d.funder_id "
+            "AND (d.content_md IS DISTINCT FROM %s OR d.is_public IS DISTINCT FROM "
+            "(f.registry_status <> 'hidden')) RETURNING d.id",
+            (content, rec.title, rec.as_of, rec.fetched_at, document_id, content),
+        )
+    ).fetchone()
+    if status == "matched" and changed is not None:
+        status = "updated"
+    return document_id, status
 
 
 async def write_funder_tag(conn: Any, funder_id: int, tag_id: int, *, note: str | None) -> None:
@@ -670,8 +761,8 @@ async def write_org(
 
 
 async def _write_org_identifiers(conn: Any, org_id: int, rec: OrgRecord) -> None:
-    """12A, 80G and FCRA among them — the three funder_identifiers has no room
-    for. `verified` is left at its default: research is not verification."""
+    """12A, 80G and FCRA among them — the registrations only an NGO carries. `verified` is left at
+    its default: research is not verification."""
     for id_type, id_value in rec.identifiers.items():
         await conn.execute(
             "INSERT INTO org_identifiers (org_id, id_type, id_value, source_url, source_name, "

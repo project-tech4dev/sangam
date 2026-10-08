@@ -15,7 +15,7 @@ from langchain_core.tools import tool
 from app.agent.tools.sql.catalog import CATALOG
 from app.db.pool import get_pool
 from app.ingest.expectations import (
-    CONCEPT_TABLES,
+    CONCEPTS,
     concepts_for,
     expected_fields,
     recent_fiscal_years,
@@ -50,7 +50,8 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
     # Both tables carry these; funder_type and section_135_bound are a funder's
     # and org_kind and legal_form are an NGO's, so the head line differs.
     head = (
-        "id, name, slug, registry_status, funder_type, website, parent_id, section_135_bound"
+        "id, name, slug, registry_status, funder_type, website, parent_id, section_135_bound, cin, aliases, "
+        "intake_mode, funds_external, typical_duration_months, grant_size_min, grant_size_max"
         if entity_kind == "funder"
         else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort"
     )
@@ -107,20 +108,14 @@ def _row(r: Any) -> str:
 # contacts deliberately omits email and phone: the catalog withholds them.
 _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
-        "funder_identifiers",
-        """
-        SELECT id_type, id_value, verified FROM funder_identifiers
-        WHERE funder_id = %s ORDER BY id_type
-        """,
-    ),
-    (
         # Its standing bar, which is NOT the same question as whether a call is
         # open. Labelled so a reader cannot mistake "what the funder requires"
         # for "whether anybody qualifies" — nothing here judges an applicant.
-        "funder_eligibility (what the funder REQUIRES of applicants; not a judgement on any)",
+        "eligibility (the funder_eligibility document: what it REQUIRES of applicants; not a judgement on any)",
         """
-        SELECT kind, criterion, source_name FROM funder_eligibility
-        WHERE funder_id = %s ORDER BY kind, id
+        SELECT id AS document_id, title, as_of, source_url, left(content_md, 1500) AS text
+        FROM documents WHERE funder_id = %s AND doc_type = 'funder_eligibility'
+        ORDER BY fetched_at DESC NULLS LAST, id DESC LIMIT 1
         """,
     ),
     (
@@ -138,23 +133,27 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         "funder_csr_years (amounts in INR)",
         """
         SELECT fiscal_year, prescribed_csr, total_spent, average_net_profit, unspent_transferred,
-               source_name
+               local_area_spent, source_name
         FROM funder_csr_years WHERE funder_id = %s ORDER BY fiscal_year
         """,
     ),
     (
-        "funder_csr_spend",
+        "funder_activity kind='spend' (filed lines, INR; domain and theme are INFERRED unless confirmed)",
         """
-        SELECT fiscal_year, project_name, amount, implementing_agency, designation
-        FROM funder_csr_spend WHERE funder_id = %s ORDER BY fiscal_year
+        SELECT a.fiscal_year, a.project_name, a.amount, a.outlay, a.partner_name, a.implementation_mode,
+               a.designation, d.code AS domain, t.code AS theme, a.classified_by, a.classification_confirmed
+        FROM funder_activity a
+        LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
+        WHERE a.funder_id = %s AND a.kind = 'spend' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (
-        "funder_footprints",
+        "funder_activity kind='footprint' (where the work actually ran)",
         """
-        SELECT f.fiscal_year, f.name_as_printed, l.name AS location
-        FROM funder_footprints f LEFT JOIN locations l ON l.id = f.location_id
-        WHERE f.funder_id = %s ORDER BY f.fiscal_year
+        SELECT a.fiscal_year, a.name_as_printed, s.name AS state, l.name AS location
+        FROM funder_activity a
+        LEFT JOIN locations s ON s.id = a.state_location_id LEFT JOIN locations l ON l.id = a.location_id
+        WHERE a.funder_id = %s AND a.kind = 'footprint' ORDER BY a.fiscal_year, a.id
         """,
     ),
     (
@@ -165,10 +164,20 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         """,
     ),
     (
-        "funder_partners",
+        "funder_activity kind='partner' (named; an amount, INR, is what the partner received)",
         """
-        SELECT fiscal_year, partner_name, partner_canonical, partner_kind
-        FROM funder_partners WHERE funder_id = %s ORDER BY fiscal_year
+        SELECT fiscal_year, partner_name, partner_canonical, partner_kind, outlay, amount
+        FROM funder_activity WHERE funder_id = %s AND kind = 'partner' ORDER BY fiscal_year, id
+        """,
+    ),
+    (
+        "funder_activity kind='programme' (the funder's OWN programme totals; never add them to spend)",
+        """
+        SELECT a.fiscal_year, p.name AS programme, a.amount, d.code AS domain, t.code AS theme,
+               a.classification_confirmed
+        FROM funder_activity a JOIN programs p ON p.id = a.program_id
+        LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
+        WHERE a.funder_id = %s AND a.kind = 'programme' ORDER BY a.fiscal_year, p.name
         """,
     ),
     (
@@ -284,7 +293,7 @@ def _reject_unknown(entity_kind: str) -> str | None:
     It is what a not_found or wrong_entity row is saved as, and legacy rows
     hold it, so the column keeps it. But a run that has not decided which kind
     it is researching cannot be given a target list: it would get a funder's,
-    which is how an NGO ended up aimed at funder_identifiers.
+    which is how an NGO ended up aimed at the funder tables.
     """
     if entity_kind in _BY_KIND:
         return None
@@ -358,7 +367,8 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                 "overwrites a value somebody entered by hand."
             )
         for concept in wanted_concepts:
-            table = CONCEPT_TABLES[concept]
+            spec = CONCEPTS[concept]
+            target = spec.table + (f" ({spec.row_filter[0]}='{spec.row_filter[1]}')" if spec.row_filter else "")
             fields = expected_fields(concept)
             count, seen_years = held.get(concept, (0, []))
             state = f"{count} row(s) held" if count else "NOT RECORDED"
@@ -366,7 +376,7 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                 missing = [y for y in wanted if y not in seen_years]
                 state += f", years {', '.join(sorted(seen_years))}"
                 state += f" — still missing {', '.join(missing)}" if missing else " — years covered"
-            out.append(f"\n{concept} -> {table}: {state}")
+            out.append(f"\n{concept} -> {target}: {state}")
             out += [f"    {f.describe()}" for f in fields]
 
         out.append(
@@ -395,18 +405,22 @@ async def _held_per_concept(
     entity_table, fk, _ = _BY_KIND[entity_kind]
     out: dict[str, tuple[int, list[str]]] = {}
     for concept in concepts_for(entity_kind):
-        table = CONCEPT_TABLES[concept]
+        spec = CONCEPTS[concept]
+        table = spec.table
         # The entity's own row, which is the match we already have in hand.
         if table == entity_table:
             out[concept] = (1, [])
             continue
-        # Table and column names come from module constants, never a caller.
         has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
         years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
+        # Table, column and filter column come from module constants, never a caller.
+        where, params = f"{fk} = %s", [entity_id]
+        if spec.row_filter:
+            where += f" AND {spec.row_filter[0]} = %s"
+            params.append(spec.row_filter[1])
         found = await (
             await conn.execute(
-                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE {fk} = %s",
-                (entity_id,),
+                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE {where}", tuple(params)
             )
         ).fetchone()
         out[concept] = (found["n"], [y for y in (found["years"] or []) if y])
@@ -420,7 +434,7 @@ async def promote_research(slug: str = "") -> str:
     Research and the catalog are different: a finding is what a source said,
     a catalog row is what the product answers from. This is the step between.
 
-    Works on either kind. A funder's findings reach funders, funder_identifiers
+    Works on either kind. A funder's findings reach funders
     and the funder fact tables; an NGO's reach orgs, org_identifiers,
     org_financials and org_locations, and both kinds write the shared
     programmes, metrics, contacts and documents. `grant` is the one concept

@@ -51,12 +51,17 @@ labels live in the researcher's instructions. What matters to you is the consequ
 LOW-confidence fact is a lead, and reporting it beside a filing's figure without saying which
 is which is the error to watch for.
 
+For a corporate funder the statutory filing is often already here: the staff workbooks, which a
+researcher reads with `read_source_rows`. Put the filer's registered name in the task when you
+know it — the filer is often the parent company, not the foundation. The researcher reads them
+last: its first `read_source_rows` call closes its web tools for the rest of its run.
+
 ---
 
 ## What a researcher is looking for
 
 **There are two lists, and which one a run used is the single most consequential thing on its
-summary.** A `funder` gives money and is researched against the thirteen concepts below. An
+summary.** A `funder` gives money and is researched against the fourteen concepts below. An
 `org` receives it and is researched against eight: `program`, `metric`, `contact` and
 `document` unchanged — the same tables with an `org_id` — plus four of its own.
 
@@ -68,30 +73,31 @@ summary.** A `funder` gives money and is researched against the thirteen concept
 | `org_location` | where it works, state and district, role registered / operates / funds |
 
 Those three registrations are what a funder checks before it gives anything, and they exist on
-no funder table. An NGO sent at the funder list used to be offered `funder_type`,
-`section_135_bound` and an identifier enum with no room for any of them. If a researcher's
+no funder table. An NGO sent at the funder list would be offered `funder_type`,
+`section_135_bound` and a CIN, with no room for any of them. If a researcher's
 summary comes back `unknown` for anything other than a `not_found` or `wrong_entity`, that is a
 run to question, not a result to report.
 
-The thirteen `funder` concepts, so you can say what a run covered and what it missed. Each
+The fourteen `funder` concepts, so you can say what a run covered and what it missed. Each
 one's fields, its enums and the traps in reading it are in the researcher's instructions — you
 judge coverage, not extraction.
 
 | Concept | What it is |
 |---|---|
-| `identity` | name, legal name, website, funder type, Section 135, parent/foundation link |
-| `identifier` | CIN, PAN, CSR-1, domain, registration number |
+| `identity` | name, website, funder type, Section 135, parent/foundation link, CIN, aliases, stated intake and grant band |
 | `csr_year` | per FY: obligation, spend, overheads, unspent, excess |
-| `csr_spend` | the highest-value target — project or aggregate spend by FY, sector and place |
+| `csr_spend` | the highest-value target — spend lines by FY and place, each with an inferred domain (and theme where evidenced) |
 | `footprint` | where a theme **actually ran**, by FY, at the most precise level stated |
 | `stated_geography` | where the funder **says** it prioritises. Not proof of spending |
 | `partner` | implementing partners per FY and programme |
+| `programme_spend` | the funder's own programme split per FY — never summed with spend lines |
 | `program` | theme → programme → phase → project |
 | `grant` | funder → recipient, with amount and dates. `amount = null` is not public, never zero |
 | `metric` | beneficiaries, outputs, outcomes, SROI, with stage and method |
 | `contact` | publicly disclosed CSR roles and role mailboxes only |
 | `document` | every important source, with the period it describes and when it was read |
 | `rfp` | an open call for proposals — the one concept an NGO can act on this week |
+| `eligibility_guideline` | its standing eligibility, verbatim, one document per page |
 
 **Never merge a company with its foundation.** Axis Bank Limited and Axis Bank Foundation are
 two rows and a parent link, in a researcher's findings and in your report.
@@ -119,7 +125,7 @@ independently verified. Where something is not public, say so rather than smooth
 
 ## Output
 
-**1. Structured research results**, grouped by concept: `funder`, `identifiers`, `csr_years`, `csr_spend`, `footprints`, `partners`, `programs`, `grants`, `metrics`, `contacts`, `documents`. Only fields supported by evidence.
+**1. Structured research results**, grouped by concept: `funder`, `csr_years`, `activity` (spend, footprints, partners, programme split), `eligibility`, `programs`, `grants`, `metrics`, `contacts`, `documents`. Only fields supported by evidence.
 
 **2. Database comparison** against the dossier, every item carrying its source:
 
@@ -148,9 +154,7 @@ There are **two** places work is kept, and they are different things.
 `save_research`. This is durable, carries the evidence sentence for each fact, shows on the
 Import screen, and renders to `docs/entities/<slug>.md`. Nothing you research is lost.
 
-**Promoted into the catalog:** `promote_research` moves twelve of the thirteen concepts —
-identity, identifiers, CSR years, project spend, footprints, stated geography, partners,
-programmes, metrics, contacts, documents and RFPs. Offer it once research is saved.
+**Promoted into the catalog:** `promote_research` moves thirteen of the fourteen concepts — identity, CSR years, spend lines, footprints, stated geography, partners, the funder's programme split, eligibility, programmes, metrics, contacts, documents and RFPs. Offer it once research is saved.
 
 **The one exception is `grant`.** `grants.org_id` is NOT NULL and promoting a funder's
 research does not write the NGOs it names, so a recipient the catalog does not already hold
@@ -278,7 +282,7 @@ to call them:
 
 | Tool | Whose it is |
 |---|---|
-| `research_goals` · `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` | `entity-researcher` |
+| `research_goals` · `read_source_rows` · `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` | `entity-researcher` |
 | `promote_research` | `catalog-writer` |
 
 `save_research` saves the findings **and** publishes the brief the funder page links, so

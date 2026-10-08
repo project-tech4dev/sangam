@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from langchain.agents.middleware import (
+    AgentMiddleware,
     ClearToolUsesEdit,
     ContextEditingMiddleware,
     after_agent,
@@ -96,3 +97,51 @@ def answer_audit(model_spec: str):
         return {"messages": [AIMessage(content=f"{CAVEAT_PREFIX} {verdict.caveat}")]}
 
     return _audit
+
+
+# The researcher reads untrusted pages and the staff workbooks; once it has seen a staff row, no
+# outbound tool runs, so an injected instruction cannot carry a row out in a URL or query.
+STAFF_TOOL = "read_source_rows"
+# An allowlist, so an outbound tool added to the researcher later is closed by default.
+OPEN_AFTER_STAFF = frozenset({STAFF_TOOL, "save_research", "read_document_pages", "research_goals",
+                              "funder_dossier", "read_file"})
+STAFF_LOCK_REPLY = "web tools are closed for this run: staff rows have been read. Save what you have."
+
+
+def staff_rows_requested(messages: list[BaseMessage]) -> bool:
+    """True once this run has asked for a staff read, including in the current turn."""
+    for m in messages:
+        if isinstance(m, ToolMessage) and m.name == STAFF_TOOL:
+            return True
+        if isinstance(m, AIMessage) and any(c.get("name") == STAFF_TOOL for c in m.tool_calls or []):
+            return True
+    return False
+
+
+class StaffLastLock(AgentMiddleware):
+    """Refuses every tool but OPEN_AFTER_STAFF for the rest of a run once read_source_rows has been called."""
+
+    def _refusal(self, request) -> ToolMessage | None:
+        call = request.tool_call
+        if call.get("name") in OPEN_AFTER_STAFF:
+            return None
+        try:
+            state = request.state
+            messages = state["messages"] if isinstance(state, dict) else state.messages
+            closed = staff_rows_requested(messages)
+        except Exception:  # noqa: BLE001 - unreadable state fails closed
+            closed = True
+        if not closed:
+            return None
+        return ToolMessage(content=STAFF_LOCK_REPLY, tool_call_id=call.get("id") or "", name=call.get("name"),
+                           status="error")
+
+    def wrap_tool_call(self, request, handler):
+        return self._refusal(request) or handler(request)
+
+    async def awrap_tool_call(self, request, handler):
+        return self._refusal(request) or await handler(request)
+
+
+def staff_last_lock() -> StaffLastLock:
+    return StaffLastLock()

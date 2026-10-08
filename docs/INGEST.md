@@ -111,7 +111,7 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 
 | Module | Tools |
 |---|---|
-| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` |
+| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `read_source_rows` |
 | `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
@@ -135,6 +135,18 @@ window. The reason is context, not speed: a single broad turn once read three PD
 tool calls and never reached its report, because each document displaced the last one's findings.
 An isolated subagent returns its conclusion, not its reading. It hands back a thin
 `ResearchSummary` — counts and status, not the findings, which it has already saved itself.
+
+**Staff workbooks.** `read_source_rows` is the researcher's eighth tool (the supervisor's five
+pipeline tools do not include it). It reads the workbooks a person uploaded with `make staff-source`
+from the private `staff-sources` bucket with openpyxl and returns header rows and matching rows as
+`cell=value`, each cited `[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each
+sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". **Staff
+rows last:** `StaffLastLock` (`app/agent/middleware.py`) refuses `search_public_sources`,
+`read_page` and `fetch_document` once a run has called `read_source_rows`, so an injected page
+cannot have a staff row carried out in a URL or query. Contact columns are dropped. Promoted facts
+are public (D14); the files and their `documents` rows stay staff-only, and `promote` holds a staff
+finding without its marker. Tool output reaches the model provider and, with tracing on, Langfuse,
+like every tool output.
 
 **`catalog-writer`** — one per organisation, launched after the researchers report. Its only tools
 are `promote_research` and `funder_dossier`. It cannot research and cannot author a value: it
@@ -207,23 +219,26 @@ and an NGO against eight, with four shared. The tables below are a copy; the sou
 titles, the promotable list, the "researched but not written" excuses and `concepts_for(kind)`
 are all derived.
 
-A **funder** (13):
+A **funder** (14):
 
 | Concept | Table |
 |---|---|
 | identity | `funders` |
-| identifier | `funder_identifiers` |
 | csr_year | `funder_csr_years` |
-| csr_spend | `funder_csr_spend` |
-| footprint | `funder_footprints` |
+| csr_spend | `funder_activity`, `kind='spend'` |
+| footprint | `funder_activity`, `kind='footprint'` |
 | stated_geography | `funder_locations` |
-| partner | `funder_partners` |
+| partner | `funder_activity`, `kind='partner'` |
+| programme_spend | `funder_activity`, `kind='programme'` |
+| eligibility_guideline | `documents`, `doc_type='funder_eligibility'` |
 | program | `programs` |
 | metric | `metrics` |
 | contact | `contacts` |
 | document | `documents` |
 | rfp | `rfps` |
 | **grant** | **`grants` — no writer** |
+
+Several concepts share one table. `ConceptSpec.row_filter` names the rows each owns and `ConceptSpec.columns` the columns it may fill; `expected_fields()`, `research_goals` and the writers read both.
 
 An **org** (8). `program`, `metric`, `contact` and `document` are the same four tables as
 above, which each carry an `org_id` as well as a `funder_id`; only the foreign key changes.
@@ -250,7 +265,7 @@ union on `concept` and two members cannot both declare `Literal["identity"]`.
 `grant` is the exception on the funder side, deliberately: `grants.org_id` is `NOT NULL` and
 promoting a funder's research does not write the NGOs it names, so a recipient the catalog does
 not already hold cannot become a grant row.
-`funder_partners.org_id` is nullable, which is where such a relationship belongs — and the more
+`funder_activity.partner_org_id` is nullable on a `partner` line, which is where such a relationship belongs — and the more
 honest claim anyway, since a named partner is not proof that money changed hands.
 
 **`stated_geography` and `footprint` are two concepts on purpose.** Where a funder *says* it
