@@ -1312,3 +1312,31 @@ class TestTheOrgWriter:
         conn = self._Conn([None])
         assert await set_registered_location(conn, 42, 7) is False
         assert "registered_location_id IS NULL" in conn.sql[0]
+
+
+class TestASaveIsCountedPerConcept:
+    def test_every_label_promotion_counts_under_names_a_concept(self):
+        # A label with no concept would drop its rows from Import's Done step without a sound.
+        import re
+
+        from app.ingest import promote
+        from app.ingest.coverage import CONCEPT_OF_WRITTEN
+
+        labels = set(re.findall(r'_count\(report, "([^"]+)"', inspect.getsource(promote)))
+        assert labels and labels - set(CONCEPT_OF_WRITTEN) == set()
+
+    def test_the_entity_and_its_years_count_alongside_the_tables(self):
+        from app.ingest.coverage import changes_by_concept
+
+        report = {
+            "entity": {"kind": "funder", "status": "added", "id": 7, "name": "X"},
+            "csr_years": [{"fiscal_year": "FY2023-24", "status": "added"},
+                          {"fiscal_year": "FY2022-23", "status": "matched"}],
+            "written": {"funder_activity (spend)": {"added": 2, "updated": 1}, "documents": {"added": 3}},
+        }
+        assert changes_by_concept(report) == {
+            "identity": {"added": 1, "updated": 0},
+            "csr_year": {"added": 1, "updated": 0},
+            "csr_spend": {"added": 2, "updated": 1},
+            "document": {"added": 3, "updated": 0},
+        }

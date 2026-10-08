@@ -60,3 +60,49 @@ export type ResearchRecord = {
   not_found: string[];
   researched_at: string;
 };
+
+/** One expected cell: a concept, once per fiscal year asked for a year-bound one. */
+export type CoverageCell = {
+  year: string | null;
+  /** "found", or why not. */
+  status: "found" | "not_attempted" | "not_stated" | "blocked" | "not_written";
+  detail: string;
+};
+
+export type CoverageConcept = {
+  concept: string;
+  title: string;
+  cells: CoverageCell[];
+  fields_filled: number;
+  fields_total: number;
+  held: number;
+  extra_years: string[];
+  added: number;
+  updated: number;
+  /** Catalog rows before and after the save; null for an NGO not yet saved. */
+  before: number | null;
+  after: number | null;
+};
+
+/** GET /ingest/research/{slug}/coverage */
+export type ResearchCoverage = {
+  slug: string;
+  /** saved: what the save recorded. planned: a funder's dry run. unsaved: an NGO, which cannot be dry-run. */
+  stage: "saved" | "planned" | "unsaved";
+  saved_at: string | null;
+  entity: { kind: string; status: string; id: number; name: string } | null;
+  reasons: string[];
+  held: string[];
+  questions: number;
+  facts_before: number | null;
+  facts_after: number | null;
+  name: string;
+  kind: string;
+  years: string[];
+  write_checked: boolean;
+  cells: number;
+  found: number;
+  fields_filled: number;
+  fields_total: number;
+  concepts: CoverageConcept[];
+};

@@ -24,7 +24,7 @@ from app.ingest.expectations import (
 )
 from app.ingest.matcher import resolve_funder, resolve_org
 from app.ingest.promote import promote
-from app.ingest.writer import Gate
+from app.ingest.writer import UNWRITTEN, Gate
 
 logger = logging.getLogger(__name__)
 
@@ -558,6 +558,85 @@ async def write_preview(slug: str) -> dict[str, Any]:
     return {"questions": plan.get("questions", []), "planned": planned, "coverage": head}
 
 
+async def _rows_now(conn: Any, kind: str | None, entity_id: int | None) -> dict[str, int] | None:
+    """Catalog rows per concept for one entity; None when there is no entity to count yet."""
+    if kind not in _BY_KIND or entity_id in (None, UNWRITTEN):
+        return None
+    return {c: n for c, (n, _) in (await _held_per_concept(conn, entity_id, kind)).items()}
+
+
+async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -> None:
+    """Keep what this save wrote on the research row. Afterwards a plan reads every row as `same`,
+    so this is the only record of what the profile held before."""
+    entity = report.get("entity")
+    saved = {
+        "entity": entity,
+        "changes": coverage.changes_by_concept(report),
+        "rows_after": await _rows_now(conn, entity["kind"], entity["id"]) if entity else None,
+        "held": report.get("held", []),
+        "skipped": dict(report.get("skipped", {})),
+        "reasons": report.get("reasons", []),
+        "conflicts": report.get("conflicts", []),
+    }
+    await conn.execute(
+        "UPDATE entity_research SET saved = %s::jsonb, saved_at = now() WHERE id = %s",
+        (json.dumps(saved, default=str), row["id"]),
+    )
+
+
+async def coverage_view(slug: str) -> dict[str, Any] | None:
+    """Import's coverage for one entity as data: expected vs found per concept, and rows before and after.
+
+    Saved: before and after come from what the save recorded. A funder not yet saved: from a plan.
+    An NGO not yet saved: no before/after, since its write cannot be dry-run.
+    """
+    pool = get_pool()
+    rows = await _research_rows(pool, slug)
+    if not rows:
+        return None
+    row = rows[0]
+    kind = row.get("entity_kind")
+    saved = row.get("saved")
+    entity, reasons, held, questions = None, [], [], 0
+    changes: dict[str, dict[str, int]] = {}
+    before: dict[str, int] | None = None
+    after: dict[str, int] | None = None
+    report: dict[str, Any] | None = None
+    if saved:
+        stage = "saved"
+        entity, reasons, held = saved.get("entity"), saved.get("reasons", []), saved.get("held", [])
+        changes, after = saved.get("changes", {}), saved.get("rows_after")
+        report = {"skipped": saved.get("skipped", {}), "held": held}
+        if after is not None:
+            before = {c: max(n - changes.get(c, {}).get("added", 0), 0) for c, n in after.items()}
+    elif kind != "org":
+        stage = "planned"
+        async with pool.connection() as conn:
+            report = await promote(conn, row, gate=Gate(plan=True))
+            entity, reasons, held = report.get("entity"), report["reasons"], report["held"]
+            questions = len(report.get("questions", []))
+            changes = coverage.changes_by_concept(report)
+            if entity:
+                before = await _rows_now(conn, kind, entity["id"]) or {c: 0 for c in concepts_for(kind)}
+                after = {c: n + changes.get(c, {}).get("added", 0) for c, n in before.items()}
+    else:
+        stage = "unsaved"
+
+    cov = coverage.as_dict(coverage.compute(row, report=report))
+    for line in cov["concepts"]:
+        c = line["concept"]
+        line.update(changes.get(c, {"added": 0, "updated": 0}))
+        line["before"] = before.get(c) if before is not None else None
+        line["after"] = after.get(c) if after is not None else None
+    return {
+        "slug": row["slug"], "stage": stage, "saved_at": row.get("saved_at"),
+        "entity": entity, "reasons": reasons, "held": held, "questions": questions,
+        "facts_before": sum(before.values()) if before is not None else None,
+        "facts_after": sum(after.values()) if after is not None else None,
+        **cov,
+    }
+
+
 @tool
 async def promote_research(slug: str = "", decisions: dict[str, str] | None = None) -> str:
     """Move saved research into the catalog, where a writer exists for it.
@@ -598,7 +677,9 @@ async def promote_research(slug: str = "", decisions: dict[str, str] | None = No
         for row in rows:
             # SaveQuestions asked the person before this ran and put their answers here.
             async with pool.connection() as conn, conn.transaction():
-                reports.append(await promote(conn, row, gate=Gate(decisions or {})))
+                report = await promote(conn, row, gate=Gate(decisions or {}))
+                await _record_save(conn, row, report)
+                reports.append(report)
 
         lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
         for r in reports:

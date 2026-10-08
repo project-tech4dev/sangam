@@ -9,6 +9,7 @@ from app.db.pool import PoolDep
 from app.ingest.sources import SOURCES
 from app.repositories import ingest as repo
 from app.schemas.ingest import (
+    CoverageOut,
     QueueItemOut,
     ResearchOut,
     RunItemOut,
@@ -78,3 +79,14 @@ async def queue(pool: PoolDep, limit: int = 50,
 async def list_research(pool: PoolDep, limit: int = 50,
                         user_id: UUID = Depends(get_current_user)) -> list[ResearchOut]:
     return [ResearchOut.model_validate(r) for r in await repo.list_research(pool, limit=limit)]
+
+
+@router.get("/research/{slug}/coverage", response_model=CoverageOut,
+            summary="What one entity's research found, per topic, and what saving it changed")
+async def research_coverage(slug: str, user_id: UUID = Depends(get_current_user)) -> CoverageOut:
+    from app.ingest.tools.catalog_tools import coverage_view
+
+    view = await coverage_view(slug)
+    if view is None:
+        raise HTTPException(status_code=404, detail=f"no saved research for {slug!r}")
+    return CoverageOut.model_validate(view)

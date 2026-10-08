@@ -60,21 +60,37 @@ These live in one module, `frontend/features/ingest/lib/words.ts`. `toolLabels.t
 ## Milestones (each is one PR)
 
 - **M1: coverage as JSON.**
+  - **Why a migration.** A dry-run compare after the save reads every row as `same`, and
+    `promote_research` kept no record of what it wrote. So the "before" for the Done step
+    has to be stored at save time.
   - **Code**
-    - Add `GET /ingest/research/{slug}/coverage` to `api/routes/ingest.py`.
-    - It returns `coverage.compute()` (per concept: cells with reason, fields
-      filled/expected) and, for funders, the `compare_with_catalog` cases grouped by
-      concept (same / updated / older_or_undated / close_match / new).
-    - Factor the body of the `compare_with_catalog` tool into a function that returns
-      data. The tool keeps formatting it as text, so the agent's output does not change.
-    - NGOs have no compare. Use the org promotion rule instead: blanks filled, conflicts
-      kept and reported as "Different — Sangam's kept". The endpoint reads that from the
-      promotion report.
-    - Add a pydantic `CoverageOut` model and a matching `types.ts` entry.
+    - Migration `0038_research_saved.sql` adds `entity_research.saved` (jsonb) and
+      `saved_at`. It is 0038 because `fix/pr100-port` already has 0036 and 0037.
+    - `promote_research` stores, per research row, what the save wrote:
+      - rows added and updated per concept (`coverage.changes_by_concept`);
+      - the entity's rows per concept after the save;
+      - held, skipped, reasons and conflicts.
+    - Per-concept counts come from the labels promotion already counts under
+      (`funder_activity (spend)` → `csr_spend`, and so on), plus the entity and its CSR
+      years. A unit test fails if a new `_count` label has no concept.
+    - `GET /ingest/research/{slug}/coverage` (`catalog_tools.coverage_view`) returns
+      `coverage.compute()` as JSON, with per concept `added`, `updated`, `before` and
+      `after`. Its `stage` is one of:
+      - `saved`: from the stored save.
+      - `planned`: a funder not yet saved, from a dry run. Documents read 0, because a
+        dry run does not archive them.
+      - `unsaved`: an NGO not yet saved. No before/after, since its write cannot be
+        dry-run.
+    - It returns 404 when there is no research for the slug.
+    - The agent's text tools (`coverage_report`, `compare_with_catalog`) are unchanged.
+    - `CoverageOut` in `schemas/ingest.py`; `ResearchCoverage` in `types.ts`.
   - **Exit gate:**
-    - `pytest -m "not integration"` and `ruff check .` are green.
-    - The endpoint returns the worked SBI numbers from
-      `2026-10-08-import-coverage-report.md` (15/23 concepts) for local `sbi-foundation`.
+    - `pytest -m "not integration"` is green.
+    - `ruff check .` shows nothing beyond the B008/RUF012 pattern master already has.
+    - Local `sbi-foundation` returns 15/23 concepts.
+    - A real save of `infosys-foundation`, rolled back, records 0 → 17 facts.
+  - **The per-answer findings M5 needs** (basis, quote, page) are added to this response
+    in M5, not here.
 
 - **M2: Start step.**
   - **Code**

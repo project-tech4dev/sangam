@@ -150,3 +150,51 @@ def render(cov: Coverage) -> str:
     if not cov.write_checked:
         out.append("\n'Found, not written' is not checked for an NGO: its write cannot be dry-run.")
     return "\n".join(out)
+
+
+def _written_label(concept: str) -> str:
+    spec = CONCEPTS[concept]
+    return spec.table + (f" ({spec.row_filter[1]})" if spec.row_filter else "")
+
+
+# promote() counts rows under these labels (`_count`); each names one concept.
+CONCEPT_OF_WRITTEN = {_written_label(c): c for c in CONCEPTS if c not in ("identity", "org_identity", "csr_year")}
+
+
+def changes_by_concept(report: dict[str, Any]) -> dict[str, dict[str, int]]:
+    """Rows a promote() report added and updated, per concept. Works on a real write and on a plan."""
+    out: dict[str, dict[str, int]] = {}
+
+    def bump(concept: str, status: str, n: int = 1) -> None:
+        if status in ("added", "updated"):
+            out.setdefault(concept, {"added": 0, "updated": 0})[status] += n
+
+    entity = report.get("entity") or {}
+    if entity:
+        bump("org_identity" if entity.get("kind") == "org" else "identity", entity.get("status", ""))
+    for year in report.get("csr_years", []):
+        bump("csr_year", year.get("status", ""))
+    for label, counts in (report.get("written") or {}).items():
+        concept = CONCEPT_OF_WRITTEN.get(label)
+        if concept:
+            for status, n in counts.items():
+                bump(concept, status, n)
+    return out
+
+
+def as_dict(cov: Coverage) -> dict[str, Any]:
+    """`compute()` as JSON for the Import screen; `render()` stays the agent's text."""
+    cells = cov.cells
+    return {
+        "name": cov.entity, "kind": cov.kind, "years": cov.years, "write_checked": cov.write_checked,
+        "cells": len(cells), "found": sum(1 for c in cells if c.status == "found"),
+        "fields_filled": sum(line.fields_filled for line in cov.lines),
+        "fields_total": sum(line.fields_total for line in cov.lines),
+        "concepts": [
+            {"concept": line.concept, "title": CONCEPTS[line.concept].title,
+             "cells": [{"year": c.year, "status": c.status, "detail": c.detail} for c in line.cells],
+             "fields_filled": line.fields_filled, "fields_total": line.fields_total,
+             "held": line.held, "extra_years": line.extra_years}
+            for line in cov.lines
+        ],
+    }

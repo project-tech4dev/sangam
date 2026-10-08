@@ -78,3 +78,47 @@ class ResearchOut(ReadModel):
     sources_read: list[str] = []
     not_found: list[str] = []
     researched_at: datetime
+
+
+class CoverageCellOut(ReadModel):
+    year: str | None = None
+    status: str
+    """found, or why not: not_attempted | not_stated | blocked | not_written."""
+    detail: str = ""
+
+
+class CoverageConceptOut(ReadModel):
+    concept: str
+    title: str
+    cells: list[CoverageCellOut]
+    fields_filled: int
+    fields_total: int
+    held: int = 0
+    extra_years: list[str] = []
+    added: int = 0
+    updated: int = 0
+    before: int | None = None
+    """Catalog rows for this concept before the save; None for an NGO not yet saved."""
+    after: int | None = None
+
+
+class CoverageOut(ReadModel):
+    slug: str
+    stage: str
+    """saved (from what the save recorded) | planned (a funder's dry run) | unsaved (an NGO, no dry run)."""
+    saved_at: datetime | None = None
+    entity: dict | None = None
+    reasons: list[str] = []
+    held: list[str] = []
+    questions: int = 0
+    facts_before: int | None = None
+    facts_after: int | None = None
+    name: str
+    kind: str
+    years: list[str]
+    write_checked: bool
+    cells: int
+    found: int
+    fields_filled: int
+    fields_total: int
+    concepts: list[CoverageConceptOut]
