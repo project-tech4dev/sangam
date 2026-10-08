@@ -129,7 +129,7 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
     <section
       style={{
         border: "1px solid var(--color-divider)",
-        borderRadius: 10,
+        borderRadius: "var(--radius-surface)",
         padding: "11px 13px",
         background: "var(--color-surface)",
       }}
@@ -158,8 +158,7 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
               key={step.id}
               style={{
                 border: "1px solid var(--color-divider)",
-                borderLeft: `3px solid ${TONE[o.state]}`,
-                borderRadius: 8,
+                borderRadius: "var(--radius-row)",
                 padding: isOpen ? "9px 11px" : "6px 11px",
               }}
             >
@@ -177,19 +176,19 @@ export function SubagentBoard({ steps }: { steps: TraceStep[] }) {
                 }}
                 aria-expanded={isOpen}
               >
-                {o.state === "working" && (
-                  <span
-                    aria-hidden
-                    className="sangam-pulse"
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: TONE.working,
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
+                {/* The state's colour, as a dot: pulsing while working. */}
+                <span
+                  aria-hidden
+                  className={o.state === "working" ? "sangam-pulse" : undefined}
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: TONE[o.state],
+                    flexShrink: 0,
+                    alignSelf: "center",
+                  }}
+                />
                 <strong style={{ fontSize: "var(--fs-sm)" }}>{subjectOf(step.args)}</strong>
                 {kindOf(step.args) === "writer" && (
                   <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-muted)" }}>
