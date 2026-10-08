@@ -59,13 +59,13 @@ and GDELT. It writes straight through and logs every record to `ingest_run_items
 ## Sources: access rules are config, not comments
 
 Every source carries the rule that governs it and the evidence for that rule — `access_rule`,
-`basis`, `robots_checked_at`. The inventory is **74 sources** in
+`basis`, `robots_checked_at`. The inventory is **79 sources** in
 `backend/app/ingest/data/sources/*.json`, across four overlapping categories:
 
 | Category | Sources | Dispatchable |
 |---|---:|---:|
-| funder | 32 | 8 |
-| ngo | 21 | 4 |
+| funder | 35 | 8 |
+| ngo | 26 | 3 |
 | rfp | 11 | 2 |
 | media | 26 | 15 |
 
@@ -79,17 +79,43 @@ Only `open_api` and `crawl_allowed` are dispatchable. Everything else is reporte
 with its basis, so "give.do: terms bar data mining" is a row in the report rather than a crawl
 that should never have happened.
 
-A source is a **product, not a host**: `mcacdm.nic.in` carries several. `rule_for_host()` resolves
-a host to the **strictest** rule among its products, so declaration order can never decide whether
-a crawler runs.
+A source is a **product, not a host**: `mcacdm.nic.in` carries several. `rule_for_url()` resolves
+a URL to the **strictest** rule among its host's products, so declaration order can never decide
+whether a crawler runs.
+
+**Two rules are path-scoped**: `manual_aggregator` (Give.do's `/discover/` pages, GuideStar India's
+public search method) and `internal_research` (the team's org-grant-intelligence repository at one
+pinned commit, and its directory listings). Neither is dispatchable; the researcher's fetch tools
+read them one URL at a time. An entry names its exact host, `allowed_paths` (a prefix ending in `/`
+needs a segment below it; anything else is exact) and `allowed_query` (the keys allowed, each with
+a pinned value or any). The URL checked is the one httpx sends (`str(httpx.URL(url))`), so the host
+is IDNA-encoded (`give。do` is `give.do`), lower-cased and its trailing dot dropped; the path is
+decoded once with `.`, `..` and `//` resolved, and a path still encoded after that, a `;`, a
+backslash, a user name, a port, plain http or a sign-in segment is refused. A path the entry does
+not claim keeps the host's strictest other rule (`give.do/api/` stays `no_scraping`), and robots.txt
+is still asked for one it does: unreadable robots.txt refuses a path-scoped read (fail closed).
+`read_page` and `fetch_document` run the same check on every redirect hop before requesting it.
+`source_guards.py` makes every value from these sources `claimed`, as `aggregator` or
+`prior_research`, at save and again at promote, where a finding whose table cannot mark it claimed
+is held.
+The repository's other copies (github.com, codeload, jsDelivr) are refusing entries that govern
+only the repository's path (`governs_paths`), and a value citing any of them is still
+`prior_research`.
+
+**No fetch reaches a private address.** `app/core/egress.py` refuses loopback, private, link-local,
+metadata, `localhost`, single-label hosts and any literal form of them (`2130706433`,
+`[::ffff:127.0.0.1]`), then resolves the name and refuses if any address is not global. It runs
+on every redirect hop for the research tools, `fetch_url` and robots.txt. It does not pin the
+resolved address for the connection, so a name that rebinds between check and connect is not
+caught. A NAT64 address (`64:ff9b::/96`) is judged by the IPv4 address in its last 32 bits.
 
 Three states, and they are not the same thing:
 
 | | Count | Meaning |
 |---|---:|---|
 | **pulls** | 2 | permitted *and* an adapter exists — India CSR, GDELT |
-| **permitted, not built** | 21 | legally readable, nothing reads it yet. Not a failure |
-| **held** | 51 | its rule forbids it; the basis says what would unblock it |
+| **permitted, not built** | 20 | legally readable, nothing reads it yet. Not a failure |
+| **held** | 57 | its rule forbids it; the basis says what would unblock it |
 
 `read_page` and `fetch_document` check twice before fetching: the registry decides the site,
 `robots.txt` decides the path. RFC 9309 semantics — a 4xx on robots means allow, a 5xx or an
@@ -112,13 +138,15 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 | Module | Tools |
 |---|---|
 | `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `list_storage_buckets` · `list_bucket_files` · `select_source_files` · `read_source_rows` |
-| `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` |
+| `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` · `record_registry_check` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
-**Sangam Import** (main) holds seven: the five pipeline tools, `funder_dossier` and
-`publish_brief`. It supervises. It cannot open a web page and it cannot write a catalog row —
-both go through a subagent, so there is one path to a source and one path to the catalog, each
-under the prompt written for it. The parent held all of them until 2026-10-03, and a
+**Sangam Import** (main) holds eight: the five pipeline tools, `funder_dossier`,
+`record_registry_check` and `publish_brief`. It supervises. It cannot open a web page, and the
+only catalog row it writes is a staff member's own registry check (`app/ingest/manual_checks.py`:
+checker from the chat's user, ranked as `manual_check`, evidenced only with a document of that
+organisation). Research and promotion go through a subagent, so there is one path to a source
+and one path from research to the catalog, each under the prompt written for it. The parent held all of them until 2026-10-03, and a
 single-organisation run then researched under `instructions.md`, without the researcher's
 budget, entity-confirmation or money-unit rules: two paths to the same work, already drifted.
 
@@ -152,12 +180,17 @@ same row.
 have it). It reads the workbooks staff picked (its `documents` argument; all registered ones
 without it) from the private `staff-sources` bucket with openpyxl and returns header rows and matching rows as
 `cell=value`, each cited `[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each
-sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". **Staff
+sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". On a sheet
+of side-by-side blocks (a sparse title row over a dense header row), a matched row shows only the
+cells of the block its match sits in, so one CSO's funders never appear on another's line. **Staff
 rows last:** `StaffLastLock` (`app/agent/middleware.py`) refuses `search_public_sources`,
 `read_page` and `fetch_document` once a run has called `read_source_rows`, so an injected page
 cannot have a staff row carried out in a URL or query. Contact columns are dropped. Promoted facts
 are public (D14); the files and their `documents` rows stay staff-only, and `promote` holds a staff
-finding without its marker. Tool output reaches the model provider and, with tracing on, Langfuse,
+finding without its marker. It also re-opens the workbook and holds any staff amount that its cited
+row does not print, in the unit it was saved in: the cell's own unit (`12 Lakhs`, `3Cr`) when it
+states one, crore for the filing exports (`staff_sources.SOURCE_UNITS`), and the number alone
+otherwise (`hold_mismatched`). Tool output reaches the model provider and, with tracing on, Langfuse,
 like every tool output.
 
 **`catalog-writer`** — one per organisation, launched after the researchers report. Its only tools
@@ -225,13 +258,13 @@ it.
 
 ## What lands where
 
-Seventeen concepts, twelve with a writer — a funder is researched against thirteen of them
-and an NGO against eight, with four shared. The tables below are a copy; the source is
+Seventeen concepts, every one with a writer — a funder is researched against thirteen of them
+and an NGO against nine, with five shared. The tables below are a copy; the source is
 `CONCEPTS` in `app/ingest/expectations.py`, from which the table map, the brief's section
 titles, the promotable list, the "researched but not written" excuses and `concepts_for(kind)`
 are all derived.
 
-A **funder** (14):
+A **funder** (13):
 
 | Concept | Table |
 |---|---|
@@ -240,7 +273,7 @@ A **funder** (14):
 | csr_spend | `funder_activity`, `kind='spend'` |
 | footprint | `funder_activity`, `kind='footprint'` |
 | stated_geography | `funder_locations` |
-| partner | `funder_activity`, `kind='partner'` |
+| partner (grants included) | `funder_activity`, `kind='partner'`, from either side |
 | programme_spend | `funder_activity`, `kind='programme'` |
 | eligibility_guideline | `documents`, `doc_type='funder_eligibility'` |
 | program | `programs` |
@@ -248,19 +281,20 @@ A **funder** (14):
 | contact | `contacts` |
 | document | `documents` |
 | rfp | `rfps` |
-| **grant** | **`grants` — no writer** |
 
 Several concepts share one table. `ConceptSpec.row_filter` names the rows each owns and `ConceptSpec.columns` the columns it may fill; `expected_fields()`, `research_goals` and the writers read both.
 
-An **org** (8). `program`, `metric`, `contact` and `document` are the same four tables as
+An **org** (9). `program`, `metric`, `contact` and `document` are the same four tables as
 above, which each carry an `org_id` as well as a `funder_id`; only the foreign key changes.
+`partner` is each funder that gave the NGO money, written as that funder's partner line.
 The other four are the NGO's own:
 
 | Concept | Table |
 |---|---|
 | program · metric · contact · document | as above, on `org_id` |
+| partner | `funder_activity`, `kind='partner'`, on the funder named by `funder_name` with `partner_org_id` = the NGO; held when Sangam does not hold that funder |
 | org_identity | `orgs` |
-| org_identifier | `org_identifiers`. 12A, 80G and FCRA live here |
+| org_identifier | `org_identifiers`, one row per registration with a `status`; an `applied` row needs no number. 12A, 80G and FCRA live here |
 | org_financials | `org_financials` |
 | org_location | `org_locations`, and the `registered` one sets `orgs.registered_location_id` |
 
@@ -274,11 +308,11 @@ hand.
 field naming its own subject. The org concepts are namespaced because `Finding` is a tagged
 union on `concept` and two members cannot both declare `Literal["identity"]`.
 
-`grant` is the exception on the funder side, deliberately: `grants.org_id` is `NOT NULL` and
-promoting a funder's research does not write the NGOs it names, so a recipient the catalog does
-not already hold cannot become a grant row.
-`funder_activity.partner_org_id` is nullable on a `partner` line, which is where such a relationship belongs — and the more
-honest claim anyway, since a named partner is not proof that money changed hands.
+A grant is a `partner` finding with `project_name`, `amount`, `start_date`, `end_date` and
+`relationship_status` (`0034` folded the `grants` table into these lines). A funder's research
+links the line to an organisation only on a merging match, never a trigram one; an NGO's research
+writes the line on a funder Sangam holds and holds it otherwise. `grant` findings saved before
+`0034` are promoted as the partner findings they are now.
 
 **`stated_geography` and `footprint` are two concepts on purpose.** Where a funder *says* it
 prioritises is not where money demonstrably went. Collapsing them destroys the distinction the
@@ -366,13 +400,10 @@ so keying off it made every unfinished researcher read as "done" the moment a ru
 
 ## Known gaps
 
-- **Two NGO facts still have nowhere to go.** An org's **website** has no column — `orgs`
-  has none and `org_identifiers` has no `domain` type — and a note on an identifier has no
-  room in a type-to-value map. Both are reported as held rather than dropped. `credential_events`
-  is the other half: the table exists and holds the same credential enum, but no finding
-  carries the dates that would fill it.
-- **A grant writer.** Unblocked by the org writer and not built by it: `grants.org_id` is
-  `NOT NULL`, and a recipient named in a funder's research is still not an `orgs` row.
+- **Registry checks are not yet their own write.** Since `0033` an org's website, description,
+  aliases and staff live on `orgs`, and a registration is an `org_identifiers` row with a `status`
+  and validity dates, so nothing here is held for want of a column. What is missing is a tool that
+  records a staff registry check (`checked_by`, `checked_at`) apart from research.
 - **`repositories/orgs.py::get_org` does not read `org_financials`**, so promoted figures do
   not appear on `/orgs/<slug>` yet.
 - **`csr_sector_id` is always NULL.** `tags.kind` allows `'csr_sector'` but no Schedule VII

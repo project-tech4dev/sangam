@@ -66,6 +66,10 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     detail: (a) => (a?.run_id ? `run ${a.run_id}` : "latest run"),
   },
   pending_resolutions: { label: "Checking the review queue", detail: () => "" },
+  record_registry_check: {
+    label: "Recording a manual registry check",
+    detail: (a) => [a?.org, a?.id_type, a?.status].filter(Boolean).join(" · "),
+  },
   write_todos: { label: "Planning", detail: () => "" },
   research_goals: {
     label: "Reading what the database expects",

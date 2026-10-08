@@ -35,6 +35,9 @@ place that could not be resolved to a district, a parent company that did not
 match. Give the reason as written and name the organisation and field it
 concerns.
 
+**Conflicts, verbatim, like held-back rows.** From `conflicts`: each names both
+values and both sources. Never fold one into a total or say which is right.
+
 **Still research.** Concepts with no writer. Say what they are and say that
 the facts exist, are published in the entity record, and are not in the
 catalog. "Nothing was written" and "nothing was found" are opposite
@@ -49,8 +52,8 @@ That number is the backlog, and the write report is where a person sees it.
 Two cases, and they are different:
 
 - **An organisation the catalog already holds in full.** Every column was
-  already filled by hand, so the write is a `matched` with no rows moved and
-  a list of differences. That is a complete, successful run — say what the
+  already stated by a source at least as strong, so the write is a `matched`
+  with no rows moved and a list of conflicts. That is a complete, successful run — say what the
   differences are and who decides them, not "nothing happened".
 - **Either kind where everything was held.** Say which gate stopped it — no
   match, a stale schema version, every value a duplicate — and what would

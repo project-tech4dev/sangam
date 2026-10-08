@@ -149,8 +149,30 @@ def _contact_columns(values: tuple) -> set[int]:
             if isinstance(v, str) and any(f" {h} " in f" {_words(v)} " for h in CONTACT_HEADERS)}
 
 
-def scan(data: bytes, terms: list[str], only_sheet: str = "") -> list[tuple[str, list[tuple[int, tuple]], set[int]]]:
-    """Per sheet with a match: its title, the rows to show (header, context, matches), and contact columns."""
+def _block_starts(top: tuple, second: tuple) -> list[int]:
+    """Columns that open a side-by-side block: a sparse title row (one name per block) over a dense header row."""
+    top_cols = [c for c, v in enumerate(top, start=1) if v not in (None, "")]
+    second_filled = sum(1 for v in second if v not in (None, ""))
+    contiguous = top_cols == list(range(top_cols[0], top_cols[0] + len(top_cols))) if top_cols else True
+    if len(top_cols) < 2 or contiguous or second_filled < 2 * len(top_cols):
+        return []
+    return top_cols
+
+
+def _in_blocks(values: tuple, terms: list[str], starts: list[int]) -> set[int] | None:
+    """The columns of the blocks a row's matches sit in, so a row never shows another block's cells."""
+    owners = set()
+    for c, v in enumerate(values, start=1):
+        if _hit(v, terms):
+            owners.add(max((s for s in starts if s <= c), default=starts[0]))
+    if not owners:
+        return None
+    bounds = [*starts[1:], len(values) + 1]
+    return {c for s, end in zip(starts, bounds) if s in owners for c in range(s, end)}
+
+
+def scan(data: bytes, terms: list[str], only_sheet: str = "") -> list[tuple[str, list[tuple[int, tuple, set[int] | None]], set[int]]]:
+    """Per sheet with a match: its title, the rows to show with the columns each may show, and contact columns."""
     from openpyxl import load_workbook
 
     wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
@@ -160,8 +182,10 @@ def scan(data: bytes, terms: list[str], only_sheet: str = "") -> list[tuple[str,
             if only_sheet and only_sheet.casefold() not in ws.title.casefold():
                 continue
             ws.reset_dimensions()  # some exports carry a wrong <dimension>; read_only trusts it otherwise
-            rows: dict[int, tuple] = {}
+            rows: dict[int, tuple[tuple, set[int] | None]] = {}
             drop: set[int] = set()
+            top: tuple = ()
+            starts: list[int] = []
             numbered = heading = under = None
             section_left, matched, seen = 0, False, 0
             for r, values in enumerate(ws.iter_rows(values_only=True), start=1):
@@ -170,8 +194,13 @@ def scan(data: bytes, terms: list[str], only_sheet: str = "") -> list[tuple[str,
                     continue
                 seen += 1
                 hit = any(_hit(v, terms) for v in filled)
-                if seen <= HEADER_ROWS:  # shown always; a match here still counts (data can start on row 2)
-                    rows[r] = values
+                if seen == 1:
+                    top = values
+                elif seen == 2:
+                    starts = _block_starts(top, values)
+                # Shown always; a match here still counts (data can start on row 2). A block sheet's data starts on row 3.
+                if seen <= (2 if starts else HEADER_ROWS):
+                    rows[r] = (values, None)
                     drop |= _contact_columns(values)
                     matched = matched or hit
                     continue
@@ -185,12 +214,12 @@ def scan(data: bytes, terms: list[str], only_sheet: str = "") -> list[tuple[str,
                 if hit or section_left:
                     for ctx in (numbered, heading, under):
                         if ctx:
-                            rows.setdefault(*ctx)
-                    rows[r] = values
+                            rows.setdefault(ctx[0], (ctx[1], None))
+                    rows[r] = (values, _in_blocks(values, terms, starts) if starts and hit else None)
                     matched = matched or hit
                     section_left = max(section_left - 1, 0)
             if matched:
-                out.append((ws.title, sorted(rows.items()), drop))
+                out.append((ws.title, [(r, v, keep) for r, (v, keep) in sorted(rows.items())], drop))
     finally:
         wb.close()
     return out
@@ -210,16 +239,16 @@ def _cell(value: Any) -> str:
     return text[:300]
 
 
-def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple]], set[int]]]) -> str:
+def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple, set[int] | None]], set[int]]]) -> str:
     from openpyxl.utils import get_column_letter
 
     lines = [f"## document {doc['id']} · {doc['source_name']}",
              f"A finding from it: source_url {doc['source_url']} · source_name {doc['source_name']}"]
     for title, rows, drop in sheets:
         lines.append(f"### sheet {title!r}")
-        for r, values in rows:
+        for r, values, keep in rows:
             cells = [(f"{get_column_letter(c)}{r}", v) for c, v in enumerate(values, start=1)
-                     if v not in (None, "") and c not in drop]
+                     if v not in (None, "") and c not in drop and (keep is None or c in keep)]
             if cells:
                 body = " · ".join(f"{ref}={_cell(v)!r}" for ref, v in cells)
                 lines.append(f"[source:{doc['id']}#{title}!{cells[0][0]}] {body}")
@@ -327,6 +356,125 @@ def hold_unmarked(
             held.append(f"{f.get('concept')}: its source_url names no staff dataset on file")
         elif dataset_ids[url] not in ids:
             held.append(f"{f.get('concept')}: the citation names a different staff dataset")
+        else:
+            kept.append(f)
+    return kept, held
+
+
+# Checking a staff figure against its cell. A marker proves which cell was cited, not that the number
+# was read off it right: a misread value or a wrong unit would otherwise be promoted as a public fact.
+
+_CELL = re.compile(r"\[source:(\d+)#(.+?)!([A-Z]{1,3})(\d+)\]", re.IGNORECASE)
+_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+_UNIT_WORDS = (("lakh", "lakh"), ("lac", "lakh"), ("crore", "crore"), ("cr", "crore"))
+# A sheet whose plain numbers are always in one unit. The CSO workbook's units vary by sheet and cell.
+SOURCE_UNITS = {"mca_csr": "crore"}
+
+
+def cell_amount(value: Any) -> tuple[float, str | None] | None:
+    """A cell as (number as printed, the unit it states or None); None when it holds no number."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value), None
+    text = str(value)
+    found = _NUMBER.search(text)
+    if not found:
+        return None
+    words = _words(text).split()
+    unit = next((u for w, u in _UNIT_WORDS for word in words if word == w or word.startswith(w + "s")), None)
+    if unit is None and re.search(r"\dcr\b", text, re.IGNORECASE):
+        unit = "crore"
+    return float(found.group().replace(",", "")), unit
+
+
+def _same(a: float, b: float) -> bool:
+    return abs(a - b) <= max(0.005, 0.0005 * abs(b))
+
+
+def _money_fields(finding: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {k: v for k, v in finding.items()
+            if isinstance(v, dict) and {"value", "unit", "text"} <= v.keys()}
+
+
+def _read_rows(data: bytes, wanted: dict[str, set[int]]) -> dict[tuple[str, int], tuple]:
+    """The cited rows, one streaming pass per sheet. A sheet that is not in the workbook is simply absent."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    out: dict[tuple[str, int], tuple] = {}
+    try:
+        for title, numbers in wanted.items():
+            if title not in wb.sheetnames:
+                continue
+            ws = wb[title]
+            ws.reset_dimensions()
+            for r, values in enumerate(ws.iter_rows(min_row=min(numbers), max_row=max(numbers),
+                                                    values_only=True), start=min(numbers)):
+                if r in numbers:
+                    out[(title, r)] = values
+    finally:
+        wb.close()
+    return out
+
+
+def figure_mismatches(finding: dict[str, Any], doc_id: int, source_key: str,
+                      rows: dict[tuple[str, int], tuple]) -> list[str]:
+    """Each amount must be printed in a row the finding cites, in the unit the cell or sheet states."""
+    cited = [(sheet, int(row)) for d, sheet, _col, row in _CELL.findall(str(finding.get("evidence", "")))
+             if int(d) == doc_id]
+    cells = [cell_amount(v) for key in cited for v in rows.get(key, ())]
+    cells = [c for c in cells if c is not None]
+    problems = []
+    for name, money in _money_fields(finding).items():
+        value, unit = float(money["value"]), money["unit"]
+        ok = False
+        for number, stated in cells:
+            if not _same(value, number):
+                continue
+            expected = stated or SOURCE_UNITS.get(source_key)
+            if expected is None or expected == unit:
+                ok = True
+                break
+        if not ok:
+            refs = ", ".join(f"{s}!row {r}" for s, r in cited) or "no readable row"
+            problems.append(f"{finding.get('concept')}: {name} is not printed, in that unit, in the cited row ({refs}) "
+                            f"— re-read the row and save the amount as printed with its unit")
+    return problems
+
+
+async def hold_mismatched(
+    findings: list[dict[str, Any]], datasets: dict[str, dict[str, Any]]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Promotable findings, and a held reason for each staff amount its cited row does not bear out."""
+    kept: list[dict[str, Any]] = []
+    held: list[str] = []
+    rows_by_doc: dict[int, dict[tuple[str, int], tuple] | None] = {}
+    for f in findings:
+        doc = datasets.get(f.get("source_url") or "")
+        if doc is None or not is_staff_source_url(f.get("source_url")) or not _money_fields(f):
+            kept.append(f)
+            continue
+        if doc["id"] not in rows_by_doc:
+            wanted: dict[str, set[int]] = {}
+            for g in findings:
+                if g.get("source_url") == f.get("source_url"):
+                    for d, sheet, _col, row in _CELL.findall(str(g.get("evidence", ""))):
+                        if int(d) == doc["id"]:
+                            wanted.setdefault(sheet, set()).add(int(row))
+            try:
+                data = await _workbook(doc)
+                rows_by_doc[doc["id"]] = await asyncio.to_thread(_read_rows, data, wanted) if data else None
+            except Exception as exc:  # noqa: BLE001 - type only: a message could quote a cell
+                logger.warning("staff figure check could not open document %s (%s)", doc["id"], type(exc).__name__)
+                rows_by_doc[doc["id"]] = None
+        rows = rows_by_doc[doc["id"]]
+        if rows is None:
+            held.append(f"{f.get('concept')}: its staff workbook could not be re-opened to check the figure")
+            continue
+        problems = figure_mismatches(f, doc["id"], doc.get("source_name") or "", rows)
+        if problems:
+            held.extend(problems)
         else:
             kept.append(f)
     return kept, held

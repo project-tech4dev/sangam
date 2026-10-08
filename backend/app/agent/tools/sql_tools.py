@@ -51,7 +51,7 @@ async def db_describe_table(tables: str) -> str:
     """Show a table's columns, types, allowed values, relationships and known data problems.
 
     Args:
-        tables: one or more table names, comma-separated (e.g. "grants,funders").
+        tables: one or more table names, comma-separated (e.g. "funder_activity,funders").
 
     Call this before writing SQL against a table you have not queried this turn,
     and again whenever db_query reports an unknown column. Relationships are

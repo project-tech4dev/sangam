@@ -15,7 +15,7 @@ make smoke               # confirm the stack is wired end to end
 ```
 
 **Migrations are not automatic, and two things depend on them.** `db/init/` is a baseline only:
-9 of the SQL catalog's 36 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
+7 of the SQL catalog's 32 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
 at boot when one is missing, so the backend will not start against an unmigrated database.
 `seed.taxonomy_seed` needs `0002_taxonomy.sql` as well.
 
@@ -136,7 +136,7 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
 ```
 backend/app/
   main.py          create_app() + `app = create_app()` — the ASGI entrypoint, wiring only
-  core/            config.py (Settings) · security.py (auth stub) · lifespan.py · logging.py
+  core/            config.py (Settings) · security.py (auth stub) · lifespan.py · logging.py · egress.py
   db/              pool.py (PoolDep) · checkpointer.py (LangGraph) · migrate.py (runner)
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
@@ -243,7 +243,7 @@ those tools are registered. Setting them changes no behaviour.
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
 
-- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 36 tables, and a column not
+- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 32 tables, and a column not
   listed there does not exist as far as the tool is concerned. It also carries `defects`:
   evidence-backed caveats about the *data* that get injected into every result touching the
   table, so the model cannot report "0 rows" as "none exist". Delete a defect line when a
@@ -279,8 +279,11 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. There are 32 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. There are 34 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
+
+**Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
+private, loopback and metadata addresses on every redirect hop.
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:
@@ -289,7 +292,7 @@ product depends on and that a new tool silently breaks:
   error string lets the model see the failure and adapt. Every tool body in `app/agent/tools/` is
   wrapped in `try/except` returning `f"<tool> failed: {exc}"`.
 - *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
-  `[grant:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
+  `[activity:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces
   uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
 
@@ -351,12 +354,12 @@ deployed instance.
 **Sangam Import loads its procedures from skills.** `app/ingest/skills/<name>/SKILL.md` holds a
 reusable procedure, advertised by its frontmatter and read only when the model judges it
 relevant. There are seven, in three groups: **what to pull** (`funder-intake-research`,
-`ngo-credential-research` — ten cited fields each, and `funder-intake-research` also pulls
-the open call itself when it found one), **what to produce** (`entity-record` for one
-organisation, `funder-scan-for-fundraisers` and `ngo-brief-for-funders` for a comparison across
-several), and **what the catalog did with it** (`catalog-mapping` before a write,
-`catalog-write-report` after). The two outer groups split by entity kind because the kinds
-genuinely differ; the record, the mapping and the report do not. **They are the supervisor's, and no subagent declares one**: a
+`ngo-credential-research` — cited fields in a set source order; `funder-intake-research` also
+pulls the open call itself, and `ngo-credential-research` lists the documents to request from a
+CSO), **what to produce** (`entity-record` for one organisation, `funder-scan-for-fundraisers`
+and `ngo-brief-for-funders` for a comparison across several), and **what the catalog did
+with it** (`catalog-mapping` before a write, `catalog-write-report` after). The two outer
+groups split by entity kind because the kinds genuinely differ; the record, the mapping and the report do not. **They are the supervisor's, and no subagent declares one**: a
 researcher's targets come from `research_goals` and the schema, and it returns a
 `ResearchSummary` with no prose to shape. Constraints never live there: progressive disclosure
 means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and

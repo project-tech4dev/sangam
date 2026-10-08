@@ -1,4 +1,4 @@
-export type CitationKind = "org" | "funder" | "grant" | "score" | "graph";
+export type CitationKind = "org" | "funder" | "activity" | "grant" | "score" | "graph";
 
 /** Where an entity's row was read from. Optional throughout: most tables record it,
  *  some rows do not, and the rail says "no source recorded" rather than hiding the gap. */
@@ -8,10 +8,10 @@ export type RegistryIndex = {
   orgs: Map<number, { slug: string; name: string } & Provenance>;
   funders: Map<number, { slug: string; name: string } & Provenance>;
   scores: Map<number, { funderSlug: string; orgName: string; funderName: string; rubricVersion?: string | null }>;
-  grants: Map<number, { orgSlug: string; title: string } & Provenance>;
+  activities: Map<number, { href: string; title: string } & Provenance>;
 };
 
-const CITE_RE = /\[(org|funder|grant|score|graph):([a-zA-Z0-9]+)\]/g;
+const CITE_RE = /\[(org|funder|activity|grant|score|graph):([a-zA-Z0-9]+)\]/g;
 
 /** Rewrite [kind:id] markers into private-scheme links, skipping code spans. */
 export function linkifyCitations(md: string): string {
@@ -58,10 +58,14 @@ export function citationTarget(
         label: score ? `${score.orgName} × ${score.funderName}` : `score #${id}`,
       };
     }
-    case "grant": {
-      const grant = index?.grants.get(numeric);
-      return { href: grant ? `/registry/${grant.orgSlug}` : null, label: grant?.title ?? `grant #${id}` };
+    case "activity": {
+      // The index holds partner lines only; a spend or footprint line renders unlinked under its number.
+      const line = index?.activities.get(numeric);
+      return { href: line?.href ?? null, label: line?.title ?? `funder activity #${id}` };
     }
+    case "grant":
+      // Retired in 0034; a saved thread's marker shows as a chip, unlinked, rather than as raw brackets.
+      return { href: null, label: `grant #${id} (retired)` };
     case "graph":
       return { href: null, label: `graph evidence ${id.slice(0, 8)}` };
   }

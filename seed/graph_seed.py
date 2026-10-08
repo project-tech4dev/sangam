@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import psycopg
 from psycopg.rows import dict_row
@@ -72,7 +72,7 @@ def collect_episodes(database_url: str) -> list[dict]:
             ) t ON true
             LEFT JOIN LATERAL (
               SELECT string_agg(upper(oi.id_type) || ' ' || oi.id_value, ', ') AS ids
-              FROM org_identifiers oi WHERE oi.org_id = o.id
+              FROM org_identifiers oi WHERE oi.org_id = o.id AND oi.id_value IS NOT NULL
             ) i ON true
             WHERE o.slug IN ('kabil', 'bdf')
             ORDER BY o.id
@@ -91,19 +91,20 @@ def collect_episodes(database_url: str) -> list[dict]:
                 }
             )
 
-        grants = conn.execute(
+        grant_lines = conn.execute(
             """
-            SELECT g.title, g.status, g.start_date, g.end_date, g.outcomes, g.notes,
-                   f.name AS funder_name, o.name AS org_name, p.name AS program_name
-            FROM grants g
-            JOIN funders f ON f.id = g.funder_id
-            JOIN orgs o ON o.id = g.org_id
-            LEFT JOIN programs p ON p.id = g.program_id
-            ORDER BY g.id
+            SELECT a.project_name AS title, a.relationship_status AS status, a.start_date, a.end_date,
+                   a.notes, f.name AS funder_name, o.name AS org_name, p.name AS program_name
+            FROM funder_activity a
+            JOIN funders f ON f.id = a.funder_id
+            JOIN orgs o ON o.id = a.partner_org_id
+            LEFT JOIN programs p ON p.id = a.program_id
+            WHERE a.kind = 'partner' AND a.project_name IS NOT NULL
+            ORDER BY a.id
             """
         ).fetchall()
-        for g in grants:
-            outcomes = ", ".join(f"{k}: {v}" for k, v in (g["outcomes"] or {}).items())
+        # The episode name is unchanged from the grants table's, so an ingested episode is recognised.
+        for g in grant_lines:
             dates = (f" from {g['start_date']} to {g['end_date']}"
                      if g["start_date"] else "")
             episodes.append(
@@ -112,11 +113,10 @@ def collect_episodes(database_url: str) -> list[dict]:
                     "body": (
                         f"{g['funder_name']} funded {g['org_name']}: {g['title']}"
                         + (f" under the {g['program_name']} program" if g["program_name"] else "")
-                        + f"{dates}. Status: {g['status']}."
-                        + (f" Outcomes: {outcomes}." if outcomes else "")
+                        + f"{dates}. Status: {g['status'] or 'not stated'}."
                         + (f" {g['notes']}" if g["notes"] else "")
                     ),
-                    "description": "funding relationship (grants table)",
+                    "description": "funding relationship (funder_activity partner line)",
                 }
             )
 
@@ -163,7 +163,7 @@ async def ingest(episodes: list[dict]) -> None:
                 episode_body=ep["body"],
                 source=EpisodeType.text,
                 source_description=ep["description"],
-                reference_time=ep.get("reference_time") or datetime.now(timezone.utc),
+                reference_time=ep.get("reference_time") or datetime.now(UTC),
             )
             print(f"[{i}/{len(episodes)}] ingested: {ep['name']}")
     finally:

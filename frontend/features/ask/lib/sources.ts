@@ -6,7 +6,7 @@ import type { TraceStep, Turn } from "./useSangamChat";
  *
  *   fact   — the `sources:` block db_query appends for the tables a query read
  *   web    — a fetch_url step's own argument, because the result does not echo it
- *   entity — the org, funder or grant a citation marker points at, from the index
+ *   entity — the org, funder or activity line a citation marker points at, from the index
  *
  * The `sources:` grammar is a backend contract, pinned by
  * backend/tests/test_sql_render.py::TestSources::test_the_line_grammar_is_a_contract.
@@ -91,7 +91,7 @@ function entitySources(answer: string, index: RegistryIndex | null): Source[] {
     const row =
       cite.kind === "org" ? index?.orgs.get(id)
       : cite.kind === "funder" ? index?.funders.get(id)
-      : cite.kind === "grant" ? index?.grants.get(id)
+      : cite.kind === "activity" ? index?.activities.get(id)
       : null;
     if (!row) continue;
     const name = "name" in row ? row.name : row.title;

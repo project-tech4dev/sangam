@@ -16,7 +16,7 @@ export const SAMPLE_INDEX = {
   orgs: [[1, { slug: "kabil", name: "KABIL" }]],
   funders: [[1, { slug: "axis-bank-foundation", name: "Axis Bank Foundation" }]],
   scores: [[1, { funderSlug: "axis-bank-foundation", orgName: "KABIL", funderName: "Axis Bank Foundation" }]],
-  grants: [],
+  activities: [],
 } as const;
 
 export const SAMPLE_TRACE: TraceStep[] = [
