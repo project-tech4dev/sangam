@@ -336,10 +336,10 @@ Docker is local development only. Deployed, the stack splits across three hosts:
 | Postgres | Supabase |
 | Neo4j | Neo4j Aura, or omitted |
 
-**Only a merge to `master` deploys**, and only `.github/workflows/deploy.yml` does it. Both
-`vercel.json` files set `git.deploymentEnabled: false`, so a branch push builds nothing. The
-workflow deploys only the projects whose directory changed, so a docs-only merge deploys
-nothing. There are no preview deployments by design.
+**Nothing deploys automatically.** Run Actions → Deploy → Run workflow on `master` to deploy
+both projects; a merge deploys nothing. Both `vercel.json` files set
+`git.deploymentEnabled: false`, so no push builds anything either. There are no preview
+deployments by design.
 
 Two traps worth knowing before touching this:
 

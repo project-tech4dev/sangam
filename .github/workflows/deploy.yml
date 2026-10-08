@@ -1,13 +1,8 @@
-# The only thing that deploys to Vercel. The Git integration is off
-# (frontend/vercel.json, backend/vercel.json), so a branch push deploys nothing.
+# The only thing that deploys to Vercel, and only when run by hand (Actions → Deploy → Run workflow).
+# The Git integration is off (frontend/vercel.json, backend/vercel.json), so no push or merge deploys.
 name: Deploy
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - 'frontend/**'
-      - 'backend/**'
   workflow_dispatch:
 
 permissions:

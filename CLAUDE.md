@@ -409,18 +409,17 @@ Non-obvious constraints:
 - **Vercel's Python bundle limit is 500 MB.** The backend's dependency tree is ~256 MB and
   fits with no trimming.
 
-**Only a merge to `master` deploys, and only `.github/workflows/deploy.yml` does it.**
-`frontend/vercel.json` and `backend/vercel.json` each set `git.deploymentEnabled: false`, so
-a branch push builds nothing — before this, every push to any of twenty branches built *both*
-projects, 40 deployments in one day. The workflow diffs the merge and deploys only the
-projects whose directory changed; a docs-only merge deploys nothing. There are no preview
+**Nothing deploys automatically; `.github/workflows/deploy.yml` is run by hand.** A merge to
+`master` deploys nothing — run Actions → Deploy → Run workflow on `master` when it should go
+out, and it deploys both projects. `frontend/vercel.json` and `backend/vercel.json` each set
+`git.deploymentEnabled: false`, so no push builds anything either — before that, every push to
+any of twenty branches built *both* projects, 40 deployments in one day. There are no preview
 deployments by design.
 
 Each `vercel.json` must stay in its project's **Root Directory** (`frontend` / `backend`) —
 that is where Vercel reads it from, which is why a repo-root one did nothing. The workflow
 needs one secret, `VERCEL_TOKEN`; the org and project IDs in it are identifiers, not
-credentials. Run it by hand from the Actions tab (`workflow_dispatch`) to redeploy `master`
-without a new commit.
+credentials.
 
 ## Working state
 
