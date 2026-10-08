@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Mic, Paperclip } from "lucide-react";
 import type { RegistryIndex } from "../lib/citations";
 import { saveThread, titleFrom } from "../lib/threads";
 import { useSangamChat } from "../lib/useSangamChat";
@@ -31,6 +32,7 @@ export function ChatPane({
   const { turns, send, isRunning, isReady } = useSangamChat(threadId);
   const [draft, setDraft] = useState(seed ?? "");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const sentTitle = useRef(false);
 
   useEffect(() => {
@@ -45,6 +47,8 @@ export function ChatPane({
     const question = (text ?? draft).trim();
     if (!question || isRunning) return;
     setDraft("");
+    // A suggestion pill disappears once sent; keep the cursor in the box for the follow-up.
+    inputRef.current?.focus();
     if (!sentTitle.current) {
       saveThread({ id: threadId, title: titleFrom(question), createdAt: Date.now() });
       sentTitle.current = true;
@@ -53,89 +57,74 @@ export function ChatPane({
     await send(question);
   }
 
-  return (
-    <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 18,
-          paddingRight: 6,
-          maxWidth: 860,
-          width: "100%",
-          margin: "0 auto",
+  const composer = (
+    <div className="card elev-sm composer">
+      <textarea
+        ref={inputRef}
+        className="input composer-input"
+        placeholder="Ask about an organisation, a funder, or a fit…"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
         }}
-      >
-      {turns.length === 0 && (
-        <>
-          <div className="card" style={{ gap: 8 }}>
-            <div className="card-title">Nothing asked yet</div>
-            <div className="card-body">
-              Ask about the cohort&apos;s organisations, funders, fit scores, or the connections
-              between them. Answers cite the Registry — and say so when the base has no answer.
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {SUGGESTIONS.map((s) => (
-              <button key={s} className="pill" onClick={() => submit(s)} disabled={!isReady}>
-                {s}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-        {turns.map((turn) => (
-          <div key={turn.id} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <div
-                aria-hidden
-                style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, background: "var(--color-neutral-700)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--fs-xs)", fontWeight: 700 }}
-              >
-                You
-              </div>
-              <div style={{ fontFamily: "var(--font-heading)", fontSize: "var(--fs-md)", fontWeight: 600, paddingTop: 5 }}>
-                {turn.question}
-              </div>
-            </div>
-            <TraceCard steps={turn.steps} streaming={turn.streaming && !turn.answer} />
-            {turn.answer && <AnswerCard answer={turn.answer} index={index} />}
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-      </div>
-
-      <div className="card elev-sm" style={{ gap: 10, maxWidth: 860, width: "100%", margin: "0 auto", flexShrink: 0 }}>
-        <textarea
-          className="input"
-          style={{ border: "none", padding: 4, minHeight: 48 }}
-          placeholder="Ask about an organisation, a funder, or a fit…"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
-          }}
-        />
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
-            {isReady ? "⌘↵ to send" : "Connecting to the agent…"}
-          </span>
-          <button
-            className="btn btn-primary"
-            style={{ marginLeft: "auto" }}
-            onClick={() => submit()}
-            disabled={!isReady || isRunning || !draft.trim()}
-          >
+      />
+      <div className="composer-row">
+        <span className="muted-2 composer-hint">{isReady ? "⌘↵ to send" : "Connecting to the agent…"}</span>
+        <div className="composer-actions">
+          {/* Stubs: attaching a file and asking by voice are not built yet. */}
+          <button type="button" className="btn btn-icon composer-stub" aria-disabled="true" title="Attach a file (coming soon)" aria-label="Attach a file (coming soon)">
+            <Paperclip className="icon icon-sm" aria-hidden />
+          </button>
+          <button type="button" className="btn btn-icon composer-stub" aria-disabled="true" title="Ask by voice (coming soon)" aria-label="Ask by voice (coming soon)">
+            <Mic className="icon icon-sm" aria-hidden />
+          </button>
+          <button className="btn btn-primary" onClick={() => submit()} disabled={!isReady || isRunning || !draft.trim()}>
             {isRunning ? "Working…" : "Ask Sangam"}
           </button>
         </div>
-        <ComposerNotice />
       </div>
+      <ComposerNotice />
+    </div>
+  );
+
+  const empty = turns.length === 0;
+
+  // One tree for both states, with the question box always the second child, so React keeps
+  // the same textarea when the first question is sent and the cursor stays in it.
+  return (
+    <div className={empty ? "chat-pane is-empty" : "chat-pane"}>
+      {empty ? (
+        <h2 className="chat-empty-title">What do you want to know?</h2>
+      ) : (
+        <div className="chat-scroll">
+          <div className="chat-turns">
+            {turns.map((turn) => (
+              <div key={turn.id} className="chat-turn">
+                <div className="chat-question">
+                  <div aria-hidden className="chat-you">
+                    You
+                  </div>
+                  <div className="chat-question-text">{turn.question}</div>
+                </div>
+                <TraceCard steps={turn.steps} streaming={turn.streaming && !turn.answer} />
+                {turn.answer && <AnswerCard answer={turn.answer} index={index} />}
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+        </div>
+      )}
+      {composer}
+      {empty && (
+        <div className="chat-suggestions">
+          {SUGGESTIONS.map((s) => (
+            <button key={s} className="pill" onClick={() => submit(s)} disabled={!isReady}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,8 @@ import { Sidebar, type WorkspaceView } from "./components/Sidebar";
 import { VaultView } from "./views/VaultView";
 import { MediaView } from "./views/MediaView";
 import { RfpWatchView } from "./views/RfpWatchView";
+import { FunderMatchView } from "./views/FunderMatchView";
+import { ChatsView } from "./views/ChatsView";
 import dynamic from "next/dynamic";
 
 // Most visits never open Tools, so the ingest UI downloads only when Import is first opened.
@@ -82,6 +84,13 @@ export function AskWorkspace({
 
   const refreshThreads = useCallback(() => setThreads(loadThreads()), []);
 
+  function pickThread(id: string) {
+    setThreadId(id);
+    setSeed(null);
+    setLatestTurn(null);
+    setView("ask");
+  }
+
   function newChat(seedText: string | null = null) {
     setThreadId(crypto.randomUUID());
     setSeed(seedText);
@@ -107,12 +116,7 @@ export function AskWorkspace({
         onView={setView}
         threads={threads}
         activeThread={threadId}
-        onPickThread={(id) => {
-          setThreadId(id);
-          setSeed(null);
-          setLatestTurn(null);
-          setView("ask");
-        }}
+        onPickThread={pickThread}
         onNewChat={() => newChat()}
       />
 
@@ -134,6 +138,8 @@ export function AskWorkspace({
         )}
         {view === "vault" && <VaultView orgs={payload.orgs} />}
         {view === "media" && <MediaView onDiscuss={(text) => newChat(text)} />}
+        {view === "chats" && <ChatsView threads={threads} onPick={pickThread} />}
+        {view === "funder-match" && <FunderMatchView />}
         {view === "rfpwatch" && <RfpWatchView />}
         {importOpened && (
           <div style={{ display: view === "import" ? "flex" : "none", flex: 1, minWidth: 0, minHeight: 0 }}>

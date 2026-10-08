@@ -116,6 +116,8 @@ The design system's `readme.md` is the full statement. The ones most often neede
 - **Colour:** text must clear WCAG AA (4.5:1). Terracotta text is `--color-accent-750`; an orange
   fill carries white text and is `accent-750`. Muted text is sand-700. Lighter tints are fills
   only.
+- **Icons:** Lucide (`lucide-react`), sized, stroked and coloured by the `.icon` classes, never by
+  props. Text-like marks (⟨ ⟩ ✓ → ⌘↵) stay glyphs.
 - **Layout:** one `--page-max` (1160px) column on every page; long text caps itself with
   `.measure` (72ch) rather than narrowing the page.
 - **Wording:** "CSO" in data and registry UI, "NGO" in marketing copy, "vetted" (never
