@@ -21,6 +21,9 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.ingest.expectations import CONCEPTS as _REGISTRY
+from app.ingest.expectations import RESERVED_DOC_TYPES
+from app.ingest.records import CIN_FORMAT, ClassifiedBy, ImplementationMode, normalise_cin
+from app.ingest.taxonomy import DOMAINS, NO_THEMES
 
 # The vocabulary is the registry's, in its order. A `Concept = Literal[...]`
 # alias used to sit here repeating all thirteen; it was imported nowhere.
@@ -32,6 +35,26 @@ SCHEMA_VERSION = 2
 pairs: still readable, not promotable, re-researched rather than migrated."""
 
 _UNITS: dict[str, int] = {"inr": 1, "lakh": 1_00_000, "crore": 1_00_00_000}
+
+DomainCode = Literal[*DOMAINS]
+
+
+def _check_classification(f: Any) -> None:
+    """D11: a domain and theme are inferences, and a theme says what it rests on."""
+    if f.domain in NO_THEMES and f.theme:
+        raise ValueError(f"{f.domain!r} has no themes in the taxonomy; leave theme empty")
+    if f.theme and not (f.classification_note or "").strip():
+        raise ValueError(
+            "a theme needs a classification_note quoting what it rests on, e.g. "
+            "\"project 'Financial Literacy & Inclusion'; filed under Education\""
+        )
+
+
+def _code(v: Any) -> Any:
+    """Taxonomy codes are lower-case: ' Livelihoods ' is livelihoods, and a blank theme is none."""
+    if not isinstance(v, str):
+        return v
+    return v.strip().lower() or None
 
 
 class Money(BaseModel):
@@ -124,12 +147,44 @@ class IdentityFinding(FindingBase):
         default=None,
         description="the company a foundation belongs to. NEVER merge the two — they are two rows",
     )
+    cin: str | None = Field(
+        default=None,
+        description="the Corporate Identity Number of a COMPANY funder, 21 characters as the MCA prints "
+                    "it. A trust or society has none. Never guess one, and never put a parent company's "
+                    "CIN on its foundation",
+    )
+    aliases: list[str] = Field(
+        default_factory=list,
+        description="other names it files or is reported under, e.g. the name on its MCA filings",
+    )
+    intake_mode: (
+        Literal["open", "rolling", "invitation_only", "rfp_only", "closed", "unknown"] | None
+    ) = Field(default=None, description="how an NGO can approach it at all, as it says so")
+    funds_external: bool | None = Field(
+        default=None, description="what it SAYS about funding other organisations; null means it does not say"
+    )
+    typical_duration_months: int | None = Field(default=None, gt=0, description="a stated typical grant duration")
+    grant_size_min: Money | None = Field(default=None, description="the bottom of a stated grant band")
+    grant_size_max: Money | None = Field(default=None, description="the top of a stated grant band")
 
+    @field_validator("cin")
+    @classmethod
+    def _cin(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        cin = normalise_cin(v)
+        if not CIN_FORMAT.fullmatch(cin):
+            raise ValueError(
+                f"{v!r} is not a CIN: 21 characters, e.g. 'L65110GJ1993PLC020769'. Never guess one"
+            )
+        return cin
 
-class IdentifierFinding(FindingBase):
-    concept: Literal["identifier"] = "identifier"
-    id_type: Literal["pan", "cin", "csr1", "darpan", "reg_no", "domain", "name"]
-    id_value: str = Field(min_length=2, description="exactly as printed. Never guess an identifier")
+    @model_validator(mode="after")
+    def _band_is_the_right_way_round(self) -> IdentityFinding:
+        lo, hi = self.grant_size_min, self.grant_size_max
+        if lo is not None and hi is not None and hi.inr < lo.inr:
+            raise ValueError(f"grant band is inverted: {lo.text} above {hi.text}")
+        return self
 
 
 class CsrYearFinding(YearlyFinding):
@@ -146,15 +201,21 @@ class CsrYearFinding(YearlyFinding):
     total_spent: Money | None = Field(default=None, description="item 6(d)")
     unspent_transferred: Money | None = None
     excess_spent: Money | None = None
+    local_area_spent: Money | None = Field(
+        default=None, description="spent in the local area of its operations, as the MCA return reports it",
+    )
     impact_assessment_done: bool | None = None
     notes: str | None = None
 
 
 class CsrSpendFinding(YearlyFinding):
-    """A project, or an aggregate. Never divide an aggregate across projects."""
+    """One spend line: a project, or an aggregate. Never divide an aggregate across projects."""
 
     concept: Literal["csr_spend"] = "csr_spend"
     amount: Money
+    outlay: Money | None = Field(
+        default=None, description="the amount approved or budgeted for the line, when filed beside the spend"
+    )
     project_name: str | None = Field(
         default=None, description="null on an aggregate row; set for a single project"
     )
@@ -164,17 +225,31 @@ class CsrSpendFinding(YearlyFinding):
     state: str | None = None
     district: str | None = None
     sector: str | None = Field(
-        default=None, description="the funder's own words for the theme, not a normalised tag"
+        default=None, description="the Schedule VII sector the line was FILED under, as printed"
     )
     program_name: str | None = None
     designation: str | None = Field(
         default=None, description="e.g. 'aspirational_district', when the total is limited to those"
     )
-    implementing_agency: str | None = Field(default=None, description="as printed")
-    agency_csr1: str | None = None
-    via_agency: bool | None = Field(default=None, description="false means implemented directly")
+    implementation_mode: ImplementationMode | None = None
+    partner_name: str | None = Field(default=None, description="the implementing agency or partner, as printed")
+    partner_csr1: str | None = Field(default=None, description="the PARTNER's CSR-1, when filed")
     is_ongoing: bool | None = None
     notes: str | None = None
+    domain: DomainCode = Field(
+        description="ALWAYS set, by project name and partner, not by the filed sector. 'others' for relief, "
+                    "sports, administration, unlabelled or multi-sector lines; 'environment' for "
+                    "conservation and animal welfare that is not a livelihood programme"
+    )
+    theme: str | None = Field(
+        default=None,
+        description="a theme or sub-theme code from the taxonomy, at the most specific level the evidence "
+                    "supports; null when the line gives nothing to go on. Never pick one to fill the field",
+    )
+    classified_by: ClassifiedBy = Field(description="what the domain and theme rest on")
+    classification_note: str | None = Field(default=None, description="the evidence in a few words")
+
+    _codes = field_validator("domain", "theme", mode="before")(lambda v: _code(v))
 
     @model_validator(mode="after")
     def _aggregate_or_project(self) -> CsrSpendFinding:
@@ -183,6 +258,7 @@ class CsrSpendFinding(YearlyFinding):
                 "a row is either one project or an aggregate of several, not both. Drop "
                 "project_count, or drop project_name and keep the total"
             )
+        _check_classification(self)
         return self
 
 
@@ -218,8 +294,37 @@ class PartnerFinding(YearlyFinding):
                 "armed_forces", "hospital", "network", "company", "other"] | None
     ) = None
     partner_csr1: str | None = None
+    outlay: Money | None = Field(
+        default=None, description="the amount committed or sanctioned to the partner, when stated beside the grant"
+    )
+    amount: Money | None = Field(
+        default=None,
+        description="what the partner received from this funder in the year, as printed with its unit; "
+                    "usually from the recipient's own record. Null means not stated, never zero",
+    )
     program_name: str | None = None
     notes: str | None = None
+
+
+class ProgrammeSpendFinding(YearlyFinding):
+    """The funder's own figure for one programme component in a year (D12). It is the funder's total,
+    never a sum of filing lines and never spread across them."""
+
+    concept: Literal["programme_spend"] = "programme_spend"
+    program_name: str = Field(min_length=2, description="the programme as the funder names it; also a program finding")
+    amount: Money
+    domain: DomainCode
+    theme: str | None = None
+    classified_by: ClassifiedBy = Field(description="usually 'report': the funder's own programme naming")
+    classification_note: str | None = None
+    notes: str | None = None
+
+    _codes = field_validator("domain", "theme", mode="before")(lambda v: _code(v))
+
+    @model_validator(mode="after")
+    def _classified(self) -> ProgrammeSpendFinding:
+        _check_classification(self)
+        return self
 
 
 class ProgramFinding(FindingBase):
@@ -331,26 +436,37 @@ class ContactFinding(FindingBase):
         return self
 
 
-class FunderEligibilityFinding(FindingBase):
-    """What the funder requires of an applicant, one condition per finding.
+class EligibilityGuidelineFinding(FindingBase):
+    """A funder's standing eligibility for applicants, verbatim, from one page (D3).
 
-    Not rfps.eligibility: this is the standing bar, and a requirement printed
-    in one open call belongs on that call. The same sentence can be true in
-    both places and that is two findings, not a duplicate.
+    Not rfps.eligibility: that is one call's. The same sentence can be true in both places and that
+    is two findings, not a duplicate.
     """
 
-    concept: Literal["funder_eligibility"] = "funder_eligibility"
-    # `kind` is the records' own discriminator, hence the rename in promote.py.
-    kind: Literal["statutory_restatement", "own_bar", "disqualifier"] = Field(
-        description="statutory_restatement is Rule 4 copied into the policy and is NOT the "
-                    "funder's own bar; disqualifier is a stated ground for outright rejection"
+    concept: Literal["eligibility_guideline"] = "eligibility_guideline"
+    title: str = Field(min_length=4, description="what the page is, e.g. 'CSR Policy — partner selection'")
+    as_of: str | None = Field(default=None, description="the period or version the guideline describes")
+    statutory_restatement: str | None = Field(
+        default=None, description="Rule 4 copied into the policy, VERBATIM. Not the funder's own bar"
     )
-    criterion: str = Field(
-        min_length=10,
-        description="the condition in the funder's own words, verbatim. 'Various documents' "
-                    "is not a criterion; the sentence that states the bar is",
+    own_bar: str | None = Field(default=None, description="beyond the statutory minimum, verbatim")
+    disqualifiers: str | None = Field(default=None, description="stated grounds for rejection, verbatim")
+    not_stated: bool = Field(
+        default=False, description="true when the page was read and states no eligibility"
     )
-    notes: str | None = None
+
+    @model_validator(mode="after")
+    def _text_or_an_honest_absence(self) -> EligibilityGuidelineFinding:
+        texts = [t for t in (self.statutory_restatement, self.own_bar, self.disqualifiers) if t and t.strip()]
+        if self.not_stated and texts:
+            raise ValueError("not_stated with eligibility text is a contradiction — drop one")
+        if not self.not_stated and not texts:
+            raise ValueError(
+                "no eligibility text: quote the page verbatim, or set not_stated=true if it states none"
+            )
+        if any(len(t.strip()) < 10 for t in texts):
+            raise ValueError("eligibility text is the sentence that states the bar, not a label")
+        return self
 
 
 class DocumentFinding(FindingBase):
@@ -360,6 +476,16 @@ class DocumentFinding(FindingBase):
     as_of: str | None = Field(
         default=None, description="the period the document describes — not when you read it"
     )
+
+    @field_validator("doc_type")
+    @classmethod
+    def _not_reserved(cls, v: str) -> str:
+        if v in RESERVED_DOC_TYPES:
+            raise ValueError(
+                f"doc_type {v!r} is reserved: eligibility is an eligibility_guideline finding, and "
+                f"templates and staff datasets have their own paths"
+            )
+        return v
 
 
 class RfpFinding(FindingBase):
@@ -408,7 +534,7 @@ class OrgIdentityFinding(FindingBase):
 
 
 class OrgIdentifierFinding(FindingBase):
-    """12A, 80G and FCRA live here and nowhere else — funder_identifiers has no room for them."""
+    """12A, 80G and FCRA live here and nowhere else — a funder keeps only a CIN."""
 
     concept: Literal["org_identifier"] = "org_identifier"
     id_type: Literal["pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"]
@@ -439,20 +565,21 @@ class OrgLocationFinding(PlacedFinding):
 
 
 Finding = Annotated[
-    IdentityFinding | IdentifierFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
-    | StatedGeographyFinding | PartnerFinding | ProgramFinding | GrantFinding | MetricFinding
-    | ContactFinding | DocumentFinding | RfpFinding | FunderEligibilityFinding
+    IdentityFinding | CsrYearFinding | CsrSpendFinding | FootprintFinding
+    | StatedGeographyFinding | PartnerFinding | ProgrammeSpendFinding | ProgramFinding | GrantFinding | MetricFinding
+    | ContactFinding | DocumentFinding | RfpFinding | EligibilityGuidelineFinding
     | OrgIdentityFinding | OrgIdentifierFinding | OrgFinancialsFinding | OrgLocationFinding,
     Field(discriminator="concept"),
 ]
 
 FINDING_MODELS: dict[str, type[FindingBase]] = {
-    "identity": IdentityFinding, "identifier": IdentifierFinding, "csr_year": CsrYearFinding,
+    "identity": IdentityFinding, "csr_year": CsrYearFinding,
     "csr_spend": CsrSpendFinding, "footprint": FootprintFinding,
     "stated_geography": StatedGeographyFinding, "partner": PartnerFinding,
+    "programme_spend": ProgrammeSpendFinding,
     "program": ProgramFinding, "grant": GrantFinding, "metric": MetricFinding,
     "contact": ContactFinding, "document": DocumentFinding, "rfp": RfpFinding,
-    "funder_eligibility": FunderEligibilityFinding,
+    "eligibility_guideline": EligibilityGuidelineFinding,
     "org_identity": OrgIdentityFinding, "org_identifier": OrgIdentifierFinding,
     "org_financials": OrgFinancialsFinding, "org_location": OrgLocationFinding,
 }

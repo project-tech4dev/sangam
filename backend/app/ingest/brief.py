@@ -56,6 +56,13 @@ _ELIGIBILITY_KINDS = {
     "disqualifier": "DISQUALIFIER",
 }
 
+# Concepts saved before 0031. Rendered so old research keeps its facts on the page; never promoted
+# as themselves (promote.funder_from folds `identifier` into the funder record).
+LEGACY_TITLES: dict[str, str] = {
+    "identifier": "Registrations and identifiers (saved before 0031)",
+    "funder_eligibility": "Eligibility it sets for applicants (saved before 0031)",
+}
+
 
 def headline(f: dict[str, Any]) -> str:
     """One line per finding, from the typed fields of its concept."""
@@ -73,20 +80,25 @@ def headline(f: dict[str, Any]) -> str:
     if concept == "csr_year":
         money = {k: _money(f.get(k)) for k in
                  ("prescribed_csr", "total_spent", "spent_on_projects", "average_net_profit",
-                  "unspent_transferred", "excess_spent", "admin_overheads",
+                  "unspent_transferred", "excess_spent", "local_area_spent", "admin_overheads",
                   "impact_assessment_cost")}
         return _join(*(f"{k.replace('_', ' ')} {v}" for k, v in money.items() if v)) or "recorded"
     if concept == "csr_spend":
         what = f.get("project_name") or f.get("sector") or "aggregate"
         count = f"{f['project_count']} projects" if f.get("project_count") else None
-        return _join(what, _money(f.get("amount")), _place(f), count,
-                     f.get("implementing_agency"))
+        label = "/".join(b for b in (f.get("domain"), f.get("theme")) if b) or None
+        return _join(what, _money(f.get("amount")), _place(f), count, f.get("partner_name"),
+                     f"{label} (inferred)" if label else None)
     if concept == "footprint":
         return _join(_place(f) or f.get("name_as_printed"), f.get("program_name"))
     if concept == "stated_geography":
         return _join(_place(f), f.get("role"))
     if concept == "partner":
-        return _join(f.get("partner_name"), f.get("partner_kind"), f.get("program_name"))
+        return _join(f.get("partner_name"), _money(f.get("amount")), f.get("partner_kind"),
+                     f.get("program_name"))
+    if concept == "programme_spend":
+        return _join(f.get("program_name"), _money(f.get("amount")), "the funder's own figure",
+                     "/".join(b for b in (f.get("domain"), f.get("theme")) if b))
     if concept == "program":
         return _join(f.get("name"), f.get("kind"),
                      f"under {f['parent_name']}" if f.get("parent_name") else None)
@@ -113,8 +125,16 @@ def headline(f: dict[str, Any]) -> str:
             None if f.get("status", "open") == "open" else f.get("status"),
             f"{len(f['eligibility'])} eligibility rules" if f.get("eligibility") else None,
         )
+    if concept == "eligibility_guideline":
+        if f.get("not_stated"):
+            return _join(f.get("title"), "states no eligibility")
+        return _join(f.get("title"), *(
+            f"{label}: {f[key][:160]}" for key, label in (
+                ("statutory_restatement", "restates the statutory minimum"),
+                ("own_bar", "its own bar"), ("disqualifiers", "DISQUALIFIERS"))
+            if f.get(key)))
     if concept == "funder_eligibility":
-        # The kind leads, because "restates the law" and "sets its own bar"
+        # Research saved before 0031. The kind leads, because "restates the law" and "sets its own bar"
         # read completely differently to a fundraiser and the criterion text
         # alone does not say which it is.
         return _join(_ELIGIBILITY_KINDS.get(f.get("kind"), f.get("kind")),
@@ -166,7 +186,7 @@ def entity_markdown(row: dict[str, Any]) -> str:
             "",
         ]
 
-    for concept, title in CONCEPT_TITLES.items():
+    for concept, title in {**CONCEPT_TITLES, **LEGACY_TITLES}.items():
         group = [f for f in findings if f.get("concept") == concept]
         if not group:
             continue
@@ -183,7 +203,7 @@ def entity_markdown(row: dict[str, Any]) -> str:
         out.append("")
 
     if row["not_found"]:
-        missing = ", ".join(CONCEPT_TITLES.get(c, c).lower() for c in row["not_found"])
+        missing = ", ".join({**CONCEPT_TITLES, **LEGACY_TITLES}.get(c, c).lower() for c in row["not_found"])
         out += ["## Looked for, not found", "",
                 f"{missing}. Not recorded is not the same as not existing.", ""]
     if row["sources_read"]:

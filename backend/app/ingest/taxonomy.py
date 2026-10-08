@@ -75,3 +75,50 @@ async def resolve_csr_sector(conn: Any, text: str | None) -> int | None:
         )
     ).fetchone()
     return row["id"] if row else None
+
+
+# The five domains (D6), defined here once. Environment and Others have no themes.
+DOMAINS = ("livelihoods", "health", "education", "environment", "others")
+NO_THEMES = frozenset({"environment", "others"})
+
+
+async def resolve_classification(
+    conn: Any, domain: str | None, theme: str | None
+) -> tuple[int | None, int | None, list[str]]:
+    """(domain_tag_id, theme_tag_id, reasons) for an inferred classification (D11). Holds back, never
+    guesses: a bad domain holds the line; a bad theme is dropped with a reason and the line keeps its domain."""
+    if not domain:
+        return None, None, []
+    if domain not in DOMAINS:
+        return None, None, [
+            f"domain {domain!r} is not one of {', '.join(DOMAINS)}, so the line is not written"
+        ]
+    row = await (
+        await conn.execute(
+            "SELECT id FROM tags WHERE kind = 'domain' AND code = %s AND status <> 'deprecated'",
+            (domain,),
+        )
+    ).fetchone()
+    if row is None:
+        return None, None, [(
+            f"domain {domain!r} is not in tags, so the line is not written. Run `make taxonomy-seed`: "
+            "the five domains come from seed/data/taxonomy/themes.json"
+        )]
+    if not theme:
+        return row["id"], None, []
+    rows = await (
+        await conn.execute(
+            "SELECT id, domain FROM tags WHERE kind IN ('theme', 'sub_theme') AND code = %s "
+            "AND status <> 'deprecated' ORDER BY id LIMIT 2",
+            (theme,),
+        )
+    ).fetchall()
+    if len(rows) != 1:
+        what = "is ambiguous" if rows else "is not in the taxonomy"
+        return row["id"], None, [f"theme {theme!r} {what}; the line is written with its domain and no theme"]
+    if rows[0]["domain"] != domain:
+        return row["id"], None, [(
+            f"theme {theme!r} belongs to {rows[0]['domain']!r}, not {domain!r}; the line is written "
+            "with its domain and no theme"
+        )]
+    return row["id"], rows[0]["id"], []

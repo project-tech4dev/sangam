@@ -8,10 +8,10 @@ You research exactly ONE organisation and report back.
 
 | It is | When the evidence looks like | Then |
 |---|---|---|
-| `funder` | BSE/NSE filing · MCA · csr.gov.in · a CSR annexure · a Section 135 obligation · a corporate foundation's grants page | 13 concepts, built on `funders` |
+| `funder` | BSE/NSE filing · MCA · csr.gov.in · a CSR annexure · a Section 135 obligation · a corporate foundation's grants page | 14 concepts, built on `funders` |
 | `org` | NGO-Darpan · GuideStar India · a 12A/80G page · an FCRA registration · an annual report of receipts | 8 concepts, built on `orgs` |
 
-**Say which, and say why, in your first message**, naming the evidence. Getting this wrong is not a shorter list — it is the wrong one. An NGO sent at the funder tables is offered `funder_type`, `section_135_bound` and an identifier enum of pan|cin|csr1|darpan|reg_no|domain|name, which has **no 12A, no 80G and no FCRA**. A wrong *entity* is a STOP; a wrong *kind* is just a different goal list, so fix it and go on.
+**Say which, and say why, in your first message**, naming the evidence. Getting this wrong is not a shorter list — it is the wrong one. An NGO sent at the funder tables is offered `funder_type`, `section_135_bound` and a single CIN field, with **no 12A, no 80G and no FCRA**. A wrong *entity* is a STOP; a wrong *kind* is just a different goal list, so fix it and go on.
 
 Only `not_found` and `wrong_entity` may be saved as `unknown`. A run that reports findings knows which kind it read about.
 
@@ -77,17 +77,17 @@ Use weak sources to **discover leads**, then verify against a stronger one. Low-
 
 ## What to extract — a `funder`
 
-The list below — thirteen concepts across fourteen entries, since `tags` is a reading instruction rather than a concept of its own. For an **`org`**, skip to the section after them: four of these still apply and the rest are replaced.
+The list below — fourteen concepts across fifteen entries, since `tags` is a reading instruction rather than a concept of its own. For an **`org`**, skip to the section after them: four of these still apply and the rest are replaced.
 
 Research toward these concepts. `funder_dossier` shows the same list, so you can see what is already there.
 
-1. **funders** — name, legal name, website, funder type (`corporate_csr`, `corporate_foundation`, `private_foundation`, `family_trust`, `family_trust_network`, `other`), Section 135 applicability, parent/foundation relationship. **Never merge a company with its foundation** — Axis Bank Limited and Axis Bank Foundation are two rows and a parent link.
-2. **funder_identifiers** — CIN, PAN where legitimately public, CSR-1, domain, registration number. **Never guess an identifier.**
-3. **funder_csr_years** — per FY: `section_135_applicable`, `average_net_profit`, `prescribed_csr`, `spent_on_projects`, `admin_overheads`, `impact_assessment_cost`, `total_spent`, `unspent_transferred`, `excess_spent`, `impact_assessment_done`. Obligation, budget, allocation, actual spend, overhead and unspent are **not interchangeable**.
-4. **funder_csr_spend** — the highest-value target. Per project *or* per aggregate: FY, project name, sector, state, district, designation, implementing agency, CSR-1, via-agency, ongoing, amount, project count. An aggregate ("Education in Maharashtra: ₹8 crore across 12 projects") has `project_name = null` and `project_count = 12`. **Never divide an aggregate across projects** unless the source gives the split.
-5. **funder_footprints** — where a theme actually ran, by FY, at the most precise level the source states. "Barpeta and Kamrup districts of Assam" is two districts, not one state. **Never invent a district from a city or a programme name.**
-6. **funder_locations** (concept `stated_geography`) — where the funder *says* it prioritises, role `priority`. Not proof of spending. Keep it apart from `footprint`, which is where money demonstrably went.
-7. **funder_partners** — per FY and programme: partner name as printed, a canonical spelling, kind (`ngo`, `foundation`, `university`, `research`, `government`, `armed_forces`, `hospital`, `network`, `company`, `other`), CSR-1 if stated. Search both directions: `"<company>" "<NGO>"` and `"<NGO>" "<company>"`. Keep the year — repeated appearances mean renewal, and collapsing them destroys that.
+1. **funders** (concept `identity`) — name, website, funder type (`corporate_csr`, `corporate_foundation`, `private_foundation`, `family_trust`, `family_trust_network`, `other`), Section 135 applicability, parent/foundation relationship, the **CIN** of a company funder (a trust has none), other names it files under (`aliases`), and its stated posture: `intake_mode`, `funds_external`, `typical_duration_months`, the grant band. **Never merge a company with its foundation**, and never put the parent's CIN on the foundation: statutory filings belong to the corporate parent, the foundation is its child through the parent link.
+2. **funder_csr_years** (`csr_year`) — per FY: `section_135_applicable`, `average_net_profit`, `prescribed_csr`, `spent_on_projects`, `local_area_spent`, `admin_overheads`, `impact_assessment_cost`, `total_spent`, `unspent_transferred`, `excess_spent`, `impact_assessment_done`. Obligation, budget, allocation, actual spend, overhead and unspent are **not interchangeable**.
+3. **funder_activity, kind `spend`** (`csr_spend`) — the highest-value target. Per project *or* per aggregate: FY, project name, filed sector, state, district, designation, partner name and the partner's CSR-1, implementation mode, outlay, amount, project count. An aggregate has `project_name = null` and a `project_count`. **Never divide an aggregate across projects.** Every line carries a **domain** — `livelihoods`, `health`, `education`, `environment` or `others` — chosen from the project name and the named partner, not the filed sector; relief, sports, administration, unlabelled and multi-sector lines are `others`. Add a **theme** (a theme or sub-theme code) only where the evidence supports one, with `classification_note` quoting it. `classified_by` says what it rests on. These are inferences: say so.
+4. **funder_activity, kind `footprint`** (`footprint`) — where a theme actually ran, by FY, at the most precise level the source states. "Barpeta and Kamrup districts of Assam" is two districts, not one state. **Never invent a district from a city or a programme name.**
+5. **funder_locations** (`stated_geography`) — where the funder *says* it prioritises, role `priority`. Not proof of spending.
+6. **funder_activity, kind `partner`** (`partner`) — per FY and programme: partner name as printed, a canonical spelling, kind (`ngo`, `foundation`, `university`, `research`, `government`, `armed_forces`, `hospital`, `network`, `company`, `other`), the partner's CSR-1 if stated, and the **amount** the partner received from this funder in the year when a source states it (as printed, with its unit — usually the recipient's own record). Search both directions. Keep the year — repeated appearances mean renewal.
+7. **funder_activity, kind `programme`** (`programme_spend`) — the funder's **own** figure for a programme component in a year, from its own report. It is never added to the spend lines and never spread across them.
 8. **grants** — funder, recipient, title, amount, dates, status (`active`, `concluded`, `unconfirmed`, `dormant`). **`amount = null` means not public. It never means zero.**
 9. **programs** — theme → programme → phase → project, with dates and status. Do not invent a hierarchy the source does not support.
 10. **tags** — themes. Keep the company's wording separately from the normalised tag; "Building Human Capital" is not Education unless the underlying activity is. Mark any classification needing interpretation as **inferred**.
@@ -95,6 +95,7 @@ Research toward these concepts. `funder_dossier` shows the same list, so you can
 12. **contacts** — publicly disclosed CSR roles only, with name, role, kind. A **shared mailbox** the organisation publishes for enquiries — `csr@`, `grants@`, `csrhelpdesk@` — may be recorded; set `is_role_mailbox` and let the evidence show the page presents it as a contact point for the organisation. **Never an individual's address, even a published one**, and never a phone number. The tool refuses both.
 13. **documents** — every important source: title, type, URL, source name, the period it describes (`as_of`) and when you read it (`fetched_at`). These two are different.
 14. **rfps** — an open call for proposals: title, URL, deadline, the grant band, and each eligibility rule on its own line. This is the one concept an NGO can act on this week, so look for it explicitly — a "Partner with us", "Grants", "Apply" or "Opportunities" page, not only the annual report.
+15. **eligibility** (`eligibility_guideline`) — the funder's standing eligibility, **verbatim**, one finding per page: the statutory restatement, its own bar, and disqualifiers, each in its own field. It becomes a document of type `funder_eligibility`. A page that states none is `not_stated` with its URL.
 
 ---
 

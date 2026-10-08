@@ -155,9 +155,10 @@ class TestRecordsRefuseWhatTheWriterCannotUse:
         with pytest.raises(ValidationError):
             FunderCsrYearRecord(funder_name="Acme Ltd", fiscal_year="FY2024-25", total_spent=-1, **prov())
 
-    def test_an_unknown_identifier_type_is_rejected(self):
-        with pytest.raises(ValidationError, match="unknown identifier types"):
-            FunderRecord(name="Acme", identifiers={"aadhaar": "1234"}, **prov())
+    def test_a_funder_record_has_no_identifier_map(self):
+        # funder_identifiers is gone (0031): a CIN and other spellings are columns on funders.
+        with pytest.raises(ValidationError, match="identifiers"):
+            FunderRecord(name="Acme", identifiers={"cin": "L12345MH2001PLC123456"}, **prov())
 
     def test_a_good_record_carries_its_provenance_through(self):
         rec = FunderCsrYearRecord(
@@ -519,7 +520,9 @@ class TestExpectationsComeFromTheSchema:
         # A priority is not a spend. Collapsing them is the error the whole
         # agent brief is built to prevent.
         assert CONCEPT_TABLES["stated_geography"] == "funder_locations"
-        assert CONCEPT_TABLES["footprint"] == "funder_footprints"
+        from app.ingest.expectations import CONCEPTS
+        assert (CONCEPT_TABLES["footprint"], CONCEPTS["footprint"].row_filter) == (
+            "funder_activity", ("kind", "footprint"))
 
     def test_surrogate_keys_and_provenance_are_never_research_targets(self):
         for concept in CONCEPT_TABLES:
@@ -536,7 +539,7 @@ class TestExpectationsComeFromTheSchema:
 
     def test_required_fields_are_marked(self):
         required = {f.name for f in expected_fields("csr_spend") if f.required}
-        assert required == {"fiscal_year", "amount"}
+        assert required == {"fiscal_year", "amount", "domain", "classified_by"}
 
     def test_enum_values_reach_the_researcher(self):
         kind = next(f for f in expected_fields("partner") if f.name == "partner_kind")
@@ -660,6 +663,7 @@ class TestFindingsRefuseContradictions:
             CsrSpendFinding(
                 fiscal_year="FY2024-25", project_name="Thalassemia Bal Sewa Yojana",
                 project_count=12, amount={"value": 8.0, "unit": "crore", "text": "Rs 8 crore"},
+                domain="health", classified_by="project_name",
                 evidence="The company spent Rs 8 crore across 12 education projects in FY2024-25.",
                 source_url="https://a.b/c", confidence="high",
             )
@@ -775,7 +779,8 @@ class TestTheWriterSideRecords:
     # program, metric and contact sit on tables carrying both foreign keys, so
     # they name the entity rather than the funder. The rest are funder-only.
     NAMED = (
-        (FunderCsrSpendRecord, "funder_name", {"fiscal_year": "FY2024-25", "amount": 1.0}),
+        (FunderCsrSpendRecord, "funder_name",
+         {"fiscal_year": "FY2024-25", "amount": 1.0, "domain": "others", "classified_by": "filed_sector"}),
         (FunderFootprintRecord, "funder_name", {"fiscal_year": "FY2024-25", "state": "Assam"}),
         (FunderPartnerRecord, "funder_name",
          {"fiscal_year": "FY2024-25", "partner_name": "Harsha Trust"}),
@@ -806,7 +811,7 @@ class TestTheWriterSideRecords:
 
     def test_fiscal_year_format_is_enforced_on_every_yearly_record(self):
         for model, extra in (
-            (FunderCsrSpendRecord, {"amount": 1.0}),
+            (FunderCsrSpendRecord, {"amount": 1.0, "domain": "others", "classified_by": "filed_sector"}),
             (FunderFootprintRecord, {"state": "Assam"}),
             (FunderPartnerRecord, {"partner_name": "Harsha Trust"}),
         ):
@@ -815,7 +820,8 @@ class TestTheWriterSideRecords:
 
     def test_an_amount_is_inr_and_cannot_be_negative(self):
         with pytest.raises(ValidationError):
-            FunderCsrSpendRecord(**self.base(fiscal_year="FY2024-25", amount=-1.0))
+            FunderCsrSpendRecord(**self.base(fiscal_year="FY2024-25", amount=-1.0, domain="others",
+                                             classified_by="filed_sector"))
 
 
 class TestPromotionCoversEveryConceptWithAWriter:
@@ -846,7 +852,7 @@ class TestPromotionCoversEveryConceptWithAWriter:
 
         # Handled outside the fact loops: the entity itself, its identifiers,
         # its documents and its programmes each have their own step.
-        apart = {"identity", "identifier", "csr_year", "program", "document",
+        apart = {"identity", "csr_year", "program", "document",
                  "org_identity", "org_identifier"}
         assert set(PROMOTABLE) - apart == set(WRITE_ORDER) | set(ORG_WRITE_ORDER)
 
@@ -1158,6 +1164,7 @@ class TestPromotingTwiceChangesNothing:
         spend = CsrSpendFinding(
             fiscal_year="FY2024-25", sector="Healthcare",
             amount={"value": 1.0, "unit": "crore", "text": "Rs 1 crore"},
+            domain="health", classified_by="filed_sector",
             evidence="The company spent Rs 1 crore on healthcare during the year.",
             source_url="https://a.b/c", confidence="high",
         )

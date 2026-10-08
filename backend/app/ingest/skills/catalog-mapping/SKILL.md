@@ -63,18 +63,21 @@ correct, cited, and still not become the stored value. Say which.
 | receiving legal entity, and its parent | `funders.name`, `funders.parent_id` |
 | district-level geography | `funder_locations` with `role`, plus `locations` |
 | CSR position by year | `funder_csr_years` |
-| project and sector spend | `funder_csr_spend` |
-| implementing partners | `funder_partners` |
-| the funder's standing eligibility — statutory restatement, its own bar | `funder_eligibility`, `kind='statutory_restatement'` / `'own_bar'`, one row per condition |
-| hard disqualifiers | `funder_eligibility`, `kind='disqualifier'` |
+| project and sector spend | `funder_activity`, `kind='spend'`, with `domain_tag_id` / `theme_tag_id` inferred and `classified_by`, `classification_note` saying from what |
+| implementing partners, and what each received in a year when stated | `funder_activity`, `kind='partner'`, with `amount` (INR) |
+| the funder's own programme split | `funder_activity`, `kind='programme'` — never summed with spend lines |
+| the funder's standing eligibility — statutory restatement, its own bar, disqualifiers | one `documents` row, `doc_type='funder_eligibility'`, the text verbatim under three headings, per page |
+| CIN and other names it files under | `funders.cin`, `funders.aliases` |
 | open call, its deadline, amount band | `rfps` |
 | a requirement printed in *that call* | `rfps.eligibility` — jsonb, so it stores the text and queries none of it. Not the same claim as the standing bar above; the same sentence in both is two rows, not a duplicate |
 | whether a call is open | `rfps.status` |
 | source URL, fetch date | the provenance columns every table carries |
-| **intake route, and whether it was live when checked** | **no home** — `rfps.url` is one call, not a standing door |
-| **grantmaker / implementer / neither** | **no queryable home** — `funder_type` is free text |
+| intake route | `funders.intake_mode` |
+| **whether an intake route was live when checked** | **no home** — `rfps.url` is one call, not a standing door |
+| says it funds external NGOs | `funders.funds_external` (stated) — `funder_activity.implementation_mode` is what it did |
 | **the document checklist, verbatim** | **no home** |
-| **duration and co-funding share** | **no home** |
+| typical duration, grant band | `funders.typical_duration_months`, `grant_size_min`, `grant_size_max` |
+| **co-funding share** | **no home** |
 | **access state — scanned, soft-404, archived** | **no home** |
 
 ## What to produce

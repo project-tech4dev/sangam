@@ -2,7 +2,7 @@
 
 `db/migrations/0002_taxonomy.sql` widened `tags.kind` to allow `'csr_sector'`
 and its header promised `python -m seed.taxonomy_seed`. The module never
-existed, so nothing ever pointed `funder_csr_spend.csr_sector_id` at anything
+existed, so nothing ever pointed `funder_activity.csr_sector_id` at anything
 and every promoted spend row left it NULL.
 
 Schedule VII is a closed statutory list, which is exactly what makes it safe to

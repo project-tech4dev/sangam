@@ -21,17 +21,19 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.ingest.expectations import PROMOTABLE
+from app.ingest.expectations import PROMOTABLE, activity_kind
 from app.ingest.geography import resolve_location
-from app.ingest.matcher import resolve_funder, resolve_org
+from app.ingest.matcher import Match, _is_foundation, resolve_funder, resolve_org
 from app.ingest.records import (
+    CIN_FORMAT,
     ContactRecord,
+    EligibilityGuidelineRecord,
     FunderCsrSpendRecord,
     FunderCsrYearRecord,
-    FunderEligibilityRecord,
     FunderFootprintRecord,
     FunderLocationRecord,
     FunderPartnerRecord,
+    FunderProgrammeSpendRecord,
     FunderRecord,
     MetricRecord,
     OrgFinancialsRecord,
@@ -39,19 +41,21 @@ from app.ingest.records import (
     OrgRecord,
     ProgramRecord,
     RfpRecord,
+    normalise_cin,
 )
 from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
-from app.ingest.taxonomy import resolve_csr_sector
+from app.ingest.taxonomy import resolve_classification, resolve_csr_sector
 from app.ingest.writer import (
     Owner,
+    cin_holder,
     ensure_document,
     set_registered_location,
     write_contact,
     write_csr_spend,
     write_csr_year,
+    write_eligibility_document,
     write_footprint,
     write_funder,
-    write_funder_eligibility,
     write_funder_location,
     write_funder_tag,
     write_metric,
@@ -60,6 +64,7 @@ from app.ingest.writer import (
     write_org_location,
     write_partner,
     write_program,
+    write_programme_spend,
     write_rfp,
 )
 from app.integrations import storage
@@ -74,8 +79,8 @@ MERGEABLE = ("identifier", "exact", "alias", "boilerplate")
 # Programmes next, because every remaining concept can name one and a spend row
 # whose program_id is null for want of ordering is a quietly weaker row.
 WRITE_ORDER = (
-    "csr_spend", "footprint", "stated_geography", "partner", "metric", "contact", "rfp",
-    "funder_eligibility",
+    "csr_spend", "footprint", "stated_geography", "partner", "programme_spend", "metric", "contact",
+    "rfp", "eligibility_guideline",
 )
 
 # The org side's own order. Separate rather than appended: the funder path
@@ -96,17 +101,17 @@ EXTRACTOR_VERSION = f"research/v{SCHEMA_VERSION}"
 # seven of them were, until test_every_finding_field_reaches_a_record caught it.
 CONCEPT_RECORDS: dict[str, type] = {
     "identity": FunderRecord,
-    "identifier": FunderRecord,
     "csr_year": FunderCsrYearRecord,
     "csr_spend": FunderCsrSpendRecord,
     "footprint": FunderFootprintRecord,
     "stated_geography": FunderLocationRecord,
     "partner": FunderPartnerRecord,
+    "programme_spend": FunderProgrammeSpendRecord,
     "program": ProgramRecord,
     "metric": MetricRecord,
     "contact": ContactRecord,
     "rfp": RfpRecord,
-    "funder_eligibility": FunderEligibilityRecord,
+    "eligibility_guideline": EligibilityGuidelineRecord,
     "org_identity": OrgRecord,
     "org_identifier": OrgRecord,
     "org_financials": OrgFinancialsRecord,
@@ -118,9 +123,6 @@ CONCEPT_RECORDS: dict[str, type] = {
 RENAMED: dict[tuple[str, str], str] = {
     ("program", "kind"): "program_kind",
     ("contact", "kind"): "contact_kind",
-    ("funder_eligibility", "kind"): "criterion_kind",
-    ("identifier", "id_type"): "identifiers",
-    ("identifier", "id_value"): "identifiers",
     ("org_identifier", "id_type"): "identifiers",
     ("org_identifier", "id_value"): "identifiers",
 }
@@ -140,10 +142,11 @@ def _provenance(finding: dict[str, Any] | Any, fetched: datetime) -> dict[str, A
     }
 
 
-def _validated(findings: list[dict[str, Any]], concept: str) -> list[Any]:
-    """Findings come back out of jsonb as plain dicts. Re-validating each one
-    through its own model is what lets the writers map instead of parse, and
-    catches a row stored before a field became required."""
+def _validated(
+    findings: list[dict[str, Any]], concept: str, report: dict[str, Any] | None = None
+) -> list[Any]:
+    """Findings come back out of jsonb as plain dicts; re-validating lets the writers map, not parse.
+    A finding refused here goes into report["held"], or it would be a fact that silently never lands."""
     out = []
     for f in findings:
         if f.get("concept") != concept:
@@ -151,7 +154,14 @@ def _validated(findings: list[dict[str, Any]], concept: str) -> list[Any]:
         try:
             out.append(FINDING_MODELS[concept].model_validate(f))
         except ValidationError as exc:
-            logger.info("finding refused (%s): %s", concept, exc.errors()[0].get("msg"))
+            err = exc.errors()[0]
+            where = ".".join(str(p) for p in err.get("loc", ())) or "finding"
+            msg = f"{concept} finding refused ({where}): {err.get('msg')}"
+            logger.info(msg)
+            if report is not None:
+                report["held"].append(
+                    f"{msg}. It stays on the research row; re-research it in the current shape to promote it."
+                )
     return out
 
 
@@ -160,21 +170,50 @@ def _count(report: dict[str, Any], table: str, status: str) -> None:
         report["written"].setdefault(table, collections.Counter())[status] += 1
 
 
+# Concepts from before 0031 that promotion still reads, so they are not reported as "no writer".
+FOLDED = frozenset({"identifier"})
+
+
+def _legacy_identifiers(findings: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """`identifier` findings saved before 0031, by type. Only cin, name and domain have a home now (D1)."""
+    out: dict[str, list[str]] = {}
+    for f in findings:
+        if f.get("concept") == "identifier" and f.get("id_value"):
+            out.setdefault(f.get("id_type") or "", []).append(str(f["id_value"]).strip())
+    return out
+
+
+def _with_scheme(domain: str) -> str:
+    """A legacy domain as a website; one already carrying http(s):// is kept as is (0031 does the same)."""
+    return domain if domain.lower().startswith(("http://", "https://")) else f"https://{domain}"
+
+
 def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRecord | None:
-    """One funder record, from the identity finding and any identifiers."""
+    """One funder record, from the identity finding and any identifiers saved before 0031."""
     identity = next((f for f in findings if f["concept"] == "identity"), None)
-    identifiers = [f for f in findings if f["concept"] == "identifier"]
-    anchor = identity or (identifiers[0] if identifiers else None)
+    legacy = [f for f in findings if f["concept"] == "identifier"]
+    anchor = identity or (legacy[0] if legacy else None)
     if anchor is None:
         return None
+    ident = identity or {}
+    old = _legacy_identifiers(legacy)
+    cins = [c for c in map(normalise_cin, old.get("cin", [])) if CIN_FORMAT.fullmatch(c)]
+    domains = old.get("domain", [])
     try:
         return FunderRecord(
-            name=(identity or {}).get("name") or row["canonical_name"] or row["entity_name"],
-            funder_type=(identity or {}).get("funder_type"),
-            website=(identity or {}).get("website") or row.get("website"),
-            section_135_bound=(identity or {}).get("section_135_bound"),
-            parent_name=(identity or {}).get("parent_name"),
-            identifiers={f["id_type"]: f["id_value"] for f in identifiers},
+            name=ident.get("name") or row["canonical_name"] or row["entity_name"],
+            funder_type=ident.get("funder_type"),
+            website=ident.get("website") or row.get("website")
+            or (_with_scheme(domains[0]) if domains else None),
+            section_135_bound=ident.get("section_135_bound"),
+            parent_name=ident.get("parent_name"),
+            cin=ident.get("cin") or (cins[0] if cins else None),
+            aliases=[*(ident.get("aliases") or []), *old.get("name", [])],
+            intake_mode=ident.get("intake_mode"),
+            funds_external=ident.get("funds_external"),
+            typical_duration_months=ident.get("typical_duration_months"),
+            grant_size_min=to_inr(ident.get("grant_size_min")),
+            grant_size_max=to_inr(ident.get("grant_size_max")),
             as_of=None,
             **_provenance(anchor, row["researched_at"]),
         )
@@ -229,6 +268,7 @@ def csr_years_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> list[
                     admin_overheads=to_inr(f.get("admin_overheads")),
                     impact_assessment_cost=to_inr(f.get("impact_assessment_cost")),
                     excess_spent=to_inr(f.get("excess_spent")),
+                    local_area_spent=to_inr(f.get("local_area_spent")),
                     impact_assessment_done=f.get("impact_assessment_done"),
                     section_135_applicable=f.get("section_135_applicable"),
                     notes=f.get("notes") or f"Promoted from research: {f.get('evidence', '')[:200]}",
@@ -243,7 +283,7 @@ def csr_years_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> list[
 
 async def _place(conn: Any, f: Any, report: dict[str, Any]) -> tuple[int | None, int | None]:
     """(state_id, district_id). A place that will not resolve is reported, not
-    guessed at — funder_footprints.location_id is NOT NULL, so the alternative
+    guessed at — a footprint line needs a place, so the alternative
     to naming the problem is a missing row nobody hears about."""
     state = getattr(f, "state", None)
     if not state:
@@ -274,7 +314,7 @@ async def _write_documents(
     )).fetchone())["slug"]
 
     by_url: dict[str, int] = {}
-    for f in _validated(findings, "document"):
+    for f in _validated(findings, "document", report):
         shim = type("Doc", (), {
             "source_url": f.source_url, "title": f.title,
             "source_name": f.source_name or "research",
@@ -333,7 +373,7 @@ async def _write_programs(
     # A theme has to exist before a phase can point at it, so shallowest first.
     depth = {"theme": 0, "programme": 1, "phase": 2, "project": 3}
     ids: dict[str, int] = {}
-    for f in sorted(_validated(findings, "program"), key=lambda f: depth.get(f.kind, 9)):
+    for f in sorted(_validated(findings, "program", report), key=lambda f: depth.get(f.kind, 9)):
         try:
             rec = ProgramRecord(
                 entity_name=row["canonical_name"] or row["entity_name"], name=f.name,
@@ -353,6 +393,23 @@ async def _write_programs(
     return ids
 
 
+async def _funder_program(conn: Any, funder_id: int, name: str) -> int | None:
+    row = await (
+        await conn.execute("SELECT id FROM programs WHERE funder_id = %s AND name = %s", (funder_id, name))
+    ).fetchone()
+    return row["id"] if row else None
+
+
+def _activity_identity(
+    kind: str, year: str | None, program_id: int | None, sector_id: int | None,
+    state_id: int | None, location_id: int | None, designation: str | None,
+    project_name: str | None, partner_name: str | None,
+) -> tuple:
+    """writer.FUNDER_ACTIVITY_KEY without funder_id, in its order."""
+    return (kind, year, program_id, sector_id, state_id, location_id, designation, project_name,
+            partner_name)
+
+
 def _row_identity(
     concept: str, f: Any, program_id: int | None, state_id: int | None,
     district_id: int | None, sector_id: int | None,
@@ -365,22 +422,26 @@ def _row_identity(
     """
     year = getattr(f, "fiscal_year", None)
     if concept == "csr_spend":
-        return (concept, year, program_id, sector_id, state_id, district_id,
-                f.designation, f.project_name)
+        return _activity_identity(activity_kind(concept), year, program_id, sector_id, state_id,
+                                  district_id, f.designation, f.project_name, f.partner_name)
     if concept == "footprint":
-        return (concept, program_id, year, district_id or state_id)
+        return _activity_identity("footprint", year, program_id, None, state_id, district_id, None,
+                                  None, None)
     if concept == "stated_geography":
         return (concept, district_id or state_id)
     if concept == "partner":
-        return (concept, program_id, year, f.partner_name)
+        return _activity_identity("partner", year, program_id, None, None, None, None, None,
+                                  f.partner_name)
+    if concept == "programme_spend":
+        return ("programme", year, f.program_name)
     if concept == "metric":
         return (concept, f.name, f.period, program_id)
     if concept == "contact":
         return (concept, f.name, f.role)
     if concept == "rfp":
         return (concept, f.title, f.deadline)
-    if concept == "funder_eligibility":
-        return (concept, f.kind, f.criterion)
+    if concept == "eligibility_guideline":
+        return (concept, f.source_url)
     if concept == "org_location":
         return (concept, district_id or state_id)
     if concept == "org_financials":
@@ -389,8 +450,7 @@ def _row_identity(
 
 
 def _describe(concept: str, f: Any) -> str:
-    for attr in ("project_name", "partner_name", "title", "name", "criterion",
-                 "sector", "state"):
+    for attr in ("project_name", "partner_name", "title", "name", "sector", "state"):
         value = getattr(f, attr, None)
         if value:
             return f"{attr}={value!r}"
@@ -415,7 +475,7 @@ async def _write_facts(
     themes: dict[int, str] = {}
 
     for concept in order:
-        for f in _validated(findings, concept):
+        for f in _validated(findings, concept, report):
             program_id = programs.get(getattr(f, "program_name", None) or "")
             document_id = docs.get(f.source_url)
             state_id, district_id = await _place(conn, f, report)
@@ -446,27 +506,34 @@ async def _write_facts(
             seen.add(identity)
             try:
                 if concept == "csr_spend":
+                    domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
+                    report["held"].extend(f"csr_spend {_describe(concept, f)}: {r}" for r in why)
+                    if domain_id is None:
+                        continue
                     rec = FunderCsrSpendRecord(
                         fiscal_year=f.fiscal_year, amount=f.amount.inr,
+                        outlay=f.outlay.inr if f.outlay else None,
                         project_name=f.project_name, project_count=f.project_count,
-                        designation=f.designation, implementing_agency=f.implementing_agency,
-                        agency_csr1=f.agency_csr1, via_agency=f.via_agency,
-                        is_ongoing=f.is_ongoing, as_of=f.fiscal_year,
-                        notes=_with_sector(f), **base,
+                        designation=f.designation, partner_name=f.partner_name,
+                        partner_csr1=f.partner_csr1, implementation_mode=f.implementation_mode,
+                        is_ongoing=f.is_ongoing, domain=f.domain, theme=f.theme,
+                        classified_by=f.classified_by, classification_note=f.classification_note,
+                        as_of=f.fiscal_year, notes=_with_sector(f), **base,
                     )
-                    status, _ = await write_csr_spend(
+                    status, change = await write_csr_spend(
                         conn, rec, funder_id, program_id=program_id, state_id=state_id,
-                        district_id=district_id,
-                        csr_sector_id=sector_id, document_id=document_id,
+                        district_id=district_id, csr_sector_id=sector_id,
+                        domain_id=domain_id, theme_id=theme_id, document_id=document_id,
                     )
-                    _count(report, "funder_csr_spend", status)
+                    if status == "held":
+                        report["held"].append(f"csr_spend {_describe(concept, f)}: {change['reason']}")
+                    _count(report, "funder_activity (spend)", status)
 
                 elif concept == "footprint":
-                    location_id = district_id or state_id
-                    if location_id is None:
+                    if state_id is None and district_id is None:
                         report["held"].append(
-                            f"footprint {f.state!r}: no place to attach it to, and "
-                            f"funder_footprints requires one"
+                            f"footprint {f.state!r}: no place to attach it to, and a footprint line "
+                            f"needs one"
                         )
                         continue
                     rec = FunderFootprintRecord(
@@ -475,10 +542,10 @@ async def _write_facts(
                         notes=f.notes, as_of=f.fiscal_year, **base,
                     )
                     status, _ = await write_footprint(
-                        conn, rec, funder_id, program_id=program_id,
-                        location_id=location_id, document_id=document_id,
+                        conn, rec, funder_id, program_id=program_id, state_id=state_id,
+                        district_id=district_id, document_id=document_id,
                     )
-                    _count(report, "funder_footprints", status)
+                    _count(report, "funder_activity (footprint)", status)
 
                 elif concept == "stated_geography":
                     location_id = district_id or state_id
@@ -497,12 +564,40 @@ async def _write_facts(
                     rec = FunderPartnerRecord(
                         fiscal_year=f.fiscal_year, partner_name=f.partner_name,
                         partner_canonical=f.partner_canonical, partner_kind=f.partner_kind,
-                        partner_csr1=f.partner_csr1, notes=f.notes, as_of=f.fiscal_year, **base,
+                        partner_csr1=f.partner_csr1,
+                        outlay=f.outlay.inr if f.outlay else None,
+                        amount=f.amount.inr if f.amount else None,
+                        notes=f.notes, as_of=f.fiscal_year, **base,
                     )
                     status, _ = await write_partner(
                         conn, rec, funder_id, program_id=program_id, document_id=document_id
                     )
-                    _count(report, "funder_partners", status)
+                    _count(report, "funder_activity (partner)", status)
+
+                elif concept == "programme_spend":
+                    program_id = program_id or await _funder_program(conn, funder_id, f.program_name)
+                    if program_id is None:
+                        report["held"].append(
+                            f"programme_spend {f.program_name!r} {f.fiscal_year}: no programme of that "
+                            f"name for this funder, and the funder's own figure has to hang off one. "
+                            f"Add it as a program finding and promote again."
+                        )
+                        continue
+                    domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
+                    report["held"].extend(f"programme_spend {f.program_name!r}: {r}" for r in why)
+                    if domain_id is None:
+                        continue
+                    rec = FunderProgrammeSpendRecord(
+                        fiscal_year=f.fiscal_year, program_name=f.program_name, amount=f.amount.inr,
+                        domain=f.domain, theme=f.theme, classified_by=f.classified_by,
+                        classification_note=f.classification_note, notes=f.notes,
+                        as_of=f.fiscal_year, **base,
+                    )
+                    status, _ = await write_programme_spend(
+                        conn, rec, funder_id, program_id=program_id, domain_id=domain_id,
+                        theme_id=theme_id, document_id=document_id,
+                    )
+                    _count(report, "funder_activity (programme)", status)
 
                 elif concept == "metric":
                     rec = MetricRecord(
@@ -533,15 +628,14 @@ async def _write_facts(
                     )
                     _count(report, "rfps", status)
 
-                elif concept == "funder_eligibility":
-                    rec = FunderEligibilityRecord(
-                        criterion_kind=f.kind, criterion=f.criterion, notes=f.notes,
-                        as_of=None, **base,
+                elif concept == "eligibility_guideline":
+                    rec = EligibilityGuidelineRecord(
+                        title=f.title, statutory_restatement=f.statutory_restatement,
+                        own_bar=f.own_bar, disqualifiers=f.disqualifiers, not_stated=f.not_stated,
+                        as_of=f.as_of, **base,
                     )
-                    status, _ = await write_funder_eligibility(
-                        conn, rec, funder_id, document_id=document_id,
-                    )
-                    _count(report, "funder_eligibility", status)
+                    _, status = await write_eligibility_document(conn, rec, funder_id)
+                    _count(report, "documents (funder_eligibility)", status)
 
                 elif concept == "org_financials":
                     rec = OrgFinancialsRecord(
@@ -602,9 +696,8 @@ async def _write_facts(
 
 
 def _with_sector(f: Any) -> str | None:
-    """The funder's own words for a theme. tags.kind allows 'csr_sector' but
-    nothing seeds that taxonomy, so normalising here would invent the mapping
-    — "Building Human Capital" is not Education until someone decides it is."""
+    """The sector as filed, in the funder's own words, kept in notes beside whatever csr_sector_id
+    resolved to: "Building Human Capital" is not Education until someone decides it is."""
     bits = [b for b in (f.sector, f.notes) if b]
     return " · ".join(bits) or None
 
@@ -671,21 +764,73 @@ def _hold_unstorable(row: dict[str, Any], findings: list[dict[str, Any]], report
             )
 
 
+async def _reconcile_with_stored(
+    conn: Any, record: FunderRecord, match: Match, report: dict[str, Any]
+) -> FunderRecord:
+    """Drop what the funders row's own constraints would refuse, and say so.
+
+    A constraint violation aborts this funder's whole promotion: funders.cin is UNIQUE and
+    funders_grant_band orders the band. A CIN already stored on this row is not overwritten.
+    """
+    update: dict[str, Any] = {}
+    stored = None
+    if match.entity_id is not None:
+        stored = await (
+            await conn.execute(
+                "SELECT cin, grant_size_min, grant_size_max FROM funders WHERE id = %s",
+                (match.entity_id,),
+            )
+        ).fetchone()
+    if record.cin:
+        holder = await cin_holder(conn, record.cin)
+        if _is_foundation(record.name):
+            report["held"].append(
+                f"CIN {record.cin} is not written on {record.name!r}: a CIN names a company, and a "
+                f"foundation's research usually carries its parent's. Link the parent by parent_id."
+            )
+            update["cin"] = None
+        elif holder is not None and holder["id"] != match.entity_id:
+            report["held"].append(
+                f"CIN {record.cin} is already recorded on {holder['name']!r} [funder:{holder['id']}], "
+                f"so it is not written on {record.name!r}. One CIN is one company."
+            )
+            update["cin"] = None
+        elif stored and stored["cin"] and stored["cin"] != record.cin:
+            report["held"].append(
+                f"CIN {record.cin} differs from {stored['cin']} already stored on "
+                f"{record.name!r}. Not written — a person decides which is current."
+            )
+            update["cin"] = None
+    one_sided = (record.grant_size_min is None) != (record.grant_size_max is None)
+    if stored and one_sided:
+        lo = record.grant_size_min if record.grant_size_min is not None else stored["grant_size_min"]
+        hi = record.grant_size_max if record.grant_size_max is not None else stored["grant_size_max"]
+        if lo is not None and hi is not None and float(hi) < float(lo):
+            report["held"].append(
+                f"grant band for {record.name!r}: the research inverts the stored band "
+                f"({stored['grant_size_min']} to {stored['grant_size_max']}). Not written — a "
+                f"person decides which is current."
+            )
+            update.update(grant_size_min=None, grant_size_max=None)
+    return record.model_copy(update=update) if update else record
+
+
 async def _promote_funder(
     conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any]
 ) -> None:
     record = funder_from(row, findings)
     if record is None:
-        report["reasons"].append("no identity or identifier finding to build a funder from")
+        report["reasons"].append("no identity finding to build a funder from")
         return
 
-    match = await resolve_funder(conn, record.name, record.identifiers)
+    match = await resolve_funder(conn, record.name, record.cin)
     if match.method == "trigram":
         names = ", ".join(c["name"] for c in match.candidates)
         report["reasons"].append(
             f"{record.name!r} resembles {names} without matching. Not merged — a person decides."
         )
         return
+    record = await _reconcile_with_stored(conn, record, match, report)
     parent_id = await _parent(conn, record, report)
     status, funder_id, _ = await write_funder(conn, record, match, parent_id=parent_id)
     report["entity"] = {
@@ -745,7 +890,7 @@ async def promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
         "written": {}, "held": [], "skipped": {}, "reasons": [],
     }
     for concept in sorted({f["concept"] for f in findings}):
-        if concept not in PROMOTABLE:
+        if concept not in PROMOTABLE and concept not in FOLDED:
             report["skipped"][concept] = len([f for f in findings if f["concept"] == concept])
 
     # Before the kind branch, not after it. An org row researched under the old
