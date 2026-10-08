@@ -105,3 +105,35 @@ the harness tool lists in `tests/test_harness.py`, and the prompt-names-every-to
   - **Reject**: the model is told and continues without staff data.
   - **Known gap**: reloading the page mid-pause orphans that run. `ImportWorkspace` mints a new
     thread per mount, so the next message starts fresh.
+
+## Addendum, 2026-10-08: staff choose the bucket; a reader finds the names inside a sheet
+
+Testing showed two gaps:
+- **No bucket choice.** The agent listed buckets silently, and the prompt hard-coded
+  `staff-sources`.
+- **No way to read the names in a sheet.** A request such as "research every funder in the CSO
+  workbook" stalled, because a researcher needs a name before `read_source_rows` can search.
+
+Decided: the supervisor never reads rows (hand off only), and any bucket may be picked
+(`.xlsx` only).
+
+### M1: bucket pause, any bucket
+Exit gate: the person picks the bucket, then the files; an `.xlsx` from a non-staff bucket is
+read.
+- **The pause.** `list_bucket_files` joins `INTERRUPT_ON`, so `HumanInTheLoopMiddleware` pauses
+  there. The person's bucket comes back as an `edit` of the `bucket` argument.
+- **Any bucket.** `check_pick`, `register` and `_workbook` accept any bucket. `staff-sources`
+  keeps its rule that the first folder is a registry key, and `picked_id` hashes the qualified
+  path.
+- **Frontend.** `BucketPicker` sits beside `SourcePicker`, and `PausedPick` routes on the action's
+  name.
+
+### M2: `workbook-reader` subagent
+Exit gate: "research every funder in document 42" returns names with cell markers, then one
+researcher per name.
+- **The subagent.** It is isolated, its one tool is `read_workbook(documents, sheet, start_row,
+  limit)`, and it returns `WorkbookEntities` (name, kind, marker).
+- **The reader.** `staff_sources.browse` returns an outline when no sheet is given, otherwise a
+  page of rows. It renders through `render`, so markers and redaction still apply.
+- **The supervisor.** It launches the reader, then a researcher per name with the same document
+  ids.
