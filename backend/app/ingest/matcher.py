@@ -51,6 +51,13 @@ def same_but_for_boilerplate(a: str, b: str) -> bool:
     return tokens_a == tokens_b and len(tokens_a) >= 2
 
 
+def name_key(name: str) -> str:
+    """One spelling per CSO name, for comparison only: folds North East/North-East/Northeast, drops 'The' and
+    punctuation, keeps bracket content ('Example Trust (North)' and '(South)' are two chapters)."""
+    folded = re.sub(r"north[\s\-]*east", "northeast", name.lower())
+    return " ".join(t for t in re.findall(r"[a-z0-9]+", folded) if t != "the")
+
+
 @dataclass(frozen=True, slots=True)
 class Match:
     """One dataclass for both kinds. `entity_id` is a funders.id or an orgs.id
@@ -163,13 +170,8 @@ async def resolve_funder(conn: Any, name: str, cin: str | None = None) -> Match:
 
 
 async def resolve_org(conn: Any, name: str, identifiers: dict[str, str] | None = None) -> Match:
-    """Three steps, not four: identifier, exact name, trigram.
-
-    `resolve_funder` has an alias step reading `funders.aliases`; `orgs` has no such column, so
-    there is no alias step to port.
-    Everything else is the funder path: the same boilerplate rule, the same
-    floors, the same trigram re-rank on the distinctive part of the name.
-    """
+    """Identifier, exact name, alias, normalised name or alias, boilerplate, then trigram.
+    A spelling two organisations share resolves neither and falls through to trigram, which only proposes."""
     for id_type, id_value in (identifiers or {}).items():
         row = await (
             await conn.execute(
@@ -188,12 +190,29 @@ async def resolve_org(conn: Any, name: str, identifiers: dict[str, str] | None =
 
     rows = await (
         await conn.execute(
-            "SELECT id, name FROM orgs WHERE similarity(name, %s) >= %s", (name, TRIGRAM_FLOOR)
+            "SELECT id FROM orgs WHERE EXISTS "
+            "(SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = lower(%s)) ORDER BY id LIMIT 2",
+            (name,),
         )
     ).fetchall()
-    for row in rows:
-        if same_but_for_boilerplate(name, row["name"]):
-            return Match("boilerplate", row["id"], 1.0)
+    if len(rows) == 1:
+        return Match("alias", rows[0]["id"])
+
+    rows = await (
+        await conn.execute(
+            "SELECT id, name, aliases FROM orgs WHERE similarity(name, %s) >= %s "
+            "OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE similarity(a, %s) >= %s)",
+            (name, TRIGRAM_FLOOR, name, TRIGRAM_FLOOR),
+        )
+    ).fetchall()
+    key = name_key(name)
+    same = {r["id"] for r in rows if key in {name_key(n) for n in (r["name"], *(r.get("aliases") or []))}}
+    if len(same) == 1:
+        return Match("alias", same.pop())
+    if not same:
+        for row in rows:
+            if same_but_for_boilerplate(name, row["name"]):
+                return Match("boilerplate", row["id"], 1.0)
 
     rows = await (
         await conn.execute(

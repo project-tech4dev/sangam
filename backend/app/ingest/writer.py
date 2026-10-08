@@ -909,6 +909,27 @@ async def write_org(
     return "added", row["id"], {"name": {"old": None, "new": rec.name}}, []
 
 
+async def org_alias_holders(conn: Any, spellings: list[str], org_id: int | None) -> dict[str, dict]:
+    """lower(spelling) -> {"id", "name"} of ANOTHER organisation that answers to it, by name or alias."""
+    lowered = sorted({s.lower() for s in spellings if s})
+    if not lowered:
+        return {}
+    rows = await (
+        await conn.execute(
+            "SELECT id, name, lower(name) AS lname, "
+            "ARRAY(SELECT lower(a) FROM unnest(aliases) AS a) AS laliases FROM orgs "
+            "WHERE id IS DISTINCT FROM %s AND (lower(name) = ANY(%s) "
+            "OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = ANY(%s))) ORDER BY id",
+            (org_id, lowered, lowered),
+        )
+    ).fetchall()
+    out: dict[str, dict] = {}
+    for r in rows:
+        for spelling in sorted({r["lname"], *(r["laliases"] or [])} & set(lowered)):
+            out.setdefault(spelling, {"id": r["id"], "name": r["name"]})
+    return out
+
+
 async def _write_org_identifiers(conn: Any, org_id: int, rec: OrgRecord) -> None:
     """12A, 80G and FCRA among them — the registrations only an NGO carries. `verified` is left at
     its default: research is not verification."""

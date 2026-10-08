@@ -51,6 +51,7 @@ from app.ingest.writer import (
     Owner,
     cin_holder,
     ensure_document,
+    org_alias_holders,
     set_registered_location,
     write_contact,
     write_csr_spend,
@@ -811,6 +812,25 @@ def _hold_unstorable(row: dict[str, Any], findings: list[dict[str, Any]], report
             )
 
 
+async def _reconcile_org_aliases(
+    conn: Any, record: OrgRecord, match: Match, report: dict[str, Any]
+) -> OrgRecord:
+    """Aliases to add: the research's own spelling (on a matched org) and its aliases, less any another
+    organisation already answers to. Those are held: a shared spelling resolves neither org."""
+    wanted = [*([record.name] if match.resolved else []), *record.aliases]
+    holders = await org_alias_holders(conn, wanted, match.entity_id)
+    for spelling in wanted:
+        holder = holders.get(spelling.lower())
+        if holder is not None:
+            report["held"].append(
+                f"alias {spelling!r} is already the name or an alias of {holder['name']!r} "
+                f"[org:{holder['id']}], so it is not added to {record.name!r}. Two organisations "
+                f"sharing a spelling is a decision for a person."
+            )
+    kept = [s for s in wanted if s.lower() not in holders]
+    return record.model_copy(update={"aliases": kept})
+
+
 async def _reconcile_with_stored(
     conn: Any, record: FunderRecord, match: Match, report: dict[str, Any]
 ) -> FunderRecord:
@@ -916,6 +936,7 @@ async def _promote_org(
             f"{record.name!r} resembles {names} without matching. Not merged — a person decides."
         )
         return
+    record = await _reconcile_org_aliases(conn, record, match, report)
     status, org_id, _, conflicts = await write_org(conn, record, match)
     report["entity"] = {"kind": "org", "status": status, "id": org_id, "name": record.name}
     report["conflicts"].extend(c.describe() for c in conflicts)
