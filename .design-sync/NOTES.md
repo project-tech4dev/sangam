@@ -5,9 +5,8 @@ Read `docs/DESIGN_SYSTEM.md` first; it has the mapping tables and the step-by-st
 - **Target:** "Sangam Design System v2", `3b0e9aeb-8b17-4fa0-9194-2882f6b39edd` (pinned in
   `config.json`). The older "Sangam Design System" (`aeaa7276…`, owner Sid) predates Phase 1 and is
   replaced by v2; do not write to it.
-- **Write access is V's.** v2 is owned by V; on 8 Oct 2026 Siddhant's account could read it but
-  every `write_files` returned 403 "cannot edit this project". Ask V for edit access, or for V to
-  upload, before preparing a sync.
+- **Write access is V's to grant.** v2 is owned by V; a `write_files` from an account without
+  edit access returns 403 "cannot edit this project" (8 Oct 2026, fixed once V granted it).
 - **Do not run the `/design-sync` converter.** It builds a design system from a compiled
   component package (`dist/` + `.d.ts`) and replaces the project's components wholesale. Sangam
   has no package: most of its look is the classes in `frontend/app/globals.css`, and `Nav`,
