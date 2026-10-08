@@ -120,8 +120,8 @@ END $$;
 
 DROP TABLE _latest_event;
 
--- 5. What the seed wrote is the weakest tier, recognised by what seed.py stamps on it. Everything else
--- stays unranked; seed.py writes the tier itself from now on.
+-- 5. What the seed wrote is the weakest tier, recognised by what seed.py stamps on it; seed.py writes the
+-- tier itself from now on. A row neither the seed nor the old Import wrote stays unranked: a person's entry.
 UPDATE orgs SET source_type = 'seed', evidence = 'claimed' WHERE extractor_version LIKE 'seed-%';
 UPDATE org_identifiers SET source_type = 'seed', evidence = 'claimed' WHERE verified;
 UPDATE org_locations SET source_type = 'seed', evidence = 'claimed'
@@ -129,14 +129,41 @@ UPDATE org_locations SET source_type = 'seed', evidence = 'claimed'
 UPDATE contacts SET source_type = 'seed', evidence = 'claimed'
   WHERE org_id IS NOT NULL AND extractor_version IS NULL AND source_name IS DISTINCT FROM 'manual';
 
+-- What the old Import promoted is prior research: a claim, never a person's entry, so a source can rank it.
+-- Its identifiers keep 'registered' (none of the statuses means "unchecked") and the claimed tier says so.
+DO $$
+DECLARE n bigint; msg text := '';
+BEGIN
+  UPDATE org_identifiers SET source_type = 'prior_research', evidence = 'claimed'
+    WHERE source_type IS NULL AND NOT verified;
+  GET DIAGNOSTICS n = ROW_COUNT; msg := msg || format('org_identifiers %s, ', n);
+  UPDATE orgs SET source_type = 'prior_research', evidence = 'claimed'
+    WHERE source_type IS NULL AND extractor_version LIKE 'research/%';
+  GET DIAGNOSTICS n = ROW_COUNT; msg := msg || format('orgs %s, ', n);
+  UPDATE contacts SET source_type = 'prior_research', evidence = 'claimed'
+    WHERE source_type IS NULL AND org_id IS NOT NULL AND extractor_version LIKE 'research/%';
+  GET DIAGNOSTICS n = ROW_COUNT; msg := msg || format('contacts %s, ', n);
+  UPDATE org_locations SET source_type = 'prior_research', evidence = 'claimed'
+    WHERE source_type IS NULL AND source_url IS NOT NULL;
+  GET DIAGNOSTICS n = ROW_COUNT; msg := msg || format('org_locations %s, ', n);
+  UPDATE org_financials SET source_type = 'prior_research', evidence = 'claimed'
+    WHERE source_type IS NULL AND source_url IS NOT NULL;
+  GET DIAGNOSTICS n = ROW_COUNT; msg := msg || format('org_financials %s, ', n);
+  UPDATE metrics SET source_type = 'prior_research', evidence = 'claimed'
+    WHERE source_type IS NULL AND org_id IS NOT NULL AND source_url IS NOT NULL;
+  GET DIAGNOSTICS n = ROW_COUNT; msg := msg || format('metrics %s, ', n);
+  UPDATE programs SET source_type = 'prior_research', evidence = 'claimed'
+    WHERE source_type IS NULL AND org_id IS NOT NULL AND source_url IS NOT NULL;
+  GET DIAGNOSTICS n = ROW_COUNT; msg := msg || format('programs %s', n);
+  RAISE NOTICE 'tiered as prior_research/claimed: %', msg;
+END $$;
+
 -- 6. Drop.
 DROP TABLE credential_events;
 DROP TABLE program_locations;
 
--- 7. Access: no new table, and 0025's SELECT grants cover the new columns, except two. checked_by names a
--- staff member and evidence_document_id may point at a private upload, so both are closed to anon and
--- authenticated by granting every other column instead of the table. org_identifiers_read (0027) reads only
--- is_public and org_id, and the new identity sequence stays ungranted (0025's default privileges).
+-- 7. Access: checked_by (a staff member) and evidence_document_id (maybe private) are closed to anon and
+-- authenticated by a column grant of everything else; 0025's table grants cover the rest.
 DO $$
 DECLARE cols text;
 BEGIN

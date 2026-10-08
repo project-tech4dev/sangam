@@ -19,6 +19,8 @@ unchanged against the bundled Postgres and against a managed one.
   statements. A destructive change (`DROP`, type narrowing, `NOT NULL` on an
   existing column) needs a note in the file explaining the data situation that
   makes it safe.
+- `org_identifiers` is granted by column (0033), so a new column on it needs an explicit
+  `GRANT SELECT (col) ON org_identifiers TO anon, authenticated` to be readable.
 - Never edit a file after it has been applied anywhere — the runner records a
   checksum and reports drift. Write a new migration instead.
 
