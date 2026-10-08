@@ -70,9 +70,11 @@ Worktree off `origin/master`, branch `feat/import-storage-picker`, and this plan
    (pre-ticked) plus every other file the run's `list_bucket_files` printed, with Confirm and
    "Continue without staff data" (reject) buttons. It uses the existing
    `components/ui` primitives and the design-system tokens only.
-2. **`ImportWorkspace.tsx`**: add `useInterrupt({ agentId: "sangam-import-<threadId>",
-   renderInChat: false, enabled: e => tool is select_source_files, render })` from
-   `@copilotkit/react-core/v2`, placing the element above the composer. It resolves with the
+2. **`ImportWorkspace.tsx`**: mount `PausedPick` (in `SourcePicker.tsx`) once the thread's agent
+   is ready. It calls `useInterrupt({ agentId: "sangam-import-<threadId>", renderInChat: false,
+   enabled: e => tool is select_source_files, render })` from `@copilotkit/react-core/v2`. It has
+   to wait for ready because `useAgent` looks a bare id up synchronously and the proxied agent
+   registers in an effect. It resolves with the
    HITL resume shape:
    `{decisions: [<one decision>]}`, where the decision is
    - `{type: "approve"}`
@@ -101,4 +103,5 @@ the harness tool lists in `tests/test_harness.py`, and the prompt-names-every-to
     and the researcher's trace shows `read_source_rows(…, documents=[id])` with a `[source:id#…]`
     marker.
   - **Reject**: the model is told and continues without staff data.
-  - **Reload mid-pause**: the picker reappears (checkpointed interrupt).
+  - **Known gap**: reloading the page mid-pause orphans that run. `ImportWorkspace` mints a new
+    thread per mount, so the next message starts fresh.

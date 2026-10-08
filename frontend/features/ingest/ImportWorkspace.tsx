@@ -1,14 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useInterrupt } from "@copilotkit/react-core/v2";
 import { useAgentChat } from "@/lib/useAgentChat";
 import { Milestones } from "./components/Milestones";
 import { RunStatus } from "./components/RunStatus";
-import { SourcePicker } from "./components/SourcePicker";
+import { PausedPick } from "./components/SourcePicker";
 import { SubagentBoard } from "./components/SubagentBoard";
 import { failuresOf } from "./lib/failures";
-import { listedPaths, proposedPaths } from "./lib/sourcePick";
 
 const SUGGESTIONS = [
   // Loads the funder-scan skill, which supplies the 28-field brief so nobody
@@ -25,20 +23,6 @@ export function ImportWorkspace() {
   const { turns, send, isRunning, isReady } = useAgentChat(threadId, "sangam_ingest", "sangam-import");
   const [draft, setDraft] = useState("");
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
-
-  // select_source_files pauses the run (HumanInTheLoopMiddleware); staff answer here.
-  const picker = useInterrupt({
-    agentId: `sangam-import-${threadId}`,
-    renderInChat: false,
-    enabled: (event) => proposedPaths(event.value) !== null,
-    render: ({ event, resolve }) => (
-      <SourcePicker
-        proposed={proposedPaths(event.value) ?? []}
-        listed={listedPaths(lastSteps)}
-        onDecide={(decision) => void resolve({ decisions: [decision] })}
-      />
-    ),
-  });
 
   async function submit(text: string) {
     const value = text.trim();
@@ -112,7 +96,8 @@ export function ImportWorkspace() {
         ))}
       </div>
 
-      {picker}
+      {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
+      {isReady && <PausedPick agentId={`sangam-import-${threadId}`} steps={lastSteps} />}
 
       <RunStatus running={isRunning} steps={lastSteps} />
 

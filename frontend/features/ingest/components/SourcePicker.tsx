@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useInterrupt } from "@copilotkit/react-core/v2";
+import type { TraceStep } from "@/lib/useAgentChat";
+import { listedPaths, proposedPaths } from "../lib/sourcePick";
 
 /** One of LangChain's HumanInTheLoopMiddleware decisions; the run resumes with `{decisions: [it]}`. */
 export type PickDecision =
@@ -113,4 +116,20 @@ export function SourcePicker({
       </div>
     </section>
   );
+}
+
+/** Shows the picker while select_source_files has the run paused (HumanInTheLoopMiddleware). */
+export function PausedPick({ agentId, steps }: { agentId: string; steps: TraceStep[] }) {
+  return useInterrupt({
+    agentId,
+    renderInChat: false,
+    enabled: (event) => proposedPaths(event.value) !== null,
+    render: ({ event, resolve }) => (
+      <SourcePicker
+        proposed={proposedPaths(event.value) ?? []}
+        listed={listedPaths(steps)}
+        onDecide={(decision) => void resolve({ decisions: [decision] })}
+      />
+    ),
+  });
 }
