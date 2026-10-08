@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { EntityMark, PillTabs, ProgressBar, StatRail, Tag } from "@/components/ui";
 import type {
-  Contact, FunderDetail, GrantRow, NewsRow, OrgDetail, ProgramRow, ScoreRow,
+  Contact, FunderDetail, NewsRow, OrgDetail, PartnerLineRow, ProgramRow, ScoreRow,
 } from "@/lib/api";
 import { isOnFile, pickIdentifier, statusLabel, statusTone } from "./identifierStatus";
 import { ScoreCard } from "./ScoreCard";
@@ -37,9 +37,13 @@ function fmtDate(value: string | null): string | null {
   return new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function fmtAmount(grant: GrantRow): string {
-  if (grant.amount == null) return "amount not public";
-  return `₹${Number(grant.amount).toLocaleString("en-IN")}`;
+function fmtAmount(line: PartnerLineRow): string {
+  if (line.amount == null) return "amount not public";
+  return `₹${Number(line.amount).toLocaleString("en-IN")}`;
+}
+
+function fmtSpan(line: PartnerLineRow): string {
+  return [fmtDate(line.start_date), fmtDate(line.end_date)].filter(Boolean).join(" – ") || line.fiscal_year;
 }
 
 function SectionCard({ kicker, title, children }: { kicker?: string; title?: string; children: React.ReactNode }) {
@@ -59,14 +63,14 @@ function DegradedNote({ children }: { children: React.ReactNode }) {
 /* ------------------------------------------------------------------ org --- */
 
 export function OrgProfileTabs({
-  org, grants, programs, scores, news,
+  org, funding, programs, scores, news,
 }: {
-  org: OrgDetail; grants: GrantRow[]; programs: ProgramRow[]; scores: ScoreRow[]; news: NewsRow[];
+  org: OrgDetail; funding: PartnerLineRow[]; programs: ProgramRow[]; scores: ScoreRow[]; news: NewsRow[];
 }) {
   const [tab, setTab] = useState("diligence");
   const completenessParts = [
     org.identifiers.some((i) => isOnFile(i)), org.contacts.length > 0, org.tags.length > 0,
-    org.locations.length > 0, programs.length > 0, grants.length > 0,
+    org.locations.length > 0, programs.length > 0, funding.length > 0,
   ];
   const coverage = Math.round((completenessParts.filter(Boolean).length / completenessParts.length) * 100);
 
@@ -161,18 +165,20 @@ export function OrgProfileTabs({
           </SectionCard>
 
           <SectionCard kicker="Known funders" title="Funding relationships in the base">
-            {grants.length === 0 ? (
+            {funding.length === 0 ? (
               <DegradedNote>No funding relationships recorded yet — awaiting research or vetting.</DegradedNote>
             ) : (
-              grants.map((grant) => (
-                <div key={grant.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", fontSize: "var(--fs-sm)" }}>
-                  <Link href={`/registry/funders/${grant.funder_id}`} style={{ fontWeight: 600 }}>
-                    {grant.funder_name}
+              funding.map((line) => (
+                <div key={line.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", fontSize: "var(--fs-sm)" }}>
+                  <Link href={`/registry/funders/${line.funder_slug}`} style={{ fontWeight: 600 }}>
+                    {line.funder_name}
                   </Link>
-                  <span className="muted">{grant.title}</span>
-                  <Tag tone={grant.status === "active" ? "accent-2" : "neutral"}>{grant.status}</Tag>
+                  {line.project_name && <span className="muted">{line.project_name}</span>}
+                  {line.relationship_status && (
+                    <Tag tone={line.relationship_status === "active" ? "accent-2" : "neutral"}>{line.relationship_status}</Tag>
+                  )}
                   <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
-                    {[fmtDate(grant.start_date), fmtDate(grant.end_date)].filter(Boolean).join(" – ") || "dates not public"} · {fmtAmount(grant)}
+                    {fmtSpan(line)} · {fmtAmount(line)}
                   </span>
                 </div>
               ))
@@ -283,9 +289,9 @@ export function OrgProfileTabs({
 /* --------------------------------------------------------------- funder --- */
 
 export function FunderProfileTabs({
-  funder, scores, grants, news,
+  funder, scores, partners, news,
 }: {
-  funder: FunderDetail; scores: ScoreRow[]; grants: GrantRow[]; news: NewsRow[];
+  funder: FunderDetail; scores: ScoreRow[]; partners: PartnerLineRow[]; news: NewsRow[];
 }) {
   const [tab, setTab] = useState("mandate");
   const profileEntries = Object.entries(funder.profile ?? {}).filter(([, v]) => typeof v === "string");
@@ -334,17 +340,23 @@ export function FunderProfileTabs({
       )}
 
       {tab === "giving" && (
-        <SectionCard kicker="Recorded grants" title="Where grants have landed">
-          {grants.length === 0 ? (
-            <DegradedNote>No grants recorded for this funder yet.</DegradedNote>
+        <SectionCard kicker="Partners and grants" title="Where the money has gone">
+          {partners.length === 0 ? (
+            <DegradedNote>No partners or grants recorded for this funder yet.</DegradedNote>
           ) : (
-            grants.map((grant) => (
-              <div key={grant.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 8, fontSize: "var(--fs-sm)" }}>
-                <Link href={`/registry/${grant.org_id}`} style={{ fontWeight: 600 }}>{grant.org_name}</Link>
-                <span className="muted">{grant.title}</span>
-                <Tag tone={grant.status === "active" ? "accent-2" : "neutral"}>{grant.status}</Tag>
+            partners.map((line) => (
+              <div key={line.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 8, fontSize: "var(--fs-sm)" }}>
+                {line.partner_org_slug ? (
+                  <Link href={`/registry/${line.partner_org_slug}`} style={{ fontWeight: 600 }}>{line.partner_org_name}</Link>
+                ) : (
+                  <span style={{ fontWeight: 600 }}>{line.partner_name}</span>
+                )}
+                {line.project_name && <span className="muted">{line.project_name}</span>}
+                {line.relationship_status && (
+                  <Tag tone={line.relationship_status === "active" ? "accent-2" : "neutral"}>{line.relationship_status}</Tag>
+                )}
                 <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
-                  {[fmtDate(grant.start_date), fmtDate(grant.end_date)].filter(Boolean).join(" – ") || "dates not public"} · {fmtAmount(grant)}
+                  {fmtSpan(line)} · {fmtAmount(line)}
                 </span>
               </div>
             ))

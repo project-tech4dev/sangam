@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs, Hero, Tag } from "@/components/ui";
 import {
   apiGet, NotFoundError,
-  type FunderDetail, type GrantRow, type NewsRow, type PageOf, type ScoreRow,
+  type FunderDetail, type NewsRow, type PageOf, type PartnerLineRow, type ScoreRow,
 } from "@/lib/api";
 import { FunderProfileTabs } from "@/features/registry/ProfileTabs";
 
@@ -17,9 +17,9 @@ export default async function FunderProfilePage({ params }: { params: Promise<{ 
     throw err;
   }
 
-  const [scores, grants, news, brief] = await Promise.all([
+  const [scores, partners, news, brief] = await Promise.all([
     apiGet<PageOf<ScoreRow>>(`/api/scores?funder=${funder.slug}&limit=50`).then((p) => p.items),
-    apiGet<PageOf<GrantRow>>(`/api/grants?funder=${funder.slug}&limit=50`).then((p) => p.items),
+    apiGet<PageOf<PartnerLineRow>>(`/api/partner-lines?funder=${funder.slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<NewsRow>>(`/api/news?funder=${funder.slug}&limit=10`).then((p) => p.items),
     // 404 when this funder has not been researched, which is most of them.
     // A signed link, so it is minted per render rather than stored.
@@ -71,7 +71,7 @@ export default async function FunderProfilePage({ params }: { params: Promise<{ 
           </div>
         }
       />
-      <FunderProfileTabs funder={funder} scores={scores} grants={grants} news={news} />
+      <FunderProfileTabs funder={funder} scores={scores} partners={partners} news={news} />
     </div>
   );
 }

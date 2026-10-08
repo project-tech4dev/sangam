@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs, Hero, Tag } from "@/components/ui";
 import {
   apiGet, NotFoundError,
-  type GrantRow, type NewsRow, type OrgDetail, type PageOf, type ProgramRow, type ScoreRow,
+  type NewsRow, type OrgDetail, type PageOf, type PartnerLineRow, type ProgramRow, type ScoreRow,
 } from "@/lib/api";
 import { titleCase } from "@/lib/format";
 import { isOnFile, pickIdentifier, statusLabel } from "@/features/registry/identifierStatus";
@@ -19,8 +19,8 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
     throw err;
   }
 
-  const [grants, programs, scores, news] = await Promise.all([
-    apiGet<PageOf<GrantRow>>(`/api/grants?org=${org.slug}&limit=50`).then((p) => p.items),
+  const [funding, programs, scores, news] = await Promise.all([
+    apiGet<PageOf<PartnerLineRow>>(`/api/partner-lines?org=${org.slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<ProgramRow>>(`/api/programs?org=${org.slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<ScoreRow>>(`/api/scores?org=${org.slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<NewsRow>>(`/api/news?org=${org.slug}&limit=10`).then((p) => p.items),
@@ -69,7 +69,7 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
           </Link>
         }
       />
-      <OrgProfileTabs org={org} grants={grants} programs={programs} scores={scores} news={news} />
+      <OrgProfileTabs org={org} funding={funding} programs={programs} scores={scores} news={news} />
     </div>
   );
 }

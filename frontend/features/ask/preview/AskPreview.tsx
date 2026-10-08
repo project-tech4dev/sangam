@@ -37,7 +37,7 @@ export function AskPreview({ initialQuestion = null }: { initialQuestion?: strin
       orgs: new Map(SAMPLE_INDEX.orgs),
       funders: new Map(SAMPLE_INDEX.funders),
       scores: new Map(SAMPLE_INDEX.scores),
-      grants: new Map(),
+      activities: new Map(),
     }),
     [],
   );
