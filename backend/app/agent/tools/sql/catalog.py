@@ -555,7 +555,8 @@ _TABLES: tuple[Table, ...] = (
         ),
         defects=(
             (
-                "Only a row with status = 'registered', an id_value and is_current is a current registration. "
+                "Only a row with status IN ('registered', 'provisional'), an id_value and is_current is a current "
+                "registration. "
                 "'applied' is an application, 'check_blocked' means the registry could not be read (never "
                 "'valid'), and 'not_found' means a working source did not list it. Filter on status, never on "
                 "the row existing."

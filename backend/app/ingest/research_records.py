@@ -730,6 +730,13 @@ class EntityResearch(BaseModel):
                 f"status {self.status!r} with entity_kind 'unknown' — research that got this far "
                 f"knows whether the organisation gives money ('funder') or receives it ('org')"
             )
+        if self.entity_kind == "org":
+            # An org's shared concepts are ranked at promotion, so the tier is required at save.
+            tierless = sorted({f.concept for f in self.findings if f.concept in ("program", "metric", "contact")
+                               and (getattr(f, "source_type", None) is None
+                                    or getattr(f, "evidence_tier", None) is None)})
+            if tierless:
+                raise ValueError(f"an org's {tierless} findings need source_type and evidence_tier")
         return self
 
     def by_concept(self, concept: str) -> list[FindingBase]:

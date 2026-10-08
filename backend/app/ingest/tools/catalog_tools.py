@@ -222,7 +222,8 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
 # metrics, contacts, documents) are the same query with the other foreign key.
 _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
-        "org_identifiers (status: 'applied' is not a registration; 'check_blocked' is not 'valid')",
+        ("org_identifiers (current = 'registered' or 'provisional' with a number; 'applied' is not a "
+         "registration; 'check_blocked' is not 'valid')"),
         """
         SELECT id_type, id_value, status, valid_until, application_ref, is_current, source_type, evidence
         FROM org_identifiers WHERE org_id = %s ORDER BY id_type, is_current DESC, id

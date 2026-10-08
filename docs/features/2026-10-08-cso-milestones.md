@@ -17,7 +17,7 @@ Four stacked PRs: #102 ← M1 ← M2 ← M3 ← M4.
 - Exit: weaker never overwrites stronger; "applied" is never stored as "registered"; 0033 applies on a scratch clone.
 
 ## M2 — One place for grant money (`feat/cso-m2-grants`, migration 0034)
-- Grant rows migrate into `funder_activity` partner lines; `grants`, `program_locations`, `grant_locations` dropped.
+- Grant rows migrate into `funder_activity` partner lines; `grants` and `grant_locations` dropped (`program_locations` already went in 0033).
 - `/api/grants` and its route/repository/schema deleted; a partner-lines read replaces it; three pages move to it.
 - `[grant:N]` removed everywhere; the agent cites `[activity:N]`.
 - A CSO's funders found in research become partner lines on the funder side.
