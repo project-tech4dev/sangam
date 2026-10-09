@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 from contextlib import contextmanager
@@ -207,6 +208,11 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
         self.emit_subagent_events = emit_subagent_events
         self.subagent_visibility = "attributed" if emit_subagent_events else "inline"
 
+    @staticmethod
+    def _collect_interrupts(tasks) -> list:
+        # A task answered while its siblings stay paused keeps its interrupt, with a result beside it.
+        return [i for t in tasks or () if getattr(t, "result", None) is None for i in getattr(t, "interrupts", ()) or ()]
+
     async def prepare_stream(
         self,
         input: RunAgentInput,
@@ -224,9 +230,37 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
                 "agui_run_id": input.run_id,
             },
         }
+        command = (input.forwarded_props or {}).get("command")
+        if isinstance(command, dict) and command.get("resume") is not None:
+            keyed = key_resume(command["resume"], self._collect_interrupts(agent_state.tasks))
+            input = input.model_copy(update={"forwarded_props": {
+                **input.forwarded_props, "command": {**command, "resume": keyed}}})
         return await super().prepare_stream(
             input=input, agent_state=agent_state, config=config
         )
+
+
+def _slugs(value: Any) -> set[str]:
+    actions = value.get("action_requests") if isinstance(value, dict) else None
+    return {(a.get("args") or {}).get("slug") for a in actions or () if isinstance(a, dict)} - {None}
+
+
+def key_resume(resume: Any, interrupts: list[Any]) -> Any:
+    """Address a legacy resume to one open interrupt: parallel Import writers pause together, and LangGraph
+    refuses an unaddressed resume. It goes to the save its slug names, else the last one the screen saw."""
+    if isinstance(resume, str):
+        try:
+            resume = json.loads(resume)
+        except json.JSONDecodeError:
+            return resume
+    slug = None
+    if isinstance(resume, dict) and "slug" in resume:
+        resume = dict(resume)
+        slug = resume.pop("slug")
+    if not interrupts or (isinstance(resume, dict) and any(i.id in resume for i in interrupts)):
+        return resume
+    target = next((i for i in interrupts if slug and slug in _slugs(i.value)), interrupts[-1])
+    return {target.id: resume}
 
 
 @contextmanager

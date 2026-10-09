@@ -477,3 +477,84 @@ class TestComposeForwardsTheDocumentedEnvironment:
             f"documented in .env.example but not forwarded to the backend container: "
             f"{missing}. Setting them would do nothing."
         )
+
+
+class TestParallelPauses:
+    """Import's writers pause together; each Review answer must reach its own save, once."""
+
+    @staticmethod
+    def _graph(saved):
+        from typing import TypedDict
+
+        from langchain.agents import create_agent
+        from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+        from langchain_core.messages import AIMessage
+        from langchain_core.tools import tool
+        from langgraph.checkpoint.memory import InMemorySaver
+        from langgraph.graph import END, START, StateGraph
+        from langgraph.types import interrupt
+
+        class S(TypedDict):
+            slug: str
+            out: object
+
+        def ask(s):
+            return {"out": interrupt({"action_requests": [{"name": "promote_research", "args": {"slug": s["slug"]}}]})}
+
+        def save(s):
+            saved.append((s["slug"], s["out"]["decisions"][0]))
+            return {}
+
+        sub = StateGraph(S)
+        sub.add_node("ask", ask)
+        sub.add_node("save", save)
+        sub.add_edge(START, "ask")
+        sub.add_edge("ask", "save")
+        sub.add_edge("save", END)
+        writer = sub.compile()
+
+        @tool
+        async def task(slug: str) -> str:
+            """Write one organisation."""
+            await writer.ainvoke({"slug": slug, "out": None})
+            return "ok"
+
+        class Fake(GenericFakeChatModel):
+            def bind_tools(self, tools, **kw):
+                return self
+
+        calls = [{"name": "task", "args": {"slug": s}, "id": f"c-{s}"} for s in ("a", "b", "c")]
+        model = Fake(messages=iter([AIMessage("", tool_calls=calls), AIMessage("done")]))
+        return create_agent(model, [task], checkpointer=InMemorySaver())
+
+    async def test_each_answer_reaches_its_own_save(self):
+        from langgraph.types import Command
+
+        from app.integrations.tracing import key_resume
+
+        saved: list = []
+        graph, cfg = self._graph(saved), {"configurable": {"thread_id": "t"}}
+
+        async def answer(resume):
+            state = await graph.aget_state(cfg)
+            open_ = SessionScopedAGUIAgent._collect_interrupts(state.tasks)
+            return await graph.ainvoke(Command(resume=key_resume(resume, open_)), cfg)
+
+        await graph.ainvoke({"messages": [("user", "go")]}, cfg)
+        with pytest.raises(RuntimeError, match="multiple pending interrupts"):
+            await graph.ainvoke(Command(resume={"decisions": ["x"]}), cfg)
+        await answer({"decisions": ["yes-b"], "slug": "b"})
+        await answer({"decisions": ["last"]})  # no slug: the last open one, never the answered b
+        final = await answer({"decisions": ["only"]})
+        assert saved == [("b", "yes-b"), ("c", "last"), ("a", "only")]
+        assert final["messages"][-1].content == "done"
+
+    def test_key_resume(self):
+        from app.integrations.tracing import key_resume
+
+        a = types.SimpleNamespace(id="ia", value={"action_requests": [{"name": "promote_research", "args": {"slug": "a"}}]})
+        b = types.SimpleNamespace(id="ib", value={"action_requests": [{"name": "list_bucket_files", "args": {}}]})
+        assert key_resume({"decisions": [1], "slug": "a"}, [a, b]) == {"ia": {"decisions": [1]}}
+        assert key_resume('{"decisions": [1]}', [a, b]) == {"ib": {"decisions": [1]}}
+        assert key_resume({"decisions": [1], "slug": "a"}, []) == {"decisions": [1]}
+        assert key_resume({"ia": {"decisions": [1]}}, [a, b]) == {"ia": {"decisions": [1]}}
