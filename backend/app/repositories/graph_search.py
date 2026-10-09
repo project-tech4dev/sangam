@@ -22,3 +22,13 @@ async def add_episode(client, *, text: str, name: str, source_description: str, 
         group_id=group_id,
     )
     return {"entities": [n.name for n in result.nodes], "facts": [e.fact for e in result.edges]}
+
+
+async def clear(client, *, group_id: str | None) -> int:
+    from graphiti_core.utils.maintenance.graph_data_operations import clear_data
+
+    where = "WHERE n.group_id = $group_id" if group_id else ""
+    records, _, _ = await client.driver.execute_query(
+        f"MATCH (n) {where} RETURN count(n) AS n", group_id=group_id)
+    await clear_data(client.driver, group_ids=[group_id] if group_id else None)
+    return records[0]["n"]

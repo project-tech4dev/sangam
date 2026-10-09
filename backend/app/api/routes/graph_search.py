@@ -3,13 +3,15 @@ from __future__ import annotations
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.config import get_settings
 from app.core.security import CurrentUser, get_current_user, require_staff, require_user
 from app.integrations import graphiti
 from app.repositories import graph_search as repo
 from app.schemas.graph_search import (
+    GROUP_PATTERN,
+    GraphClearOut,
     GraphEpisodeIn,
     GraphEpisodeOut,
     GraphSearchIn,
@@ -58,3 +60,13 @@ async def add_episode(
     result = await repo.add_episode(client, text=body.text, name=body.name,
                                     source_description=body.source_description, group_id=body.group_id)
     return GraphEpisodeOut(**result)
+
+
+@router.delete("", response_model=GraphClearOut, summary="Delete every node and fact, or one group's")
+async def clear_graph(
+    client: GraphDep,
+    principal: Annotated[CurrentUser, Depends(require_staff)],
+    group_id: Annotated[str | None, Query(pattern=GROUP_PATTERN)] = None,
+) -> GraphClearOut:
+    deleted = await repo.clear(client, group_id=group_id)
+    return GraphClearOut(group_id=group_id, nodes_deleted=deleted)
