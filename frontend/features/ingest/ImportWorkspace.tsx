@@ -29,6 +29,8 @@ export function ImportWorkspace({
   const [paused, setPaused] = useState(false);
   // The open question is the Review card, as opposed to the spreadsheets one.
   const [reviewing, setReviewing] = useState(false);
+  // A review was answered, so what runs now is the save: the step bar stays on Done.
+  const [reviewed, setReviewed] = useState(false);
   // When the first request went, so Done shows only names this run queued.
   const [since, setSince] = useState<number | null>(null);
   // The first request came from the task cards, so it is Sangam's wording, not something to show back.
@@ -37,6 +39,7 @@ export function ImportWorkspace({
   const onReview = useCallback((open: boolean) => {
     setPaused(open);
     setReviewing(open);
+    if (open) setReviewed(true);
   }, []);
   const atStart = turns.length === 0;
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
@@ -57,7 +60,7 @@ export function ImportWorkspace({
 
   return (
     <div className="import-ws">
-      <StepBar current={atStart ? 0 : reviewing ? 2 : !isRunning && !paused ? 3 : 1} />
+      <StepBar current={atStart ? 0 : reviewing ? 2 : reviewed || (!isRunning && !paused) ? 3 : 1} />
       {atStart && !advanced && (
         <>
           <StartStep

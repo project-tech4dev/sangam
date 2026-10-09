@@ -99,16 +99,24 @@ export function WorkingBoard({
   if (steps.length === 0 && !running) return null;
   const rows = board.rows;
   const finished = rows.length > 0 && board.ready === rows.length;
-  const title = finished
-    ? "Research finished"
-    : rows.length > 0
-      ? `Sangam is researching ${plural(rows.length, "organisation")}`
-      : running
-        ? "Sangam is working"
-        : "Sangam stopped";
-  const sub = finished
-    ? "Nothing is saved yet. Look through what was found, then choose what to keep."
-    : "This usually takes a few minutes for each one. You can leave this page open and come back.";
+  // Every organisation is researched and the run goes on: the only thing left is saving what was approved.
+  const saving = finished && running;
+  const title = saving
+    ? "Saving to Sangam…"
+    : finished
+      ? "Research finished"
+      : rows.length > 0
+        ? `Sangam is researching ${plural(rows.length, "organisation")}`
+        : running
+          ? "Sangam is working"
+          : paused
+            ? "Paused — waiting for you"
+            : "Finished";
+  const sub = saving
+    ? "Writing what you approved into the profiles."
+    : finished
+      ? "Nothing is saved yet. Look through what was found, then choose what to keep."
+      : "This usually takes a few minutes for each one. You can leave this page open and come back.";
   // Without rows (a news import), or rows no step could be tied to, this line is the only sign of what is happening.
   const showLine = rows.length === 0 || (running && !board.attributed);
   const line = !running ? (paused ? "Paused — waiting for you" : "Finished") : rows.length > 0 ? (board.now ?? doing(steps)) : doing(steps);
