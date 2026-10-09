@@ -326,3 +326,20 @@ reference. It needs a resync after this pass.
   - The matrix, squares and filter are gone, because the template uses rows even for 6
     or more organisations.
   - "Research notes" still points nowhere, so the line names Researched recently instead.
+
+## Import gets its own page, with its own threads
+
+- `/import` is a page of its own now, no longer a view inside Ask.
+  - A left rail lists the staff member's past imports, newest first and grouped by month, with "+ New import" at the top.
+  - The open thread is in the address (`?thread=import-<uuid>`), so a reload or a shared link reopens it.
+  - Ask's Tools → Import links to `/import`, and `/ask?view=import` redirects there.
+- **Backend:**
+  - `GET /api/ingest/threads` lists the caller's `import-%` threads.
+  - `GET /api/ingest/threads/{id}/messages` rebuilds one from the ingest graph, which is now kept as `app.state.ingest_graph`.
+  - Both are staff-only and owner-checked the same way as Ask chats (`saved_messages` in `routes/threads.py`).
+  - No migration: Import threads were already claimed with their first request as the title.
+- **A reopened thread** rebuilds its turns, board, Done rows and notes from the saved messages.
+  - What it doesn't keep, because those were live-only: which researcher ran which row (`laneOwners`), and the start time used to pick this run's queued names.
+  - A thread that stopped at a pause (Review, or choosing files) says so instead of showing a question it can no longer answer.
+- **Not done:** the design system's UI kit Import page doesn't have the rail yet. Writing it to the Claude Design project needs approval.
+

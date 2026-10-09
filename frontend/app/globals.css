@@ -473,7 +473,7 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
   border-radius: var(--radius-row);
   cursor: pointer;
 }
-.rail-item:hover { background: var(--color-neutral-100); }
+.rail-item:hover { background: var(--color-neutral-100); text-decoration: none; }
 .rail-item[data-active="true"] { background: var(--color-accent-2-100); color: var(--color-accent-2-900); }
 /* A past conversation: lighter, and one line however long its title. */
 .rail-thread { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -573,6 +573,19 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .composer-stub { display: grid; place-items: center; padding: 0; cursor: not-allowed; }
 
 /* --- Import workspace ---------------------------------------------------------- */
+/* /import: past imports on the left, the open one beside them. Fills the viewport below the navbar. */
+.import-shell { height: calc(100dvh - var(--nav-h)); display: flex; flex-direction: column; }
+.import-loading { padding: 24px; }
+.import-layout { flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden; background: var(--color-surface); }
+.import-layout-main { flex: 1; min-width: 0; min-height: 0; display: flex; }
+.import-threads { gap: 2px; }
+.import-threads-month { padding: 10px 12px 4px; }
+.import-threads-row { justify-content: space-between; font-weight: 500; }
+.import-threads-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.import-threads-date { font-size: var(--fs-xs); color: var(--color-neutral-700); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.import-threads-row[data-active="true"] .import-threads-date { color: inherit; }
+/* A reopened import that had stopped at a question nobody can answer from here now. */
+.import-stopped { margin: 0; padding: 12px 16px; border-radius: var(--radius-row); background: var(--color-neutral-100); font-size: var(--fs-sm); }
 .import-view { flex: 1; min-width: 0; }
 .import-view-open { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
 .import-title { font-size: var(--fs-lg); }

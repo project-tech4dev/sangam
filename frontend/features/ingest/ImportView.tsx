@@ -31,15 +31,24 @@ async function get<T>(path: string): Promise<T> {
 }
 
 /**
- * Sangam Import, inside the Ask workspace: a guided Start → Working → Review → Done, with what is
- * waiting and what was researched under the Start step. Panels load when the view opens.
+ * One Import thread: a guided Start → Working → Review → Done, with what is waiting and what was
+ * researched under the Start step. Panels load once, and stay while threads change.
  */
-export function ImportView() {
+export function ImportView({
+  threadId,
+  resume,
+  onStartOver,
+  onFirstSend,
+}: {
+  threadId: string;
+  /** Opened from the list, so its saved messages load. */
+  resume: boolean;
+  onStartOver: () => void;
+  onFirstSend: (text: string) => void;
+}) {
   const [panels, setPanels] = useState<Panels | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [staffOnly, setStaffOnly] = useState(false);
-  // A new id is a new thread: a stopped or paused run is left behind, saved research is not.
-  const [threadId, setThreadId] = useState(() => `import-${crypto.randomUUID()}`);
 
   useEffect(() => {
     let live = true;
@@ -66,7 +75,7 @@ export function ImportView() {
   if (staffOnly) {
     return (
       <div className="import-view">
-        <div className="eyebrow">Tools · Import</div>
+        <div className="eyebrow">Import</div>
         <h2 className="import-title">Staff only</h2>
         <p className="muted measure import-lede">
           Sangam Import changes the catalog, so it is open to the Sangam team only. Ask Sangam is
@@ -107,7 +116,9 @@ export function ImportView() {
       <ImportWorkspace
         key={threadId}
         threadId={threadId}
-        onStartOver={() => setThreadId(`import-${crypto.randomUUID()}`)}
+        resume={resume}
+        onStartOver={onStartOver}
+        onFirstSend={onFirstSend}
         start={start}
       />
     </div>

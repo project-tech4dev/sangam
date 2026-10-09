@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import type { IndexPayload } from "./AskWorkspace";
-import type { WorkspaceView } from "./components/Sidebar";
 
 // /ask serves both the signed-out preview and the workspace. Anything the page imports
 // statically lands in its client bundle, so the workspace — and the CopilotKit runtime
@@ -18,11 +17,9 @@ const SignedInWorkspace = dynamic(() => import("./SignedInWorkspace").then((m) =
 export function WorkspaceLoader({
   payload,
   initialQuestion,
-  initialView,
 }: {
   payload: IndexPayload;
   initialQuestion: string | null;
-  initialView?: WorkspaceView;
 }) {
-  return <SignedInWorkspace payload={payload} initialQuestion={initialQuestion} initialView={initialView} />;
+  return <SignedInWorkspace payload={payload} initialQuestion={initialQuestion} />;
 }

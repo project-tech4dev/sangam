@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   ChevronDown,
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 import type { ThreadMeta } from "../lib/threads";
 
-export type WorkspaceView = "ask" | "chats" | "funder-match" | "rfpwatch" | "vault" | "media" | "import";
+export type WorkspaceView = "ask" | "chats" | "funder-match" | "rfpwatch" | "vault" | "media";
 
 type Item = { id: WorkspaceView; label: string; soon?: boolean };
 type SectionId = "recent" | "usecases" | "context" | "tools";
@@ -88,7 +89,7 @@ export function Sidebar({
     recent: true,
     usecases: true,
     context: true,
-    tools: view === "import",
+    tools: false,
   });
   const toggle = (id: SectionId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
 
@@ -185,9 +186,11 @@ export function Sidebar({
       </div>
 
       {/* Tools that change the data, kept apart from conversations at the foot of the rail.
-          Shown to everyone: the backend answers non-staff with 403 and ImportView says "Staff only". */}
+          Shown to everyone: the backend answers non-staff with 403 and /import says "Staff only". */}
       <Section label="Tools" open={open.tools} onToggle={() => toggle("tools")} className="rail-foot">
-        {items([{ id: "import", label: "Import" }])}
+        <Link href="/import" className="rail-item">
+          Import
+        </Link>
       </Section>
     </div>
   );

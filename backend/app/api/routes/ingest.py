@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.api.routes.threads import saved_messages
 from app.core.security import get_current_user, require_staff, require_user
-from app.db.pool import PoolDep
+from app.db.pool import OwnerPoolDep, PoolDep
 from app.ingest.sources import SOURCES
 from app.repositories import ingest as repo
+from app.repositories import threads as threads_repo
 from app.schemas.ingest import (
     CoverageOut,
     QueueAnswerIn,
@@ -21,6 +23,7 @@ from app.schemas.ingest import (
     SourceProposalOut,
     WorkbookOut,
 )
+from app.schemas.threads import ThreadMessagesOut, ThreadOut
 
 router = APIRouter(prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_staff)])
 
@@ -140,3 +143,19 @@ async def research_coverage(slug: str, user_id: UUID = Depends(get_current_user)
     if view is None:
         raise HTTPException(status_code=404, detail=f"no saved research for {slug!r}")
     return CoverageOut.model_validate(view)
+
+
+@router.get("/threads", response_model=list[ThreadOut], summary="The caller's own Import threads, newest first")
+async def list_threads(pool: PoolDep, user_id: UUID = Depends(require_user)) -> list[ThreadOut]:
+    rows = await threads_repo.list_threads(pool, user_id=user_id, kind="import")
+    return [ThreadOut.model_validate(r) for r in rows]
+
+
+@router.get("/threads/{thread_id}/messages", response_model=ThreadMessagesOut, summary="One Import thread's saved messages")
+async def thread_messages(
+    thread_id: str, request: Request, owner_pool: OwnerPoolDep, user_id: UUID = Depends(require_user)
+) -> ThreadMessagesOut:
+    # Only an Import thread: an Ask chat is read through its own graph, at /api/threads.
+    if not thread_id.startswith("import-"):
+        raise HTTPException(status_code=404, detail="Thread not found")
+    return await saved_messages(request, owner_pool, user_id, thread_id, graph_name="ingest_graph")

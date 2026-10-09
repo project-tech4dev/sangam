@@ -28,10 +28,17 @@ async def list_threads(
 async def thread_messages(
     thread_id: str, request: Request, owner_pool: OwnerPoolDep, user_id: UserDep
 ) -> ThreadMessagesOut:
+    return await saved_messages(request, owner_pool, user_id, thread_id, graph_name="ask_graph")
+
+
+async def saved_messages(
+    request: Request, owner_pool, user_id: UUID, thread_id: str, *, graph_name: str
+) -> ThreadMessagesOut:
+    """One thread's messages as AG-UI rebuilds them, after checking the caller may open it."""
     # Owner pool: checkpoints are closed to callers, so access is decided here, before anything is read.
     if not await repo.can_open(owner_pool, thread_id=thread_id, user_id=user_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
-    graph = getattr(request.app.state, "ask_graph", None)
+    graph = getattr(request.app.state, graph_name, None)
     if graph is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Agent not loaded")
     # The graph, not the saver: messages are rebuilt from writes, and a raw checkpoint can hold none.

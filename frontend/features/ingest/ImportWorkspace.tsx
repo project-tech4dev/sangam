@@ -11,18 +11,34 @@ import { StepBar } from "./components/StepBar";
 import { WorkingBoard } from "./components/WorkingBoard";
 import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
+import { fetchImportMessages } from "./lib/threads";
+
+// The pauses a run can stop at. A reopened thread can't answer one, so it says where it stopped.
+const PAUSES = ["promote_research", "list_bucket_files", "select_source_files"];
 
 /** One Import conversation. `onStartOver` hands the parent a fresh thread; `start` shows below the Start step. */
 export function ImportWorkspace({
   threadId,
+  resume = false,
   onStartOver,
+  onFirstSend,
   start,
 }: {
   threadId: string;
+  /** Load the thread's saved messages: it was opened from the list. */
+  resume?: boolean;
   onStartOver: () => void;
+  /** The thread's first request, so the parent can list it and put it in the URL. */
+  onFirstSend?: (text: string) => void;
   start?: ReactNode;
 }) {
-  const { turns, send, stop, isRunning, isReady, laneOwners } = useAgentChat(threadId, "sangam_ingest", "sangam-import");
+  const load = useCallback(() => fetchImportMessages(threadId), [threadId]);
+  const { turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners } = useAgentChat(
+    threadId,
+    "sangam_ingest",
+    "sangam-import",
+    resume ? load : undefined,
+  );
   const [draft, setDraft] = useState("");
   // The chat stays for anything the task cards don't cover.
   const [advanced, setAdvanced] = useState(false);
@@ -42,14 +58,16 @@ export function ImportWorkspace({
     setReviewing(open);
     if (open) setReviewed(true);
   }, []);
-  const atStart = turns.length === 0;
+  const atStart = turns.length === 0 && !isLoadingHistory;
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
+  const stoppedAtQuestion = resume && !isRunning && !paused && lastSteps.some((s) => PAUSES.includes(s.tool) && s.result === null);
 
   async function submit(text: string) {
     const value = text.trim();
     if (!value || isRunning) return;
     setDraft("");
     setSince((prev) => prev ?? Date.now());
+    if (turns.length === 0) onFirstSend?.(value);
     await send(value);
   }
 
@@ -76,6 +94,8 @@ export function ImportWorkspace({
           </button>
         </>
       )}
+
+      {isLoadingHistory && <p className="muted">Opening this import…</p>}
 
       <div className="import-turns">
         {turns.map((turn, i) => {
@@ -117,6 +137,13 @@ export function ImportWorkspace({
           );
         })}
       </div>
+
+      {stoppedAtQuestion && (
+        <p className="import-stopped">
+          This import stopped at a question that can&apos;t be answered here any more. Ask Sangam to save it again, or start a new
+          import.
+        </p>
+      )}
 
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
       {isReady && <SpreadsheetsCard agentId={`sangam-import-${threadId}`} steps={lastSteps} turnId={turns.at(-1)?.id} onPaused={setPaused} />}

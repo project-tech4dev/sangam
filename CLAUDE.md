@@ -24,8 +24,8 @@ and `make seed` runs `migrate` too. Both are pinned to `ENV=local`: against a ma
 you run `make migrate ENV=staging` yourself, deliberately and after a backup.
 
 Then http://localhost:3000 for the app and http://localhost:8010/docs for the API. The Ask
-workspace and Import (`/ask?view=import`; `/import` redirects there) are behind Supabase
-sign-in; signed out, `/ask` is a public preview. `OPENAI_API_KEY` and `make graph-seed` are optional —
+workspace and Import (`/import`, with its own list of past imports; `/ask?view=import`
+redirects there) are behind Supabase sign-in; signed out, `/ask` is a public preview. `OPENAI_API_KEY` and `make graph-seed` are optional —
 the graph disables itself cleanly. One smoke check, `documents: 96+`, is expected to fail on a
 fresh clone: `make seed` does not create those documents.
 
