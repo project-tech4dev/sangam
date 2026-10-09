@@ -36,14 +36,14 @@ flowchart TD
   subgraph BE["Backend — FastAPI :8010"]
     REST["REST API<br/><small>orgs · funders · partner lines · programs<br/>rfps · contacts · scores · meta</small>"]
     AGENT["Ask Sangam agent<br/><small>Claude · 6 tools · cited answers</small>"]
-    INGEST["Sangam Import agent<br/><small>fetch · extract · match · promote</small>"]
+    INGEST["Sangam Import agent<br/><small>supervisor + researcher · writer · reader subagents</small>"]
     GRT["Graphiti<br/><small>extraction · embeddings · dedup</small>"]
   end
 
   PG[("Postgres + pgvector :5433<br/><small>SYSTEM OF RECORD<br/>records · scores · documents · chat threads</small>")]
   NEO[("Neo4j :7474 / :7687<br/><small>DERIVED temporal knowledge graph</small>")]
 
-  ANT["Anthropic API<br/><small>agent reasoning</small>"]
+  ANT["Anthropic API<br/><small>agent reasoning · Opus / Sonnet / Haiku tiers</small>"]
   OAI["OpenAI API<br/><small>graph extraction + embeddings (768-dim)</small>"]
 
   U --> AUTH
@@ -76,8 +76,8 @@ losing anything. If the two disagree, Postgres wins.
 | Postgres (`documents`/`chunks`) | full document text; tsvector + pgvector indexes (chunks pipeline pending) | "what does the report actually say" |
 | Neo4j (via Graphiti) | entities + temporal relationship edges with validity windows | "what *connects* X to Y", multi-hop paths |
 
-External services are deliberately narrow: **Anthropic** powers agent reasoning (`MODEL`,
-provider-agnostic), **OpenAI** powers only the graph's extraction and embeddings.
+External services are deliberately narrow: **Anthropic** powers agent reasoning (in model tiers,
+provider-agnostic; see [Models](#models)), **OpenAI** powers only the graph's extraction and embeddings.
 
 ## Prerequisites
 
@@ -169,7 +169,9 @@ the fuller reference. The tiers:
 | **Required (frontend)** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | every page returns 500 |
 | **Optional** | `OPENAI_API_KEY` + `NEO4J_*` | the graph disables itself cleanly |
 | **Optional** | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | no document archive or Doc Vault; uploads return 503 |
-| **Optional** | `MODEL`, `UTILITY_MODEL`, `SQL_AUDIT_MODEL`, `TAVILY_API_KEY` | sensible defaults; see `.env.example` |
+| **Optional** | `MODEL`, `RESEARCH_MODEL`, `UTILITY_MODEL`, `SQL_AUDIT_MODEL` | the defaults in `backend/app/core/config.py`; see [Models](#models) |
+| **Optional** | `RESEARCH_PAGE_LIMIT`, `RESEARCH_MODEL_CALL_LIMIT` | 20 pages and 60 model calls per Import researcher |
+| **Optional** | `TAVILY_API_KEY` | the agents have no web-search tool |
 | **Optional** | `LANGFUSE_*`, `LANGSMITH_*` | no tracing. Both can run at once |
 | **Deployed only** | `ALLOWED_ORIGINS`, `ALLOWED_ORIGIN_REGEX`, `STAGING_DB_*` | irrelevant locally |
 
@@ -320,6 +322,37 @@ Three conventions a new tool must not break:
   executes, a read-only transaction with timeouts, and the extended protocol so the server
   itself refuses multi-command statements. `docs/SQL_AGENT.md` has the design.
 
+**Sangam Import is a supervisor with three kinds of subagent.** The supervisor plans the run and
+pauses for staff. It launches one `entity-researcher` per organisation (up to
+`MAX_PARALLEL_RESEARCH` at once), a `catalog-writer` to move approved research into the catalog,
+and a `workbook-reader` for staff spreadsheets. Each subagent runs in its own context window and
+hands back a structured summary, not its reading.
+
+**Prompts and skills are both markdown, loaded differently.**
+- A **prompt** is an agent's system prompt, sent on every model call: `backend/app/ingest/instructions.md` for the supervisor and `backend/app/ingest/prompts/*.md` for each subagent. It holds what applies every turn: rules, access limits, how to save.
+- A **skill** (`backend/app/ingest/skills/<name>/SKILL.md`) puts only its name and description in the prompt. The supervisor reads the full file when a request needs it, for example a report format or a playbook for one kind of research. Only the supervisor has skills; [`docs/SKILLS.md`](docs/SKILLS.md) explains why.
+
+### Models
+
+Each agent runs on a model matched to how hard its work is (`backend/app/core/config.py`):
+
+| Variable | Default | Runs |
+|---|---|---|
+| `MODEL` | `anthropic:claude-opus-5-5` | Ask Sangam; the Import supervisor |
+| `RESEARCH_MODEL` | `anthropic:claude-sonnet-5-5` | Import's entity-researchers |
+| `UTILITY_MODEL` | `anthropic:claude-haiku-4-5` | catalog-writer, workbook-reader, article extraction, the research grader, long-run summaries |
+| `SQL_AUDIT_MODEL` | `anthropic:claude-haiku-4-5` | Ask's audit of each SQL answer; `off` disables it |
+
+- A blank or unset variable always means the default above, and `config.py` is the only place defaults are written.
+- To run a tier on the main model, set it to the same value as `MODEL`.
+- A deployed backend reads these from its Vercel env, which overrides the defaults.
+
+**Import's middleware** (`backend/app/ingest/middleware.py`, LangChain and deepagents middleware):
+- Each tier falls back to another model when a call fails.
+- A researcher stops reading after `RESEARCH_PAGE_LIMIT` pages and saves what it has. It is stopped outright after `RESEARCH_MODEL_CALL_LIMIT` model calls.
+- After a malformed save, the rest of a researcher's run moves to `MODEL`.
+- A Haiku grader checks each researcher's save and summary against `prompts/research_rubric.md` and allows one revision.
+
 **Auth is split, and half of it is a stub.** The frontend has real Supabase sign-in. The backend
 does not: `backend/app/core/security.py` resolves every request to one seeded user regardless of
 the token, and the frontend sends a literal `Bearer dev`. A deployed backend is therefore
@@ -371,6 +404,7 @@ Two traps worth knowing before touching this:
 | [`docs/SQL_AGENT.md`](docs/SQL_AGENT.md) | The safe text-to-SQL design — the catalog, validator and executor |
 | [`docs/INGEST.md`](docs/INGEST.md) | Sangam Import end to end: sources, matching, what it refuses to do |
 | [`docs/SKILLS.md`](docs/SKILLS.md) | How the importer loads procedures from `SKILL.md` files, and the cost |
+| [`docs/features/`](docs/features/) | One plan per change, e.g. `2026-10-09-model-tiers.md` and `2026-10-09-import-middleware.md` |
 | [`docs/DEPLOY.md`](docs/DEPLOY.md) | Deployment detail. **Its premise that the backend cannot run on Vercel is out of date** — the Deployment section above is authoritative |
 | [`db/migrations/README.md`](db/migrations/README.md) | Why migrations are plain SQL and how to add one |
 | [`seed/data/README.md`](seed/data/README.md) | Provenance for every seeded record |
@@ -386,6 +420,8 @@ Two traps worth knowing before touching this:
 | **Schedule VII** | The Companies Act list of activities CSR money may fund. The taxonomy's top level |
 | **Rubric v1 / v2** | Versioned scoring criteria for how well an organisation fits a funder. Scores carry `scored_by` and an adjustment audit log, so a hand-vetted override sits beside the computed score rather than replacing it |
 | **Deep agent** | A `deepagents` preset over LangGraph — planning middleware and subagents around a tool-calling loop. Not an alternative to LangGraph |
+| **Skill** | A `SKILL.md` procedure the agent reads only when a request needs it; only its name and description sit in the prompt |
+| **Model tier** | Which model an agent runs on: strong (`MODEL`), research, or utility. See [Models](#models) |
 | **AG-UI** | The protocol streaming agent events (tool calls, tokens) from the backend to the chat UI over SSE |
 
 ## Status
