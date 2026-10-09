@@ -1,10 +1,13 @@
+import re
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 
 import pytest
 
 from app.api.routes import ingest
-from app.core.security import get_principal
-from tests.conftest import make_app
+from app.core.security import get_current_user, get_principal
+from app.repositories import threads as threads_repo
+from tests.conftest import TEST_USER, make_app
 from tests.test_access import MEMBER, client
 
 
@@ -69,3 +72,66 @@ async def test_members_cannot_list_import_threads():
     async with client(app) as c:
         response = await c.get("/api/ingest/threads")
     assert response.status_code == 403
+
+
+async def test_the_access_check_is_for_the_caller(monkeypatch):
+    seen = {}
+
+    async def can_open(pool, *, thread_id, user_id):
+        seen["user_id"] = user_id
+        return False
+
+    monkeypatch.setattr("app.api.routes.threads.repo.can_open", can_open)
+    async with client(app_with(_Graph())) as c:
+        response = await c.get("/api/ingest/threads/import-1/messages")
+    assert response.status_code == 404 and seen["user_id"] == TEST_USER
+
+
+def _route_urls():
+    for route in ingest.router.routes:
+        path = re.sub(r"\{[^}]+\}", lambda m: "import-1" if m.group(0) == "{thread_id}" else "1", route.path)
+        for method in route.methods:
+            yield method, path
+
+
+@pytest.mark.parametrize(("method", "path"), sorted(_route_urls()))
+async def test_every_import_route_is_staff_only(method, path):
+    app = app_with(_Graph())
+    app.dependency_overrides[get_principal] = lambda: MEMBER
+    app.dependency_overrides[get_current_user] = lambda: MEMBER.id
+    async with client(app) as c:
+        response = await c.request(method, f"/api{path}", json={"answer": "not_sure"})
+    assert response.status_code == 403
+
+
+class _Conn:
+    def __init__(self, seen):
+        self.seen = seen
+
+    async def execute(self, sql, params):
+        self.seen.append(sql)
+        return self
+
+    async def fetchall(self):
+        return []
+
+
+class _RecordingPool:
+    def __init__(self):
+        self.sql = []
+
+    @asynccontextmanager
+    async def connection(self):
+        yield _Conn(self.sql)
+
+
+@pytest.mark.parametrize(("kind", "filter_"), [("import", "thread_id LIKE"), ("ask", "thread_id NOT LIKE")])
+async def test_thread_listing_sql_is_fixed_per_kind(kind, filter_):
+    pool = _RecordingPool()
+    await threads_repo.list_threads(pool, user_id=TEST_USER, kind=kind)
+    assert filter_ in pool.sql[0] and "%(user_id)s" in pool.sql[0]
+
+
+async def test_an_unknown_kind_fails_rather_than_listing_ask_chats():
+    with pytest.raises(KeyError):
+        await threads_repo.list_threads(_RecordingPool(), user_id=TEST_USER, kind="anything")

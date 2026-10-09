@@ -17,11 +17,15 @@ const fact = (f: ReviewFact) => {
   return f.label ? `${f.label}: ${value}` : value;
 };
 
+// The backend keeps findings to http(s); checked again here, since the link is from the open web.
+const isWebLink = (url: string) => /^https?:\/\//i.test(url);
+
 function Source({ answer }: { answer: ReviewAnswer }) {
   if (!answer.source_url) return null;
   if (answer.source_url.startsWith(STAFF_SOURCE)) return <span className="review-source">Your team&apos;s spreadsheet</span>;
+  if (!isWebLink(answer.source_url)) return <span className="review-source">{answer.source_name || "Source"}</span>;
   return (
-    <a className="review-source" href={answer.source_url} target="_blank" rel="noreferrer">
+    <a className="review-source" href={answer.source_url} target="_blank" rel="noopener noreferrer">
       {answer.source_name || "Source"}
     </a>
   );

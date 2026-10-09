@@ -32,12 +32,16 @@ async def claim_thread(pool: AsyncConnectionPool, *, thread_id: str, user_id: UU
     return row["user_id"]
 
 
+# The only text ever put into list_threads' SQL; an unknown kind fails instead of matching Ask chats.
+_KIND_FILTER = {"ask": "NOT LIKE", "import": "LIKE"}
+
+
 async def list_threads(
     pool: CallerPool, *, user_id: UUID, kind: Literal["ask", "import"] = "ask", limit: int = 50
 ) -> list[dict]:
     """The caller's own chats of one kind, newest first. Filtered by user too, so staff get theirs, not everyone's."""
     # Import chats are claimed as use_case 'ask' too; their ids are always 'import-<uuid>' (ImportPage.tsx).
-    match = "LIKE" if kind == "import" else "NOT LIKE"
+    match = _KIND_FILTER[kind]
     sql = f"""
     SELECT thread_id, title, created_at, updated_at FROM threads
     WHERE user_id = %(user_id)s AND use_case = 'ask' AND thread_id {match} 'import-%%'

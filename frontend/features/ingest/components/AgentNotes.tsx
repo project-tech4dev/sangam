@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 /** The agent's written report, formatted, in a box; closed when the Done cards already say the same. */
@@ -15,11 +15,14 @@ export function AgentNotes({ text, collapsed }: { text: string; collapsed: boole
       </button>
       {open && (
         <div className="import-notes-body answer-md">
+          {/* The text is the agent's, written from pages on the open web: never raw HTML, never a javascript: link. */}
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
+            skipHtml
+            urlTransform={defaultUrlTransform}
             components={{
               a: ({ href, children }) => (
-                <a href={href} target="_blank" rel="noreferrer">
+                <a href={href} target="_blank" rel="noopener noreferrer">
                   {children}
                 </a>
               ),
