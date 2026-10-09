@@ -1,7 +1,7 @@
 # Proposals: design
 
 *Proposed 9 Oct 2026. The UI was agreed on the same clickable prototype as Funder Match:
-https://claude.ai/artifact/H1b4nv5ReQn8mvHg2HhPB5 (version 17). The prototype's data is invented, and its
+https://claude.ai/artifact/H1b4nv5ReQn8mvHg2HhPB5 (version 20). The prototype's data is invented, and its
 section scoring is a keyword mock. Depends on the Funder Match spec (#126), which is not merged yet.*
 
 ## What it is for
@@ -127,8 +127,18 @@ no pass or fail verdict from Sangam, because its data is rarely complete. **Cont
   sections Done, Ready or what is missing, and **Assemble document**.
 - **Saved as you go**: "All changes saved · just now" after every change.
 
-**Assemble document** shows the whole proposal in order, then **Save to Doc Vault**, which writes a new
-version. Versions are listed with date and who made them; each opens or downloads.
+**Assemble document** opens the assemble view:
+- **As entered:** everything entered, section by section, exactly as written, with section codes and
+  gaps shown as "Still needed: …". Its one action is **Polish with Sangam**.
+- **Polish with Sangam** rewrites the whole proposal in one pass (see *The document*). Polishing is
+  allowed while gaps remain; they stay marked.
+- **After polishing:** a **Polished / As entered** toggle, **Polish again**, **.docx** and **Save to
+  Doc Vault**, which stores the polished text as a new version. The polished text is read-only:
+  changes are made in the sections, then polished again.
+- If a section changes after a polish, a banner says "Sections have changed since this polish", with
+  **Polish again**.
+
+Versions are listed with date and who made them; each opens or downloads.
 
 ### The Proposals list
 
@@ -285,7 +295,9 @@ SeSTA → Axis Bank Foundation, part way through step 3. Values invented, shorte
             "checked_hash": "51ab…", "done": true, "rev": 2}
   },
   "suggestions": [{"id": "s1", "section": "A11", "text": "In 2021–24 SeSTA ran …", "source": "doc:57"}],
-  "versions": [{"n": 1, "document_id": 71, "at": "2026-10-09T11:20:00Z", "by": "7b1e…", "kind": "assembled"}]
+  "polished": {"at": "2026-10-09T12:05:00Z", "sections_hash": "c41e…",
+               "text": {"A2": "SeSTA will work in 60 villages across two aspirational districts of Assam …"}},
+  "versions": [{"n": 1, "document_id": 71, "at": "2026-10-09T11:20:00Z", "by": "7b1e…"}]
 }
 ```
 
@@ -301,8 +313,9 @@ SeSTA → Axis Bank Foundation, part way through step 3. Values invented, shorte
   Doc Vault rows; drafting also reads the organisation's other documents.
 - `sections` holds every drafted section by rubric code: its text, the sources it was drafted from,
   what is missing, its score, the hash of the text last checked, Done, and `rev` (see *Saving*).
-- `suggestions`, `versions`: as described above. A version's `kind` is `assembled` or `edited` (an
-  edited .docx uploaded back, below).
+- `polished`: the last polish, with the hash of the sections it was written from; null until the
+  first polish.
+- `suggestions`, `versions`: as described above. Every version is a saved polish.
 
 **`summary`**, written on every save from `work` in code (`proposals/readiness.py`, the same function
 the page uses), so the list never reads `work`:
@@ -317,21 +330,35 @@ a proposal.
 
 ### The document
 
-**Assemble** builds the .docx on the server from the saved `work`, never from what the browser holds:
-- a title page ("SeSTA: proposal to Axis Bank Foundation", date);
-- the sections in `template.order`, under the template's headings or the rubric's;
-- any `[Add: …]` left in the text highlighted, so a gap cannot go out unnoticed; Assemble says how
-  many remain;
-- a short **Sources** list at the end, from the sections' markers.
+The sections are the person's content; the document is written from them. Articulation is the point,
+not layout.
+
+**Polish.** One `Settings.model` call over the whole proposal: every section's text, the writing
+style, the template's order, headings and limits. It returns the proposal rewritten section by
+section, as `{code: text}`. The prompt holds it to:
+- the writing style, and the template's headings and order (the rubric's without a template);
+- joining the sections into one argument: no repeated facts, consistent figures and names;
+- the template's character and word limits, checked again in code afterwards;
+- **no new facts**: only what the sections say, with sources kept as short parentheticals
+  ("SeSTA household survey, March 2026");
+- every `[Add: …]` kept, so a gap is never papered over.
+
+The result is stored in `work.polished` with the hash of the sections it was written from. When the
+sections' hash no longer matches, the page shows the stale banner.
+
+**The .docx** is built on the server from `work.polished`, never from what the browser holds, and kept
+plain: the proposal's name as the title, the funder and date under it, then the sections under their
+headings. No cover page, contents page or house styling. Any `[Add: …]` still in the text is
+highlighted, so a gap cannot go out unnoticed, and Save says how many remain.
 
 It is written to the vault bucket at `<org_id>/proposals/<proposal_id>/v<N>.docx`, gets a `documents`
 row (`doc_type 'proposal_draft'`, `is_public false`, `is_ai_generated true`, `org_id`, `funder_id`,
 `uploaded_by` the caller), is appended to `work.versions`, and `draft_document_id` points at it.
-Assembling again makes version N+1; earlier versions stay.
+Saving again makes version N+1; earlier versions stay.
 
-**Finalising outside Sangam.** The person downloads the .docx and tweaks it in Word. **Upload edited
-version** stores it the same way with `kind: "edited"` and moves `draft_document_id` to it. Sangam does
-not read edits back into the sections; reassembling from Sangam starts again from the sections.
+**Finalising happens outside Sangam.** The person downloads the .docx and finishes it in Word. A
+Word-edited copy is not uploaded back: the versions are only those Sangam assembled, and the page says
+that changes made in Word are not in Sangam's sections.
 
 **New dependency:** `python-docx`, to write the .docx and to read uploaded .docx.
 
@@ -384,13 +411,14 @@ as the caller and sits behind `require_user`; a proposal the caller cannot see i
 | `POST /api/proposals/{id}/sections/{code}/draft` | Drafts one section and saves it. |
 | `POST /api/proposals/{id}/sections/{code}/check` | Checks one section and saves the score. |
 | `POST /api/proposals/{id}/suggestions` `{document_id}` | Reads a new document against the sections and saves the suggestions. |
-| `POST /api/proposals/{id}/versions` | Assembles and saves a version. With `{document_id}` of an uploaded .docx, records an edited version instead. |
+| `POST /api/proposals/{id}/polish` | Polishes the whole proposal and saves it in `work.polished`. |
+| `POST /api/proposals/{id}/versions` | Builds the .docx from `work.polished` and saves it as a version. |
 
 Uploads use the existing `POST /api/documents/uploads` and `POST /api/documents`.
 
 `backend/app/proposals/` is a new group, per the layout rule: `rubric.py`, `readiness.py`, `sources.py`
 (the source pack), `draft.py` (drafting, checks, the funder brief, template reading, suggestions), and
-`assemble.py` (the .docx). Model prompts live next to them as `.md` files.
+`polish.py` (the polish call) and `assemble.py` (the .docx). Model prompts live next to them as `.md` files.
 
 ## Access
 
@@ -421,7 +449,8 @@ lists its `sources`, and the assembled documents are marked `is_ai_generated`.
   - display codes for A, B, C and F, with and without F4 and T sections;
   - `summary` from a fixed `work`;
   - the PATCH path allowlist, the section `rev` 409, and fields on different sections not clashing;
-  - .docx assembly from a fixed `work`: order, headings, highlighted gaps, sources;
+  - .docx assembly from a fixed `work.polished`: order, headings, highlighted gaps;
+  - the stale-polish check when a section changes;
   - .docx and .xlsx text extraction;
   - routes through `client_for` with the repository and the model calls patched.
 - **Integration** (`integration` mark):
@@ -441,13 +470,30 @@ lists its `sources`, and the assembled documents are marked `is_ai_generated`.
 2. Upload extraction for .docx and .xlsx.
 3. The funder brief, template reading, the source pack and drafting.
 4. Checks and suggestions.
-5. Assembly and versions.
+5. Polish, the .docx and versions.
 6. The page, the sidebar item, the Funder Match buttons, and the design-system sync.
+
+## Decisions taken
+
+Confirmed on 9 Oct 2026 against prototype version 20:
+- **Several proposals per organisation and funder**, one per programme, named at start and renameable.
+  A card with several shows **Proposals (N)**, opening the list filtered to that funder.
+- **Stewards upload anywhere in the organisation's Doc Vault**, not only from a proposal.
+- **Staff can start and edit** any organisation's proposals.
+- **F2 Earlier phase** appears only with a past partner line with this funder, or when the template
+  asks about an earlier phase.
+- **No upload back** of a Word-edited .docx.
+- **Drafting and polishing on `Settings.model`**; checks, template reading and suggestions on `utility_model`.
+- **Assemble, then polish:** Assemble shows everything as entered; one Polish pass writes the proposal
+  in the style and template order without adding facts; only polished text is saved as a .docx.
+- **Polished text is read-only**: changes go into the sections, then polish again.
+- **Polish is allowed with gaps open**; they stay marked.
+- **A plain .docx**: no cover page, contents or house styling.
 
 ## Open after this spec
 
 - **v2:** remembering gate answers per organisation; editing the same section together.
 - **#126** must merge first: the Funder Match page, and `funder_matches` for the fit shown on the list.
 - **#114:** after it is fixed, whether Ask Sangam may read proposals.
-- **Cost:** drafting is about 20 model calls a proposal. Measure it on the first real proposals before
+- **Cost:** drafting is about 20 model calls a proposal, and each polish one large call. Measure it on the first real proposals before
   deciding whether drafting should be cheaper.
