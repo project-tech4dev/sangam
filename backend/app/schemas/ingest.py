@@ -1,4 +1,7 @@
 from datetime import datetime
+from typing import Any, Literal
+
+from pydantic import BaseModel
 
 from app.schemas.common import ReadModel
 
@@ -65,6 +68,97 @@ class QueueItemOut(ReadModel):
     created_at: datetime
 
 
+class QueueAnswerIn(BaseModel):
+    answer: Literal["same", "different"]
+    """same: the name is the candidate's, kept as its alias. different: rejected, nothing joined."""
+    candidate_id: int | None = None
+
+
+class QueueAnswerOut(ReadModel):
+    id: int
+    status: str
+
+
+class WorkbookOut(ReadModel):
+    """One .xlsx in a bucket, as the spreadsheets card lists it; `path` is what select_source_files takes."""
+
+    path: str
+    name: str
+    folder: str
+    folder_label: str
+    size: int | None
+    updated_at: str | None
+
+
+class ReviewFactOut(ReadModel):
+    label: str | None
+    value: str | float | int
+    money: bool
+
+
+class ReviewAnswerOut(ReadModel):
+    concept: str
+    topic: str
+    year: str | None
+    facts: list[ReviewFactOut]
+    tag: Literal["confirmed", "self_reported"]
+    quote: str
+    source_url: str
+    source_name: str
+
+
+class ReviewMissingOut(ReadModel):
+    concept: str
+    topic: str
+    tag: Literal["not_mentioned", "couldnt_read"]
+    detail: str
+
+
+class ReviewFieldOut(ReadModel):
+    label: str
+    old: Any = None
+    new: Any = None
+    money: bool
+
+
+class ReviewChoiceOut(ReadModel):
+    value: str
+    label: str
+
+
+class ReviewQuestionOut(ReadModel):
+    id: str
+    case: int | None
+    topic: str
+    about: str
+    fields: list[ReviewFieldOut]
+    stored_as_of: str | None = None
+    new_as_of: str | None = None
+    stored_name: str | None = None
+    new_name: str | None = None
+    choices: list[ReviewChoiceOut]
+
+
+class ReviewSaveOut(ReadModel):
+    concept: str
+    topic: str
+    added: int = 0
+    updated: int = 0
+
+
+class ReviewOut(ReadModel):
+    """One researched organisation as the review card shows it: no table or column names."""
+
+    slug: str
+    name: str
+    kind: str | None
+    existing: bool
+    answers: list[ReviewAnswerOut]
+    missing: list[ReviewMissingOut]
+    questions: list[ReviewQuestionOut]
+    saves: list[ReviewSaveOut]
+
+
 class ResearchOut(ReadModel):
     id: int
     entity_name: str
@@ -78,3 +172,50 @@ class ResearchOut(ReadModel):
     sources_read: list[str] = []
     not_found: list[str] = []
     researched_at: datetime
+    saved_at: datetime | None = None
+    resolved_org_id: int | None = None
+    resolved_funder_id: int | None = None
+
+
+class CoverageCellOut(ReadModel):
+    year: str | None = None
+    status: str
+    """found, or why not: not_attempted | not_stated | blocked | not_written."""
+    detail: str = ""
+
+
+class CoverageConceptOut(ReadModel):
+    concept: str
+    title: str
+    cells: list[CoverageCellOut]
+    fields_filled: int
+    fields_total: int
+    held: int = 0
+    extra_years: list[str] = []
+    added: int = 0
+    updated: int = 0
+    before: int | None = None
+    """Catalog rows for this concept before the save; None for an NGO not yet saved."""
+    after: int | None = None
+
+
+class CoverageOut(ReadModel):
+    slug: str
+    stage: str
+    """saved (from what the save recorded) | planned (a funder's dry run) | unsaved (an NGO, no dry run)."""
+    saved_at: datetime | None = None
+    entity: dict | None = None
+    reasons: list[str] = []
+    held: list[str] = []
+    questions: int = 0
+    facts_before: int | None = None
+    facts_after: int | None = None
+    name: str
+    kind: str
+    years: list[str]
+    write_checked: bool
+    cells: int
+    found: int
+    fields_filled: int
+    fields_total: int
+    concepts: list[CoverageConceptOut]

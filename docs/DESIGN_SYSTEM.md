@@ -52,7 +52,6 @@ and Tailwind. A component change means making both look and behave the same.
 | `components/layout/UserMenu` | `frontend/features/auth/sign-in-button.tsx` (`UserMenu`) |
 | `components/layout/SectionIndex` | `frontend/components/ui/SectionIndex.tsx` |
 | `components/agent/{QuestionRow, AnswerCard, TraceCard, CitationChip, ComposerNotice}` | `frontend/features/ask/components/` |
-| `components/agent/RunStatus` | `frontend/features/ingest/components/RunStatus.tsx` |
 | `components/agent/ScoreCard` | `frontend/features/registry/ScoreCard.tsx` |
 
 **The UI kit recreates screens.** `ui_kits/sangam-web/` is a click-through of the app built
@@ -64,7 +63,7 @@ from the components above, with sample data.
 | `Registry.jsx` | `features/registry/RegistryClient.tsx` |
 | `Profile.jsx` | `app/registry/[slug]/page.tsx`, `features/registry/ProfileTabs.tsx` |
 | `AskWorkspace.jsx` | `features/ask/preview/AskPreview.tsx`, `features/ask/components/*`, `features/ask/views/*` |
-| `Import.jsx`, `importData.js` | `features/ask/views/ImportView.tsx`, `features/ingest/*` |
+| `Import.jsx`, `importData.js` | `features/ask/views/ImportView.tsx`, `features/ingest/*` (the step cards are the `.import-*`, `.review-*`, `.done-*` classes, recreated inline) |
 | `index.html`, `import.html` | the routing and navbar behaviour in `app/` and `components/layout/` |
 
 ## How to sync

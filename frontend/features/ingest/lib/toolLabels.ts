@@ -1,7 +1,7 @@
 type ToolLabel = { label: string; detail: (args: any) => string };
 
 /** The host, which is what a reader wants to see — not the whole URL. */
-function host(url?: string): string {
+export function host(url?: string): string {
   if (!url) return "";
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -10,7 +10,7 @@ function host(url?: string): string {
   }
 }
 
-function fileLabel(name?: string): string {
+export function fileLabel(name?: string): string {
   return (name ?? "").replace(/\.pdf$/i, "").replace(/[-_]+/g, " ");
 }
 
@@ -35,33 +35,33 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Reading staff workbooks",
     detail: (a) => [a?.name, a?.sheet].filter(Boolean).join(" · "),
   },
-  list_storage_buckets: { label: "Listing storage buckets", detail: () => "" },
+  list_storage_buckets: { label: "Looking for your team's files", detail: () => "" },
   list_bucket_files: {
-    label: "Waiting for staff to choose a bucket · listing",
-    detail: (a) => [a?.bucket, a?.prefix].filter(Boolean).join("/"),
+    label: "Waiting for you: your team's spreadsheets",
+    detail: () => "",
   },
   read_workbook: {
-    label: "Reading workbook",
+    label: "Reading a spreadsheet",
     detail: (a) =>
       [Array.isArray(a?.documents) ? `document ${a.documents.join(", ")}` : "", a?.sheet]
         .filter(Boolean)
         .join(" · "),
   },
   select_source_files: {
-    label: "Waiting for staff to choose workbooks",
+    label: "Waiting for you to choose spreadsheets",
     detail: (a) => (Array.isArray(a?.paths) ? `${a.paths.length} proposed` : ""),
   },
   funder_dossier: {
-    label: "Checking what the catalog holds",
+    label: "Checking what Sangam already has on",
     detail: (a) => a?.name ?? "",
   },
   compare_with_catalog: {
-    label: "Comparing research with the catalog",
-    detail: (a) => a?.slug ?? "",
+    label: "Comparing what was found with what Sangam has",
+    detail: () => "",
   },
   coverage_report: {
-    label: "Coverage report",
-    detail: (a) => a?.slug ?? "",
+    label: "Checking what was found",
+    detail: () => "",
   },
   // Registry and import
   list_import_sources: {
@@ -87,7 +87,7 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
   },
   write_todos: { label: "Planning", detail: () => "" },
   research_goals: {
-    label: "Reading what the database expects",
+    label: "Working out what to look for on",
     detail: (a) => a?.name ?? "",
   },
   save_research: {
@@ -95,12 +95,12 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     detail: (a) => a?.findings?.entity_name ?? "",
   },
   publish_brief: {
-    label: "Publishing the research brief",
-    detail: (a) => a?.slug || "every researched entity",
+    label: "Publishing the research notes",
+    detail: () => "",
   },
   promote_research: {
-    label: "Writing research into the catalog",
-    detail: (a) => a?.slug || "everything not yet promoted",
+    label: "Saving to Sangam",
+    detail: () => "",
   },
   read_file: {
     label: "Reading a skill",

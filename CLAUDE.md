@@ -24,8 +24,8 @@ and `make seed` runs `migrate` too. Both are pinned to `ENV=local`: against a ma
 you run `make migrate ENV=staging` yourself, deliberately and after a backup.
 
 Then http://localhost:3000 for the app and http://localhost:8010/docs for the API. The Ask
-workspace and Import (`/ask?view=import`; `/import` redirects there) are behind Supabase
-sign-in; signed out, `/ask` is a public preview. `OPENAI_API_KEY` and `make graph-seed` are optional —
+workspace and Import (`/import`, with its own list of past imports; `/ask?view=import`
+redirects there) are behind Supabase sign-in; signed out, `/ask` is a public preview. `OPENAI_API_KEY` and `make graph-seed` are optional —
 the graph disables itself cleanly. One smoke check, `documents: 96+`, is expected to fail on a
 fresh clone: `make seed` does not create those documents.
 
@@ -279,7 +279,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. There are 35 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. There are 36 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
@@ -349,7 +349,7 @@ a test walks the package to prove every tool defined is also registered.
 and `select_source_files` (staff choose the files).** Both are in `INTERRUPT_ON` in
 `app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns into LangChain's
 `HumanInTheLoopMiddleware`; the Import screen answers with CopilotKit's `useInterrupt`
-(`BucketPicker`, `SourcePicker`) and resumes with `{decisions: [...]}`. Any bucket's `.xlsx` can be
+(`SpreadsheetsCard`, one card for both pauses) and resumes with `{decisions: [...]}`. Any bucket's `.xlsx` can be
 picked, in any folder or none. A picked file becomes a
 `documents` row, so no script is needed; `make staff-source` still writes the same row. The
 supervisor never reads rows: when a request is about everyone in a file, the `workbook-reader`

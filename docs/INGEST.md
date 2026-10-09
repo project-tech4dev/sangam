@@ -168,9 +168,11 @@ An isolated subagent returns its conclusion, not its reading. It hands back a th
 (`list_storage_buckets`), then the `.xlsx` files in one (`list_bucket_files`), and proposes a pick
 with `select_source_files(paths)`. Both `list_bucket_files` and `select_source_files` are in
 `INTERRUPT_ON` (`app/ingest/agent.py`), which deepagents turns into LangChain's
-`HumanInTheLoopMiddleware`: the run pauses twice, the Import screen shows `BucketPicker` then
-`SourcePicker` through CopilotKit's `useInterrupt`, and staff approve, edit (another bucket,
-other files) or reject. The resume is `{decisions: [...]}`, delivered as `Command(resume=…)`. On approval
+`HumanInTheLoopMiddleware`: the run pauses twice, and the Import screen answers both from one
+`SpreadsheetsCard` (CopilotKit's `useInterrupt`). At the first pause the card lists the bucket's
+workbooks itself (`GET /api/ingest/workbooks`), so staff tick files straight away; approving
+the listing remembers the ticks, and the second pause is answered with them, unasked. "No, only
+public websites" rejects the first pause, and nothing is read. The resume is `{decisions: [...]}`, delivered as `Command(resume=…)`. On approval
 the tool downloads each file, writes its `documents` row (`extractor_version
 'select_source_files/1'`) and returns the document ids the researchers' tasks carry. Any
 bucket's `.xlsx` is selectable, at any depth; a first folder named for a registry key also names

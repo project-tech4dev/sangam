@@ -15,7 +15,7 @@ from langchain_core.tools import tool
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import chat_user_id
 from app.db.pool import get_pool
-from app.ingest import coverage, manual_checks
+from app.ingest import coverage, manual_checks, review
 from app.ingest.expectations import (
     CONCEPTS,
     concepts_for,
@@ -23,8 +23,8 @@ from app.ingest.expectations import (
     recent_fiscal_years,
 )
 from app.ingest.matcher import resolve_funder, resolve_org
-from app.ingest.promote import promote
-from app.ingest.writer import Gate
+from app.ingest.promote import MERGEABLE, promote
+from app.ingest.writer import UNWRITTEN, Gate
 
 logger = logging.getLogger(__name__)
 
@@ -558,6 +558,95 @@ async def write_preview(slug: str) -> dict[str, Any]:
     return {"questions": plan.get("questions", []), "planned": planned, "coverage": head}
 
 
+async def _rows_now(conn: Any, kind: str | None, entity_id: int | None) -> dict[str, int] | None:
+    """Catalog rows per concept for one entity; None when there is no entity to count yet."""
+    if kind not in _BY_KIND or entity_id in (None, UNWRITTEN):
+        return None
+    return {c: n for c, (n, _) in (await _held_per_concept(conn, entity_id, kind)).items()}
+
+
+async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -> None:
+    """Keep what this save wrote on the research row. Afterwards a plan reads every row as `same`,
+    so this is the only record of what the profile held before."""
+    entity = report.get("entity")
+    after = await _rows_now(conn, entity["kind"], entity["id"]) if entity else None
+    saved = coverage.saved_record(row.get("saved"), report, after)
+    if saved is None:
+        return
+    await conn.execute(
+        "UPDATE entity_research SET saved = %s::jsonb, saved_at = now() WHERE id = %s",
+        (json.dumps(saved, default=str), row["id"]),
+    )
+
+
+async def coverage_view(slug: str) -> dict[str, Any] | None:
+    """Coverage per concept, with rows before and after: from the stored save, else a funder's dry run.
+    An NGO not yet saved has no before/after: its write cannot be dry-run."""
+    pool = get_pool()
+    rows = await _research_rows(pool, slug)
+    if not rows:
+        return None
+    row = rows[0]
+    kind = row.get("entity_kind")
+    saved = row.get("saved")
+    entity, reasons, held, questions = None, [], [], 0
+    changes: dict[str, dict[str, int]] = {}
+    before: dict[str, int] | None = None
+    after: dict[str, int] | None = None
+    report: dict[str, Any] | None = None
+    if saved:
+        stage = "saved"
+        entity, reasons, held = saved.get("entity"), saved.get("reasons", []), saved.get("held", [])
+        changes, before, after = saved.get("changes", {}), saved.get("rows_before"), saved.get("rows_after")
+        report = {"skipped": saved.get("skipped", {}), "held": held}
+    elif kind != "org":
+        stage = "planned"
+        async with pool.connection() as conn:
+            report = await promote(conn, row, gate=Gate(plan=True))
+            entity, reasons, held = report.get("entity"), report["reasons"], report["held"]
+            questions = len(report.get("questions", []))
+            # A dry run does not archive documents, so a plan's document count reads 0.
+            changes = coverage.changes_by_concept(report)
+            if entity:
+                before = await _rows_now(conn, kind, entity["id"]) or {c: 0 for c in concepts_for(kind)}
+                after = {c: n + changes.get(c, {}).get("added", 0) for c, n in before.items()}
+        if entity and entity.get("id") == UNWRITTEN:
+            entity = {**entity, "id": None}  # a funder the plan would add has no id to link to yet
+    else:
+        stage = "unsaved"
+    return coverage.view(row, stage=stage, report=report, entity=entity, reasons=reasons, held=held,
+                         questions=questions, changes=changes, before=before, after=after)
+
+
+async def review_view(slug: str) -> dict[str, Any] | None:
+    """The review card's body: answers with their proof, what is missing, the questions, what saving adds."""
+    pool = get_pool()
+    rows = await _research_rows(pool, slug)
+    if not rows:
+        return None
+    row = rows[0]
+    kind = row.get("entity_kind")
+    questions: list[dict[str, Any]] = []
+    saves: dict[str, dict[str, int]] = {}
+    async with pool.connection() as conn:
+        if kind == "funder":
+            plan = await promote(conn, row, gate=Gate(plan=True))
+            questions, saves = plan.get("questions", []), coverage.changes_by_concept(plan)
+            existing = bool(plan.get("entity") and plan["entity"].get("id") not in (None, UNWRITTEN))
+        else:
+            name = row.get("canonical_name") or row.get("entity_name") or ""
+            # The same match saving would make: on an existing NGO a save only fills blanks.
+            existing = bool(row.get("resolved_org_id")) or (await resolve_org(conn, name)).method in MERGEABLE
+    return {
+        "slug": row["slug"], "name": row.get("canonical_name") or row.get("entity_name") or row["slug"],
+        "kind": kind, "existing": existing,
+        "answers": review.answers(row), "missing": review.missing(row),
+        "questions": [review.question(q) for q in questions],
+        "saves": [{"concept": c, "topic": review.topic(c), **n} for c, n in saves.items()
+                  if n.get("added") or n.get("updated")],
+    }
+
+
 @tool
 async def promote_research(slug: str = "", decisions: dict[str, str] | None = None) -> str:
     """Move saved research into the catalog, where a writer exists for it.
@@ -598,7 +687,9 @@ async def promote_research(slug: str = "", decisions: dict[str, str] | None = No
         for row in rows:
             # SaveQuestions asked the person before this ran and put their answers here.
             async with pool.connection() as conn, conn.transaction():
-                reports.append(await promote(conn, row, gate=Gate(decisions or {})))
+                report = await promote(conn, row, gate=Gate(decisions or {}))
+                await _record_save(conn, row, report)
+                reports.append(report)
 
         lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
         for r in reports:

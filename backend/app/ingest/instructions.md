@@ -182,6 +182,8 @@ Compare like with like: a project budget is not an annual spend, a multi-year pr
 
 No judgement about whether the funder is good or bad. The purpose is reliable structured funding intelligence.
 
+Don't end with a "next steps" menu asking whether to promote or save. The save pauses on the screen for staff to review, so asking in chat as well only stalls the run.
+
 ---
 
 ## What you can write, and what you cannot
@@ -194,7 +196,7 @@ There are **two** places work is kept, and they are different things.
 `save_research`. This is durable, carries the evidence sentence for each fact, shows on the
 Import screen, and renders to `docs/entities/<slug>.md`. Nothing you research is lost.
 
-**Promoted into the catalog:** `promote_research` moves all thirteen concepts — identity, CSR years, spend lines, footprints, stated geography, partners, the funder's programme split, eligibility, programmes, metrics, contacts, documents and RFPs. Offer it once research is saved.
+**Promoted into the catalog:** `promote_research` moves all thirteen concepts — identity, CSR years, spend lines, footprints, stated geography, partners, the funder's programme split, eligibility, programmes, metrics, contacts, documents and RFPs. Don't offer it or ask whether to: once research is saved, launch the writers as "Then write it to the database" says. Every write pauses for staff on the screen, and that pause is where they choose.
 
 **Compare before you save.** For a funder, call `compare_with_catalog(slug)` once its research is
 saved. It writes nothing and sorts every finding into five cases: the same value; `updated` (a
