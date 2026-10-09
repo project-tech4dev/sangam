@@ -51,7 +51,6 @@ export function ImportWorkspace({
           <button type="button" className="import-link import-advanced" onClick={() => setAdvanced(true)}>
             Advanced: type your own request
           </button>
-          {start}
         </>
       )}
 
@@ -127,6 +126,7 @@ export function ImportWorkspace({
         )}
       </form>
       )}
+      {atStart && start}
     </div>
   );
 }

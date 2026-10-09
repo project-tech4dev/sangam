@@ -18,14 +18,16 @@ export function WaitingForYou({ items, sources }: { items: QueueItem[]; sources:
   async function answer(q: QueueItem, choice: "same" | "different" | "unsure") {
     setError(null);
     if (choice !== "unsure") {
-      const res = await fetch(`${API}/api/ingest/queue/${q.id}`, {
-        method: "POST",
-        headers: { ...(await authHeaders()), "Content-Type": "application/json" },
-        body: JSON.stringify({ answer: choice, candidate_id: q.candidates[0].id }),
-      });
-      if (!res.ok) {
-        setError(`Couldn't save your answer about “${q.raw_name}”. Try again.`);
-        return;
+      const failed = `Couldn't save your answer about “${q.raw_name}”. Try again.`;
+      try {
+        const res = await fetch(`${API}/api/ingest/queue/${q.id}`, {
+          method: "POST",
+          headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+          body: JSON.stringify({ answer: choice, candidate_id: q.candidates[0].id }),
+        });
+        if (!res.ok) return setError(failed);
+      } catch {
+        return setError(failed);
       }
     }
     setGone(new Set(gone).add(q.id));

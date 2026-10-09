@@ -22,14 +22,17 @@ export function StartStep({ onStart, disabled }: { onStart: (prompt: string) => 
   const [count, setCount] = useState(5);
   const isNews = task === "news";
 
+  const has = (name: string) => names.some((n) => n.toLowerCase() === name.toLowerCase());
+
   function addName() {
     const name = draft.trim();
-    if (name && !names.some((n) => n.toLowerCase() === name.toLowerCase())) setNames([...names, name]);
+    if (name && !has(name)) setNames([...names, name]);
     setDraft("");
   }
 
   // A name still in the box counts: people type one and press Start.
-  const pending = draft.trim() && !names.includes(draft.trim()) ? [...names, draft.trim()] : names;
+  const typed = draft.trim();
+  const pending = typed && !has(typed) ? [...names, typed] : names;
   const label = isNews ? "Get the news →" : task === "ngo" ? `Check ${plural(pending.length, "NGO")} →` : `Research ${plural(pending.length, "funder")} →`;
 
   return (

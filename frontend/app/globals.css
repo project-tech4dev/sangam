@@ -720,7 +720,7 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .import-shelf-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--color-divider); flex-wrap: wrap; }
 .import-shelf-row:last-child { border-bottom: 0; }
 .import-shelf-name { display: flex; flex-direction: column; flex: 1; min-width: 180px; font-size: var(--fs-sm); }
-.import-disclosure > summary { list-style: none; }
+.import-disclosure > summary { list-style: none; display: block; }
 .import-disclosure > summary::-webkit-details-marker { display: none; }
 .import-disclosure > summary::after { content: " →"; }
 .import-disclosure[open] > summary::after { content: " ↓"; }
