@@ -5,7 +5,7 @@ import { EntityMark } from "@/components/ui/primitives";
 import { authHeaders } from "@/lib/api/auth-headers";
 import { formatInr } from "@/lib/format";
 import { KIND_LABEL } from "../lib/words";
-import type { ResearchReview, ReviewAnswer, ReviewFact, ReviewQuestion } from "../lib/types";
+import type { ResearchReview, ReviewAnswer, ReviewFact, ReviewMissing, ReviewQuestion } from "../lib/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 const SHOWN = 10;
@@ -34,12 +34,17 @@ export type SaveDecision =
 
 const CHOICE_WORDS: Record<string, string> = {
   keep: "Keep what Sangam has",
-  update: "Use the new one",
-  new: "Add it separately",
+  update: "Use the new answer",
+  new: "Keep both",
   skip: "Skip",
 };
 // Case 4 asks whether two names are one organisation, so its choices answer that.
-const SAME_OR_NOT: Record<string, string> = { update: "Same — update it", new: "Different — add it", skip: "Skip" };
+const SAME_OR_NOT: Record<string, string> = { update: "Yes, the same", new: "No, they're different", skip: "Not sure — leave it" };
+const NOTE = {
+  self_reported: "This is what they say about themselves. There's no certificate, number or document to back it up.",
+  not_mentioned: "Sangam didn't find this in anything it read.",
+  couldnt_read: "A page that might say was a scan or blocked, so Sangam couldn't read it. Worth opening it yourself.",
+};
 
 const phrase = (s: string) => {
   const t = s.replace(/_/g, " ").trim();
@@ -93,27 +98,64 @@ function Answer({ answer }: { answer: ReviewAnswer }) {
   const [open, setOpen] = useState(false);
   const confirmed = answer.tag === "confirmed";
   return (
-    <li className="review-answer">
-      <div className="review-answer-head">
-        <strong>{answer.topic}</strong>
-        {answer.year && <span className="review-year">{answer.year}</span>}
-        <span className={`tag ${confirmed ? "tag-accent-2" : "tag-accent"}`}>{confirmed ? "Confirmed" : "Self-reported"}</span>
-      </div>
-      {answer.facts.length > 0 && <p className="review-facts">{answer.facts.map(fact).join(" · ")}</p>}
-      {(answer.quote || answer.source_url) && (
-        <button type="button" className="review-proof-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? "Hide proof" : "See proof"}
+    <div className="review-field">
+      <div className="review-field-head">
+        <div className="review-field-text">
+          <span className="review-field-q">
+            {answer.topic}
+            {answer.year && ` · ${answer.year}`}
+          </span>
+          <span className="review-field-a">{answer.facts.length > 0 ? answer.facts.map(fact).join(" · ") : "Found"}</span>
+        </div>
+        <button
+          type="button"
+          className={`tag review-field-tag ${confirmed ? "tag-accent-2" : "tag-accent"}`}
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          {confirmed ? "Confirmed" : "Self-reported"} ›
         </button>
-      )}
+      </div>
       {open && (
         <div className="review-proof">
-          {answer.quote && <blockquote>“{answer.quote}”</blockquote>}
+          {answer.quote && <p>“{answer.quote}”</p>}
+          {!confirmed && <p className="review-proof-note">{NOTE.self_reported}</p>}
           <Source answer={answer} />
         </div>
       )}
-    </li>
+    </div>
   );
 }
+
+function Missing({ m }: { m: ReviewMissing }) {
+  const [open, setOpen] = useState(false);
+  const unread = m.tag === "couldnt_read";
+  return (
+    <div className="review-field">
+      <div className="review-field-head">
+        <div className="review-field-text">
+          <span className="review-field-q">{m.topic}</span>
+          <span className="review-field-a">{unread ? "Couldn't read" : "Not mentioned"}</span>
+        </div>
+        <button
+          type="button"
+          className={`tag review-field-tag ${unread ? "tag-outline" : "tag-neutral"}`}
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          {unread ? "Couldn't read" : "Not mentioned"} ›
+        </button>
+      </div>
+      {open && (
+        <div className="review-proof">
+          <p className="review-proof-note">{NOTE[m.tag]}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const quoted = (value: string) => `“${value}”`;
 
 function Question({
   q,
@@ -126,28 +168,24 @@ function Question({
   onChoose: (value: string) => void;
   disabled: boolean;
 }) {
-  const dated = (as_of: string | null) => (as_of ? ` (${as_of})` : " (no date)");
+  const dated = (as_of: string | null) => (as_of ? `from ${as_of}` : "no date");
   return (
-    <li className="review-question">
-      <span className="review-question-title">
-        {q.topic}
-        {q.about && ` · ${q.about}`}
-      </span>
+    <div className="review-question">
+      <strong className="review-question-title">
+        {q.case === 4 ? "Is this the same organisation?" : `${q.topic}${q.about ? ` · ${q.about}` : ""}`}
+      </strong>
       {q.case === 4 ? (
         <span className="review-question-text">
-          The research found “{q.new_name}”. Sangam already has “{q.stored_name}”. Are they the same?
+          The research found {quoted(q.new_name ?? "")}. Sangam has {quoted(q.stored_name ?? "")}. Saving them as one would mix up
+          their records, and that can&apos;t be undone.
         </span>
       ) : (
-        <>
-          {q.fields.map((f) => (
-            <span key={f.label} className="review-question-text">
-              {f.label}: Sangam has {shown(f.old, f.money)}
-              <span className="review-note">{dated(q.stored_as_of)}</span>, the research says {shown(f.new, f.money)}
-              <span className="review-note">{dated(q.new_as_of)}</span>
-            </span>
-          ))}
-          <span className="review-note">The new source is older or has no date, so Sangam won&apos;t replace this without you.</span>
-        </>
+        q.fields.map((f) => (
+          <span key={f.label} className="review-question-text">
+            {f.label}: Sangam already says {quoted(shown(f.old, f.money))} ({dated(q.stored_as_of)}). The new research says{" "}
+            {quoted(shown(f.new, f.money))} ({dated(q.new_as_of)}). Which should the profile show?
+          </span>
+        ))
       )}
       <div className="review-choices">
         {q.choices.map((c) => (
@@ -160,11 +198,11 @@ function Question({
             onClick={() => onChoose(c.value)}
             disabled={disabled}
           >
-            {(q.case === 4 && SAME_OR_NOT[c.value]) || c.label}
+            {(q.case === 4 ? SAME_OR_NOT[c.value] : CHOICE_WORDS[c.value]) || c.label}
           </button>
         ))}
       </div>
-    </li>
+    </div>
   );
 }
 
@@ -181,7 +219,9 @@ export function ReviewCard({
 }) {
   const [review, setReview] = useState<ResearchReview | null>(null);
   const [failed, setFailed] = useState(false);
+  const [open, setOpen] = useState(false);
   const [all, setAll] = useState(false);
+  const [save, setSave] = useState(true);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [sent, setSent] = useState(false);
 
@@ -209,91 +249,71 @@ export function ReviewCard({
   const worded = new Map((review?.questions ?? []).map((q) => [q.id, q]));
   const asked = questions.map((q) => worded.get(q.id) ?? fallback(q));
   const n = asked.length;
-  const answered = asked.filter((q) => answers[q.id]).length;
+  const left = save ? n - asked.filter((q) => answers[q.id]).length : 0;
   const loading = Boolean(slug) && review === null && !failed;
-  const name = review?.name || slug || "everything researched in this run";
+  const name = slug ? review?.name || slug : "Everything researched in this run";
+  const found = review?.answers ?? [];
+  const confirmed = found.filter((a) => a.tag === "confirmed").length;
+  const total = found.length + (review?.missing.length ?? 0);
+  const hasDetail = found.length + (review?.missing.length ?? 0) > 0;
 
   function decide(decision: SaveDecision) {
     setSent(true);
     onDecide(decision);
   }
 
+  function finish() {
+    if (!save) return decide({ type: "reject", message: "Staff chose not to save this research." });
+    decide({ type: "edit", edited_action: { name: "promote_research", args: { slug, decisions: answers } } });
+  }
+
   return (
-    <section aria-label="Review before saving" className="card review-card">
-      <div className="review-head">
-        <EntityMark name={name} size={40} />
-        <div className="review-head-text">
-          <span className="card-kicker">Ready for your review</span>
-          <strong className="review-name">{slug ? name : "Save everything researched in this run?"}</strong>
-          {review && (
-            <span className="review-sub">
-              {[review.kind ? KIND_LABEL[review.kind] : null, review.existing ? "Already in Sangam" : "New to Sangam"]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
-          )}
-        </div>
+    <section aria-label="Review before saving" className="review">
+      <div className="import-head">
+        <h1 className="import-h1">Here&apos;s what Sangam found</h1>
+        <p className="import-sub">
+          It&apos;s ticked to save — untick it if you don&apos;t want it{n > 0 ? ", and answer the questions" : ""}.
+        </p>
       </div>
 
-      {review?.existing && review.kind !== "funder" && (
-        <p className="review-note">Saving only fills in answers that are empty.</p>
-      )}
-      {loading && <span className="muted">Getting the answers ready…</span>}
-      {failed && <span className="review-note">Sangam couldn&apos;t load the answers. You can still save or not.</span>}
-
-      {review && review.answers.length > 0 && (
-        <div className="review-section">
-          <span className="review-label">
-            Sangam found {review.answers.length} answer{review.answers.length === 1 ? "" : "s"}
-          </span>
-          <ul className="review-answers">
-            {(all ? review.answers : review.answers.slice(0, SHOWN)).map((a, i) => (
-              <Answer key={`${a.concept}-${i}`} answer={a} />
-            ))}
-          </ul>
-          {review.answers.length > SHOWN && (
-            <button type="button" className="review-proof-toggle" onClick={() => setAll(!all)}>
-              {all ? "Show fewer" : `Show all ${review.answers.length}`}
-            </button>
-          )}
-        </div>
-      )}
-
-      {review && review.missing.length > 0 && (
-        <div className="review-section">
-          <span className="review-label">Not found</span>
-          <ul className="review-missing">
-            {review.missing.map((m) => (
-              <li key={m.concept}>
-                <span>{m.topic}</span>
-                <span className={`tag ${m.tag === "couldnt_read" ? "tag-neutral" : "tag-outline"}`}>
-                  {m.tag === "couldnt_read" ? "Couldn't read" : "Not mentioned"}
+      <div className="review-table">
+        <div className="review-row">
+          <div className="review-row-head">
+            <input
+              type="checkbox"
+              className="review-check"
+              checked={save}
+              onChange={() => setSave(!save)}
+              disabled={sent}
+              aria-label={`Save ${name}`}
+            />
+            <EntityMark name={name} size={32} />
+            <div className="review-row-name">
+              <strong>{name}</strong>
+              {review && (
+                <span className="review-row-sub">
+                  {[review.kind ? KIND_LABEL[review.kind] : null, review.existing ? "Already in Sangam" : "New to Sangam"]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+              )}
+              {loading && <span className="review-row-sub">Getting the answers ready…</span>}
+              {failed && <span className="review-row-sub">Sangam couldn&apos;t load the answers. You can still save or not.</span>}
+            </div>
+            {total > 0 && (
+              <span className="review-row-count">
+                {confirmed} of {total} confirmed
+              </span>
+            )}
+            {hasDetail && (
+              <button type="button" className="review-row-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+                {open ? "Hide answers" : "See answers"}
+              </button>
+            )}
+          </div>
 
-      {review && review.saves.length > 0 && (
-        <div className="review-section">
-          <span className="review-label">What saving adds</span>
-          <ul className="review-saves">
-            {review.saves.map((s) => (
-              <li key={s.concept}>
-                {s.topic}:{" "}
-                {[s.added && `${s.added} new`, s.updated && `${s.updated} updated`].filter(Boolean).join(", ") || "nothing new"}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {n > 0 && (
-        <div className="review-section">
-          <span className="review-label">Before saving, {n === 1 ? "one question" : `${n} questions`}</span>
-          <ul className="review-questions">
-            {asked.map((q) => (
+          {save &&
+            asked.map((q) => (
               <Question
                 key={q.id}
                 q={q}
@@ -302,30 +322,38 @@ export function ReviewCard({
                 disabled={sent}
               />
             ))}
-          </ul>
+
+          {open && review && (
+            <div className="review-row-detail">
+              {(all ? found : found.slice(0, SHOWN)).map((a, i) => (
+                <Answer key={`${a.concept}-${i}`} answer={a} />
+              ))}
+              {found.length > SHOWN && (
+                <button type="button" className="review-more" onClick={() => setAll(!all)}>
+                  {all ? "Show fewer" : `Show all ${found.length}`}
+                </button>
+              )}
+              {review.missing.map((m) => (
+                <Missing key={m.concept} m={m} />
+              ))}
+              {review.existing && review.kind !== "funder" && (
+                <span className="review-row-note">
+                  Sangam already has a profile for {review.name}. Saving only fills in answers that are empty there — nothing already
+                  on the profile is changed.
+                </span>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <div className="review-actions">
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() =>
-            decide({ type: "edit", edited_action: { name: "promote_research", args: { slug, decisions: answers } } })
-          }
-          disabled={sent || answered < n}
-        >
-          Save to Sangam
+        <button type="button" className="btn btn-primary" onClick={finish} disabled={sent || left > 0}>
+          {save ? (slug ? "Save 1 organisation" : "Save everything") : "Continue without saving"}
         </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => decide({ type: "reject", message: "Staff chose not to save this research." })}
-          disabled={sent}
-        >
-          Don&apos;t save
-        </button>
-        <span className="review-note">Nothing is saved until you choose.</span>
+        <span className="review-hint">
+          {left > 0 ? `Answer ${left === 1 ? "the question" : `${left} questions`} above first.` : "Nothing is saved until you choose."}
+        </span>
       </div>
     </section>
   );

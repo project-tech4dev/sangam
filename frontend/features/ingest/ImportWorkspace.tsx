@@ -31,6 +31,8 @@ export function ImportWorkspace({
   const [reviewing, setReviewing] = useState(false);
   // When the first request went, so Done shows only names this run queued.
   const [since, setSince] = useState<number | null>(null);
+  // The first request came from the task cards, so it is Sangam's wording, not something to show back.
+  const [guided, setGuided] = useState(false);
   // Stable, because PauseSignal re-runs its effect whenever this changes.
   const onReview = useCallback((open: boolean) => {
     setPaused(open);
@@ -58,7 +60,13 @@ export function ImportWorkspace({
       <StepBar current={atStart ? 0 : reviewing ? 2 : !isRunning && !paused ? 3 : 1} />
       {atStart && !advanced && (
         <>
-          <StartStep onStart={(prompt) => void submit(prompt)} disabled={!isReady} />
+          <StartStep
+            onStart={(prompt) => {
+              setGuided(true);
+              void submit(prompt);
+            }}
+            disabled={!isReady}
+          />
           <button type="button" className="import-link import-advanced" onClick={() => setAdvanced(true)}>
             Advanced: type your own request
           </button>
@@ -66,30 +74,35 @@ export function ImportWorkspace({
       )}
 
       <div className="import-turns">
-        {turns.map((turn, i) => (
-          <article key={turn.id} className="import-turn">
-            <p className="import-question">{turn.question}</p>
+        {turns.map((turn, i) => {
+          const waiting = paused && i === turns.length - 1;
+          const board = <WorkingBoard steps={turn.steps} running={turn.streaming} paused={waiting} laneOwners={laneOwners} />;
+          const slugs = slugsOf(turn.steps);
+          return (
+            <article key={turn.id} className="import-turn">
+              {!(guided && i === 0) && <p className="import-question">{turn.question}</p>}
 
-            <WorkingBoard steps={turn.steps} running={turn.streaming} paused={paused && i === turns.length - 1} laneOwners={laneOwners} />
+              {!turn.streaming && !waiting && slugs.length > 0 ? (
+                <DoneReport slugs={slugs} since={since} onStartOver={startOver} fallback={board} />
+              ) : waiting && reviewing ? null : (
+                board
+              )}
 
-            {!turn.streaming && !(paused && i === turns.length - 1) && slugsOf(turn.steps).length > 0 && (
-              <DoneReport slugs={slugsOf(turn.steps)} since={since} onStartOver={startOver} />
-            )}
+              {/* Refusals and failures only. The findings belong in the answer and
+                  the stages belong above; a line per tool call buried both. */}
+              {failuresOf(turn.steps).map((f) => (
+                <div key={f.id} className="import-failure">
+                  <span className="import-failure-label">{f.label}</span>
+                  <span className="muted">{f.detail}</span>
+                  <span className="import-failure-note">{f.note}</span>
+                  {f.count > 1 && <span className="review-note">×{f.count}</span>}
+                </div>
+              ))}
 
-            {/* Refusals and failures only. The findings belong in the answer and
-                the stages belong above; a line per tool call buried both. */}
-            {failuresOf(turn.steps).map((f) => (
-              <div key={f.id} className="import-failure">
-                <span className="import-failure-label">{f.label}</span>
-                <span className="muted">{f.detail}</span>
-                <span className="import-failure-note">{f.note}</span>
-                {f.count > 1 && <span className="review-note">×{f.count}</span>}
-              </div>
-            ))}
-
-            {turn.answer && <div className="import-answer">{turn.answer}</div>}
-          </article>
-        ))}
+              {turn.answer && <div className="import-answer">{turn.answer}</div>}
+            </article>
+          );
+        })}
       </div>
 
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}

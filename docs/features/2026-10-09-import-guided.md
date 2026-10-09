@@ -283,3 +283,34 @@ A whole-branch review found these, and they were left open on purpose:
   no entry for the lane.
 - **Queued names on Done come from the queue,** filtered by when the run started.
   Research runs do not queue names today, so the list is usually empty.
+
+## Matching the Import Wizard template
+
+The reference is `templates/import-wizard/ImportWizard.dc.html` in the design project,
+with the `board` working view. The UI kit's `Import.jsx` copied the app, so it is not the
+reference. It needs a resync after this pass.
+
+- **Working:** a title ("Sangam is researching N organisations", then "Research
+  finished"), the totals line and a 20-block overall bar. Each row has 20 blocks, or a
+  solid sage bar when ready. The status column reads "Paused" and the now column reads
+  "Waiting for your answer" while a question is open. The live status line shows only when
+  there are no rows (a news import) or no step could be tied to a row. The prompt the
+  task cards wrote is no longer echoed.
+- **Review:** the record row from the template. It has a save tick, the kind, "N of M
+  confirmed" and "See answers". Each answer's tag opens its proof. Questions sit in an
+  inset card under the row. The button reads "Save 1 organisation", or "Continue without
+  saving" when unticked. The Working board is hidden while Review is open.
+  - **Not done:** the template reviews every organisation at once and ends with "Save N
+    organisations". The app still pauses once per catalog-writer. A batch review should
+    wait until a live run shows how several writers' pauses arrive through
+    CopilotKit: as one event, or one after another.
+  - **Also not done:** the verdict line ("Can we approach them?"). FLOW.md lists it as
+    needing a backend field.
+- **Done:** "Saved N organisations" and the average profile completeness before and after.
+  A topic counts towards completeness when it has any row.
+  - One row per saved organisation: a 20-block bar, "62% → 77%", "+N facts" and "Show ▾".
+    Show opens per-topic blocks with "+N added" or the empty reason, plus "Open profile →".
+  - Unsaved organisations are one line at the foot.
+  - The matrix, squares and filter are gone, because the template uses rows even for 6
+    or more organisations.
+  - "Research notes" still points nowhere, so the line names Researched recently instead.

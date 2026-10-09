@@ -3,7 +3,7 @@ import { fileLabel, host } from "./toolLabels";
 import { pageOutcome, type PageOutcome } from "./words";
 
 /** One organisation's progress, as the Working step shows it; `working` until its researcher reports. */
-export type RowState = "working" | "stopped" | "ready" | "notFound" | "wrong";
+export type RowState = "working" | "paused" | "stopped" | "ready" | "notFound" | "wrong";
 
 /** `site` is the host, whichever of title or where shows it. */
 export type PageLine = { id: string; title: string; where: string; site: string; state: PageOutcome; text: string };
@@ -89,7 +89,12 @@ function pathOf(url?: string): string {
 
 const isResearcher = (s: TraceStep) => s.tool === "task" && !HELPERS.includes(a(s).subagent_type);
 
-export function boardOf(steps: TraceStep[], running: boolean, laneOwners: Record<string, string> = {}): Board {
+export function boardOf(
+  steps: TraceStep[],
+  running: boolean,
+  laneOwners: Record<string, string> = {},
+  paused = false,
+): Board {
   // One row per organisation, in the order they started; a re-run of the same name updates its row.
   const tasks = new Map<string, TraceStep>();
   for (const s of steps.filter(isResearcher)) tasks.set(key(subjectOf(s.args)), s);
@@ -133,14 +138,14 @@ export function boardOf(steps: TraceStep[], running: boolean, laneOwners: Record
     const pages = own.filter((s) => READING.includes(s.tool)).map(pageOf).filter((p): p is PageLine => p !== null);
 
     let state: RowState = "ready";
-    if (task.result === null) state = running ? "working" : "stopped";
+    if (task.result === null) state = running ? "working" : paused ? "paused" : "stopped";
     else if (summary?.status === "not_found") state = "notFound";
     else if (summary?.status === "wrong_entity") state = "wrong";
 
     const reading = [...pages].reverse().find((p) => p.state === "opening");
     const done = pages.filter((p) => p.state !== "opening").length;
     const pct =
-      state !== "working" && state !== "stopped"
+      state !== "working" && state !== "paused" && state !== "stopped"
         ? 100
         : saved.length > 0
           ? 90
@@ -150,6 +155,8 @@ export function boardOf(steps: TraceStep[], running: boolean, laneOwners: Record
     const now =
       state === "stopped"
         ? "Stopped before it finished"
+        : state === "paused"
+          ? "Waiting for your answer"
         : state === "notFound"
           ? "Couldn't find it"
           : state === "wrong"
@@ -166,7 +173,7 @@ export function boardOf(steps: TraceStep[], running: boolean, laneOwners: Record
     return { id: task.id, name: subjectOf(task.args), state, found, total, pct, now, pages };
   });
 
-  const working = rows.some((r) => r.state === "working");
+  const working = rows.some((r) => r.state === "working" || r.state === "paused");
   for (const r of rows) {
     if (r.state === "ready" && working) r.now = "Done — waiting for the others before you can review";
   }
@@ -206,7 +213,7 @@ export function boardOf(steps: TraceStep[], running: boolean, laneOwners: Record
 
   return {
     rows,
-    ready: rows.filter((r) => r.state !== "working" && r.state !== "stopped").length,
+    ready: rows.filter((r) => r.state !== "working" && r.state !== "paused" && r.state !== "stopped").length,
     pagesRead,
     answers: rows.reduce((n, r) => n + (r.found ?? 0), 0),
     pct: rows.length ? Math.round(rows.reduce((n, r) => n + r.pct, 0) / rows.length) : 0,

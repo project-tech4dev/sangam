@@ -15,7 +15,10 @@ function doing(steps: TraceStep[]): string {
   return [label, detail(current.args)].filter(Boolean).join(" ");
 }
 
+const SEGMENTS = 20;
+
 function status(r: BoardRow): string {
+  if (r.state === "paused") return "Paused";
   if (r.state === "stopped") return "Stopped";
   if (r.state === "ready") return "✓ Ready";
   if (r.state === "notFound") return "Not found";
@@ -24,9 +27,22 @@ function status(r: BoardRow): string {
   return r.total ? `${r.found} of ${r.total} found` : `${r.found} found`;
 }
 
+/** Progress as 20 blocks, at least one lit once started. */
+function Segments({ pct, className }: { pct: number; className: string }) {
+  const on = Math.max(1, Math.round(pct / (100 / SEGMENTS)));
+  return (
+    <span className={className} aria-hidden>
+      {Array.from({ length: SEGMENTS }, (_, i) => (
+        <span key={i} className="import-block" data-on={i < on} />
+      ))}
+    </span>
+  );
+}
+
 function Row({ row }: { row: BoardRow }) {
   const [open, setOpen] = useState(false);
   const pages = row.pages.length;
+  const finished = row.state === "ready";
   return (
     <li className="import-board-item" data-state={row.state}>
       <button
@@ -40,9 +56,7 @@ function Row({ row }: { row: BoardRow }) {
           <EntityMark name={row.name} size={26} />
           <strong>{row.name}</strong>
         </span>
-        <span className="import-bar import-bar-mini" aria-hidden>
-          <span className="import-bar-fill" style={{ width: `${row.pct}%` }} />
-        </span>
+        {finished ? <span className="import-bar-done" aria-hidden /> : <Segments pct={row.pct} className="import-segs import-segs-mini" />}
         <span className="import-board-now">{row.now}</span>
         <span className="import-board-status">{status(row)}</span>
       </button>
@@ -67,7 +81,9 @@ function Row({ row }: { row: BoardRow }) {
   );
 }
 
-/** The Working step: one line of totals, a row per organisation, and the last few things that happened. */
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** The Working step: a title, one line of totals, a row per organisation, and the last few things that happened. */
 export function WorkingBoard({
   steps,
   running,
@@ -79,13 +95,30 @@ export function WorkingBoard({
   paused: boolean;
   laneOwners: Record<string, string>;
 }) {
-  const board = boardOf(steps, running, laneOwners);
+  const board = boardOf(steps, running, laneOwners, paused);
   if (steps.length === 0 && !running) return null;
   const rows = board.rows;
-  const line = !running ? (paused ? "Paused — waiting for you" : "Finished") : rows.length > 0 && !board.attributed ? (board.now ?? doing(steps)) : doing(steps);
+  const finished = rows.length > 0 && board.ready === rows.length;
+  const title = finished
+    ? "Research finished"
+    : rows.length > 0
+      ? `Sangam is researching ${plural(rows.length, "organisation")}`
+      : running
+        ? "Sangam is working"
+        : "Sangam stopped";
+  const sub = finished
+    ? "Nothing is saved yet. Look through what was found, then choose what to keep."
+    : "This usually takes a few minutes for each one. You can leave this page open and come back.";
+  // Without rows (a news import), or rows no step could be tied to, this line is the only sign of what is happening.
+  const showLine = rows.length === 0 || (running && !board.attributed);
+  const line = !running ? (paused ? "Paused — waiting for you" : "Finished") : rows.length > 0 ? (board.now ?? doing(steps)) : doing(steps);
 
   return (
     <section className="import-working" aria-label="Progress">
+      <div className="import-head">
+        <h1 className="import-h1">{title}</h1>
+        <p className="import-sub">{sub}</p>
+      </div>
       <div className="import-board">
         <div className="import-board-head">
           <div className="import-board-stats">
@@ -107,14 +140,16 @@ export function WorkingBoard({
             )}
           </div>
           {rows.length > 0 && (
-            <div className="import-bar" role="progressbar" aria-label="Overall progress" aria-valuenow={board.pct} aria-valuemin={0} aria-valuemax={100}>
-              <span className="import-bar-fill" style={{ width: `${board.pct}%` }} />
+            <div role="progressbar" aria-label="Overall progress" aria-valuenow={board.pct} aria-valuemin={0} aria-valuemax={100}>
+              <Segments pct={board.pct} className="import-segs" />
             </div>
           )}
-          <p className="import-board-line" role="status" aria-live="polite">
-            <span className={running ? "import-live sangam-pulse" : "import-live"} data-running={running} aria-hidden />
-            {line}
-          </p>
+          {showLine && (
+            <p className="import-board-line" role="status" aria-live="polite">
+              <span className={running ? "import-live sangam-pulse" : "import-live"} data-running={running} aria-hidden />
+              {line}
+            </p>
+          )}
         </div>
         {rows.length > 0 && (
           <ul className="import-board-rows">
@@ -128,7 +163,7 @@ export function WorkingBoard({
       {board.events.length > 0 && (
         <div className="import-feed">
           <span className="card-kicker">Just now</span>
-          <ol>
+          <ol aria-live="polite">
             {board.events.map((e) => (
               <li key={e.id}>
                 {e.name && <EntityMark name={e.name} size={20} />}

@@ -49,41 +49,23 @@ export function emptyReason(c: CoverageConcept): string | null {
 
 export const wasFound = (c: CoverageConcept) => c.cells.some((cell) => cell.status === "found");
 
-/** A topic of an organisation that was not saved: found or not, never what a save would have done. */
-export function unsavedLine(c: CoverageConcept): string {
-  if (wasFound(c)) return "Found, not saved";
-  const why = ORDER.find((s) => c.cells.some((cell) => cell.status === s));
-  return why && why !== "not_written" ? REASON[why] : "Not found";
+/** Share of topics with anything in Sangam, before and after the save. */
+export function completeness(c: ResearchCoverage): { before: number; after: number } {
+  const n = c.concepts.length;
+  if (n === 0) return { before: 0, after: 0 };
+  const before = c.concepts.filter((t) => (t.before ?? 0) > 0).length;
+  const after = c.concepts.filter((t) => (t.before ?? 0) > 0 || (t.after ?? 0) > 0 || t.added > 0).length;
+  return { before: before / n, after: after / n };
 }
 
-export type Square = "new" | "updated" | "kept" | "found" | "empty";
+export const addedOf = (c: ResearchCoverage) => c.concepts.reduce((n, t) => n + t.added, 0);
 
-/** One topic as a square in the run matrix; `saved` false shows only whether it was found. */
-export function squareOf(c: CoverageConcept, saved = true): Square {
-  if (!saved) return wasFound(c) ? "found" : "empty";
-  const { kept, updated, added } = topicBar(c);
-  if (added > 0) return "new";
-  if (updated > 0) return "updated";
-  return kept > 0 || (c.after ?? 0) > 0 ? "kept" : "empty";
-}
-
-/** Facts before and after across the saved organisations; null when none has both. */
-export function runTotal(all: ResearchCoverage[]): { before: number; after: number } | null {
-  const counted = all.filter((c) => isSaved(c) && c.facts_before !== null && c.facts_after !== null);
-  if (counted.length === 0) return null;
-  return {
-    before: counted.reduce((n, c) => n + (c.facts_before ?? 0), 0),
-    after: counted.reduce((n, c) => n + (c.facts_after ?? 0), 0),
-  };
-}
-
-/** One line on what saving did, or why it didn't happen. */
-export function summaryLine(c: ResearchCoverage): string {
-  if (!isSaved(c)) return "Not saved. What Sangam found is kept in Researched recently.";
-  const added = c.concepts.reduce((n, t) => n + t.added, 0);
-  const updated = c.concepts.reduce((n, t) => n + t.updated, 0);
-  if (added + updated === 0) return "Saved. Sangam already had everything found.";
-  return `Saved: ${[added && `${added} new`, updated && `${updated} updated`].filter(Boolean).join(", ")}.`;
+/** What saving did to one topic, or why it is still empty. */
+export function topicLine(c: CoverageConcept): string {
+  const why = emptyReason(c);
+  if (why) return why;
+  const said = [c.added && `+${c.added} added`, c.updated && `${c.updated} updated`].filter(Boolean).join(", ");
+  return said || "No change";
 }
 
 /** The saved organisation's profile page, or null before it has one. */
