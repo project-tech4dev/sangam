@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useInterrupt } from "@copilotkit/react-core/v2";
 import { authHeaders } from "@/lib/api/auth-headers";
 import type { TraceStep } from "@/lib/useAgentChat";
-import { listedPaths, proposedBucket, proposedPaths } from "../lib/sourcePick";
+import { filesDecision, listedPaths, listingDecision, proposedBucket, proposedPaths } from "../lib/sourcePick";
 import type { Workbook } from "../lib/types";
 import { PauseSignal } from "./PauseSignal";
 
@@ -74,7 +74,8 @@ function Card({
   offered: Workbook[];
   proposed: string[];
   onDecide: (decision: PickDecision) => void;
-  onPick: (paths: string[]) => void;
+  /** The ticked files, or null when staff said no: either way the second pause is not asked. */
+  onPick: (paths: string[] | null) => void;
 }) {
   const [files, setFiles] = useState<Workbook[] | null>(bucket ? null : offered);
   const [failed, setFailed] = useState(false);
@@ -130,19 +131,9 @@ function Card({
 
   function use() {
     const paths = (files ?? []).map((f) => f.path).filter((p) => ticked.has(p));
-    if (!bucket) {
-      const unchanged = paths.length === proposed.length && proposed.every((p) => ticked.has(p));
-      return decide(unchanged ? { type: "approve" } : { type: "edit", edited_action: { name: "select_source_files", args: { paths } } });
-    }
+    if (!bucket) return decide(filesDecision(proposed, paths));
     onPick(paths);
-    // The listing the agent sees is narrowed to the one folder when every ticked file is in it.
-    const only = new Set((files ?? []).filter((f) => ticked.has(f.path)).map((f) => f.folder));
-    const narrowed = only.size === 1 ? [...only][0]! : "";
-    decide(
-      narrowed === folderOf
-        ? { type: "approve" }
-        : { type: "edit", edited_action: { name: "list_bucket_files", args: { bucket, prefix: narrowed } } },
-    );
+    decide(listingDecision((files ?? []).filter((f) => ticked.has(f.path)).map((f) => f.folder), bucket, prefix));
   }
 
   return (
@@ -192,7 +183,15 @@ function Card({
             </button>
           )
         )}
-        <button type="button" className="btn btn-secondary" onClick={() => decide(DECLINED)} disabled={sent}>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => {
+            if (bucket) onPick(null);
+            decide(DECLINED);
+          }}
+          disabled={sent}
+        >
           No, only public websites
         </button>
       </div>
@@ -208,7 +207,7 @@ function Answered({ onAnswer }: { onAnswer: () => void }) {
     done.current = true;
     onAnswer();
   }, [onAnswer]);
-  return <span className="muted">Using the files you chose…</span>;
+  return <span className="muted">Using your answer about the spreadsheets…</span>;
 }
 
 /** Shows the spreadsheets question while the run is paused on either source tool. */
@@ -221,7 +220,8 @@ export function SpreadsheetsCard({
   steps: TraceStep[];
   onPaused: (paused: boolean) => void;
 }) {
-  const picked = useRef<string[] | null>(null);
+  // What staff chose at the first pause: the files, null for "no", undefined when not asked yet.
+  const picked = useRef<string[] | null | undefined>(undefined);
   return useInterrupt({
     agentId,
     renderInChat: false,
@@ -230,13 +230,18 @@ export function SpreadsheetsCard({
       const answer = (decision: PickDecision) => void resolve({ decisions: [decision] });
       const bucket = proposedBucket(event.value);
       const paths = proposedPaths(event.value);
-      if (paths !== null && picked.current) {
+      if (paths !== null && picked.current !== undefined) {
         const chosen = picked.current;
         return (
           <Answered
             onAnswer={() => {
-              picked.current = null;
-              answer({ type: "edit", edited_action: { name: "select_source_files", args: { paths: chosen } } });
+              // Used once: a later proposal is a new question.
+              picked.current = undefined;
+              answer(
+                chosen === null
+                  ? DECLINED
+                  : { type: "edit", edited_action: { name: "select_source_files", args: { paths: chosen } } },
+              );
             }}
           />
         );

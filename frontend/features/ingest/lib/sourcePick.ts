@@ -55,3 +55,22 @@ export function listedBuckets(steps: TraceStep[]): string[] {
   }
   return Array.from(out);
 }
+
+type Decision =
+  | { type: "approve" }
+  | { type: "edit"; edited_action: { name: string; args: Record<string, unknown> } };
+
+/** The answer to list_bucket_files: narrowed to one folder when every ticked file is in it. */
+export function listingDecision(tickedFolders: string[], bucket: string, prefix: string): Decision {
+  const folders = new Set(tickedFolders);
+  const narrowed = folders.size === 1 ? [...folders][0]! : "";
+  return narrowed === prefix.replace(/\/$/, "")
+    ? { type: "approve" }
+    : { type: "edit", edited_action: { name: "list_bucket_files", args: { bucket, prefix: narrowed } } };
+}
+
+/** The answer to select_source_files: approve the proposal as is, or replace it with the ticks. */
+export function filesDecision(proposed: string[], ticked: string[]): Decision {
+  const same = ticked.length === proposed.length && proposed.every((p) => ticked.includes(p));
+  return same ? { type: "approve" } : { type: "edit", edited_action: { name: "select_source_files", args: { paths: ticked } } };
+}

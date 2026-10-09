@@ -175,6 +175,9 @@ These live in one module, `frontend/features/ingest/lib/words.ts`. `toolLabels.t
       to the folder when every tick is in one) and the ticks answer `select_source_files` as
       an edit. If the listing fails, "Let Sangam list them" falls back to the old two-step
       path. Cards signal an open pause through `PauseSignal`.
+    - "No" is remembered too: a later `select_source_files` is rejected unasked.
+    - Dropped: choosing another bucket. The card lists the proposed bucket only, which is
+      always `staff-sources` today; folders are grouped by full path.
   - **Exit gate:**
     - Choosing files reads only those files.
     - "No" reads none, and coverage shows `blocked: staff declined` for staff-sourced
