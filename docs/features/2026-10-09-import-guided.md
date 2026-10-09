@@ -226,6 +226,17 @@ These live in one module, `frontend/features/ingest/lib/words.ts`. `toolLabels.t
     - The page ends with Saved / Not saved, Open profile, Research notes, any queued
       name ("Is X the same as Y?"), and "Research something else", which reuses Start
       over.
+    - **As built:**
+      - Which organisations a run covered comes from the researchers' summaries
+        (`slug`) and `promote_research` arguments (`lib/done.ts`). Saved means the
+        coverage endpoint's `stage` is `saved` with an entity.
+      - A bar is `before − updated` (already in Sangam), then updated, then added.
+      - "Research notes" was dropped: no endpoint serves a brief to the browser.
+      - Queued names are listed but answered on the Import page under Waiting for you,
+        not inline.
+      - The step bar reads Review while the review card is open, and Done once the run
+        stops without a question open.
+      - `recharts` is no longer imported anywhere, but is still in `package.json`.
   - **Exit gate:**
     - Done for a 1-organisation and a 4-organisation run matches the endpoint numbers.
     - The `coverage_report` text in Advanced chat is unchanged.

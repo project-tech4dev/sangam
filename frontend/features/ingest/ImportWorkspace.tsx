@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
-import { CoverageChart } from "./components/CoverageChart";
+import { DoneReport } from "./components/DoneReport";
 import { SaveQuestions } from "./components/SaveQuestions";
 import { SpreadsheetsCard } from "./components/SpreadsheetsCard";
 import { StartStep } from "./components/StartStep";
 import { StepBar } from "./components/StepBar";
 import { WorkingBoard } from "./components/WorkingBoard";
+import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
 
 /** One Import conversation. `onStartOver` hands the parent a fresh thread; `start` shows below the Start step. */
@@ -26,6 +27,15 @@ export function ImportWorkspace({
   const [advanced, setAdvanced] = useState(false);
   // A question card is open: the run has stopped to wait for an answer, not finished.
   const [paused, setPaused] = useState(false);
+  // The open question is the Review card, as opposed to the spreadsheets one.
+  const [reviewing, setReviewing] = useState(false);
+  // When the first request went, so Done shows only names this run queued.
+  const [since, setSince] = useState<number | null>(null);
+  // Stable, because PauseSignal re-runs its effect whenever this changes.
+  const onReview = useCallback((open: boolean) => {
+    setPaused(open);
+    setReviewing(open);
+  }, []);
   const atStart = turns.length === 0;
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
 
@@ -33,6 +43,7 @@ export function ImportWorkspace({
     const value = text.trim();
     if (!value || isRunning) return;
     setDraft("");
+    setSince((prev) => prev ?? Date.now());
     await send(value);
   }
 
@@ -44,7 +55,7 @@ export function ImportWorkspace({
 
   return (
     <div className="import-ws">
-      <StepBar current={atStart ? 0 : 1} />
+      <StepBar current={atStart ? 0 : reviewing ? 2 : !isRunning && !paused ? 3 : 1} />
       {atStart && !advanced && (
         <>
           <StartStep onStart={(prompt) => void submit(prompt)} disabled={!isReady} />
@@ -61,11 +72,9 @@ export function ImportWorkspace({
 
             <WorkingBoard steps={turn.steps} running={turn.streaming} paused={paused && i === turns.length - 1} laneOwners={laneOwners} />
 
-            {turn.steps
-              .filter((s) => s.tool === "coverage_report" && s.result)
-              .map((s) => (
-                <CoverageChart key={s.id} text={s.result} />
-              ))}
+            {!turn.streaming && !(paused && i === turns.length - 1) && slugsOf(turn.steps).length > 0 && (
+              <DoneReport slugs={slugsOf(turn.steps)} since={since} onStartOver={startOver} />
+            )}
 
             {/* Refusals and failures only. The findings belong in the answer and
                 the stages belong above; a line per tool call buried both. */}
@@ -74,7 +83,7 @@ export function ImportWorkspace({
                 <span className="import-failure-label">{f.label}</span>
                 <span className="muted">{f.detail}</span>
                 <span className="import-failure-note">{f.note}</span>
-                {f.count > 1 && <span className="save-note">×{f.count}</span>}
+                {f.count > 1 && <span className="review-note">×{f.count}</span>}
               </div>
             ))}
 
@@ -85,7 +94,9 @@ export function ImportWorkspace({
 
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
       {isReady && <SpreadsheetsCard agentId={`sangam-import-${threadId}`} steps={lastSteps} onPaused={setPaused} />}
-      {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={setPaused} />}
+      {isReady && (
+        <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={onReview} />
+      )}
 
       {(!atStart || advanced) && (
       <form

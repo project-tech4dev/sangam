@@ -803,14 +803,48 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
   .import-board-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; padding: 10px 16px; }
   .import-board-row .import-bar-mini { grid-column: 1 / -1; order: 3; }
   .import-board-now { grid-column: 1 / -1; order: 4; }
+  .done-matrix-row { grid-template-columns: 1fr auto; }
+  .done-squares { grid-column: 1 / -1; order: 3; }
+  .done-bar-row { grid-template-columns: 1fr; gap: 4px; }
 }
 
-.coverage-card { padding: 16px; gap: 8px; }
-.coverage-head { display: grid; gap: 2px; }
-.coverage-tip { padding: 10px 12px; gap: 2px; font-size: var(--fs-sm); box-shadow: var(--shadow-md); }
+/* --- Import: the Done step --------------------------------------------------- */
+.done-card { gap: 16px; }
+.done-head { display: flex; flex-direction: column; gap: 4px; }
+.done-title { font-size: var(--fs-lg); }
+.done-facts { font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; }
+.done-line { color: var(--color-muted); font-size: var(--fs-sm); }
+.done-org { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--color-divider); }
+.done-org[data-saved="false"] { opacity: 0.7; }
+.done-org-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.done-org-name { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 160px; }
+.done-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.done-bar-row { display: grid; grid-template-columns: minmax(120px, 200px) 1fr; align-items: center; gap: 10px; font-size: var(--fs-sm); }
+.done-bar { display: flex; height: 10px; border-radius: var(--radius-pill); background: var(--color-neutral-100); overflow: hidden; }
+.done-bar-why { color: var(--color-muted); font-size: var(--fs-xs); font-style: italic; }
+.done-seg[data-part="kept"], .done-legend [data-part="kept"]::before, .done-square[data-part="kept"] { background: var(--color-neutral-300); }
+.done-seg[data-part="updated"], .done-legend [data-part="updated"]::before, .done-square[data-part="updated"] { background: var(--color-accent-500); }
+.done-seg[data-part="added"], .done-legend [data-part="added"]::before, .done-square[data-part="new"] { background: var(--color-accent-2-600); }
+.done-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--fs-xs); color: var(--color-muted); }
+.done-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.done-legend span::before { content: ""; width: 10px; height: 10px; border-radius: 2px; }
+.done-filter { align-self: flex-start; }
+.done-matrix { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.done-matrix-item { border-top: 1px solid var(--color-divider); }
+.done-matrix-item[data-saved="false"] .done-matrix-row { opacity: 0.6; }
+.done-matrix-row { width: 100%; display: grid; grid-template-columns: minmax(140px, 220px) 1fr auto; align-items: center; gap: 12px; padding: 8px 0; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.done-matrix-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.done-matrix-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.done-squares { display: flex; gap: 3px; flex-wrap: wrap; }
+.done-square { width: 12px; height: 12px; border-radius: 2px; border: 1px solid var(--color-divider); }
+.done-square[data-part="empty"] { background: transparent; }
+.done-matrix-detail { padding-bottom: 12px; }
+.done-matrix-detail .done-org { border-top: 0; padding-top: 0; }
+.done-queued { display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-sm); }
+.done-queued ul { margin: 0; padding-left: 18px; }
+.done-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* --- Import: the Review step ------------------------------------------------- */
-.save-note { color: var(--color-muted); font-size: var(--fs-xs); }
 .review-card { gap: 16px; }
 .review-head { display: flex; align-items: center; gap: 12px; }
 .review-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
