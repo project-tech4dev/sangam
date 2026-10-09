@@ -28,16 +28,17 @@ DEFAULT_GITHUB_TOOL_ALLOWLIST = [
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # "provider:model_name", resolved via langchain init_chat_model. Three tiers, by how hard the work is:
+    # "provider:model_name", resolved via langchain init_chat_model. Blank or unset always means the default
+    # here. Three tiers, by how hard the work is:
     # MODEL reasons (Ask Sangam, the Import supervisor), so it is the strongest.
     model: str = "anthropic:claude-opus-5-5"
 
     # The entity-researcher: long pages and evidence judgements, up to MAX_PARALLEL_RESEARCH at once,
-    # so most of an import's tokens. Empty falls back to `model`.
+    # so most of an import's tokens.
     research_model: str = "anthropic:claude-sonnet-5-5"
 
     # Work that needs no reasoning: a fixed record from one article, the catalog-writer (two tools, a
-    # report) and the workbook-reader (one tool, a list of names). Empty falls back to `model`.
+    # report) and the workbook-reader (one tool, a list of names).
     utility_model: str = "anthropic:claude-haiku-4-5"
 
     # Local only: also accept `Authorization: Bearer dev` as the seeded dev user. Never set when deployed.
@@ -85,7 +86,7 @@ class Settings(BaseSettings):
     sql_timeout_ms: int = 5_000
     sql_max_rows: int = 50
     sql_max_attempts: int = 5
-    # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). Empty disables it;
+    # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). `off` disables it;
     # it is a real extra model call per SQL turn, so it runs on the cheapest tier.
     sql_audit_model: str = "anthropic:claude-haiku-4-5"
 
@@ -115,6 +116,10 @@ class Settings(BaseSettings):
     allowed_origin_regex: str = ""
 
     @field_validator(
+        "model",
+        "research_model",
+        "utility_model",
+        "sql_audit_model",
         "max_parallel_research", "research_page_limit", "research_model_call_limit", "db_pool_max_size", mode="before"
     )
     @classmethod
@@ -128,6 +133,11 @@ class Settings(BaseSettings):
         if isinstance(v, str) and not v.strip():
             return cls.model_fields[info.field_name].default
         return v
+
+    @field_validator("sql_audit_model", mode="after")
+    @classmethod
+    def _off_disables_the_audit(cls, v: str) -> str:
+        return "" if v.strip().lower() == "off" else v
 
     @property
     def db_gate_slots(self) -> int:

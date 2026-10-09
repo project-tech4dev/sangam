@@ -260,11 +260,11 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # the floor FilesystemMiddleware refuses to be constructed below, not a
     # capability either of them uses.
     strong = resolve_model(settings.model)
-    research_spec = settings.research_model or settings.model
-    utility_spec = settings.utility_model or settings.model
+    research_spec = settings.research_model
+    utility_spec = settings.utility_model
     research = resolve_model(research_spec)
     utility = resolve_model(utility_spec)
-    # Each subagent on its tier (config.py); a blank tier inherits MODEL. Each falls back to the next
+    # Each subagent on its tier (config.py). Each falls back to the next
     # tier when its call fails. The researcher reads to a budget, has its save and summary graded, and
     # moves to the strong model if its save is refused for a malformed payload.
     researcher = {

@@ -51,17 +51,17 @@ services:
       # `make <target> ENV=staging` layers docker-compose.staging.yml over this
       # to point the same tooling at the managed database.
       DATABASE_URL: ${LOCAL_DATABASE_URL:-host=${LOCAL_DB_HOST:-postgres} port=${LOCAL_DB_PORT:-5432} user=${LOCAL_DB_USER:-sangam} password=${LOCAL_DB_PASSWORD:-${POSTGRES_PASSWORD:-sangam}} dbname=${LOCAL_DB_NAME:-sangam} sslmode=${LOCAL_DB_SSLMODE:-prefer}}
-      # Model tiers (backend/app/core/config.py). A blank RESEARCH/UTILITY means MODEL; a blank audit is off.
-      MODEL: ${MODEL:-anthropic:claude-opus-5-5}
-      RESEARCH_MODEL: ${RESEARCH_MODEL-anthropic:claude-sonnet-5-5}
-      UTILITY_MODEL: ${UTILITY_MODEL-anthropic:claude-haiku-4-5}
+      # Model tiers. Empty = the default in backend/app/core/config.py; SQL_AUDIT_MODEL=off disables the audit.
+      MODEL: ${MODEL:-}
+      RESEARCH_MODEL: ${RESEARCH_MODEL:-}
+      UTILITY_MODEL: ${UTILITY_MODEL:-}
       DEV_AUTH: ${DEV_AUTH:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       TAVILY_API_KEY: ${TAVILY_API_KEY:-}
-      # Post-answer audit of SQL answers; empty = off. See docs/SQL_AGENT.md.
-      SQL_AUDIT_MODEL: ${SQL_AUDIT_MODEL-anthropic:claude-haiku-4-5}
+      # Post-answer audit of SQL answers; off = disabled. See docs/SQL_AGENT.md.
+      SQL_AUDIT_MODEL: ${SQL_AUDIT_MODEL:-}
       # Research fan-out and the pool it is bounded by. Raise them together.
       MAX_PARALLEL_RESEARCH: ${MAX_PARALLEL_RESEARCH:-}
       DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-}

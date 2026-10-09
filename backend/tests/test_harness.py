@@ -156,9 +156,22 @@ class TestEachTierGetsItsModel:
         assert main == "m:strong"
         assert subs == {"entity-researcher": "m:mid", "catalog-writer": "m:cheap", "workbook-reader": "m:cheap"}
 
-    def test_a_blank_tier_inherits_the_main_model(self, build_import):
-        _, subs = self.built(build_import, model="m:strong", research_model="", utility_model="")
+    def test_a_tier_set_to_the_main_model_runs_on_it(self, build_import):
+        _, subs = self.built(build_import, model="m:strong", research_model="m:strong", utility_model="m:strong")
         assert set(subs.values()) == {"m:strong"}
+
+    @pytest.mark.parametrize("field", ["model", "research_model", "utility_model", "sql_audit_model"])
+    def test_a_blank_model_variable_takes_its_default(self, field):
+        # One meaning for blank everywhere; docker-compose forwards an unset variable as "".
+        from app.core.config import Settings
+
+        assert getattr(Settings(_env_file=None, **{field: "  "}), field) == Settings.model_fields[field].default
+
+    @pytest.mark.parametrize("value", ["off", "OFF", " Off "])
+    def test_off_disables_the_sql_audit(self, value):
+        from app.core.config import Settings
+
+        assert Settings(_env_file=None, sql_audit_model=value).sql_audit_model == ""
 
     def test_the_defaults_are_strong_mid_cheap(self):
         from app.core.config import Settings

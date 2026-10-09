@@ -17,7 +17,7 @@ All of it is in `backend/app/ingest/middleware.py` and is wired in `build_ingest
 | `catalog-writer` (`UTILITY_MODEL`) | model-call limit (12); fallback → `RESEARCH_MODEL` |
 | `workbook-reader` (`UTILITY_MODEL`) | fallback → `RESEARCH_MODEL` |
 
-- **Fallbacks:** each tier falls back to the next model that differs from its own. With every tier blank, there are none.
+- **Fallbacks:** each tier falls back to the next model that differs from its own. With every tier set to `MODEL`, there are none.
 - **Reading limit:** `RESEARCH_PAGE_LIMIT` (default 20) counts `read_page`, `fetch_document` and `read_document_pages` together.
   - It is our own small `wrap_tool_call`, because `ToolCallLimitMiddleware` limits one tool name at a time.
   - Past the limit, a read returns a refusal message. The researcher then saves with `status: partial` and "Stopped at the reading limit" in `stopped_reason`.

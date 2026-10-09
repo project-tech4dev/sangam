@@ -264,7 +264,7 @@ those tools are registered. Setting them changes no behaviour.
 `SQL_AUDIT_MODEL` turns on a post-answer audit (`app/agent/audit.py`): a cheap second model
 checks grain, missing filters, false zeros and whether the figures in the prose match the rows,
 then appends a caveat. It never blocks and never edits — by the time it runs the answer has
-already streamed. On by default, on the cheap tier; a blank `SQL_AUDIT_MODEL` turns it off.
+already streamed. On by default, on the cheap tier; `SQL_AUDIT_MODEL=off` turns it off.
 
 Adding a table to the catalog is a **security decision**, not bookkeeping: a new table is
 invisible to the agent until someone puts it there, and boot logs any live table that is
@@ -361,8 +361,9 @@ mistake and the model runs once per turn. `RESEARCH_MODEL` (Sonnet 5.5) runs the
 `entity-researcher`s: they read long pages, up to `MAX_PARALLEL_RESEARCH` at once, so they are
 most of an import's tokens, and judging evidence still needs a capable model. `UTILITY_MODEL`
 (Haiku 4.5) does work with a fixed shape — article extraction, the `catalog-writer`, the
-`workbook-reader` — and `SQL_AUDIT_MODEL` (Haiku 4.5) the post-answer audit. A blank
-`RESEARCH_MODEL` or `UTILITY_MODEL` inherits `MODEL`. A deployed backend reads these from its
+`workbook-reader` — and `SQL_AUDIT_MODEL` (Haiku 4.5) the post-answer audit. A blank or unset
+model variable means the default in `config.py`, the only place defaults are written; `SQL_AUDIT_MODEL=off`
+disables the audit. A deployed backend reads these from its
 Vercel env, which beats the code defaults.
 
 **Import's middleware** (`app/ingest/middleware.py`). Each tier falls back to the next one when a call

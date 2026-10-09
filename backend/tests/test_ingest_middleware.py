@@ -35,12 +35,12 @@ class TestEachTierFallsBackToTheNext:
         assert fallbacks(built.reader) == ["m:mid"]
 
     def test_a_fallback_to_the_same_model_is_skipped(self, build_import):
-        seen = build_import(model="m:strong", research_model="", utility_model="")
+        seen = build_import(model="m:strong", research_model="m:strong", utility_model="m:strong")
         stacks = [seen["middleware"], *(s["middleware"] for s in seen["subagents"])]
         assert all(not of(stack, ModelFallbackMiddleware) for stack in stacks)
 
-    def test_utility_skips_a_blank_research_tier(self, build_import):
-        seen = build_import(model="m:strong", research_model="", utility_model="m:cheap")
+    def test_utility_skips_a_research_tier_that_is_the_main_model(self, build_import):
+        seen = build_import(model="m:strong", research_model="m:strong", utility_model="m:cheap")
         writer = next(s for s in seen["subagents"] if s["name"] == "catalog-writer")
         assert fallbacks(writer["middleware"]) == ["m:strong"]
 
@@ -134,7 +134,7 @@ class TestAFailedSaveMovesToTheStrongModel:
             return next(s for s in seen["subagents"] if s["name"] == "entity-researcher")["middleware"]
 
         assert of(researcher(**TIERS), mw.EscalateAfterFailedSave)[0].strong.name == "m:strong"
-        assert not of(researcher(model="m:strong", research_model="", utility_model=""), mw.EscalateAfterFailedSave)
+        assert not of(researcher(model="m:strong", research_model="m:strong", utility_model="m:strong"), mw.EscalateAfterFailedSave)
 
 
 class TestTheRubricGradesTheResearcher:
