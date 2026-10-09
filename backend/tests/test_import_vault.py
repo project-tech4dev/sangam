@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 import pytest
+from deepagents import create_deep_agent
+from deepagents.backends.state import StateBackend
+from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.tools import InjectedToolCallId, tool
+from langgraph.types import Command
 
+from app.agent.harness import filesystem
 from app.core.security import CallerScope
 from app.ingest import review, vault
+from app.ingest.middleware import DropFilesOnExit
 from app.ingest.research_records import VaultResearch
 from app.ingest.tools import catalog_tools, vault_tools
 from tests.test_import_roles import MEMBER, STAFF, STEWARD, _Conn, _Pool, running_as
@@ -191,11 +199,38 @@ class TestTheVaultJoinsTheResearch:
 
 class TestTheReaderLeavesNoFiles:
     async def test_every_file_is_deleted_on_exit(self):
-        from app.ingest.middleware import DropFilesOnExit
-
         state = {"files": {"/large_tool_results/abc": {"content": ["vault text"]}}}
         assert await DropFilesOnExit().aafter_agent(state, None) == {"files": {"/large_tool_results/abc": None}}
         assert DropFilesOnExit().after_agent({"files": {}}, None) is None
+
+    async def test_through_deepagents_the_parent_gets_none_and_keeps_its_own(self):
+        """A subagent's files merge back into its parent; this pins that the reader's do not."""
+        def file(text):
+            return {"content": [text], "created_at": "2026-10-10", "modified_at": "2026-10-10"}
+
+        @tool
+        def evicted(tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
+            """Leaves a file in state, as an eviction would."""
+            return Command(update={"files": {"/large_tool_results/vault": file("vault text")},
+                                   "messages": [ToolMessage("ok", tool_call_id=tool_call_id)]})
+
+        class Fake(GenericFakeChatModel):
+            def bind_tools(self, tools, **kw):
+                return self
+
+        def says(*msgs):
+            return Fake(messages=iter(msgs))
+
+        reader = {"name": "vault-reader", "description": "r", "system_prompt": "r", "tools": [evicted],
+                  "middleware": [filesystem(StateBackend(), evict=False), DropFilesOnExit()],
+                  "model": says(AIMessage("", tool_calls=[{"name": "evicted", "args": {}, "id": "e"}]),
+                                AIMessage("done"))}
+        task = {"name": "task", "args": {"description": "read", "subagent_type": "vault-reader"}, "id": "t"}
+        parent = create_deep_agent(model=says(AIMessage("", tool_calls=[task]), AIMessage("fin")),
+                                   tools=[], subagents=[reader])
+        out = await parent.ainvoke({"messages": [{"role": "user", "content": "go"}],
+                                    "files": {"/large_tool_results/web": file("web page")}})
+        assert sorted(out["files"]) == ["/large_tool_results/web"]
 
 
 @pytest.mark.integration
@@ -220,3 +255,35 @@ class TestTheVaultTable:
         private = await (await db.execute(
             "SELECT count(*) AS n FROM documents WHERE id = ANY(%s) AND NOT is_public", (ids,))).fetchone()
         assert (private["n"] if isinstance(private, dict) else private[0]) == 0
+
+    async def test_the_vault_queries_run(self, db):
+        from tests.test_storage import _PoolOf
+
+        pool = _PoolOf(db)
+        row = {"slug": "no-such-funder", "entity_name": "No Such Funder", "findings": []}
+        assert await catalog_tools._with_vault(pool, row, STAFF) == row
+        assert await vault.in_vault(pool, 1, {1}) <= {1}
+        assert isinstance(await vault.documents(pool, 1), list)
+
+    async def test_a_save_upserts_once_per_day(self, db, monkeypatch):
+        from tests.test_storage import _PoolOf
+
+        org = await (await db.execute("SELECT id FROM orgs ORDER BY id LIMIT 1")).fetchone()
+        if org is None:
+            pytest.skip("no org seeded")
+        org_id = org["id"] if isinstance(org, dict) else org[0]
+        monkeypatch.setattr(vault_tools, "get_pool", lambda: _PoolOf(db))
+        save = {"entity_name": "Zz Vault Test Funder", "entity_kind": "funder", "org_id": org_id,
+                "documents_read": [], "findings": []}
+        try:
+            with running_as(STAFF):
+                for _ in range(2):
+                    out = await vault_tools.save_vault_findings.ainvoke({"findings": save})
+                    assert out.startswith("Saved as vault_research"), out
+            n = await (await db.execute(
+                "SELECT count(*) AS n FROM vault_research WHERE slug = 'zz-vault-test-funder'")).fetchone()
+            assert (n["n"] if isinstance(n, dict) else n[0]) == 1
+            row = {"slug": "zz-vault-test-funder", "entity_name": "Zz Vault Test Funder", "findings": []}
+            assert (await catalog_tools._with_vault(_PoolOf(db), row, STAFF))["vault"][0]["org_id"] == org_id
+        finally:
+            await db.execute("DELETE FROM vault_research WHERE slug = 'zz-vault-test-funder'")
