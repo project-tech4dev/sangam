@@ -68,7 +68,7 @@ def build_lifespan(settings: Settings | None = None):
             tracing_live = configure_langfuse(resolved)
 
             checkpointer = await stack.enter_async_context(open_checkpointer(pool))
-            # Kept for GET /api/threads/{id}/messages: only the graph can rebuild a thread's messages.
+            # Kept for the thread-messages routes: only the graph can rebuild a thread's messages.
             app.state.ask_graph = build_agent(resolved, checkpointer)
             add_langgraph_fastapi_endpoint(
                 app=app,
@@ -85,6 +85,7 @@ def build_lifespan(settings: Settings | None = None):
                 path="/agent",
                 dependencies=[Depends(chat_access)],
             )
+            app.state.ingest_graph = build_ingest_agent(resolved, checkpointer)
             # Sangam Import: a separate graph and a separate conversation. It shares
             # the checkpointer, so its threads live beside Ask Sangam's and are told
             # apart by thread_id, not by table.
@@ -93,8 +94,10 @@ def build_lifespan(settings: Settings | None = None):
                 agent=SessionScopedAGUIAgent(
                     name="sangam_ingest",
                     description=INGEST_DESCRIPTION,
-                    graph=build_ingest_agent(resolved, checkpointer),
+                    graph=app.state.ingest_graph,
                     config={"recursion_limit": resolved.recursion_limit},
+                    # Each researcher's steps arrive tagged with its run, so the board can tell them apart.
+                    emit_subagent_events=True,
                 ),
                 path="/ingest",
                 dependencies=[Depends(staff_chat_access)],

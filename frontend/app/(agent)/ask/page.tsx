@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { apiGet } from "@/lib/api";
 import { titleCase } from "@/lib/format";
 import type {
@@ -32,8 +33,8 @@ async function isSignedIn(): Promise<boolean> {
 export default async function AskPage({ searchParams }: { searchParams: Promise<{ q?: string; view?: string }> }) {
   const params = await searchParams;
   const q = params.q?.trim().slice(0, 500) || null;
-  // Only Tools are addressable by URL; chat views are not.
-  const initialView = params.view === "import" ? "import" : "ask";
+  // Import was a view here once; old links go to its own page.
+  if (params.view === "import") redirect("/import");
   if (!(await isSignedIn())) return <AskPreview initialQuestion={q} />;
 
   const [orgs, funders, scores, lines, stats] = await Promise.all([
@@ -87,7 +88,7 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
   // The workspace fills the viewport below the sticky navbar; the footer sits below the fold.
   return (
     <div data-app-shell style={{ height: "calc(100dvh - var(--nav-h))", display: "flex", flexDirection: "column" }}>
-      <WorkspaceLoader payload={payload} initialQuestion={q} initialView={initialView} />
+      <WorkspaceLoader payload={payload} initialQuestion={q} />
     </div>
   );
 }

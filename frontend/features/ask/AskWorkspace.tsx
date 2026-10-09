@@ -13,10 +13,6 @@ import { MediaView } from "./views/MediaView";
 import { RfpWatchView } from "./views/RfpWatchView";
 import { FunderMatchView } from "./views/FunderMatchView";
 import { ChatsView } from "./views/ChatsView";
-import dynamic from "next/dynamic";
-
-// Most visits never open Tools, so the ingest UI downloads only when Import is first opened.
-const ImportView = dynamic(() => import("./views/ImportView").then((m) => m.ImportView));
 
 type Sourced = { sourceUrl: string | null; sourceName: string | null; fetchedAt: string | null };
 
@@ -31,18 +27,12 @@ export type IndexPayload = {
 export function AskWorkspace({
   payload,
   initialQuestion = null,
-  initialView = "ask",
 }: {
   payload: IndexPayload;
   initialQuestion?: string | null;
-  initialView?: WorkspaceView;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [view, setView] = useState<WorkspaceView>(initialView);
-  // Once opened, Import stays mounted (hidden when another view shows): its chat holds the
-  // run's thread, and unmounting it would drop a run the agent is still working on.
-  const [importOpened, setImportOpened] = useState(initialView === "import");
-  if (view === "import" && !importOpened) setImportOpened(true);
+  const [view, setView] = useState<WorkspaceView>("ask");
   const [threadId, setThreadId] = useState(() => crypto.randomUUID());
   // A chat picked from the list loads its saved messages; a new one has none.
   const [resume, setResume] = useState(false);
@@ -74,15 +64,12 @@ export function AskWorkspace({
     [payload],
   );
 
-  // Tools live in the URL (?view=import) so they can be linked to and survive a reload.
   // ?q= is consumed once on mount; drop it so a reload does not prefill it again.
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (view === "import") url.searchParams.set("view", view);
-    else url.searchParams.delete("view");
     url.searchParams.delete("q");
     window.history.replaceState(null, "", url);
-  }, [view]);
+  }, []);
 
   // The server's list once it answers; this browser's until then, or when it cannot.
   const refreshThreads = useCallback(() => {
@@ -154,11 +141,6 @@ export function AskWorkspace({
         {view === "chats" && <ChatsView threads={threads} onPick={pickThread} />}
         {view === "funder-match" && <FunderMatchView />}
         {view === "rfpwatch" && <RfpWatchView />}
-        {importOpened && (
-          <div style={{ display: view === "import" ? "flex" : "none", flex: 1, minWidth: 0, minHeight: 0 }}>
-            <ImportView />
-          </div>
-        )}
       </div>
     </div>
   );

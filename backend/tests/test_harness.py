@@ -141,31 +141,51 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         assert "general-purpose" not in advertised
 
 
-class TestTheUtilityModelIsOptional:
-    """Cheaper models for work that needs no reasoning — and unset, nothing
-    changes, because a performance setting that alters behaviour by default is
-    a behaviour change wearing a performance setting's name."""
+class TestEachTierGetsItsModel:
+    """A strong model reasons, cheaper ones do subtasks (config.py). A blank tier
+    inherits MODEL, so a deploy can still run everything on one model."""
 
-    def test_unset_means_the_main_model(self):
+    @staticmethod
+    def built(build_import, **overrides):
+        # The spec string of each model create_deep_agent receives.
+        seen = build_import(**overrides)
+        return seen["model"].name, {s["name"]: s["model"].name for s in seen["subagents"]}
+
+    def test_each_subagent_runs_on_its_tier(self, build_import):
+        main, subs = self.built(build_import, model="m:strong", research_model="m:mid", utility_model="m:cheap")
+        assert main == "m:strong"
+        assert subs == {"entity-researcher": "m:mid", "catalog-writer": "m:cheap", "workbook-reader": "m:cheap"}
+
+    def test_a_tier_set_to_the_main_model_runs_on_it(self, build_import):
+        _, subs = self.built(build_import, model="m:strong", research_model="m:strong", utility_model="m:strong")
+        assert set(subs.values()) == {"m:strong"}
+
+    @pytest.mark.parametrize("field", ["model", "research_model", "utility_model", "sql_audit_model"])
+    def test_a_blank_model_variable_takes_its_default(self, field):
+        # One meaning for blank everywhere; docker-compose forwards an unset variable as "".
         from app.core.config import Settings
 
-        s = Settings(utility_model="")
-        assert (s.utility_model or s.model) == s.model
+        assert getattr(Settings(_env_file=None, **{field: "  "}), field) == Settings.model_fields[field].default
 
-    def test_set_means_that_model(self):
+    @pytest.mark.parametrize("value", ["off", "OFF", " Off "])
+    def test_off_disables_the_sql_audit(self, value):
         from app.core.config import Settings
 
-        s = Settings(utility_model="anthropic:claude-haiku-4-5")
-        assert (s.utility_model or s.model) == "anthropic:claude-haiku-4-5"
+        assert Settings(_env_file=None, sql_audit_model=value).sql_audit_model == ""
 
-    def test_the_writer_subagent_is_not_mutated_in_place(self):
-        # build_ingest_agent copies CATALOG_WRITER before adding a model, so
-        # building twice with different settings cannot leak between them.
-        from app.core.config import get_settings
-        from app.ingest.agent import CATALOG_WRITER, build_ingest_agent
+    def test_the_defaults_are_strong_mid_cheap(self):
+        from app.core.config import Settings
 
-        build_ingest_agent(get_settings(), None)
-        assert "model" not in CATALOG_WRITER
+        s = Settings(_env_file=None)
+        assert "opus" in s.model and "sonnet" in s.research_model and "haiku" in s.utility_model
+        assert "haiku" in s.sql_audit_model
+
+    def test_the_module_level_specs_are_not_mutated(self, build_import):
+        # build_ingest_agent copies each spec before adding a model, so builds cannot leak between them.
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER
+
+        self.built(build_import, model="m:strong", research_model="m:mid", utility_model="m:cheap")
+        assert all("model" not in spec for spec in (CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER))
 
 
 class TestTheSkillIsFoundAndIsProgressive:

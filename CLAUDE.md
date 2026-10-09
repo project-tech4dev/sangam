@@ -24,8 +24,8 @@ and `make seed` runs `migrate` too. Both are pinned to `ENV=local`: against a ma
 you run `make migrate ENV=staging` yourself, deliberately and after a backup.
 
 Then http://localhost:3000 for the app and http://localhost:8010/docs for the API. The Ask
-workspace and Import (`/ask?view=import`; `/import` redirects there) are behind Supabase
-sign-in; signed out, `/ask` is a public preview. `OPENAI_API_KEY` and `make graph-seed` are optional —
+workspace and Import (`/import`, with its own list of past imports; `/ask?view=import`
+redirects there) are behind Supabase sign-in; signed out, `/ask` is a public preview. `OPENAI_API_KEY` and `make graph-seed` are optional —
 the graph disables itself cleanly. One smoke check, `documents: 96+`, is expected to fail on a
 fresh clone: `make seed` does not create those documents.
 
@@ -283,7 +283,7 @@ those tools are registered. Setting them changes no behaviour.
 `SQL_AUDIT_MODEL` turns on a post-answer audit (`app/agent/audit.py`): a cheap second model
 checks grain, missing filters, false zeros and whether the figures in the prose match the rows,
 then appends a caveat. It never blocks and never edits — by the time it runs the answer has
-already streamed. Off by default because it is a real extra model call per SQL turn.
+already streamed. On by default, on the cheap tier; `SQL_AUDIT_MODEL=off` turns it off.
 
 Adding a table to the catalog is a **security decision**, not bookkeeping: a new table is
 invisible to the agent until someone puts it there, and boot logs any live table that is
@@ -298,7 +298,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each sector tag to its Schedule VII clause for `compare_fit`, and `0037_drop_criteria_sets` drops a table only the removed matching engine used. There are 37 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each sector tag to its Schedule VII clause for `compare_fit`, and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. There are 38 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
@@ -368,11 +368,29 @@ a test walks the package to prove every tool defined is also registered.
 and `select_source_files` (staff choose the files).** Both are in `INTERRUPT_ON` in
 `app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns into LangChain's
 `HumanInTheLoopMiddleware`; the Import screen answers with CopilotKit's `useInterrupt`
-(`BucketPicker`, `SourcePicker`) and resumes with `{decisions: [...]}`. Any bucket's `.xlsx` can be
+(`SpreadsheetsCard`, one card for both pauses) and resumes with `{decisions: [...]}`. Any bucket's `.xlsx` can be
 picked, in any folder or none. A picked file becomes a
 `documents` row, so no script is needed; `make staff-source` still writes the same row. The
 supervisor never reads rows: when a request is about everyone in a file, the `workbook-reader`
 subagent (one tool, `read_workbook`) returns the names, and a researcher per name follows.
+
+**Models come in tiers, by how hard the work is** (`app/core/config.py`). `MODEL` (Opus 5.5)
+reasons: Ask Sangam and the Import supervisor, where one wrong join or merge is the costliest
+mistake and the model runs once per turn. `RESEARCH_MODEL` (Sonnet 5.5) runs the
+`entity-researcher`s: they read long pages, up to `MAX_PARALLEL_RESEARCH` at once, so they are
+most of an import's tokens, and judging evidence still needs a capable model. `UTILITY_MODEL`
+(Haiku 4.5) does work with a fixed shape — article extraction, the `catalog-writer`, the
+`workbook-reader` — and `SQL_AUDIT_MODEL` (Haiku 4.5) the post-answer audit. A blank or unset
+model variable means the default in `config.py`, the only place defaults are written; `SQL_AUDIT_MODEL=off`
+disables the audit. A deployed backend reads these from its
+Vercel env, which beats the code defaults.
+
+**Import's middleware** (`app/ingest/middleware.py`). Each tier falls back to the next one when a call
+fails. A researcher reads at most `RESEARCH_PAGE_LIMIT` pages per run, after which the reading tools
+refuse and it saves what it has. It is stopped outright after `RESEARCH_MODEL_CALL_LIMIT` model calls.
+Once a `save_research` call is refused for a malformed payload, the rest of that run moves to `MODEL`.
+A Haiku grader checks the save and summary against `prompts/research_rubric.md` and allows one revision.
+Summaries of long runs are written by `UTILITY_MODEL` at the same thresholds as before.
 
 **How many organisations Import researches at once is a setting, not a number in the
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:

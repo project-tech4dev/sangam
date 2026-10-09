@@ -10,6 +10,10 @@ export type TraceStep = {
   args: unknown;
   result: string | null; // null while running
   running: boolean;
+  /** The subagent run that made this call, when the backend attributes them; absent for the agent's own. */
+  lane?: string;
+  /** Where the result landed in the thread, so finished steps can be put in the order they finished. */
+  doneAt?: number;
 };
 
 export type Turn = {
@@ -25,6 +29,7 @@ type AnyMessage = {
   role: string;
   content?: string;
   toolCallId?: string;
+  subagentRunId?: string;
   toolCalls?: { id: string; type: string; function: { name: string; arguments: string } }[];
 };
 
@@ -54,6 +59,19 @@ export function useAgentChat(
   const { copilotkit } = useCopilotKit();
 
   const [isLoadingHistory, setLoadingHistory] = useState(Boolean(loadHistory));
+  // subagent run -> the `task` call that started it. Live only: a reloaded thread has none.
+  const [laneOwners, setLaneOwners] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!agent) return;
+    const sub = agent.subscribe({
+      onSubagentStartedEvent: ({ event }) => {
+        const owner = event.parentToolCallId;
+        if (owner) setLaneOwners((prev) => ({ ...prev, [event.subagentRunId]: owner }));
+      },
+    });
+    return () => sub.unsubscribe();
+  }, [agent]);
 
   // Only once the registered agent is ready: messages set on the provisional one are dropped.
   useEffect(() => {
@@ -77,9 +95,12 @@ export function useAgentChat(
 
   const turns: Turn[] = useMemo(() => {
     const toolResults = new Map<string, string>();
-    for (const m of messages) {
-      if (m.role === "tool" && m.toolCallId) toolResults.set(m.toolCallId, m.content ?? "");
-    }
+    const doneAt = new Map<string, number>();
+    messages.forEach((m, i) => {
+      if (m.role !== "tool" || !m.toolCallId) return;
+      toolResults.set(m.toolCallId, m.content ?? "");
+      doneAt.set(m.toolCallId, i);
+    });
     const out: Turn[] = [];
     let current: Turn | null = null;
     for (const m of messages) {
@@ -95,9 +116,12 @@ export function useAgentChat(
             args: safeParse(tc.function.arguments || "{}"),
             result,
             running: result === null && isRunning,
+            lane: m.subagentRunId,
+            doneAt: doneAt.get(tc.id),
           });
         }
-        if (m.content) current.answer += (current.answer ? "\n\n" : "") + m.content;
+        // A subagent's own prose is its working, not the answer.
+        if (m.content && !m.subagentRunId) current.answer += (current.answer ? "\n\n" : "") + m.content;
       }
     }
     if (out.length > 0 && isRunning) out[out.length - 1]!.streaming = true;
@@ -117,5 +141,5 @@ export function useAgentChat(
     if (agent) copilotkit.stopAgent({ agent });
   }, [agent, copilotkit]);
 
-  return { turns, send, stop, isRunning, isReady, isLoadingHistory };
+  return { turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners };
 }

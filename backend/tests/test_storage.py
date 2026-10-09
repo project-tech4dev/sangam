@@ -555,9 +555,7 @@ class TestSavingResearchPublishesTheBrief:
         assert (bucket, key) == (storage.SOURCE_ARCHIVE, "entities/testcorp-foundation.md")
         assert replace is True
         assert b"Testcorp Foundation" in data
-        # The exact phrase, not just the word: the Import UI's milestone strip
-        # matches /brief is published/i to light "Saved the brief to the
-        # bucket". It is the one place the UI reads a tool's prose.
+        # The reply says where the brief went, so the agent can tell staff.
         assert "brief is published" in result
 
     async def test_the_reply_does_not_claim_publication_that_did_not_happen(self, db, monkeypatch):

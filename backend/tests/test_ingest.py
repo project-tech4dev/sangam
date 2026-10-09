@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 
 import pytest
@@ -944,6 +945,44 @@ class TestResearchGoalsAsksTheRightTables:
         assert not schema["years"].is_required()
 
 
+class TestTheWorkingBoardReadsThesePhrases:
+    """The Import board (frontend features/ingest/lib/board.ts) reads two tool replies as prose."""
+
+    @pytest.mark.parametrize("kind", ["funder", "org"])
+    async def test_research_goals_lists_one_concept_per_line(self, kind, monkeypatch):
+        import re
+
+        from app.ingest.coverage import concepts_for
+        from app.ingest.tools import catalog_tools
+
+        class _Conn:
+            async def execute(self, *a, **k):
+                return self
+
+            async def fetchone(self):
+                return None
+
+        class _Pool:
+            @asynccontextmanager
+            async def connection(self):
+                yield _Conn()
+
+        monkeypatch.setattr(catalog_tools, "get_pool", lambda: _Pool())
+        out = await catalog_tools.research_goals.ainvoke({"name": "Arpan", "entity_kind": kind})
+        # The board's "4 of 13 found" counts these lines.
+        assert len(re.findall(r"^\w+ -> ", out, re.MULTILINE)) == len(concepts_for(kind))
+
+    def test_a_scanned_pdf_says_so(self, tmp_path, monkeypatch):
+        from app.ingest.tools import research_tools
+
+        (tmp_path / "report.pdf").write_bytes(b"%PDF")
+        monkeypatch.setattr(research_tools, "downloads_dir", lambda: tmp_path)
+        monkeypatch.setattr(research_tools, "extract_pdf_text", lambda *a: ("  ", 12))
+        out = research_tools.read_document_pages.invoke({"filename": "report.pdf"})
+        # The board labels the line "Scanned — no text to read" from this phrase.
+        assert "most likely scanned" in out
+
+
 class TestTheCatalogWriterCannotResearch:
     """The second subagent exists to check the write, not to add to it."""
 
@@ -1312,3 +1351,201 @@ class TestTheOrgWriter:
         conn = self._Conn([None])
         assert await set_registered_location(conn, 42, 7) is False
         assert "registered_location_id IS NULL" in conn.sql[0]
+
+
+class TestASaveIsCountedPerConcept:
+    def test_every_label_promotion_counts_under_names_a_concept(self):
+        # A label with no concept would drop its rows from Import's Done step without a sound.
+        import re
+
+        from app.ingest import promote
+        from app.ingest.coverage import CONCEPT_OF_WRITTEN
+
+        labels = set(re.findall(r'_count\(report, "([^"]+)"', inspect.getsource(promote)))
+        assert labels and labels - set(CONCEPT_OF_WRITTEN) == set()
+
+    def test_the_entity_and_its_years_count_alongside_the_tables(self):
+        from app.ingest.coverage import changes_by_concept
+
+        report = {
+            "entity": {"kind": "funder", "status": "added", "id": 7, "name": "X"},
+            "csr_years": [{"fiscal_year": "FY2023-24", "status": "added"},
+                          {"fiscal_year": "FY2022-23", "status": "matched"}],
+            "written": {"funder_activity (spend)": {"added": 2, "updated": 1}, "documents": {"added": 3}},
+        }
+        assert changes_by_concept(report) == {
+            "identity": {"added": 1, "updated": 0},
+            "csr_year": {"added": 1, "updated": 0},
+            "csr_spend": {"added": 2, "updated": 1},
+            "document": {"added": 3, "updated": 0},
+        }
+
+    def test_a_second_save_that_writes_nothing_keeps_the_first(self):
+        from app.ingest.coverage import saved_record
+
+        first = saved_record(None, {"entity": {"kind": "funder", "status": "added", "id": 7},
+                                    "written": {"metrics": {"added": 4}}}, {"identity": 1, "metric": 4})
+        assert first["rows_before"] == {"identity": 0, "metric": 0}
+        again = {"entity": {"kind": "funder", "status": "matched", "id": 7}, "written": {}}
+        assert saved_record(first, again, {"identity": 1, "metric": 4}) is None
+
+    def test_a_first_save_refused_before_writing_is_not_a_save(self):
+        from app.ingest.coverage import saved_record
+
+        refused = {"entity": None, "written": {}, "reasons": ["resembles X: not merged"]}
+        assert saved_record(None, refused, None) is None
+
+    def test_a_later_save_that_writes_more_keeps_the_first_before(self):
+        from app.ingest.coverage import saved_record
+
+        first = saved_record(None, {"entity": {"kind": "funder", "status": "added", "id": 7},
+                                    "written": {"metrics": {"added": 4}}}, {"identity": 1, "metric": 4})
+        more = {"entity": {"kind": "funder", "status": "matched", "id": 7}, "written": {"metrics": {"added": 2}}}
+        second = saved_record(first, more, {"identity": 1, "metric": 6})
+        assert second["rows_before"] == {"identity": 0, "metric": 0}
+        assert second["changes"]["metric"] == {"added": 6, "updated": 0}
+
+
+class TestAnsweringANameWaitingForReview:
+    async def test_same_needs_the_candidate(self, client_for):
+        from app.api.routes import ingest as ingest_api
+
+        async with client_for(ingest_api.router) as client:
+            response = await client.post("/api/ingest/queue/4", json={"answer": "same"})
+        assert response.status_code == 422
+
+    async def test_the_answer_reaches_the_repository(self, client_for, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+
+        seen = {}
+
+        async def fake(pool, item_id, **kw):
+            seen.update(item_id=item_id, **kw)
+            return {"id": item_id, "status": "accepted"}
+
+        monkeypatch.setattr("app.api.routes.ingest.repo.answer_queue", fake)
+        async with client_for(ingest_api.router) as client:
+            response = await client.post("/api/ingest/queue/4", json={"answer": "same", "candidate_id": 9})
+        assert response.status_code == 200 and response.json() == {"id": 4, "status": "accepted"}
+        assert seen["same"] is True and seen["candidate_id"] == 9
+
+    async def test_a_name_already_answered_is_404(self, client_for, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+
+        async def fake(pool, item_id, **kw):
+            return None
+
+        monkeypatch.setattr("app.api.routes.ingest.repo.answer_queue", fake)
+        async with client_for(ingest_api.router) as client:
+            response = await client.post("/api/ingest/queue/4", json={"answer": "different"})
+        assert response.status_code == 404
+
+
+class TestListingWorkbooksForTheSpreadsheetsCard:
+    async def test_only_workbooks_with_their_folder(self, client_for, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+        from app.integrations import storage
+
+        async def fake(bucket, prefix=""):
+            return [
+                {"key": "mca_csr/csr_2023-24.xlsx", "size": 2048, "updated_at": "2026-09-01T10:00:00Z"},
+                {"key": "notes.pdf", "size": 1, "updated_at": None},
+                {"key": "cso.xlsx", "size": None, "updated_at": None},
+            ]
+
+        monkeypatch.setattr(storage, "list_all", fake)
+        async with client_for(ingest_api.router) as client:
+            body = (await client.get("/api/ingest/workbooks")).json()
+        assert [w["path"] for w in body] == ["staff-sources/mca_csr/csr_2023-24.xlsx", "staff-sources/cso.xlsx"]
+        assert body[0]["folder"] == "mca_csr" and body[0]["updated_at"] == "2026-09-01"
+        assert body[1]["folder"] == "" and body[1]["folder_label"] == "Not in a folder"
+
+    async def test_a_bucket_name_that_is_a_path_is_refused(self, client_for):
+        from app.api.routes import ingest as ingest_api
+
+        async with client_for(ingest_api.router) as client:
+            response = await client.get("/api/ingest/workbooks", params={"bucket": "../x"})
+        assert response.status_code == 422
+
+
+class TestTheReviewCardSpeaksPlainly:
+    """The review card shows findings and questions with no table, column or enum codes in them."""
+
+    URL = "https://example.org/about"
+
+    def test_a_finding_becomes_facts_with_amounts_in_rupees(self):
+        from app.ingest import review
+
+        f = {"concept": "csr_year", "fiscal_year": "FY2023-24", "evidence": "x" * 30, "source_url": self.URL,
+             "prescribed_csr": {"value": 4.37, "unit": "crore", "text": "Rs 4.37 crore"},
+             "section_135_applicable": True, "notes": "kept out"}
+        assert review.facts(f) == [{"label": "Prescribed CSR", "value": 43700000.0, "money": True}]
+
+    def test_codes_become_words(self):
+        from app.ingest import review
+
+        assert review.code_words("corporate_csr") == "Corporate CSR"
+        assert review.code_words("12a") == "12A"
+        assert review.code_words("SBI Foundation") == "SBI Foundation"
+
+    @pytest.mark.parametrize(("finding", "expected"), [
+        ({"evidence_tier": "evidenced"}, "confirmed"),
+        ({"evidence_tier": "claimed", "source_url": "https://x.gov.in/a.pdf"}, "self_reported"),
+        ({"source_url": "https://www.mca.gov.in/csr"}, "confirmed"),
+        ({"source_url": "https://staff-sources.sangam.invalid/doc/1"}, "confirmed"),
+        ({"source_url": "https://bank.example/annual-report.pdf"}, "confirmed"),
+        ({"source_url": "https://en.wikipedia.org/wiki/X"}, "self_reported"),
+    ])
+    def test_the_tag_follows_the_source(self, finding, expected):
+        from app.ingest import review
+
+        assert review.tag(finding) == expected
+
+    def test_identity_first_then_one_per_topic(self):
+        from app.ingest import review
+
+        row = {"findings": [{"concept": c, "source_url": self.URL} for c in ("partner", "partner", "footprint", "identity")]}
+        assert [a["concept"] for a in review.answers(row)] == ["identity", "partner", "footprint", "partner"]
+
+    def test_missing_topics_say_why(self):
+        from app.ingest import review
+
+        row = {"findings": [{"concept": "partner"}], "gaps": [
+            {"concept": "partner", "reason": "blocked", "detail": "found anyway"},
+            {"concept": "rfp", "reason": "not_stated", "detail": "no call"},
+            {"concept": "rfp", "reason": "blocked", "detail": "403"},
+            {"concept": "csr_year", "field": "admin_overheads", "reason": "not_stated", "detail": "one field"},
+        ]}
+        assert [(m["concept"], m["tag"]) for m in review.missing(row)] == [("rfp", "couldnt_read")]
+
+    def test_a_question_keeps_its_id_and_loses_its_column_names(self):
+        from app.ingest import review
+
+        q = review.question({"id": "abc", "case": 3, "table": "funder_csr_years", "label": "FY2023-24",
+                             "changes": {"prescribed_csr": {"old": 1, "new": 2}, "funder_type": {"old": "corporate_csr", "new": "x"}},
+                             "choices": ["update", "keep"]})
+        assert q["id"] == "abc"
+        assert [(f["label"], f["money"]) for f in q["fields"]] == [("Prescribed CSR", True), ("Funder type", False)]
+        assert q["fields"][1]["old"] == "Corporate CSR"
+        assert [c["label"] for c in q["choices"]] == ["Use the new one", "Keep what Sangam has"]
+        assert "_" not in q["topic"]
+
+    def test_an_activity_question_is_titled_by_its_kind_and_amounts_are_numbers(self):
+        from app.ingest import review
+
+        q = review.question({"id": "p1", "case": 3, "table": "funder_activity", "label": "partner · KABIL",
+                             "row_kind": "partner", "changes": {"amount": {"old": "43700000.00", "new": 5}},
+                             "choices": ["keep"]})
+        assert q["topic"] == review.topic("partner")
+        assert q["about"] == "KABIL"
+        assert q["fields"][0]["old"] == 43700000.0
+
+    async def test_no_research_is_404(self, client_for, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+
+        async def none(slug):
+            return None
+
+        monkeypatch.setattr("app.ingest.tools.catalog_tools.review_view", none)
+        async with client_for(ingest_api.router) as client:
+            assert (await client.get("/api/ingest/research/nobody/review")).status_code == 404

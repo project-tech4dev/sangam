@@ -28,14 +28,18 @@ DEFAULT_GITHUB_TOOL_ALLOWLIST = [
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # "provider:model_name", resolved via langchain init_chat_model.
-    model: str = "anthropic:claude-sonnet-5"
+    # "provider:model_name", resolved via langchain init_chat_model. Blank or unset always means the default
+    # here. Three tiers, by how hard the work is:
+    # MODEL reasons (Ask Sangam, the Import supervisor), so it is the strongest.
+    model: str = "anthropic:claude-opus-5-5"
 
-    # For work that needs no reasoning: filling a fixed record shape from one
-    # article, and the catalog-writer subagent, which calls two tools and
-    # formats their output. Empty falls back to `model`, so an unset value
-    # changes nothing. Point it at the cheapest model of the same provider.
-    utility_model: str = ""
+    # The entity-researcher: long pages and evidence judgements, up to MAX_PARALLEL_RESEARCH at once,
+    # so most of an import's tokens.
+    research_model: str = "anthropic:claude-sonnet-5-5"
+
+    # Work that needs no reasoning: a fixed record from one article, the catalog-writer (two tools, a
+    # report) and the workbook-reader (one tool, a list of names).
+    utility_model: str = "anthropic:claude-haiku-4-5"
 
     # Local only: also accept `Authorization: Bearer dev` as the seeded dev user. Never set when deployed.
     dev_auth: bool = False
@@ -82,9 +86,9 @@ class Settings(BaseSettings):
     sql_timeout_ms: int = 5_000
     sql_max_rows: int = 50
     sql_max_attempts: int = 5
-    # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). Empty disables it;
-    # it is a real extra model call per SQL turn, so point it at the cheapest model of a provider you.
-    sql_audit_model: str = ""
+    # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). `off` disables it;
+    # it is a real extra model call per SQL turn, so it runs on the cheapest tier.
+    sql_audit_model: str = "anthropic:claude-haiku-4-5"
 
     # Graph steps per turn, not tool calls: every middleware hook is its own node, so one model-then-tool
     # cycle costs several. Bound in build_agent(); LangGraph's own default is 25, which a SQL turn exceeds.
@@ -97,6 +101,10 @@ class Settings(BaseSettings):
     # db_pool_max_size with it — each researcher holds a pooled connection while its tools run.
     # A test pins this number against the one written into app/ingest/instructions.md.
     max_parallel_research: int = 8
+    # Hard stops per researcher run. The prompt asks for about fourteen reads; past this many pages the reading
+    # tools refuse and it saves what it has. The model-call cap ends a run that loops.
+    research_page_limit: int = 20
+    research_model_call_limit: int = 60
     # Connections this process may open. The ceiling is the database's, not ours: the Supabase project
     # allows 60 with 3 reserved, and a deployed backend runs several instances, so 10 leaves room for
     # roughly four of them plus the dashboard. The checkpointer writes on every graph step and shares
@@ -107,7 +115,13 @@ class Settings(BaseSettings):
     # a regex to admit them, e.g. ^https://sangam-[a-z0-9-]+\.vercel\.app$ Anchor it: an unanchored pattern.
     allowed_origin_regex: str = ""
 
-    @field_validator("max_parallel_research", "db_pool_max_size", mode="before")
+    @field_validator(
+        "model",
+        "research_model",
+        "utility_model",
+        "sql_audit_model",
+        "max_parallel_research", "research_page_limit", "research_model_call_limit", "db_pool_max_size", mode="before"
+    )
     @classmethod
     def _blank_means_default(cls, v: object, info: ValidationInfo) -> object:
         """An unset variable reaches us as "", not as missing.
@@ -119,6 +133,11 @@ class Settings(BaseSettings):
         if isinstance(v, str) and not v.strip():
             return cls.model_fields[info.field_name].default
         return v
+
+    @field_validator("sql_audit_model", mode="after")
+    @classmethod
+    def _off_disables_the_audit(cls, v: str) -> str:
+        return "" if v.strip().lower() == "off" else v
 
     @property
     def db_gate_slots(self) -> int:

@@ -7,6 +7,10 @@ Read `docs/DESIGN_SYSTEM.md` first; it has the mapping tables and the step-by-st
   replaced by v2; do not write to it.
 - **Write access is V's to grant.** v2 is owned by V; a `write_files` from an account without
   edit access returns 403 "cannot edit this project" (8 Oct 2026, fixed once V granted it).
+- **Only V can delete files.** `delete_files` returns 403 "bulk delete requires project ownership"
+  for anyone else, even for one path (9 Oct 2026). Unreference the file instead, and ask V to delete
+  it. Pending: `components/agent/RunStatus.{jsx,d.ts,prompt.md}`, retired with the guided Import
+  (the card and readme no longer name it).
 - **Do not run the `/design-sync` converter.** It builds a design system from a compiled
   component package (`dist/` + `.d.ts`) and replaces the project's components wholesale. Sangam
   has no package: most of its look is the classes in `frontend/app/globals.css`, and `Nav`,

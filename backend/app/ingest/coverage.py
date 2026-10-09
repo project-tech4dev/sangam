@@ -150,3 +150,95 @@ def render(cov: Coverage) -> str:
     if not cov.write_checked:
         out.append("\n'Found, not written' is not checked for an NGO: its write cannot be dry-run.")
     return "\n".join(out)
+
+
+def _written_label(concept: str) -> str:
+    spec = CONCEPTS[concept]
+    return spec.table + (f" ({spec.row_filter[1]})" if spec.row_filter else "")
+
+
+# promote() counts rows under these labels (`_count`); each names one concept.
+CONCEPT_OF_WRITTEN = {_written_label(c): c for c in CONCEPTS if c not in ("identity", "org_identity", "csr_year")}
+
+
+def changes_by_concept(report: dict[str, Any]) -> dict[str, dict[str, int]]:
+    """Rows a promote() report added and updated, per concept. Works on a real write and on a plan."""
+    out: dict[str, dict[str, int]] = {}
+
+    def bump(concept: str, status: str, n: int = 1) -> None:
+        if status in ("added", "updated"):
+            out.setdefault(concept, {"added": 0, "updated": 0})[status] += n
+
+    entity = report.get("entity") or {}
+    if entity:
+        bump("org_identity" if entity.get("kind") == "org" else "identity", entity.get("status", ""))
+    for year in report.get("csr_years", []):
+        bump("csr_year", year.get("status", ""))
+    for label, counts in (report.get("written") or {}).items():
+        concept = CONCEPT_OF_WRITTEN.get(label)
+        if concept:
+            for status, n in counts.items():
+                bump(concept, status, n)
+    return out
+
+
+def as_dict(cov: Coverage) -> dict[str, Any]:
+    """`compute()` as JSON for the Import screen; `render()` stays the agent's text."""
+    cells = cov.cells
+    return {
+        "name": cov.entity, "kind": cov.kind, "years": cov.years, "write_checked": cov.write_checked,
+        "cells": len(cells), "found": sum(1 for c in cells if c.status == "found"),
+        "fields_filled": sum(line.fields_filled for line in cov.lines),
+        "fields_total": sum(line.fields_total for line in cov.lines),
+        "concepts": [
+            {"concept": line.concept, "title": CONCEPTS[line.concept].title,
+             "cells": [{"year": c.year, "status": c.status, "detail": c.detail} for c in line.cells],
+             "fields_filled": line.fields_filled, "fields_total": line.fields_total,
+             "held": line.held, "extra_years": line.extra_years}
+            for line in cov.lines
+        ],
+    }
+
+
+def saved_record(prior: dict[str, Any] | None, report: dict[str, Any],
+                 rows_after: dict[str, int] | None) -> dict[str, Any] | None:
+    """What to store on the research row after a save, or None to keep the stored one.
+    A re-save that writes nothing would read before == after; one that writes more keeps the first before."""
+    changes = changes_by_concept(report)
+    if prior and not changes:
+        return None
+    if not prior and not report.get("entity"):
+        return None  # refused before anything was written: research stays unsaved
+    if prior:
+        for concept, counts in (prior.get("changes") or {}).items():
+            mine = changes.setdefault(concept, {"added": 0, "updated": 0})
+            for status, n in counts.items():
+                mine[status] = mine.get(status, 0) + n
+    rows_before = (prior or {}).get("rows_before")
+    if rows_before is None and rows_after is not None:
+        rows_before = {c: max(n - changes.get(c, {}).get("added", 0), 0) for c, n in rows_after.items()}
+    return {
+        "entity": report.get("entity"), "changes": changes,
+        "rows_before": rows_before, "rows_after": rows_after,
+        "held": report.get("held", []), "skipped": dict(report.get("skipped", {})),
+        "reasons": report.get("reasons", []), "conflicts": report.get("conflicts", []),
+    }
+
+
+def view(row: dict[str, Any], *, stage: str, report: dict[str, Any] | None, entity: dict[str, Any] | None,
+         reasons: list[str], held: list[str], questions: int, changes: dict[str, dict[str, int]],
+         before: dict[str, int] | None, after: dict[str, int] | None) -> dict[str, Any]:
+    """The coverage endpoint's body, once the stage's numbers are in hand."""
+    cov = as_dict(compute(row, report=report))
+    for line in cov["concepts"]:
+        c = line["concept"]
+        line.update(changes.get(c, {"added": 0, "updated": 0}))
+        line["before"] = before.get(c) if before is not None else None
+        line["after"] = after.get(c) if after is not None else None
+    return {
+        "slug": row["slug"], "stage": stage, "saved_at": row.get("saved_at"),
+        "entity": entity, "reasons": reasons, "held": held, "questions": questions,
+        "facts_before": sum(before.values()) if before is not None else None,
+        "facts_after": sum(after.values()) if after is not None else None,
+        **cov,
+    }

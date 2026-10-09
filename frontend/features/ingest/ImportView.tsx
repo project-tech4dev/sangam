@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { ImportWorkspace } from "@/features/ingest/ImportWorkspace";
 import { ProposalList } from "@/features/ingest/components/ProposalList";
-import { ResearchShelf } from "@/features/ingest/components/ResearchShelf";
-import { ReviewQueue } from "@/features/ingest/components/ReviewQueue";
+import { ResearchedRecently } from "@/features/ingest/components/ResearchedRecently";
 import { RunHistory } from "@/features/ingest/components/RunHistory";
+import { SourceGroups } from "@/features/ingest/components/SourceGroups";
 import { SourcePanel } from "@/features/ingest/components/SourcePanel";
+import { WaitingForYou } from "@/features/ingest/components/WaitingForYou";
 import type { ImportRun, ImportSource, QueueItem, ResearchRecord, SourceProposal } from "@/features/ingest/lib/types";
 import { authHeaders } from "@/lib/api/auth-headers";
 
@@ -30,16 +31,24 @@ async function get<T>(path: string): Promise<T> {
 }
 
 /**
- * Sangam Import, inside the Ask workspace: the import agent's chat with the run, research,
- * review and source panels beside it. The panels load when the view opens rather than with
- * every /ask page, since most visits never open Tools.
+ * One Import thread: a guided Start → Working → Review → Done, with what is waiting and what was
+ * researched under the Start step. Panels load once, and stay while threads change.
  */
-export function ImportView() {
+export function ImportView({
+  threadId,
+  resume,
+  onStartOver,
+  onFirstSend,
+}: {
+  threadId: string;
+  /** Opened from the list, so its saved messages load. */
+  resume: boolean;
+  onStartOver: () => void;
+  onFirstSend: (text: string) => void;
+}) {
   const [panels, setPanels] = useState<Panels | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [staffOnly, setStaffOnly] = useState(false);
-  // A new id is a new thread: a stopped or paused run is left behind, saved research is not.
-  const [threadId, setThreadId] = useState(() => `import-${crypto.randomUUID()}`);
 
   useEffect(() => {
     let live = true;
@@ -66,7 +75,7 @@ export function ImportView() {
   if (staffOnly) {
     return (
       <div className="import-view">
-        <div className="eyebrow">Tools · Import</div>
+        <div className="eyebrow">Import</div>
         <h2 className="import-title">Staff only</h2>
         <p className="muted measure import-lede">
           Sangam Import changes the catalog, so it is open to the Sangam team only. Ask Sangam is
@@ -76,38 +85,42 @@ export function ImportView() {
     );
   }
 
+  const start = (
+    <>
+      {error && <div className="import-error">Could not load what&apos;s waiting and what was researched: {error}</div>}
+      {!panels && !error && <div className="muted">Loading…</div>}
+      {panels && (
+        <>
+          <WaitingForYou items={panels.queue} sources={panels.sources} />
+          <ResearchedRecently items={panels.research} />
+          <SourceGroups sources={panels.sources} />
+          <details className="import-section import-disclosure">
+            <summary className="import-link">Details: runs, new websites and every source</summary>
+            <div className="import-details">
+              <RunHistory runs={panels.runs} />
+              <ProposalList items={panels.proposals} />
+              <SourcePanel sources={panels.sources} />
+            </div>
+          </details>
+        </>
+      )}
+    </>
+  );
+
   return (
     <div className="import-view import-view-open">
-      <div>
-        <div className="eyebrow">Tools · Import</div>
-        <h2 className="import-title">Bring funder data in, and see what could not come in</h2>
-        <p className="muted measure import-lede">
-          Sangam Import reads the sources whose terms allow it, matches what it finds against the
-          catalog, and writes what is safe to write. It is not Ask Sangam — it changes the data.
-        </p>
+      <div className="import-intro">
+        <span className="eyebrow">Import</span>
+        <span className="import-hint">Bring new information into Sangam, with proof for every answer</span>
       </div>
-      <div className="import-cols">
-        <div className="import-main">
-          <ImportWorkspace
-            key={threadId}
-            threadId={threadId}
-            onStartOver={() => setThreadId(`import-${crypto.randomUUID()}`)}
-          />
-        </div>
-        <aside className="import-aside">
-          {error && <div className="card-body import-error">Could not load the import panels: {error}</div>}
-          {!panels && !error && <div className="muted">Loading runs and research…</div>}
-          {panels && (
-            <>
-              <ResearchShelf items={panels.research} />
-              <RunHistory runs={panels.runs} />
-              <ReviewQueue items={panels.queue} />
-              <ProposalList items={panels.proposals} />
-            </>
-          )}
-        </aside>
-      </div>
-      {panels && <SourcePanel sources={panels.sources} />}
+      <ImportWorkspace
+        key={threadId}
+        threadId={threadId}
+        resume={resume}
+        onStartOver={onStartOver}
+        onFirstSend={onFirstSend}
+        start={start}
+      />
     </div>
   );
 }

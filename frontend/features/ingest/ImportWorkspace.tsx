@@ -1,35 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
-import { CoverageChart } from "./components/CoverageChart";
-import { Milestones } from "./components/Milestones";
-import { RunStatus } from "./components/RunStatus";
-import { PausedPick } from "./components/SourcePicker";
+import { AgentNotes } from "./components/AgentNotes";
+import { DoneReport } from "./components/DoneReport";
 import { SaveQuestions } from "./components/SaveQuestions";
-import { SubagentBoard } from "./components/SubagentBoard";
+import { SpreadsheetsCard } from "./components/SpreadsheetsCard";
+import { StartStep } from "./components/StartStep";
+import { StepBar } from "./components/StepBar";
+import { WorkingBoard } from "./components/WorkingBoard";
+import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
+import { fetchImportMessages } from "./lib/threads";
 
-const SUGGESTIONS = [
-  // Loads the funder-scan skill, which supplies the 28-field brief so nobody
-  // has to paste it.
-  "Funding profile for SBI Foundation and Infosys Foundation",
-  "Which sources can you read, and which are held back?",
-  "Run an import from India CSR, 5 articles",
-  "Summarise the last run",
-  "What is waiting for review?",
-];
+// The pauses a run can stop at. A reopened thread can't answer one, so it says where it stopped.
+const PAUSES = ["promote_research", "list_bucket_files", "select_source_files"];
 
-/** One Import conversation. `onStartOver` hands the parent a fresh thread; this one is abandoned. */
-export function ImportWorkspace({ threadId, onStartOver }: { threadId: string; onStartOver: () => void }) {
-  const { turns, send, stop, isRunning, isReady } = useAgentChat(threadId, "sangam_ingest", "sangam-import");
+/** One Import conversation. `onStartOver` hands the parent a fresh thread; `start` shows below the Start step. */
+export function ImportWorkspace({
+  threadId,
+  resume = false,
+  onStartOver,
+  onFirstSend,
+  start,
+}: {
+  threadId: string;
+  /** Load the thread's saved messages: it was opened from the list. */
+  resume?: boolean;
+  onStartOver: () => void;
+  /** The thread's first request, so the parent can list it and put it in the URL. */
+  onFirstSend?: (text: string) => void;
+  start?: ReactNode;
+}) {
+  const load = useCallback(() => fetchImportMessages(threadId), [threadId]);
+  const { turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners } = useAgentChat(
+    threadId,
+    "sangam_ingest",
+    "sangam-import",
+    resume ? load : undefined,
+  );
   const [draft, setDraft] = useState("");
+  // The chat stays for anything the task cards don't cover.
+  const [advanced, setAdvanced] = useState(false);
+  // A question card is open: the run has stopped to wait for an answer, not finished.
+  const [paused, setPaused] = useState(false);
+  // The open question is the Review card, as opposed to the spreadsheets one.
+  const [reviewing, setReviewing] = useState(false);
+  // A review was answered, so what runs now is the save: the step bar stays on Done.
+  const [reviewed, setReviewed] = useState(false);
+  // When the first request went, so Done shows only names this run queued.
+  const [since, setSince] = useState<number | null>(null);
+  // The first request came from the task cards, so it is Sangam's wording, not something to show back.
+  const [guided, setGuided] = useState(false);
+  // Stable, because PauseSignal re-runs its effect whenever this changes.
+  const onReview = useCallback((open: boolean) => {
+    setPaused(open);
+    setReviewing(open);
+    if (open) setReviewed(true);
+  }, []);
+  const atStart = turns.length === 0 && !isLoadingHistory;
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
+  const stoppedAtQuestion = resume && !isRunning && !paused && lastSteps.some((s) => PAUSES.includes(s.tool) && s.result === null);
 
   async function submit(text: string) {
     const value = text.trim();
     if (!value || isRunning) return;
     setDraft("");
+    setSince((prev) => prev ?? Date.now());
+    if (turns.length === 0) onFirstSend?.(value);
     await send(value);
   }
 
@@ -41,57 +79,79 @@ export function ImportWorkspace({ threadId, onStartOver }: { threadId: string; o
 
   return (
     <div className="import-ws">
+      <StepBar current={atStart ? 0 : reviewing ? 2 : reviewed || (!isRunning && !paused) ? 3 : 1} />
+      {atStart && !advanced && (
+        <>
+          <StartStep
+            onStart={(prompt) => {
+              setGuided(true);
+              void submit(prompt);
+            }}
+            disabled={!isReady}
+          />
+          <button type="button" className="import-link import-advanced" onClick={() => setAdvanced(true)}>
+            Advanced: type your own request
+          </button>
+        </>
+      )}
+
+      {isLoadingHistory && <p className="muted">Opening this import…</p>}
+
       <div className="import-turns">
-        {turns.length === 0 && (
-          <div className="import-suggest">
-            {SUGGESTIONS.map((s) => (
-              <button key={s} type="button" className="btn" onClick={() => submit(s)} disabled={!isReady}>
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
+        {turns.map((turn, i) => {
+          const waiting = paused && i === turns.length - 1;
+          const board = <WorkingBoard steps={turn.steps} running={turn.streaming} paused={waiting} laneOwners={laneOwners} />;
+          const slugs = slugsOf(turn.steps);
+          const done = !turn.streaming && !waiting && slugs.length > 0;
+          return (
+            <article key={turn.id} className="import-turn">
+              {!(guided && i === 0) && <p className="import-question">{turn.question}</p>}
 
-        {turns.map((turn) => (
-          <article key={turn.id} className="import-turn">
-            <p className="import-question">{turn.question}</p>
+              {done ? (
+                <DoneReport
+                  slugs={slugs}
+                  since={since}
+                  onStartOver={startOver}
+                  onSave={(name) => void submit(`Save ${name} to Sangam`)}
+                  busy={isRunning}
+                  fallback={board}
+                />
+              ) : waiting && reviewing ? null : (
+                board
+              )}
 
-            {/* The stages of the run, above the step-by-step. A reader wants
-                to know what was reached before they want to know how. */}
-            <Milestones steps={turn.steps} running={turn.streaming} />
-
-            {/* Subagents get their own board: several run at once and a flat
-                list of "Delegating a sub-task" hides that entirely. */}
-            <SubagentBoard steps={turn.steps.filter((s) => s.tool === "task")} />
-
-            {turn.steps
-              .filter((s) => s.tool === "coverage_report" && s.result)
-              .map((s) => (
-                <CoverageChart key={s.id} text={s.result} />
+              {/* Refusals and failures only. The findings belong in the answer and
+                  the stages belong above; a line per tool call buried both. */}
+              {failuresOf(turn.steps).map((f) => (
+                <div key={f.id} className="import-failure">
+                  <span className="import-failure-label">{f.label}</span>
+                  <span className="muted">{f.detail}</span>
+                  <span className="import-failure-note">{f.note}</span>
+                  {f.count > 1 && <span className="review-note">×{f.count}</span>}
+                </div>
               ))}
 
-            {/* Refusals and failures only. The findings belong in the answer and
-                the stages belong above; a line per tool call buried both. */}
-            {failuresOf(turn.steps).map((f) => (
-              <div key={f.id} className="import-failure">
-                <span className="import-failure-label">{f.label}</span>
-                <span className="muted">{f.detail}</span>
-                <span className="import-failure-note">{f.note}</span>
-                {f.count > 1 && <span className="save-note">×{f.count}</span>}
-              </div>
-            ))}
-
-            {turn.answer && <div className="import-answer">{turn.answer}</div>}
-          </article>
-        ))}
+              {/* Keyed so the notes, open while they stream, start closed once Done shows. */}
+              {turn.answer && <AgentNotes key={String(done)} text={turn.answer} collapsed={done} />}
+            </article>
+          );
+        })}
       </div>
 
+      {stoppedAtQuestion && (
+        <p className="import-stopped">
+          This import stopped at a question that can&apos;t be answered here any more. Ask Sangam to save it again, or start a new
+          import.
+        </p>
+      )}
+
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
-      {isReady && <PausedPick agentId={`sangam-import-${threadId}`} steps={lastSteps} />}
-      {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} />}
+      {isReady && <SpreadsheetsCard agentId={`sangam-import-${threadId}`} steps={lastSteps} turnId={turns.at(-1)?.id} onPaused={setPaused} />}
+      {isReady && (
+        <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={onReview} />
+      )}
 
-      <RunStatus running={isRunning} steps={lastSteps} />
-
+      {(!atStart || advanced) && (
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -121,6 +181,8 @@ export function ImportWorkspace({ threadId, onStartOver }: { threadId: string; o
           </button>
         )}
       </form>
+      )}
+      {atStart && start}
     </div>
   );
 }

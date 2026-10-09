@@ -13,7 +13,7 @@ def resolve_model(spec: str) -> BaseChatModel:
     if ":" not in spec:
         raise ValueError(
             f"Invalid model spec {spec!r}: expected 'provider:model_name', "
-            f"e.g. 'anthropic:claude-sonnet-5'"
+            f"e.g. 'anthropic:claude-opus-5-5'"
         )
     provider, name = spec.split(":", 1)
     if provider not in SUPPORTED_PROVIDERS:
