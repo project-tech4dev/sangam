@@ -16,6 +16,18 @@ It is reached two ways:
 - **Start a proposal** / **Continue proposal** on a Funder Match card;
 - **Proposals**, a new item under **Use Cases** in the Ask workspace sidebar, after Funder Match.
 
+**Several proposals to one funder.** An organisation can be funded by the same funder for different
+programmes, so it can have any number of proposals to one funder. Each is named for its programme.
+This refines the Funder Match card (#126):
+- no proposal to that funder: terracotta **Start a proposal**;
+- one: sage **Continue proposal**, which opens it, with a small **Start another** link beside it;
+- more than one: sage **Proposals (N)**, which opens the Proposals list filtered to that funder, with
+  **Start another**.
+
+Starting one asks for its name, prefilled "<organisation>: proposal to <funder>", for the person to
+replace with the programme ("SeSTA: women's farm enterprises, Baksa"). The name is editable later in
+the proposal's header.
+
 **Out of scope**
 - **Remembering gate answers across proposals** ("Remember these for next time"). Shown in the
   prototype as v2.
@@ -120,7 +132,7 @@ version. Versions are listed with date and who made them; each opens or download
 
 ### The Proposals list
 
-One row per proposal for the organisations the person can see: organisation → funder, started on,
+One row per proposal for the organisations the person can see: its name, organisation → funder, started on,
 the fit score from the latest match, "N of M sections done · core 24/32", and Ready or not. Clicking
 opens the proposal at the step it was left on. Empty state: "No proposals yet. Start one from a funder
 in Funder Match."
@@ -218,11 +230,11 @@ ALTER TABLE proposals
   ADD COLUMN work    jsonb NOT NULL DEFAULT '{}'::jsonb,  -- everything the page edits, see below
   ADD COLUMN summary jsonb NOT NULL DEFAULT '{}'::jsonb;  -- what the list shows, computed from work on save
 
--- One open proposal per organisation and funder: Start becomes Continue.
-CREATE UNIQUE INDEX proposals_open_uniq ON proposals (org_id, funder_id) WHERE status = 'drafting';
+-- No uniqueness on (org_id, funder_id): one funder can fund several of an organisation's programmes.
+-- The existing proposals_org_idx (org_id, status) serves the list.
 ```
 
-Existing columns used as they are: `org_id`, `funder_id`, `title`, `status` (`drafting`),
+Existing columns used as they are: `org_id`, `funder_id`, `title` (the programme name), `status` (`drafting`),
 `template_id` (the template's `documents` row, when one is used), `draft_document_id` (the latest
 assembled version), `created_by`, `created_at`, `updated_at`. The match is found by `org_id` and
 `funder_id` in `funder_matches`; `fit_score_id` is not used and is dropped with the fit-score tables
@@ -363,9 +375,10 @@ as the caller and sits behind `require_user`; a proposal the caller cannot see i
 
 | Route | Does |
 |---|---|
-| `GET /api/proposals?org=<slug>` | The list: id, org, funder, `created_at`, `summary`. Omit `org` for every organisation the caller can see. |
-| `POST /api/proposals` `{org, funder_id}` | Starts one, reads the funder brief, returns it. If one is open for that pair, returns it with 200 instead of 201. |
+| `GET /api/proposals?org=<slug>&funder=<id>` | The list: id, title, org, funder, `created_at`, `summary`. Both filters optional; with none, every organisation the caller can see. |
+| `POST /api/proposals` `{org, funder_id, title}` | Starts one, reads the funder brief, returns it (201). Always a new proposal, even when others to that funder exist. |
 | `GET /api/proposals/{id}` | The proposal with its `work`. |
+| `PATCH /api/proposals/{id}` `{title}` | Renames it. |
 | `PATCH /api/proposals/{id}/work` | Field-by-field save, above. |
 | `POST /api/proposals/{id}/template` | `{url}`, `{document_id}` or `{skip: true}`. A URL is fetched through `guarded_client` and stored as a `proposal_template` document; the text is read into `work.template`, and `proposals.template_id` is set to the same document (null on skip). |
 | `POST /api/proposals/{id}/sections/{code}/draft` | Drafts one section and saves it. |
@@ -414,7 +427,7 @@ lists its `sources`, and the assembled documents are marked `is_ai_generated`.
 - **Integration** (`integration` mark):
   - the row-level rules: member, admin, steward, staff, stranger and anonymous creating, editing and
     reading a proposal, and uploading a document;
-  - the one-open-proposal index.
+  - two proposals from one organisation to one funder, each saved and assembled independently.
 - **Evals** (`eval` mark, costs money): draft three sections for a seeded organisation and assert the
   text cites only markers from its source pack and leaves `[Add: …]` where the pack has nothing.
 - **Frontend:** `npm run lint`, `npm run build`, and the flow by hand as a member and a steward: start
