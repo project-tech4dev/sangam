@@ -3,6 +3,8 @@
 *Approved 2026-10-07. Supersedes the subagent half of `2026-10-07-funder-matching-readiness-once.md`;
 the checks, gates, weights and scorer of `2026-10-07-funder-matching-scored.md` stay.*
 
+*2026-10-10: the rules and scoring are now match-v1, per `2026-10-10-funder-matching-match-v1.md`; the shape below stays.*
+
 ## Context
 
 Even with readiness-once live, one `org-readiness` subagent ran about 35 open-ended `db_query` calls for KABIL. Three things drive that, and a better prompt fixes none of them:
