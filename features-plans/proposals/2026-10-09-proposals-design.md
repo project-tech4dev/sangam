@@ -56,6 +56,11 @@ A1–A7 (the case and the plan), B1–B5 for A8–A12 (people), C1–C4 for A13�
 and F1, F2, F3… for the funder's sections in order (F1, then F4 if present, then T1, T2…). The mapping
 is one function in the frontend.
 
+**The rubric lives in one place.** `GET /api/proposals/{id}` returns this proposal's rubric (sections,
+questions, Strong elements, overlays, order) alongside `work`, and every save returns the new
+`summary`. The page shows scores and readiness from those; it computes none itself, only the display
+codes.
+
 ## The page: three steps
 
 A stepper across the top: **1 Eligibility gates**, **2 Template, documents and style**, **3 Proposal**.
@@ -129,8 +134,9 @@ Title Case sidebar labels, and the same PR updates the design system with a `Pro
 **When.** On **Draft the proposal →**, every section is drafted; the page shows each one as it
 arrives. A single section can be redrafted later from its own menu.
 
-**From what.** For each proposal Sangam builds a *source pack* once per drafting run, read through the
-caller's own connection (the repositories behind `PoolDep`), so row-level security decides what is
+**From what.** Each section request builds the *source pack* it needs: the organisation and funder
+rows (cheap reads) and a search for that section's passages. It is read through the caller's own
+connection (the repositories behind `PoolDep`), so row-level security decides what is
 in it:
 
 | Source | What it gives | Marker |
@@ -176,8 +182,13 @@ suggestions use `Settings.utility_model` (which falls back to `model`). No new s
 traced in Langfuse as for the agents.
 
 **Concurrency.** Sections are drafted in parallel, bounded by a small fixed number (4), from the
-browser: one request per section. That keeps each request short, under Vercel's function limit, and
-lets the page fill in as sections arrive.
+browser: one request per section. That keeps each request short and lets the page fill in as sections
+arrive. `backend/vercel.json` sets no `maxDuration`; confirm the deployment's default covers the
+slowest single call (a template fetch and read, or one section draft) and set it there if not.
+
+**An interrupted draft.** Step 3 opens as soon as drafting starts; sections still being written show
+"Drafting…". If the tab closes half way, the sections with no text are drafted again when the
+proposal is reopened, and any that fail show **Draft this section**.
 
 ## Adding a document after drafting
 
@@ -333,7 +344,8 @@ PATCH /api/proposals/42/work
 {"set": {"sections.A3.text": "…", "sections.A3.done": false}, "rev": {"A3": 4}}
 ```
 
-- The server applies each path with `jsonb_set` in one statement, inside a transaction that locks
+- The server applies each path with `jsonb_set` in one statement (creating a missing parent object
+  first, since `jsonb_set` does not), inside a transaction that locks
   the row, then recomputes `summary` and `updated_at`.
 - Paths are checked against an allowlist of the shapes above; anything else is a 400.
 - **A section's text carries its `rev`.** If it does not match the stored one, somebody else changed
@@ -355,7 +367,7 @@ as the caller and sits behind `require_user`; a proposal the caller cannot see i
 | `POST /api/proposals` `{org, funder_id}` | Starts one, reads the funder brief, returns it. If one is open for that pair, returns it with 200 instead of 201. |
 | `GET /api/proposals/{id}` | The proposal with its `work`. |
 | `PATCH /api/proposals/{id}/work` | Field-by-field save, above. |
-| `POST /api/proposals/{id}/template` | `{url}`, `{document_id}` or `{skip: true}`. A URL is fetched through `guarded_client`; the text is read into `work.template`. |
+| `POST /api/proposals/{id}/template` | `{url}`, `{document_id}` or `{skip: true}`. A URL is fetched through `guarded_client` and stored as a `proposal_template` document; the text is read into `work.template`, and `proposals.template_id` is set to the same document (null on skip). |
 | `POST /api/proposals/{id}/sections/{code}/draft` | Drafts one section and saves it. |
 | `POST /api/proposals/{id}/sections/{code}/check` | Checks one section and saves the score. |
 | `POST /api/proposals/{id}/suggestions` `{document_id}` | Reads a new document against the sections and saves the suggestions. |
