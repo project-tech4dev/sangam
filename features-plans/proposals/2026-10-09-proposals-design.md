@@ -231,6 +231,32 @@ Suggestions apply to Done sections too: adding one clears that section's Done.
 
 ## Data model
 
+**At a glance.** No new tables. `proposals` gains `work` (everything the page edits) and `summary`
+(what the list shows); `documents` holds the template, the organisation's uploads and each saved .docx.
+
+```json
+{
+  "step": 3,
+  "gates": {"G1": true, "G2": true},
+  "funder": {"themes": ["Rural livelihoods"], "places": ["Baksa", "Udalguri"]},
+  "template": {"url": "https://…/proposal-format.pdf", "order": ["A1", "A2", "T1"]},
+  "docs": [57, 58],
+  "style": "Plain, specific English …",
+  "sections": {
+    "A3": {"text": "In Tamulpur block, 38% of households … [Add: the cause]", "score": 1, "done": false}
+  },
+  "suggestions": [{"section": "A11", "text": "In 2021–24 SeSTA ran …", "source": "doc:57"}],
+  "polished": {"A3": "Smallholder families in these villages go short of food …"},
+  "versions": [{"n": 1, "document_id": 71, "at": "2026-10-09"}]
+}
+```
+```json
+{"done": 9, "total": 19, "core": 24, "ready": false}
+```
+
+The full shapes follow.
+
+
 Light on purpose: **no new tables.** The proposal's work in progress is one JSON field, read and
 written whole by one page, never queried piece by piece.
 
