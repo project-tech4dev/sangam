@@ -1,29 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
 import { CoverageChart } from "./components/CoverageChart";
 import { Milestones } from "./components/Milestones";
 import { RunStatus } from "./components/RunStatus";
 import { PausedPick } from "./components/SourcePicker";
 import { SaveQuestions } from "./components/SaveQuestions";
+import { StartStep } from "./components/StartStep";
+import { StepBar } from "./components/StepBar";
 import { SubagentBoard } from "./components/SubagentBoard";
 import { failuresOf } from "./lib/failures";
 
-const SUGGESTIONS = [
-  // Loads the funder-scan skill, which supplies the 28-field brief so nobody
-  // has to paste it.
-  "Funding profile for SBI Foundation and Infosys Foundation",
-  "Which sources can you read, and which are held back?",
-  "Run an import from India CSR, 5 articles",
-  "Summarise the last run",
-  "What is waiting for review?",
-];
-
-/** One Import conversation. `onStartOver` hands the parent a fresh thread; this one is abandoned. */
-export function ImportWorkspace({ threadId, onStartOver }: { threadId: string; onStartOver: () => void }) {
+/** One Import conversation. `onStartOver` hands the parent a fresh thread; `start` shows below the Start step. */
+export function ImportWorkspace({
+  threadId,
+  onStartOver,
+  start,
+}: {
+  threadId: string;
+  onStartOver: () => void;
+  start?: ReactNode;
+}) {
   const { turns, send, stop, isRunning, isReady } = useAgentChat(threadId, "sangam_ingest", "sangam-import");
   const [draft, setDraft] = useState("");
+  // The chat stays for anything the task cards don't cover.
+  const [advanced, setAdvanced] = useState(false);
+  const atStart = turns.length === 0;
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
 
   async function submit(text: string) {
@@ -41,17 +44,18 @@ export function ImportWorkspace({ threadId, onStartOver }: { threadId: string; o
 
   return (
     <div className="import-ws">
-      <div className="import-turns">
-        {turns.length === 0 && (
-          <div className="import-suggest">
-            {SUGGESTIONS.map((s) => (
-              <button key={s} type="button" className="btn" onClick={() => submit(s)} disabled={!isReady}>
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
+      <StepBar current={atStart ? 0 : 1} />
+      {atStart && !advanced && (
+        <>
+          <StartStep onStart={(prompt) => void submit(prompt)} disabled={!isReady} />
+          <button type="button" className="import-link import-advanced" onClick={() => setAdvanced(true)}>
+            Advanced: type your own request
+          </button>
+          {start}
+        </>
+      )}
 
+      <div className="import-turns">
         {turns.map((turn) => (
           <article key={turn.id} className="import-turn">
             <p className="import-question">{turn.question}</p>
@@ -92,6 +96,7 @@ export function ImportWorkspace({ threadId, onStartOver }: { threadId: string; o
 
       <RunStatus running={isRunning} steps={lastSteps} />
 
+      {(!atStart || advanced) && (
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -121,6 +126,7 @@ export function ImportWorkspace({ threadId, onStartOver }: { threadId: string; o
           </button>
         )}
       </form>
+      )}
     </div>
   );
 }

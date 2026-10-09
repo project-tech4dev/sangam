@@ -1,4 +1,7 @@
 from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel
 
 from app.schemas.common import ReadModel
 
@@ -65,6 +68,17 @@ class QueueItemOut(ReadModel):
     created_at: datetime
 
 
+class QueueAnswerIn(BaseModel):
+    answer: Literal["same", "different"]
+    """same: the name is the candidate's, kept as its alias. different: rejected, nothing joined."""
+    candidate_id: int | None = None
+
+
+class QueueAnswerOut(ReadModel):
+    id: int
+    status: str
+
+
 class ResearchOut(ReadModel):
     id: int
     entity_name: str
@@ -78,6 +92,9 @@ class ResearchOut(ReadModel):
     sources_read: list[str] = []
     not_found: list[str] = []
     researched_at: datetime
+    saved_at: datetime | None = None
+    resolved_org_id: int | None = None
+    resolved_funder_id: int | None = None
 
 
 class CoverageCellOut(ReadModel):

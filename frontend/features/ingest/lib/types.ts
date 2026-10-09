@@ -59,6 +59,9 @@ export type ResearchRecord = {
   sources_read: string[];
   not_found: string[];
   researched_at: string;
+  saved_at: string | null;
+  resolved_org_id: number | null;
+  resolved_funder_id: number | null;
 };
 
 /** One expected cell: a concept, once per fiscal year asked for a year-bound one. */

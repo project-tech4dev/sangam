@@ -1359,3 +1359,38 @@ class TestASaveIsCountedPerConcept:
         second = saved_record(first, more, {"identity": 1, "metric": 6})
         assert second["rows_before"] == {"identity": 0, "metric": 0}
         assert second["changes"]["metric"] == {"added": 6, "updated": 0}
+
+
+class TestAnsweringANameWaitingForReview:
+    async def test_same_needs_the_candidate(self, client_for):
+        from app.api.routes import ingest as ingest_api
+
+        async with client_for(ingest_api.router) as client:
+            response = await client.post("/api/ingest/queue/4", json={"answer": "same"})
+        assert response.status_code == 422
+
+    async def test_the_answer_reaches_the_repository(self, client_for, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+
+        seen = {}
+
+        async def fake(pool, item_id, **kw):
+            seen.update(item_id=item_id, **kw)
+            return {"id": item_id, "status": "accepted"}
+
+        monkeypatch.setattr("app.api.routes.ingest.repo.answer_queue", fake)
+        async with client_for(ingest_api.router) as client:
+            response = await client.post("/api/ingest/queue/4", json={"answer": "same", "candidate_id": 9})
+        assert response.status_code == 200 and response.json() == {"id": 4, "status": "accepted"}
+        assert seen["same"] is True and seen["candidate_id"] == 9
+
+    async def test_a_name_already_answered_is_404(self, client_for, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+
+        async def fake(pool, item_id, **kw):
+            return None
+
+        monkeypatch.setattr("app.api.routes.ingest.repo.answer_queue", fake)
+        async with client_for(ingest_api.router) as client:
+            response = await client.post("/api/ingest/queue/4", json={"answer": "different"})
+        assert response.status_code == 404

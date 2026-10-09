@@ -107,8 +107,17 @@ These live in one module, `frontend/features/ingest/lib/words.ts`. `toolLabels.t
         Saved / Not saved / Not found, and Research notes.
       - **Sources:** a collapsed "Which websites is Sangam allowed to read?" with 3
         groups: reads, allowed but not set up, not allowed.
-    - RunHistory, ProposalList and the full SourcePanel move behind an admin check, using
-      the org member role that `OrgMembersCard` already manages.
+    - RunHistory, ProposalList and the full SourcePanel move into one collapsed "Details"
+      section. Decided 2026-10-09: no new permission; Import is already staff-only, and the
+      org member role is about NGOs, not Sangam staff.
+    - **Answering a name** (decided 2026-10-09): `POST /ingest/queue/{id}` with
+      `{answer: same | different, candidate_id}`.
+      - Same: the name becomes an alias of the top candidate (funders, orgs, locations), and the
+        item is `accepted`. The matcher reads aliases, so the next run resolves the name itself.
+      - Different: `rejected`; nothing is created or joined.
+      - Not sure: no call; the item stays pending.
+    - "Researched recently" shows answers (fact count), not "confirmed" counts: which findings
+      count as confirmed is defined in M5. Saved rows link to their profile by id.
   - **Exit gate:**
     - Each task card starts a run whose first message matches today's suggestion text.
     - Advanced chat still works.
@@ -216,5 +225,4 @@ M6.
    Recommendation: derive it from coverage. It is deterministic and needs no model call.
 2. **"Queued" rows** for more than `MAX_PARALLEL_RESEARCH` (8) organisations are not
    designed yet. M3 caps the start screen at 8 names until they are.
-3. **Admin check** for RunHistory, ProposalList and the full SourcePanel: reuse the org
-   member role (`OrgMembersCard`), or add a separate admin flag?
+3. ~~Admin check~~: decided, a collapsed "Details" section for all staff (see M2).

@@ -80,7 +80,7 @@ async def list_research(pool: AsyncConnectionPool, *, limit: int = 50) -> list[d
                 SELECT DISTINCT ON (slug)
                        id, entity_name, canonical_name, entity_kind, slug, status,
                        stopped_reason, summary, fact_count, sources_read, not_found,
-                       researched_at
+                       researched_at, saved_at, resolved_org_id, resolved_funder_id
                 FROM entity_research
                 ORDER BY slug, researched_at DESC
                 """
@@ -89,3 +89,46 @@ async def list_research(pool: AsyncConnectionPool, *, limit: int = 50) -> list[d
     return sorted(
         (dict(r) for r in rows), key=lambda r: r["researched_at"], reverse=True
     )[:limit]
+
+
+# A queued name joins the entity as an alias, which is how the matcher resolves it next run.
+_ALIAS_TABLE = {"funder": "funders", "org": "orgs", "location": "locations"}
+
+
+async def answer_queue(
+    pool: AsyncConnectionPool, item_id: int, *, same: bool, candidate_id: int | None, user_id: object
+) -> dict | None:
+    """Accept (as an alias of the candidate) or reject one pending name. None if not pending or not a candidate."""
+    async with pool.connection() as conn, conn.transaction():
+        item = await (
+            await conn.execute(
+                "SELECT id, raw_name, entity_kind, candidates FROM resolution_queue "
+                "WHERE id = %s AND status = 'pending' FOR UPDATE",
+                (item_id,),
+            )
+        ).fetchone()
+        if item is None:
+            return None
+        resolved = {"org": None, "funder": None, "location": None}
+        if same:
+            if candidate_id not in {c.get("id") for c in item["candidates"] or []}:
+                return None
+            table = _ALIAS_TABLE.get(item["entity_kind"])
+            if table:
+                # Table name from the constant above; values are parameterised.
+                await conn.execute(
+                    f"UPDATE {table} SET aliases = array_append(aliases, %s) WHERE id = %s "
+                    "AND name <> %s AND NOT %s = ANY(aliases)",
+                    (item["raw_name"], candidate_id, item["raw_name"], item["raw_name"]),
+                )
+                resolved[item["entity_kind"]] = candidate_id
+        row = await (
+            await conn.execute(
+                "UPDATE resolution_queue SET status = %s, resolved_org_id = %s, resolved_funder_id = %s, "
+                "resolved_location_id = %s, reviewed_by = %s, reviewed_at = now() "
+                "WHERE id = %s RETURNING id, status",
+                ("accepted" if same else "rejected", resolved["org"], resolved["funder"],
+                 resolved["location"], user_id, item_id),
+            )
+        ).fetchone()
+    return dict(row)

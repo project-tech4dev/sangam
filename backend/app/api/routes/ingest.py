@@ -4,12 +4,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.security import get_current_user, require_staff
+from app.core.security import get_current_user, require_staff, require_user
 from app.db.pool import PoolDep
 from app.ingest.sources import SOURCES
 from app.repositories import ingest as repo
 from app.schemas.ingest import (
     CoverageOut,
+    QueueAnswerIn,
+    QueueAnswerOut,
     QueueItemOut,
     ResearchOut,
     RunItemOut,
@@ -72,6 +74,18 @@ async def run_items(run_id: int, pool: PoolDep,
 async def queue(pool: PoolDep, limit: int = 50,
                 user_id: UUID = Depends(get_current_user)) -> list[QueueItemOut]:
     return [QueueItemOut.model_validate(r) for r in await repo.list_queue(pool, limit=limit)]
+
+
+@router.post("/queue/{item_id}", response_model=QueueAnswerOut, summary="Answer one name waiting for review")
+async def answer_queue(item_id: int, body: QueueAnswerIn, pool: PoolDep,
+                       user_id: UUID = Depends(require_user)) -> QueueAnswerOut:
+    if body.answer == "same" and body.candidate_id is None:
+        raise HTTPException(status_code=422, detail="'same' needs the candidate it is the same as")
+    row = await repo.answer_queue(pool, item_id, same=body.answer == "same",
+                                  candidate_id=body.candidate_id, user_id=user_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"no pending name {item_id} with that candidate")
+    return QueueAnswerOut.model_validate(row)
 
 
 @router.get("/research", response_model=list[ResearchOut],
