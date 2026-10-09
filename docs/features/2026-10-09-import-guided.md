@@ -310,7 +310,19 @@ reference. It needs a resync after this pass.
   A topic counts towards completeness when it has any row.
   - One row per saved organisation: a 20-block bar, "62% → 77%", "+N facts" and "Show ▾".
     Show opens per-topic blocks with "+N added" or the empty reason, plus "Open profile →".
-  - Unsaved organisations are one line at the foot.
+  - Every organisation in the run gets the same row, 1 or 8, saved or not. An unsaved row
+    shows today's completeness and a "Not saved" tag, never a dry run's "would add".
+  - Show ▾ holds that organisation's whole report:
+    - the per-topic blocks;
+    - "What Sangam found", from the review endpoint, with proof;
+    - "Not found, and why", using the coverage cell's own reason;
+    - held-back counts per topic;
+    - "Open profile →", or "Save to Sangam", which asks the agent to save and leads to
+      Review.
+  - The agent's written report renders as markdown in a "Sangam's full notes" box. It is
+    closed once Done shows.
+  - `instructions.md` no longer tells the agent to *offer* `promote_research`. In a live
+    run it ended with "Promote this now?" instead of pausing for Review.
   - The matrix, squares and filter are gone, because the template uses rows even for 6
     or more organisations.
   - "Research notes" still points nowhere, so the line names Researched recently instead.

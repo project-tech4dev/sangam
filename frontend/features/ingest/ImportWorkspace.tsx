@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
+import { AgentNotes } from "./components/AgentNotes";
 import { DoneReport } from "./components/DoneReport";
 import { SaveQuestions } from "./components/SaveQuestions";
 import { SpreadsheetsCard } from "./components/SpreadsheetsCard";
@@ -81,12 +82,20 @@ export function ImportWorkspace({
           const waiting = paused && i === turns.length - 1;
           const board = <WorkingBoard steps={turn.steps} running={turn.streaming} paused={waiting} laneOwners={laneOwners} />;
           const slugs = slugsOf(turn.steps);
+          const done = !turn.streaming && !waiting && slugs.length > 0;
           return (
             <article key={turn.id} className="import-turn">
               {!(guided && i === 0) && <p className="import-question">{turn.question}</p>}
 
-              {!turn.streaming && !waiting && slugs.length > 0 ? (
-                <DoneReport slugs={slugs} since={since} onStartOver={startOver} fallback={board} />
+              {done ? (
+                <DoneReport
+                  slugs={slugs}
+                  since={since}
+                  onStartOver={startOver}
+                  onSave={(name) => void submit(`Save ${name} to Sangam`)}
+                  busy={isRunning}
+                  fallback={board}
+                />
               ) : waiting && reviewing ? null : (
                 board
               )}
@@ -102,7 +111,8 @@ export function ImportWorkspace({
                 </div>
               ))}
 
-              {turn.answer && <div className="import-answer">{turn.answer}</div>}
+              {/* Keyed so the notes, open while they stream, start closed once Done shows. */}
+              {turn.answer && <AgentNotes key={String(done)} text={turn.answer} collapsed={done} />}
             </article>
           );
         })}

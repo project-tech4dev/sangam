@@ -593,7 +593,6 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 }
 .import-failure-label { font-weight: 600; }
 .import-failure-note { color: var(--color-bad); font-size: var(--fs-xs); }
-.import-answer { white-space: pre-wrap; line-height: 1.6; }
 .import-form { display: flex; gap: 8px; margin-top: auto; }
 .import-form .input { flex: 1; }
 
@@ -854,6 +853,21 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .done-queued strong { font-size: var(--fs-md); }
 .done-queued-note { font-size: var(--fs-sm); color: var(--color-neutral-800); }
 .done-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.done-row[data-saved="false"] .done-row-name strong { color: var(--color-neutral-800); }
+.done-row-pct .tag { font-size: var(--fs-xs); }
+.done-section { display: flex; flex-direction: column; gap: 6px; }
+.done-section-title { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+.done-held { margin: 0; padding-left: 18px; font-size: var(--fs-sm); }
+.import-notes { background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-surface); overflow: hidden; }
+.import-notes-toggle { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; cursor: pointer; }
+.import-notes-toggle:focus-visible { outline: 2px solid var(--color-accent-750); outline-offset: -2px; }
+.import-notes-chev { font-size: var(--fs-xs); font-weight: 600; color: var(--color-accent-750); }
+.import-notes-body { padding: 4px 18px 18px; border-top: 1px solid var(--color-divider); font-size: var(--fs-sm); line-height: 1.6; min-width: 0; }
+.import-notes-body h1, .import-notes-body h2, .import-notes-body h3 { font-size: var(--fs-md); margin: 18px 0 8px; }
+.import-notes-body ul, .import-notes-body ol { margin: 0 0 10px; padding-left: 20px; }
+.import-notes-body pre { background: var(--color-surface); border-radius: var(--radius-row); padding: 10px 12px; overflow-x: auto; font-size: var(--fs-xs); }
+.import-notes-body code { font-size: 0.92em; }
+.import-notes-scroll { overflow-x: auto; margin: 0 0 10px; }
 
 /* --- Import: the Review step ------------------------------------------------- */
 .review { display: flex; flex-direction: column; gap: 20px; }

@@ -60,6 +60,11 @@ export function completeness(c: ResearchCoverage): { before: number; after: numb
 
 export const addedOf = (c: ResearchCoverage) => c.concepts.reduce((n, t) => n + t.added, 0);
 
+/** The research's own words for why a topic has no answer, when it gave any. */
+export function gapDetail(c: CoverageConcept): string | null {
+  return c.cells.find((cell) => cell.status !== "found" && cell.detail)?.detail ?? null;
+}
+
 /** What saving did to one topic, or why it is still empty. */
 export function topicLine(c: CoverageConcept): string {
   const why = emptyReason(c);
