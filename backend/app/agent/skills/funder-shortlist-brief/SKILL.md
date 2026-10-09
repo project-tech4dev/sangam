@@ -1,64 +1,55 @@
 ---
 name: funder-shortlist-brief
-description: Use when a compare_fit reply for one organisation needs writing up as a shortlist — after funder-matching. Splits funders by gate, orders them by rank_key, carries every citation through, and ends with what to record next. Not for two or three funders the user named; funder-comparison lays those side by side.
+description: Use when a compare_fit reply for one organisation needs writing up as a shortlist — after funder-matching. Groups funders by tier, keeps compare_fit's order, carries every citation through, and ends with what would raise the scores. Not for two or three funders the user named; funder-comparison lays those side by side.
 ---
 
 # The shortlist a fundraiser acts on
 
-The reader wants to know where to start, and what is stopping the rest. Each
-entry in compare_fit's `assessed` carries a `gate`, `gate_reasons`, a `score` out of 100, its
-`breakdown`, a `coverage` and a `rank_key`, all computed by Sangam from the
-cited checks. The score is Sangam's arithmetic, not a sourced fact: say so
-once, at the top.
-
-The organisation's own checks — registrations, audits, board, track record —
-come once, in `readiness`, and are the same for every funder. Say what they
-found once, in the "what to record next" section, not in every entry.
+The reader wants to know who to approach first and why. Every score, tier,
+point and status in compare_fit's reply is Sangam's arithmetic under the
+match-v1 rubric over the cited rows, with no source of its own: say so once,
+at the top.
 
 ## Order
 
-1. **One line up front:** how many funders were in the catalog, how many were
-   assessed, and how many were not and why: `funders_considered`, the length
-   of `assessed`, and the two `not_assessed` groups.
-2. **Eligible** — gate `pass`.
-3. **Unverified** — gate `unverified`. Each entry says what to verify, from
-   its gate_reasons. These are not weaker funders: something required is not
-   recorded yet.
-4. **Removed** — gate `fail`, each with the gate reason and the cited row
-   that shows it.
-5. **Not assessed** — the counts of "nothing in common recorded" and
-   "nothing recorded", naming the second group when it is short.
-6. **Needs review** — every `funder_bar` check, by funder: a criterion the
-   funder recorded that a person has to read. Name it; never decide it.
-7. **What to record next** — `what_to_record`, then the funder gaps that recur
-   across funders, most common first, each as an action.
+1. **One line up front:** `funders_checked`, how many were scored, and how
+   many were not, from the two `not_scored` lists.
+2. **Strong fits** (tier strong), then **Medium fits** (tier medium), in the
+   order of `matches`. Never re-order by your own reading.
+3. **Weak fits** (tier weak): one line each, the score and its first `!` card line.
+4. **Not scored:** "nothing in common recorded" as a count, naming them when
+   short; then the funders with nothing recorded, said as unknown, never as a
+   poor fit.
+5. **Not judged:** the criteria that were unknown across most funders, once,
+   e.g. "funding size: none of these funders publishes a grant range".
+6. **What would raise the scores:** the `improve` actions that recur across
+   the strong and medium fits, most points first.
 
-Inside Eligible and Unverified, list funders by `rank_key`, ascending, as a
-plain string sort. It already encodes score, coverage, shared districts and
-funder id; never re-order by your own reading of the reasons.
+## One entry (strong and medium)
 
-## One entry
+- The funder with its marker, its type, and `score/100 · tier`, plus "judged on
+  66 of 90 points" when some criteria were unknown.
+- Its card lines as given: ✓ for a fit, ! for a gap.
+- The criteria that earned or lost the most, each with its points and cites,
+  e.g. "Geography 12/15 — Assam is one of its states [org:9] [funder:7]".
+- Its first `improve` action.
 
-- The funder's name with its marker: HDFC Bank Limited [funder:2].
-- `score/100 · coverage` as given, e.g. "46/100 · 55% of checks recorded".
-- Its reasons, each with its citations as given.
-- Its first gap, if any.
-
-Keep an entry to three lines.
+Keep an entry to five lines.
 
 ## Rules that keep it honest
 
-- Repeat each gate, score and coverage exactly as compare_fit gives them. Never
-  compute, adjust or round one, and never move a funder between sections.
-- An `unknown` is "not recorded". Never "ineligible", "not met" or "poor fit".
-- A `fail` is reported only with the row that shows it. On `area` or `theme` it
-  reads "no shared place recorded" or "no shared theme recorded", never "fails".
-- A low score with low coverage means little is recorded, not a poor match:
-  say so when coverage is under half.
+- Repeat each score, tier, points and status exactly as compare_fit gives them.
+  Never compute, adjust or round one, and never move a funder between tiers.
+- An `unknown` criterion is "not recorded" and was left out of the score.
+  Never "ineligible", "not met" or "poor fit".
+- A `fail` on theme or geography reads "no shared theme recorded" or "no shared
+  place recorded". A relationship `fail` means none is recorded, never that
+  the funder refused.
+- A claimed credential counts and says who claims it, as in the note.
+- A funder's own bar listed under `not_judged` is a criterion a person has to
+  read: name it, never decide it.
 - Copy markers exactly as compare_fit gave them, one per row. Never write a
   range such as [activity:1-4].
-- "No eligibility bars recorded for this funder" means nobody has recorded
-  them, never that the funder sets none.
 - If fit_scores holds a stored score for one of these pairs, you may quote it
   [score:N] beside the computed one, labelled as the earlier rubric score. Keep
   the two apart.

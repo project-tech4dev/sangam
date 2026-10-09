@@ -206,19 +206,17 @@ read-only transaction with the same `statement_timeout`).
 
 **Funder matching is judged in code, not by a model.** `compare_fit(org_id, funder_ids=None)` loads
 an `OrgProfile` and `FunderProfile`s with fixed SQL (`repositories/matching.py`), and
-`app/agent/rules.py` — pure, no I/O — judges every check: the organisation's own twelve
-(registrations, audits, board, track record) once, and place, theme, programme and the funder's
-recorded bars per funder. Each funder becomes a `FunderAssessment` (`app/agent/assessment.py`), whose
-computed fields call `app/agent/scoring.py` for a gate (pass / unverified / fail), a score out of
-100, a coverage and a `rank_key`. Without `funder_ids` it considers the whole catalog, assesses
-every funder sharing a place or a theme and counts the rest, so a shortlist is one call in
-milliseconds and the same answer every run. Changing a check is `rules.py`; changing a weight or a
-gate is `scoring.py`. A missing row is `unknown` ("not recorded"), never `fail`, and `Check` refuses
-a `fail` without a cited row. A `funder_eligibility` criterion is free text, so it is always
-`unknown`, "needs review". Design: `docs/features/2026-10-07-funder-matching-in-code.md`. Two
-model-judged versions came before it — a `funder-assessor` subagent per pair, then
-`org-readiness` once plus assessors — and were removed for running ~35 open-ended queries per
-subagent; their plans are kept beside it.
+`app/agent/rules.py` — pure, no I/O — judges the seven criteria of the **match-v1** rubric
+(`app/agent/rubric.py`): theme 25, geography 15, population 15, eligibility 20, relationship 10,
+funding size 10, capacity 5. A criterion's status (met / partial / fail / unknown) is computed from
+its points, an unknown one is left out of the score rather than counted as zero, and a funder
+sharing no place or theme gets a NULL score. `app/agent/match.py` builds the card lines, summary and
+"what would raise the score" from templates. Changing a rule is `rules.py`; changing a point value
+or a tier is `rubric.py`. The shape follows the Funder Match spec (`features-plans/funder-match/` on `docs/funder-match-spec`),
+so the planned `funder_matches` job can store `match()` as it is. Design:
+`docs/features/2026-10-10-funder-matching-match-v1.md`. Two model-judged versions came before it —
+a `funder-assessor` subagent per pair, then `org-readiness` once plus assessors — and were removed
+for running ~35 open-ended queries per subagent.
 
 That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
 `create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`
