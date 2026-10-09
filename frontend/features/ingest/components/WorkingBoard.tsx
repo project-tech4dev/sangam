@@ -71,16 +71,18 @@ function Row({ row }: { row: BoardRow }) {
 export function WorkingBoard({
   steps,
   running,
+  paused,
   laneOwners,
 }: {
   steps: TraceStep[];
   running: boolean;
+  paused: boolean;
   laneOwners: Record<string, string>;
 }) {
   const board = boardOf(steps, running, laneOwners);
   if (steps.length === 0 && !running) return null;
   const rows = board.rows;
-  const line = !running ? "Finished" : rows.length > 0 && !board.attributed ? (board.now ?? doing(steps)) : doing(steps);
+  const line = !running ? (paused ? "Paused — waiting for you" : "Finished") : rows.length > 0 && !board.attributed ? (board.now ?? doing(steps)) : doing(steps);
 
   return (
     <section className="import-working" aria-label="Progress">

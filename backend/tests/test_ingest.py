@@ -1433,3 +1433,30 @@ class TestAnsweringANameWaitingForReview:
         async with client_for(ingest_api.router) as client:
             response = await client.post("/api/ingest/queue/4", json={"answer": "different"})
         assert response.status_code == 404
+
+
+class TestListingWorkbooksForTheSpreadsheetsCard:
+    async def test_only_workbooks_with_their_folder(self, client_for, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+        from app.integrations import storage
+
+        async def fake(bucket, prefix=""):
+            return [
+                {"key": "mca_csr/csr_2023-24.xlsx", "size": 2048, "updated_at": "2026-09-01T10:00:00Z"},
+                {"key": "notes.pdf", "size": 1, "updated_at": None},
+                {"key": "cso.xlsx", "size": None, "updated_at": None},
+            ]
+
+        monkeypatch.setattr(storage, "list_all", fake)
+        async with client_for(ingest_api.router) as client:
+            body = (await client.get("/api/ingest/workbooks")).json()
+        assert [w["path"] for w in body] == ["staff-sources/mca_csr/csr_2023-24.xlsx", "staff-sources/cso.xlsx"]
+        assert body[0]["folder"] == "mca_csr" and body[0]["updated_at"] == "2026-09-01"
+        assert body[1]["folder"] == "" and body[1]["folder_label"] == "Not in a folder"
+
+    async def test_a_bucket_name_that_is_a_path_is_refused(self, client_for):
+        from app.api.routes import ingest as ingest_api
+
+        async with client_for(ingest_api.router) as client:
+            response = await client.get("/api/ingest/workbooks", params={"bucket": "../x"})
+        assert response.status_code == 422

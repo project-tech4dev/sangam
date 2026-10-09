@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useInterrupt } from "@copilotkit/react-core/v2";
+import { PauseSignal } from "./PauseSignal";
 
 type Change = { old: unknown; new: unknown };
 
@@ -187,7 +188,7 @@ export function SaveQuestionCard({
 }
 
 /** Shows the question card while the run is paused on promote_research (HumanInTheLoopMiddleware). */
-export function SaveQuestions({ agentId }: { agentId: string }) {
+export function SaveQuestions({ agentId, onPaused }: { agentId: string; onPaused: (paused: boolean) => void }) {
   return useInterrupt({
     agentId,
     renderInChat: false,
@@ -195,7 +196,10 @@ export function SaveQuestions({ agentId }: { agentId: string }) {
     render: ({ event, resolve }) => {
       const paused = pausedSave(event.value);
       return paused ? (
-        <SaveQuestionCard paused={paused} onDecide={(decision) => void resolve({ decisions: [decision] })} />
+        <>
+          <SaveQuestionCard paused={paused} onDecide={(decision) => void resolve({ decisions: [decision] })} />
+          <PauseSignal onPaused={onPaused} />
+        </>
       ) : (
         <></>
       );

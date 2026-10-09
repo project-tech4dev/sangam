@@ -169,6 +169,12 @@ These live in one module, `frontend/features/ingest/lib/words.ts`. `toolLabels.t
     - The `sourcePick.ts` logic stays.
     - At a pause the run is not running, so the board's status line says "Finished". The card
       owns that moment: the line should read "Paused — waiting for you" while it is open.
+    - **As built:** the first pause comes before any listing, so the card fetches the
+      bucket's workbooks from a new staff-only `GET /ingest/workbooks?bucket=`. Files in the
+      agent's proposed folder are pre-ticked. "Use these files" approves the listing (narrowed
+      to the folder when every tick is in one) and the ticks answer `select_source_files` as
+      an edit. If the listing fails, "Let Sangam list them" falls back to the old two-step
+      path. Cards signal an open pause through `PauseSignal`.
   - **Exit gate:**
     - Choosing files reads only those files.
     - "No" reads none, and coverage shows `blocked: staff declined` for staff-sourced

@@ -79,6 +79,17 @@ class QueueAnswerOut(ReadModel):
     status: str
 
 
+class WorkbookOut(ReadModel):
+    """One .xlsx in a bucket, as the spreadsheets card lists it; `path` is what select_source_files takes."""
+
+    path: str
+    name: str
+    folder: str
+    folder_label: str
+    size: int | None
+    updated_at: str | None
+
+
 class ResearchOut(ReadModel):
     id: int
     entity_name: str

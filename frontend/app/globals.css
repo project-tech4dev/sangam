@@ -782,6 +782,18 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .import-page-state[data-state="blocked"] { color: var(--color-bad); }
 .import-page-state[data-state="scanned"] { color: var(--color-accent-800); }
 .import-page-state[data-state="opening"] { color: var(--color-neutral-700); }
+.import-pick { background: var(--color-accent-2-100); border-radius: var(--radius-surface); padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.import-pick .card-kicker { color: var(--color-accent-2-800); }
+.import-pick-title { font-size: var(--fs-lg); }
+.import-pick-text { font-size: var(--fs-sm); color: var(--color-neutral-800); max-width: 64ch; text-wrap: pretty; }
+.import-pick-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.import-seg { align-self: flex-start; }
+.import-files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; background: var(--color-bg); border-radius: var(--radius-row); overflow: hidden; }
+.import-files li + li { border-top: 1px solid var(--color-divider); }
+.import-file { display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-height: 44px; box-sizing: border-box; cursor: pointer; }
+.import-file input { width: 18px; height: 18px; margin: 0; accent-color: var(--color-accent-2-700); }
+.import-file-name { display: flex; flex-direction: column; flex: 1; min-width: 0; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.import-file-name span { font-size: var(--fs-xs); color: var(--color-neutral-700); }
 .import-feed { display: flex; flex-direction: column; gap: 6px; }
 .import-feed ol { list-style: none; margin: 0; padding: 0; }
 .import-feed li { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: var(--fs-sm); min-width: 0; }

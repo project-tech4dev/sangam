@@ -18,6 +18,7 @@ from app.schemas.ingest import (
     RunOut,
     SourceOut,
     SourceProposalOut,
+    WorkbookOut,
 )
 
 router = APIRouter(prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_staff)])
@@ -93,6 +94,29 @@ async def answer_queue(item_id: int, body: QueueAnswerIn, pool: PoolDep,
 async def list_research(pool: PoolDep, limit: int = 50,
                         user_id: UUID = Depends(get_current_user)) -> list[ResearchOut]:
     return [ResearchOut.model_validate(r) for r in await repo.list_research(pool, limit=limit)]
+
+
+@router.get("/workbooks", response_model=list[WorkbookOut], summary="The .xlsx workbooks in one bucket")
+async def list_workbooks(bucket: str = "staff-sources", user_id: UUID = Depends(get_current_user)) -> list[WorkbookOut]:
+    """Lets the spreadsheets card show the files at the first pause, before the agent has listed them."""
+    from app.ingest.staff_sources import _BUCKET
+    from app.integrations import storage
+
+    if not _BUCKET.match(bucket):
+        raise HTTPException(status_code=422, detail="not a bucket name")
+    out = []
+    for f in await storage.list_all(bucket):
+        if not f["key"].lower().endswith(".xlsx"):
+            continue
+        folder, _, name = f["key"].rpartition("/")
+        top = folder.split("/", 1)[0]
+        label = SOURCES[top].name if top in SOURCES else (folder or "Not in a folder")
+        out.append(WorkbookOut(
+            path=storage.qualify(bucket, f["key"]), name=name, folder=folder, folder_label=label,
+            size=f.get("size") if isinstance(f.get("size"), int) else None,
+            updated_at=str(f["updated_at"])[:10] if f.get("updated_at") else None,
+        ))
+    return out
 
 
 @router.get("/research/{slug}/coverage", response_model=CoverageOut,

@@ -110,3 +110,13 @@ export type ResearchCoverage = {
   fields_total: number;
   concepts: CoverageConcept[];
 };
+
+/** One workbook in a bucket; `path` is what select_source_files takes. */
+export type Workbook = {
+  path: string;
+  name: string;
+  folder: string;
+  folder_label: string;
+  size: number | null;
+  updated_at: string | null;
+};

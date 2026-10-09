@@ -3,8 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
 import { CoverageChart } from "./components/CoverageChart";
-import { PausedPick } from "./components/SourcePicker";
 import { SaveQuestions } from "./components/SaveQuestions";
+import { SpreadsheetsCard } from "./components/SpreadsheetsCard";
 import { StartStep } from "./components/StartStep";
 import { StepBar } from "./components/StepBar";
 import { WorkingBoard } from "./components/WorkingBoard";
@@ -24,6 +24,8 @@ export function ImportWorkspace({
   const [draft, setDraft] = useState("");
   // The chat stays for anything the task cards don't cover.
   const [advanced, setAdvanced] = useState(false);
+  // A question card is open: the run has stopped to wait for an answer, not finished.
+  const [paused, setPaused] = useState(false);
   const atStart = turns.length === 0;
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
 
@@ -53,11 +55,11 @@ export function ImportWorkspace({
       )}
 
       <div className="import-turns">
-        {turns.map((turn) => (
+        {turns.map((turn, i) => (
           <article key={turn.id} className="import-turn">
             <p className="import-question">{turn.question}</p>
 
-            <WorkingBoard steps={turn.steps} running={turn.streaming} laneOwners={laneOwners} />
+            <WorkingBoard steps={turn.steps} running={turn.streaming} paused={paused && i === turns.length - 1} laneOwners={laneOwners} />
 
             {turn.steps
               .filter((s) => s.tool === "coverage_report" && s.result)
@@ -82,8 +84,8 @@ export function ImportWorkspace({
       </div>
 
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
-      {isReady && <PausedPick agentId={`sangam-import-${threadId}`} steps={lastSteps} />}
-      {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} />}
+      {isReady && <SpreadsheetsCard agentId={`sangam-import-${threadId}`} steps={lastSteps} onPaused={setPaused} />}
+      {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={setPaused} />}
 
       {(!atStart || advanced) && (
       <form
