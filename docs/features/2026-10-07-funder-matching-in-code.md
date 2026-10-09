@@ -3,7 +3,7 @@
 *Approved 2026-10-07. Supersedes the subagent half of `2026-10-07-funder-matching-readiness-once.md`;
 the checks, gates, weights and scorer of `2026-10-07-funder-matching-scored.md` stay.*
 
-*2026-10-10: the rules and scoring are now match-v1, per `2026-10-10-funder-matching-match-v1.md`; the shape below stays.*
+*2026-10-10: the rules and scoring are now match-v1, per `2026-10-10-funder-matching-match-v1.md`: `scoring.py`, gates and `readiness` below are gone, replaced by `rubric.py` and `match.py`; the one-call shape stays.*
 
 ## Context
 

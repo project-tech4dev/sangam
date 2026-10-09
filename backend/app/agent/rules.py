@@ -261,6 +261,8 @@ def _credential(key: str, org: OrgProfile, today: date) -> tuple[str, str]:
         return "unreadable", f"{label}: the registry could not be read"
     if "applied" in statuses:
         return "missing", f"{label} applied for, not yet granted"
+    if "not_found" in statuses:
+        return "missing", f"{label} searched for and not found"
     return "missing", f"{label} not on record"
 
 

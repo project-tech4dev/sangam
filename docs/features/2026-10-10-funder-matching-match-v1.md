@@ -134,7 +134,7 @@ A status comes from points: `met` at 80% of max or more, `partial` above 0, `fai
 - `npm run build` passes, since toolLabels is unchanged.
 
 ## Later (not this PR)
-- The spec's private tables (`0039_funder_matches`), `make match`, the API, the page, the design sync and retiring the fit scores. All reuse `match()`.
+- The spec's private tables (the next free migration number: another session already uses `0039_research_by` locally), `make match`, the API, the page, the design sync and retiring the fit scores. All reuse `match()`.
 - #114 before match results enter Ask's catalog.
 
 ## Verification
