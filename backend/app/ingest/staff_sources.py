@@ -255,7 +255,8 @@ def _cell(value: Any) -> str:
     return text[:300]
 
 
-def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple, set[int] | None]], set[int]]]) -> str:
+def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple, set[int] | None]], set[int]]],
+           marker: str = "source") -> str:
     from openpyxl.utils import get_column_letter
 
     lines = [f"## document {doc['id']} · {doc['source_name']}",
@@ -267,7 +268,7 @@ def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple, s
                      if v not in (None, "") and c not in drop and (keep is None or c in keep)]
             if cells:
                 body = " · ".join(f"{ref}={_cell(v)!r}" for ref, v in cells)
-                lines.append(f"[source:{doc['id']}#{title}!{cells[0][0]}] {body}")
+                lines.append(f"[{marker}:{doc['id']}#{title}!{cells[0][0]}] {body}")
     return "\n".join(lines)
 
 

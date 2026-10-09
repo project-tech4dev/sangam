@@ -132,6 +132,10 @@ export type ReviewAnswer = {
   quote: string;
   source_url: string;
   source_name: string;
+  /** From the organisation's own Doc Vault. */
+  private?: boolean;
+  /** Shown here, and not saved to Sangam. */
+  held?: boolean;
 };
 
 export type ReviewMissing = { concept: string; topic: string; tag: "not_mentioned" | "couldnt_read"; detail: string };

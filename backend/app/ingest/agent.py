@@ -19,6 +19,7 @@ from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.middleware import (
     CallerNote,
+    DropFilesOnExit,
     EscalateAfterFailedSave,
     ReadingLimit,
     call_limit,
@@ -26,7 +27,7 @@ from app.ingest.middleware import (
     fallback,
     research_rubric,
 )
-from app.ingest.research_records import PromotionReport, ResearchSummary, WorkbookEntities
+from app.ingest.research_records import PromotionReport, ResearchSummary, VaultSummary, WorkbookEntities
 from app.ingest.tools.catalog_tools import (
     compare_with_catalog,
     coverage_report,
@@ -55,6 +56,7 @@ from app.ingest.tools.research_tools import (
     save_research,
     search_public_sources,
 )
+from app.ingest.tools.vault_tools import list_vault_documents, read_vault_document, save_vault_findings
 from app.integrations.tracing import trace_config
 
 
@@ -231,6 +233,23 @@ WORKBOOK_READER: dict = {
 }
 
 
+# The fourth kind, and the only one that reads an organisation's private files. No web tools: private
+# text never shares a context with the open web. It saves its own findings to vault_research and hands
+# back concept names and ids only, so the researchers it briefs never see a word of the files.
+VAULT_READER: dict = {
+    "name": "vault-reader",
+    "description": (
+        "Reads ONE organisation's own Doc Vault files about one funder or NGO, saves what they say, and "
+        "returns which concepts the files answered and which are still missing. Launch it before the "
+        "entity-researcher when the request names the organisation's documents. It cannot read the web."
+    ),
+    "mode": "isolated",
+    "tools": [list_vault_documents, read_vault_document, research_goals, save_vault_findings],
+    "response_format": VaultSummary,
+    "system_prompt": prompt("vault_reader"),
+}
+
+
 # Pages and PDFs past this many tokens go to a file the researcher pages back; the library default is 20k.
 RESEARCHER_EVICT_AT = 8_000
 # Promote, read back, report: a handful of calls, so a dozen is already a loop.
@@ -299,10 +318,20 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": utility,
         "middleware": [filesystem_tools(backend), *fallback(utility_spec, research_spec, settings.model)],
     }
+    vault_reader = {
+        **VAULT_READER,
+        "model": research,
+        "middleware": [
+            filesystem_tools(backend, evict=False),
+            DropFilesOnExit(),
+            call_limit(settings.research_model_call_limit),
+            *fallback(research_spec, settings.model),
+        ],
+    }
     agent = create_deep_agent(
         model=strong,
         tools=TOOLS,
-        subagents=[researcher, writer, reader],
+        subagents=[researcher, writer, reader, vault_reader],
         backend=backend,
         skills=[SKILLS_ROUTE],
         middleware=[

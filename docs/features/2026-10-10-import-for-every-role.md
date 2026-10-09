@@ -44,7 +44,7 @@ Private text (vault or staff spreadsheet) must never sit in a model's context wh
     │ 2. task: entity-researcher ×N (web), told which concepts are still missing
     │ 3. task: catalog-writer (Review pause → save)
     ▼
- ┌──────────────── vault-reader (Haiku/Sonnet) ───────────────┐   ┌── entity-researcher (Sonnet) ──┐
+ ┌──────────────── vault-reader (Sonnet) ──────────────────────┐   ┌── entity-researcher (Sonnet) ──┐
  │ list_vault_documents · read_vault_document (PDF pages,      │   │ web tools + staff rows last     │
  │ xlsx cells) · research_goals · save_vault_findings          │   │ never sees vault findings       │
  │ NO web tools · scope-checked org · cites [vault:doc#p3]     │   │                                 │
@@ -94,30 +94,17 @@ Private text (vault or staff spreadsheet) must never sit in a model's context wh
   - the Staff-only message in `ImportView` goes;
   - the Sidebar link stays.
 
-### PR C: vault-reader
-- **New `ingest/vault.py`:**
-  - `vault_documents(pool, org_id)`: the org's private `documents` rows (`storage_path LIKE 'org-vault/%'`);
-  - `read_pdf_pages(doc, pages)`: bytes from `storage.download`, then pypdf. Factor the page loop out of `research_tools.read_document_pages` and share it;
-  - xlsx through `staff_sources.browse` / `read_rows`, generalised to take a document row instead of `list_source_datasets`. Redaction and cell citations are reused.
-- **Citations:**
-  - `source_url = https://org-vault.sangam.invalid/<doc_id>`;
-  - markers `[vault:<doc>#p<page>]` or `[vault:<doc>#Sheet!B12]`;
-  - `source_type = org_document`;
-  - `evidence_tier = evidenced` for certificates and audited accounts, and `claimed` otherwise. The existing `check_tier` rules apply.
-- **Tools** (`ingest/tools/vault_tools.py`): `list_vault_documents(org)` and `read_vault_document(doc_id, pages|sheet)`. Each checks `can_read_org` against the document's org. A member's own org is always allowed.
-- **Subagent `VAULT_READER`** (`agent.py`):
-  - tools: `list_vault_documents`, `read_vault_document`, `research_goals`, `save_research`;
-  - the `filesystem(keep=read_file)` floor, and **no web tools**;
-  - runs on the utility tier, with the research tier as fallback;
-  - `response_format=VaultSummary(slug, concepts_found, concepts_missing, documents_read: list[int], fact_count)`. These fields are ids and enums only, with no free text, so no private wording reaches the supervisor;
-  - prompt in `prompts/vault_reader.md`.
-- **Vault findings in their own table, not merged into the shared row:** keyed by `(slug, researched_on, org_id)` and readable under org RLS. Merging them into `entity_research` would put one org's vault findings into another org's view of the same funder. Promotion takes the union of both for a caller allowed to read that org. `_staff_dataset_rows` is already the pattern for mapping private findings to a private `documents` row.
-- **`promote.py`:** a vault URL maps to its existing private `documents` row (mirroring `_staff_dataset_rows`) and never goes through `ensure_document`, which would create a public row. Add `hold_unmarked` for a vault finding without its marker.
-- **Supervisor instructions:** when the request names vault files, run the vault-reader first. Then launch the researcher with `concepts_missing` as its goals.
-- **Frontend:**
-  - Start: a "Use my organisation's documents" picker listing vault files from the filtered `GET /documents?org=`;
-  - Working board: a vault-reader lane, with "Reading your documents".
-- **Prompt and skill:** `ngo-credential-research/SKILL.md` "Doc Vault first" becomes accurate.
+### PR C: vault-reader (as built)
+- **`ingest/vault.py`:** the org's private vault rows (`storage_path LIKE 'org-vault/%'`, `NOT is_public`); PDF text by page range through `extract_pdf_text`, xlsx through `staff_sources._browse`/`render(marker="vault")`, so redaction and cell citations are shared. A read is cut at 24k characters, so nothing needs evicting to a file.
+- **Citations:** `source_url = https://org-vault.sangam.invalid/<doc_id>`; markers `[vault:<doc>#p<page>]` or `[vault:<doc>#Sheet!B12]`; `source_type = org_document` and `evidence_tier` where the finding has those fields.
+- **Tools** (`ingest/tools/vault_tools.py`): `list_vault_documents(org)`, `read_vault_document(id, pages | sheet)`, `save_vault_findings`. Each checks `can_read_org`; a file the caller may not read and a missing file get the same answer. A save is refused whole when a finding cites a document outside that org's vault (checked in SQL) or lacks its marker.
+- **Subagent `vault-reader`:** those three tools plus `research_goals`, `read_file`, and **no web tools**. It runs on the research tier, since judging what a letter says needs it, and returns `VaultSummary` (slug, concept names, document ids, a count; no free text).
+- **Its files never leave it.** A deepagents subagent's `files` state merges back into the parent and on into the next subagent, so an evicted read or a summary offload would carry vault text to a researcher. The reader runs with eviction off, and `DropFilesOnExit` deletes every file in its state as it ends.
+- **`vault_research` table (0040):** one row per `(slug, researched_on, org_id)`, RLS: the org's members, or staff. Merging into the shared `entity_research` row would show one org's files to another org researching the same funder.
+- **Who sees vault findings:** they are merged in only for the catalog-writer, `coverage_report` (counts only) and the Review and Done views, and only from orgs the caller can read. `compare_with_catalog` (the supervisor's) never gets them: the supervisor briefs web researchers. A vault URL in the shared row is dropped, since it was never checked against a vault.
+- **What is saved (`promote.py`):** a funder's general facts (`identity`, `csr_year`, `stated_geography`, `eligibility_guideline`, `rfp`, `program`) are saved and link to the existing private `documents` row, never a new public one. Everything else (the org's grants, amounts, contacts, metrics) is shown on Review, tagged "From your documents · not saved", and held. Nothing from a vault reaches an NGO's record. Held reasons name the concept and document id, never the value.
+- **`GET /documents`** now lists private documents only to the org's members and staff (it listed every org's vault metadata).
+- **Frontend:** the Start step offers the person's orgs' private files; picked ids go into the request ("reading Arpan's Doc Vault first (org arpan, documents 12 and 14)"). The Working board shows "Read N of your organisation's documents"; Review tags vault answers.
 
 ### PR D: saves by role, and staff delete
 - **`promote_research`:** records `promoted_by`. A new `catalog_writes(promotion_id, table_name, row_id, action)` table logs each row written. The writer already returns what it wrote (the `saved` jsonb from 0038), so this extends it with ids.

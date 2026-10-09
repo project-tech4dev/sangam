@@ -16,6 +16,7 @@ from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import CallerScope, chat_user_id
 from app.db.pool import get_pool
 from app.ingest import coverage, manual_checks, review
+from app.ingest import vault as vault_store
 from app.ingest.caller import scope, staff_only, without_private
 from app.ingest.expectations import (
     CONCEPTS,
@@ -25,7 +26,7 @@ from app.ingest.expectations import (
 )
 from app.ingest.matcher import resolve_funder, resolve_org
 from app.ingest.promote import MERGEABLE, promote
-from app.ingest.writer import UNWRITTEN, Gate
+from app.ingest.writer import UNWRITTEN, Gate, slugify
 
 logger = logging.getLogger(__name__)
 
@@ -444,8 +445,12 @@ async def _held_per_concept(
     return out
 
 
-async def _research_rows(pool: Any, slug: str, caller: CallerScope | None = None) -> list[dict[str, Any]]:
-    """The newest row per entity; for a caller who is not staff, without its private findings."""
+async def _research_rows(
+    pool: Any, slug: str, caller: CallerScope | None = None, *, vault: bool = False
+) -> list[dict[str, Any]]:
+    """The newest row per entity; for a caller who is not staff, without its private findings.
+
+    `vault` adds Doc Vault findings: only for a writer or a person, never a context that briefs researchers."""
     caller = caller or scope()
     async with pool.connection() as conn:
         rows = await (
@@ -456,7 +461,29 @@ async def _research_rows(pool: Any, slug: str, caller: CallerScope | None = None
                 (slug,) if slug else (),
             )
         ).fetchall()
-    return [dict(r) if caller.is_staff else without_private(dict(r)) for r in rows]
+    # Vault findings live in vault_research alone: one in the shared row was never checked against a vault.
+    out = [{**r, "findings": [f for f in r.get("findings") or [] if not vault_store.is_vault_url(f.get("source_url"))]}
+           for r in (dict(r) if caller.is_staff else without_private(dict(r)) for r in rows)]
+    return [await _with_vault(pool, r, caller) for r in out] if vault else out
+
+
+async def _with_vault(pool: Any, row: dict[str, Any], caller: CallerScope) -> dict[str, Any]:
+    """The row plus the newest vault findings of each org whose files this caller may read."""
+    slugs = sorted({row["slug"], slugify(row.get("entity_name") or row["slug"])})
+    async with pool.connection() as conn:
+        found = await (await conn.execute(
+            "SELECT DISTINCT ON (v.org_id) v.org_id, v.findings, v.documents_read, "
+            "(SELECT jsonb_object_agg(d.id, coalesce(d.title, 'untitled')) FROM documents d "
+            " WHERE d.id = ANY(v.documents_read)) AS titles "
+            "FROM vault_research v WHERE v.slug = ANY(%s) ORDER BY v.org_id, v.researched_at DESC",
+            (slugs,),
+        )).fetchall()
+    readable = [v for v in found if caller.can_read_org(v["org_id"])]
+    if not readable:
+        return row
+    return {**row, "findings": [*(row.get("findings") or []), *(f for v in readable for f in v["findings"])],
+            "vault": [{"org_id": v["org_id"], "documents_read": list(v["documents_read"]),
+                       "titles": dict(v.get("titles") or {})} for v in readable]}
 
 
 def _comparison(plan: dict[str, Any]) -> dict[str, Any]:
@@ -525,7 +552,7 @@ async def coverage_report(slug: str) -> str:
     """
     try:
         pool = get_pool()
-        rows = await _research_rows(pool, slug)
+        rows = await _research_rows(pool, slug, vault=True)
         if not rows:
             return f"No saved research for {slug!r}. Research first."
         row = rows[0]
@@ -541,7 +568,7 @@ async def coverage_report(slug: str) -> str:
 
 async def write_preview(slug: str) -> dict[str, Any]:
     """What SaveQuestions puts on the pause: a funder's case 3 and 4 questions, the planned rows, and coverage."""
-    rows = await _research_rows(get_pool(), slug)
+    rows = await _research_rows(get_pool(), slug, vault=True)
     if not rows:
         return {"questions": [], "planned": [], "coverage": ""}
     row = rows[0]
@@ -586,7 +613,7 @@ async def coverage_view(slug: str, caller: CallerScope | None = None) -> dict[st
     """Coverage per concept, with rows before and after: from the stored save, else a funder's dry run.
     An NGO not yet saved has no before/after: its write cannot be dry-run."""
     pool = get_pool()
-    rows = await _research_rows(pool, slug, caller)
+    rows = await _research_rows(pool, slug, caller, vault=True)
     if not rows:
         return None
     row = rows[0]
@@ -627,7 +654,7 @@ async def coverage_view(slug: str, caller: CallerScope | None = None) -> dict[st
 async def review_view(slug: str, caller: CallerScope | None = None) -> dict[str, Any] | None:
     """The review card's body: answers with their proof, what is missing, the questions, what saving adds."""
     pool = get_pool()
-    rows = await _research_rows(pool, slug, caller)
+    rows = await _research_rows(pool, slug, caller, vault=True)
     if not rows:
         return None
     row = rows[0]
@@ -704,7 +731,7 @@ async def promote_research(slug: str = "", decisions: dict[str, str] | None = No
         if not slug and not caller.is_staff:
             return "REFUSED: promote one researched organisation at a time: pass its slug."
         pool = get_pool()
-        rows = await _research_rows(pool, slug, caller)
+        rows = await _research_rows(pool, slug, caller, vault=True)
         if not rows:
             return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
         async with pool.connection() as conn:

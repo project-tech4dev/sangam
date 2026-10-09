@@ -9,7 +9,7 @@ import { SpreadsheetsCard } from "./components/SpreadsheetsCard";
 import { StartStep } from "./components/StartStep";
 import { StepBar } from "./components/StepBar";
 import { WorkingBoard } from "./components/WorkingBoard";
-import type { ImportAccess } from "./lib/access";
+import type { ImportAccess, VaultFile } from "./lib/access";
 import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
 import { fetchImportMessages } from "./lib/threads";
@@ -25,6 +25,7 @@ export function ImportWorkspace({
   onFirstSend,
   start,
   access,
+  vaultFiles = [],
 }: {
   threadId: string;
   /** Load the thread's saved messages: it was opened from the list. */
@@ -34,6 +35,8 @@ export function ImportWorkspace({
   onFirstSend?: (text: string) => void;
   start?: ReactNode;
   access: ImportAccess;
+  /** The person's organisations' private files, offered for reading before the web. */
+  vaultFiles?: VaultFile[];
 }) {
   const load = useCallback(() => fetchImportMessages(threadId), [threadId]);
   const { turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners } = useAgentChat(
@@ -92,6 +95,7 @@ export function ImportWorkspace({
             }}
             disabled={!isReady}
             access={access}
+            vaultFiles={vaultFiles}
           />
           <button type="button" className="import-link import-advanced" onClick={() => setAdvanced(true)}>
             Advanced: type your own request
