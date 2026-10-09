@@ -118,8 +118,8 @@ class TestSavingResearch:
         seen = {}
 
         async def execute(sql, params=()):
-            seen.setdefault("params", params)
-            seen["sql"] = sql
+            if "INSERT" in sql:
+                seen.update(sql=sql, params=params)
             return SimpleNamespace(fetchone=_none)
 
         async def _none():
@@ -128,7 +128,7 @@ class TestSavingResearch:
         pool.conn.execute = execute
         with running_as(MEMBER):
             await research_tools.save_research.ainvoke({"findings": self.FUNDER})
-        assert "researched_by" in seen["sql"]
+        assert "researched_by" in seen["sql"] and seen["params"][-1] == ME
 
 
 class TestPromotingResearch:
@@ -195,6 +195,10 @@ class TestTheSupervisorKnowsWhoItWorksFor:
     def test_staff_get_everything(self):
         assert "Sangam team" in caller.caller_note(STAFF)
 
+    def test_anyone_else_skips_the_staff_workbook_pause(self):
+        for scope in (MEMBER, STEWARD):
+            assert "do not call list_storage_buckets, list_bucket_files" in caller.caller_note(scope)
+
     def test_the_note_is_appended_to_the_system_message(self):
         from app.ingest.middleware import CallerNote
 
@@ -242,3 +246,16 @@ class TestTheResearchListIsTheCallers:
     async def test_staff_see_everything_as_saved(self, listed, client_for):
         body = await self._get(client_for, STAFF)
         assert listed["mine"] is None and body[0]["summary"] == "From the sheet"
+
+
+@pytest.mark.integration
+class TestTheResearchListQuery:
+    """Against Postgres: a member with no stewarded orgs sends an empty array."""
+
+    @pytest.mark.parametrize("mine", [None, (ME, []), (ME, [7, 8])])
+    async def test_runs_for_every_caller(self, db, mine):
+        from app.repositories import ingest as repo
+        from tests.test_storage import _PoolOf
+
+        rows = await repo.list_research(_PoolOf(db), limit=5, mine=mine)
+        assert all("has_private" in r for r in rows)

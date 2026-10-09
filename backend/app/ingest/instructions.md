@@ -77,7 +77,8 @@ LOW-confidence fact is a lead, and reporting it beside a filing's figure without
 is which is the error to watch for.
 
 For a corporate funder the statutory filing is often already here: the staff workbooks, which a
-researcher reads with `read_source_rows`. **Pick them before you launch researchers:**
+researcher reads with `read_source_rows`. When you work for the Sangam team (the line at the end of
+these instructions says who you work for), **pick them before you launch researchers:**
 `list_storage_buckets`, then `list_bucket_files(bucket)` with the bucket you think fits
 (usually `staff-sources`), then `select_source_files(paths)` with the files that fit the request
 (the fiscal years asked about, the CSO workbook for an NGO). The run pauses twice: staff confirm
