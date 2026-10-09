@@ -38,8 +38,8 @@ The next PR, `2026-10-09-import-middleware.md`, builds on this one with fallback
 | Utility | `UTILITY_MODEL` | `anthropic:claude-haiku-4-5` | `catalog-writer`, `workbook-reader` (new here), `run_import_now` extraction | Fixed output shapes, one or two tools, no judgement about sources |
 | Audit | `SQL_AUDIT_MODEL` | `anthropic:claude-haiku-4-5` (now on) | Ask's post-answer SQL audit | A cheap second look. It never blocks |
 
-- A blank `RESEARCH_MODEL` or `UTILITY_MODEL` inherits `MODEL`. A blank audit model turns the audit off.
-- `docker-compose.yml` uses `${X-default}`: unset takes the default, and set-but-blank keeps that meaning. A `.env` copied from the old example has `UTILITY_MODEL=` and `SQL_AUDIT_MODEL=` blank, so it keeps the old behaviour until those lines are filled in.
+- Blank or unset always means the default in `config.py`, the only place defaults are written. `docker-compose.yml` passes the variables through.
+- To run a tier on the main model, set it to the same spec as `MODEL`. `SQL_AUDIT_MODEL=off` turns the audit off.
 
 ## Deploying
 The deployed backend reads its Vercel env, and that beats the code defaults. Before running Deploy, set (or clear) `MODEL`, `RESEARCH_MODEL`, `UTILITY_MODEL` and `SQL_AUDIT_MODEL` on `sangam-backend`.

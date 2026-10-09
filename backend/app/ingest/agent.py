@@ -17,6 +17,14 @@ from app.agent.harness import install as install_harness
 from app.agent.middleware import clear_old_tool_results, save_questions, staff_last_lock
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
+from app.ingest.middleware import (
+    EscalateAfterFailedSave,
+    ReadingLimit,
+    call_limit,
+    cheap_summarizer,
+    fallback,
+    research_rubric,
+)
 from app.ingest.research_records import PromotionReport, ResearchSummary, WorkbookEntities
 from app.ingest.tools.catalog_tools import (
     compare_with_catalog,
@@ -222,6 +230,11 @@ WORKBOOK_READER: dict = {
 }
 
 
+# Pages and PDFs past this many tokens go to a file the researcher pages back; the library default is 20k.
+RESEARCHER_EVICT_AT = 8_000
+# Promote, read back, report: a handful of calls, so a dozen is already a loop.
+WRITER_MODEL_CALL_LIMIT = 12
+
 # Staff choose the bucket, then the files, before anything is read.
 INTERRUPT_ON = {
     "list_bucket_files": {
@@ -246,24 +259,57 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Neither subagent loads a skill now, so neither gets `ls`. read_file is
     # the floor FilesystemMiddleware refuses to be constructed below, not a
     # capability either of them uses.
-    # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
-    researcher = {**ENTITY_RESEARCHER, "middleware": [filesystem_tools(backend), staff_last_lock()]}
+    strong = resolve_model(settings.model)
+    research_spec = settings.research_model
+    utility_spec = settings.utility_model
+    research = resolve_model(research_spec)
+    utility = resolve_model(utility_spec)
+    # Each subagent on its tier (config.py). Each falls back to the next
+    # tier when its call fails. The researcher reads to a budget, has its save and summary graded, and
+    # moves to the strong model if its save is refused for a malformed payload.
+    researcher = {
+        **ENTITY_RESEARCHER,
+        "model": research,
+        "middleware": [
+            filesystem_tools(backend, evict_at=RESEARCHER_EVICT_AT),
+            # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
+            staff_last_lock(),
+            ReadingLimit(settings.research_page_limit),
+            call_limit(settings.research_model_call_limit),
+            *([EscalateAfterFailedSave(strong)] if research_spec != settings.model else []),
+            *fallback(research_spec, settings.model),
+            research_rubric(utility),
+            cheap_summarizer(research, utility, backend),
+        ],
+    }
     # save_questions pauses every promote_research for staff to approve, with a button per open question.
-    writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend), save_questions()]}
-    reader = {**WORKBOOK_READER, "middleware": [filesystem_tools(backend)]}
-    # Each subagent on its tier (config.py); a blank tier inherits MODEL. Resolved here so a bad spec fails at boot.
-    if settings.research_model:
-        researcher["model"] = resolve_model(settings.research_model)
-    if settings.utility_model:
-        writer["model"] = resolve_model(settings.utility_model)
-        reader["model"] = resolve_model(settings.utility_model)
+    writer = {
+        **CATALOG_WRITER,
+        "model": utility,
+        "middleware": [
+            filesystem_tools(backend),
+            save_questions(),
+            call_limit(WRITER_MODEL_CALL_LIMIT),
+            *fallback(utility_spec, research_spec, settings.model),
+        ],
+    }
+    reader = {
+        **WORKBOOK_READER,
+        "model": utility,
+        "middleware": [filesystem_tools(backend), *fallback(utility_spec, research_spec, settings.model)],
+    }
     agent = create_deep_agent(
-        model=resolve_model(settings.model),
+        model=strong,
         tools=TOOLS,
         subagents=[researcher, writer, reader],
         backend=backend,
         skills=[SKILLS_ROUTE],
-        middleware=[filesystem_tools(backend, keep=SKILL_READING_TOOLS), clear_old_tool_results()],
+        middleware=[
+            filesystem_tools(backend, keep=SKILL_READING_TOOLS),
+            clear_old_tool_results(),
+            *fallback(settings.model, research_spec),
+            cheap_summarizer(strong, utility, backend),
+        ],
         system_prompt=_render(_INSTRUCTIONS_MD, settings),
         # deepagents turns this into LangChain's HumanInTheLoopMiddleware: the run pauses on the
         # tool call and resumes with Command(resume={"decisions": [...]}) from the Import screen.
@@ -275,7 +321,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # question in Langfuse.
     return agent.with_config(
         {
-            **trace_config(settings, name="sangam_import", tags=("import", "research")),
+            **trace_config(settings, name="sangam_import", tags=("import", "research", research_spec, utility_spec)),
             "recursion_limit": settings.recursion_limit,
         }
     )

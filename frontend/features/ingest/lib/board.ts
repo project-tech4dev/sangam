@@ -141,6 +141,8 @@ export function boardOf(
     if (task.result === null) state = running ? "working" : paused ? "paused" : "stopped";
     else if (summary?.status === "not_found") state = "notFound";
     else if (summary?.status === "wrong_entity") state = "wrong";
+    // The researcher's budget ran out (app/ingest/middleware.py): say so, or a thin row reads as a finished one.
+    const atLimit = state === "ready" && /reading limit/i.test(summary?.stopped_reason ?? "");
 
     const reading = [...pages].reverse().find((p) => p.state === "opening");
     const done = pages.filter((p) => p.state !== "opening").length;
@@ -161,6 +163,8 @@ export function boardOf(
           ? "Couldn't find it"
           : state === "wrong"
             ? "Found a different organisation"
+            : atLimit
+              ? "Stopped at the reading limit"
             : state === "ready"
               ? "Done"
               : saved.length > 0
