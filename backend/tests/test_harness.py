@@ -9,8 +9,6 @@ library upgrade cannot quietly restore them.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 from langchain_core.tools import tool
 
@@ -148,31 +146,19 @@ class TestEachTierGetsItsModel:
     inherits MODEL, so a deploy can still run everything on one model."""
 
     @staticmethod
-    def built(monkeypatch, **overrides):
-        # The specs create_deep_agent receives, with each model left as its spec string.
-        from app.core.config import Settings
-        from app.ingest import agent
+    def built(build_import, **overrides):
+        # The spec string of each model create_deep_agent receives.
+        seen = build_import(**overrides)
+        return seen["model"].name, {s["name"]: s["model"].name for s in seen["subagents"]}
 
-        seen = {}
-
-        def capture(**kwargs):
-            seen.update(kwargs)
-            return SimpleNamespace(with_config=lambda config: None)
-
-        monkeypatch.setattr(agent, "resolve_model", lambda spec: spec)
-        monkeypatch.setattr(agent, "create_deep_agent", capture)
-        agent.build_ingest_agent(Settings(**overrides), None)
-        return seen["model"], {s["name"]: s.get("model") for s in seen["subagents"]}
-
-    def test_each_subagent_runs_on_its_tier(self, monkeypatch):
-        main, subs = self.built(monkeypatch, model="m:strong", research_model="m:mid", utility_model="m:cheap")
+    def test_each_subagent_runs_on_its_tier(self, build_import):
+        main, subs = self.built(build_import, model="m:strong", research_model="m:mid", utility_model="m:cheap")
         assert main == "m:strong"
         assert subs == {"entity-researcher": "m:mid", "catalog-writer": "m:cheap", "workbook-reader": "m:cheap"}
 
-    def test_a_blank_tier_inherits_the_main_model(self, monkeypatch):
-        _, subs = self.built(monkeypatch, model="m:strong", research_model="", utility_model="")
-        # No model key: deepagents gives the subagent the parent's.
-        assert set(subs.values()) == {None}
+    def test_a_blank_tier_inherits_the_main_model(self, build_import):
+        _, subs = self.built(build_import, model="m:strong", research_model="", utility_model="")
+        assert set(subs.values()) == {"m:strong"}
 
     def test_the_defaults_are_strong_mid_cheap(self):
         from app.core.config import Settings
@@ -181,11 +167,11 @@ class TestEachTierGetsItsModel:
         assert "opus" in s.model and "sonnet" in s.research_model and "haiku" in s.utility_model
         assert "haiku" in s.sql_audit_model
 
-    def test_the_module_level_specs_are_not_mutated(self, monkeypatch):
+    def test_the_module_level_specs_are_not_mutated(self, build_import):
         # build_ingest_agent copies each spec before adding a model, so builds cannot leak between them.
         from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER
 
-        self.built(monkeypatch, model="m:strong", research_model="m:mid", utility_model="m:cheap")
+        self.built(build_import, model="m:strong", research_model="m:mid", utility_model="m:cheap")
         assert all("model" not in spec for spec in (CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER))
 
 

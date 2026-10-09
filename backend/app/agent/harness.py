@@ -79,11 +79,16 @@ def install() -> None:
     _installed = True
 
 
-def filesystem(backend: Any, *, keep: tuple[str, ...] = REQUIRED_MINIMUM) -> FilesystemMiddleware:
+def filesystem(
+    backend: Any, *, keep: tuple[str, ...] = REQUIRED_MINIMUM, evict_at: int | None = None
+) -> FilesystemMiddleware:
     """A FilesystemMiddleware exposing only `keep`, replacing the default.
 
     `create_deep_agent` merges custom middleware by name, so this takes the
     place of the stack's own FilesystemMiddleware rather than adding to it —
-    and an excluded name is never registered, not merely hidden.
+    and an excluded name is never registered, not merely hidden. `evict_at` lowers the token size at
+    which a tool result is moved to a file the model pages back; unset keeps the library's 20k.
     """
-    return FilesystemMiddleware(backend=backend, tools=list(keep))
+    if evict_at is None:
+        return FilesystemMiddleware(backend=backend, tools=list(keep))
+    return FilesystemMiddleware(backend=backend, tools=list(keep), tool_token_limit_before_evict=evict_at)

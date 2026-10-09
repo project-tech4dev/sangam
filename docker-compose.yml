@@ -65,6 +65,9 @@ services:
       # Research fan-out and the pool it is bounded by. Raise them together.
       MAX_PARALLEL_RESEARCH: ${MAX_PARALLEL_RESEARCH:-}
       DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-}
+      # Hard stops per researcher; empty = the defaults in config.py.
+      RESEARCH_PAGE_LIMIT: ${RESEARCH_PAGE_LIMIT:-}
+      RESEARCH_MODEL_CALL_LIMIT: ${RESEARCH_MODEL_CALL_LIMIT:-}
       # Supabase Storage. Unset = archiving skipped, uploads 503; everything
       # else runs. Forwarded here because a variable absent from this block
       # never reaches the container however it is set in .env — which is how

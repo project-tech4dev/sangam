@@ -365,6 +365,13 @@ most of an import's tokens, and judging evidence still needs a capable model. `U
 `RESEARCH_MODEL` or `UTILITY_MODEL` inherits `MODEL`. A deployed backend reads these from its
 Vercel env, which beats the code defaults.
 
+**Import's middleware** (`app/ingest/middleware.py`). Each tier falls back to the next one when a call
+fails. A researcher reads at most `RESEARCH_PAGE_LIMIT` pages per run, after which the reading tools
+refuse and it saves what it has. It is stopped outright after `RESEARCH_MODEL_CALL_LIMIT` model calls.
+Once a `save_research` call is refused for a malformed payload, the rest of that run moves to `MODEL`.
+A Haiku grader checks the save and summary against `prompts/research_rubric.md` and allows one revision.
+Summaries of long runs are written by `UTILITY_MODEL` at the same thresholds as before.
+
 **How many organisations Import researches at once is a setting, not a number in the
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
 above it the agent researches in waves until every organisation asked for is done.

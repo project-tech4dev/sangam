@@ -67,3 +67,32 @@ async def db():
     async with conn:
         yield conn
         await conn.rollback()  # never leave a test row behind
+
+
+@pytest.fixture
+def build_import(monkeypatch):
+    """Builds the Import agent and returns what create_deep_agent received; each model is a fake named by its spec."""
+    from types import SimpleNamespace
+
+    from langchain_core.language_models.fake_chat_models import FakeListChatModel
+
+    from app.core.config import Settings
+    from app.ingest import agent, middleware
+
+    def fake(spec: str) -> FakeListChatModel:
+        return FakeListChatModel(responses=["ok"], name=spec)
+
+    def _build(**overrides):
+        seen: dict = {}
+
+        def capture(**kwargs):
+            seen.update(kwargs)
+            return SimpleNamespace(with_config=lambda config: seen.setdefault("config", config))
+
+        monkeypatch.setattr(agent, "resolve_model", fake)
+        monkeypatch.setattr(middleware, "resolve_model", fake)
+        monkeypatch.setattr(agent, "create_deep_agent", capture)
+        agent.build_ingest_agent(Settings(**overrides), None)
+        return seen
+
+    return _build
