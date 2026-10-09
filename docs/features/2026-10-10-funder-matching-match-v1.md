@@ -51,7 +51,7 @@ This PR moves #100 onto that. The spec's private tables, `make match` job, API a
    │      │               status · points · note · cites [org:N] [funder:N] [activity:N]        │
    │      ├─ score()      agent/rubric.py     (pure)  earned / judged_max → of_100 · tier · NULL │
    │      └─ write-up     agent/match.py      (pure)  card · summary · not_judged · improve      │
-   │      → ranked by score desc, NULL last; "N checked with nothing in common" as a count      │
+   │      → ranked by score desc; not_scored: nothing in common · funder has nothing recorded   │
    │ 3. skill: funder-shortlist-brief (many funders) | funder-comparison (one or two)           │
    │      copies scores, tiers and cites as given; never re-judges, never re-queries            │
    └────────────────────────────────────────────────────────────────────────────────────────────┘
