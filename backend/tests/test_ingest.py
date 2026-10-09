@@ -1460,3 +1460,76 @@ class TestListingWorkbooksForTheSpreadsheetsCard:
         async with client_for(ingest_api.router) as client:
             response = await client.get("/api/ingest/workbooks", params={"bucket": "../x"})
         assert response.status_code == 422
+
+
+class TestTheReviewCardSpeaksPlainly:
+    """The review card shows findings and questions with no table, column or enum codes in them."""
+
+    URL = "https://example.org/about"
+
+    def test_a_finding_becomes_facts_with_amounts_in_rupees(self):
+        from app.ingest import review
+
+        f = {"concept": "csr_year", "fiscal_year": "FY2023-24", "evidence": "x" * 30, "source_url": self.URL,
+             "prescribed_csr": {"value": 4.37, "unit": "crore", "text": "Rs 4.37 crore"},
+             "section_135_applicable": True, "notes": "kept out"}
+        assert review.facts(f) == [{"label": "Prescribed CSR", "value": 43700000.0, "money": True}]
+
+    def test_codes_become_words(self):
+        from app.ingest import review
+
+        assert review.code_words("corporate_csr") == "Corporate CSR"
+        assert review.code_words("12a") == "12A"
+        assert review.code_words("SBI Foundation") == "SBI Foundation"
+
+    @pytest.mark.parametrize(("finding", "expected"), [
+        ({"evidence_tier": "evidenced"}, "confirmed"),
+        ({"evidence_tier": "claimed", "source_url": "https://x.gov.in/a.pdf"}, "self_reported"),
+        ({"source_url": "https://www.mca.gov.in/csr"}, "confirmed"),
+        ({"source_url": "https://staff-sources.sangam.invalid/doc/1"}, "confirmed"),
+        ({"source_url": "https://bank.example/annual-report.pdf"}, "confirmed"),
+        ({"source_url": "https://en.wikipedia.org/wiki/X"}, "self_reported"),
+    ])
+    def test_the_tag_follows_the_source(self, finding, expected):
+        from app.ingest import review
+
+        assert review.tag(finding) == expected
+
+    def test_identity_first_then_one_per_topic(self):
+        from app.ingest import review
+
+        row = {"findings": [{"concept": c, "source_url": self.URL} for c in ("partner", "partner", "footprint", "identity")]}
+        assert [a["concept"] for a in review.answers(row)] == ["identity", "partner", "footprint", "partner"]
+
+    def test_missing_topics_say_why(self):
+        from app.ingest import review
+
+        row = {"findings": [{"concept": "partner"}], "gaps": [
+            {"concept": "partner", "reason": "blocked", "detail": "found anyway"},
+            {"concept": "rfp", "reason": "not_stated", "detail": "no call"},
+            {"concept": "rfp", "reason": "blocked", "detail": "403"},
+            {"concept": "csr_year", "field": "admin_overheads", "reason": "not_stated", "detail": "one field"},
+        ]}
+        assert [(m["concept"], m["tag"]) for m in review.missing(row)] == [("rfp", "couldnt_read")]
+
+    def test_a_question_keeps_its_id_and_loses_its_column_names(self):
+        from app.ingest import review
+
+        q = review.question({"id": "abc", "case": 3, "table": "funder_csr_years", "label": "FY2023-24",
+                             "changes": {"prescribed_csr": {"old": 1, "new": 2}, "funder_type": {"old": "corporate_csr", "new": "x"}},
+                             "choices": ["update", "keep"]})
+        assert q["id"] == "abc"
+        assert [(f["label"], f["money"]) for f in q["fields"]] == [("Prescribed CSR", True), ("Funder type", False)]
+        assert q["fields"][1]["old"] == "Corporate CSR"
+        assert [c["label"] for c in q["choices"]] == ["Use the new one", "Keep what Sangam has"]
+        assert "_" not in q["topic"]
+
+    async def test_no_research_is_404(self, client_for, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+
+        async def none(slug):
+            return None
+
+        monkeypatch.setattr("app.ingest.tools.catalog_tools.review_view", none)
+        async with client_for(ingest_api.router) as client:
+            assert (await client.get("/api/ingest/research/nobody/review")).status_code == 404

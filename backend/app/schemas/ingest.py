@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -88,6 +88,75 @@ class WorkbookOut(ReadModel):
     folder_label: str
     size: int | None
     updated_at: str | None
+
+
+class ReviewFactOut(ReadModel):
+    label: str | None
+    value: str | float | int
+    money: bool
+
+
+class ReviewAnswerOut(ReadModel):
+    concept: str
+    topic: str
+    year: str | None
+    facts: list[ReviewFactOut]
+    tag: Literal["confirmed", "self_reported"]
+    quote: str
+    source_url: str
+    source_name: str
+
+
+class ReviewMissingOut(ReadModel):
+    concept: str
+    topic: str
+    tag: Literal["not_mentioned", "couldnt_read"]
+    detail: str
+
+
+class ReviewFieldOut(ReadModel):
+    label: str
+    old: Any = None
+    new: Any = None
+    money: bool
+
+
+class ReviewChoiceOut(ReadModel):
+    value: str
+    label: str
+
+
+class ReviewQuestionOut(ReadModel):
+    id: str
+    case: int | None
+    topic: str
+    about: str
+    fields: list[ReviewFieldOut]
+    stored_as_of: str | None = None
+    new_as_of: str | None = None
+    stored_name: str | None = None
+    new_name: str | None = None
+    choices: list[ReviewChoiceOut]
+
+
+class ReviewSaveOut(ReadModel):
+    concept: str
+    topic: str
+    added: int = 0
+    updated: int = 0
+
+
+class ReviewOut(ReadModel):
+    """One researched organisation as the review card shows it: no table or column names."""
+
+    slug: str
+    name: str
+    kind: str | None
+    existing: bool
+    answers: list[ReviewAnswerOut]
+    missing: list[ReviewMissingOut]
+    questions: list[ReviewQuestionOut]
+    saves: list[ReviewSaveOut]
 
 
 class ResearchOut(ReadModel):

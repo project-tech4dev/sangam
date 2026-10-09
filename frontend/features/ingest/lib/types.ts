@@ -120,3 +120,44 @@ export type Workbook = {
   size: number | null;
   updated_at: string | null;
 };
+
+export type ReviewFact = { label: string | null; value: string | number; money: boolean };
+
+export type ReviewAnswer = {
+  concept: string;
+  topic: string;
+  year: string | null;
+  facts: ReviewFact[];
+  tag: "confirmed" | "self_reported";
+  quote: string;
+  source_url: string;
+  source_name: string;
+};
+
+export type ReviewMissing = { concept: string; topic: string; tag: "not_mentioned" | "couldnt_read"; detail: string };
+
+export type ReviewQuestion = {
+  id: string;
+  case: number | null;
+  topic: string;
+  about: string;
+  fields: { label: string; old: unknown; new: unknown; money: boolean }[];
+  stored_as_of: string | null;
+  new_as_of: string | null;
+  stored_name: string | null;
+  new_name: string | null;
+  choices: { value: string; label: string }[];
+};
+
+/** GET /ingest/research/{slug}/review: one organisation in staff's words, no table or column names. */
+export type ResearchReview = {
+  slug: string;
+  name: string;
+  kind: string | null;
+  /** Already in Sangam, so saving only fills empty answers (an NGO) or asks first (a funder). */
+  existing: boolean;
+  answers: ReviewAnswer[];
+  missing: ReviewMissing[];
+  questions: ReviewQuestion[];
+  saves: { concept: string; topic: string; added: number; updated: number }[];
+};

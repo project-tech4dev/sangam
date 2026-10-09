@@ -14,6 +14,7 @@ from app.schemas.ingest import (
     QueueAnswerOut,
     QueueItemOut,
     ResearchOut,
+    ReviewOut,
     RunItemOut,
     RunOut,
     SourceOut,
@@ -94,6 +95,17 @@ async def answer_queue(item_id: int, body: QueueAnswerIn, pool: PoolDep,
 async def list_research(pool: PoolDep, limit: int = 50,
                         user_id: UUID = Depends(get_current_user)) -> list[ResearchOut]:
     return [ResearchOut.model_validate(r) for r in await repo.list_research(pool, limit=limit)]
+
+
+@router.get("/research/{slug}/review", response_model=ReviewOut,
+            summary="One organisation's answers, proof and questions, for the review card")
+async def research_review(slug: str, user_id: UUID = Depends(get_current_user)) -> ReviewOut:
+    from app.ingest.tools.catalog_tools import review_view
+
+    view = await review_view(slug)
+    if view is None:
+        raise HTTPException(status_code=404, detail=f"no saved research for {slug!r}")
+    return ReviewOut.model_validate(view)
 
 
 @router.get("/workbooks", response_model=list[WorkbookOut], summary="The .xlsx workbooks in one bucket")

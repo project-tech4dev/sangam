@@ -15,7 +15,7 @@ from langchain_core.tools import tool
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import chat_user_id
 from app.db.pool import get_pool
-from app.ingest import coverage, manual_checks
+from app.ingest import coverage, manual_checks, review
 from app.ingest.expectations import (
     CONCEPTS,
     concepts_for,
@@ -23,7 +23,7 @@ from app.ingest.expectations import (
     recent_fiscal_years,
 )
 from app.ingest.matcher import resolve_funder, resolve_org
-from app.ingest.promote import promote
+from app.ingest.promote import MERGEABLE, promote
 from app.ingest.writer import UNWRITTEN, Gate
 
 logger = logging.getLogger(__name__)
@@ -616,6 +616,35 @@ async def coverage_view(slug: str) -> dict[str, Any] | None:
         stage = "unsaved"
     return coverage.view(row, stage=stage, report=report, entity=entity, reasons=reasons, held=held,
                          questions=questions, changes=changes, before=before, after=after)
+
+
+async def review_view(slug: str) -> dict[str, Any] | None:
+    """The review card's body: answers with their proof, what is missing, the questions, what saving adds."""
+    pool = get_pool()
+    rows = await _research_rows(pool, slug)
+    if not rows:
+        return None
+    row = rows[0]
+    kind = row.get("entity_kind")
+    questions: list[dict[str, Any]] = []
+    saves: dict[str, dict[str, int]] = {}
+    async with pool.connection() as conn:
+        if kind == "funder":
+            plan = await promote(conn, row, gate=Gate(plan=True))
+            questions, saves = plan.get("questions", []), coverage.changes_by_concept(plan)
+            existing = bool(plan.get("entity") and plan["entity"].get("id") not in (None, UNWRITTEN))
+        else:
+            name = row.get("canonical_name") or row.get("entity_name") or ""
+            # The same match saving would make: on an existing NGO a save only fills blanks.
+            existing = bool(row.get("resolved_org_id")) or (await resolve_org(conn, name)).method in MERGEABLE
+    return {
+        "slug": row["slug"], "name": row.get("canonical_name") or row.get("entity_name") or row["slug"],
+        "kind": kind, "existing": existing,
+        "answers": review.answers(row), "missing": review.missing(row),
+        "questions": [review.question(q) for q in questions],
+        "saves": [{"concept": c, "topic": review.topic(c), **n} for c, n in saves.items()
+                  if n.get("added") or n.get("updated")],
+    }
 
 
 @tool

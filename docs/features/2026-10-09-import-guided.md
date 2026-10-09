@@ -197,6 +197,14 @@ These live in one module, `frontend/features/ingest/lib/words.ts`. `toolLabels.t
     - Grant and amount values render as ₹ crore / lakh through a shared `formatInr()`,
       never as JSON.
     - **Verdict line:** see Open questions. It ships hidden unless decided.
+    - **As built:** answers come from `GET /ingest/research/{slug}/review`
+      (`app/ingest/review.py`), not the M1 coverage endpoint. It returns labelled facts,
+      not raw findings, so no column name or enum code reaches the screen. A funder's
+      questions and "What saving adds" come from a dry-run promote. The pause's own
+      questions are still the ones answered: the review only supplies their wording, and
+      question ids are content hashes, so the two match. Confirmed means a registry, a
+      government site, a PDF, or your team's spreadsheet; anything else is
+      self-reported.
   - **Exit gate:**
     - SBI review shows tagged answers with working proof links.
     - Approve writes; Skip on every question writes none of those rows.
