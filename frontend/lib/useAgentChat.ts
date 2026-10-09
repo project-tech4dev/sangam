@@ -12,6 +12,8 @@ export type TraceStep = {
   running: boolean;
   /** The subagent run that made this call, when the backend attributes them; absent for the agent's own. */
   lane?: string;
+  /** Where the result landed in the thread, so finished steps can be put in the order they finished. */
+  doneAt?: number;
 };
 
 export type Turn = {
@@ -93,9 +95,12 @@ export function useAgentChat(
 
   const turns: Turn[] = useMemo(() => {
     const toolResults = new Map<string, string>();
-    for (const m of messages) {
-      if (m.role === "tool" && m.toolCallId) toolResults.set(m.toolCallId, m.content ?? "");
-    }
+    const doneAt = new Map<string, number>();
+    messages.forEach((m, i) => {
+      if (m.role !== "tool" || !m.toolCallId) return;
+      toolResults.set(m.toolCallId, m.content ?? "");
+      doneAt.set(m.toolCallId, i);
+    });
     const out: Turn[] = [];
     let current: Turn | null = null;
     for (const m of messages) {
@@ -112,6 +117,7 @@ export function useAgentChat(
             result,
             running: result === null && isRunning,
             lane: m.subagentRunId,
+            doneAt: doneAt.get(tc.id),
           });
         }
         // A subagent's own prose is its working, not the answer.

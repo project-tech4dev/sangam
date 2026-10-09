@@ -1,5 +1,6 @@
 import type { TraceStep } from "@/lib/useAgentChat";
 import { humanizeTool, stepNote } from "./toolLabels";
+import { plainReason } from "./words";
 
 const ON_THE_BOARD = ["task", "read_page", "fetch_document", "read_document_pages"];
 
@@ -23,8 +24,9 @@ export function failuresOf(steps: TraceStep[]): Failure[] {
   const grouped = new Map<string, Failure>();
   for (const step of steps) {
     if (ON_THE_BOARD.includes(step.tool)) continue;
-    const note = stepNote(step.result);
-    if (note === null) continue;
+    const raw = stepNote(step.result);
+    if (raw === null) continue;
+    const note = plainReason(raw);
     const { label, detail } = humanizeTool(step.tool);
     const key = `${label}|${detail(step.args)}|${note}`;
     const seen = grouped.get(key);

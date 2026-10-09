@@ -180,7 +180,8 @@ export function boardOf(steps: TraceStep[], running: boolean, laneOwners: Record
     return k ? (rows.find((r) => key(r.name) === k)?.name ?? null) : null;
   };
   const events: BoardEvent[] = [];
-  for (const s of steps) {
+  const byFinish = [...steps].sort((x, y) => (x.doneAt ?? 0) - (y.doneAt ?? 0));
+  for (const s of byFinish) {
     if (s.result === null) continue;
     let text: string | null = null;
     if (READING.includes(s.tool)) {

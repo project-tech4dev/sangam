@@ -167,6 +167,8 @@ These live in one module, `frontend/features/ingest/lib/words.ts`. `toolLabels.t
       - then answer `select_source_files` automatically with the ticked files.
     - "No" rejects the first. #127 M3-B already makes that read nothing.
     - The `sourcePick.ts` logic stays.
+    - At a pause the run is not running, so the board's status line says "Finished". The card
+      owns that moment: the line should read "Paused — waiting for you" while it is open.
   - **Exit gate:**
     - Choosing files reads only those files.
     - "No" reads none, and coverage shows `blocked: staff declined` for staff-sourced
