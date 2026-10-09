@@ -177,6 +177,16 @@ class ResearchOut(ReadModel):
     saved_at: datetime | None = None
     resolved_org_id: int | None = None
     resolved_funder_id: int | None = None
+    # Staff only: the save that still stands, and who made it, for Undo.
+    promotion_id: int | None = None
+    saved_by: str | None = None
+
+
+class UndoOut(ReadModel):
+    promotion_id: int
+    slug: str
+    removed: int
+    restored: int
 
 
 class CoverageCellOut(ReadModel):

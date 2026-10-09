@@ -84,6 +84,12 @@ export function ImportView({
   const [panels, setPanels] = useState<Panels | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // After an undo or a delete, only the list changes.
+  async function reloadResearch() {
+    const research = await get<ResearchRecord[]>("/api/ingest/research?limit=25").catch(() => null);
+    if (research) setPanels((p) => (p ? { ...p, research } : p));
+  }
+
   useEffect(() => {
     let live = true;
     loadPanels()
@@ -105,7 +111,7 @@ export function ImportView({
       {panels && (
         <>
           {panels.access.staff && <WaitingForYou items={panels.queue} sources={panels.sources} />}
-          <ResearchedRecently items={panels.research} />
+          <ResearchedRecently items={panels.research} staff={panels.access.staff} onChanged={reloadResearch} />
           {panels.access.staff && (
             <>
               <SourceGroups sources={panels.sources} />

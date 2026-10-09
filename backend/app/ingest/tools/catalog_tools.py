@@ -15,7 +15,7 @@ from langchain_core.tools import tool
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import CallerScope, chat_user_id
 from app.db.pool import get_pool
-from app.ingest import coverage, manual_checks, review
+from app.ingest import coverage, manual_checks, review, undo
 from app.ingest import vault as vault_store
 from app.ingest.caller import scope, staff_only, without_private
 from app.ingest.expectations import (
@@ -743,8 +743,10 @@ async def promote_research(slug: str = "", decisions: dict[str, str] | None = No
         for row in rows:
             # SaveQuestions asked the person before this ran and put their answers here.
             async with pool.connection() as conn, conn.transaction():
+                promotion = await undo.start(conn, row.get("id"), row["slug"], caller.user_id)
                 report = await promote(conn, row, gate=Gate(decisions or {}))
                 await _record_save(conn, row, report)
+                report["promotion_id"] = promotion if await undo.finish(conn, promotion) else None
                 reports.append(report)
 
         lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]

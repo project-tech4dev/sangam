@@ -222,7 +222,8 @@ class TestTheResearchListIsTheCallers:
                      "slug": "acme", "status": "complete", "stopped_reason": None, "summary": "From the sheet",
                      "fact_count": 2, "sources_read": [STAFF_URL, PUBLIC_URL], "not_found": [],
                      "researched_at": "2026-10-09T10:00:00Z", "saved_at": None, "resolved_org_id": None,
-                     "resolved_funder_id": None, "has_private": True}]
+                     "resolved_funder_id": None, "has_private": True,
+                     "promotion_id": 5, "saved_by": "Asha"}]
 
         monkeypatch.setattr(ingest_api.repo, "list_research", fake)
         return seen
@@ -242,10 +243,12 @@ class TestTheResearchListIsTheCallers:
         assert listed["mine"] == (STEWARD.user_id, [7, 8])
         assert body[0]["sources_read"] == [PUBLIC_URL]
         assert body[0]["summary"].startswith("This research also read private sources")
+        assert body[0]["promotion_id"] is None and body[0]["saved_by"] is None  # undo is staff's
 
     async def test_staff_see_everything_as_saved(self, listed, client_for):
         body = await self._get(client_for, STAFF)
         assert listed["mine"] is None and body[0]["summary"] == "From the sheet"
+        assert body[0]["promotion_id"] == 5 and body[0]["saved_by"] == "Asha"
 
 
 @pytest.mark.integration
