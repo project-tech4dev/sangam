@@ -7,10 +7,10 @@ from typing import Any
 
 from psycopg_pool import AsyncConnectionPool
 
-from app.agent.rules import FunderProfile, Identifier, Location, OrgProfile, Places, Program
+from app.agent.rules import FunderProfile, Identifier, Location, OrgProfile, PartnerLine, Places, Program
 
 # Tag kinds a theme is compared on; meta->>'maps_to' carries a sector's Schedule VII slug.
-SECTOR, CSR = "sector", "csr_sector"
+SECTOR, CSR, POPULATION = "sector", "csr_sector", "population"
 # The eligibility document's sections a person must review; the statutory ones are the credential checks.
 BAR_SECTIONS = ("## Its own bar", "## Disqualifiers")
 
@@ -25,8 +25,8 @@ async def _read_only(conn: Any, timeout_ms: int) -> None:
     await conn.execute(f"SET LOCAL statement_timeout = {int(timeout_ms)}")
 
 
-def _tag_sets(rows: list[dict]) -> tuple[set[str], set[str]]:
-    sectors, csr = set(), set()
+def _tag_sets(rows: list[dict]) -> tuple[set[str], set[str], set[str]]:
+    sectors, csr, population = set(), set(), set()
     for r in rows:
         if r["kind"] == SECTOR:
             sectors.add(r["slug"])
@@ -34,7 +34,9 @@ def _tag_sets(rows: list[dict]) -> tuple[set[str], set[str]]:
                 csr.add(r["maps_to"])
         elif r["kind"] == CSR:
             csr.add(r["slug"])
-    return sectors, csr
+        elif r["kind"] == POPULATION:
+            population.add(r["slug"])
+    return sectors, csr, population
 
 
 async def load(
@@ -57,14 +59,14 @@ async def _org(conn: Any, org_id: int) -> OrgProfile | None:
     org.location_ids = {
         r["location_id"] for r in await _rows(conn, "SELECT location_id FROM org_locations WHERE org_id = %s", (org_id,))
     }
-    org.sector_tags, org.csr_slugs = _tag_sets(await _rows(conn, """
+    org.sector_tags, org.csr_slugs, org.population = _tag_sets(await _rows(conn, """
         SELECT t.slug, t.kind, t.meta->>'maps_to' AS maps_to
         FROM org_tags ot JOIN tags t ON t.id = ot.tag_id WHERE ot.org_id = %s""", (org_id,)))
 
     programs: dict[int, dict] = {}
     tags: dict[int, list[dict]] = defaultdict(list)
     for r in await _rows(conn, """
-        SELECT p.id, p.name, p.status, p.end_date, t.slug, t.kind, t.meta->>'maps_to' AS maps_to
+        SELECT p.id, p.name, t.slug, t.kind, t.meta->>'maps_to' AS maps_to
         FROM programs p
         LEFT JOIN program_tags pt ON pt.program_id = p.id
         LEFT JOIN tags t ON t.id = pt.tag_id
@@ -74,8 +76,9 @@ async def _org(conn: Any, org_id: int) -> OrgProfile | None:
         if r["slug"]:
             tags[r["id"]].append(r)
     for pid, r in programs.items():
-        sectors, csr = _tag_sets(tags[pid])
-        org.programs.append(Program(pid, r["name"], r["status"], r["end_date"], frozenset(sectors | csr)))
+        sectors, csr, population = _tag_sets(tags[pid])
+        org.programs.append(Program(pid, r["name"], frozenset(sectors | csr)))
+        org.population |= population
 
     for r in await _rows(conn, """
         SELECT id_type, status, id_value, is_current, valid_until, evidence, source_type
@@ -86,30 +89,31 @@ async def _org(conn: Any, org_id: int) -> OrgProfile | None:
             SELECT fiscal_year, is_audited FROM org_financials
             WHERE org_id = %s ORDER BY fiscal_year DESC""", (org_id,))
     ]
+    org.total_income = next((r["total_income"] for r in await _rows(conn, """
+        SELECT total_income FROM org_financials
+        WHERE org_id = %s AND total_income IS NOT NULL ORDER BY fiscal_year DESC LIMIT 1""", (org_id,))), None)
     org.doc_types = [
         r["doc_type"] for r in await _rows(conn, "SELECT doc_type FROM documents WHERE org_id = %s", (org_id,))
         if r["doc_type"]
     ]
-    org.office_bearers = (await _rows(conn, """
-        SELECT count(*) AS n FROM contacts WHERE org_id = %s AND kind = 'office_bearer'""", (org_id,)))[0]["n"]
     # A grant to the organisation is a funder's partner line.
     org.partner_lines = [
-        (r["id"], r["relationship_status"], r["end_date"]) for r in await _rows(conn, """
-            SELECT id, relationship_status, end_date FROM funder_activity
-            WHERE kind = 'partner' AND partner_org_id = %s ORDER BY id""", (org_id,))
+        PartnerLine(**r) for r in await _rows(conn, """
+            SELECT id, funder_id, relationship_status FROM funder_activity
+            WHERE partner_org_id = %s ORDER BY id""", (org_id,))
     ]
     return org
 
 
 async def _funders(conn: Any, funder_ids: list[int] | None) -> list[FunderProfile]:
-    # NULL means every funder: one plan for both, so a shortlist costs the same five queries as one pair.
+    # NULL means every funder: one plan for both, so a shortlist costs the same six queries as one pair.
     ids = funder_ids
     where = "(%(ids)s::bigint[] IS NULL OR {col} = ANY(%(ids)s))"
     params = {"ids": ids}
     funders = {
-        r["id"]: FunderProfile(r["id"], r["name"], r["funder_type"], r["section_135_bound"])
+        r["id"]: FunderProfile(**r)
         for r in await _rows(conn, f"""
-            SELECT id, name, funder_type, section_135_bound FROM funders
+            SELECT id, name, funder_type, section_135_bound, grant_size_min, grant_size_max FROM funders
             WHERE {where.format(col='id')} ORDER BY id""", params)
     }
     for r in await _rows(conn, f"""
@@ -132,7 +136,14 @@ async def _funders(conn: Any, funder_ids: list[int] | None) -> list[FunderProfil
         tag_rows[r["funder_id"]].append(r)
     for fid, rows in tag_rows.items():
         if fid in funders:
-            funders[fid].sector_tags, funders[fid].csr_slugs = _tag_sets(rows)
+            funders[fid].sector_tags, funders[fid].csr_slugs, funders[fid].population = _tag_sets(rows)
+
+    for r in await _rows(conn, f"""
+        SELECT id, funder_id, fiscal_year FROM funder_activity
+        WHERE kind IN ('spend', 'programme') AND amount IS NOT NULL AND fiscal_year IS NOT NULL
+          AND {where.format(col='funder_id')} ORDER BY id""", params):
+        if r["funder_id"] in funders:
+            funders[r["funder_id"]].spend.append((r["id"], r["fiscal_year"]))
 
     for r in await _rows(conn, f"""
         SELECT id, funder_id, content_md FROM documents

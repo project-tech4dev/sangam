@@ -1,30 +1,33 @@
-"""Funder matching checks, judged in code from two profiles. Pure: no pool, no async, no settings.
+"""The seven match-v1 criteria, judged in code from two profiles. Pure: no pool, no async, no settings.
 
-repositories/matching.py fills the profiles; scoring.py turns these checks into a gate and a score.
-A missing row is never `fail`: only a recorded fact can fail a check.
+repositories/matching.py fills the profiles; rubric.py turns the points into a score.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
+from decimal import Decimal
 
-from app.agent.assessment import Check
+from app.agent import rubric
+from app.agent.assessment import Criterion
 
 # Spellings seen in the data. A new one is a one-line change here, not a rule change.
 AUDIT_DOC_TYPES = frozenset({"audited_financials", "audit_report", "financial_statement", "financial_statements"})
-ITR_DOC_TYPES = frozenset({"itr", "itr_7", "itr7", "income_tax_return"})
-CV_DOC_TYPES = frozenset({"cv", "cvs", "team_cv", "team_cvs", "resume"})
-CONCLUDED = frozenset({"concluded", "completed", "closed", "ended"})
-# check code -> org_identifiers.id_type
-CREDENTIALS = {
-    "reg_12a": "12a", "reg_80g": "80g", "csr_1": "csr1", "darpan": "darpan",
-    "pan": "pan", "reg_no": "reg_no", "fcra": "fcra",
-}
 # org_identifiers.status
 HELD = frozenset({"registered", "provisional"})
 LAPSED = frozenset({"cancelled", "expired", "suspended", "surrendered"})
 INDIA = "India"
+# CSR money routed through a company's foundation still needs a CSR-1 registered implementer.
+SECTION_135_TYPES = frozenset({"corporate_csr", "corporate_foundation"})
+UNTYPED = frozenset({None, "", "other"})
+# eligibility item -> (label, what would earn it)
+ITEMS = {
+    "12a": ("12A", "Record the 12A registration"),
+    "80g": ("80G", "Record the 80G registration"),
+    "csr1": ("CSR Form 1", "Register CSR Form 1 with the MCA and record it"),
+    "audits": ("Audited accounts", "Upload three years of audited accounts"),
+}
 
 
 @dataclass(frozen=True)
@@ -39,8 +42,6 @@ class Location:
 class Program:
     id: int
     name: str
-    status: str | None
-    end_date: date | None
     tags: frozenset[str]  # sector slugs, csr slugs, and the csr slugs the sector tags map to
 
 
@@ -54,6 +55,15 @@ class Identifier:
     source_type: str | None
 
 
+@dataclass(frozen=True)
+class PartnerLine:
+    """A funder_activity line naming the organisation as its partner."""
+
+    id: int
+    funder_id: int
+    relationship_status: str | None
+
+
 @dataclass
 class OrgProfile:
     id: int
@@ -61,15 +71,15 @@ class OrgProfile:
     location_ids: set[int] = field(default_factory=set)
     sector_tags: set[str] = field(default_factory=set)
     csr_slugs: set[str] = field(default_factory=set)
+    population: set[str] = field(default_factory=set)  # its own and its programmes' population tags
     programs: list[Program] = field(default_factory=list)
     # id_type -> its org_identifiers rows
     identifiers: dict[str, list[Identifier]] = field(default_factory=dict)
     # (fiscal_year, is_audited), newest first
     financials: list[tuple[str, bool | None]] = field(default_factory=list)
+    total_income: Decimal | None = None  # the latest year that records one, INR
     doc_types: list[str] = field(default_factory=list)
-    office_bearers: int = 0
-    # funder_activity partner lines naming the org: (activity id, relationship_status, end_date)
-    partner_lines: list[tuple[int, str | None, date | None]] = field(default_factory=list)
+    partner_lines: list[PartnerLine] = field(default_factory=list)
 
 
 @dataclass
@@ -78,20 +88,27 @@ class FunderProfile:
     name: str
     funder_type: str | None
     section_135_bound: bool | None
+    grant_size_min: Decimal | None = None
+    grant_size_max: Decimal | None = None
     location_ids: set[int] = field(default_factory=set)
     registered_ids: set[int] = field(default_factory=set)
     sector_tags: set[str] = field(default_factory=set)
     csr_slugs: set[str] = field(default_factory=set)
+    population: set[str] = field(default_factory=set)
+    # (activity id, fiscal_year) of its spend and programme lines that carry an amount
+    spend: list[tuple[int, str]] = field(default_factory=list)
     # (documents id, criterion) from the funder's 'funder_eligibility' document
     bars: list[tuple[int, str]] = field(default_factory=list)
 
 
-@dataclass(frozen=True)
-class PairResult:
-    checks: list[Check]
-    shared_districts: int
-    foreign_funder: bool | None
-    reasons: list[str]
+@dataclass
+class Finding:
+    """A criterion plus what the write-up needs: the card line, actions and what was left out."""
+
+    criterion: Criterion
+    line: str
+    improve: list[str] = field(default_factory=list)
+    not_judged: list[str] = field(default_factory=list)
 
 
 class Places:
@@ -144,179 +161,218 @@ def _names(places: Places, ids: set[int]) -> str:
     return ", ".join(sorted(places.name(i) for i in ids))
 
 
-def _unknown(code: str, note: str = "", basis: str = "not_researched") -> Check:
-    return Check(code=code, outcome="unknown", basis=basis, note=note)
+def _words(slugs: set[str]) -> str:
+    return ", ".join(sorted(s.replace("_", " ") for s in slugs))
 
 
-# ---- organisation's own checks: the same for every funder ----------------------------------------------
+def _found(code: str, points: int | None, note: str, cites: list[str], line: str = "", **extra) -> Finding:
+    return Finding(Criterion(code=code, points=points, note=note, cites=cites), line or note, **extra)
 
 
-def _credential(code: str, org: OrgProfile, today: date) -> Check:
-    key = CREDENTIALS[code]
-    cite = [f"[org:{org.id}]"]
-    rows = [r for r in org.identifiers.get(key, []) if r.is_current is not False]
-    lapsed = [r for r in rows if r.status in LAPSED or (r.status in HELD and r.valid_until and r.valid_until < today)]
-    held = [r for r in rows if r.status in HELD and r.id_value and r not in lapsed]
-    if held and lapsed:
-        # Conflicting evidence never passes or fails a gate.
-        return _unknown(code, f"conflicting {key} rows: {', '.join(sorted({r.status for r in rows}))}")
-    if lapsed:
-        r = lapsed[0]
-        note = f"{key} lapsed on {r.valid_until}" if r.status in HELD else f"{key} {r.status}"
-        return Check(code=code, outcome="fail", basis="recorded", note=note, cites=cite)
-    if held:
-        r = held[0]
-        if r.evidence == "claimed":
-            # Weak evidence never passes a gate.
-            return _unknown(code, f"{key} claimed by {r.source_type or 'an unnamed source'}, not evidenced",
-                            basis="claimed")
-        note = f"{key} {r.status}" + (" (time-limited)" if r.status == "provisional" else "")
-        return Check(code=code, outcome="met", basis="recorded", note=note, cites=cite)
-    statuses = {r.status for r in rows}
-    if "applied" in statuses:
-        return _unknown(code, f"{key} applied for, not yet granted")
-    if "not_found" in statuses:
-        return _unknown(code, f"{key} searched for and not found", basis="searched_not_found")
-    if "check_blocked" in statuses:
-        return _unknown(code, f"{key} registry could not be read")
-    if org.identifiers.get(key):
-        return _unknown(code, f"no current {key} recorded")
-    return _unknown(code, f"no {key} recorded")
+def _side(org_has: bool) -> str:
+    return "funder" if org_has else "organisation"
 
 
-def _audits(org: OrgProfile) -> Check:
-    cite = [f"[org:{org.id}]"]
-    audited = {y for y, a in org.financials if a is True}
-    docs = sum(t in AUDIT_DOC_TYPES for t in org.doc_types)
-    if len(audited) >= 3:
-        return Check(code="audits_3y", outcome="met", basis="recorded", note=f"{len(audited)} audited years", cites=cite)
-    if docs >= 3:
-        return Check(code="audits_3y", outcome="met", basis="on_file", note=f"{docs} audit documents", cites=cite)
-    if unaudited := [y for y, a in org.financials[:3] if a is False]:
-        return Check(code="audits_3y", outcome="fail", basis="recorded",
-                     note=f"recorded not audited: {', '.join(unaudited)}", cites=cite)
-    return _unknown("audits_3y", f"{max(len(audited), docs)} of 3 audited years recorded")
+# ---- theme, geography, population: what the two have in common ----------------------------------------
 
 
-def _document(code: str, kinds: frozenset[str], what: str, org: OrgProfile) -> Check:
-    if any(t in kinds for t in org.doc_types):
-        return Check(code=code, outcome="met", basis="on_file", note=f"{what} on file", cites=[f"[org:{org.id}]"])
-    return _unknown(code, f"no {what} on file", basis="not_on_file")
-
-
-def _board(org: OrgProfile) -> Check:
-    if org.office_bearers >= 3:
-        return Check(code="board", outcome="met", basis="recorded",
-                     note=f"{org.office_bearers} office bearers", cites=[f"[org:{org.id}]"])
-    return _unknown("board", f"{org.office_bearers} of 3 office bearers recorded")
-
-
-def _projects(org: OrgProfile, today: date) -> Check:
-    # An unconfirmed line is a claim of a relationship, not a project.
-    grants = [a for a, status, end in org.partner_lines
-              if status != "unconfirmed" and (status in CONCLUDED or (end is not None and end < today))]
-    programs = [p for p in org.programs if p.status in CONCLUDED or (p.end_date is not None and p.end_date < today)]
-    done = len(grants) + len(programs)
-    if done >= 3:
-        cites = [f"[activity:{a}]" for a in grants] or [f"[org:{org.id}]"]
-        return Check(code="projects_3", outcome="met", basis="recorded",
-                     note=f"{len(grants)} concluded grants, {len(programs)} completed programmes", cites=cites)
-    return _unknown("projects_3", f"{done} of 3 completed projects recorded")
-
-
-def judge_org(org: OrgProfile, *, today: date | None = None) -> list[Check]:
-    """The twelve checks about the organisation alone."""
-    today = today or datetime.now(UTC).date()
-    return [
-        *(_credential(code, org, today) for code in CREDENTIALS),
-        _audits(org),
-        _document("itr_7", ITR_DOC_TYPES, "income tax return", org),
-        _board(org),
-        _document("team_cvs", CV_DOC_TYPES, "team CV", org),
-        _projects(org, today),
-    ]
-
-
-# ---- checks that depend on the funder ------------------------------------------------------------------
-
-
-def _area(org: OrgProfile, funder: FunderProfile, places: Places) -> tuple[Check, int]:
-    cites = [f"[org:{org.id}]", f"[funder:{funder.id}]"]
-    o_d, f_d = places.districts(org.location_ids), places.districts(funder.location_ids)
-    o_s, f_s = places.states(org.location_ids), places.states(funder.location_ids)
-    shared_d = o_d & f_d
-    if shared_d:
-        note = f"shared district: {_names(places, shared_d)}"
-        return Check(code="area", outcome="met", basis="recorded", level="district", note=note, cites=cites), \
-            len(shared_d)
-    if shared_s := o_s & f_s:
-        note = f"shared state: {_names(places, shared_s)}"
-        return Check(code="area", outcome="met", basis="recorded", level="state", note=note, cites=cites), 0
-    if places.pan_india(funder.location_ids):
-        note = "funder states it gives across India"
-        return Check(code="area", outcome="met", basis="recorded", level="pan_india", note=note, cites=cites), 0
-    regions = places.regions(funder.location_ids)
-    for r in regions:
-        if places.members(r) & o_s:
-            note = f"region {places.name(r)} includes {_names(places, places.members(r) & o_s)}"
-            return Check(code="area", outcome="met", basis="recorded", level="regional", note=note, cites=cites), 0
-    if not org.location_ids or not funder.location_ids:
-        side = "organisation" if not org.location_ids else "funder"
-        return _unknown("area", f"no places recorded for the {side}"), 0
-    if any(not places.members(r) for r in regions):
-        # A region whose member states are not recorded can neither match nor rule out.
-        return _unknown("area", f"funder gives in {_names(places, regions)}; its member states are not recorded"), 0
-    note = f"no shared place among {len(f_s | f_d)} recorded funder places"
-    return Check(code="area", outcome="fail", basis="recorded", note=note, cites=cites), 0
-
-
-def _theme(org: OrgProfile, funder: FunderProfile) -> tuple[Check, set[str]]:
+def theme(org: OrgProfile, funder: FunderProfile) -> Finding:
     shared = (org.sector_tags & funder.sector_tags) | (org.csr_slugs & funder.csr_slugs)
     cites = [f"[org:{org.id}]", f"[funder:{funder.id}]"]
     if shared:
-        return Check(code="theme", outcome="met", basis="recorded", note=f"shared: {', '.join(sorted(shared))}",
-                     cites=cites), shared
-    org_tagged = bool(org.sector_tags or org.csr_slugs)
-    funder_tagged = bool(funder.sector_tags or funder.csr_slugs)
+        what = _words(shared)
+        if hits := [p for p in org.programs if p.tags & shared]:
+            return _found("theme", rubric.maximum("theme"), f"shared: {what}; {hits[0].name} is in it", cites,
+                          f"Shared theme: {what}")
+        if org.programs and all(p.tags for p in org.programs):
+            why, act = f"none of {len(org.programs)} programmes is in it", f"Record a programme in {what}"
+        elif org.programs:
+            why, act = "its programmes are not tagged with a theme", "Tag the organisation's programmes with themes"
+        else:
+            why, act = "no programmes recorded", f"Record the organisation's programmes in {what}"
+        gain = rubric.maximum("theme") - rubric.THEME_NO_PROGRAMME
+        return _found("theme", rubric.THEME_NO_PROGRAMME, f"shared: {what}; {why}", cites,
+                      f"No programme recorded in {what}", improve=[f"{act} (up to {gain} points)."])
+    org_tagged, funder_tagged = bool(org.sector_tags or org.csr_slugs), bool(funder.sector_tags or funder.csr_slugs)
     if org_tagged and funder_tagged:
-        return Check(code="theme", outcome="fail", basis="recorded", note="no shared sector or Schedule VII theme",
-                     cites=cites), shared
-    side = "organisation" if not org_tagged else "funder"
-    return _unknown("theme", f"no themes recorded for the {side}"), shared
+        return _found("theme", 0, "no shared sector or Schedule VII theme", cites, "No shared theme recorded")
+    return _found("theme", None, f"no themes recorded for the {_side(org_tagged)}", [])
 
 
-def _programme(org: OrgProfile, theme: Check, shared: set[str]) -> Check:
-    # A fail needs a programs row to cite, so no programmes is unknown whatever theme says.
-    if not org.programs:
-        return _unknown("programme", "no programmes recorded for the organisation")
-    if hits := [p for p in org.programs if p.tags & shared]:
-        return Check(code="programme", outcome="met", basis="recorded",
-                     note=f"{hits[0].name} is in a shared theme", cites=[f"[org:{org.id}]"])
-    if theme.outcome == "fail" or (theme.outcome == "met" and all(p.tags for p in org.programs)):
-        return Check(code="programme", outcome="fail", basis="recorded",
-                     note=f"none of {len(org.programs)} programmes is in a shared theme", cites=[f"[org:{org.id}]"])
-    return _unknown("programme", "programmes are not tagged with a theme")
+def geography(org: OrgProfile, funder: FunderProfile, places: Places) -> Finding:
+    cites = [f"[org:{org.id}]", f"[funder:{funder.id}]"]
+    pts = rubric.GEOGRAPHY
+    if shared := places.districts(org.location_ids) & places.districts(funder.location_ids):
+        return _found("geography", pts["district"], f"shared district: {_names(places, shared)}", cites,
+                      f"Both work in {_names(places, shared)}")
+    if shared := places.states(org.location_ids) & places.states(funder.location_ids):
+        return _found("geography", pts["state"], f"shared state, no shared district: {_names(places, shared)}",
+                      cites, f"{_names(places, shared)} is one of its states")
+    if places.pan_india(funder.location_ids) and org.location_ids:
+        return _found("geography", pts["india"], "the funder gives across India; no state or district named",
+                      cites, "Gives across India")
+    regions = places.regions(funder.location_ids)
+    for r in regions:
+        if inside := places.members(r) & places.states(org.location_ids):
+            return _found("geography", pts["region"], f"region {places.name(r)} includes {_names(places, inside)}",
+                          cites, f"Gives in {places.name(r)}")
+    if not org.location_ids or not funder.location_ids:
+        return _found("geography", None, f"no places recorded for the {_side(bool(org.location_ids))}", [])
+    if any(not places.members(r) for r in regions):
+        # A region whose member states are not recorded can neither match nor rule out.
+        return _found("geography", None,
+                      f"the funder gives in {_names(places, regions)}; its member states are not recorded", [])
+    return _found("geography", 0, f"no shared place among {len(funder.location_ids)} recorded funder places",
+                  cites, "No shared place recorded")
 
 
-def _foreign(funder: FunderProfile, places: Places) -> bool | None:
-    countries = {places.country(i) for i in funder.registered_ids} - {None}
-    if not countries:
-        return None
-    return INDIA not in countries
+def population(org: OrgProfile, funder: FunderProfile) -> Finding:
+    cites = [f"[org:{org.id}]", f"[funder:{funder.id}]"]
+    if shared := org.population & funder.population:
+        return _found("population", rubric.maximum("population"), f"both serve {_words(shared)}", cites,
+                      f"Both serve {_words(shared)}")
+    if org.population and funder.population:
+        return _found("population", 0, f"{_words(org.population)} against {_words(funder.population)}", cites,
+                      "Serves a different population")
+    return _found("population", None, f"no population recorded for the {_side(bool(org.population))}", [])
 
 
-def judge_pair(org: OrgProfile, funder: FunderProfile, places: Places) -> PairResult:
-    """Place, theme, programme and the funder's own bars."""
-    area, shared_districts = _area(org, funder, places)
-    theme, shared = _theme(org, funder)
-    checks = [area, theme, _programme(org, theme, shared)]
-    # Free-text criteria cannot be judged in code; each is named for a person to review.
-    checks += [
-        Check(code="funder_bar", outcome="unknown", basis="not_researched", note=f"needs review (document {bar_id}): {text}")
-        for bar_id, text in funder.bars
+# ---- eligibility: the organisation's papers against what this funder needs ------------------------------
+
+
+def _credential(key: str, org: OrgProfile, today: date) -> tuple[str, str]:
+    """(held | missing | unreadable, note) for one org_identifiers id_type."""
+    rows = [r for r in org.identifiers.get(key, []) if r.is_current is not False]
+    lapsed = [r for r in rows if r.status in LAPSED or (r.status in HELD and r.valid_until and r.valid_until < today)]
+    held = [r for r in rows if r.status in HELD and r.id_value and r not in lapsed]
+    label = ITEMS[key][0]
+    if held and lapsed:
+        return "unreadable", f"{label}: conflicting rows ({', '.join(sorted({r.status for r in rows}))})"
+    if lapsed:
+        r = lapsed[0]
+        return "missing", (f"{label} lapsed on {r.valid_until}" if r.status in HELD else f"{label} {r.status}")
+    if held:
+        r = held[0]
+        if r.evidence == "claimed":
+            return "held", f"{label} claimed by {r.source_type or 'an unnamed source'}, not evidenced"
+        return "held", f"{label} {r.status}" + (" (time-limited)" if r.status == "provisional" else "")
+    statuses = {r.status for r in rows}
+    if "check_blocked" in statuses:
+        return "unreadable", f"{label}: the registry could not be read"
+    if "applied" in statuses:
+        return "missing", f"{label} applied for, not yet granted"
+    return "missing", f"{label} not on record"
+
+
+def _audits(org: OrgProfile) -> tuple[str, str]:
+    audited = {y for y, a in org.financials if a is True}
+    docs = sum(t in AUDIT_DOC_TYPES for t in org.doc_types)
+    if len(audited) >= 3:
+        return "held", f"{len(audited)} audited years"
+    if docs >= 3:
+        return "held", f"{docs} audit documents on file"
+    return "missing", f"{max(len(audited), docs)} of 3 audited years on record"
+
+
+def eligibility(org: OrgProfile, funder: FunderProfile, *, today: date) -> Finding:
+    cites = [f"[org:{org.id}]"]
+    not_judged = [f"The funder's own bar (document {doc_id}) [funder:{funder.id}]: {text}"
+                  for doc_id, text in funder.bars]
+    if not (org.identifiers or org.financials or org.doc_types):
+        return _found("eligibility", None, "no registrations, accounts or documents recorded", [],
+                      not_judged=not_judged)
+    items = {"12a": _credential("12a", org, today), "80g": _credential("80g", org, today), "audits": _audits(org)}
+    if funder.funder_type in SECTION_135_TYPES or funder.section_135_bound:
+        items["csr1"] = _credential("csr1", org, today)
+    elif funder.funder_type in UNTYPED and funder.section_135_bound is None:
+        not_judged.append("CSR Form 1: the funder's type is not recorded, so whether Section 135 applies is unknown.")
+    # An unreadable item is left out of the count, never scored as missing.
+    not_judged += [f"{note}." for state, note in items.values() if state == "unreadable"]
+    counted = {k: v for k, v in items.items() if v[0] != "unreadable"}
+    if not counted:
+        return _found("eligibility", None, "no credential could be read", [], not_judged=not_judged)
+    held = [note for state, note in counted.values() if state == "held"]
+    missing = {k: note for k, (state, note) in counted.items() if state == "missing"}
+    points = round(rubric.maximum("eligibility") * len(held) / len(counted))
+    share = round(rubric.maximum("eligibility") / len(counted))
+    note = "; ".join([*held, *missing.values()])
+    line = next(iter(missing.values()), "12A, 80G and audited accounts on record")
+    improve = [f"{ITEMS[k][1]} (up to {share} points)." for k in missing]
+    return _found("eligibility", points, note, cites, line, improve=improve, not_judged=not_judged)
+
+
+# ---- relationship, funding size, capacity: about this funder -------------------------------------------
+
+
+def relationship(org: OrgProfile, funder: FunderProfile) -> Finding:
+    lines = [p for p in org.partner_lines if p.funder_id == funder.id]
+    confirmed = [p for p in lines if p.relationship_status != "unconfirmed"]
+    if confirmed:
+        statuses = ", ".join(sorted({p.relationship_status or "unstated" for p in confirmed}))
+        return _found("relationship", rubric.maximum("relationship"),
+                      f"{len(confirmed)} partner line(s) from this funder ({statuses})",
+                      [f"[activity:{p.id}]" for p in confirmed], "Has funded it before")
+    if lines:
+        gain = rubric.maximum("relationship") - rubric.RELATIONSHIP_UNCONFIRMED
+        return _found("relationship", rubric.RELATIONSHIP_UNCONFIRMED, "a partner line exists but is unconfirmed",
+                      [f"[activity:{p.id}]" for p in lines], "A past grant is unconfirmed",
+                      improve=[f"Confirm the partner line with {funder.name} (up to {gain} points)."])
+    return _found("relationship", 0, "no past grant, programme or contact between them is recorded", [],
+                  "No past grant or contact recorded",
+                  improve=[(f"Record any contact with {funder.name}; a warm introduction counts "
+                            f"(up to {rubric.maximum('relationship')} points).")])
+
+
+def _inr(amount: Decimal) -> str:
+    return f"₹{amount / 100_000:,.1f} lakh" if amount < 10_000_000 else f"₹{amount / 10_000_000:,.1f} crore"
+
+
+def funding_size(org: OrgProfile, funder: FunderProfile) -> Finding:
+    if funder.grant_size_min is None and funder.grant_size_max is None:
+        return _found("funding_size", None, "the funder publishes no grant range", [])
+    if org.total_income is None:
+        return _found("funding_size", None, "no annual income recorded for the organisation", [])
+    cites = [f"[org:{org.id}]", f"[funder:{funder.id}]"]
+    smallest = funder.grant_size_min or Decimal(0)
+    band = " to ".join(_inr(a) for a in (funder.grant_size_min, funder.grant_size_max) if a is not None)
+    note = f"grants of {band} against an annual income of {_inr(org.total_income)}"
+    if smallest <= org.total_income:
+        return _found("funding_size", rubric.maximum("funding_size"), note, cites, f"Grant size fits: {band}")
+    if smallest <= rubric.FUNDING_STRETCH * org.total_income:
+        return _found("funding_size", rubric.FUNDING_PARTIAL, note, cites, "Its smallest grant is a stretch")
+    return _found("funding_size", 0, note, cites, "Its smallest grant is far above the organisation's income")
+
+
+def _fy(start: int) -> str:
+    return f"FY{start}-{(start + 1) % 100:02d}"
+
+
+def capacity(funder: FunderProfile, *, today: date) -> Finding:
+    window = rubric.capacity_window(today)
+    recent = [(a, fy) for a, fy in funder.spend if rubric.fy_start(fy) in window]
+    years = {rubric.fy_start(fy) for _, fy in recent}
+    span = f"{_fy(window[0])} to {_fy(window[-1])}"
+    if not years:
+        return _found("capacity", None, f"no spend recorded from {span}", [])
+    cites = list(dict.fromkeys(f"[activity:{a}]" for a, _ in recent))[:3]
+    note = f"spend recorded in {len(years)} of the {rubric.CAPACITY_YEARS} years {span}"
+    if len(years) >= rubric.CAPACITY_YEARS:
+        return _found("capacity", rubric.maximum("capacity"), note, cites, "Spends every year")
+    return _found("capacity", rubric.CAPACITY_PARTIAL, note, cites, "Spend recorded in some recent years")
+
+
+def judge(org: OrgProfile, funder: FunderProfile, places: Places, *, today: date | None = None) -> list[Finding]:
+    """Every criterion, in the rubric's order."""
+    today = today or datetime.now(UTC).date()
+    return [
+        theme(org, funder),
+        geography(org, funder, places),
+        population(org, funder),
+        eligibility(org, funder, today=today),
+        relationship(org, funder),
+        funding_size(org, funder),
+        capacity(funder, today=today),
     ]
-    reasons = [f"{c.code}: {c.note} {' '.join(c.cites)}" for c in checks if c.outcome != "unknown"]
-    return PairResult(checks, shared_districts, _foreign(funder, places), reasons)
 
 
 def has_places_or_themes(funder: FunderProfile) -> bool:
