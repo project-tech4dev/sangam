@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from psycopg import errors, sql
@@ -51,11 +50,12 @@ async def _columns(conn: Any, table: str) -> list[str]:
     return [r["column_name"] for r in rows]
 
 
-def _same(table: str, row: dict[str, Any]) -> tuple[sql.Composable, list[Any]]:
-    """WHERE the row is exactly as the save left it, by id when the table has one."""
+def _same(table: str, row: dict[str, Any], write_id: int) -> tuple[sql.Composable, list[Any]]:
+    """WHERE the row is exactly as the save left it, by id when the table has one.
+    Compared with the logged jsonb in SQL, since a round trip through Python turns numerics into floats."""
     t = sql.Identifier(table)
-    where = sql.SQL("to_jsonb({t}.*) = %s::jsonb").format(t=t)
-    params: list[Any] = [json.dumps(row)]
+    where = sql.SQL("to_jsonb({t}.*) = (SELECT new_row FROM catalog_writes WHERE id = %s)").format(t=t)
+    params: list[Any] = [write_id]
     if "id" in row:
         where = sql.SQL("{t}.id = %s AND ").format(t=t) + where
         params.insert(0, row["id"])
@@ -72,7 +72,7 @@ async def undo(conn: Any, promotion_id: int, user_id: Any) -> dict[str, Any]:
     if promo["undone_at"] is not None:
         raise UndoRefused("this save was already undone")
     writes = await (await conn.execute(
-        "SELECT table_name, action, old_row, new_row FROM catalog_writes WHERE promotion_id = %s ORDER BY id DESC",
+        "SELECT id, table_name, action, old_row, new_row FROM catalog_writes WHERE promotion_id = %s ORDER BY id DESC",
         (promotion_id,),
     )).fetchall()
     counts = {"removed": 0, "restored": 0}
@@ -81,7 +81,7 @@ async def undo(conn: Any, promotion_id: int, user_id: Any) -> dict[str, Any]:
             table = w["table_name"]
             if table not in LOGGED:
                 raise UndoRefused(f"{table} is not a catalog table")
-            where, params = _same(table, w["new_row"])
+            where, params = _same(table, w["new_row"], w["id"])
             if w["action"] == "insert":
                 if table in _RESOLVED:
                     await conn.execute(
@@ -93,9 +93,10 @@ async def undo(conn: Any, promotion_id: int, user_id: Any) -> dict[str, Any]:
                 key = "removed"
             else:
                 cols = [c for c in await _columns(conn, table) if c in w["old_row"]]
-                query = sql.SQL("UPDATE {t} SET ({cols}) = (SELECT {cols} FROM jsonb_populate_record(NULL::{t}, %s::jsonb)) WHERE ").format(
+                query = sql.SQL("UPDATE {t} SET ({cols}) = (SELECT {cols} FROM jsonb_populate_record(NULL::{t}, "
+                                "(SELECT old_row FROM catalog_writes WHERE id = %s))) WHERE ").format(
                     t=sql.Identifier(table), cols=sql.SQL(", ").join(map(sql.Identifier, cols))) + where
-                params = [json.dumps(w["old_row"]), *params]
+                params = [w["id"], *params]
                 key = "restored"
             try:
                 cur = await conn.execute(query, params)

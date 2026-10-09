@@ -162,7 +162,7 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 | `vault_tools.py` | `list_vault_documents` · `read_vault_document` · `save_vault_findings` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
-**Sangam Import** (main) holds twelve: the eight pipeline tools, `funder_dossier`,
+**Sangam Import** (main) holds thirteen: the eight pipeline tools, `funder_dossier`,
 `compare_with_catalog`, `coverage_report`, `record_registry_check` and `publish_brief`. It supervises. It cannot open a web page, and the
 only catalog row it writes is a staff member's own registry check (`app/ingest/manual_checks.py`:
 checker from the chat's user, ranked as `manual_check`, evidenced only with a document of that

@@ -99,6 +99,19 @@ async def test_an_update_is_restored(db):
     assert done["restored"] == 1 and after["website"] == funder["website"]
 
 
+async def test_an_amount_too_precise_for_a_float_still_undoes(db):
+    staff = await _staff(db)
+    funder = await (await db.execute("SELECT id, grant_size_max FROM funders ORDER BY id LIMIT 1")).fetchone()
+    if funder is None:
+        pytest.skip("no funder seeded")
+    promotion = await undo.start(db, None, "zz-precise", staff.user_id)
+    await db.execute("UPDATE funders SET grant_size_max = 12345678901234567.891 WHERE id = %s", (funder["id"],))
+    assert await undo.finish(db, promotion)
+    await undo.undo(db, promotion, staff.user_id)
+    after = await (await db.execute("SELECT grant_size_max FROM funders WHERE id = %s", (funder["id"],))).fetchone()
+    assert after["grant_size_max"] == funder["grant_size_max"]
+
+
 async def test_writes_outside_a_save_are_not_logged(db):
     before = await (await db.execute("SELECT count(*) AS n FROM catalog_writes")).fetchone()
     await db.execute("UPDATE funders SET website = website WHERE id = (SELECT min(id) FROM funders)")

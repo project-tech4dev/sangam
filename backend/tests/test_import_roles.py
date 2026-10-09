@@ -262,3 +262,72 @@ class TestTheResearchListQuery:
 
         rows = await repo.list_research(_PoolOf(db), limit=5, mine=mine)
         assert all("has_private" in r for r in rows)
+
+
+class _TxPool:
+    """A pool whose connection and transaction do nothing; the undo module is faked."""
+
+    @asynccontextmanager
+    async def connection(self):
+        yield self
+
+    @asynccontextmanager
+    async def transaction(self):
+        yield
+
+
+class TestStaffUndoAndDelete:
+    @pytest.fixture
+    def app_as(self, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+        from app.db.pool import get_pool
+        from app.ingest import undo
+        from tests.conftest import make_app
+        from tests.test_access import as_caller
+
+        async def fake_undo(conn, promotion_id, user_id):
+            if promotion_id == 404:
+                raise LookupError(promotion_id)
+            if promotion_id == 409:
+                raise undo.UndoRefused("a funders row has changed since this save")
+            return {"promotion_id": promotion_id, "slug": "acme", "removed": 3, "restored": 1}
+
+        async def fake_delete(conn, slug):
+            return {"saved": None, "gone": 0}.get(slug, 2)
+
+        monkeypatch.setattr(undo, "undo", fake_undo)
+        monkeypatch.setattr(undo, "delete_research", fake_delete)
+
+        def _make(principal):
+            app = as_caller(make_app(ingest_api.router), principal)
+            app.dependency_overrides[get_pool] = _TxPool
+            return app
+
+        return _make
+
+    async def test_members_cannot_undo_or_delete(self, app_as):
+        from tests.test_access import MEMBER, client
+
+        async with client(app_as(MEMBER)) as c:
+            assert (await c.post("/api/ingest/promotions/5/undo")).status_code == 403
+            assert (await c.delete("/api/ingest/research/acme")).status_code == 403
+
+    async def test_staff_undo(self, app_as):
+        from tests.test_access import client
+
+        async with client(app_as(security.DEV_USER)) as c:
+            done = await c.post("/api/ingest/promotions/5/undo")
+            missing = await c.post("/api/ingest/promotions/404/undo")
+            refused = await c.post("/api/ingest/promotions/409/undo")
+        assert done.json() == {"promotion_id": 5, "slug": "acme", "removed": 3, "restored": 1}
+        assert missing.status_code == 404
+        assert refused.status_code == 409 and refused.json()["detail"].startswith("Nothing was undone: a funders row")
+
+    async def test_staff_delete(self, app_as):
+        from tests.test_access import client
+
+        async with client(app_as(security.DEV_USER)) as c:
+            assert (await c.delete("/api/ingest/research/acme")).status_code == 204
+            assert (await c.delete("/api/ingest/research/gone")).status_code == 404
+            saved = await c.delete("/api/ingest/research/saved")
+        assert saved.status_code == 409 and "Undo the save first" in saved.json()["detail"]
