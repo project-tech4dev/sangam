@@ -43,13 +43,24 @@ export function emptyReason(c: CoverageConcept): string | null {
   const { kept, updated, added } = topicBar(c);
   if (kept + updated + added > 0 || (c.after ?? 0) > 0) return null;
   const why = ORDER.find((s) => c.cells.some((cell) => cell.status === s));
-  return why ? REASON[why] : "Not found";
+  if (why) return REASON[why];
+  return wasFound(c) ? "Found, nowhere to save it" : "Not found";
 }
 
-export type Square = "new" | "updated" | "kept" | "empty";
+export const wasFound = (c: CoverageConcept) => c.cells.some((cell) => cell.status === "found");
 
-/** One topic as a square in the run matrix. */
-export function squareOf(c: CoverageConcept): Square {
+/** A topic of an organisation that was not saved: found or not, never what a save would have done. */
+export function unsavedLine(c: CoverageConcept): string {
+  if (wasFound(c)) return "Found, not saved";
+  const why = ORDER.find((s) => c.cells.some((cell) => cell.status === s));
+  return why && why !== "not_written" ? REASON[why] : "Not found";
+}
+
+export type Square = "new" | "updated" | "kept" | "found" | "empty";
+
+/** One topic as a square in the run matrix; `saved` false shows only whether it was found. */
+export function squareOf(c: CoverageConcept, saved = true): Square {
+  if (!saved) return wasFound(c) ? "found" : "empty";
   const { kept, updated, added } = topicBar(c);
   if (added > 0) return "new";
   if (updated > 0) return "updated";

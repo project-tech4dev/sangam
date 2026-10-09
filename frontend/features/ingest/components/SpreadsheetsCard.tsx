@@ -25,6 +25,9 @@ function fromPath(path: string): Workbook {
   return { path, name: parts.at(-1) ?? path, folder, folder_label: folder || "Not in a folder", size: null, updated_at: null };
 }
 
+/** In the folder or below it: "mca" holds "mca/2024" but not "mca_csr". */
+const inFolder = (f: Workbook, folder: string) => f.folder === folder || f.folder.startsWith(`${folder}/`);
+
 function FileList({
   files,
   ticked,
@@ -96,8 +99,8 @@ function Card({
         if (cancelled) return;
         const folderOf = prefix.replace(/\/$/, "");
         setFiles(found);
-        if (folderOf) setTicked(new Set(found.filter((f) => f.folder.startsWith(folderOf)).map((f) => f.path)));
-        setFolder(found.find((f) => folderOf && f.folder.startsWith(folderOf))?.folder ?? found[0]?.folder ?? null);
+        if (folderOf) setTicked(new Set(found.filter((f) => inFolder(f, folderOf)).map((f) => f.path)));
+        setFolder(found.find((f) => folderOf && inFolder(f, folderOf))?.folder ?? found[0]?.folder ?? null);
       } catch {
         if (!cancelled) setFailed(true);
       }
@@ -109,11 +112,13 @@ function Card({
 
   const folderOf = prefix.replace(/\/$/, "");
   const suggested = new Set(
-    bucket ? (files ?? []).filter((f) => folderOf && f.folder.startsWith(folderOf)).map((f) => f.path) : proposed,
+    bucket ? (files ?? []).filter((f) => folderOf && inFolder(f, folderOf)).map((f) => f.path) : proposed,
   );
   const folders = [...new Map((files ?? []).map((f) => [f.folder, f.folder_label])).entries()];
   const shown = (files ?? []).filter((f) => !bucket || folders.length < 2 || f.folder === folder);
   const count = ticked.size;
+  // An empty list can mean storage couldn't be read, so Sangam is offered the chance to look itself.
+  const unlisted = failed || (bucket !== null && files !== null && files.length === 0);
 
   function toggle(path: string) {
     setTicked((prev) => {
@@ -152,8 +157,10 @@ function Card({
       {failed && (
         <span className="import-pick-text">Sangam couldn&apos;t list the files here. It can list them itself and ask you again.</span>
       )}
-      {files !== null && files.length === 0 && (
-        <span className="import-pick-text">There are no spreadsheets in your team&apos;s files.</span>
+      {!failed && files !== null && files.length === 0 && (
+        <span className="import-pick-text">
+          {bucket ? "Sangam found no spreadsheets here. It can look itself and ask you again." : "There are no spreadsheets to choose from."}
+        </span>
       )}
 
       {bucket && folders.length > 1 && (
@@ -171,7 +178,7 @@ function Card({
       {shown.length > 0 && <FileList files={shown} ticked={ticked} suggested={suggested} onToggle={toggle} disabled={sent} />}
 
       <div className="import-pick-actions">
-        {failed ? (
+        {unlisted ? (
           <button type="button" className="btn btn-primary" onClick={() => decide({ type: "approve" })} disabled={sent}>
             Let Sangam list them
           </button>
@@ -214,14 +221,20 @@ function Answered({ onAnswer }: { onAnswer: () => void }) {
 export function SpreadsheetsCard({
   agentId,
   steps,
+  turnId,
   onPaused,
 }: {
   agentId: string;
   steps: TraceStep[];
+  /** The request being answered; a new one forgets the last pick. */
+  turnId: string | undefined;
   onPaused: (paused: boolean) => void;
 }) {
   // What staff chose at the first pause: the files, null for "no", undefined when not asked yet.
   const picked = useRef<string[] | null | undefined>(undefined);
+  useEffect(() => {
+    picked.current = undefined;
+  }, [turnId]);
   return useInterrupt({
     agentId,
     renderInChat: false,

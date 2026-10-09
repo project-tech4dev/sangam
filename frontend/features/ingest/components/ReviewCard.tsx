@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { EntityMark } from "@/components/ui/primitives";
 import { authHeaders } from "@/lib/api/auth-headers";
 import { formatInr } from "@/lib/format";
+import { KIND_LABEL } from "../lib/words";
 import type { ResearchReview, ReviewAnswer, ReviewFact, ReviewQuestion } from "../lib/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
@@ -63,7 +64,8 @@ function fallback(q: PausedQuestion): ReviewQuestion {
 
 function shown(value: unknown, money: boolean): string {
   if (value === null || value === undefined || value === "") return "—";
-  if (money && typeof value === "number") return formatInr(value);
+  if (money && (typeof value === "number" || (typeof value === "string" && value.trim() !== "" && !isNaN(Number(value)))))
+    return formatInr(Number(value));
   if (Array.isArray(value)) return value.map((v) => shown(v, false)).join(", ");
   if (typeof value === "object") {
     const text = (value as { text?: unknown }).text;
@@ -225,8 +227,9 @@ export function ReviewCard({
           <strong className="review-name">{slug ? name : "Save everything researched in this run?"}</strong>
           {review && (
             <span className="review-sub">
-              {review.kind === "funder" ? "Funder" : "NGO"}
-              {review.existing ? " · Already in Sangam" : " · New to Sangam"}
+              {[review.kind ? KIND_LABEL[review.kind] : null, review.existing ? "Already in Sangam" : "New to Sangam"]
+                .filter(Boolean)
+                .join(" · ")}
             </span>
           )}
         </div>

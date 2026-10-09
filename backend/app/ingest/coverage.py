@@ -207,6 +207,8 @@ def saved_record(prior: dict[str, Any] | None, report: dict[str, Any],
     changes = changes_by_concept(report)
     if prior and not changes:
         return None
+    if not prior and not report.get("entity"):
+        return None  # refused before anything was written: research stays unsaved
     if prior:
         for concept, counts in (prior.get("changes") or {}).items():
             mine = changes.setdefault(concept, {"added": 0, "updated": 0})

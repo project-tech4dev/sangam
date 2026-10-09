@@ -265,3 +265,21 @@ M6.
 2. **"Queued" rows** for more than `MAX_PARALLEL_RESEARCH` (8) organisations are not
    designed yet. M3 caps the start screen at 8 names until they are.
 3. ~~Admin check~~: decided, a collapsed "Details" section for all staff (see M2).
+
+## Review follow-ups (not done on this branch)
+
+A whole-branch review found these, and they were left open on purpose:
+
+- **No frontend tests.** The frontend has no test runner, so `board.ts`, `done.ts`,
+  `sourcePick.ts` and `formatInr` were checked with one-off scripts, not unit tests.
+- **The Start step has no 8-name cap.**
+- **The review and coverage routes call `get_pool()`** through the agent-tools module
+  instead of taking `pool: PoolDep`. `/workbooks` calls storage directly.
+- **Done sends one coverage request per organisation at once.** Each unsaved funder is
+  a dry-run promote on the shared pool.
+- **`_record_save` runs inside the promote transaction,** so a failure while counting
+  rolls the save back.
+- **Name-based lane matching uses substrings.** It is used only when `laneOwners` has
+  no entry for the lane.
+- **Queued names on Done come from the queue,** filtered by when the run started.
+  Research runs do not queue names today, so the list is usually empty.

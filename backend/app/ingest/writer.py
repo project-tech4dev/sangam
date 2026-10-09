@@ -164,7 +164,7 @@ class Gate:
         named = {c: v for c, v in key.items() if c not in ("funder_id", "program_id")}
         ident = json.dumps([case, table, named], sort_keys=True, default=str)
         item = {"id": hashlib.sha1(ident.encode()).hexdigest()[:12], "case": case, "table": table,
-                "label": _label(key), **extra}
+                "label": _label(key), "row_kind": key.get("kind") or key.get("doc_type"), **extra}
         if case in CHOICES:
             item["choices"] = list(CHOICES[case])
             item["choice"] = self.decisions.get(item["id"])

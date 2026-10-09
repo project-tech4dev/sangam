@@ -7,6 +7,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from app.agent.tools.sql.catalog import CATALOG
+from app.ingest.coverage import CONCEPT_OF_WRITTEN
 from app.ingest.expectations import CONCEPTS
 from app.ingest.research_records import to_inr
 from app.ingest.staff_sources import SOURCE_URL_PREFIX
@@ -42,8 +43,26 @@ def topic(concept: str) -> str:
     return spec.title if spec else words(concept)
 
 
-def _topic_of_table(table: str) -> str:
+def _topic_of_table(table: str, row_kind: str | None = None) -> str:
+    # funder_activity backs four topics; its row's kind says which.
+    concept = CONCEPT_OF_WRITTEN.get(f"{table} ({row_kind})") if row_kind else None
+    if concept:
+        return topic(concept)
     return next((spec.title for spec in CONCEPTS.values() if spec.table == table), words(table))
+
+
+def _money(value: Any) -> Any:
+    """A stored amount comes back as a decimal string; the card formats numbers."""
+    try:
+        return float(value) if isinstance(value, str) else value
+    except ValueError:
+        return value
+
+
+def _about(q: dict[str, Any]) -> str:
+    """The row's own name, without the kind code or the writer's "row" placeholder."""
+    parts = [p for p in (q.get("label") or "").split(" · ") if p and p not in ("row", q.get("row_kind"))]
+    return " · ".join(str(code_words(p)) for p in parts)
 
 
 def _money_columns(table: str) -> set[str]:
@@ -127,10 +146,11 @@ def question(q: dict[str, Any]) -> dict[str, Any]:
     """A promotion question with its table and columns put into words; the id is unchanged."""
     money = _money_columns(q.get("table", ""))
     fields = [
-        {"label": words(col), "old": code_words(c.get("old")), "new": code_words(c.get("new")), "money": col in money}
+        {"label": words(col), "old": _money(c.get("old")) if col in money else code_words(c.get("old")),
+         "new": _money(c.get("new")) if col in money else code_words(c.get("new")), "money": col in money}
         for col, c in (q.get("changes") or {}).items()
     ]
-    return {"id": q["id"], "case": q.get("case"), "topic": _topic_of_table(q.get("table", "")),
-            "about": q.get("label") or "", "fields": fields, "stored_as_of": q.get("stored_as_of"),
+    return {"id": q["id"], "case": q.get("case"), "topic": _topic_of_table(q.get("table", ""), q.get("row_kind")),
+            "about": _about(q), "fields": fields, "stored_as_of": q.get("stored_as_of"),
             "new_as_of": q.get("new_as_of"), "stored_name": q.get("stored_name"), "new_name": q.get("new_name"),
             "choices": [{"value": c, "label": CHOICE_WORDS.get(c, words(c))} for c in q.get("choices", [])]}

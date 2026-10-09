@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { EntityMark } from "@/components/ui/primitives";
 import { authHeaders } from "@/lib/api/auth-headers";
-import { emptyReason, isSaved, profileOf, runTotal, squareOf, summaryLine, topicBar } from "../lib/done";
+import { emptyReason, isSaved, profileOf, runTotal, squareOf, summaryLine, topicBar, unsavedLine } from "../lib/done";
 import type { QueueItem, ResearchCoverage } from "../lib/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 // Above this many organisations the report opens as a matrix, one row each.
 const MATRIX_FROM = 4;
-const SQUARE_WORDS = { new: "New", updated: "Updated", kept: "Already in Sangam", empty: "Nothing yet" };
+const SQUARE_WORDS = { new: "New", updated: "Updated", kept: "Already in Sangam", found: "Found, not saved", empty: "Nothing yet" };
 
 async function get<T>(path: string): Promise<T | null> {
   try {
@@ -22,6 +22,19 @@ async function get<T>(path: string): Promise<T | null> {
 }
 
 function Bars({ c }: { c: ResearchCoverage }) {
+  // Not saved: a dry run's "would add" must not read as done, so only found or not is shown.
+  if (!isSaved(c)) {
+    return (
+      <ul className="done-bars">
+        {c.concepts.map((t) => (
+          <li key={t.concept} className="done-bar-row">
+            <span className="done-bar-topic">{t.title}</span>
+            <span className="done-bar-why">{unsavedLine(t)}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
   const widest = Math.max(1, ...c.concepts.map((t) => {
     const b = topicBar(t);
     return b.kept + b.updated + b.added;
@@ -105,8 +118,8 @@ function MatrixRow({ c }: { c: ResearchCoverage }) {
         </span>
         <span className="done-squares">
           {c.concepts.map((t) => {
-            const sq = squareOf(t);
-            const why = sq === "empty" ? emptyReason(t) : null;
+            const sq = squareOf(t, saved);
+            const why = sq === "empty" ? (saved ? emptyReason(t) : unsavedLine(t)) : null;
             return <span key={t.concept} className="done-square" data-part={sq} title={`${t.title}: ${why ?? SQUARE_WORDS[sq]}`} />;
           })}
         </span>
@@ -141,7 +154,8 @@ export function DoneReport({
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    // Between a pause's answer and the resume the run looks finished for a moment; don't dry-run every save for that.
+    const wait = setTimeout(async () => {
       const [found, queue] = await Promise.all([
         Promise.all(key.split("|").map((slug) => get<ResearchCoverage>(`/api/ingest/research/${encodeURIComponent(slug)}/coverage`))),
         get<QueueItem[]>("/api/ingest/queue?limit=50"),
@@ -149,13 +163,14 @@ export function DoneReport({
       if (cancelled) return;
       setAll(found.filter((c): c is ResearchCoverage => c !== null));
       setQueued((queue ?? []).filter((q) => since !== null && Date.parse(q.created_at) >= since));
-    })();
+    }, 500);
     return () => {
       cancelled = true;
+      clearTimeout(wait);
     };
   }, [key, since]);
 
-  if (all === null) return <span className="muted">Putting the report together…</span>;
+  if (all === null) return null;
   if (all.length === 0) return null;
 
   const saved = all.filter(isSaved);

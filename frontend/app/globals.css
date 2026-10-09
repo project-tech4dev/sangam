@@ -821,6 +821,8 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .done-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .done-bar-row { display: grid; grid-template-columns: minmax(120px, 200px) 1fr; align-items: center; gap: 10px; font-size: var(--fs-sm); }
 .done-bar { display: flex; height: 10px; border-radius: var(--radius-pill); background: var(--color-neutral-100); overflow: hidden; }
+.done-bar-topic { min-width: 0; overflow-wrap: anywhere; }
+.done-square[data-part="found"] { background: var(--color-accent-2-200); }
 .done-bar-why { color: var(--color-muted); font-size: var(--fs-xs); font-style: italic; }
 .done-seg[data-part="kept"], .done-legend [data-part="kept"]::before, .done-square[data-part="kept"] { background: var(--color-neutral-300); }
 .done-seg[data-part="updated"], .done-legend [data-part="updated"]::before, .done-square[data-part="updated"] { background: var(--color-accent-500); }

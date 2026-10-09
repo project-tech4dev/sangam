@@ -93,7 +93,7 @@ export function ImportWorkspace({
       </div>
 
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
-      {isReady && <SpreadsheetsCard agentId={`sangam-import-${threadId}`} steps={lastSteps} onPaused={setPaused} />}
+      {isReady && <SpreadsheetsCard agentId={`sangam-import-${threadId}`} steps={lastSteps} turnId={turns.at(-1)?.id} onPaused={setPaused} />}
       {isReady && (
         <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={onReview} />
       )}

@@ -1389,6 +1389,12 @@ class TestASaveIsCountedPerConcept:
         again = {"entity": {"kind": "funder", "status": "matched", "id": 7}, "written": {}}
         assert saved_record(first, again, {"identity": 1, "metric": 4}) is None
 
+    def test_a_first_save_refused_before_writing_is_not_a_save(self):
+        from app.ingest.coverage import saved_record
+
+        refused = {"entity": None, "written": {}, "reasons": ["resembles X: not merged"]}
+        assert saved_record(None, refused, None) is None
+
     def test_a_later_save_that_writes_more_keeps_the_first_before(self):
         from app.ingest.coverage import saved_record
 
@@ -1523,6 +1529,16 @@ class TestTheReviewCardSpeaksPlainly:
         assert q["fields"][1]["old"] == "Corporate CSR"
         assert [c["label"] for c in q["choices"]] == ["Use the new one", "Keep what Sangam has"]
         assert "_" not in q["topic"]
+
+    def test_an_activity_question_is_titled_by_its_kind_and_amounts_are_numbers(self):
+        from app.ingest import review
+
+        q = review.question({"id": "p1", "case": 3, "table": "funder_activity", "label": "partner · KABIL",
+                             "row_kind": "partner", "changes": {"amount": {"old": "43700000.00", "new": 5}},
+                             "choices": ["keep"]})
+        assert q["topic"] == review.topic("partner")
+        assert q["about"] == "KABIL"
+        assert q["fields"][0]["old"] == 43700000.0
 
     async def test_no_research_is_404(self, client_for, monkeypatch):
         from app.api.routes import ingest as ingest_api
