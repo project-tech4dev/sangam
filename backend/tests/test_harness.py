@@ -9,6 +9,8 @@ library upgrade cannot quietly restore them.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from langchain_core.tools import tool
 
@@ -141,31 +143,50 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         assert "general-purpose" not in advertised
 
 
-class TestTheUtilityModelIsOptional:
-    """Cheaper models for work that needs no reasoning — and unset, nothing
-    changes, because a performance setting that alters behaviour by default is
-    a behaviour change wearing a performance setting's name."""
+class TestEachTierGetsItsModel:
+    """A strong model reasons, cheaper ones do subtasks (config.py). A blank tier
+    inherits MODEL, so a deploy can still run everything on one model."""
 
-    def test_unset_means_the_main_model(self):
+    @staticmethod
+    def built(monkeypatch, **overrides):
+        # The specs create_deep_agent receives, with each model left as its spec string.
+        from app.core.config import Settings
+        from app.ingest import agent
+
+        seen = {}
+
+        def capture(**kwargs):
+            seen.update(kwargs)
+            return SimpleNamespace(with_config=lambda config: None)
+
+        monkeypatch.setattr(agent, "resolve_model", lambda spec: spec)
+        monkeypatch.setattr(agent, "create_deep_agent", capture)
+        agent.build_ingest_agent(Settings(**overrides), None)
+        return seen["model"], {s["name"]: s.get("model") for s in seen["subagents"]}
+
+    def test_each_subagent_runs_on_its_tier(self, monkeypatch):
+        main, subs = self.built(monkeypatch, model="m:strong", research_model="m:mid", utility_model="m:cheap")
+        assert main == "m:strong"
+        assert subs == {"entity-researcher": "m:mid", "catalog-writer": "m:cheap", "workbook-reader": "m:cheap"}
+
+    def test_a_blank_tier_inherits_the_main_model(self, monkeypatch):
+        _, subs = self.built(monkeypatch, model="m:strong", research_model="", utility_model="")
+        # No model key: deepagents gives the subagent the parent's.
+        assert set(subs.values()) == {None}
+
+    def test_the_defaults_are_strong_mid_cheap(self):
         from app.core.config import Settings
 
-        s = Settings(utility_model="")
-        assert (s.utility_model or s.model) == s.model
+        s = Settings(_env_file=None)
+        assert "opus" in s.model and "sonnet" in s.research_model and "haiku" in s.utility_model
+        assert "haiku" in s.sql_audit_model
 
-    def test_set_means_that_model(self):
-        from app.core.config import Settings
+    def test_the_module_level_specs_are_not_mutated(self, monkeypatch):
+        # build_ingest_agent copies each spec before adding a model, so builds cannot leak between them.
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER
 
-        s = Settings(utility_model="anthropic:claude-haiku-4-5")
-        assert (s.utility_model or s.model) == "anthropic:claude-haiku-4-5"
-
-    def test_the_writer_subagent_is_not_mutated_in_place(self):
-        # build_ingest_agent copies CATALOG_WRITER before adding a model, so
-        # building twice with different settings cannot leak between them.
-        from app.core.config import get_settings
-        from app.ingest.agent import CATALOG_WRITER, build_ingest_agent
-
-        build_ingest_agent(get_settings(), None)
-        assert "model" not in CATALOG_WRITER
+        self.built(monkeypatch, model="m:strong", research_model="m:mid", utility_model="m:cheap")
+        assert all("model" not in spec for spec in (CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER))
 
 
 class TestTheSkillIsFoundAndIsProgressive:

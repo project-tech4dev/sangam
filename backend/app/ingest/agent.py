@@ -251,9 +251,12 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # save_questions pauses every promote_research for staff to approve, with a button per open question.
     writer = {**CATALOG_WRITER, "middleware": [filesystem_tools(backend), save_questions()]}
     reader = {**WORKBOOK_READER, "middleware": [filesystem_tools(backend)]}
-    # It formats what two tools return, so it needs no reasoning about sources.
+    # Each subagent on its tier (config.py); a blank tier inherits MODEL. Resolved here so a bad spec fails at boot.
+    if settings.research_model:
+        researcher["model"] = resolve_model(settings.research_model)
     if settings.utility_model:
         writer["model"] = resolve_model(settings.utility_model)
+        reader["model"] = resolve_model(settings.utility_model)
     agent = create_deep_agent(
         model=resolve_model(settings.model),
         tools=TOOLS,

@@ -28,14 +28,17 @@ DEFAULT_GITHUB_TOOL_ALLOWLIST = [
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # "provider:model_name", resolved via langchain init_chat_model.
-    model: str = "anthropic:claude-sonnet-5"
+    # "provider:model_name", resolved via langchain init_chat_model. Three tiers, by how hard the work is:
+    # MODEL reasons (Ask Sangam, the Import supervisor), so it is the strongest.
+    model: str = "anthropic:claude-opus-5-5"
 
-    # For work that needs no reasoning: filling a fixed record shape from one
-    # article, and the catalog-writer subagent, which calls two tools and
-    # formats their output. Empty falls back to `model`, so an unset value
-    # changes nothing. Point it at the cheapest model of the same provider.
-    utility_model: str = ""
+    # The entity-researcher: long pages and evidence judgements, up to MAX_PARALLEL_RESEARCH at once,
+    # so most of an import's tokens. Empty falls back to `model`.
+    research_model: str = "anthropic:claude-sonnet-5-5"
+
+    # Work that needs no reasoning: a fixed record from one article, the catalog-writer (two tools, a
+    # report) and the workbook-reader (one tool, a list of names). Empty falls back to `model`.
+    utility_model: str = "anthropic:claude-haiku-4-5"
 
     # Local only: also accept `Authorization: Bearer dev` as the seeded dev user. Never set when deployed.
     dev_auth: bool = False
@@ -83,8 +86,8 @@ class Settings(BaseSettings):
     sql_max_rows: int = 50
     sql_max_attempts: int = 5
     # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). Empty disables it;
-    # it is a real extra model call per SQL turn, so point it at the cheapest model of a provider you.
-    sql_audit_model: str = ""
+    # it is a real extra model call per SQL turn, so it runs on the cheapest tier.
+    sql_audit_model: str = "anthropic:claude-haiku-4-5"
 
     # Graph steps per turn, not tool calls: every middleware hook is its own node, so one model-then-tool
     # cycle costs several. Bound in build_agent(); LangGraph's own default is 25, which a SQL turn exceeds.
