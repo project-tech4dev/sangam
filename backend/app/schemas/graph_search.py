@@ -38,3 +38,8 @@ class GraphEpisodeIn(BaseModel):
 class GraphEpisodeOut(BaseModel):
     entities: list[str]
     facts: list[str]
+
+
+class GraphClearOut(BaseModel):
+    group_id: str | None
+    nodes_deleted: int
