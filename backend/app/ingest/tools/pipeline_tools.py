@@ -16,6 +16,7 @@ from app.agent.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.ingest import staff_sources
+from app.ingest.caller import staff_only
 from app.ingest.runner import catalog_baseline, run_import, summarise
 from app.ingest.sources import SOURCES, Category, resolve
 from app.integrations import storage
@@ -119,6 +120,8 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         sources: comma-separated source keys, or empty for every registered source.
         limit: items per source the run would request.
     """
+    if refused := staff_only("plan_import"):
+        return refused
     try:
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
         names = [n.strip() for n in funders.split(",") if n.strip()]
@@ -215,6 +218,8 @@ async def run_import_now(
     merged — they go to the review queue, because merging two different organisations
     is the one mistake this pipeline cannot undo. Report the queue to the user.
     """
+    if refused := staff_only("run_import_now"):
+        return refused
     try:
         settings = get_settings()
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
@@ -239,6 +244,8 @@ async def import_run_summary(run_id: int = 0) -> str:
     The summary is built from the run tables, so it says the same thing now as it
     did when the run finished.
     """
+    if refused := staff_only("import_run_summary"):
+        return refused
     try:
         if run_id <= 0:
             pool = get_pool()
@@ -262,6 +269,8 @@ async def pending_resolutions(limit: int = 20) -> str:
     matching it. Show the candidates and their scores; do not guess on the user's
     behalf.
     """
+    if refused := staff_only("pending_resolutions"):
+        return refused
     try:
         pool = get_pool()
         async with pool.connection() as conn:
@@ -337,6 +346,8 @@ async def list_storage_buckets() -> str:
     workbook) and you do not yet know which files exist. Then list_bucket_files with
     the bucket you think fits: the person confirms or changes it.
     """
+    if refused := staff_only("list_storage_buckets"):
+        return refused
     try:
         buckets = await storage.list_buckets()
         if not buckets:
@@ -364,6 +375,8 @@ async def list_bucket_files(bucket: str, prefix: str = "") -> str:
 
     Each line is a path to pass to select_source_files as-is.
     """
+    if refused := staff_only("list_bucket_files"):
+        return refused
     try:
         found = [f for f in await storage.list_all(bucket, prefix) if f["key"].lower().endswith(".xlsx")]
         if not found:
@@ -392,6 +405,8 @@ async def select_source_files(paths: list[str]) -> str:
         paths: paths exactly as list_bucket_files printed them,
             e.g. ["staff-sources/mca_csr/csr_2023-24.xlsx"]. Any bucket; .xlsx only.
     """
+    if refused := staff_only("select_source_files"):
+        return refused
     try:
         if not paths:
             return "select_source_files needs at least one path."
@@ -429,6 +444,8 @@ async def read_source_rows(name: str, sheet: str = "", documents: list[int] | No
         documents: the document ids select_source_files returned, as your task gives them.
             Only those files are read. With none, nothing is: staff chose no workbook.
     """
+    if refused := staff_only("read_source_rows"):
+        return refused
     try:
         # Staff choose the files; an empty pick used to mean every workbook ever registered.
         if not documents:
@@ -456,6 +473,8 @@ async def read_workbook(documents: list[int], sheet: str = "", start_row: int = 
         start_row: the spreadsheet row to start the page at (1 is the top).
         limit: rows per page, at most 200.
     """
+    if refused := staff_only("read_workbook"):
+        return refused
     try:
         return await staff_sources.browse(get_pool(), documents, sheet=sheet, start_row=start_row, limit=limit)
     except Exception as exc:  # noqa: BLE001 - a tool returns its failure; type only, never a value

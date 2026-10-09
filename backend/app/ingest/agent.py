@@ -18,6 +18,7 @@ from app.agent.middleware import clear_old_tool_results, save_questions, staff_l
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.middleware import (
+    CallerNote,
     EscalateAfterFailedSave,
     ReadingLimit,
     call_limit,
@@ -157,7 +158,7 @@ TOOLS = [
 RESEARCH_TOOLS = [
     research_goals,
     funder_dossier,
-    # Staff-only workbooks; the gate is the require_staff Import route this agent sits behind.
+    # Staff-only workbooks: the tool refuses anyone else.
     read_source_rows,
     search_public_sources,
     read_page,
@@ -309,6 +310,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             clear_old_tool_results(),
             *fallback(settings.model, research_spec),
             cheap_summarizer(strong, utility, backend),
+            CallerNote(),
         ],
         system_prompt=_render(_INSTRUCTIONS_MD, settings),
         # deepagents turns this into LangChain's HumanInTheLoopMiddleware: the run pauses on the

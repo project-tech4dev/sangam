@@ -9,6 +9,7 @@ import { SpreadsheetsCard } from "./components/SpreadsheetsCard";
 import { StartStep } from "./components/StartStep";
 import { StepBar } from "./components/StepBar";
 import { WorkingBoard } from "./components/WorkingBoard";
+import type { ImportAccess } from "./lib/access";
 import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
 import { fetchImportMessages } from "./lib/threads";
@@ -23,6 +24,7 @@ export function ImportWorkspace({
   onStartOver,
   onFirstSend,
   start,
+  access,
 }: {
   threadId: string;
   /** Load the thread's saved messages: it was opened from the list. */
@@ -31,6 +33,7 @@ export function ImportWorkspace({
   /** The thread's first request, so the parent can list it and put it in the URL. */
   onFirstSend?: (text: string) => void;
   start?: ReactNode;
+  access: ImportAccess;
 }) {
   const load = useCallback(() => fetchImportMessages(threadId), [threadId]);
   const { turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners } = useAgentChat(
@@ -88,6 +91,7 @@ export function ImportWorkspace({
               void submit(prompt);
             }}
             disabled={!isReady}
+            access={access}
           />
           <button type="button" className="import-link import-advanced" onClick={() => setAdvanced(true)}>
             Advanced: type your own request

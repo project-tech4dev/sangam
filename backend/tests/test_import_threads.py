@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.api.routes import ingest
-from app.core.security import get_current_user, get_principal
+from app.core.security import ANONYMOUS, get_current_user, get_principal, require_staff
 from app.repositories import threads as threads_repo
 from tests.conftest import TEST_USER, make_app
 from tests.test_access import MEMBER, client
@@ -66,12 +66,13 @@ async def test_without_the_graph_is_503(owner_pool):
     assert response.status_code == 503
 
 
-async def test_members_cannot_list_import_threads():
+async def test_signed_out_cannot_list_import_threads():
     app = app_with()
-    app.dependency_overrides[get_principal] = lambda: MEMBER
+    app.dependency_overrides[get_principal] = lambda: ANONYMOUS
+    app.dependency_overrides[get_current_user] = lambda: None
     async with client(app) as c:
         response = await c.get("/api/ingest/threads")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 async def test_the_access_check_is_for_the_caller(monkeypatch):
@@ -87,15 +88,30 @@ async def test_the_access_check_is_for_the_caller(monkeypatch):
     assert response.status_code == 404 and seen["user_id"] == TEST_USER
 
 
+# Scoped to the caller inside the route; every other Import route is staff's.
+OPEN_ROUTES = {"/ingest/research", "/ingest/research/{slug}/review", "/ingest/research/{slug}/coverage",
+               "/ingest/threads", "/ingest/threads/{thread_id}/messages"}
+
+
+def _staff_only(route) -> bool:
+    return any(d.dependency is require_staff for d in route.dependencies)
+
+
+def test_only_research_and_threads_are_open_to_members():
+    assert {r.path for r in ingest.router.routes if not _staff_only(r)} == OPEN_ROUTES
+
+
 def _route_urls():
     for route in ingest.router.routes:
+        if route.path in OPEN_ROUTES:
+            continue
         path = re.sub(r"\{[^}]+\}", lambda m: "import-1" if m.group(0) == "{thread_id}" else "1", route.path)
         for method in route.methods:
             yield method, path
 
 
 @pytest.mark.parametrize(("method", "path"), sorted(_route_urls()))
-async def test_every_import_route_is_staff_only(method, path):
+async def test_every_other_import_route_is_staff_only(method, path):
     app = app_with(_Graph())
     app.dependency_overrides[get_principal] = lambda: MEMBER
     app.dependency_overrides[get_current_user] = lambda: MEMBER.id

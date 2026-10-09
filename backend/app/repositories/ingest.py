@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from psycopg_pool import AsyncConnectionPool
+
+from app.ingest.source_guards import PRIVATE_URL_LIKE
 
 _COUNTS = """
 SELECT r.id, r.started_at, r.finished_at, r.status,
@@ -71,19 +75,29 @@ async def list_proposals(pool: AsyncConnectionPool, *, limit: int = 50) -> list[
     return [dict(r) for r in rows]
 
 
-async def list_research(pool: AsyncConnectionPool, *, limit: int = 50) -> list[dict]:
-    """The newest row per entity: re-researching supersedes, it does not stack."""
+async def list_research(
+    pool: AsyncConnectionPool, *, limit: int = 50, mine: tuple[UUID | None, list[int]] | None = None
+) -> list[dict]:
+    """The newest row per entity: re-researching supersedes, it does not stack.
+    `mine` is (user, stewarded org ids): only rows that user saved or about those orgs."""
+    where, params = "", ()
+    if mine is not None:
+        where, params = "WHERE researched_by = %s OR resolved_org_id = ANY(%s)", (mine[0], mine[1])
     async with pool.connection() as conn:
         rows = await (
             await conn.execute(
-                """
+                f"""
                 SELECT DISTINCT ON (slug)
                        id, entity_name, canonical_name, entity_kind, slug, status,
                        stopped_reason, summary, fact_count, sources_read, not_found,
-                       researched_at, saved_at, resolved_org_id, resolved_funder_id
+                       researched_at, saved_at, resolved_org_id, resolved_funder_id,
+                       EXISTS (SELECT 1 FROM jsonb_array_elements(findings) f
+                               WHERE f->>'source_url' LIKE %s) AS has_private
                 FROM entity_research
+                {where}
                 ORDER BY slug, researched_at DESC
-                """
+                """,
+                (PRIVATE_URL_LIKE, *params),
             )
         ).fetchall()
     return sorted(

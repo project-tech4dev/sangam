@@ -216,6 +216,11 @@ class CallerScope:
     is_staff: bool
     # org_id -> admin | member | steward (org_members).
     org_roles: Mapping[int, str] = field(default_factory=dict)
+    org_names: Mapping[int, str] = field(default_factory=dict)
+
+    @property
+    def steward_of(self) -> list[int]:
+        return [org for org, role in self.org_roles.items() if role == "steward"]
 
     def can_read_org(self, org_id: int | None) -> bool:
         """An org's private data: staff, or any role in that org (a steward reads each org it supports)."""
@@ -234,10 +239,12 @@ chat_scope: ContextVar[CallerScope | None] = ContextVar("chat_scope", default=No
 
 
 async def caller_scope(pool, principal: CurrentUser) -> CallerScope:
-    if principal.id is None:
-        return CallerScope(user_id=None, is_staff=False)
+    if principal.id is None or principal.is_staff:
+        # Staff pass every check, so their memberships are not needed.
+        return CallerScope(user_id=principal.id, is_staff=principal.is_staff)
     rows = await me_repo.list_memberships(pool, principal.id)
-    return CallerScope(principal.id, principal.is_staff, {r["org_id"]: r["role"] for r in rows})
+    return CallerScope(principal.id, principal.is_staff, {r["org_id"]: r["role"] for r in rows},
+                       {r["org_id"]: r["org_name"] for r in rows})
 
 
 def _thread_title(run: RunAgentInput) -> str | None:
@@ -267,14 +274,16 @@ async def _own_thread(request: Request, pool: OwnerPoolDep, principal: CurrentUs
     chat_scope.set(await caller_scope(pool, principal))
 
 
+async def request_scope(
+    pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
+) -> CallerScope:
+    """The signed-in caller's scope, for a route that reads data Import keeps off RLS."""
+    return await caller_scope(pool, principal)
+
+
 async def chat_access(
     request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
 ) -> None:
     """Signed in, and the thread is new or yours (staff may open any); someone else's thread is 404."""
     await _own_thread(request, pool, principal)
 
-
-async def staff_chat_access(
-    request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_staff)]
-) -> None:
-    await _own_thread(request, pool, principal)
