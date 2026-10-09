@@ -10,6 +10,8 @@ export type TraceStep = {
   args: unknown;
   result: string | null; // null while running
   running: boolean;
+  /** The subagent run that made this call, when the backend attributes them; absent for the agent's own. */
+  lane?: string;
 };
 
 export type Turn = {
@@ -25,6 +27,7 @@ type AnyMessage = {
   role: string;
   content?: string;
   toolCallId?: string;
+  subagentRunId?: string;
   toolCalls?: { id: string; type: string; function: { name: string; arguments: string } }[];
 };
 
@@ -54,6 +57,19 @@ export function useAgentChat(
   const { copilotkit } = useCopilotKit();
 
   const [isLoadingHistory, setLoadingHistory] = useState(Boolean(loadHistory));
+  // subagent run -> the `task` call that started it. Live only: a reloaded thread has none.
+  const [laneOwners, setLaneOwners] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!agent) return;
+    const sub = agent.subscribe({
+      onSubagentStartedEvent: ({ event }) => {
+        const owner = event.parentToolCallId;
+        if (owner) setLaneOwners((prev) => ({ ...prev, [event.subagentRunId]: owner }));
+      },
+    });
+    return () => sub.unsubscribe();
+  }, [agent]);
 
   // Only once the registered agent is ready: messages set on the provisional one are dropped.
   useEffect(() => {
@@ -95,9 +111,11 @@ export function useAgentChat(
             args: safeParse(tc.function.arguments || "{}"),
             result,
             running: result === null && isRunning,
+            lane: m.subagentRunId,
           });
         }
-        if (m.content) current.answer += (current.answer ? "\n\n" : "") + m.content;
+        // A subagent's own prose is its working, not the answer.
+        if (m.content && !m.subagentRunId) current.answer += (current.answer ? "\n\n" : "") + m.content;
       }
     }
     if (out.length > 0 && isRunning) out[out.length - 1]!.streaming = true;
@@ -117,5 +135,5 @@ export function useAgentChat(
     if (agent) copilotkit.stopAgent({ agent });
   }, [agent, copilotkit]);
 
-  return { turns, send, stop, isRunning, isReady, isLoadingHistory };
+  return { turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners };
 }

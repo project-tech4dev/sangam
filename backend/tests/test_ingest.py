@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 
 import pytest
@@ -942,6 +943,44 @@ class TestResearchGoalsAsksTheRightTables:
         schema = research_goals.args_schema.model_fields
         assert schema["entity_kind"].is_required()
         assert not schema["years"].is_required()
+
+
+class TestTheWorkingBoardReadsThesePhrases:
+    """The Import board (frontend features/ingest/lib/board.ts) reads two tool replies as prose."""
+
+    @pytest.mark.parametrize("kind", ["funder", "org"])
+    async def test_research_goals_lists_one_concept_per_line(self, kind, monkeypatch):
+        import re
+
+        from app.ingest.coverage import concepts_for
+        from app.ingest.tools import catalog_tools
+
+        class _Conn:
+            async def execute(self, *a, **k):
+                return self
+
+            async def fetchone(self):
+                return None
+
+        class _Pool:
+            @asynccontextmanager
+            async def connection(self):
+                yield _Conn()
+
+        monkeypatch.setattr(catalog_tools, "get_pool", lambda: _Pool())
+        out = await catalog_tools.research_goals.ainvoke({"name": "Arpan", "entity_kind": kind})
+        # The board's "4 of 13 found" counts these lines.
+        assert len(re.findall(r"^\w+ -> ", out, re.MULTILINE)) == len(concepts_for(kind))
+
+    def test_a_scanned_pdf_says_so(self, tmp_path, monkeypatch):
+        from app.ingest.tools import research_tools
+
+        (tmp_path / "report.pdf").write_bytes(b"%PDF")
+        monkeypatch.setattr(research_tools, "downloads_dir", lambda: tmp_path)
+        monkeypatch.setattr(research_tools, "extract_pdf_text", lambda *a: ("  ", 12))
+        out = research_tools.read_document_pages.invoke({"filename": "report.pdf"})
+        # The board labels the line "Scanned — no text to read" from this phrase.
+        assert "most likely scanned" in out
 
 
 class TestTheCatalogWriterCannotResearch:

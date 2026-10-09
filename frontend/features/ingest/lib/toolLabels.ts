@@ -1,7 +1,7 @@
 type ToolLabel = { label: string; detail: (args: any) => string };
 
 /** The host, which is what a reader wants to see — not the whole URL. */
-function host(url?: string): string {
+export function host(url?: string): string {
   if (!url) return "";
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -10,7 +10,7 @@ function host(url?: string): string {
   }
 }
 
-function fileLabel(name?: string): string {
+export function fileLabel(name?: string): string {
   return (name ?? "").replace(/\.pdf$/i, "").replace(/[-_]+/g, " ");
 }
 

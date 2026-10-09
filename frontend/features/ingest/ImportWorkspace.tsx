@@ -3,13 +3,11 @@
 import { useState, type ReactNode } from "react";
 import { useAgentChat } from "@/lib/useAgentChat";
 import { CoverageChart } from "./components/CoverageChart";
-import { Milestones } from "./components/Milestones";
-import { RunStatus } from "./components/RunStatus";
 import { PausedPick } from "./components/SourcePicker";
 import { SaveQuestions } from "./components/SaveQuestions";
 import { StartStep } from "./components/StartStep";
 import { StepBar } from "./components/StepBar";
-import { SubagentBoard } from "./components/SubagentBoard";
+import { WorkingBoard } from "./components/WorkingBoard";
 import { failuresOf } from "./lib/failures";
 
 /** One Import conversation. `onStartOver` hands the parent a fresh thread; `start` shows below the Start step. */
@@ -22,7 +20,7 @@ export function ImportWorkspace({
   onStartOver: () => void;
   start?: ReactNode;
 }) {
-  const { turns, send, stop, isRunning, isReady } = useAgentChat(threadId, "sangam_ingest", "sangam-import");
+  const { turns, send, stop, isRunning, isReady, laneOwners } = useAgentChat(threadId, "sangam_ingest", "sangam-import");
   const [draft, setDraft] = useState("");
   // The chat stays for anything the task cards don't cover.
   const [advanced, setAdvanced] = useState(false);
@@ -59,13 +57,7 @@ export function ImportWorkspace({
           <article key={turn.id} className="import-turn">
             <p className="import-question">{turn.question}</p>
 
-            {/* The stages of the run, above the step-by-step. A reader wants
-                to know what was reached before they want to know how. */}
-            <Milestones steps={turn.steps} running={turn.streaming} />
-
-            {/* Subagents get their own board: several run at once and a flat
-                list of "Delegating a sub-task" hides that entirely. */}
-            <SubagentBoard steps={turn.steps.filter((s) => s.tool === "task")} />
+            <WorkingBoard steps={turn.steps} running={turn.streaming} laneOwners={laneOwners} />
 
             {turn.steps
               .filter((s) => s.tool === "coverage_report" && s.result)
@@ -92,8 +84,6 @@ export function ImportWorkspace({
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
       {isReady && <PausedPick agentId={`sangam-import-${threadId}`} steps={lastSteps} />}
       {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} />}
-
-      <RunStatus running={isRunning} steps={lastSteps} />
 
       {(!atStart || advanced) && (
       <form

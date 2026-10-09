@@ -144,6 +144,15 @@ These live in one module, `frontend/features/ingest/lib/words.ts`. `toolLabels.t
       Couldn't open / Scanned through `stepNote()` in `words.ts`.
     - A finished researcher whose writer is waiting shows "Done — waiting for the others
       before you can review".
+    - **Telling researchers apart** (decided 2026-10-09): the Import agent streams with
+      `emit_subagent_events=True` (AG-UI "attributed"), so each subagent step carries
+      `subagentRunId`. `useAgentChat` puts it on `TraceStep.lane` and maps a lane to its
+      `task` call from `SUBAGENT_STARTED.parentToolCallId`; failing that, `board.ts` matches
+      the lane's `research_goals` / `save_research` name to the row.
+      - A reloaded thread has no lanes: rows show status only, and "now reading" moves to
+        the totals line.
+      - The board reads two tool replies as prose (`concept -> table` lines and "most likely
+        scanned"); `TestTheWorkingBoardReadsThesePhrases` pins both.
   - **Exit gate:**
     - One live local run with 3 funders shows 3 stable rows, at least one Couldn't open
       line, and no tool name or HTTP code anywhere on screen.

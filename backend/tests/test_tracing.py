@@ -256,6 +256,20 @@ def test_the_agui_agent_carries_the_limit_into_every_request():
     assert agent.config["recursion_limit"] == 137
 
 
+def test_import_steps_stay_attributed_after_the_per_request_clone():
+    """The endpoint clones the agent per request; a flag lost there reverts the board to unattributed steps."""
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.agent.build import build_agent
+    from app.integrations.tracing import SessionScopedAGUIAgent
+
+    graph = build_agent(Settings(), InMemorySaver())
+    attributed = SessionScopedAGUIAgent(name="a", graph=graph, emit_subagent_events=True).clone()
+    assert attributed.emit_subagent_events is True
+    assert attributed.subagent_visibility == "attributed"
+    assert SessionScopedAGUIAgent(name="b", graph=graph).clone().subagent_visibility == "inline"
+
+
 def test_recursion_limit_leaves_room_for_a_real_sql_turn():
     """Twelve tool calls was the worst observed (a full funder profile), and each model-then-tool cycle
     costs several graph steps because every middleware hook"""

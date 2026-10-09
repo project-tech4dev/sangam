@@ -95,6 +95,8 @@ def build_lifespan(settings: Settings | None = None):
                     description=INGEST_DESCRIPTION,
                     graph=build_ingest_agent(resolved, checkpointer),
                     config={"recursion_limit": resolved.recursion_limit},
+                    # Each researcher's steps arrive tagged with its run, so the board can tell them apart.
+                    emit_subagent_events=True,
                 ),
                 path="/ingest",
                 dependencies=[Depends(staff_chat_access)],
