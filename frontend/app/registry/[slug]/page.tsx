@@ -11,20 +11,23 @@ import { OrgProfileTabs } from "@/features/registry/ProfileTabs";
 
 export default async function OrgProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  // Every sub-route takes a slug or an id, so all five calls start together.
+  const detail = apiGet<OrgDetail>(`/api/orgs/${slug}`);
+  const rest = Promise.all([
+    apiGet<PageOf<PartnerLineRow>>(`/api/partner-lines?org=${slug}&limit=50`).then((p) => p.items),
+    apiGet<PageOf<ProgramRow>>(`/api/programs?org=${slug}&limit=50`).then((p) => p.items),
+    apiGet<PageOf<ScoreRow>>(`/api/scores?org=${slug}&limit=50`).then((p) => p.items),
+    apiGet<PageOf<NewsRow>>(`/api/news?org=${slug}&limit=10`).then((p) => p.items),
+  ]);
+  rest.catch(() => {}); // a 404 below must not leave this rejection unhandled
   let org: OrgDetail;
   try {
-    org = await apiGet<OrgDetail>(`/api/orgs/${slug}`);
+    org = await detail;
   } catch (err) {
     if (err instanceof NotFoundError) notFound();
     throw err;
   }
-
-  const [funding, programs, scores, news] = await Promise.all([
-    apiGet<PageOf<PartnerLineRow>>(`/api/partner-lines?org=${org.slug}&limit=50`).then((p) => p.items),
-    apiGet<PageOf<ProgramRow>>(`/api/programs?org=${org.slug}&limit=50`).then((p) => p.items),
-    apiGet<PageOf<ScoreRow>>(`/api/scores?org=${org.slug}&limit=50`).then((p) => p.items),
-    apiGet<PageOf<NewsRow>>(`/api/news?org=${org.slug}&limit=10`).then((p) => p.items),
-  ]);
+  const [funding, programs, scores, news] = await rest;
 
   const isFull = org.identifiers.filter((i) => isOnFile(i)).length >= 4;
   const displayName = titleCase(org.name);

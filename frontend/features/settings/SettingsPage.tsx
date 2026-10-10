@@ -12,14 +12,18 @@ type Me = {
 
 export async function SettingsPage() {
   const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
+  // /api/me fails without a session, so it runs alongside getUser and only counts when there is a user.
+  const [{ data }, maybeMe] = await Promise.all([
+    supabase.auth.getUser(),
+    apiGet<Me>("/api/me").catch(() => null),
+  ]);
   const user = data.user;
-  const me = user ? await apiGet<Me>("/api/me") : null;
+  const me = user ? maybeMe : null;
   const adminOrgs = me && !me.is_staff ? me.memberships.filter((m) => m.role === "admin") : [];
-  const members = await Promise.all(
-    adminOrgs.map((m) => apiGet<OrgMember[]>(`/api/orgs/${m.org_id}/members`)),
-  );
-  const allOrgs = me?.is_staff ? await apiGet<OrgOption[]>("/api/orgs") : [];
+  const [members, allOrgs] = await Promise.all([
+    Promise.all(adminOrgs.map((m) => apiGet<OrgMember[]>(`/api/orgs/${m.org_id}/members`))),
+    me?.is_staff ? apiGet<OrgOption[]>("/api/orgs") : Promise.resolve([] as OrgOption[]),
+  ]);
 
   return (
     <div className="sangam-ui">
