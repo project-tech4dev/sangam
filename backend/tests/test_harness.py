@@ -331,8 +331,9 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
 
     def test_the_researcher_gets_its_eight_and_nothing_of_the_filesystem(self, subagents):
         assert subagents["entity-researcher"] == {
-            "research_goals", "funder_dossier", "read_source_rows", "search_public_sources",
-            "read_page", "fetch_document", "read_document_pages", "save_research",
+            "research_goals", "funder_dossier", "list_library_documents", "read_library_document",
+            "read_source_rows", "search_public_sources", "read_page", "fetch_document", "read_document_pages",
+            "save_research",
             "read_file",
         }
         # Staff rows last: once the run has asked for read_source_rows, the compiled node refuses read_page.
@@ -352,7 +353,15 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         call = {"name": "read_page", "args": {"url": "https://example.org"}, "id": "2", "type": "tool_call"}
         request = ToolCallRequest(tool_call=call, tool=node.tools_by_name["read_page"],
                                   state={"messages": staff}, runtime=None)
-        assert node._wrap_tool_call(request, lambda r: None).content == STAFF_LOCK_REPLY
+        from app.ingest import run_sources
+
+        # With no sources chosen nothing is read; with the web chosen, staff rows still close it.
+        assert node._wrap_tool_call(request, lambda r: None).content.startswith("REFUSED: no sources")
+        token = run_sources.CURRENT.set(run_sources.Sources(web=True, staff_docs=frozenset({1})))
+        try:
+            assert node._wrap_tool_call(request, lambda r: None).content == STAFF_LOCK_REPLY
+        finally:
+            run_sources.CURRENT.reset(token)
 
     def test_the_writer_gets_the_floor_and_not_the_skill_reader(self, subagents):
         assert subagents["catalog-writer"] == {"promote_research", "funder_dossier", "read_file"}

@@ -4,7 +4,14 @@ import type { ImportTask } from "./composePrompt";
 export type ImportAccess = { staff: boolean; stewardOf: string[]; orgs: { slug: string; name: string }[] };
 
 /** One private file in an organisation's Doc Vault, which Import can read before the web. */
-export type VaultFile = { id: number; title: string | null; doc_type: string | null; org: string; orgName: string };
+export type VaultFile = {
+  id: number;
+  title: string | null;
+  doc_type: string | null;
+  org: string;
+  orgId: number;
+  orgName: string;
+};
 
 type Me = { is_staff: boolean; memberships: { org_slug: string; org_name: string; role: string }[] };
 

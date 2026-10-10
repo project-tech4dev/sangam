@@ -114,7 +114,7 @@ export type ResearchCoverage = {
   concepts: CoverageConcept[];
 };
 
-/** One workbook in a bucket; `path` is what select_source_files takes. */
+/** One workbook in a bucket; `path` is what choose_sources takes as a staff_path. */
 export type Workbook = {
   path: string;
   name: string;

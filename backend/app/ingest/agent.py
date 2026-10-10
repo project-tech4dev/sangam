@@ -19,9 +19,11 @@ from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.middleware import (
     CallerNote,
+    ChosenSources,
     DropFilesOnExit,
     EscalateAfterFailedSave,
     ReadingLimit,
+    RunSources,
     call_limit,
     cheap_summarizer,
     fallback,
@@ -36,17 +38,16 @@ from app.ingest.tools.catalog_tools import (
     record_registry_check,
     research_goals,
 )
+from app.ingest.tools.library_tools import list_library_documents, read_library_document
 from app.ingest.tools.pipeline_tools import (
+    choose_sources,
     import_run_summary,
-    list_bucket_files,
     list_import_sources,
-    list_storage_buckets,
     pending_resolutions,
     plan_import,
     read_source_rows,
     read_workbook,
     run_import_now,
-    select_source_files,
 )
 from app.ingest.tools.research_tools import (
     fetch_document,
@@ -137,10 +138,8 @@ TOOLS = [
     run_import_now,
     import_run_summary,
     pending_resolutions,
-    # Staff workbooks: a person confirms the bucket, then the files (HITL below).
-    list_storage_buckets,
-    list_bucket_files,
-    select_source_files,
+    # The run's sources: a person ticks them on one card before anything is read (HITL below).
+    choose_sources,
     # catalog_tools — what Sangam already holds; promote_research is the catalog-writer's.
     funder_dossier,
     compare_with_catalog,
@@ -160,6 +159,9 @@ TOOLS = [
 RESEARCH_TOOLS = [
     research_goals,
     funder_dossier,
+    # Public documents Sangam already holds, archived.
+    list_library_documents,
+    read_library_document,
     # Staff-only workbooks: the tool refuses anyone else.
     read_source_rows,
     search_public_sources,
@@ -222,7 +224,7 @@ CATALOG_WRITER: dict = {
 WORKBOOK_READER: dict = {
     "name": "workbook-reader",
     "description": (
-        "Reads the staff workbooks select_source_files registered and returns every organisation "
+        "Reads the team spreadsheets picked on the sources card and returns every organisation "
         "they name, with the cell that names it. Launch it when the request is about everyone in "
         "a file; give it the document ids. It researches nothing and reports no figures."
     ),
@@ -241,7 +243,7 @@ VAULT_READER: dict = {
     "description": (
         "Reads ONE organisation's own Doc Vault files about one funder or NGO, saves what they say, and "
         "returns which concepts the files answered and which are still missing. Launch it before the "
-        "entity-researcher when the request names the organisation's documents. It cannot read the web."
+        "entity-researcher when the person picked Doc Vault files on the sources card. It cannot read the web."
     ),
     "mode": "isolated",
     "tools": [list_vault_documents, read_vault_document, research_goals, save_vault_findings],
@@ -255,15 +257,11 @@ RESEARCHER_EVICT_AT = 8_000
 # Promote, read back, report: a handful of calls, so a dozen is already a loop.
 WRITER_MODEL_CALL_LIMIT = 12
 
-# Staff choose the bucket, then the files, before anything is read.
+# A person chooses where the run reads from before anything is read; rejecting means public websites only.
 INTERRUPT_ON = {
-    "list_bucket_files": {
+    "choose_sources": {
         "allowed_decisions": ["approve", "edit", "reject"],
-        "description": "Choose the bucket Import picks workbooks from",
-    },
-    "select_source_files": {
-        "allowed_decisions": ["approve", "edit", "reject"],
-        "description": "Confirm the staff workbooks Import will read",
+        "description": "Choose where this run reads from",
     },
 }
 
@@ -292,7 +290,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict_at=RESEARCHER_EVICT_AT),
-            # Staff rows last: once read_source_rows runs, the researcher's web tools refuse.
+            # Only what the person chose on the sources card; staff rows last.
+            RunSources(),
             staff_last_lock(),
             ReadingLimit(settings.research_page_limit),
             call_limit(settings.research_model_call_limit),
@@ -316,13 +315,14 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     reader = {
         **WORKBOOK_READER,
         "model": utility,
-        "middleware": [filesystem_tools(backend), *fallback(utility_spec, research_spec, settings.model)],
+        "middleware": [filesystem_tools(backend), RunSources(), *fallback(utility_spec, research_spec, settings.model)],
     }
     vault_reader = {
         **VAULT_READER,
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict=False),
+            RunSources(),
             DropFilesOnExit(),
             call_limit(settings.research_model_call_limit),
             *fallback(research_spec, settings.model),
@@ -340,6 +340,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             *fallback(settings.model, research_spec),
             cheap_summarizer(strong, utility, backend),
             CallerNote(),
+            ChosenSources(),
         ],
         system_prompt=_render(_INSTRUCTIONS_MD, settings),
         # deepagents turns this into LangChain's HumanInTheLoopMiddleware: the run pauses on the

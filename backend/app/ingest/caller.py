@@ -44,8 +44,7 @@ def caller_note(s: CallerScope) -> str:
     else:
         who = f"a member of {', '.join(own)}" if own else "a signed-in user"
         lines.append(f"They are {who}. They may research and save funders only, not NGOs.")
-    lines.append("Skip the staff-workbook step entirely: do not call list_storage_buckets, list_bucket_files "
-                 "or select_source_files, and say \"no staff files were selected\" in every researcher's task.")
+    lines.append("Team spreadsheets are the Sangam team's: never propose staff_paths in choose_sources.")
     lines.append("The adapter pipeline, news imports, the review queue and registry checks are for the Sangam "
                  "team: if asked, say so in one line and offer funder research from public websites instead.")
     return "\n".join(lines)

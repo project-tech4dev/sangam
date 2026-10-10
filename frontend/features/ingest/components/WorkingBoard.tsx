@@ -4,6 +4,7 @@ import { useState } from "react";
 import { EntityMark } from "@/components/ui/primitives";
 import type { TraceStep } from "@/lib/useAgentChat";
 import { boardOf, type BoardRow } from "../lib/board";
+import { readingFrom } from "../lib/sourcePick";
 import { humanizeTool } from "../lib/toolLabels";
 
 /** The step in flight, for runs with no organisations to show (a news import) or none tied yet. */
@@ -56,7 +57,11 @@ function Row({ row }: { row: BoardRow }) {
           <EntityMark name={row.name} size={26} />
           <strong>{row.name}</strong>
         </span>
-        {finished ? <span className="import-bar-done" aria-hidden /> : <Segments pct={row.pct} className="import-segs import-segs-mini" />}
+        {finished ? (
+          <span className="import-bar-done" aria-hidden />
+        ) : (
+          <Segments pct={row.pct} className="import-segs import-segs-mini" />
+        )}
         <span className="import-board-now">{row.now}</span>
         <span className="import-board-status">{status(row)}</span>
       </button>
@@ -119,13 +124,21 @@ export function WorkingBoard({
       : "This usually takes a few minutes for each one. You can leave this page open and come back.";
   // Without rows (a news import), or rows no step could be tied to, this line is the only sign of what is happening.
   const showLine = rows.length === 0 || (running && !board.attributed);
-  const line = !running ? (paused ? "Paused — waiting for you" : "Finished") : rows.length > 0 ? (board.now ?? doing(steps)) : doing(steps);
+  const from = readingFrom(steps);
+  const line = !running
+    ? paused
+      ? "Paused — waiting for you"
+      : "Finished"
+    : rows.length > 0
+      ? (board.now ?? doing(steps))
+      : doing(steps);
 
   return (
     <section className="import-working" aria-label="Progress">
       <div className="import-head">
         <h1 className="import-h1">{title}</h1>
         <p className="import-sub">{sub}</p>
+        {from && <p className="import-reading-from">Reading from: {from}</p>}
       </div>
       <div className="import-board">
         <div className="import-board-head">

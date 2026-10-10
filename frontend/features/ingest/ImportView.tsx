@@ -33,7 +33,13 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
-type DocumentRow = { id: number; title: string | null; doc_type: string | null; is_public: boolean | null };
+type DocumentRow = {
+  id: number;
+  org_id: number | null;
+  title: string | null;
+  doc_type: string | null;
+  is_public: boolean | null;
+};
 
 /** The private files of each organisation the person belongs to. */
 async function loadVault(access: ImportAccess): Promise<VaultFile[]> {
@@ -41,8 +47,8 @@ async function loadVault(access: ImportAccess): Promise<VaultFile[]> {
     access.orgs.map(async (o) => {
       const page = await get<{ items: DocumentRow[] }>(`/api/documents?org=${encodeURIComponent(o.slug)}&limit=100`);
       return page.items
-        .filter((d) => d.is_public === false)
-        .map((d) => ({ id: d.id, title: d.title, doc_type: d.doc_type, org: o.slug, orgName: o.name }));
+        .filter((d) => d.is_public === false && d.org_id !== null)
+        .map((d) => ({ id: d.id, title: d.title, doc_type: d.doc_type, org: o.slug, orgId: d.org_id!, orgName: o.name }));
     }),
   );
   return lists.flat();

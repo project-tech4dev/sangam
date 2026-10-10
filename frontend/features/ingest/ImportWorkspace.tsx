@@ -5,7 +5,7 @@ import { useAgentChat } from "@/lib/useAgentChat";
 import { AgentNotes } from "./components/AgentNotes";
 import { DoneReport } from "./components/DoneReport";
 import { SaveQuestions } from "./components/SaveQuestions";
-import { SpreadsheetsCard } from "./components/SpreadsheetsCard";
+import { SourcesCard } from "./components/SourcesCard";
 import { StartStep } from "./components/StartStep";
 import { StepBar } from "./components/StepBar";
 import { WorkingBoard } from "./components/WorkingBoard";
@@ -47,7 +47,7 @@ export function ImportWorkspace({
   const [advanced, setAdvanced] = useState(false);
   // A question card is open: the run has stopped to wait for an answer, not finished.
   const [paused, setPaused] = useState(false);
-  // The open question is the Review card, as opposed to the spreadsheets one.
+  // The open question is the Review card, as opposed to the sources one.
   const [reviewing, setReviewing] = useState(false);
   // A review was answered, so what runs now is the save: the step bar stays on Done.
   const [reviewed, setReviewed] = useState(false);
@@ -84,7 +84,9 @@ export function ImportWorkspace({
 
   return (
     <div className="import-ws">
-      <StepBar current={atStart ? 0 : reviewing || (finished && toReview > 0) ? 2 : reviewed || (!isRunning && !paused) ? 3 : 1} />
+      <StepBar
+        current={atStart ? 0 : reviewing || (finished && toReview > 0) ? 2 : reviewed || (!isRunning && !paused) ? 3 : 1}
+      />
       {atStart && !advanced && (
         <>
           <StartStep
@@ -94,7 +96,6 @@ export function ImportWorkspace({
             }}
             disabled={!isReady}
             access={access}
-            vaultFiles={vaultFiles}
           />
           <button type="button" className="import-link import-advanced" onClick={() => setAdvanced(true)}>
             Advanced: type your own request
@@ -144,43 +145,42 @@ export function ImportWorkspace({
         })}
       </div>
 
-
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
-      {isReady && <SpreadsheetsCard agentId={`sangam-import-${threadId}`} steps={lastSteps} turnId={turns.at(-1)?.id} onPaused={setPaused} />}
       {isReady && (
-        <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={onReview} />
+        <SourcesCard agentId={`sangam-import-${threadId}`} access={access} vaultFiles={vaultFiles} onPaused={setPaused} />
       )}
+      {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={onReview} />}
 
       {(!atStart || advanced) && (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit(draft);
-        }}
-        className="import-form"
-      >
-        <input
-          className="input"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={isReady ? "Ask Sangam Import to run or explain a source…" : "Connecting…"}
-          disabled={!isReady}
-        />
-        {isRunning ? (
-          <button type="button" className="btn btn-primary" onClick={stop}>
-            Stop
-          </button>
-        ) : (
-          <button type="submit" className="btn btn-primary" disabled={!isReady}>
-            Send
-          </button>
-        )}
-        {turns.length > 0 && (
-          <button type="button" className="btn btn-ghost" onClick={startOver}>
-            Start over
-          </button>
-        )}
-      </form>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit(draft);
+          }}
+          className="import-form"
+        >
+          <input
+            className="input"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={isReady ? "Ask Sangam Import to run or explain a source…" : "Connecting…"}
+            disabled={!isReady}
+          />
+          {isRunning ? (
+            <button type="button" className="btn btn-primary" onClick={stop}>
+              Stop
+            </button>
+          ) : (
+            <button type="submit" className="btn btn-primary" disabled={!isReady}>
+              Send
+            </button>
+          )}
+          {turns.length > 0 && (
+            <button type="button" className="btn btn-ghost" onClick={startOver}>
+              Start over
+            </button>
+          )}
+        </form>
       )}
       {atStart && start}
     </div>

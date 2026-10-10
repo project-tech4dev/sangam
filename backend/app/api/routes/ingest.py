@@ -185,7 +185,7 @@ async def list_workbooks(bucket: str = "staff-sources", user_id: UUID = Depends(
     """Lets the spreadsheets card show the files at the first pause, before the agent has listed them."""
     from app.integrations import storage
 
-    # The staff bucket only, the same rule select_source_files applies.
+    # The staff bucket only, the same rule choose_sources applies to a pick.
     if bucket != storage.STAFF_SOURCES:
         raise HTTPException(status_code=422, detail=f"only the {storage.STAFF_SOURCES} bucket holds staff workbooks")
     out = []
