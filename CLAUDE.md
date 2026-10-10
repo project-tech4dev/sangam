@@ -384,6 +384,18 @@ are set by the `.icon` classes in `globals.css`, never as props: one stroke weig
 and the colour follows the surrounding text. Text-like marks stay as glyphs (⟨ ⟩ ✓ → ⌘↵), as
 the design system's iconography page says.
 
+**List pages share one pattern, and one set of components.** Media & Signals, Funder Match,
+Proposals and the Registry list — and any new page that lists things — are built from
+`frontend/components/ui/`: `BucketCards` (two to four lean cards, one always selected, dark sage
+with white text; counts follow the filters), `FilterRow` (equal columns of dropdowns in one row,
+white at default, dark sage once changed, no counts in the options), `SearchBox` (full width, under
+the filters) and `InfiniteList` with `useCursorList` (a page at a time, keyset cursor, a "Show more"
+button and an end marker). The server pages a new or growing list with the keyset helper in
+`backend/app/repositories/`, not by offset; existing `PageParams` routes move when their page does. A page that needs something these don't do extends the shared
+component, not a local copy. Until they exist, the first page that needs one builds it there — after its two new looks
+(the selected card and the changed dropdown) are in the design system, per the rule above. The
+design and the reasons are in `features-plans/signals/2026-10-10-media-signals-design.md`, section 7.
+
 **Provenance columns on every scraped or extracted table**: `source_url`, `source_name`,
 `fetched_at`, `content_hash`, `extractor_version`. Populate them — the product promise is
 that every field traces to a source.
