@@ -508,6 +508,10 @@ Docker is local development only. Deployed, the stack splits across three hosts 
 (~200 ms), and a 2 ms query cost ~1.2 s once BEGIN, `set_config` and COMMIT were counted.
 `curl -sI <backend>/health` should show `x-vercel-id: bom1::bom1`.
 
+Both also run for up to **1800 s**: `functions` in `backend/vercel.json` and `maxDuration` in the
+copilotkit route, which every Import turn streams through, so the two must match. An 8-organisation
+Import takes 15–20 min, and 1800 s needs Pro's extended-duration beta.
+
 Non-obvious constraints:
 
 - **Use Supabase's session pooler, not the direct host.** `db.<ref>.supabase.co` resolves
