@@ -357,7 +357,7 @@ export function DoneReport({
                 : `Sangam couldn't place “${q.raw_name}”.`}
             </strong>
           ))}
-          <span className="done-queued-note">Answer these on the Import page under Waiting for you.</span>
+          <span className="done-queued-note">Answer these in Scout&apos;s side rail under Waiting for you.</span>
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import { ImportLoader } from "@/features/ingest/ImportLoader";
 
-export const metadata = { title: "Import" };
+export const metadata = { title: "Sangam Scout" };
 
 export const dynamic = "force-dynamic";
 
