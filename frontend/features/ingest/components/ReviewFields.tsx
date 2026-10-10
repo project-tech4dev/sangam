@@ -10,6 +10,7 @@ const NOTE = {
   self_reported: "This is what they say about themselves. There's no certificate, number or document to back it up.",
   not_mentioned: "Sangam didn't find this in anything it read.",
   couldnt_read: "A page that might say was a scan or blocked, so Sangam couldn't read it. Worth opening it yourself.",
+  held: "From your organisation's own documents: shown to you, and not saved to Sangam.",
 };
 
 const fact = (f: ReviewFact) => {
@@ -23,6 +24,7 @@ const isWebLink = (url: string) => /^https?:\/\//i.test(url);
 function Source({ answer }: { answer: ReviewAnswer }) {
   if (!answer.source_url) return null;
   if (answer.source_url.startsWith(STAFF_SOURCE)) return <span className="review-source">Your team&apos;s spreadsheet</span>;
+  if (answer.private) return <span className="review-source">Your document: {answer.source_name}</span>;
   if (!isWebLink(answer.source_url)) return <span className="review-source">{answer.source_name || "Source"}</span>;
   return (
     <a className="review-source" href={answer.source_url} target="_blank" rel="noopener noreferrer">
@@ -43,6 +45,9 @@ export function Answer({ answer }: { answer: ReviewAnswer }) {
             {answer.year && ` · ${answer.year}`}
           </span>
           <span className="review-field-a">{answer.facts.length > 0 ? answer.facts.map(fact).join(" · ") : "Found"}</span>
+          {answer.private && (
+            <span className="tag tag-neutral review-field-from">{answer.held ? "From your documents · not saved" : "From your documents"}</span>
+          )}
         </div>
         <button
           type="button"
@@ -57,6 +62,7 @@ export function Answer({ answer }: { answer: ReviewAnswer }) {
         <div className="review-proof">
           {answer.quote && <p>“{answer.quote}”</p>}
           {!confirmed && <p className="review-proof-note">{NOTE.self_reported}</p>}
+          {answer.held && <p className="review-proof-note">{NOTE.held}</p>}
           <Source answer={answer} />
         </div>
       )}

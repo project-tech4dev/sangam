@@ -109,6 +109,21 @@ class EscalateAfterFailedSave(AgentMiddleware):
         return await handler(self._route(request))
 
 
+class DropFilesOnExit(AgentMiddleware):
+    """Deletes every file in a subagent's state as it ends. Its files flow back to the parent and on into
+    the next subagent, so anything the vault-reader offloaded (a summary, a long read) would reach a researcher."""
+
+    def _drop(self, state: Any) -> dict[str, Any] | None:
+        files = (state.get("files") if isinstance(state, dict) else getattr(state, "files", None)) or {}
+        return {"files": dict.fromkeys(files)} if files else None
+
+    def after_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        return self._drop(state)
+
+    async def aafter_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        return self._drop(state)
+
+
 class CallerNote(AgentMiddleware):
     """Tells the supervisor who this run works for, so it offers only what they may do. The tools still check."""
 

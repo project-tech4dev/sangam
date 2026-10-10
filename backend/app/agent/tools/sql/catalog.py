@@ -933,6 +933,8 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         "ingest_source_proposals",
         "entity_research",
         "resolution_queue",
+        # One organisation's Doc Vault findings, quoting its private files.
+        "vault_research",
         # Infrastructure.
         "schema_migrations",
         "graph_ingest_log",

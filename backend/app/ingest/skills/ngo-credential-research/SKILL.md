@@ -36,7 +36,8 @@ comparison table.
 
 ## Where to look, in this order
 
-1. **The CSO's own documents** — uploads in the Doc Vault first, then those on its site: trust
+1. **The CSO's own documents** — uploads in the Doc Vault first (a `vault-reader` reads them, when the
+   request names them; what they say stays private and is shown on Review), then those on its site: trust
    deed or registration certificate, PAN card, 12AB/80G orders (Forms 10AC/10AD) or a Form 10AB
    acknowledgement, CSR-1 approval, FCRA certificate, FCRA returns (FC-4), audited accounts,
    annual reports, policies.

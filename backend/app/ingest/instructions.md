@@ -26,6 +26,8 @@ A CSR policy is not spending. A priority geography is not a footprint. A named p
 
 **3. Delegate the research**, one `entity-researcher` per organisation. They work strongest-source-first under their own instructions; see Source priority for what that buys you and what it costs.
 
+**Your organisation's documents first, when the request names them.** A request like "using our documents 12 and 14" or "read our Doc Vault first" means one `vault-reader` per entity before its researcher: give it the entity's name exactly as asked, the organisation, and the document ids. It returns concept names only — which the files answered and which are missing. Then launch the `entity-researcher` with the missing concepts as its goals, and say in its task that the organisation's own files already answered the others. Never pass the researcher anything else about the files: it reads the web, and nothing in them may reach it. A vault-reader that saved nothing changes nothing — research as usual. Without documents named, launch no vault-reader.
+
 **4. Compare, and report both sections** (see Output).
 
 ---

@@ -7,6 +7,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from app.agent.tools.sql.catalog import CATALOG
+from app.ingest import vault
 from app.ingest.coverage import CONCEPT_OF_WRITTEN
 from app.ingest.expectations import CONCEPTS
 from app.ingest.research_records import to_inr
@@ -117,13 +118,24 @@ def answers(row: dict[str, Any]) -> list[dict[str, Any]]:
         c = f["concept"]
         seen[c] = seen.get(c, 0) + 1
         ranked.append((c not in ("identity", "org_identity"), seen[c], i, f))
+    titles = {int(k): t for v in row.get("vault") or [] for k, t in (v.get("titles") or {}).items()}
     return [
         {"concept": f["concept"], "topic": topic(f["concept"]), "year": f.get("fiscal_year"), "facts": facts(f),
          "tag": tag(f),
          "quote": f.get("evidence") or "", "source_url": f.get("source_url") or "",
-         "source_name": f.get("source_name") or urlparse(f.get("source_url") or "").hostname or ""}
+         "source_name": _source_name(f, titles),
+         "private": (doc := vault.document_id(f.get("source_url"))) is not None,
+         "held": doc is not None and vault.held_reason(f, row.get("entity_kind")) is not None}
         for *_, f in sorted(ranked, key=lambda t: t[:3])
     ]
+
+
+def _source_name(f: dict[str, Any], titles: dict[int, str]) -> str:
+    """A vault file by its title, never its synthetic URL; anything else by its name or host."""
+    doc = vault.document_id(f.get("source_url"))
+    if doc is not None:
+        return titles.get(doc) or f"Document {doc}"
+    return f.get("source_name") or urlparse(f.get("source_url") or "").hostname or ""
 
 
 def missing(row: dict[str, Any]) -> list[dict[str, Any]]:

@@ -37,7 +37,7 @@ export type Board = {
 
 const READING = ["read_page", "fetch_document", "read_document_pages"];
 const NAMING = ["research_goals", "funder_dossier"];
-const HELPERS = ["catalog-writer", "workbook-reader"];
+const HELPERS = ["catalog-writer", "workbook-reader", "vault-reader"];
 
 const a = (s: TraceStep): any => s.args ?? {};
 const key = (name: string) => name.trim().toLowerCase();
@@ -210,6 +210,11 @@ export function boardOf(
     } else if (s.tool === "task" && a(s).subagent_type === "workbook-reader") {
       const n = parse(s.result)?.entities?.length ?? 0;
       text = `Found ${n} name${n === 1 ? "" : "s"} in your team's spreadsheets`;
+    } else if (s.tool === "task" && a(s).subagent_type === "vault-reader") {
+      const r = parse(s.result);
+      const docs = r?.documents_read?.length ?? 0;
+      const found = r?.concepts_found?.length ?? 0;
+      text = `Read ${docs} of your organisation's document${docs === 1 ? "" : "s"}: ${found} answer${found === 1 ? "" : "s"}`;
     }
     const name = nameFor(s);
     if (text) events.push({ id: s.id, name, text: name ? text : text[0]!.toUpperCase() + text.slice(1) });

@@ -38,7 +38,7 @@ async def list_documents(
     user_id: UUID = Depends(get_current_user),
 ) -> Page[DocumentOut]:
     rows, total = await repo.list_documents(pool, limit=page.limit, offset=page.offset,
-                                            org=org, funder=funder, doc_type=doc_type)
+                                            org=org, funder=funder, doc_type=doc_type, user_id=user_id)
     return Page(items=[DocumentOut.model_validate(r) for r in rows],
                 total=total, limit=page.limit, offset=page.offset)
 

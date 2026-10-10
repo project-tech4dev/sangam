@@ -865,6 +865,48 @@ class WorkbookEntity(BaseModel):
     marker: str = Field(description="the [source:<document>#<sheet>!<cell>] marker of the cell holding the name")
 
 
+class VaultResearch(BaseModel):
+    """What the vault-reader found in one organisation's own files about one entity."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    entity_name: str = Field(min_length=2, description="the name as it was asked for, exactly")
+    entity_kind: Literal["funder", "org"]
+    org_id: int = Field(description="the organisation whose Doc Vault was read, from list_vault_documents")
+    documents_read: list[int] = Field(description="every vault document id you read")
+    findings: list[Finding] = Field(default_factory=list)
+    gaps: list[Gap] = Field(
+        default_factory=list, description="each concept you looked for in the files and did not find"
+    )
+
+    def concepts_found(self) -> list[str]:
+        return sorted({f.concept for f in self.findings})
+
+
+def _known_concepts(values: list[str]) -> list[str]:
+    from app.ingest.expectations import CONCEPTS
+
+    unknown = [v for v in values if v not in CONCEPTS]
+    if unknown:
+        raise ValueError(f"not concept names: {unknown}")
+    return values
+
+
+class VaultSummary(BaseModel):
+    """What the vault-reader hands back: ids and concept names only, so no private wording leaves it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    slug: str = Field(pattern=r"^[a-z0-9-]+$")
+    saved: bool
+    concepts_found: list[str]
+    concepts_missing: list[str] = Field(description="concepts from research_goals the files do not answer")
+    documents_read: list[int]
+    fact_count: int
+
+    _concepts = field_validator("concepts_found", "concepts_missing")(_known_concepts)
+
+
 class WorkbookEntities(BaseModel):
     """What the workbook-reader hands back: names to research, never figures."""
 

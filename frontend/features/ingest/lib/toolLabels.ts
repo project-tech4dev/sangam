@@ -90,6 +90,15 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Working out what to look for on",
     detail: (a) => a?.name ?? "",
   },
+  list_vault_documents: { label: "Looking through your organisation's documents", detail: () => "" },
+  read_vault_document: {
+    label: "Reading your organisation's document",
+    detail: (a) => (a?.document_id ? `document ${a.document_id}` : ""),
+  },
+  save_vault_findings: {
+    label: "Saving what your documents say about",
+    detail: (a) => a?.findings?.entity_name ?? "",
+  },
   save_research: {
     label: "Saving findings",
     detail: (a) => a?.findings?.entity_name ?? "",

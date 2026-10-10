@@ -105,6 +105,8 @@ class ReviewAnswerOut(ReadModel):
     quote: str
     source_url: str
     source_name: str
+    private: bool = False  # from the organisation's own Doc Vault
+    held: bool = False  # shown, and not saved to the catalog
 
 
 class ReviewMissingOut(ReadModel):

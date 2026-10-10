@@ -80,7 +80,7 @@ def install() -> None:
 
 
 def filesystem(
-    backend: Any, *, keep: tuple[str, ...] = REQUIRED_MINIMUM, evict_at: int | None = None
+    backend: Any, *, keep: tuple[str, ...] = REQUIRED_MINIMUM, evict_at: int | None = None, evict: bool = True
 ) -> FilesystemMiddleware:
     """A FilesystemMiddleware exposing only `keep`, replacing the default.
 
@@ -89,6 +89,9 @@ def filesystem(
     and an excluded name is never registered, not merely hidden. `evict_at` lowers the token size at
     which a tool result is moved to a file the model pages back; unset keeps the library's 20k.
     """
+    if not evict:
+        # Nothing moved to a file: a file outlives the agent that wrote it, in the parent's state.
+        return FilesystemMiddleware(backend=backend, tools=list(keep), tool_token_limit_before_evict=None)
     if evict_at is None:
         return FilesystemMiddleware(backend=backend, tools=list(keep))
     return FilesystemMiddleware(backend=backend, tools=list(keep), tool_token_limit_before_evict=evict_at)
