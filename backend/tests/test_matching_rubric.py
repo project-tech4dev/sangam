@@ -7,8 +7,8 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from app.agent import rubric
-from app.agent.assessment import Criterion
+from app.matching import rubric
+from app.matching.assessment import Criterion
 
 SPEC_EXAMPLE = {
     "theme": 22, "geography": 12, "population": 13, "eligibility": 14,

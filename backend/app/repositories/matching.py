@@ -7,7 +7,7 @@ from typing import Any
 
 from psycopg_pool import AsyncConnectionPool
 
-from app.agent.rules import FunderProfile, Identifier, Location, OrgProfile, PartnerLine, Places, Program
+from app.matching.rules import FunderProfile, Identifier, Location, OrgProfile, PartnerLine, Places, Program
 
 # Tag kinds a theme is compared on; meta->>'maps_to' carries a sector's Schedule VII slug.
 SECTOR, CSR, POPULATION = "sector", "csr_sector", "population"
@@ -162,3 +162,17 @@ def _bars(content_md: str) -> list[str]:
         elif para and keep:
             bars.append(para)
     return bars
+
+
+async def may_run(pool: AsyncConnectionPool, user_id: Any, org_id: int) -> bool:
+    """Staff, or an admin or steward of the org: the same people 0042 lets save a run."""
+    if user_id is None:
+        return False
+    async with pool.connection() as conn:
+        row = await (await conn.execute(
+            """SELECT EXISTS (SELECT 1 FROM users WHERE id = %(u)s AND is_staff)
+                   OR EXISTS (SELECT 1 FROM org_members WHERE user_id = %(u)s AND org_id = %(o)s
+                              AND role IN ('admin', 'steward')) AS ok""",
+            {"u": user_id, "o": org_id},
+        )).fetchone()
+    return bool(row["ok"])

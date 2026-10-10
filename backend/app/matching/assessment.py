@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
-from app.agent import rubric
+from app.matching import rubric
 
 Code = Literal["theme", "geography", "population", "eligibility", "relationship", "funding_size", "capacity"]
 

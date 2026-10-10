@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from app.agent.match import match
-from app.agent.rules import (
+from app.matching.match import match
+from app.matching.rules import (
     FunderProfile,
     Identifier,
     Location,

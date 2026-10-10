@@ -1,4 +1,4 @@
-.PHONY: help up down logs seed taxonomy-seed graph-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs seed taxonomy-seed graph-seed match smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -126,6 +126,9 @@ taxonomy-seed:  ## Load just the taxonomy (make seed already does)
 # Build the Neo4j knowledge graph from Postgres (needs OPENAI_API_KEY in .env).
 graph-seed:  ## Build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
 	$(COMPOSE) run --rm --no-deps backend python -m seed.graph_seed
+
+match:  ## Save a Funder Match run for every org, or ORG=<slug>
+	$(COMPOSE) run --rm --no-deps backend python -m app.matching.run $(if $(ORG),--org $(ORG))
 
 ##@ Schema
 # db/init/02_schema.sql is the baseline for a new database; db/migrations/*.sql

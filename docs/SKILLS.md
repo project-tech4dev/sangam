@@ -36,7 +36,7 @@ Ask Sangam has three of its own, under `backend/app/agent/skills/`, with the
 same mechanism (`app/agent/build.py`): `funder-matching` (how to get from an
 organisation to verdicts), `funder-comparison` (named funders) and
 `funder-shortlist-brief` (the write-up). The judging is `compare_fit`'s, in
-code (`app/agent/rules.py`), so none of the three holds a matching rule.
+code (`app/matching/rules.py`), so none of the three holds a matching rule.
 
 ```markdown
 ---

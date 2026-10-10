@@ -42,7 +42,7 @@ staff for every rerun, and the spec's Rerun button waits for v2.
             COMMIT                             all or nothing
    → {run_id, run_at, funders_checked, counts}
 
- 0041_funder_matches.sql
+ 0042_funder_matches.sql
    app.my_match_org_ids() = orgs where the caller is admin or steward
    SELECT  org_id IN app.my_org_ids()       OR app.is_staff()
    INSERT  (org_id IN app.my_match_org_ids() OR app.is_staff()) AND run_by = app.user_id()
@@ -69,7 +69,7 @@ staff for every rerun, and the spec's Rerun button waits for v2.
 | Piece | Change |
 |---|---|
 | `app/agent/{rubric,rules,match,assessment}.py` | Move to `app/matching/`, where the spec places them. Callers change only their imports |
-| `db/migrations/0041_funder_matches.sql` | The spec's two tables and index, plus `run_by uuid REFERENCES users(id)`, `app.my_match_org_ids()`, the grants (authenticated: SELECT and INSERT) and the policies above |
+| `db/migrations/0042_funder_matches.sql` | The spec's two tables and index, plus `run_by uuid REFERENCES users(id)`, `app.my_match_org_ids()`, the grants (authenticated: SELECT and INSERT) and the policies above |
 | `app/agent/tools/sql/catalog.py` | Both tables in `KNOWN_EXCLUDED` |
 | `app/matching/service.py` | `rows(matches)` (pure: the spec's `card` and `detail`, with `criteria: []` for a NULL score) and `run_and_save(...)` |
 | `app/matching/run.py`, `Makefile` | `make match [ORG=slug]`: every org, or one, written as the owner |

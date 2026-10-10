@@ -939,6 +939,9 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         "ingest_source_proposals",
         "entity_research",
         "resolution_queue",
+        # Funder Match's saved runs, private to each org; served by /api/funder-matches, read by the page.
+        "funder_matches",
+        "funder_match_details",
         # Infrastructure.
         "schema_migrations",
         "graph_ingest_log",

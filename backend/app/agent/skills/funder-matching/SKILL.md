@@ -35,6 +35,10 @@ partial, fail or unknown. An unknown criterion is left out of the score, so
 If it returns "compare_fit failed", say so with the error and stop. Never
 judge the funders yourself instead.
 
+If it returns "compare_fit refused", the user is not staff, a steward or an
+admin of this organisation. Tell them running a match for it is for those
+people, and stop. Never build a shortlist from db_query instead.
+
 ## 3. Write it up
 
 Load funder-shortlist-brief and follow it, from this one reply.
