@@ -343,3 +343,14 @@ reference. It needs a resync after this pass.
   - A thread that stopped at a pause (Review, or choosing files) says so instead of showing a question it can no longer answer.
 - **Not done:** the design system's UI kit Import page doesn't have the rail yet. Writing it to the Claude Design project needs approval.
 
+
+## The person chooses the sources, before anything is read
+
+- **One pause, `choose_sources`, replaces the two spreadsheet pauses.** Working opens on "Where should Sangam read from?":
+  - Public websites (on/off) and Sangam's library (public documents it already archived) for everyone.
+  - The person's Doc Vault files, one organisation per run.
+  - Team spreadsheets, for staff only.
+- **No table.** The answer is the tool call's arguments, kept in the thread's checkpoint. "Only public websites" is the same edit with only websites on.
+- **Enforced, not advised.** `ChosenSources` launches no subagent before the answer; `RunSources` refuses every read outside it (`app/ingest/run_sources.py`).
+- **The vault picker leaves Start**, and Sangam's notes hold only the end-of-run summary: no question about sources comes as prose.
+- The board says what the run reads from: "Reading from: Public websites · Your Doc Vault (2)".

@@ -186,7 +186,7 @@ export function Sidebar({
       </div>
 
       {/* Tools that change the data, kept apart from conversations at the foot of the rail.
-          Shown to everyone: the backend answers non-staff with 403 and /import says "Staff only". */}
+          Shown to everyone signed in: Import offers each person the tasks their role allows. */}
       <Section label="Tools" open={open.tools} onToggle={() => toggle("tools")} className="rail-foot">
         <Link href="/import" className="rail-item">
           Import

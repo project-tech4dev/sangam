@@ -5,16 +5,14 @@ import { useAgentChat } from "@/lib/useAgentChat";
 import { AgentNotes } from "./components/AgentNotes";
 import { DoneReport } from "./components/DoneReport";
 import { SaveQuestions } from "./components/SaveQuestions";
-import { SpreadsheetsCard } from "./components/SpreadsheetsCard";
+import { SourcesCard } from "./components/SourcesCard";
 import { StartStep } from "./components/StartStep";
 import { StepBar } from "./components/StepBar";
 import { WorkingBoard } from "./components/WorkingBoard";
+import type { ImportAccess, VaultFile } from "./lib/access";
 import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
 import { fetchImportMessages } from "./lib/threads";
-
-// The pauses a run can stop at. A reopened thread can't answer one, so it says where it stopped.
-const PAUSES = ["promote_research", "list_bucket_files", "select_source_files"];
 
 /** One Import conversation. `onStartOver` hands the parent a fresh thread; `start` shows below the Start step. */
 export function ImportWorkspace({
@@ -23,6 +21,8 @@ export function ImportWorkspace({
   onStartOver,
   onFirstSend,
   start,
+  access,
+  vaultFiles = [],
 }: {
   threadId: string;
   /** Load the thread's saved messages: it was opened from the list. */
@@ -31,6 +31,9 @@ export function ImportWorkspace({
   /** The thread's first request, so the parent can list it and put it in the URL. */
   onFirstSend?: (text: string) => void;
   start?: ReactNode;
+  access: ImportAccess;
+  /** The person's organisations' private files, offered for reading before the web. */
+  vaultFiles?: VaultFile[];
 }) {
   const load = useCallback(() => fetchImportMessages(threadId), [threadId]);
   const { turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners } = useAgentChat(
@@ -44,12 +47,14 @@ export function ImportWorkspace({
   const [advanced, setAdvanced] = useState(false);
   // A question card is open: the run has stopped to wait for an answer, not finished.
   const [paused, setPaused] = useState(false);
-  // The open question is the Review card, as opposed to the spreadsheets one.
+  // The open question is the Review card, as opposed to the sources one.
   const [reviewing, setReviewing] = useState(false);
   // A review was answered, so what runs now is the save: the step bar stays on Done.
   const [reviewed, setReviewed] = useState(false);
   // When the first request went, so Done shows only names this run queued.
   const [since, setSince] = useState<number | null>(null);
+  // Organisations Done still lists as waiting for a review; the step bar stays on Review until none are left.
+  const [toReview, setToReview] = useState(0);
   // The first request came from the task cards, so it is Sangam's wording, not something to show back.
   const [guided, setGuided] = useState(false);
   // Stable, because PauseSignal re-runs its effect whenever this changes.
@@ -60,7 +65,7 @@ export function ImportWorkspace({
   }, []);
   const atStart = turns.length === 0 && !isLoadingHistory;
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
-  const stoppedAtQuestion = resume && !isRunning && !paused && lastSteps.some((s) => PAUSES.includes(s.tool) && s.result === null);
+  const finished = !isRunning && !paused && slugsOf(lastSteps).length > 0;
 
   async function submit(text: string) {
     const value = text.trim();
@@ -79,7 +84,9 @@ export function ImportWorkspace({
 
   return (
     <div className="import-ws">
-      <StepBar current={atStart ? 0 : reviewing ? 2 : reviewed || (!isRunning && !paused) ? 3 : 1} />
+      <StepBar
+        current={atStart ? 0 : reviewing || (finished && toReview > 0) ? 2 : reviewed || (!isRunning && !paused) ? 3 : 1}
+      />
       {atStart && !advanced && (
         <>
           <StartStep
@@ -88,6 +95,7 @@ export function ImportWorkspace({
               void submit(prompt);
             }}
             disabled={!isReady}
+            access={access}
           />
           <button type="button" className="import-link import-advanced" onClick={() => setAdvanced(true)}>
             Advanced: type your own request
@@ -112,8 +120,7 @@ export function ImportWorkspace({
                   slugs={slugs}
                   since={since}
                   onStartOver={startOver}
-                  onSave={(name) => void submit(`Save ${name} to Sangam`)}
-                  busy={isRunning}
+                  onPending={i === turns.length - 1 ? setToReview : undefined}
                   fallback={board}
                 />
               ) : waiting && reviewing ? null : (
@@ -138,49 +145,42 @@ export function ImportWorkspace({
         })}
       </div>
 
-      {stoppedAtQuestion && (
-        <p className="import-stopped">
-          This import stopped at a question that can&apos;t be answered here any more. Ask Sangam to save it again, or start a new
-          import.
-        </p>
-      )}
-
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
-      {isReady && <SpreadsheetsCard agentId={`sangam-import-${threadId}`} steps={lastSteps} turnId={turns.at(-1)?.id} onPaused={setPaused} />}
       {isReady && (
-        <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={onReview} />
+        <SourcesCard agentId={`sangam-import-${threadId}`} access={access} vaultFiles={vaultFiles} onPaused={setPaused} />
       )}
+      {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={onReview} />}
 
       {(!atStart || advanced) && (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit(draft);
-        }}
-        className="import-form"
-      >
-        <input
-          className="input"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={isReady ? "Ask Sangam Import to run or explain a source…" : "Connecting…"}
-          disabled={!isReady}
-        />
-        {isRunning ? (
-          <button type="button" className="btn btn-primary" onClick={stop}>
-            Stop
-          </button>
-        ) : (
-          <button type="submit" className="btn btn-primary" disabled={!isReady}>
-            Send
-          </button>
-        )}
-        {turns.length > 0 && (
-          <button type="button" className="btn btn-ghost" onClick={startOver}>
-            Start over
-          </button>
-        )}
-      </form>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit(draft);
+          }}
+          className="import-form"
+        >
+          <input
+            className="input"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={isReady ? "Ask Sangam Import to run or explain a source…" : "Connecting…"}
+            disabled={!isReady}
+          />
+          {isRunning ? (
+            <button type="button" className="btn btn-primary" onClick={stop}>
+              Stop
+            </button>
+          ) : (
+            <button type="submit" className="btn btn-primary" disabled={!isReady}>
+              Send
+            </button>
+          )}
+          {turns.length > 0 && (
+            <button type="button" className="btn btn-ghost" onClick={startOver}>
+              Start over
+            </button>
+          )}
+        </form>
       )}
       {atStart && start}
     </div>

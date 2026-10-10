@@ -75,8 +75,11 @@ def check_pick(path: str) -> tuple[str, str, str] | str:
     """(bucket, key, source name) for a selectable path, or why it is not one."""
     parts = split_any(path)
     if parts is None:
-        return f"{path!r}: not a <bucket>/<file> path from list_bucket_files."
+        return f"{path!r}: not a <bucket>/<file> path from the spreadsheets listing."
     bucket, key = parts
+    # Only the staff bucket: a Doc Vault workbook is an org's private file, not a staff dataset.
+    if bucket != storage.STAFF_SOURCES:
+        return f"{path!r}: only files in the {storage.STAFF_SOURCES} bucket can be read as staff data."
     if not key.lower().endswith(".xlsx"):
         return f"{path!r}: only .xlsx workbooks can be read."
     # A registry-key folder names the source (and so its unit); any other file is named by its bucket.
@@ -252,7 +255,8 @@ def _cell(value: Any) -> str:
     return text[:300]
 
 
-def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple, set[int] | None]], set[int]]]) -> str:
+def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple, set[int] | None]], set[int]]],
+           marker: str = "source") -> str:
     from openpyxl.utils import get_column_letter
 
     lines = [f"## document {doc['id']} · {doc['source_name']}",
@@ -264,7 +268,7 @@ def render(doc: dict[str, Any], sheets: list[tuple[str, list[tuple[int, tuple, s
                      if v not in (None, "") and c not in drop and (keep is None or c in keep)]
             if cells:
                 body = " · ".join(f"{ref}={_cell(v)!r}" for ref, v in cells)
-                lines.append(f"[source:{doc['id']}#{title}!{cells[0][0]}] {body}")
+                lines.append(f"[{marker}:{doc['id']}#{title}!{cells[0][0]}] {body}")
     return "\n".join(lines)
 
 
@@ -303,7 +307,7 @@ async def read_rows(pool: Any, name: str, *, sheet: str = "", documents: list[in
     if not datasets:
         if documents:
             return f"None of documents {documents} is a staff dataset. Nothing was read."
-        return "No staff dataset is registered: pick files with select_source_files. Nothing was read."
+        return "No staff dataset is registered: team spreadsheets are picked on the sources card. Nothing was read."
     parts: list[str] = []
     problems: list[str] = []
     for doc in datasets:
@@ -391,7 +395,7 @@ def _browse(data: bytes, only_sheet: str, start_row: int, limit: int) -> tuple[l
 async def browse(pool: Any, documents: list[int], *, sheet: str = "", start_row: int = 1, limit: int = 100) -> str:
     """read_workbook: an outline of each picked workbook, or one page of one sheet's rows."""
     if not documents:
-        return "read_workbook needs the document ids select_source_files returned. Nothing was read."
+        return "read_workbook needs the document ids choose_sources returned. Nothing was read."
     datasets = await documents_repo.list_source_datasets(pool, ids=documents)
     if not datasets:
         return f"None of documents {documents} is a staff dataset. Nothing was read."

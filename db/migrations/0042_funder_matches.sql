@@ -1,5 +1,5 @@
 -- Funder Match's saved runs (docs/features/2026-10-10-funder-match-saved-runs.md). Staff, an org's stewards
--- and its admins run and save from the app; members read. Numbered 0042: 0039 to 0041 are taken on open branches.
+-- and its admins run and save from the app; members read. Numbered 0042: 0039 to 0041 are on master.
 
 -- 1. Orgs the caller may run a match for: admin and steward. A member reads the result but does not run it.
 CREATE FUNCTION app.my_match_org_ids() RETURNS SETOF bigint

@@ -129,11 +129,16 @@ export function ReviewCard({
   slug,
   questions,
   onDecide,
+  inline = false,
 }: {
   /** Empty when the agent saves everything researched in the run at once. */
   slug: string;
-  questions: PausedQuestion[];
-  onDecide: (decision: SaveDecision) => void;
+  /** A paused save's own questions; without them, the review's questions are the ones asked. */
+  questions?: PausedQuestion[];
+  /** May return a promise: a rejection shows its message and lets the person try again. */
+  onDecide: (decision: SaveDecision) => void | Promise<void>;
+  /** Opened inside a Done or Researched recently row, which already names the organisation. */
+  inline?: boolean;
 }) {
   const [review, setReview] = useState<ResearchReview | null>(null);
   const [failed, setFailed] = useState(false);
@@ -142,6 +147,7 @@ export function ReviewCard({
   const [save, setSave] = useState(true);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -165,7 +171,7 @@ export function ReviewCard({
 
   // The payload's questions are the ones to answer; the review only says them in words.
   const worded = new Map((review?.questions ?? []).map((q) => [q.id, q]));
-  const asked = questions.map((q) => worded.get(q.id) ?? fallback(q));
+  const asked = questions ? questions.map((q) => worded.get(q.id) ?? fallback(q)) : (review?.questions ?? []);
   const n = asked.length;
   const left = save ? n - asked.filter((q) => answers[q.id]).length : 0;
   const loading = Boolean(slug) && review === null && !failed;
@@ -175,24 +181,32 @@ export function ReviewCard({
   const total = found.length + (review?.missing.length ?? 0);
   const hasDetail = found.length + (review?.missing.length ?? 0) > 0;
 
-  function decide(decision: SaveDecision) {
+  async function decide(decision: SaveDecision) {
     setSent(true);
-    onDecide(decision);
+    setError(null);
+    try {
+      await onDecide(decision);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setSent(false);
+    }
   }
 
   function finish() {
-    if (!save) return decide({ type: "reject", message: "Staff chose not to save this research." });
-    decide({ type: "edit", edited_action: { name: "promote_research", args: { slug, decisions: answers } } });
+    if (!save) return void decide({ type: "reject", message: "Staff chose not to save this research." });
+    void decide({ type: "edit", edited_action: { name: "promote_research", args: { slug, decisions: answers } } });
   }
 
   return (
     <section aria-label="Review before saving" className="review">
-      <div className="import-head">
-        <h1 className="import-h1">Here&apos;s what Sangam found</h1>
-        <p className="import-sub">
-          It&apos;s ticked to save — untick it if you don&apos;t want it{n > 0 ? ", and answer the questions" : ""}.
-        </p>
-      </div>
+      {!inline && (
+        <div className="import-head">
+          <h1 className="import-h1">Here&apos;s what Sangam found</h1>
+          <p className="import-sub">
+            It&apos;s ticked to save — untick it if you don&apos;t want it{n > 0 ? ", and answer the questions" : ""}.
+          </p>
+        </div>
+      )}
 
       <div className="review-table">
         <div className="review-row">
@@ -266,12 +280,13 @@ export function ReviewCard({
       </div>
 
       <div className="review-actions">
-        <button type="button" className="btn btn-primary" onClick={finish} disabled={sent || left > 0}>
-          {save ? (slug ? "Save 1 organisation" : "Save everything") : "Continue without saving"}
+        <button type="button" className="btn btn-primary" onClick={finish} disabled={sent || left > 0 || loading}>
+          {sent && save ? "Saving…" : save ? (slug ? "Save 1 organisation" : "Save everything") : "Continue without saving"}
         </button>
         <span className="review-hint">
           {left > 0 ? `Answer ${left === 1 ? "the question" : `${left} questions`} above first.` : "Nothing is saved until you choose."}
         </span>
+        {error && <span className="import-error">{error}</span>}
       </div>
     </section>
   );

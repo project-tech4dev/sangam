@@ -267,7 +267,7 @@ findings get cleared — see the comment in `frontend/eslint.config.mjs`.
 ```
 backend/app/
   main.py          create_app() + the ASGI entrypoint — wiring only
-  core/            config · security (auth stub) · lifespan · logging
+  core/            config · security (Supabase JWT) · lifespan · logging
   db/              pool · checkpointer (LangGraph) · migrate (the runner)
   api/             router.py (one aggregate router) · deps · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
@@ -353,10 +353,10 @@ Each agent runs on a model matched to how hard its work is (`backend/app/core/co
 - After a malformed save, the rest of a researcher's run moves to `MODEL`.
 - A Haiku grader checks each researcher's save and summary against `prompts/research_rubric.md` and allows one revision.
 
-**Auth is split, and half of it is a stub.** The frontend has real Supabase sign-in. The backend
-does not: `backend/app/core/security.py` resolves every request to one seeded user regardless of
-the token, and the frontend sends a literal `Bearer dev`. A deployed backend is therefore
-readable by anyone who finds the URL. Swapping in JWT verification changes only that function.
+**Auth.** The frontend signs in with Supabase, and the backend verifies the access token against
+the project's JWKS (`backend/app/core/security.py`); queries then run as that caller, under RLS.
+With `SUPABASE_URL` unset every request is the seeded dev user, and `Bearer dev` works only with
+`DEV_AUTH=1`, for local use.
 
 ## Deployment
 

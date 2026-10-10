@@ -15,7 +15,6 @@ from app.core.security import (
     chat_user_id,
     get_current_user,
     get_principal,
-    staff_chat_access,
 )
 from tests.conftest import make_app
 
@@ -64,7 +63,11 @@ def owners(monkeypatch):
     async def claim(pool, *, thread_id, user_id, **_):
         return table.setdefault(thread_id, user_id)
 
+    async def memberships(pool, user_id):
+        return [{"org_id": 7, "org_name": "Seven", "role": "member"}] if user_id == MEMBER.id else []
+
     monkeypatch.setattr(security.threads, "claim_thread", claim)
+    monkeypatch.setattr(security.me_repo, "list_memberships", memberships)
     return table
 
 
@@ -93,6 +96,41 @@ async def test_a_new_thread_is_claimed_and_the_run_knows_who_asked(owners):
     assert owners["new"] == MEMBER.id
 
 
+async def test_the_run_knows_what_the_caller_may_reach(owners):
+    app = make_app()
+
+    @app.post("/agent", dependencies=[Depends(chat_access)])
+    async def agent():
+        async def stream():
+            scope = security.chat_scope.get()
+            yield f"{scope.is_staff} {dict(scope.org_roles)}"
+
+        return StreamingResponse(stream())
+
+    response = await run(as_caller(app, MEMBER), "new")
+    assert response.text == "False {7: 'member'}"
+
+
+class TestCallerScope:
+    member = security.CallerScope(UUID(int=2), False, {7: "member"})
+    steward = security.CallerScope(UUID(int=3), False, {7: "steward", 8: "steward"})
+    staff = security.CallerScope(UUID(int=1), True)
+
+    def test_a_member_reads_its_own_org_and_researches_no_org(self):
+        assert self.member.can_read_org(7) and not self.member.can_read_org(8)
+        assert not self.member.can_research_org(7)
+        assert self.member.can_save_funder()
+
+    def test_a_steward_reads_and_researches_each_org_it_supports(self):
+        assert self.steward.can_read_org(8) and self.steward.can_research_org(8)
+        assert not self.steward.can_research_org(9)
+
+    def test_staff_reach_everything_and_nobody_reaches_nothing(self):
+        assert self.staff.can_read_org(99) and self.staff.can_research_org(99)
+        nobody = security.CallerScope(None, False)
+        assert not nobody.can_read_org(7) and not nobody.can_save_funder()
+
+
 async def test_someone_elses_thread_is_404(owners):
     response = await run(chat_app(MEMBER), "theirs")
     assert response.status_code == 404
@@ -108,7 +146,3 @@ async def test_chat_signed_out_is_401(owners):
     assert response.status_code == 401
     assert "new" not in owners
 
-
-async def test_import_chat_needs_staff(owners):
-    response = await run(chat_app(MEMBER, staff_chat_access), "new")
-    assert response.status_code == 403

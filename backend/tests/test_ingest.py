@@ -272,7 +272,7 @@ class TestIngestAgentIsSelfDescribing:
                 f"makes it invisible whenever that skill is not loaded."
             )
 
-    @pytest.mark.parametrize("spec_name", ["ENTITY_RESEARCHER", "CATALOG_WRITER", "WORKBOOK_READER"])
+    @pytest.mark.parametrize("spec_name", ["ENTITY_RESEARCHER", "CATALOG_WRITER", "WORKBOOK_READER", "VAULT_READER"])
     def test_a_subagent_prompt_names_every_tool_its_spec_declares(self, spec_name):
         """The same rule, one level down, and it is easier to break here: a
         subagent is isolated, so instructions.md naming a tool does nothing for
@@ -346,13 +346,14 @@ class TestIngestAgentIsSelfDescribing:
         # not on the main agent. Both subagents count: the parent researches
         # nothing and writes only record_registry_check, so save_research reaches
         # the model only through the researcher and promote_research only through the writer.
-        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, VAULT_READER, WORKBOOK_READER
 
         registered = (
             {t.name for t in TOOLS}
             | {t.name for t in ENTITY_RESEARCHER["tools"]}
             | {t.name for t in CATALOG_WRITER["tools"]}
             | {t.name for t in WORKBOOK_READER["tools"]}
+            | {t.name for t in VAULT_READER["tools"]}
         )
         assert not defined - registered, f"defined but never registered: {sorted(defined - registered)}"
         # The other direction, which is the property the package exists to give:
@@ -1460,12 +1461,22 @@ class TestListingWorkbooksForTheSpreadsheetsCard:
         assert body[0]["folder"] == "mca_csr" and body[0]["updated_at"] == "2026-09-01"
         assert body[1]["folder"] == "" and body[1]["folder_label"] == "Not in a folder"
 
-    async def test_a_bucket_name_that_is_a_path_is_refused(self, client_for):
+    @pytest.mark.parametrize("bucket", ["../x", "org-vault", "source-archive"])
+    async def test_any_bucket_but_the_staff_one_is_refused(self, client_for, bucket):
+        # The Doc Vault holds an org's private files; they are never listed as staff datasets.
         from app.api.routes import ingest as ingest_api
 
         async with client_for(ingest_api.router) as client:
-            response = await client.get("/api/ingest/workbooks", params={"bucket": "../x"})
+            response = await client.get("/api/ingest/workbooks", params={"bucket": bucket})
         assert response.status_code == 422
+
+
+class TestOnlyTheStaffBucketHoldsStaffData:
+    def test_a_vault_workbook_cannot_be_picked(self):
+        from app.ingest.staff_sources import check_pick
+
+        assert isinstance(check_pick("org-vault/12/abc-accounts.xlsx"), str)
+        assert check_pick("staff-sources/mca_csr/abc.xlsx") == ("staff-sources", "mca_csr/abc.xlsx", "mca_csr")
 
 
 class TestTheReviewCardSpeaksPlainly:
@@ -1543,7 +1554,7 @@ class TestTheReviewCardSpeaksPlainly:
     async def test_no_research_is_404(self, client_for, monkeypatch):
         from app.api.routes import ingest as ingest_api
 
-        async def none(slug):
+        async def none(slug, caller):
             return None
 
         monkeypatch.setattr("app.ingest.tools.catalog_tools.review_view", none)

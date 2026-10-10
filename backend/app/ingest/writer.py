@@ -220,11 +220,21 @@ class Gate:
             4, table, key, row=_cite(table, candidate["id"]), column=column,
             stored_name=candidate["name"], new_name=key[column], score=round(float(candidate["score"]), 2),
         )
+        choice = self._same_or_not(item)
+        return {"update": "update", "new": "insert", "skip": "skip"}.get(choice or "", "ask"), candidate["id"]
+
+    def on_entity(self, table: str, name: str, candidate: dict[str, Any]) -> str:
+        """update | new | skip | ask, for research whose name only resembles a stored funder or NGO."""
+        item = self._item(4, table, {"name": name}, row=_cite(table, candidate["id"]), column="name",
+                          stored_name=candidate["name"], new_name=name, score=candidate.get("score"))
+        return self._same_or_not(item) or "ask"
+
+    def _same_or_not(self, item: dict[str, Any]) -> str | None:
         choice = item["choice"] if item["choice"] in CHOICES[4] else None
         item["outcome"] = {"update": "written", "new": "written", "skip": "skipped"}.get(choice or "", "asked")
         if self.plan and choice in ("update", "new"):
             item["outcome"] = "planned"
-        return {"update": "update", "new": "insert", "skip": "skip"}.get(choice or "", "ask"), candidate["id"]
+        return choice
 
     def asked(self) -> list[dict[str, Any]]:
         return [i for i in self.items if i.get("outcome") == "asked"]

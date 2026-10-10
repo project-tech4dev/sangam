@@ -10,6 +10,7 @@ export function listNames(names: string[]): string {
 /** The request a task card sends: the same words staff typed before, so the agent sees no change. */
 export function composePrompt(task: ImportTask, names: string[], news: { source: NewsSource; count: number }): string {
   if (task === "news") return `Run an import from ${news.source}, ${news.count} articles`;
-  if (task === "ngo") return `Legal and operational standing of the NGOs ${listNames(names)}`;
-  return `Funding profile for ${listNames(names)}`;
+  return task === "ngo"
+    ? `Legal and operational standing of the NGOs ${listNames(names)}`
+    : `Funding profile for ${listNames(names)}`;
 }

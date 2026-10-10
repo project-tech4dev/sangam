@@ -24,7 +24,9 @@ def fallbacks(stack) -> list[str]:
 @pytest.fixture
 def built(build_import):
     seen = build_import(**TIERS)
-    return SimpleNamespace(main=seen["middleware"], **{s["name"].split("-")[1]: s["middleware"] for s in seen["subagents"]})
+    names = {"entity-researcher": "researcher", "catalog-writer": "writer", "workbook-reader": "reader",
+             "vault-reader": "vault"}
+    return SimpleNamespace(main=seen["middleware"], **{names[s["name"]]: s["middleware"] for s in seen["subagents"]})
 
 
 class TestEachTierFallsBackToTheNext:
@@ -33,6 +35,7 @@ class TestEachTierFallsBackToTheNext:
         assert fallbacks(built.researcher) == ["m:strong"]
         assert fallbacks(built.writer) == ["m:mid"]
         assert fallbacks(built.reader) == ["m:mid"]
+        assert fallbacks(built.vault) == ["m:strong"]
 
     def test_a_fallback_to_the_same_model_is_skipped(self, build_import):
         seen = build_import(model="m:strong", research_model="m:strong", utility_model="m:strong")

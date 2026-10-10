@@ -137,7 +137,7 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
 ```
 backend/app/
   main.py          create_app() + `app = create_app()` — the ASGI entrypoint, wiring only
-  core/            config.py (Settings) · security.py (auth stub) · lifespan.py · logging.py · egress.py
+  core/            config.py (Settings) · security.py (Supabase JWT) · lifespan.py · logging.py · egress.py
   db/              pool.py (PoolDep) · checkpointer.py (LangGraph) · migrate.py (runner)
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
@@ -306,7 +306,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each sector tag to its Schedule VII clause for `compare_fit`, and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0042_funder_matches` adds the saved runs, numbered past open branches' 0039 to 0041. There are 39 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each sector tag to its Schedule VII clause for `compare_fit`, and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. `0042_funder_matches` adds Funder Match's saved runs. There are 42 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
@@ -366,19 +366,21 @@ the design system's iconography page says.
 that every field traces to a source.
 
 **A tool of either agent lives under a `tools/` package, and nothing else does.**
-`app/agent/tools/` for Ask Sangam, `app/ingest/tools/` for Sangam Import — three modules
+`app/agent/tools/` for Ask Sangam, `app/ingest/tools/` for Sangam Import — five modules
 there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
-`catalog_tools.py` (what Sangam already holds), `research_tools.py` (the open web).
+`catalog_tools.py` (what Sangam already holds), `research_tools.py` (the open web),
+`library_tools.py` (public documents Sangam archived), `vault_tools.py` (an org's Doc Vault).
 Both agents register their list in one place — `build.py` and `agent.py` respectively — and
 a test walks the package to prove every tool defined is also registered.
 
-**Sangam Import has two human-in-the-loop steps: `list_bucket_files` (staff choose the bucket)
-and `select_source_files` (staff choose the files).** Both are in `INTERRUPT_ON` in
-`app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns into LangChain's
-`HumanInTheLoopMiddleware`; the Import screen answers with CopilotKit's `useInterrupt`
-(`SpreadsheetsCard`, one card for both pauses) and resumes with `{decisions: [...]}`. Any bucket's `.xlsx` can be
-picked, in any folder or none. A picked file becomes a
-`documents` row, so no script is needed; `make staff-source` still writes the same row. The
+**Sangam Import has one human-in-the-loop step before it reads anything: `choose_sources`.**
+It is in `INTERRUPT_ON` in `app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns
+into LangChain's `HumanInTheLoopMiddleware`; the Import screen answers with CopilotKit's
+`useInterrupt` (`SourcesCard`: public websites, Sangam's library, Doc Vault files, and for staff the
+team spreadsheets) and resumes with `{decisions: [...]}`. The answer stays in the checkpoint as the
+tool call's arguments, no table. `ChosenSources` holds every subagent until it exists, and
+`RunSources` (`app/ingest/middleware.py`) refuses any read outside it. A picked spreadsheet becomes
+a `documents` row, so no script is needed; `make staff-source` still writes the same row. The
 supervisor never reads rows: when a request is about everyone in a file, the `workbook-reader`
 subagent (one tool, `read_workbook`) returns the names, and a researcher per name follows.
 
@@ -386,7 +388,7 @@ subagent (one tool, `read_workbook`) returns the names, and a researcher per nam
 reasons: Ask Sangam and the Import supervisor, where one wrong join or merge is the costliest
 mistake and the model runs once per turn. `RESEARCH_MODEL` (Sonnet 5.5) runs the
 `entity-researcher`s: they read long pages, up to `MAX_PARALLEL_RESEARCH` at once, so they are
-most of an import's tokens, and judging evidence still needs a capable model. `UTILITY_MODEL`
+most of an import's tokens, and judging evidence still needs a capable model. The `vault-reader`, which reads an org's own Doc Vault files with no web tools, runs on it too. `UTILITY_MODEL`
 (Haiku 4.5) does work with a fixed shape — article extraction, the `catalog-writer`, the
 `workbook-reader` — and `SQL_AUDIT_MODEL` (Haiku 4.5) the post-answer audit. A blank or unset
 model variable means the default in `config.py`, the only place defaults are written; `SQL_AUDIT_MODEL=off`
@@ -458,8 +460,9 @@ a bucket.
 checks the access token against the project's JWKS and finds or creates the `users` row for it;
 no header is anonymous. With `SUPABASE_URL` empty every request is the seeded dev user, and
 `DEV_AUTH=1` accepts `Bearer dev` locally — which `make smoke` sends, so it needs that set.
-`require_user` (401) gates saving and editing, `require_staff` (403) gates Import, and a chat
-someone else owns is 404. The frontend sends the token from `lib/api/auth-headers.ts` (browser)
+`require_user` (401) gates saving and editing, and a chat someone else owns is 404. Import is open
+to anyone signed in, by role: its tools run on the owner pool, so they check `chat_scope` themselves
+(`app/ingest/caller.py`), and its pipeline routes keep `require_staff` (403). The frontend sends the token from `lib/api/auth-headers.ts` (browser)
 and `auth-headers.server.ts` (server components). The plan, and what comes next (requests running
 as the caller, then RLS), is `features-plans/access/auth-plan.md`.
 

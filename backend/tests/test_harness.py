@@ -154,7 +154,8 @@ class TestEachTierGetsItsModel:
     def test_each_subagent_runs_on_its_tier(self, build_import):
         main, subs = self.built(build_import, model="m:strong", research_model="m:mid", utility_model="m:cheap")
         assert main == "m:strong"
-        assert subs == {"entity-researcher": "m:mid", "catalog-writer": "m:cheap", "workbook-reader": "m:cheap"}
+        assert subs == {"entity-researcher": "m:mid", "catalog-writer": "m:cheap", "workbook-reader": "m:cheap",
+                        "vault-reader": "m:mid"}
 
     def test_a_tier_set_to_the_main_model_runs_on_it(self, build_import):
         _, subs = self.built(build_import, model="m:strong", research_model="m:strong", utility_model="m:strong")
@@ -182,10 +183,10 @@ class TestEachTierGetsItsModel:
 
     def test_the_module_level_specs_are_not_mutated(self, build_import):
         # build_ingest_agent copies each spec before adding a model, so builds cannot leak between them.
-        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, VAULT_READER, WORKBOOK_READER
 
         self.built(build_import, model="m:strong", research_model="m:mid", utility_model="m:cheap")
-        assert all("model" not in spec for spec in (CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER))
+        assert all("model" not in spec for spec in (CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER, VAULT_READER))
 
 
 class TestTheSkillIsFoundAndIsProgressive:
@@ -250,9 +251,9 @@ class TestTheSkillIsFoundAndIsProgressive:
         a ResearchSummary with no prose. The supervisor writes the brief, so
         the supervisor holds the skills.
         """
-        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, WORKBOOK_READER
+        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, VAULT_READER, WORKBOOK_READER
 
-        for spec in (ENTITY_RESEARCHER, CATALOG_WRITER, WORKBOOK_READER):
+        for spec in (ENTITY_RESEARCHER, CATALOG_WRITER, WORKBOOK_READER, VAULT_READER):
             assert "skills" not in spec, spec["name"]
 
     def test_every_skill_is_advertised_to_the_supervisor(self):
@@ -315,17 +316,24 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
     """
 
     def test_both_subagents_are_compiled_and_found(self, subagents):
-        assert set(subagents) == {"entity-researcher", "catalog-writer", "workbook-reader"}
+        assert set(subagents) == {"entity-researcher", "catalog-writer", "workbook-reader", "vault-reader"}
 
     def test_neither_subagent_can_write_a_file_or_run_a_command(self, subagents):
         forbidden = {"write_file", "edit_file", "delete", "execute", "glob", "grep"}
         for name, tools in subagents.items():
             assert not tools & forbidden, f"{name}: {sorted(tools & forbidden)}"
 
+    def test_the_vault_reader_cannot_reach_the_web(self, subagents):
+        # Private text never shares a context with a web tool: the leak rule of docs/features/2026-10-10-*.
+        assert subagents["vault-reader"] == {
+            "list_vault_documents", "read_vault_document", "research_goals", "save_vault_findings", "read_file",
+        }
+
     def test_the_researcher_gets_its_eight_and_nothing_of_the_filesystem(self, subagents):
         assert subagents["entity-researcher"] == {
-            "research_goals", "funder_dossier", "read_source_rows", "search_public_sources",
-            "read_page", "fetch_document", "read_document_pages", "save_research",
+            "research_goals", "funder_dossier", "list_library_documents", "read_library_document",
+            "read_source_rows", "search_public_sources", "read_page", "fetch_document", "read_document_pages",
+            "save_research",
             "read_file",
         }
         # Staff rows last: once the run has asked for read_source_rows, the compiled node refuses read_page.
@@ -345,7 +353,15 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         call = {"name": "read_page", "args": {"url": "https://example.org"}, "id": "2", "type": "tool_call"}
         request = ToolCallRequest(tool_call=call, tool=node.tools_by_name["read_page"],
                                   state={"messages": staff}, runtime=None)
-        assert node._wrap_tool_call(request, lambda r: None).content == STAFF_LOCK_REPLY
+        from app.ingest import run_sources
+
+        # With no sources chosen nothing is read; with the web chosen, staff rows still close it.
+        assert node._wrap_tool_call(request, lambda r: None).content.startswith("REFUSED: no sources")
+        token = run_sources.CURRENT.set(run_sources.Sources(web=True, staff_docs=frozenset({1})))
+        try:
+            assert node._wrap_tool_call(request, lambda r: None).content == STAFF_LOCK_REPLY
+        finally:
+            run_sources.CURRENT.reset(token)
 
     def test_the_writer_gets_the_floor_and_not_the_skill_reader(self, subagents):
         assert subagents["catalog-writer"] == {"promote_research", "funder_dossier", "read_file"}

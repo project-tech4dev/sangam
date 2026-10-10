@@ -101,20 +101,14 @@ Without `^…$`, that third row would be allowed.
 
 ---
 
-## ⚠️ Before you expose a public URL: there is no authentication
+## ⚠️ Before you expose a public URL: set SUPABASE_URL, and leave DEV_AUTH off
 
-`backend/app/core/security.py::get_current_user` returns a hardcoded UUID regardless of
-the token presented, and the frontend sends the literal string `Bearer dev`.
-Consequences of a public deployment as it stands:
-
-- Every funder and NGO record, every document, and every fit score is readable
-  by anyone who finds the URL.
-- Anyone can run the agent, **billed to your Anthropic key**.
-
-Until Supabase JWT verification lands (the swap is confined to that one
-function), protect the backend at the platform level — an IP allowlist, basic
-auth, or the host's built-in access control. That is configuration rather than
-code and takes minutes.
+`backend/app/core/security.py` verifies a Supabase access token against the
+project's JWKS. With `SUPABASE_URL` unset it treats **every** request as the
+seeded dev user, and with `DEV_AUTH=1` it accepts the literal `Bearer dev`.
+Either one on a public deployment makes every record readable, and lets anyone
+run the agent **billed to your Anthropic key**. Platform-level protection (an
+IP allowlist, basic auth) is still a reasonable extra layer.
 
 Note that platform-level basic auth will also block the three browser-side
 fetches (`VaultView`, `MediaView`, `ScoreCard`), since the browser has no

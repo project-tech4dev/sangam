@@ -36,7 +36,8 @@ comparison table.
 
 ## Where to look, in this order
 
-1. **The CSO's own documents** — uploads in the Doc Vault first, then those on its site: trust
+1. **The CSO's own documents** — uploads in the Doc Vault first (a `vault-reader` reads them, when the
+   request names them; what they say stays private and is shown on Review), then those on its site: trust
    deed or registration certificate, PAN card, 12AB/80G orders (Forms 10AC/10AD) or a Form 10AB
    acknowledgement, CSR-1 approval, FCRA certificate, FCRA returns (FC-4), audited accounts,
    annual reports, policies.
@@ -46,7 +47,7 @@ comparison table.
    that check with `record_registry_check`.
 3. **Funders' own pages naming the CSO as a grantee**, and company CSR filings naming it as the
    agency that did the work. Match on name **and** district or state: short names collide.
-4. **Staff datasets**, picked first with `select_source_files` (staff confirm the pick), then read
+4. **Staff datasets**, picked on the sources card (`choose_sources`), then read
    through `read_source_rows` with those document ids and the organisation's name — **last of the
    reads**, because the first call closes the web tools. Each row carries a
    `[source:<document>#<sheet>!<cell>]` marker; quote the line with the marker of the cell that

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from psycopg_pool import AsyncConnectionPool
+
+from app.ingest.source_guards import PRIVATE_URL_LIKE
 
 _COUNTS = """
 SELECT r.id, r.started_at, r.finished_at, r.status,
@@ -71,19 +75,34 @@ async def list_proposals(pool: AsyncConnectionPool, *, limit: int = 50) -> list[
     return [dict(r) for r in rows]
 
 
-async def list_research(pool: AsyncConnectionPool, *, limit: int = 50) -> list[dict]:
-    """The newest row per entity: re-researching supersedes, it does not stack."""
+async def list_research(
+    pool: AsyncConnectionPool, *, limit: int = 50, mine: tuple[UUID | None, list[int]] | None = None
+) -> list[dict]:
+    """The newest row per entity: re-researching supersedes, it does not stack.
+    `mine` is (user, stewarded org ids): only rows that user saved or about those orgs."""
+    where, params = "", ()
+    if mine is not None:
+        where, params = "WHERE e.researched_by = %s OR e.resolved_org_id = ANY(%s)", (mine[0], mine[1])
     async with pool.connection() as conn:
         rows = await (
             await conn.execute(
-                """
-                SELECT DISTINCT ON (slug)
-                       id, entity_name, canonical_name, entity_kind, slug, status,
-                       stopped_reason, summary, fact_count, sources_read, not_found,
-                       researched_at, saved_at, resolved_org_id, resolved_funder_id
-                FROM entity_research
-                ORDER BY slug, researched_at DESC
-                """
+                f"""
+                SELECT DISTINCT ON (e.slug)
+                       e.id, e.entity_name, e.canonical_name, e.entity_kind, e.slug, e.status,
+                       e.stopped_reason, e.summary, e.fact_count, e.sources_read, e.not_found,
+                       e.researched_at, e.saved_at, e.resolved_org_id, e.resolved_funder_id,
+                       EXISTS (SELECT 1 FROM jsonb_array_elements(e.findings) f
+                               WHERE f->>'source_url' LIKE %s) AS has_private,
+                       p.id AS promotion_id, coalesce(u.display_name, u.email) AS saved_by
+                FROM entity_research e
+                LEFT JOIN LATERAL (SELECT id, promoted_by FROM promotions
+                                   WHERE slug = e.slug AND undone_at IS NULL
+                                   ORDER BY promoted_at DESC LIMIT 1) p ON true
+                LEFT JOIN users u ON u.id = p.promoted_by
+                {where}
+                ORDER BY e.slug, e.researched_at DESC
+                """,
+                (PRIVATE_URL_LIKE, *params),
             )
         ).fetchall()
     return sorted(
