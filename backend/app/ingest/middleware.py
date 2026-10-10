@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 from importlib.resources import files
-from typing import Any
+from typing import Any, NotRequired
 
 from deepagents.backends.protocol import BackendProtocol
 from deepagents.middleware._utils import append_to_system_message
@@ -13,6 +13,7 @@ from deepagents.middleware.rubric import RubricEvaluation, RubricMiddleware
 from deepagents.middleware.summarization import SummarizationMiddleware, compute_summarization_defaults
 from langchain.agents.middleware import (
     AgentMiddleware,
+    AgentState,
     ModelCallLimitMiddleware,
     ModelFallbackMiddleware,
     ModelRequest,
@@ -130,6 +131,45 @@ class CallerNote(AgentMiddleware):
 
     def _with_note(self, request: ModelRequest) -> ModelRequest:
         return request.override(system_message=append_to_system_message(request.system_message, caller_note(scope())))
+
+    def wrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Any]) -> Any:
+        return handler(self._with_note(request))
+
+    async def awrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Awaitable[Any]]) -> Any:
+        return await handler(self._with_note(request))
+
+
+# The Import screen sends this context with the first message; the frontend uses the same words.
+TICKED_SOURCES = "Sources the person ticked for this Import run"
+
+
+class _AgUiState(AgentState):
+    pass
+
+
+# The key ag-ui-langgraph writes the client's context to; LangGraph drops a key no schema declares.
+_AgUiState.__annotations__["ag-ui"] = NotRequired[dict[str, Any]]
+
+
+def ticked_note(state: Any) -> str | None:
+    context = ((state or {}).get("ag-ui") or {}).get("context") or []
+    value = next((c.get("value") for c in context if isinstance(c, dict) and c.get("description") == TICKED_SOURCES),
+                 None)
+    if not value:
+        return None
+    return (f"The person ticked these sources before sending: {value}. The screen answers choose_sources with "
+            "them, so call it with exactly these and say nothing about choosing or confirming sources.")
+
+
+class TickedSources(AgentMiddleware):
+    """Tells the supervisor what the person already ticked, so its first reply does not ask again."""
+
+    state_schema = _AgUiState
+
+    def _with_note(self, request: ModelRequest) -> ModelRequest:
+        note = ticked_note(request.state)
+        return request.override(system_message=append_to_system_message(request.system_message, note)) if note \
+            else request
 
     def wrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Any]) -> Any:
         return handler(self._with_note(request))

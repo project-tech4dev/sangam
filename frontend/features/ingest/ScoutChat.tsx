@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useAgentContext } from "@copilotkit/react-core/v2";
 import { useAgentChat, type TraceStep } from "@/lib/useAgentChat";
 import { DoneReport } from "./components/DoneReport";
 import { SaveQuestions } from "./components/SaveQuestions";
@@ -17,6 +18,12 @@ import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
 import { EMPTY_SOURCES, nothingChosen, readingFrom, type SourcesChoice } from "./lib/sourcePick";
 import { fetchImportMessages } from "./lib/threads";
+
+// The backend's TickedSources looks this description up, so the supervisor's first reply does not ask again.
+function TickedSources({ choice }: { choice: SourcesChoice }) {
+  useAgentContext({ description: "Sources the person ticked for this Import run", value: choice });
+  return null;
+}
 
 // Reading a workbook or a Doc Vault, or a news import: data is being pulled even with no organisation rows yet.
 const pulls = (s: TraceStep) =>
@@ -194,8 +201,10 @@ export function ScoutChat({
   );
 
   // Mounted once the agent is registered (useInterrupt looks it up by id), and in both layouts, so no pause is missed.
+  const ticked = preset ?? (needsSources ? sources : null);
   const questions = isReady && (
     <>
+      {ticked && <TickedSources choice={ticked} />}
       <SourcesCard
         agentId={`sangam-import-${threadId}`}
         access={access}

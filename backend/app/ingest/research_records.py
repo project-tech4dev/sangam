@@ -620,6 +620,8 @@ class OrgIdentifierFinding(FindingBase, Sourced):
     registry nobody could read is 'check_blocked', never assumed valid."""
 
     concept: Literal["org_identifier"] = "org_identifier"
+    # An ID card prints only a label and a number, e.g. "PAN Card AAETS7554F".
+    evidence: str = Field(min_length=8, description="the line as printed on the document, label included")
     id_type: Literal["pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"]
     id_value: str | None = Field(
         default=None,
@@ -641,7 +643,7 @@ class OrgIdentifierFinding(FindingBase, Sourced):
 
     @model_validator(mode="after")
     def _a_status_has_what_it_needs(self) -> OrgIdentifierFinding:
-        check_registration(self.id_value, self.application_ref, self.status)
+        check_registration(self.id_value, self.application_ref, self.status, self.evidence_tier)
         return self
 
 

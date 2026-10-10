@@ -24,6 +24,7 @@ from app.ingest.middleware import (
     EscalateAfterFailedSave,
     ReadingLimit,
     RunSources,
+    TickedSources,
     call_limit,
     cheap_summarizer,
     fallback,
@@ -342,6 +343,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             cheap_summarizer(strong, utility, backend),
             CallerNote(),
             ChosenSources(),
+            TickedSources(),
         ],
         system_prompt=_render(_INSTRUCTIONS_MD, settings),
         # deepagents turns this into LangChain's HumanInTheLoopMiddleware: the run pauses on the
