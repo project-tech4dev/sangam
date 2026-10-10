@@ -13,8 +13,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Mapping
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Annotated
 from uuid import UUID
@@ -30,6 +31,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import get_settings
 from app.db.pool import OwnerPoolDep, get_pool
+from app.repositories import me as me_repo
 from app.repositories import threads
 from app.repositories import users as repo
 
@@ -206,6 +208,38 @@ async def require_staff(principal: Annotated[CurrentUser, Depends(require_princi
 chat_user_id: ContextVar[UUID | None] = ContextVar("chat_user_id", default=None)
 
 
+@dataclass(frozen=True)
+class CallerScope:
+    """What the person behind an agent run may reach. Agent tools use the owner pool, so they ask this."""
+
+    user_id: UUID | None
+    is_staff: bool
+    # org_id -> admin | member | steward (org_members).
+    org_roles: Mapping[int, str] = field(default_factory=dict)
+
+    def can_read_org(self, org_id: int | None) -> bool:
+        """An org's private data: staff, or any role in that org (a steward reads each org it supports)."""
+        return self.is_staff or (org_id is not None and org_id in self.org_roles)
+
+    def can_research_org(self, org_id: int | None) -> bool:
+        """Research and save an NGO: staff, or a steward of it. Members and admins research funders."""
+        return self.is_staff or (org_id is not None and self.org_roles.get(org_id) == "steward")
+
+    def can_save_funder(self) -> bool:
+        return self.is_staff or self.user_id is not None
+
+
+# Set with chat_user_id on every chat request. Unset outside one, which tools treat as no access.
+chat_scope: ContextVar[CallerScope | None] = ContextVar("chat_scope", default=None)
+
+
+async def caller_scope(pool, principal: CurrentUser) -> CallerScope:
+    if principal.id is None:
+        return CallerScope(user_id=None, is_staff=False)
+    rows = await me_repo.list_memberships(pool, principal.id)
+    return CallerScope(principal.id, principal.is_staff, {r["org_id"]: r["role"] for r in rows})
+
+
 def _thread_title(run: RunAgentInput) -> str | None:
     """The chat's first question, as one line, for the Recent Chats rail."""
     for message in run.messages:
@@ -230,6 +264,7 @@ async def _own_thread(request: Request, pool: OwnerPoolDep, principal: CurrentUs
     if owner != principal.id and not principal.is_staff:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
     chat_user_id.set(principal.id)
+    chat_scope.set(await caller_scope(pool, principal))
 
 
 async def chat_access(

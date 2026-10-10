@@ -77,6 +77,9 @@ def check_pick(path: str) -> tuple[str, str, str] | str:
     if parts is None:
         return f"{path!r}: not a <bucket>/<file> path from list_bucket_files."
     bucket, key = parts
+    # Only the staff bucket: a Doc Vault workbook is an org's private file, not a staff dataset.
+    if bucket != storage.STAFF_SOURCES:
+        return f"{path!r}: only files in the {storage.STAFF_SOURCES} bucket can be read as staff data."
     if not key.lower().endswith(".xlsx"):
         return f"{path!r}: only .xlsx workbooks can be read."
     # A registry-key folder names the source (and so its unit); any other file is named by its bucket.

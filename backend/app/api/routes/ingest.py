@@ -114,11 +114,11 @@ async def research_review(slug: str, user_id: UUID = Depends(get_current_user)) 
 @router.get("/workbooks", response_model=list[WorkbookOut], summary="The .xlsx workbooks in one bucket")
 async def list_workbooks(bucket: str = "staff-sources", user_id: UUID = Depends(get_current_user)) -> list[WorkbookOut]:
     """Lets the spreadsheets card show the files at the first pause, before the agent has listed them."""
-    from app.ingest.staff_sources import _BUCKET
     from app.integrations import storage
 
-    if not _BUCKET.match(bucket):
-        raise HTTPException(status_code=422, detail="not a bucket name")
+    # The staff bucket only, the same rule select_source_files applies.
+    if bucket != storage.STAFF_SOURCES:
+        raise HTTPException(status_code=422, detail=f"only the {storage.STAFF_SOURCES} bucket holds staff workbooks")
     out = []
     for f in await storage.list_all(bucket):
         if not f["key"].lower().endswith(".xlsx"):

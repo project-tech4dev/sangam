@@ -1460,12 +1460,22 @@ class TestListingWorkbooksForTheSpreadsheetsCard:
         assert body[0]["folder"] == "mca_csr" and body[0]["updated_at"] == "2026-09-01"
         assert body[1]["folder"] == "" and body[1]["folder_label"] == "Not in a folder"
 
-    async def test_a_bucket_name_that_is_a_path_is_refused(self, client_for):
+    @pytest.mark.parametrize("bucket", ["../x", "org-vault", "source-archive"])
+    async def test_any_bucket_but_the_staff_one_is_refused(self, client_for, bucket):
+        # The Doc Vault holds an org's private files; they are never listed as staff datasets.
         from app.api.routes import ingest as ingest_api
 
         async with client_for(ingest_api.router) as client:
-            response = await client.get("/api/ingest/workbooks", params={"bucket": "../x"})
+            response = await client.get("/api/ingest/workbooks", params={"bucket": bucket})
         assert response.status_code == 422
+
+
+class TestOnlyTheStaffBucketHoldsStaffData:
+    def test_a_vault_workbook_cannot_be_picked(self):
+        from app.ingest.staff_sources import check_pick
+
+        assert isinstance(check_pick("org-vault/12/abc-accounts.xlsx"), str)
+        assert check_pick("staff-sources/mca_csr/abc.xlsx") == ("staff-sources", "mca_csr/abc.xlsx", "mca_csr")
 
 
 class TestTheReviewCardSpeaksPlainly:

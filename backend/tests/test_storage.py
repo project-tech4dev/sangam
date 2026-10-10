@@ -494,6 +494,38 @@ BRIEF_ROW = {
 }
 
 
+class TestABriefShowsPublicSourcesOnly:
+    """Any signed-in user can open a brief, so a private source's words never reach it."""
+
+    STAFF = "https://staff-sources.sangam.invalid/0123456789ab"
+    VAULT = "https://org-vault.sangam.invalid/42"
+
+    def row(self, *urls):
+        findings = [
+            {"concept": "csr_spend", "evidence": f"The sentence from {u} that states it.", "source_url": u}
+            for u in urls
+        ]
+        return {**BRIEF_ROW, "summary": "Spent 40 crore, per its private accounts.", "findings": findings,
+                "sources_read": list(urls)}
+
+    def test_private_findings_sources_and_summary_are_left_out(self):
+        text = brief.entity_markdown(self.row("https://acme.org/csr", self.STAFF, self.VAULT))
+        assert "acme.org/csr" in text
+        assert "sangam.invalid" not in text and "private accounts" not in text
+        assert brief.PRIVATE_NOTE in text
+
+    def test_a_public_only_brief_is_unchanged(self):
+        text = brief.entity_markdown(self.row("https://acme.org/csr"))
+        assert "private accounts" in text and brief.PRIVATE_NOTE not in text
+
+    def test_the_private_domain_is_matched_by_host_not_by_substring(self):
+        from app.ingest.source_guards import is_private_source
+
+        assert is_private_source(self.VAULT) and is_private_source(self.STAFF)
+        assert not is_private_source("https://example.org/sangam.invalid/page")
+        assert not is_private_source(None)
+
+
 class TestBriefRendering:
     """`brief.py` renders; only `render_docs.py` writes repo files. The split is
     what lets a container-run tool publish the same bytes `make client-docs` writes.
