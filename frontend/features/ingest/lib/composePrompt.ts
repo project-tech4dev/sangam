@@ -1,16 +1,7 @@
 export type ImportTask = "funder" | "ngo" | "news";
-export type NewsSource = "India CSR" | "GDELT";
 
-/** "A", "A and B", "A, B and C". */
-export function listNames(names: string[]): string {
-  if (names.length <= 1) return names.join("");
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
-
-/** The request a task card sends: the same words staff typed before, so the agent sees no change. */
-export function composePrompt(task: ImportTask, names: string[], news: { source: NewsSource; count: number }): string {
-  if (task === "news") return `Run an import from ${news.source}, ${news.count} articles`;
-  return task === "ngo"
-    ? `Legal and operational standing of the NGOs ${listNames(names)}`
-    : `Funding profile for ${listNames(names)}`;
+/** What a task card writes into the composer: the same words staff typed before, so the agent sees no change. */
+export function leadIn(task: ImportTask): string {
+  if (task === "news") return "Run an import from India CSR, 10 articles";
+  return task === "ngo" ? "Legal and operational standing of the NGOs " : "Funding profile for ";
 }

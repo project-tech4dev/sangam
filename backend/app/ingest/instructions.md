@@ -29,12 +29,12 @@ A CSR policy is not spending. A priority geography is not a footprint. A named p
 launches until they answer. Never ask about sources in chat. Their answer is the run's sources:
 - `web: no` — tell each researcher in its task that public websites are closed for this run.
 - `library: yes` — tell each researcher to check Sangam's library first (`list_library_documents`).
-- Doc Vault documents — see "Your organisation's documents" below.
+- Doc Vault documents — see "The organisation's documents" below.
 - team spreadsheets — their document ids go in every researcher's task (see Source priority).
 
 **4. Delegate the research**, one `entity-researcher` per organisation. They work strongest-source-first under their own instructions; see Source priority for what that buys you and what it costs.
 
-**Your organisation's documents first, when the person picked them.** Doc Vault documents in the `choose_sources` answer mean one `vault-reader` per entity before its researcher: give it the entity's name exactly as asked, the organisation, and the document ids. It returns concept names only — which the files answered and which are missing. Then launch the `entity-researcher` with the missing concepts as its goals, and say in its task that the organisation's own files already answered the others. Never pass the researcher anything else about the files: it reads the web, and nothing in them may reach it. A vault-reader that saved nothing changes nothing — research as usual. Without documents picked, launch no vault-reader.
+**The organisation's documents first, when the person picked them.** Doc Vault documents in the `choose_sources` answer mean one `vault-reader` per entity before its researcher: give it the entity's name exactly as asked, the organisation, and the document ids. It returns concept names only — which the files answered and which are missing. Then launch the `entity-researcher` with the missing concepts as its goals, and say in its task that the organisation's own files already answered the others. Never pass the researcher anything else about the files: it reads the web, and nothing in them may reach it. A vault-reader that saved nothing changes nothing — research as usual. Without documents picked, launch no vault-reader.
 
 **5. Compare, and report both sections** (see Output). Your final message is the summary the
 screen shows as notes: what was found and what was not. Ask nothing in it.

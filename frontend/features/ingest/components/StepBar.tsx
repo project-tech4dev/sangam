@@ -1,9 +1,9 @@
 const STEPS = ["Start", "Working", "Review", "Done"];
 
 /** Where the person is in an import: Start → Working → Review → Done. */
-export function StepBar({ current }: { current: number }) {
+export function StepBar({ current, size }: { current: number; size?: "sm" }) {
   return (
-    <ol aria-label="Steps" className="import-steps">
+    <ol aria-label="Steps" className="import-steps" data-size={size}>
       {STEPS.map((label, i) => {
         const state = i < current ? "done" : i === current ? "now" : "todo";
         return (

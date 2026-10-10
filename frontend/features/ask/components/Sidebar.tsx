@@ -186,10 +186,10 @@ export function Sidebar({
       </div>
 
       {/* Tools that change the data, kept apart from conversations at the foot of the rail.
-          Shown to everyone signed in: Import offers each person the tasks their role allows. */}
+          Shown to everyone signed in: Scout offers each person the tasks their role allows. */}
       <Section label="Tools" open={open.tools} onToggle={() => toggle("tools")} className="rail-foot">
         <Link href="/import" className="rail-item">
-          Import
+          Sangam Scout
         </Link>
       </Section>
     </div>

@@ -297,6 +297,11 @@ Adding a table to the catalog is a **security decision**, not bookkeeping: a new
 invisible to the agent until someone puts it there, and boot logs any live table that is
 neither catalogued nor in `KNOWN_EXCLUDED`.
 
+**Sangam Scout is Sangam Import's name on screen.** The route stays `/import`, threads stay
+`import-<uuid>`, and the backend, endpoint and prompts keep "ingest"/"Import". Scout is one chat
+thread like Ask: task cards over the composer, sources ticked in the right rail before the first
+message (they answer `choose_sources`, so no card asks mid-run), then every turn inline.
+
 ## Conventions
 
 **Schema changes go in `db/migrations/*.sql`, never in `db/init/02_schema.sql`.** The

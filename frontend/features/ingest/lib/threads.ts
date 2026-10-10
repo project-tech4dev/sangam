@@ -17,7 +17,7 @@ export async function fetchImportThreads(): Promise<ThreadMeta[]> {
   const rows: ThreadRow[] = await res.json();
   return rows.map((r) => ({
     id: r.thread_id,
-    title: r.title ? titleFrom(r.title) : "Untitled import",
+    title: r.title ? titleFrom(r.title) : "Untitled chat",
     createdAt: Date.parse(r.created_at),
   }));
 }
@@ -29,6 +29,6 @@ export async function fetchImportMessages(threadId: string): Promise<Message[]> 
     cache: "no-store",
   });
   if (res.status === 404) return [];
-  if (!res.ok) throw new Error(`Could not load this import (${res.status}).`);
+  if (!res.ok) throw new Error(`Could not load this chat (${res.status}).`);
   return (await res.json()).messages;
 }

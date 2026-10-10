@@ -18,7 +18,7 @@ const LAYERS = [
 
 const SOURCES = [
   { name: "NGO Darpan", body: "The government registry of NGOs: registration, credentials such as 12A, 80G and FCRA, office bearers and working sectors." },
-  { name: "Funder filings and publications", body: "CSR reports, annual reports and statutory disclosures, read by Sangam Import from sources whose terms allow it." },
+  { name: "Funder filings and publications", body: "CSR reports, annual reports and statutory disclosures, read by Sangam Scout from sources whose terms allow it." },
   { name: "News and signals", body: "News coverage of organisations and funders, collected and held for review before it is shown." },
   { name: "Organisations' own documents", body: "What an organisation uploads to its Doc vault. Private to that organisation unless it chooses otherwise." },
 ];

@@ -88,22 +88,10 @@ function Row({ row }: { row: BoardRow }) {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-/** The Working step: a title, one line of totals, a row per organisation, and the last few things that happened. */
-export function WorkingBoard({
-  steps,
-  running,
-  paused,
-  laneOwners,
-}: {
-  steps: TraceStep[];
-  running: boolean;
-  paused: boolean;
-  laneOwners: Record<string, string>;
-}) {
-  const board = boardOf(steps, running, laneOwners, paused);
-  if (steps.length === 0 && !running) return null;
-  const rows = board.rows;
-  const finished = rows.length > 0 && board.ready === rows.length;
+/** The run's headline and the line under it. */
+function runTitle(steps: TraceStep[], running: boolean, paused: boolean, laneOwners: Record<string, string>) {
+  const rows = boardOf(steps, running, laneOwners, paused).rows;
+  const finished = rows.length > 0 && rows.every((r) => r.state === "ready");
   // Every organisation is researched and the run goes on: the only thing left is saving what was approved.
   const saving = finished && running;
   const title = saving
@@ -111,9 +99,9 @@ export function WorkingBoard({
     : finished
       ? "Research finished"
       : rows.length > 0
-        ? `Sangam is researching ${plural(rows.length, "organisation")}`
+        ? `Scout is researching ${plural(rows.length, "organisation")}`
         : running
-          ? "Sangam is working"
+          ? "Scout is working"
           : paused
             ? "Paused — waiting for you"
             : "Finished";
@@ -122,6 +110,28 @@ export function WorkingBoard({
     : finished
       ? "Nothing is saved yet. Look through what was found, then choose what to keep."
       : "This usually takes a few minutes for each one. You can leave this page open and come back.";
+  return { title, sub, count: rows.length };
+}
+
+/** A run's progress: a title, one line of totals, a row per organisation, and the last few things that happened. */
+export function WorkingBoard({
+  steps,
+  running,
+  paused,
+  laneOwners,
+  compact = false,
+}: {
+  steps: TraceStep[];
+  running: boolean;
+  paused: boolean;
+  laneOwners: Record<string, string>;
+  /** Inside the pinned panel, whose header already carries the title. */
+  compact?: boolean;
+}) {
+  const board = boardOf(steps, running, laneOwners, paused);
+  if (steps.length === 0 && !running) return null;
+  const rows = board.rows;
+  const { title, sub } = runTitle(steps, running, paused, laneOwners);
   // Without rows (a news import), or rows no step could be tied to, this line is the only sign of what is happening.
   const showLine = rows.length === 0 || (running && !board.attributed);
   const from = readingFrom(steps);
@@ -135,11 +145,15 @@ export function WorkingBoard({
 
   return (
     <section className="import-working" aria-label="Progress">
-      <div className="import-head">
-        <h1 className="import-h1">{title}</h1>
-        <p className="import-sub">{sub}</p>
-        {from && <p className="import-reading-from">Reading from: {from}</p>}
-      </div>
+      {compact ? (
+        from && <p className="import-reading-from">Reading from: {from}</p>
+      ) : (
+        <div className="import-head">
+          <h1 className="import-h1">{title}</h1>
+          <p className="import-sub">{sub}</p>
+          {from && <p className="import-reading-from">Reading from: {from}</p>}
+        </div>
+      )}
       <div className="import-board">
         <div className="import-board-head">
           <div className="import-board-stats">

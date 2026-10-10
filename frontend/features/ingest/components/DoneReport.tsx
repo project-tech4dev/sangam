@@ -244,17 +244,20 @@ export function DoneReport({
   slugs,
   since,
   onStartOver,
-  onPending,
+  onCounts,
   fallback,
+  compact = false,
 }: {
   slugs: string[];
   /** When the run began, so only names it queued are shown. */
   since: number | null;
   onStartOver: () => void;
-  /** How many organisations still wait for a review, so the step bar can say Review or Done. */
-  onPending?: (n: number) => void;
+  /** How many still wait for a review and how many were saved, so the step bar can say Review or Done. */
+  onCounts?: (counts: { pending: number; saved: number }) => void;
   /** Shown until the numbers arrive, and instead of them when none come back. */
   fallback: ReactNode;
+  /** Inside the pinned panel, whose strip already carries the title. */
+  compact?: boolean;
 }) {
   const [all, setAll] = useState<ResearchCoverage[] | null>(null);
   const [queued, setQueued] = useState<QueueItem[]>([]);
@@ -282,9 +285,10 @@ export function DoneReport({
   }, [key, since]);
 
   const pending = all === null ? null : all.filter((c) => !isSaved(c) && !declined.includes(c.slug)).length;
+  const savedCount = all === null ? null : all.filter(isSaved).length;
   useEffect(() => {
-    if (pending !== null) onPending?.(pending);
-  }, [pending, onPending]);
+    if (pending !== null && savedCount !== null) onCounts?.({ pending, saved: savedCount });
+  }, [pending, savedCount, onCounts]);
 
   async function reload(slug: string) {
     const fresh = await get<ResearchCoverage>(`/api/ingest/research/${encodeURIComponent(slug)}/coverage`);
@@ -300,7 +304,7 @@ export function DoneReport({
   const added = saved.reduce((n, c) => n + addedOf(c), 0);
   const reviewing = (pending ?? 0) > 0;
   const title = reviewing
-    ? "Review what Sangam found"
+    ? "Review what Scout found"
     : saved.length > 0
       ? `Saved ${plural(saved.length, "organisation")}`
       : "Nothing saved";
@@ -318,10 +322,14 @@ export function DoneReport({
 
   return (
     <section className="done" aria-label={reviewing ? "Review" : "Done"}>
-      <div className="import-head">
-        <h1 className="import-h1">{title}</h1>
+      {compact ? (
         <p className="import-sub">{sub}</p>
-      </div>
+      ) : (
+        <div className="import-head">
+          <h1 className="import-h1">{title}</h1>
+          <p className="import-sub">{sub}</p>
+        </div>
+      )}
 
       <div className="done-table">
         <div className="done-legend" aria-hidden>
@@ -357,7 +365,7 @@ export function DoneReport({
                 : `Sangam couldn't place “${q.raw_name}”.`}
             </strong>
           ))}
-          <span className="done-queued-note">Answer these on the Import page under Waiting for you.</span>
+          <span className="done-queued-note">Answer these in Scout&apos;s side rail under Waiting for you.</span>
         </div>
       )}
 

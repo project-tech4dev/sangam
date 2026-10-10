@@ -635,23 +635,31 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .import-shell { height: calc(100dvh - var(--nav-h)); display: flex; flex-direction: column; }
 .import-loading { padding: 24px; }
 .import-layout { flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden; background: var(--color-surface); }
-.import-layout-main { flex: 1; min-width: 0; min-height: 0; display: flex; }
+.import-layout-main { flex: 1; min-width: 0; min-height: 0; display: flex; gap: 24px; }
 .import-threads { gap: 2px; }
+/* The workspace is the whole screen: the site footer would make the page scroll behind it. */
+body:has(.import-shell) > footer { display: none; }
+/* Each pane keeps its own scroll; reaching an end never moves the page. */
+.import-threads, .scout-thread, .scout-rail, .scout-run-body, .scout-run-full-body, .chat-pane.is-empty.scout-empty { overscroll-behavior: contain; }
+.scout-thread, .scout-rail { scrollbar-gutter: stable; }
+/* Scout's right rail: where it may read from, then what is waiting. Sits in .evidence-rail-slot. */
+.scout-rail { width: 340px; flex-shrink: 0; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.scout-rail-section { padding: 18px; }
+/* The task cards over the empty composer. */
+/* The researched list sits under the composer, so centring would push the top out of reach. */
+.chat-pane.is-empty.scout-empty { justify-content: flex-start; padding-top: 32px; }
+.scout-task-row { max-width: 860px; width: 100%; margin: 0 auto; }
+/* The sources, under the composer only when the rail is hidden. */
+.scout-sources-inline { display: none; max-width: 860px; width: 100%; margin: 0 auto; }
+@media (max-width: 900px) { .scout-sources-inline { display: flex; flex-direction: column; gap: 10px; } }
 .import-threads-month { padding: 10px 12px 4px; }
 .import-threads-row { justify-content: space-between; font-weight: 500; }
 .import-threads-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .import-threads-date { font-size: var(--fs-xs); color: var(--color-neutral-700); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .import-threads-row[data-active="true"] .import-threads-date { color: inherit; }
-/* A reopened import that had stopped at a question nobody can answer from here now. */
-.import-view { flex: 1; min-width: 0; }
-.import-view-open { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
 .import-title { font-size: var(--fs-lg); }
 .import-lede { margin: 6px 0 0; }
 .import-error { color: var(--color-bad); }
-.import-ws { display: flex; flex-direction: column; gap: 28px; min-height: 420px; max-width: 880px; }
-.import-turns { display: grid; gap: 18px; }
-.import-turn { display: grid; gap: 10px; }
-.import-question { font-weight: 700; margin: 0; }
 .import-failure {
   border-left: 3px solid var(--color-bad);
   padding-left: 12px;
@@ -663,11 +671,8 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 }
 .import-failure-label { font-weight: 600; }
 .import-failure-note { color: var(--color-bad); font-size: var(--fs-xs); }
-.import-form { display: flex; gap: 8px; margin-top: auto; }
-.import-form .input { flex: 1; }
 
 /* --- Import: the guided steps ---------------------------------------------- */
-.import-intro { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .import-hint { font-size: var(--fs-xs); color: var(--color-neutral-700); }
 .import-sub { margin: 0; font-size: var(--fs-sm); color: var(--color-neutral-700); max-width: 60ch; text-wrap: pretty; }
 .import-h1 { font-size: var(--fs-xl); letter-spacing: -0.01em; margin: 0; line-height: 1.15; }
@@ -685,32 +690,7 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .import-link:focus-visible { outline: 2px solid var(--color-accent-750); outline-offset: 2px; }
 .import-link:disabled { cursor: default; color: var(--color-neutral-700); }
 
-.import-steps { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; align-items: center; }
-.import-step { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; }
-.import-step-dot {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  background: var(--color-bg);
-  color: var(--color-neutral-700);
-  border: 1px solid var(--color-divider);
-}
-.import-step-label { font-size: var(--fs-sm); font-weight: 500; color: var(--color-neutral-700); white-space: nowrap; }
-.import-step-line { flex: 1; height: 2px; min-width: 16px; border-radius: 2px; background: var(--color-divider); }
-.import-step[data-state="done"] .import-step-dot { background: var(--color-accent-2-700); border-color: var(--color-accent-2-700); color: #fff; }
-.import-step[data-state="done"] .import-step-line { background: var(--color-accent-2-600); }
-.import-step[data-state="done"] .import-step-label { color: inherit; }
-.import-step[data-state="now"] .import-step-dot { background: var(--color-accent-750); border-color: var(--color-accent-750); color: #fff; }
-.import-step[data-state="now"] .import-step-label { color: inherit; font-weight: 700; }
 
-.import-start { display: flex; flex-direction: column; gap: 28px; }
 .import-head { display: flex; flex-direction: column; gap: 6px; }
 .import-tasks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
 .import-task {
@@ -742,8 +722,6 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
   background: radial-gradient(circle, var(--color-accent-2-700) 4px, transparent 4.5px);
 }
 .import-names { display: flex; flex-direction: column; gap: 10px; }
-.import-name-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.import-name-row .input { flex: 1; min-width: 220px; background: var(--color-bg); }
 .import-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .import-chip {
   display: inline-flex;
@@ -756,24 +734,9 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
   font-size: var(--fs-sm);
   font-weight: 600;
 }
-.import-chip-x {
-  all: unset;
-  cursor: pointer;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.import-chip-x:focus-visible { outline: 2px solid var(--color-accent-2-900); }
 .import-file { cursor: pointer; border: 0; padding-right: 14px; }
 .import-file[aria-pressed="false"] { background: var(--color-bg); color: var(--color-neutral-700); box-shadow: inset 0 0 0 1px var(--color-divider); }
 .import-file:focus-visible { outline: 2px solid var(--color-accent-2-900); }
-.import-news { display: flex; gap: 28px; flex-wrap: wrap; }
-.import-news-opt { display: flex; flex-direction: column; gap: 8px; }
-.import-begin { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; border-top: 1px solid var(--color-divider); padding-top: 20px; }
-.import-advanced { margin-top: -12px; }
 
 .import-section { display: flex; flex-direction: column; gap: 10px; }
 .import-section-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
@@ -792,9 +755,18 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 }
 .import-shelf-item { border-bottom: 1px solid var(--color-divider); }
 .import-shelf-item:last-child { border-bottom: 0; }
-.import-shelf-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
+/* A fixed grid, so every pill and every action sits in the same column down the list. */
+.import-shelf-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 96px 200px; align-items: center; column-gap: 14px; padding: 12px 16px; }
+.import-shelf-tag { justify-self: center; }
+.import-shelf-actions { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 16px; justify-items: start; }
+.import-shelf-actions > :only-child { grid-column: 1 / -1; }
 .import-shelf-review { padding: 0 16px 16px; }
-.import-shelf-name { display: flex; flex-direction: column; flex: 1; min-width: 180px; font-size: var(--fs-sm); }
+.import-shelf-name { display: flex; flex-direction: column; min-width: 0; font-size: var(--fs-sm); }
+.import-shelf-name > strong, .import-shelf-name > .import-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) {
+  .import-shelf-row { grid-template-columns: 32px minmax(0, 1fr); row-gap: 8px; }
+  .import-shelf-tag, .import-shelf-actions { grid-column: 2; justify-self: start; }
+}
 .import-disclosure > summary { list-style: none; display: block; }
 .import-disclosure > summary::-webkit-details-marker { display: none; }
 .import-disclosure > summary::after { content: " →"; }
@@ -940,16 +912,64 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .done-section { display: flex; flex-direction: column; gap: 6px; }
 .done-section-title { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
 .done-held { margin: 0; padding-left: 18px; font-size: var(--fs-sm); }
-.import-notes { background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-surface); overflow: hidden; }
-.import-notes-toggle { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; cursor: pointer; }
-.import-notes-toggle:focus-visible { outline: 2px solid var(--color-accent-750); outline-offset: -2px; }
-.import-notes-chev { font-size: var(--fs-xs); font-weight: 600; color: var(--color-accent-750); }
-.import-notes-body { padding: 4px 18px 18px; border-top: 1px solid var(--color-divider); font-size: var(--fs-sm); line-height: 1.6; min-width: 0; }
-.import-notes-body h1, .import-notes-body h2, .import-notes-body h3 { font-size: var(--fs-md); margin: 18px 0 8px; }
-.import-notes-body ul, .import-notes-body ol { margin: 0 0 10px; padding-left: 20px; }
-.import-notes-body pre { background: var(--color-surface); border-radius: var(--radius-row); padding: 10px 12px; overflow-x: auto; font-size: var(--fs-xs); }
-.import-notes-body code { font-size: 0.92em; }
-.import-notes-scroll { overflow-x: auto; margin: 0 0 10px; }
+/* Where the run is: Start → Working → Review → Done. */
+.import-steps { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; align-items: center; }
+.import-step { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; }
+.import-step-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: var(--color-bg);
+  color: var(--color-neutral-700);
+  border: 1px solid var(--color-divider);
+}
+.import-step-label { font-size: var(--fs-sm); font-weight: 500; color: var(--color-neutral-700); white-space: nowrap; }
+.import-step-line { flex: 1; height: 2px; min-width: 16px; border-radius: 2px; background: var(--color-divider); }
+.import-step[data-state="done"] .import-step-dot { background: var(--color-accent-2-700); border-color: var(--color-accent-2-700); color: var(--color-bg); }
+.import-step[data-state="done"] .import-step-line { background: var(--color-accent-2-600); }
+.import-step[data-state="done"] .import-step-label { color: inherit; }
+.import-step[data-state="now"] .import-step-dot { background: var(--color-accent-750); border-color: var(--color-accent-750); color: var(--color-bg); }
+.import-step[data-state="now"] .import-step-label { color: inherit; font-weight: 700; }
+/* Scout's reply, as a chat message beside its mark. */
+.scout-reply { display: flex; gap: 12px; min-width: 0; }
+.scout-reply-mark { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; background: var(--color-accent-750); color: var(--color-bg); font-family: var(--font-heading); font-weight: 700; font-size: var(--fs-sm); }
+.scout-reply-body { flex: 1; min-width: 0; font-size: var(--fs-sm); line-height: 1.6; }
+.scout-reply-body h1, .scout-reply-body h2, .scout-reply-body h3 { font-size: var(--fs-md); margin: 18px 0 8px; }
+.scout-reply-body ul, .scout-reply-body ol { margin: 0 0 10px; padding-left: 20px; }
+.scout-reply-body pre { background: var(--color-surface); border-radius: var(--radius-row); padding: 10px 12px; overflow-x: auto; font-size: var(--fs-xs); }
+.scout-reply-body code { font-size: 0.92em; }
+.scout-reply-scroll { overflow-x: auto; margin: 0 0 10px; }
+/* The run, as one strip over the thread; its detail drops down over the chat rather than pushing it away. */
+.scout-run { flex-shrink: 0; max-width: 860px; width: 100%; margin: 0 auto; position: relative; z-index: 2; padding: 0; overflow: visible; }
+.scout-run-head { display: flex; align-items: center; gap: 16px; padding: 10px 14px; flex-wrap: wrap; }
+.scout-run-head .import-steps { flex: 1 1 320px; }
+.scout-run-status { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
+.scout-run-toggle { white-space: nowrap; }
+.scout-run-body { position: absolute; top: calc(100% + 6px); left: 0; right: 0; max-height: 35vh; overflow-y: auto; padding: 16px 18px 18px; }
+.scout-run-body[data-tall="true"] { max-height: 62vh; }
+.scout-run-body[hidden] { display: none; }
+.scout-run-full { background: var(--color-surface); border-radius: var(--radius-surface); box-shadow: var(--shadow-md); width: min(1100px, calc(100% - 48px)); height: calc(100dvh - var(--nav-h) - 48px); margin-top: var(--nav-h); display: flex; flex-direction: column; overflow: hidden; }
+.scout-run-full .scout-run-head { border-bottom: 1px solid var(--color-divider); padding: 14px 20px; }
+.scout-run-full-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px 28px; }
+.import-steps[data-size="sm"] .import-step-dot { width: 20px; height: 20px; font-size: var(--fs-xs); }
+.import-steps[data-size="sm"] .import-step-label { font-size: var(--fs-xs); }
+/* A follow-up box: one line that grows, with the buttons beside it. */
+.composer.is-compact { display: flex; flex-direction: row; align-items: flex-end; gap: 10px; padding: 8px 10px 8px 14px; }
+.composer.is-compact textarea.composer-input { flex: 1; min-height: 0; max-height: 160px; resize: none; padding: 8px 4px; }
+.composer.is-compact .composer-hint { display: none; }
+.composer.is-compact .composer-row { flex-shrink: 0; }
+/* Room between turns, and a rule before each new question. */
+.scout-thread .chat-turns { gap: 28px; }
+.scout-thread .chat-turn + .chat-turn { border-top: 1px solid var(--color-divider); padding-top: 24px; }
+.scout-run-marker { all: unset; box-sizing: border-box; align-self: flex-start; margin-left: 46px; font-size: var(--fs-xs); font-weight: 600; color: var(--color-accent-750); cursor: pointer; }
+.scout-run-marker:focus-visible { outline: 2px solid var(--color-accent-750); outline-offset: 2px; }
 
 /* --- Import: the Review step ------------------------------------------------- */
 .review { display: flex; flex-direction: column; gap: 20px; }
