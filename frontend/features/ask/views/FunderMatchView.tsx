@@ -2,12 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import type { MatchList, MatchTier, MeOut } from "@/lib/api";
+import { BucketCards, FilterRow, SearchBox } from "@/components/ui";
+import type { MatchList, MatchRow, MeOut } from "@/lib/api";
 import { getMatches, getMe, runMatch } from "./funder-match/api";
-import { MatchCard, shortDate, TIER_LABEL } from "./funder-match/MatchCard";
+import { funderTypeGroup, funderTypeLabel } from "./funder-match/funderType";
+import { MatchCard, shortDate } from "./funder-match/MatchCard";
 
 type Org = { slug: string; name: string };
-type Filter = "all" | "strong" | "medium";
+type Bucket = "all" | "strong" | "medium";
+
+// What search reads: the funder's name and type, and every reason on its card.
+const haystack = (m: MatchRow) =>
+  [m.funder.name, funderTypeLabel(m.funder.funder_type), ...m.card.reasons.map((r) => r.text)].join(" ").toLowerCase();
 
 /* Every funder ranked for one organisation from its latest saved run; staff, stewards and admins can rerun it. */
 export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; name: string }[] }) {
@@ -15,7 +21,9 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
   const [orgSlug, setOrgSlug] = useState("");
   const [list, setList] = useState<MatchList | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [bucket, setBucket] = useState<Bucket>("all");
+  const [type, setType] = useState("all");
+  const [query, setQuery] = useState("");
   const [running, setRunning] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
@@ -48,7 +56,9 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
   function pick(slug: string) {
     setList(null);
     setSaved(null);
-    setFilter("all");
+    setBucket("all");
+    setType("all");
+    setQuery("");
     setOrgSlug(slug);
   }
 
@@ -68,9 +78,17 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
     }
   }
 
-  const ranked = (list?.matches ?? []).filter((m) => m.tier === "strong" || m.tier === "medium");
-  const shown = filter === "all" ? ranked : ranked.filter((m) => m.tier === filter);
-  const folded = (list?.matches ?? []).filter((m) => m.tier === "weak" || m.tier === "not_scored");
+  const all = list?.matches ?? [];
+  const ranked = all.filter((m) => m.tier === "strong" || m.tier === "medium");
+  const folded = all.filter((m) => m.tier === "weak" || m.tier === "not_scored");
+  const q = query.trim().toLowerCase();
+  // The dropdown and the search narrow every bucket; the bucket picks the tier.
+  const passes = (m: MatchRow) => (type === "all" || funderTypeGroup(m.funder.funder_type) === type) && (!q || haystack(m).includes(q));
+  const narrowed = ranked.filter(passes);
+  const shown = bucket === "all" ? narrowed : narrowed.filter((m) => m.tier === bucket);
+  const atDefault = bucket === "all" && type === "all" && !q;
+  const types = [...new Set(all.map((m) => funderTypeGroup(m.funder.funder_type)))].sort();
+  const stewarded = me?.memberships.filter((m) => m.role === "steward").length ?? 0;
   const run = list?.run ?? null;
 
   return (
@@ -109,7 +127,9 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
           </div>
         ) : choices.length > 1 ? (
           <label className="fm-org-pick">
-            <span className="eyebrow">{me?.is_staff ? "Organisation · staff" : "Organisation"}</span>
+            <span className="eyebrow">
+              {me?.is_staff ? "Organisation · all" : stewarded > 1 ? `Organisation · ${stewarded} you steward` : "Organisation"}
+            </span>
             <select className="input" value={active} onChange={(event) => pick(event.target.value)}>
               {choices.map((org) => (
                 <option key={org.slug} value={org.slug}>
@@ -144,45 +164,43 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
         </div>
       ) : (
         <>
-          <div className="fm-stats" role="group" aria-label="Summary">
-            {(["strong", "medium"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                className="fm-stat"
-                data-active={filter === t}
-                onClick={() => setFilter(filter === t ? "all" : t)}
-              >
-                <span className="fm-stat-num">{list.counts[t]}</span>
-                <span className="fm-stat-label">{TIER_LABEL[t]}s</span>
-                <span className="muted fm-meta">{t === "strong" ? "Score 75 or more" : "Score 55–74"}</span>
-              </button>
-            ))}
-            <div className="fm-stat">
-              <span className="fm-stat-num">{run.funders_checked}</span>
-              <span className="fm-stat-label">Funders checked</span>
-              <span className="muted fm-meta">Every funder in the base</span>
-            </div>
-          </div>
-
-          <div className="fm-filters" role="group" aria-label="Show">
-            {(["all", "strong", "medium"] as Filter[]).map((f) => (
-              <button key={f} type="button" className="pill" data-active={filter === f} onClick={() => setFilter(f)}>
-                {f === "all" ? "All fits" : TIER_LABEL[f as MatchTier]}
-              </button>
-            ))}
-            <span className="muted fm-meta">Ranked by fit score, highest first</span>
-          </div>
+          <BucketCards<Bucket>
+            items={[
+              { key: "all", label: "All fits", count: narrowed.length, sub: "Ranked by fit score" },
+              { key: "strong", label: "Strong", count: narrowed.filter((m) => m.tier === "strong").length, sub: "Score 75 or more" },
+              { key: "medium", label: "Medium", count: narrowed.filter((m) => m.tier === "medium").length, sub: "Score 55–74" },
+            ]}
+            active={bucket}
+            onPick={setBucket}
+          />
+          <FilterRow
+            filters={[
+              {
+                key: "type",
+                label: "Funder type",
+                value: type,
+                defaultValue: "all",
+                options: [["all", "All funder types"], ...types.map((t): [string, string] => [t, t])],
+                onChange: setType,
+              },
+            ]}
+          />
+          <SearchBox value={query} onChange={setQuery} placeholder="Search funders and reasons…" />
+          <p className="list-count">
+            {shown.length} of {ranked.length} scored funders · ranked by fit score, highest first
+          </p>
 
           {shown.length === 0 ? (
-            <div className="muted">No {filter === "all" ? "strong or medium" : filter} fits in this run.</div>
+            <div className="muted">No funders match these filters for {list.org.name}.</div>
           ) : (
             shown.map((m) => <MatchCard key={m.id} match={m} rank={ranked.indexOf(m) + 1} />)
           )}
 
-          {folded.length > 0 && (
+          {atDefault && folded.length > 0 && (
             <details className="import-disclosure fm-weak">
-              <summary>Weak or no fit · {folded.length}</summary>
+              <summary>
+                Weak or no fit · {folded.length} scored below 55 or checked with nothing in common
+              </summary>
               <div className="fm-weak-list">
                 {folded.map((m) => (
                   <div key={m.id} className="fm-weak-row">
