@@ -157,7 +157,7 @@ drop, because `verify_against_db()` raises at boot when the catalog names a miss
   the data warrants them, for example "topic stories have no entity; a zero for an org does not
   mean nothing was said about its area".
 - The citation marker for the agent is `[news:N]`, the story id.
-- The migration number comes after `0038_research_saved` (staging is at 0034).
+- The migration number is the next free one after the latest on master (`0041_catalog_writes` on 10 Oct; staging was at 0034).
 
 ## 4. Who sees what
 
