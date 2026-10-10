@@ -16,7 +16,10 @@ export function ScreenReview({
   async function decide(decision: SaveDecision) {
     if (decision.type === "reject") return onDeclined();
     const decisions = (decision.edited_action.args.decisions ?? {}) as Record<string, string>;
-    onSaved(await saveResearch(slug, decisions));
+    const result = await saveResearch(slug, decisions);
+    // Nothing written (a close name left unanswered): the card stays open with the reason.
+    if (!result.entity) throw new Error(`Nothing was saved. ${result.reasons.join(" ")}`.trim());
+    onSaved(result);
   }
   return <ReviewCard slug={slug} onDecide={decide} inline />;
 }

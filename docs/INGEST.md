@@ -382,7 +382,9 @@ alias → boilerplate → trigram → queue, and only the first four merge. Step
 person accepts, because a Graphiti spike once merged Christian Medical College, Vellore into the
 registry org Better Life Foundation. "Axis Bank" and "Axis Bank Limited" resolve; "Tata Trusts"
 and "Tata Foundation" queue, because there the boilerplate is doing the work of telling them
-apart.
+apart. When saving research, Review asks "Is this the same organisation?". "Yes, the same" saves to the stored
+one and keeps the research's spelling as an alias, "No, they're different" adds a new one (staff only, for
+an NGO), and "Not sure" saves nothing.
 
 **An organisation that is not one organisation.** "NSE-listed companies spent ₹22,212 crore" is a
 real sentence with a real number and no funder in it. `reject_if_aggregate()` raises on any record

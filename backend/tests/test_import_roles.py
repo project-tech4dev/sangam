@@ -11,8 +11,9 @@ from langchain_core.messages import SystemMessage
 
 from app.core import security
 from app.core.security import CallerScope, chat_scope
-from app.ingest import caller
+from app.ingest import caller, promote
 from app.ingest.tools import catalog_tools, pipeline_tools, research_tools
+from app.ingest.writer import Gate
 
 ME = UUID(int=2)
 MEMBER = CallerScope(ME, False, {7: "member"}, {7: "Arpan"})
@@ -153,12 +154,28 @@ class TestPromotingResearch:
     async def test_a_new_ngo_is_the_teams_to_add(self, monkeypatch):
         from app.ingest.matcher import Match
 
-        async def no_match(conn, name):
-            return Match(method="new")
+        async def no_match(conn, name, identifiers=None):
+            return Match(method="none")
 
-        monkeypatch.setattr(catalog_tools, "resolve_org", no_match)
+        monkeypatch.setattr(promote, "resolve_org", no_match)
         why = await catalog_tools._may_save(_Conn([]), STEWARD, {"slug": "new-ngo", "entity_kind": "org"})
         assert "Sangam team adds new NGOs" in why
+
+    @pytest.mark.parametrize(("choice", "allowed"), [("update", True), ("new", False), (None, False)])
+    async def test_a_steward_who_says_a_close_name_is_theirs_may_save(self, monkeypatch, choice, allowed):
+        from app.ingest.matcher import Match
+
+        kabil = {"id": 8, "name": "Kabil Trust", "score": 0.7}
+
+        async def close(conn, name, identifiers=None):
+            return Match("trigram", None, 0.7, [kabil])
+
+        monkeypatch.setattr(promote, "resolve_org", close)
+        asked = Gate(plan=True)
+        asked.on_entity("orgs", "Kabil", kabil)
+        decisions = {asked.items[0]["id"]: choice} if choice else {}
+        row = {"slug": "kabil", "entity_name": "Kabil", "entity_kind": "org"}
+        assert (await catalog_tools._may_save(_Conn([]), STEWARD, row, decisions) is None) is allowed
 
 
 ROW = {"slug": "acme", "entity_kind": "funder", "summary": "From the sheet", "fact_count": 2,
@@ -379,3 +396,32 @@ class TestSaveFromTheScreen:
         refused = await _post(MEMBER, "kabil", {})
         assert refused.status_code == 403 and refused.json()["detail"].startswith("Kabil is an NGO")
         assert (await _post(MEMBER, "missing", {})).status_code == 404
+
+
+class TestACloseNameIsAsked:
+    """Research whose name only resembles a stored NGO's waits for "the same organisation?"."""
+
+    CLOSE = {"id": 12, "name": "Peoples Resource Development Association", "score": 0.6}
+
+    def _answer(self, choice):
+        from app.ingest.matcher import Match
+
+        asked = Gate(plan=True)
+        asked.on_entity("orgs", "PRDA", self.CLOSE)
+        gate = Gate({asked.items[0]["id"]: choice} if choice else {})
+        report = {"reasons": []}
+        return promote._answered(gate, "orgs", "PRDA", Match("trigram", None, 0.6, [self.CLOSE]), report), gate, report
+
+    def test_the_same_saves_to_the_stored_ngo_by_alias(self):
+        match, _, _ = self._answer("update")
+        assert (match.method, match.entity_id) == ("alias", 12)
+
+    def test_different_makes_a_new_one(self):
+        match, _, _ = self._answer("new")
+        assert match.method == "none" and not match.resolved
+
+    @pytest.mark.parametrize("choice", [None, "skip"])
+    def test_unanswered_or_unsure_holds_it(self, choice):
+        match, gate, report = self._answer(choice)
+        assert match is None and "Not merged" in report["reasons"][0]
+        assert [q["stored_name"] for q in gate.asked()] == ([self.CLOSE["name"]] if choice is None else [])
