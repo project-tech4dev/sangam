@@ -5,6 +5,7 @@ import { Check, CircleAlert } from "lucide-react";
 import { EntityMark, Tag } from "@/components/ui";
 import type { MatchDetail, MatchRow, MatchTier } from "@/lib/api";
 import { getDetail } from "./api";
+import { funderTypeLabel } from "./funderType";
 
 export const TIER_LABEL: Record<MatchTier, string> = {
   strong: "Strong fit",
@@ -43,7 +44,7 @@ export function MatchCard({ match, rank }: { match: MatchRow; rank: number }) {
         <EntityMark name={match.funder.name} size={40} />
         <div className="fm-name">
           <h3 className="card-title">{match.funder.name}</h3>
-          {match.funder.funder_type && <span className="muted fm-meta">{match.funder.funder_type.replaceAll("_", " ")}</span>}
+          <span className="muted fm-meta">{funderTypeLabel(match.funder.funder_type)}</span>
         </div>
         <div className="fm-score">
           <span className="fm-score-num">
