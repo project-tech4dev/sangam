@@ -13,6 +13,7 @@ from typing import Any
 
 from ag_ui.core.types import RunAgentInput
 from copilotkit import LangGraphAGUIAgent
+from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
 
 from app.core.config import Settings
@@ -367,6 +368,16 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
     def _collect_interrupts(tasks) -> list:
         # A task answered while its siblings stay paused keeps its interrupt, with a result beside it.
         return [i for t in tasks or () if getattr(t, "result", None) is None for i in getattr(t, "interrupts", ()) or ()]
+
+    def langgraph_default_merge_state(self, state, messages, input):
+        # The browser re-sends tool results under its own ids, so the library's id dedup appends them twice.
+        answered = {
+            m.tool_call_id for m in state.get("messages", [])
+            if isinstance(m, ToolMessage)
+            and not (isinstance(m.content, str) and self._ORPHAN_TOOL_MSG_RE.match(m.content))
+        }
+        messages = [m for m in messages if not (isinstance(m, ToolMessage) and m.tool_call_id in answered)]
+        return super().langgraph_default_merge_state(state, messages, input)
 
     async def prepare_stream(
         self,

@@ -22,9 +22,8 @@ const runtime = new CopilotRuntime({
 
 const handler = createCopilotRuntimeHandler({ runtime, basePath: "/api/copilotkit" });
 
-// A turn streams SSE for as long as it runs, so the platform default kills it
-// mid-answer. The ceiling is plan-dependent; lower this if a deploy rejects it.
-export const maxDuration = 300;
+// An Import turn streams for 15–20 minutes; must match backend/vercel.json (Pro's extended-duration beta).
+export const maxDuration = 1800;
 
 export const GET = handler;
 export const POST = handler;
