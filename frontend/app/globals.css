@@ -503,6 +503,30 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .view-title { font-size: var(--fs-lg); }
 .view-measure { max-width: 760px; }
 
+/* --- List pages: bucket cards, one row of dropdowns, search, a list that grows ---- */
+.bucket-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.bucket-card { background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-surface); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; text-align: left; color: var(--color-text); font-family: var(--font-body); cursor: pointer; }
+.bucket-card:hover { border-color: var(--color-accent-2-600); }
+.bucket-card[data-active="true"] { background: var(--color-accent-2-700); border-color: var(--color-accent-2-700); color: #fff; }
+.bucket-card-top { display: flex; align-items: baseline; gap: 8px; }
+.bucket-card-num { font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
+.bucket-card-label { font-weight: 600; }
+.bucket-card-sub { font-size: var(--fs-xs); color: var(--color-neutral-700); }
+.bucket-card[data-active="true"] .bucket-card-sub { color: color-mix(in srgb, #fff 80%, transparent); }
+.filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.filter { appearance: none; width: 100%; text-overflow: ellipsis; font-family: var(--font-body); font-size: var(--fs-xs); font-weight: 600; color: var(--color-accent-2-900); background: var(--color-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%233d472b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center; border: 1px solid var(--color-accent-2-200); border-radius: var(--radius-pill); padding: 6px 30px 6px 12px; cursor: pointer; }
+.filter:hover { border-color: var(--color-accent-2-600); }
+.filter:focus-visible { outline: 2px solid var(--color-accent-2-700); outline-offset: 2px; }
+.filter[data-set="true"] { background: var(--color-accent-2-700) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center; border-color: var(--color-accent-2-700); color: #fff; }
+.filter option { background: var(--color-bg); color: var(--color-text); }
+.search-box { display: flex; align-items: center; gap: 8px; background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-pill); padding: 8px 14px; color: var(--color-neutral-700); }
+.search-box:focus-within { border-color: var(--color-accent-2-600); }
+.search-box input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: var(--font-body); font-size: var(--fs-sm); color: var(--color-text); }
+.list-count { font-size: var(--fs-xs); color: var(--color-neutral-700); }
+.list-more { align-self: center; }
+.list-end { text-align: center; font-size: var(--fs-xs); }
+@media (max-width: 560px) { .filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* --- Funder Match ------------------------------------------------------------ */
 .fm-head { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
 .fm-head-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

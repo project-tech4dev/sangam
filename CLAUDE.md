@@ -361,6 +361,11 @@ computed at runtime (a progress width, a measured height, a per-row colour from 
 300 older ones remain; a PR that touches a component moves that component's styles to classes,
 as `features/ask/components/Sidebar.tsx` and the `.rail-*` classes did.
 
+**List pages share one pattern** (`frontend/components/ui/ListPage.tsx`): `BucketCards` (lean cards,
+one always selected, dark sage), one `FilterRow` of dropdowns (dark sage once moved off their default),
+a `SearchBox`, and `ListMore`/`useShowMore` for a list that grows as you scroll. Funder Match,
+Proposals and Media & Signals use them; a new list page does too rather than its own pills or stats.
+
 **Icons come from Lucide (`lucide-react`); never draw an SVG by hand.** Size, stroke and colour
 are set by the `.icon` classes in `globals.css`, never as props: one stroke weight everywhere,
 and the colour follows the surrounding text. Text-like marks stay as glyphs (⟨ ⟩ ✓ → ⌘↵), as
