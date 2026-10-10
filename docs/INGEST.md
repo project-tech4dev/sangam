@@ -22,9 +22,9 @@ outside its scope.
 
 | Role | Researches | Reads first | Also |
 |---|---|---|---|
-| Org member or admin | any funder | their org's Doc Vault | saves after the same Review pause |
-| Steward | the NGOs it supports, and any funder | those orgs' Doc Vaults | saves both |
-| Staff | anything | staff spreadsheets, any vault | the adapter path, deleting research, undoing a save |
+| Org member or admin | any funder | their org's Doc Vault, if they tick it | saves after the same Review pause |
+| Steward | the NGOs it supports, and any funder | those orgs' Doc Vaults, if ticked | saves both |
+| Staff | anything | team spreadsheets, any vault, if ticked | the adapter path, deleting research, undoing a save |
 
 `/research`, `/research/{slug}/review|coverage` and `/threads*` return the caller's own research
 and, for stewards, their orgs'. `/sources`, `/proposals`, `/runs*`, `/queue*` and `/workbooks`
@@ -33,6 +33,15 @@ stay staff-only.
 **The leak rule.** Private text (a vault file or a staff spreadsheet) never sits in a context that
 can reach the web. The vault is read by its own subagent, which has no web tools, and the
 researcher locks its web tools once it reads staff rows (`StaffLastLock`).
+
+**A person chooses the sources, before anything is read.** The supervisor's first move is
+`choose_sources`, the one tool in `INTERRUPT_ON`: the run pauses on a "Where should Sangam read
+from?" card with public websites, Sangam's library, the person's Doc Vault files and, for staff,
+the team spreadsheets. The answer is the tool call's arguments (an edit; a reject means public
+websites only), so it lives in the thread's checkpoint and no table holds it. `ChosenSources`
+refuses to launch a subagent before that answer and sets `run_sources.CURRENT` around each
+`task`; `RunSources`, on every subagent, refuses any read outside it: a web tool when websites
+are off, a library tool when the library is off, a vault or staff document that was not ticked.
 
 ## The two paths
 
@@ -157,12 +166,13 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 
 | Module | Tools |
 |---|---|
-| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `list_storage_buckets` · `list_bucket_files` · `select_source_files` · `read_source_rows` · `read_workbook` |
+| `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `choose_sources` · `read_source_rows` · `read_workbook` |
 | `catalog_tools.py` | `research_goals` · `funder_dossier` · `compare_with_catalog` · `coverage_report` · `promote_research` · `record_registry_check` |
+| `library_tools.py` | `list_library_documents` · `read_library_document` |
 | `vault_tools.py` | `list_vault_documents` · `read_vault_document` · `save_vault_findings` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
-**Sangam Import** (main) holds thirteen: the eight pipeline tools, `funder_dossier`,
+**Sangam Import** (main) holds eleven: six pipeline tools (not the two readers), `funder_dossier`,
 `compare_with_catalog`, `coverage_report`, `record_registry_check` and `publish_brief`. It supervises. It cannot open a web page, and the
 only catalog row it writes is a staff member's own registry check (`app/ingest/manual_checks.py`:
 checker from the chat's user, ranked as `manual_check`, evidenced only with a document of that
@@ -185,21 +195,18 @@ tool calls and never reached its report, because each document displaced the las
 An isolated subagent returns its conclusion, not its reading. It hands back a thin
 `ResearchSummary` — counts and status, not the findings, which it has already saved itself.
 
-**Picking the workbooks, with a person in the loop.** The supervisor lists the buckets
-(`list_storage_buckets`), then the `.xlsx` files in one (`list_bucket_files`), and proposes a pick
-with `select_source_files(paths)`. Both `list_bucket_files` and `select_source_files` are in
-`INTERRUPT_ON` (`app/ingest/agent.py`), which deepagents turns into LangChain's
-`HumanInTheLoopMiddleware`: the run pauses twice, and the Import screen answers both from one
-`SpreadsheetsCard` (CopilotKit's `useInterrupt`). At the first pause the card lists the bucket's
-workbooks itself (`GET /api/ingest/workbooks`), so staff tick files straight away; approving
-the listing remembers the ticks, and the second pause is answered with them, unasked. "No, only
-public websites" rejects the first pause, and nothing is read. The resume is `{decisions: [...]}`, delivered as `Command(resume=…)`. On approval
-the tool downloads each file, writes its `documents` row (`extractor_version
-'select_source_files/1'`) and returns the document ids the researchers' tasks carry. Any
-bucket's `.xlsx` is selectable, at any depth; a first folder named for a registry key also names
-the source (and its unit). A file
-dropped in through the Supabase dashboard therefore works with no script; `make staff-source`
-still writes the same row.
+**Picking the workbooks, with a person in the loop.** Staff tick team spreadsheets on the sources
+card, which lists the `staff-sources` bucket itself (`GET /api/ingest/workbooks`). On the answer,
+`choose_sources` registers each picked file as a `documents` row (`staff_sources.register`) and
+returns the document ids the researchers' tasks carry; `RunSources` refuses a staff read of any
+other id. Any `.xlsx` in the bucket is selectable, at any depth; a first folder named for a
+registry key also names the source (and its unit). A file dropped in through the Supabase
+dashboard therefore works with no script; `make staff-source` still writes the same row.
+
+**Sangam's library.** `list_library_documents` and `read_library_document` (`library_tools.py`)
+let a researcher read the public documents Sangam already holds (`documents.is_public`) from their
+archived PDF in `source-archive/`, and cite each finding with the document's own `source_url`.
+A link-only row needs `read_page`, so it is readable only when websites are ticked too.
 
 **`workbook-reader`** — for a request about everyone in a file ("research every funder in the CSO
 workbook"), where there is no name to give a researcher. Isolated, one tool: `read_workbook`
@@ -207,9 +214,8 @@ workbook"), where there is no name to give a researcher. Isolated, one tool: `re
 `read_source_rows`). It returns `WorkbookEntities` — names, kinds and the marker of each name's
 cell — and the supervisor launches a researcher per name. The supervisor itself never reads a row.
 
-**Staff workbooks.** `read_source_rows` is the researcher's eighth tool (the supervisor does not
-have it). It reads the workbooks staff picked (its `documents` argument; all registered ones
-without it) from Storage with openpyxl and returns header rows and matching rows as
+**Staff workbooks.** `read_source_rows` is a researcher tool (the supervisor does not
+have it). It reads the workbooks staff ticked (its `documents` argument, which must name them) from Storage with openpyxl and returns header rows and matching rows as
 `cell=value`, each cited `[source:<document>#<sheet>!<cell>]`. There is no layout parser: how each
 sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". On a sheet
 of side-by-side blocks (a sparse title row over a dense header row), a matched row shows only the
@@ -224,7 +230,7 @@ states one, crore for the filing exports (`staff_sources.SOURCE_UNITS`), and the
 otherwise (`hold_mismatched`). Tool output reaches the model provider and, with tracing on, Langfuse,
 like every tool output.
 
-**`vault-reader`** — runs first when the request names Doc Vault files. Its tools are
+**`vault-reader`** — runs first when the person ticked Doc Vault files on the sources card. Its tools are
 `list_vault_documents`, `read_vault_document`, `save_vault_findings` and `research_goals`, and no
 web tools. It cites `[vault:<doc>#p3]` or `[vault:<doc>#Sheet!B12]` under
 `https://org-vault.sangam.invalid/<doc_id>` and saves to `vault_research` (one row per org, RLS to

@@ -66,9 +66,6 @@ STAFF_TOOLS = [
     (pipeline_tools.run_import_now, {"goal": "x"}),
     (pipeline_tools.import_run_summary, {}),
     (pipeline_tools.pending_resolutions, {}),
-    (pipeline_tools.list_storage_buckets, {}),
-    (pipeline_tools.list_bucket_files, {"bucket": "staff-sources"}),
-    (pipeline_tools.select_source_files, {"paths": ["staff-sources/a.xlsx"]}),
     (pipeline_tools.read_source_rows, {"name": "Arpan"}),
     (pipeline_tools.read_workbook, {"documents": [1]}),
     (catalog_tools.record_registry_check, {"org": "arpan", "id_type": "pan", "status": "registered",
@@ -212,9 +209,9 @@ class TestTheSupervisorKnowsWhoItWorksFor:
     def test_staff_get_everything(self):
         assert "Sangam team" in caller.caller_note(STAFF)
 
-    def test_anyone_else_skips_the_staff_workbook_pause(self):
+    def test_anyone_else_never_proposes_team_spreadsheets(self):
         for scope in (MEMBER, STEWARD):
-            assert "do not call list_storage_buckets, list_bucket_files" in caller.caller_note(scope)
+            assert "never propose staff_paths" in caller.caller_note(scope)
 
     def test_the_note_is_appended_to_the_system_message(self):
         from app.ingest.middleware import CallerNote

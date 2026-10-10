@@ -47,7 +47,7 @@ comparison table.
    that check with `record_registry_check`.
 3. **Funders' own pages naming the CSO as a grantee**, and company CSR filings naming it as the
    agency that did the work. Match on name **and** district or state: short names collide.
-4. **Staff datasets**, picked first with `select_source_files` (staff confirm the pick), then read
+4. **Staff datasets**, picked on the sources card (`choose_sources`), then read
    through `read_source_rows` with those document ids and the organisation's name — **last of the
    reads**, because the first call closes the web tools. Each row carries a
    `[source:<document>#<sheet>!<cell>]` marker; quote the line with the marker of the cell that

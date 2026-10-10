@@ -20,7 +20,7 @@ below (#1 filings, #3 CSO workbook) are read last, together, whatever their rank
 
 1. **Statutory CSR filings for the corporate entity.** The filer carries the Section 135
    obligation — often the parent company, not the foundation that runs the programmes.
-   - Pick the filing files first with `select_source_files` (staff confirm the pick), then have the
+   - The filing files are the team spreadsheets picked on the sources card (`choose_sources`); have the
      researcher read them with `read_source_rows` (last, see above) on those document ids, under the
      filer's registered name, then the foundation's.
    - Record the filer as the parent and the foundation as its child (`funders.parent_id`). Never merge them.

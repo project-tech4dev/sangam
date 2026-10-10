@@ -339,19 +339,21 @@ the design system's iconography page says.
 that every field traces to a source.
 
 **A tool of either agent lives under a `tools/` package, and nothing else does.**
-`app/agent/tools/` for Ask Sangam, `app/ingest/tools/` for Sangam Import — three modules
+`app/agent/tools/` for Ask Sangam, `app/ingest/tools/` for Sangam Import — five modules
 there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
-`catalog_tools.py` (what Sangam already holds), `research_tools.py` (the open web).
+`catalog_tools.py` (what Sangam already holds), `research_tools.py` (the open web),
+`library_tools.py` (public documents Sangam archived), `vault_tools.py` (an org's Doc Vault).
 Both agents register their list in one place — `build.py` and `agent.py` respectively — and
 a test walks the package to prove every tool defined is also registered.
 
-**Sangam Import has two human-in-the-loop steps: `list_bucket_files` (staff choose the bucket)
-and `select_source_files` (staff choose the files).** Both are in `INTERRUPT_ON` in
-`app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns into LangChain's
-`HumanInTheLoopMiddleware`; the Import screen answers with CopilotKit's `useInterrupt`
-(`SpreadsheetsCard`, one card for both pauses) and resumes with `{decisions: [...]}`. Any bucket's `.xlsx` can be
-picked, in any folder or none. A picked file becomes a
-`documents` row, so no script is needed; `make staff-source` still writes the same row. The
+**Sangam Import has one human-in-the-loop step before it reads anything: `choose_sources`.**
+It is in `INTERRUPT_ON` in `app/ingest/agent.py`, which `create_deep_agent(interrupt_on=…)` turns
+into LangChain's `HumanInTheLoopMiddleware`; the Import screen answers with CopilotKit's
+`useInterrupt` (`SourcesCard`: public websites, Sangam's library, Doc Vault files, and for staff the
+team spreadsheets) and resumes with `{decisions: [...]}`. The answer stays in the checkpoint as the
+tool call's arguments, no table. `ChosenSources` holds every subagent until it exists, and
+`RunSources` (`app/ingest/middleware.py`) refuses any read outside it. A picked spreadsheet becomes
+a `documents` row, so no script is needed; `make staff-source` still writes the same row. The
 supervisor never reads rows: when a request is about everyone in a file, the `workbook-reader`
 subagent (one tool, `read_workbook`) returns the names, and a researcher per name follows.
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { tasksFor, type ImportAccess, type VaultFile } from "../lib/access";
-import { composePrompt, type ImportTask, type NewsSource, type VaultPick } from "../lib/composePrompt";
+import { tasksFor, type ImportAccess } from "../lib/access";
+import { composePrompt, type ImportTask, type NewsSource } from "../lib/composePrompt";
 
 const TASKS: { id: ImportTask; title: string; desc: string }[] = [
   { id: "funder", title: "Research a funder", desc: "How to apply, who is eligible, and which documents they want." },
@@ -19,12 +19,10 @@ export function StartStep({
   onStart,
   disabled,
   access,
-  vaultFiles = [],
 }: {
   onStart: (prompt: string) => void;
   disabled: boolean;
   access: ImportAccess;
-  vaultFiles?: VaultFile[];
 }) {
   const allowed = tasksFor(access);
   const tasks = TASKS.filter((t) => allowed.includes(t.id));
@@ -33,15 +31,7 @@ export function StartStep({
   const [draft, setDraft] = useState("");
   const [source, setSource] = useState<NewsSource>("India CSR");
   const [count, setCount] = useState(5);
-  const [picked, setPicked] = useState<VaultPick | null>(null);
   const isNews = task === "news";
-
-  // One organisation's files per request: picking another's starts a new pick.
-  function toggleFile(f: VaultFile) {
-    const ids = picked?.org === f.org ? picked.ids : [];
-    const next = ids.includes(f.id) ? ids.filter((i) => i !== f.id) : [...ids, f.id];
-    setPicked(next.length ? { org: f.org, orgName: f.orgName, ids: next } : null);
-  }
 
   const has = (name: string) => names.some((n) => n.toLowerCase() === name.toLowerCase());
 
@@ -54,13 +44,17 @@ export function StartStep({
   // A name still in the box counts: people type one and press Start.
   const typed = draft.trim();
   const pending = typed && !has(typed) ? [...names, typed] : names;
-  const label = isNews ? "Get the news →" : task === "ngo" ? `Check ${plural(pending.length, "NGO")} →` : `Research ${plural(pending.length, "funder")} →`;
+  const label = isNews
+    ? "Get the news →"
+    : task === "ngo"
+      ? `Check ${plural(pending.length, "NGO")} →`
+      : `Research ${plural(pending.length, "funder")} →`;
 
   return (
     <section className="import-start">
       <div className="import-head">
         <h1 className="import-h1">What would you like to find out?</h1>
-        <p className="import-sub">Sangam reads public websites and filings, and shows you where every answer came from.</p>
+        <p className="import-sub">Next you choose where Sangam reads from, and it shows you where every answer came from.</p>
       </div>
 
       <div role="radiogroup" aria-label="Task" className="import-tasks">
@@ -138,32 +132,6 @@ export function StartStep({
         </div>
       )}
 
-      {!isNews && vaultFiles.length > 0 && (
-        <div className="import-names">
-          <span className="import-label">Read your organisation&apos;s documents first? (optional)</span>
-          <div className="import-chips">
-            {vaultFiles.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className="import-chip import-file"
-                aria-pressed={picked?.org === f.org && picked.ids.includes(f.id)}
-                onClick={() => toggleFile(f)}
-              >
-                {f.title || `Document ${f.id}`}
-                {access.orgs.length > 1 && <span className="import-hint"> · {f.orgName}</span>}
-              </button>
-            ))}
-          </div>
-          <span className="import-hint">
-            Sangam reads them privately, then searches the web only for what they don&apos;t answer.{" "}
-            {task === "ngo"
-              ? "What they say is shown for review and never saved to the NGO's record."
-              : "Only the funder's general facts are saved from them; your own grants and contacts stay with you."}
-          </span>
-        </div>
-      )}
-
       {isNews && (
         <div className="import-news">
           <div className="import-news-opt">
@@ -194,7 +162,7 @@ export function StartStep({
           type="button"
           className="btn btn-primary"
           disabled={disabled || (!isNews && pending.length === 0)}
-          onClick={() => onStart(composePrompt(task, pending, { source, count }, picked ?? undefined))}
+          onClick={() => onStart(composePrompt(task, pending, { source, count }))}
         >
           {label}
         </button>

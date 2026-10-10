@@ -80,7 +80,7 @@ class QueueAnswerOut(ReadModel):
 
 
 class WorkbookOut(ReadModel):
-    """One .xlsx in a bucket, as the spreadsheets card lists it; `path` is what select_source_files takes."""
+    """One .xlsx in a bucket, as the spreadsheets card lists it; `path` is what choose_sources takes as a staff path."""
 
     path: str
     name: str

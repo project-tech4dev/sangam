@@ -805,6 +805,7 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .import-pick-title { font-size: var(--fs-lg); }
 .import-pick-text { font-size: var(--fs-sm); color: var(--color-neutral-800); max-width: 64ch; text-wrap: pretty; }
 .import-pick-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.import-reading-from { margin: 0; font-size: var(--fs-xs); color: var(--color-neutral-700); }
 .import-seg { align-self: flex-start; }
 .import-files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; background: var(--color-bg); border-radius: var(--radius-row); overflow: hidden; }
 .import-files li + li { border-top: 1px solid var(--color-divider); }
