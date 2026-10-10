@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { tasksFor, type ImportAccess } from "../lib/access";
+import { tasksFor, type ImportAccess, type VaultFile } from "../lib/access";
 import { composePrompt, type ImportTask, type NewsSource } from "../lib/composePrompt";
+import { EMPTY_SOURCES, nothingChosen, type SourcesChoice } from "../lib/sourcePick";
+import { SourcePicker } from "./SourcePicker";
 
 const TASKS: { id: ImportTask; title: string; desc: string }[] = [
   { id: "funder", title: "Research a funder", desc: "How to apply, who is eligible, and which documents they want." },
@@ -14,19 +16,22 @@ const NEWS_COUNTS = [5, 10, 20];
 
 const plural = (n: number, word: string) => `${n || ""} ${word}${n === 1 ? "" : "s"}`.trim();
 
-/** Step 1: pick a task and the names, and the request is written for you. */
+/** Step 1: pick a task, where Sangam may read from, and the names; the request is written for you. */
 export function StartStep({
   onStart,
   disabled,
   access,
+  vaultFiles,
 }: {
-  onStart: (prompt: string) => void;
+  onStart: (prompt: string, sources: SourcesChoice | null) => void;
   disabled: boolean;
   access: ImportAccess;
+  vaultFiles: VaultFile[];
 }) {
   const allowed = tasksFor(access);
   const tasks = TASKS.filter((t) => allowed.includes(t.id));
-  const [task, setTask] = useState<ImportTask>("funder");
+  const [task, setTask] = useState<ImportTask | null>(null);
+  const [sources, setSources] = useState<SourcesChoice>(EMPTY_SOURCES);
   const [names, setNames] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [source, setSource] = useState<NewsSource>("India CSR");
@@ -54,7 +59,7 @@ export function StartStep({
     <section className="import-start">
       <div className="import-head">
         <h1 className="import-h1">What would you like to find out?</h1>
-        <p className="import-sub">Next you choose where Sangam reads from, and it shows you where every answer came from.</p>
+        <p className="import-sub">Choose what to find out, where Sangam may read from, and who. Every answer shows its source.</p>
       </div>
 
       <div role="radiogroup" aria-label="Task" className="import-tasks">
@@ -76,7 +81,20 @@ export function StartStep({
         ))}
       </div>
 
-      {!isNews && (
+      {task !== null && !isNews && (
+        <div className="import-names">
+          <span className="import-label">Where should Sangam read from?</span>
+          <SourcePicker
+            value={sources}
+            onChange={setSources}
+            staff={access.staff}
+            vaultFiles={vaultFiles}
+            showOrg={access.orgs.length > 1}
+          />
+        </div>
+      )}
+
+      {task !== null && !isNews && (
         <div className="import-names">
           <label htmlFor="import-name" className="import-label">
             {task === "ngo" ? "Which NGOs?" : "Which funders?"}
@@ -161,8 +179,8 @@ export function StartStep({
         <button
           type="button"
           className="btn btn-primary"
-          disabled={disabled || (!isNews && pending.length === 0)}
-          onClick={() => onStart(composePrompt(task, pending, { source, count }))}
+          disabled={disabled || task === null || (!isNews && (pending.length === 0 || nothingChosen(sources)))}
+          onClick={() => task && onStart(composePrompt(task, pending, { source, count }), isNews ? null : sources)}
         >
           {label}
         </button>

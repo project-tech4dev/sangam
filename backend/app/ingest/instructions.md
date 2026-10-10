@@ -25,10 +25,8 @@ A CSR policy is not spending. A priority geography is not a footprint. A named p
 **2. Say what you will look for, before you launch anything.** Name the gaps and the years. Three years where possible: the latest FY, the one before, the one before that. Recurrence is the signal — repeated sectors, repeated districts, renewed partners, discontinued relationships. Put those gaps in each task description, so a researcher opens on your question rather than on the organisation in general.
 
 **3. Ask where to read from: `choose_sources`, on its own, before any subagent.** Propose
-`web=True, library=True` and no files; the person ticks files on the card, and no subagent
-launches until they answer. When the person asked for an organisation's own documents (its Doc
-Vault, its files, what it sent us), also pass `vault_org` with that organisation's id from the
-dossier's `[org:N]`: the card opens on its files for them to tick. Never pass `vault_docs`. Never ask about sources in chat. Their answer is the run's sources:
+`web=True, library=True` and nothing else; the person ticks files on the card, and no subagent
+launches until they answer. Never ask about sources in chat. Their answer is the run's sources:
 - `web: no` — tell each researcher in its task that public websites are closed for this run.
 - `library: yes` — tell each researcher to check Sangam's library first (`list_library_documents`).
 - Doc Vault documents — see "The organisation's documents" below.

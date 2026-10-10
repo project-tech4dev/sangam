@@ -3,8 +3,6 @@ import type { VaultFile } from "./access";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 
-export type VaultOrg = { id: number; slug: string; name: string };
-
 type DocumentRow = {
   id: number;
   org_id: number | null;
@@ -25,12 +23,4 @@ export async function vaultFilesOf(org: { slug: string; name: string }): Promise
   return page.items
     .filter((d) => d.is_public === false && d.org_id !== null)
     .map((d) => ({ id: d.id, title: d.title, doc_type: d.doc_type, org: org.slug, orgId: d.org_id!, orgName: org.name }));
-}
-
-export async function searchOrgs(q: string): Promise<VaultOrg[]> {
-  return get<VaultOrg[]>(`/api/orgs?q=${encodeURIComponent(q)}&limit=8`);
-}
-
-export async function orgById(id: number): Promise<VaultOrg> {
-  return get<VaultOrg>(`/api/orgs/${id}`);
 }

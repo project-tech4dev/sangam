@@ -11,6 +11,11 @@ export type SourcesChoice = {
   staff_paths: string[];
 };
 
+/** Nothing ticked: the person chooses every source. */
+export const EMPTY_SOURCES: SourcesChoice = { web: false, library: false, vault_org: null, vault_docs: [], staff_paths: [] };
+
+export const nothingChosen = (c: SourcesChoice) => !c.web && !c.library && c.vault_docs.length === 0 && c.staff_paths.length === 0;
+
 /** The tool call a HumanInTheLoopMiddleware interrupt is paused on, or null. */
 function pausedAction(value: unknown, name: string): ActionRequest | null {
   let request = value;

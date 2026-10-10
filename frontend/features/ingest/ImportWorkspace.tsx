@@ -11,6 +11,7 @@ import { StepBar } from "./components/StepBar";
 import { WorkingBoard } from "./components/WorkingBoard";
 import type { ImportAccess, VaultFile } from "./lib/access";
 import { slugsOf } from "./lib/done";
+import type { SourcesChoice } from "./lib/sourcePick";
 import { failuresOf } from "./lib/failures";
 import { fetchImportMessages } from "./lib/threads";
 
@@ -57,6 +58,8 @@ export function ImportWorkspace({
   const [toReview, setToReview] = useState(0);
   // The first request came from the task cards, so it is Sangam's wording, not something to show back.
   const [guided, setGuided] = useState(false);
+  // What the Start step ticked; it answers the run's sources pause so the card is not shown again.
+  const [preset, setPreset] = useState<SourcesChoice | null>(null);
   // Stable, because PauseSignal re-runs its effect whenever this changes.
   const onReview = useCallback((open: boolean) => {
     setPaused(open);
@@ -90,12 +93,14 @@ export function ImportWorkspace({
       {atStart && !advanced && (
         <>
           <StartStep
-            onStart={(prompt) => {
+            onStart={(prompt, sources) => {
               setGuided(true);
+              setPreset(sources);
               void submit(prompt);
             }}
             disabled={!isReady}
             access={access}
+            vaultFiles={vaultFiles}
           />
           <button type="button" className="import-link import-advanced" onClick={() => setAdvanced(true)}>
             Advanced: type your own request
@@ -147,7 +152,7 @@ export function ImportWorkspace({
 
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
       {isReady && (
-        <SourcesCard agentId={`sangam-import-${threadId}`} access={access} vaultFiles={vaultFiles} onPaused={setPaused} />
+        <SourcesCard agentId={`sangam-import-${threadId}`} access={access} vaultFiles={vaultFiles} preset={preset} onPaused={setPaused} />
       )}
       {isReady && <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={onReview} />}
 
