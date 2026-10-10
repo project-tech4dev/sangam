@@ -28,6 +28,7 @@ is a copy of values.
 | `tokens/typography.css` | `--fs-*`, `--font-*` in `globals.css`; the font itself is loaded by `next/font` in `frontend/app/layout.tsx` |
 | `tokens/spacing.css` | `--radius`, `--radius-pill/surface/row`, `--shadow-*`, `--page-max`, `--page-pad`, `--nav-h` in `globals.css` |
 | `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link` |
+| `tokens/scout.css` | Sangam Scout's classes in `globals.css`, from "Import workspace" through "Import: the Review step", imported by `styles.css` after `base.css` |
 | `guidelines/*.html` | Nothing; they are the specimen pages to check the repo against |
 
 The design system also carries tokens the repo does not use yet (`--surface-*`, `--text-*`,
@@ -63,7 +64,7 @@ from the components above, with sample data.
 | `Registry.jsx` | `features/registry/RegistryClient.tsx` |
 | `Profile.jsx` | `app/registry/[slug]/page.tsx`, `features/registry/ProfileTabs.tsx` |
 | `AskWorkspace.jsx` | `features/ask/preview/AskPreview.tsx`, `features/ask/components/*`, `features/ask/views/*` |
-| `Import.jsx`, `importData.js` | `features/ask/views/ImportView.tsx`, `features/ingest/*` (the step cards are the `.import-*`, `.review-*`, `.done-*` classes, recreated inline) |
+| `Import.jsx`, `importData.js`, `import.html` | Sangam Scout at `/import`: `features/ingest/ImportPage.tsx`, `ScoutChat.tsx`, `components/*` (thread, run strip, rail and step bar use the `.scout-*` and `.import-*` classes; the Review and Done cards are still recreated inline) |
 | `index.html`, `import.html` | the routing and navbar behaviour in `app/` and `components/layout/` |
 
 ## How to sync
