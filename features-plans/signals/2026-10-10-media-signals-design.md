@@ -42,10 +42,10 @@ column for marking.
 | # | Decision |
 |---|---|
 | D1 | **Two kinds of feed.** Entity feeds search for each watchlist organisation and funder by name. Topic feeds search for FCRA, CSR and funding, and NGO news in the North East, by state. |
-| D2 | **Tavily is the collector**, for news and for LinkedIn, Instagram and X posts. Sangam links to posts; it does not scrape the platforms. **Facebook is left out**: its posts carry no usable date and repeat what organisations post elsewhere. |
+| D2 | **Tavily is the collector**, for news and for LinkedIn, Instagram and X posts. Social posts are **obtained through Tavily's search index, never from the platforms**: Sangam does not fetch a linkedin.com, instagram.com or x.com page, does not archive one, and stores only what Tavily returns (the post's URL, title and snippet), the summary and headline written from it, and the scores. A post is kept only when it is about a watchlist organisation or funder. **Facebook is left out**: its posts carry no usable date and repeat what organisations post elsewhere. |
 | D3 | **One story per event.** Copies of the same story (syndicated news, the same post on several platforms) are grouped under one story with a main link; the rest are listed as "also reported in". The main link is the best source: news before organisation sites before social. |
 | D4 | **No manual review.** A story is shown or not by two scores the classifier gives each link to an entity or topic: **match** (is it about this?) and **confidence** (how sure). Staff can hide a wrong match; nothing waits for approval. |
-| D5 | **Three bars, set in code** (`config.py`, like the model tiers) and never on a screen: listed for signed-in users at match ≥ 0.6 and confidence ≥ 0.8; public on a Registry profile at match ≥ 0.7 and confidence ≥ 0.9, news and events only; a **negative** story public only at match ≥ 0.9 and confidence ≥ 0.95. |
+| D5 | **Three bars, set in code** (`config.py`, like the model tiers) and never on a screen: listed for signed-in users at match ≥ 0.6 and confidence ≥ 0.8; public on a Registry profile at match ≥ 0.7 and confidence ≥ 0.9, news and events only; a **negative** story public only at match ≥ 0.9 and confidence ≥ 0.95. A negative story that clears that bar is worth publishing; whether to keep doing so is reviewed once there is real volume. |
 | D6 | **Scores show as High, Medium or Low**, never as numbers. Match: High from 0.8, Medium from 0.6. Confidence: High from 0.9, Medium from 0.8. |
 | D7 | **Every story is tagged with place, scope and topic**: the states and districts it names (mapped to `locations`), a scope (district, state, North East, national, international), a topic, the five sector domains where they apply, and a sentiment. |
 | D8 | **"My area" is a plain rule, not a ranking.** For a signed-in member: stories in their organisations' states, plus FCRA and civil-society news from any North East state, plus national policy news that affects NGOs. National explainers and opinion stay out of it. One click widens to all of the North East, or everywhere. |
@@ -65,6 +65,8 @@ later work; nothing here needs it.
    two scopes, the open web and an allowlist of CSR and North East outlets. For each topic feed, its
    queries. Tavily `/search`, `topic: news`, `days` = the window (30 by default; 7 for a weekly run),
    `search_depth: advanced`, `include_raw_content`. Retries and a concurrency limit, as in the trial.
+   For a LinkedIn, Instagram or X result, Tavily's title and content are the whole record: the
+   pipeline never follows the link, and `archive_url` stays empty for social links.
 2. **Drop seen links.** A link already stored is not classified again; it only refreshes `last_seen_at`.
 3. **Classify each new link** with `UTILITY_MODEL` (Haiku 4.5), JSON only, against a versioned prompt:
    the entity prompt (the entity's profile and namesakes to reject) or the topic prompt. Through the
@@ -76,6 +78,10 @@ later work; nothing here needs it.
 6. **Tag places** by matching state and district names against `locations.name` and `aliases`. An
    unmatched name is kept on the story and counted in the run's notes, so the alias list can grow.
 7. **Set visibility** from the bars (D5) on every entity link and every topic story.
+
+`media.json` gains a `tavily` source (access rule `licensed_api`, categories news and social) as
+the route by which LinkedIn, Instagram and X items arrive. The platforms' own entries keep their rules,
+which govern fetching from the platforms directly; the pipeline never does that.
 
 The collector lives in `backend/app/ingest/adapters/` (a `tavily_news.py`), the classifier and
 grouping in the ingest pipeline. The watchlist and the entity profiles move from the trial scripts
@@ -257,20 +263,22 @@ entities move it, running weekly with a 7-day window does not much.
 
 ## 10. Open questions
 
-For V, before storing anything (the brief asks for both):
+For V, before storing anything (the brief asks for this):
 
 1. **Storing summaries and headlines, not article text** (D11). Is a one-to-two sentence summary,
    written by the classifier, acceptable to store and show publicly with the link?
-2. **Social posts through Tavily.** `media.json` marks LinkedIn as no scraping. The design links to
-   posts found through Tavily's search and stores only the link, a summary and a headline. Is that
-   inside the rule, and should `media.json` carry a Tavily source with its own access rule?
 
 For the team:
 
-3. **The classifier model.** Haiku 4.5 is the default. A cheaper model can replace it only after it
+2. **The classifier model.** Haiku 4.5 is the default. A cheaper model can replace it only after it
    matches Haiku on the eval set (section 8); namesakes are where cheap models fail.
-4. **Negative stories on public pages.** D5's stricter bar admitted none of the trial's 3 negative
-   entity stories. Is "never public" simpler and as good?
+3. **Topic stories that name a watchlist entity.** The topic prompt already records which watchlist
+   names a story mentions (the trial found Rajiv Gandhi Foundation in two FCRA-cancellation stories,
+   from March 2024). Should such a story also get an entity link, scored by the entity prompt, so it
+   can reach that entity's profile and its members' list?
+
+Settled since the first draft: social posts come through Tavily as in D2, and negative stories that
+clear D5's bar are published, to be reviewed later.
 
 ## Out of scope
 
