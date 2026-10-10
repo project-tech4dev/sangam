@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Check, CircleAlert } from "lucide-react";
 import { EntityMark, Tag } from "@/components/ui";
 import type { MatchDetail, MatchRow, MatchTier } from "@/lib/api";
+import { shortDate } from "@/lib/format";
+import { startProposal } from "../proposals/start";
+import { useProposals } from "../proposals/store";
 import { getDetail } from "./api";
 import { funderTypeLabel } from "./funderType";
 
@@ -15,8 +18,6 @@ export const TIER_LABEL: Record<MatchTier, string> = {
 };
 const TIER_TONE = { strong: "accent-2", medium: "accent", weak: "neutral", not_scored: "outline" } as const;
 
-export const shortDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 function Delta({ now, before }: { now: number | null; before: number | null }) {
   if (now === null || before === null || now === before) return null;
@@ -28,7 +29,61 @@ function Delta({ now, before }: { now: number | null; before: number | null }) {
   );
 }
 
-export function MatchCard({ match, rank }: { match: MatchRow; rank: number }) {
+export type ProposalNav = { open: (id: string) => void; list: (funderId: number) => void };
+export type MatchOrg = { slug: string; name: string };
+
+/* Start a proposal to this funder, or go back to the ones already started. */
+function ProposalAction({ match, org, nav }: { match: MatchRow; org: MatchOrg; nav: ProposalNav }) {
+  const [naming, setNaming] = useState(false);
+  const [title, setTitle] = useState(`${match.funder.name} proposal`);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const started = useProposals().filter((p) => p.org.slug === org.slug && p.funder.id === match.funder.id);
+
+  async function start(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setProblem(null);
+    try {
+      nav.open(await startProposal(org, match, title.trim()));
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : "The proposal was not started.");
+      setBusy(false);
+    }
+  }
+
+  if (naming)
+    return (
+      <form className="fm-start" onSubmit={start}>
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Proposal name" autoFocus />
+        <button className="btn" type="submit" disabled={busy || !title.trim()}>
+          {busy ? "Starting…" : "Start"}
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={() => setNaming(false)}>
+          Cancel
+        </button>
+        {problem && <span className="import-error">{problem}</span>}
+      </form>
+    );
+  return (
+    <div className="fm-actions">
+      {started.length === 1 ? (
+        <button className="btn" type="button" onClick={() => nav.open(started[0].id)}>
+          Continue proposal →
+        </button>
+      ) : started.length > 1 ? (
+        <button className="btn" type="button" onClick={() => nav.list(match.funder.id)}>
+          Proposals ({started.length}) →
+        </button>
+      ) : null}
+      <button className={started.length ? "btn btn-ghost" : "btn"} type="button" onClick={() => setNaming(true)}>
+        {started.length ? "Start another" : "Start a proposal"}
+      </button>
+    </div>
+  );
+}
+
+export function MatchCard({ match, rank, org, nav }: { match: MatchRow; rank: number; org: MatchOrg; nav: ProposalNav }) {
   const [detail, setDetail] = useState<MatchDetail | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -67,6 +122,8 @@ export function MatchCard({ match, rank }: { match: MatchRow; rank: number }) {
           </li>
         ))}
       </ul>
+
+      <ProposalAction match={match} org={org} nav={nav} />
 
       <details className="import-disclosure fm-reason" onToggle={onToggle}>
         <summary className="btn-ghost">Why this score</summary>

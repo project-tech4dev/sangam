@@ -3,47 +3,8 @@
 import { useEffect, useState } from "react";
 import { Tag } from "@/components/ui";
 import { authHeaders } from "@/lib/api/auth-headers";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
-
-type Doc = {
-  id: number;
-  title: string | null;
-  doc_type: string | null;
-  source_name: string | null;
-  source_url: string | null;
-  fetched_at: string | null;
-};
-
-/* Upload in three steps, because the file never passes through the backend:
-   ask for a signed URL, PUT straight to Supabase Storage, then tell the
-   backend it landed. A Vercel Function caps its request body well below the
-   size of an audited-accounts PDF. */
-async function uploadToVault(org: string, file: File) {
-  const ask = await fetch(`${API}/api/documents/uploads`, {
-    method: "POST",
-    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
-    body: JSON.stringify({ org, filename: file.name }),
-  });
-  if (ask.status === 503) throw new Error("Document storage is not configured on this deployment.");
-  if (ask.status === 403) throw new Error("You do not have upload access to this organisation.");
-  if (!ask.ok) throw new Error(`Could not start the upload (${ask.status}).`);
-  const { upload_url, storage_path } = await ask.json();
-
-  const put = await fetch(upload_url, {
-    method: "PUT",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
-    body: file,
-  });
-  if (!put.ok) throw new Error(`The file did not reach storage (${put.status}).`);
-
-  const confirm = await fetch(`${API}/api/documents`, {
-    method: "POST",
-    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
-    body: JSON.stringify({ org, storage_path, title: file.name }),
-  });
-  if (!confirm.ok) throw new Error(`Uploaded, but not recorded (${confirm.status}).`);
-}
+import { API } from "../lib/rest";
+import { type Doc, uploadToVault } from "../lib/vault";
 
 export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: string }[] }) {
   const [orgSlug, setOrgSlug] = useState(orgs[0]?.slug ?? "");
