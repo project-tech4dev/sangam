@@ -43,12 +43,12 @@ def test_names_the_run_even_when_tracing_is_off():
     assert "callbacks" not in config
 
 
-def test_attaches_handler_with_update_trace(fake_langfuse):
+def test_attaches_handler_and_names_the_trace(fake_langfuse):
     config = trace_config(Settings(**ENABLED))
     assert config["run_name"] == TRACE_NAME
     assert len(config["callbacks"]) == 1
-    # update_trace is what lifts name/input/output onto the trace itself.
-    assert fake_langfuse["update_trace"] is True
+    # v4 has no update_trace; the root chain's metadata names the trace.
+    assert config["metadata"]["langfuse_trace_name"] == TRACE_NAME
 
 
 def test_handler_is_bound_to_the_configured_client(fake_langfuse):

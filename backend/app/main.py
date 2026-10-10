@@ -23,6 +23,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         title="Sangam API",
         lifespan=build_lifespan(resolved),
         openapi_tags=OPENAPI_TAGS,
+        # Langfuse drops HTTP spans, but as parents they would leave each agent run without a trace root.
+        telemetry={"tracing": False},
     )
     # Added first, so CORS wraps it: preflights are answered before it runs, and its 401s carry CORS headers.
     app.add_middleware(AuthMiddleware)

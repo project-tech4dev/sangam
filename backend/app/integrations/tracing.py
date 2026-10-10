@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from contextlib import contextmanager
 from textwrap import dedent
 from typing import Any
@@ -30,6 +31,14 @@ MAX_IO_CHARS = 4_000
 # you actually read a trace for; everything after is warehouse rows.
 _GRID_HEADER = "columns: "          # db_query, from render_rows()
 _PROFILE_HEADER = "as stored:"      # db_profile_column
+
+# Middleware hooks run as graph nodes, one set per model call. These never call a model, so they
+# are empty leaves and safe to drop; an unlisted hook stays, since dropping a parent orphans children.
+_EMPTY_HOOK = re.compile(
+    r"^(PatchToolCallsMiddleware|SkillsMiddleware|sql_retry_limiter|RunSources|DropFilesOnExit)"
+    r"\.(before|after)_(agent|model)$"
+)
+AUDIT_HOOK = "answer_audit.after_agent"
 
 
 def masking_enabled() -> bool:
@@ -73,6 +82,23 @@ def mask_payload(*, data: Any, **_: Any) -> Any:
         return data
 
 
+def export_span(span: Any) -> bool:
+    """v4's default filter (drops FastAPI's HTTP spans), minus hooks that record nothing."""
+    from langfuse.span_filter import is_default_export_span
+
+    return is_default_export_span(span) and not _EMPTY_HOOK.match(span.name or "")
+
+
+def flush_traces() -> None:
+    """Send what is buffered: a serverless function freezes once it has answered."""
+    try:
+        from langfuse import get_client
+
+        get_client().flush()
+    except Exception:
+        logger.debug("Langfuse flush failed", exc_info=True)
+
+
 def configure_langfuse(settings: Settings) -> bool:
     """Build the Langfuse client once, with masking and clipping attached."""
     if not settings.langfuse_enabled:
@@ -83,12 +109,15 @@ def configure_langfuse(settings: Settings) -> bool:
         client = Langfuse(
             public_key=settings.langfuse_public_key,
             secret_key=settings.langfuse_secret_key,
-            host=settings.langfuse_host,
+            base_url=settings.langfuse_host,
             mask=mask_payload,
-            # environment and release are read from LANGFUSE_TRACING_ENVIRONMENT
-            # and LANGFUSE_RELEASE by the SDK itself.
+            should_export_span=export_span,
+            # Vercel sets these, so a deployed trace is filed under its environment and commit
+            # without anyone remembering LANGFUSE_TRACING_ENVIRONMENT / LANGFUSE_RELEASE.
+            environment=os.getenv("LANGFUSE_TRACING_ENVIRONMENT") or os.getenv("VERCEL_ENV"),
+            release=os.getenv("LANGFUSE_RELEASE") or os.getenv("VERCEL_GIT_COMMIT_SHA"),
         )
-        # v3 shares resources per public key and the FIRST construction wins, so a client
+        # Resources are shared per public key and the FIRST construction wins, so a client
         # built before this leaves masking silently off. Verified, not assumed.
         if getattr(client, "_mask", None) is not mask_payload:
             logger.error(
@@ -117,15 +146,78 @@ def configure_langfuse(settings: Settings) -> bool:
         return False
 
 
+def current_observation() -> Any:
+    """The handler's observation for the LangChain run executing now; v4 puts none on the OTel context."""
+    from langchain_core.runnables.config import var_child_runnable_config
+
+    manager = (var_child_runnable_config.get() or {}).get("callbacks")
+    run_id = getattr(manager, "parent_run_id", None)
+    for handler in getattr(manager, "handlers", None) or ():
+        if hasattr(handler, "_node_runs"):  # ours: the class is built inside _build_handler
+            return handler._runs.get(run_id)
+    return None
+
+
 def score_answer(name: str, value: float, comment: str | None = None) -> None:
     """Attach a score to the trace of the turn being handled."""
     try:
         from langfuse import get_client
 
-        get_client().score_current_trace(name=name, value=value, comment=comment)
+        run = current_observation()
+        if run is not None:
+            run.score_trace(name=name, value=value, comment=comment)
+        else:
+            get_client().score_current_trace(name=name, value=value, comment=comment)
     except Exception:
         logger.debug("could not attach score %r", name, exc_info=True)
 
+
+
+def observation_type(name: str, *, is_root: bool, metadata: dict | None) -> str:
+    """The graph and each subagent are agents; the audit hook is an evaluator; the rest are chains."""
+    if is_root or name == (metadata or {}).get("lc_agent_name"):
+        return "agent"
+    if name == AUDIT_HOOK:
+        return "evaluator"
+    return "chain"
+
+
+def _messages(state: Any) -> list[Any]:
+    return (state.get("messages") or []) if isinstance(state, dict) else []
+
+
+def _role(message: Any) -> str | None:
+    return message.get("type") or message.get("role") if isinstance(message, dict) else getattr(message, "type", None)
+
+
+def _text(message: Any) -> str:
+    if isinstance(message, dict):
+        content = message.get("content")
+    else:
+        content = getattr(message, "content", None)
+    if isinstance(content, str):
+        return content
+    blocks = content if isinstance(content, list) else []
+    return "".join(b.get("text", "") for b in blocks if isinstance(b, dict) and b.get("type") == "text")
+
+
+def root_input(inputs: Any) -> Any:
+    """The question asked, not the whole conversation state: it is what the trace list shows."""
+    asked = [m for m in _messages(inputs) if _role(m) in ("human", "user")]
+    return _text(asked[-1]) if asked else inputs
+
+
+def root_output(outputs: Any) -> Any:
+    """What the person was shown this turn: the replies after their last message that call no tool."""
+    messages = _messages(outputs)
+    last_asked = max((i for i, m in enumerate(messages) if _role(m) in ("human", "user")), default=-1)
+    replies = [
+        _text(m) for m in messages[last_asked + 1:]
+        if _role(m) in ("ai", "assistant")
+        and not (m.get("tool_calls") if isinstance(m, dict) else getattr(m, "tool_calls", None))
+    ]
+    answer = "\n\n".join(r for r in replies if r.strip())
+    return answer or outputs
 
 
 def _build_handler(settings: Settings):
@@ -134,6 +226,65 @@ def _build_handler(settings: Settings):
 
     class _CancellationTolerantHandler(CallbackHandler):
         """Treats a cancelled turn as control flow, not an error."""
+
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            # Graph node run per LangGraph task: the fallback parent for a run whose own parent this
+            # handler never saw (LangSmith's tracer wraps model calls in runs no callback receives).
+            self._node_runs: dict[str, Any] = {}
+
+        def _known_parent(self, parent_run_id, metadata):
+            if parent_run_id is None or parent_run_id in self._runs:
+                return parent_run_id
+            return self._node_runs.get((metadata or {}).get("langgraph_checkpoint_ns"), parent_run_id)
+
+        def _forget(self, run_id):
+            for ns, node_run in list(self._node_runs.items()):
+                if node_run == run_id:
+                    del self._node_runs[ns]
+
+        def on_chain_start(self, serialized, inputs, *, run_id, parent_run_id=None, metadata=None, **kwargs):
+            name = self.get_langchain_run_name(serialized, **kwargs)
+            kind = observation_type(name, is_root=parent_run_id is None, metadata=metadata)
+            if parent_run_id is None:
+                inputs = root_input(inputs)
+            if metadata and metadata.get("langgraph_node") == name and metadata.get("langgraph_checkpoint_ns"):
+                self._node_runs[metadata["langgraph_checkpoint_ns"]] = run_id
+            return super().on_chain_start(
+                serialized, inputs, run_id=run_id, parent_run_id=self._known_parent(parent_run_id, metadata),
+                metadata=metadata, sangam_type=kind, **kwargs,
+            )
+
+        def _get_observation_type_from_serialized(self, serialized, callback_type, **kwargs):
+            # The SDK's guess is "agent" for any name containing it, so a hook was an agent and the
+            # agents themselves chains.
+            return kwargs.get("sangam_type") or super()._get_observation_type_from_serialized(
+                serialized, callback_type, **kwargs
+            )
+
+        def on_chat_model_start(self, serialized, messages, *, run_id, parent_run_id=None, metadata=None, **kwargs):
+            return super().on_chat_model_start(
+                serialized, messages, run_id=run_id, parent_run_id=self._known_parent(parent_run_id, metadata),
+                metadata=metadata, **kwargs,
+            )
+
+        def on_llm_start(self, serialized, prompts, *, run_id, parent_run_id=None, metadata=None, **kwargs):
+            return super().on_llm_start(
+                serialized, prompts, run_id=run_id, parent_run_id=self._known_parent(parent_run_id, metadata),
+                metadata=metadata, **kwargs,
+            )
+
+        def on_tool_start(self, serialized, input_str, *, run_id, parent_run_id=None, metadata=None, **kwargs):
+            return super().on_tool_start(
+                serialized, input_str, run_id=run_id, parent_run_id=self._known_parent(parent_run_id, metadata),
+                metadata=metadata, **kwargs,
+            )
+
+        def on_chain_end(self, outputs, *, run_id, parent_run_id=None, **kwargs):
+            self._forget(run_id)
+            if parent_run_id is None:
+                outputs = root_output(outputs)
+            return super().on_chain_end(outputs, run_id=run_id, parent_run_id=parent_run_id, **kwargs)
 
         def on_tool_end(self, output, *, run_id, **kwargs):
             """Redact query results here, not via the client `mask` hook."""
@@ -147,6 +298,7 @@ def _build_handler(settings: Settings):
             return super().on_tool_end(output, run_id=run_id, **kwargs)
 
         def on_chain_error(self, error, *, run_id, parent_run_id=None, **kwargs):
+            self._forget(run_id)
             if isinstance(error, asyncio.CancelledError):
                 # Same shape the SDK uses for control flow: end the observation
                 # without an ERROR level.
@@ -158,11 +310,7 @@ def _build_handler(settings: Settings):
                 error, run_id=run_id, parent_run_id=parent_run_id, **kwargs
             )
 
-    # update_trace lifts name/input/output/metadata from the root chain onto
-    # the trace itself — without it the trace list shows nothing.
-    return _CancellationTolerantHandler(
-        public_key=settings.langfuse_public_key, update_trace=True
-    )
+    return _CancellationTolerantHandler(public_key=settings.langfuse_public_key)
 
 
 def trace_config(
@@ -181,7 +329,7 @@ def trace_config(
         return {
             **base,
             "callbacks": [_build_handler(settings)],
-            "metadata": {"langfuse_tags": ["sangam", *tags, settings.model]},
+            "metadata": {"langfuse_trace_name": name, "langfuse_tags": ["sangam", *tags, settings.model]},
         }
     except Exception:  # telemetry must never take the app down
         logger.warning(
@@ -207,6 +355,13 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
         # copilotkit's __init__ drops this flag, so it is set here; clone() passes it back per request.
         self.emit_subagent_events = emit_subagent_events
         self.subagent_visibility = "attributed" if emit_subagent_events else "inline"
+
+    async def run(self, input: RunAgentInput):
+        try:
+            async for event in super().run(input):
+                yield event
+        finally:
+            await asyncio.to_thread(flush_traces)
 
     @staticmethod
     def _collect_interrupts(tasks) -> list:
@@ -269,7 +424,8 @@ def sql_span(name: str, sql: str, params: Any = None):
     try:
         from langfuse import get_client
 
-        cm = get_client().start_as_current_observation(
+        parent = current_observation() or get_client()
+        cm = parent.start_as_current_observation(
             name=name,
             as_type="retriever",
             input={"sql": dedent(sql).strip(), "params": params},

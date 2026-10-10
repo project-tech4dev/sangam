@@ -452,19 +452,29 @@ imported lazily inside `open_graph()` so the app boots without it, and `search_g
 returns a message telling the agent to use the database tools instead. Langfuse follows
 the same pattern. Preserve this when adding integrations.
 
-**Tracing config lives in `app/integrations/tracing.py`**, and two of its settings are
-load-bearing in ways the Langfuse docs do not advertise:
+**Tracing config lives in `app/integrations/tracing.py`** (Langfuse SDK v4), and several of its
+settings are load-bearing in ways the Langfuse docs do not advertise:
 
-- `CallbackHandler(update_trace=True)` is what puts a name, the question, and the answer
-  on the *trace*. Built bare, every trace is called `LangGraph` with empty input/output and
-  you have to open a nested span to see anything.
+- **FastAPI's own OTel spans are off** (`telemetry={"tracing": False}` in `main.py`). Langfuse drops
+  them, but as parents they left `sangam_ask` a non-root, so the trace had no input or output.
+- The trace's name, input and output come from the root chain: `langfuse_trace_name` in
+  `trace_config`'s metadata, and `root_input`/`root_output` reduce the graph state to the question
+  and the answer. (v3's `update_trace=True` no longer exists.)
+- With LangSmith on, an LLM's parent run is a LangSmith-only middleware run Langfuse never sees;
+  the handler maps it back through `langgraph_checkpoint_ns` to its graph node. SQL retriever spans
+  and the `answer_audit` score find their parent with `current_observation()`, since v4 puts
+  nothing on the OTel context.
+- `export_span` drops the middleware hooks that record nothing; add a hook there only once a
+  trace shows it empty.
+- `SessionScopedAGUIAgent.run` flushes after every run: on Vercel the function freezes once it
+  has answered, and unflushed spans are lost.
 - The handler groups turns by `metadata.langfuse_session_id` and **ignores LangGraph's
   `thread_id` entirely**. `SessionScopedAGUIAgent` overrides `prepare_stream` — the one hook
   that sees both the per-request `RunAgentInput` and the graph's config — to map one onto
   the other. Without it a six-turn conversation is six unrelated traces.
 
-`LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, they share
-a bucket.
+`LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, it falls back to
+`VERCEL_ENV`, and `release` to `VERCEL_GIT_COMMIT_SHA`.
 
 **Auth verifies Supabase tokens, and `SUPABASE_URL` turns it on.** `backend/app/core/security.py::get_principal`
 checks the access token against the project's JWKS and finds or creates the `users` row for it;

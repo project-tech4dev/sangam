@@ -58,14 +58,15 @@ def collect_turn(messages: list[BaseMessage]) -> tuple[str, list[str], str, str]
     """(question, SQL that ran, last result block, final answer) for this turn."""
     question, sql, result, answer = "", [], "", ""
     for message in messages:
-        if isinstance(message, HumanMessage) and isinstance(message.content, str):
-            question, sql, result, answer = message.content, [], "", ""
+        if isinstance(message, HumanMessage):
+            question, sql, result, answer = message.text, [], "", ""
         elif isinstance(message, ToolMessage) and isinstance(message.content, str):
             if message.name == "db_query":
                 sql.extend(_EXECUTED.findall(message.content))
                 result = message.content
         elif isinstance(message, AIMessage) and not message.tool_calls:
-            text = message.content if isinstance(message.content, str) else ""
+            # .text, not .content: Claude answers in content blocks, which a str-only check skipped.
+            text = message.text
             if text.strip() and not text.startswith(CAVEAT_PREFIX):
                 answer = text
     return question, sql, result, answer
