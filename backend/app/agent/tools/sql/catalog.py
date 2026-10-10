@@ -312,6 +312,9 @@ _TABLES: tuple[Table, ...] = (
             Column("tagged_by", "text"),
             Column("note", "text"),
         ),
+        defects=(
+            "Two kinds live here: kind='sector' rows came from the seed and cover 4 funders, kind='csr_sector' (Schedule VII) rows come from research. A funder with no rows of a kind has not been researched for it, so a zero overlap from that side is 'not recorded', never 'no focus'.",
+        ),
     ),
     Table(
         name="funders",
@@ -555,6 +558,9 @@ _TABLES: tuple[Table, ...] = (
             Column("is_inferred", "boolean"),
             Column("tagged_by", "text"),
             Column("note", "text"),
+        ),
+        defects=(
+            "kind='sector' only: nothing writes csr_sector for an org. Reach Schedule VII through tags.meta->>'maps_to' on the org's sector tags, where a JSON null means no clause fits. An org with no rows is untagged, so a zero overlap from its side is 'not recorded', never 'no focus'.",
         ),
     ),
     Table(

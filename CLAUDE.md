@@ -197,9 +197,26 @@ middleware stack over `langchain.agents.create_agent` and returns a compiled Lan
 graph — which is exactly what `AsyncPostgresSaver` checkpointing and
 `add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
 
-**The agent has exactly six tools, and there is ONE path to the database.**
+**The agent has exactly seven tools, and there is ONE open path to the database.**
 `app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
-`db_query`, `search_graph`, `fetch_url`. Nothing else.
+`db_query`, `search_graph`, `fetch_url` and `compare_fit`. Nothing else, and no subagent, so there
+is no `task` tool. `compare_fit` is the one exception to "the model writes its own SELECT": funder
+matching is a fixed checklist, so its queries are fixed too (`app/repositories/matching.py`, in a
+read-only transaction with the same `statement_timeout`).
+
+**Funder matching is judged in code, not by a model.** `compare_fit(org_id, funder_ids=None)` loads
+an `OrgProfile` and `FunderProfile`s with fixed SQL (`repositories/matching.py`), and
+`app/agent/rules.py` — pure, no I/O — judges the seven criteria of the **match-v1** rubric
+(`app/agent/rubric.py`): theme 25, geography 15, population 15, eligibility 20, relationship 10,
+funding size 10, capacity 5. A criterion's status (met / partial / fail / unknown) is computed from
+its points, an unknown one is left out of the score rather than counted as zero, and a funder
+sharing no place or theme gets a NULL score. `app/agent/match.py` builds the card lines, summary and
+"what would raise the score" from templates. Changing a rule is `rules.py`; changing a point value
+or a tier is `rubric.py`. The shape follows the Funder Match spec (`features-plans/funder-match/` on `docs/funder-match-spec`),
+so the planned `funder_matches` job can store `match()` as it is. Design:
+`docs/features/2026-10-10-funder-matching-match-v1.md`. Two model-judged versions came before it —
+a `funder-assessor` subagent per pair, then `org-readiness` once plus assessors — and were removed
+for running ~35 open-ended queries per subagent.
 
 That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
 `create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`
@@ -209,11 +226,11 @@ fifteen tools; Sangam Import twenty-one, with a subagent that could call `run_im
 `promote_research` under none of its instructions. `app/agent/harness.py` removes both, by
 two different mechanisms, and the difference matters: a `HarnessProfile` is registered per
 **provider**, so it is global to every agent sharing a model — right for the subagent, wrong for
-tools, since Sangam Import needs `read_file` to load a skill and Ask Sangam must not. So
+tools, since both supervisors need `ls` to find a skill and no subagent may hold it. So
 `install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
-preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its six plus `read_file`,
-which `FilesystemMiddleware` refuses to be built without; Sangam Import adds `ls`. Nothing that
-writes survives on either.
+preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its seven plus
+`read_file` and `ls`; a subagent keeps only `read_file`, which `FilesystemMiddleware` refuses to
+be built without. Nothing that writes survives on any of them.
 
 **A subagent inherits none of that and must say so itself.** `create_deep_agent` builds an
 isolated subagent's middleware from scratch with an *unrestricted* `FilesystemMiddleware`, and
@@ -284,7 +301,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. There are 39 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each sector tag to its Schedule VII clause for `compare_fit`, and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. There are 41 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
@@ -383,9 +400,10 @@ Summaries of long runs are written by `UTILITY_MODEL` at the same thresholds as 
 **How many organisations Import researches at once is a setting, not a number in the
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
 above it the agent researches in waves until every organisation asked for is done.
-`app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder — **the only
-substitution any prompt in this repo gets** — because a number frozen in prose made the
-setting decorative. It is a plain `.replace()`, not `.format()`: the file is full of literal
+`app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder —
+**the only substitution any prompt in this repo gets** — because a number frozen in prose made the
+setting decorative. A SKILL.md is read raw from disk and never substituted, so no skill names a
+wave size. It is a plain `.replace()`, not `.format()`: the file is full of literal
 braces. The fan-out is bounded by connections, so `DB_POOL_MAX_SIZE` (default 10) moves with
 it; the pool is shared with the checkpointer, which writes on every graph step, so the
 concurrency gates in `sql/executor.py` and `ingest/runner.py` derive from it and sit under
@@ -406,6 +424,12 @@ researcher's targets come from `research_goals` and the schema, and it returns a
 means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and
 the access rules cannot be optional. `docs/SKILLS.md` has the mechanism, the discovery rules and
 the honest cost.
+
+**Ask Sangam loads its matching procedures the same way**, from `app/agent/skills/`:
+`funder-matching` (resolve the organisation → one `compare_fit` over the catalog),
+`funder-comparison` (named funders → one `compare_fit` with their ids) and `funder-shortlist-brief`
+(the write-up). The rules they lean on — compare_fit judges, call it once, an unknown is "not
+recorded" — stay in `instructions.md`, rules 12–16.
 
 **Optional subsystems degrade, they do not crash.** The graph activates only when
 `NEO4J_URI` and an OpenAI key are both set (`Settings.graph_enabled`); `graphiti_core` is
