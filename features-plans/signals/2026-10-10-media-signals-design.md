@@ -51,9 +51,10 @@ column for marking.
 | D8 | **"My area" is a plain rule, not a ranking.** For a signed-in member: stories in their organisations' states, plus FCRA and civil-society news from any North East state, plus national policy news that affects NGOs. National explainers and opinion stay out of it. One click widens to all of the North East, or everywhere. |
 | D9 | **Headlines are written for weak titles.** A social post, or any link whose title is just "Instagram", hashtags or a file name, gets a factual headline written from the post. It is marked "Headline written by Sangam" and the original title is kept. |
 | D10 | **Dates come from the best source available**, in order: the post ID (LinkedIn, Instagram, X), the publisher's date, the date the text gives. The source is stored. A date equal to the crawl day on a social post is treated as no date. |
-| D11 | **Store the summary and headline, not the article text** (pending V, section 10). The link and an archive link are the record. |
+| D11 | **Store summaries, never article text.** A story keeps its headline and a one-to-two sentence summary written by the classifier; the link and an archive link (news only) are the record. Article text is read during classification and discarded. |
 | D12 | **List pages share one pattern** (section 7): lean cards with one always selected, one row of dropdown filters, a search box below, a sorted list that loads as you scroll. Media & Signals, Funder Match, Proposals and the Registry list all use the same components. |
 | D13 | **Funder type is a fixed list**: Corporate CSR, Private or family foundation, International funder, Government. Whether CSR is spent in-house or through a company foundation is shown on the funder, not filtered on. Delivered with the Funder Match work, not this migration. |
+| D14 | **A topic story that names a Registry organisation or funder is linked to it.** The topic prompt lists the Registry names a story mentions; each one is then scored by the entity prompt and gets its own entity link, so the story reaches that organisation's "In the news" tab and its members' list under the same bars as any other link. |
 
 ## 2. Pipeline
 
@@ -72,6 +73,8 @@ later work; nothing here needs it.
 3. **Classify each new link** with `UTILITY_MODEL` (Haiku 4.5), JSON only, against a versioned prompt:
    the entity prompt (the entity's profile and namesakes to reject) or the topic prompt. Through the
    Message Batches API, since nothing waits on it. Fields in section 3.
+   A topic link that names Registry organisations or funders is then scored by the entity prompt
+   for each of them (D14); each one that clears the listing bar gets an entity link.
 4. **Fix dates and titles.** Post-ID dates (D10); headlines for weak titles (D9), `UTILITY_MODEL`.
 5. **Group into stories.** New links are grouped with each other and with recent stories (the window
    plus 7 days) on the same entity or topic. The trial used `RESEARCH_MODEL` (Sonnet) over one bucket
@@ -266,23 +269,15 @@ much change it.
 
 ## 10. Open questions
 
-For V, before storing anything (the brief asks for this):
-
-1. **Storing summaries and headlines, not article text** (D11). Is a one-to-two sentence summary,
-   written by the classifier, acceptable to store and show publicly with the link?
-
 For the team:
 
-2. **The classifier model.** Haiku 4.5 is the default. A cheaper model can replace it only after it
+1. **The classifier model.** Haiku 4.5 is the default. A cheaper model can replace it only after it
    matches Haiku on the eval set (section 8); namesakes are where cheap models fail.
-3. **Topic stories that name a Registry organisation or funder.** The topic prompt already records
-   which of them a story mentions (the trial found Rajiv Gandhi Foundation in two FCRA-cancellation stories,
-   from March 2024). Should such a story also get an entity link, scored by the entity prompt, so it
-   can reach that entity's profile and its members' list?
 
-Settled since the first draft: social posts come through Tavily as in D2; negative stories that clear
-D5's bar are published, to be reviewed later; the Registry is the watchlist (D1). Staging has no
-organisations yet, so the first real run needs the cohort loaded.
+Settled since the first draft: social posts come through Tavily (D2); negative stories that clear D5's
+bar are published, to be reviewed later; the Registry is the watchlist (D1); summaries are stored,
+never article text (D11); a topic story that names a Registry organisation or funder is linked to it
+(D14). Staging has no organisations yet, so the first real run needs the cohort loaded.
 
 ## Out of scope
 
