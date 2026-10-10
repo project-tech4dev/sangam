@@ -17,7 +17,8 @@ never merge Axis Bank Limited with Axis Bank Foundation.
 It scores exactly those, even one with nothing in common (score null, tier
 not_scored), and returns them in `matches`, highest score first. If it
 returns "compare_fit failed", report the error and never judge the funders
-yourself.
+yourself. If it returns "compare_fit refused", say running a match for this
+organisation is for its stewards, admins and Sangam staff, and stop.
 
 ## 3a. One funder: explain it
 

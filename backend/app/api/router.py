@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     contacts,
     documents,
+    funder_matches,
     funders,
     ingest,
     me,
@@ -25,6 +26,7 @@ from app.api.routes import (
 OPENAPI_TAGS = [
     {"name": "orgs", "description": "CSO/NGO registry: profiles, identifiers, sectors, locations"},
     {"name": "funders", "description": "Funder profiles and their fit scores"},
+    {"name": "funder-matches", "description": "Funder Match: saved runs of an org against every funder"},
     {"name": "partner-lines", "description": "Funder partner lines: named partners and grants, from funder_activity"},
     {"name": "programs", "description": "Programs run by orgs or funders"},
     {"name": "rfps", "description": "Funding opportunities and org matches (RFP Watch)"},
@@ -42,6 +44,7 @@ for _router in (
     orgs.router,
     org_members.router,
     funders.router,
+    funder_matches.router,
     partner_lines.router,
     programs.router,
     rfps.router,

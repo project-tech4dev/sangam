@@ -6,12 +6,13 @@ import json
 
 from langchain_core.tools import tool
 
-from app.agent.assessment import Match
-from app.agent.match import match
-from app.agent.rubric import RUBRIC_VERSION
-from app.agent.rules import FunderProfile, OrgProfile, Places, has_places_or_themes
 from app.core.config import get_settings
+from app.core.security import chat_user_id
 from app.db.pool import get_pool
+from app.matching.assessment import Match
+from app.matching.match import match
+from app.matching.rubric import RUBRIC_VERSION
+from app.matching.rules import FunderProfile, OrgProfile, Places, has_places_or_themes
 from app.repositories import matching
 
 
@@ -72,8 +73,14 @@ async def compare_fit(org_id: int, funder_ids: list[int] | None = None) -> str:
     An unknown criterion is left out of the score, never counted as zero. `not_scored` names the
     funders with nothing in common recorded and those with nothing recorded at all. Every figure is
     computed in code from recorded rows: repeat it, never recompute or re-judge it.
+
+    Only Sangam staff and the organisation's stewards and admins may run it. For anyone else it
+    returns "compare_fit refused": report that plainly, and never assemble a match from db_query.
     """
     try:
+        if not await matching.may_run(get_pool(), chat_user_id.get(), org_id):
+            return (f"compare_fit refused: running a match for organisation {org_id} is for its stewards, "
+                    "admins and Sangam staff.")
         org, funders, places = await matching.load(
             get_pool(), org_id, funder_ids, timeout_ms=get_settings().sql_timeout_ms
         )

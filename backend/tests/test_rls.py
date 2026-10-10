@@ -260,3 +260,63 @@ def test_the_index_holds_even_for_the_owner(db):
     with pytest.raises(errors.UniqueViolation), conn.transaction(force_rollback=True):
         conn.execute("INSERT INTO org_members (user_id, org_id, role) VALUES (%s, %s, 'member')",
                      (world["people"]["member_b"]["user_id"], world["a"]))
+
+
+def _save_run(conn, world, name, org) -> int:
+    """One match row and its detail, as this caller, the way a run from the page writes them."""
+    funder = conn.execute("INSERT INTO funders (slug, name) VALUES (%s, 'F') RETURNING id",
+                          (f"rls-f-{uuid4().hex[:8]}",)).fetchone()["id"]
+    with conn.transaction():
+        _as(conn, world["people"][name])
+        match_id = conn.execute(
+            """INSERT INTO funder_matches (run_id, org_id, funder_id, run_at, run_by, rubric_version, score, card)
+               VALUES (%s, %s, %s, now(), %s, 'match-v1', 73, '{"reasons": []}') RETURNING id""",
+            (uuid4(), org, funder, world["people"][name]["user_id"]),
+        ).fetchone()["id"]
+        conn.execute("INSERT INTO funder_match_details (match_id, detail) VALUES (%s, '{}')", (match_id,))
+        conn.execute("RESET role")
+    return match_id
+
+
+@pytest.mark.parametrize("name, allowed", [("admin_a", True), ("steward_a", True), ("staff", True),
+                                           ("member_a", False), ("member_b", False), ("nobody", False)])
+def test_only_staff_stewards_and_admins_save_a_match_run(db, name, allowed):
+    conn, world = db
+    if allowed:
+        assert _save_run(conn, world, name, world["a"])
+    else:
+        with pytest.raises(InsufficientPrivilege), conn.transaction(force_rollback=True):
+            _save_run(conn, world, name, world["a"])
+
+
+def test_a_run_cannot_be_saved_in_someone_elses_name(db):
+    conn, world = db
+    funder = conn.execute("INSERT INTO funders (slug, name) VALUES (%s, 'F') RETURNING id",
+                          (f"rls-f-{uuid4().hex[:8]}",)).fetchone()["id"]
+    with pytest.raises(InsufficientPrivilege), conn.transaction(force_rollback=True):
+        _as(conn, world["people"]["admin_a"])
+        conn.execute(
+            """INSERT INTO funder_matches (run_id, org_id, funder_id, run_at, run_by, rubric_version, card)
+               VALUES (%s, %s, %s, now(), %s, 'match-v1', '{}')""",
+            (uuid4(), world["a"], funder, world["people"]["staff"]["user_id"]),
+        )
+
+
+@pytest.mark.parametrize("name, expected", [("member_a", 2), ("steward_a", 2), ("staff", 2),
+                                            ("member_b", 0), ("nobody", 0)])
+def test_saved_runs_reach_the_orgs_members_and_staff_and_a_rerun_keeps_both(db, name, expected):
+    conn, world = db
+    first = _save_run(conn, world, "admin_a", world["a"])
+    _save_run(conn, world, "steward_a", world["a"])
+    who = world["people"][name]
+    assert _sees(conn, who, "SELECT DISTINCT run_id FROM funder_matches WHERE org_id = %s", (world["a"],)) == expected
+    assert _sees(conn, who, "SELECT 1 FROM funder_match_details WHERE match_id = %s", (first,)) == min(expected, 1)
+
+
+def test_a_saved_run_cannot_be_edited_or_deleted(db):
+    conn, world = db
+    match_id = _save_run(conn, world, "admin_a", world["a"])
+    for sql in ["UPDATE funder_matches SET score = 100 WHERE id = %s", "DELETE FROM funder_matches WHERE id = %s"]:
+        with pytest.raises(InsufficientPrivilege), conn.transaction(force_rollback=True):
+            _as(conn, world["people"]["staff"])
+            conn.execute(sql, (match_id,))

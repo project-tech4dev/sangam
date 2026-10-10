@@ -944,6 +944,9 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         "resolution_queue",
         # One organisation's Doc Vault findings, quoting its private files.
         "vault_research",
+        # Funder Match's saved runs, private to each org; served by /api/funder-matches, read by the page.
+        "funder_matches",
+        "funder_match_details",
         # Infrastructure.
         "schema_migrations",
         "graph_ingest_log",

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import date
 
-from app.agent import rubric
-from app.agent.assessment import Match, Reason
-from app.agent.rules import Finding, FunderProfile, OrgProfile, Places, judge
+from app.matching import rubric
+from app.matching.assessment import Match, Reason
+from app.matching.rules import Finding, FunderProfile, OrgProfile, Places, judge
 
 TIER_WORDS = {"strong": "A strong fit", "medium": "A medium fit", "weak": "A weak fit"}
 

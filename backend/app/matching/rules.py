@@ -9,8 +9,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from app.agent import rubric
-from app.agent.assessment import Criterion
+from app.matching import rubric
+from app.matching.assessment import Criterion
 
 # Spellings seen in the data. A new one is a one-line change here, not a rule change.
 AUDIT_DOC_TYPES = frozenset({"audited_financials", "audit_report", "financial_statement", "financial_statements"})
