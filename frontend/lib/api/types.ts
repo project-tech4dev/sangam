@@ -88,4 +88,42 @@ export type NewsRow = {
   seendate: string | null; topic: string | null;
 };
 
+export type MeOut = {
+  id: string | null; email: string | null; is_staff: boolean; is_anonymous: boolean;
+  memberships: { org_id: number; org_slug: string; org_name: string; role: string }[];
+};
+
+export type MatchTier = "strong" | "medium" | "weak" | "not_scored";
+
+export type MatchRow = {
+  id: number;
+  funder: { id: number; slug: string; name: string; funder_type: string | null };
+  score: number | null;
+  prev_score: number | null; // this funder's score in the run before
+  tier: MatchTier;
+  card: { reasons: { kind: "fit" | "gap"; criterion: string; text: string }[] };
+};
+
+export type MatchList = {
+  org: { id: number; slug: string; name: string };
+  may_run: boolean; // staff, or a steward or admin of the org
+  run: { run_id: string; run_at: string; rubric_version: string; funders_checked: number; earlier_runs: number } | null;
+  counts: Record<MatchTier, number>;
+  matches: MatchRow[];
+};
+
+export type MatchCriterion = {
+  code: string; label: string; max: number; points: number | null;
+  status: "met" | "partial" | "fail" | "unknown"; note: string; cites: string[];
+};
+
+export type MatchDetail = {
+  id: number; run_at: string; rubric_version: string;
+  detail: {
+    summary: string; criteria: MatchCriterion[];
+    score: { earned: number; judged_max: number; of_100: number } | null;
+    not_judged: string[]; improve: string[];
+  };
+};
+
 export type PageOf<T> = { items: T[]; total: number; limit: number; offset: number };

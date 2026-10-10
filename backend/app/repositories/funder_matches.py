@@ -12,10 +12,11 @@ RUN_LOCK = 4104
 
 
 async def find_org(pool: Any, slug_or_id: str) -> dict | None:
-    """The org and whether the caller may run a match for it; None when the caller cannot see it."""
+    """The org, whether the caller may read its runs and run one; None when the caller cannot see it."""
     async with pool.connection() as conn:
         cur = await conn.execute(
             """SELECT o.id, o.slug, o.name,
+                      (o.id IN (SELECT app.my_org_ids()) OR app.is_staff()) AS may_read,
                       (o.id IN (SELECT app.my_match_org_ids()) OR app.is_staff()) AS may_run
                FROM orgs o WHERE o.slug = %(v)s OR o.id::text = %(v)s""",
             {"v": slug_or_id},
@@ -40,3 +41,41 @@ async def insert_run(pool: Any, org_id: int, run_id: UUID, run_by: UUID | None, 
                 "INSERT INTO funder_match_details (match_id, detail) VALUES (%s, %s)", (match_id, Jsonb(r["detail"]))
             )
     return {"run_id": run_id, "run_at": run_at}
+
+
+async def latest_run(pool: Any, org_id: int) -> dict | None:
+    """The org's latest run, the one before it, and how many runs came earlier."""
+    async with pool.connection() as conn:
+        runs = await (await conn.execute(
+            """SELECT run_id, max(run_at) AS run_at, max(rubric_version) AS rubric_version, count(*) AS funders_checked
+               FROM funder_matches WHERE org_id = %s GROUP BY run_id ORDER BY run_at DESC""",
+            (org_id,),
+        )).fetchall()
+    if not runs:
+        return None
+    return {**runs[0], "earlier_runs": len(runs) - 1, "prev_run_id": runs[1]["run_id"] if len(runs) > 1 else None}
+
+
+async def list_matches(pool: Any, run_id: UUID, prev_run_id: UUID | None) -> list[dict]:
+    """One run's rows with each funder, and its score in the run before; NULL scores last."""
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            """SELECT m.id, m.score, m.card, p.score AS prev_score,
+                      f.id AS funder_id, f.slug AS funder_slug, f.name AS funder_name, f.funder_type
+               FROM funder_matches m
+               JOIN funders f ON f.id = m.funder_id
+               LEFT JOIN funder_matches p ON p.run_id = %s AND p.funder_id = m.funder_id
+               WHERE m.run_id = %s
+               ORDER BY m.score DESC NULLS LAST, f.name""",
+            (prev_run_id, run_id),
+        )).fetchall()
+
+
+async def get_detail(pool: Any, match_id: int) -> dict | None:
+    """One match's full reasoning; None when it does not exist or RLS hides it."""
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            """SELECT m.id, m.run_at, m.rubric_version, d.detail
+               FROM funder_matches m JOIN funder_match_details d ON d.match_id = m.id WHERE m.id = %s""",
+            (match_id,),
+        )).fetchone()

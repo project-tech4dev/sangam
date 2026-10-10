@@ -21,7 +21,7 @@ type Item = { id: WorkspaceView; label: string; soon?: boolean };
 type SectionId = "recent" | "usecases" | "context" | "tools";
 
 const USE_CASES: Item[] = [
-  { id: "funder-match", label: "Funder Match", soon: true },
+  { id: "funder-match", label: "Funder Match" },
   { id: "rfpwatch", label: "RFP Watch" },
   { id: "media", label: "Media & Signals" },
 ];
