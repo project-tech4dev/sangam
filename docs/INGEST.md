@@ -1,7 +1,7 @@
 # Sangam Import: from a public source to a catalog row
 
 An agent that finds funder information in permitted sources, matches it against the catalog, and
-writes what is safe to write. Separate from Ask Sangam in every respect: its own graph, its own
+writes what is safe to write. People see it as **Sangam Scout** (route `/import`). Separate from Ask Sangam in every respect: its own graph, its own
 endpoint (`/ingest`), its own UI, its own instructions, its own trace name (`sangam_import`).
 
 Ask Sangam reads the catalog. This one builds it.

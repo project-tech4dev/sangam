@@ -6,7 +6,7 @@ import type { ThreadMeta } from "@/features/ask/lib/threads";
 const MONTH = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" });
 const DAY = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" });
 
-/** Past imports, newest first and grouped by month, each opening its thread. */
+/** Past chats, newest first and grouped by month, each opening its thread. */
 export function ImportThreads({
   threads,
   active,
@@ -27,10 +27,10 @@ export function ImportThreads({
   if (collapsed) {
     return (
       <div className="ask-sidebar-collapsed">
-        <button type="button" className="rail-mini" onClick={onToggle} title="Past imports" aria-label="Show past imports">
+        <button type="button" className="rail-mini" onClick={onToggle} title="Past chats" aria-label="Show past chats">
           <PanelLeftOpen className="icon" aria-hidden />
         </button>
-        <button type="button" className="rail-mini rail-mini-new" onClick={onNew} title="New import" aria-label="New import">
+        <button type="button" className="rail-mini rail-mini-new" onClick={onNew} title="New chat" aria-label="New chat">
           <Plus className="icon" aria-hidden />
         </button>
       </div>
@@ -67,20 +67,20 @@ export function ImportThreads({
   }
 
   return (
-    <nav className="ask-sidebar" aria-label="Past imports">
+    <nav className="ask-sidebar" aria-label="Past chats">
       <div className="rail-head">
-        <span className="eyebrow">Imports</span>
+        <span className="eyebrow">Scout chats</span>
         <button type="button" className="rail-mini rail-collapse" onClick={onToggle} title="Collapse" aria-label="Hide past imports">
           <PanelLeftClose className="icon" aria-hidden />
         </button>
       </div>
       <button type="button" className="btn btn-tint" onClick={onNew}>
-        + New import
+        + New chat
       </button>
       <div className="rail-scroll import-threads">
         {threads === null && !error && <span className="muted-2 rail-empty">Loading…</span>}
         {error && <span className="muted-2 rail-empty">Couldn&apos;t load past imports.</span>}
-        {threads?.length === 0 && <span className="muted-2 rail-empty">No past imports yet.</span>}
+        {threads?.length === 0 && <span className="muted-2 rail-empty">No past chats yet.</span>}
         {rows}
       </div>
     </nav>
