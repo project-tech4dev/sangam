@@ -49,9 +49,14 @@ IdentifierStatus = Literal["applied", "provisional", "registered", "expired", "s
 NEEDS_A_NUMBER = frozenset({"provisional", "registered", "expired", "suspended", "cancelled", "surrendered"})
 
 
-def check_registration(id_value: str | None, application_ref: str | None, status: str) -> None:
-    if status in NEEDS_A_NUMBER and not id_value:
-        raise ValueError(f"status {status!r} needs the registration's number; an application is 'applied'")
+def check_registration(
+    id_value: str | None, application_ref: str | None, status: str, evidence_tier: str | None = None
+) -> None:
+    # "We are 80G registered" with no number is a claim worth keeping; the dossier counts it current only with one.
+    claimed = status == "registered" and evidence_tier == "claimed"
+    if status in NEEDS_A_NUMBER and not id_value and not claimed:
+        raise ValueError(f"status {status!r} needs the registration's number, unless it is 'claimed'; "
+                         "an application is 'applied'")
     if status == "applied" and not (id_value or application_ref):
         raise ValueError("an application needs its number or its acknowledgement (application_ref)")
 
@@ -595,7 +600,7 @@ class OrgIdentifierRecord(Provenance, Tiered):
 
     @model_validator(mode="after")
     def _a_status_has_what_it_needs(self) -> OrgIdentifierRecord:
-        check_registration(self.id_value, self.application_ref, self.status)
+        check_registration(self.id_value, self.application_ref, self.status, self.evidence_tier)
         return self
 
 
