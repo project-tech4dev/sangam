@@ -4,8 +4,6 @@ import type { ImportAccess, VaultFile } from "../lib/access";
 import type { ImportTask } from "../lib/composePrompt";
 import type { SourcesChoice } from "../lib/sourcePick";
 import type { ImportRun, ImportSource, QueueItem, SourceProposal } from "../lib/types";
-import { ProposalList } from "./ProposalList";
-import { RunHistory } from "./RunHistory";
 import { SourcePicker } from "./SourcePicker";
 import { WaitingForYou } from "./WaitingForYou";
 
@@ -59,13 +57,7 @@ export function ScoutRail({
           <span className="card-body">{readFrom}</span>
         </section>
       )}
-      {staff && (
-        <>
-          <WaitingForYou items={staff.queue} sources={staff.sources} />
-          <RunHistory runs={staff.runs} />
-          <ProposalList items={staff.proposals} />
-        </>
-      )}
+      {staff && <WaitingForYou items={staff.queue} sources={staff.sources} />}
     </aside>
   );
 }

@@ -16,11 +16,15 @@ export function ResearchedRecently({
   items,
   staff = false,
   onChanged,
+  limit = 5,
 }: {
   items: ResearchRecord[];
   staff?: boolean;
   onChanged?: () => void;
+  /** How many show before "Show all". */
+  limit?: number;
 }) {
+  const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
   const [failed, setFailed] = useState<{ id: number; text: string } | null>(null);
   const [reviewing, setReviewing] = useState<number | null>(null);
@@ -51,7 +55,7 @@ export function ResearchedRecently({
         <span className="import-hint">Everything Sangam found is kept, even if you didn&apos;t save it to a profile.</span>
       </div>
       <div className="import-shelf">
-        {items.map((r) => {
+        {(showAll ? items : items.slice(0, limit)).map((r) => {
           const name = r.canonical_name ?? r.entity_name;
           const state = researchState(r);
           const href = profileHref(r);
@@ -61,29 +65,31 @@ export function ResearchedRecently({
               <div className="import-shelf-row">
                 <EntityMark name={name} size={32} />
                 <div className="import-shelf-name">
-                  <strong>{name}</strong>
+                  <strong title={name}>{name}</strong>
                   <span className="import-hint">
                     {kindLabel(r.entity_kind)} · {r.fact_count} answers · {day(r.researched_at)}
                     {r.saved_by && ` · saved by ${r.saved_by}`}
                   </span>
                   {failed?.id === r.id && <span className="import-error">{failed.text}</span>}
                 </div>
-                <span className={`tag ${state.tag}`}>{state.label}</span>
-                {href && (
-                  <Link href={href} className="import-link">
-                    Open profile
-                  </Link>
-                )}
-                {reviewable && reviewing !== r.id && (
-                  <button type="button" className="import-link" onClick={() => setReviewing(r.id)}>
-                    Review &amp; save
-                  </button>
-                )}
-                {staff && (
-                  <button type="button" className="import-link" disabled={busy === r.id} onClick={() => act(r, name)}>
-                    {busy === r.id ? "Working…" : r.promotion_id != null ? "Undo save" : "Delete"}
-                  </button>
-                )}
+                <span className={`tag ${state.tag} import-shelf-tag`}>{state.label}</span>
+                <div className="import-shelf-actions">
+                  {href && (
+                    <Link href={href} className="import-link">
+                      Open profile
+                    </Link>
+                  )}
+                  {reviewable && reviewing !== r.id && (
+                    <button type="button" className="import-link" onClick={() => setReviewing(r.id)}>
+                      Review &amp; save
+                    </button>
+                  )}
+                  {staff && (
+                    <button type="button" className="import-link" disabled={busy === r.id} onClick={() => act(r, name)}>
+                      {busy === r.id ? "Working…" : r.promotion_id != null ? "Undo save" : "Delete"}
+                    </button>
+                  )}
+                </div>
               </div>
               {reviewing === r.id && (
                 <div className="import-shelf-review">
@@ -101,6 +107,11 @@ export function ResearchedRecently({
           );
         })}
       </div>
+      {items.length > limit && (
+        <button type="button" className="import-link" onClick={() => setShowAll(!showAll)}>
+          {showAll ? "Show fewer" : `Show all (${items.length})`}
+        </button>
+      )}
     </section>
   );
 }

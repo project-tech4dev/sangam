@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { ScoutChat } from "@/features/ingest/ScoutChat";
+import { ProposalList } from "@/features/ingest/components/ProposalList";
 import { ResearchedRecently } from "@/features/ingest/components/ResearchedRecently";
+import { RunHistory } from "@/features/ingest/components/RunHistory";
 import { SourceGroups } from "@/features/ingest/components/SourceGroups";
 import { SourcePanel } from "@/features/ingest/components/SourcePanel";
 import { accessOf, type ImportAccess, type VaultFile } from "@/features/ingest/lib/access";
@@ -96,15 +98,15 @@ export function ImportView({
         <>
           <ResearchedRecently items={panels.research} staff={panels.access.staff} onChanged={reloadResearch} />
           {panels.access.staff && (
-            <>
-              <SourceGroups sources={panels.sources} />
-              <details className="import-section import-disclosure">
-                <summary className="import-link">Details: every source Scout can read</summary>
-                <div className="import-details">
-                  <SourcePanel sources={panels.sources} />
-                </div>
-              </details>
-            </>
+            <details className="import-section import-disclosure">
+              <summary className="import-link">Team tools</summary>
+              <div className="import-details">
+                <SourceGroups sources={panels.sources} />
+                <SourcePanel sources={panels.sources} />
+                <RunHistory runs={panels.runs} />
+                <ProposalList items={panels.proposals} />
+              </div>
+            </details>
           )}
         </>
       )}
