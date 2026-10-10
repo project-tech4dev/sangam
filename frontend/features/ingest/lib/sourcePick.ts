@@ -56,7 +56,7 @@ export function readingFrom(steps: TraceStep[]): string | null {
   const parts = [
     said("public websites") && "Public websites",
     said("Sangam's library") && "Sangam's library",
-    vault > 0 && `Your Doc Vault (${vault})`,
+    vault > 0 && `Doc Vault (${vault})`,
     staff > 0 && `Team spreadsheets (${staff})`,
   ].filter(Boolean);
   return parts.length ? parts.join(" · ") : null;

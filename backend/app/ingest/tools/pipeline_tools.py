@@ -348,12 +348,14 @@ async def choose_sources(
     The run pauses on a card: the person ticks public websites, Sangam's library (public documents
     Sangam already holds), their organisation's Doc Vault files and, for the Sangam team, team
     spreadsheets. Their answer replaces your proposal and is final: no subagent may read anything
-    else. Propose web and library on and nothing else; the person picks files on the card.
+    else. Propose web and library on and no files; the person picks files on the card. When the
+    person asked for an organisation's own documents, also propose vault_org with its id (the
+    [org:N] from funder_dossier): the card opens on that organisation's files, none ticked.
 
     Args:
         web: read public websites.
         library: read the public documents Sangam already holds about these organisations.
-        vault_org: the organisation whose Doc Vault files are picked (set by the card).
+        vault_org: the organisation whose Doc Vault the card shows: proposed by you or set by the card.
         vault_docs: the Doc Vault document ids picked (set by the card).
         staff_paths: team spreadsheet paths picked, Sangam team only (set by the card).
     """

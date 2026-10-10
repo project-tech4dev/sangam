@@ -214,7 +214,7 @@ export function boardOf(
       const r = parse(s.result);
       const docs = r?.documents_read?.length ?? 0;
       const found = r?.concepts_found?.length ?? 0;
-      text = `Read ${docs} of your organisation's document${docs === 1 ? "" : "s"}: ${found} answer${found === 1 ? "" : "s"}`;
+      text = `Read ${docs} Doc Vault document${docs === 1 ? "" : "s"}: ${found} answer${found === 1 ? "" : "s"}`;
     }
     const name = nameFor(s);
     if (text) events.push({ id: s.id, name, text: name ? text : text[0]!.toUpperCase() + text.slice(1) });

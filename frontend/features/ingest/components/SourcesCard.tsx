@@ -6,6 +6,7 @@ import { authHeaders } from "@/lib/api/auth-headers";
 import type { ImportAccess, VaultFile } from "../lib/access";
 import { proposedSources, sourcesDecision, type SourcesChoice } from "../lib/sourcePick";
 import type { Workbook } from "../lib/types";
+import { orgById, searchOrgs, vaultFilesOf, type VaultOrg } from "../lib/vaultFiles";
 import { PauseSignal } from "./PauseSignal";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
@@ -66,6 +67,147 @@ function toggled<T>(list: T[], item: T): T[] {
   return list.includes(item) ? list.filter((i) => i !== item) : [...list, item];
 }
 
+const VAULT_HINT = "Read privately, by a reader that cannot use the web. Only a funder's general facts are saved from them.";
+
+function VaultChips({
+  files,
+  picked,
+  onToggle,
+  disabled,
+  showOrg,
+}: {
+  files: VaultFile[];
+  picked: (f: VaultFile) => boolean;
+  onToggle: (f: VaultFile) => void;
+  disabled: boolean;
+  showOrg: boolean;
+}) {
+  return (
+    <div className="import-chips">
+      {files.map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          className="import-chip import-file"
+          aria-pressed={picked(f)}
+          onClick={() => onToggle(f)}
+          disabled={disabled}
+        >
+          {f.title || `Document ${f.id}`}
+          {showOrg && <span className="import-hint"> · {f.orgName}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Staff: any organisation's Doc Vault, found by name, or opened on the one the agent proposed. */
+function OrgVault({
+  proposedOrg,
+  picked,
+  onToggle,
+  disabled,
+}: {
+  proposedOrg: number | null;
+  picked: (f: VaultFile) => boolean;
+  onToggle: (f: VaultFile) => void;
+  disabled: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [matches, setMatches] = useState<VaultOrg[]>([]);
+  const [org, setOrg] = useState<VaultOrg | null>(null);
+  const [files, setFiles] = useState<VaultFile[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (proposedOrg === null) return;
+    let cancelled = false;
+    orgById(proposedOrg)
+      .then((o) => !cancelled && setOrg(o))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [proposedOrg]);
+
+  useEffect(() => {
+    if (!org) return;
+    let cancelled = false;
+    vaultFilesOf(org)
+      .then((found) => !cancelled && setFiles(found))
+      .catch(() => {
+        if (!cancelled) {
+          setFiles([]);
+          setFailed(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [org]);
+
+  const q = query.trim();
+  useEffect(() => {
+    if (q.length < 2) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      searchOrgs(q)
+        .then((found) => !cancelled && setMatches(found))
+        .catch(() => !cancelled && setMatches([]));
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [q]);
+
+  function pick(o: VaultOrg) {
+    setOrg(o);
+    setFiles(null);
+    setFailed(false);
+    setQuery("");
+    setMatches([]);
+  }
+
+  return (
+    <div className="import-names">
+      <span className="import-label">{org ? `Doc Vault: ${org.name}` : "An organisation's Doc Vault"}</span>
+      <div className="import-form">
+        <input
+          className="input"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={org ? "Find another organisation" : "Find an organisation by name"}
+          aria-label="Find an organisation's Doc Vault"
+          disabled={disabled}
+        />
+      </div>
+      {q.length >= 2 && matches.length > 0 && (
+        <div className="import-chips">
+          {matches.map((m) => (
+            <button key={m.id} type="button" className="import-chip" onClick={() => pick(m)} disabled={disabled}>
+              {m.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {org && files === null && <span className="muted">Looking in {org.name}&apos;s Doc Vault…</span>}
+      {org && files !== null && files.length === 0 && (
+        <span className="import-pick-text">
+          {failed ? `Sangam couldn't list ${org.name}'s Doc Vault.` : `${org.name} has no private files.`}
+        </span>
+      )}
+      {files !== null && files.length > 0 && (
+        <>
+          <VaultChips files={files} picked={picked} onToggle={onToggle} disabled={disabled} showOrg={false} />
+          <span className="import-hint">{VAULT_HINT}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Where should Sangam read from? One question before anything is read; the run reads only what is ticked. */
 function Card({
   proposal,
@@ -93,6 +235,9 @@ function Card({
     setVaultDocs(next);
     setVaultOrg(next.length ? f.orgId : null);
   }
+
+  const picked = (f: VaultFile) => vaultOrg === f.orgId && vaultDocs.includes(f.id);
+  const ownOrgs = new Set(vaultFiles.map((f) => f.orgId));
 
   const nothing = !web && !library && vaultDocs.length === 0 && staffPaths.length === 0;
 
@@ -133,25 +278,24 @@ function Card({
       {vaultFiles.length > 0 && (
         <div className="import-names">
           <span className="import-label">Your organisation&apos;s documents</span>
-          <div className="import-chips">
-            {vaultFiles.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className="import-chip import-file"
-                aria-pressed={vaultOrg === f.orgId && vaultDocs.includes(f.id)}
-                onClick={() => toggleVault(f)}
-                disabled={sent}
-              >
-                {f.title || `Document ${f.id}`}
-                {access.orgs.length > 1 && <span className="import-hint"> · {f.orgName}</span>}
-              </button>
-            ))}
-          </div>
-          <span className="import-hint">
-            Read privately, by a reader that cannot use the web. Only a funder&apos;s general facts are saved from them.
-          </span>
+          <VaultChips
+            files={vaultFiles}
+            picked={picked}
+            onToggle={toggleVault}
+            disabled={sent}
+            showOrg={access.orgs.length > 1}
+          />
+          <span className="import-hint">{VAULT_HINT}</span>
         </div>
+      )}
+
+      {access.staff && (
+        <OrgVault
+          proposedOrg={proposal.vault_org !== null && !ownOrgs.has(proposal.vault_org) ? proposal.vault_org : null}
+          picked={picked}
+          onToggle={toggleVault}
+          disabled={sent}
+        />
       )}
 
       {access.staff && (

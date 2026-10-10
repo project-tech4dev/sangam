@@ -13,7 +13,7 @@ from typing import Any
 from langchain_core.tools import tool
 
 from app.db.pool import get_pool
-from app.ingest import vault
+from app.ingest import run_sources, vault
 from app.ingest.caller import scope
 from app.ingest.research_records import VaultResearch
 from app.ingest.writer import slugify
@@ -25,6 +25,10 @@ async def _org(pool: Any, org: str) -> dict[str, Any] | str:
     """The organisation the caller named, or the one they belong to; a refusal string otherwise."""
     caller = scope()
     org = org.strip().removeprefix("[org:").removesuffix("]")
+    # A run's picked vault is the only one it may list, whoever the caller is.
+    picked = (sources := run_sources.CURRENT.get()) and sources.vault_org
+    if not org and picked:
+        org = str(picked)
     if not org:
         readable = list(caller.org_roles)
         if len(readable) != 1:
@@ -38,6 +42,8 @@ async def _org(pool: Any, org: str) -> dict[str, Any] | str:
         )).fetchone()
     if row is None or not caller.can_read_org(row["id"]):
         return f"No Doc Vault you can read for {org!r}."
+    if picked and row["id"] != picked:
+        return f"REFUSED: this run's Doc Vault files are org {picked}'s; list that one."
     return dict(row)
 
 
@@ -46,7 +52,7 @@ async def list_vault_documents(org: str = "") -> str:
     """List the private files in one organisation's Doc Vault: id, title, type and date.
 
     Args:
-        org: the organisation's id, slug or name. Leave empty for the person's own organisation.
+        org: the organisation's id, slug or name. Leave empty for the one whose files were picked.
     """
     try:
         pool = get_pool()
