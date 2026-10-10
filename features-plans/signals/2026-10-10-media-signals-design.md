@@ -41,7 +41,7 @@ column for marking.
 
 | # | Decision |
 |---|---|
-| D1 | **Two kinds of feed.** Entity feeds search for each watchlist organisation and funder by name. Topic feeds search for FCRA, CSR and funding, and NGO news in the North East, by state. |
+| D1 | **Two kinds of feed, and the Registry is the watchlist.** Entity feeds search by name for every Registry organisation and funder that is not hidden; there is no separate list, so anyone added to Sangam is searched for, and every story links to a record with a profile page. Topic feeds search for FCRA, CSR and funding, and NGO news in the North East, by state. |
 | D2 | **Tavily is the collector**, for news and for LinkedIn, Instagram and X posts. Social posts are **obtained through Tavily's search index, never from the platforms**: Sangam does not fetch a linkedin.com, instagram.com or x.com page, does not archive one, and stores only what Tavily returns (the post's URL, title and snippet), the summary and headline written from it, and the scores. A post is kept only when it is about a watchlist organisation or funder. **Facebook is left out**: its posts carry no usable date and repeat what organisations post elsewhere. |
 | D3 | **One story per event.** Copies of the same story (syndicated news, the same post on several platforms) are grouped under one story with a main link; the rest are listed as "also reported in". The main link is the best source: news before organisation sites before social. |
 | D4 | **No manual review.** A story is shown or not by two scores the classifier gives each link to an entity or topic: **match** (is it about this?) and **confidence** (how sure). Staff can hide a wrong match; nothing waits for approval. |
@@ -61,7 +61,8 @@ One run is one `ingest_runs` row (`requested_sources = {news}`), started from Im
 "Get the latest CSR news" task or by `make news-pull` (with `ENV` like every DB target). Scheduling is
 later work; nothing here needs it.
 
-1. **Search.** For each watchlist entity, its name queries (with a place for ambiguous names) over
+1. **Search.** For each Registry organisation and funder, queries built from its name and `aliases`,
+   with its registered district or state added for a name that is ambiguous on its own, over
    two scopes, the open web and an allowlist of CSR and North East outlets. For each topic feed, its
    queries. Tavily `/search`, `topic: news`, `days` = the window (30 by default; 7 for a weekly run),
    `search_depth: advanced`, `include_raw_content`. Retries and a concurrency limit, as in the trial.
@@ -84,8 +85,9 @@ the route by which LinkedIn, Instagram and X items arrive. The platforms' own en
 which govern fetching from the platforms directly; the pipeline never does that.
 
 The collector lives in `backend/app/ingest/adapters/` (a `tavily_news.py`), the classifier and
-grouping in the ingest pipeline. The watchlist and the entity profiles move from the trial scripts
-into `backend/app/ingest/data/` as data. **The same PR switches Import's news task over and retires
+grouping in the ingest pipeline. The entity prompt describes each organisation from its Registry
+record; the trial's hand-written notes on namesakes to reject are carried over for the records they
+cover. **The same PR switches Import's news task over and retires
 the GDELT and India CSR news path**: today `ingest/writer.py` writes their records into
 `news_mentions`, so the table cannot go while they still write to it.
 
@@ -255,11 +257,12 @@ system rule in CLAUDE.md requires. CLAUDE.md gains a rule that list pages use th
 
 ## 9. Cost
 
-Per sweep at today's watchlist (29 entities, 3 topic feeds, 154 searches): about $2.50 of Tavily
+Per sweep at the trial's size (29 organisations and funders, 3 topic feeds, 154 searches): about $2.50 of Tavily
 (advanced search, 2 credits each at $0.008) and about $5.40 of Haiku, plus under $0.50 for grouping
 and headlines. The Batch API halves the Haiku part, and prompt caching of the system prompt and
-profiles cuts it further, so about $5 a sweep. Cost follows the number of searches: more watchlist
-entities move it, running weekly with a 7-day window does not much.
+profiles cuts it further, so about $5 a sweep. Cost follows the number of searches, so it grows with the
+Registry (roughly 2 to 4 searches per record per run); running weekly with a 7-day window does not
+much change it.
 
 ## 10. Open questions
 
@@ -272,16 +275,18 @@ For the team:
 
 2. **The classifier model.** Haiku 4.5 is the default. A cheaper model can replace it only after it
    matches Haiku on the eval set (section 8); namesakes are where cheap models fail.
-3. **Topic stories that name a watchlist entity.** The topic prompt already records which watchlist
-   names a story mentions (the trial found Rajiv Gandhi Foundation in two FCRA-cancellation stories,
+3. **Topic stories that name a Registry organisation or funder.** The topic prompt already records
+   which of them a story mentions (the trial found Rajiv Gandhi Foundation in two FCRA-cancellation stories,
    from March 2024). Should such a story also get an entity link, scored by the entity prompt, so it
    can reach that entity's profile and its members' list?
 
-Settled since the first draft: social posts come through Tavily as in D2, and negative stories that
-clear D5's bar are published, to be reviewed later.
+Settled since the first draft: social posts come through Tavily as in D2; negative stories that clear
+D5's bar are published, to be reviewed later; the Registry is the watchlist (D1). Staging has no
+organisations yet, so the first real run needs the cohort loaded.
 
 ## Out of scope
 
-Push alerts and a weekly digest (by email or WhatsApp), a ranked "For you" list, Facebook, scheduled
+How the search scales as the Registry grows (how often each record is searched, and namesake notes
+for records that lack them), push alerts and a weekly digest (by email or WhatsApp), a ranked "For you" list, Facebook, scheduled
 runs, storing article text, and the Funder Match and Proposals screens themselves (section 7 only
 fixes how their lists look and filter).
