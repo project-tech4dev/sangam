@@ -1553,7 +1553,7 @@ class TestTheReviewCardSpeaksPlainly:
     async def test_no_research_is_404(self, client_for, monkeypatch):
         from app.api.routes import ingest as ingest_api
 
-        async def none(slug):
+        async def none(slug, caller):
             return None
 
         monkeypatch.setattr("app.ingest.tools.catalog_tools.review_view", none)

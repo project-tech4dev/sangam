@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { tasksFor, type ImportAccess } from "../lib/access";
 import { composePrompt, type ImportTask, type NewsSource } from "../lib/composePrompt";
 
 const TASKS: { id: ImportTask; title: string; desc: string }[] = [
@@ -14,7 +15,17 @@ const NEWS_COUNTS = [5, 10, 20];
 const plural = (n: number, word: string) => `${n || ""} ${word}${n === 1 ? "" : "s"}`.trim();
 
 /** Step 1: pick a task and the names, and the request is written for you. */
-export function StartStep({ onStart, disabled }: { onStart: (prompt: string) => void; disabled: boolean }) {
+export function StartStep({
+  onStart,
+  disabled,
+  access,
+}: {
+  onStart: (prompt: string) => void;
+  disabled: boolean;
+  access: ImportAccess;
+}) {
+  const allowed = tasksFor(access);
+  const tasks = TASKS.filter((t) => allowed.includes(t.id));
   const [task, setTask] = useState<ImportTask>("funder");
   const [names, setNames] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
@@ -43,7 +54,7 @@ export function StartStep({ onStart, disabled }: { onStart: (prompt: string) => 
       </div>
 
       <div role="radiogroup" aria-label="Task" className="import-tasks">
-        {TASKS.map((t) => (
+        {tasks.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -85,6 +96,18 @@ export function StartStep({ onStart, disabled }: { onStart: (prompt: string) => 
             </button>
           </div>
           <span className="import-hint">Press Enter after each name. Add as many as you like.</span>
+          {task === "ngo" && !access.staff && (
+            <div className="import-chips">
+              <span className="import-hint">The NGOs you support:</span>
+              {access.stewardOf
+                .filter((n) => !has(n))
+                .map((n) => (
+                  <button key={n} type="button" className="import-chip" onClick={() => setNames([...names, n])}>
+                    + {n}
+                  </button>
+                ))}
+            </div>
+          )}
           {names.length > 0 && (
             <div className="import-chips">
               {names.map((n) => (

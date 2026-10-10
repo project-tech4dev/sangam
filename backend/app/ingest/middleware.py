@@ -8,6 +8,7 @@ from importlib.resources import files
 from typing import Any
 
 from deepagents.backends.protocol import BackendProtocol
+from deepagents.middleware._utils import append_to_system_message
 from deepagents.middleware.rubric import RubricEvaluation, RubricMiddleware
 from deepagents.middleware.summarization import SummarizationMiddleware, compute_summarization_defaults
 from langchain.agents.middleware import (
@@ -21,6 +22,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, ToolMessage
 
 from app.agent.models import resolve_model
+from app.ingest.caller import caller_note, scope
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +107,19 @@ class EscalateAfterFailedSave(AgentMiddleware):
 
     async def awrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Awaitable[Any]]) -> Any:
         return await handler(self._route(request))
+
+
+class CallerNote(AgentMiddleware):
+    """Tells the supervisor who this run works for, so it offers only what they may do. The tools still check."""
+
+    def _with_note(self, request: ModelRequest) -> ModelRequest:
+        return request.override(system_message=append_to_system_message(request.system_message, caller_note(scope())))
+
+    def wrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Any]) -> Any:
+        return handler(self._with_note(request))
+
+    async def awrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Awaitable[Any]]) -> Any:
+        return await handler(self._with_note(request))
 
 
 class ResearchRubric(RubricMiddleware):

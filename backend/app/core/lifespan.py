@@ -12,7 +12,7 @@ from fastapi import Depends, FastAPI
 from app.agent.build import build_agent
 from app.agent.tools.sql import catalog as sql_catalog
 from app.core.config import Settings, get_settings
-from app.core.security import chat_access, staff_chat_access
+from app.core.security import chat_access
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
 from app.ingest.agent import build_ingest_agent
@@ -100,7 +100,7 @@ def build_lifespan(settings: Settings | None = None):
                     emit_subagent_events=True,
                 ),
                 path="/ingest",
-                dependencies=[Depends(staff_chat_access)],
+                dependencies=[Depends(chat_access)],
             )
 
             if tracing_live:

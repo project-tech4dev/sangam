@@ -46,12 +46,12 @@ Private text (vault or staff spreadsheet) must never sit in a model's context wh
     ▼
  ┌──────────────── vault-reader (Haiku/Sonnet) ───────────────┐   ┌── entity-researcher (Sonnet) ──┐
  │ list_vault_documents · read_vault_document (PDF pages,      │   │ web tools + staff rows last     │
- │ xlsx cells) · research_goals · save_research                │   │ save_research merges same-day   │
- │ NO web tools · scope-checked org · cites [vault:doc#p3]     │   │ vault findings, never sees them │
+ │ xlsx cells) · research_goals · save_vault_findings          │   │ never sees vault findings       │
+ │ NO web tools · scope-checked org · cites [vault:doc#p3]     │   │                                 │
  │ returns VaultSummary: concepts found / missing, doc ids     │   └────────────────────────────────┘
  └─────────────────────────────────────────────────────────────┘
     ▼
- entity_research (researched_by, for_org_id) ─► promote (scope check, vault → private documents row)
+ entity_research (researched_by) + vault findings (own table, per org) ─► promote (scope check, vault → private documents row)
     ─► catalog, with promoted_by recorded ─► staff can delete research / undo a save
  Public brief: renders public-source findings only
 ```
@@ -72,16 +72,22 @@ Private text (vault or staff spreadsheet) must never sit in a model's context wh
 - **`core/lifespan.py`:** `/ingest` uses `chat_access` instead of `staff_chat_access`, and sets the scope.
 - **`api/routes/ingest.py`:** drop the router-wide `require_staff`.
   - Staff only: `/sources`, `/proposals`, `/runs*`, `/queue*`, `/workbooks`.
-  - `/research`, `/research/{slug}/review|coverage` and `/threads*` are filtered to the caller: their own research, plus their orgs' research for stewards; staff see all.
-- **Migration 0039:**
-  - `entity_research` gets `researched_by uuid`, `for_org_id bigint NULL` (whose vault was used) and `promoted_by uuid`;
-  - the RLS read policy becomes staff, or `researched_by = me`, or `for_org_id ∈ my_org_ids()`;
-  - a steward write grant scoped to research saves, per the decision above.
+  - `/research` lists, for anyone else, the rows they saved plus rows about the NGOs they steward. A summary written from private findings is replaced, as in the brief.
+  - `/research/{slug}/review|coverage` read any slug; for anyone but staff, private findings (staff spreadsheets, later the vault) are removed before the view is built.
+  - `/threads*` were already the caller's own.
+- **Migration 0039 (changed from the first draft):** only `researched_by uuid`, the last person to save the row.
+  - The row stays shared, one per entity per day, and `entity_research` stays staff-only under RLS. Per-user rows would have meant a "visible to this caller" filter in every reader (promote, coverage, review, dossier, brief). Filtering what each reader shows does the same job: staff spreadsheet findings already sit in shared rows today, so the fix had to live there anyway.
+  - A non-staff caller cannot overwrite a row someone else saved today.
+  - No steward write grant: agent tools use the owner pool, so RLS never gates a save. The tool checks are the gate.
+  - `for_org_id` is dropped (see PR C), and `promoted_by` moves to PR D.
 - **Supervisor tools enforce the scope at call time** and return a refusal string, as tools always do:
   - staff only: `list_storage_buckets`, `list_bucket_files`, `select_source_files`, `plan_import`, `run_import_now`, `pending_resolutions`, `record_registry_check`;
-  - `promote_research`: funder → any role; org → `can_save_org`;
-  - the researcher's `read_source_rows`: staff only.
-- **Prompt** (`instructions.md`): a short "who you are working for" section, filled per run from the scope through the same `_render` mechanism, so the supervisor offers only allowed tasks.
+  - also `import_run_summary`, `read_workbook` and `publish_brief`;
+  - `promote_research`: one slug at a time for non-staff; a funder needs a signed-in user, an NGO needs its steward (`can_research_org`), and a new NGO is staff's to add;
+  - `save_research`: an NGO needs staff or a steward;
+  - the researcher's `read_source_rows`: staff only;
+  - with no caller (outside a chat request) a tool treats the run as nobody and refuses.
+- **Prompt:** the `CallerNote` middleware appends a "who you are working for" line to the supervisor's system message on every model call, so it offers only allowed tasks. `_render` runs once at build time, so it could not carry this.
 - **Frontend:**
   - `/import` reads `/api/me`;
   - `StartStep` shows cards by role: members get "Research a funder"; stewards get an org picker plus funder; staff see today's cards;
@@ -105,7 +111,7 @@ Private text (vault or staff spreadsheet) must never sit in a model's context wh
   - runs on the utility tier, with the research tier as fallback;
   - `response_format=VaultSummary(slug, concepts_found, concepts_missing, documents_read: list[int], fact_count)`. These fields are ids and enums only, with no free text, so no private wording reaches the supervisor;
   - prompt in `prompts/vault_reader.md`.
-- **`save_research` merge:** when a same-day row exists, keep its vault-URL findings and gaps and merge the new web findings in. Today a save with fewer findings than the stored row is refused, so the count compares web findings only.
+- **Vault findings in their own table, not merged into the shared row:** keyed by `(slug, researched_on, org_id)` and readable under org RLS. Merging them into `entity_research` would put one org's vault findings into another org's view of the same funder. Promotion takes the union of both for a caller allowed to read that org. `_staff_dataset_rows` is already the pattern for mapping private findings to a private `documents` row.
 - **`promote.py`:** a vault URL maps to its existing private `documents` row (mirroring `_staff_dataset_rows`) and never goes through `ensure_document`, which would create a public row. Add `hold_unmarked` for a vault finding without its marker.
 - **Supervisor instructions:** when the request names vault files, run the vault-reader first. Then launch the researcher with `concepts_missing` as its goals.
 - **Frontend:**
@@ -136,7 +142,7 @@ Private text (vault or staff spreadsheet) must never sit in a model's context wh
   - each scope can only call its allowed tools, and refusals come back as strings;
   - the vault-reader graph has no web tools (walk the compiled subagent, as `_subagent_tools` does);
   - `VaultSummary` has no free-text field;
-  - a merged save keeps vault findings;
+  - one org's vault findings never appear in another caller's view of the same entity;
   - promoting a vault finding writes no public `documents` row;
   - the brief leaves out private evidence;
   - documents and research listings filter by role;

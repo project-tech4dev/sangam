@@ -15,7 +15,6 @@ from app.core.security import (
     chat_user_id,
     get_current_user,
     get_principal,
-    staff_chat_access,
 )
 from tests.conftest import make_app
 
@@ -65,7 +64,7 @@ def owners(monkeypatch):
         return table.setdefault(thread_id, user_id)
 
     async def memberships(pool, user_id):
-        return [{"org_id": 7, "role": "member"}] if user_id == MEMBER.id else []
+        return [{"org_id": 7, "org_name": "Seven", "role": "member"}] if user_id == MEMBER.id else []
 
     monkeypatch.setattr(security.threads, "claim_thread", claim)
     monkeypatch.setattr(security.me_repo, "list_memberships", memberships)
@@ -147,7 +146,3 @@ async def test_chat_signed_out_is_401(owners):
     assert response.status_code == 401
     assert "new" not in owners
 
-
-async def test_import_chat_needs_staff(owners):
-    response = await run(chat_app(MEMBER, staff_chat_access), "new")
-    assert response.status_code == 403

@@ -24,6 +24,7 @@ from app.db.pool import get_pool
 from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish
+from app.ingest.caller import scope, staff_only
 from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
 from app.ingest.sources import rule_for_url
 from app.ingest.staff_sources import is_staff_source_url
@@ -292,17 +293,25 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
     """
     # A staff finding quotes a confidential cell; its failures carry the exception type only.
     staff_save = any(is_staff_source_url(f.source_url) for f in findings.findings)
+    caller = scope()
+    if findings.entity_kind == "org" and not (caller.is_staff or caller.steward_of):
+        return ("REFUSED: researching an NGO is for its stewards and the Sangam team. Report what you "
+                "found in your summary instead.")
     try:
         slug = slugify(findings.canonical_name or findings.entity_name)
         pool = get_pool()
         async with pool.connection() as conn:
             prior = await (
                 await conn.execute(
-                    "SELECT fact_count FROM entity_research "
+                    "SELECT fact_count, researched_by FROM entity_research "
                     "WHERE slug = %s AND researched_on = current_date",
                     (slug,),
                 )
             ).fetchone()
+        # One row per entity per day is shared, so only staff replace what someone else saved.
+        if prior and not caller.is_staff and prior["researched_by"] != caller.user_id:
+            return (f"REFUSED: {slug} was already researched and saved today. Report back with "
+                    f"slug={slug!r} and saved=true, and say the research on file is today's.")
         if prior and prior["fact_count"] > len(findings.findings) and not replace:
             return (
                 f"REFUSED: {slug} already has {prior['fact_count']} findings saved today and "
@@ -317,9 +326,9 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     INSERT INTO entity_research (
                         entity_name, canonical_name, entity_kind, slug, website, status,
                         stopped_reason, summary, findings, not_found, sources_read, fact_count,
-                        goals, schema_version, gaps, years)
+                        goals, schema_version, gaps, years, researched_by)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s,
-                            %s::jsonb, %s, %s::jsonb, %s)
+                            %s::jsonb, %s, %s::jsonb, %s, %s)
                     ON CONFLICT (slug, researched_on) DO UPDATE SET
                         entity_name = EXCLUDED.entity_name,
                         canonical_name = EXCLUDED.canonical_name,
@@ -336,6 +345,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         schema_version = EXCLUDED.schema_version,
                         gaps = EXCLUDED.gaps,
                         years = EXCLUDED.years,
+                        researched_by = EXCLUDED.researched_by,
                         researched_at = now()
                     RETURNING *
                     """,
@@ -347,6 +357,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         findings.not_found, findings.sources_read, len(findings.findings),
                         json.dumps(findings.goals), SCHEMA_VERSION,
                         json.dumps([g.model_dump(mode="json") for g in findings.gaps]), findings.years,
+                        caller.user_id,
                     ),
                 )
             ).fetchone()
@@ -394,6 +405,8 @@ async def publish_brief(slug: str = "") -> str:
     Args:
         slug: one entity, or empty for every researched entity.
     """
+    if refused := staff_only("publish_brief"):
+        return refused
     try:
         pool = get_pool()
         async with pool.connection() as conn:

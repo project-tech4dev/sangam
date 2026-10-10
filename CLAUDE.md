@@ -279,7 +279,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. There are 36 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row. There are 37 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
@@ -424,8 +424,9 @@ a bucket.
 checks the access token against the project's JWKS and finds or creates the `users` row for it;
 no header is anonymous. With `SUPABASE_URL` empty every request is the seeded dev user, and
 `DEV_AUTH=1` accepts `Bearer dev` locally — which `make smoke` sends, so it needs that set.
-`require_user` (401) gates saving and editing, `require_staff` (403) gates Import, and a chat
-someone else owns is 404. The frontend sends the token from `lib/api/auth-headers.ts` (browser)
+`require_user` (401) gates saving and editing, and a chat someone else owns is 404. Import is open
+to anyone signed in, by role: its tools run on the owner pool, so they check `chat_scope` themselves
+(`app/ingest/caller.py`), and its pipeline routes keep `require_staff` (403). The frontend sends the token from `lib/api/auth-headers.ts` (browser)
 and `auth-headers.server.ts` (server components). The plan, and what comes next (requests running
 as the caller, then RLS), is `features-plans/access/auth-plan.md`.
 

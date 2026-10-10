@@ -17,6 +17,8 @@ TIERED_ORG_CONCEPTS: frozenset[str] = frozenset(
 
 # Private sources cite a synthetic URL on this reserved domain (RFC 2606): staff datasets, the Doc Vault.
 PRIVATE_SOURCE_DOMAIN = "sangam.invalid"
+# The same test in SQL, for a query that cannot call is_private_source per finding.
+PRIVATE_URL_LIKE = f"https://%.{PRIVATE_SOURCE_DOMAIN}/%"
 
 
 def is_private_source(url: str | None) -> bool:

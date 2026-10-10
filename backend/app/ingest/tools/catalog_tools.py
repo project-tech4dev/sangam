@@ -13,9 +13,10 @@ from typing import Any
 from langchain_core.tools import tool
 
 from app.agent.tools.sql.catalog import CATALOG
-from app.core.security import chat_user_id
+from app.core.security import CallerScope, chat_user_id
 from app.db.pool import get_pool
 from app.ingest import coverage, manual_checks, review
+from app.ingest.caller import scope, staff_only, without_private
 from app.ingest.expectations import (
     CONCEPTS,
     concepts_for,
@@ -443,7 +444,9 @@ async def _held_per_concept(
     return out
 
 
-async def _research_rows(pool: Any, slug: str) -> list[dict[str, Any]]:
+async def _research_rows(pool: Any, slug: str, caller: CallerScope | None = None) -> list[dict[str, Any]]:
+    """The newest row per entity; for a caller who is not staff, without its private findings."""
+    caller = caller or scope()
     async with pool.connection() as conn:
         rows = await (
             await conn.execute(
@@ -453,7 +456,7 @@ async def _research_rows(pool: Any, slug: str) -> list[dict[str, Any]]:
                 (slug,) if slug else (),
             )
         ).fetchall()
-    return [dict(r) for r in rows]
+    return [dict(r) if caller.is_staff else without_private(dict(r)) for r in rows]
 
 
 def _comparison(plan: dict[str, Any]) -> dict[str, Any]:
@@ -579,16 +582,19 @@ async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -
     )
 
 
-async def coverage_view(slug: str) -> dict[str, Any] | None:
+async def coverage_view(slug: str, caller: CallerScope | None = None) -> dict[str, Any] | None:
     """Coverage per concept, with rows before and after: from the stored save, else a funder's dry run.
     An NGO not yet saved has no before/after: its write cannot be dry-run."""
     pool = get_pool()
-    rows = await _research_rows(pool, slug)
+    rows = await _research_rows(pool, slug, caller)
     if not rows:
         return None
     row = rows[0]
     kind = row.get("entity_kind")
     saved = row.get("saved")
+    if saved and row.get("private_removed"):
+        # Held lines quote the values they held, private ones included; the counts stay.
+        saved = {**saved, "held": []}
     entity, reasons, held, questions = None, [], [], 0
     changes: dict[str, dict[str, int]] = {}
     before: dict[str, int] | None = None
@@ -618,10 +624,10 @@ async def coverage_view(slug: str) -> dict[str, Any] | None:
                          questions=questions, changes=changes, before=before, after=after)
 
 
-async def review_view(slug: str) -> dict[str, Any] | None:
+async def review_view(slug: str, caller: CallerScope | None = None) -> dict[str, Any] | None:
     """The review card's body: answers with their proof, what is missing, the questions, what saving adds."""
     pool = get_pool()
-    rows = await _research_rows(pool, slug)
+    rows = await _research_rows(pool, slug, caller)
     if not rows:
         return None
     row = rows[0]
@@ -645,6 +651,22 @@ async def review_view(slug: str) -> dict[str, Any] | None:
         "saves": [{"concept": c, "topic": review.topic(c), **n} for c, n in saves.items()
                   if n.get("added") or n.get("updated")],
     }
+
+
+async def _may_save(conn: Any, caller: CallerScope, row: dict[str, Any]) -> str | None:
+    """Why this caller may not save this research to the catalog, or None."""
+    name = row.get("canonical_name") or row.get("entity_name") or row["slug"]
+    if row.get("entity_kind") != "org":
+        return None if caller.can_save_funder() else "saving to Sangam needs a signed-in user."
+    org_id = row.get("resolved_org_id")
+    if org_id is None:
+        match = await resolve_org(conn, name)
+        org_id = match.entity_id if match.method in MERGEABLE else None
+    if org_id is None:
+        return f"{name} is not an NGO Sangam holds yet; the Sangam team adds new NGOs."
+    if not caller.can_research_org(org_id):
+        return f"{name} is an NGO; only its stewards and the Sangam team save research about it."
+    return None
 
 
 @tool
@@ -678,10 +700,17 @@ async def promote_research(slug: str = "", decisions: dict[str, str] | None = No
         decisions: leave empty. The person's answers fill it; anything you put here is dropped.
     """
     try:
+        caller = scope()
+        if not slug and not caller.is_staff:
+            return "REFUSED: promote one researched organisation at a time: pass its slug."
         pool = get_pool()
-        rows = await _research_rows(pool, slug)
+        rows = await _research_rows(pool, slug, caller)
         if not rows:
             return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
+        async with pool.connection() as conn:
+            refused = await _may_save(conn, caller, rows[0]) if not caller.is_staff else None
+        if refused:
+            return f"REFUSED: {refused}"
 
         reports = []
         for row in rows:
@@ -772,6 +801,8 @@ async def record_registry_check(
         note: what was checked, where and how, in the staff member's words.
         checked_on: the date the staff member checked, as 2026-10-08. Omit for today.
     """
+    if refused := staff_only("record_registry_check"):
+        return refused
     try:
         return await manual_checks.record(
             get_pool(), org=org, id_type=id_type, status=status, source_url=source_url, id_value=id_value,
