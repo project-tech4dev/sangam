@@ -15,6 +15,7 @@ class DocumentOut(ReadModel):
     source_name: str | None = None
     source_url: str | None = None
     fetched_at: datetime | None = None
+    is_public: bool | None = None
 
 
 # --- the Doc Vault ---------------------------------------------------------

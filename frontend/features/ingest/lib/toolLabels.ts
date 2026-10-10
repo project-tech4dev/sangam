@@ -27,29 +27,25 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
   read_document_pages: {
     label: "Reading a document",
     detail: (a) =>
-      [fileLabel(a?.filename), a?.start_page ? `pages ${a.start_page}–${a.end_page ?? "end"}` : ""]
-        .filter(Boolean)
-        .join(" · "),
+      [fileLabel(a?.filename), a?.start_page ? `pages ${a.start_page}–${a.end_page ?? "end"}` : ""].filter(Boolean).join(" · "),
   },
   read_source_rows: {
     label: "Reading staff workbooks",
     detail: (a) => [a?.name, a?.sheet].filter(Boolean).join(" · "),
   },
-  list_storage_buckets: { label: "Looking for your team's files", detail: () => "" },
-  list_bucket_files: {
-    label: "Waiting for you: your team's spreadsheets",
-    detail: () => "",
+  choose_sources: { label: "Waiting for you: where to read from", detail: () => "" },
+  list_library_documents: { label: "Checking Sangam's library for", detail: (a) => a?.name ?? "" },
+  read_library_document: {
+    label: "Reading a report from Sangam's library",
+    detail: (a) =>
+      [a?.document_id ? `document ${a.document_id}` : "", a?.start_page ? `from page ${a.start_page}` : ""]
+        .filter(Boolean)
+        .join(" · "),
   },
   read_workbook: {
     label: "Reading a spreadsheet",
     detail: (a) =>
-      [Array.isArray(a?.documents) ? `document ${a.documents.join(", ")}` : "", a?.sheet]
-        .filter(Boolean)
-        .join(" · "),
-  },
-  select_source_files: {
-    label: "Waiting for you to choose spreadsheets",
-    detail: (a) => (Array.isArray(a?.paths) ? `${a.paths.length} proposed` : ""),
+      [Array.isArray(a?.documents) ? `document ${a.documents.join(", ")}` : "", a?.sheet].filter(Boolean).join(" · "),
   },
   funder_dossier: {
     label: "Checking what Sangam already has on",
@@ -90,6 +86,15 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Working out what to look for on",
     detail: (a) => a?.name ?? "",
   },
+  list_vault_documents: { label: "Looking through your organisation's documents", detail: () => "" },
+  read_vault_document: {
+    label: "Reading your organisation's document",
+    detail: (a) => (a?.document_id ? `document ${a.document_id}` : ""),
+  },
+  save_vault_findings: {
+    label: "Saving what your documents say about",
+    detail: (a) => a?.findings?.entity_name ?? "",
+  },
   save_research: {
     label: "Saving findings",
     detail: (a) => a?.findings?.entity_name ?? "",
@@ -110,7 +115,6 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
   task: { label: "Delegating a sub-task", detail: () => "" },
 };
 
-
 /** The URL is already in the label beside the note, and often twice in the
  *  message itself. What is left after removing it is the reason. */
 function reason(message: string): string {
@@ -118,7 +122,10 @@ function reason(message: string): string {
   if (quoted) return `HTTP ${quoted[1]} ${quoted[2]}`;
   const plain = message.match(/\bHTTP (\d{3})\b/);
   if (plain) return `HTTP ${plain[1]}`;
-  const text = message.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
+  const text = message
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   return text.length > 110 ? `${text.slice(0, 110)}…` : text;
 }
 

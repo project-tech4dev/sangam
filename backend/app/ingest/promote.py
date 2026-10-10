@@ -21,7 +21,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.ingest import source_guards, staff_sources
+from app.ingest import source_guards, staff_sources, vault
 from app.ingest.expectations import PROMOTABLE, activity_kind
 from app.ingest.geography import resolve_location
 from app.ingest.matcher import Match, _is_foundation, name_key, resolve_funder, resolve_org
@@ -401,9 +401,9 @@ async def _write_documents(
 
     by_url: dict[str, int] = {}
     for f in _validated(findings, "document", report):
-        if staff_sources.is_staff_source_url(f.source_url):
-            # the dataset's private row exists; ensure_document would add a public one
-            report["held"].append("document: skipped: staff dataset row already on file")
+        if staff_sources.is_staff_source_url(f.source_url) or vault.is_vault_url(f.source_url):
+            # the private row exists; ensure_document would add a public one
+            report["held"].append("document: skipped: private document already on file")
             continue
         shim = type("Doc", (), {
             "source_url": f.source_url, "title": f.title,
@@ -426,6 +426,7 @@ async def _write_documents(
         by_url[f.source_url] = document_id
         _count(report, "documents", status)
     by_url.update(await _staff_datasets(conn, findings))
+    by_url.update(await vault.document_rows(conn, findings))
     return by_url
 
 
@@ -1032,8 +1033,31 @@ async def _reconcile_with_stored(
     return record.model_copy(update=update) if update else record
 
 
+def _answered(asking: Gate | None, table: str, name: str, match: Match, report: dict[str, Any]) -> Match | None:
+    """A name that only resembles a stored one is merged or kept apart on a person's answer; None holds it."""
+    top = match.candidates[0]
+    choice = asking.on_entity(table, name, top) if asking else "ask"
+    if choice == "update":
+        return Match("alias", top["id"], top["score"])
+    if choice == "new":
+        return Match("none")
+    names = ", ".join(c["name"] for c in match.candidates)
+    report["reasons"].append(f"{name!r} resembles {names} without matching. Not merged — a person decides.")
+    return None
+
+
+async def org_match(conn: Any, row: dict[str, Any], asking: Gate | None = None) -> Match | None:
+    """The NGO a save of this research would write to, after any answer to "the same organisation?"; None waits."""
+    findings = row["findings"] if isinstance(row.get("findings"), list) else []
+    record = org_from(row, findings)
+    name = record.name if record else row.get("canonical_name") or row.get("entity_name") or row["slug"]
+    match = await resolve_org(conn, name, record.identifiers if record else None)
+    return _answered(asking, "orgs", name, match, {"reasons": []}) if match.method == "trigram" else match
+
+
 async def _promote_funder(
-    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any]
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any],
+    asking: Gate | None = None,
 ) -> None:
     record = funder_from(row, findings)
     if record is None:
@@ -1042,11 +1066,11 @@ async def _promote_funder(
 
     match = await resolve_funder(conn, record.name, record.cin)
     if match.method == "trigram":
-        names = ", ".join(c["name"] for c in match.candidates)
-        report["reasons"].append(
-            f"{record.name!r} resembles {names} without matching. Not merged — a person decides."
-        )
-        return
+        match = _answered(asking, "funders", record.name, match, report)
+        if match is None:
+            return
+        if match.resolved:  # the same funder: its research spelling becomes an alias
+            record = record.model_copy(update={"aliases": [*record.aliases, record.name]})
     record = await _reconcile_with_stored(conn, record, match, report)
     parent_id = await _parent(conn, record, report)
     status, funder_id, _ = await write_funder(conn, record, match, parent_id=parent_id)
@@ -1071,7 +1095,8 @@ async def _promote_funder(
 
 
 async def _promote_org(
-    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any]
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any],
+    asking: Gate | None = None,
 ) -> None:
     """The NGO path. Same shape as the funder one bar two differences: there is
     no parent link to resolve, and write_org ranks by evidence tier."""
@@ -1085,11 +1110,9 @@ async def _promote_org(
 
     match = await resolve_org(conn, record.name, record.identifiers)
     if match.method == "trigram":
-        names = ", ".join(c["name"] for c in match.candidates)
-        report["reasons"].append(
-            f"{record.name!r} resembles {names} without matching. Not merged — a person decides."
-        )
-        return
+        match = _answered(asking, "orgs", record.name, match, report)
+        if match is None:
+            return
     record = await _reconcile_org_aliases(conn, record, match, report)
     status, org_id, _, conflicts = await write_org(conn, record, match)
     report["entity"] = {"kind": "org", "status": status, "id": org_id, "name": record.name}
@@ -1107,15 +1130,23 @@ async def _promote_org(
 async def promote(conn: Any, row: dict[str, Any], *, gate: Gate | None = None) -> dict[str, Any]:
     """Write what can be written from one research row. Returns a report.
 
-    With a gate, a funder's facts follow the five cases (writer.Gate); an NGO keeps fill-blanks.
+    With a gate, a funder's facts follow the five cases (writer.Gate); an NGO keeps fill-blanks and
+    asks only whether a name that resembles a stored NGO's is the same organisation.
     """
+    asking = gate
     if row.get("entity_kind") == "org":
         gate = None
     token = GATE.set(gate)
     try:
-        report = await _promote(conn, row)
+        report = await _promote(conn, row, asking)
     finally:
         GATE.reset(token)
+    if asking and not gate:
+        report["questions"] = asking.asked()
+        report["held"].extend(
+            f"{i['new_name']!r}: waiting for a person to say whether it is {i['stored_name']!r}"
+            for i in report["questions"]
+        )
     if gate:
         report["questions"] = gate.asked()
         report["changes"] = [i for i in gate.items if i["case"] in (2, 3, 4)
@@ -1131,7 +1162,7 @@ async def promote(conn: Any, row: dict[str, Any], *, gate: Gate | None = None) -
     return report
 
 
-async def _promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
+async def _promote(conn: Any, row: dict[str, Any], asking: Gate | None = None) -> dict[str, Any]:
     findings = row["findings"] if isinstance(row["findings"], list) else []
     report: dict[str, Any] = {
         "slug": row["slug"], "entity": None, "csr_years": [],
@@ -1157,15 +1188,18 @@ async def _promote(conn: Any, row: dict[str, Any]) -> dict[str, Any]:
     # A marked staff figure is still held unless its cited row prints it, in the unit it was saved in.
     findings, mismatched = await staff_sources.hold_mismatched(findings, datasets)
     report["held"].extend(mismatched)
+    # A vault finding was checked against its org's files at save; here only the funder's general facts pass.
+    findings, private = vault.hold_at_promote(findings, row.get("entity_kind"))
+    report["held"].extend(private)
     findings, mislabelled = source_guards.hold_at_promote(findings, row.get("entity_kind"))
     report["held"].extend(mislabelled)
 
     # An NGO is not a funder, and the two kinds reach different tables through
     # different resolvers. Nothing below this line is shared but the report.
     if row.get("entity_kind") == "org":
-        await _promote_org(conn, row, findings, report)
+        await _promote_org(conn, row, findings, report, asking)
     else:
-        await _promote_funder(conn, row, findings, report)
+        await _promote_funder(conn, row, findings, report, asking)
     # Ten findings citing the same unresolvable state is one problem, not ten.
     report["held"] = list(dict.fromkeys(report["held"]))
     report["conflicts"] = list(dict.fromkeys(report["conflicts"]))

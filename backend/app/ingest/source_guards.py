@@ -15,6 +15,18 @@ TIERED_ORG_CONCEPTS: frozenset[str] = frozenset(
 )
 
 
+# Private sources cite a synthetic URL on this reserved domain (RFC 2606): staff datasets, the Doc Vault.
+PRIVATE_SOURCE_DOMAIN = "sangam.invalid"
+# The same test in SQL, for a query that cannot call is_private_source per finding.
+PRIVATE_URL_LIKE = f"https://%.{PRIVATE_SOURCE_DOMAIN}/%"
+
+
+def is_private_source(url: str | None) -> bool:
+    """A finding from a private source: its words must not reach anything every user can open."""
+    host = url_host(url or "")
+    return host == PRIVATE_SOURCE_DOMAIN or host.endswith("." + PRIVATE_SOURCE_DOMAIN)
+
+
 # The research repository read anywhere but its pinned path (a mirror, another ref) is still the team's research.
 _RESEARCH_REPO = "project-tech4dev/org-grant-intelligence"
 _RESEARCH_HOSTS = ("github.com", "githubusercontent.com", "jsdelivr.net")

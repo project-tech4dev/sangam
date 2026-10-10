@@ -8,6 +8,7 @@ from importlib.resources import files
 from typing import Any
 
 from deepagents.backends.protocol import BackendProtocol
+from deepagents.middleware._utils import append_to_system_message
 from deepagents.middleware.rubric import RubricEvaluation, RubricMiddleware
 from deepagents.middleware.summarization import SummarizationMiddleware, compute_summarization_defaults
 from langchain.agents.middleware import (
@@ -21,6 +22,8 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, ToolMessage
 
 from app.agent.models import resolve_model
+from app.ingest import run_sources
+from app.ingest.caller import caller_note, scope
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +108,91 @@ class EscalateAfterFailedSave(AgentMiddleware):
 
     async def awrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Awaitable[Any]]) -> Any:
         return await handler(self._route(request))
+
+
+class DropFilesOnExit(AgentMiddleware):
+    """Deletes every file in a subagent's state as it ends. Its files flow back to the parent and on into
+    the next subagent, so anything the vault-reader offloaded (a summary, a long read) would reach a researcher."""
+
+    def _drop(self, state: Any) -> dict[str, Any] | None:
+        files = (state.get("files") if isinstance(state, dict) else getattr(state, "files", None)) or {}
+        return {"files": dict.fromkeys(files)} if files else None
+
+    def after_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        return self._drop(state)
+
+    async def aafter_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        return self._drop(state)
+
+
+class CallerNote(AgentMiddleware):
+    """Tells the supervisor who this run works for, so it offers only what they may do. The tools still check."""
+
+    def _with_note(self, request: ModelRequest) -> ModelRequest:
+        return request.override(system_message=append_to_system_message(request.system_message, caller_note(scope())))
+
+    def wrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Any]) -> Any:
+        return handler(self._with_note(request))
+
+    async def awrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Awaitable[Any]]) -> Any:
+        return await handler(self._with_note(request))
+
+
+def _not_chosen(call: dict[str, Any], text: str) -> ToolMessage:
+    return ToolMessage(content=text, tool_call_id=call.get("id") or "", name=call.get("name"), status="error")
+
+
+class ChosenSources(AgentMiddleware):
+    """The supervisor's half: no subagent before the person answers choose_sources, and each one launched
+    carries that answer, so the subagent's own RunSources can enforce it."""
+
+    def _sources(self, request: Any) -> run_sources.Sources | ToolMessage | None:
+        if request.tool_call.get("name") != "task":
+            return None
+        try:
+            chosen = run_sources.chosen(_messages(request.state))
+        except Exception:  # noqa: BLE001 - unreadable state fails closed
+            chosen = None
+        return chosen or _not_chosen(request.tool_call, (
+            "REFUSED: call choose_sources first, on its own, and wait for the person's answer before "
+            "launching any subagent."))
+
+    def wrap_tool_call(self, request: Any, handler: Callable[[Any], Any]) -> Any:
+        sources = self._sources(request)
+        if isinstance(sources, ToolMessage):
+            return sources
+        token = run_sources.CURRENT.set(sources) if sources else None
+        try:
+            return handler(request)
+        finally:
+            if token:
+                run_sources.CURRENT.reset(token)
+
+    async def awrap_tool_call(self, request: Any, handler: Callable[[Any], Awaitable[Any]]) -> Any:
+        sources = self._sources(request)
+        if isinstance(sources, ToolMessage):
+            return sources
+        token = run_sources.CURRENT.set(sources) if sources else None
+        try:
+            return await handler(request)
+        finally:
+            if token:
+                run_sources.CURRENT.reset(token)
+
+
+class RunSources(AgentMiddleware):
+    """A subagent's half: refuses any read outside what the person chose for this run."""
+
+    def _refusal(self, request: Any) -> ToolMessage | None:
+        call = request.tool_call
+        why = run_sources.refusal(run_sources.CURRENT.get(), call.get("name") or "", call.get("args") or {})
+        return _not_chosen(call, why) if why else None
+
+    def wrap_tool_call(self, request: Any, handler: Callable[[Any], Any]) -> Any:
+        return self._refusal(request) or handler(request)
+
+    async def awrap_tool_call(self, request: Any, handler: Callable[[Any], Awaitable[Any]]) -> Any:
+        return self._refusal(request) or await handler(request)
 
 
 class ResearchRubric(RubricMiddleware):

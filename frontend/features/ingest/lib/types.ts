@@ -62,6 +62,9 @@ export type ResearchRecord = {
   saved_at: string | null;
   resolved_org_id: number | null;
   resolved_funder_id: number | null;
+  /** Staff only: the save that still stands, and who made it. */
+  promotion_id?: number | null;
+  saved_by?: string | null;
 };
 
 /** One expected cell: a concept, once per fiscal year asked for a year-bound one. */
@@ -111,7 +114,7 @@ export type ResearchCoverage = {
   concepts: CoverageConcept[];
 };
 
-/** One workbook in a bucket; `path` is what select_source_files takes. */
+/** One workbook in a bucket; `path` is what choose_sources takes as a staff_path. */
 export type Workbook = {
   path: string;
   name: string;
@@ -132,6 +135,10 @@ export type ReviewAnswer = {
   quote: string;
   source_url: string;
   source_name: string;
+  /** From the organisation's own Doc Vault. */
+  private?: boolean;
+  /** Shown here, and not saved to Sangam. */
+  held?: boolean;
 };
 
 export type ReviewMissing = { concept: string; topic: string; tag: "not_mentioned" | "couldnt_read"; detail: string };

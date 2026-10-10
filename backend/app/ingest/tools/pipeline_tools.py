@@ -15,10 +15,11 @@ from langchain_core.tools import tool
 from app.agent.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
-from app.ingest import staff_sources
+from app.ingest import staff_sources, vault
+from app.ingest.caller import scope, staff_only
+from app.ingest.run_sources import Sources
 from app.ingest.runner import catalog_baseline, run_import, summarise
 from app.ingest.sources import SOURCES, Category, resolve
-from app.integrations import storage
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +120,8 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         sources: comma-separated source keys, or empty for every registered source.
         limit: items per source the run would request.
     """
+    if refused := staff_only("plan_import"):
+        return refused
     try:
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
         names = [n.strip() for n in funders.split(",") if n.strip()]
@@ -215,6 +218,8 @@ async def run_import_now(
     merged — they go to the review queue, because merging two different organisations
     is the one mistake this pipeline cannot undo. Report the queue to the user.
     """
+    if refused := staff_only("run_import_now"):
+        return refused
     try:
         settings = get_settings()
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
@@ -239,6 +244,8 @@ async def import_run_summary(run_id: int = 0) -> str:
     The summary is built from the run tables, so it says the same thing now as it
     did when the run finished.
     """
+    if refused := staff_only("import_run_summary"):
+        return refused
     try:
         if run_id <= 0:
             pool = get_pool()
@@ -262,6 +269,8 @@ async def pending_resolutions(limit: int = 20) -> str:
     matching it. Show the candidates and their scores; do not guess on the user's
     behalf.
     """
+    if refused := staff_only("pending_resolutions"):
+        return refused
     try:
         pool = get_pool()
         async with pool.connection() as conn:
@@ -329,80 +338,55 @@ def format_summary(s: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
-@tool
-async def list_storage_buckets() -> str:
-    """List the Storage buckets a person can pick workbooks from.
+@tool(response_format="content_and_artifact")
+async def choose_sources(
+    web: bool = True, library: bool = True, vault_org: int | None = None,
+    vault_docs: list[int] | None = None, staff_paths: list[str] | None = None,
+) -> tuple[str, dict[str, Any] | None]:
+    """Ask the person where this run reads from. Call it FIRST, alone, before launching any subagent.
 
-    Call this when a request needs staff data (CSR filing exports, the CSO funder
-    workbook) and you do not yet know which files exist. Then list_bucket_files with
-    the bucket you think fits: the person confirms or changes it.
-    """
-    try:
-        buckets = await storage.list_buckets()
-        if not buckets:
-            return "No bucket is visible: Storage is off or unreachable. Staff workbooks cannot be picked."
-        lines = [f"{len(buckets)} bucket(s):"]
-        for b in sorted(buckets, key=lambda b: str(b.get("id"))):
-            note = " — staff workbooks (CSR filings, the CSO workbook)" if (
-                b.get("id") == storage.STAFF_SOURCES) else ""
-            lines.append(f"- {b.get('id')} ({'public' if b.get('public') else 'private'}){note}")
-        return "\n".join(lines)
-    except Exception as exc:  # noqa: BLE001 - a tool returns its failure
-        return f"list_storage_buckets failed: {type(exc).__name__}"
-
-
-@tool
-async def list_bucket_files(bucket: str, prefix: str = "") -> str:
-    """List the .xlsx workbooks in a bucket, with sizes and upload dates, to choose from.
-
-    The run pauses here first: a person confirms your bucket or picks another, and
-    the listing is of the bucket they chose.
+    The run pauses on a card: the person ticks public websites, Sangam's library (public documents
+    Sangam already holds), their organisation's Doc Vault files and, for the Sangam team, team
+    spreadsheets. Their answer replaces your proposal and is final: no subagent may read anything
+    else. Propose web and library on and nothing else; the person picks files on the card.
 
     Args:
-        bucket: your best guess from list_storage_buckets, usually "staff-sources".
-        prefix: optional folder, e.g. "mca_csr" (a registry source key).
-
-    Each line is a path to pass to select_source_files as-is.
+        web: read public websites.
+        library: read the public documents Sangam already holds about these organisations.
+        vault_org: the organisation whose Doc Vault files are picked (set by the card).
+        vault_docs: the Doc Vault document ids picked (set by the card).
+        staff_paths: team spreadsheet paths picked, Sangam team only (set by the card).
     """
     try:
-        found = [f for f in await storage.list_all(bucket, prefix) if f["key"].lower().endswith(".xlsx")]
-        if not found:
-            return f"No .xlsx file under {bucket}/{prefix.strip('/')}."
-        lines = [f"{len(found)} workbook(s) in {bucket}:"]
-        for f in found:
-            size = f"{f['size'] / 1024 / 1024:.1f} MB" if isinstance(f.get("size"), int) else "size unknown"
-            lines.append(f"- {storage.qualify(bucket, f['key'])} · {size} · uploaded {str(f.get('updated_at'))[:10]}")
-        if len(found) >= storage.LIST_MAX_FILES:
-            lines.append(f"Listing stopped at {storage.LIST_MAX_FILES}: narrow it with prefix.")
-        return "\n".join(lines)
-    except Exception as exc:  # noqa: BLE001 - a tool returns its failure
-        return f"list_bucket_files failed: {type(exc).__name__}"
-
-
-@tool
-async def select_source_files(paths: list[str]) -> str:
-    """Propose the staff workbooks this run should read. A person confirms or edits the list first.
-
-    The run pauses here until staff approve, edit or reject the selection in the
-    Import screen. On approval each file is registered and you get back its
-    document id: put those ids in each subagent's task — a researcher's
-    read_source_rows(name, documents=[...]), or the workbook-reader's.
-
-    Args:
-        paths: paths exactly as list_bucket_files printed them,
-            e.g. ["staff-sources/mca_csr/csr_2023-24.xlsx"]. Any bucket; .xlsx only.
-    """
-    try:
-        if not paths:
-            return "select_source_files needs at least one path."
-        lines = []
-        for path in dict.fromkeys(paths):
+        caller, pool = scope(), get_pool()
+        vault_ids = sorted(set(vault_docs or ()))
+        if staff_paths and not caller.is_staff:
+            return "REFUSED: team spreadsheets are for the Sangam team only. Call choose_sources again without them.", None
+        if vault_ids and (vault_org is None or not caller.can_read_org(vault_org)):
+            return "REFUSED: those Doc Vault files are not ones this person can read.", None
+        if vault_ids and set(vault_ids) - await vault.in_vault(pool, vault_org, set(vault_ids)):
+            return "REFUSED: some of those files are not in that organisation's Doc Vault.", None
+        if not (web or library or vault_ids or staff_paths):
+            return "REFUSED: nothing was chosen to read. Call choose_sources again.", None
+        staff, lines = [], []
+        for path in dict.fromkeys(staff_paths or ()):
             refusal = staff_sources.check_pick(path)
-            outcome = refusal if isinstance(refusal, str) else await staff_sources.register(get_pool(), path)
-            lines.append(f"- {path} → document {outcome}" if isinstance(outcome, int) else f"- refused: {outcome}")
-        return "\n".join(["Selected by staff. Pass these document ids to the subagents that read them:", *lines])
+            outcome = refusal if isinstance(refusal, str) else await staff_sources.register(pool, path)
+            if isinstance(outcome, int):
+                staff.append(outcome)
+                lines.append(f"- team spreadsheet {path} → document {outcome}")
+            else:
+                lines.append(f"- refused: {outcome}")
+        chosen = Sources(web=web, library=library, vault_org=vault_org if vault_ids else None,
+                         vault_docs=frozenset(vault_ids), staff_docs=frozenset(staff))
+        head = ["Chosen by the person. Subagents may read these and nothing else:",
+                f"- public websites: {'yes' if web else 'no'}",
+                f"- Sangam's library: {'yes' if library else 'no'}"]
+        if vault_ids:
+            head.append(f"- Doc Vault of org {vault_org}: documents {', '.join(map(str, vault_ids))}")
+        return "\n".join([*head, *lines]), chosen.artifact()
     except Exception as exc:  # noqa: BLE001 - a tool returns its failure
-        return f"select_source_files failed: {type(exc).__name__}"
+        return f"choose_sources failed: {type(exc).__name__}", None
 
 
 @tool
@@ -426,9 +410,11 @@ async def read_source_rows(name: str, sheet: str = "", documents: list[int] | No
     Args:
         name: a company, funder or CSO name, at least three letters.
         sheet: optional part of a sheet name (e.g. "2023-24") to read one sheet only.
-        documents: the document ids select_source_files returned, as your task gives them.
+        documents: the document ids choose_sources returned, as your task gives them.
             Only those files are read. With none, nothing is: staff chose no workbook.
     """
+    if refused := staff_only("read_source_rows"):
+        return refused
     try:
         # Staff choose the files; an empty pick used to mean every workbook ever registered.
         if not documents:
@@ -451,11 +437,13 @@ async def read_workbook(documents: list[int], sheet: str = "", start_row: int = 
     Contact columns are removed and emails and phone numbers are redacted by design.
 
     Args:
-        documents: the document ids select_source_files returned, as your task gives them.
+        documents: the document ids choose_sources returned, as your task gives them.
         sheet: part of a sheet name from the outline (e.g. "Funders"); empty for the outline.
         start_row: the spreadsheet row to start the page at (1 is the top).
         limit: rows per page, at most 200.
     """
+    if refused := staff_only("read_workbook"):
+        return refused
     try:
         return await staff_sources.browse(get_pool(), documents, sheet=sheet, start_row=start_row, limit=limit)
     except Exception as exc:  # noqa: BLE001 - a tool returns its failure; type only, never a value

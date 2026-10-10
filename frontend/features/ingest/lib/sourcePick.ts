@@ -2,8 +2,17 @@ import type { TraceStep } from "@/lib/useAgentChat";
 
 type ActionRequest = { name?: string; args?: Record<string, unknown> };
 
+/** Where one run reads from, as choose_sources takes it. */
+export type SourcesChoice = {
+  web: boolean;
+  library: boolean;
+  vault_org: number | null;
+  vault_docs: number[];
+  staff_paths: string[];
+};
+
 /** The tool call a HumanInTheLoopMiddleware interrupt is paused on, or null. */
-export function pausedAction(value: unknown): ActionRequest | null {
+function pausedAction(value: unknown, name: string): ActionRequest | null {
   let request = value;
   if (typeof request === "string") {
     try {
@@ -13,64 +22,42 @@ export function pausedAction(value: unknown): ActionRequest | null {
     }
   }
   const actions = (request as { action_requests?: ActionRequest[] } | null)?.action_requests;
-  return actions?.find((a) => a?.name === "select_source_files" || a?.name === "list_bucket_files") ?? null;
+  return actions?.find((a) => a?.name === name) ?? null;
 }
 
-/** The paths a paused select_source_files proposes; null when the interrupt is not one. */
-export function proposedPaths(value: unknown): string[] | null {
-  const pick = pausedAction(value);
-  if (pick?.name !== "select_source_files") return null;
-  const paths = pick.args?.paths;
-  return Array.isArray(paths) ? paths.filter((p): p is string => typeof p === "string") : [];
+const ids = (v: unknown) => (Array.isArray(v) ? v.map(Number).filter(Number.isInteger) : []);
+
+/** What a paused choose_sources proposes; null when the interrupt is not one. */
+export function proposedSources(value: unknown): SourcesChoice | null {
+  const action = pausedAction(value, "choose_sources");
+  if (!action) return null;
+  const a = action.args ?? {};
+  return {
+    web: a.web !== false,
+    library: a.library !== false,
+    vault_org: typeof a.vault_org === "number" ? a.vault_org : null,
+    vault_docs: ids(a.vault_docs),
+    staff_paths: Array.isArray(a.staff_paths) ? a.staff_paths.filter((p): p is string => typeof p === "string") : [],
+  };
 }
 
-/** The bucket a paused list_bucket_files proposes; null when the interrupt is not one. */
-export function proposedBucket(value: unknown): { bucket: string; prefix: string } | null {
-  const pick = pausedAction(value);
-  if (pick?.name !== "list_bucket_files") return null;
-  const { bucket, prefix } = pick.args ?? {};
-  return { bucket: typeof bucket === "string" ? bucket : "", prefix: typeof prefix === "string" ? prefix : "" };
+/** The person's answer: always an edit, so the run reads exactly what was ticked. */
+export function sourcesDecision(choice: SourcesChoice) {
+  return { type: "edit" as const, edited_action: { name: "choose_sources", args: choice } };
 }
 
-function resultLines(steps: TraceStep[], tool: string): string[] {
-  return steps.filter((s) => s.tool === tool && s.result).flatMap((s) => (s.result ?? "").split("\n"));
-}
-
-/** Every workbook path the run's list_bucket_files calls printed, to offer beside the proposal. */
-export function listedPaths(steps: TraceStep[]): string[] {
-  const out = new Set<string>();
-  for (const line of resultLines(steps, "list_bucket_files")) {
-    const match = /^- ([a-z0-9][a-z0-9._-]*\/\S+?\.xlsx) ·/i.exec(line);
-    if (match?.[1]) out.add(match[1]);
-  }
-  return Array.from(out);
-}
-
-/** Every bucket list_storage_buckets printed, e.g. "- staff-sources (private) — …". */
-export function listedBuckets(steps: TraceStep[]): string[] {
-  const out = new Set<string>();
-  for (const line of resultLines(steps, "list_storage_buckets")) {
-    const match = /^- ([a-z0-9][a-z0-9._-]*) \((?:public|private)\)/i.exec(line);
-    if (match?.[1]) out.add(match[1]);
-  }
-  return Array.from(out);
-}
-
-type Decision =
-  | { type: "approve" }
-  | { type: "edit"; edited_action: { name: string; args: Record<string, unknown> } };
-
-/** The answer to list_bucket_files: narrowed to one folder when every ticked file is in it. */
-export function listingDecision(tickedFolders: string[], bucket: string, prefix: string): Decision {
-  const folders = new Set(tickedFolders);
-  const narrowed = folders.size === 1 ? [...folders][0]! : "";
-  return narrowed === prefix.replace(/\/$/, "")
-    ? { type: "approve" }
-    : { type: "edit", edited_action: { name: "list_bucket_files", args: { bucket, prefix: narrowed } } };
-}
-
-/** The answer to select_source_files: approve the proposal as is, or replace it with the ticks. */
-export function filesDecision(proposed: string[], ticked: string[]): Decision {
-  const same = ticked.length === proposed.length && proposed.every((p) => ticked.includes(p));
-  return same ? { type: "approve" } : { type: "edit", edited_action: { name: "select_source_files", args: { paths: ticked } } };
+/** "Public websites · Sangam's library · …" from the run's answered choose_sources, or null before it. */
+export function readingFrom(steps: TraceStep[]): string | null {
+  const step = [...steps].reverse().find((s) => s.tool === "choose_sources" && s.result && !/REFUSED|failed/.test(s.result));
+  if (!step?.result) return null;
+  const said = (label: string) => new RegExp(`- ${label}: yes`).test(step.result ?? "");
+  const vault = /Doc Vault of org \d+: documents ([\d, ]+)/.exec(step.result)?.[1]?.split(",").length ?? 0;
+  const staff = (step.result.match(/- team spreadsheet .+ → document \d+/g) ?? []).length;
+  const parts = [
+    said("public websites") && "Public websites",
+    said("Sangam's library") && "Sangam's library",
+    vault > 0 && `Your Doc Vault (${vault})`,
+    staff > 0 && `Team spreadsheets (${staff})`,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
 }

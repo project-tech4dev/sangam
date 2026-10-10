@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { EntityMark } from "@/components/ui/primitives";
 import { authHeaders } from "@/lib/api/auth-headers";
-import { addedOf, completeness, gapDetail, isSaved, profileOf, topicBar, topicLine } from "../lib/done";
+import { addedOf, completeness, gapDetail, isSaved, profileOf, topicBar, topicLine, wasFound } from "../lib/done";
 import type { QueueItem, ResearchCoverage, ResearchReview } from "../lib/types";
 import { Answer, Missing } from "./ReviewFields";
+import { ScreenReview } from "./ScreenReview";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 const CELLS = 20;
@@ -36,7 +37,7 @@ function TopicCells({ kept, added, width }: { kept: number; added: number; width
 }
 
 /** Everything about one organisation: by topic, what was found with proof, what wasn't and why. */
-function Report({ c, onSave, busy }: { c: ResearchCoverage; onSave: (name: string) => void; busy: boolean }) {
+function Report({ c, onReview }: { c: ResearchCoverage; onReview: () => void }) {
   const saved = isSaved(c);
   const [review, setReview] = useState<ResearchReview | null>(null);
   const [failed, setFailed] = useState(false);
@@ -55,10 +56,13 @@ function Report({ c, onSave, busy }: { c: ResearchCoverage; onSave: (name: strin
     };
   }, [c.slug]);
 
-  const width = Math.max(1, ...c.concepts.map((t) => {
-    const b = topicBar(t);
-    return b.kept + b.updated + b.added;
-  }));
+  const width = Math.max(
+    1,
+    ...c.concepts.map((t) => {
+      const b = topicBar(t);
+      return b.kept + b.updated + b.added;
+    }),
+  );
   const reasons = new Map(c.concepts.map((t) => [t.concept, gapDetail(t)]));
   const held = c.concepts.filter((t) => t.held > 0);
   const found = review?.answers ?? [];
@@ -74,7 +78,9 @@ function Report({ c, onSave, busy }: { c: ResearchCoverage; onSave: (name: strin
               <div role="listitem" key={t.concept} className="done-topic">
                 <span>{t.title}</span>
                 <TopicCells kept={saved ? b.kept + b.updated : (t.before ?? 0)} added={saved ? b.added : 0} width={width} />
-                <span className="done-topic-line">{saved ? topicLine(t) : (t.before ?? 0) > 0 ? "Already in Sangam" : "Nothing yet"}</span>
+                <span className="done-topic-line">
+                  {saved ? topicLine(t) : (t.before ?? 0) > 0 ? "Already in Sangam" : "Nothing yet"}
+                </span>
               </div>
             );
           })}
@@ -132,8 +138,8 @@ function Report({ c, onSave, busy }: { c: ResearchCoverage; onSave: (name: strin
           </Link>
         )}
         {!saved && (
-          <button type="button" className="btn btn-primary" onClick={() => onSave(c.name)} disabled={busy}>
-            Save to Sangam
+          <button type="button" className="btn btn-primary" onClick={onReview}>
+            Review &amp; save
           </button>
         )}
       </div>
@@ -141,73 +147,118 @@ function Report({ c, onSave, busy }: { c: ResearchCoverage; onSave: (name: strin
   );
 }
 
-function OrgRow({ c, onSave, busy }: { c: ResearchCoverage; onSave: (name: string) => void; busy: boolean }) {
+function OrgRow({
+  c,
+  declined,
+  onSaved,
+  onDeclined,
+}: {
+  c: ResearchCoverage;
+  declined: boolean;
+  onSaved: () => void;
+  onDeclined: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const saved = isSaved(c);
   const share = completeness(c);
   const had = Math.round(share.before * CELLS);
   const now = saved ? Math.round(share.after * CELLS) : had;
+  const found = c.concepts.filter(wasFound).length;
+  // Before a save an NGO has no dry run, so its bars would all be empty: say what was found instead.
+  const bars = saved || share.before > 0;
   return (
     <li className="done-row" data-saved={saved}>
-      <button type="button" className="done-row-head" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span className="done-row-name">
-          <EntityMark name={c.name} size={28} />
-          <strong>{c.name}</strong>
-        </span>
-        <span
-          className="done-cells"
-          aria-label={saved ? `Profile ${pct(share.before)} complete before, ${pct(share.after)} after` : `Profile ${pct(share.before)} complete`}
-        >
-          {Array.from({ length: CELLS }, (_, i) => (
-            <span key={i} className="done-cell" data-part={i < had ? "kept" : i < now ? "added" : "empty"} />
-          ))}
-        </span>
-        <span className="done-row-numbers">
-          <span className="done-row-pct">
-            {saved ? (
-              <>
-                <span>
-                  <span className="done-before">{pct(share.before)}</span> → <strong>{pct(share.after)}</strong>
-                </span>
-                <span className="done-row-facts">+{plural(addedOf(c), "fact")}</span>
-              </>
-            ) : (
-              <>
-                <span className="done-before">{pct(share.before)}</span>
-                <span className="tag tag-neutral">Not saved</span>
-              </>
-            )}
+      <div className="done-row-line">
+        <button type="button" className="done-row-head" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className="done-row-name">
+            <EntityMark name={c.name} size={28} />
+            <strong>{c.name}</strong>
           </span>
-          <span className="done-row-toggle">{open ? "Hide ▴" : "Show ▾"}</span>
-        </span>
-      </button>
-      {open && <Report c={c} onSave={onSave} busy={busy} />}
+          {bars ? (
+            <span
+              className="done-cells"
+              aria-label={
+                saved
+                  ? `Profile ${pct(share.before)} complete before, ${pct(share.after)} after`
+                  : `Profile ${pct(share.before)} complete`
+              }
+            >
+              {Array.from({ length: CELLS }, (_, i) => (
+                <span key={i} className="done-cell" data-part={i < had ? "kept" : i < now ? "added" : "empty"} />
+              ))}
+            </span>
+          ) : (
+            <span className="done-row-found">
+              Found answers on {found} of {c.concepts.length} topics
+            </span>
+          )}
+          <span className="done-row-numbers">
+            <span className="done-row-pct">
+              {saved ? (
+                <>
+                  <span>
+                    <span className="done-before">{pct(share.before)}</span> → <strong>{pct(share.after)}</strong>
+                  </span>
+                  <span className="done-row-facts">+{plural(addedOf(c), "fact")}</span>
+                </>
+              ) : (
+                <>
+                  {bars && <span className="done-before">{pct(share.before)}</span>}
+                  <span className="tag tag-neutral">{declined ? "Not saved" : "Not reviewed"}</span>
+                </>
+              )}
+            </span>
+            <span className="done-row-toggle">{open ? "Hide ▴" : "Show ▾"}</span>
+          </span>
+        </button>
+        {!saved && !reviewing && (
+          <button type="button" className="btn btn-primary done-row-review" onClick={() => setReviewing(true)}>
+            {declined ? "Review again" : "Review & save"}
+          </button>
+        )}
+      </div>
+      {reviewing ? (
+        <div className="done-row-detail">
+          <ScreenReview
+            slug={c.slug}
+            onSaved={() => {
+              setReviewing(false);
+              onSaved();
+            }}
+            onDeclined={() => {
+              setReviewing(false);
+              onDeclined();
+            }}
+          />
+        </div>
+      ) : (
+        open && <Report c={c} onReview={() => setReviewing(true)} />
+      )}
     </li>
   );
 }
 
-/** The Done step: one card per organisation in the run, saved or not, each holding its whole report. */
+/** Review, then Done: one row per organisation in the run, each saved from here after its review. */
 export function DoneReport({
   slugs,
   since,
   onStartOver,
-  onSave,
-  busy,
+  onPending,
   fallback,
 }: {
   slugs: string[];
   /** When the run began, so only names it queued are shown. */
   since: number | null;
   onStartOver: () => void;
-  /** Asks Sangam to save one organisation, which leads to the Review step. */
-  onSave: (name: string) => void;
-  /** A run is going, so nothing new can be asked. */
-  busy: boolean;
+  /** How many organisations still wait for a review, so the step bar can say Review or Done. */
+  onPending?: (n: number) => void;
   /** Shown until the numbers arrive, and instead of them when none come back. */
   fallback: ReactNode;
 }) {
   const [all, setAll] = useState<ResearchCoverage[] | null>(null);
   const [queued, setQueued] = useState<QueueItem[]>([]);
+  const [declined, setDeclined] = useState<string[]>([]);
   const key = slugs.join("|");
 
   useEffect(() => {
@@ -215,7 +266,9 @@ export function DoneReport({
     // Between a pause's answer and the resume the run looks finished for a moment; don't dry-run every save for that.
     const wait = setTimeout(async () => {
       const [found, queue] = await Promise.all([
-        Promise.all(key.split("|").map((slug) => get<ResearchCoverage>(`/api/ingest/research/${encodeURIComponent(slug)}/coverage`))),
+        Promise.all(
+          key.split("|").map((slug) => get<ResearchCoverage>(`/api/ingest/research/${encodeURIComponent(slug)}/coverage`)),
+        ),
         get<QueueItem[]>("/api/ingest/queue?limit=50"),
       ]);
       if (cancelled) return;
@@ -228,25 +281,43 @@ export function DoneReport({
     };
   }, [key, since]);
 
+  const pending = all === null ? null : all.filter((c) => !isSaved(c) && !declined.includes(c.slug)).length;
+  useEffect(() => {
+    if (pending !== null) onPending?.(pending);
+  }, [pending, onPending]);
+
+  async function reload(slug: string) {
+    const fresh = await get<ResearchCoverage>(`/api/ingest/research/${encodeURIComponent(slug)}/coverage`);
+    if (fresh) setAll((prev) => (prev ?? []).map((c) => (c.slug === slug ? fresh : c)));
+  }
+
   if (all === null || all.length === 0) return <>{fallback}</>;
 
   const saved = all.filter(isSaved);
-  const unsaved = all.length - saved.length;
   const shares = saved.map(completeness);
   const avg = (pick: (s: { before: number; after: number }) => number) =>
     shares.reduce((n, s) => n + pick(s), 0) / Math.max(1, shares.length);
   const added = saved.reduce((n, c) => n + addedOf(c), 0);
-  const title = saved.length > 0 ? `Saved ${plural(saved.length, "organisation")}` : "Research finished — nothing saved yet";
-  const notSavedLine = unsaved > 0 ? ` ${unsaved} not saved: open ${unsaved === 1 ? "it" : "one"} to save it now.` : "";
-  const sub =
+  const reviewing = (pending ?? 0) > 0;
+  const title = reviewing
+    ? "Review what Sangam found"
+    : saved.length > 0
+      ? `Saved ${plural(saved.length, "organisation")}`
+      : "Nothing saved";
+  const savedLine =
     saved.length === 0
-      ? `Open ${all.length === 1 ? "it" : "each one"} to see everything Sangam found, then save what you want to keep.`
-      : `${saved.length === 1 ? "The profile is" : "Their profiles are"} now ${pct(avg((s) => s.after))} complete${
+      ? ""
+      : `${saved.length === 1 ? "The saved profile is" : "Saved profiles are"} now ${pct(avg((s) => s.after))} complete${
           saved.length === 1 ? "" : " on average"
-        }, up from ${pct(avg((s) => s.before))}. ${plural(added, "new fact")} added, each linked to its proof.${notSavedLine}`;
+        }, up from ${pct(avg((s) => s.before))}. ${plural(added, "new fact")} added, each linked to its proof.`;
+  const sub = reviewing
+    ? `${plural(pending ?? 0, "organisation")} to review. Open each one, check what was found and save what you want to keep, in any order.${
+        savedLine ? ` ${savedLine}` : ""
+      }`
+    : savedLine || "Nothing from this run was saved. Each organisation's research is kept under Researched recently.";
 
   return (
-    <section className="done" aria-label="Done">
+    <section className="done" aria-label={reviewing ? "Review" : "Done"}>
       <div className="import-head">
         <h1 className="import-h1">{title}</h1>
         <p className="import-sub">{sub}</p>
@@ -260,14 +331,25 @@ export function DoneReport({
         </div>
         <ul className="done-rows">
           {all.map((c) => (
-            <OrgRow key={c.slug} c={c} onSave={onSave} busy={busy} />
+            <OrgRow
+              key={c.slug}
+              c={c}
+              declined={declined.includes(c.slug)}
+              onSaved={() => {
+                setDeclined((prev) => prev.filter((s) => s !== c.slug));
+                void reload(c.slug);
+              }}
+              onDeclined={() => setDeclined((prev) => (prev.includes(c.slug) ? prev : [...prev, c.slug]))}
+            />
           ))}
         </ul>
       </div>
 
       {queued.length > 0 && (
         <div className="done-queued">
-          <span className="card-kicker">{queued.length === 1 ? "One name needs a person" : `${queued.length} names need a person`}</span>
+          <span className="card-kicker">
+            {queued.length === 1 ? "One name needs a person" : `${queued.length} names need a person`}
+          </span>
           {queued.map((q) => (
             <strong key={q.id}>
               {q.candidates[0]

@@ -41,6 +41,11 @@ Then report back the summary only — slug, status, counts, what you found and w
   decided in step 1. `entity_kind` is required and `'unknown'` is refused.
 - `funder_dossier(name, entity_kind)` — what the catalog already holds. Despite the name it
   reads either side; pass `'org'` for an NGO and it reads the org tables.
+- `list_library_documents(name)` then `read_library_document(document_id, start_page, end_page)` —
+  public reports Sangam already archived. When your task says the library is open, check it before
+  searching the web: a report here needs no fetch. Cite the document's own `source_url`, as printed.
+- Your task says which sources the person opened for this run. A tool outside them refuses: that
+  refusal is final, so work with what is open and record what it left unanswered as a gap.
 - `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
 - `read_page(url)` — a CSR page, an about page, a press release.
 - `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and
