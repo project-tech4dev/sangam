@@ -451,8 +451,13 @@ Docker is local development only. Deployed, the stack splits across three hosts 
 |---|---|
 | Next.js frontend | Vercel project `sangam` (root directory `frontend`) |
 | FastAPI backend | Vercel project `sangam-backend` (root `backend`, framework preset `fastapi`) |
-| Postgres | Supabase |
+| Postgres | Supabase (ap-south-1, Mumbai) |
 | Neo4j | Neo4j Aura, or omitted |
+
+**Both functions run in `bom1` (Mumbai), beside the database** — `"regions"` in each
+`vercel.json`. Left at Vercel's default `iad1`, every Postgres round trip crossed iad1↔Mumbai
+(~200 ms), and a 2 ms query cost ~1.2 s once BEGIN, `set_config` and COMMIT were counted.
+`curl -sI <backend>/health` should show `x-vercel-id: bom1::bom1`.
 
 Non-obvious constraints:
 
