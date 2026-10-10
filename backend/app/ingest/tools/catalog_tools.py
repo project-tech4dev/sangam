@@ -696,6 +696,34 @@ async def _may_save(conn: Any, caller: CallerScope, row: dict[str, Any]) -> str 
     return None
 
 
+class SaveRefused(Exception):
+    """This caller may not save this research; the message says why, in the person's words."""
+
+
+async def save_to_catalog(slug: str, caller: CallerScope, decisions: dict[str, str] | None = None) -> list[dict[str, Any]]:
+    """Write saved research into the catalog, one transaction and one undoable promotion per row.
+    Raises LookupError with no research, SaveRefused when the caller's role may not save it."""
+    if not slug and not caller.is_staff:
+        raise SaveRefused("promote one researched organisation at a time: pass its slug.")
+    pool = get_pool()
+    rows = await _research_rows(pool, slug, caller, vault=True)
+    if not rows:
+        raise LookupError(slug)
+    async with pool.connection() as conn:
+        refused = await _may_save(conn, caller, rows[0]) if not caller.is_staff else None
+    if refused:
+        raise SaveRefused(refused)
+    reports = []
+    for row in rows:
+        async with pool.connection() as conn, conn.transaction():
+            promotion = await undo.start(conn, row.get("id"), row["slug"], caller.user_id)
+            report = await promote(conn, row, gate=Gate(decisions or {}))
+            await _record_save(conn, row, report)
+            report["promotion_id"] = promotion if await undo.finish(conn, promotion) else None
+            reports.append(report)
+    return reports
+
+
 @tool
 async def promote_research(slug: str = "", decisions: dict[str, str] | None = None) -> str:
     """Move saved research into the catalog, where a writer exists for it.
@@ -727,27 +755,13 @@ async def promote_research(slug: str = "", decisions: dict[str, str] | None = No
         decisions: leave empty. The person's answers fill it; anything you put here is dropped.
     """
     try:
-        caller = scope()
-        if not slug and not caller.is_staff:
-            return "REFUSED: promote one researched organisation at a time: pass its slug."
-        pool = get_pool()
-        rows = await _research_rows(pool, slug, caller, vault=True)
-        if not rows:
+        # SaveQuestions asked the person before this ran and put their answers in decisions.
+        try:
+            reports = await save_to_catalog(slug, scope(), decisions)
+        except SaveRefused as exc:
+            return f"REFUSED: {exc}"
+        except LookupError:
             return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
-        async with pool.connection() as conn:
-            refused = await _may_save(conn, caller, rows[0]) if not caller.is_staff else None
-        if refused:
-            return f"REFUSED: {refused}"
-
-        reports = []
-        for row in rows:
-            # SaveQuestions asked the person before this ran and put their answers here.
-            async with pool.connection() as conn, conn.transaction():
-                promotion = await undo.start(conn, row.get("id"), row["slug"], caller.user_id)
-                report = await promote(conn, row, gate=Gate(decisions or {}))
-                await _record_save(conn, row, report)
-                report["promotion_id"] = promotion if await undo.finish(conn, promotion) else None
-                reports.append(report)
 
         lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
         for r in reports:

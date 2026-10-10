@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.common import ReadModel
 
@@ -180,6 +180,27 @@ class ResearchOut(ReadModel):
     # Staff only: the save that still stands, and who made it, for Undo.
     promotion_id: int | None = None
     saved_by: str | None = None
+
+
+class SaveIn(BaseModel):
+    # The person's answer per review question id; a question left out is held, not saved.
+    decisions: dict[str, str] = Field(default_factory=dict)
+
+
+class SavedEntityOut(ReadModel):
+    kind: str
+    id: int | None = None
+    name: str
+    status: str | None = None
+
+
+class SaveOut(ReadModel):
+    slug: str
+    entity: SavedEntityOut | None = None
+    promotion_id: int | None = None
+    written: int
+    held: int
+    reasons: list[str]
 
 
 class UndoOut(ReadModel):

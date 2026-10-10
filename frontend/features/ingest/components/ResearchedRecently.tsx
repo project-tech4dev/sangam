@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { EntityMark } from "@/components/ui/primitives";
 import { deleteResearch, undoSave } from "../lib/staffActions";
+import { ScreenReview } from "./ScreenReview";
 import type { ResearchRecord } from "../lib/types";
 import { kindLabel, profileHref, researchState } from "../lib/words";
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
-/** Every organisation researched, saved to a profile or not. Staff can undo a save, or delete unsaved research. */
+/** Every organisation researched, saved to a profile or not. Unsaved research can be reviewed and saved here;
+ *  staff can also undo a save, or delete unsaved research. */
 export function ResearchedRecently({
   items,
   staff = false,
@@ -21,6 +23,7 @@ export function ResearchedRecently({
 }) {
   const [busy, setBusy] = useState<number | null>(null);
   const [failed, setFailed] = useState<{ id: number; text: string } | null>(null);
+  const [reviewing, setReviewing] = useState<number | null>(null);
   if (items.length === 0) return null;
 
   async function act(r: ResearchRecord, name: string) {
@@ -52,27 +55,47 @@ export function ResearchedRecently({
           const name = r.canonical_name ?? r.entity_name;
           const state = researchState(r);
           const href = profileHref(r);
+          const reviewable = !r.saved_at && r.status !== "not_found" && r.status !== "wrong_entity";
           return (
-            <div key={r.id} className="import-shelf-row">
-              <EntityMark name={name} size={32} />
-              <div className="import-shelf-name">
-                <strong>{name}</strong>
-                <span className="import-hint">
-                  {kindLabel(r.entity_kind)} · {r.fact_count} answers · {day(r.researched_at)}
-                  {r.saved_by && ` · saved by ${r.saved_by}`}
-                </span>
-                {failed?.id === r.id && <span className="import-error">{failed.text}</span>}
+            <div key={r.id} className="import-shelf-item">
+              <div className="import-shelf-row">
+                <EntityMark name={name} size={32} />
+                <div className="import-shelf-name">
+                  <strong>{name}</strong>
+                  <span className="import-hint">
+                    {kindLabel(r.entity_kind)} · {r.fact_count} answers · {day(r.researched_at)}
+                    {r.saved_by && ` · saved by ${r.saved_by}`}
+                  </span>
+                  {failed?.id === r.id && <span className="import-error">{failed.text}</span>}
+                </div>
+                <span className={`tag ${state.tag}`}>{state.label}</span>
+                {href && (
+                  <Link href={href} className="import-link">
+                    Open profile
+                  </Link>
+                )}
+                {reviewable && reviewing !== r.id && (
+                  <button type="button" className="import-link" onClick={() => setReviewing(r.id)}>
+                    Review &amp; save
+                  </button>
+                )}
+                {staff && (
+                  <button type="button" className="import-link" disabled={busy === r.id} onClick={() => act(r, name)}>
+                    {busy === r.id ? "Working…" : r.promotion_id != null ? "Undo save" : "Delete"}
+                  </button>
+                )}
               </div>
-              <span className={`tag ${state.tag}`}>{state.label}</span>
-              {href && (
-                <Link href={href} className="import-link">
-                  Open profile
-                </Link>
-              )}
-              {staff && (
-                <button type="button" className="import-link" disabled={busy === r.id} onClick={() => act(r, name)}>
-                  {busy === r.id ? "Working…" : r.promotion_id != null ? "Undo save" : "Delete"}
-                </button>
+              {reviewing === r.id && (
+                <div className="import-shelf-review">
+                  <ScreenReview
+                    slug={r.slug}
+                    onSaved={() => {
+                      setReviewing(null);
+                      onChanged?.();
+                    }}
+                    onDeclined={() => setReviewing(null)}
+                  />
+                </div>
               )}
             </div>
           );

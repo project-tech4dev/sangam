@@ -116,6 +116,13 @@ Private text (vault or staff spreadsheet) must never sit in a model's context wh
 - **Limits:** `locations` and `resolution_queue` rows a save added are not undone (shared reference rows). Undoing the newer of two saves of the same research leaves `saved` from that save.
 - **Docs:** `docs/INGEST.md` gains "Who can use it" (roles, the leak rule), the vault-reader and "Undoing a save", and its stale tool counts are fixed. CLAUDE.md, the README and `docs/DEPLOY.md` no longer call auth a stub.
 
+### Review from the screen (after a live run)
+A run that researched ten NGOs paused ten catalog-writers at once. The screen could answer only the last pause, answering failed with LangGraph's "multiple pending interrupts", and a reload lost every card, so nothing was saved and Done read as blank.
+- **The agent stops after research.** `instructions.md` no longer launches writers. A `catalog-writer` runs only when someone asks in chat to save a named organisation, one at a time.
+- **`POST /ingest/research/{slug}/save`** (any role, checked by `_may_save`) runs `save_to_catalog`, the core `promote_research` now shares. The body is the person's answers per review question id.
+- **Done is the Review step.** Every row has "Review & save", which opens the review card inline. Unsaved NGOs show "Found answers on N of M topics" instead of empty bars. The step bar stays on Review until no row is waiting. Researched recently offers the same button, so research can be saved later from outside the run.
+- **Chat saves still pause.** `SessionScopedAGUIAgent` sends a resume to one open interrupt, so even several chat-launched writers answer correctly.
+
 ## Reuse
 - `staff_sources.browse`/`read_rows`/redaction/`_cite` (`ingest/staff_sources.py`);
 - `storage.download` (`integrations/storage.py:429`);

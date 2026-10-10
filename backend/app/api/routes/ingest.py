@@ -19,6 +19,8 @@ from app.schemas.ingest import (
     ReviewOut,
     RunItemOut,
     RunOut,
+    SaveIn,
+    SaveOut,
     SourceOut,
     SourceProposalOut,
     UndoOut,
@@ -144,6 +146,27 @@ async def undo_promotion(promotion_id: int, pool: OwnerPoolDep, user_id: UUID = 
     except undo.UndoRefused as exc:
         raise HTTPException(status_code=409, detail=f"Nothing was undone: {exc}.") from exc
     return UndoOut.model_validate(done)
+
+
+@router.post("/research/{slug}/save", response_model=SaveOut,
+             summary="Save one researched organisation to Sangam, with the person's answers to its questions")
+async def save_research(slug: str, body: SaveIn, caller: CallerScope = Depends(request_scope)) -> SaveOut:
+    from app.ingest.tools.catalog_tools import SaveRefused, save_to_catalog
+
+    try:
+        reports = await save_to_catalog(slug, caller, body.decisions)
+    except SaveRefused as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=f"no saved research for {slug!r}") from exc
+    r = reports[0]
+    return SaveOut(
+        slug=r["slug"], entity=r.get("entity"),
+        promotion_id=r.get("promotion_id") if caller.is_staff else None,
+        written=sum(n for counts in r.get("written", {}).values() for status, n in counts.items()
+                    if status in ("added", "updated")),
+        held=len(r.get("held", [])), reasons=list(r.get("reasons", [])),
+    )
 
 
 @router.get("/research/{slug}/review", response_model=ReviewOut,

@@ -126,3 +126,15 @@ async def test_a_save_that_wrote_nothing_leaves_no_promotion(db):
     assert not await undo.finish(db, promotion)
     gone = await (await db.execute("SELECT count(*) AS n FROM promotions WHERE id = %s", (promotion,))).fetchone()
     assert gone["n"] == 0
+
+
+async def test_a_save_from_the_screen_is_logged_and_undone(db, monkeypatch):
+    staff = await _staff(db)
+    await _research(db)
+    monkeypatch.setattr(catalog_tools, "get_pool", lambda: _PoolOf(db))
+    reports = await catalog_tools.save_to_catalog(SLUG, staff, {})
+    promotion = reports[0]["promotion_id"]
+    row = await (await db.execute("SELECT promoted_by FROM promotions WHERE id = %s", (promotion,))).fetchone()
+    assert row["promoted_by"] == staff.user_id and await _funders(db) == 1
+    await undo.undo(db, promotion, staff.user_id)
+    assert await _funders(db) == 0

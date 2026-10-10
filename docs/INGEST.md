@@ -235,13 +235,19 @@ reach the catalog-writer, `coverage_report` (counts only) and the Review and Don
 `compare_with_catalog`. On save, a funder's general facts (`vault.PROMOTABLE`) link to the
 existing private `documents` row; everything else from a vault, and anything for an NGO, is held.
 
-**`catalog-writer`** — one per organisation, launched after the researchers report. Its only tools
+**Saving happens on the screen.** After research the supervisor reports and stops. The Review
+step lists every researched organisation with "Review & save": the card reads
+`GET /api/ingest/research/{slug}/review` (answers with proof, and any question about values not
+clearly the same), and saving posts the person's answers to `POST /api/ingest/research/{slug}/save`.
+That runs the same `save_to_catalog` as `promote_research`, under the same role check
+(`_may_save`), so organisations are saved one at a time, in any order, from a run or from
+Researched recently. It used to be an agent pause per writer: ten writers paused together, the
+screen could answer only the last, and a reload or an error lost the rest.
+
+**`catalog-writer`** — launched only when the user asks in chat to save a named organisation. Its only tools
 are `promote_research` and `funder_dossier`. It cannot research and cannot author a value: it
 promotes, reads the dossier back, and reports the difference. A promotion claiming six rows
 against a dossier showing none is the failure worth catching, and nothing else was catching it.
-
-Parallel `task` calls resolve together, so the writers start after the *slowest* researcher, not
-one by one.
 
 **Waves, not a cap.** `MAX_PARALLEL_RESEARCH` (default 8) is how many researchers run at once;
 ask for thirty organisations and the agent runs four waves, not a list trimmed to eight. It used
@@ -415,7 +421,7 @@ written, the rows held back with their reasons, and the concepts that stayed res
 
 ## Undoing a save
 
-Every `promote_research` save opens a `promotions` row (who, when, which research) and sets
+Every save, from the screen or from `promote_research`, opens a `promotions` row (who, when, which research) and sets
 `sangam.promotion_id` for its transaction. While it is set, the trigger `app.log_catalog_write()`
 (`0041`) logs each insert and update on the sixteen catalog tables `promote` writes to
 `catalog_writes`, with the row before and after as jsonb. Nothing else is logged; a save that wrote

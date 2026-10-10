@@ -331,3 +331,51 @@ class TestStaffUndoAndDelete:
             assert (await c.delete("/api/ingest/research/gone")).status_code == 404
             saved = await c.delete("/api/ingest/research/saved")
         assert saved.status_code == 409 and "Undo the save first" in saved.json()["detail"]
+
+
+class TestSaveFromTheScreen:
+    @pytest.fixture
+    def post(self, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+        from tests.conftest import make_app
+        from tests.test_access import client
+
+        seen = {}
+
+        async def fake_save(slug, caller, decisions):
+            seen.update(slug=slug, caller=caller, decisions=decisions)
+            if slug == "missing":
+                raise LookupError(slug)
+            if slug == "kabil" and not caller.is_staff:
+                raise catalog_tools.SaveRefused("Kabil is an NGO; only its stewards and the Sangam team save research about it.")
+            return [{"slug": slug, "entity": {"kind": "funder", "id": 9, "name": "Acme", "status": "created"},
+                     "promotion_id": 4, "written": {"funders": {"added": 1}, "contacts": {"same": 2, "updated": 1}},
+                     "held": ["contact: no source"], "reasons": []}]
+
+        monkeypatch.setattr(catalog_tools, "save_to_catalog", fake_save)
+
+        async def _post(scope, slug, body):
+            app = make_app(ingest_api.router)
+            app.dependency_overrides[security.request_scope] = lambda: scope
+            async with client(app) as c:
+                return await c.post(f"/api/ingest/research/{slug}/save", json=body)
+
+        return _post, seen
+
+    async def test_a_member_saves_a_funder_with_their_answers(self, post):
+        _post, seen = post
+        res = await _post(MEMBER, "acme", {"decisions": {"q1": "update"}})
+        assert res.status_code == 200 and seen["decisions"] == {"q1": "update"} and seen["caller"] is MEMBER
+        body = res.json()
+        assert body["entity"]["id"] == 9 and body["written"] == 2 and body["held"] == 1
+        assert body["promotion_id"] is None  # undo is staff's
+
+    async def test_staff_get_the_promotion(self, post):
+        _post, _ = post
+        assert (await _post(STAFF, "acme", {})).json()["promotion_id"] == 4
+
+    async def test_refusals_and_missing_research(self, post):
+        _post, _ = post
+        refused = await _post(MEMBER, "kabil", {})
+        assert refused.status_code == 403 and refused.json()["detail"].startswith("Kabil is an NGO")
+        assert (await _post(MEMBER, "missing", {})).status_code == 404
