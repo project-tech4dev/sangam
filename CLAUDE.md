@@ -238,7 +238,8 @@ is latency: a curated lookup was one tool call, the same question in SQL is thre
 `app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) and `web.make_web_search` (Tavily)
 are complete but imported nowhere, and the `Settings` fields that feed them — `tavily_api_key`,
 `github_pat`, `github_mcp_url`, `playwright_mcp_url`, `mcp_servers` — therefore do nothing until
-those tools are registered. Setting them changes no behaviour.
+those tools are registered. Setting them changes no behaviour. `langchain-mcp-adapters` sits in
+the `mcp` extra, so registering `mcp.py` means moving it back into the main dependencies.
 
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
@@ -409,7 +410,9 @@ the honest cost.
 
 **Optional subsystems degrade, they do not crash.** The graph activates only when
 `NEO4J_URI` and an OpenAI key are both set (`Settings.graph_enabled`); `graphiti_core` is
-imported lazily inside `open_graph()` so the app boots without it, and `search_graph`
+imported lazily inside `open_graph()` so the app boots without it — it lives in the `graph`
+extra, which the Docker image installs and the Vercel function does not (it brings numpy and
+neo4j into a bundle near Lambda's 250 MB limit) — and `search_graph`
 returns a message telling the agent to use the database tools instead. Langfuse follows
 the same pattern. Preserve this when adding integrations.
 

@@ -5,7 +5,7 @@ WORKDIR /srv
 
 # Install dependencies first for layer caching.
 COPY pyproject.toml ./
-RUN uv pip install --system --no-cache -r pyproject.toml
+RUN uv pip install --system --no-cache -r pyproject.toml --all-extras
 
 COPY app/ app/
 

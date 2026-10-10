@@ -27,8 +27,12 @@ async def open_graph(settings: Settings):
     if status != "ok":
         logger.warning("Knowledge graph disabled: %s", status)
         return None
-    # Imported lazily so the app still boots if graph deps are missing.
-    from graphiti_core import Graphiti
+    # The `graph` extra is not installed on Vercel, so a missing package disables the graph.
+    try:
+        from graphiti_core import Graphiti
+    except ImportError:
+        logger.warning("Knowledge graph disabled: graphiti-core is not installed (the `graph` extra)")
+        return None
 
     graphiti = Graphiti(settings.neo4j_uri, settings.neo4j_user, settings.neo4j_password)
     await graphiti.build_indices_and_constraints()

@@ -3166,12 +3166,10 @@ dependencies = [
     { name = "copilotkit" },
     { name = "deepagents" },
     { name = "fastapi" },
-    { name = "graphiti-core", extra = ["anthropic"] },
     { name = "httpx" },
     { name = "langchain" },
     { name = "langchain-anthropic" },
     { name = "langchain-google-genai" },
-    { name = "langchain-mcp-adapters" },
     { name = "langchain-openai" },
     { name = "langchain-tavily" },
     { name = "langfuse" },
@@ -3188,6 +3186,14 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 
+[package.optional-dependencies]
+graph = [
+    { name = "graphiti-core", extra = ["anthropic"] },
+]
+mcp = [
+    { name = "langchain-mcp-adapters" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "httpx" },
@@ -3202,12 +3208,12 @@ requires-dist = [
     { name = "copilotkit", specifier = ">=0.1.96" },
     { name = "deepagents", specifier = ">=0.7,<0.8" },
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "graphiti-core", extras = ["anthropic"], specifier = ">=0.30,<0.31" },
+    { name = "graphiti-core", extras = ["anthropic"], marker = "extra == 'graph'", specifier = ">=0.30,<0.31" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "langchain", specifier = ">=1.2" },
     { name = "langchain-anthropic", specifier = ">=1.0" },
     { name = "langchain-google-genai", specifier = ">=3.0" },
-    { name = "langchain-mcp-adapters", specifier = ">=0.1.9" },
+    { name = "langchain-mcp-adapters", marker = "extra == 'mcp'", specifier = ">=0.1.9" },
     { name = "langchain-openai", specifier = ">=1.0" },
     { name = "langchain-tavily", specifier = ">=0.2" },
     { name = "langfuse", specifier = ">=3,<4" },
@@ -3223,6 +3229,7 @@ requires-dist = [
     { name = "trafilatura", specifier = ">=2.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
+provides-extras = ["graph", "mcp"]
 
 [package.metadata.requires-dev]
 dev = [
