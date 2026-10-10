@@ -534,7 +534,8 @@ class EligibilityGuidelineFinding(FindingBase):
         return self
 
 
-class DocumentFinding(FindingBase):
+# The prompt asks every org finding for its tier, so a document may carry one; documents has no column for it.
+class DocumentFinding(FindingBase, OptionallySourced):
     concept: Literal["document"] = "document"
     title: str = Field(min_length=2)
     doc_type: str = Field(min_length=2, description="annual_report | csr_annexure | brsr | …")

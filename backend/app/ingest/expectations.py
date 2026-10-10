@@ -116,6 +116,8 @@ CONCEPTS: dict[str, ConceptSpec] = {
             "title": "written by ensure_document, which takes a shim rather than a record",
             "doc_type": "written by ensure_document",
             "as_of": "written by ensure_document",
+            "source_type": "a document is a source, not a fact; documents has no column for its tier",
+            "evidence_tier": "a document is a source, not a fact; documents has no column for its tier",
         },
     ),
     "rfp": ConceptSpec("rfps", "Open calls for proposals"),
