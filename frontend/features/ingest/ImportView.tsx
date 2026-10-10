@@ -40,8 +40,10 @@ async function loadVault(access: ImportAccess): Promise<VaultFile[]> {
 
 /** Staff get every panel; anyone else only what they researched, as the rest is the team's. */
 async function loadPanels(): Promise<Panels> {
-  const access = accessOf(await get<Parameters<typeof accessOf>[0]>("/api/me"));
+  // Research is open to everyone, so it need not wait for /api/me.
   const research = get<ResearchRecord[]>("/api/ingest/research?limit=25");
+  research.catch(() => {}); // if /api/me fails first, this rejection is still awaited nowhere
+  const access = accessOf(await get<Parameters<typeof accessOf>[0]>("/api/me"));
   const vault = loadVault(access).catch(() => []);
   if (!access.staff) {
     return { access, vaultFiles: await vault, sources: [], runs: [], queue: [], proposals: [], research: await research };
