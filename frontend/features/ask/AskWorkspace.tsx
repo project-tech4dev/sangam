@@ -12,6 +12,8 @@ import { VaultView } from "./views/VaultView";
 import { MediaView } from "./views/MediaView";
 import { RfpWatchView } from "./views/RfpWatchView";
 import { FunderMatchView } from "./views/FunderMatchView";
+import { type ProposalTarget, ProposalsView } from "./views/ProposalsView";
+import { useProposals } from "./views/proposals/store";
 import { ChatsView } from "./views/ChatsView";
 
 type Sourced = { sourceUrl: string | null; sourceName: string | null; fetchedAt: string | null };
@@ -39,6 +41,8 @@ export function AskWorkspace({
   const [threads, setThreads] = useState<ThreadMeta[]>([]);
   const [latestTurn, setLatestTurn] = useState<Turn | null>(null);
   const [seed, setSeed] = useState<string | null>(null);
+  const [proposalTarget, setProposalTarget] = useState<{ key: number; target: ProposalTarget }>({ key: 0, target: null });
+  const proposalCount = useProposals().length;
 
   useEffect(() => {
     setThreads(loadThreads());
@@ -81,6 +85,12 @@ export function AskWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
   }, []);
 
+  // A new key remounts Proposals on that proposal or that funder's list.
+  function openProposals(target: ProposalTarget) {
+    setProposalTarget((t) => ({ key: t.key + 1, target }));
+    setView("proposals");
+  }
+
   function pickThread(id: string) {
     setThreadId(id);
     setResume(true);
@@ -112,11 +122,12 @@ export function AskWorkspace({
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
         view={view}
-        onView={setView}
+        onView={(v) => (v === "proposals" ? openProposals(null) : setView(v))}
         threads={threads}
         activeThread={threadId}
         onPickThread={pickThread}
         onNewChat={() => newChat()}
+        counts={{ proposals: proposalCount }}
       />
 
       <div className="ask-main" style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", gap: 24 }}>
@@ -139,7 +150,19 @@ export function AskWorkspace({
         {view === "vault" && <VaultView orgs={payload.orgs} />}
         {view === "media" && <MediaView onDiscuss={(text) => newChat(text)} />}
         {view === "chats" && <ChatsView threads={threads} onPick={pickThread} />}
-        {view === "funder-match" && <FunderMatchView orgs={payload.orgs} />}
+        {view === "funder-match" && (
+          <FunderMatchView
+            orgs={payload.orgs}
+            nav={{ open: (id) => openProposals({ id }), list: (funderId) => openProposals({ funderId }) }}
+          />
+        )}
+        {view === "proposals" && (
+          <ProposalsView
+            key={proposalTarget.key}
+            target={proposalTarget.target}
+            onFunderMatch={() => setView("funder-match")}
+          />
+        )}
         {view === "rfpwatch" && <RfpWatchView />}
       </div>
     </div>

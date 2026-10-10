@@ -20,3 +20,7 @@ export function formatInr(value: number): string {
   if (abs >= 1e5) return `${sign}₹${short(abs / 1e5)} lakh`;
   return `${sign}₹${abs.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
+
+/** "10 Oct 2026", the date style of Funder Match and Proposals. */
+export const shortDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });

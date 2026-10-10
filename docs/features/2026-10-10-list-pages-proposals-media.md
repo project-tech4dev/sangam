@@ -27,7 +27,7 @@ Two specs already exist on unmerged branches, and the prototype follows them:
 **Defaults taken (say if wrong):**
 - **Score change:** Funder Match keeps "▲ 4 since the last run", which you chose earlier, though v40 no longer draws it.
 - **Tests:** no new tests, per the no-tests rule; existing ones are fixed where a change breaks them.
-- **Migration number:** 0043, since 0042 is taken.
+- **Migration number:** none in PR 3 (decided 11 Oct); the next one is 0043.
 - **Branches:** every PR stacks on `feat/funder-match-page`.
 
 *Approved 2026-10-10.*
@@ -61,24 +61,23 @@ All filtering is client-side: a run is about 43 rows, already loaded.
 
 **Exit gate:** lint and build pass. By hand: every card and filter combination gives counts equal to the list.
 
-### PR 3: Proposals, part 1: the record, the list, steps 1–2 (`feat/proposals-record`)
-Spec "Order of work" 1–2, with no model calls yet.
+### PR 3: Proposals, part 1: the screens, steps 1–2 (`feat/proposals-record`)
+Spec "Order of work" 1–2, with no model calls and, decided 11 Oct, **no schema change and no proposals API yet**:
+a proposal is kept in the browser until the table work is taken up.
 
 | File | Change |
 |---|---|
-| `db/migrations/0043_proposal_work.sql` | `proposals.work jsonb`, `summary jsonb`, `rubric_version`. The insert and update policies become `app.my_org_ids() OR app.is_staff()`, and so does `documents_insert`, so stewards and staff can write |
-| `backend/app/proposals/{rubric,readiness}.py` (new group) | Rubric v2 as data: A1–A16 with their questions, Strong elements and weak readings; F1/F4/F5; overlays; G1/G2. Display codes A/B/C/F. The ready rule. `summary` computed from `work` |
-| `api/routes`, `repositories`, `schemas/proposals.py` + one line in `router.py` | `POST /api/proposals` (org, funder, title), `GET /api/proposals?org&funder`, `GET /{id}`, `PATCH /{id}` (rename), `PATCH /{id}/work` (path allowlist, `jsonb_set` under a row lock, per-section `rev` → 409) |
-| `routes/documents.py` | Upload routes use `write=False`; the RLS policy decides |
-| `funder_matches` list | Each match gains `proposals: [{id,title}]` (one LEFT JOIN), for the button and the Proposal filter |
-| `frontend/features/ask/views/proposals/` (new) | `ProposalsView`: the list page via the PR 1 components (All / In progress / Ready; Funder; Organisation when more than one; Started; search). The proposal shell: header, rename, stepper, Step 1 gates and Step 2 template, documents and style. Saved as you go through `PATCH /work` |
+| `features/ask/views/proposals/rubric.ts` | Rubric v2 as data: A1–A16 with their questions, Strong elements and weak readings; F1, and F4 when there is an earlier partner line; G1/G2. Display codes A/B/C/F |
+| `features/ask/views/proposals/store.ts` | Proposals in `localStorage` (`sangam.proposals.v1`), shared across views through `useSyncExternalStore`; the summary (step, sections done, gates, ready) computed from the work |
+| `features/ask/views/proposals/start.ts` | A new proposal's gates from the saved Funder Match detail (`GET /api/funder-matches/{id}/detail`: the eligibility note, the funder's own bars, the relationship), and Sangam's template from `GET /api/documents?funder=&doc_type=proposal_template` |
+| `ProposalsView`, `ProposalList`, `ProposalShell` | The list page via the PR 1 components (All / In progress / Ready; Funder; Organisation when more than one; Started; search). The proposal page: header, rename, stepper, Step 1 gates, Step 2 template, documents and style, Step 3's section list |
 | `Sidebar.tsx`, `AskWorkspace.tsx` | "Proposals" under Use Cases, with a count, and the view wired in |
 | `MatchCard.tsx`, `FunderMatchView.tsx` | The action, by state: "Start a proposal", the name form, then "Continue proposal →" with "Start another", or "Proposals (N) →", which opens the list filtered to that funder. Plus the Proposal dropdown |
 
 **Exit gate:**
-- Migrated on a DB copy.
-- As a steward: start KABIL → Axis from Funder Match, tick the gates, upload a document, reload, and everything is still there.
-- A member of another org gets 404.
+- Lint and build pass; no backend change.
+- Start KABIL → Axis from Funder Match, tick the gates, pick a document, reload, and everything is still there.
+- Not yet: another person or device seeing the same proposal, and stewards uploading (today's `documents_insert` excludes them).
 
 ### PR 4: Proposals, part 2: drafting and the section editor (`feat/proposals-draft`)
 Spec "Order of work" 2–4.

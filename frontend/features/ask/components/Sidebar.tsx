@@ -15,13 +15,14 @@ import {
 } from "lucide-react";
 import type { ThreadMeta } from "../lib/threads";
 
-export type WorkspaceView = "ask" | "chats" | "funder-match" | "rfpwatch" | "vault" | "media";
+export type WorkspaceView = "ask" | "chats" | "funder-match" | "proposals" | "rfpwatch" | "vault" | "media";
 
-type Item = { id: WorkspaceView; label: string; soon?: boolean };
+type Item = { id: WorkspaceView; label: string; soon?: boolean; count?: number };
 type SectionId = "recent" | "usecases" | "context" | "tools";
 
 const USE_CASES: Item[] = [
   { id: "funder-match", label: "Funder Match" },
+  { id: "proposals", label: "Proposals" },
   { id: "rfpwatch", label: "RFP Watch" },
   { id: "media", label: "Media & Signals" },
 ];
@@ -74,6 +75,7 @@ export function Sidebar({
   activeThread,
   onPickThread,
   onNewChat,
+  counts = {},
 }: {
   collapsed: boolean;
   onToggle: () => void;
@@ -83,6 +85,7 @@ export function Sidebar({
   activeThread: string;
   onPickThread: (id: string) => void;
   onNewChat: () => void;
+  counts?: Partial<Record<WorkspaceView, number>>;
 }) {
   // Held here rather than in each section, so the collapsed rail can open the sidebar at one.
   const [open, setOpen] = useState<Record<SectionId, boolean>>({
@@ -132,6 +135,7 @@ export function Sidebar({
       <button key={item.id} className="rail-item" data-active={view === item.id} onClick={() => onView(item.id)}>
         {item.label}
         {item.soon && <span className="tag tag-outline rail-soon">Soon</span>}
+        {!item.soon && Boolean(counts[item.id]) && <span className="tag tag-outline rail-soon">{counts[item.id]}</span>}
       </button>
     ));
 

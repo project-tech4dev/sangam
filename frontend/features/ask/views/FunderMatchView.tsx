@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { BucketCards, FilterRow, SearchBox } from "@/components/ui";
-import type { MatchList, MatchRow, MeOut } from "@/lib/api";
-import { getMatches, getMe, runMatch } from "./funder-match/api";
+import type { MatchList, MatchRow } from "@/lib/api";
+import { useOrgChoices } from "../lib/useOrgChoices";
+import { getMatches, runMatch } from "./funder-match/api";
 import { funderTypeGroup, funderTypeLabel } from "./funder-match/funderType";
-import { MatchCard, shortDate } from "./funder-match/MatchCard";
+import { shortDate } from "@/lib/format";
+import { MatchCard, type ProposalNav } from "./funder-match/MatchCard";
+import { useProposals } from "./proposals/store";
 
-type Org = { slug: string; name: string };
 type Bucket = "all" | "strong" | "medium";
 
 // What search reads: the funder's name and type, and every reason on its card.
@@ -16,28 +18,19 @@ const haystack = (m: MatchRow) =>
   [m.funder.name, funderTypeLabel(m.funder.funder_type), ...m.card.reasons.map((r) => r.text)].join(" ").toLowerCase();
 
 /* Every funder ranked for one organisation from its latest saved run; staff, stewards and admins can rerun it. */
-export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; name: string }[] }) {
-  const [me, setMe] = useState<MeOut | null>(null);
+export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: string; name: string }[]; nav: ProposalNav }) {
   const [orgSlug, setOrgSlug] = useState("");
   const [list, setList] = useState<MatchList | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [bucket, setBucket] = useState<Bucket>("all");
   const [type, setType] = useState("all");
+  const [proposal, setProposal] = useState("any");
   const [query, setQuery] = useState("");
   const [running, setRunning] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
 
-  // Staff pick from every organisation; everyone else from the ones they belong to.
-  const choices: Org[] = useMemo(() => {
-    if (!me) return [];
-    if (me.is_staff) return orgs.map(({ slug, name }) => ({ slug, name }));
-    return me.memberships.map((m) => ({ slug: m.org_slug, name: m.org_name }));
-  }, [me, orgs]);
-
-  useEffect(() => {
-    getMe().then(setMe, (error: Error) => setProblem(error.message));
-  }, []);
+  const { me, choices, problem: meProblem } = useOrgChoices(orgs);
 
   // The first organisation until one is picked.
   const active = orgSlug || choices[0]?.slug || "";
@@ -58,6 +51,7 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
     setSaved(null);
     setBucket("all");
     setType("all");
+    setProposal("any");
     setQuery("");
     setOrgSlug(slug);
   }
@@ -78,15 +72,20 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
     }
   }
 
+  const proposals = useProposals();
+  const started = new Set(proposals.filter((p) => p.org.slug === list?.org.slug).map((p) => p.funder.id));
   const all = list?.matches ?? [];
   const ranked = all.filter((m) => m.tier === "strong" || m.tier === "medium");
   const folded = all.filter((m) => m.tier === "weak" || m.tier === "not_scored");
   const q = query.trim().toLowerCase();
   // The dropdown and the search narrow every bucket; the bucket picks the tier.
-  const passes = (m: MatchRow) => (type === "all" || funderTypeGroup(m.funder.funder_type) === type) && (!q || haystack(m).includes(q));
+  const passes = (m: MatchRow) =>
+    (type === "all" || funderTypeGroup(m.funder.funder_type) === type) &&
+    (proposal === "any" || (proposal === "has") === started.has(m.funder.id)) &&
+    (!q || haystack(m).includes(q));
   const narrowed = ranked.filter(passes);
   const shown = bucket === "all" ? narrowed : narrowed.filter((m) => m.tier === bucket);
-  const atDefault = bucket === "all" && type === "all" && !q;
+  const atDefault = bucket === "all" && type === "all" && proposal === "any" && !q;
   const types = [...new Set(all.map((m) => funderTypeGroup(m.funder.funder_type)))].sort();
   const stewarded = me?.memberships.filter((m) => m.role === "steward").length ?? 0;
   const run = list?.run ?? null;
@@ -141,7 +140,7 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
         ) : null}
       </div>
 
-      {problem && <p className="import-error" role="alert">{problem}</p>}
+      {(problem ?? meProblem) && <p className="import-error" role="alert">{problem ?? meProblem}</p>}
 
       {me && choices.length === 0 ? (
         <div className="card view-measure">
@@ -183,6 +182,18 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
                 options: [["all", "All funder types"], ...types.map((t): [string, string] => [t, t])],
                 onChange: setType,
               },
+              {
+                key: "proposal",
+                label: "Proposal",
+                value: proposal,
+                defaultValue: "any",
+                options: [
+                  ["any", "Any proposal status"],
+                  ["has", "Has a proposal"],
+                  ["none", "No proposal yet"],
+                ],
+                onChange: setProposal,
+              },
             ]}
           />
           <SearchBox value={query} onChange={setQuery} placeholder="Search funders and reasons…" />
@@ -193,7 +204,7 @@ export function FunderMatchView({ orgs }: { orgs: { id: number; slug: string; na
           {shown.length === 0 ? (
             <div className="muted">No funders match these filters for {list.org.name}.</div>
           ) : (
-            shown.map((m) => <MatchCard key={m.id} match={m} rank={ranked.indexOf(m) + 1} />)
+            shown.map((m) => <MatchCard key={m.id} match={m} rank={ranked.indexOf(m) + 1} org={list.org} nav={nav} />)
           )}
 
           {atDefault && folded.length > 0 && (
