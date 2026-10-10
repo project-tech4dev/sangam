@@ -14,6 +14,26 @@ only write-shaped output is a **typed record** — a pydantic object with named 
 `app/ingest/writer.py` performs the upsert with fixed SQL. The model decides what a source says
 and how it maps; it cannot decide which table or which row.
 
+## Who can use it
+
+Import is open to every signed-in role. Agent tools run on the owner pool, so each one checks the
+caller itself (`app/ingest/caller.py`, the `chat_scope` ContextVar) and returns a refusal string
+outside its scope.
+
+| Role | Researches | Reads first | Also |
+|---|---|---|---|
+| Org member or admin | any funder | their org's Doc Vault | saves after the same Review pause |
+| Steward | the NGOs it supports, and any funder | those orgs' Doc Vaults | saves both |
+| Staff | anything | staff spreadsheets, any vault | the adapter path, deleting research, undoing a save |
+
+`/research`, `/research/{slug}/review|coverage` and `/threads*` return the caller's own research
+and, for stewards, their orgs'. `/sources`, `/proposals`, `/runs*`, `/queue*` and `/workbooks`
+stay staff-only.
+
+**The leak rule.** Private text (a vault file or a staff spreadsheet) never sits in a context that
+can reach the web. The vault is read by its own subagent, which has no web tools, and the
+researcher locks its web tools once it reads staff rows (`StaffLastLock`).
+
 ## The two paths
 
 There are two ways data reaches the catalog. They share the matcher and the writer, and nothing
@@ -129,7 +149,7 @@ means adding it to the JSON with a basis and a robots check, in a pull request.
 
 ## The agents
 
-One main agent and two subagents, built in `app/ingest/agent.py`.
+One main agent and four subagents, built in `app/ingest/agent.py`.
 
 **Every tool lives in `app/ingest/tools/`, and nothing else in `app/ingest/` is a tool** — the
 rest of the folder is the pipeline the tools drive. Three modules, by what the tool touches,
@@ -138,11 +158,12 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 | Module | Tools |
 |---|---|
 | `pipeline_tools.py` | `list_import_sources` · `plan_import` · `run_import_now` · `import_run_summary` · `pending_resolutions` · `list_storage_buckets` · `list_bucket_files` · `select_source_files` · `read_source_rows` · `read_workbook` |
-| `catalog_tools.py` | `research_goals` · `funder_dossier` · `promote_research` · `record_registry_check` |
+| `catalog_tools.py` | `research_goals` · `funder_dossier` · `compare_with_catalog` · `coverage_report` · `promote_research` · `record_registry_check` |
+| `vault_tools.py` | `list_vault_documents` · `read_vault_document` · `save_vault_findings` |
 | `research_tools.py` | `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` · `publish_brief` |
 
-**Sangam Import** (main) holds eight: the five pipeline tools, `funder_dossier`,
-`record_registry_check` and `publish_brief`. It supervises. It cannot open a web page, and the
+**Sangam Import** (main) holds thirteen: the eight pipeline tools, `funder_dossier`,
+`compare_with_catalog`, `coverage_report`, `record_registry_check` and `publish_brief`. It supervises. It cannot open a web page, and the
 only catalog row it writes is a staff member's own registry check (`app/ingest/manual_checks.py`:
 checker from the chat's user, ranked as `manual_check`, evidenced only with a document of that
 organisation). Research and promotion go through a subagent, so there is one path to a source
@@ -203,13 +224,30 @@ states one, crore for the filing exports (`staff_sources.SOURCE_UNITS`), and the
 otherwise (`hold_mismatched`). Tool output reaches the model provider and, with tracing on, Langfuse,
 like every tool output.
 
-**`catalog-writer`** — one per organisation, launched after the researchers report. Its only tools
+**`vault-reader`** — runs first when the request names Doc Vault files. Its tools are
+`list_vault_documents`, `read_vault_document`, `save_vault_findings` and `research_goals`, and no
+web tools. It cites `[vault:<doc>#p3]` or `[vault:<doc>#Sheet!B12]` under
+`https://org-vault.sangam.invalid/<doc_id>` and saves to `vault_research` (one row per org, RLS to
+its members), never the shared research row. It returns `VaultSummary` (concept names and document
+ids, no free text), and `DropFilesOnExit` clears its file state so nothing it read merges into the
+next subagent. The researchers are then told only which concepts are still missing. Vault findings
+reach the catalog-writer, `coverage_report` (counts only) and the Review and Done views, never
+`compare_with_catalog`. On save, a funder's general facts (`vault.PROMOTABLE`) link to the
+existing private `documents` row; everything else from a vault, and anything for an NGO, is held.
+
+**Saving happens on the screen.** After research the supervisor reports and stops. The Review
+step lists every researched organisation with "Review & save": the card reads
+`GET /api/ingest/research/{slug}/review` (answers with proof, and any question about values not
+clearly the same), and saving posts the person's answers to `POST /api/ingest/research/{slug}/save`.
+That runs the same `save_to_catalog` as `promote_research`, under the same role check
+(`_may_save`), so organisations are saved one at a time, in any order, from a run or from
+Researched recently. It used to be an agent pause per writer: ten writers paused together, the
+screen could answer only the last, and a reload or an error lost the rest.
+
+**`catalog-writer`** — launched only when the user asks in chat to save a named organisation. Its only tools
 are `promote_research` and `funder_dossier`. It cannot research and cannot author a value: it
 promotes, reads the dossier back, and reports the difference. A promotion claiming six rows
 against a dossier showing none is the failure worth catching, and nothing else was catching it.
-
-Parallel `task` calls resolve together, so the writers start after the *slowest* researcher, not
-one by one.
 
 **Waves, not a cap.** `MAX_PARALLEL_RESEARCH` (default 8) is how many researchers run at once;
 ask for thirty organisations and the agent runs four waves, not a list trimmed to eight. It used
@@ -344,7 +382,9 @@ alias → boilerplate → trigram → queue, and only the first four merge. Step
 person accepts, because a Graphiti spike once merged Christian Medical College, Vellore into the
 registry org Better Life Foundation. "Axis Bank" and "Axis Bank Limited" resolve; "Tata Trusts"
 and "Tata Foundation" queue, because there the boilerplate is doing the work of telling them
-apart.
+apart. When saving research, Review asks "Is this the same organisation?". "Yes, the same" saves to the stored
+one and keeps the research's spelling as an alias, "No, they're different" adds a new one (staff only, for
+an NGO), and "Not sure" saves nothing.
 
 **An organisation that is not one organisation.** "NSE-listed companies spent ₹22,212 crore" is a
 real sentence with a real number and no funder in it. `reject_if_aggregate()` raises on any record
@@ -380,6 +420,24 @@ it reads the same during the run, after it, or a week later.
 
 The **research path** writes `entity_research` and returns a promotion report naming the tables
 written, the rows held back with their reasons, and the concepts that stayed research.
+
+## Undoing a save
+
+Every save, from the screen or from `promote_research`, opens a `promotions` row (who, when, which research) and sets
+`sangam.promotion_id` for its transaction. While it is set, the trigger `app.log_catalog_write()`
+(`0041`) logs each insert and update on the sixteen catalog tables `promote` writes to
+`catalog_writes`, with the row before and after as jsonb. Nothing else is logged; a save that wrote
+nothing leaves no promotion.
+
+Staff undo a save with `POST /api/ingest/promotions/{id}/undo` (`app/ingest/undo.py`): the writes
+replay newest first in one transaction, an insert becoming a delete and an update restoring the
+old row. Each row must still match what the save left, so a row edited since, or one something else
+now points at, refuses the whole undo and changes nothing. `DELETE /api/ingest/research/{slug}`
+removes research, vault findings too, only once no save of it stands. The Researched recently list
+shows staff who saved each row, with Undo save and Delete.
+
+Not undone: `locations` and `resolution_queue` rows a save added on the way. And undoing the newer
+of two saves of the same research leaves `saved` (the Done step's numbers) from that newer save.
 
 ## The documents
 

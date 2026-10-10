@@ -14,9 +14,6 @@ import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
 import { fetchImportMessages } from "./lib/threads";
 
-// The pauses a run can stop at. A reopened thread can't answer one, so it says where it stopped.
-const PAUSES = ["promote_research", "list_bucket_files", "select_source_files"];
-
 /** One Import conversation. `onStartOver` hands the parent a fresh thread; `start` shows below the Start step. */
 export function ImportWorkspace({
   threadId,
@@ -56,6 +53,8 @@ export function ImportWorkspace({
   const [reviewed, setReviewed] = useState(false);
   // When the first request went, so Done shows only names this run queued.
   const [since, setSince] = useState<number | null>(null);
+  // Organisations Done still lists as waiting for a review; the step bar stays on Review until none are left.
+  const [toReview, setToReview] = useState(0);
   // The first request came from the task cards, so it is Sangam's wording, not something to show back.
   const [guided, setGuided] = useState(false);
   // Stable, because PauseSignal re-runs its effect whenever this changes.
@@ -66,7 +65,7 @@ export function ImportWorkspace({
   }, []);
   const atStart = turns.length === 0 && !isLoadingHistory;
   const lastSteps = turns.length > 0 ? (turns[turns.length - 1]?.steps ?? []) : [];
-  const stoppedAtQuestion = resume && !isRunning && !paused && lastSteps.some((s) => PAUSES.includes(s.tool) && s.result === null);
+  const finished = !isRunning && !paused && slugsOf(lastSteps).length > 0;
 
   async function submit(text: string) {
     const value = text.trim();
@@ -85,7 +84,7 @@ export function ImportWorkspace({
 
   return (
     <div className="import-ws">
-      <StepBar current={atStart ? 0 : reviewing ? 2 : reviewed || (!isRunning && !paused) ? 3 : 1} />
+      <StepBar current={atStart ? 0 : reviewing || (finished && toReview > 0) ? 2 : reviewed || (!isRunning && !paused) ? 3 : 1} />
       {atStart && !advanced && (
         <>
           <StartStep
@@ -120,8 +119,7 @@ export function ImportWorkspace({
                   slugs={slugs}
                   since={since}
                   onStartOver={startOver}
-                  onSave={(name) => void submit(`Save ${name} to Sangam`)}
-                  busy={isRunning}
+                  onPending={i === turns.length - 1 ? setToReview : undefined}
                   fallback={board}
                 />
               ) : waiting && reviewing ? null : (
@@ -146,12 +144,6 @@ export function ImportWorkspace({
         })}
       </div>
 
-      {stoppedAtQuestion && (
-        <p className="import-stopped">
-          This import stopped at a question that can&apos;t be answered here any more. Ask Sangam to save it again, or start a new
-          import.
-        </p>
-      )}
 
       {/* Mounted once the thread's agent is registered: useInterrupt looks it up by id. */}
       {isReady && <SpreadsheetsCard agentId={`sangam-import-${threadId}`} steps={lastSteps} turnId={turns.at(-1)?.id} onPaused={setPaused} />}

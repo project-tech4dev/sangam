@@ -40,7 +40,8 @@ export function SaveQuestions({ agentId, onPaused }: { agentId: string; onPaused
             key={paused.slug}
             slug={paused.slug}
             questions={paused.questions}
-            onDecide={(decision) => void resolve({ decisions: [decision] })}
+            // The slug picks this save out when several writers are paused at once.
+            onDecide={(decision) => void resolve({ decisions: [decision], slug: paused.slug })}
           />
           <PauseSignal onPaused={onPaused} />
         </>

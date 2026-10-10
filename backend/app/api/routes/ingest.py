@@ -19,8 +19,11 @@ from app.schemas.ingest import (
     ReviewOut,
     RunItemOut,
     RunOut,
+    SaveIn,
+    SaveOut,
     SourceOut,
     SourceProposalOut,
+    UndoOut,
     WorkbookOut,
 )
 from app.schemas.threads import ThreadMessagesOut, ThreadOut
@@ -113,7 +116,57 @@ def _public(row: dict) -> dict:
     from app.ingest.source_guards import is_private_source
 
     sources = [u for u in row.get("sources_read") or [] if not is_private_source(u)]
-    return {**row, "sources_read": sources, "summary": PRIVATE_NOTE if row.get("has_private") else row["summary"]}
+    return {**row, "sources_read": sources, "summary": PRIVATE_NOTE if row.get("has_private") else row["summary"],
+            "promotion_id": None, "saved_by": None}
+
+
+@router.delete("/research/{slug}", dependencies=STAFF, status_code=204,
+               summary="Delete research that was never saved, or whose saves were all undone")
+async def delete_research(slug: str, pool: OwnerPoolDep) -> None:
+    from app.ingest import undo
+
+    async with pool.connection() as conn, conn.transaction():
+        deleted = await undo.delete_research(conn, slug)
+    if deleted is None:
+        raise HTTPException(status_code=409, detail="This research is saved in Sangam. Undo the save first.")
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail=f"no research for {slug!r}")
+
+
+@router.post("/promotions/{promotion_id}/undo", dependencies=STAFF, response_model=UndoOut,
+             summary="Undo one save: remove the rows it added and restore the ones it changed")
+async def undo_promotion(promotion_id: int, pool: OwnerPoolDep, user_id: UUID = Depends(require_user)) -> UndoOut:
+    from app.ingest import undo
+
+    try:
+        async with pool.connection() as conn, conn.transaction():
+            done = await undo.undo(conn, promotion_id, user_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=f"no save {promotion_id}") from exc
+    except undo.UndoRefused as exc:
+        raise HTTPException(status_code=409, detail=f"Nothing was undone: {exc}.") from exc
+    return UndoOut.model_validate(done)
+
+
+@router.post("/research/{slug}/save", response_model=SaveOut,
+             summary="Save one researched organisation to Sangam, with the person's answers to its questions")
+async def save_research(slug: str, body: SaveIn, caller: CallerScope = Depends(request_scope)) -> SaveOut:
+    from app.ingest.tools.catalog_tools import SaveRefused, save_to_catalog
+
+    try:
+        reports = await save_to_catalog(slug, caller, body.decisions)
+    except SaveRefused as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=f"no saved research for {slug!r}") from exc
+    r = reports[0]
+    return SaveOut(
+        slug=r["slug"], entity=r.get("entity"),
+        promotion_id=r.get("promotion_id") if caller.is_staff else None,
+        written=sum(n for counts in r.get("written", {}).values() for status, n in counts.items()
+                    if status in ("added", "updated")),
+        held=len(r.get("held", [])), reasons=list(r.get("reasons", [])),
+    )
 
 
 @router.get("/research/{slug}/review", response_model=ReviewOut,

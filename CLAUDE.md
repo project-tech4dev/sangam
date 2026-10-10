@@ -136,7 +136,7 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
 ```
 backend/app/
   main.py          create_app() + `app = create_app()` — the ASGI entrypoint, wiring only
-  core/            config.py (Settings) · security.py (auth stub) · lifespan.py · logging.py · egress.py
+  core/            config.py (Settings) · security.py (Supabase JWT) · lifespan.py · logging.py · egress.py
   db/              pool.py (PoolDep) · checkpointer.py (LangGraph) · migrate.py (runner)
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
@@ -279,7 +279,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. There are 38 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. There are 39 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses

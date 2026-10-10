@@ -11,8 +11,9 @@ from langchain_core.messages import SystemMessage
 
 from app.core import security
 from app.core.security import CallerScope, chat_scope
-from app.ingest import caller
+from app.ingest import caller, promote
 from app.ingest.tools import catalog_tools, pipeline_tools, research_tools
+from app.ingest.writer import Gate
 
 ME = UUID(int=2)
 MEMBER = CallerScope(ME, False, {7: "member"}, {7: "Arpan"})
@@ -153,12 +154,28 @@ class TestPromotingResearch:
     async def test_a_new_ngo_is_the_teams_to_add(self, monkeypatch):
         from app.ingest.matcher import Match
 
-        async def no_match(conn, name):
-            return Match(method="new")
+        async def no_match(conn, name, identifiers=None):
+            return Match(method="none")
 
-        monkeypatch.setattr(catalog_tools, "resolve_org", no_match)
+        monkeypatch.setattr(promote, "resolve_org", no_match)
         why = await catalog_tools._may_save(_Conn([]), STEWARD, {"slug": "new-ngo", "entity_kind": "org"})
         assert "Sangam team adds new NGOs" in why
+
+    @pytest.mark.parametrize(("choice", "allowed"), [("update", True), ("new", False), (None, False)])
+    async def test_a_steward_who_says_a_close_name_is_theirs_may_save(self, monkeypatch, choice, allowed):
+        from app.ingest.matcher import Match
+
+        kabil = {"id": 8, "name": "Kabil Trust", "score": 0.7}
+
+        async def close(conn, name, identifiers=None):
+            return Match("trigram", None, 0.7, [kabil])
+
+        monkeypatch.setattr(promote, "resolve_org", close)
+        asked = Gate(plan=True)
+        asked.on_entity("orgs", "Kabil", kabil)
+        decisions = {asked.items[0]["id"]: choice} if choice else {}
+        row = {"slug": "kabil", "entity_name": "Kabil", "entity_kind": "org"}
+        assert (await catalog_tools._may_save(_Conn([]), STEWARD, row, decisions) is None) is allowed
 
 
 ROW = {"slug": "acme", "entity_kind": "funder", "summary": "From the sheet", "fact_count": 2,
@@ -222,7 +239,8 @@ class TestTheResearchListIsTheCallers:
                      "slug": "acme", "status": "complete", "stopped_reason": None, "summary": "From the sheet",
                      "fact_count": 2, "sources_read": [STAFF_URL, PUBLIC_URL], "not_found": [],
                      "researched_at": "2026-10-09T10:00:00Z", "saved_at": None, "resolved_org_id": None,
-                     "resolved_funder_id": None, "has_private": True}]
+                     "resolved_funder_id": None, "has_private": True,
+                     "promotion_id": 5, "saved_by": "Asha"}]
 
         monkeypatch.setattr(ingest_api.repo, "list_research", fake)
         return seen
@@ -242,10 +260,12 @@ class TestTheResearchListIsTheCallers:
         assert listed["mine"] == (STEWARD.user_id, [7, 8])
         assert body[0]["sources_read"] == [PUBLIC_URL]
         assert body[0]["summary"].startswith("This research also read private sources")
+        assert body[0]["promotion_id"] is None and body[0]["saved_by"] is None  # undo is staff's
 
     async def test_staff_see_everything_as_saved(self, listed, client_for):
         body = await self._get(client_for, STAFF)
         assert listed["mine"] is None and body[0]["summary"] == "From the sheet"
+        assert body[0]["promotion_id"] == 5 and body[0]["saved_by"] == "Asha"
 
 
 @pytest.mark.integration
@@ -259,3 +279,149 @@ class TestTheResearchListQuery:
 
         rows = await repo.list_research(_PoolOf(db), limit=5, mine=mine)
         assert all("has_private" in r for r in rows)
+
+
+class _TxPool:
+    """A pool whose connection and transaction do nothing; the undo module is faked."""
+
+    @asynccontextmanager
+    async def connection(self):
+        yield self
+
+    @asynccontextmanager
+    async def transaction(self):
+        yield
+
+
+class TestStaffUndoAndDelete:
+    @pytest.fixture
+    def app_as(self, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+        from app.db.pool import get_pool
+        from app.ingest import undo
+        from tests.conftest import make_app
+        from tests.test_access import as_caller
+
+        async def fake_undo(conn, promotion_id, user_id):
+            if promotion_id == 404:
+                raise LookupError(promotion_id)
+            if promotion_id == 409:
+                raise undo.UndoRefused("a funders row has changed since this save")
+            return {"promotion_id": promotion_id, "slug": "acme", "removed": 3, "restored": 1}
+
+        async def fake_delete(conn, slug):
+            return {"saved": None, "gone": 0}.get(slug, 2)
+
+        monkeypatch.setattr(undo, "undo", fake_undo)
+        monkeypatch.setattr(undo, "delete_research", fake_delete)
+
+        def _make(principal):
+            app = as_caller(make_app(ingest_api.router), principal)
+            app.dependency_overrides[get_pool] = _TxPool
+            return app
+
+        return _make
+
+    async def test_members_cannot_undo_or_delete(self, app_as):
+        from tests.test_access import MEMBER, client
+
+        async with client(app_as(MEMBER)) as c:
+            assert (await c.post("/api/ingest/promotions/5/undo")).status_code == 403
+            assert (await c.delete("/api/ingest/research/acme")).status_code == 403
+
+    async def test_staff_undo(self, app_as):
+        from tests.test_access import client
+
+        async with client(app_as(security.DEV_USER)) as c:
+            done = await c.post("/api/ingest/promotions/5/undo")
+            missing = await c.post("/api/ingest/promotions/404/undo")
+            refused = await c.post("/api/ingest/promotions/409/undo")
+        assert done.json() == {"promotion_id": 5, "slug": "acme", "removed": 3, "restored": 1}
+        assert missing.status_code == 404
+        assert refused.status_code == 409 and refused.json()["detail"].startswith("Nothing was undone: a funders row")
+
+    async def test_staff_delete(self, app_as):
+        from tests.test_access import client
+
+        async with client(app_as(security.DEV_USER)) as c:
+            assert (await c.delete("/api/ingest/research/acme")).status_code == 204
+            assert (await c.delete("/api/ingest/research/gone")).status_code == 404
+            saved = await c.delete("/api/ingest/research/saved")
+        assert saved.status_code == 409 and "Undo the save first" in saved.json()["detail"]
+
+
+class TestSaveFromTheScreen:
+    @pytest.fixture
+    def post(self, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+        from tests.conftest import make_app
+        from tests.test_access import client
+
+        seen = {}
+
+        async def fake_save(slug, caller, decisions):
+            seen.update(slug=slug, caller=caller, decisions=decisions)
+            if slug == "missing":
+                raise LookupError(slug)
+            if slug == "kabil" and not caller.is_staff:
+                raise catalog_tools.SaveRefused("Kabil is an NGO; only its stewards and the Sangam team save research about it.")
+            return [{"slug": slug, "entity": {"kind": "funder", "id": 9, "name": "Acme", "status": "created"},
+                     "promotion_id": 4, "written": {"funders": {"added": 1}, "contacts": {"same": 2, "updated": 1}},
+                     "held": ["contact: no source"], "reasons": []}]
+
+        monkeypatch.setattr(catalog_tools, "save_to_catalog", fake_save)
+
+        async def _post(scope, slug, body):
+            app = make_app(ingest_api.router)
+            app.dependency_overrides[security.request_scope] = lambda: scope
+            async with client(app) as c:
+                return await c.post(f"/api/ingest/research/{slug}/save", json=body)
+
+        return _post, seen
+
+    async def test_a_member_saves_a_funder_with_their_answers(self, post):
+        _post, seen = post
+        res = await _post(MEMBER, "acme", {"decisions": {"q1": "update"}})
+        assert res.status_code == 200 and seen["decisions"] == {"q1": "update"} and seen["caller"] is MEMBER
+        body = res.json()
+        assert body["entity"]["id"] == 9 and body["written"] == 2 and body["held"] == 1
+        assert body["promotion_id"] is None  # undo is staff's
+
+    async def test_staff_get_the_promotion(self, post):
+        _post, _ = post
+        assert (await _post(STAFF, "acme", {})).json()["promotion_id"] == 4
+
+    async def test_refusals_and_missing_research(self, post):
+        _post, _ = post
+        refused = await _post(MEMBER, "kabil", {})
+        assert refused.status_code == 403 and refused.json()["detail"].startswith("Kabil is an NGO")
+        assert (await _post(MEMBER, "missing", {})).status_code == 404
+
+
+class TestACloseNameIsAsked:
+    """Research whose name only resembles a stored NGO's waits for "the same organisation?"."""
+
+    CLOSE = {"id": 12, "name": "Peoples Resource Development Association", "score": 0.6}
+
+    def _answer(self, choice):
+        from app.ingest.matcher import Match
+
+        asked = Gate(plan=True)
+        asked.on_entity("orgs", "PRDA", self.CLOSE)
+        gate = Gate({asked.items[0]["id"]: choice} if choice else {})
+        report = {"reasons": []}
+        return promote._answered(gate, "orgs", "PRDA", Match("trigram", None, 0.6, [self.CLOSE]), report), gate, report
+
+    def test_the_same_saves_to_the_stored_ngo_by_alias(self):
+        match, _, _ = self._answer("update")
+        assert (match.method, match.entity_id) == ("alias", 12)
+
+    def test_different_makes_a_new_one(self):
+        match, _, _ = self._answer("new")
+        assert match.method == "none" and not match.resolved
+
+    @pytest.mark.parametrize("choice", [None, "skip"])
+    def test_unanswered_or_unsure_holds_it(self, choice):
+        match, gate, report = self._answer(choice)
+        assert match is None and "Not merged" in report["reasons"][0]
+        assert [q["stored_name"] for q in gate.asked()] == ([self.CLOSE["name"]] if choice is None else [])

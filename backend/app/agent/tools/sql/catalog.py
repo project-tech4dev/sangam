@@ -912,6 +912,9 @@ PROVENANCE_COLUMNS: Mapping[str, Mapping[str, str]] = MappingProxyType(
 # can stay quiet about them while still reporting a genuinely new table that nobody has made a decision.
 KNOWN_EXCLUDED: frozenset[str] = frozenset(
     {
+        # Import's save log: who saved what, and each catalog row's before and after, for undo.
+        "promotions",
+        "catalog_writes",
         # Serialized conversation history — every user's full chat, in this same
         # database. The single most sensitive thing here.
         "checkpoints",

@@ -62,6 +62,9 @@ export type ResearchRecord = {
   saved_at: string | null;
   resolved_org_id: number | null;
   resolved_funder_id: number | null;
+  /** Staff only: the save that still stands, and who made it. */
+  promotion_id?: number | null;
+  saved_by?: string | null;
 };
 
 /** One expected cell: a concept, once per fiscal year asked for a year-bound one. */

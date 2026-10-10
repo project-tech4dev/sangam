@@ -106,13 +106,22 @@ Private text (vault or staff spreadsheet) must never sit in a model's context wh
 - **`GET /documents`** now lists private documents only to the org's members and staff (it listed every org's vault metadata).
 - **Frontend:** the Start step offers the person's orgs' private files; picked ids go into the request ("reading Arpan's Doc Vault first (org arpan, documents 12 and 14)"). The Working board shows "Read N of your organisation's documents"; Review tags vault answers.
 
-### PR D: saves by role, and staff delete
-- **`promote_research`:** records `promoted_by`. A new `catalog_writes(promotion_id, table_name, row_id, action)` table logs each row written. The writer already returns what it wrote (the `saved` jsonb from 0038), so this extends it with ids.
-- **Staff routes:**
-  - `DELETE /ingest/research/{slug}`: remove saved research that was not promoted;
-  - `POST /ingest/promotions/{id}/undo`: delete inserted rows and restore updated ones from the logged previous values, inside one transaction. Refuse when a row has changed since.
-- **Frontend:** in Researched recently, staff get Delete and Undo save; each row shows who saved it.
-- **Docs:** `docs/INGEST.md` gets roles, the vault-reader and the leak rule, and fixes the stale counts. CLAUDE.md and the README drop "auth is a stub". Add the feature plan `docs/features/2026-10-10-import-for-every-role.md`.
+### PR D: who saved what, and staff undo and delete (as built)
+- **Migration 0041:** `promotions(research_id, slug, promoted_by, promoted_at, undone_by, undone_at)` and `catalog_writes(promotion_id, table_name, action, old_row, new_row)`, both staff-read under RLS. Each save gets its own promotion row instead of a `promoted_by` column on the research row, so several saves of one research keep their own authors.
+- **A trigger, not writer changes.** `app.log_catalog_write()` runs after insert or update on the sixteen tables `promote` writes, and logs only while `sangam.promotion_id` is set for the transaction. `promote_research` sets it per row (`undo.start`/`undo.finish`), so manual SQL, the adapter path and seeds are never logged, and a save that wrote nothing leaves no promotion. Logging whole rows meant the writer's many upserts needed no change.
+- **Undo** (`app/ingest/undo.py`, `POST /ingest/promotions/{id}/undo`, staff): replays the writes newest first in one transaction. An insert is deleted, after unlinking `entity_research.resolved_*` for a created funder or org; an update is restored with `jsonb_populate_record`, identity columns skipped. Each row must still equal what the save left (`to_jsonb(t.*) = new_row`, by id where there is one), so an edit since, or an integrity error, refuses the whole undo. The research row reads unsaved again once no save of it stands.
+- **Delete** (`DELETE /ingest/research/{slug}`, staff): 409 while a save stands, else removes the research and vault rows for the slug.
+- **List:** `/research` returns `promotion_id` (the latest standing save) and `saved_by`, to staff only.
+- **Frontend:** Researched recently shows " · saved by X" and an Undo save or Delete link, each behind a confirm, with the backend's reason shown on a refusal.
+- **Limits:** `locations` and `resolution_queue` rows a save added are not undone (shared reference rows). Undoing the newer of two saves of the same research leaves `saved` from that save.
+- **Docs:** `docs/INGEST.md` gains "Who can use it" (roles, the leak rule), the vault-reader and "Undoing a save", and its stale tool counts are fixed. CLAUDE.md, the README and `docs/DEPLOY.md` no longer call auth a stub.
+
+### Review from the screen (after a live run)
+A run that researched ten NGOs paused ten catalog-writers at once. The screen could answer only the last pause, answering failed with LangGraph's "multiple pending interrupts", and a reload lost every card, so nothing was saved and Done read as blank.
+- **The agent stops after research.** `instructions.md` no longer launches writers. A `catalog-writer` runs only when someone asks in chat to save a named organisation, one at a time.
+- **`POST /ingest/research/{slug}/save`** (any role, checked by `_may_save`) runs `save_to_catalog`, the core `promote_research` now shares. The body is the person's answers per review question id.
+- **Done is the Review step.** Every row has "Review & save", which opens the review card inline. Unsaved NGOs show "Found answers on N of M topics" instead of empty bars. The step bar stays on Review until no row is waiting. Researched recently offers the same button, so research can be saved later from outside the run.
+- **Chat saves still pause.** `SessionScopedAGUIAgent` sends a resume to one open interrupt, so even several chat-launched writers answer correctly.
 
 ## Reuse
 - `staff_sources.browse`/`read_rows`/redaction/`_cite` (`ingest/staff_sources.py`);

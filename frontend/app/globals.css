@@ -585,7 +585,6 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .import-threads-date { font-size: var(--fs-xs); color: var(--color-neutral-700); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .import-threads-row[data-active="true"] .import-threads-date { color: inherit; }
 /* A reopened import that had stopped at a question nobody can answer from here now. */
-.import-stopped { margin: 0; padding: 12px 16px; border-radius: var(--radius-row); background: var(--color-neutral-100); font-size: var(--fs-sm); }
 .import-view { flex: 1; min-width: 0; }
 .import-view-open { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
 .import-title { font-size: var(--fs-lg); }
@@ -626,6 +625,7 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 }
 .import-link:hover { text-decoration: underline; }
 .import-link:focus-visible { outline: 2px solid var(--color-accent-750); outline-offset: 2px; }
+.import-link:disabled { cursor: default; color: var(--color-neutral-700); }
 
 .import-steps { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; align-items: center; }
 .import-step { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; }
@@ -732,8 +732,10 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
   border-radius: var(--radius-surface);
   overflow: hidden;
 }
-.import-shelf-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--color-divider); flex-wrap: wrap; }
-.import-shelf-row:last-child { border-bottom: 0; }
+.import-shelf-item { border-bottom: 1px solid var(--color-divider); }
+.import-shelf-item:last-child { border-bottom: 0; }
+.import-shelf-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
+.import-shelf-review { padding: 0 16px 16px; }
 .import-shelf-name { display: flex; flex-direction: column; flex: 1; min-width: 180px; font-size: var(--fs-sm); }
 .import-disclosure > summary { list-style: none; display: block; }
 .import-disclosure > summary::-webkit-details-marker { display: none; }
@@ -845,6 +847,11 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
   cursor: pointer;
 }
 .done-row-head:focus-visible { outline: 2px solid var(--color-accent-750); outline-offset: -2px; }
+/* The head toggles the report; Review & save sits beside it, since a button can't hold another. */
+.done-row-line { display: flex; align-items: center; gap: 12px; padding-right: 18px; }
+.done-row-line .done-row-head { flex: 1; min-width: 0; }
+.done-row-review { flex-shrink: 0; }
+.done-row-found { font-size: var(--fs-sm); color: var(--color-neutral-700); }
 .done-row-name { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: var(--fs-sm); }
 .done-row-name strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .done-cells { display: flex; gap: 2px; height: 16px; }
@@ -920,6 +927,9 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 @media (max-width: 640px) {
   .done-row-head { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; padding: 12px 16px; }
   .done-row-head .done-cells { grid-column: 1 / -1; order: 3; }
+  .done-row-line { flex-wrap: wrap; padding: 0 16px 12px 0; }
+  .done-row-line .done-row-review { margin-left: 16px; }
+  .done-row-head .done-row-found { grid-column: 1 / -1; order: 3; }
   .done-row-detail { padding: 0 16px 16px; }
   .done-topic { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
   .done-topic .done-cells { grid-column: 1 / -1; order: 3; }

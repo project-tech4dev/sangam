@@ -15,7 +15,7 @@ from langchain_core.tools import tool
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import CallerScope, chat_user_id
 from app.db.pool import get_pool
-from app.ingest import coverage, manual_checks, review
+from app.ingest import coverage, manual_checks, review, undo
 from app.ingest import vault as vault_store
 from app.ingest.caller import scope, staff_only, without_private
 from app.ingest.expectations import (
@@ -25,7 +25,7 @@ from app.ingest.expectations import (
     recent_fiscal_years,
 )
 from app.ingest.matcher import resolve_funder, resolve_org
-from app.ingest.promote import MERGEABLE, promote
+from app.ingest.promote import MERGEABLE, org_match, promote
 from app.ingest.writer import UNWRITTEN, Gate, slugify
 
 logger = logging.getLogger(__name__)
@@ -667,9 +667,11 @@ async def review_view(slug: str, caller: CallerScope | None = None) -> dict[str,
             questions, saves = plan.get("questions", []), coverage.changes_by_concept(plan)
             existing = bool(plan.get("entity") and plan["entity"].get("id") not in (None, UNWRITTEN))
         else:
-            name = row.get("canonical_name") or row.get("entity_name") or ""
             # The same match saving would make: on an existing NGO a save only fills blanks.
-            existing = bool(row.get("resolved_org_id")) or (await resolve_org(conn, name)).method in MERGEABLE
+            asking = Gate(plan=True)
+            match = await org_match(conn, row, asking)
+            questions = asking.asked()
+            existing = bool(row.get("resolved_org_id")) or bool(match and match.method in MERGEABLE)
     return {
         "slug": row["slug"], "name": row.get("canonical_name") or row.get("entity_name") or row["slug"],
         "kind": kind, "existing": existing,
@@ -680,20 +682,51 @@ async def review_view(slug: str, caller: CallerScope | None = None) -> dict[str,
     }
 
 
-async def _may_save(conn: Any, caller: CallerScope, row: dict[str, Any]) -> str | None:
+async def _may_save(
+    conn: Any, caller: CallerScope, row: dict[str, Any], decisions: dict[str, str] | None = None
+) -> str | None:
     """Why this caller may not save this research to the catalog, or None."""
     name = row.get("canonical_name") or row.get("entity_name") or row["slug"]
     if row.get("entity_kind") != "org":
         return None if caller.can_save_funder() else "saving to Sangam needs a signed-in user."
     org_id = row.get("resolved_org_id")
     if org_id is None:
-        match = await resolve_org(conn, name)
-        org_id = match.entity_id if match.method in MERGEABLE else None
+        # A steward who says a close name is their NGO saves to it, as staff would.
+        match = await org_match(conn, row, Gate(decisions))
+        org_id = match.entity_id if match and match.method in MERGEABLE else None
     if org_id is None:
         return f"{name} is not an NGO Sangam holds yet; the Sangam team adds new NGOs."
     if not caller.can_research_org(org_id):
         return f"{name} is an NGO; only its stewards and the Sangam team save research about it."
     return None
+
+
+class SaveRefused(Exception):
+    """This caller may not save this research; the message says why, in the person's words."""
+
+
+async def save_to_catalog(slug: str, caller: CallerScope, decisions: dict[str, str] | None = None) -> list[dict[str, Any]]:
+    """Write saved research into the catalog, one transaction and one undoable promotion per row.
+    Raises LookupError with no research, SaveRefused when the caller's role may not save it."""
+    if not slug and not caller.is_staff:
+        raise SaveRefused("promote one researched organisation at a time: pass its slug.")
+    pool = get_pool()
+    rows = await _research_rows(pool, slug, caller, vault=True)
+    if not rows:
+        raise LookupError(slug)
+    async with pool.connection() as conn:
+        refused = await _may_save(conn, caller, rows[0], decisions) if not caller.is_staff else None
+    if refused:
+        raise SaveRefused(refused)
+    reports = []
+    for row in rows:
+        async with pool.connection() as conn, conn.transaction():
+            promotion = await undo.start(conn, row.get("id"), row["slug"], caller.user_id)
+            report = await promote(conn, row, gate=Gate(decisions or {}))
+            await _record_save(conn, row, report)
+            report["promotion_id"] = promotion if await undo.finish(conn, promotion) else None
+            reports.append(report)
+    return reports
 
 
 @tool
@@ -727,25 +760,13 @@ async def promote_research(slug: str = "", decisions: dict[str, str] | None = No
         decisions: leave empty. The person's answers fill it; anything you put here is dropped.
     """
     try:
-        caller = scope()
-        if not slug and not caller.is_staff:
-            return "REFUSED: promote one researched organisation at a time: pass its slug."
-        pool = get_pool()
-        rows = await _research_rows(pool, slug, caller, vault=True)
-        if not rows:
+        # SaveQuestions asked the person before this ran and put their answers in decisions.
+        try:
+            reports = await save_to_catalog(slug, scope(), decisions)
+        except SaveRefused as exc:
+            return f"REFUSED: {exc}"
+        except LookupError:
             return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
-        async with pool.connection() as conn:
-            refused = await _may_save(conn, caller, rows[0]) if not caller.is_staff else None
-        if refused:
-            return f"REFUSED: {refused}"
-
-        reports = []
-        for row in rows:
-            # SaveQuestions asked the person before this ran and put their answers here.
-            async with pool.connection() as conn, conn.transaction():
-                report = await promote(conn, row, gate=Gate(decisions or {}))
-                await _record_save(conn, row, report)
-                reports.append(report)
 
         lines = [f"Promoted {len(reports)} researched organisation(s) into the catalog."]
         for r in reports:
