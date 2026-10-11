@@ -92,12 +92,8 @@ async def _ensure(conn: Any, kind: str, name: str, parent_id: int | None) -> int
 async def resolve_location(
     conn: Any, state: str | None, district: str | None = None
 ) -> tuple[int | None, str | None]:
-    """The locations row for a place, or why there is none.
-
-    Returns (id, None) or (None, reason). The reason is reported to the user
-    rather than logged, because a footprint that cannot be placed is a fact we
-    chose not to store and somebody should know which one.
-    """
+    """(id, None); (id, note) when a near match was read as its closest district; or (None, reason).
+    Notes and reasons go to the person, never only a log: each is a decision they may want to change."""
     if not state:
         if district:
             return None, (
@@ -129,8 +125,19 @@ def district_key(name: str) -> str:
 _KEY = "regexp_replace(lower({}), '[^a-z0-9]', '', 'g')"
 
 
+# Words that tell neighbouring districts apart; a near match must agree on them, or BANGALORE RURAL
+# (via the alias BANGALORE) would score BENGALURU URBAN above BENGALURU RURAL.
+_QUALIFIERS = ("north", "south", "east", "west", "central", "upper", "lower", "rural", "urban", "metro", "new", "old")
+NEAR_FLOOR = 0.4    # pg_trgm similarity a near match needs at least
+NEAR_MARGIN = 0.15  # and its lead over the runner-up; closer than this is a question for a person
+
+
+def qualifiers(name: str) -> frozenset[str]:
+    return frozenset(q for w in re.findall(r"[a-z]+", name.lower()) for q in _QUALIFIERS if w.startswith(q))
+
+
 async def _district(conn: Any, district: str, state: str, state_id: int) -> tuple[int | None, str | None]:
-    """A district of this state by name, then by alias; an official name wins over another's alias."""
+    """A district of this state by name, then alias, then a clearly closest name; (id, note) or (None, reason)."""
     key = district_key(district)
     row = await (
         await conn.execute(
@@ -142,15 +149,23 @@ async def _district(conn: Any, district: str, state: str, state_id: int) -> tupl
     ).fetchone()
     if row:
         return row["id"], None
+    printed = district.strip().upper()
     near = await (
         await conn.execute(
-            "SELECT name FROM locations WHERE kind = 'district' AND parent_id = %s "
-            "ORDER BY similarity(name, %s) DESC LIMIT 3",
-            (state_id, district.upper()),
+            "SELECT id, name, greatest(similarity(name, %s), coalesce((SELECT max(similarity(a, %s)) "
+            "FROM unnest(aliases) a), 0)) AS score FROM locations WHERE kind = 'district' AND parent_id = %s "
+            "ORDER BY score DESC, id LIMIT 3",
+            (printed, printed, state_id),
         )
     ).fetchall()
-    hint = f" Closest: {', '.join(r['name'] for r in near)}." if near else ""
+    if near:
+        top, runner = near[0], (near[1]["score"] if len(near) > 1 else 0.0)
+        if (top["score"] >= NEAR_FLOOR and top["score"] - runner >= NEAR_MARGIN
+                and qualifiers(printed) == qualifiers(top["name"])):
+            return top["id"], f"{district!r} in {state} was read as {top['name']}, the clearly closest district."
+    options = ", ".join(f"{r['name']} ({r['score']:.2f})" for r in near)
     return None, (
-        f"{district!r} is not a district of {state} in the Local Government Directory. Not created — "
-        f"a misspelling that becomes a district row is wrong for good.{hint}"
+        f"{district!r} is not a district of {state} in the Local Government Directory, and no one district "
+        f"is clearly meant. Not written — a person picks one" + (f" of: {options}" if options else "")
+        + ", or adds the spelling as an alias in seed/data/geography/district_aliases.csv."
     )

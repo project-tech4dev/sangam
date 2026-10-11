@@ -10,11 +10,21 @@ from psycopg.rows import dict_row
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))  # repo root, for `seed`
 
-from app.ingest.geography import _STATES, resolve_location
+from app.ingest.geography import _STATES, qualifiers, resolve_location
 from seed.locations_seed import read_rows, seed_locations
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
 NORTH_EAST = {"Arunachal Pradesh", "Assam", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Sikkim", "Tripura"}
+
+
+class TestQualifiers:
+    @pytest.mark.parametrize(
+        ("name", "words"),
+        [("BENGALURU URBAN", {"urban"}), ("Bangalore Rural", {"rural"}), ("EASTERN WEST KHASI HILLS", {"east", "west"}),
+         ("KAMRUP METROPOLITAN", {"metro"}), ("DIBRUGARH", set())],
+    )
+    def test_the_words_that_tell_neighbours_apart(self, name, words):
+        assert qualifiers(name) == words
 
 
 class TestTheFiles:
@@ -109,21 +119,49 @@ class TestImportResolvesAgainstTheList:
             ("Assam", "Kamrup Rural", "KAMRUP"),
             ("Assam", "Kamrup Metropolitan", "KAMRUP METRO"),
             ("Karnataka", "Bangalore", "BENGALURU URBAN"),
+            ("Karnataka", "Bangalore Rural", "BENGALURU RURAL"),
             # An old name in one state is the official name in another, and wins there.
             ("Bihar", "Aurangabad", "AURANGABAD"),
             ("Maharashtra", "Aurangabad", "CHHATRAPATI SAMBHAJINAGAR"),
         ],
     )
-    async def test_by_name_or_alias(self, conn, state, printed, name):
-        district_id, reason = await resolve_location(conn, state, printed)
-        assert reason is None
-        row = await (await conn.execute("SELECT name FROM locations WHERE id = %s", (district_id,))).fetchone()
-        assert row["name"] == name
+    async def test_by_name_or_alias_with_no_note(self, conn, state, printed, name):
+        district_id, note = await resolve_location(conn, state, printed)
+        assert note is None
+        assert await self.name(conn, district_id) == name
 
-    async def test_an_unknown_district_is_refused_not_created(self, conn):
+    @pytest.mark.parametrize(
+        ("state", "printed", "name"),
+        [
+            ("Meghalaya", "RI-BOI", "RI BHOI"),
+            ("Assam", "Dibrughar", "DIBRUGARH"),
+            ("Nagaland", "Tuensaang", "TUENSANG"),
+            ("Meghalaya", "West Garo", "WEST GARO HILLS"),
+            ("Assam", "Kamrup Metropolitian", "KAMRUP METRO"),
+        ],
+    )
+    async def test_a_clearly_closest_name_is_taken_and_said(self, conn, state, printed, name):
+        district_id, note = await resolve_location(conn, state, printed)
+        assert await self.name(conn, district_id) == name
+        assert note and f"read as {name}" in note
+
+    @pytest.mark.parametrize(
+        ("state", "printed", "why"),
+        [
+            ("Meghalaya", "Khasi Hills", "East, West and South West all score alike"),
+            ("Manipur", "Imphal", "Imphal East and Imphal West tie"),
+            ("Assam", "Karbi Anglong East", "the closest, KARBI ANGLONG, lacks 'east'"),
+            ("Assam", "Guwahati", "a city; nothing is close"),
+        ],
+    )
+    async def test_anything_less_certain_is_held_for_a_person(self, conn, state, printed, why):
         count = "SELECT count(*) AS n FROM locations"
         before = (await (await conn.execute(count)).fetchone())["n"]
-        district_id, reason = await resolve_location(conn, "Meghalaya", "Ri Boi")
-        assert district_id is None
-        assert "not a district of Meghalaya" in reason and "RI BHOI" in reason
+        district_id, reason = await resolve_location(conn, state, printed)
+        assert district_id is None, why
+        assert "a person picks one" in reason
         assert (await (await conn.execute(count)).fetchone())["n"] == before
+
+    async def name(self, conn, district_id):
+        row = await (await conn.execute("SELECT name FROM locations WHERE id = %s", (district_id,))).fetchone()
+        return row["name"]
