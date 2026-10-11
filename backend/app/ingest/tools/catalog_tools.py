@@ -11,6 +11,7 @@ import logging
 from typing import Any
 
 from langchain_core.tools import tool
+from psycopg.errors import UniqueViolation
 
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import CallerScope, chat_user_id
@@ -723,12 +724,19 @@ async def save_to_catalog(slug: str, caller: CallerScope, decisions: dict[str, s
         raise SaveRefused(refused)
     reports = []
     for row in rows:
-        async with pool.connection() as conn, conn.transaction():
-            promotion = await undo.start(conn, row.get("id"), row["slug"], caller.user_id)
-            report = await promote(conn, row, gate=Gate(decisions or {}))
-            await _record_save(conn, row, report)
-            report["promotion_id"] = promotion if await undo.finish(conn, promotion) else None
-            reports.append(report)
+        for attempt in range(2):
+            try:
+                async with pool.connection() as conn, conn.transaction():
+                    promotion = await undo.start(conn, row.get("id"), row["slug"], caller.user_id)
+                    report = await promote(conn, row, gate=Gate(decisions or {}))
+                    await _record_save(conn, row, report)
+                    report["promotion_id"] = promotion if await undo.finish(conn, promotion) else None
+                break
+            except UniqueViolation:
+                # Another save added the same row between a look-up and its insert; the retry finds it.
+                if attempt:
+                    raise
+        reports.append(report)
     return reports
 
 

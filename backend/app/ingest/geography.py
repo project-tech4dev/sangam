@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.ingest.writer import GATE
+
 # The 28 states and 8 union territories. Canonical spelling on the left; the
 # right is what sources actually print, including names changed years ago that
 # annual reports still use.
@@ -70,22 +72,25 @@ def canonical_state(name: str) -> str | None:
 
 
 async def _ensure(conn: Any, kind: str, name: str, parent_id: int | None) -> int:
-    """Find this country or state, or create it; the state was already checked against the closed list."""
-    row = await (
-        await conn.execute(
-            "SELECT id FROM locations WHERE kind = %s AND lower(name) = lower(%s) "
-            "AND parent_id IS NOT DISTINCT FROM %s",
-            (kind, name, parent_id),
-        )
-    ).fetchone()
+    """Find this country or state, or create it; the state was already checked against the closed list.
+    A preview only looks: a place it would add reads as -1, like any other new row in a plan."""
+    find = ("SELECT id FROM locations WHERE kind = %s AND lower(name) = lower(%s) "
+            "AND parent_id IS NOT DISTINCT FROM %s")
+    row = await (await conn.execute(find, (kind, name, parent_id))).fetchone()
     if row:
         return row["id"]
+    gate = GATE.get()
+    if gate is not None and gate.plan:
+        return -1
+    # A concurrent save may add the same place between the look-up and here; both then get its id.
     row = await (
         await conn.execute(
-            "INSERT INTO locations (kind, name, parent_id) VALUES (%s, %s, %s) RETURNING id",
+            "INSERT INTO locations (kind, name, parent_id) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING RETURNING id",
             (kind, name, parent_id),
         )
     ).fetchone()
+    if row is None:
+        row = await (await conn.execute(find, (kind, name, parent_id))).fetchone()
     return row["id"]
 
 
