@@ -81,6 +81,8 @@ def build_lifespan(settings: Settings | None = None):
                     # passed at invocation beats the one bound to the graph —
                     # see the comment on the test in tests/test_tracing.py.
                     config={"recursion_limit": resolved.recursion_limit},
+                    # A raw LangGraph copy rode on every event: 93% of an answer's bytes, read by nothing.
+                    emit_raw_events=False,
                 ),
                 path="/agent",
                 dependencies=[Depends(chat_access)],
@@ -98,6 +100,7 @@ def build_lifespan(settings: Settings | None = None):
                     config={"recursion_limit": resolved.recursion_limit},
                     # Each researcher's steps arrive tagged with its run, so the board can tell them apart.
                     emit_subagent_events=True,
+                    emit_raw_events=False,
                 ),
                 path="/ingest",
                 dependencies=[Depends(chat_access)],
