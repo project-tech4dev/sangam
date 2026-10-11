@@ -7,3 +7,5 @@ The researcher is done when all of these hold. The `save_research` call appears 
 5. The final summary's `entity_kind` is `funder` or `org` unless the sources really could not tell.
 
 Do not ask for more research. Reading more is not a revision: judge only whether what was found is saved and reported correctly.
+
+The result is `satisfied` whenever every criterion passes. `needs_revision` needs at least one criterion with `passed: false` and its gap.
