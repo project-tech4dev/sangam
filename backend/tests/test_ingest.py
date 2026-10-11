@@ -18,7 +18,7 @@ from app.ingest.expectations import (
     expected_fields,
     recent_fiscal_years,
 )
-from app.ingest.geography import _STATES, canonical_state
+from app.ingest.geography import _STATES, canonical_state, district_key
 from app.ingest.matcher import (
     CORE_FLOOR,
     Match,
@@ -750,7 +750,7 @@ class TestTheSummaryCannotUnderreport:
 
 
 class TestPlaceNamesResolveOrAreRefused:
-    """A state list is closed and a district list is not, so they differ."""
+    """Both lists are closed; a district is matched ignoring case, punctuation and a trailing 'district'."""
 
     @pytest.mark.parametrize(
         ("printed", "canonical"),
@@ -773,6 +773,10 @@ class TestPlaceNamesResolveOrAreRefused:
 
     def test_there_are_thirty_six_states_and_union_territories(self):
         assert len(_STATES) == 36
+
+    @pytest.mark.parametrize("printed", ["Ri-Bhoi", "RI BHOI", "ri bhoi district", "Ri Bhoi Dist."])
+    def test_one_key_per_district_spelling(self, printed):
+        assert district_key(printed) == "ribhoi"
 
 
 class TestTheWriterSideRecords:

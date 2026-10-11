@@ -1,18 +1,12 @@
 """Resolving a place name from a report to a row in `locations`.
 
-Two things make this more than a lookup. Reports name places loosely — "Orissa",
-"NCT of Delhi", "Kamrup Metropolitan" — and a footprint line needs a
-place, so a footprint with an unresolvable place cannot be written at all.
-
-The state list is closed and the district list is not. A state that is not one
-of the thirty-six is a refusal, because a typo becoming a state row is a
-permanent wrong answer; a district unknown to us is created under its stated
-state, because there is no offline list of 780 districts to check it against
-and refusing every one would mean never recording a footprint.
+Both lists are closed: `seed.locations_seed` loads LGD's 36 states and 784 districts, so a
+place that is not there is refused with the reason, never created — a typo would be a place for good.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # The 28 states and 8 union territories. Canonical spelling on the left; the
@@ -76,9 +70,7 @@ def canonical_state(name: str) -> str | None:
 
 
 async def _ensure(conn: Any, kind: str, name: str, parent_id: int | None) -> int:
-    """Find this place or create it. Matching is case-insensitive because the
-    seed writes states in title case and districts in upper case, and a second
-    row for the same place is worse than an inconsistent one."""
+    """Find this country or state, or create it; the state was already checked against the closed list."""
     row = await (
         await conn.execute(
             "SELECT id FROM locations WHERE kind = %s AND lower(name) = lower(%s) "
@@ -100,7 +92,7 @@ async def _ensure(conn: Any, kind: str, name: str, parent_id: int | None) -> int
 async def resolve_location(
     conn: Any, state: str | None, district: str | None = None
 ) -> tuple[int | None, str | None]:
-    """The locations row for a place, creating it if need be.
+    """The locations row for a place, or why there is none.
 
     Returns (id, None) or (None, reason). The reason is reported to the user
     rather than logged, because a footprint that cannot be placed is a fact we
@@ -125,6 +117,40 @@ async def resolve_location(
     state_id = await _ensure(conn, "state", canonical, country_id)
     if not district:
         return state_id, None
-    # Districts are stored upper case, following the seed, which takes them
-    # from Darpan's own upper-case city_of_registration.
-    return await _ensure(conn, "district", district.strip().upper(), state_id), None
+    return await _district(conn, district, canonical, state_id)
+
+
+def district_key(name: str) -> str:
+    """Case, punctuation and a trailing 'district' dropped, so 'Ri-Bhoi District' is RI BHOI."""
+    key = re.sub(r"\s+(district|dist\.?)$", "", name.strip().lower())
+    return re.sub(r"[^a-z0-9]", "", key)
+
+
+_KEY = "regexp_replace(lower({}), '[^a-z0-9]', '', 'g')"
+
+
+async def _district(conn: Any, district: str, state: str, state_id: int) -> tuple[int | None, str | None]:
+    """A district of this state by name, then by alias; an official name wins over another's alias."""
+    key = district_key(district)
+    row = await (
+        await conn.execute(
+            f"SELECT id FROM locations WHERE kind = 'district' AND parent_id = %s "
+            f"AND ({_KEY.format('name')} = %s OR EXISTS (SELECT 1 FROM unnest(aliases) a WHERE {_KEY.format('a')} = %s)) "
+            f"ORDER BY {_KEY.format('name')} = %s DESC, id LIMIT 1",
+            (state_id, key, key, key),
+        )
+    ).fetchone()
+    if row:
+        return row["id"], None
+    near = await (
+        await conn.execute(
+            "SELECT name FROM locations WHERE kind = 'district' AND parent_id = %s "
+            "ORDER BY similarity(name, %s) DESC LIMIT 3",
+            (state_id, district.upper()),
+        )
+    ).fetchall()
+    hint = f" Closest: {', '.join(r['name'] for r in near)}." if near else ""
+    return None, (
+        f"{district!r} is not a district of {state} in the Local Government Directory. Not created — "
+        f"a misspelling that becomes a district row is wrong for good.{hint}"
+    )
