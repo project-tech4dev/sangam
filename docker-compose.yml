@@ -120,6 +120,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    # A long Import can exhaust the Docker VM's memory; the dev server should come back on its own.
+    restart: unless-stopped
     environment:
       AGENT_URL: http://backend:8000/agent
       NEXT_PUBLIC_API_URL: http://localhost:8010
