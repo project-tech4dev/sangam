@@ -7,10 +7,19 @@ from typing import Any
 
 from psycopg_pool import AsyncConnectionPool
 
-from app.matching.rules import FunderProfile, Identifier, Location, OrgProfile, PartnerLine, Places, Program
+from app.matching.rules import (
+    FunderProfile,
+    Identifier,
+    Location,
+    OrgProfile,
+    PartnerLine,
+    Places,
+    Program,
+    Themes,
+)
 
-# Tag kinds a theme is compared on; meta->>'maps_to' carries a sector's Schedule VII slug.
-SECTOR, CSR, POPULATION = "sector", "csr_sector", "population"
+# Darpan's `sector` tags are left in place but never compared: the theme taxonomy replaced them.
+THEME_KINDS = ("domain", "theme", "sub_theme", "csr_sector")
 # The eligibility document's sections a person must review; the statutory ones are the credential checks.
 BAR_SECTIONS = ("## Its own bar", "## Disqualifiers")
 
@@ -25,18 +34,48 @@ async def _read_only(conn: Any, timeout_ms: int) -> None:
     await conn.execute(f"SET LOCAL statement_timeout = {int(timeout_ms)}")
 
 
-def _tag_sets(rows: list[dict]) -> tuple[set[str], set[str], set[str]]:
-    sectors, csr, population = set(), set(), set()
-    for r in rows:
-        if r["kind"] == SECTOR:
-            sectors.add(r["slug"])
-            if r["maps_to"]:
-                csr.add(r["maps_to"])
-        elif r["kind"] == CSR:
-            csr.add(r["slug"])
-        elif r["kind"] == POPULATION:
-            population.add(r["slug"])
-    return sectors, csr, population
+class Taxonomy:
+    """The theme tree and each tag's Schedule VII clauses, so a tag brings its ancestors."""
+
+    def __init__(self, tags: list[dict], clause_links: list[dict]):
+        self.by_id = {t["id"]: t for t in tags}
+        self.clauses: dict[int, set[str]] = defaultdict(set)
+        for link in clause_links:
+            self.clauses[link["tag_id"]].add(link["clause"])
+        # Only sub-themes are linked; a theme reaches every clause its sub-themes do.
+        for t in tags:
+            if t["kind"] == "sub_theme" and t["parent_id"] is not None:
+                self.clauses[t["parent_id"]] |= self.clauses[t["id"]]
+
+    def themes(self, tag_ids: Any) -> Themes:
+        themes, clauses, domains = set(), set(), set()
+        for tid in tag_ids:
+            # Clauses from the tag itself only: a sub-theme must not inherit its siblings' through the theme.
+            clauses |= self.clauses[tid]
+            seen: set[int] = set()
+            while (t := self.by_id.get(tid)) is not None and tid not in seen:
+                seen.add(tid)
+                {"sub_theme": themes, "theme": themes, "csr_sector": clauses, "domain": domains}[t["kind"]].add(t["slug"])
+                tid = t["parent_id"]
+        return Themes(frozenset(themes), frozenset(clauses), frozenset(domains))
+
+    def labels(self) -> dict[str, str]:
+        return {t["slug"]: t["label"] for t in self.by_id.values()}
+
+
+async def _taxonomy(conn: Any) -> Taxonomy:
+    tags = await _rows(conn, "SELECT id, slug, label, kind, parent_id FROM tags WHERE kind = ANY(%s)",
+                       (list(THEME_KINDS),))
+    links = await _rows(conn, """
+        SELECT l.tag_id, c.slug AS clause FROM tag_links l
+        JOIN tags c ON c.id = l.linked_tag_id AND c.kind = 'csr_sector'""")
+    return Taxonomy(tags, links)
+
+
+def _split(rows: list[dict], tax: Taxonomy) -> tuple[Themes, set[str], dict[str, str]]:
+    """A side's tag rows as its themes, its population slugs and the population labels."""
+    population = {r["slug"]: r["label"] for r in rows if r["kind"] == "population"}
+    return tax.themes(r["tag_id"] for r in rows if r["kind"] in THEME_KINDS), set(population), population
 
 
 async def load(
@@ -45,13 +84,14 @@ async def load(
     """The organisation, the funders (all when funder_ids is None) and the locations table."""
     async with pool.connection() as conn, conn.transaction():
         await _read_only(conn, timeout_ms)
-        org = await _org(conn, org_id)
-        funders = await _funders(conn, funder_ids)
+        tax = await _taxonomy(conn)
+        org = await _org(conn, org_id, tax)
+        funders = await _funders(conn, funder_ids, tax)
         places = Places([Location(**r) for r in await _rows(conn, "SELECT id, kind, name, parent_id FROM locations")])
     return org, funders, places
 
 
-async def _org(conn: Any, org_id: int) -> OrgProfile | None:
+async def _org(conn: Any, org_id: int, tax: Taxonomy) -> OrgProfile | None:
     head = await _rows(conn, "SELECT id, name FROM orgs WHERE id = %s", (org_id,))
     if not head:
         return None
@@ -59,14 +99,14 @@ async def _org(conn: Any, org_id: int) -> OrgProfile | None:
     org.location_ids = {
         r["location_id"] for r in await _rows(conn, "SELECT location_id FROM org_locations WHERE org_id = %s", (org_id,))
     }
-    org.sector_tags, org.csr_slugs, org.population = _tag_sets(await _rows(conn, """
-        SELECT t.slug, t.kind, t.meta->>'maps_to' AS maps_to
-        FROM org_tags ot JOIN tags t ON t.id = ot.tag_id WHERE ot.org_id = %s""", (org_id,)))
+    org.themes, org.population, pop_labels = _split(await _rows(conn, """
+        SELECT t.id AS tag_id, t.slug, t.label, t.kind
+        FROM org_tags ot JOIN tags t ON t.id = ot.tag_id WHERE ot.org_id = %s""", (org_id,)), tax)
 
     programs: dict[int, dict] = {}
     tags: dict[int, list[dict]] = defaultdict(list)
     for r in await _rows(conn, """
-        SELECT p.id, p.name, t.slug, t.kind, t.meta->>'maps_to' AS maps_to
+        SELECT p.id, p.name, t.id AS tag_id, t.slug, t.label, t.kind
         FROM programs p
         LEFT JOIN program_tags pt ON pt.program_id = p.id
         LEFT JOIN tags t ON t.id = pt.tag_id
@@ -76,9 +116,12 @@ async def _org(conn: Any, org_id: int) -> OrgProfile | None:
         if r["slug"]:
             tags[r["id"]].append(r)
     for pid, r in programs.items():
-        sectors, csr, population = _tag_sets(tags[pid])
-        org.programs.append(Program(pid, r["name"], frozenset(sectors | csr)))
+        themes, population, labels = _split(tags[pid], tax)
+        org.programs.append(Program(pid, r["name"], themes))
+        org.themes |= themes
         org.population |= population
+        pop_labels |= labels
+    org.labels = tax.labels() | pop_labels
 
     for r in await _rows(conn, """
         SELECT id_type, status, id_value, is_current, valid_until, evidence, source_type
@@ -105,7 +148,7 @@ async def _org(conn: Any, org_id: int) -> OrgProfile | None:
     return org
 
 
-async def _funders(conn: Any, funder_ids: list[int] | None) -> list[FunderProfile]:
+async def _funders(conn: Any, funder_ids: list[int] | None, tax: Taxonomy) -> list[FunderProfile]:
     # NULL means every funder: one plan for both, so a shortlist costs the same six queries as one pair.
     ids = funder_ids
     where = "(%(ids)s::bigint[] IS NULL OR {col} = ANY(%(ids)s))"
@@ -128,15 +171,24 @@ async def _funders(conn: Any, funder_ids: list[int] | None) -> list[FunderProfil
         # Where it is registered is not where it gives.
         (f.registered_ids if r["role"] == "registered" else f.location_ids).add(r["location_id"])
 
+    # Its own tags, and what each activity line was classified under: a line says what it funds.
     tag_rows: dict[int, list[dict]] = defaultdict(list)
     for r in await _rows(conn, f"""
-        SELECT ft.funder_id, t.slug, t.kind, t.meta->>'maps_to' AS maps_to
+        SELECT ft.funder_id, t.id AS tag_id, t.slug, t.label, t.kind
         FROM funder_tags ft JOIN tags t ON t.id = ft.tag_id
-        WHERE {where.format(col='ft.funder_id')}""", params):
+        WHERE {where.format(col='ft.funder_id')}
+        UNION
+        SELECT a.funder_id, t.id, t.slug, t.label, t.kind
+        FROM funder_activity a, LATERAL (VALUES (a.domain_tag_id), (a.theme_tag_id), (a.csr_sector_id)) AS c(tag_id)
+        JOIN tags t ON t.id = c.tag_id
+        WHERE {where.format(col='a.funder_id')}""", params):
         tag_rows[r["funder_id"]].append(r)
+    labels = tax.labels()
     for fid, rows in tag_rows.items():
         if fid in funders:
-            funders[fid].sector_tags, funders[fid].csr_slugs, funders[fid].population = _tag_sets(rows)
+            f = funders[fid]
+            f.themes, f.population, pop_labels = _split(rows, tax)
+            f.labels = labels | pop_labels
 
     for r in await _rows(conn, f"""
         SELECT id, funder_id, fiscal_year FROM funder_activity

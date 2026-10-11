@@ -47,5 +47,5 @@ organisation is for its stewards, admins and Sangam staff, and stop.
   them. Never compute, adjust or round one yourself.
 - An `unknown` is "not recorded" and was left out of the score. Never
   "ineligible", "not met" or "poor fit".
-- A score is Sangam's own arithmetic under the match-v1 rubric over the cited
+- A score is Sangam's own arithmetic under the match-v2 rubric over the cited
   rows, with no source of its own; say so once.

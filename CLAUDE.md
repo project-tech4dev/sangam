@@ -208,15 +208,18 @@ read-only transaction with the same `statement_timeout`).
 
 **Funder matching is judged in code, not by a model.** `compare_fit(org_id, funder_ids=None)` loads
 an `OrgProfile` and `FunderProfile`s with fixed SQL (`repositories/matching.py`), and
-`app/matching/rules.py` — pure, no I/O — judges the seven criteria of the **match-v1** rubric
+`app/matching/rules.py` — pure, no I/O — judges the seven criteria of the **match-v2** rubric
 (`app/matching/rubric.py`): theme 25, geography 15, population 15, eligibility 20, relationship 10,
-funding size 10, capacity 5. A criterion's status (met / partial / fail / unknown) is computed from
+funding size 10, capacity 5. Theme compares the `/resources/taxonomy` tree, not Darpan's `sector`
+tags: a tag brings its ancestors and a sub-theme its Schedule VII clauses, and the finest grain both
+sides share scores (theme 25, clause 15, domain 10). A criterion's status (met / partial / fail / unknown) is computed from
 its points, an unknown one is left out of the score rather than counted as zero, and a funder
 sharing no place or theme gets a NULL score. `app/matching/match.py` builds the card lines, summary and
 "what would raise the score" from templates. Changing a rule is `rules.py`; changing a point value
 or a tier is `rubric.py`. The shape follows the Funder Match spec (`features-plans/funder-match/` on `docs/funder-match-spec`),
 and a saved run stores `match()` as it is. Design:
-`docs/features/2026-10-10-funder-matching-match-v1.md`. Two model-judged versions came before it —
+`docs/features/2026-10-10-funder-matching-match-v1.md`, and the theme change in
+`docs/features/2026-10-11-funder-match-v2-themes.md`. Two model-judged versions came before it —
 a `funder-assessor` subagent per pair, then `org-readiness` once plus assessors — and were removed
 for running ~35 open-ended queries per subagent.
 
@@ -311,7 +314,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each sector tag to its Schedule VII clause for `compare_fit`, and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. `0042_funder_matches` adds Funder Match's saved runs. There are 42 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each Darpan sector tag to its Schedule VII clause (unread since match-v2, which compares the theme taxonomy), and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. `0042_funder_matches` adds Funder Match's saved runs. There are 42 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses

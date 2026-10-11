@@ -12,21 +12,23 @@ from app.api.routes import funder_matches
 from app.core.security import ANONYMOUS, CurrentUser, chat_user_id, get_principal
 from app.matching import service
 from app.matching.match import match
-from app.matching.rules import FunderProfile, Location, OrgProfile, Places, Program
+from app.matching.rules import FunderProfile, Location, OrgProfile, Places, Program, Themes
 from app.repositories import funder_matches as repo
 from app.repositories import matching
 from tests.conftest import make_app
 
 PLACES = Places([Location(1, "country", "India", None), Location(2, "state", "Assam", 1),
                  Location(3, "district", "Udalguri", 2), Location(4, "state", "Bihar", 1)])
-ORG = OrgProfile(id=9, name="KABIL", location_ids={3}, sector_tags={"livelihoods"},
-                 programs=[Program(12, "Women's collectives", frozenset({"livelihoods"}))])
+LIVELIHOODS = Themes(frozenset({"theme-shg-empowerment"}), frozenset(), frozenset({"domain-livelihoods"}))
+HEALTH = Themes(frozenset({"theme-mch-nutrition"}), frozenset(), frozenset({"domain-health"}))
+ORG = OrgProfile(id=9, name="KABIL", location_ids={3}, themes=LIVELIHOODS,
+                 programs=[Program(12, "Women's collectives", LIVELIHOODS)])
 SHARED = FunderProfile(id=7, name="HDFC Bank Parivartan", funder_type="corporate_csr", section_135_bound=True,
                        location_ids={3},
-                       sector_tags={"livelihoods"})
+                       themes=LIVELIHOODS)
 NOTHING = FunderProfile(id=8, name="Infosys Foundation", funder_type="corporate_csr", section_135_bound=True,
                         location_ids={4},
-                        sector_tags={"health"})
+                        themes=HEALTH)
 MEMBER = CurrentUser(id=uuid4(), is_staff=False, auth_user_id=uuid4())
 
 

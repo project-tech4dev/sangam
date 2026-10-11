@@ -181,7 +181,7 @@ Every domain and theme on a line is an **inference**. Record it as one.
   (sustainability, conservation, animal welfare that is not a livelihood programme), **others**
   (relief, sports, administration, unlabelled lines, lines listing several sectors).
 - **A theme only as far as the evidence goes**: a sub-theme when the project or partner points to
-  one, a theme when only the broad area is clear, none otherwise. Environment and others have none.
+  one, a theme when only the broad area is clear, none otherwise.
 - **Record what it rests on**: `classified_by` (`filed_sector` only where unambiguous,
   `project_name`, `partner`, or `report`) and a one-line `classification_note` quoting the
   evidence.

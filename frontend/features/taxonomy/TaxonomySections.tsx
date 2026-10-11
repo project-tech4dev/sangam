@@ -15,7 +15,6 @@ export function DomainSection({ domain }: { domain: Domain }) {
   return (
     <section id={domain.domain} className="flex scroll-mt-24 flex-col gap-4">
       <h3 style={{ fontSize: "var(--fs-lg)" }}>{domain.label}</h3>
-      {/* Environment and Others have no themes: they show only what spend they hold. */}
       <p className="muted measure m-0">
         {domain.themes.length > 0 && `${domain.themes.length} themes, ${subThemes} sub-themes. `}
         {domain.source}.

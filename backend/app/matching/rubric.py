@@ -1,4 +1,4 @@
-"""match-v1: the criteria, their points and the arithmetic. rules.py judges; this only counts.
+"""match-v2: the criteria, their points and the arithmetic. rules.py judges; this only counts.
 
 Pure: no pool, no async, no settings, no pydantic.
 """
@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from datetime import date
 from typing import Literal
 
-RUBRIC_VERSION = "match-v1"
+RUBRIC_VERSION = "match-v2"
 
 Status = Literal["met", "partial", "fail", "unknown"]
 Tier = Literal["strong", "medium", "weak", "not_scored"]
@@ -31,6 +31,8 @@ OVERLAP = ("theme", "geography")
 MET_SHARE = 0.8
 STRONG, MEDIUM = 75, 55
 
+# Theme points by the finest grain shared, finest first. A clause alone is coarse: ii is all of education and livelihoods.
+THEME = {"theme": 25, "clause": 15, "domain": 10}
 THEME_NO_PROGRAMME = 15
 GEOGRAPHY = {"district": 15, "state": 12, "india": 6, "region": 6}
 RELATIONSHIP_UNCONFIRMED = 5

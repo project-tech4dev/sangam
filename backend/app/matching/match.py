@@ -1,4 +1,4 @@
-"""One pair under match-v1: the criteria from rules.py, then the card, summary and actions from templates."""
+"""One pair under match-v2: the criteria from rules.py, then the card, summary and actions from templates."""
 
 from __future__ import annotations
 

@@ -15,7 +15,7 @@ from seed.taxonomy_seed import DATA, TAXONOMY, seed_schedule_vii, seed_taxonomy,
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
 
-TAG_COUNTS = {"sdg": 17, "population": 10, "scheme": 54, "lens": 4, "domain": 5, "theme": 11, "sub_theme": 48}
+TAG_COUNTS = {"sdg": 17, "population": 15, "scheme": 67, "lens": 4, "domain": 5, "theme": 18, "sub_theme": 66}
 
 
 def load() -> tuple[dict, dict]:
@@ -27,7 +27,7 @@ class TestTaxonomyRows:
     def test_counts(self):
         tags, links = taxonomy_rows(*load())
         assert Counter(t.kind for t in tags) == TAG_COUNTS
-        assert len(links) == 211  # 85 + 4 lens SDG, 61 clause, 61 scheme
+        assert len(links) == 281  # 119 + 4 lens SDG, 82 clause, 76 scheme
 
     def test_parents_come_before_children(self):
         tags, _ = taxonomy_rows(*load())
@@ -90,7 +90,7 @@ class TestSeedAgainstPostgres:
         cur.execute(
             "SELECT k.kind, count(*) FROM tag_links l JOIN tags k ON k.id = l.linked_tag_id GROUP BY 1"
         )
-        assert dict(cur.fetchall()) == {"sdg": 89, "csr_sector": 61, "scheme": 61}
+        assert dict(cur.fetchall()) == {"sdg": 123, "csr_sector": 82, "scheme": 76}
 
     def test_a_dropped_tag_is_deprecated_not_deleted(self, cur):
         seed_schedule_vii(cur)

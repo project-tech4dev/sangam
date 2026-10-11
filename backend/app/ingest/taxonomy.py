@@ -77,9 +77,8 @@ async def resolve_csr_sector(conn: Any, text: str | None) -> int | None:
     return row["id"] if row else None
 
 
-# The five domains (D6), defined here once. Environment and Others have no themes.
+# The five domains (D6), defined here once.
 DOMAINS = ("livelihoods", "health", "education", "environment", "others")
-NO_THEMES = frozenset({"environment", "others"})
 
 
 async def resolve_classification(
