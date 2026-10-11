@@ -373,7 +373,7 @@ _TABLES: tuple[Table, ...] = (
     ),
     Table(
         name="locations",
-        description="Place hierarchy: country > state > district. Self-referencing via parent_id.",
+        description="Place hierarchy: country > state > district, with every Indian state and district from the Local Government Directory. Self-referencing via parent_id. One region row, 'Northeast India', is a label: the states are not parented to it.",
         primary_key=('id',),
         foreign_keys=(ForeignKey("parent_id", "locations.id"),),
         columns=(

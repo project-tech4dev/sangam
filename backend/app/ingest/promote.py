@@ -383,7 +383,8 @@ async def _place(conn: Any, f: Any, report: dict[str, Any]) -> tuple[int | None,
         return state_id, None
     district_id, reason = await resolve_location(conn, state, district)
     if reason:
-        report["held"].append(reason)
+        # A near match is written and said; anything less certain is held for a person.
+        report["held" if district_id is None else "reasons"].append(reason)
     return state_id, district_id
 
 

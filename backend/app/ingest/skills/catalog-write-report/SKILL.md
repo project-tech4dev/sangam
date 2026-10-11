@@ -35,6 +35,9 @@ place that could not be resolved to a district, a parent company that did not
 match. Give the reason as written and name the organisation and field it
 concerns.
 
+**Places read as their closest district, verbatim.** From `reasons`: a district the source
+misspelt that was written as the clearly closest name. Say each one, so a person can correct it.
+
 **Coverage, verbatim, last.** After the counts, held-back rows and conflicts,
 print `coverage_report(slug)` for the same organisation as it returned it, in
 a code block. It is what was expected against what was found and written, with

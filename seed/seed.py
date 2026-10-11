@@ -23,6 +23,8 @@ from pathlib import Path
 
 import psycopg
 
+from seed.locations_seed import place_key, seed_locations
+
 DATA = Path(__file__).parent / "data"
 DEV_USER_ID = "00000000-0000-0000-0000-000000000001"
 EXTRACTOR_VERSION = "seed-v2"
@@ -63,15 +65,21 @@ def parse_date(value) -> str | None:
 
 
 def _upsert_location(cur, kind: str, name: str, parent_id=None) -> int:
+    # Matched as Import matches, ignoring case and punctuation and through aliases, so 'Ri-Bhoi' is RI BHOI.
     cur.execute(
         """
-        INSERT INTO locations (kind, name, parent_id) VALUES (%s, %s, %s)
-        ON CONFLICT DO NOTHING
+        SELECT id FROM locations
+        WHERE kind = %s AND parent_id IS NOT DISTINCT FROM %s
+          AND (regexp_replace(lower(name), '[^a-z0-9]', '', 'g') = %s
+               OR EXISTS (SELECT 1 FROM unnest(aliases) a WHERE regexp_replace(lower(a), '[^a-z0-9]', '', 'g') = %s))
+        ORDER BY regexp_replace(lower(name), '[^a-z0-9]', '', 'g') = %s DESC, id LIMIT 1
         """,
-        (kind, name, parent_id),
+        (kind, parent_id, *[place_key(name)] * 3),
     )
+    if row := cur.fetchone():
+        return row[0]
     cur.execute(
-        "SELECT id FROM locations WHERE kind = %s AND name = %s AND parent_id IS NOT DISTINCT FROM %s",
+        "INSERT INTO locations (kind, name, parent_id) VALUES (%s, %s, %s) RETURNING id",
         (kind, name, parent_id),
     )
     return cur.fetchone()[0]
@@ -79,6 +87,7 @@ def _upsert_location(cur, kind: str, name: str, parent_id=None) -> int:
 
 def seed_vocabularies(cur) -> tuple[dict[str, int], dict[str, int]]:
     """Upsert the locations hierarchy and tag vocabulary; return lookup maps."""
+    seed_locations(cur)
     india = _upsert_location(cur, "country", "India")
     assam = _upsert_location(cur, "state", "Assam", india)
     ne = _upsert_location(cur, "region", "Northeast India", india)

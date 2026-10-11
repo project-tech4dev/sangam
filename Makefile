@@ -1,4 +1,4 @@
-.PHONY: help up down logs seed taxonomy-seed graph-seed match smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs seed locations-seed taxonomy-seed graph-seed match smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -118,6 +118,10 @@ seed:  ## Load the cohort data (runs migrate first, locally)
 ifeq ($(ENV),local)
 seed: migrate
 endif
+
+# Every Indian state and district from the LGD files in seed/data/geography. Idempotent; `make seed` already runs it.
+locations-seed:  ## Load just the LGD states and districts (make seed already does)
+	$(COMPOSE) run --rm --no-deps backend python -m seed.locations_seed
 
 # Schedule VII and the theme taxonomy (tags + tag_links). Idempotent; `make seed` already runs it.
 taxonomy-seed:  ## Load just the taxonomy (make seed already does)
