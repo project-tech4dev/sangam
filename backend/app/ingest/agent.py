@@ -25,6 +25,7 @@ from app.ingest.middleware import (
     ReadingLimit,
     RunSources,
     TickedSources,
+    ask_for_sources,
     call_limit,
     cheap_summarizer,
     fallback,
@@ -255,11 +256,13 @@ RESEARCHER_EVICT_AT = 8_000
 WRITER_MODEL_CALL_LIMIT = 12
 
 # A person chooses where the run reads from before anything is read; rejecting means public websites only.
+# Sources ticked before sending are that choice already, so the card shows only when nothing was ticked.
 # run_import_now is the supervisor's one bulk write, so a person approves it as promote_research is approved.
 INTERRUPT_ON = {
     "choose_sources": {
         "allowed_decisions": ["approve", "edit", "reject"],
         "description": "Choose where this run reads from",
+        "when": ask_for_sources,
     },
     "run_import_now": {
         "allowed_decisions": ["approve", "reject"],

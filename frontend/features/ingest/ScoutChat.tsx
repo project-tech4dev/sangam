@@ -19,12 +19,20 @@ import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
 import { EMPTY_SOURCES, nothingChosen, readingFrom, type SourcesChoice } from "./lib/sourcePick";
 import { askLive, fetchImportMessages } from "./lib/threads";
+import { useRunPause } from "./lib/useRunPause";
 
 // The backend's TickedSources looks this description up, so the supervisor's first reply does not ask again.
 function TickedSources({ choice }: { choice: SourcesChoice }) {
   useAgentContext({ description: "Sources the person ticked for this Import run", value: choice });
   return null;
 }
+
+// What each pause asks the person, for the composer when its card is missing.
+const WAITING: Record<string, string> = {
+  choose_sources: "choose where it reads from",
+  promote_research: "review what to save",
+  run_import_now: "approve the import",
+};
 
 // Reading a workbook or a Doc Vault, or a news import: data is being pulled even with no organisation rows yet.
 const pulls = (s: TraceStep) =>
@@ -71,6 +79,8 @@ export function ScoutChat({
     resume ? load : undefined,
   );
   const [draft, setDraft] = useState("");
+  // The run stopped for a person but no card is open, so a message would land on a paused thread.
+  const waitingOn = useRunPause(`sangam-import-${threadId}`);
   const [task, setTask] = useState<ImportTask | null>(null);
   const [sources, setSources] = useState<SourcesChoice>(EMPTY_SOURCES);
   // What was ticked before the first message; it answers the run's sources pause so no card asks again.
@@ -106,6 +116,7 @@ export function ScoutChat({
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const atStart = turns.length === 0 && !isLoadingHistory;
+  const stuck = !isRunning && !paused && waitingOn !== null;
   const needsSources = atStart && task !== null && task !== "news";
   const lastSteps = turns[turns.length - 1]?.steps ?? [];
 
@@ -149,7 +160,7 @@ export function ScoutChat({
   async function submit() {
     const value = draft.trim();
     if (value && isRunning) return void ask(value);
-    if (!value || (needsSources && nothingChosen(sources))) return;
+    if (!value || stuck || (needsSources && nothingChosen(sources))) return;
     if (atStart) {
       setPreset(needsSources ? sources : null);
       onFirstSend?.(value);
@@ -214,7 +225,9 @@ export function ScoutChat({
               ? live.some((n) => n.queued)
                 ? "Scout will pick up your request when the current researchers finish."
                 : "Scout is researching. Ask about progress, ⌘↵ to send."
-              : needsSources && nothingChosen(sources)
+              : stuck
+                ? `Scout is waiting for you to ${WAITING[waitingOn] ?? "answer its question"}, but the card did not open. Start a new chat to try again.`
+                : needsSources && nothingChosen(sources)
                 ? "Choose where Scout reads from first."
                 : "⌘↵ to send"}
         </span>
@@ -238,7 +251,7 @@ export function ScoutChat({
               type="button"
               className="btn btn-primary"
               onClick={() => void submit()}
-              disabled={!isReady || !draft.trim() || (needsSources && nothingChosen(sources))}
+              disabled={!isReady || !draft.trim() || stuck || (needsSources && nothingChosen(sources))}
             >
               Send to Scout
             </button>

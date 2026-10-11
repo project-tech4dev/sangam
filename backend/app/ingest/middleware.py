@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Awaitable, Callable
 from importlib.resources import files
@@ -17,6 +18,7 @@ from langchain.agents.middleware import (
     ModelCallLimitMiddleware,
     ModelFallbackMiddleware,
     ModelRequest,
+    ModelResponse,
 )
 from langchain.agents.middleware.types import hook_config
 from langchain_core.language_models import BaseChatModel
@@ -153,18 +155,58 @@ class _AgUiState(AgentState):
 _AgUiState.__annotations__["ag-ui"] = NotRequired[dict[str, Any]]
 
 
-def ticked_note(state: Any) -> str | None:
-    context = ((state or {}).get("ag-ui") or {}).get("context") or []
-    value = next((c.get("value") for c in context if isinstance(c, dict) and c.get("description") == TICKED_SOURCES),
-                 None)
-    if not value:
+def _field(item: Any, key: str) -> Any:
+    # ag-ui-langgraph stores its pydantic Context objects, not dicts.
+    return item.get(key) if isinstance(item, dict) else getattr(item, key, None)
+
+
+def _ticked_value(state: Any) -> Any:
+    items = _field((state or {}).get("ag-ui") or {}, "context") or []
+    return next((_field(c, "value") for c in items if _field(c, "description") == TICKED_SOURCES), None)
+
+
+def ticked_sources(state: Any) -> dict[str, Any] | None:
+    """choose_sources' arguments as the person ticked them before sending, or None if nothing was ticked."""
+    value = _ticked_value(state)
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return None
+    if not isinstance(value, dict):
         return None
-    return (f"The person ticked these sources before sending: {value}. The screen answers choose_sources with "
-            "them, so call it with exactly these and say nothing about choosing or confirming sources.")
+    vault_org = value.get("vault_org")
+    picked = {
+        "web": value.get("web") is True,
+        "library": value.get("library") is True,
+        "vault_org": vault_org if isinstance(vault_org, int) else None,
+        "vault_docs": [d for d in value.get("vault_docs") or [] if isinstance(d, int)],
+        "staff_paths": [p for p in value.get("staff_paths") or [] if isinstance(p, str)],
+    }
+    return picked if picked["web"] or picked["library"] or picked["vault_docs"] or picked["staff_paths"] else None
+
+
+def ask_for_sources(request: Any) -> bool:
+    """choose_sources pauses for the card only when nothing was ticked: a tick is already the person's answer."""
+    return ticked_sources(request.state) is None
+
+
+def ticked_note(state: Any) -> str | None:
+    picked = ticked_sources(state)
+    if not picked:
+        return None
+    return (f"The person ticked these sources before sending: {json.dumps(picked)}. Call choose_sources with "
+            "exactly these and say nothing about choosing or confirming sources.")
+
+
+def _ai_messages(response: Any) -> list[AIMessage]:
+    inner = getattr(response, "model_response", response)
+    messages = inner.result if isinstance(inner, ModelResponse) else [inner]
+    return [m for m in messages if isinstance(m, AIMessage)]
 
 
 class TickedSources(AgentMiddleware):
-    """Tells the supervisor what the person already ticked, so its first reply does not ask again."""
+    """The person's ticks answer choose_sources: told to the model, and written into its call whatever it passed."""
 
     state_schema = _AgUiState
 
@@ -173,11 +215,20 @@ class TickedSources(AgentMiddleware):
         return request.override(system_message=append_to_system_message(request.system_message, note)) if note \
             else request
 
+    def _with_ticks(self, request: ModelRequest, response: Any) -> Any:
+        picked = ticked_sources(request.state)
+        if picked:
+            for message in _ai_messages(response):
+                for call in message.tool_calls:
+                    if call["name"] == run_sources.CHOOSE:
+                        call["args"] = dict(picked)
+        return response
+
     def wrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Any]) -> Any:
-        return handler(self._with_note(request))
+        return self._with_ticks(request, handler(self._with_note(request)))
 
     async def awrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Awaitable[Any]]) -> Any:
-        return await handler(self._with_note(request))
+        return self._with_ticks(request, await handler(self._with_note(request)))
 
 
 def _not_chosen(call: dict[str, Any], text: str) -> ToolMessage:

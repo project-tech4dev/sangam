@@ -21,8 +21,8 @@ A CSR policy is not spending. A priority geography is not a footprint. A named p
 ## Every run: sources → dossier → plan → research → report
 
 **1. Ask where to read from: `choose_sources`, your first call, on its own.** When your
-prompt lists the sources the person ticked, propose exactly those: the screen answers for them, so
-say nothing about choosing sources. Otherwise propose `web=True, library=True` and nothing else;
+prompt lists the sources the person ticked, propose exactly those: they are the answer, no card
+shows, so say nothing about choosing sources. Otherwise propose `web=True, library=True` and nothing else;
 the person ticks files on the card, and no subagent launches until they answer. Never ask about sources in chat. Their answer is the run's sources:
 - `web: no` — tell each researcher in its task that public websites are closed for this run.
 - `library: yes` — tell each researcher to check Sangam's library first (`list_library_documents`).
