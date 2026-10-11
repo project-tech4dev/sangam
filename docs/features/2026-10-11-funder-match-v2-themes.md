@@ -14,6 +14,9 @@ taxonomy the page shows. Only the theme criterion and the rubric version change.
 - Each tag brings its ancestors (sub-theme → theme → domain) and a sub-theme brings the Schedule VII
   clauses `tag_links` gives it. So an org tagged *Institution building* meets a funder tagged
   *Economic empowerment of SHGs*, and meets a CSR filing under clause iii.
+- A theme reaches every clause its sub-themes do, so a theme-level tag still meets a clause-only funder.
+- **Others never counts as a shared area.** Relief, administration and unlabelled spend are filed
+  there, so a side whose only theme is the Others domain is "not recorded", not a mismatch.
 - `sector` tags are left in the database and never read.
 
 ## Points

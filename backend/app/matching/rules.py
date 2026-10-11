@@ -21,6 +21,8 @@ INDIA = "India"
 # CSR money routed through a company's foundation still needs a CSR-1 registered implementer.
 SECTION_135_TYPES = frozenset({"corporate_csr", "corporate_foundation"})
 UNTYPED = frozenset({None, "", "other"})
+# Relief, administration and unlabelled spend land here, so sharing it says nothing about fit.
+CATCH_ALL_DOMAIN = "domain-others"
 # eligibility item -> (label, what would earn it)
 ITEMS = {
     "12a": ("12A", "Record the 12A registration"),
@@ -47,14 +49,15 @@ class Themes:
     domains: frozenset[str] = frozenset()
 
     def __bool__(self) -> bool:
-        return bool(self.themes or self.clauses or self.domains)
+        return bool(self.themes or self.clauses or self.grain("domain"))
 
     def __or__(self, other: Themes) -> Themes:
         return Themes(self.themes | other.themes, self.clauses | other.clauses, self.domains | other.domains)
 
     def grain(self, name: str) -> frozenset[str]:
         """'theme', 'clause' or 'domain': the rubric's names for the three grains."""
-        return getattr(self, f"{name}s")
+        found = getattr(self, f"{name}s")
+        return found - {CATCH_ALL_DOMAIN} if name == "domain" else found
 
 
 @dataclass(frozen=True)

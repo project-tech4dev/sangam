@@ -22,6 +22,7 @@ from app.matching.rules import (
     relationship,
     theme,
 )
+from app.repositories.matching import Taxonomy
 
 TODAY = date(2026, 10, 10)
 PLACES = Places([
@@ -90,9 +91,15 @@ class TestTheme:
         assert f.line == "Same Schedule VII clause: Education and livelihoods"
 
     def test_a_shared_domain_alone_is_weaker_still(self):
-        f = theme(org(), funder(themes=themes({"theme-skilling"}, {"csr-rural-development"}, {"domain-livelihoods"})))
+        f = theme(org(), funder(themes=themes((), (), {"domain-livelihoods"})))
         assert points(f) == (10, "partial")
         assert f.improve == []
+
+    def test_others_is_never_a_shared_area_and_alone_is_not_recorded(self):
+        others = themes((), (), {"domain-others"})
+        assert points(theme(org(themes=SHG | others), funder(themes=others))) == (None, "unknown")
+        gbv = themes({"sub_theme-gender-based-violence", "theme-gender-rights"}, (), {"domain-others"})
+        assert points(theme(org(themes=gbv), funder(themes=others | themes({"theme-mch-nutrition"})))) == (0, "fail")
 
     def test_untagged_programmes_cap_a_shared_theme(self):
         f = theme(org(programs=[Program(12, "Women's collectives")]), funder())
@@ -175,3 +182,30 @@ class TestMatch:
         assert m.score is None and m.tier == "not_scored"
         assert [r.text for r in m.card] == ["No shared place or theme recorded"]
         assert m.improve == []
+
+
+class TestTaxonomyExpansion:
+    """repositories.matching.Taxonomy is pure: a tag's ancestors, and its clauses."""
+
+    TAGS = (
+        {"id": 1, "slug": "domain-livelihoods", "label": "Livelihoods", "kind": "domain", "parent_id": None},
+        {"id": 2, "slug": "theme-skilling", "label": "Skilling", "kind": "theme", "parent_id": 1},
+        {"id": 3, "slug": "sub_theme-apprenticeships", "label": "Apprenticeships", "kind": "sub_theme", "parent_id": 2},
+        {"id": 4, "slug": "sub_theme-placement", "label": "Placement", "kind": "sub_theme", "parent_id": 2},
+        {"id": 5, "slug": "csr-education-and-livelihoods", "label": "ii", "kind": "csr_sector", "parent_id": None},
+        {"id": 6, "slug": "csr-rural-development", "label": "x", "kind": "csr_sector", "parent_id": None},
+    )
+    LINKS = ({"tag_id": 3, "clause": "csr-education-and-livelihoods"}, {"tag_id": 4, "clause": "csr-rural-development"})
+
+    def tax(self):
+        return Taxonomy(list(self.TAGS), list(self.LINKS))
+
+    def test_a_sub_theme_brings_its_theme_domain_and_own_clauses_only(self):
+        assert self.tax().themes([3]) == themes({"sub_theme-apprenticeships", "theme-skilling"},
+                                                {"csr-education-and-livelihoods"}, {"domain-livelihoods"})
+
+    def test_a_theme_reaches_every_clause_its_sub_themes_do(self):
+        got = self.tax().themes([2])
+        assert got.clauses == {"csr-education-and-livelihoods", "csr-rural-development"}
+        clause_only = funder(themes=themes((), {"csr-education-and-livelihoods"}))
+        assert points(theme(org(themes=got, programs=[Program(12, "Skilling", got)]), clause_only)) == (15, "partial")

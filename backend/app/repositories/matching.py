@@ -35,22 +35,27 @@ async def _read_only(conn: Any, timeout_ms: int) -> None:
 
 
 class Taxonomy:
-    """The theme tree and each sub-theme's Schedule VII clauses, so a tag brings its ancestors."""
+    """The theme tree and each tag's Schedule VII clauses, so a tag brings its ancestors."""
 
     def __init__(self, tags: list[dict], clause_links: list[dict]):
         self.by_id = {t["id"]: t for t in tags}
         self.clauses: dict[int, set[str]] = defaultdict(set)
         for link in clause_links:
             self.clauses[link["tag_id"]].add(link["clause"])
+        # Only sub-themes are linked; a theme reaches every clause its sub-themes do.
+        for t in tags:
+            if t["kind"] == "sub_theme" and t["parent_id"] is not None:
+                self.clauses[t["parent_id"]] |= self.clauses[t["id"]]
 
     def themes(self, tag_ids: Any) -> Themes:
         themes, clauses, domains = set(), set(), set()
         for tid in tag_ids:
+            # Clauses from the tag itself only: a sub-theme must not inherit its siblings' through the theme.
+            clauses |= self.clauses[tid]
             seen: set[int] = set()
             while (t := self.by_id.get(tid)) is not None and tid not in seen:
                 seen.add(tid)
                 {"sub_theme": themes, "theme": themes, "csr_sector": clauses, "domain": domains}[t["kind"]].add(t["slug"])
-                clauses |= self.clauses[tid]
                 tid = t["parent_id"]
         return Themes(frozenset(themes), frozenset(clauses), frozenset(domains))
 
