@@ -259,6 +259,19 @@ _DISTRICT = Expected(
     required=False,
 )
 
+# The taxonomy tags a programme, funder or organisation carries; written to program_tags, funder_tags or
+# org_tags, whose tag_id names no subject of its own, so they ride on the finding that does.
+_TAGS = (
+    Expected(name="themes", type="text[]", note="codes from the theme taxonomy: sub-themes, or a theme when only "
+             "the broad area is clear; at most three, only what the source describes", values=(), required=False),
+    Expected(name="populations", type="text[]", note="who the work is for, as the source says", values=(),
+             required=False),
+    Expected(name="lenses", type="text[]", note="cross-cutting approaches the source describes", values=(),
+             required=False),
+    Expected(name="tag_note", type="text", note="required with any tag: the words the tags rest on", values=(),
+             required=False),
+)
+
 EXTRA: dict[str, tuple[Expected, ...]] = {
     # Without it, a funder value that differs from the catalog's cannot be shown to be newer,
     # so promotion asks a person instead of saving it.
@@ -271,6 +284,7 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
             values=(),
             required=False,
         ),
+        *_TAGS,
     ),
     "footprint": (_DISTRICT,),
     "stated_geography": (_STATE, _DISTRICT),
@@ -280,6 +294,8 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
     # added back: a registered address is this concept with role='registered',
     # not a second field on org_identity.
     "org_location": (_STATE, _DISTRICT),
+    "org_identity": _TAGS,
+    "program": _TAGS,
     "metric": (
         Expected(name="state", type="text", note="the state, when the figure is for one place",
                  values=(), required=False),

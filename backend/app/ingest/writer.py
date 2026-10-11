@@ -10,6 +10,8 @@ from contextvars import ContextVar
 from types import MappingProxyType
 from typing import Any, NamedTuple
 
+from psycopg import sql
+
 from app.ingest.expectations import RESERVED_DOC_TYPES
 from app.ingest.matcher import TRIGRAM_FLOOR, Match, name_key
 from app.ingest.records import (
@@ -21,6 +23,7 @@ from app.ingest.records import (
     OrgLocationRecord,
     OrgRecord,
 )
+from app.ingest.taxonomy import TAG_KINDS
 
 
 class Owner(NamedTuple):
@@ -966,6 +969,36 @@ async def write_funder_tag(conn: Any, funder_id: int, tag_id: int, *, note: str 
         "ON CONFLICT (funder_id, tag_id) DO NOTHING",
         (funder_id, tag_id, EXTRACTOR_TAGGER, note),
     )
+
+
+# The tag table and its subject column, per owner of the tags.
+TAG_TABLES = {"program_id": "program_tags", "org_id": "org_tags", "funder_id": "funder_tags"}
+
+
+async def write_tags(conn: Any, column: str, subject_id: int, rec: Any) -> tuple[int, list[str]]:
+    """The record's taxonomy codes onto program_tags, org_tags or funder_tags. Insert-only, so a tag a person set
+    stays; is_inferred, since research chose them. Returns (rows added, reasons a code was not written)."""
+    gate = GATE.get()
+    if gate and gate.plan:
+        return 0, []
+    added, reasons = 0, []
+    for field_name, kinds in TAG_KINDS.items():
+        for code in getattr(rec, field_name, None) or []:
+            row = await (await conn.execute(
+                "SELECT id FROM tags WHERE kind = ANY(%s) AND code = %s AND status <> 'deprecated' ORDER BY id LIMIT 1",
+                (list(kinds), code),
+            )).fetchone()
+            if row is None:
+                reasons.append(f"{kinds[0]} {code!r} is not in tags (run `make taxonomy-seed`); not written")
+                continue
+            cur = await conn.execute(
+                sql.SQL("INSERT INTO {t} ({c}, tag_id, role, is_inferred, tagged_by, note) "
+                        "VALUES (%s, %s, 'primary', true, %s, %s) ON CONFLICT DO NOTHING").format(
+                    t=sql.Identifier(TAG_TABLES[column]), c=sql.Identifier(column)),
+                (subject_id, row["id"], EXTRACTOR_TAGGER, rec.tag_note),
+            )
+            added += cur.rowcount
+    return added, reasons
 
 
 # --- The org side ------------------------------------------------------------

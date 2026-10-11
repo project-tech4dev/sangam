@@ -35,7 +35,7 @@ from app.ingest.records import (
     http_url,
     normalise_cin,
 )
-from app.ingest.taxonomy import DOMAINS
+from app.ingest.taxonomy import DOMAINS, LENS_CODES, POPULATION_CODES, THEME_CODES
 
 # The vocabulary is the registry's, in its order. A `Concept = Literal[...]`
 # alias used to sit here repeating all thirteen; it was imported nowhere.
@@ -49,6 +49,10 @@ pairs: still readable, not promotable, re-researched rather than migrated."""
 _UNITS: dict[str, int] = {"inr": 1, "lakh": 1_00_000, "crore": 1_00_00_000}
 
 DomainCode = Literal[*DOMAINS]
+ThemeCode = Literal[*THEME_CODES]
+PopulationCode = Literal[*POPULATION_CODES]
+LensCode = Literal[*LENS_CODES]
+MAX_THEMES = 3
 
 
 def _check_classification(f: Any) -> None:
@@ -184,7 +188,38 @@ class PlacedFinding(FindingBase):
     )
 
 
-class IdentityFinding(FindingBase):
+class Tagged(BaseModel):
+    """What the work is about, in the taxonomy's own codes: an inference, so it names its evidence."""
+
+    themes: list[ThemeCode] = Field(
+        default_factory=list, max_length=MAX_THEMES,
+        description="sub-theme codes, or a theme code when only the broad area is clear; at most three, "
+                    "the main work first. Only what the source describes, never what the name suggests",
+    )
+    populations: list[PopulationCode] = Field(
+        default_factory=list, description="who the work is for, only when the source says so"
+    )
+    lenses: list[LensCode] = Field(
+        default_factory=list, description="cross-cutting approaches the source describes, e.g. digital tools"
+    )
+    tag_note: str | None = Field(
+        default=None,
+        description="required with any tag: the words they rest on, e.g. \"programme page: 'SHG federations "
+                    "of tribal women in Udalguri'\"",
+    )
+
+    @model_validator(mode="after")
+    def _tags_name_their_evidence(self) -> Tagged:
+        tagged = self.themes or self.populations or self.lenses
+        if tagged and not (self.tag_note or "").strip():
+            raise ValueError("themes, populations and lenses need a tag_note quoting what they rest on")
+        self.themes, self.populations, self.lenses = (
+            list(dict.fromkeys(v)) for v in (self.themes, self.populations, self.lenses)
+        )
+        return self
+
+
+class IdentityFinding(FindingBase, Tagged):
     concept: Literal["identity"] = "identity"
     name: str = Field(min_length=2, description="the legal name as the strongest source writes it")
     funder_type: (
@@ -405,7 +440,7 @@ class ProgrammeSpendFinding(YearlyFinding):
         return self
 
 
-class ProgramFinding(FindingBase, OptionallySourced):
+class ProgramFinding(FindingBase, OptionallySourced, Tagged):
     concept: Literal["program"] = "program"
     name: str = Field(min_length=2)
     kind: Literal["theme", "programme", "phase", "project"] = "programme"
@@ -584,7 +619,7 @@ class RfpFinding(FindingBase):
 # gets reintroduced on a new surface.
 
 
-class OrgIdentityFinding(FindingBase, Sourced):
+class OrgIdentityFinding(FindingBase, Sourced, Tagged):
     """An NGO, not a funder."""
 
     concept: Literal["org_identity"] = "org_identity"

@@ -14,6 +14,8 @@ this existed.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 # slug -> the words that place a theme under that clause. Ordered most
@@ -121,3 +123,21 @@ async def resolve_classification(
             "with its domain and no theme"
         )]
     return row["id"], rows[0]["id"], []
+
+
+# The tag vocabulary a finding may use: copies of seed/data/taxonomy, since the deployed backend has no seed/.
+_DATA = Path(__file__).parent / "data"
+
+
+def _vocabulary() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    themes = json.loads((_DATA / "themes.json").read_text(encoding="utf-8"))
+    common = json.loads((_DATA / "common.json").read_text(encoding="utf-8"))
+    codes = [c for d in themes["domains"] for t in d["themes"] for c in (t["code"], *(s["code"] for s in t["sub_themes"]))]
+    return tuple(codes), tuple(code for code, _ in common["population"]), tuple(x["code"] for x in themes["lenses"])
+
+
+THEME_CODES, POPULATION_CODES, LENS_CODES = _vocabulary()
+# Tag kind for each list a finding carries; a theme code is a theme or a sub-theme.
+TAG_KINDS: dict[str, tuple[str, ...]] = {
+    "themes": ("theme", "sub_theme"), "populations": ("population",), "lenses": ("lens",),
+}

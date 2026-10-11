@@ -38,6 +38,10 @@ concerns.
 **Places read as their closest district, verbatim.** From `reasons`: a district the source
 misspelt that was written as the clearly closest name. Say each one, so a person can correct it.
 
+**Tags.** `written.tags` counts the themes, populations and lenses added to programmes, the
+organisation or the funder; they are inferences from the source, so say so. A tag code not in
+the taxonomy is in `reasons`: relay it verbatim.
+
 **Coverage, verbatim, last.** After the counts, held-back rows and conflicts,
 print `coverage_report(slug)` for the same organisation as it returned it, in
 a code block. It is what was expected against what was found and written, with
