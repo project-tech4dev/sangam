@@ -37,7 +37,7 @@ The programme rule is unchanged: when no programme carries the shared grain the 
 
 ## Also in this change
 
-- Environment and Others gain themes (drafted 2026-10-11, for review), so a spend line in either
+- Environment and Others gain themes (added 2026-10-11), so a spend line in either
   domain may carry a theme; `NO_THEMES` and its check in `research_records.py` are gone.
 - Five population groups added: people living with HIV, transgender persons, survivors of violence
   and trafficking, children in need of care and protection, people displaced by conflict or disaster.

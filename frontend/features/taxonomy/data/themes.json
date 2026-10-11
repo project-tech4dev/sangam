@@ -1011,7 +1011,7 @@
       "domain": "environment",
       "label": "Environment",
       "status": "active",
-      "source": "Spend on environmental sustainability, conservation and animal welfare that is not a livelihood programme; themes drafted 2026-10-11 for review",
+      "source": "Spend on environmental sustainability, conservation and animal welfare that is not a livelihood programme; themes added 2026-10-11",
       "themes": [
         {
           "code": "climate-energy",
@@ -1146,7 +1146,7 @@
       "domain": "others",
       "label": "Others",
       "status": "active",
-      "source": "Spend that fits no programme domain: disaster relief, sports, central funds, administration, unlabelled or multi-sector lines; themes drafted 2026-10-11 for review",
+      "source": "Spend that fits no programme domain: disaster relief, sports, central funds, administration, unlabelled or multi-sector lines; themes added 2026-10-11",
       "themes": [
         {
           "code": "gender-rights",
@@ -1261,10 +1261,6 @@
               "csr": [
                 {
                   "clause": "iii",
-                  "sector": "Setting Up Orphanage"
-                },
-                {
-                  "clause": "iii",
                   "sector": "Socio-Economic Inequalities"
                 }
               ],
@@ -1360,11 +1356,7 @@
               "csr": [
                 {
                   "clause": "v",
-                  "sector": "Art And Culture"
-                },
-                {
-                  "clause": "v",
-                  "sector": "Heritage Sites"
+                  "sector": "Heritage Art And Culture"
                 }
               ],
               "schemes": []
@@ -1379,7 +1371,7 @@
               "csr": [
                 {
                   "clause": "vii",
-                  "sector": "Training To Promote Sports"
+                  "sector": "Encouraging Sports"
                 }
               ],
               "schemes": [
