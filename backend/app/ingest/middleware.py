@@ -139,8 +139,34 @@ def _problem(error: dict[str, Any], payload: dict[str, Any], schema: type[BaseMo
     return f"top level{f' {field}' if field else ''}: {msg}"
 
 
+def parse_payload(text: str) -> dict[str, Any] | None:
+    """A payload sent as a JSON string. Only surplus closing brackets after the object are forgiven."""
+    text = text.strip()
+    try:
+        value, end = json.JSONDecoder().raw_decode(text)
+    except ValueError:
+        return None
+    if text[end:].strip(" \t\r\n}]"):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _not_json(name: str, text: str) -> str:
+    try:
+        json.loads(text)
+        reason = "it parses, but not as an object"
+    except ValueError as exc:
+        pos = getattr(exc, "pos", 0)
+        reason = f"{getattr(exc, 'msg', exc)} at character {pos}, near {text[max(0, pos - 60):pos + 20]!r}"
+    return (f"Error invoking tool '{name}': refused, nothing saved. `findings` arrived as a string that is "
+            f"not valid JSON ({reason}). Send `findings` as an object, not a string, and call {name} again "
+            "with the whole payload.")
+
+
 def refusal_text(name: str, payload: Any) -> str | None:
     """One line per schema problem in a refused save, or None when the payload validates."""
+    if isinstance(payload, str) and parse_payload(payload) is None:
+        return _not_json(name, payload)
     schema = SAVE_SCHEMAS[name]
     try:
         schema.model_validate(payload)
@@ -165,11 +191,8 @@ class SaveRefusal(AgentMiddleware):
         findings = (call.get("args") or {}).get("findings")
         if call.get("name") not in SAVE_SCHEMAS or not isinstance(findings, str):
             return request
-        try:
-            payload = json.loads(findings)
-        except ValueError:
-            return request
-        if not isinstance(payload, dict):
+        payload = parse_payload(findings)
+        if payload is None:
             return request
         return request.override(tool_call={**call, "args": {**call["args"], "findings": payload}})
 

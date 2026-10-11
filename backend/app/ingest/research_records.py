@@ -58,13 +58,34 @@ def _hint(codes: tuple[str, ...]) -> dict[str, Any]:
 MAX_THEMES = 3
 
 
+_CLASSIFIED_FROM = {"project_name": ("project_name", "project"), "filed_sector": ("sector", "filed under"),
+                    "partner": ("partner_name", "partner"), "report": ("program_name", "programme")}
+
+
 def _check_classification(f: Any) -> None:
     """D11: a domain and theme are inferences, and a theme says what it rests on."""
-    if f.theme and not (f.classification_note or "").strip():
-        raise ValueError(
-            "a theme needs a classification_note quoting what it rests on, e.g. "
-            "\"project 'Financial Literacy & Inclusion'; filed under Education\""
-        )
+    if not f.theme or (f.classification_note or "").strip():
+        return
+    # The field classified_by names is the evidence, so the note can quote it rather than refuse.
+    field, label = _CLASSIFIED_FROM[f.classified_by]
+    if value := (getattr(f, field, None) or "").strip():
+        f.classification_note = f"{label} '{value}'"
+        return
+    raise ValueError(
+        "a theme needs a classification_note quoting what it rests on, e.g. "
+        "\"project 'Financial Literacy & Inclusion'; filed under Education\""
+    )
+
+
+_NOTE_HELP = ("REQUIRED with a theme: the evidence in a few words. Left empty, it is filled from the field "
+              "classified_by names, and the finding is refused if that field is empty too")
+
+
+def _drop_null_extras(cls: type[BaseModel], data: Any) -> Any:
+    """A null under a key the model lacks says nothing, so it is dropped rather than refused."""
+    if not isinstance(data, dict):
+        return data
+    return {k: v for k, v in data.items() if v is not None or k in cls.model_fields}
 
 
 def _code(v: Any) -> Any:
@@ -122,6 +143,8 @@ class FindingBase(BaseModel):
     source_name: str | None = None
     confidence: Literal["high", "medium", "low"]
     basis: Literal["explicit", "derived", "inferred"] = "explicit"
+
+    _nulls = model_validator(mode="before")(classmethod(_drop_null_extras))
 
     @field_validator("source_url")
     @classmethod
@@ -343,7 +366,7 @@ class CsrSpendFinding(YearlyFinding):
                     "supports; null when the line gives nothing to go on. Never pick one to fill the field",
     )
     classified_by: ClassifiedBy = Field(description="what the domain and theme rest on")
-    classification_note: str | None = Field(default=None, description="the evidence in a few words")
+    classification_note: str | None = Field(default=None, description=_NOTE_HELP)
 
     _codes = field_validator("domain", "theme", mode="before")(lambda v: _code(v))
 
@@ -435,7 +458,7 @@ class ProgrammeSpendFinding(YearlyFinding):
     domain: DomainCode
     theme: str | None = None
     classified_by: ClassifiedBy = Field(description="usually 'report': the funder's own programme naming")
-    classification_note: str | None = None
+    classification_note: str | None = Field(default=None, description=_NOTE_HELP)
     notes: str | None = None
 
     _codes = field_validator("domain", "theme", mode="before")(lambda v: _code(v))
@@ -781,7 +804,9 @@ class EntityResearch(BaseModel):
     website: str | None = None
     status: Literal["complete", "partial", "not_found", "wrong_entity"]
     stopped_reason: str | None = Field(
-        default=None, description="why research ended where it did, e.g. 'budget spent'"
+        default=None,
+        description="REQUIRED when status is 'partial' or 'wrong_entity': why research ended where it did, "
+                    "e.g. 'Stopped at the reading limit. Unread: the FY2024-25 annual report'",
     )
     summary: str = Field(min_length=20, description="a few sentences, factual, no judgement")
     goals: list[str] = Field(
@@ -798,6 +823,8 @@ class EntityResearch(BaseModel):
                     "Unlisted and unfound reads as 'not attempted'",
     )
     sources_read: list[str] = Field(default_factory=list)
+
+    _nulls = model_validator(mode="before")(classmethod(_drop_null_extras))
 
     @field_validator("years")
     @classmethod
