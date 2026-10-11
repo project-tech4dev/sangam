@@ -88,6 +88,9 @@ runs `lib/supabase/middleware.ts` on every request, and without its two keys eve
 API**. To reach `/ask` or `/import` you also need a sign-in method — enable the **Google**
 provider under **Authentication → Providers**, or add a user by hand.
 
+Give Docker Desktop at least **12 GB** of memory (Settings → Resources) if you run long Imports:
+the Next.js dev server relays the whole stream and grows with it.
+
 Everything else is optional. The knowledge graph needs `OPENAI_API_KEY`; without it the graph
 disables itself cleanly and the agent is told to use the database tools instead.
 
