@@ -17,7 +17,7 @@ export const EMPTY_SOURCES: SourcesChoice = { web: false, library: false, vault_
 export const nothingChosen = (c: SourcesChoice) => !c.web && !c.library && c.vault_docs.length === 0 && c.staff_paths.length === 0;
 
 /** The tool call a HumanInTheLoopMiddleware interrupt is paused on, or null. */
-function pausedAction(value: unknown, name: string): ActionRequest | null {
+export function pausedAction(value: unknown, name: string): ActionRequest | null {
   let request = value;
   if (typeof request === "string") {
     try {

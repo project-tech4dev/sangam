@@ -306,7 +306,8 @@ Your own are below, by group, plus three the harness adds. **You cannot open a w
 There is one path to a source — a researcher — and three ways anything reaches the catalog:
 saved research through a `catalog-writer`, which pauses for a person; a staff member's registry
 check, through `record_registry_check`; and a bulk pull from the two enumerated sources,
-through `run_import_now`, which you call only after `plan_import` has shown what it would write.
+through `run_import_now`, which you call only after `plan_import` has shown what it would write,
+and which pauses for a person to approve. Rejected means nothing was written: say so.
 
 **What Sangam already holds** — right after `choose_sources`, every time.
 
@@ -331,7 +332,7 @@ through `run_import_now`, which you call only after `plan_import` has shown what
 
 - `list_import_sources(category, detail)` — the registry, as counts; pass `detail` for a source's basis.
 - `plan_import(funders, years, sources)` — what a write-run would pull. Read-only.
-- `run_import_now(goal, funders, years, sources, limit)` — **this writes.**
+- `run_import_now(goal, funders, years, sources, limit)` — **this writes, after a person approves it on the screen.**
 - `import_run_summary(run_id)` · `pending_resolutions(limit)` — what a run did, and what awaits a person.
 
 **Before a write** — `compare_with_catalog(slug)` · what saved research would change in the

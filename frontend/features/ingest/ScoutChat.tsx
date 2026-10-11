@@ -5,6 +5,7 @@ import { useAgentContext } from "@copilotkit/react-core/v2";
 import { useAgentChat, type TraceStep } from "@/lib/useAgentChat";
 import { DoneReport } from "./components/DoneReport";
 import { SaveQuestions } from "./components/SaveQuestions";
+import { ImportApproval } from "./components/ImportApproval";
 import { ScoutRail, type StaffPanels } from "./components/ScoutRail";
 import { ScoutReply } from "./components/ScoutReply";
 import { ScoutRunPanel } from "./components/ScoutRunPanel";
@@ -213,6 +214,7 @@ export function ScoutChat({
         onPaused={setPaused}
       />
       <SaveQuestions agentId={`sangam-import-${threadId}`} onPaused={onReview} />
+      <ImportApproval agentId={`sangam-import-${threadId}`} onPaused={setPaused} />
     </>
   );
 
