@@ -14,6 +14,8 @@ this existed.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 # slug -> the words that place a theme under that clause. Ordered most
@@ -121,3 +123,36 @@ async def resolve_classification(
             "with its domain and no theme"
         )]
     return row["id"], rows[0]["id"], []
+
+
+# The tag vocabulary a finding may use: copies of seed/data/taxonomy, since the deployed backend has no seed/.
+_DATA = Path(__file__).parent / "data"
+
+
+def _vocabulary() -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]]]:
+    """Per tag list, code -> what the researcher reads beside it, and code -> its tags.slug (seed.taxonomy_seed's
+    `<kind>-<code>`, the unique key the writer resolves on)."""
+    themes = json.loads((_DATA / "themes.json").read_text(encoding="utf-8"))
+    common = json.loads((_DATA / "common.json").read_text(encoding="utf-8"))
+    labels: dict[str, dict[str, str]] = {"themes": {}, "populations": {}, "lenses": {}}
+    slugs: dict[str, dict[str, str]] = {"themes": {}, "populations": {}, "lenses": {}}
+    for d in themes["domains"]:
+        for t in d["themes"]:
+            labels["themes"][t["code"]] = f"{t['label']} (a theme in {d['label']})"
+            slugs["themes"][t["code"]] = f"theme-{t['code']}"
+            for sub in t["sub_themes"]:
+                labels["themes"][sub["code"]] = f"{sub['label']} (under {t['code']})"
+                slugs["themes"][sub["code"]] = f"sub_theme-{sub['code']}"
+    for code, label in common["population"]:
+        labels["populations"][code], slugs["populations"][code] = label, f"population-{code}"
+    for lens in themes["lenses"]:
+        labels["lenses"][lens["code"]], slugs["lenses"][lens["code"]] = lens["label"], f"lens-{lens['code']}"
+    return labels, slugs
+
+
+VOCABULARY, TAG_SLUGS = _vocabulary()
+THEME_CODES, POPULATION_CODES, LENS_CODES = (tuple(VOCABULARY[k]) for k in ("themes", "populations", "lenses"))
+# Tag kind for each list a finding carries; a theme code is a theme or a sub-theme.
+TAG_KINDS: dict[str, tuple[str, ...]] = {
+    "themes": ("theme", "sub_theme"), "populations": ("population",), "lenses": ("lens",),
+}

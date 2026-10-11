@@ -4,8 +4,9 @@
 and what `python -m seed.taxonomy_seed` loads into `tags` and `tag_links`. The `/resources/taxonomy`
 page reads these copies at build time, because the frontend container mounts only `frontend/`.
 
-Edit the originals, then copy them here:
-`cp seed/data/taxonomy/{themes,common}.json frontend/features/taxonomy/data/`.
+Edit the originals, then copy them here and to Import's vocabulary:
+`cp seed/data/taxonomy/{themes,common}.json frontend/features/taxonomy/data/` and
+`cp seed/data/taxonomy/{themes,common}.json backend/app/ingest/data/`.
 `make smoke` fails while the two disagree.
 
 The domain trees (`livelihoods.json`, `education.json`, `health.json`) stay in `features-plans/`

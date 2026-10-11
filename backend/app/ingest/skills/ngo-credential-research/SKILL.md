@@ -88,7 +88,9 @@ printed with its unit. It lands on that funder's partner line; a funder Sangam d
 held for a person.
 
 **Programmes and metrics** from the annual reports, each with its year, `claimed`. A target only
-when the report states one.
+when the report states one. Tag each programme with the themes, populations and lenses its own
+description supports, with a `tag_note` quoting it; tag `org_identity` only with a focus the
+organisation states for itself.
 
 **Governance and capacity:**
 - the board, as `office_bearer` contacts — names and roles only, never a personal email or phone;

@@ -155,7 +155,16 @@ def fiscal_year_of(d: date) -> str:
     return f"FY{y}-{(y + 1) % 100:02d}"
 
 
-class FunderRecord(Provenance):
+class Tags(BaseModel):
+    """Taxonomy codes the research gave, already checked against the vocabulary; the writer resolves them."""
+
+    themes: list[str] = Field(default_factory=list)
+    populations: list[str] = Field(default_factory=list)
+    lenses: list[str] = Field(default_factory=list)
+    tag_note: str | None = None
+
+
+class FunderRecord(Provenance, Tags):
     kind: Literal["funder"] = "funder"
     name: str = Field(min_length=2)
     funder_type: str | None = None
@@ -369,7 +378,7 @@ class FunderProgrammeSpendRecord(Provenance):
     _org = field_validator("funder_name")(lambda v: reject_if_aggregate(v))
 
 
-class ProgramRecord(Provenance, Tiered):
+class ProgramRecord(Provenance, Tiered, Tags):
     kind: Literal["program"] = "program"
     entity_name: str = Field(min_length=2)
     name: str = Field(min_length=2)
@@ -499,7 +508,7 @@ class RfpRecord(Provenance):
 ORG_ID_TYPES = frozenset({"pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no"})
 
 
-class OrgRecord(Provenance, Tiered):
+class OrgRecord(Provenance, Tiered, Tags):
     """An NGO. `identifiers` is only the type-to-number map the matcher resolves on."""
 
     kind: Literal["org"] = "org"

@@ -187,6 +187,9 @@ Every domain and theme on a line is an **inference**. Record it as one.
   evidence.
 - **The filed sector is saved as filed** in `sector`, whatever the classification says.
 - A `programme` row is classified the same way, `classified_by = 'report'`.
+- **The funder's stated focus** (a CSR policy's focus areas, a foundation's themes page) goes on
+  `identity` as `themes`, `populations` and `lenses`, with a `tag_note` quoting the page. What it
+  spent on is the spend lines' classification, not a tag.
 
 ## When a source will not open
 

@@ -60,6 +60,8 @@ person entered has no tier and is never overwritten.
 | programme and non-programme spend, foreign contribution | `org_financials` |
 | where it works | `org_locations` with `role`, plus `locations` |
 | programmes, reach, people | `programs`, `metrics`, `contacts` |
+| what a programme works on, for whom | `program_tags` (themes, populations, lenses from the taxonomy) |
+| the focus it states for itself | `org_tags` |
 | **three years of similar work evidenced by MoU / Work Order / Completion Certificate** | **no home** |
 | **governing board: size, published bios, conflict of interest** | **no home** |
 | permanent staff count, with what was counted | `orgs.staff_count`, `orgs.staff_count_note` |
@@ -79,6 +81,7 @@ person entered has no tier and is never overwritten.
 | the funder's own programme split | `funder_activity`, `kind='programme'` — never summed with spend lines |
 | the funder's standing eligibility — statutory restatement, its own bar, disqualifiers | one `documents` row, `doc_type='funder_eligibility'`, the text verbatim under three headings, per page |
 | CIN and other names it files under | `funders.cin`, `funders.aliases` |
+| its stated focus areas and who it funds for | `funder_tags` (themes, populations, lenses from the taxonomy) |
 | open call, its deadline, amount band | `rfps` |
 | a requirement printed in *that call* | `rfps.eligibility` — jsonb, so it stores the text and queries none of it. Not the same claim as the standing bar above; the same sentence in both is two rows, not a duplicate |
 | whether a call is open | `rfps.status` |

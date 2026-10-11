@@ -48,7 +48,7 @@ from app.ingest.records import (
     normalise_cin,
 )
 from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
-from app.ingest.taxonomy import resolve_classification, resolve_csr_sector
+from app.ingest.taxonomy import TAG_KINDS, resolve_classification, resolve_csr_sector
 from app.ingest.writer import (
     GATE,
     Conflict,
@@ -75,6 +75,7 @@ from app.ingest.writer import (
     write_program,
     write_programme_spend,
     write_rfp,
+    write_tags,
 )
 from app.integrations import storage
 
@@ -288,11 +289,26 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
             grant_size_min=to_inr(ident.get("grant_size_min")),
             grant_size_max=to_inr(ident.get("grant_size_max")),
             as_of=ident.get("as_of"),
+            **_tags(ident),
             **_provenance(anchor, row["researched_at"]),
         )
     except ValueError as exc:
         logger.info("funder record refused for %s: %s", row["slug"], exc)
         return None
+
+
+def _tags(finding: dict[str, Any]) -> dict[str, Any]:
+    return {k: finding.get(k) or [] for k in TAG_KINDS} | {"tag_note": finding.get("tag_note")}
+
+
+async def _write_tags(conn: Any, column: str, subject_id: int | None, rec: Any, what: str,
+                      report: dict[str, Any]) -> None:
+    if subject_id is None:
+        return
+    added, reasons = await write_tags(conn, column, subject_id, rec)
+    if added:
+        report["written"].setdefault("tags", collections.Counter())["added"] += added
+    report["reasons"].extend(f"{what}: {r}" for r in reasons)
 
 
 def _http_only(url: str | None) -> str | None:
@@ -322,6 +338,7 @@ def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord |
             aliases=ident.get("aliases") or [],
             staff_count=ident.get("staff_count"),
             staff_count_note=ident.get("staff_count_note"),
+            **_tags(ident),
             identifiers={f["id_type"]: f["id_value"] for f in identifiers
                          if f.get("id_value") and f.get("status") in MATCHING_STATUSES},
             source_type=anchor.get("source_type"),
@@ -498,6 +515,7 @@ async def _write_programs(
                 entity_name=row["canonical_name"] or row["entity_name"], name=f.name,
                 program_kind=f.kind, description=f.description, status=f.status,
                 start_date=f.start_date, end_date=f.end_date, is_enabler=f.is_enabler,
+                themes=f.themes, populations=f.populations, lenses=f.lenses, tag_note=f.tag_note,
                 source_type=f.source_type, evidence_tier=f.evidence_tier,
                 as_of=None, **_provenance(f, row["researched_at"]),
             )
@@ -511,6 +529,7 @@ async def _write_programs(
         if program_id is not None:
             ids[f.name] = program_id
         _count(report, "programs", status)
+        await _write_tags(conn, "program_id", program_id, rec, f"programme {f.name!r}", report)
     report["conflicts"].extend(c.describe() for c in conflicts)
     return ids
 
@@ -1078,6 +1097,7 @@ async def _promote_funder(
     report["entity"] = {
         "kind": "funder", "status": status, "id": funder_id, "name": record.name
     }
+    await _write_tags(conn, "funder_id", funder_id, record, record.name, report)
 
     owner = Owner.funder(funder_id)
     gate = GATE.get()
@@ -1117,6 +1137,7 @@ async def _promote_org(
     record = await _reconcile_org_aliases(conn, record, match, report)
     status, org_id, _, conflicts = await write_org(conn, record, match)
     report["entity"] = {"kind": "org", "status": status, "id": org_id, "name": record.name}
+    await _write_tags(conn, "org_id", org_id, record, record.name, report)
     report["conflicts"].extend(c.describe() for c in conflicts)
 
     owner = Owner.org(org_id)
