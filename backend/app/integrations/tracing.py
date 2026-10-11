@@ -351,11 +351,13 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
         description: str | None = None,
         config: dict[str, Any] | None = None,
         emit_subagent_events: bool = False,
+        emit_raw_events: bool = True,
     ) -> None:
         super().__init__(name=name, graph=graph, description=description, config=config)
-        # copilotkit's __init__ drops this flag, so it is set here; clone() passes it back per request.
+        # copilotkit's __init__ drops these flags, so they are set here; clone() passes them back per request.
         self.emit_subagent_events = emit_subagent_events
         self.subagent_visibility = "attributed" if emit_subagent_events else "inline"
+        self.emit_raw_events = emit_raw_events
 
     async def run(self, input: RunAgentInput):
         try:
