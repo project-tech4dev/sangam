@@ -66,6 +66,7 @@ from app.ingest.writer import (
     write_funder,
     write_funder_location,
     write_funder_tag,
+    write_funder_tags_from_programs,
     write_metric,
     write_org,
     write_org_financials,
@@ -1109,6 +1110,9 @@ async def _promote_funder(
         )
         report["csr_years"].append({"fiscal_year": year_record.fiscal_year, "status": state})
     programs = await _write_programs(conn, row, findings, owner, docs, report)
+    untagged = funder_id is not None and not any(getattr(record, k, None) for k in TAG_KINDS)
+    if untagged and (added := await write_funder_tags_from_programs(conn, funder_id)):
+        report["written"].setdefault("tags", collections.Counter())["added"] += added
     findings = [*findings, *_legacy_grants(findings, report)]
     await _write_facts(conn, row, findings, owner, programs, docs, report)
     if not (gate and gate.plan):

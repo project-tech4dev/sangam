@@ -1005,6 +1005,22 @@ async def write_tags(conn: Any, column: str, subject_id: int, rec: Any) -> tuple
     return added, reasons
 
 
+async def write_funder_tags_from_programs(conn: Any, funder_id: int) -> int:
+    """A funder with no tags of its own takes its programmes' tags, so matching and the registry see a focus."""
+    gate = GATE.get()
+    if gate and gate.plan:
+        return 0
+    cur = await conn.execute(
+        "INSERT INTO funder_tags (funder_id, tag_id, role, is_inferred, tagged_by, note) "
+        "SELECT DISTINCT p.funder_id, pt.tag_id, 'primary', true, %s, 'from its programmes' "
+        "FROM program_tags pt JOIN programs p ON p.id = pt.program_id "
+        "WHERE p.funder_id = %s AND NOT EXISTS (SELECT 1 FROM funder_tags ft WHERE ft.funder_id = %s) "
+        "ON CONFLICT DO NOTHING",
+        (EXTRACTOR_TAGGER, funder_id, funder_id),
+    )
+    return cur.rowcount
+
+
 # --- The org side ------------------------------------------------------------
 # Ranked on the evidence tier (C7): blanks fill, a strictly stronger source replaces, the rest is a Conflict.
 
