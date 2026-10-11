@@ -129,14 +129,24 @@ async def resolve_classification(
 _DATA = Path(__file__).parent / "data"
 
 
-def _vocabulary() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+def _vocabulary() -> dict[str, dict[str, str]]:
+    """Each tag list's codes, with what the researcher reads beside them: the label, and a sub-theme's theme."""
     themes = json.loads((_DATA / "themes.json").read_text(encoding="utf-8"))
     common = json.loads((_DATA / "common.json").read_text(encoding="utf-8"))
-    codes = [c for d in themes["domains"] for t in d["themes"] for c in (t["code"], *(s["code"] for s in t["sub_themes"]))]
-    return tuple(codes), tuple(code for code, _ in common["population"]), tuple(x["code"] for x in themes["lenses"])
+    theme_codes: dict[str, str] = {}
+    for d in themes["domains"]:
+        for t in d["themes"]:
+            theme_codes[t["code"]] = f"{t['label']} (a theme in {d['label']})"
+            theme_codes |= {s["code"]: f"{s['label']} (under {t['code']})" for s in t["sub_themes"]}
+    return {
+        "themes": theme_codes,
+        "populations": dict(common["population"]),
+        "lenses": {x["code"]: x["label"] for x in themes["lenses"]},
+    }
 
 
-THEME_CODES, POPULATION_CODES, LENS_CODES = _vocabulary()
+VOCABULARY = _vocabulary()
+THEME_CODES, POPULATION_CODES, LENS_CODES = (tuple(VOCABULARY[k]) for k in ("themes", "populations", "lenses"))
 # Tag kind for each list a finding carries; a theme code is a theme or a sub-theme.
 TAG_KINDS: dict[str, tuple[str, ...]] = {
     "themes": ("theme", "sub_theme"), "populations": ("population",), "lenses": ("lens",),

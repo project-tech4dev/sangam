@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
 from app.agent.tools.sql.catalog import CATALOG
+from app.ingest.taxonomy import VOCABULARY
 
 # Which kind of entity offers a concept. programs, metrics, contacts and documents each carry both an
 # org_id and a funder_id, so they are the same concept either way and only the foreign key changes.
@@ -261,13 +262,18 @@ _DISTRICT = Expected(
 
 # The taxonomy tags a programme, funder or organisation carries; written to program_tags, funder_tags or
 # org_tags, whose tag_id names no subject of its own, so they ride on the finding that does.
+def _codes(field: str) -> tuple[str, ...]:
+    return tuple(f"{code} = {label}" for code, label in VOCABULARY[field].items())
+
+
 _TAGS = (
     Expected(name="themes", type="text[]", note="codes from the theme taxonomy: sub-themes, or a theme when only "
-             "the broad area is clear; at most three, only what the source describes", values=(), required=False),
-    Expected(name="populations", type="text[]", note="who the work is for, as the source says", values=(),
+             "the broad area is clear; at most three, only what the source describes", values=_codes("themes"),
              required=False),
-    Expected(name="lenses", type="text[]", note="cross-cutting approaches the source describes", values=(),
-             required=False),
+    Expected(name="populations", type="text[]", note="who the work is for, as the source says",
+             values=_codes("populations"), required=False),
+    Expected(name="lenses", type="text[]", note="cross-cutting approaches the source describes",
+             values=_codes("lenses"), required=False),
     Expected(name="tag_note", type="text", note="required with any tag: the words the tags rest on", values=(),
              required=False),
 )

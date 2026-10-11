@@ -42,6 +42,8 @@ lenses: list[LensCode] = []
 tag_note: str | None                # required when any list is non-empty: the words it rests on
 ```
 
+- **The researcher reads the codes with their labels.** `research_goals` lists each one, e.g.
+  `fln = Foundational literacy & numeracy (under early-foundational)`, from the same copies.
 - **The vocabulary lives in the schema.** The `Literal`s are built when the module is imported from
   `backend/app/ingest/data/{themes,common}.json`, copies of `seed/data/taxonomy/` (the deployed
   backend has no `seed/`; `make smoke` and `test_import_tagging.py` fail while they differ), so the researcher's structured-output schema enumerates the allowed codes. That
@@ -97,3 +99,13 @@ backfill, because tags then cite what was read. No one-off tagging script.
    descriptive?
 3. Should staff be able to edit tags on the profile page? That is a UI change, so it needs a mock
    first.
+4. An invented code refuses the whole `save_research` call (the researcher must fix it and save
+   again), not just the tag. Keep that, or drop the bad code and record it under `reasons`?
+
+## Known limits
+
+- A funder's programme tags are written to `program_tags`, but match-v2 reads only `funder_tags`
+  and the activity lines, so they do not affect matching yet.
+- A plan (the Gate's preview) writes no tags, so the before-and-after does not show them.
+- Before this deploys: `make migrate ENV=staging` (after a backup) applies 0043. Without it tags
+  still write, but undo cannot remove them.
