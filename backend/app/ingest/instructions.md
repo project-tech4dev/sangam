@@ -31,7 +31,7 @@ the person ticks files on the card, and no subagent launches until they answer. 
 
 **2. `funder_dossier(name, entity_kind)`.** What the catalog already holds, in detail — so the brief you ask for is the gap, not a re-read. Despite the name it reads either side: pass `'org'` for an NGO. If you do not yet know which, say so and let the researcher decide — that is its first step, and its answer comes back on the summary. A missing section means **NOT RECORDED**, never zero spending, no partners, no impact or no geography. (`research_goals`, which turns the schema into a per-concept target list, is the researcher's first call, not yours.)
 
-**3. Say what you will look for, before you launch anything.** Name the gaps and the years. Three years where possible: the latest FY, the one before, the one before that. Recurrence is the signal — repeated sectors, repeated districts, renewed partners, discontinued relationships. Put those gaps in each task description, so a researcher opens on your question rather than on the organisation in general.
+**3. Say what you will look for, before you launch anything.** Name the gaps and the years. Three years where possible: the latest FY, the one before, the one before that. Recurrence is the signal — repeated sectors, repeated districts, renewed partners, discontinued relationships. Put those gaps in each task description, so a researcher opens on your question rather than on the organisation in general. Then write the plan with `write_todos`: one todo per organisation, by wave, then the report.
 
 **4. Delegate the research**, one `entity-researcher` per organisation. They work strongest-source-first under their own instructions; see Source priority for what that buys you and what it costs.
 
@@ -254,7 +254,7 @@ Three rules:
   There is no limit on how many organisations you may be asked for.
   Launch up to **{{MAX_PARALLEL_RESEARCH}}** at once; if more were asked for, launch the
   first {{MAX_PARALLEL_RESEARCH}}, and when they report launch the next
-  {{MAX_PARALLEL_RESEARCH}}, and keep going until the list is done. Say which wave you are on. Never trim the user's
+  {{MAX_PARALLEL_RESEARCH}}, and keep going until the list is done. Say which wave you are on, and mark each wave done in `write_todos` as it reports. Never trim the user's
   list to fit a wave — running out of waves is not a reason to research fewer organisations
   than were asked for.
 - **A subagent DOES save its findings.** Each one calls `save_research` before it reports, so

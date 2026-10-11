@@ -30,6 +30,7 @@ from app.ingest.middleware import (
     cheap_summarizer,
     fallback,
     research_rubric,
+    run_plan,
 )
 from app.ingest.research_records import PromotionReport, ResearchSummary, VaultSummary, WorkbookEntities
 from app.ingest.tools.catalog_tools import (
@@ -347,6 +348,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             CallerNote(),
             ChosenSources(),
             TickedSources(),
+            run_plan(),
         ],
         system_prompt=_render(_INSTRUCTIONS_MD, settings),
         # deepagents turns this into LangChain's HumanInTheLoopMiddleware: the run pauses on the

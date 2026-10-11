@@ -19,6 +19,7 @@ from langchain.agents.middleware import (
     ModelFallbackMiddleware,
     ModelRequest,
     ModelResponse,
+    TodoListMiddleware,
 )
 from langchain.agents.middleware.types import hook_config
 from langchain_core.language_models import BaseChatModel
@@ -40,6 +41,16 @@ READING_LIMIT_MESSAGE = (
 )
 # What ModelCallLimitMiddleware's exit_behavior="end" says as it stops a run.
 CALL_LIMIT_PREFIX = "Model call limits exceeded"
+# The library's own write_todos prompt and description run ~2k tokens on every supervisor call.
+PLAN_PROMPT = (
+    "## `write_todos`\n\nThe run's plan, kept in state so it survives a summary. Write it once, after the dossier "
+    "and before the first launch: one todo per organisation, prefixed with its wave (\"Wave 1: Axis Bank "
+    "Foundation\"), then \"Report\". Mark a wave's todos completed when its researchers return, and add any "
+    "organisation the person adds mid-run. Never call it in the same message as `task`. Skip it when the run "
+    "researches nothing. The report is a message after the last `write_todos`."
+)
+PLAN_TOOL = ("Write or replace the run's plan: every todo, each pending, in_progress or completed. "
+             "See `write_todos` in your instructions.")
 # Haiku's window is 200k; the summary prompt and its answer need the rest.
 SUMMARY_INPUT_TOKENS = 150_000
 
@@ -379,3 +390,7 @@ def cheap_summarizer(own: BaseChatModel, summarizer: BaseChatModel, backend: Bac
         truncate_args_settings=defaults["truncate_args_settings"],
         trim_tokens_to_summarize=SUMMARY_INPUT_TOKENS,
     )
+
+
+def run_plan() -> TodoListMiddleware:
+    return TodoListMiddleware(system_prompt=PLAN_PROMPT, tool_description=PLAN_TOOL)

@@ -75,6 +75,7 @@ async def answer(graph, pool: AsyncConnectionPool, thread_id: str, user_id: UUID
     snapshot = await graph.aget_state({"configurable": {"thread_id": thread_id}})
     state = {
         "run": run_state(snapshot.values.get("messages", [])),
+        "plan": snapshot.values.get("todos", []),
         "saved": await saved_since(pool, user_id, body.since),
         "progress": progress(body),
     }
