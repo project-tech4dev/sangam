@@ -23,7 +23,7 @@ from app.ingest.records import (
     OrgLocationRecord,
     OrgRecord,
 )
-from app.ingest.taxonomy import TAG_KINDS
+from app.ingest.taxonomy import TAG_KINDS, TAG_SLUGS
 
 
 class Owner(NamedTuple):
@@ -977,16 +977,20 @@ TAG_TABLES = {"program_id": "program_tags", "org_id": "org_tags", "funder_id": "
 
 async def write_tags(conn: Any, column: str, subject_id: int, rec: Any) -> tuple[int, list[str]]:
     """The record's taxonomy codes onto program_tags, org_tags or funder_tags. Insert-only, so a tag a person set
-    stays; is_inferred, since research chose them. Returns (rows added, reasons a code was not written)."""
+    stays; is_inferred, since research chose them. An invented code is dropped, never the save.
+    Returns (rows added, reasons a code was not written)."""
     gate = GATE.get()
     if gate and gate.plan:
         return 0, []
     added, reasons = 0, []
     for field_name, kinds in TAG_KINDS.items():
         for code in getattr(rec, field_name, None) or []:
+            slug = TAG_SLUGS[field_name].get(code)
+            if slug is None:
+                reasons.append(f"{kinds[0]} {code!r} is not a taxonomy code; dropped")
+                continue
             row = await (await conn.execute(
-                "SELECT id FROM tags WHERE kind = ANY(%s) AND code = %s AND status <> 'deprecated' ORDER BY id LIMIT 1",
-                (list(kinds), code),
+                "SELECT id FROM tags WHERE slug = %s AND status <> 'deprecated'", (slug,)
             )).fetchone()
             if row is None:
                 reasons.append(f"{kinds[0]} {code!r} is not in tags (run `make taxonomy-seed`); not written")

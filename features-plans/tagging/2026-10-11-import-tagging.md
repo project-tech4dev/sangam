@@ -1,6 +1,6 @@
 # Import writes themes, populations and lenses
 
-Status: built on `feat/import-tagging`, 2026-10-11; the open questions at the end are still open. Step 2 of the bulk-load plan. It depends on match-v2
+Status: built on `feat/import-tagging`, 2026-10-11; the open questions were decided the same day (end of this file). Step 2 of the bulk-load plan. It depends on match-v2
 (`docs/features/2026-10-11-funder-match-v2-themes.md`), which makes Funder Match read these tags.
 
 ## Problem
@@ -36,19 +36,20 @@ tag table's `tag_id` names no subject of its own, which is why `org_tags` was ne
 `expectations.EXTRA` declares the fields, so `research_goals` lists them for the researcher:
 
 ```python
-themes: list[ThemeCode] = []        # Literal of every theme and sub-theme code, built from themes.json
-populations: list[PopulationCode] = []
-lenses: list[LensCode] = []
+themes: list[str] = []              # theme and sub-theme codes, offered in the schema; at most three
+populations: list[str] = []
+lenses: list[str] = []
 tag_note: str | None                # required when any list is non-empty: the words it rests on
 ```
 
 - **The researcher reads the codes with their labels.** `research_goals` lists each one, e.g.
   `fln = Foundational literacy & numeracy (under early-foundational)`, from the same copies.
-- **The vocabulary lives in the schema.** The `Literal`s are built when the module is imported from
+- **The vocabulary is a hint in the schema, not a check.** The codes reach the schema as `examples`,
+  built when the module is imported from
   `backend/app/ingest/data/{themes,common}.json`, copies of `seed/data/taxonomy/` (the deployed
-  backend has no `seed/`; `make smoke` and `test_import_tagging.py` fail while they differ), so the researcher's structured-output schema enumerates the allowed codes. That
+  backend has no `seed/`; `make smoke` and `test_import_tagging.py` fail while they differ), so the researcher's schema offers the allowed codes. That
   avoids a second copy in a prompt (prompt substitution is reserved for `MAX_PARALLEL_RESEARCH`), and
-  pydantic refuses an invented code.
+  an invented code is kept on the finding and dropped, with a note, when it is written (decision 4).
 - **At most three themes per programme or focus.** That forces a primary reading over a scatter of
   tags.
 - **`tag_note` is required,** like a spend line's `classification_note`. A tag is an inference, and
@@ -56,16 +57,19 @@ tag_note: str | None                # required when any list is non-empty: the w
 
 ## Writing
 
-- `writer.write_tags(conn, column, subject_id, record)` resolves each code against `tags` with
-  `status <> 'deprecated'`; `promote.py` calls it after each programme, funder and org write.
-  - A code not in `tags` means the seed is behind. It goes to `report["reasons"]`, never inserted.
+- `writer.write_tags(conn, column, subject_id, record)` resolves each code to its `tags.slug`
+  (`taxonomy.TAG_SLUGS`, the seed's `<kind>-<code>`), so the lookup rests on the unique slug, and skips a
+  deprecated tag. The finding stores codes, not `tags.id`: ids differ between databases, and research is
+  saved in one and may be promoted in another; `promote.py` calls it after each programme, funder and org write.
+  - A code outside the taxonomy is dropped and noted in `report["reasons"]`; one in the taxonomy but not in
+    `tags` means the seed is behind, and is noted the same way.
   - They write `role='primary'`, `is_inferred=true`, `tagged_by='import'` and the note.
 - **Additive, like everything Import writes.** A re-import adds tags and never removes one a person
   set (`tagged_by <> 'import'`).
 - **Plan mode** skips the write, as `write_funder_tag` does.
 - **Logged in `catalog_writes`,** so staff can undo the save: `0043_tag_writes_logged` adds the trigger
   to `org_tags` and `program_tags` (`funder_tags` already had it), and `undo.LOGGED` names them.
-- **`catalog-write-report`** relays the tags written per programme and org, and any refused code.
+- **`catalog-write-report`** relays the tags written per programme and org, and any dropped code.
 
 ## Prompts and skills
 
@@ -82,8 +86,8 @@ backfill, because tags then cite what was read. No one-off tagging script.
 
 ## Tests
 
-- **Schema:** an unknown code is refused; a tag without `tag_note` is refused; more than three
-  themes is refused.
+- **Schema:** an unknown code is kept (lower-cased, de-duplicated) for the writer to drop; the schema
+  offers the codes; a tag without `tag_note` is refused; more than three themes is refused.
 - **Writer** (integration): codes land as inferred `sangam-import` tags with the note, a missing code
   goes to `reasons`, and a rerun adds nothing.
 - **Vocabulary:** the backend copies equal the seed files, and theme and sub-theme codes never collide.
@@ -91,16 +95,14 @@ backfill, because tags then cite what was read. No one-off tagging script.
   `org_identity` focus and a tagged programme, through `promote()`, writes 2 `org_tags` and 4
   `program_tags`, with nothing held. The match-v2 tests already cover how those tags score.
 
-## Open questions
+## Decisions (2026-10-11)
 
-1. Should a person confirm tags in Import's Done step before they count, or count straight away
-   with `is_inferred=true` shown? (Proposed: count straight away, show them, and allow removal.)
-2. Should lenses be scored in a later rubric, for example as a bonus inside population, or stay
-   descriptive?
-3. Should staff be able to edit tags on the profile page? That is a UI change, so it needs a mock
-   first.
-4. An invented code refuses the whole `save_research` call (the researcher must fix it and save
-   again), not just the tag. Keep that, or drop the bad code and record it under `reasons`?
+1. **Tags count straight away,** marked `is_inferred`; no confirmation step.
+2. **Lenses stay descriptive:** recorded, never scored.
+3. **No tag editing on the profile page** for now.
+4. **An invented code is dropped and noted,** never a reason to refuse the save.
+
+The 12 saved staging matches (match-v1) are not rerun automatically; a person reruns one when needed.
 
 ## Known limits
 

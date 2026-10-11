@@ -36,6 +36,17 @@ class TestTheVocabulary:
             ours = json.loads((pathlib.Path(taxonomy.__file__).parent / "data" / name).read_text())
             assert ours == json.loads((SEED / name).read_text()), f"copy {name} from seed/data/taxonomy"
 
+    def test_every_slug_the_writer_resolves_is_one_the_seed_writes(self):
+        if SEED is None:
+            pytest.skip("seed/ is not beside the tests")
+        import sys
+        sys.path.insert(0, str(SEED.parents[2]))
+        from seed.taxonomy_seed import taxonomy_rows
+        load = lambda name: json.loads((SEED / name).read_text())
+        seeded = {t.slug for t in taxonomy_rows(load("themes.json"), load("common.json"))[0]}
+        ours = {slug for codes in taxonomy.TAG_SLUGS.values() for slug in codes.values()}
+        assert ours <= seeded, sorted(ours - seeded)
+
     def test_themes_and_sub_themes_share_one_namespace_without_collisions(self):
         assert len(taxonomy.THEME_CODES) == len(set(taxonomy.THEME_CODES))
         assert {"shg-empowerment", "institution-building", "disaster-preparedness"} <= set(taxonomy.THEME_CODES)
@@ -50,9 +61,13 @@ class TestAFindingsTags:
                     tag_note="programme page: 'SHG federations of women'")
         assert f.themes == ["institution-building"] and f.populations == ["women"]
 
-    def test_an_invented_code_is_refused(self):
-        with pytest.raises(ValidationError):
-            program(themes=["womens-empowerment"], tag_note="programme page")
+    def test_an_invented_code_is_kept_for_the_writer_to_drop_and_note(self):
+        f = program(themes=[" Womens-Empowerment ", "fln"], tag_note="programme page")
+        assert f.themes == ["womens-empowerment", "fln"]
+
+    def test_the_schema_offers_the_codes(self):
+        examples = ProgramFinding.model_json_schema()["properties"]["themes"]["items"]["examples"]
+        assert "institution-building" in examples
 
     def test_a_tag_without_its_evidence_is_refused(self):
         with pytest.raises(ValidationError, match="tag_note"):
@@ -99,7 +114,7 @@ class TestWriteTags:
                             source_name="t", fetched_at="2026-10-11T00:00:00Z")
         added, reasons = await write_tags(conn, "program_id", pid, rec)
         assert added == 2
-        assert reasons == ["lens 'no-such-lens' is not in tags (run `make taxonomy-seed`); not written"]
+        assert reasons == ["lens 'no-such-lens' is not a taxonomy code; dropped"]
         rows = await (await conn.execute(
             "SELECT t.slug, pt.is_inferred, pt.tagged_by, pt.note FROM program_tags pt JOIN tags t ON t.id = pt.tag_id "
             "WHERE pt.program_id = %s ORDER BY 1", (pid,))).fetchall()

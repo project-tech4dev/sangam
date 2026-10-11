@@ -129,23 +129,28 @@ async def resolve_classification(
 _DATA = Path(__file__).parent / "data"
 
 
-def _vocabulary() -> dict[str, dict[str, str]]:
-    """Each tag list's codes, with what the researcher reads beside them: the label, and a sub-theme's theme."""
+def _vocabulary() -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]]]:
+    """Per tag list, code -> what the researcher reads beside it, and code -> its tags.slug (seed.taxonomy_seed's
+    `<kind>-<code>`, the unique key the writer resolves on)."""
     themes = json.loads((_DATA / "themes.json").read_text(encoding="utf-8"))
     common = json.loads((_DATA / "common.json").read_text(encoding="utf-8"))
-    theme_codes: dict[str, str] = {}
+    labels: dict[str, dict[str, str]] = {"themes": {}, "populations": {}, "lenses": {}}
+    slugs: dict[str, dict[str, str]] = {"themes": {}, "populations": {}, "lenses": {}}
     for d in themes["domains"]:
         for t in d["themes"]:
-            theme_codes[t["code"]] = f"{t['label']} (a theme in {d['label']})"
-            theme_codes |= {s["code"]: f"{s['label']} (under {t['code']})" for s in t["sub_themes"]}
-    return {
-        "themes": theme_codes,
-        "populations": dict(common["population"]),
-        "lenses": {x["code"]: x["label"] for x in themes["lenses"]},
-    }
+            labels["themes"][t["code"]] = f"{t['label']} (a theme in {d['label']})"
+            slugs["themes"][t["code"]] = f"theme-{t['code']}"
+            for sub in t["sub_themes"]:
+                labels["themes"][sub["code"]] = f"{sub['label']} (under {t['code']})"
+                slugs["themes"][sub["code"]] = f"sub_theme-{sub['code']}"
+    for code, label in common["population"]:
+        labels["populations"][code], slugs["populations"][code] = label, f"population-{code}"
+    for lens in themes["lenses"]:
+        labels["lenses"][lens["code"]], slugs["lenses"][lens["code"]] = lens["label"], f"lens-{lens['code']}"
+    return labels, slugs
 
 
-VOCABULARY = _vocabulary()
+VOCABULARY, TAG_SLUGS = _vocabulary()
 THEME_CODES, POPULATION_CODES, LENS_CODES = (tuple(VOCABULARY[k]) for k in ("themes", "populations", "lenses"))
 # Tag kind for each list a finding carries; a theme code is a theme or a sub-theme.
 TAG_KINDS: dict[str, tuple[str, ...]] = {

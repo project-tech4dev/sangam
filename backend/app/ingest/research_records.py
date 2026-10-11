@@ -49,9 +49,12 @@ pairs: still readable, not promotable, re-researched rather than migrated."""
 _UNITS: dict[str, int] = {"inr": 1, "lakh": 1_00_000, "crore": 1_00_00_000}
 
 DomainCode = Literal[*DOMAINS]
-ThemeCode = Literal[*THEME_CODES]
-PopulationCode = Literal[*POPULATION_CODES]
-LensCode = Literal[*LENS_CODES]
+
+
+
+def _hint(codes: tuple[str, ...]) -> dict[str, Any]:
+    # The codes reach the schema as a hint, not a check: an invented one is dropped and noted at promotion.
+    return {"items": {"type": "string", "examples": list(codes)}}
 MAX_THEMES = 3
 
 
@@ -191,16 +194,18 @@ class PlacedFinding(FindingBase):
 class Tagged(BaseModel):
     """What the work is about, in the taxonomy's own codes: an inference, so it names its evidence."""
 
-    themes: list[ThemeCode] = Field(
-        default_factory=list, max_length=MAX_THEMES,
+    themes: list[str] = Field(
+        default_factory=list, max_length=MAX_THEMES, json_schema_extra=_hint(THEME_CODES),
         description="sub-theme codes, or a theme code when only the broad area is clear; at most three, "
                     "the main work first. Only what the source describes, never what the name suggests",
     )
-    populations: list[PopulationCode] = Field(
-        default_factory=list, description="who the work is for, only when the source says so"
+    populations: list[str] = Field(
+        default_factory=list, json_schema_extra=_hint(POPULATION_CODES),
+        description="who the work is for, only when the source says so",
     )
-    lenses: list[LensCode] = Field(
-        default_factory=list, description="cross-cutting approaches the source describes, e.g. digital tools"
+    lenses: list[str] = Field(
+        default_factory=list, json_schema_extra=_hint(LENS_CODES),
+        description="cross-cutting approaches the source describes, e.g. digital tools",
     )
     tag_note: str | None = Field(
         default=None,
@@ -214,7 +219,8 @@ class Tagged(BaseModel):
         if tagged and not (self.tag_note or "").strip():
             raise ValueError("themes, populations and lenses need a tag_note quoting what they rest on")
         self.themes, self.populations, self.lenses = (
-            list(dict.fromkeys(v)) for v in (self.themes, self.populations, self.lenses)
+            list(dict.fromkeys(c.strip().lower() for c in v if c.strip()))
+            for v in (self.themes, self.populations, self.lenses)
         )
         return self
 
