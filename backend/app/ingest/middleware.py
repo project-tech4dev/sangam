@@ -36,6 +36,8 @@ READING_LIMIT_MESSAGE = (
     f"Refused: the {READING_LIMIT} for this organisation is reached. Read nothing more. Call save_research "
     f"now with what you have, and set stopped_reason to 'Stopped at the {READING_LIMIT}' plus what was left unread."
 )
+# What ModelCallLimitMiddleware's exit_behavior="end" says as it stops a run.
+CALL_LIMIT_PREFIX = "Model call limits exceeded"
 # Haiku's window is 200k; the summary prompt and its answer need the rest.
 SUMMARY_INPUT_TOKENS = 150_000
 
@@ -253,11 +255,19 @@ class ResearchRubric(RubricMiddleware):
     # Redeclared: an override without it loses the edge back to the model, and a revision never runs.
     @hook_config(can_jump_to=["model"])
     def after_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        return super().after_agent(self._with_rubric(state), runtime)
+        return None if stopped_by_call_limit(state) else super().after_agent(self._with_rubric(state), runtime)
 
     @hook_config(can_jump_to=["model"])
     async def aafter_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        if stopped_by_call_limit(state):
+            return None
         return await super().aafter_agent(self._with_rubric(state), runtime)
+
+
+def stopped_by_call_limit(state: Any) -> bool:
+    """call_limit ended the run: a revision would only be ended again, so there is nothing to grade."""
+    last = next((m for m in reversed(_messages(state)) if isinstance(m, AIMessage)), None)
+    return bool(last) and isinstance(last.content, str) and last.content.startswith(CALL_LIMIT_PREFIX)
 
 
 def digest_saves(messages: list[AnyMessage]) -> list[AnyMessage]:

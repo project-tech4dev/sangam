@@ -118,13 +118,8 @@ def _backend() -> CompositeBackend:
         routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR, virtual_mode=True)},
     )
 
-# The supervisor's own tools. It researches nothing, and the only catalog row it
-# writes is a staff member's own registry check: research and promotion go through
-# a subagent, so there is one path to a source and one path from research to the
-# catalog, each under the instructions written for it. Two paths to the
-# same work is what CLAUDE.md killed with search_orgs, and these two had
-# already drifted — only the subagent runs under the researcher's budget,
-# entity-confirmation and money-unit rules.
+# The supervisor's own tools. It researches nothing: one path to a source (a researcher) and one from
+# research to the catalog (a writer). Its own writes are a staff registry check and run_import_now's bulk pull.
 #
 # research_goals is not here either, though the parent could use it: in M5 it
 # requires an entity_kind and refuses "unknown", and a supervisor that has not
