@@ -27,7 +27,8 @@ def pytest_generate_tests(metafunc):
     tag = metafunc.config.getoption("--eval-tag")
     cases = [json.loads(line) for p in sorted(CASES.glob("*.jsonl")) for line in p.read_text().splitlines()
              if line.strip()]
-    cases = [c for c in cases if not tag or tag in c.get("tags", [])]
+    # Only when asked for by tag: a bare `make evals` stays the cheap Ask suite, not a 15-minute import.
+    cases = [c for c in cases if tag and tag in c.get("tags", [])]
     metafunc.parametrize("import_case", [pytest.param(c, id=c["id"]) for c in cases])
 
 

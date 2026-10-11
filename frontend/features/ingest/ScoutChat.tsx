@@ -166,11 +166,20 @@ export function ScoutChat({
   }
 
   // An instruction asked mid-run goes to Scout as the next message once the run ends.
+  // A pause also ends isRunning, and its card reports itself a commit later, so wait a beat and look again.
+  const pausedNow = useRef(paused);
   useEffect(() => {
-    const next = queued.current;
-    if (isRunning || paused || !next) return;
-    queued.current = null;
-    void send(next);
+    pausedNow.current = paused;
+  }, [paused]);
+  useEffect(() => {
+    if (isRunning || paused || !queued.current) return;
+    const timer = setTimeout(() => {
+      const next = queued.current;
+      if (!next || pausedNow.current) return;
+      queued.current = null;
+      void send(next);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [isRunning, paused, send]);
 
   function startOver() {

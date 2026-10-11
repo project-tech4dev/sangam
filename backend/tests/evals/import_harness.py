@@ -35,6 +35,9 @@ async def _until_done(graph, request: str, config: dict) -> dict:
     for _ in range(3):
         if not state.get("__interrupt__"):
             return state
+        paused_on = [a.get("name") for i in state["__interrupt__"] for a in (i.value or {}).get("action_requests", [])]
+        if paused_on != ["choose_sources"]:
+            raise AssertionError(f"the run paused on {paused_on}, which this case never asked for")
         decision = {"type": "edit", "edited_action": {"name": "choose_sources", "args": SOURCES}}
         state = await graph.ainvoke(Command(resume={"decisions": [decision]}), config=config)
     raise AssertionError("the run kept pausing after its sources were chosen")
