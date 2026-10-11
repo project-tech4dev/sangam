@@ -10,7 +10,7 @@ from typing import Any, NotRequired
 
 from deepagents.backends.protocol import BackendProtocol
 from deepagents.middleware._utils import append_to_system_message
-from deepagents.middleware.rubric import RubricEvaluation, RubricMiddleware
+from deepagents.middleware.rubric import GraderResponse, RubricEvaluation, RubricMiddleware
 from deepagents.middleware.summarization import SummarizationMiddleware, compute_summarization_defaults
 from langchain.agents.middleware import (
     AgentMiddleware,
@@ -432,6 +432,31 @@ class ResearchRubric(RubricMiddleware):
             return None
         return await super().aafter_agent(self._with_rubric(state), runtime)
 
+    def _handle_grader_exception(self, runtime: Any, state: Any, grading_run_id: str, iteration: int,
+                                 exc: Exception) -> dict[str, Any]:
+        # Haiku sometimes says needs_revision while passing every criterion; with every criterion passed, it is satisfied.
+        if (graded := all_passed(exc)) is not None:
+            return self._finalize_evaluation(graded, state, runtime, grading_run_id, iteration)
+        return super()._handle_grader_exception(runtime, state, grading_run_id, iteration, exc)
+
+
+def all_passed(exc: BaseException) -> GraderResponse | None:
+    """The grader's verdict as 'satisfied' when its only fault was 'needs_revision' with no criterion failing."""
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, ValidationError):
+            for error in current.errors():
+                verdict = error.get("input")
+                if "every criterion has passed=True" in error.get("msg", "") and isinstance(verdict, dict):
+                    try:
+                        return GraderResponse.model_validate({**verdict, "result": "satisfied"})
+                    except ValidationError:
+                        return None
+        current = current.__cause__ or current.__context__
+    return None
+
 
 def stopped_by_call_limit(state: Any) -> bool:
     """call_limit ended the run: a revision would only be ended again, so there is nothing to grade."""
@@ -454,6 +479,8 @@ def digest_saves(messages: list[AnyMessage]) -> list[AnyMessage]:
 
 def _digest(args: dict) -> dict:
     research = args.get("findings") or {}
+    if isinstance(research, str):
+        research = parse_payload(research) or {}
     findings = research.get("findings") or []
     return {
         "status": research.get("status"),
