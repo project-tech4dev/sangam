@@ -26,6 +26,7 @@ from app.ingest.expectations import (
 )
 from app.ingest.matcher import resolve_funder, resolve_org
 from app.ingest.promote import MERGEABLE, org_match, promote
+from app.ingest.research_records import FINDING_MODELS
 from app.ingest.writer import UNWRITTEN, Gate, slugify
 
 logger = logging.getLogger(__name__)
@@ -393,6 +394,8 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                 state += f" — still missing {', '.join(missing)}" if missing else " — years covered"
             out.append(f"\n{concept} -> {target}: {state}")
             out += [f"    {f.describe()}" for f in fields]
+            if model := FINDING_MODELS.get(concept):
+                out.append(f"    keys: {', '.join(model.model_fields)}; any other key refuses the save")
 
         out.append(
             "\nFields nothing can fill are as useful as fields you fill: say which you looked "

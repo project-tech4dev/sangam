@@ -321,8 +321,8 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
         Expected(
             name="as_of",
             type="text",
-            note="the period the document describes, e.g. 'FY2023-24'. NOT when you read it — "
-                 "fetched_at is that, and the two are different",
+            note="the period the document describes, e.g. 'FY2023-24'. NOT when you read it: "
+                 "a document finding carries no read date",
             values=(),
             required=False,
         ),
