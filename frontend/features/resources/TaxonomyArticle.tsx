@@ -11,7 +11,7 @@ export function TaxonomyArticle() {
           Work is classified by what it does, in the terms funders plan with: each programme domain has
           a few themes, and each theme a handful of sub-themes. A programme, organisation, funder or call
           is tagged with one or more sub-themes, and everything else follows from them. Environment and
-          Others have no themes: they give a domain to CSR spend that fits no programme.
+          Others also give a domain to CSR spend that fits no programme.
         </p>
         <dl className="m-0 grid gap-x-6 gap-y-3 md:grid-cols-[max-content_minmax(0,1fr)]">
           <dt className="font-semibold">Themes and sub-themes</dt>

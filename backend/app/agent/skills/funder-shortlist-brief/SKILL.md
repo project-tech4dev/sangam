@@ -7,7 +7,7 @@ description: Use when a compare_fit reply for one organisation needs writing up 
 
 The reader wants to know who to approach first and why. Every score, tier,
 point and status in compare_fit's reply is Sangam's arithmetic under the
-match-v1 rubric over the cited rows, with no source of its own: say so once,
+match-v2 rubric over the cited rows, with no source of its own: say so once,
 at the top.
 
 ## Order

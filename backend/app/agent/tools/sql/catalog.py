@@ -313,7 +313,7 @@ _TABLES: tuple[Table, ...] = (
             Column("note", "text"),
         ),
         defects=(
-            "Two kinds live here: kind='sector' rows came from the seed and cover 4 funders, kind='csr_sector' (Schedule VII) rows come from research. A funder with no rows of a kind has not been researched for it, so a zero overlap from that side is 'not recorded', never 'no focus'.",
+            "Themes are tags of kind 'domain', 'theme' or 'sub_theme' (the /resources/taxonomy tree, parent_id upward); kind='csr_sector' (Schedule VII) rows come from CSR filings. A funder's spend and programme lines carry their own domain_tag_id/theme_tag_id in funder_activity, so read both for what it funds. kind='sector' rows are legacy NGO Darpan labels that compare_fit no longer reads. A funder with no rows of a kind has not been researched for it, so a zero overlap from that side is 'not recorded', never 'no focus'.",
         ),
     ),
     Table(
@@ -560,7 +560,7 @@ _TABLES: tuple[Table, ...] = (
             Column("note", "text"),
         ),
         defects=(
-            "kind='sector' only: nothing writes csr_sector for an org. Reach Schedule VII through tags.meta->>'maps_to' on the org's sector tags, where a JSON null means no clause fits. An org with no rows is untagged, so a zero overlap from its side is 'not recorded', never 'no focus'.",
+            "Themes are tags of kind 'domain', 'theme' or 'sub_theme' (the /resources/taxonomy tree, parent_id upward), plus 'population'; programme tags are in program_tags. A sub_theme reaches its Schedule VII clauses through tag_links (linked tag kind 'csr_sector'). kind='sector' rows are legacy NGO Darpan labels that compare_fit no longer reads. An org with no rows is untagged, so a zero overlap from its side is 'not recorded', never 'no focus'.",
         ),
     ),
     Table(

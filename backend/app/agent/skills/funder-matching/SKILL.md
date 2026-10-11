@@ -1,6 +1,6 @@
 ---
 name: funder-matching
-description: Use when someone asks which funders an organisation could apply to, should approach, or fits — "Which funders can KABIL apply to?", "find funders for Goonj", "who should we pitch?". From the organisation's name to one compare_fit call that scores every funder in the catalog under the match-v1 rubric, ready to write up. The write-up itself is funder-shortlist-brief. When the user names the funders to judge, use funder-comparison instead.
+description: Use when someone asks which funders an organisation could apply to, should approach, or fits — "Which funders can KABIL apply to?", "find funders for Goonj", "who should we pitch?". From the organisation's name to one compare_fit call that scores every funder in the catalog under the match-v2 rubric, ready to write up. The write-up itself is funder-shortlist-brief. When the user names the funders to judge, use funder-comparison instead.
 ---
 
 # From an organisation to a shortlist

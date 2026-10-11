@@ -35,7 +35,7 @@ from app.ingest.records import (
     http_url,
     normalise_cin,
 )
-from app.ingest.taxonomy import DOMAINS, NO_THEMES
+from app.ingest.taxonomy import DOMAINS
 
 # The vocabulary is the registry's, in its order. A `Concept = Literal[...]`
 # alias used to sit here repeating all thirteen; it was imported nowhere.
@@ -53,8 +53,6 @@ DomainCode = Literal[*DOMAINS]
 
 def _check_classification(f: Any) -> None:
     """D11: a domain and theme are inferences, and a theme says what it rests on."""
-    if f.domain in NO_THEMES and f.theme:
-        raise ValueError(f"{f.domain!r} has no themes in the taxonomy; leave theme empty")
     if f.theme and not (f.classification_note or "").strip():
         raise ValueError(
             "a theme needs a classification_note quoting what it rests on, e.g. "

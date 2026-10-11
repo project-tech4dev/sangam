@@ -1,4 +1,4 @@
-"""One organisation against one funder under match-v1. rules.py judges each criterion; rubric.py counts."""
+"""One organisation against one funder under match-v2. rules.py judges each criterion; rubric.py counts."""
 
 from __future__ import annotations
 

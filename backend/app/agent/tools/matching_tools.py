@@ -1,4 +1,4 @@
-"""compare_fit: an organisation against funders, judged and scored in code under match-v1."""
+"""compare_fit: an organisation against funders, judged and scored in code under match-v2."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def compare(org: OrgProfile, funders: list[FunderProfile], places: Places, *, sh
 
 @tool
 async def compare_fit(org_id: int, funder_ids: list[int] | None = None) -> str:
-    """Score one organisation against funders under the match-v1 rubric, from the database, in one call.
+    """Score one organisation against funders under the match-v2 rubric, from the database, in one call.
 
     Args:
         org_id: the organisation's id (resolve the name with db_query first).

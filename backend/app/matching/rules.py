@@ -1,4 +1,4 @@
-"""The seven match-v1 criteria, judged in code from two profiles. Pure: no pool, no async, no settings.
+"""The seven match-v2 criteria, judged in code from two profiles. Pure: no pool, no async, no settings.
 
 repositories/matching.py fills the profiles; rubric.py turns the points into a score.
 """
@@ -39,10 +39,29 @@ class Location:
 
 
 @dataclass(frozen=True)
+class Themes:
+    """What a side works on, at three grains; a sub-theme brings its theme, domain and Schedule VII clauses."""
+
+    themes: frozenset[str] = frozenset()  # sub_theme and theme slugs
+    clauses: frozenset[str] = frozenset()  # csr_sector slugs
+    domains: frozenset[str] = frozenset()
+
+    def __bool__(self) -> bool:
+        return bool(self.themes or self.clauses or self.domains)
+
+    def __or__(self, other: Themes) -> Themes:
+        return Themes(self.themes | other.themes, self.clauses | other.clauses, self.domains | other.domains)
+
+    def grain(self, name: str) -> frozenset[str]:
+        """'theme', 'clause' or 'domain': the rubric's names for the three grains."""
+        return getattr(self, f"{name}s")
+
+
+@dataclass(frozen=True)
 class Program:
     id: int
     name: str
-    tags: frozenset[str]  # sector slugs, csr slugs, and the csr slugs the sector tags map to
+    themes: Themes = Themes()
 
 
 @dataclass(frozen=True)
@@ -69,9 +88,9 @@ class OrgProfile:
     id: int
     name: str
     location_ids: set[int] = field(default_factory=set)
-    sector_tags: set[str] = field(default_factory=set)
-    csr_slugs: set[str] = field(default_factory=set)
+    themes: Themes = Themes()  # its own and its programmes'
     population: set[str] = field(default_factory=set)  # its own and its programmes' population tags
+    labels: dict[str, str] = field(default_factory=dict)  # tag slug -> label, for the write-up
     programs: list[Program] = field(default_factory=list)
     # id_type -> its org_identifiers rows
     identifiers: dict[str, list[Identifier]] = field(default_factory=dict)
@@ -92,9 +111,9 @@ class FunderProfile:
     grant_size_max: Decimal | None = None
     location_ids: set[int] = field(default_factory=set)
     registered_ids: set[int] = field(default_factory=set)
-    sector_tags: set[str] = field(default_factory=set)
-    csr_slugs: set[str] = field(default_factory=set)
+    themes: Themes = Themes()  # its own tags and its activity lines' classifications
     population: set[str] = field(default_factory=set)
+    labels: dict[str, str] = field(default_factory=dict)
     # (activity id, fiscal_year) of its spend and programme lines that carry an amount
     spend: list[tuple[int, str]] = field(default_factory=list)
     # (documents id, criterion) from the funder's 'funder_eligibility' document
@@ -161,8 +180,8 @@ def _names(places: Places, ids: set[int]) -> str:
     return ", ".join(sorted(places.name(i) for i in ids))
 
 
-def _words(slugs: set[str]) -> str:
-    return ", ".join(sorted(s.replace("_", " ") for s in slugs))
+def _words(slugs: set[str] | frozenset[str], labels: dict[str, str]) -> str:
+    return ", ".join(sorted(labels.get(s, s) for s in slugs))
 
 
 def _found(code: str, points: int | None, note: str, cites: list[str], line: str = "", **extra) -> Finding:
@@ -177,26 +196,33 @@ def _side(org_has: bool) -> str:
 
 
 def theme(org: OrgProfile, funder: FunderProfile) -> Finding:
-    shared = (org.sector_tags & funder.sector_tags) | (org.csr_slugs & funder.csr_slugs)
+    """The finest grain both sides share: a theme or sub-theme, else a Schedule VII clause, else a domain."""
     cites = [f"[org:{org.id}]", f"[funder:{funder.id}]"]
-    if shared:
-        what = _words(shared)
-        if hits := [p for p in org.programs if p.tags & shared]:
-            return _found("theme", rubric.maximum("theme"), f"shared: {what}; {hits[0].name} is in it", cites,
-                          f"Shared theme: {what}")
-        if org.programs and all(p.tags for p in org.programs):
-            why, act = f"none of {len(org.programs)} programmes is in it", f"Record a programme in {what}"
-        elif org.programs:
-            why, act = "its programmes are not tagged with a theme", "Tag the organisation's programmes with themes"
-        else:
-            why, act = "no programmes recorded", f"Record the organisation's programmes in {what}"
-        gain = rubric.maximum("theme") - rubric.THEME_NO_PROGRAMME
-        return _found("theme", rubric.THEME_NO_PROGRAMME, f"shared: {what}; {why}", cites,
-                      f"No programme recorded in {what}", improve=[f"{act} (up to {gain} points)."])
-    org_tagged, funder_tagged = bool(org.sector_tags or org.csr_slugs), bool(funder.sector_tags or funder.csr_slugs)
-    if org_tagged and funder_tagged:
-        return _found("theme", 0, "no shared sector or Schedule VII theme", cites, "No shared theme recorded")
-    return _found("theme", None, f"no themes recorded for the {_side(org_tagged)}", [])
+    labels = org.labels | funder.labels
+    for grain in rubric.THEME:
+        if shared := org.themes.grain(grain) & funder.themes.grain(grain):
+            break
+    else:
+        if org.themes and funder.themes:
+            return _found("theme", 0, "no shared theme, Schedule VII clause or domain", cites,
+                          "No shared theme recorded")
+        return _found("theme", None, f"no themes recorded for the {_side(bool(org.themes))}", [])
+    what, pts = _words(shared, labels), rubric.THEME[grain]
+    shared_as = {"theme": "shared", "clause": "shared Schedule VII clause", "domain": "shared domain only"}[grain]
+    line = {"theme": f"Shared theme: {what}", "clause": f"Same Schedule VII clause: {what}",
+            "domain": f"Same broad area: {what}"}[grain]
+    if hits := [p for p in org.programs if p.themes.grain(grain) & shared]:
+        return _found("theme", pts, f"{shared_as}: {what}; {hits[0].name} is in it", cites, line)
+    if org.programs and all(p.themes for p in org.programs):
+        why, act = f"none of {len(org.programs)} programmes is in it", f"Record a programme in {what}"
+    elif org.programs:
+        why, act = "its programmes are not tagged with a theme", "Tag the organisation's programmes with themes"
+    else:
+        why, act = "no programmes recorded", f"Record the organisation's programmes in {what}"
+    capped = min(pts, rubric.THEME_NO_PROGRAMME)
+    improve = [f"{act} (up to {pts - capped} points)."] if pts > capped else []
+    return _found("theme", capped, f"{shared_as}: {what}; {why}", cites, f"No programme recorded in {what}",
+                  improve=improve)
 
 
 def geography(org: OrgProfile, funder: FunderProfile, places: Places) -> Finding:
@@ -228,11 +254,13 @@ def geography(org: OrgProfile, funder: FunderProfile, places: Places) -> Finding
 
 def population(org: OrgProfile, funder: FunderProfile) -> Finding:
     cites = [f"[org:{org.id}]", f"[funder:{funder.id}]"]
+    labels = org.labels | funder.labels
     if shared := org.population & funder.population:
-        return _found("population", rubric.maximum("population"), f"both serve {_words(shared)}", cites,
-                      f"Both serve {_words(shared)}")
+        return _found("population", rubric.maximum("population"), f"both serve {_words(shared, labels)}", cites,
+                      f"Both serve {_words(shared, labels)}")
     if org.population and funder.population:
-        return _found("population", 0, f"{_words(org.population)} against {_words(funder.population)}", cites,
+        return _found("population", 0,
+                      f"{_words(org.population, labels)} against {_words(funder.population, labels)}", cites,
                       "Serves a different population")
     return _found("population", None, f"no population recorded for the {_side(bool(org.population))}", [])
 
@@ -378,4 +406,4 @@ def judge(org: OrgProfile, funder: FunderProfile, places: Places, *, today: date
 
 
 def has_places_or_themes(funder: FunderProfile) -> bool:
-    return bool(funder.location_ids or funder.sector_tags or funder.csr_slugs)
+    return bool(funder.location_ids or funder.themes)

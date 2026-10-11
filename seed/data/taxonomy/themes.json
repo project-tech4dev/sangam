@@ -1011,15 +1011,384 @@
       "domain": "environment",
       "label": "Environment",
       "status": "active",
-      "source": "Spend on environmental sustainability, conservation and animal welfare that is not a livelihood programme",
-      "themes": []
+      "source": "Spend on environmental sustainability, conservation and animal welfare that is not a livelihood programme; themes drafted 2026-10-11 for review",
+      "themes": [
+        {
+          "code": "climate-energy",
+          "label": "Climate action & clean energy",
+          "sub_themes": [
+            {
+              "code": "clean-energy",
+              "label": "Renewable & clean energy access",
+              "sdgs": [
+                "7",
+                "13"
+              ],
+              "csr": [
+                {
+                  "clause": "iv",
+                  "sector": "Environmental Sustainability"
+                }
+              ],
+              "schemes": [
+                "PM-KUSUM",
+                "PM Surya Ghar Muft Bijli Yojana"
+              ]
+            },
+            {
+              "code": "climate-adaptation",
+              "label": "Climate adaptation & community resilience",
+              "sdgs": [
+                "11",
+                "13"
+              ],
+              "csr": [
+                {
+                  "clause": "iv",
+                  "sector": "Environmental Sustainability"
+                }
+              ],
+              "schemes": [
+                "National Action Plan on Climate Change"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "conservation",
+          "label": "Forests, biodiversity & wildlife",
+          "sub_themes": [
+            {
+              "code": "forests-biodiversity",
+              "label": "Forests, biodiversity & community conservation",
+              "sdgs": [
+                "13",
+                "15"
+              ],
+              "csr": [
+                {
+                  "clause": "iv",
+                  "sector": "Conservation Of Natural Resources"
+                },
+                {
+                  "clause": "iv",
+                  "sector": "Agro Forestry"
+                }
+              ],
+              "schemes": [
+                "Green India Mission"
+              ]
+            },
+            {
+              "code": "animal-welfare",
+              "label": "Animal welfare",
+              "sdgs": [
+                "15"
+              ],
+              "csr": [
+                {
+                  "clause": "iv",
+                  "sector": "Animal Welfare"
+                }
+              ],
+              "schemes": []
+            }
+          ]
+        },
+        {
+          "code": "waste-pollution",
+          "label": "Waste, pollution & awareness",
+          "sub_themes": [
+            {
+              "code": "waste-circular",
+              "label": "Waste management & circular economy",
+              "sdgs": [
+                "11",
+                "12"
+              ],
+              "csr": [
+                {
+                  "clause": "iv",
+                  "sector": "Environmental Sustainability"
+                },
+                {
+                  "clause": "i",
+                  "sector": "Sanitation"
+                }
+              ],
+              "schemes": [
+                "Swachh Bharat Mission"
+              ]
+            },
+            {
+              "code": "environmental-education",
+              "label": "Environmental education & awareness",
+              "sdgs": [
+                "4",
+                "12",
+                "13"
+              ],
+              "csr": [
+                {
+                  "clause": "iv",
+                  "sector": "Environmental Sustainability"
+                }
+              ],
+              "schemes": [
+                "Mission LiFE"
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "domain": "others",
       "label": "Others",
       "status": "active",
-      "source": "Spend that fits no programme domain: disaster relief, sports, central funds, administration, unlabelled or multi-sector lines",
-      "themes": []
+      "source": "Spend that fits no programme domain: disaster relief, sports, central funds, administration, unlabelled or multi-sector lines; themes drafted 2026-10-11 for review",
+      "themes": [
+        {
+          "code": "gender-rights",
+          "label": "Gender equality & rights",
+          "sub_themes": [
+            {
+              "code": "gender-based-violence",
+              "label": "Ending gender-based violence & trafficking",
+              "sdgs": [
+                "5",
+                "16"
+              ],
+              "csr": [
+                {
+                  "clause": "iii",
+                  "sector": "Gender Equality"
+                },
+                {
+                  "clause": "iii",
+                  "sector": "Women Empowerment"
+                }
+              ],
+              "schemes": [
+                "Mission Shakti"
+              ]
+            },
+            {
+              "code": "women-leadership",
+              "label": "Women's leadership & collective voice",
+              "sdgs": [
+                "5",
+                "16"
+              ],
+              "csr": [
+                {
+                  "clause": "iii",
+                  "sector": "Women Empowerment"
+                }
+              ],
+              "schemes": [
+                "Mission Shakti"
+              ]
+            },
+            {
+              "code": "transgender-inclusion",
+              "label": "Transgender & queer inclusion",
+              "sdgs": [
+                "5",
+                "10"
+              ],
+              "csr": [
+                {
+                  "clause": "iii",
+                  "sector": "Socio-Economic Inequalities"
+                }
+              ],
+              "schemes": [
+                "SMILE"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "rights-governance",
+          "label": "Rights, protection & governance",
+          "sub_themes": [
+            {
+              "code": "entitlements-access",
+              "label": "Access to entitlements & social protection",
+              "sdgs": [
+                "1",
+                "10",
+                "16"
+              ],
+              "csr": [
+                {
+                  "clause": "iii",
+                  "sector": "Socio-Economic Inequalities"
+                },
+                {
+                  "clause": "x",
+                  "sector": "Rural Development Projects"
+                }
+              ],
+              "schemes": [
+                "PM Garib Kalyan Anna Yojana"
+              ]
+            },
+            {
+              "code": "legal-aid",
+              "label": "Legal aid & access to justice",
+              "sdgs": [
+                "16"
+              ],
+              "csr": [
+                {
+                  "clause": "iii",
+                  "sector": "Socio-Economic Inequalities"
+                }
+              ],
+              "schemes": [
+                "NALSA legal services"
+              ]
+            },
+            {
+              "code": "child-protection",
+              "label": "Child protection & care",
+              "sdgs": [
+                "1",
+                "16"
+              ],
+              "csr": [
+                {
+                  "clause": "iii",
+                  "sector": "Setting Up Orphanage"
+                },
+                {
+                  "clause": "iii",
+                  "sector": "Socio-Economic Inequalities"
+                }
+              ],
+              "schemes": [
+                "Mission Vatsalya"
+              ]
+            },
+            {
+              "code": "local-governance",
+              "label": "Local governance & citizen participation",
+              "sdgs": [
+                "16"
+              ],
+              "csr": [
+                {
+                  "clause": "x",
+                  "sector": "Rural Development Projects"
+                }
+              ],
+              "schemes": [
+                "Rashtriya Gram Swaraj Abhiyan"
+              ]
+            }
+          ]
+        },
+        {
+          "code": "disaster",
+          "label": "Disaster preparedness & relief",
+          "sub_themes": [
+            {
+              "code": "disaster-preparedness",
+              "label": "Disaster risk reduction & preparedness",
+              "sdgs": [
+                "11",
+                "13"
+              ],
+              "csr": [
+                {
+                  "clause": "xii",
+                  "sector": "Disaster Management"
+                }
+              ],
+              "schemes": [
+                "Aapda Mitra"
+              ]
+            },
+            {
+              "code": "relief-rehabilitation",
+              "label": "Relief, rehabilitation & reconstruction",
+              "sdgs": [
+                "1",
+                "11"
+              ],
+              "csr": [
+                {
+                  "clause": "xii",
+                  "sector": "Disaster Management"
+                }
+              ],
+              "schemes": []
+            },
+            {
+              "code": "displaced-communities",
+              "label": "Support for communities displaced by conflict or disaster",
+              "sdgs": [
+                "10",
+                "16"
+              ],
+              "csr": [
+                {
+                  "clause": "xii",
+                  "sector": "Disaster Management"
+                },
+                {
+                  "clause": "iii",
+                  "sector": "Socio-Economic Inequalities"
+                }
+              ],
+              "schemes": []
+            }
+          ]
+        },
+        {
+          "code": "culture-sports",
+          "label": "Culture, heritage & sports",
+          "sub_themes": [
+            {
+              "code": "art-culture-heritage",
+              "label": "Art, culture & heritage",
+              "sdgs": [
+                "11"
+              ],
+              "csr": [
+                {
+                  "clause": "v",
+                  "sector": "Art And Culture"
+                },
+                {
+                  "clause": "v",
+                  "sector": "Heritage Sites"
+                }
+              ],
+              "schemes": []
+            },
+            {
+              "code": "sports-development",
+              "label": "Sports for development",
+              "sdgs": [
+                "3",
+                "4"
+              ],
+              "csr": [
+                {
+                  "clause": "vii",
+                  "sector": "Training To Promote Sports"
+                }
+              ],
+              "schemes": [
+                "Khelo India"
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -1,4 +1,4 @@
-"""match-v1 arithmetic: unknown is left out, never zero; no shared place or theme is no score."""
+"""match-v2 arithmetic: unknown is left out, never zero; no shared place or theme is no score."""
 
 from __future__ import annotations
 
