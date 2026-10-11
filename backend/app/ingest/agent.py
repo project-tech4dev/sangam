@@ -24,6 +24,7 @@ from app.ingest.middleware import (
     EscalateAfterFailedSave,
     ReadingLimit,
     RunSources,
+    SaveRefusal,
     TickedSources,
     ask_for_sources,
     call_limit,
@@ -296,6 +297,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict_at=RESEARCHER_EVICT_AT),
+            # Inside the eviction, so a refused save stays short enough to read.
+            SaveRefusal(),
             # Only what the person chose on the sources card; staff rows last.
             RunSources(),
             staff_last_lock(),
@@ -328,6 +331,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict=False),
+            SaveRefusal(),
             RunSources(),
             DropFilesOnExit(),
             call_limit(settings.research_model_call_limit),

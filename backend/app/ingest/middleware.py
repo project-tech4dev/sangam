@@ -24,10 +24,12 @@ from langchain.agents.middleware import (
 from langchain.agents.middleware.types import hook_config
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, ToolMessage
+from pydantic import BaseModel, ValidationError
 
 from app.agent.models import resolve_model
 from app.ingest import run_sources
 from app.ingest.caller import caller_note, scope
+from app.ingest.research_records import FINDING_MODELS, EntityResearch, VaultResearch
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +109,88 @@ def save_failed(messages: list[AnyMessage]) -> bool:
         and (m.status == "error" or str(m.content).startswith("Error invoking tool"))
         for m in messages
     )
+
+
+SAVE_SCHEMAS: dict[str, type[BaseModel]] = {SAVE_TOOL: EntityResearch, "save_vault_findings": VaultResearch}
+# ToolNode echoes the whole payload before the error, so a big save's reason was evicted and cut off.
+REFUSAL_LINES = 25
+_LABELS = ("partner_name", "program_name", "project_name", "title", "name", "id_type", "state", "fiscal_year")
+
+
+def _problem(error: dict[str, Any], payload: dict[str, Any], schema: type[BaseModel]) -> str:
+    loc, msg = error["loc"], error["msg"].removeprefix("Value error, ")
+    if len(loc) >= 2 and loc[0] == "findings" and isinstance(loc[1], int):
+        finding = (payload.get("findings") or [None] * (loc[1] + 1))[loc[1]]
+        finding = finding if isinstance(finding, dict) else {}
+        concept = finding.get("concept", "?")
+        label = next((str(finding[k])[:60] for k in _LABELS if finding.get(k)), "")
+        where = f"finding {loc[1]} ({concept}{f' {label!r}' if label else ''})"
+        field = ".".join(str(p) for p in loc[3:])
+        model = FINDING_MODELS.get(concept)
+        if error["type"] == "extra_forbidden" and model:
+            return (f"{where}: `{field}` is not a field of {concept}. Allowed: {', '.join(model.model_fields)}. "
+                    "Put the remark in evidence or drop it.")
+        return f"{where}{f' {field}' if field else ''}: {msg}"
+    field = ".".join(str(p) for p in loc)
+    if error["type"] == "extra_forbidden":
+        if field == "replace":
+            return "top level: `replace` is an argument beside `findings`, never inside it"
+        return f"top level: `{field}` is not a field. Allowed: {', '.join(schema.model_fields)}"
+    return f"top level{f' {field}' if field else ''}: {msg}"
+
+
+def refusal_text(name: str, payload: Any) -> str | None:
+    """One line per schema problem in a refused save, or None when the payload validates."""
+    schema = SAVE_SCHEMAS[name]
+    try:
+        schema.model_validate(payload)
+    except ValidationError as exc:
+        errors = exc.errors()
+    else:
+        return None
+    data = payload if isinstance(payload, dict) else {}
+    lines = [f"- {_problem(e, data, schema)}" for e in errors[:REFUSAL_LINES]]
+    if len(errors) > REFUSAL_LINES:
+        lines.append(f"- and {len(errors) - REFUSAL_LINES} more of the same kinds")
+    return (f"Error invoking tool '{name}': refused, nothing saved. Fix these {len(errors)} and call {name} "
+            "again with the whole payload:\n" + "\n".join(lines))
+
+
+class SaveRefusal(AgentMiddleware):
+    """A refused save comes back as the list of fixes, not the payload echoed in front of them."""
+
+    def _parsed(self, request: Any) -> Any:
+        # Models sometimes send the payload as a JSON string; parsing it costs nothing and loses nothing.
+        call = request.tool_call
+        findings = (call.get("args") or {}).get("findings")
+        if call.get("name") not in SAVE_SCHEMAS or not isinstance(findings, str):
+            return request
+        try:
+            payload = json.loads(findings)
+        except ValueError:
+            return request
+        if not isinstance(payload, dict):
+            return request
+        return request.override(tool_call={**call, "args": {**call["args"], "findings": payload}})
+
+    def _short(self, request: Any, result: Any) -> Any:
+        name = request.tool_call.get("name")
+        if (name not in SAVE_SCHEMAS or not isinstance(result, ToolMessage) or result.status != "error"
+                or not str(result.content).startswith("Error invoking tool")):
+            return result
+        try:
+            text = refusal_text(name, (request.tool_call.get("args") or {}).get("findings"))
+        except Exception:  # noqa: BLE001 - a failed rewrite keeps the original error
+            text = None
+        return result.model_copy(update={"content": text}) if text else result
+
+    def wrap_tool_call(self, request: Any, handler: Callable[[Any], Any]) -> Any:
+        request = self._parsed(request)
+        return self._short(request, handler(request))
+
+    async def awrap_tool_call(self, request: Any, handler: Callable[[Any], Awaitable[Any]]) -> Any:
+        request = self._parsed(request)
+        return self._short(request, await handler(request))
 
 
 class EscalateAfterFailedSave(AgentMiddleware):
