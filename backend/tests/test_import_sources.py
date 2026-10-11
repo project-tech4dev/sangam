@@ -30,9 +30,10 @@ def _answered(artifact=None, status="success") -> list:
 
 
 class TestThePause:
-    def test_choose_sources_is_the_only_pause_before_reading(self):
-        assert set(INTERRUPT_ON) == {"choose_sources"}
+    def test_choose_sources_pauses_before_reading_and_run_import_now_before_writing(self):
+        assert set(INTERRUPT_ON) == {"choose_sources", "run_import_now"}
         assert "reject" in INTERRUPT_ON["choose_sources"]["allowed_decisions"]
+        assert "edit" not in INTERRUPT_ON["run_import_now"]["allowed_decisions"]
 
 
 class TestChooseSources:

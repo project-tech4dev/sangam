@@ -348,7 +348,8 @@ async def choose_sources(
     The run pauses on a card: the person ticks public websites, Sangam's library (public documents
     Sangam already holds), their organisation's Doc Vault files and, for the Sangam team, team
     spreadsheets. Their answer replaces your proposal and is final: no subagent may read anything
-    else. Propose web and library on and nothing else; the person picks files on the card.
+    else. Propose web and library on and nothing else; the person picks files on the card. Sources the
+    person ticked before sending replace your arguments and no card shows.
 
     Args:
         web: read public websites.

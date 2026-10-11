@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Awaitable, Callable
 from importlib.resources import files
@@ -17,14 +18,18 @@ from langchain.agents.middleware import (
     ModelCallLimitMiddleware,
     ModelFallbackMiddleware,
     ModelRequest,
+    ModelResponse,
+    TodoListMiddleware,
 )
 from langchain.agents.middleware.types import hook_config
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, ToolMessage
+from pydantic import BaseModel, ValidationError
 
 from app.agent.models import resolve_model
 from app.ingest import run_sources
 from app.ingest.caller import caller_note, scope
+from app.ingest.research_records import FINDING_MODELS, EntityResearch, VaultResearch
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +41,18 @@ READING_LIMIT_MESSAGE = (
     f"Refused: the {READING_LIMIT} for this organisation is reached. Read nothing more. Call save_research "
     f"now with what you have, and set stopped_reason to 'Stopped at the {READING_LIMIT}' plus what was left unread."
 )
+# What ModelCallLimitMiddleware's exit_behavior="end" says as it stops a run.
+CALL_LIMIT_PREFIX = "Model call limits exceeded"
+# The library's own write_todos prompt and description run ~2k tokens on every supervisor call.
+PLAN_PROMPT = (
+    "## `write_todos`\n\nThe run's plan, kept in state so it survives a summary. Write it once, after the dossier "
+    "and before the first launch: one todo per organisation, prefixed with its wave (\"Wave 1: Axis Bank "
+    "Foundation\"), then \"Report\". Mark a wave's todos completed when its researchers return, and add any "
+    "organisation the person adds mid-run. Never call it in the same message as `task`. Skip it when the run "
+    "researches nothing. The report is a message after the last `write_todos`."
+)
+PLAN_TOOL = ("Write or replace the run's plan: every todo, each pending, in_progress or completed. "
+             "See `write_todos` in your instructions.")
 # Haiku's window is 200k; the summary prompt and its answer need the rest.
 SUMMARY_INPUT_TOKENS = 150_000
 
@@ -92,6 +109,88 @@ def save_failed(messages: list[AnyMessage]) -> bool:
         and (m.status == "error" or str(m.content).startswith("Error invoking tool"))
         for m in messages
     )
+
+
+SAVE_SCHEMAS: dict[str, type[BaseModel]] = {SAVE_TOOL: EntityResearch, "save_vault_findings": VaultResearch}
+# ToolNode echoes the whole payload before the error, so a big save's reason was evicted and cut off.
+REFUSAL_LINES = 25
+_LABELS = ("partner_name", "program_name", "project_name", "title", "name", "id_type", "state", "fiscal_year")
+
+
+def _problem(error: dict[str, Any], payload: dict[str, Any], schema: type[BaseModel]) -> str:
+    loc, msg = error["loc"], error["msg"].removeprefix("Value error, ")
+    if len(loc) >= 2 and loc[0] == "findings" and isinstance(loc[1], int):
+        finding = (payload.get("findings") or [None] * (loc[1] + 1))[loc[1]]
+        finding = finding if isinstance(finding, dict) else {}
+        concept = finding.get("concept", "?")
+        label = next((str(finding[k])[:60] for k in _LABELS if finding.get(k)), "")
+        where = f"finding {loc[1]} ({concept}{f' {label!r}' if label else ''})"
+        field = ".".join(str(p) for p in loc[3:])
+        model = FINDING_MODELS.get(concept)
+        if error["type"] == "extra_forbidden" and model:
+            return (f"{where}: `{field}` is not a field of {concept}. Allowed: {', '.join(model.model_fields)}. "
+                    "Put the remark in evidence or drop it.")
+        return f"{where}{f' {field}' if field else ''}: {msg}"
+    field = ".".join(str(p) for p in loc)
+    if error["type"] == "extra_forbidden":
+        if field == "replace":
+            return "top level: `replace` is an argument beside `findings`, never inside it"
+        return f"top level: `{field}` is not a field. Allowed: {', '.join(schema.model_fields)}"
+    return f"top level{f' {field}' if field else ''}: {msg}"
+
+
+def refusal_text(name: str, payload: Any) -> str | None:
+    """One line per schema problem in a refused save, or None when the payload validates."""
+    schema = SAVE_SCHEMAS[name]
+    try:
+        schema.model_validate(payload)
+    except ValidationError as exc:
+        errors = exc.errors()
+    else:
+        return None
+    data = payload if isinstance(payload, dict) else {}
+    lines = [f"- {_problem(e, data, schema)}" for e in errors[:REFUSAL_LINES]]
+    if len(errors) > REFUSAL_LINES:
+        lines.append(f"- and {len(errors) - REFUSAL_LINES} more of the same kinds")
+    return (f"Error invoking tool '{name}': refused, nothing saved. Fix these {len(errors)} and call {name} "
+            "again with the whole payload:\n" + "\n".join(lines))
+
+
+class SaveRefusal(AgentMiddleware):
+    """A refused save comes back as the list of fixes, not the payload echoed in front of them."""
+
+    def _parsed(self, request: Any) -> Any:
+        # Models sometimes send the payload as a JSON string; parsing it costs nothing and loses nothing.
+        call = request.tool_call
+        findings = (call.get("args") or {}).get("findings")
+        if call.get("name") not in SAVE_SCHEMAS or not isinstance(findings, str):
+            return request
+        try:
+            payload = json.loads(findings)
+        except ValueError:
+            return request
+        if not isinstance(payload, dict):
+            return request
+        return request.override(tool_call={**call, "args": {**call["args"], "findings": payload}})
+
+    def _short(self, request: Any, result: Any) -> Any:
+        name = request.tool_call.get("name")
+        if (name not in SAVE_SCHEMAS or not isinstance(result, ToolMessage) or result.status != "error"
+                or not str(result.content).startswith("Error invoking tool")):
+            return result
+        try:
+            text = refusal_text(name, (request.tool_call.get("args") or {}).get("findings"))
+        except Exception:  # noqa: BLE001 - a failed rewrite keeps the original error
+            text = None
+        return result.model_copy(update={"content": text}) if text else result
+
+    def wrap_tool_call(self, request: Any, handler: Callable[[Any], Any]) -> Any:
+        request = self._parsed(request)
+        return self._short(request, handler(request))
+
+    async def awrap_tool_call(self, request: Any, handler: Callable[[Any], Awaitable[Any]]) -> Any:
+        request = self._parsed(request)
+        return self._short(request, await handler(request))
 
 
 class EscalateAfterFailedSave(AgentMiddleware):
@@ -151,18 +250,58 @@ class _AgUiState(AgentState):
 _AgUiState.__annotations__["ag-ui"] = NotRequired[dict[str, Any]]
 
 
-def ticked_note(state: Any) -> str | None:
-    context = ((state or {}).get("ag-ui") or {}).get("context") or []
-    value = next((c.get("value") for c in context if isinstance(c, dict) and c.get("description") == TICKED_SOURCES),
-                 None)
-    if not value:
+def _field(item: Any, key: str) -> Any:
+    # ag-ui-langgraph stores its pydantic Context objects, not dicts.
+    return item.get(key) if isinstance(item, dict) else getattr(item, key, None)
+
+
+def _ticked_value(state: Any) -> Any:
+    items = _field((state or {}).get("ag-ui") or {}, "context") or []
+    return next((_field(c, "value") for c in items if _field(c, "description") == TICKED_SOURCES), None)
+
+
+def ticked_sources(state: Any) -> dict[str, Any] | None:
+    """choose_sources' arguments as the person ticked them before sending, or None if nothing was ticked."""
+    value = _ticked_value(state)
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return None
+    if not isinstance(value, dict):
         return None
-    return (f"The person ticked these sources before sending: {value}. The screen answers choose_sources with "
-            "them, so call it with exactly these and say nothing about choosing or confirming sources.")
+    vault_org = value.get("vault_org")
+    picked = {
+        "web": value.get("web") is True,
+        "library": value.get("library") is True,
+        "vault_org": vault_org if isinstance(vault_org, int) else None,
+        "vault_docs": [d for d in value.get("vault_docs") or [] if isinstance(d, int)],
+        "staff_paths": [p for p in value.get("staff_paths") or [] if isinstance(p, str)],
+    }
+    return picked if picked["web"] or picked["library"] or picked["vault_docs"] or picked["staff_paths"] else None
+
+
+def ask_for_sources(request: Any) -> bool:
+    """choose_sources pauses for the card only when nothing was ticked: a tick is already the person's answer."""
+    return ticked_sources(request.state) is None
+
+
+def ticked_note(state: Any) -> str | None:
+    picked = ticked_sources(state)
+    if not picked:
+        return None
+    return (f"The person ticked these sources before sending: {json.dumps(picked)}. Call choose_sources with "
+            "exactly these and say nothing about choosing or confirming sources.")
+
+
+def _ai_messages(response: Any) -> list[AIMessage]:
+    inner = getattr(response, "model_response", response)
+    messages = inner.result if isinstance(inner, ModelResponse) else [inner]
+    return [m for m in messages if isinstance(m, AIMessage)]
 
 
 class TickedSources(AgentMiddleware):
-    """Tells the supervisor what the person already ticked, so its first reply does not ask again."""
+    """The person's ticks answer choose_sources: told to the model, and written into its call whatever it passed."""
 
     state_schema = _AgUiState
 
@@ -171,11 +310,20 @@ class TickedSources(AgentMiddleware):
         return request.override(system_message=append_to_system_message(request.system_message, note)) if note \
             else request
 
+    def _with_ticks(self, request: ModelRequest, response: Any) -> Any:
+        picked = ticked_sources(request.state)
+        if picked:
+            for message in _ai_messages(response):
+                for call in message.tool_calls:
+                    if call["name"] == run_sources.CHOOSE:
+                        call["args"] = dict(picked)
+        return response
+
     def wrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Any]) -> Any:
-        return handler(self._with_note(request))
+        return self._with_ticks(request, handler(self._with_note(request)))
 
     async def awrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Awaitable[Any]]) -> Any:
-        return await handler(self._with_note(request))
+        return self._with_ticks(request, await handler(self._with_note(request)))
 
 
 def _not_chosen(call: dict[str, Any], text: str) -> ToolMessage:
@@ -253,11 +401,19 @@ class ResearchRubric(RubricMiddleware):
     # Redeclared: an override without it loses the edge back to the model, and a revision never runs.
     @hook_config(can_jump_to=["model"])
     def after_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        return super().after_agent(self._with_rubric(state), runtime)
+        return None if stopped_by_call_limit(state) else super().after_agent(self._with_rubric(state), runtime)
 
     @hook_config(can_jump_to=["model"])
     async def aafter_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        if stopped_by_call_limit(state):
+            return None
         return await super().aafter_agent(self._with_rubric(state), runtime)
+
+
+def stopped_by_call_limit(state: Any) -> bool:
+    """call_limit ended the run: a revision would only be ended again, so there is nothing to grade."""
+    last = next((m for m in reversed(_messages(state)) if isinstance(m, AIMessage)), None)
+    return bool(last) and isinstance(last.content, str) and last.content.startswith(CALL_LIMIT_PREFIX)
 
 
 def digest_saves(messages: list[AnyMessage]) -> list[AnyMessage]:
@@ -318,3 +474,7 @@ def cheap_summarizer(own: BaseChatModel, summarizer: BaseChatModel, backend: Bac
         truncate_args_settings=defaults["truncate_args_settings"],
         trim_tokens_to_summarize=SUMMARY_INPUT_TOKENS,
     )
+
+
+def run_plan() -> TodoListMiddleware:
+    return TodoListMiddleware(system_prompt=PLAN_PROMPT, tool_description=PLAN_TOOL)

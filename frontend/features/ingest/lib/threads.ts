@@ -32,3 +32,17 @@ export async function fetchImportMessages(threadId: string): Promise<Message[]> 
   if (!res.ok) throw new Error(`Could not load this chat (${res.status}).`);
   return (await res.json()).messages;
 }
+
+export type LiveStep = { owner: string | null; tool: string; running: boolean };
+export type LiveAnswer = { answer: string; kind: "status" | "instruction" };
+
+/** Asks about a run while it is still researching; answered from its state, the run itself untouched. */
+export async function askLive(threadId: string, question: string, since: number | null, steps: LiveStep[]): Promise<LiveAnswer> {
+  const res = await fetch(`${API}/api/ingest/threads/${encodeURIComponent(threadId)}/ask-live`, {
+    method: "POST",
+    headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+    body: JSON.stringify({ question, since: since ? new Date(since).toISOString() : null, steps }),
+  });
+  if (!res.ok) throw new Error(`Scout could not answer right now (${res.status}).`);
+  return res.json();
+}

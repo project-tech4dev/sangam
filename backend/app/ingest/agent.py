@@ -24,11 +24,14 @@ from app.ingest.middleware import (
     EscalateAfterFailedSave,
     ReadingLimit,
     RunSources,
+    SaveRefusal,
     TickedSources,
+    ask_for_sources,
     call_limit,
     cheap_summarizer,
     fallback,
     research_rubric,
+    run_plan,
 )
 from app.ingest.research_records import PromotionReport, ResearchSummary, VaultSummary, WorkbookEntities
 from app.ingest.tools.catalog_tools import (
@@ -118,13 +121,8 @@ def _backend() -> CompositeBackend:
         routes={SKILLS_ROUTE: FilesystemBackend(root_dir=SKILLS_DIR, virtual_mode=True)},
     )
 
-# The supervisor's own tools. It researches nothing, and the only catalog row it
-# writes is a staff member's own registry check: research and promotion go through
-# a subagent, so there is one path to a source and one path from research to the
-# catalog, each under the instructions written for it. Two paths to the
-# same work is what CLAUDE.md killed with search_orgs, and these two had
-# already drifted — only the subagent runs under the researcher's budget,
-# entity-confirmation and money-unit rules.
+# The supervisor's own tools. It researches nothing: one path to a source (a researcher) and one from
+# research to the catalog (a writer). Its own writes are a staff registry check and run_import_now's bulk pull.
 #
 # research_goals is not here either, though the parent could use it: in M5 it
 # requires an entity_kind and refuses "unknown", and a supervisor that has not
@@ -260,10 +258,17 @@ RESEARCHER_EVICT_AT = 8_000
 WRITER_MODEL_CALL_LIMIT = 12
 
 # A person chooses where the run reads from before anything is read; rejecting means public websites only.
+# Sources ticked before sending are that choice already, so the card shows only when nothing was ticked.
+# run_import_now is the supervisor's one bulk write, so a person approves it as promote_research is approved.
 INTERRUPT_ON = {
     "choose_sources": {
         "allowed_decisions": ["approve", "edit", "reject"],
         "description": "Choose where this run reads from",
+        "when": ask_for_sources,
+    },
+    "run_import_now": {
+        "allowed_decisions": ["approve", "reject"],
+        "description": "Approve this import before it writes",
     },
 }
 
@@ -292,6 +297,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict_at=RESEARCHER_EVICT_AT),
+            # Inside the eviction, so a refused save stays short enough to read.
+            SaveRefusal(),
             # Only what the person chose on the sources card; staff rows last.
             RunSources(),
             staff_last_lock(),
@@ -324,6 +331,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict=False),
+            SaveRefusal(),
             RunSources(),
             DropFilesOnExit(),
             call_limit(settings.research_model_call_limit),
@@ -344,6 +352,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             CallerNote(),
             ChosenSources(),
             TickedSources(),
+            run_plan(),
         ],
         system_prompt=_render(_INSTRUCTIONS_MD, settings),
         # deepagents turns this into LangChain's HumanInTheLoopMiddleware: the run pauses on the

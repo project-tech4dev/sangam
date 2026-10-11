@@ -70,6 +70,7 @@ ruff check .                        # line-length 110, target py312
 ```bash
 make evals                          # golden questions through the real agent (COSTS MONEY)
 make evals TAG=canary               # the cheap subset
+make evals TAG=import               # Import canaries, only by tag: one funder, one NGO, ~15 min (needs TAVILY_API_KEY)
 ```
 
 `asyncio_mode = "auto"` — async tests need no `@pytest.mark.asyncio`. **Unit tests never
