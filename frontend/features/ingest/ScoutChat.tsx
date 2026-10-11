@@ -18,7 +18,7 @@ import { boardOf } from "./lib/board";
 import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
 import { EMPTY_SOURCES, nothingChosen, readingFrom, type SourcesChoice } from "./lib/sourcePick";
-import { fetchImportMessages } from "./lib/threads";
+import { askLive, fetchImportMessages } from "./lib/threads";
 
 // The backend's TickedSources looks this description up, so the supervisor's first reply does not ask again.
 function TickedSources({ choice }: { choice: SourcesChoice }) {
@@ -95,6 +95,9 @@ export function ScoutChat({
   const [pinned, setPinned] = useState<string | null>(null);
   // Opened or closed by hand on this step; otherwise the panel is open only while Working.
   const [opened, setOpened] = useState<{ step: number; open: boolean } | null>(null);
+  // Questions asked while Scout researches, answered from the run's state, and one instruction held for after.
+  const [live, setLive] = useState<{ id: number; turn?: string; question: string; answer: string | null; queued?: boolean }[]>([]);
+  const queued = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Follow new text only while the person is at the bottom; scrolling up to read stops the follow.
   const following = useRef(true);
@@ -126,9 +129,27 @@ export function ScoutChat({
     setDraft(leadIn(next));
   }
 
+  async function ask(value: string) {
+    const id = Date.now();
+    setDraft("");
+    setLive((prev) => [...prev, { id, turn: turns.at(-1)?.id, question: value, answer: null }]);
+    const steps = turns.at(-1)?.steps ?? [];
+    const reply = await askLive(
+      threadId,
+      value,
+      since,
+      steps.map((s) => ({ owner: (s.lane && laneOwners[s.lane]) || null, tool: s.tool, running: s.running })),
+    ).catch((e: Error) => ({ answer: e.message, kind: "status" as const }));
+    if (reply.kind === "instruction") queued.current = queued.current ? `${queued.current}\n${value}` : value;
+    setLive((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, answer: reply.answer, queued: reply.kind === "instruction" } : n)),
+    );
+  }
+
   async function submit() {
     const value = draft.trim();
-    if (!value || isRunning || (needsSources && nothingChosen(sources))) return;
+    if (value && isRunning) return void ask(value);
+    if (!value || (needsSources && nothingChosen(sources))) return;
     if (atStart) {
       setPreset(needsSources ? sources : null);
       onFirstSend?.(value);
@@ -143,6 +164,14 @@ export function ScoutChat({
     setSince((prev) => prev ?? Date.now());
     await send(value);
   }
+
+  // An instruction asked mid-run goes to Scout as the next message once the run ends.
+  useEffect(() => {
+    const next = queued.current;
+    if (isRunning || paused || !next) return;
+    queued.current = null;
+    void send(next);
+  }, [isRunning, paused, send]);
 
   function startOver() {
     if (isRunning && !window.confirm("Stop the run and start a new chat? Research already saved is kept.")) return;
@@ -172,9 +201,13 @@ export function ScoutChat({
         <span className="composer-hint muted">
           {!isReady
             ? "Connecting to Scout…"
-            : needsSources && nothingChosen(sources)
-              ? "Choose where Scout reads from first."
-              : "⌘↵ to send"}
+            : isRunning
+              ? live.some((n) => n.queued)
+                ? "Scout will pick up your request when the current researchers finish."
+                : "Scout is researching. Ask about progress, ⌘↵ to send."
+              : needsSources && nothingChosen(sources)
+                ? "Choose where Scout reads from first."
+                : "⌘↵ to send"}
         </span>
         <div className="composer-actions">
           {turns.length > 0 && (
@@ -183,9 +216,14 @@ export function ScoutChat({
             </button>
           )}
           {isRunning ? (
-            <button type="button" className="btn btn-primary" onClick={stop}>
-              Stop
-            </button>
+            <>
+              <button type="button" className="btn btn-secondary" onClick={stop}>
+                Stop
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => void submit()} disabled={!draft.trim()}>
+                Ask Scout
+              </button>
+            </>
           ) : (
             <button
               type="button"
@@ -374,6 +412,18 @@ export function ScoutChat({
                         {f.count > 1 && <span className="review-note">×{f.count}</span>}
                       </div>
                     ))}
+                    {/* Asked while this turn was still researching. */}
+                    {live
+                      .filter((n) => n.turn === turn.id)
+                      .map((n) => (
+                        <div key={n.id}>
+                          <div className="chat-question">
+                            <span className="chat-you">You</span>
+                            <span className="chat-question-text">{n.question}</span>
+                          </div>
+                          {n.answer ? <ScoutReply text={n.answer} /> : <p className="muted">Checking on the run…</p>}
+                        </div>
+                      ))}
                   </article>
                 );
               })}

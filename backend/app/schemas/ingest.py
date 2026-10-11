@@ -252,3 +252,22 @@ class CoverageOut(ReadModel):
     fields_filled: int
     fields_total: int
     concepts: list[CoverageConceptOut]
+
+
+class LiveStepIn(BaseModel):
+    """One step from the Working board: which researcher, which tool, still running or not."""
+
+    owner: str | None = Field(default=None, max_length=200)
+    tool: str = Field(max_length=80)
+    running: bool = False
+
+
+class AskLiveIn(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+    since: datetime | None = None
+    steps: list[LiveStepIn] = Field(default_factory=list, max_length=1000)
+
+
+class AskLiveOut(ReadModel):
+    answer: str
+    kind: Literal["status", "instruction"]

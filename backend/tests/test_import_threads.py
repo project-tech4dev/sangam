@@ -91,7 +91,7 @@ async def test_the_access_check_is_for_the_caller(monkeypatch):
 # Scoped to the caller inside the route; every other Import route is staff's.
 OPEN_ROUTES = {"/ingest/research", "/ingest/research/{slug}/review", "/ingest/research/{slug}/coverage",
                "/ingest/research/{slug}/save",
-               "/ingest/threads", "/ingest/threads/{thread_id}/messages"}
+               "/ingest/threads", "/ingest/threads/{thread_id}/messages", "/ingest/threads/{thread_id}/ask-live"}
 
 
 def _staff_only(route) -> bool:

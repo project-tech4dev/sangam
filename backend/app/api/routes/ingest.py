@@ -5,12 +5,16 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.api.routes.threads import saved_messages
+from app.core.config import get_settings
 from app.core.security import CallerScope, get_current_user, request_scope, require_staff, require_user
 from app.db.pool import OwnerPoolDep, PoolDep
+from app.ingest import live_status
 from app.ingest.sources import SOURCES
 from app.repositories import ingest as repo
 from app.repositories import threads as threads_repo
 from app.schemas.ingest import (
+    AskLiveIn,
+    AskLiveOut,
     CoverageOut,
     QueueAnswerIn,
     QueueAnswerOut,
@@ -228,3 +232,19 @@ async def thread_messages(
     if not thread_id.startswith("import-"):
         raise HTTPException(status_code=404, detail="Thread not found")
     return await saved_messages(request, owner_pool, user_id, thread_id, graph_name="ingest_graph")
+
+
+@router.post("/threads/{thread_id}/ask-live", response_model=AskLiveOut, summary="Answer a question mid-run")
+async def ask_live(
+    thread_id: str, body: AskLiveIn, request: Request, owner_pool: OwnerPoolDep,
+    user_id: UUID = Depends(require_user),
+) -> AskLiveOut:
+    # Reads the run's checkpoint and the caller's saved research; the running graph is never touched.
+    if not thread_id.startswith("import-") or not await threads_repo.can_open(
+        owner_pool, thread_id=thread_id, user_id=user_id
+    ):
+        raise HTTPException(status_code=404, detail="Thread not found")
+    graph = getattr(request.app.state, "ingest_graph", None)
+    if graph is None:
+        raise HTTPException(status_code=503, detail="Agent not loaded")
+    return await live_status.answer(graph, owner_pool, thread_id, user_id, body, get_settings())
