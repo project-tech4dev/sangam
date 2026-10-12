@@ -129,6 +129,8 @@ async def _note_proposal(host: str, url: str, *, robots_result: str) -> None:
         # into the JSON with the bare host actually resolves the proposal.
         host = host.lower().removeprefix("www.")
         async with pool.connection() as conn, conn.transaction():
+            # Parallel researchers hit one host's row at once; a note is not worth waiting on.
+            await conn.execute("SET LOCAL lock_timeout = '200ms'")
             await conn.execute(
                 "INSERT INTO ingest_source_proposals (host, first_seen_url, robots_result) "
                 "VALUES (%s, %s, %s) "
