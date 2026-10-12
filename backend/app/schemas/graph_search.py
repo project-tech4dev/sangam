@@ -41,6 +41,12 @@ class GraphEpisodeOut(BaseModel):
     facts: list[str]
 
 
+class GraphGroupOut(BaseModel):
+    group_id: str
+    nodes: int
+    episodes: int
+
+
 class GraphClearOut(BaseModel):
     group_id: str | None
     nodes_deleted: int
@@ -53,6 +59,14 @@ class GraphDocumentsIn(BaseModel):
     group_id: str | None = Field(default=None, pattern=GROUP_PATTERN, description="defaults to the bucket name")
 
 
+class GraphChunkOut(BaseModel):
+    index: int
+    chars: int
+    status: Literal["added", "skipped"]
+    entities: list[str]
+    facts: list[str]
+
+
 class GraphDocumentOut(BaseModel):
     key: str
     status: Literal["added", "skipped", "failed"]
@@ -60,6 +74,7 @@ class GraphDocumentOut(BaseModel):
     entities: int
     facts: int
     reason: str | None = None
+    parts: list[GraphChunkOut] = []
 
 
 class GraphDocumentsOut(BaseModel):

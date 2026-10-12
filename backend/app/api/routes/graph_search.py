@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from app.core.config import get_settings
 from app.core.security import get_current_user, require_staff, require_user
@@ -15,6 +17,7 @@ from app.schemas.graph_search import (
     GraphDocumentsOut,
     GraphEpisodeIn,
     GraphEpisodeOut,
+    GraphGroupOut,
     GraphSearchIn,
     GraphSearchOut,
     GraphStatusOut,
@@ -76,6 +79,27 @@ async def add_documents(
     result = await repo.add_documents(client, bucket=body.bucket, prefix=body.prefix, limit=body.limit,
                                       group_id=body.group_id or body.bucket)
     return GraphDocumentsOut(**result)
+
+
+@router.post("/documents/stream", dependencies=STAFF,
+             summary="Same as /documents, streamed as one JSON progress event per line")
+async def stream_documents(body: GraphDocumentsIn, client: GraphDep) -> StreamingResponse:
+    if not get_settings().storage_enabled:
+        raise HTTPException(503, "Supabase Storage is not configured: set SUPABASE_URL and SUPABASE_SERVICE_KEY")
+
+    async def lines():
+        events = repo.documents_events(client, bucket=body.bucket, prefix=body.prefix, limit=body.limit,
+                                       group_id=body.group_id or body.bucket)
+        async for event in events:
+            yield json.dumps(event, default=str) + "\n"
+
+    return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+
+@router.get("/groups", dependencies=STAFF, response_model=list[GraphGroupOut],
+            summary="Every group in the graph, with its node and episode counts")
+async def list_groups(client: GraphDep) -> list[GraphGroupOut]:
+    return [GraphGroupOut(**g) for g in await repo.groups(client)]
 
 
 @router.delete("", dependencies=STAFF, response_model=GraphClearOut,
