@@ -52,6 +52,14 @@ FEEDS: dict[str, Feed] = {
 }
 
 
+def chosen_feeds(text: str) -> list[str]:
+    """Comma-separated feed keys, as Scout and the plan route take them; an unknown key is refused, not dropped."""
+    keys = [k.strip() for k in text.split(",") if k.strip()]
+    if unknown := [k for k in keys if k not in FEEDS]:
+        raise ValueError(f"unknown feed {', '.join(unknown)}; the feeds are {', '.join(FEEDS)}")
+    return list(dict.fromkeys(keys))
+
+
 def feeds_for(*, everyone: bool) -> list[str]:
     """Everyone also gets the topic feeds; chosen records get only their own news (spec 2b)."""
     return list(FEEDS) if everyone else []

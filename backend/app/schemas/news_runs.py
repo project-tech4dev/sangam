@@ -13,4 +13,5 @@ class NewsPlanOut(BaseModel):
     searches: int
     cost_usd: float
     matched: list[str] = []
+    feeds: list[str] = []  # the topic feeds' labels, e.g. "FCRA"
     unmatched: list[str] = []

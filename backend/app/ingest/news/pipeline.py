@@ -156,12 +156,13 @@ class Selection:
     unmatched: list[str]
 
 
-async def select(pool, names: list[str] | None) -> Selection:
-    """No names: everyone with the topic feeds. Names: only Registry records they match, by name or alias."""
+async def select(pool, names: list[str] | None, feeds: list[str] | None = None) -> Selection:
+    """No names and no feeds: everyone with the topic feeds. Otherwise only the Registry records the names
+    match, by name or alias, plus the feeds asked for."""
     from app.ingest.news.feeds import feeds_for
 
     if not names:
-        return Selection(None, None, feeds_for(everyone=True), [], [])
+        return Selection([], [], feeds, [], []) if feeds else Selection(None, None, feeds_for(everyone=True), [], [])
     async with pool.connection() as conn:
         rows = await (await conn.execute(
             # A hidden record is never pulled (load_subjects), so it must not read as matched either.
@@ -175,7 +176,7 @@ async def select(pool, names: list[str] | None) -> Selection:
         if hit:
             found[n] = hit
     return Selection([r["id"] for r in found.values() if r["kind"] == "org"],
-                     [r["id"] for r in found.values() if r["kind"] == "funder"], [],
+                     [r["id"] for r in found.values() if r["kind"] == "funder"], list(feeds or []),
                      [found[n]["name"] for n in names if n in found], [n for n in names if n not in found])
 
 

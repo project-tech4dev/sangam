@@ -107,7 +107,8 @@ def _full_entry(s) -> str:
 
 
 @tool
-async def plan_import(funders: str = "", years: str = "", sources: str = "", limit: int = 10) -> str:
+async def plan_import(funders: str = "", years: str = "", sources: str = "", limit: int = 10,
+                      feeds: str = "") -> str:
     """Say what a run WOULD pull, from where, and against what the catalog already holds.
 
     Read-only: this writes nothing. Call it before every run and show the user the
@@ -118,6 +119,8 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         years: unused by the news pull; kept for adapters.
         sources: comma-separated source keys, e.g. "tavily_news".
         limit: items per source, for adapters; the news pull ignores it.
+        feeds: comma-separated topic feeds for a news pull: "fcra", "csr_trends", "ngo_north_east".
+            With no names, only these are pulled.
     """
     if refused := staff_only("plan_import"):
         return refused
@@ -133,7 +136,7 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         held = [s for s in requested if not s.dispatchable]
 
         lines = ["PLAN — nothing is written by this step."]
-        if not names:
+        if not names and not feeds.strip():
             lines.append(
                 "\nNo name given, so a news pull covers every Registry record and the topic feeds. "
                 "If the user asked about particular organisations or funders, pass their names instead."
@@ -142,7 +145,7 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         if not will_run:
             lines.append("  nothing: no requested source both may be read and has an adapter.")
         for s in [s for s in will_run if s.key == "tavily_news"]:
-            lines.append("  " + await _news_plan_line(names or None))
+            lines.append("  " + await _news_plan_line(names or None, feeds))
         for s in [s for s in will_run if s.key != "tavily_news"]:
             lines.append(
                 f"  {s.key} ({s.host}) — up to {limit} items → {', '.join(s.yields)}\n"
@@ -172,24 +175,26 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         return f"plan_import failed: {exc}"
 
 
-async def _news_plan_line(names: list[str] | None) -> str:
+async def _news_plan_line(names: list[str] | None, feeds: str = "") -> str:
     """What a news pull would search and cost, in the plan's own words."""
     from app.ingest.news import pipeline
+    from app.ingest.news.feeds import chosen_feeds
 
-    chosen = await pipeline.select(get_pool(), names)
+    chosen = await pipeline.select(get_pool(), names, chosen_feeds(feeds))
     if names and not chosen.matched:
         return "tavily_news: none of those names is in the Registry; nothing would be pulled."
     p = await pipeline.plan_for(get_pool(), org_ids=chosen.org_ids, funder_ids=chosen.funder_ids, feeds=chosen.feeds)
     return f"tavily_news: {p.line}. Never creates a funder or an organisation."
 
 
-async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: list[str]) -> str:
+async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: list[str],
+                     feeds: list[str] | None = None) -> str:
     """A news pull for named Registry records, or everyone; Scout's approval card was the person's check.
     Other sources named in the same call are refused out loud."""
     from app.ingest.news import pipeline
 
     pool, settings = get_pool(), get_settings()
-    chosen = await pipeline.select(pool, names)
+    chosen = await pipeline.select(pool, names, feeds)
     if names and not chosen.matched:
         return "run_import_now: none of those names is in the Registry; news is only pulled for records Sangam holds."
     run_id = await pipeline.create_run(pool, org_ids=chosen.org_ids, funder_ids=chosen.funder_ids,
@@ -205,7 +210,7 @@ async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: 
 
 @tool
 async def run_import_now(
-    goal: str, funders: str = "", years: str = "", sources: str = "", limit: int = 10
+    goal: str, funders: str = "", years: str = "", sources: str = "", limit: int = 10, feeds: str = ""
 ) -> str:
     """Run an import and return the full summary. This WRITES to the database.
 
@@ -225,6 +230,10 @@ async def run_import_now(
             Name it: empty runs no news pull. A parked or held source is reported as
             refused, with the reason, rather than skipped silently.
         limit: items per source, for adapters; the news pull ignores it.
+        feeds: comma-separated topic feeds for a news pull: "fcra" (FCRA actions and rules),
+            "csr_trends" (CSR and funding), "ngo_north_east" (NGO cases in the North East).
+            With no names, only these feeds are pulled, e.g. "FCRA news only" is
+            funders="", feeds="fcra". With names, they are pulled as well as the names.
     """
     if refused := staff_only("run_import_now"):
         return refused
@@ -235,8 +244,10 @@ async def run_import_now(
             return "run_import_now needs a goal: one sentence on what this run is for."
         names = [n.strip() for n in funders.split(",") if n.strip()] or None
         if keys and "tavily_news" in keys:
+            from app.ingest.news.feeds import chosen_feeds
+
             caller = scope()
-            return await _news_pull(names, goal=goal.strip(), started_by=caller.user_id,
+            return await _news_pull(names, feeds=chosen_feeds(feeds), goal=goal.strip(), started_by=caller.user_id,
                                     others=[k for k in keys if k != "tavily_news"])
         fys = [y.strip() for y in years.split(",") if y.strip()] or None
         summary = await run_import(

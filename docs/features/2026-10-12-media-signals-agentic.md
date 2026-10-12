@@ -288,6 +288,8 @@ What #173 left behind, removed, and what it wrote three times, written once. Eve
   - `make news-pull` is unchanged.
   - Scout "FCRA news only" shows a card with 1 subject and runs feed-only.
   - `pytest -m "not integration"` and `npm run build` pass.
+- **Done:** `feeds.chosen_feeds` refuses an unknown key; `plan_import` takes `feeds` too; with names, feeds are
+  pulled as well. Open: the Design System `Import.jsx` copy sync, and the live Scout trial.
 
 #### Milestone 4: C, the verifier
 - **Touches:** backend (`verify.py`, `prompts/verify.md`, `bars.needs_check`, the pipeline hook, `Deps`,

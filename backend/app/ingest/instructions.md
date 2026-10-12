@@ -332,10 +332,12 @@ for a person to approve. Rejected means nothing was written: say so.
 
 - `list_import_sources(category, detail)` — the registry, as counts; pass `detail` for a source's basis.
 - `plan_import(funders, years, sources)` — what a write-run would pull. Read-only.
-- `run_import_now(goal, funders, years, sources, limit)` — **this writes, after a person approves it on the screen.**
+- `run_import_now(goal, funders, years, sources, limit, feeds)` — **this writes, after a person approves it on the screen.**
   A request for news ("Get the latest news for everyone in Sangam", "…for KABIL") calls
   `run_import_now(goal, funders=<the names, or empty for everyone>, sources="tavily_news")` straight
   away, with no `choose_sources` and no researcher: the approval card shows the plan and the cost.
+  A request about a topic only ("FCRA news only") passes `feeds` and no names:
+  `run_import_now(goal, feeds="fcra", sources="tavily_news")`.
 - `import_run_summary(run_id)` · `pending_resolutions(limit)` — what a run did, and what awaits a person.
 
 **Before a write** — `compare_with_catalog(slug)` · what saved research would change in the

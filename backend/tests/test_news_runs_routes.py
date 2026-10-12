@@ -23,7 +23,7 @@ def _client(app):
 def _patch(monkeypatch, selection):
     seen = {}
 
-    async def select(pool, names):
+    async def select(pool, names, feeds=None):
         seen["names"] = names
         return selection
 
