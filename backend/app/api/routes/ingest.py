@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.api.routes.threads import saved_messages
 from app.core.config import get_settings
+from app.core.lifespan import get_graph
 from app.core.security import CallerScope, get_current_user, request_scope, require_staff, require_user
 from app.db.pool import OwnerPoolDep, PoolDep
-from app.ingest import live_status
 from app.ingest.sources import SOURCES
 from app.repositories import ingest as repo
 from app.repositories import threads as threads_repo
@@ -244,7 +244,9 @@ async def ask_live(
         owner_pool, thread_id=thread_id, user_id=user_id
     ):
         raise HTTPException(status_code=404, detail="Thread not found")
-    graph = getattr(request.app.state, "ingest_graph", None)
+    graph = await get_graph(request.app, "ingest_graph")
     if graph is None:
         raise HTTPException(status_code=503, detail="Agent not loaded")
+    from app.ingest import live_status  # loads a model client; only this route needs one
+
     return await live_status.answer(graph, owner_pool, thread_id, user_id, body, get_settings())

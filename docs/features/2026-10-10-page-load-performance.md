@@ -64,16 +64,18 @@ retarget N+1 to `master` and rebase it.
 ### Milestone 7 — PR 7: the agent stack stays off the boot path
 - **Deliverable:** a cold REST call imports only what REST needs; the agents are built on the first chat turn.
 - **Key tasks:**
-  - [ ] `core/lifespan.py`: boot keeps the pool, catalog check, graph and checkpointer. Langfuse setup,
+  - [x] `core/lifespan.py`: boot keeps the pool, catalog check, graph and checkpointer. Langfuse setup,
         both agent builds and their AG-UI agents move into one builder, run once under a lock on the
         first `/agent` or `/ingest` request, in the documented order (configure tracing, then build).
-  - [ ] Our own thin `/agent` and `/ingest` POST routes replace `add_langgraph_fastapi_endpoint`
+  - [x] Our own thin `/agent` and `/ingest` POST routes replace `add_langgraph_fastapi_endpoint`
         (which needs the agent at registration), keeping `chat_access` and the `GET …/health` routes
         `make smoke` checks.
-  - [ ] one `get_graph(app, name)` accessor for `threads.py` and `ingest.py`, which read the graphs directly.
-  - [ ] lazy imports in the routes that pull agent code: `threads.py` (`ag_ui_langgraph`),
-        `documents.py` (`agent.tools.files`), and whatever `-X importtime` on `app.api.router` still shows.
-  - [ ] log each boot phase's elapsed time, so the next cold start can be read from the logs.
+  - [x] one `get_graph(app, name)` accessor for `threads.py` and `ingest.py`, which read the graphs directly.
+  - [x] lazy imports in the routes that pull agent code: `threads.py` (`ag_ui_langgraph`),
+        `documents.py` (`agent.tools.files`), `ingest.py` (`live_status`, which loads a model client), and
+        `integrations/storage.py`, which took `_safe_name` from `agent.tools.files` and now owns it.
+        Locally `import app.main` went from 1.84 s to 0.31–0.41 s; the first chat turn builds the agents in 1.4 s.
+  - [x] log each boot phase's elapsed time, so the next cold start can be read from the logs.
 - **Example:** a signed-out visitor opens `/registry` on a cold backend. Before, `/api/funders`
   waited ~4.6 s for imports that included deepagents and trafilatura. After, it imports FastAPI,
   psycopg and the routes, and the agent stack waits for the first Ask turn.

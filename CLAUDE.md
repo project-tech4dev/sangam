@@ -197,8 +197,16 @@ be called `graph.py` too, which made tracebacks ambiguous.
 
 **`deepagents` is LangGraph, not an alternative to it.** `create_deep_agent()` is a preset
 middleware stack over `langchain.agents.create_agent` and returns a compiled LangGraph
-graph — which is exactly what `AsyncPostgresSaver` checkpointing and
-`add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
+graph — which is exactly what `AsyncPostgresSaver` checkpointing and the AG-UI agent
+require. Dropping `deepagents` would not drop LangGraph.
+
+**The agents are built on the first chat turn, not at boot.** Most cold starts on Vercel serve a
+REST call, and two-thirds of the import time was the agent stack. So `lifespan.py` opens the pool,
+checks the catalog and opens the checkpointer, and `load_agents()` imports and builds both agents,
+once, under a lock, when `/agent` or `/ingest` is first posted to. Those two routes are our own
+(`_add_agent_route`) because `add_langgraph_fastapi_endpoint` needs a built agent to register. A
+route that needs a graph calls `get_graph(app, "ask_graph" | "ingest_graph")`; a REST module that
+imports agent code at the top undoes this, so `routes/` imports it inside the function that uses it.
 
 **The agent has exactly seven tools, and there is ONE open path to the database.**
 `app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
