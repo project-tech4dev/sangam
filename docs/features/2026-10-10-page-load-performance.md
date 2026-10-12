@@ -99,11 +99,13 @@ retarget N+1 to `master` and rebase it.
 ### Milestone 9 — PR 9: signed-out reads come from a cache
 - **Deliverable:** a signed-out visitor's pages render from Next's data cache, whatever state the backend is in.
 - **Key tasks:**
-  - [ ] `lib/api/client.ts`: with no session, fetch without the auth header and with
+  - [x] `lib/api/client.ts`: with no session, fetch without the auth header and with
         `next: { revalidate: 300 }` in place of `cache: "no-store"`. Signed-in calls stay `no-store`,
         because RLS decides what they see.
-  - [ ] the funder profile's signed brief link is minted only for a signed-in caller, so no signed URL is cached.
-  - [ ] `backend/vercel.json`: a cron hitting `/health` every 5 minutes, to keep one instance warm.
+  - [x] the funder brief's signed link stays in the cached profile: anon could already fetch it, and a
+        cached copy is at most 5 minutes into its 60-minute life. Development keeps `no-store`, so a fresh
+        Import save shows at once locally.
+  - [x] `backend/vercel.json`: a cron hitting `/health` every 5 minutes, to keep one instance warm.
 - **Example:** a funder opens a shared `/registry` link signed out. Before, 12 s on a cold backend.
   After, the cached render, refreshed in the background at most every 5 minutes.
 - **Exit gate:** signed-out `/registry` < 0.5 s on three hits ten minutes apart. The cron stays only if

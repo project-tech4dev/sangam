@@ -2,5 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": { "deploymentEnabled": false },
   "regions": ["bom1"],
-  "functions": { "app/main.py": { "maxDuration": 1800 } }
+  "functions": { "app/main.py": { "maxDuration": 1800 } },
+  "crons": [{ "path": "/health", "schedule": "*/5 * * * *" }]
 }
