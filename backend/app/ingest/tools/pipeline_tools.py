@@ -114,17 +114,16 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
     plan, so the goal and the reach of the run are agreed before anything changes.
 
     Args:
-        funders: comma-separated funder names the run would research.
-        years: comma-separated fiscal years, e.g. "FY2023-24,FY2024-25".
-        sources: comma-separated source keys, or empty for every registered source.
-        limit: items per source the run would request.
+        funders: comma-separated organisation or funder names, as in the Registry; empty means everyone.
+        years: unused by the news pull; kept for adapters.
+        sources: comma-separated source keys, e.g. "tavily_news".
+        limit: items per source, for adapters; the news pull ignores it.
     """
     if refused := staff_only("plan_import"):
         return refused
     try:
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
         names = [n.strip() for n in funders.split(",") if n.strip()]
-        fys = [y.strip() for y in years.split(",") if y.strip()]
         requested, unknown = resolve(keys)
         baseline = await catalog_baseline()
 
@@ -134,19 +133,10 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         held = [s for s in requested if not s.dispatchable]
 
         lines = ["PLAN — nothing is written by this step."]
-        if names:
-            searches = len(names) * len(will_run) * max(len(fys), 1)
-            scope = f"{len(names)} name(s), concurrently: {', '.join(names)}"
-            if fys:
-                scope += f"\nAcross {len(fys)} year(s): {', '.join(fys)}"
+        if not names:
             lines.append(
-                f"\nResearching {scope}.\n"
-                f"That is {searches} searches, each costing a model call per article read."
-            )
-        else:
-            lines.append(
-                "\nNo funder named, so this pulls whatever the sources published most recently. "
-                "If the user asked about particular funders, pass their names instead."
+                "\nNo name given, so a news pull covers every Registry record and the topic feeds. "
+                "If the user asked about particular organisations or funders, pass their names instead."
             )
         lines += ["", "Will pull:"]
         if not will_run:
@@ -176,11 +166,6 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
             "",
             "Catalog before the run:",
             "  " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in baseline.items()),
-            "",
-            (
-                "New names are added. A name that resembles an existing funder without "
-                "matching it is queued for a person, never merged."
-            ),
         ]
         return "\n".join(lines)
     except Exception as exc:  # noqa: BLE001
@@ -230,27 +215,16 @@ async def run_import_now(
     Args:
         goal: one sentence on what this run is for, in the user's terms, e.g.
             "FY2025-26 CSR figures for Indian corporate funders". Required.
-        funders: comma-separated funder names to research, e.g.
-            "Axis Bank Foundation, SBI Foundation". Each name is searched in every
-            runnable source, and the names run CONCURRENTLY. Leaving this empty
-            asks a different question — "whatever these sources published most
-            recently" — so when the user names funders, pass them.
-        years: comma-separated fiscal years, "FY2023-24,FY2024-25,FY2025-26". Each
-            year is searched separately, so three years of three funders is nine
-            searches — say so before running it. Empty searches without a year,
-            which in practice returns the most recent one. Years only aim the
-            SEARCH: whatever years an article turns out to state are all written.
+        funders: comma-separated organisation or funder names, as the Registry holds
+            them, e.g. "KABIL, Pratham". Leaving this empty asks a different question,
+            "everyone in the Registry, plus the topic feeds", so when the user names
+            someone, pass them. A name the Registry does not hold is reported, never added.
+        years: unused by the news pull; kept for adapters.
         sources: comma-separated source keys. "tavily_news" pulls news about the named
-            organisations and funders (or everyone in the Registry when no name is given)
-            and never creates a funder. Empty means
-            every registered source — the ones that may not be crawled are reported
-            as refused rather than skipped silently.
-        limit: how many items to pull per source. Keep it small (5-20); each item
-            costs a model call for extraction.
-
-    New funders are added. Names that closely resemble an existing funder are NOT
-    merged — they go to the review queue, because merging two different organisations
-    is the one mistake this pipeline cannot undo. Report the queue to the user.
+            organisations and funders and never creates a funder or an organisation.
+            Name it: empty runs no news pull. A parked or held source is reported as
+            refused, with the reason, rather than skipped silently.
+        limit: items per source, for adapters; the news pull ignores it.
     """
     if refused := staff_only("run_import_now"):
         return refused

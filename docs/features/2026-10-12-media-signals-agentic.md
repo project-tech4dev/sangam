@@ -251,24 +251,24 @@ Per the standing rule, no new tests in these PRs. Run the existing suites and fi
 What #173 left behind, removed, and what it wrote three times, written once. Every later milestone builds on this.
 - **Dead code removed.** GDELT and India CSR are parked: `ADAPTERS` dispatches nothing, and `news_mentions` is
   dropped.
-  - [ ] `app/ingest/adapters/gdelt.py`: it writes a dropped table, so it can't be revived as is.
-  - [ ] `_ingest_india_csr` and `_query` in `runner.py`, and `app/ingest/adapters/india_csr.py`.
-  - [ ] The `NewsMention` record in `app/ingest/records.py:258`, and `"news_mention"` in `YIELD_KINDS`
+  - [x] `app/ingest/adapters/gdelt.py`: it writes a dropped table, so it can't be revived as is.
+  - [x] `_ingest_india_csr` and `_query` in `runner.py`, and `app/ingest/adapters/india_csr.py`.
+  - [x] The `NewsMention` record in `app/ingest/records.py:258`, and `"news_mention"` in `YIELD_KINDS`
         (`sources.py`).
-  - [ ] Keep `PARKED` and its reasons: a request for `gdelt` or `india_csr` still gets a refused row that says why
+  - [x] Keep `PARKED` and its reasons: a request for `gdelt` or `india_csr` still gets a refused row that says why
         (D16). Git history keeps the adapter code for anyone reviving it.
 - **The source registry tells the truth.**
-  - [ ] In `data/sources/media.json`, the 22 media entries say `yields: ["news_link"]`, not `news_mention`.
+  - [x] In `data/sources/media.json`, the 22 media entries say `yields: ["news_link"]`, not `news_mention`.
 - **One plan, not three copies.** The same select → `plan_subjects` → `windows.plan` sequence lives in
   `routes/news_runs.py:22-26`, `pipeline_tools._news_plan_line` and `news/run.py:46`.
-  - [ ] Add `pipeline.plan_for(pool, names, feeds=None) -> (Selection, NewsPlan)`. All three call it. B and C then
+  - [x] Add `pipeline.plan_for(pool, names, feeds=None) -> (Selection, NewsPlan)`. All three call it. B and C then
         each extend one place.
 - **One public run-item writer.** `runner._item` is private, but it is called from `news/pipeline.py` (5 places)
   and `pipeline_tools._news_pull`.
-  - [ ] Rename it `runner.record_item` and update the callers.
+  - [x] Rename it `runner.record_item` and update the callers.
 - **The adapter-only helpers collapse.** With `ADAPTERS` empty, the logic simplifies.
-  - [ ] Fold `_adapter_keys()` and `_parked()` into direct imports of `runnable_for` and `PARKED`.
-  - [ ] Keep `run_import`'s refusal and summary path. Non-news calls still report refused and held sources.
+  - [x] Fold `_adapter_keys()` and `_parked()` into direct imports of `runnable_for` and `PARKED`.
+  - [x] Keep `run_import`'s refusal and summary path. Non-news calls still report refused and held sources.
 - **Docs.** CLAUDE.md still says "the two enumerated sources" in places. Make it say what runs: `tavily_news`, and
   parked adapters.
 - **Touches:** backend, JSON registry, CLAUDE.md. No frontend, prompt or schema change.
@@ -310,6 +310,12 @@ What #173 left behind, removed, and what it wrote three times, written once. Eve
   may need to be about 20.
 - **Structured output on Sonnet 5.5:** `ProviderStrategy` support needs checking. If it is missing, run a final
   `with_structured_output(..., method="json_schema")` call over the agent's last message.
+- **Nothing writes `resolution_queue` any more.** Its one writer, `writer.queue_resolution`, served India CSR
+  and went with it. Existing rows are still listed by `pending_resolutions` and still resolved in the Import
+  routes. New ones never arrive, so the `pending_review` count only goes down. The table and the tool can go
+  once the last pending row is resolved.
+- **`run_import_now` still takes `years` and `limit`.** No adapter uses them now. They are kept so the tool's
+  signature stays stable, and the docstring says the news pull ignores them.
 - **Old scores are never re-checked** until `PROMPT_VERSION` is bumped. This is accepted for Draft v1.
 - **No "checked by Sangam" mark on the StoryCard.** It is deferred, because it would need a Design System change
   and a schema field.
