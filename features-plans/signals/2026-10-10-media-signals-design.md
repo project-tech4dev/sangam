@@ -47,7 +47,7 @@ column for marking.
 | D2 | **Tavily is the collector**, for news and for LinkedIn, Instagram and X posts. Social posts are **obtained through Tavily's search index, never from the platforms**: Sangam does not fetch a linkedin.com, instagram.com or x.com page, does not archive one, and stores only what Tavily returns (the post's URL, title and snippet), the summary and headline written from it, and the scores. A post is kept only when it is about a watchlist organisation or funder. **Facebook is left out**: its posts carry no usable date and repeat what organisations post elsewhere. |
 | D3 | **One story per event.** Copies of the same story (syndicated news, the same post on several platforms) are grouped under one story with a main link; the rest are listed as "also reported in". The main link is the best source: news before organisation sites before social. |
 | D4 | **No manual review.** A story is shown or not by two scores the classifier gives each link to an entity or topic: **match** (is it about this?) and **confidence** (how sure). Staff can hide a wrong match; nothing waits for approval. |
-| D5 | **Three bars, set in code** (`config.py`, like the model tiers) and never on a screen: listed for signed-in users at match ≥ 0.6 and confidence ≥ 0.8; public on a Registry profile at match ≥ 0.7 and confidence ≥ 0.9, news and events only; a **negative** story public only at match ≥ 0.9 and confidence ≥ 0.95. A negative story that clears that bar is worth publishing; whether to keep doing so is reviewed once there is real volume. |
+| D5 | **Three bars, set in code** (`config.py`, like the model tiers) and never on a screen: listed for signed-in users at match ≥ 0.6 and confidence ≥ 0.8; public on a Registry profile at match ≥ 0.7 and confidence ≥ 0.9, news and events only; a **negative** story public only at match ≥ 0.9 and confidence ≥ 0.95. A **topic story** (General) is listed only at match ≥ 0.75: it has no organisation to vouch for it, and the trial's 0.6–0.7 topic verdicts were mostly off-topic (arrests, agitation, flood reviews). A negative story that clears that bar is worth publishing; whether to keep doing so is reviewed once there is real volume. |
 | D6 | **Scores show as High, Medium or Low**, never as numbers. Match: High from 0.8, Medium from 0.6. Confidence: High from 0.9, Medium from 0.8. |
 | D7 | **Every story is tagged with place, scope and topic**: the states and districts it names (mapped to `locations`), a scope (district, state, North East, national, international), a topic, the five sector domains where they apply, and a sentiment. |
 | D8 | **"My area" is a plain rule, not a ranking.** For a signed-in member: stories in their organisations' states, plus FCRA and civil-society news from any North East state, plus national policy news that affects NGOs. National explainers and opinion stay out of it. One click widens to all of the North East, or everywhere. |
@@ -58,7 +58,7 @@ column for marking.
 | D13 | **Funder type is a fixed list**: Corporate CSR, Private or family foundation, International funder, Government. Whether CSR is spent in-house or through a company foundation is shown on the funder, not filtered on. Delivered with the Funder Match work, not this migration. |
 | D14 | **A topic story that names a Registry organisation or funder is linked to it.** The topic prompt lists the Registry names a story mentions; each one is then scored by the entity prompt and gets its own entity link, so the story reaches that organisation's "In the news" tab and its members' list under the same bars as any other link. |
 | D15 | **Repeat pulls are incremental, and every newcomer starts 90 days back.** Each organisation and funder is searched from where its last search ended; the first time it is searched, whenever it joined the Registry, the search goes back **90 days**. A link is scored once per organisation (per prompt version), so a link stored before an organisation joined is checked for it when it does, and a repeated link is never scored twice for the same one (section 2a). |
-| D16 | **A pull starts from Import, staff only, as a form that calls a route.** "Get the latest news" picks who (everyone, or chosen Registry records) and which feeds, shows the plan, and starts the run through `POST /api/ingest/news-runs`; no prompt and no supervisor turn (section 2b). GDELT and India CSR are **parked**: their code and registry entries stay, nothing calls them. |
+| D16 | **A pull starts from Scout, staff only, through the existing approval card.** "Get the latest news" fills the composer with "Get the latest news for everyone in Sangam", which staff may edit to names; the supervisor calls `run_import_now(sources="tavily_news", funders=<names or empty>)`, and the approval card shows the plan line before anything runs (section 2b). GDELT and India CSR are **parked**: their code and registry entries stay, nothing calls them. |
 
 ## 2. Pipeline
 
@@ -141,37 +141,24 @@ starts from the right place:
 
 ### 2b. Starting a pull from Import
 
-Import's third task card becomes **"Get the latest news"**: staff only (`tasksFor`), a form rather
-than a prompt (D16). It replaces "Where from? India CSR / GDELT" and "How many articles?".
+Import's third task card becomes **"Get the latest news"**: staff only (`tasksFor`), the same Scout
+flow as the other tasks (D16). It replaces "Run an import from India CSR, 10 articles". The prototype
+is version 41 (https://claude.ai/artifact/PiiVTnYXsDfAYYsk4b9sSM), approved as its third version.
 
-**Who.** Two choices:
-
-- **Everyone in Sangam** (the default): every Registry organisation and funder that is not hidden.
-  No chips; a summary instead, from each record's `news_watch` row, e.g. "214 in the Registry · 12
-  never pulled (go back 90 days) · 30 not pulled in 14+ days · the rest up to date". "Show which" opens
-  the three groups as a list, newest pull first.
-- **Choose organisations and funders**: a search over the Registry's names and aliases, never free
-  text, since news only ever links to a record that exists. Each result shows its state ("KABIL ·
-  organisation · last pulled 3 Oct", "Diya · organisation · never pulled"). Two buttons add a whole
-  group at once: "Never pulled (12)" and "Not pulled in 14+ days (30)". Chosen records show as chips,
-  grouped Organisations then Funders, up to 8; "+N more" opens the full list, where any can be removed.
-
-**What.** Three tick boxes, all on by default: **Organisations and funders** (their own news),
-**FCRA**, and **CSR and the North East sector** (the CSR trends and North East NGO news feeds).
-Choosing records leaves only the first box; the other two grey out, since topic feeds are not about a
-record.
-
-**No window and no count.** Each record's window comes from its watermark (D15); there is no article
-count, because cost follows searches, not results.
-
-**The plan line**, under the form and updated as it changes, from the plan route: "44 records · 12 go
-back 90 days · 62 searches · about $3 · nothing is written until you start". **Start** begins the
-run; the screen follows it like any other run, and the run appears in Import's runs list ("News ·
-everyone · 31 Oct": stories added, copies grouped, links below the bar, searches that failed). The
-Media & Signals header reads "Last pull …" from the latest finished news run.
-
-**No sources card.** `choose_sources` decides what a researcher may read; a news run reads only
-Tavily under D2, so the card is not shown.
+- **The composer says whose news.** The card fills it with "Get the latest news for everyone in
+  Sangam": every Registry organisation and funder that is not hidden, plus the topic feeds (FCRA,
+  CSR trends, North East NGO news). Staff may edit it to names ("…for KABIL, SBI Foundation"); named
+  records get only their own news, and only names already in the Registry count.
+- **No window, no count, no feed choice.** Each record's window comes from its watermark (D15);
+  cost follows searches, not results; the feeds follow from the choice of everyone.
+- **The approval card is the check.** The supervisor calls `run_import_now` straight away; the
+  existing card reads "Pull the latest news?", with one plan line from the plan route ("News for
+  everyone in Sangam (17 organisations and funders), plus FCRA and North East sector news · about 116
+  searches · about $6.50", or "No Registry record for: X") and the buttons "Pull the news" / "Don't
+  pull". The run appears in Import's runs list like any other import, and the Media & Signals header
+  reads "Last pull …" from the latest finished news run.
+- **No sources card.** `choose_sources` decides what a researcher may read; a news run reads only
+  Tavily under D2.
 
 `make news-pull [ORG=<slug>] [ENV=…]` and the supervisor's `run_import_now` call the same code as the
 route, so there is one way a pull runs. The task's prompt (`composePrompt`'s news branch and the
@@ -260,34 +247,36 @@ drop, because `verify_against_db()` raises at boot when the catalog names a miss
 | Viewer | Media & Signals page | Registry profile, "In the news" |
 |---|---|---|
 | Signed out | No access (sign-in prompt) | Public links only, newest first |
-| Member or admin of an organisation | My organisations (their own), Funders, General with "My area" on | Public links, plus "Below the public bar" for listed ones |
-| Steward | My organisations (all they steward), Funders, General with their states | As a member |
-| Staff | Every cohort organisation, Funders, General on "Everywhere"; can hide a wrong match | As a member, plus hidden ones marked |
-| Signed in, no organisation | Funders and General; My organisations explains how to be added | As a member |
+| Member or admin of an organisation | My organisations (their own), Funders, General with "My area" on | Public links only, as signed out |
+| Steward | My organisations (all they steward), Funders, General with their states | Public links only, as signed out |
+| Staff | Every cohort organisation, Funders, General on "Everywhere"; can hide a wrong match | Public links only, as signed out |
+| Signed in, no organisation | Funders and General; My organisations explains how to be added | Public links only, as signed out |
 
 "My organisations" comes from `org_members`; "my area" from `org_locations` of those organisations.
 `org_locations` has rows on staging (11 Oct); `org_members` may still be empty, so a member's view needs people added first.
+
+A Registry profile reads the same for everyone, signed in or out: only stories that clear the public bar.
+Background items (not news) and hidden ones (below the bar, or marked a wrong match) reach no list
+and no profile, staff's included; they stay stored for the agent and for re-scoring.
 
 ## 5. API
 
 Three routes, in the usual router, repository and schema set:
 
-- `GET /api/news` (signed in): `bucket` (`org`, `funder`, `general`), `org`, `funder`, `area`
+- `GET /api/news/stories` (signed in): `bucket` (`org`, `funder`, `general`), `org`, `funder`, `area`
   (`mine`, `north_east`, `all`), `topic`, `sentiment`, `source` (`news`, `social`, `web`),
   `since` (`30d`, `all`), `q`, `cursor`, `limit` (default 20). Returns the page, `next_cursor`, and
   the three bucket counts under the same filters.
 - `GET /api/orgs/{slug}/news` and `GET /api/funders/{slug}/news` (public): that entity's stories,
   newest first, cursor-paged. Public links only when signed out.
-- `POST /api/news/{story_id}/hide` (staff): hides one entity link (`org` or `funder` in the body).
+- `POST /api/news/stories/{story_id}/hide` (staff): hides one entity link (`org` or `funder` in the body).
 
-Starting a pull (section 2b), both staff only:
+Starting a pull (section 2b), staff only:
 
-- `GET /api/ingest/news-runs/plan` with `subjects` (record ids, empty for everyone) and `feeds`:
-  read-only. Returns the records and each one's window (from `searched_through`, or 90 days), the
-  number of searches, a cost estimate, and the counts behind the "Everyone" summary.
-- `POST /api/ingest/news-runs` with the same body: writes one `ingest_runs` row
-  (`requested_sources = {tavily_news}`, `subjects`, the feeds in `notes`), starts the run in the
-  background and returns its `run_id`. Progress and the result come from the existing runs routes.
+- `GET /api/ingest/news-runs/plan?names=` (comma-separated; none means everyone): read-only. Returns
+  the records, how many go back 90 days, the searches, a cost estimate, and which names matched the
+  Registry and which did not. The run itself starts through Scout's `run_import_now`, which writes one
+  `ingest_runs` row and runs it to the end inside the turn; `make news-pull` does the same from a shell.
 
 **Order and paging.** The list is ordered by match, then confidence, then date, then id, and paged
 by keyset: the cursor carries the last row's four values, so the next page is "after this one". That
@@ -308,14 +297,14 @@ Search is Postgres full-text on `news_stories.search` (GIN index). The current `
 3. The search box, full width.
 4. The list: 10 cards, more as you scroll, with a "Show more" button for keyboards and an end marker.
 5. Each card: the organisation or funder chip (opens its profile) or the topic tag; sentiment;
-   "Background" for non-news; on General, why it is in your area ("Assam", "Meghalaya · North East
+   on General, why it is in your area ("Assam", "Meghalaya · North East
    civil society", "National policy"); the headline linking to the main source; outlet, source type,
    date, state; "Headline written by Sangam" where it applies; the summary; "Also reported in N more"
    with every copy; Match and Confidence as High, Medium or Low; staff's "Hide: wrong match".
 
 **Registry profile, "In the news"**: the existing `SectionCard` in `ProfileTabs.tsx`, fed from
-`/api/orgs/{slug}/news` and `/api/funders/{slug}/news`, grouped by month, newest first. Signed in, a
-second block lists the stories below the public bar. The note says only confident matches appear.
+`/api/orgs/{slug}/news` and `/api/funders/{slug}/news`, grouped by month, newest first. Public stories only, the same signed in or out; the rest are in Media & Signals.
+The note says only confident matches appear.
 
 ## 7. One pattern for list pages
 
@@ -353,7 +342,7 @@ How each page uses them:
 
 **Design system.** The selected card and the changed dropdown went into "Sangam Design System v2"
 with #151, and CLAUDE.md already says list pages use these components. Media & Signals' story card
-and Import's news form are new screens, so they go into the design system's UI kit in the same PR,
+and Scout's news approval card are new screens, so they go into the design system's UI kit in the same PR,
 as CLAUDE.md requires.
 
 ## 8. Testing
@@ -372,11 +361,11 @@ as CLAUDE.md requires.
   golden set, moved from a local Downloads folder into the repo beside `tests/evals/`; namesake rejection and the topic prompt are scored against it, and a prompt or model
   change must not drop below the trial's results. The recall stories stay in it.
 - **Import's news task**: unit tests for the plan's arithmetic (records, windows, searches, cost) and
-  the form's rules (topic boxes grey out when records are chosen; an empty choice cannot start);
-  integration that the plan route writes nothing, the start route writes one `ingest_runs` row with
-  its subjects, a non-staff caller gets 403, and nothing calls a parked adapter.
+  the selection rules (everyone brings the topic feeds; named records do not; names that match nothing
+  are reported, never read as everyone); integration that the plan route writes nothing, a chat pull
+  writes one `ingest_runs` row with its subjects, a non-staff caller gets 403, and nothing calls a parked adapter.
 - **Frontend**: the list components under the existing lint and build; the prototype's click-through
-  (every role, every filter, counts equal to the list, and the Import news form) is the acceptance
+  (every role, every filter, counts equal to the list, and Scout's news card and approval) is the acceptance
   check.
 
 ## 9. Cost
@@ -399,7 +388,7 @@ For the team:
 Settled since the first draft: social posts come through Tavily (D2); negative stories that clear D5's
 bar are published, to be reviewed later; the Registry is the watchlist (D1); summaries are stored,
 never article text (D11); a topic story that names a Registry organisation or funder is linked to it
-(D14); repeat pulls are incremental and a newcomer starts 90 days back (D15); a pull starts from Import's form, staff only, with GDELT and India CSR parked (D16). Staging held 8 organisations and 5 funders on 11 Oct, so a first real run is possible.
+(D14); repeat pulls are incremental and a newcomer starts 90 days back (D15); a pull starts from Scout through the approval card, staff only, with GDELT and India CSR parked (D16). Staging held 8 organisations and 5 funders on 11 Oct, so a first real run is possible.
 
 ## 11. What the build covers, end to end
 
@@ -409,12 +398,12 @@ One change, so no old news path is left anywhere:
 |---|---|
 | Data | New tables (section 3); `news_mentions` dropped, with every reader and writer moved in the same PR |
 | Pipeline | `tavily_news` adapter, classification, grouping, places, visibility (section 2); repeat pulls and newcomers (2a) |
-| Import | "Get the latest news" form and its two routes (2b, section 5); GDELT and India CSR parked; the news prompt and `NewsSource` removed; `instructions.md` and `list_import_sources` updated; news runs in the runs list |
+| Import | "Get the latest news" in Scout, its approval card and the plan route (2b, section 5); GDELT and India CSR parked; the news prompt and `NewsSource` removed; `instructions.md` and `list_import_sources` updated; news runs in the runs list |
 | Media & Signals page | `MediaView.tsx` replaced by the section 6 page on the shared list components, plus `useCursorList` (section 7) |
 | Registry | "In the news" on organisation and funder profiles (section 6) |
 | Agent | The new tables in the SQL catalog with their defect lines; `[news:N]` citations |
-| Design system | The story card and the news form in the UI kit |
-| Prototype | Version 41 adds the Import news form, signed off before code (mock before build) |
+| Design system | The story card and the news approval card in the UI kit |
+| Prototype | Version 41 adds Scout's news card and approval, signed off before code (mock before build) |
 
 ## Out of scope
 

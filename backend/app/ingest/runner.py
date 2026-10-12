@@ -13,7 +13,7 @@ from typing import Any
 from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.ingest import writer
-from app.ingest.adapters import gdelt, india_csr
+from app.ingest.adapters import india_csr
 from app.ingest.adapters._http import SourceUnavailable
 from app.ingest.extractor import extract_csr_years
 from app.ingest.matcher import Match, resolve_funder
@@ -50,7 +50,7 @@ async def catalog_baseline() -> dict[str, int]:
                 "(SELECT count(*) FROM programs) AS programs, "
                 "(SELECT count(*) FROM metrics) AS metrics, "
                 "(SELECT count(*) FROM contacts) AS contacts, "
-                "(SELECT count(*) FROM news_mentions) AS news_mentions, "
+                "(SELECT count(*) FROM news_stories) AS news_stories, "
                 "(SELECT count(*) FROM documents) AS documents, "
                 "(SELECT count(*) FROM resolution_queue WHERE status = 'pending') AS pending_review"
             )
@@ -95,6 +95,11 @@ async def run_import(
                 subject=f"{len(held)} sources held by their access rule",
                 reason="; ".join(f"{rule}: {n}" for rule, n in sorted(by_rule.items())),
             )
+
+    if parked := [s.key for s in requested if s.key in PARKED]:
+        async with pool.connection() as conn, conn.transaction():
+            for key in parked:
+                await _refuse_parked(conn, run_id, key)
 
     gate = asyncio.Semaphore(max_concurrent_sources())
     runnable = [s for s in requested if s.dispatchable and s.key in ADAPTERS]
@@ -219,32 +224,28 @@ def _queue_reason(match: Any) -> str:
     return "No funder in the catalog matches this name, and nothing is close enough to propose."
 
 
-async def _ingest_gdelt(
-    conn: Any, run_id: int, *, limit: int, model: Any = None, subject: str | None = None,
-    fiscal_year: str | None = None,
-) -> None:
-    records = (
-        await gdelt.fetch(f'"{subject}"', limit=limit) if subject else await gdelt.fetch(limit=limit)
-    )
-    funders = await (await conn.execute("SELECT id, name FROM funders")).fetchall()
-    for rec in records:
-        funder_id = _named_in(rec.title or "", funders)
-        async with conn.transaction():
-            status, changes = await writer.write_news_mention(conn, rec, funder_id)
-            await _item(
-                conn, run_id, "gdelt", "news_mention", status, subject=rec.title or rec.url,
-                target_table="news_mentions", target_id=rec.url, changes=changes,
-                match_method="exact" if funder_id else "none", source_url=rec.source_url,
-            )
-
-
 # The sources this runner can actually fetch. A source may be legally readable
 # and still not be here: registering a source makes it visible and reportable,
 # writing an adapter is what makes it pull.
-ADAPTERS: dict[str, Any] = {
-    "india_csr": _ingest_india_csr,
-    "gdelt": _ingest_gdelt,
+ADAPTERS: dict[str, Any] = {}
+# Every source a run can actually pull, whatever runs it: the adapter table, or the news pipeline for tavily_news.
+RUNNABLE: frozenset[str] = frozenset(ADAPTERS) | {"tavily_news"}
+
+
+def runnable_for(keys: list[str] | None) -> frozenset[str]:
+    """What a run may pull: no source named means the adapters only; a news pull costs money, so it must be named."""
+    return RUNNABLE if keys else frozenset(ADAPTERS)
+# Media & Signals parks both (spec D16): the adapters stay, nothing calls them. GDELT wrote news_mentions, now
+# dropped; India CSR created funders from headlines. News now runs through app.ingest.news.pipeline.
+PARKED: dict[str, str] = {
+    "gdelt": "parked: news now comes through tavily_news; reviving it means writing news_links, not news_mentions",
+    "india_csr": "parked: it created funders from headlines; CSR figures come from Import's funder research",
 }
+
+
+async def _refuse_parked(conn: Any, run_id: int, key: str) -> None:
+    """A parked source asked for by name is a refused row with its reason, never a silence."""
+    await _item(conn, run_id, key, "source", "refused", reason=PARKED[key])
 
 
 def _query(subject: str | None, fiscal_year: str | None) -> str:
@@ -252,15 +253,6 @@ def _query(subject: str | None, fiscal_year: str | None) -> str:
     parts = [subject, "CSR", fiscal_year.removeprefix("FY") if fiscal_year else None]
     narrowed = " ".join(p for p in parts if p)
     return narrowed if subject else india_csr.DEFAULT_QUERY
-
-
-def _named_in(title: str, funders: list[Any]) -> int | None:
-    """A known funder named in the headline. Deterministic, and deliberately strict."""
-    lowered = title.lower()
-    for f in funders:
-        if f["name"].lower() in lowered:
-            return f["id"]
-    return None
 
 
 async def _item(
@@ -325,7 +317,7 @@ async def summarise(run_id: int) -> dict[str, Any]:
     permitted = {k for k in requested if k in SOURCES and SOURCES[k].dispatchable}
     # Permitted but unimplemented is not a failure. Reporting it as one would
     # tell the user that 21 sources are broken when they are simply not built.
-    attempted = {k for k in permitted if k in ADAPTERS}
+    attempted = {k for k in permitted if k in runnable_for(list(run["requested_sources"]))}
     no_adapter = sorted(permitted - attempted)
     held = sorted(k for k in requested if k in SOURCES and not SOURCES[k].dispatchable)
     for key in attempted:

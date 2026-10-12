@@ -16,3 +16,15 @@ class LocationOut(ReadModel):
     name: str
     parent_id: int | None = None
     parent_name: str | None = None
+
+
+class StatsOut(ReadModel):
+    orgs: int
+    funders: int
+    grants: int
+    fit_scores: int
+    programs: int
+    contacts: int
+    documents: int
+    news_stories: int
+    districts_covered: int

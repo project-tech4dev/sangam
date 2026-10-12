@@ -12,13 +12,12 @@ changing insertion order silently mislinks them (make db-upgrade diffs the
 linkage projection to catch this).
 """
 
-import csv
 import hashlib
 import json
 import os
 import re
 import sys
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import psycopg
@@ -566,32 +565,6 @@ def seed_scores(cur, criterion_ids) -> tuple[int, int]:
     return n_scores, n_items
 
 
-def seed_news(cur) -> int:
-    count = 0
-    for path in sorted((DATA / "gdelt").glob("*.csv")):
-        topic = path.stem
-        with path.open(newline="") as handle:
-            for row in csv.DictReader(handle):
-                if not row.get("url"):
-                    continue
-                seendate = None
-                if row.get("seendate"):
-                    seendate = datetime.strptime(row["seendate"], "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
-                cur.execute(
-                    """
-                    INSERT INTO news_mentions (url, title, seendate, domain, language,
-                                               sourcecountry, topic, source_name)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'gdelt')
-                    ON CONFLICT (url) DO UPDATE SET
-                      title = EXCLUDED.title, seendate = EXCLUDED.seendate, topic = EXCLUDED.topic
-                    """,
-                    (row["url"], row.get("title"), seendate, row.get("domain"),
-                     row.get("language"), row.get("sourcecountry"), topic),
-                )
-                count += 1
-    return count
-
-
 def main() -> None:
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
@@ -605,13 +578,12 @@ def main() -> None:
         n_grants = seed_grants(cur, program_ids)
         criterion_ids = seed_rubrics(cur)
         n_scores, n_items = seed_scores(cur, criterion_ids)
-        n_news = seed_news(cur)
         conn.commit()
     print(
         f"seeded: {len(locations)} locations, {len(tags)} tags, "
         f"{n_darpan}+{n_extra} orgs, {n_funders} funders, {len(program_ids)} programs, "
         f"{n_grants} grant lines, {len(criterion_ids)} rubric criteria, "
-        f"{n_scores} fit scores ({n_items} items), {n_news} news mentions"
+        f"{n_scores} fit scores ({n_items} items)"
     )
 
 

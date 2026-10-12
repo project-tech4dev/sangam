@@ -424,35 +424,92 @@ _TABLES: tuple[Table, ...] = (
         ),
     ),
     Table(
-        name="news_mentions",
-        description="GDELT news hits. Rarely linked to an entity — read the caveat.",
+        name="news_stories",
+        description="Media & Signals: one story per event, its copies folded in as news_links. Cite [news:N].",
         primary_key=('id',),
-        foreign_keys=(ForeignKey("funder_id", "funders.id"), ForeignKey("activity_id", "funder_activity.id"), ForeignKey("org_id", "orgs.id")),
+        foreign_keys=(ForeignKey("main_link_id", "news_links.id"),),
+        columns=(
+            Column("id", "bigint", cites="news"),
+            Column("headline", "text"),
+            Column("headline_generated", "boolean", note="true: Sangam wrote it from a social post"),
+            Column("summary", "text"),
+            Column("published_on", "date"),
+            Column("content_kind", "text", values=('news', 'opinion', 'press_release', 'social_post', 'event', 'background', 'other')),
+            Column("is_news", "boolean"),
+            Column("scope", "text", values=('district', 'state', 'north_east', 'national', 'international')),
+            Column("topic", "text", values=('fcra', 'csr_funding', 'ngo_news', 'programme', 'governance', 'other')),
+            Column("feed", "text", note="set on a topic story (fcra, csr_trends, ngo_north_east); NULL on an entity story"),
+            Column("visibility", "text", note="topic stories only", values=('listed', 'hidden')),
+            Column("sentiment", "text", values=('positive', 'neutral', 'negative')),
+            Column("place_names", "text[]", note="named places that matched no locations row"),
+            Column("main_link_id", "bigint"),
+            Column("main_host", "text"),
+            Column("first_seen_at", "timestamp with time zone"),
+            Column("last_seen_at", "timestamp with time zone"),
+            Column("source_url", "text"),
+            Column("source_name", "text"),
+            Column("fetched_at", "timestamp with time zone"),
+        ),
+        defects=(
+            "A topic story names no organisation; zero stories for an org does not mean nothing was said about its area. News is pulled from the last 90 days at most, so an older event may be missing.",
+            "A topic story with visibility = 'hidden' fell below the listing bar: leave it out unless asked for everything.",
+        ),
+    ),
+    Table(
+        name="news_links",
+        description="Every copy of a story: one row per URL, the outlet and its date.",
+        primary_key=('id',),
+        foreign_keys=(ForeignKey("story_id", "news_stories.id"),),
         columns=(
             Column("id", "bigint"),
             Column("url", "text"),
-            Column("title", "text"),
-            Column("seendate", "timestamp with time zone"),
-            Column("domain", "text"),
-            Column("language", "text"),
-            Column("sourcecountry", "text"),
-            Column("topic", "text"),
-            Column("funder_id", "bigint", cites="funder"),
-            Column("org_id", "bigint", cites="org"),
-            Column("activity_id", "bigint", cites="activity", note="the funder_activity line a story is about"),
+            Column("host", "text"),
+            Column("source_type", "text"),
+            Column("original_title", "text"),
+            Column("snippet", "text"),
+            Column("published_on", "date"),
+            Column("story_id", "bigint", cites="news"),
             Column("source_name", "text"),
             Column("fetched_at", "timestamp with time zone"),
-            Column("kind", "text", values=('news', 'press', 'social')),
-            Column("platform", "text"),
-            Column("summary", "text"),
-            Column("sentiment", "text", values=('positive', 'neutral', 'negative')),
-            Column("review_status", "text", note="only 'vetted' items are public", values=('pending', 'vetted', 'rejected')),
-            Column("reviewed_by", "uuid"),
-            Column("reviewed_at", "timestamp with time zone"),
-            Column("archive_url", "text"),
+        ),
+    ),
+    Table(
+        name="news_story_entities",
+        description="Which organisation or funder a story is about, with Sangam's match and confidence (0-1).",
+        primary_key=('id',),
+        foreign_keys=(ForeignKey("story_id", "news_stories.id"), ForeignKey("org_id", "orgs.id"), ForeignKey("funder_id", "funders.id")),
+        columns=(
+            Column("id", "bigint"),
+            Column("story_id", "bigint", cites="news"),
+            Column("org_id", "bigint", cites="org", note="exactly one of org_id / funder_id is set"),
+            Column("funder_id", "bigint", cites="funder", note="exactly one of org_id / funder_id is set"),
+            Column("match", "real", note="say High from 0.8, Medium from 0.6, else Low; never quote the number"),
+            Column("confidence", "real", note="say High from 0.9, Medium from 0.8, else Low; never quote the number"),
+            Column("stance", "text", note="the story's stance toward this entity", values=('positive', 'neutral', 'negative')),
+            Column("visibility", "text", note="public: on the Registry profile; hidden: staff marked it a wrong match", values=('public', 'listed', 'hidden')),
         ),
         defects=(
-            "org_id, funder_id and activity_id are NULL for all 118 rows. Any JOIN or filter on them returns zero rows. A zero result here means 'not linked in the data', NEVER 'no news exists'.",
+            "Leave out visibility = 'hidden': staff marked those a wrong match.",
+        ),
+    ),
+    Table(
+        name="news_story_locations",
+        description="The states and districts a story is about.",
+        primary_key=('story_id', 'location_id'),
+        foreign_keys=(ForeignKey("story_id", "news_stories.id"), ForeignKey("location_id", "locations.id")),
+        columns=(
+            Column("story_id", "bigint", cites="news"),
+            Column("location_id", "bigint"),
+        ),
+    ),
+    Table(
+        name="news_story_tags",
+        description="The sector tags a story is about.",
+        primary_key=('story_id', 'tag_id'),
+        foreign_keys=(ForeignKey("story_id", "news_stories.id"), ForeignKey("tag_id", "tags.id")),
+        columns=(
+            Column("story_id", "bigint", cites="news"),
+            Column("tag_id", "bigint"),
         ),
     ),
     Table(
@@ -890,9 +947,9 @@ _ROLE_COLUMNS: Mapping[str, str] = MappingProxyType(
 )
 
 # One table names its link differently. Spelled out rather than left to miss silently:
-# news_mentions.url predates the source_url convention and is the link all the same.
+# news_links.url is the copy's own address, and the link all the same.
 _ROLE_ALIASES: Mapping[str, Mapping[str, str]] = MappingProxyType(
-    {"news_mentions": MappingProxyType({"url": "url"})}
+    {"news_links": MappingProxyType({"url": "url"})}
 )
 
 
@@ -918,6 +975,9 @@ PROVENANCE_COLUMNS: Mapping[str, Mapping[str, str]] = MappingProxyType(
 # can stay quiet about them while still reporting a genuinely new table that nobody has made a decision.
 KNOWN_EXCLUDED: frozenset[str] = frozenset(
     {
+        # Media & Signals' pipeline state: per-link scores and each subject's search watermark.
+        "news_link_scores",
+        "news_watch",
         # Import's save log: who saved what, and each catalog row's before and after, for undo.
         "promotions",
         "catalog_writes",
@@ -977,7 +1037,7 @@ def _self_check() -> None:
             if target_col not in COLUMNS[target_table]:
                 raise ValueError(f"catalog: {name}.{fk.column} references missing {fk.references}")
         for column in table.columns:
-            if column.cites and column.cites not in {"org", "funder", "activity", "score"}:
+            if column.cites and column.cites not in {"org", "funder", "activity", "score", "news"}:
                 raise ValueError(f"catalog: {name}.{column.name} cites unknown kind {column.cites!r}")
 
 

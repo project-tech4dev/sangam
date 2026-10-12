@@ -604,6 +604,26 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .fm-start .input { flex: 1; min-width: 200px; }
 @media (max-width: 640px) { .fm-actions, .fm-start { padding-left: 0; } }
 
+/* --- Media & Signals: one story card, shared with the Registry's "In the news" ----------------- */
+.story-card { background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
+.story-top { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.story-chip { background: var(--color-accent-2-100); color: var(--color-accent-2-900); font-size: var(--fs-xs); font-weight: 600; padding: 2px 10px; border-radius: var(--radius-pill); text-decoration: none; }
+.story-chip:hover { text-decoration: underline; }
+.story-title { font-size: var(--fs-md); }
+.story-title a { color: var(--color-text); text-decoration: none; }
+.story-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.story-meta { font-size: var(--fs-xs); color: var(--color-neutral-700); }
+.story-summary { font-size: var(--fs-sm); }
+.story-also > summary { cursor: pointer; list-style: none; display: inline-flex; gap: 4px; align-items: center; font-size: var(--fs-xs); font-weight: 600; color: var(--color-accent-2-800); }
+.story-also > summary::-webkit-details-marker { display: none; }
+.story-also[open] > summary .icon { transform: rotate(90deg); }
+.story-also ul { margin: 6px 0 0; padding-left: 18px; font-size: var(--fs-xs); display: flex; flex-direction: column; gap: 3px; }
+.story-also a { color: var(--color-accent-2-800); }
+.story-act { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: var(--fs-xs); }
+.story-hide { padding: 2px 8px; font-size: var(--fs-xs); }
+.story-list { display: flex; flex-direction: column; gap: 10px; }
+.story-month { font-size: var(--fs-xs); letter-spacing: .1em; text-transform: uppercase; color: var(--color-neutral-700); font-weight: 600; margin-top: 6px; }
+
 /* --- Proposals ---------------------------------------------------------------- */
 .pr-row { background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-surface); box-shadow: var(--shadow-sm); padding: 14px 18px; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; width: 100%; text-align: left; font-family: var(--font-body); color: var(--color-text); cursor: pointer; }
 .pr-row:hover { border-color: var(--color-accent-2-600); }

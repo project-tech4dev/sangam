@@ -1,0 +1,22 @@
+{
+  "_comment": "Who an organisation is and is not, for the classifier (Media & Signals spec, section 2). From the 10 Oct trial. Keyed by name_key of the Registry name or an alias.",
+  "notes": [
+    {"names": ["KABIL"], "note": "An NGO in Udalguri district, Bodoland (BTR), Assam; livelihoods and community development in Mazbat, Udalguri and Harisinga blocks. NOT Khanij Bidesh India Ltd (a mining PSU also called KABIL)."},
+    {"names": ["SATRA", "Social Action for Appropriate Transformation and Advancement in Rural Areas"], "note": "An NGO based at Sipajhar, Darrang district, Assam; rural development, youth clubs. NOT a Vaishnavite 'satra' monastery (e.g. Madhupur Satra, Charabari Satra)."},
+    {"names": ["The Action Northeast Trust", "The ANT"], "note": "An NGO in Chirang district (BTR), Assam, founded 2000 by Dr Sunil Kaul and Jennifer Liang; mental health (Project MITA), weaving livelihoods, child rights. NOT the insect or other uses of the word 'ant'."},
+    {"names": ["Diya Foundation"], "note": "An NGO with offices at Loharghat, Kamrup Rural district, Assam and Smit, East Khasi Hills, Meghalaya; maternal health, mental health, livelihoods. NOT the Diya Foundation in Bengaluru or other namesakes outside North East India."},
+    {"names": ["Better Life Foundation"], "note": "An NGO based in Dimapur, Nagaland working in Tuensang and Kiphire districts of Eastern Nagaland. NOT any other 'Better Life Foundation' (Kerala, Egypt, USA etc.)."},
+    {"names": ["Projonmo"], "note": "An NGO in Guwahati, Assam with a centre in Tamulpur (BTR). NOT 'Muktijoddha Projonmo' or any Bangladeshi group using the word projonmo (generation)."},
+    {"names": ["PESCH", "People's Endeavour for Social Changes"], "note": "An NGO headquartered in Tamenglong, Manipur, working in Tamenglong and Jiribam (Manipur) and Cachar (Assam)."},
+    {"names": ["SNEHPAD"], "note": "Society for North East Handmade Paper Development, an NGO in Jorhat, Assam; handmade paper and craft livelihoods."},
+    {"names": ["MOSONiE Socio-Economic Foundation", "MOSONiE"], "note": "An NGO in Umling block, Ri-Bhoi district, Meghalaya; livelihoods across Ri-Bhoi villages."},
+    {"names": ["PRDA", "People's Resource Development Association"], "note": "An NGO in Bishnupur district, Manipur (Ithai Barrage-affected villages); humanitarian response, livelihoods. NOT other bodies abbreviated PRDA."},
+    {"names": ["Ajagar Social Circle"], "note": "An NGO at Agia, Goalpara district, Assam."},
+    {"names": ["Goonj"], "note": "The Delhi-based NGO founded by Anshu Gupta (material and disaster relief, rural development). NOT the Hindi word 'goonj' (echo) or events named '... Ki Goonj'."},
+    {"names": ["Axis Bank Foundation"], "note": "The CSR foundation of Axis Bank (livelihoods). Axis Bank's own commercial news is NOT about the foundation."},
+    {"names": ["Tata Trusts"], "note": "India's largest philanthropic trusts (incl. Sir Dorabji Tata Trust, Sir Ratan Tata Trust)."},
+    {"names": ["Azim Premji Foundation"], "note": "The Indian philanthropic foundation of Azim Premji (education, health, grants to CSOs)."},
+    {"names": ["SBI Foundation"], "note": "The CSR foundation of the State Bank of India. The bank's own commercial and banking news is NOT about the foundation."},
+    {"names": ["Infosys Foundation"], "note": "The CSR foundation of Infosys. Infosys's own corporate and results news is NOT about the foundation."}
+  ]
+}

@@ -260,6 +260,10 @@ class TestStarExpansion:
 
 
 class TestCitations:
+    def test_a_story_id_cites_news(self):
+        plans = validate("SELECT s.id, s.headline FROM news_stories s").citations
+        assert [(p.kind, p.output_column) for p in plans] == [("news", "id")]
+
     def test_primary_key_is_citable(self):
         plans = validate("SELECT o.id, o.name FROM orgs o").citations
         assert [(p.output_column, p.kind) for p in plans] == [("id", "org")]

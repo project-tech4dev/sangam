@@ -1,4 +1,4 @@
-.PHONY: help up down logs seed locations-seed taxonomy-seed graph-seed match smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs seed locations-seed taxonomy-seed graph-seed match news-pull news-visibility smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -133,6 +133,12 @@ graph-seed:  ## Build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
 
 match:  ## Save a Funder Match run for every org, or ORG=<slug>
 	$(COMPOSE) run --rm --no-deps backend python -m app.matching.run $(if $(ORG),--org $(ORG))
+
+news-pull:  ## Pull news for ORG=<slug> / FUNDER=<slug>, or everyone with CONFIRM=1 (prints the plan first)
+	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.news.run $(if $(ORG),--org $(ORG)) $(if $(FUNDER),--funder $(FUNDER)) $(if $(CONFIRM),--yes)
+
+news-visibility:  ## Rewrite who sees each story from the stored scores, after a bar or rule changes
+	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.news.run --visibility
 
 ##@ Schema
 # db/init/02_schema.sql is the baseline for a new database; db/migrations/*.sql

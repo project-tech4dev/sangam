@@ -26,10 +26,12 @@ _FILES = ("funders.json", "ngos.json", "rfps.json", "media.json")
 
 
 class AccessRule(StrEnum):
-    """The legend from the source inventory. Only the first two are dispatchable; the last two are path-scoped."""
+    """The legend from the source inventory. The first three are dispatchable; the last two are path-scoped."""
 
     OPEN_API = "open_api"
     CRAWL_ALLOWED = "crawl_allowed"
+    LICENSED_API = "licensed_api"
+    """A paid API Sangam holds a key for; its terms, not robots.txt, govern use."""
     CRAWL_PER_SITE = "crawl_allowed_check_each_site"
     CRAWL_WITH_PERMISSION = "crawl_only_with_permission"
     NO_SCRAPING = "no_scraping_manual_entry_allowed"
@@ -51,7 +53,9 @@ class Category(StrEnum):
 
 # A crawler may run only for these. Everything else is reported as refused, with
 # its basis, so an unsupported source is a row in the summary and not a silence.
-DISPATCHABLE: frozenset[AccessRule] = frozenset({AccessRule.OPEN_API, AccessRule.CRAWL_ALLOWED})
+DISPATCHABLE: frozenset[AccessRule] = frozenset(
+    {AccessRule.OPEN_API, AccessRule.CRAWL_ALLOWED, AccessRule.LICENSED_API}
+)
 
 # Read by the researcher's fetch tools on the paths an entry names and nowhere else; never dispatched.
 PATH_SCOPED: frozenset[AccessRule] = frozenset({AccessRule.MANUAL_AGGREGATOR, AccessRule.INTERNAL_RESEARCH})
@@ -64,6 +68,7 @@ _SIGN_IN_SEGMENTS = frozenset({"login", "log-in", "logout", "signin", "sign-in",
 _STRICTNESS: tuple[AccessRule, ...] = (
     AccessRule.OPEN_API,
     AccessRule.CRAWL_ALLOWED,
+    AccessRule.LICENSED_API,
     # On a host shared with a refusing rule, the refusal governs every path the scoped entry does not claim.
     AccessRule.INTERNAL_RESEARCH,
     AccessRule.MANUAL_AGGREGATOR,
@@ -80,7 +85,7 @@ _STRICTNESS: tuple[AccessRule, ...] = (
 # What a source can produce. 'org' and 'rfp' have no record type, matcher or
 # writer yet, so a source may declare them and still have nothing to run.
 YIELD_KINDS: frozenset[str] = frozenset(
-    {"funder", "funder_csr_year", "news_mention", "org", "rfp"}
+    {"funder", "funder_csr_year", "news_mention", "news_link", "org", "rfp"}
 )
 
 

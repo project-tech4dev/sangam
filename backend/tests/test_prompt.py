@@ -28,7 +28,7 @@ def emitted_markers() -> set[str]:
 def test_tools_emit_the_markers_we_think_they_do():
     """Guards the guard: if either source stops producing kinds, the test below
     passes vacuously."""
-    assert emitted_markers() == {"org", "funder", "activity", "score", "graph"}
+    assert emitted_markers() == {"org", "funder", "activity", "score", "news", "graph"}
 
 
 def test_prompt_documents_every_marker_the_tools_emit():

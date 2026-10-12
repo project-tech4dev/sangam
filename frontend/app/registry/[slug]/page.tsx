@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs, Hero, Tag } from "@/components/ui";
 import {
-  apiGet, NotFoundError,
-  type NewsRow, type OrgDetail, type PageOf, type PartnerLineRow, type ProgramRow, type ScoreRow,
+  apiGet, NotFoundError, type StoryPage,
+  type OrgDetail, type PageOf, type PartnerLineRow, type ProgramRow, type ScoreRow,
 } from "@/lib/api";
 import { titleCase } from "@/lib/format";
 import { isOnFile, pickIdentifier, statusLabel } from "@/features/registry/identifierStatus";
@@ -17,7 +17,8 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
     apiGet<PageOf<PartnerLineRow>>(`/api/partner-lines?org=${slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<ProgramRow>>(`/api/programs?org=${slug}&limit=50`).then((p) => p.items),
     apiGet<PageOf<ScoreRow>>(`/api/scores?org=${slug}&limit=50`).then((p) => p.items),
-    apiGet<PageOf<NewsRow>>(`/api/news?org=${slug}&limit=10`).then((p) => p.items),
+    // News is one tab: a failed fetch leaves it empty rather than failing the profile.
+    apiGet<StoryPage>(`/api/orgs/${slug}/news?limit=50`).then((p) => p.items, () => []),
   ]);
   rest.catch(() => {}); // a 404 below must not leave this rejection unhandled
   let org: OrgDetail;

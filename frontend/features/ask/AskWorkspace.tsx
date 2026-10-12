@@ -9,7 +9,7 @@ import { ChatPane } from "./components/ChatPane";
 import { EvidenceRail } from "./components/EvidenceRail";
 import { Sidebar, type WorkspaceView } from "./components/Sidebar";
 import { VaultView } from "./views/VaultView";
-import { MediaView } from "./views/MediaView";
+import { MediaView } from "./views/media/MediaView";
 import { RfpWatchView } from "./views/RfpWatchView";
 import { FunderMatchView } from "./views/FunderMatchView";
 import { type ProposalTarget, ProposalsView } from "./views/ProposalsView";
@@ -148,7 +148,7 @@ export function AskWorkspace({
           </>
         )}
         {view === "vault" && <VaultView orgs={payload.orgs} />}
-        {view === "media" && <MediaView onDiscuss={(text) => newChat(text)} />}
+        {view === "media" && <MediaView orgs={payload.orgs} />}
         {view === "chats" && <ChatsView threads={threads} onPick={pickThread} />}
         {view === "funder-match" && (
           <FunderMatchView

@@ -312,6 +312,20 @@
       ],
       "basis": "robots.txt allows all paths. Carries cohort news and partner events; Node is a project partner, so confirm reuse as a courtesy.",
       "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "tavily_news",
+      "name": "Tavily search (news and social posts)",
+      "host": "api.tavily.com",
+      "access_rule": "licensed_api",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_link"
+      ],
+      "basis": "A paid search API used under Sangam's key. LinkedIn, Instagram and X items arrive only as Tavily returns them; Sangam never fetches those platforms (Media & Signals spec, D2).",
+      "robots_checked_at": "2026-10-11"
     }
   ]
 }

@@ -64,8 +64,8 @@ class TestDerivedIndexes:
         assert set(cat.SQLGLOT_SCHEMA) == cat.TABLE_NAMES
 
     def test_primary_keys_carry_their_citation_kind(self):
-        for table, kind in [("orgs", "org"), ("funders", "funder"),
-                            ("funder_activity", "activity"), ("fit_scores", "score")]:
+        for table, kind in [("orgs", "org"), ("funders", "funder"), ("funder_activity", "activity"),
+                            ("fit_scores", "score"), ("news_stories", "news")]:
             assert cat.CITE_COLUMNS[(table, "id")] == kind
 
     def test_foreign_keys_inherit_the_kind_they_point_at(self):
@@ -77,19 +77,26 @@ class TestDerivedIndexes:
 
     def test_citation_kinds_stay_within_the_frontend_union(self):
         """frontend/features/ask/lib/citations.ts must link every kind here, plus graph."""
-        assert set(cat.CITE_COLUMNS.values()) <= {"org", "funder", "activity", "score"}
+        assert set(cat.CITE_COLUMNS.values()) <= {"org", "funder", "activity", "score", "news"}
 
 
 class TestDefects:
     """Defect strings are injected into results. They must stay specific enough to act on."""
 
     def test_the_verified_data_bugs_are_recorded(self):
-        assert "news_mentions" in cat.DEFECTS
         assert "documents" in cat.DEFECTS
 
-    def test_news_defect_says_zero_means_unlinked_not_absent(self):
-        text = " ".join(cat.DEFECTS["news_mentions"]).lower()
-        assert "never" in text and "no news exists" in text
+    def test_news_defect_says_a_topic_story_names_no_organisation(self):
+        text = " ".join(cat.DEFECTS["news_stories"]).lower()
+        assert "topic story names no organisation" in text and "does not mean" in text
+        assert "visibility = 'hidden'" in text
+
+    def test_media_and_signals_tables_replace_news_mentions(self):
+        assert "news_mentions" not in cat.TABLE_NAMES
+        assert {"news_stories", "news_links", "news_story_entities", "news_story_locations",
+                "news_story_tags"} <= cat.TABLE_NAMES
+        assert {"news_link_scores", "news_watch"} <= cat.KNOWN_EXCLUDED
+        assert cat.CITE_COLUMNS[("news_story_entities", "story_id")] == "news"
 
     def test_the_locations_defect_went_when_the_data_was_fixed(self):
         # seed.py parented every district to Assam regardless of what Darpan

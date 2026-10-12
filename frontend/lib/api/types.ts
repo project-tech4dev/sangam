@@ -83,9 +83,23 @@ export type ProgramRow = {
   details: Record<string, unknown>;
 };
 
-export type NewsRow = {
-  id: number; url: string; title: string | null; domain: string | null;
-  seendate: string | null; topic: string | null;
+export type StoryEntity = {
+  kind: "org" | "funder"; id: number; slug: string; name: string;
+  stance: string | null; visibility: string; match_level: string; confidence_level: string;
+};
+
+export type Story = {
+  id: number; headline: string; headline_generated: boolean; summary: string | null;
+  published_on: string | null; content_kind: string | null; is_news: boolean; scope: string | null;
+  topic: string; sentiment: string | null; main_url: string | null; main_host: string | null;
+  source_type: string | null; visibility: string | null; match_level: string; confidence_level: string;
+  also: { url: string; host: string; source_type: string }[]; entities: StoryEntity[]; places: string[];
+  area_reason: string | null; row_id: number; about: StoryEntity | null;
+};
+
+export type StoryPage = {
+  items: Story[]; next_cursor: string | null;
+  counts: { org: number; funder: number; general: number } | null; last_pull: string | null;
 };
 
 export type MeOut = {

@@ -58,8 +58,11 @@ async def list_import_sources(category: str = "", detail: str = "") -> str:
                 return f"Nothing registered matches {detail!r}."
             return "\n".join(_full_entry(s) for s in picked)
 
-        runs = [s for s in chosen if s.dispatchable and s.key in _adapter_keys()]
-        permitted = [s for s in chosen if s.dispatchable and s.key not in _adapter_keys()]
+        # Listing, not running: news shows as runnable here, though a run pulls it only when named.
+        runnable = _adapter_keys(["tavily_news"])
+        runs = [s for s in chosen if s.dispatchable and s.key in runnable]
+        permitted = [s for s in chosen if s.dispatchable and s.key not in runnable and s.key not in _parked()]
+        parked = [s for s in chosen if s.key in _parked()]
         by_rule = collections.Counter(s.access_rule.value for s in chosen if not s.dispatchable)
 
         scope = f" in {category}" if category else ""
@@ -72,6 +75,9 @@ async def list_import_sources(category: str = "", detail: str = "") -> str:
                 f"\nPermitted but no adapter yet ({len(permitted)}): "
                 + ", ".join(s.key for s in permitted)
             )
+        if parked:
+            lines.append("\nParked (code kept, not called): "
+                         + "; ".join(f"{s.key}: {_parked()[s.key]}" for s in parked))
         if by_rule:
             lines.append("\nHeld, by rule:")
             for rule, n in sorted(by_rule.items(), key=lambda kv: -kv[1]):
@@ -89,10 +95,16 @@ async def list_import_sources(category: str = "", detail: str = "") -> str:
         return f"list_import_sources failed: {exc}"
 
 
-def _adapter_keys() -> set[str]:
-    from app.ingest.runner import ADAPTERS
+def _adapter_keys(keys: list[str] | None) -> set[str]:
+    from app.ingest.runner import runnable_for
 
-    return set(ADAPTERS)
+    return set(runnable_for(keys))
+
+
+def _parked() -> dict[str, str]:
+    from app.ingest.runner import PARKED
+
+    return PARKED
 
 
 def _full_entry(s) -> str:
@@ -129,7 +141,7 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         requested, unknown = resolve(keys)
         baseline = await catalog_baseline()
 
-        adapters = _adapter_keys()
+        adapters = _adapter_keys(keys)
         will_run = [s for s in requested if s.dispatchable and s.key in adapters]
         no_adapter = [s for s in requested if s.dispatchable and s.key not in adapters]
         held = [s for s in requested if not s.dispatchable]
@@ -152,7 +164,9 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         lines += ["", "Will pull:"]
         if not will_run:
             lines.append("  nothing: no requested source both may be read and has an adapter.")
-        for s in will_run:
+        for s in [s for s in will_run if s.key == "tavily_news"]:
+            lines.append("  " + await _news_plan_line(names or None))
+        for s in [s for s in will_run if s.key != "tavily_news"]:
             lines.append(
                 f"  {s.key} ({s.host}) — up to {limit} items → {', '.join(s.yields)}\n"
                 f"    permitted because: {s.basis}"
@@ -186,6 +200,43 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         return f"plan_import failed: {exc}"
 
 
+async def _news_plan_line(names: list[str] | None) -> str:
+    """What a news pull would search and cost, in the plan's own words."""
+    from datetime import date
+
+    from app.ingest.news import pipeline, windows
+
+    chosen = await pipeline.select(get_pool(), names)
+    if names and not chosen.matched:
+        return "tavily_news: none of those names is in the Registry; nothing would be pulled."
+    p = windows.plan(await pipeline.plan_subjects(get_pool(), org_ids=chosen.org_ids, funder_ids=chosen.funder_ids,
+                                                  feeds=chosen.feeds), today=date.today(), settings=get_settings())
+    return (f"tavily_news: {p.subjects} records ({p.newcomers} go back 90 days) · {p.searches} searches · "
+            f"about ${p.cost_usd}. Never creates a funder or an organisation.")
+
+
+async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: list[str]) -> str:
+    """A news pull for named Registry records, or everyone; Scout's approval card was the person's check.
+    Other sources named in the same call are refused out loud."""
+    from app.ingest.news import pipeline
+
+    pool, settings = get_pool(), get_settings()
+    chosen = await pipeline.select(pool, names)
+    if names and not chosen.matched:
+        return "run_import_now: none of those names is in the Registry; news is only pulled for records Sangam holds."
+    run_id = await pipeline.create_run(pool, org_ids=chosen.org_ids, funder_ids=chosen.funder_ids,
+                                       feeds=chosen.feeds, started_by=started_by, goal=goal)
+    if others:
+        from app.ingest import runner
+
+        async with pool.connection() as conn:
+            for key in others:
+                await runner._item(conn, run_id, key, "source", "refused",
+                                   reason="not run: a news pull runs alone; ask for other sources separately")
+    summary = await pipeline.execute_run(pool, run_id, pipeline.Deps.from_settings(settings))
+    return "\n".join(f"{k}: {v}" for k, v in summary.items())
+
+
 @tool
 async def run_import_now(
     goal: str, funders: str = "", years: str = "", sources: str = "", limit: int = 10
@@ -208,7 +259,9 @@ async def run_import_now(
             searches — say so before running it. Empty searches without a year,
             which in practice returns the most recent one. Years only aim the
             SEARCH: whatever years an article turns out to state are all written.
-        sources: comma-separated source keys (e.g. "india_csr,gdelt"). Empty means
+        sources: comma-separated source keys. "tavily_news" pulls news about the named
+            organisations and funders (or everyone in the Registry when no name is given)
+            and never creates a funder. Empty means
             every registered source — the ones that may not be crawled are reported
             as refused rather than skipped silently.
         limit: how many items to pull per source. Keep it small (5-20); each item
@@ -226,6 +279,10 @@ async def run_import_now(
         if not goal.strip():
             return "run_import_now needs a goal: one sentence on what this run is for."
         names = [n.strip() for n in funders.split(",") if n.strip()] or None
+        if keys and "tavily_news" in keys:
+            caller = scope()
+            return await _news_pull(names, goal=goal.strip(), started_by=caller.user_id,
+                                    others=[k for k in keys if k != "tavily_news"])
         fys = [y.strip() for y in years.split(",") if y.strip()] or None
         summary = await run_import(
             keys, goal=goal.strip(), funders=names, years=fys,

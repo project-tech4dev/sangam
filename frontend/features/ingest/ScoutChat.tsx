@@ -44,7 +44,11 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const TASKS: { id: ImportTask; title: string; desc: string }[] = [
   { id: "funder", title: "Research a funder", desc: "How to apply, who is eligible, and which documents they want." },
   { id: "ngo", title: "Check an NGO", desc: "Is it ready for CSR money — registrations, accounts and track record." },
-  { id: "news", title: "Get the latest CSR news", desc: "Read recent articles and update the funders Sangam already knows." },
+  {
+    id: "news",
+    title: "Get the latest news",
+    desc: "News about the organisations and funders in Sangam, FCRA, and the CSR sector in the North East.",
+  },
 ];
 
 /** One Scout thread: task cards over the composer, then every turn — working, review, done — in one chat. */

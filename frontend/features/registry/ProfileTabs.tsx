@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { EntityMark, PillTabs, ProgressBar, StatRail, Tag } from "@/components/ui";
 import type {
-  Contact, FunderDetail, NewsRow, OrgDetail, PartnerLineRow, ProgramRow, ScoreRow,
+  Contact, FunderDetail, OrgDetail, PartnerLineRow, ProgramRow, ScoreRow, Story,
 } from "@/lib/api";
 import { isOnFile, pickIdentifier, statusLabel, statusTone } from "./identifierStatus";
+import { InTheNews } from "./InTheNews";
 import { ScoreCard } from "./ScoreCard";
 
 const ID_LABELS: Record<string, string> = {
@@ -66,7 +67,7 @@ function DegradedNote({ children }: { children: React.ReactNode }) {
 export function OrgProfileTabs({
   org, funding, programs, scores, news,
 }: {
-  org: OrgDetail; funding: PartnerLineRow[]; programs: ProgramRow[]; scores: ScoreRow[]; news: NewsRow[];
+  org: OrgDetail; funding: PartnerLineRow[]; programs: ProgramRow[]; scores: ScoreRow[]; news: Story[];
 }) {
   const [tab, setTab] = useState("diligence");
   const completenessParts = [
@@ -83,7 +84,7 @@ export function OrgProfileTabs({
           { id: "programs", label: "Programs & taxonomy" },
           { id: "scores", label: "Fit scores" },
           { id: "geography", label: "Geography" },
-          { id: "signals", label: "Signals" },
+          { id: "news", label: "In the news" },
         ]}
         active={tab}
         onPick={setTab}
@@ -264,23 +265,9 @@ export function OrgProfileTabs({
         </div>
       )}
 
-      {tab === "signals" && (
-        <SectionCard kicker="In the news" title="Signals collected">
-          {news.length === 0 ? (
-            <DegradedNote>No signal collected for this organisation yet.</DegradedNote>
-          ) : (
-            news.map((item) => (
-              <div key={item.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 8 }}>
-                <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: "var(--fs-sm)", fontWeight: 600 }}>
-                  {item.title ?? item.url}
-                </a>
-                <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
-                  {item.domain} · {fmtDate(item.seendate) ?? "date unknown"}
-                </span>
-                <Tag tone="neutral">Pending review</Tag>
-              </div>
-            ))
-          )}
+      {tab === "news" && (
+        <SectionCard kicker="In the news" title={`Stories about ${org.name}`}>
+          <InTheNews stories={news} kind="org" name={org.name} />
         </SectionCard>
       )}
     </div>
@@ -292,7 +279,7 @@ export function OrgProfileTabs({
 export function FunderProfileTabs({
   funder, scores, partners, partnersTotal, news,
 }: {
-  funder: FunderDetail; scores: ScoreRow[]; partners: PartnerLineRow[]; partnersTotal: number; news: NewsRow[];
+  funder: FunderDetail; scores: ScoreRow[]; partners: PartnerLineRow[]; partnersTotal: number; news: Story[];
 }) {
   const [tab, setTab] = useState("mandate");
   const profileEntries = Object.entries(funder.profile ?? {}).filter(([, v]) => typeof v === "string");
@@ -306,6 +293,7 @@ export function FunderProfileTabs({
           { id: "giving", label: "Giving pattern" },
           { id: "matches", label: "Matched CSOs" },
           { id: "contacts", label: "Contacts" },
+          { id: "news", label: "In the news" },
         ]}
         active={tab}
         onPick={setTab}
@@ -406,6 +394,12 @@ export function FunderProfileTabs({
               </div>
             ))
           )}
+        </SectionCard>
+      )}
+
+      {tab === "news" && (
+        <SectionCard kicker="In the news" title={`Stories about ${funder.name}`}>
+          <InTheNews stories={news} kind="funder" name={funder.name} />
         </SectionCard>
       )}
     </div>

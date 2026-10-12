@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
-export type Bucket<K extends string> = { key: K; label: string; count: number; sub?: string };
+export type Bucket<K extends string> = { key: K; label: string; count: number | string; sub?: string };
 
 export function BucketCards<K extends string>({
   items,
@@ -95,6 +95,56 @@ export function useShowMore(resetKey: string, page = 10): [number, () => void] {
   const [shown, setShown] = useState({ key: resetKey, n: page });
   const n = shown.key === resetKey ? shown.n : page;
   return [n, () => setShown({ key: resetKey, n: n + page })];
+}
+
+/* A list paged by the server's cursor; starts again whenever `resetKey` changes. Stale answers are dropped,
+   and a row already shown is not shown twice (scores can rise mid-scroll). `last` is the latest page as returned. */
+export function useCursorList<T, P extends { items: T[]; next_cursor: string | null }>(
+  resetKey: string,
+  load: (cursor: string | null) => Promise<P>,
+  idOf: (item: T) => string | number,
+) {
+  const [state, setState] = useState<{
+    key: string; items: T[]; next: string | null; busy: boolean; error: string | null; last: P | null;
+  }>({ key: "", items: [], next: null, busy: true, error: null, last: null });
+  const loader = useRef(load);
+  const current = useRef(resetKey);
+  useEffect(() => {
+    loader.current = load;
+    current.current = resetKey;
+  });
+
+  const fetchPage = (key: string, cursor: string | null, before: T[]) =>
+    loader.current(cursor).then(
+      (page) => {
+        if (key !== current.current) return;
+        const seen = new Set(before.map(idOf));
+        const items = [...before, ...page.items.filter((item) => !seen.has(idOf(item)))];
+        setState({ key, items, next: page.next_cursor, busy: false, error: null, last: page });
+      },
+      (error: Error) =>
+        key === current.current && setState((s) => ({ ...s, key, items: before, next: cursor, busy: false, error: error.message })),
+    );
+
+  useEffect(() => {
+    void fetchPage(resetKey, null, []);
+  }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fresh = state.key === resetKey;
+  return {
+    items: fresh ? state.items : [],
+    busy: !fresh || state.busy,
+    error: fresh ? state.error : null,
+    last: fresh ? state.last : null,
+    more:
+      fresh && state.next && !state.busy
+        ? () => {
+            setState((s) => ({ ...s, busy: true }));
+            void fetchPage(resetKey, state.next, state.items);
+          }
+        : null,
+    remove: (keep: (item: T) => boolean) => setState((s) => ({ ...s, items: s.items.filter(keep) })),
+  };
 }
 
 /* The foot of a growing list: loads the next page near the end, but only once the person has scrolled. */
