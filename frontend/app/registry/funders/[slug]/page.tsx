@@ -16,7 +16,7 @@ export default async function FunderProfilePage({ params }: { params: Promise<{ 
   const { funder, scores, partners, news, brief } = profile;
 
   return (
-    <div className="page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="page profile-page">
       <Breadcrumbs
         items={[
           { label: "Sangam", href: "/registry" },
@@ -40,22 +40,16 @@ export default async function FunderProfilePage({ params }: { params: Promise<{ 
           </>
         }
         cta={
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div className="profile-cta">
             <Link
               href={`/ask?q=${encodeURIComponent(`Which NGOs in the base fit ${funder.name}'s mandate, and why?`)}`}
-              className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
+              className="btn btn-ondark">
               Ask Sangam who fits this mandate →
             </Link>
             {brief && (
-              <a
-                href={brief.url}
-                target="_blank"
-                rel="noreferrer"
-                className="btn"
-                style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}
-              >
-                Research brief ↗
-              </a>
+              <Link href={`/registry/funders/${slug}/brief`} className="btn btn-ondark">
+                Research brief →
+              </Link>
             )}
           </div>
         }

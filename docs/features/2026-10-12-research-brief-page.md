@@ -59,7 +59,7 @@ The page is a server component:
 - **Breadcrumbs:** Registry › Funders › *name* › Research brief, linking back to the profile.
 - **Header:** the eyebrow "Research brief", an h1 with the name, then a meta row: researched date, a status `Tag` (`partial` uses the accent tone, `complete` accent-2), and the website.
 - **Stopped reason:** shown as a muted note card, because it explains why the brief is partial (for example, "azimpremjifoundation.org returned HTTP 403 on every page").
-- **Body:** a summary paragraph in `.reading .measure`.
+- **Body:** a summary paragraph in `.reading .measure`. A funder summary's "TEN FIELDS: (1) … (10)" tail renders as a numbered list.
 - **Sections:** an `h2` per section (anchored for `SectionIndex` from `frontend/components/ui/SectionIndex.tsx`), the index sticky beside the article as on `/resources`. Each finding is one row:
   - the headline in bold, followed by the year and a *derived* flag when there is one;
   - the quote as a `.brief-quote` (sage left rule, `--fs-sm`);
