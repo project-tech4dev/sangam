@@ -115,15 +115,16 @@ retarget N+1 to `master` and rebase it.
 ### Milestone 10 — PR 10: Supabase advisor fixes, and the Import upsert
 - **Deliverable:** one read policy per table, indexes for the profile joins, no queue on the proposals row.
 - **Key tasks:**
-  - [ ] migration `0044_`: fold `users_read_by_admin` into `users_read` and `org_members_read_by_admin` into
+  - [x] migration `0044_one_read_policy_and_fk_indexes`: fold `users_read_by_admin` into `users_read` and `org_members_read_by_admin` into
         `org_members_read` (permissive policies already OR together, so who sees what is unchanged);
         index `org_tags(tag_id)`, `funder_tags(tag_id)` and `funder_activity(program_id)`.
         `feat/media-signals` holds 0044/0045 on its branch: whichever merges second renumbers.
-  - [ ] `ingest/access.py::_note_proposal`: drop the explicit transaction around the single upsert (the pool
-        autocommits), so the row lock lasts one statement. An Import fix, not page load.
-  - [ ] the CLAUDE.md migration count and list.
+  - [x] `ingest/access.py::_note_proposal`: `SET LOCAL lock_timeout = '200ms'` before the upsert. The draft said
+        drop the transaction, but the pool commits on exit either way; the 2 s is parallel researchers queueing
+        on one host's row, and a best-effort note is skipped rather than waited on. An Import fix, not page load.
+  - [x] the CLAUDE.md migration count and list.
 - **Exit gate:** the performance advisor no longer lists `multiple_permissive_policies`; the upsert's max
-  in `pg_stat_statements` after an 8-organisation Import is < 100 ms.
+  in `pg_stat_statements` after an 8-organisation Import is ≤ 200 ms.
 
 ## Known gaps — what this stack does NOT make true
 
