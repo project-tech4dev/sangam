@@ -16,7 +16,7 @@ from app.core.config import Settings
 from tests.evals.sql_compare import answer_contains_value, gold_satisfied
 
 EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
-CITATION = re.compile(r"\[(org|funder|activity|grant|score|graph):([a-zA-Z0-9]+)\]")
+CITATION = re.compile(r"\[(org|funder|activity|grant|score|news|graph):([a-zA-Z0-9]+)\]")
 
 # Bounds a runaway case so one bad item cannot burn the whole budget.
 RECURSION_LIMIT = 60

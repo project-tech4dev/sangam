@@ -15,7 +15,7 @@ make smoke               # confirm the stack is wired end to end
 ```
 
 **Migrations are not automatic, and two things depend on them.** `db/init/` is a baseline only:
-7 of the SQL catalog's 32 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
+12 of the SQL catalog's 36 tables arrive in `db/migrations/`, and `_verify_sql_catalog` raises
 at boot when one is missing, so the backend will not start against an unmigrated database.
 `seed.taxonomy_seed` needs `0002_taxonomy.sql` as well.
 
@@ -253,7 +253,9 @@ tools, since both supervisors need `ls` to find a skill and no subagent may hold
 `install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
 preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its seven plus
 `read_file` and `ls`; a subagent keeps only `read_file`, which `FilesystemMiddleware` refuses to
-be built without. Nothing that writes survives on any of them.
+be built without. Nothing that writes survives on any of them. A third deep agent, the news verifier
+(`app/ingest/news/verify.py`, `RESEARCH_MODEL`), runs inside a news pull with `read_page`,
+`search_public_sources` and that `read_file` floor; it is off until `NEWS_VERIFY_MAX` is above 0.
 
 **A subagent inherits none of that and must say so itself.** `create_deep_agent` builds an
 isolated subagent's middleware from scratch with an *unrestricted* `FilesystemMiddleware`, and
@@ -283,7 +285,7 @@ those tools are registered. Setting them changes no behaviour.
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
 
-- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 32 tables, and a column not
+- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 36 tables, and a column not
   listed there does not exist as far as the tool is concerned. It also carries `defects`:
   evidence-backed caveats about the *data* that get injected into every result touching the
   table, so the model cannot report "0 rows" as "none exist". Delete a defect line when a
@@ -324,7 +326,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each Darpan sector tag to its Schedule VII clause (unread since match-v2, which compares the theme taxonomy), and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. `0042_funder_matches` adds Funder Match's saved runs, and `0043_tag_writes_logged` logs Import's `org_tags` and `program_tags` writes for undo. `0044_one_read_policy_and_fk_indexes` folds the admin read policies on `users` and `org_members` into one each and indexes three foreign keys. There are 44 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each Darpan sector tag to its Schedule VII clause (unread since match-v2, which compares the theme taxonomy), and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. `0042_funder_matches` adds Funder Match's saved runs, and `0043_tag_writes_logged` logs Import's `org_tags` and `program_tags` writes for undo. `0044_one_read_policy_and_fk_indexes` folds the admin read policies on `users` and `org_members` into one each and indexes three foreign keys. `0044_news` adds Media & Signals' seven tables, and `0045_drop_news_mentions` drops the table they replace, apart so the tables can land before the code that stops reading it. The two 0044s are both kept, because staging had applied `0044_news` before the other landed and the runner keys on the file name. There are 46 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
@@ -337,7 +339,7 @@ product depends on and that a new tool silently breaks:
   error string lets the model see the failure and adapt. Every tool body in `app/agent/tools/` is
   wrapped in `try/except` returning `f"<tool> failed: {exc}"`.
 - *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
-  `[activity:N]`, `[score:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
+  `[activity:N]`, `[score:N]`, `[news:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces
   uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
 
@@ -429,7 +431,7 @@ Summaries of long runs are written by `UTILITY_MODEL` at the same thresholds as 
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
 above it the agent researches in waves until every organisation asked for is done.
 `app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder —
-**the only substitution any prompt in this repo gets** — because a number frozen in prose made the
+**the only substitution any agent prompt in this repo gets** (Media & Signals' classifier prompts, `app/ingest/news/prompts/`, take their subject and the Registry names the same way) — because a number frozen in prose made the
 setting decorative. A SKILL.md is read raw from disk and never substituted, so no skill names a
 wave size. It is a plain `.replace()`, not `.format()`: the file is full of literal
 braces. The fan-out is bounded by connections, so `DB_POOL_MAX_SIZE` (default 10) moves with

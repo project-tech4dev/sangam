@@ -1,6 +1,7 @@
 "use client";
 
-import { INTERRUPT_EVENT_NAME, useAgent } from "@copilotkit/react-core/v2";
+import { INTERRUPT_EVENT_NAME } from "@copilotkit/react-core/v2";
+import type { AbstractAgent } from "@ag-ui/client";
 import { useEffect, useState } from "react";
 
 const named = (value: unknown): string => {
@@ -16,10 +17,11 @@ const named = (value: unknown): string => {
 };
 
 /** The tool the last run stopped on to wait for a person ("" if unnamed), or null when it did not stop. */
-export function useRunPause(agentId: string): string | null {
-  const { agent } = useAgent({ agentId, updates: [] });
+// The chat's own agent, not a lookup by id: before the runtime registers the thread, a lookup throws.
+export function useRunPause(agent: AbstractAgent | undefined): string | null {
   const [tool, setTool] = useState<string | null>(null);
   useEffect(() => {
+    if (!agent) return;
     const subscription = agent.subscribe({
       onCustomEvent: ({ event }) => {
         if (event.name === INTERRUPT_EVENT_NAME) setTool(named(event.value));

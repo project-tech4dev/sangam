@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.schemas.common import Page, ReadModel
 from app.schemas.documents import FileLinkOut
 from app.schemas.funders import FunderDetail
-from app.schemas.news import NewsOut
+from app.schemas.news_stories import StoryOut
 from app.schemas.orgs import OrgDetail
 from app.schemas.partner_lines import PartnerLineOut
 from app.schemas.programs import ProgramOut
@@ -17,7 +17,7 @@ class OrgProfile(ReadModel):
     funding: list[PartnerLineOut]
     programs: list[ProgramOut]
     scores: list[FitScoreOut]
-    news: list[NewsOut]
+    news: list[StoryOut]
 
 
 class FunderProfile(ReadModel):
@@ -26,5 +26,5 @@ class FunderProfile(ReadModel):
     funder: FunderDetail
     scores: list[FitScoreOut]
     partners: Page[PartnerLineOut]
-    news: list[NewsOut]
+    news: list[StoryOut]
     brief: FileLinkOut | None = None

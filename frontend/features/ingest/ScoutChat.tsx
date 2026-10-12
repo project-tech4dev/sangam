@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useAgentContext } from "@copilotkit/react-core/v2";
 import { useAgentChat, type TraceStep } from "@/lib/useAgentChat";
 import { DoneReport } from "./components/DoneReport";
@@ -44,7 +45,11 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const TASKS: { id: ImportTask; title: string; desc: string }[] = [
   { id: "funder", title: "Research a funder", desc: "How to apply, who is eligible, and which documents they want." },
   { id: "ngo", title: "Check an NGO", desc: "Is it ready for CSR money — registrations, accounts and track record." },
-  { id: "news", title: "Get the latest CSR news", desc: "Read recent articles and update the funders Sangam already knows." },
+  {
+    id: "news",
+    title: "Get the latest news",
+    desc: "News about the organisations and funders in Sangam, FCRA, and the CSR sector in the North East.",
+  },
 ];
 
 /** One Scout thread: task cards over the composer, then every turn — working, review, done — in one chat. */
@@ -72,7 +77,7 @@ export function ScoutChat({
   staff: StaffPanels | null;
 }) {
   const load = useCallback(() => fetchImportMessages(threadId), [threadId]);
-  const { turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners } = useAgentChat(
+  const { agent, turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners } = useAgentChat(
     threadId,
     "sangam_ingest",
     "sangam-import",
@@ -80,7 +85,7 @@ export function ScoutChat({
   );
   const [draft, setDraft] = useState("");
   // The run stopped for a person but no card is open, so a message would land on a paused thread.
-  const waitingOn = useRunPause(`sangam-import-${threadId}`);
+  const waitingOn = useRunPause(agent);
   const [task, setTask] = useState<ImportTask | null>(null);
   const [sources, setSources] = useState<SourcesChoice>(EMPTY_SOURCES);
   // What was ticked before the first message; it answers the run's sources pause so no card asks again.
@@ -261,7 +266,20 @@ export function ScoutChat({
     </div>
   );
 
-  // Mounted once the agent is registered (useInterrupt looks it up by id), and in both layouts, so no pause is missed.
+  // A run keeps only the listeners it started with, so the cards render once into this node and each layout hosts it.
+  const [questionsNode] = useState(() => {
+    if (typeof document === "undefined") return null;
+    const node = document.createElement("div");
+    node.className = "scout-questions";
+    return node;
+  });
+  const hostQuestions = useCallback(
+    (slot: HTMLDivElement | null) => {
+      if (slot && questionsNode) slot.appendChild(questionsNode);
+    },
+    [questionsNode],
+  );
+  // Mounted once the agent is registered: useInterrupt looks it up by id.
   const ticked = preset ?? (needsSources ? sources : null);
   const questions = isReady && (
     <>
@@ -357,7 +375,7 @@ export function ScoutChat({
           {composer}
           {/* Narrow screens hide the rail, so the sources come up here instead. */}
           {needsSources && <div className="scout-sources-inline">{picker}</div>}
-          {questions}
+          <div ref={hostQuestions} className="scout-questions" />
           {below}
         </div>
       ) : (
@@ -450,12 +468,13 @@ export function ScoutChat({
                 );
               })}
               {/* The questions Scout stops on belong to the last turn. */}
-              {questions}
+              <div ref={hostQuestions} className="scout-questions" />
             </div>
           </div>
           {composer}
         </div>
       )}
+      {questions && questionsNode && createPortal(questions, questionsNode)}
       <div className="evidence-rail-slot">
         <ScoutRail
           started={!atStart}

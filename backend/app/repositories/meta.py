@@ -34,3 +34,23 @@ async def list_locations(pool: AsyncConnectionPool, *, limit: int, offset: int,
         rows = await (await conn.execute(sql, {"limit": limit, "offset": offset,
                                                "kind": kind, "parent": parent})).fetchall()
     return rows, (rows[0]["total"] if rows else 0)
+
+
+async def stats(pool: AsyncConnectionPool) -> dict:
+    sql = """
+    SELECT
+      (SELECT count(*) FROM orgs)          AS orgs,
+      (SELECT count(*) FROM funders)       AS funders,
+      (SELECT count(*) FROM funder_activity
+         WHERE kind = 'partner' AND partner_org_id IS NOT NULL
+           AND (amount IS NOT NULL OR relationship_status IS NOT NULL)) AS grants,
+      (SELECT count(*) FROM fit_scores)    AS fit_scores,
+      (SELECT count(*) FROM programs)      AS programs,
+      (SELECT count(*) FROM contacts)      AS contacts,
+      (SELECT count(*) FROM documents)     AS documents,
+      (SELECT count(*) FROM news_stories)  AS news_stories,
+      (SELECT count(DISTINCT l.id) FROM org_locations ol
+         JOIN locations l ON l.id = ol.location_id AND l.kind = 'district') AS districts_covered
+    """
+    async with pool.connection() as conn:
+        return await (await conn.execute(sql)).fetchone()

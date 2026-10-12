@@ -155,9 +155,9 @@ class Table:
 Derived once at import: `TABLE_NAMES`, `COLUMNS`, `SQLGLOT_SCHEMA` (what `qualify()` wants),
 `STAR_COLUMNS` (non-heavy only), `CITE_COLUMNS`, `DEFECTS`.
 
-**In (32 tables after the v3 migrations, `tag_links`, `0031`'s funder consolidation and `0033`'s and `0034`'s drops; 28 when this was written):** orgs, funders, programs, rfps, rfp_matches, fit_scores,
+**In (36 tables after the v3 migrations, `tag_links`, `0031`'s funder consolidation, `0033`'s and `0034`'s drops, and `0044`'s news tables in place of `news_mentions`; 28 when this was written):** orgs, funders, programs, rfps, rfp_matches, fit_scores,
 fit_score_items, rubrics, rubric_criteria, score_adjustments, contacts, documents, chunks,
-news_mentions, tags, tag_links, locations, extraction_log, `org_identifiers`, `funder_activity`, and all seven
+news_stories, news_links, news_story_entities, news_story_locations, news_story_tags, tags, tag_links, locations, extraction_log, `org_identifiers`, `funder_activity`, and all seven
 `*_tags` / `*_locations` join tables.
 
 **Out entirely** — a reference is an "unknown table" error: `checkpoints`, `checkpoint_blobs`,

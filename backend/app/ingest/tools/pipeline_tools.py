@@ -18,7 +18,7 @@ from app.db.pool import get_pool
 from app.ingest import staff_sources, vault
 from app.ingest.caller import scope, staff_only
 from app.ingest.run_sources import Sources
-from app.ingest.runner import catalog_baseline, run_import, summarise
+from app.ingest.runner import PARKED, catalog_baseline, record_item, run_import, runnable_for, summarise
 from app.ingest.sources import SOURCES, Category, resolve
 
 logger = logging.getLogger(__name__)
@@ -58,8 +58,11 @@ async def list_import_sources(category: str = "", detail: str = "") -> str:
                 return f"Nothing registered matches {detail!r}."
             return "\n".join(_full_entry(s) for s in picked)
 
-        runs = [s for s in chosen if s.dispatchable and s.key in _adapter_keys()]
-        permitted = [s for s in chosen if s.dispatchable and s.key not in _adapter_keys()]
+        # Listing, not running: news shows as runnable here, though a run pulls it only when named.
+        runnable = runnable_for(["tavily_news"])
+        runs = [s for s in chosen if s.dispatchable and s.key in runnable]
+        permitted = [s for s in chosen if s.dispatchable and s.key not in runnable and s.key not in PARKED]
+        parked = [s for s in chosen if s.key in PARKED]
         by_rule = collections.Counter(s.access_rule.value for s in chosen if not s.dispatchable)
 
         scope = f" in {category}" if category else ""
@@ -72,6 +75,8 @@ async def list_import_sources(category: str = "", detail: str = "") -> str:
                 f"\nPermitted but no adapter yet ({len(permitted)}): "
                 + ", ".join(s.key for s in permitted)
             )
+        if parked:
+            lines.append("\nParked (not run): " + "; ".join(f"{s.key}: {PARKED[s.key]}" for s in parked))
         if by_rule:
             lines.append("\nHeld, by rule:")
             for rule, n in sorted(by_rule.items(), key=lambda kv: -kv[1]):
@@ -89,12 +94,6 @@ async def list_import_sources(category: str = "", detail: str = "") -> str:
         return f"list_import_sources failed: {exc}"
 
 
-def _adapter_keys() -> set[str]:
-    from app.ingest.runner import ADAPTERS
-
-    return set(ADAPTERS)
-
-
 def _full_entry(s) -> str:
     mark = "RUNS" if s.dispatchable else "HELD"
     checked = s.robots_checked_at.isoformat() if s.robots_checked_at else "not checked"
@@ -108,51 +107,46 @@ def _full_entry(s) -> str:
 
 
 @tool
-async def plan_import(funders: str = "", years: str = "", sources: str = "", limit: int = 10) -> str:
+async def plan_import(funders: str = "", years: str = "", sources: str = "", limit: int = 10,
+                      feeds: str = "") -> str:
     """Say what a run WOULD pull, from where, and against what the catalog already holds.
 
     Read-only: this writes nothing. Call it before every run and show the user the
     plan, so the goal and the reach of the run are agreed before anything changes.
 
     Args:
-        funders: comma-separated funder names the run would research.
-        years: comma-separated fiscal years, e.g. "FY2023-24,FY2024-25".
-        sources: comma-separated source keys, or empty for every registered source.
-        limit: items per source the run would request.
+        funders: comma-separated organisation or funder names, as in the Registry; empty means everyone.
+        years: unused by the news pull; kept for adapters.
+        sources: comma-separated source keys, e.g. "tavily_news".
+        limit: items per source, for adapters; the news pull ignores it.
+        feeds: comma-separated topic feeds for a news pull: "fcra", "csr_trends", "ngo_north_east".
+            With no names, only these are pulled.
     """
     if refused := staff_only("plan_import"):
         return refused
     try:
         keys = [s.strip() for s in sources.split(",") if s.strip()] or None
         names = [n.strip() for n in funders.split(",") if n.strip()]
-        fys = [y.strip() for y in years.split(",") if y.strip()]
         requested, unknown = resolve(keys)
         baseline = await catalog_baseline()
 
-        adapters = _adapter_keys()
+        adapters = runnable_for(keys)
         will_run = [s for s in requested if s.dispatchable and s.key in adapters]
         no_adapter = [s for s in requested if s.dispatchable and s.key not in adapters]
         held = [s for s in requested if not s.dispatchable]
 
         lines = ["PLAN — nothing is written by this step."]
-        if names:
-            searches = len(names) * len(will_run) * max(len(fys), 1)
-            scope = f"{len(names)} name(s), concurrently: {', '.join(names)}"
-            if fys:
-                scope += f"\nAcross {len(fys)} year(s): {', '.join(fys)}"
+        if not names and not feeds.strip():
             lines.append(
-                f"\nResearching {scope}.\n"
-                f"That is {searches} searches, each costing a model call per article read."
-            )
-        else:
-            lines.append(
-                "\nNo funder named, so this pulls whatever the sources published most recently. "
-                "If the user asked about particular funders, pass their names instead."
+                "\nNo name given, so a news pull covers every Registry record and the topic feeds. "
+                "If the user asked about particular organisations or funders, pass their names instead."
             )
         lines += ["", "Will pull:"]
         if not will_run:
             lines.append("  nothing: no requested source both may be read and has an adapter.")
-        for s in will_run:
+        for s in [s for s in will_run if s.key == "tavily_news"]:
+            lines.append("  " + await _news_plan_line(names or None, feeds))
+        for s in [s for s in will_run if s.key != "tavily_news"]:
             lines.append(
                 f"  {s.key} ({s.host}) — up to {limit} items → {', '.join(s.yields)}\n"
                 f"    permitted because: {s.basis}"
@@ -175,20 +169,48 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
             "",
             "Catalog before the run:",
             "  " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in baseline.items()),
-            "",
-            (
-                "New names are added. A name that resembles an existing funder without "
-                "matching it is queued for a person, never merged."
-            ),
         ]
         return "\n".join(lines)
     except Exception as exc:  # noqa: BLE001
         return f"plan_import failed: {exc}"
 
 
+async def _news_plan_line(names: list[str] | None, feeds: str = "") -> str:
+    """What a news pull would search and cost, in the plan's own words."""
+    from app.ingest.news import pipeline
+    from app.ingest.news.feeds import chosen_feeds
+
+    chosen = await pipeline.select(get_pool(), names, chosen_feeds(feeds))
+    if names and not chosen.matched:
+        return "tavily_news: none of those names is in the Registry; nothing would be pulled."
+    p = await pipeline.plan_for(get_pool(), org_ids=chosen.org_ids, funder_ids=chosen.funder_ids, feeds=chosen.feeds)
+    return f"tavily_news: {p.line}. Never creates a funder or an organisation."
+
+
+async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: list[str],
+                     feeds: list[str] | None = None) -> str:
+    """A news pull for named Registry records, or everyone; Scout's approval card was the person's check.
+    Other sources named in the same call are refused out loud."""
+    from app.ingest.news import pipeline
+
+    pool, settings = get_pool(), get_settings()
+    chosen = await pipeline.select(pool, names, feeds)
+    if names and not chosen.matched:
+        return "run_import_now: none of those names is in the Registry; news is only pulled for records Sangam holds."
+    run_id = await pipeline.create_run(pool, org_ids=chosen.org_ids, funder_ids=chosen.funder_ids,
+                                       feeds=chosen.feeds, started_by=started_by, goal=goal)
+    if others:
+        async with pool.connection() as conn:
+            for key in others:
+                await record_item(conn, run_id, key, "source", "refused",
+                                  reason="not run: a news pull runs alone; ask for other sources separately")
+    summary = await pipeline.execute_run(pool, run_id, pipeline.Deps.from_settings(settings))
+    return "\n".join(f"{k}: {v}" for k, v in summary.items())
+
+
 @tool
 async def run_import_now(
-    goal: str, funders: str = "", years: str = "", sources: str = "", limit: int = 10
+    goal: str, funders: str = "", years: str = "", sources: str = "", limit: int = 10, feeds: str = ""
 ) -> str:
     """Run an import and return the full summary. This WRITES to the database.
 
@@ -198,25 +220,20 @@ async def run_import_now(
     Args:
         goal: one sentence on what this run is for, in the user's terms, e.g.
             "FY2025-26 CSR figures for Indian corporate funders". Required.
-        funders: comma-separated funder names to research, e.g.
-            "Axis Bank Foundation, SBI Foundation". Each name is searched in every
-            runnable source, and the names run CONCURRENTLY. Leaving this empty
-            asks a different question — "whatever these sources published most
-            recently" — so when the user names funders, pass them.
-        years: comma-separated fiscal years, "FY2023-24,FY2024-25,FY2025-26". Each
-            year is searched separately, so three years of three funders is nine
-            searches — say so before running it. Empty searches without a year,
-            which in practice returns the most recent one. Years only aim the
-            SEARCH: whatever years an article turns out to state are all written.
-        sources: comma-separated source keys (e.g. "india_csr,gdelt"). Empty means
-            every registered source — the ones that may not be crawled are reported
-            as refused rather than skipped silently.
-        limit: how many items to pull per source. Keep it small (5-20); each item
-            costs a model call for extraction.
-
-    New funders are added. Names that closely resemble an existing funder are NOT
-    merged — they go to the review queue, because merging two different organisations
-    is the one mistake this pipeline cannot undo. Report the queue to the user.
+        funders: comma-separated organisation or funder names, as the Registry holds
+            them, e.g. "KABIL, Pratham". Leaving this empty asks a different question,
+            "everyone in the Registry, plus the topic feeds", so when the user names
+            someone, pass them. A name the Registry does not hold is reported, never added.
+        years: unused by the news pull; kept for adapters.
+        sources: comma-separated source keys. "tavily_news" pulls news about the named
+            organisations and funders and never creates a funder or an organisation.
+            Name it: empty runs no news pull. A parked or held source is reported as
+            refused, with the reason, rather than skipped silently.
+        limit: items per source, for adapters; the news pull ignores it.
+        feeds: comma-separated topic feeds for a news pull: "fcra" (FCRA actions and rules),
+            "csr_trends" (CSR and funding), "ngo_north_east" (NGO cases in the North East).
+            With no names, only these feeds are pulled, e.g. "FCRA news only" is
+            funders="", feeds="fcra". With names, they are pulled as well as the names.
     """
     if refused := staff_only("run_import_now"):
         return refused
@@ -226,6 +243,12 @@ async def run_import_now(
         if not goal.strip():
             return "run_import_now needs a goal: one sentence on what this run is for."
         names = [n.strip() for n in funders.split(",") if n.strip()] or None
+        if keys and "tavily_news" in keys:
+            from app.ingest.news.feeds import chosen_feeds
+
+            caller = scope()
+            return await _news_pull(names, feeds=chosen_feeds(feeds), goal=goal.strip(), started_by=caller.user_id,
+                                    others=[k for k in keys if k != "tavily_news"])
         fys = [y.strip() for y in years.split(",") if y.strip()] or None
         summary = await run_import(
             keys, goal=goal.strip(), funders=names, years=fys,

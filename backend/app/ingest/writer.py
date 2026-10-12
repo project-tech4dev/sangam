@@ -17,7 +17,6 @@ from app.ingest.matcher import TRIGRAM_FLOOR, Match, name_key
 from app.ingest.records import (
     FunderCsrYearRecord,
     FunderRecord,
-    NewsMentionRecord,
     OrgFinancialsRecord,
     OrgIdentifierRecord,
     OrgLocationRecord,
@@ -453,47 +452,6 @@ async def write_csr_year(
         (*[proposed[c] for c in changes], document_id, funder_id, rec.fiscal_year),
     )
     return "updated", changes
-
-
-async def write_news_mention(
-    conn: Any, rec: NewsMentionRecord, funder_id: int | None
-) -> tuple[str, dict]:
-    existing = await (
-        await conn.execute("SELECT id, funder_id FROM news_mentions WHERE url = %s", (rec.url,))
-    ).fetchone()
-    if existing is None:
-        await conn.execute(
-            "INSERT INTO news_mentions (url, title, seendate, domain, topic, funder_id, summary, "
-            "source_name, fetched_at, review_status) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')",
-            (rec.url, rec.title, rec.seendate, rec.domain, rec.topic, funder_id,
-             rec.summary, rec.source_name, rec.fetched_at),
-        )
-        return "added", {"url": {"old": None, "new": rec.url}}
-    if funder_id and existing["funder_id"] is None:
-        await conn.execute("UPDATE news_mentions SET funder_id = %s WHERE id = %s",
-                           (funder_id, existing["id"]))
-        return "updated", {"funder_id": {"old": None, "new": funder_id}}
-    return "matched", {}
-
-
-async def queue_resolution(
-    conn: Any, *, raw_name: str, kind: str, match: Match, source: str, rec: Any
-) -> int:
-    """A name we will not merge on our own. The next run resolves it once accepted."""
-    row = await (
-        await conn.execute(
-            "INSERT INTO resolution_queue (raw_name, entity_kind, candidates, source, context, "
-            "source_url, source_name, fetched_at, as_of) "
-            "VALUES (%s, %s, %s::jsonb, %s, %s::jsonb, %s, %s, %s, %s) "
-            "ON CONFLICT (entity_kind, raw_name, source) DO UPDATE SET candidates = EXCLUDED.candidates "
-            "RETURNING id",
-            (raw_name, kind, _json(match.candidates), source,
-             _json({"method": match.method, "score": match.score}),
-             rec.source_url, rec.source_name, rec.fetched_at, rec.as_of),
-        )
-    ).fetchone()
-    return row["id"]
 
 
 def _json(v: Any) -> str:

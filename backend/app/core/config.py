@@ -74,6 +74,30 @@ class Settings(BaseSettings):
 
     # Optional tool integrations — all disabled when empty.
     tavily_api_key: str = ""
+
+    # Media & Signals (features-plans/signals/…, D5). The bars decide what is listed and what is public; they live
+    # here, never on a screen. Costs are per Tavily advanced search and per Haiku classification.
+    news_listed_match: float = 0.6
+    news_listed_confidence: float = 0.8
+    news_public_match: float = 0.7
+    news_public_confidence: float = 0.9
+    news_negative_match: float = 0.9
+    news_negative_confidence: float = 0.95
+    news_topic_match: float = 0.75
+    news_search_cost_usd: float = 0.016
+    news_classify_cost_usd: float = 0.004
+    news_links_per_search: int = 10  # the 11 Oct trial: about 1,020 classifications from 110 searches
+    news_parallel_searches: int = 4
+    news_parallel_classify: int = 8
+    news_max_classify: int = 2000  # per run; the rest wait for the next run
+    # The verifier re-reads borderline matches before they are stored. 0 checks means off; 40 is the planned value.
+    news_verify_max: int = 0
+    news_verify_low: float = 0.35  # below this a match is plainly someone else, not worth a read
+    news_parallel_verify: int = 2
+    news_verify_seconds: int = 600  # per run, so a pull still ends inside the 1800 s function limit
+    news_verify_page_limit: int = 3
+    news_verify_call_limit: int = 8
+    news_verify_cost_usd: float = 0.08
     github_pat: str = ""
     github_mcp_url: str = "https://api.githubcopilot.com/mcp/"
     playwright_mcp_url: str = ""

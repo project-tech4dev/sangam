@@ -210,6 +210,10 @@ def root_input(inputs: Any) -> Any:
 
 def root_output(outputs: Any) -> Any:
     """What the person was shown this turn: the replies after their last message that call no tool."""
+    # An agent with a response_format answers in its structured result, e.g. the news verifier's check.
+    structured = outputs.get("structured_response") if isinstance(outputs, dict) else None
+    if structured is not None:
+        return structured.model_dump() if hasattr(structured, "model_dump") else structured
     messages = _messages(outputs)
     last_asked = max((i for i, m in enumerate(messages) if _role(m) in ("human", "user")), default=-1)
     replies = [
@@ -218,6 +222,12 @@ def root_output(outputs: Any) -> Any:
         and not (m.get("tool_calls") if isinstance(m, dict) else getattr(m, "tool_calls", None))
     ]
     answer = "\n\n".join(r for r in replies if r.strip())
+    # A turn that stopped for approval ends on tool calls nobody answered, e.g. run_import_now's card.
+    last = messages[-1] if messages else None
+    calls = (last.get("tool_calls") if isinstance(last, dict) else getattr(last, "tool_calls", None)) or []
+    if _role(last) in ("ai", "assistant") and calls:
+        waiting = ", ".join(f"{c.get('name')}({json.dumps(c.get('args', {}), default=str)})" for c in calls)
+        return f"{answer}\n\nWaiting for a person to approve: {waiting}".strip()
     return answer or outputs
 
 

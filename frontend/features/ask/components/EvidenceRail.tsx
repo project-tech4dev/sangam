@@ -14,7 +14,7 @@ function IndexCard({ stats }: { stats: Stats | null }) {
     ["Fit scores recorded", stats?.fit_scores],
     ["Grants recorded", stats?.grants],
     ["Documents on file", stats?.documents],
-    ["News signals", stats?.news_mentions],
+    ["News stories", stats?.news_stories],
     ["Districts covered", stats?.districts_covered],
   ];
   return (

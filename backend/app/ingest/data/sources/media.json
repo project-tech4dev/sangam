@@ -12,7 +12,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "A free public API offered for reuse, within its rate limits. GDELT is cited on every row it produces; the query is an adapter setting, not a separate source.",
       "robots_checked_at": "2026-09-28"
@@ -26,7 +26,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "Publishes a public RSS feed, and robots.txt blocks only /wp-json/. Covers news across all eight North East states.",
       "robots_checked_at": "2026-09-28"
@@ -40,7 +40,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "An official API used under Google's terms and quota, with a key. Gives channel and video metadata rather than page scraping.",
       "robots_checked_at": "2026-09-28"
@@ -54,7 +54,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt allows all paths and no RSS feed was found, so the pages themselves are the route. Nagaland coverage.",
       "robots_checked_at": "2026-09-28"
@@ -68,7 +68,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt allows all paths and no RSS feed was found. Assam coverage; terms of use were not read.",
       "robots_checked_at": "2026-09-28"
@@ -82,7 +82,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt allows all paths and a feed is likely at /feed. Covers news across the North East region.",
       "robots_checked_at": "2026-09-28"
@@ -96,7 +96,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt blocks only /wp-admin/, so the article pages and the likely /feed route are permitted. Meghalaya coverage.",
       "robots_checked_at": "2026-09-28"
@@ -110,7 +110,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt explicitly allows the feed paths, which is the cleanest route into it. Nagaland coverage.",
       "robots_checked_at": "2026-09-28"
@@ -124,7 +124,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt allows everything except /em-admin, and no RSS feed was found. Nagaland coverage.",
       "robots_checked_at": "2026-09-28"
@@ -138,7 +138,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt allows articles and blocks search and /wp-json/. A Cloudflare bot check may still stop a crawler in practice. Manipur coverage.",
       "robots_checked_at": "2026-09-28"
@@ -152,7 +152,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt allows all paths and a feed is likely at /index.php/feed/. Arunachal Pradesh coverage.",
       "robots_checked_at": "2026-09-28"
@@ -166,7 +166,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt allows all paths. Carries CSR sector news; terms of use were not read, so check them before production use.",
       "robots_checked_at": "2026-09-28"
@@ -180,7 +180,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt allows articles but disallows the feed paths, so the RSS route must not be polled. Sector analysis rather than entity records.",
       "robots_checked_at": "2026-09-28"
@@ -194,7 +194,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt answered 503 from outside India, so automated access is unestablished. A person may read the notices and enter what matters.",
       "robots_checked_at": "2026-09-28"
@@ -208,7 +208,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt returned no readable rules when checked, so whether automated access is permitted is unknown. Check again before crawling.",
       "robots_checked_at": "2026-09-28"
@@ -222,7 +222,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt answered 503 when checked, so its rules could not be read and automated access is unestablished. Tripura coverage.",
       "robots_checked_at": "2026-09-28"
@@ -236,7 +236,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt returned no readable rules, so whether it permits automated reading is unknown. Philanthropy sector news.",
       "robots_checked_at": "2026-09-28"
@@ -250,7 +250,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "The site answered 403 including for robots.txt, and its content sits behind a paid subscription. A licence is needed before any use.",
       "robots_checked_at": "2026-09-28"
@@ -264,7 +264,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "Access is a paid, pay-per-use API. Ruled out for continuous monitoring on cost, so items are checked by hand when they matter.",
       "robots_checked_at": "2026-09-28"
@@ -280,7 +280,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "LinkedIn's robots.txt permits crawling only under its written whitelist approval, and posts about people are personal data under the DPDP Act.",
       "robots_checked_at": "2026-09-28"
@@ -294,7 +294,7 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "Meta's terms bar scraping, and the Graph API needs app review before it returns public page posts. Manual checking only until that is approved.",
       "robots_checked_at": "2026-09-28"
@@ -308,10 +308,24 @@
         "media"
       ],
       "yields": [
-        "news_mention"
+        "news_link"
       ],
       "basis": "robots.txt allows all paths. Carries cohort news and partner events; Node is a project partner, so confirm reuse as a courtesy.",
       "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "tavily_news",
+      "name": "Tavily search (news and social posts)",
+      "host": "api.tavily.com",
+      "access_rule": "licensed_api",
+      "categories": [
+        "media"
+      ],
+      "yields": [
+        "news_link"
+      ],
+      "basis": "A paid search API used under Sangam's key. LinkedIn, Instagram and X items arrive only as Tavily returns them; Sangam never fetches those platforms (Media & Signals spec, D2).",
+      "robots_checked_at": "2026-10-11"
     }
   ]
 }

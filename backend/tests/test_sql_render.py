@@ -70,7 +70,7 @@ class TestRows:
         assert "more row(s) not shown" in out
 
     def test_null_id_produces_no_marker_for_that_row(self):
-        """news_mentions.org_id is NULL on every row — it must not render [org:None]."""
+        """A NULL id must not render [org:None]."""
         out = render_rows([{"id": None, "name": "x"}], citations=[ORG])
         assert "[org:None]" not in out
         assert "None" not in out.replace("no citation markers", "")

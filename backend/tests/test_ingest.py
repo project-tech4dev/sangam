@@ -43,7 +43,6 @@ from app.ingest.records import (
     FunderPartnerRecord,
     FunderRecord,
     MetricRecord,
-    NewsMentionRecord,
     OrgFinancialsRecord,
     OrgLocationRecord,
     OrgRecord,
@@ -79,9 +78,9 @@ def prov(**kw):
 
 
 class TestSourcesGateOnAccessRules:
-    def test_only_open_api_and_crawl_allowed_are_dispatchable(self):
-        # A rule, not a fixed set: the registry grows, the rule must not.
-        allowed = {AccessRule.OPEN_API, AccessRule.CRAWL_ALLOWED}
+    def test_only_open_api_crawl_allowed_and_licensed_api_are_dispatchable(self):
+        # A rule, not a fixed set: the registry grows, the rule must not. A licensed API is used under its terms.
+        allowed = {AccessRule.OPEN_API, AccessRule.CRAWL_ALLOWED, AccessRule.LICENSED_API}
         assert {s.access_rule for s in dispatchable()} <= allowed
         assert all(s.access_rule in allowed for s in SOURCES.values() if s.dispatchable)
 
@@ -89,7 +88,9 @@ class TestSourcesGateOnAccessRules:
         """Permitted and built are different things, and the run report says which."""
         from app.ingest.runner import ADAPTERS
 
-        assert set(ADAPTERS) == {"india_csr", "gdelt"}
+        from app.ingest.runner import PARKED
+
+        assert set(ADAPTERS) == set() and set(PARKED) == {"india_csr", "gdelt"}
         assert set(ADAPTERS) <= {s.key for s in dispatchable()}, "an adapter for a held source"
 
     def test_a_dispatchable_source_names_a_host_and_a_robots_check(self):
@@ -241,12 +242,6 @@ class TestWriterDiff:
 
     def test_slug_is_url_safe(self):
         assert slugify("Axis Bank Foundation (India)") == "axis-bank-foundation-india"
-
-
-class TestNewsMentionRecord:
-    def test_gdelt_rows_need_only_a_url_and_provenance(self):
-        rec = NewsMentionRecord(url="https://x.in/a", **prov(source_url="https://x.in/a"))
-        assert rec.kind == "news_mention"
 
 
 class TestIngestAgentIsSelfDescribing:
