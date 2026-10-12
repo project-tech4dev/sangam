@@ -454,25 +454,6 @@ async def write_csr_year(
     return "updated", changes
 
 
-async def queue_resolution(
-    conn: Any, *, raw_name: str, kind: str, match: Match, source: str, rec: Any
-) -> int:
-    """A name we will not merge on our own. The next run resolves it once accepted."""
-    row = await (
-        await conn.execute(
-            "INSERT INTO resolution_queue (raw_name, entity_kind, candidates, source, context, "
-            "source_url, source_name, fetched_at, as_of) "
-            "VALUES (%s, %s, %s::jsonb, %s, %s::jsonb, %s, %s, %s, %s) "
-            "ON CONFLICT (entity_kind, raw_name, source) DO UPDATE SET candidates = EXCLUDED.candidates "
-            "RETURNING id",
-            (raw_name, kind, _json(match.candidates), source,
-             _json({"method": match.method, "score": match.score}),
-             rec.source_url, rec.source_name, rec.fetched_at, rec.as_of),
-        )
-    ).fetchone()
-    return row["id"]
-
-
 def _json(v: Any) -> str:
     return json.dumps(v, default=str)
 

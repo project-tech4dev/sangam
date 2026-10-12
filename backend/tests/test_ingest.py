@@ -43,7 +43,6 @@ from app.ingest.records import (
     FunderPartnerRecord,
     FunderRecord,
     MetricRecord,
-    NewsMentionRecord,
     OrgFinancialsRecord,
     OrgLocationRecord,
     OrgRecord,
@@ -243,12 +242,6 @@ class TestWriterDiff:
 
     def test_slug_is_url_safe(self):
         assert slugify("Axis Bank Foundation (India)") == "axis-bank-foundation-india"
-
-
-class TestNewsMentionRecord:
-    def test_gdelt_rows_need_only_a_url_and_provenance(self):
-        rec = NewsMentionRecord(url="https://x.in/a", **prov(source_url="https://x.in/a"))
-        assert rec.kind == "news_mention"
 
 
 class TestIngestAgentIsSelfDescribing:

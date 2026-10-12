@@ -11,11 +11,12 @@ from typing import Any
 
 import httpx
 
+from app.core.config import get_settings
 from app.ingest import runner
 from app.ingest.adapters import tavily_news
 from app.ingest.adapters.tavily_news import Hit, SearchFailed
 from app.ingest.matcher import name_key
-from app.ingest.news import store
+from app.ingest.news import store, windows
 from app.ingest.news.bars import Bars, topic_visibility, visibility
 from app.ingest.news.classify import (
     PROMPT_VERSION,
@@ -184,6 +185,13 @@ async def plan_subjects(pool, *, org_ids: list[int] | None, funder_ids: list[int
         return await store.load_subjects(conn, org_ids=org_ids, funder_ids=funder_ids, feeds=feeds)
 
 
+async def plan_for(pool, *, org_ids: list[int] | None, funder_ids: list[int] | None,
+                   feeds: list[str]) -> windows.NewsPlan:
+    """What a pull of these subjects would search and cost: one plan for the card, Scout and the CLI."""
+    subjects = await plan_subjects(pool, org_ids=org_ids, funder_ids=funder_ids, feeds=feeds)
+    return windows.plan(subjects, today=date.today(), settings=get_settings())
+
+
 async def run_summary(pool, run_id: int) -> dict:
     async with pool.connection() as conn:
         run = await (await conn.execute(
@@ -290,7 +298,7 @@ async def _search_all(pool, run_id: int, subjects: list[Subject], deps: Deps, to
         for s, res in results:
             if isinstance(res, SearchFailed):
                 failed.add(_key(s))
-                await runner._item(conn, run_id, SOURCE, "news_search", "failed", subject=s.name, reason=str(res))
+                await runner.record_item(conn, run_id, SOURCE, "news_search", "failed", subject=s.name, reason=str(res))
             else:
                 out[_key(s)] += res
         for s in subjects:
@@ -349,7 +357,7 @@ async def _classify_all(pool, run_id: int, subjects: list[Subject], hits: dict[s
         if budget[0] <= 0:
             failed.add(_key(s))
             async with pool.connection() as conn:
-                await runner._item(conn, run_id, SOURCE, "news_link", "refused", subject=s.name, source_url=h.url,
+                await runner.record_item(conn, run_id, SOURCE, "news_link", "refused", subject=s.name, source_url=h.url,
                                    reason=f"over this run's cap of {deps.max_classify} classifications; next run")
             return
         budget[0] -= 1
@@ -362,14 +370,14 @@ async def _classify_all(pool, run_id: int, subjects: list[Subject], hits: dict[s
         async with pool.connection() as conn:
             if isinstance(v, Exception):
                 failed.add(_key(s))
-                await runner._item(conn, run_id, SOURCE, "news_link", "failed", subject=s.name, source_url=h.url,
+                await runner.record_item(conn, run_id, SOURCE, "news_link", "failed", subject=s.name, source_url=h.url,
                                    reason=f"classification failed: {type(v).__name__}: {str(v)[:200]}")
                 return
             published_on, date_source = _date(h, v)
             link_id, status = await store.upsert_link(conn, h, run_id=run_id, content_kind=v.content_kind,
                                                       published_on=published_on, date_source=date_source)
             await store.save_score(conn, link_id, s, PROMPT_VERSION, v)
-            await runner._item(conn, run_id, SOURCE, "news_link", status, subject=s.name,
+            await runner.record_item(conn, run_id, SOURCE, "news_link", status, subject=s.name,
                                target_table="news_links", target_id=str(link_id), source_url=h.url)
             # D14: a topic item naming a Registry record is scored for that record too.
             if s.kind == "feed" and v.on_target:
@@ -407,7 +415,7 @@ async def _build_stories(pool, run_id: int, subjects: list[Subject], deps: Deps,
         except Exception as exc:  # noqa: BLE001 - one subject's stories failing must not stop the others
             failed.add(_key(s))
             async with pool.connection() as conn:
-                await runner._item(conn, run_id, SOURCE, "news_story", "failed", subject=s.name,
+                await runner.record_item(conn, run_id, SOURCE, "news_story", "failed", subject=s.name,
                                    reason=f"{type(exc).__name__}: {str(exc)[:200]}")
 
 

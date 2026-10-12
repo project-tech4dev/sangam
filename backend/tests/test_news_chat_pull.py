@@ -32,7 +32,7 @@ async def test_the_goal_and_the_runner_reach_the_run_and_other_sources_are_refus
     monkeypatch.setattr("app.ingest.news.pipeline.create_run", create_run)
     monkeypatch.setattr("app.ingest.news.pipeline.execute_run", execute_run)
     monkeypatch.setattr("app.ingest.news.pipeline.Deps.from_settings", classmethod(lambda cls, s: None))
-    monkeypatch.setattr(runner, "_item", item)
+    monkeypatch.setattr(pipeline_tools, "record_item", item)
     out = await pipeline_tools._news_pull(None, goal="latest news", started_by="u1", others=["india_csr"])
     assert seen["goal"] == "latest news" and seen["started_by"] == "u1" and seen["org_ids"] is None
     assert items == [(7, "india_csr", "refused")] and "finished" in out

@@ -31,6 +31,13 @@ class NewsPlan:
     newcomers: int
     searches: int
     cost_usd: float
+    records: int = 0  # the organisations and funders among the subjects, without the topic feeds
+
+    @property
+    def line(self) -> str:
+        """The one wording Scout, the approval card's tool and the CLI all show."""
+        return (f"{self.subjects} records ({self.newcomers} go back {NEWCOMER_DAYS} days) · {self.searches} searches · "
+                f"about ${self.cost_usd}")
 
 
 def plan(subjects: list[Subject], *, today: date, settings) -> NewsPlan:
@@ -42,4 +49,5 @@ def plan(subjects: list[Subject], *, today: date, settings) -> NewsPlan:
         newcomers=sum(s.searched_through is None for s in subjects),
         searches=searches,
         cost_usd=round(cost, 2),
+        records=sum(s.kind != "feed" for s in subjects),
     )

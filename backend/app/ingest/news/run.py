@@ -5,11 +5,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from datetime import date
 
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
-from app.ingest.news import pipeline, store, windows
+from app.ingest.news import pipeline, store
 from app.ingest.news.bars import Bars
 from app.ingest.news.feeds import feeds_for
 
@@ -43,10 +42,8 @@ async def main(orgs: list[str], funders: list[str], *, visibility_only: bool = F
         org_ids = await _ids(pool, "orgs", orgs) if chosen else None
         funder_ids = await _ids(pool, "funders", funders) if chosen else None
         keys = feeds_for(everyone=not chosen)
-        p = windows.plan(await pipeline.plan_subjects(pool, org_ids=org_ids, funder_ids=funder_ids, feeds=keys),
-                         today=date.today(), settings=settings)
-        print(f"plan: {p.subjects} records · {p.newcomers} go back 90 days · {p.searches} searches · "
-              f"about ${p.cost_usd}")
+        p = await pipeline.plan_for(pool, org_ids=org_ids, funder_ids=funder_ids, feeds=keys)
+        print(f"plan: {p.line}")
         if why := refusal(chosen=chosen, org_ids=org_ids, funder_ids=funder_ids, yes=yes):
             print(why)
             return 2

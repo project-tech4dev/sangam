@@ -18,7 +18,7 @@ from app.db.pool import get_pool
 from app.ingest import staff_sources, vault
 from app.ingest.caller import scope, staff_only
 from app.ingest.run_sources import Sources
-from app.ingest.runner import catalog_baseline, run_import, summarise
+from app.ingest.runner import PARKED, catalog_baseline, record_item, run_import, runnable_for, summarise
 from app.ingest.sources import SOURCES, Category, resolve
 
 logger = logging.getLogger(__name__)
@@ -59,10 +59,10 @@ async def list_import_sources(category: str = "", detail: str = "") -> str:
             return "\n".join(_full_entry(s) for s in picked)
 
         # Listing, not running: news shows as runnable here, though a run pulls it only when named.
-        runnable = _adapter_keys(["tavily_news"])
+        runnable = runnable_for(["tavily_news"])
         runs = [s for s in chosen if s.dispatchable and s.key in runnable]
-        permitted = [s for s in chosen if s.dispatchable and s.key not in runnable and s.key not in _parked()]
-        parked = [s for s in chosen if s.key in _parked()]
+        permitted = [s for s in chosen if s.dispatchable and s.key not in runnable and s.key not in PARKED]
+        parked = [s for s in chosen if s.key in PARKED]
         by_rule = collections.Counter(s.access_rule.value for s in chosen if not s.dispatchable)
 
         scope = f" in {category}" if category else ""
@@ -76,8 +76,7 @@ async def list_import_sources(category: str = "", detail: str = "") -> str:
                 + ", ".join(s.key for s in permitted)
             )
         if parked:
-            lines.append("\nParked (code kept, not called): "
-                         + "; ".join(f"{s.key}: {_parked()[s.key]}" for s in parked))
+            lines.append("\nParked (not run): " + "; ".join(f"{s.key}: {PARKED[s.key]}" for s in parked))
         if by_rule:
             lines.append("\nHeld, by rule:")
             for rule, n in sorted(by_rule.items(), key=lambda kv: -kv[1]):
@@ -93,18 +92,6 @@ async def list_import_sources(category: str = "", detail: str = "") -> str:
         return "\n".join(lines)
     except Exception as exc:  # noqa: BLE001
         return f"list_import_sources failed: {exc}"
-
-
-def _adapter_keys(keys: list[str] | None) -> set[str]:
-    from app.ingest.runner import runnable_for
-
-    return set(runnable_for(keys))
-
-
-def _parked() -> dict[str, str]:
-    from app.ingest.runner import PARKED
-
-    return PARKED
 
 
 def _full_entry(s) -> str:
@@ -141,7 +128,7 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
         requested, unknown = resolve(keys)
         baseline = await catalog_baseline()
 
-        adapters = _adapter_keys(keys)
+        adapters = runnable_for(keys)
         will_run = [s for s in requested if s.dispatchable and s.key in adapters]
         no_adapter = [s for s in requested if s.dispatchable and s.key not in adapters]
         held = [s for s in requested if not s.dispatchable]
@@ -202,17 +189,13 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
 
 async def _news_plan_line(names: list[str] | None) -> str:
     """What a news pull would search and cost, in the plan's own words."""
-    from datetime import date
-
-    from app.ingest.news import pipeline, windows
+    from app.ingest.news import pipeline
 
     chosen = await pipeline.select(get_pool(), names)
     if names and not chosen.matched:
         return "tavily_news: none of those names is in the Registry; nothing would be pulled."
-    p = windows.plan(await pipeline.plan_subjects(get_pool(), org_ids=chosen.org_ids, funder_ids=chosen.funder_ids,
-                                                  feeds=chosen.feeds), today=date.today(), settings=get_settings())
-    return (f"tavily_news: {p.subjects} records ({p.newcomers} go back 90 days) · {p.searches} searches · "
-            f"about ${p.cost_usd}. Never creates a funder or an organisation.")
+    p = await pipeline.plan_for(get_pool(), org_ids=chosen.org_ids, funder_ids=chosen.funder_ids, feeds=chosen.feeds)
+    return f"tavily_news: {p.line}. Never creates a funder or an organisation."
 
 
 async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: list[str]) -> str:
@@ -227,12 +210,10 @@ async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: 
     run_id = await pipeline.create_run(pool, org_ids=chosen.org_ids, funder_ids=chosen.funder_ids,
                                        feeds=chosen.feeds, started_by=started_by, goal=goal)
     if others:
-        from app.ingest import runner
-
         async with pool.connection() as conn:
             for key in others:
-                await runner._item(conn, run_id, key, "source", "refused",
-                                   reason="not run: a news pull runs alone; ask for other sources separately")
+                await record_item(conn, run_id, key, "source", "refused",
+                                  reason="not run: a news pull runs alone; ask for other sources separately")
     summary = await pipeline.execute_run(pool, run_id, pipeline.Deps.from_settings(settings))
     return "\n".join(f"{k}: {v}" for k, v in summary.items())
 

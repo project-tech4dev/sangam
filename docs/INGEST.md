@@ -63,9 +63,9 @@ else.
   └───────────────────────────────────────│───────────────┘
                                           │
   ┌─ ADAPTER PATH ────────────────────┐   │
-  │  run_import_now → india_csr/gdelt │   │
+  │  run_import_now → tavily_news     │   │
   │         ↓                         │   │
-  │  extractor → typed records ───────┼───┤
+  │  news pipeline → news_* tables    │   │
   └───────────────────────────────────┘   │
                                           ↓
                     matcher.py    identifier → exact → alias →
@@ -82,8 +82,10 @@ else.
 whatever the access rules permit, and its intermediate product is durable: `entity_research`, one
 row per organisation per day, holding every finding with the sentence that states it.
 
-**The adapter path** is a pull from a source with code written for it. Only two exist — India CSR
-and GDELT. It writes straight through and logs every record to `ingest_run_items`.
+**The adapter path** is a pull from a source with code written for it. One exists: `tavily_news`, the
+Media & Signals news pull (`app/ingest/news/`), run only when named. It writes the news tables and logs
+every record to `ingest_run_items`. India CSR and GDELT are parked: their code is gone, and asking for
+either records a refused row with the reason (`runner.PARKED`).
 
 ## Sources: access rules are config, not comments
 
@@ -142,7 +144,8 @@ Three states, and they are not the same thing:
 
 | | Count | Meaning |
 |---|---:|---|
-| **pulls** | 2 | permitted *and* an adapter exists — India CSR, GDELT |
+| **pulls** | 1 | permitted *and* something runs it — `tavily_news` |
+| **parked** | 2 | permitted, but retired — India CSR, GDELT; asking says why |
 | **permitted, not built** | 20 | legally readable, nothing reads it yet. Not a failure |
 | **held** | 57 | its rule forbids it; the basis says what would unblock it |
 

@@ -254,26 +254,6 @@ class FunderCsrYearRecord(Provenance):
         return v
 
 
-class NewsMentionRecord(Provenance):
-    kind: Literal["news_mention"] = "news_mention"
-    url: str = Field(min_length=1)
-    title: str | None = None
-    seendate: datetime | None = None
-    domain: str | None = None
-    funder_name: str | None = None
-    summary: str | None = None
-    topic: str | None = None
-
-
-# --- The funder-side fact tables -------------------------------------------
-#
-# One class per table, fields named for its columns. Amounts are INR: the
-# researcher states a unit, Money.inr converts once, and what arrives here is
-# already converted. Place names arrive as words and app/ingest/geography.py
-# turns them into a locations id, because a report says "Barpeta, Assam" and
-# the column is a foreign key.
-
-
 class FunderCsrSpendRecord(Provenance):
     """One spend line: a project, or an aggregate of several. Never both, and never divided."""
 
@@ -615,7 +595,7 @@ class OrgIdentifierRecord(Provenance, Tiered):
 
 Record = (
     FunderRecord | OrgRecord | OrgIdentifierRecord | OrgFinancialsRecord | OrgLocationRecord
-    | FunderCsrYearRecord | NewsMentionRecord | FunderCsrSpendRecord
+    | FunderCsrYearRecord | FunderCsrSpendRecord
     | FunderFootprintRecord | FunderLocationRecord | FunderPartnerRecord | FunderProgrammeSpendRecord
     | ProgramRecord
     | MetricRecord | ContactRecord | RfpRecord | EligibilityGuidelineRecord

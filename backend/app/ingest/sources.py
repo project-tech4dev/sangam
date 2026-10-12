@@ -85,7 +85,7 @@ _STRICTNESS: tuple[AccessRule, ...] = (
 # What a source can produce. 'org' and 'rfp' have no record type, matcher or
 # writer yet, so a source may declare them and still have nothing to run.
 YIELD_KINDS: frozenset[str] = frozenset(
-    {"funder", "funder_csr_year", "news_mention", "news_link", "org", "rfp"}
+    {"funder", "funder_csr_year", "news_link", "org", "rfp"}
 )
 
 
