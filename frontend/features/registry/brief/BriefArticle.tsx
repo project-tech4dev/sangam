@@ -5,7 +5,6 @@ import { SectionIndex } from "@/components/ui/SectionIndex";
 import type { Brief, Finding } from "./parseBrief";
 
 const STATUS_TONE: Record<string, "accent" | "accent-2" | "neutral"> = { complete: "accent-2", partial: "accent" };
-const CONFIDENCE_TONE: Record<string, "accent-2" | "neutral" | "outline"> = { high: "accent-2", medium: "neutral", low: "outline" };
 
 // Every URL here was saved by a model from the open web: only http(s) becomes a link.
 function safeHref(href?: string) {
@@ -57,8 +56,8 @@ function FindingRow({ finding }: { finding: Finding }) {
       {evidence && <blockquote className="brief-quote">{evidence}</blockquote>}
       {source && (
         <div className="brief-source">
-          {source.url ? <External href={source.url}>{source.name}</External> : <span>{source.name}</span>}
-          <Tag tone={CONFIDENCE_TONE[source.confidence] ?? "outline"}>confidence {source.confidence}</Tag>
+          Source:{" "}
+          {safeHref(source.url) ? <External href={source.url}>{source.name} ↗</External> : <span>{source.name}</span>}
         </div>
       )}
     </li>
@@ -95,12 +94,6 @@ export function BriefArticle({ brief, slug, rawUrl }: { brief: Brief; slug: stri
         <SectionIndex sections={index} title="In this brief" />
         <article className="brief-body">
           <section id="summary" className="brief-section">
-            {brief.stopped && (
-              <div className="card brief-note">
-                <div className="card-kicker">Why it stopped</div>
-                <div className="card-body">{brief.stopped}</div>
-              </div>
-            )}
             {summary.intro && <p className="measure">{summary.intro}</p>}
             {summary.fields.length > 0 && (
               <ol className="brief-fields measure">
