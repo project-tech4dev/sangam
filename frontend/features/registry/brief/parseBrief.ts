@@ -43,7 +43,7 @@ function fold(findings: Finding[]): Finding[] {
   for (const f of findings) {
     const key = `${f.evidence}\u0000${f.source?.url ?? ""}\u0000${f.year ?? ""}`;
     const seen = byKey.get(key);
-    if (seen) seen.headlines.push(...f.headlines);
+    if (seen) seen.headlines.push(...f.headlines.filter((h) => !seen.headlines.includes(h)));
     else {
       const copy = { ...f, headlines: [...f.headlines] };
       byKey.set(key, copy);

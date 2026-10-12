@@ -7,9 +7,19 @@ import type { Brief, Finding } from "./parseBrief";
 const STATUS_TONE: Record<string, "accent" | "accent-2" | "neutral"> = { complete: "accent-2", partial: "accent" };
 const CONFIDENCE_TONE: Record<string, "accent-2" | "neutral" | "outline"> = { high: "accent-2", medium: "neutral", low: "outline" };
 
+// Every URL here was saved by a model from the open web: only http(s) becomes a link.
+function safeHref(href?: string) {
+  try {
+    const url = new URL(href ?? "");
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function External({ href, children }: { href?: string; children: React.ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer">
+    <a href={safeHref(href)} target="_blank" rel="noopener noreferrer">
       {children}
     </a>
   );
