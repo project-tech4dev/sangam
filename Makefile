@@ -1,4 +1,4 @@
-.PHONY: help up down logs seed locations-seed taxonomy-seed graph-seed match news-pull news-visibility smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs seed locations-seed taxonomy-seed graph-seed match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -139,6 +139,10 @@ news-pull:  ## Pull news for ORG=<slug> / FUNDER=<slug>, or everyone with CONFIR
 
 news-visibility:  ## Rewrite who sees each story from the stored scores, after a bar or rule changes
 	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.news.run --visibility
+
+# Stories from the pulls in seed/data/news.json, matched to this database's orgs and funders by slug. Idempotent.
+news-seed:  ## Load the saved news pulls, skipping orgs and funders this database lacks
+	$(COMPOSE) run --rm --no-deps backend python -m seed.news_seed
 
 ##@ Schema
 # db/init/02_schema.sql is the baseline for a new database; db/migrations/*.sql
