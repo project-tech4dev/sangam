@@ -29,7 +29,7 @@ is a copy of values.
 | `tokens/spacing.css` | `--radius`, `--radius-pill/surface/row`, `--shadow-*`, `--page-max`, `--page-pad`, `--nav-h` in `globals.css` |
 | `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link` |
 | `tokens/scout.css` | Sangam Scout's classes in `globals.css`, from "Import workspace" through "Import: the Review step", imported by `styles.css` after `base.css` |
-| `tokens/registry.css` | The Registry list's `.reg-*` classes in `globals.css`, imported by `styles.css` after `scout.css` |
+| `tokens/registry.css` | The Registry list's `.reg-*`, the funder profile's `.profile-*` and the research brief's `.brief-*` classes in `globals.css`, plus `.btn-ondark`; imported by `styles.css` after `scout.css` |
 | `guidelines/*.html` | Nothing; they are the specimen pages to check the repo against |
 
 The design system also carries tokens the repo does not use yet (`--surface-*`, `--text-*`,
