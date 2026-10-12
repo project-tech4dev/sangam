@@ -1,33 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs, Hero, Tag } from "@/components/ui";
-import {
-  apiGet, NotFoundError,
-  type FunderDetail, type NewsRow, type PageOf, type PartnerLineRow, type ScoreRow,
-} from "@/lib/api";
+import { apiGet, NotFoundError, type FunderProfile } from "@/lib/api";
 import { FunderProfileTabs } from "@/features/registry/ProfileTabs";
 
 export default async function FunderProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  // Every sub-route takes a slug or an id, so all five calls start together.
-  const detail = apiGet<FunderDetail>(`/api/funders/${slug}`);
-  const rest = Promise.all([
-    apiGet<PageOf<ScoreRow>>(`/api/scores?funder=${slug}&limit=50`).then((p) => p.items),
-    apiGet<PageOf<PartnerLineRow>>(`/api/partner-lines?funder=${slug}&limit=50`),
-    apiGet<PageOf<NewsRow>>(`/api/news?funder=${slug}&limit=10`).then((p) => p.items),
-    // 404 when this funder has not been researched, which is most of them.
-    // A signed link, so it is minted per render rather than stored.
-    apiGet<{ url: string }>(`/api/funders/${slug}/brief`).catch(() => null),
-  ]);
-  rest.catch(() => {}); // a 404 below must not leave this rejection unhandled
-  let funder: FunderDetail;
+  let profile: FunderProfile;
   try {
-    funder = await detail;
+    profile = await apiGet<FunderProfile>(`/api/funders/${slug}/profile`);
   } catch (err) {
     if (err instanceof NotFoundError) notFound();
     throw err;
   }
-  const [scores, partners, news, brief] = await rest;
+  const { funder, scores, partners, news, brief } = profile;
 
   return (
     <div className="page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>

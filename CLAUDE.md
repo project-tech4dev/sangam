@@ -183,7 +183,8 @@ backend's `/agent` over AG-UI. `AGENT_URL` therefore ends in `/agent` while
 `app/repositories/<r>.py` (hand-written SQL over raw psycopg) → `app/schemas/<r>.py`
 (Pydantic). There is no ORM, which is also why there is no Alembic — `app/db/migrate.py`
 explains the reasoning. Adding a resource means all three, plus one line in
-`app/api/router.py`. Nothing else: `main.py` includes that one aggregate router, and the
+`app/api/router.py`. (`routes/profiles.py` is the one exception: it composes other routes into one
+response per registry profile page, so it has no repository.) Nothing else: `main.py` includes that one aggregate router, and the
 tests' pool override is dependency-based, so neither needs editing.
 
 Routers take the pool as `pool: PoolDep` (from `app/db/pool.py`) rather than calling

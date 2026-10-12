@@ -86,10 +86,10 @@ retarget N+1 to `master` and rebase it.
 ### Milestone 8 — PR 8: one backend call per profile page
 - **Deliverable:** an org profile makes 1 call instead of 5, a funder profile 1 instead of 5.
 - **Key tasks:**
-  - [ ] `GET /api/orgs/{slug}/profile` and `GET /api/funders/{slug}/profile`: `asyncio.gather` over the
+  - [x] `GET /api/orgs/{slug}/profile` and `GET /api/funders/{slug}/profile`: `asyncio.gather` over the
         existing repository calls, each on its own caller connection (RLS unchanged). The funder brief
         is a nullable field, so a funder that has not been researched is not a failure.
-  - [ ] both profile pages call the aggregate once.
+  - [x] both profile pages call the aggregate once.
 - **Example:** before, one cold org-profile load started five instances (05:41:34) and waited for the
   slowest. After, it is one request, so it is at most one cold start.
 - **Conflict:** `feat/media-signals` changes the news both profiles show. Whichever merges second
