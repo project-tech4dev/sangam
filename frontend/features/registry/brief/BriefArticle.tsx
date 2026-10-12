@@ -3,6 +3,7 @@ import remarkGfm from "remark-gfm";
 import { Breadcrumbs, Tag } from "@/components/ui";
 import { SectionIndex } from "@/components/ui/SectionIndex";
 import type { Brief, Finding } from "./parseBrief";
+import { PrintButton } from "./PrintButton";
 
 const STATUS_TONE: Record<string, "accent" | "accent-2" | "neutral"> = { complete: "accent-2", partial: "accent" };
 
@@ -72,17 +73,24 @@ export function BriefArticle({ brief, slug, rawUrl }: { brief: Brief; slug: stri
 
   return (
     <div className="page reading brief">
-      <Breadcrumbs
-        items={[
-          { label: "Registry", href: "/registry" },
-          { label: "Funders", href: "/registry?type=funder" },
-          { label: brief.name, href: `/registry/funders/${slug}` },
-          { label: "Research brief" },
-        ]}
-      />
+      <nav className="brief-crumbs">
+        <Breadcrumbs
+          items={[
+            { label: "Registry", href: "/registry" },
+            { label: "Funders", href: "/registry?type=funder" },
+            { label: brief.name, href: `/registry/funders/${slug}` },
+            { label: "Research brief" },
+          ]}
+        />
+      </nav>
       <header className="brief-head">
-        <div className="eyebrow">Research brief</div>
-        <h1>{brief.name}</h1>
+        <div className="brief-title">
+          <div>
+            <div className="eyebrow">Research brief</div>
+            <h1>{brief.name}</h1>
+          </div>
+          <PrintButton title={`${brief.name} — research brief`} />
+        </div>
         <div className="brief-meta">
           {brief.researched && <span>Researched {brief.researched}</span>}
           {brief.status && <Tag tone={STATUS_TONE[brief.status] ?? "neutral"}>{brief.status}</Tag>}

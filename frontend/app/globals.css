@@ -391,6 +391,17 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .brief-sources { margin: 0; padding-left: 18px; font-size: var(--fs-xs); display: flex; flex-direction: column; gap: 4px; overflow-wrap: anywhere; }
 .brief-foot { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 16px; border-top: 1px solid var(--color-divider); }
 .brief-foot p { margin: 0; font-size: var(--fs-xs); }
+.brief-title { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
+.brief-print { flex-shrink: 0; }
+/* "Download PDF" prints the brief alone: no site chrome, index or buttons, one column. */
+@media print {
+  body:has(.brief) > :not(main) { display: none; }
+  body:has(.brief) { background: var(--color-bg); }
+  .brief-crumbs, .brief-layout > nav, .brief-print, .brief-foot .btn { display: none; }
+  .brief-layout { display: block; }
+  .brief-finding { break-inside: avoid; }
+  .brief-section h2 { break-after: avoid; }
+}
 
 /* --- Dialog ----------------------------------------------------------------- */
 .dialog-backdrop {
