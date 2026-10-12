@@ -22,7 +22,6 @@ from typing import Any
 
 import httpx
 
-from app.agent.tools.files import _safe_name
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -46,6 +45,14 @@ UPLOAD_URL_TTL_SECONDS = 7200
 BRIEF_URL_TTL_SECONDS = 3600
 
 _warned = False
+
+
+def _safe_name(name: str) -> str:
+    # Strip any directory components and shell-unfriendly characters so the
+    # agent can never write outside the downloads folder.
+    name = Path(name).name
+    name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+    return name[:120] or "download"
 
 
 def _disabled() -> bool:

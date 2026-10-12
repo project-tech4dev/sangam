@@ -11,6 +11,7 @@ from pypdf import PdfReader
 
 from app.core.config import get_settings
 from app.core.egress import EgressRefused, guarded_client
+from app.integrations.storage import _safe_name
 
 MAX_DOWNLOAD_MB = 100
 MAX_DOWNLOAD_BYTES = MAX_DOWNLOAD_MB * 1024 * 1024
@@ -23,14 +24,6 @@ def downloads_dir() -> Path:
     directory = Path(get_settings().downloads_dir)
     directory.mkdir(parents=True, exist_ok=True)
     return directory
-
-
-def _safe_name(name: str) -> str:
-    # Strip any directory components and shell-unfriendly characters so the
-    # agent can never write outside the downloads folder.
-    name = Path(name).name
-    name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
-    return name[:120] or "download"
 
 
 def _normalize_line(line: str) -> str:

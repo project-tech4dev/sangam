@@ -276,6 +276,8 @@ body:has([data-app-shell]) .nav-inner { max-width: none; padding-inline: 14px; }
 .btn-secondary { background: transparent; border-color: var(--color-accent-2-600); color: var(--color-accent-2-800); }
 .btn-ghost     { background: transparent; color: var(--color-accent-750); }
 .btn-block     { width: 100%; }
+.btn-ondark    { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.btn-ondark:hover { color: #fff; }
 .btn-icon {
   padding: 8px;
   width: 36px;
@@ -360,6 +362,46 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .reg-foot .btn { flex-shrink: 0; padding: 6px 14px; font-size: var(--fs-xs); }
 .reg-vetting { background: var(--color-accent-2-100); border: none; }
 .reg-vetting .card-body { color: var(--color-accent-2-900); }
+.profile-page { display: flex; flex-direction: column; gap: 20px; }
+.profile-cta { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* --- Research brief: one funder's findings, each with its sentence and source ---- */
+.brief { display: flex; flex-direction: column; gap: 20px; }
+.brief-head { display: flex; flex-direction: column; gap: 6px; }
+.brief-head h1 { font-size: var(--fs-2xl); overflow-wrap: anywhere; }
+.brief-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: var(--fs-xs); color: var(--color-neutral-700); }
+.brief-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 56px; align-items: start; }
+@media (min-width: 768px) { .brief-layout { grid-template-columns: 220px minmax(0, 1fr); } }
+.brief-body { display: flex; flex-direction: column; gap: 44px; min-width: 0; }
+.brief-section { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 96px; }
+.brief-section h2 { font-size: var(--fs-lg); }
+.brief-section p { margin: 0; }
+.brief-fields { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: var(--fs-md); }
+.brief-goals > summary { cursor: pointer; font-size: var(--fs-sm); font-weight: 600; color: var(--color-accent-2-800); }
+.brief-goals ul { margin: 8px 0 0; padding-left: 18px; font-size: var(--fs-md); display: flex; flex-direction: column; gap: 4px; }
+.brief-findings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.brief-finding { display: flex; flex-direction: column; gap: 8px; padding: 16px 0; border-bottom: 1px solid var(--color-divider); min-width: 0; }
+.brief-finding:first-child { padding-top: 0; }
+.brief-finding:last-child { border-bottom: none; }
+.brief-finding-head { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.brief-finding-when { font-size: var(--fs-xs); color: var(--color-neutral-700); }
+.brief-quote { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--color-accent-2-200); font-size: var(--fs-sm); color: var(--color-neutral-800); overflow-wrap: anywhere; }
+.brief-source { font-size: var(--fs-xs); color: var(--color-neutral-700); }
+.brief-source a { color: var(--color-accent-750); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.brief-sources { margin: 0; padding-left: 18px; font-size: var(--fs-xs); display: flex; flex-direction: column; gap: 4px; overflow-wrap: anywhere; }
+.brief-foot { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 16px; border-top: 1px solid var(--color-divider); }
+.brief-foot p { margin: 0; font-size: var(--fs-xs); }
+.brief-title { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
+.brief-print { flex-shrink: 0; }
+/* "Download PDF" prints the brief alone: no site chrome, index or buttons, one column. */
+@media print {
+  body:has(.brief) > :not(main) { display: none; }
+  body:has(.brief) { background: var(--color-bg); }
+  .brief-crumbs, .brief-layout > nav, .brief-print { display: none; }
+  .brief-layout { display: block; }
+  .brief-finding { break-inside: avoid; }
+  .brief-section h2 { break-after: avoid; }
+}
 
 /* --- Dialog ----------------------------------------------------------------- */
 .dialog-backdrop {

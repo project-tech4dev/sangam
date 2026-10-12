@@ -7,7 +7,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.agent.tools.files import extract_pdf_text
 from app.api.deps import PageParams
 from app.core.config import get_settings
 from app.core.security import get_current_user, require_user
@@ -128,6 +127,8 @@ def _extract(data: bytes | None, key: str) -> tuple[str | None, str | None]:
     digest = storage.content_hash(data)
     if not key.lower().endswith(".pdf"):
         return None, digest
+    from app.agent.tools.files import extract_pdf_text  # agent-tool module; only an upload needs it
+
     with tempfile.NamedTemporaryFile(suffix=".pdf") as handle:
         handle.write(data)
         handle.flush()

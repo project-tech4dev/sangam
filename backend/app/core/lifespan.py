@@ -2,27 +2,24 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import time
 from contextlib import AsyncExitStack, asynccontextmanager
+from typing import Any
 
-from ag_ui_langgraph import add_langgraph_fastapi_endpoint
-from fastapi import Depends, FastAPI
+from ag_ui.core.types import RunAgentInput
+from ag_ui.encoder import EventEncoder
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import StreamingResponse
 
-from app.agent.build import build_agent
 from app.agent.tools.sql import catalog as sql_catalog
 from app.core.config import Settings, get_settings
 from app.core.security import chat_access
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
-from app.ingest.agent import build_ingest_agent
 from app.integrations import graphiti
-from app.integrations.tracing import (
-    SessionScopedAGUIAgent,
-    configure_langfuse,
-    langsmith_status,
-    masking_enabled,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +31,7 @@ INGEST_DESCRIPTION = (
     "Imports funder data from permitted external sources into the catalog, "
     "matches it against what is already there, and reports what it could not process."
 )
+AGENT_NAMES = {"/agent": "sangam_agent", "/ingest": "sangam_ingest"}
 
 
 def _flush_telemetry() -> None:
@@ -46,12 +44,123 @@ def _flush_telemetry() -> None:
         logger.warning("Langfuse flush on shutdown failed", exc_info=True)
 
 
+def _process_age() -> float | None:
+    """Seconds since this process started (Linux only), so a cold start's import time reaches the log."""
+    try:
+        with open("/proc/self/stat") as stat, open("/proc/uptime") as uptime:
+            started = int(stat.read().rsplit(")", 1)[1].split()[19]) / os.sysconf("SC_CLK_TCK")
+            return float(uptime.read().split()[0]) - started
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def _build_agents(settings: Settings, checkpointer: Any) -> dict[str, Any]:
+    """Every agent-stack import lives here: a REST cold start never pays for deepagents, models or tracing."""
+    from app.agent.build import build_agent
+    from app.ingest.agent import build_ingest_agent
+    from app.integrations.tracing import (
+        SessionScopedAGUIAgent,
+        configure_langfuse,
+        langsmith_status,
+        masking_enabled,
+    )
+
+    # Before build_agent: building the client is what registers the
+    # mask, and a handler created first would bind to an unmasked one.
+    tracing_live = configure_langfuse(settings)
+    ask_graph = build_agent(settings, checkpointer)
+    ingest_graph = build_ingest_agent(settings, checkpointer)
+    # Not redundant with the graph's own with_config. AG-UI builds each
+    # request's config from THIS one, and a config passed at invocation beats
+    # the one bound to the graph — see the comment on the test in tests/test_tracing.py.
+    config = {"recursion_limit": settings.recursion_limit}
+
+    if tracing_live:
+        logger.info(
+            "Langfuse tracing enabled: host=%s env=%s query-results=%s",
+            settings.langfuse_host,
+            os.environ.get("LANGFUSE_TRACING_ENVIRONMENT", "default"),
+            "masked" if masking_enabled() else "IN TRACES",
+        )
+    elif settings.langfuse_enabled:
+        logger.warning("Langfuse is configured but NOT tracing — see the error above")
+    else:
+        logger.info("Langfuse tracing disabled (set LANGFUSE_PUBLIC_KEY/SECRET_KEY to enable)")
+    # LangSmith needs no wiring for a LangGraph app: env vars switch the
+    # tracer on. It is logged for the same reason Langfuse is — a tracing
+    # backend that is quietly off looks exactly like one that is working.
+    status = langsmith_status()
+    (logger.warning if "DROPPED" in status or "OFF" in status else logger.info)(status)
+
+    return {
+        "ask_graph": ask_graph,
+        "ingest_graph": ingest_graph,
+        "/agent": SessionScopedAGUIAgent(
+            name=AGENT_NAMES["/agent"], description=AGENT_DESCRIPTION, graph=ask_graph, config=config,
+        ),
+        # Sangam Import: a separate graph and a separate conversation. It shares
+        # the checkpointer, so its threads live beside Ask Sangam's and are told
+        # apart by thread_id, not by table.
+        "/ingest": SessionScopedAGUIAgent(
+            name=AGENT_NAMES["/ingest"], description=INGEST_DESCRIPTION, graph=ingest_graph, config=config,
+            # Each researcher's steps arrive tagged with its run, so the board can tell them apart.
+            emit_subagent_events=True,
+        ),
+    }
+
+
+async def load_agents(app: FastAPI) -> dict[str, Any] | None:
+    """Both agents, built once on the first request that needs one. None outside a lifespan."""
+    state = app.state
+    if getattr(state, "agents", None) is None:
+        if getattr(state, "checkpointer", None) is None:
+            return None
+        async with state.agents_lock:
+            if state.agents is None:
+                started = time.perf_counter()
+                # Synchronous on purpose: imports and graph compiles are not safe to move off the loop.
+                state.agents = _build_agents(state.settings, state.checkpointer)
+                logger.info("Agents built on first use in %.2fs", time.perf_counter() - started)
+    return state.agents
+
+
+async def get_graph(app: FastAPI, name: str) -> Any | None:
+    """The compiled `ask_graph` or `ingest_graph`, building the agents if no request has yet."""
+    graph = getattr(app.state, name, None)
+    if graph is None:
+        agents = await load_agents(app)
+        graph = agents[name] if agents else None
+    return graph
+
+
+def _add_agent_route(app: FastAPI, path: str) -> None:
+    """The AG-UI route add_langgraph_fastapi_endpoint registers, minus its need for a built agent."""
+
+    @app.post(path, dependencies=[Depends(chat_access)])
+    async def run_agent(input_data: RunAgentInput, request: Request) -> StreamingResponse:
+        agents = await load_agents(request.app)
+        # Cloned per request: LangGraphAgent keeps per-run state on the instance.
+        agent = agents[path].clone()
+        encoder = EventEncoder(accept=request.headers.get("accept"))
+
+        async def events():
+            async for event in agent.run(input_data):
+                yield encoder.encode(event)
+
+        return StreamingResponse(events(), media_type=encoder.get_content_type())
+
+    @app.get(f"{path}/health")
+    def health() -> dict[str, Any]:
+        return {"status": "ok", "agent": {"name": AGENT_NAMES[path]}}
+
+
 def build_lifespan(settings: Settings | None = None):
     """Build the lifespan context manager for an app built with `settings`."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         resolved = settings or get_settings()
+        started = time.perf_counter()
         async with AsyncExitStack() as stack:
             pool = make_pool(resolved.database_url, resolved.db_pool_max_size)
             await pool.open()
@@ -59,72 +168,25 @@ def build_lifespan(settings: Settings | None = None):
             db_pool.pool = pool  # shared by agent tools and REST endpoints
 
             await _verify_sql_catalog(pool)
+            connected = time.perf_counter()
 
             await graphiti.open_graph(resolved)  # no-op (logged) when graph is not configured
             stack.push_async_callback(graphiti.close_graph)
 
-            # Before build_agent: building the client is what registers the
-            # mask, and a handler created first would bind to an unmasked one.
-            tracing_live = configure_langfuse(resolved)
+            app.state.settings = resolved
+            app.state.checkpointer = await stack.enter_async_context(open_checkpointer(pool))
+            app.state.agents = None
+            app.state.agents_lock = asyncio.Lock()
+            for path in AGENT_NAMES:
+                _add_agent_route(app, path)
 
-            checkpointer = await stack.enter_async_context(open_checkpointer(pool))
-            # Kept for the thread-messages routes: only the graph can rebuild a thread's messages.
-            app.state.ask_graph = build_agent(resolved, checkpointer)
-            add_langgraph_fastapi_endpoint(
-                app=app,
-                agent=SessionScopedAGUIAgent(
-                    name="sangam_agent",
-                    description=AGENT_DESCRIPTION,
-                    graph=app.state.ask_graph,
-                    # Not redundant with the graph's own with_config. AG-UI
-                    # builds each request's config from THIS one, and a config
-                    # passed at invocation beats the one bound to the graph —
-                    # see the comment on the test in tests/test_tracing.py.
-                    config={"recursion_limit": resolved.recursion_limit},
-                    # A raw LangGraph copy rode on every event: 93% of an answer's bytes, read by nothing.
-                    emit_raw_events=False,
-                ),
-                path="/agent",
-                dependencies=[Depends(chat_access)],
-            )
-            app.state.ingest_graph = build_ingest_agent(resolved, checkpointer)
-            # Sangam Import: a separate graph and a separate conversation. It shares
-            # the checkpointer, so its threads live beside Ask Sangam's and are told
-            # apart by thread_id, not by table.
-            add_langgraph_fastapi_endpoint(
-                app=app,
-                agent=SessionScopedAGUIAgent(
-                    name="sangam_ingest",
-                    description=INGEST_DESCRIPTION,
-                    graph=app.state.ingest_graph,
-                    config={"recursion_limit": resolved.recursion_limit},
-                    # Each researcher's steps arrive tagged with its run, so the board can tell them apart.
-                    emit_subagent_events=True,
-                    emit_raw_events=False,
-                ),
-                path="/ingest",
-                dependencies=[Depends(chat_access)],
-            )
-
-            if tracing_live:
-                logger.info(
-                    "Langfuse tracing enabled: host=%s env=%s query-results=%s",
-                    resolved.langfuse_host,
-                    os.environ.get("LANGFUSE_TRACING_ENVIRONMENT", "default"),
-                    "masked" if masking_enabled() else "IN TRACES",
-                )
-            elif resolved.langfuse_enabled:
-                logger.warning("Langfuse is configured but NOT tracing — see the error above")
-            else:
-                logger.info("Langfuse tracing disabled (set LANGFUSE_PUBLIC_KEY/SECRET_KEY to enable)")
-
-            # LangSmith needs no wiring for a LangGraph app: env vars switch the
-            # tracer on. It is logged for the same reason Langfuse is — a tracing
-            # backend that is quietly off looks exactly like one that is working.
-            status = langsmith_status()
-            (logger.warning if "DROPPED" in status or "OFF" in status else logger.info)(status)
+            age = _process_age()
             logger.info(
-                "Sangam agent ready: model=%s research-at-once=%d db-pool=%d gate=%d",
+                "Sangam backend ready: process age %s, connect+catalog %.2fs, boot %.2fs; "
+                "model=%s research-at-once=%d db-pool=%d gate=%d",
+                f"{age:.2f}s" if age is not None else "n/a",
+                connected - started,
+                time.perf_counter() - started,
                 resolved.model,
                 resolved.max_parallel_research,
                 resolved.db_pool_max_size,
@@ -133,7 +195,7 @@ def build_lifespan(settings: Settings | None = None):
 
             yield
 
-            if resolved.langfuse_enabled:
+            if resolved.langfuse_enabled and app.state.agents is not None:
                 _flush_telemetry()
             db_pool.pool = None
 

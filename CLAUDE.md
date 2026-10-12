@@ -183,7 +183,8 @@ backend's `/agent` over AG-UI. `AGENT_URL` therefore ends in `/agent` while
 `app/repositories/<r>.py` (hand-written SQL over raw psycopg) → `app/schemas/<r>.py`
 (Pydantic). There is no ORM, which is also why there is no Alembic — `app/db/migrate.py`
 explains the reasoning. Adding a resource means all three, plus one line in
-`app/api/router.py`. Nothing else: `main.py` includes that one aggregate router, and the
+`app/api/router.py`. (`routes/profiles.py` is the one exception: it composes other routes into one
+response per registry profile page, so it has no repository.) Nothing else: `main.py` includes that one aggregate router, and the
 tests' pool override is dependency-based, so neither needs editing.
 
 Routers take the pool as `pool: PoolDep` (from `app/db/pool.py`) rather than calling
@@ -197,8 +198,16 @@ be called `graph.py` too, which made tracebacks ambiguous.
 
 **`deepagents` is LangGraph, not an alternative to it.** `create_deep_agent()` is a preset
 middleware stack over `langchain.agents.create_agent` and returns a compiled LangGraph
-graph — which is exactly what `AsyncPostgresSaver` checkpointing and
-`add_langgraph_fastapi_endpoint` require. Dropping `deepagents` would not drop LangGraph.
+graph — which is exactly what `AsyncPostgresSaver` checkpointing and the AG-UI agent
+require. Dropping `deepagents` would not drop LangGraph.
+
+**The agents are built on the first chat turn, not at boot.** Most cold starts on Vercel serve a
+REST call, and two-thirds of the import time was the agent stack. So `lifespan.py` opens the pool,
+checks the catalog and opens the checkpointer, and `load_agents()` imports and builds both agents,
+once, under a lock, when `/agent` or `/ingest` is first posted to. Those two routes are our own
+(`_add_agent_route`) because `add_langgraph_fastapi_endpoint` needs a built agent to register. A
+route that needs a graph calls `get_graph(app, "ask_graph" | "ingest_graph")`; a REST module that
+imports agent code at the top undoes this, so `routes/` imports it inside the function that uses it.
 
 **The agent has exactly seven tools, and there is ONE open path to the database.**
 `app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
@@ -317,7 +326,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
 continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each Darpan sector tag to its Schedule VII clause (unread since match-v2, which compares the theme taxonomy), and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. `0042_funder_matches` adds Funder Match's saved runs, and `0043_tag_writes_logged` logs Import's `org_tags` and `program_tags` writes for undo. `0044_news` adds Media & Signals' seven tables, and `0045_drop_news_mentions` drops the table they replace, apart so the tables can land before the code that stops reading it. There are 45 in total. The design and the
+that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each Darpan sector tag to its Schedule VII clause (unread since match-v2, which compares the theme taxonomy), and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. `0042_funder_matches` adds Funder Match's saved runs, and `0043_tag_writes_logged` logs Import's `org_tags` and `program_tags` writes for undo. `0044_one_read_policy_and_fk_indexes` folds the admin read policies on `users` and `org_members` into one each and indexes three foreign keys. `0044_news` adds Media & Signals' seven tables, and `0045_drop_news_mentions` drops the table they replace, apart so the tables can land before the code that stops reading it. The two 0044s are both kept, because staging had applied `0044_news` before the other landed and the runner keys on the file name. There are 46 in total. The design and the
 before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses

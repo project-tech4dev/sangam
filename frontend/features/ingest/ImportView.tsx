@@ -8,8 +8,14 @@ import { RunHistory } from "@/features/ingest/components/RunHistory";
 import { SourceGroups } from "@/features/ingest/components/SourceGroups";
 import { SourcePanel } from "@/features/ingest/components/SourcePanel";
 import { accessOf, type ImportAccess, type VaultFile } from "@/features/ingest/lib/access";
-import { vaultFilesOf } from "@/features/ingest/lib/vaultFiles";
-import type { ImportRun, ImportSource, QueueItem, ResearchRecord, SourceProposal } from "@/features/ingest/lib/types";
+import type {
+  ImportOverview,
+  ImportRun,
+  ImportSource,
+  QueueItem,
+  ResearchRecord,
+  SourceProposal,
+} from "@/features/ingest/lib/types";
 import { authHeaders } from "@/lib/api/auth-headers";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
@@ -24,7 +30,7 @@ type Panels = {
   research: ResearchRecord[];
 };
 
-// Until /api/me answers, the one task open to everyone.
+// Until the overview answers, the one task open to everyone.
 const FUNDERS_ONLY: ImportAccess = { staff: false, stewardOf: [], orgs: [] };
 
 async function get<T>(path: string): Promise<T> {
@@ -33,28 +39,14 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
-/** The private files of each organisation the person belongs to. */
-async function loadVault(access: ImportAccess): Promise<VaultFile[]> {
-  return (await Promise.all(access.orgs.map(vaultFilesOf))).flat();
-}
-
-/** Staff get every panel; anyone else only what they researched, as the rest is the team's. */
+/** One request: each separate call could land on a backend instance that is still starting. */
 async function loadPanels(): Promise<Panels> {
-  // Research is open to everyone, so it need not wait for /api/me.
-  const research = get<ResearchRecord[]>("/api/ingest/research?limit=25");
-  research.catch(() => {}); // if /api/me fails first, this rejection is still awaited nowhere
-  const access = accessOf(await get<Parameters<typeof accessOf>[0]>("/api/me"));
-  const vault = loadVault(access).catch(() => []);
-  if (!access.staff) {
-    return { access, vaultFiles: await vault, sources: [], runs: [], queue: [], proposals: [], research: await research };
-  }
-  const [sources, runs, queue, proposals] = await Promise.all([
-    get<ImportSource[]>("/api/ingest/sources"),
-    get<ImportRun[]>("/api/ingest/runs?limit=8"),
-    get<QueueItem[]>("/api/ingest/queue?limit=20"),
-    get<SourceProposal[]>("/api/ingest/proposals?limit=20"),
-  ]);
-  return { access, vaultFiles: await vault, sources, runs, queue, proposals, research: await research };
+  const o = await get<ImportOverview>("/api/ingest/overview");
+  const vaultFiles: VaultFile[] = o.vault.map((v) => ({
+    id: v.id, title: v.title, doc_type: v.doc_type, org: v.org, orgId: v.org_id, orgName: v.org_name,
+  }));
+  const { sources, runs, queue, proposals, research } = o;
+  return { access: accessOf(o.me), vaultFiles, sources, runs, queue, proposals, research };
 }
 
 /** One Scout thread, with what was researched under the empty composer. Panels load once, and stay while threads change. */

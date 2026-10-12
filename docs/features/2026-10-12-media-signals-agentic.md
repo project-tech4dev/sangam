@@ -227,8 +227,7 @@ Per the standing rule, no new tests in these PRs. Run the existing suites and fi
 
 - **Migration numbers collide.** Master took `0044` with `0044_one_read_policy_and_fk_indexes` (#181). The PR
   branch now carries `0044_news.sql` and `0045_drop_news_mentions.sql`.
-- **Fix in #173 before merge:** rebase onto master and renumber to `0045_news` and `0046_drop_news_mentions`. Then
-  update the migration list in CLAUDE.md, and every "0044" reference in the spec and code comments.
+- **Resolved at merge (12 Oct):** both 0044s are kept, since staging had applied `0044_news` and the runner keys on the file name.
 - This plan stacks on `origin/feat/media-signals` at `4506fbf` or later. The local branch `40d5d1f` is behind the
   remote.
 

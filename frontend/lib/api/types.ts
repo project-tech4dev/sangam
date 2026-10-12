@@ -141,3 +141,21 @@ export type MatchDetail = {
 };
 
 export type PageOf<T> = { items: T[]; total: number; limit: number; offset: number };
+
+/** GET /api/orgs/{slug}/profile — everything an org profile shows, in one call. */
+export type OrgProfile = {
+  org: OrgDetail;
+  funding: PartnerLineRow[];
+  programs: ProgramRow[];
+  scores: ScoreRow[];
+  news: Story[];
+};
+
+/** GET /api/funders/{slug}/profile; `brief` is null when no research brief is published. */
+export type FunderProfile = {
+  funder: FunderDetail;
+  scores: ScoreRow[];
+  partners: PageOf<PartnerLineRow>;
+  news: Story[];
+  brief: { url: string } | null;
+};
