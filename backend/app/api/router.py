@@ -16,6 +16,7 @@ from app.api.routes import (
     org_members,
     orgs,
     partner_lines,
+    profiles,
     programs,
     rfps,
     scores,
@@ -26,6 +27,7 @@ from app.api.routes import (
 OPENAPI_TAGS = [
     {"name": "orgs", "description": "CSO/NGO registry: profiles, identifiers, sectors, locations"},
     {"name": "funders", "description": "Funder profiles and their fit scores"},
+    {"name": "profiles", "description": "One response per registry profile page"},
     {"name": "funder-matches", "description": "Funder Match: saved runs of an org against every funder"},
     {"name": "partner-lines", "description": "Funder partner lines: named partners and grants, from funder_activity"},
     {"name": "programs", "description": "Programs run by orgs or funders"},
@@ -44,6 +46,7 @@ for _router in (
     orgs.router,
     org_members.router,
     funders.router,
+    profiles.router,
     funder_matches.router,
     partner_lines.router,
     programs.router,
