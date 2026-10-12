@@ -326,6 +326,16 @@ the checkpoint tables and file-reading functions out of reach. Worth revisiting 
 somewhere the blast radius is larger, or alongside Supabase Auth — the honest framing has always
 been that the unauthenticated backend is the bigger exposure.
 
+**Superseded by the caller's role (#114).** Supabase Auth landed, and every query `db_query` runs
+now does `set_config('role', …)` / `set_config('request.jwt.claims', …)` as the signed-in caller
+(`anon` when there is none), after `SET TRANSACTION READ ONLY`, exactly as REST's `CallerPool`
+does. That is the second line of defence this section said was missing, without the deploy step
+that sank `sangam_reader`: `anon` and `authenticated` already exist on Supabase. RLS hides other
+organisations' private documents and staff-only `funder_activity` lines, and the server refuses
+`checkpoints` and `pg_read_file`. `RESET ROLE` and `set_config` stay out of reach: the first is not
+a SELECT, the second is not in the function allowlist. The catalog may therefore list only
+columns `authenticated` can SELECT (`org_identifiers.evidence_document_id` left it for that).
+
 ### 5. The four tools
 
 `db_list_tables()` · `db_describe_table(tables: str)` · `db_profile_column(table, column)` ·

@@ -571,7 +571,7 @@ _TABLES: tuple[Table, ...] = (
         name="org_identifiers",
         description="Statutory registrations of an org (PAN, 12A, 80G, FCRA, Darpan...), one row each, with a status. A row may have no number yet (an application).",
         primary_key=('id',),
-        foreign_keys=(ForeignKey("org_id", "orgs.id"), ForeignKey("evidence_document_id", "documents.id")),
+        foreign_keys=(ForeignKey("org_id", "orgs.id"),),
         columns=(
             Column("id", "bigint"),
             Column("org_id", "bigint", cites="org"),
@@ -593,7 +593,6 @@ _TABLES: tuple[Table, ...] = (
             Column("valid_until", "date", note="an FCRA or 12AB/80G approval's end date, when stated"),
             Column("checked_at", "timestamp with time zone", note="when a person or a registry read last confirmed the status"),
             Column("check_method", "text", note="manual_check = a staff member checked by hand; checked_at is when, and it may sit on a registry-tier row", values=('document', 'registry', 'manual_check', 'aggregator')),
-            Column("evidence_document_id", "bigint", note="the documents row holding the certificate, order or check evidence"),
             Column("application_ref", "text", note="e.g. a Form 10AB acknowledgement number"),
         ),
         defects=(
