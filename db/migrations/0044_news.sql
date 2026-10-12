@@ -1,5 +1,5 @@
 -- Media & Signals (features-plans/signals/2026-10-10-media-signals-design.md, section 3). Replaces news_mentions,
--- dropped at the end. Visibility is written by the pipeline, never computed on read.
+-- which 0045 drops once no deployed code reads it. Visibility is written by the pipeline, never computed on read.
 
 CREATE TABLE news_stories (
   id                 bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -156,6 +156,3 @@ CREATE POLICY news_story_tags_read ON news_story_tags FOR SELECT TO anon, authen
 
 CREATE POLICY news_link_scores_staff ON news_link_scores FOR SELECT TO authenticated USING ((SELECT app.is_staff()));
 CREATE POLICY news_watch_staff ON news_watch FOR SELECT TO authenticated USING ((SELECT app.is_staff()));
-
--- news_mentions held GDELT hits that never linked to an organisation (0 rows on staging, 11 Oct); stories replace it.
-DROP TABLE news_mentions;
