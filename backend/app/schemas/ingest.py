@@ -4,6 +4,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from app.schemas.common import ReadModel
+from app.schemas.me import MeOut
 
 
 class SourceOut(ReadModel):
@@ -271,3 +272,24 @@ class AskLiveIn(BaseModel):
 class AskLiveOut(ReadModel):
     answer: str
     kind: Literal["status", "instruction"]
+
+
+class VaultFileOut(ReadModel):
+    id: int
+    title: str | None = None
+    doc_type: str | None = None
+    org: str
+    org_id: int
+    org_name: str
+
+
+class ImportOverviewOut(ReadModel):
+    """Everything the Import page shows on open; the four staff lists are empty for anyone else."""
+
+    me: MeOut
+    research: list[ResearchOut]
+    vault: list[VaultFileOut]
+    sources: list[SourceOut]
+    runs: list[RunOut]
+    queue: list[QueueItemOut]
+    proposals: list[SourceProposalOut]

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -7,15 +10,26 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from app.api.routes.threads import saved_messages
 from app.core.config import get_settings
 from app.core.lifespan import get_graph
-from app.core.security import CallerScope, get_current_user, request_scope, require_staff, require_user
+from app.core.security import (
+    CallerScope,
+    CurrentUser,
+    get_current_user,
+    request_scope,
+    require_principal,
+    require_staff,
+    require_user,
+)
 from app.db.pool import OwnerPoolDep, PoolDep
 from app.ingest.sources import SOURCES
+from app.repositories import documents as documents_repo
 from app.repositories import ingest as repo
+from app.repositories import me as me_repo
 from app.repositories import threads as threads_repo
 from app.schemas.ingest import (
     AskLiveIn,
     AskLiveOut,
     CoverageOut,
+    ImportOverviewOut,
     QueueAnswerIn,
     QueueAnswerOut,
     QueueItemOut,
@@ -28,13 +42,16 @@ from app.schemas.ingest import (
     SourceOut,
     SourceProposalOut,
     UndoOut,
+    VaultFileOut,
     WorkbookOut,
 )
+from app.schemas.me import MembershipOut, MeOut
 from app.schemas.threads import ThreadMessagesOut, ThreadOut
 
 # Open to any signed-in user; the research routes are scoped to the caller, the rest are staff's.
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 STAFF = [Depends(require_staff)]
+logger = logging.getLogger(__name__)
 
 
 @router.get("/sources", dependencies=STAFF, response_model=list[SourceOut], summary="Import sources and access rules")
@@ -45,6 +62,10 @@ async def list_sources(
 ) -> list[SourceOut]:
     """The whole registry by default. It is ~74 entries, which is the same
     reason /orgs and /funders return everything rather than a page."""
+    return _sources(category, dispatchable)
+
+
+def _sources(category: str | None = None, dispatchable: bool | None = None) -> list[SourceOut]:
     from app.ingest.runner import ADAPTERS
 
     chosen = list(SOURCES.values())
@@ -102,11 +123,69 @@ async def answer_queue(item_id: int, body: QueueAnswerIn, pool: PoolDep,
     return QueueAnswerOut.model_validate(row)
 
 
+@router.get("/overview", response_model=ImportOverviewOut, summary="Everything the Import page shows on open")
+async def overview(
+    pool: PoolDep,
+    owner_pool: OwnerPoolDep,
+    principal: Annotated[CurrentUser, Depends(require_principal)],
+    caller: Annotated[CallerScope, Depends(request_scope)],
+) -> ImportOverviewOut:
+    """One request instead of nine: each separate call could land on a cold instance."""
+
+    async def me_and_vault() -> tuple[list[dict], list[VaultFileOut]]:
+        memberships = await me_repo.list_memberships(pool, principal.id)
+        return memberships, await _vault(pool, principal.id, memberships)
+
+    async def none() -> list:
+        return []
+
+    staff = caller.is_staff
+    (memberships, vault), research, runs, queue, proposals = await asyncio.gather(
+        me_and_vault(),
+        _research(owner_pool, 25, caller),
+        repo.list_runs(pool, limit=8) if staff else none(),
+        repo.list_queue(pool, limit=20) if staff else none(),
+        repo.list_proposals(pool, limit=20) if staff else none(),
+    )
+    me = MeOut(id=principal.id, email=principal.email, is_staff=principal.is_staff,
+               is_anonymous=principal.is_anonymous,
+               memberships=[MembershipOut.model_validate(r) for r in memberships])
+    return ImportOverviewOut(
+        me=me, research=research, vault=vault,
+        sources=_sources() if staff else [],
+        runs=[RunOut.model_validate(r) for r in runs],
+        queue=[QueueItemOut.model_validate(r) for r in queue],
+        proposals=[SourceProposalOut.model_validate(r) for r in proposals],
+    )
+
+
+async def _vault(pool, user_id: UUID, memberships: list[dict]) -> list[VaultFileOut]:
+    """Each organisation's private files. Best-effort, as the page treated it: Import still opens without them."""
+    try:
+        pages = await asyncio.gather(*(
+            documents_repo.list_documents(pool, limit=100, offset=0, org=m["org_slug"], user_id=user_id)
+            for m in memberships
+        ))
+    except Exception:
+        logger.warning("could not list Doc Vault files for the Import overview", exc_info=True)
+        return []
+    return [
+        VaultFileOut(id=d["id"], title=d["title"], doc_type=d["doc_type"], org=m["org_slug"],
+                     org_id=d["org_id"], org_name=m["org_name"])
+        for m, (rows, _total) in zip(memberships, pages, strict=True)
+        for d in rows if d["is_public"] is False and d["org_id"] is not None
+    ]
+
+
 @router.get("/research", response_model=list[ResearchOut],
             summary="What the researchers have found and saved")
 async def list_research(pool: OwnerPoolDep, limit: int = 50,
                         caller: CallerScope = Depends(request_scope)) -> list[ResearchOut]:
     """Staff see everything; anyone else what they saved, plus research on the NGOs they steward."""
+    return await _research(pool, limit, caller)
+
+
+async def _research(pool, limit: int, caller: CallerScope) -> list[ResearchOut]:
     mine = None if caller.is_staff else (caller.user_id, caller.steward_of)
     rows = await repo.list_research(pool, limit=limit, mine=mine)
     if not caller.is_staff:

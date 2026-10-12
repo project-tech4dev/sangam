@@ -88,8 +88,8 @@ async def test_the_access_check_is_for_the_caller(monkeypatch):
     assert response.status_code == 404 and seen["user_id"] == TEST_USER
 
 
-# Scoped to the caller inside the route; every other Import route is staff's.
-OPEN_ROUTES = {"/ingest/research", "/ingest/research/{slug}/review", "/ingest/research/{slug}/coverage",
+# Scoped to the caller inside the route (the overview's staff lists by is_staff); every other is staff's.
+OPEN_ROUTES = {"/ingest/overview", "/ingest/research", "/ingest/research/{slug}/review", "/ingest/research/{slug}/coverage",
                "/ingest/research/{slug}/save",
                "/ingest/threads", "/ingest/threads/{thread_id}/messages", "/ingest/threads/{thread_id}/ask-live"}
 
