@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from ag_ui_langgraph.utils import langchain_messages_to_agui
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from app.core.lifespan import get_graph
 from app.core.security import require_user
 from app.db.pool import OwnerPoolDep, PoolDep
 from app.repositories import threads as repo
@@ -38,9 +38,11 @@ async def saved_messages(
     # Owner pool: checkpoints are closed to callers, so access is decided here, before anything is read.
     if not await repo.can_open(owner_pool, thread_id=thread_id, user_id=user_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
-    graph = getattr(request.app.state, graph_name, None)
+    graph = await get_graph(request.app, graph_name)
     if graph is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Agent not loaded")
+    from ag_ui_langgraph.utils import langchain_messages_to_agui  # 0.5 s import; only a reload needs it
+
     # The graph, not the saver: messages are rebuilt from writes, and a raw checkpoint can hold none.
     state = await graph.aget_state({"configurable": {"thread_id": thread_id}})
     messages = langchain_messages_to_agui(state.values.get("messages", []))
