@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -17,7 +18,7 @@ from app.ingest.adapters import tavily_news
 from app.ingest.adapters.tavily_news import Hit, SearchFailed
 from app.ingest.matcher import name_key
 from app.ingest.news import store, windows
-from app.ingest.news.bars import Bars, topic_visibility, visibility
+from app.ingest.news.bars import Bars, needs_check, topic_visibility, visibility
 from app.ingest.news.classify import (
     PROMPT_VERSION,
     EntityVerdict,
@@ -38,12 +39,15 @@ from app.ingest.news.links import (
     url_key,
     weak_title,
 )
+from app.ingest.news.verify import verify
 from app.ingest.news.windows import stale_floor, window_days
 
 SOURCE = "tavily_news"
 EVERYONE = "all"
 # Past the function's 1800 s limit a claimed run that still reads 'running' was killed, never finished.
 STALE_CLAIM = timedelta(minutes=35)
+CHECK_SECONDS = 120  # one check; a hung page read must not eat the whole run's checking time
+CHANGED = 0.15  # a check that moves the match further than this is logged as a change, not a confirmation
 
 
 class RunRefused(Exception):
@@ -68,16 +72,25 @@ class Deps:
     parallel_searches: int = 4
     parallel_classify: int = 8
     max_classify: int = 2000  # per run; past it the rest wait for the next run, their watermarks held
+    verifier: Any = None  # None: every pair keeps its first read, as before the verifier existed
+    max_verify: int = 0
+    parallel_verify: int = 2
+    verify_seconds: int = 600
+    verify_low: float = 0.35
 
     @classmethod
     def from_settings(cls, s) -> Deps:
         from app.agent.models import resolve_model
+        from app.ingest.news.verify import build_verifier
 
         utility = resolve_model(s.utility_model)
         return cls(search=tavily_news.search, entity_model=utility, topic_model=utility,
                    group_model=resolve_model(s.research_model), headline_model=utility, api_key=s.tavily_api_key,
                    bars=Bars.from_settings(s), parallel_searches=s.news_parallel_searches,
-                   parallel_classify=s.news_parallel_classify, max_classify=s.news_max_classify)
+                   parallel_classify=s.news_parallel_classify, max_classify=s.news_max_classify,
+                   verifier=build_verifier(s) if s.news_verify_max > 0 else None, max_verify=s.news_verify_max,
+                   parallel_verify=s.news_parallel_verify, verify_seconds=s.news_verify_seconds,
+                   verify_low=s.news_verify_low)
 
 
 @dataclass
@@ -353,6 +366,7 @@ async def _classify_all(pool, run_id: int, subjects: list[Subject], hits: dict[s
     registry = sorted({s.name for s in names.values()})
     budget = [deps.max_classify]
     named: list[tuple[Subject, Hit]] = []
+    checks = _Checks(deps, time.monotonic())
 
     async def one(s: Subject, h: Hit) -> None:
         if budget[0] <= 0:
@@ -368,6 +382,8 @@ async def _classify_all(pool, run_id: int, subjects: list[Subject], hits: dict[s
                      else await classify_entity(deps.entity_model, s, h))
             except Exception as exc:  # noqa: BLE001 - a bad reply fails this pair, never the run
                 v = exc
+        if s.kind != "feed" and not isinstance(v, Exception):
+            v = await checks.settle(pool, run_id, s, h, v)
         async with pool.connection() as conn:
             if isinstance(v, Exception):
                 failed.add(_key(s))
@@ -392,6 +408,52 @@ async def _classify_all(pool, run_id: int, subjects: list[Subject], hits: dict[s
                 for h in await _pending(conn, s, hits[_key(s)], stale_floor(s.searched_through, today))]
     await asyncio.gather(*(one(s, h) for s, h in todo))
     await asyncio.gather(*(one(s, h) for s, h in named))
+
+
+class _Checks:
+    """The verifier's share of a run: a cap, a deadline and its own slots, apart from classification's."""
+
+    def __init__(self, deps: Deps, started: float) -> None:
+        self.deps, self.started = deps, started
+        self.left = deps.max_verify
+        self.gate = asyncio.Semaphore(max(deps.parallel_verify, 1))
+
+    def _seconds(self) -> float:
+        return self.deps.verify_seconds - (time.monotonic() - self.started)
+
+    async def settle(self, pool, run_id: int, s: Subject, h: Hit, first):
+        """The checked verdict for a borderline pair; the first read whenever a check cannot finish."""
+        d = self.deps
+        if d.verifier is None or not needs_check(first, bars=d.bars, low=d.verify_low):
+            return first
+        checked, why = None, None
+        if self.left <= 0:
+            why = f"over this run's cap of {d.max_verify} checks"
+        else:
+            self.left -= 1
+            async with self.gate:
+                if (seconds := self._seconds()) <= 0:
+                    why = "out of this run's checking time"
+                else:
+                    try:
+                        checked = await asyncio.wait_for(verify(d.verifier, s, h, first),
+                                                         timeout=min(CHECK_SECONDS, seconds))
+                        why = None if checked else "the check ended without a verdict"
+                    except Exception as exc:  # noqa: BLE001 - a failed check keeps the first read, never fails the pair
+                        why = f"the check failed: {type(exc).__name__}: {str(exc)[:160]}"
+        async with pool.connection() as conn:
+            if checked is None:
+                await runner.record_item(conn, run_id, SOURCE, "news_verify", "refused", subject=s.name,
+                                         source_url=h.url, reason=f"{why}; kept the first read")
+                return first
+            moved = abs(checked.match - first.match) > CHANGED
+            await runner.record_item(
+                conn, run_id, SOURCE, "news_verify", "updated" if moved else "matched", subject=s.name,
+                source_url=h.url, reason=checked.evidence,
+                changes={k: {"old": getattr(first, k), "new": getattr(checked, k)}
+                         for k in ("on_target", "match", "confidence", "stance")
+                         if getattr(first, k) != getattr(checked, k)})
+        return checked
 
 
 # ---- stories ----------------------------------------------------------------------------------------------

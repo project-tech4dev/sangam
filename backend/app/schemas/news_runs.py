@@ -12,6 +12,7 @@ class NewsPlanOut(BaseModel):
     newcomers: int
     searches: int
     cost_usd: float
+    checks: int = 0  # at most this many borderline matches re-read by the verifier
     matched: list[str] = []
     feeds: list[str] = []  # the topic feeds' labels, e.g. "FCRA"
     unmatched: list[str] = []

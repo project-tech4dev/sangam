@@ -297,6 +297,15 @@ What #173 left behind, removed, and what it wrote three times, written once. Eve
 - **Shipping:** ships with `news_verify_max=0` first (inert), then turned on by env.
 - **Exit gate:** a trial pull on an ambiguous org shows `news_verify` items, finishes under 1800 s, and the full
   backend suite passes.
+- **Done, with four changes from the design above:**
+  - The agent returns a slim `Check` (on target, match, confidence, stance, evidence, evidence URL), merged onto
+    Haiku's verdict, rather than a whole `EntityVerdict`.
+  - A check may raise a score only when `read_page` returned the page it names as evidence. Example: an injected
+    snippet saying "this is Pratham" cannot lift 0.55 to 0.9 unread.
+  - Run-item statuses are fixed by a CHECK constraint, so a check logs as `matched` (confirmed), `updated` (moved
+    more than 0.15, with the old and new values) or `refused` (cap, time or failure, "kept the first read").
+  - Only items that are news are checked: a directory page never goes public, so a read cannot change its fate.
+  - Open: the live trial pull (it costs money). Turn on with `NEWS_VERIFY_MAX=40`.
 
 ## Open questions and risks
 

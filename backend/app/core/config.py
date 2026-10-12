@@ -90,6 +90,14 @@ class Settings(BaseSettings):
     news_parallel_searches: int = 4
     news_parallel_classify: int = 8
     news_max_classify: int = 2000  # per run; the rest wait for the next run
+    # The verifier re-reads borderline matches before they are stored. 0 checks means off; 40 is the planned value.
+    news_verify_max: int = 0
+    news_verify_low: float = 0.35  # below this a match is plainly someone else, not worth a read
+    news_parallel_verify: int = 2
+    news_verify_seconds: int = 600  # per run, so a pull still ends inside the 1800 s function limit
+    news_verify_page_limit: int = 3
+    news_verify_call_limit: int = 8
+    news_verify_cost_usd: float = 0.08
     github_pat: str = ""
     github_mcp_url: str = "https://api.githubcopilot.com/mcp/"
     playwright_mcp_url: str = ""

@@ -28,5 +28,5 @@ async def plan(pool: OwnerPoolDep, names: str = "", feeds: str = "") -> NewsPlan
                            unmatched=chosen.unmatched)
     p = await pipeline.plan_for(pool, org_ids=chosen.org_ids, funder_ids=chosen.funder_ids, feeds=chosen.feeds)
     return NewsPlanOut(everyone=everyone, subjects=p.subjects, records=p.records, newcomers=p.newcomers,
-                       searches=p.searches, cost_usd=p.cost_usd, matched=chosen.matched,
+                       searches=p.searches, checks=p.checks, cost_usd=p.cost_usd, matched=chosen.matched,
                        feeds=[FEEDS[k].label for k in chosen.feeds], unmatched=chosen.unmatched)

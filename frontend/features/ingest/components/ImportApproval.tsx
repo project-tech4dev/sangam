@@ -27,6 +27,7 @@ type NewsPlan = {
   subjects: number;
   records: number;
   searches: number;
+  checks: number;
   cost_usd: number;
   matched: string[];
   feeds: string[];
@@ -42,7 +43,8 @@ function NewsLine({ funders, feeds }: { funders: string; feeds: string }) {
     const query = `names=${encodeURIComponent(funders)}&feeds=${encodeURIComponent(feeds)}`;
     call<NewsPlan>(`/api/ingest/news-runs/plan?${query}`)
       .then((p) => {
-        const cost = `about ${p.searches} searches · about $${p.cost_usd.toFixed(2)}`;
+        const checks = p.checks ? ` · up to ${p.checks} checks by reading` : "";
+        const cost = `about ${p.searches} searches${checks} · about $${p.cost_usd.toFixed(2)}`;
         const topics = p.feeds.join(", ");
         const named = p.everyone
           ? `News for everyone in Sangam (${p.records} organisations and funders)`

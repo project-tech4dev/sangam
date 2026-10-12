@@ -58,6 +58,10 @@ class EntityVerdict(BaseModel):
     region: Region = Region()
     sector_tags: list[Sector] = []
     summary: str
+    # Set only when the verifier re-read this pair; evidence is one line in its own words, never a quote.
+    verified: bool = False
+    evidence: str | None = None
+    evidence_url: str | None = None
 
     _kind = field_validator("content_kind", mode="before")(_one_of(KINDS, "other"))
     _signal = field_validator("signal_type", mode="before")(_one_of(SIGNALS, "other"))

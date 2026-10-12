@@ -47,6 +47,15 @@ def topic_visibility(match: float, confidence: float, *, is_news: bool, dated: b
     return "listed" if clears and is_news and dated and scope != "international" else "hidden"
 
 
+def needs_check(v, *, bars: Bars, low: float) -> bool:
+    """A news match near the public bar is worth a read: it decides whether a profile shows the story."""
+    if not v.is_news:
+        return False
+    near_public = low <= v.match < bars.public_match
+    near_negative = v.stance == "negative" and bars.listed_match <= v.match < bars.negative_match
+    return near_public or near_negative
+
+
 def level(value: float, kind: Literal["match", "confidence"]) -> str:
     high, medium = (0.8, 0.6) if kind == "match" else (0.9, 0.8)
     return "High" if value >= high else "Medium" if value >= medium else "Low"

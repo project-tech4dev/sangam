@@ -244,7 +244,9 @@ tools, since both supervisors need `ls` to find a skill and no subagent may hold
 `install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
 preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its seven plus
 `read_file` and `ls`; a subagent keeps only `read_file`, which `FilesystemMiddleware` refuses to
-be built without. Nothing that writes survives on any of them.
+be built without. Nothing that writes survives on any of them. A third deep agent, the news verifier
+(`app/ingest/news/verify.py`, `RESEARCH_MODEL`), runs inside a news pull with `read_page`,
+`search_public_sources` and that `read_file` floor; it is off until `NEWS_VERIFY_MAX` is above 0.
 
 **A subagent inherits none of that and must say so itself.** `create_deep_agent` builds an
 isolated subagent's middleware from scratch with an *unrestricted* `FilesystemMiddleware`, and
