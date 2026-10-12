@@ -70,12 +70,16 @@ def _read(messages: list, url: str | None) -> bool:
                for m in messages)
 
 
-async def verify(agent, subject: Subject, hit: Hit, first: EntityVerdict) -> EntityVerdict | None:
+async def verify(agent, subject: Subject, hit: Hit, first: EntityVerdict, *,
+                 run_id: int | None = None) -> EntityVerdict | None:
     """The checked verdict, or None when the agent ended without one; the first read then stands."""
     ask = (f"Organisation: {subject.name}. Who it is: {profile_for(subject)}\n\n{_item(hit)}\n\n"
            f"First read: on target {first.on_target}, match {first.match}, confidence {first.confidence}, "
            f"stance {first.stance}. {first.summary}")
-    result = await agent.ainvoke({"messages": [("user", ask)]})
+    # One Langfuse session per pull, so a run's checks read together rather than as unrelated traces.
+    meta = {"langfuse_session_id": f"news-run-{run_id}", "news_run_id": run_id} if run_id else {}
+    result = await agent.ainvoke({"messages": [("user", ask)]},
+                                 config={"metadata": {**meta, "subject": subject.name, "url": hit.url}})
     check = result.get("structured_response")
     if not isinstance(check, Check):
         return None

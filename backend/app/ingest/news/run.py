@@ -11,6 +11,7 @@ from app.db.checkpointer import make_pool
 from app.ingest.news import pipeline, store
 from app.ingest.news.bars import Bars
 from app.ingest.news.feeds import feeds_for
+from app.integrations.tracing import configure_langfuse, flush_traces
 
 
 async def _ids(pool, table: str, slugs: list[str]) -> list[int]:
@@ -31,6 +32,7 @@ def refusal(*, chosen: bool, org_ids: list[int] | None, funder_ids: list[int] | 
 async def main(orgs: list[str], funders: list[str], *, visibility_only: bool = False,
                yes: bool = False) -> int:
     settings = get_settings()
+    configure_langfuse(settings)  # the API's lifespan does this; a CLI pull has no lifespan
     pool = make_pool(settings.database_url, max_size=4)  # as app/matching/run.py does
     await pool.open()
     try:
@@ -53,6 +55,7 @@ async def main(orgs: list[str], funders: list[str], *, visibility_only: bool = F
         return 0
     finally:
         await pool.close()
+        flush_traces()
 
 
 if __name__ == "__main__":

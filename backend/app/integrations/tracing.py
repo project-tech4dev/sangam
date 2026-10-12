@@ -210,6 +210,10 @@ def root_input(inputs: Any) -> Any:
 
 def root_output(outputs: Any) -> Any:
     """What the person was shown this turn: the replies after their last message that call no tool."""
+    # An agent with a response_format answers in its structured result, e.g. the news verifier's check.
+    structured = outputs.get("structured_response") if isinstance(outputs, dict) else None
+    if structured is not None:
+        return structured.model_dump() if hasattr(structured, "model_dump") else structured
     messages = _messages(outputs)
     last_asked = max((i for i, m in enumerate(messages) if _role(m) in ("human", "user")), default=-1)
     replies = [

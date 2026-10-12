@@ -436,7 +436,7 @@ class _Checks:
                     why = "out of this run's checking time"
                 else:
                     try:
-                        checked = await asyncio.wait_for(verify(d.verifier, s, h, first),
+                        checked = await asyncio.wait_for(verify(d.verifier, s, h, first, run_id=run_id),
                                                          timeout=min(CHECK_SECONDS, seconds))
                         why = None if checked else "the check ended without a verdict"
                     except Exception as exc:  # noqa: BLE001 - a failed check keeps the first read, never fails the pair
