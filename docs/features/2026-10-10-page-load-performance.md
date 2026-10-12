@@ -18,6 +18,7 @@ follows unchanged as the record of what was decided then.
 | 8 `perf/8-profile-calls` | one backend call per profile page | this stack |
 | 9 `perf/9-public-cache` | anonymous reads cached; a warm-up cron | this stack |
 | 10 `perf/10-db` | Supabase advisor fixes; Import upsert | this stack |
+| 11 `perf/11-import` | one backend call for the Import panels | this stack |
 
 ## 2026-10-12: warm is fast, cold is the whole problem
 
@@ -125,6 +126,21 @@ retarget N+1 to `master` and rebase it.
   - [x] the CLAUDE.md migration count and list.
 - **Exit gate:** the performance advisor no longer lists `multiple_permissive_policies`; the upsert's max
   in `pg_stat_statements` after an 8-organisation Import is ≤ 200 ms.
+
+### Milestone 11 — PR 11: the Import page opens with one panel call
+- **Why:** opening `/import` as staff makes 9 requests: threads, research, `/api/me`, one Doc Vault list per
+  org, then sources, runs, queue and proposals, which wait for `/api/me`. Each runs in 3–30 ms on a warm
+  backend; on Vercel each can land on a cold instance, as the profile pages did before PR 8.
+- **Deliverable:** `GET /api/ingest/overview` returns what `loadPanels` assembled, so the page makes 2 requests.
+- **Key tasks:**
+  - [ ] `routes/ingest.py`: `/overview` gathers me, research (25), the caller's Doc Vault files and, for staff,
+        sources, runs (8), queue (20) and proposals (20). The vault part stays best-effort, as it is today.
+  - [ ] `repositories/ingest.py::list_research`: apply the limit in SQL and scan findings for private links
+        only on the rows returned. Today it reads every row and trims in Python (62 rows, 31 ms mean).
+  - [ ] `features/ingest/ImportView.tsx`: one call; `lib/vaultFiles.ts` goes, ImportView was its only user.
+  - Not done: loading Team tools when it opens. The rail's "Waiting for you" needs queue and sources on open.
+- **Exit gate:** `/import` makes 2 backend requests on open; the overview matches the separate endpoints
+  field for field; `list_research` returns the same rows as before for staff, a researcher and a steward.
 
 ## Known gaps — what this stack does NOT make true
 
