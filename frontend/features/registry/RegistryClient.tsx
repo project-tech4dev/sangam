@@ -35,20 +35,19 @@ export function RegistryClient({
   const vetting = entries.filter((e) => e.status === "partial").length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <header style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div className="reg">
+      <header className="reg-head">
         <div className="eyebrow">The Registry</div>
-        <h1 style={{ fontSize: "var(--fs-2xl)" }}>Every organisation and funder in the base</h1>
-        <p className="muted" style={{ margin: 0, maxWidth: 640 }}>
+        <h1>Every organisation and funder in the base</h1>
+        <p className="muted reg-lede">
           Vetted profiles of North East India CSOs and the funders active around them. Every
           field traces to a source.
         </p>
       </header>
 
-      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="reg-controls">
         <input
           className="input"
-          style={{ maxWidth: 420 }}
           placeholder="Search organisations, funders, districts, sectors…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -65,12 +64,12 @@ export function RegistryClient({
             </button>
           ))}
         </div>
-        <span className="muted" style={{ marginLeft: "auto", fontSize: "var(--fs-xs)" }}>
+        <span className="muted reg-count">
           {shown.length} of {entries.length} entries
         </span>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="reg-places">
         {places.map((p) => (
           <button key={p} className="pill" data-active={place === p} onClick={() => setPlace(p)}>
             {p}
@@ -79,49 +78,34 @@ export function RegistryClient({
       </div>
 
       {shown.length === 0 ? (
-        <div className="card" style={{ alignItems: "center", padding: 40 }}>
+        <div className="card reg-empty">
           <div className="card-title">Nothing matches</div>
           <div className="card-body">Try a different search, or clear the filters.</div>
         </div>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-            gap: 18,
-          }}
-        >
+        <div className="reg-grid">
           {shown.map((entry) => (
-            <article key={`${entry.kind}-${entry.id}`} className="card elev-sm">
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <article key={`${entry.kind}-${entry.id}`} className="card elev-sm reg-card">
+              <div className="reg-card-top">
                 <EntityMark name={entry.name} />
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <div className="reg-chips">
                   <Tag tone="neutral">{entry.kind}</Tag>
                   <StatusChip status={entry.status} />
                 </div>
               </div>
-              <div className="card-title" style={{ fontSize: "var(--fs-lg)" }}>{entry.name}</div>
-              <div className="muted" style={{ fontSize: "var(--fs-xs)" }}>{entry.where}</div>
+              <div className="card-title">{entry.name}</div>
+              <div className="muted reg-where">{entry.where}</div>
               {entry.blurb && <div className="card-body">{entry.blurb}</div>}
               {entry.tags.length > 0 && (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <div className="reg-chips">
                   {entry.tags.map((tag) => (
                     <Tag key={tag} tone="accent-2">{tag}</Tag>
                   ))}
                 </div>
               )}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginTop: "auto",
-                  paddingTop: 8,
-                  gap: 10,
-                }}
-              >
-                <span className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>{entry.meta}</span>
-                <Link href={entry.href} className="btn btn-secondary" style={{ padding: "6px 14px", fontSize: "var(--fs-xs)" }}>
+              <div className="reg-foot">
+                <span className="muted-2">{entry.meta}</span>
+                <Link href={entry.href} className="btn btn-secondary">
                   Open profile →
                 </Link>
               </div>
@@ -131,8 +115,8 @@ export function RegistryClient({
       )}
 
       {vetting > 0 && (
-        <div className="card" style={{ background: "var(--color-accent-2-100)", border: "none" }}>
-          <div className="card-body" style={{ color: "var(--color-accent-2-900)" }}>
+        <div className="card reg-vetting">
+          <div className="card-body">
             {vetting} of {entries.length} entries are still in vetting — their profiles show exactly
             what has and hasn&apos;t been verified yet.
           </div>

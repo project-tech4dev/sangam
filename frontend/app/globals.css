@@ -337,6 +337,30 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 }
 .pill[data-active="true"] { background: var(--color-accent-2-700); border-color: var(--color-accent-2-700); color: #fff; }
 
+/* --- Registry ---------------------------------------------------------------- */
+.reg { display: flex; flex-direction: column; gap: 20px; }
+.reg-head { display: flex; flex-direction: column; gap: 6px; }
+.reg-head h1 { font-size: var(--fs-2xl); }
+.reg-lede { margin: 0; max-width: 640px; }
+.reg-controls { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.reg-controls .input { max-width: 420px; }
+.reg-count { margin-left: auto; font-size: var(--fs-xs); }
+.reg-places { display: flex; gap: 8px; flex-wrap: wrap; }
+.reg-empty { align-items: center; padding: 40px; }
+.reg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; }
+.reg-card { min-width: 0; }
+.reg-card-top { display: flex; gap: 12px; align-items: center; }
+.reg-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.reg-card .card-title { font-size: var(--fs-lg); overflow-wrap: anywhere; }
+.reg-where { font-size: var(--fs-xs); }
+/* A theme name can be wider than the card, so these tags wrap inside themselves. */
+.reg-chips .tag { max-width: 100%; white-space: normal; }
+.reg-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 8px; }
+.reg-foot .muted-2 { font-size: var(--fs-xs); }
+.reg-foot .btn { flex-shrink: 0; padding: 6px 14px; font-size: var(--fs-xs); }
+.reg-vetting { background: var(--color-accent-2-100); border: none; }
+.reg-vetting .card-body { color: var(--color-accent-2-900); }
+
 /* --- Dialog ----------------------------------------------------------------- */
 .dialog-backdrop {
   position: fixed; inset: 0;
