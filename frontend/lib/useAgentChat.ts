@@ -141,5 +141,5 @@ export function useAgentChat(
     if (agent) copilotkit.stopAgent({ agent });
   }, [agent, copilotkit]);
 
-  return { turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners };
+  return { agent, turns, send, stop, isRunning, isReady, isLoadingHistory, laneOwners };
 }

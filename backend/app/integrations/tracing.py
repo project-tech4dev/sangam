@@ -222,6 +222,12 @@ def root_output(outputs: Any) -> Any:
         and not (m.get("tool_calls") if isinstance(m, dict) else getattr(m, "tool_calls", None))
     ]
     answer = "\n\n".join(r for r in replies if r.strip())
+    # A turn that stopped for approval ends on tool calls nobody answered, e.g. run_import_now's card.
+    last = messages[-1] if messages else None
+    calls = (last.get("tool_calls") if isinstance(last, dict) else getattr(last, "tool_calls", None)) or []
+    if _role(last) in ("ai", "assistant") and calls:
+        waiting = ", ".join(f"{c.get('name')}({json.dumps(c.get('args', {}), default=str)})" for c in calls)
+        return f"{answer}\n\nWaiting for a person to approve: {waiting}".strip()
     return answer or outputs
 
 
