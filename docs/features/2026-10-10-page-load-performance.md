@@ -133,11 +133,11 @@ retarget N+1 to `master` and rebase it.
   backend; on Vercel each can land on a cold instance, as the profile pages did before PR 8.
 - **Deliverable:** `GET /api/ingest/overview` returns what `loadPanels` assembled, so the page makes 2 requests.
 - **Key tasks:**
-  - [ ] `routes/ingest.py`: `/overview` gathers me, research (25), the caller's Doc Vault files and, for staff,
+  - [x] `routes/ingest.py`: `/overview` gathers me, research (25), the caller's Doc Vault files and, for staff,
         sources, runs (8), queue (20) and proposals (20). The vault part stays best-effort, as it is today.
-  - [ ] `repositories/ingest.py::list_research`: apply the limit in SQL and scan findings for private links
+  - [x] `repositories/ingest.py::list_research`: apply the limit in SQL and scan findings for private links
         only on the rows returned. Today it reads every row and trims in Python (62 rows, 31 ms mean).
-  - [ ] `features/ingest/ImportView.tsx`: one call; `lib/vaultFiles.ts` goes, ImportView was its only user.
+  - [x] `features/ingest/ImportView.tsx`: one call; `lib/vaultFiles.ts` goes, ImportView was its only user.
   - Not done: loading Team tools when it opens. The rail's "Waiting for you" needs queue and sources on open.
 - **Exit gate:** `/import` makes 2 backend requests on open; the overview matches the separate endpoints
   field for field; `list_research` returns the same rows as before for staff, a researcher and a steward.

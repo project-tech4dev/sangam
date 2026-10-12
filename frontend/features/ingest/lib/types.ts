@@ -168,3 +168,14 @@ export type ResearchReview = {
   questions: ReviewQuestion[];
   saves: { concept: string; topic: string; added: number; updated: number }[];
 };
+
+/** GET /api/ingest/overview: the page's panels in one response; the four staff lists are empty for anyone else. */
+export type ImportOverview = {
+  me: { is_staff: boolean; memberships: { org_slug: string; org_name: string; role: string }[] };
+  research: ResearchRecord[];
+  vault: { id: number; title: string | null; doc_type: string | null; org: string; org_id: number; org_name: string }[];
+  sources: ImportSource[];
+  runs: ImportRun[];
+  queue: QueueItem[];
+  proposals: SourceProposal[];
+};

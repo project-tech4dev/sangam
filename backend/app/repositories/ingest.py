@@ -80,34 +80,36 @@ async def list_research(
 ) -> list[dict]:
     """The newest row per entity: re-researching supersedes, it does not stack.
     `mine` is (user, stewarded org ids): only rows that user saved or about those orgs."""
-    where, params = "", ()
-    if mine is not None:
-        where, params = "WHERE e.researched_by = %s OR e.resolved_org_id = ANY(%s)", (mine[0], mine[1])
+    where = "WHERE e.researched_by = %(user)s OR e.resolved_org_id = ANY(%(orgs)s)" if mine is not None else ""
+    params = {"like": PRIVATE_URL_LIKE, "limit": limit, "user": mine and mine[0], "orgs": mine and mine[1]}
     async with pool.connection() as conn:
         rows = await (
             await conn.execute(
+                # Limit first, so findings are scanned only on the rows returned.
                 f"""
-                SELECT DISTINCT ON (e.slug)
-                       e.id, e.entity_name, e.canonical_name, e.entity_kind, e.slug, e.status,
-                       e.stopped_reason, e.summary, e.fact_count, e.sources_read, e.not_found,
-                       e.researched_at, e.saved_at, e.resolved_org_id, e.resolved_funder_id,
-                       EXISTS (SELECT 1 FROM jsonb_array_elements(e.findings) f
-                               WHERE f->>'source_url' LIKE %s) AS has_private,
+                SELECT e.*,
+                       EXISTS (SELECT 1 FROM entity_research x, jsonb_array_elements(x.findings) f
+                               WHERE x.id = e.id AND f->>'source_url' LIKE %(like)s) AS has_private,
                        p.id AS promotion_id, coalesce(u.display_name, u.email) AS saved_by
-                FROM entity_research e
+                FROM (SELECT * FROM (
+                        SELECT DISTINCT ON (e.slug)
+                               e.id, e.entity_name, e.canonical_name, e.entity_kind, e.slug, e.status,
+                               e.stopped_reason, e.summary, e.fact_count, e.sources_read, e.not_found,
+                               e.researched_at, e.saved_at, e.resolved_org_id, e.resolved_funder_id
+                        FROM entity_research e
+                        {where}
+                        ORDER BY e.slug, e.researched_at DESC) latest
+                      ORDER BY researched_at DESC, slug LIMIT %(limit)s) e
                 LEFT JOIN LATERAL (SELECT id, promoted_by FROM promotions
                                    WHERE slug = e.slug AND undone_at IS NULL
                                    ORDER BY promoted_at DESC LIMIT 1) p ON true
                 LEFT JOIN users u ON u.id = p.promoted_by
-                {where}
-                ORDER BY e.slug, e.researched_at DESC
+                ORDER BY e.researched_at DESC, e.slug
                 """,
-                (PRIVATE_URL_LIKE, *params),
+                params,
             )
         ).fetchall()
-    return sorted(
-        (dict(r) for r in rows), key=lambda r: r["researched_at"], reverse=True
-    )[:limit]
+    return [dict(r) for r in rows]
 
 
 # A queued name joins the entity as an alias, which is how the matcher resolves it next run.
