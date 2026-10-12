@@ -20,5 +20,5 @@ export default async function FunderBriefPage({ params }: { params: Promise<{ sl
   const brief = parseBrief(await res.text());
   if (!brief.name) brief.name = profile.funder.name;
 
-  return <BriefArticle brief={brief} slug={slug} rawUrl={profile.brief.url} />;
+  return <BriefArticle brief={brief} slug={slug} />;
 }

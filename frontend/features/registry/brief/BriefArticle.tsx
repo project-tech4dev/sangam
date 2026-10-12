@@ -66,7 +66,7 @@ function FindingRow({ finding }: { finding: Finding }) {
 }
 
 /** A funder's research brief as a page: the summary, then each finding with the sentence and source behind it. */
-export function BriefArticle({ brief, slug, rawUrl }: { brief: Brief; slug: string; rawUrl: string }) {
+export function BriefArticle({ brief, slug }: { brief: Brief; slug: string }) {
   const summary = splitSummary(brief.summary);
   const index = [{ id: "summary", label: "Summary" }, ...brief.sections.map((s) => ({ id: s.id, label: s.title }))];
   if (brief.notFound || brief.sources.length) index.push({ id: "gaps", label: "Gaps and sources" });
@@ -173,9 +173,6 @@ export function BriefArticle({ brief, slug, rawUrl }: { brief: Brief; slug: stri
               Findings, not catalog rows. A fact here is something a source said, with the sentence that says it;
               putting it in the catalog is a separate step.
             </p>
-            <a href={`${rawUrl}&download=${slug}.md`} className="btn btn-secondary">
-              Download .md
-            </a>
           </footer>
         </article>
       </div>

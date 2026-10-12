@@ -64,7 +64,7 @@ The page is a server component:
   - the headline in bold, followed by the year and a *derived* flag when there is one;
   - the quote as a `.brief-quote` (sage left rule, `--fs-sm`);
   - a source line: the source name linked to its URL (`target="_blank" rel="noopener noreferrer"`) plus a confidence `Tag` (high: accent-2, medium: neutral, low: outline).
-- **Footer:** "What it set out to find" collapsed in a `<details>`, then "Looked for, not found", then "Sources read" as a link list. The final note ("Findings, not catalog rows…") closes the page, followed by "Download .md" linking to `rawUrl`.
+- **Footer:** "What it set out to find" collapsed in a `<details>`, then "Looked for, not found", then "Sources read" as a link list. The final note ("Findings, not catalog rows…") closes the page. The header has a "Download PDF" button (the browser's print dialog, with print styles); there is no .md download.
 
 ### 4. The button (`frontend/app/registry/funders/[slug]/page.tsx`)
 
@@ -103,7 +103,7 @@ Reused: `apiGet`, `FunderProfile` (`frontend/lib/api`), `Breadcrumbs` and `Tag` 
    - the 7 creche rows fold into one;
    - `` `594 cr `` shows literally rather than as code;
    - source links open in a new tab;
-   - "Download .md" returns the file.
+   - "Download PDF" saves the brief alone, in one column.
 3. Open a funder with no brief: the profile shows no button, and `/brief` returns 404.
 4. Check the page at 390 px width: the section index hides and nothing scrolls horizontally.
 5. Open a PR. After merge, deploy the frontend only.

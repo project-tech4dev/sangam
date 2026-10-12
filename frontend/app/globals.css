@@ -397,7 +397,7 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 @media print {
   body:has(.brief) > :not(main) { display: none; }
   body:has(.brief) { background: var(--color-bg); }
-  .brief-crumbs, .brief-layout > nav, .brief-print, .brief-foot .btn { display: none; }
+  .brief-crumbs, .brief-layout > nav, .brief-print { display: none; }
   .brief-layout { display: block; }
   .brief-finding { break-inside: avoid; }
   .brief-section h2 { break-after: avoid; }
