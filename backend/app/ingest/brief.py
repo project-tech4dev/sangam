@@ -1,9 +1,7 @@
-"""One research brief: the markdown, and the copy the product serves.
+"""One research brief: the record of everything researched about an entity, and the page that serves it.
 
-Rendering is pure and runs anywhere — `make client-docs` calls it on the host to
-write `docs/entities/`, and `save_research` calls it inside the container to
-publish the same bytes to the bucket. Only the file writing is host-only, which
-is what `render_docs.py` still does.
+Rendering is pure; `build` reads the published brief and merges every research row into it, so a fact
+no later run found, and a fact with no column, is never dropped.
 """
 
 from __future__ import annotations
@@ -208,19 +206,86 @@ def fact_key(f: dict[str, Any]) -> tuple:
     return (concept, *(_norm(f.get(k)) for k in fields))
 
 
+def _json_list(value: Any) -> list[dict[str, Any]]:
+    return value if isinstance(value, list) else json.loads(value or "[]")
+
+
 def _findings(row: dict[str, Any]) -> list[dict[str, Any]]:
-    return row["findings"] if isinstance(row["findings"], list) else json.loads(row["findings"] or "[]")
+    return _json_list(row["findings"])
 
 
-def merge_findings(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Every run's findings, a fact taken from the newest run that found it; rows come oldest first."""
+_TIER = {"evidenced": 2, "claimed": 1}
+_CONFIDENCE = {"high": 3, "medium": 2, "low": 1}
+
+
+def _strength(group: list[dict[str, Any]]) -> tuple[int, int]:
+    return max((_TIER.get(f.get("evidence_tier"), 1), _CONFIDENCE.get(f.get("confidence"), 0)) for f in group)
+
+
+def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ()) -> list[dict[str, Any]]:
+    """Every fact any run found, once: a later run's replaces an earlier one unless the earlier source is stronger.
+
+    `prior` is the brief's own facts, laid down before the rows (oldest first); a wrong_entity row is another
+    organisation and adds nothing.
+    """
     by_key: dict[tuple, list[dict[str, Any]]] = {}
-    for row in rows:
+    runs = [list(prior), *(_findings(r) for r in rows if r.get("status") != "wrong_entity")]
+    for findings in runs:
         mine: dict[tuple, list[dict[str, Any]]] = {}
-        for f in _findings(row):
+        for f in findings:
             mine.setdefault(fact_key(f), []).append(f)
-        by_key.update(mine)
+        for key, group in mine.items():
+            if key not in by_key or _strength(group) >= _strength(by_key[key]):
+                by_key[key] = group
     return [f for group in by_key.values() for f in group]
+
+
+# A fact's typed fields ride in an HTML comment the page strips; "--" is escaped so no value can close it.
+_BLOCK = re.compile(r"<!-- (fact|unplaced) (.*?) -->")
+
+
+def _block(kind: str, data: dict[str, Any]) -> str:
+    body = json.dumps(data, ensure_ascii=False, default=str).replace("--", "\\u002d\\u002d")
+    return f"<!-- {kind} {body} -->"
+
+
+def record(markdown: str | None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The facts and the unplaced facts a brief holds, read back from its blocks."""
+    facts: list[dict[str, Any]] = []
+    unplaced: list[dict[str, Any]] = []
+    for kind, body in _BLOCK.findall(markdown or ""):
+        try:
+            data = json.loads(body)
+        except ValueError:
+            continue
+        (facts if kind == "fact" else unplaced).append(data)
+    return facts, unplaced
+
+
+def _merge_unplaced(*lists: Any) -> list[dict[str, Any]]:
+    """Every unplaced fact once, the newest copy of each (field, value)."""
+    out: dict[tuple, dict[str, Any]] = {}
+    for items in lists:
+        for u in items:
+            out[(_norm(u.get("field")), _norm(u.get("value")))] = u
+    return [u for u in out.values() if not is_private_source(u.get("source_url"))]
+
+
+_GAP_LABELS = {"not_stated": "Not stated", "blocked": "Could not read", "not_reached": "Not reached"}
+
+
+def _open_gaps(gaps: list[dict[str, Any]], concept: str, group: list[dict[str, Any]]) -> list[str]:
+    """The newest run's gaps for one section that no finding fills: a field gap always, a concept gap when empty."""
+    out = []
+    for g in gaps:
+        if g.get("concept") != concept:
+            continue
+        year = g.get("fiscal_year")
+        if not g.get("field") and any(not year or f.get("fiscal_year") == year for f in group):
+            continue
+        what = _join(g.get("field"), year) or "anything"
+        out.append(f"- {_GAP_LABELS.get(g.get('reason'), g.get('reason'))} · {what}: {' '.join(g['detail'].split())}")
+    return out
 
 
 _TAG_SUFFIX = re.compile(r" \((?:under|a theme in) [^)]*\)$")
@@ -253,13 +318,17 @@ def _program_details(p: dict[str, Any], findings: list[dict[str, Any]]) -> list[
     ]
 
 
-def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]]) -> str:
-    """One organisation's brief from every research row for its slug; the newest row leads."""
+def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]], prior: str | None = None,
+                    unplaced: list[dict[str, Any]] = ()) -> str:
+    """One organisation's brief: the `prior` brief's facts with every research row merged in; the newest row leads."""
     rows = sorted([rows] if isinstance(rows, dict) else rows,
                   key=lambda r: (str(r.get("researched_on")), str(r.get("researched_at") or "")))
     row = rows[-1]
+    held, held_unplaced = record(prior)
     private = any(is_private_source(f.get("source_url")) for f in _findings(row))
-    findings = [f for f in merge_findings(rows) if not is_private_source(f.get("source_url"))]
+    findings = [f for f in merge_findings(rows, held) if not is_private_source(f.get("source_url"))]
+    unplaced = _merge_unplaced(held_unplaced, unplaced)
+    gaps = _json_list(row.get("gaps")) if row.get("status") != "wrong_entity" else []
     out = [
         f"# {row['canonical_name'] or row['entity_name']}",
         "",
@@ -295,8 +364,9 @@ def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]]) -> str:
     for concept, title in titles.items():
         group = [f for f in findings if f.get("concept") == concept]
         out += [f"## {title}", ""]
+        open_gaps = _open_gaps(gaps, concept, group)
         if not group:
-            out += ["Not recorded.", ""]
+            out += [*(open_gaps or ["Not recorded."]), ""]
             continue
         for f in sorted(group, key=lambda f: (f.get("fiscal_year") or "", headline(f))):
             year = f" ({f['fiscal_year']})" if f.get("fiscal_year") else ""
@@ -305,13 +375,21 @@ def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]]) -> str:
             out.append(f"  > {f['evidence']}")
             out.append(
                 f"  <sub>{', '.join(b for b in (f.get('source_name') or 'source', f.get('page')) if b)} · {f['source_url']} · "
-                f"confidence {f.get('confidence', 'unknown')}</sub>"
+                f"confidence {f.get('confidence', 'unknown')}</sub> {_block('fact', f)}"
             )
             if concept == "document" and f.get("summary"):
                 out.append(f"  - Summary: {' '.join(f['summary'].split())}")
             if concept == "program":
                 out += [f"  - {label}: {' '.join(str(v).split())}"
                         for label, v in _program_details(f, findings) if v]
+        out += [*(["", *open_gaps] if open_gaps else []), ""]
+
+    if unplaced:
+        out += ["## Stated, but Sangam has no field for it", ""]
+        for u in unplaced:
+            out += [f"- **{u['field']}: {' '.join(str(u['value']).split())}**", f"  > {u['evidence']}",
+                    (f"  <sub>{', '.join(b for b in ('source', u.get('page')) if b)} · {u['source_url']} · "
+                     f"confidence unknown</sub> {_block('unplaced', u)}")]
         out.append("")
 
     if len(rows) > 1:
@@ -348,10 +426,17 @@ async def publish_markdown(slug: str, markdown: str) -> str | None:
     )
 
 
-async def publish(rows: dict[str, Any] | list[dict[str, Any]]) -> str | None:
-    """Render a slug's `entity_research` rows as one brief and publish it. Returns the key, or None."""
+async def build(rows: dict[str, Any] | list[dict[str, Any]], unplaced: list[dict[str, Any]] = ()) -> str:
+    """The published brief with these rows merged in. Raises when the brief could not be read, never overwriting it."""
     rows = [rows] if isinstance(rows, dict) else rows
-    return await publish_markdown(rows[0]["slug"], entity_markdown(rows))
+    prior = await storage.read(storage.SOURCE_ARCHIVE, storage.brief_key(rows[0]["slug"]))
+    return entity_markdown(rows, prior.decode("utf-8") if prior else None, unplaced)
+
+
+async def publish(rows: dict[str, Any] | list[dict[str, Any]], unplaced: list[dict[str, Any]] = ()) -> str | None:
+    """Merge a slug's research rows into its brief and publish it. Returns the key, or None."""
+    rows = [rows] if isinstance(rows, dict) else rows
+    return await publish_markdown(rows[0]["slug"], await build(rows, unplaced))
 
 
 async def rows_for(conn: Any, slug: str) -> list[dict[str, Any]]:

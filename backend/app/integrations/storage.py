@@ -452,6 +452,19 @@ async def download(bucket: str, key: str, max_bytes: int = MAX_ARCHIVE_BYTES) ->
     return response.content
 
 
+async def read(bucket: str, key: str) -> bytes | None:
+    """An object that is a record: None only when it does not exist, and raises when Storage failed."""
+    if _disabled():
+        return None
+    async with _client() as client:
+        response = await client.get(f"/object/{bucket}/{key}")
+    # Storage answers a missing object with 400 and a "not_found" body as well as with 404.
+    if response.status_code == 404 or (response.status_code == 400 and "not_found" in response.text):
+        return None
+    response.raise_for_status()
+    return response.content
+
+
 async def stat(bucket: str, key: str) -> dict[str, Any] | None:
     """The object's own record of itself, or None if it is not there.
 

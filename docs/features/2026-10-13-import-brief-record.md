@@ -3,7 +3,7 @@
 Second of the stacked PRs in `2026-10-13-import-researcher-contract.md`, on M1's branch.
 
 ## Decision (13 Oct 2026)
-The record is **the same brief #192 publishes** — `briefs/<slug>.md` in the `source-archive` bucket, the
+The record is **the same brief #192 publishes** — `entities/<slug>.md` in the `source-archive` bucket, the
 file the funder page reads. No table and no version files: each save reads it, merges, and writes it back.
 
 ## What changes
@@ -30,6 +30,6 @@ Private findings stay out of the brief, as today; M3 reads them from their rows.
 
 ## Verification
 - `pytest -m "not integration"`, `ruff`, `npm run lint` / `build`.
-- Exit: render Axis's three staging rows (129, 144, 150) through `build`, read the blocks back: every
+- Exit: render Axis's three staging rows (129, 144, 150) through the merge, read the blocks back: every
   public finding of all three runs present once, stronger sources kept; `parseBrief` reads the page as
   before.
