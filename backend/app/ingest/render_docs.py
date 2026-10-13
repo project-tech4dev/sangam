@@ -27,7 +27,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-from app.ingest.brief import entity_markdown, publish_markdown
+from app.ingest.brief import build, publish_markdown
 
 REPO = Path(__file__).resolve().parents[3]
 ENTITIES = REPO / "docs" / "entities"
@@ -92,7 +92,7 @@ async def main() -> int:
     ENTITIES.mkdir(parents=True, exist_ok=True)
     published = 0
     for row in rows:
-        markdown = entity_markdown(history[row["slug"]])
+        markdown = await build(history[row["slug"]])
         (ENTITIES / f"{row['slug']}.md").write_text(markdown, encoding="utf-8")
         # The same file in the bucket, so the app can link to a brief without
         # reading the repo. git stays the place it is reviewed; this is the

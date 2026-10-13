@@ -372,7 +372,12 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
         # person to run `make client-docs` left the funder page's link dead in
         # between. Silent on failure, like archiving — the model cannot act on
         # it and the findings are saved either way.
-        published = await publish(history)
+        try:
+            unplaced = [] if findings.status == "wrong_entity" else [u.model_dump(mode="json") for u in findings.unplaced]
+            published = await publish(history, unplaced)
+        except Exception:  # noqa: BLE001 - the brief could not be read, so it is left as it was
+            logger.warning("brief for %s not merged: Storage could not be read", slug)
+            published = None
 
         found = ", ".join(findings.concepts_found()) or "nothing"
         replaced = (
@@ -437,7 +442,13 @@ async def publish_brief(slug: str = "") -> str:
         by_slug: dict[str, list[dict]] = {}
         for r in rows:
             by_slug.setdefault(r["slug"], []).append(dict(r))
-        done = [s for s, history in by_slug.items() if await publish(history)]
+        done = []
+        for s, history in by_slug.items():
+            try:
+                if await publish(history):
+                    done.append(s)
+            except Exception:  # noqa: BLE001 - one unreadable brief is left as it was; the rest still publish
+                logger.warning("brief for %s not merged: Storage could not be read", s)
         if not done:
             return (
                 f"Published nothing of {len(by_slug)}. Storage is not configured, so a brief "

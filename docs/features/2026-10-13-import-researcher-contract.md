@@ -20,7 +20,7 @@ data block, e.g. `{"concept":"programme_spend","program_name":"Rural Livelihoods
 1. **The researcher pulls a fixed contract, from the skills.** Every field of the brief's layout ends as a
    finding (quoted, sourced, with page) or a gap (`not_stated` / `blocked`, naming the source), plus
    anything else important the source states.
-2. **One brief per entity is the record.** Every run merges in; nothing is dropped; every version kept.
+2. **One brief per entity is the record.** Every run merges in; nothing is dropped.
 3. **Promotion writes the database from the brief, and drops nothing.** Each fact ends written, confirmed,
    contradicted, held (why) or superseded, and the brief says which.
 4. **Every source is in the document base**, typed, linked to its programme, cited with a page.
@@ -44,7 +44,7 @@ data block, e.g. `{"concept":"programme_spend","program_name":"Rural Livelihoods
 | PR | Milestone | Exit gate |
 |---|---|---|
 | M1 | Skills are the researcher's contract | an Axis run reads the skill; every field found or gapped; Mission 2/4 Million and the SLP components saved as programmes with figures |
-| M2 | The brief is the record; every run merges into it | two Axis runs merge into one brief holding every fact; versions kept; the page renders it |
+| M2 | The brief is the record; every run merges into it | two Axis runs merge into one brief holding every fact; the page renders it (detail: `2026-10-13-import-brief-record.md`) |
 | M3 | Promote from the brief; drop nothing | Axis and KABIL promoted from their briefs: every fact in a state, the SLP lines and Missions written, no NULL-linked rows |
 | M4 | The document base | every source of an Axis run is a typed document linked to its programme |
 | M5 | Backfill | KABIL and Axis rebuilt, re-promoted and republished on staging with no model calls |
