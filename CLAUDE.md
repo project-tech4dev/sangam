@@ -572,3 +572,11 @@ work belongs in this file, `docs/`, or a commit message.
 `.claude/settings.json` denies reading `.env` through both the Read tool and common shell
 commands. This is intentional. Read `.env.example` to learn which variables exist, and ask
 the user for values rather than trying to work around the rule.
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+@AGENTS.md
+
+<!-- OPENWIKI:END -->

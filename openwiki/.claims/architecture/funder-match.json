@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6b5ea7796f49fdc178acd068aa34a52368b675567f3471b6b272eeb1c09d1326",
+  "claims": [
+    {
+      "id": "claim_8d5cf8f2478345fc8f2c86fc0e3f5809",
+      "statement": "Funder Match is judged entirely in code under match-v2 (RUBRIC_VERSION) with seven weighted criteria: theme 25, geography 15, population 15, eligibility 20, relationship 10, funding size 10, capacity 5. rubric.py counts and is pure, while rules.py judges, so rule changes go in rules.py and point values or tiers go in rubric.py.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/matching/CLAUDE.md",
+          "version": "repo-file-v1:sha256:6b38bd96b9cd8eddd1fdc6aeb7df03d2d458bdcc3cf923a48934433e02d85bfb"
+        },
+        {
+          "resource": "repo://backend/app/matching/rubric.py#L1-L43",
+          "version": "repo-lines-v1:sha256:6c48fa347bd88d29b6e51ec04b84f17efe1c9d23a32f3859201d79c5bcf0e5b2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwMzcwNTJkMTI2NTRiNjY3ZjMyN2FlN2E0YzMwZmNmMWY2NDIwNjc4ZjJjMmQxNDQzZTc0ODgxZTRmOWYxM2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljMzE3MWE5MjNhMzdiNWMwZDJmMDAwOGNhMTE3NGY4MDgyOTNjYmU1ZTYwNmRmZGU5ZTU2ODU5NjI1MzQzM2YifQ"
+        },
+        {
+          "resource": "repo://backend/app/matching/rules.py#L1-L14",
+          "version": "repo-lines-v1:sha256:d4fcde42764c6fbc82e6d73f51759fd286f2b487daa2b01875f6ecebb2140d52:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2YjZhYzllMWNlYWE5MTkwNTYwNTc4M2U4OWM5MjY0MWZhODEwNjY5NDQwMTc0ZWNiYTFjZWJhZDFkYTg3ZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI5NGVjNGI4ZjY3NzI1ZDFjZGY3ZDZmNGNhMTllZjM4YmQ2M2ZhZTZhZDExNDYzZDRjZTJhYTE0ODFjNzA2YjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f87f8e61e5554247a1aab7e7c768e75b",
+      "statement": "Scoring arithmetic: unknown criteria (points None) are excluded from both earned and judged_max rather than counted as zero. A pair sharing no place or theme (neither theme nor geography earned points) gets no score. Tiers are strong at 75 or more, medium at 55 or more, otherwise weak, and not_scored when there is no score. Status (met at 80% of max, partial, fail, unknown) is computed from points.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/matching/assessment.py#L14-L50",
+          "version": "repo-lines-v1:sha256:cf115e8eb587f2068aaae4d832a523fc6d11e96227daaf19188046a3c4bd2cc5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjNzgzNWZiYWI4NjQyMjIxMjI3MGM1NDU3NjhkYzlhOThjMGYwMjY5OWU2YjJkOTU2N2U5NzQ2ZTgwZWEwZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyYWIwOTBiY2QxNjIwZmE2MmVhZWUxNTdhNzRmY2E2MzVhYTI5ZTEyY2JmZmQ2MThiNTc5MmQ4N2JjMDNhM2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzZTAyNTcyMTQ0NWFlNmYyZmEyMzM4NDBjMzEyZWQ4MmIzYzZhZmI1OWY4ZTQ3NzE3OWE0MmU3NWEwODNkYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwZDQwM2Y3MmZhZmM3ZjFhN2E5YTBkNGIzNGY5NTJiYmM1MzUxYjczZGI5OGU0YTUxMzgyNGFjNzBhNTVjNGQifQ"
+        },
+        {
+          "resource": "repo://backend/app/matching/rubric.py#L28-L69",
+          "version": "repo-lines-v1:sha256:fbaebb48ed0983b5bb7589d446b2b138468d204980358e9e22a833d84e15485c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3YmQ1MTZjM2Q3YmE4MDM0ZDlhMTg5ZGIwYWJmMjZhMzgwMmY1M2QyMmNkMTcwYjNhMWNlMGMyYjY1ZDYxZWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2ZjQwYWIwMTI4MTlhOTBiMTJiNWY2MWVkMjcxYjRhNDZmNWZlYjM5YTIxZDVjNjU2NzFiZmI0MzBhNDc1ODYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0MTc1ZDVmMjg1ODhjMjU4ZjMyMDcxNDMwMTAyN2Q3ZWIyMTQ2MjRmNjY3ZGJiNWNjZTQyNGJhMTY0MDllNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE1ZmFjNTdlN2Y5M2E2OWU4YmNjNGJlNTQ0NzRkNmFlZGM3MjBjMGJkYmZiNzAxMDJlNDUyYzMxY2NiNzA4ZWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_16679b4d17f84316bd04e0d11ddc3534",
+      "statement": "Criterion and Match validation enforce evidence discipline: points must lie within 0..max, a judged criterion must cite the rows it rests on (except a zero relationship), and a Match must contain every rubric criterion once in rubric order. Match score and tier are computed from the criteria.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/matching/assessment.py#L14-L88",
+          "version": "repo-lines-v1:sha256:2f29b0bbbb7cdbf475260e224e336fd9e2749e186cec48dbd0a00f8055ea1e8b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjNzgzNWZiYWI4NjQyMjIxMjI3MGM1NDU3NjhkYzlhOThjMGYwMjY5OWU2YjJkOTU2N2U5NzQ2ZTgwZWEwZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmZWM0NGRiMWM3OGU5ZTQ0YTUwZGE0YzViZmY5MjdkZWM4MDQ4YTFhMzgzZjc3MzU5OTY2OWI4MWQ4OGU4NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzZTAyNTcyMTQ0NWFlNmYyZmEyMzM4NDBjMzEyZWQ4MmIzYzZhZmI1OWY4ZTQ3NzE3OWE0MmU3NWEwODNkYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fa68575a32f34b4caeecb9dfed3f326f",
+      "statement": "Theme is judged on the finest grain both sides share (theme or sub-theme 25, Schedule VII clause 15, domain 10), with domain-others excluded from the domain grain. Points are capped at 15 when no programme carries the shared grain, and the finding comes with an improvement action.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/matching/rubric.py#L34-L36",
+          "version": "repo-lines-v1:sha256:015f84ed386153338063eeb6caa4c885e0ee673d2f4154d4e4e3b73eab23240d:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjAyYzkyZmI3MTJkYmIzOGRjMzg3MWJmMWIwMjIyMGE3NTdkNmQ4NTc1N2JiZjRjZmUxZWJmNzY5ZTZkM2QyNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjE4NDcwM2JhMjlhZDA2YWIwNTMxNmNmNjM4MmNlMzBiYzI5N2UwYzdiMzhjZmNlYmE5OTBmZmZmYmY4YTVlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDE1NTk2YTFmMTQxYTNjZWNmYzYzZjRiNDg5YTNjZjAzYzdiZDU1YWVjNTQzNmUyODQ4NjA3NmY3NTA4MWY3YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmI2MmM1ZGU0N2FiMWM3OTg4NmU1OGVkNGQ2N2JkNGNkNTljMmVkYTBhZmYxYzc2ZjIxZWEzMWU1YzJhYWRjNSJ9"
+        },
+        {
+          "resource": "repo://backend/app/matching/rules.py#L201-L228",
+          "version": "repo-lines-v1:sha256:3270a4a68b38100b3b783cc903d31dad97a75da85e87c0a3fe93c3599f17ad0c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzMTU2NDRiZGMwZDc1NTExYjg1YmY1ZGZkMjg1MzU0N2NhMDk3MmZhZTc3NjE5OTY2YzFmYzEzY2ZiODM1NWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY0MTFlYWRlNzM1MWY1YWIxMjg3ZWY0ZmYxNTIxZDc4YTVlMzZiMWEyYWRlNGI2NjFhZGE0ZGU5MmIxOWFmODAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlNDBmM2Q1YmQ5OTUxMmQ5M2Y0Mjg5YmIyYWRhNGYxMWZmZmUyNDQ1YTllMjdlMGI5MWVlYTJlYjA3ZmM3MDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1ODU1ZDFhOGZjMzQzNDY1ZGQ1YTdhMTFjNWY5OTU4YmVjYWJjYzE0MjkzN2MxZjhmM2U5ZTZmYWRhZWJmZWIifQ"
+        },
+        {
+          "resource": "repo://backend/app/matching/rules.py#L24-L25",
+          "version": "repo-lines-v1:sha256:a85b9fb01185b0910d409fc3859765661e722ca0b02c18427d037a255c6eb7bb:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWRkZDhiY2NkZTcxZmQ3MTE4ZjZlYjY3YTQ4ZjcyN2M5ZjI3YWQ3YWM4NDFhNTYzY2UzYzYzNDU4NTU4NDE2YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWM4YjYwMTY3YTdkYTdiMDE0ZDg3YjNlY2JlOTk4NDY1NWZkOTQxYzZhYmJiODgyOGQ4NmRkNzEyMTRlODE3MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWMxZmRjNGU4ZDQ5YTQ3ZTZhMjAyZWQwZmQ5ZTg1NGJkZTAzMzY0YWJkMTE1NGI0M2ZiNjlmNDgyZjhjZGYzNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjkxMGI4YzBjNmQwOTRkOGI1M2FjNDJlOTU3MmNhNWRmYjQ4NjViODk0YTFkNDQwMWEwZDQ1ODZhYmYwZDUzMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_5abb972533b44af6afd79576459fc573",
+      "statement": "Geography scores a shared district 15, shared state 12 (a district's state is its parent), funder gives across India 6, and a funder region containing an org state 6. It scores 0 when both sides have places and none match, and unknown when a side has none or when a funder region has no recorded member states.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/matching/rubric.py#L37-L37",
+          "version": "repo-lines-v1:sha256:7d2caaf4d6eb944b123d33feaedd6efe9b259c43f378367398fb3094dc924006:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2QyY2FhZjRkNmViOTQ0YjEyM2QzM2ZlYWVkZDZlZmU5YjI1OWM0M2YzNzgzNjczOThmYjMwOTRkYzkyNDAwNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2QyY2FhZjRkNmViOTQ0YjEyM2QzM2ZlYWVkZDZlZmU5YjI1OWM0M2YzNzgzNjczOThmYjMwOTRkYzkyNDAwNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDE1Zjg0ZWQzODYxNTMzMzgwNjNlZWI2Y2FhNGM4ODVlMGVlNjczZDJmNDE1NGQ0ZTRlM2I3M2VhYjIzMjQwZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2MyOGRkODUzMzllZjQ2OWQ5NGJlNTI5MWZhNGQ0ZjQwNzEyOTg0OWI0YWIyZmQ4ZWRjMTFiNzVhY2VlZDBkNCJ9"
+        },
+        {
+          "resource": "repo://backend/app/matching/rules.py#L136-L255",
+          "version": "repo-lines-v1:sha256:6ae37d4e768f81aa36e47f369bdcc7944db0c317312a88f33885d40888fb7d46:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwYTAxOWE2OGFiNzg3OGQwNjg5MmZkZjE0MzMyNzMwMTIzZDJiMWEzNDgyMmUwNmQ2N2JjY2UzMzhiZWNjOTkwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJiN2RiYTUwNmZjNjMyNjllYmI3NWI1OGYxYTEwMWUyM2VjNmU3YWMzYTQ2Y2RkMzY3YzliODZjMDk0Nzk1OThmIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI5NmJlZDA2MjE4OGNmODQxMWI4MzY3YjlhYTFjNjQzNDE4NzEzZmZhNDdmZDUzNTRhZWIxYmM3NjY0MTIxZGM3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI2MmFkMDYwOWM3N2M4YWFmYjIyM2E0YzNhYjFlMzY2ZTUzNTdhNTgwYTFlNWVmMzU3ZjI0NzVlNTc2MzgwOTMwIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_25869375fdf94d809874b1f3a898a61c",
+      "statement": "Eligibility is the share of counted items held (12A, 80G, audited accounts, and CSR Form 1 only for corporate_csr/corporate_foundation or Section 135 funders) times 20. Lapsed or missing items earn nothing, while conflicting rows or an unreadable registry are left out of the count and reported in not_judged. The funder's own free-text bars are listed for human review and never scored.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/matching/rules.py#L271-L334",
+          "version": "repo-lines-v1:sha256:5a94fb6602a96f67d6beca8842a0bd4975c04c829b0c5e6ac1d98df17efcd2e6:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzZmNmZGJiN2UyZjgwNGFjMDM2ODRmM2IwMDQzYTA3MTFlODEzYTI4OTkwOTIxOTA0MTRjMGE3ODI5YTgyMzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyY2FiMmY3YTIzZGZmOTRlNWI0Y2JhNmFiNjIyNWE5MWEwOWEzZGQ1MjAxMjg1MGFjODY0Y2ZhZDdjNDBlMzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2ZDc2YTU3MjMwYjk0NDRiNTU1YTQzNzRmNGRlNjEwZDllZmEyYTk1MTE1MDAxZGM3ZTIxNjcwOGY1NjNjNTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYyOThkZjc0YzQxNjczMWYwYjI3YzBlMDBiODYxNmE4NmFlYjg1ZWJlMzgyNzQxYmI4MWY1Zjk4MTUyMmMyZGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_79e24e4d689e47ea94163e0b9a0aa1f4",
+      "statement": "Relationship, funding size and capacity: relationship gives 10 for a confirmed partner line, 5 if unconfirmed, and 0 otherwise. Funding size needs a funder range plus org income (smallest grant at or below income gets 10, up to 2x gets 5, otherwise 0). Capacity looks at spend in the last three completed Indian fiscal years (April start): 5 for all, 3 for some, unknown for none.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/matching/rubric.py#L38-L86",
+          "version": "repo-lines-v1:sha256:01cc909d59cfc7b9f2694288ca793f8370dedb0ead62149e1961b5faa9e6dd19:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhZDExNjIzNTljY2ZmYzQyMTEyNDIxNDQ4OTZiMTJiNWI2MWY3ZjI1NDMyNWVhNDNlZTU3Mzg3Yjg4MGY0ODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0M2I1YmQ5NGYyYWI2ZWIzZTgzNmI4M2Y2MzhkMGI0ZTE3MDJhYWVjNjdkNzU2MGFjNjI5Y2YzZmU5ZWI0YjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZjNlMzE3NzM0YjMxNWUyZDA5NDdhY2QyYWVkMzMwYWE3Y2Q3ZjFjMDk4ZWVkOWEwNWQ0MzY5MzMzODI0MmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/matching/rules.py#L340-L394",
+          "version": "repo-lines-v1:sha256:798601403f20fc71c6b3d44d74536e8a99b1680583dca2a1208fbe50178f4ac5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwMTk3MzIyNTY3N2MyYzM1ODY1MTBiMzg4M2JlNGJlMjE2MTg3NGE2YjNmZThkZTEzOTRlODY5MDdlNDhlNTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4NGM0N2RhMGE5ZGNiMjc2NGZhYjNhZjE3Mjk4Y2RmN2ViNzcyMDMwNzBlZjFmMDgyNjYxMDk0ZjIzZDI2YWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlNWM2ODlmNDcwM2FjYWRkNWFjOThmNDUwNTc2N2I5ZWQ3YTgzMGM5NjNmMzA1YzZiZDJkNGJiZDFiYjg3MjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3NDg0NmY5N2E0Zjk5NWE3MmM4MmE3YTU2YzUzOTZlOWJkNTgyMGYxN2RiYWU1YjgwNjc4NjRmNzJmYmY5MGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f27f4d025ad54ddca4673cd197ccce7f",
+      "statement": "match.py builds the card (up to two fit and two gap lines, or a single 'No shared place or theme recorded' line when unscored), the summary and the improve list from templates; improve is empty for unscored matches and not_judged includes unknown criteria.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/matching/match.py#L11-L53",
+          "version": "repo-lines-v1:sha256:83c21978025a29495ff2c163eeb82e2dc586a6bdfa7b1eac4446995aaf0aec60:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3OWVjOGVmOGJmZWE0NDYyNDlmYzIzYzA5MTg2ZGQ3OTljOGFjMTMxMDM0N2YyN2M5ZmEzMWQxYjFkNGM1MTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwZGVkYzY0ZDAwYmRiMzI5ZGRkZTZiNTM0NjEzNmEyM2E2NjEyYjg1ZWFjMzI5MWI4MmRhOTVmNWVjMTU5N2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhMzI4MjBlNzM3NjEyMWEwODhhNjA3ODIzZjMyOTAwNTNjY2EyYzRhNWE1Y2NmYjJmMDgzNzgxYTZhMWNmZGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_84525a170f0e4db5a6e9e9104673b6e6",
+      "statement": "repositories/matching.load reads the org, funders (all when funder_ids is None, using one fixed query plan) and locations in a single read-only transaction with a statement timeout. It builds themes from the tag taxonomy (domain, theme, sub_theme, csr_sector) so each tag brings its ancestors and Schedule VII clauses, and it never reads Darpan sector tags. Funder themes include the classifications of its activity lines, and registered locations are kept apart from where it gives.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/repositories/matching.py#L21-L216",
+          "version": "repo-lines-v1:sha256:133f06bed3dd9acddddf2e86bbcdb56e446113f7c131fc5d15449ac967d71d11:eyJzZWxlY3RlZExpbmVDb3VudCI6MTk2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyMWZmMDY3ODQ3MTcxYTRiODkzOTlmZDYxZGUwM2VjNzYzNDliYjI3ZTNkMTM5ZmMwYzM5NmY3OTJkY2YzYjVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIxMGRmNjc1NDBjZTU1NjMzNzg0YzUyNGU5NGQ5M2VkYTE3NjllY2FhNDAwYTc3NmVmZmFjYTY3NDdkZDlhOWJiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlOTJhZWRiNWFjMmM5NGExNDdiNWE5NGU0ZmYyMWY5NTAxZGRjZjZmMDMwNTg3NzhjZWE0Zjc4NGJkOTk0YzczIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4NWMzY2RjMmY5MmU5ZWI0NDczMjVlMzg2NDBhYWY2MjZjYjZjNDJlZTVhNThjMTIwM2ZmMzBhNWJjOTQ4MmVlIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_4e70090b28cf4775a256cd57bb664e26",
+      "statement": "matching.may_run permits staff or an admin or steward of the org, mirroring the 0042 insert rule. It is used by compare_fit, while REST uses the find_org may_run flag from the same RLS functions.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/repositories/funder_matches.py#L14-L24",
+          "version": "repo-lines-v1:sha256:a9ad6a7dec678f284f7c1f4c38c1fbbfb1bafb9bf567718cbdbe5fcffd7b1c3e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiN2MyZTE2NDk0NWI4OTZlYjY4ZTc0NjNkNjIzZjg1NjgwODQ4YWQ2NGFkNTg5MmQzZmQwYzA5Y2IwYTcxODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlMDFmM2YwZTczOTU0ODY2ZTFmNjNhZGFlNjNjZTI3NTg4ZTdmYmQ3ZDMyMDUzNzQwZmZiZDQ3NGFlYjA0ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjZTVhNWRkODk5OTg4OTFmOTFmN2ZiZThjZGQyNmUzZmY5NWQ4MmZkOWVlMWZhMDc3Y2M5N2E5MzI0YWJkNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhmMDAzY2M5M2EyMTZmZGRlYmQ2ZDcxZDgyNjU1ODhmMTU2NjI1NWIyNTllODJmNGI2NmQyMmMzY2I5MjMwNzUifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/matching.py#L219-L230",
+          "version": "repo-lines-v1:sha256:db082ee09a8315118938b8873b97bb0c26f8dd67116db2226ee49c2e1e7ded7a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwY2I3NmM0OGNhZjMxYWRkZjRiOWQ3NGIzM2ZlYzg2OTdmN2E5ODE3OTUxY2FhYmQxMGEzNjRkNTQzNjhiZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4YjIwMjIxZmZhMTA3MGVmMjFlZDVlZDA4ZTk5YmZjZTU4ZTcyZDA3MWY4OWNiOGYyOWJkODZhNmM5NjJjMTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhOWYzNzEwYTM0YjRmZGYxMzU4OWI3ZDllNjg1NWMwYTQxNmM0NjE2MzllNDlkMjliNDFhZTQwNDkxMjU2MDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6eddd1e240bc4dd58216044a9a231a84",
+      "statement": "service.run_and_save reads profiles with a reader pool (the owner, so every runner judges the same inputs) and writes with a writer pool under that writer's RLS, one run_id per call, returning a tier count. rows() converts each match to a funder_matches row (NULL score when unscored, card JSON) plus a funder_match_details payload, with empty criteria and not_judged for unscored matches.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/matching/service.py#L17-L46",
+          "version": "repo-lines-v1:sha256:724af895b3cc96ba6189262021de0aafbed234a735160a0ad0109d1ee8777f6d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMDRiMzExNGEzOTc1NTkyMmQ2Mjg0NDIxMjQ3M2E4NTM1YTM5OGIyMGRjMzE4OTcxMDBhMjQ1ZGI5OTRhYTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzMDJhM2EyNDBlZmEwOGRmNDEwMGVlY2FmNzlhNDgxMmVkZjc5MGNkMDUxY2NjNzU5YWU1NWZmMGQzOTJiNDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwODA3YThjZGRhMmE2NmIwMmY5MjEwNDgyMDIwOWYxYzgwMDVhYTNmYzA1OTdhNGRjMmFiNGZkZTE4YTM2NzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7c7df8651e4c4a8aa4b5e65377d38538",
+      "statement": "insert_run writes all rows of a run (match plus detail) in one transaction after taking pg_advisory_xact_lock(4104, org_id), so one run per org is written at a time. All rows share the transaction's now() as run_at, and reruns add new rows and never edit old ones.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/repositories/funder_matches.py#L10-L43",
+          "version": "repo-lines-v1:sha256:f7d9f282b9ad5dbea3f686926c28d958c8a832b744b38740b9fccef3d441e674:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1ZDUzZThlNTExNWFlODhmMDNkMzNhNzUwYjE4ZjA5NGZjYjU2YTMwZjU2MzFhOGEzYjg4NTczZTM2OTdhM2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczNjMwNGQwOGMxNWMwYjEzYjAxMTdiYTgwYzVhNjBjNDhmZjQ1Y2JmMjk3Y2Q0MGIwMGIzZDA3NmM1Nzc0OWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwMjFhZWZkN2YzNDQ5NzM1MTM0NTQ2NWE4YWExMzI5ZGFiNGIzYjVkMmUyNTcxMDFlODk5MDg0MjYyYTc2OWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4ZWRlN2MyZDQ3NGVmMTdiNGYwNzg0MWFjNmU4MDU0ZjU1Yzk2NWE5YTc0YWVmZWQzNjRjYTYzOTNiMDU0YzkifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0042_funder_matches.sql#L13-L31",
+          "version": "repo-lines-v1:sha256:74743e1840b6ce955f871adca625747e5f65f78be152270a25932bfaaea5a525:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3MGYwNmUxNjdjMzg1MDdjMmI0OGU0NjI5YzA5MjZhODIxZGQ4YzUwMmZhNTM0YWYwZDYzYzVlZTNhZDllMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTY3ZWMxZWQzODM2ZjhlYjE3YWZmMTcyYjViZmVmN2RlNjA0ODVhNDM5YzZjYTExYzU5MWUxNzU1NzM5YWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ3NmQ1NjlkOWZmNmIzMmFmMDQxOGE0YTYyZWMyM2ZiOWJiNmQ3ZWIxYWZiYmQ3MTVlMjk4NmY1MTIxOThhYTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkYWUxZDI3Zjc2YzQ4MWFlYzZmMzk2YTZiYjhiMjRkYjg5M2YwZTk0Yjc4NzU0MTM4MWVlMmMxNDU5YWFjNzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_652776d1219e4733935243aaade5fc5a",
+      "statement": "Migration 0042 makes saved runs append-only: authenticated has only SELECT and INSERT on funder_matches and funder_match_details, with RLS enabled. Read requires org membership or staff, with detail rows following their match. Insert requires app.my_match_org_ids() (admin or steward of the org) or staff, with run_by equal to app.user_id(). Detail insert is allowed only beside a match the caller wrote. run_by is NULL for make match.",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/0042_funder_matches.sql#L1-L51",
+          "version": "repo-lines-v1:sha256:ef47e5a30a2663a3bb552a9c1bf943a75225bf3da4fe266298d231dd34bd22d5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlZWZjYzM0NWVkNTc2ZjhjOWI2YmQ0ZmUxNjFkNTVlMmJjMDc5MjdmNmY3OTFmMjY2MzAzZmI3MjFjZDk5MzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzZmQzZDcyODljY2Q5ZjI2OTM0YmRkZTQzZDk5MzUyYjVkYjE1NTU0OTk2OWI4NWFkNjNiNDEzYWYxY2FkZTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_522627584eb546cb942aea2ca1486ce7",
+      "statement": "REST routes under /funder-matches: GET ?org= returns the latest run ranked with tier counts and prev_score from the previous run, and 404s an org the caller cannot read. GET /{id}/detail returns one match's reasoning. POST /runs?org= returns 201 and 403s a caller who may read but not run, and calls run_and_save with the owner pool as reader and the caller pool as writer.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/funder_matches.py#L14-L59",
+          "version": "repo-lines-v1:sha256:19a0a8eff1aba6566e1c536b4b57581115475d4754a01f3169ba4e53ff768b87:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4Y2NlOTY3YTEwZjAzNGY2ZjJlMDhmMWI5OTlhZGNjNmJiOGU4NjcxYjI4YWI1NzYyNDc1Y2JiYzY5YTMxZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2YWU4NmFiNDgwYTFkYjczOTBhYmZiNjRhNTQ2M2E0OGM3YjUwZTQ2Y2M0OWVkOGJmMTM5MzQ5ODk1ZGMyODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlOGM3OTFkZmQ3OWQ0YTIzZjM2NzNmZmQ2MTg1YzE2NTYzMzZmZTE5Y2EyNTdlNzJmODEwMjJjOGRhYTI2MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/funder_matches.py#L46-L81",
+          "version": "repo-lines-v1:sha256:b3a8c4c2790ffa1a71cae7b9d2f852532018eb87e977593409e2d45991744a98:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1YzZiMjA1ODM3ZWIyNTc5NzU3M2IxYTA5NWYxZDNmYmFmMzFlNGYzMzcyNzNiYzg5NTE1YWZiOTQxMWM0YzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1NzNiMzBlYjlmZjQ1OGFhN2MzMWU0ODliNzU0YTY5MjgwOGI4YzQ1ODMxNGI4NjY2NDllYzdlYmQ1MTFjMzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjZDlhZTllZTkwMTkxZTk5MTk0M2UyNDAyOGUxNWUxYjUxYTJkZWI4ZGVhYzFjM2I2NGU5MWEzNjNlNDA4NWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_funder_match_runs.py#L72-L154",
+          "version": "repo-lines-v1:sha256:35ad0cddc71ca25fd30986b91f0788cd52fd678fd7829d11a8d21fbf9e7bef88:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiOWRlMDFlOTQ3NWQxYzZmZDc5OTA5NDkxZTlhNDE3NTk3OTNhYTg1ZjBmNGVjMmIyMmQxNDcyM2MzMjAzOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkY2E1YTQ1OTlhZmYxMzE3Yzc0MmUyYTM2MTE0MGI1YjI3MmNmYmY2ZDAzZDYxNWZkNThlMGRkOTIzNWI0YjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmODE0YjVkM2NhNGRjMmI2NzA5YTQ5NDhlNTZjZGZiMDJhMjQ4ZjFjNzBjOGMzOTFhN2FhZTMzODZlNGJhMjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c27a64e9e043426b8ddb622775487c49",
+      "statement": "The Ask tool compare_fit refuses before reading any data when the chat user may not run a match for the org. It loads via repositories/matching and returns ranked JSON of match-v2 results. With funder_ids omitted it lists only scored funders and puts the rest under not_scored, distinguishing a real non-fit (nothing in common recorded) from unknown (funder has no places or themes). Errors are returned as strings rather than raised, and it is registered as the one exception to db_query-only database access.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/build.py#L21-L42",
+          "version": "repo-lines-v1:sha256:ad967e1949e837aae169d0f02d436c0b487e1aaca45476d8fbab4dd4a55bf543:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMzk0MjU1N2ViOTA3ZmIxYmYwMDNjYTYzZGNjYTdmNWY1MmIzMTdkZTU5MzIxYjczMDhhODU4Njk0ODE2ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkY2MzM2EwM2NkMGQzZWNkMDE5MDAzNDhhMzQ4YmM5ZGFlYWI5YzU3ZDBiMzAxOGY5ODhlM2E2ZjE2YWJkNmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxMmQ0MGM5YjMyZjY0NjUwN2M0ZWE1MTM0YzAxNTQ2MGI5NjE0NTU4MThhMzhmZGZlMDA0YmM3NGQxYmVmOWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5ZTUxNjc5NjFiNDc2Nzg0NTEwNWU5YzAwNTVjYjRmNGJhZjJkNGNjMDNmNGZhNjU2OWU3ZjE3NWYyOTcwMTMifQ"
+        },
+        {
+          "resource": "repo://backend/app/agent/tools/matching_tools.py#L19-L93",
+          "version": "repo-lines-v1:sha256:233f7b9d798d3494527d24dae8451c219df939c0cd7b07937e23457bfd07cb12:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlZmQ0ZDAxMTZjMjMxODk1NjI4MTE1OTEyM2I4YmNmNDJkMDJjNDI3ODNlNWVjNmIzNTY2YzhlYzFhYzVkNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjYzk4YTZjYjA2NTNkM2E3ZTM1MDk0Njc4MjkwNTQ1YjZhNTMwMWI3ZmFmN2VjNDc4OGU0ZjZjNjU0M2VlMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2OTZkYzExYjhkODQ1MGNmNmUzZWU2MDVmY2FmMWU2ZmM2N2M3ZDllMWJmZWEwMGU4MWY1Yjk4MWQxMjc2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_funder_match_runs.py#L90-L110",
+          "version": "repo-lines-v1:sha256:dbcb885770fbbebf3191b01ba866b85ec2ce39789dca826d94b76add02c400dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlYzA4MDA0ZTFkODc3Yjk2Mjc0YzM1NDY2NzkyMmFhYWQyYzk1NzY3Njk2ZGIyZmU5ZGVlOTRmNGMzMmJjNWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhMzBjNjRiZDZiNjMwYWJmNzZhOGNkZjRhZTY4YzZhZDdjZTliNmU1N2RmMjIzZmEwYWZjMzVjMmQ5NzY5Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2YzFhOTFiMDg1NmVmNjk1ZDgyYTdmMTNhYjk3ZTU3NzExMTIyNGYwNTFjZGI5NWM1NWRkNGZlMWRkN2UyYzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e6883c462cef4cd9b5f2bf449d1063a5",
+      "statement": "make match runs python -m app.matching.run, which saves a run for every org or one (by slug or id), as the owner pool with run_by NULL, and prints funders checked and tier counts.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L134-L135",
+          "version": "repo-lines-v1:sha256:a0d18e2c7feeb0b7d941cc664497a02f9027886e5c0c2183d58524437e3f093c:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODkyYmQ4YzAyYTU1NTBmYmFkZTA2OTExNjAxMWQ1N2FiZTZkNmNiMThkMDQ2MjI4NGFlNjZiN2Y2YTdlMGE0MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWMwMGI3ZDhhNDk2MGUwNWFkNGE1OTA0MzZlZGM5YzFlNmMyNDIwNGQwNjg5NjZhZGUwNjA4MzgwNzkyOTcwMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmY4NjY1OGUxOGYzMzY4YjY2NDgyM2NmMWIzOWU0YzlhNWVkYjBjNjAzMTNlNTZhZmVhODAyNmJlZmUyODVkZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzMwNzU4ZWU0YWRmNmExNzM4ZDJlYmFiMDhlZGM1MDBiMmY1MTRiYTE4Y2U3OGRiMmFiOGI4NWVjYzVlZjI3YyJ9"
+        },
+        {
+          "resource": "repo://backend/app/matching/run.py#L1-L33",
+          "version": "repo-lines-v1:sha256:b0af2921d11c20a84ed0e54c8197f447ac672262962c9cac0f8279e774bd752e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkNGNlNTg5MmVmYzhmMDdjMzA2NzhiNjVmOTYxOTBjOTM0NmUyYjUyZWQyMjdlYWJiYzU3ZTdkMTg2NDMzMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4ZGVkMGFhYWM1MTZlODU4Zjk3YmFhOTA2M2MwOWM1YTZiN2U1YzIxNGQ3N2FhNjcxZjYyOTczYmI3ODI0OGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_676c724e85e0499e823c7575b3c58dfa",
+      "statement": "The Funder Match UI (FunderMatchView and MatchCard) fetches the latest run from /api/funder-matches, lazy-loads per-match detail, shows tier, score and delta against prev_score, offers a Rerun that POSTs a run and reloads, and starts proposals from a card. Proposals remain unfinished: only screens and steps 1-2 kept in localStorage exist, while drafting, section editor and .docx assembly are not done and there is no proposals backend.",
+      "evidence": [
+        {
+          "resource": "repo://docs/CHANGELOG.md#L125-L128",
+          "version": "repo-lines-v1:sha256:766dcccff702e12eaeb212aa34a9034edb14848f46be5511cd246a72c4bc4e45:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTZmNGZlYTY3MWM0ZDA1MjgwNTgxMjU3OWY3ZjVkODBlYWE4ZmZmNmIxOWIzOTMwYWEyMzAzMGVkYmQ5YTZkNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDZhMzA4YzViZDhlMzJjZWNiNDY3NzI3Yzg5NDM5M2JlNjg3Y2VlODMxOWUxY2E5ZjBkMDIxNjM0MGVkZmU4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDE3YmZiZjhkMmQ1ZjkxYzhlNTM3ZjgyNGQxZDYwNTFhMWNiNmFjYjE1ZmFiZDg1MDQxYjAwNGUwNDVhYTZjOSJ9"
+        },
+        {
+          "resource": "repo://docs/CHANGELOG.md#L168-L172",
+          "version": "repo-lines-v1:sha256:a9ec04ea506241353739b1d35f33e29275264c945df5b01b13ca301af7130816:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjU3OWRiNjNhMjdhYTNmYjI5ODBhNDYyMDhhZWMzYjBmMjUyZDUwYWU2MDQ3OTkzYzg4ZWFhMDZmYjQxZTM3NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODAyNjZmYzM0ZTM1MDgxMjlkZDZmY2I0YjY5NTBiMWQ0MjM2NDA3MjFjMjM2MGJlZjU2YWJiMjRiMDI1MGNiNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2Y3ZTdlY2M0ZTZiYTAxYmVlYTk2OTdiOTFhOTM4MWIxMzNhYTIwZTk1N2YyMGMzMDY1Y2FhZGU4ZTg4NDZjYiJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L20-L80",
+          "version": "repo-lines-v1:sha256:6dda88e1fc5cf16f71b4ae462087f42c80848ebfc836cd8f63f10587329eecf1:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2ZWU3OThlYjRjZDlmNDQxODU3ZTdkMzBhNzY3ZjE5Y2M2YzdjZDVjZTZlN2Q5ODZiNmQ1ZGIwMzRiYTg0OWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhZTZkOTA5ZjZiZWVjZWE2YWM2NzZmNTU4YzNkMGU2NDMzOTczNDM1Yzg2M2UxZDg0OWRjNzU1Yjc5MDgwM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MWFmZjJkNDYzZmRkN2IyYmI0OTA4MzUzZTY1ZTE3Y2NmZTdiMGY1Y2Q1MjA0ZTVjNzYxNTdhZmNhMDVmNGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzMjliNDZmM2U0YTVmNDUyNThmMDQ0ZTIzOGJhNjFlMjc2ZjVjOWE2OTIwNzcwM2Q4YmIzZGQxOWY4NmY5MzQifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L86-L120",
+          "version": "repo-lines-v1:sha256:01babd4c19dee8866d6aae6d9d84080ab916d50cb4db55268d7f5a1e9967ea02:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMzk0OWE5NzVkMzMyMWJkYWI2NDY0MDhmYzQ3ZjkwOGFmYTQxODAyNjE4OWIxNjNhMmQ5YWQyNjRmZjM5ZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5M2RmOGJlOThmODIwMDVlMDdiYTljMzRiNDhhNTg5MDQ2ZmU3NzFkYzY5MjUzMTcxZTU0YzM1MTFmMjA3ODkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0NTc4YzMzMTc0OTg5NWFkMzhhMTY1YmQ4OTZmOGRjZDBhNmNiOWFmNTc4OWMzNmYwMWQyMTEzMGIzNTJiYjcifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/funder-match/api.ts",
+          "version": "repo-file-v1:sha256:f3d94d14a579f33b661237993cfb4657423f04ddb4cf628e1a37b175a3fd9431"
+        }
+      ]
+    },
+    {
+      "id": "claim_b2f759d5db3e4637838cb75c72748c34",
+      "statement": "match-v2 (2026-10-11) changed only the theme criterion and the rubric version: theme now compares the taxonomy tree rather than Darpan sector tags, Others never counts as a shared area, and older saved runs keep their stored rubric_version.",
+      "evidence": [
+        {
+          "resource": "repo://docs/CHANGELOG.md#L104-L104",
+          "version": "repo-lines-v1:sha256:b019a839953c26531b6559ad273557ce1e2a73ffa2599b867db1649dc58cffa6:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWY0NDIxYTY4NjcwNDI5MmM4NjJkYWQxMDQwYTczNTI2ZTVkODQyZmNiNGE3NmQ2YTdjMDE2Nzc0ODYxNmIwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWQ0MzU3MjY3YTM5NDcyNjVkN2RiODJhNWIxYjg2MmVjYzcyNmZjMjBhNGE2Mjg1ZmRiN2U3ZjczMzIxOTZkMSJ9"
+        },
+        {
+          "resource": "repo://docs/features/2026-10-11-funder-match-v2-themes.md",
+          "version": "repo-file-v1:sha256:2eca0102562c067e10071f3e4c28ce9e237d0e5a774b8fce3420ea8a3a1c53ea"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-13T18:20:59.385Z"
+  }
+}

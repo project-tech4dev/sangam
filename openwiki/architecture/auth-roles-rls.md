@@ -1,0 +1,262 @@
+---
+type: architecture
+title: Auth, Roles and RLS
+description: How Sangam authenticates callers (Supabase JWT or the dev user), maps them to roles (staff, org admin, member, steward), and enforces access with Postgres roles and RLS. Explains the caller pool versus the owner pool and which code runs on which.
+tags: [auth, rls, roles, postgres, security, supabase, caller-pool, owner-pool]
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:20:59.385Z
+sources:
+  - id: openwiki-source-1f8b3caaa82d707d101e103d
+    resource: repo://backend/app/agent/tools/matching_tools.py
+  - id: openwiki-source-7faba850789bc67a49b79a3f
+    resource: repo://backend/app/agent/tools/sql/catalog.py
+  - id: openwiki-source-01e57798bc5bab328d91b9b3
+    resource: repo://backend/app/agent/tools/sql/executor.py
+  - id: openwiki-source-3bce7721dfe72764acead2da
+    resource: repo://backend/app/api/routes/funder_matches.py
+  - id: openwiki-source-11c734346bddf773fd80ed0e
+    resource: repo://backend/app/api/routes/ingest.py
+  - id: openwiki-source-424eb6e9128a678a28e6d5ca
+    resource: repo://backend/app/api/routes/threads.py
+  - id: openwiki-source-6dcfc1451bcbf8009d0484a9
+    resource: repo://backend/app/core/config.py
+  - id: openwiki-source-e136029ec7d24feaceb8ce72
+    resource: repo://backend/app/core/lifespan.py
+  - id: openwiki-source-b52886aad1fc413e4e030f22
+    resource: repo://backend/app/core/security.py
+  - id: openwiki-source-10e08c1deca7d7728d8240c4
+    resource: repo://backend/app/db/pool.py
+  - id: openwiki-source-23397c01122692b0ff662a58
+    resource: repo://backend/app/ingest/caller.py
+  - id: openwiki-source-2df755596e53353deddeb8d3
+    resource: repo://backend/app/ingest/tools/pipeline_tools.py
+  - id: openwiki-source-55002f5b1d39cf35fd6d60e2
+    resource: repo://backend/app/main.py
+  - id: openwiki-source-0fc683b5c9f0801e9edbf645
+    resource: repo://backend/app/matching/run.py
+  - id: openwiki-source-3abf34cc8ec9bdd9fd5c27d3
+    resource: repo://backend/app/repositories/matching.py
+  - id: openwiki-source-f827a64a0b0a3fab7de981eb
+    resource: repo://backend/app/repositories/users.py
+  - id: openwiki-source-0808792899dda5ae43456460
+    resource: repo://backend/tests/test_caller_pool.py
+  - id: openwiki-source-e3d5b96924a7ab50f4e2652f
+    resource: repo://backend/tests/test_rls.py
+  - id: openwiki-source-be845a590212a839780e762d
+    resource: repo://backend/tests/test_security.py
+  - id: openwiki-source-04468ea62ce47d92271b65e4
+    resource: repo://db/migrations/0022_signup_trigger.sql
+  - id: openwiki-source-626f20b2d67e70e74a696d33
+    resource: repo://db/migrations/0023_db_roles.sql
+  - id: openwiki-source-b9139188394a63ccc046ae4a
+    resource: repo://db/migrations/0024_access_functions.sql
+  - id: openwiki-source-a63cf999b1937db913f804d5
+    resource: repo://db/migrations/0025_table_grants.sql
+  - id: openwiki-source-64f59bc56339552d71435851
+    resource: repo://db/migrations/0026_dev_user_auth_id.sql
+  - id: openwiki-source-a51b4e8aa8968bfd9e155474
+    resource: repo://db/migrations/0027_rls.sql
+  - id: openwiki-source-6c0b6beabddad707d1844334
+    resource: repo://db/migrations/0028_org_member_management.sql
+  - id: openwiki-source-9ef296cb6370b36cd91ded87
+    resource: repo://db/migrations/0029_one_org_per_member.sql
+  - id: openwiki-source-2939d404ec1a27d9be23ffd5
+    resource: repo://db/migrations/0042_funder_matches.sql
+  - id: openwiki-source-2835a53622addef44a80818d
+    resource: repo://features-plans/access/auth-plan.md
+  - id: openwiki-source-5aab7733935be9ebdc565c78
+    resource: repo://frontend/lib/api/auth-headers.ts
+  - id: openwiki-source-f92593a15af29a6fd1dcc83a
+    resource: repo://frontend/lib/supabase/middleware.ts
+  - id: openwiki-source-06ab5e05c59e3ddb17628f5f
+    resource: repo://frontend/proxy.ts
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+---
+
+# Auth, Roles and RLS
+
+Access in Sangam is enforced in two layers. **Python** decides who the caller is and exposes gates such as `require_staff`. **Postgres** then enforces what that caller may see, through the `anon` and `authenticated` roles, table grants, and row-level security (RLS) rules. Which layer does the work depends on which connection pool a piece of code uses. That is the most important thing to understand before changing anything here.
+
+> Where the code lives: authentication is in `backend/app/core/security.py`, not in `backend/app/api/deps.py`. `deps.py` only holds pagination parameter models (`PageParams`, `LegacyPageParams`). The pools are in `backend/app/db/pool.py`. The SQL is in migrations `0023`–`0029`, `0042` and `0044` under `db/migrations/`.
+
+## Roles
+
+There are two separate vocabularies.
+
+| Layer | Values | Source of truth |
+|---|---|---|
+| Postgres role | `anon` (signed out), `authenticated` (signed in) | Set per request by `CallerPool` |
+| Sangam role | anonymous, signed-in (no org), `member`, `admin`, `steward`, staff | `users.is_staff` and `org_members.role` |
+
+- **Staff** is `users.is_staff = true`. It is global and needs no `org_members` row.
+- **member** and **admin** belong to one org. A unique index (`org_members_one_org_per_person`, migration 0029) allows only one admin-or-member row per user. Both can read and write that org's private data. Only an admin can manage the org's members.
+- **steward** (called Group Admin in the plan docs) is read-only. A steward can support any number of orgs, so the index leaves steward rows out of the one-org rule.
+- A signed-in user with no `org_members` row sees exactly what an anonymous user sees. The access functions simply return no orgs for them.
+
+## Request authentication
+
+`AuthMiddleware` is a plain ASGI middleware, deliberately not `BaseHTTPMiddleware`, because that buffers responses and would break chat streaming. `create_app` adds it before `CORSMiddleware`, so CORS wraps it. Preflights are answered before it runs, and its own 401 responses carry CORS headers.
+
+It skips non-HTTP scopes and the open paths `/health`, `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json`. For every other request it calls `resolve_principal` once and stores three things in `scope["state"]`: `principal`, `db_role` and `db_claims`. A bad token raises `HTTPException` inside the middleware, so the middleware answers with its own JSON response. FastAPI exception handlers never see errors raised at that level.
+
+### Auth modes
+
+`resolve_principal` has four outcomes, driven by `SUPABASE_URL` and `DEV_AUTH` (`Settings.auth_enabled` is simply `bool(supabase_url)`).
+
+| Configuration | Result |
+|---|---|
+| `SUPABASE_URL` unset | Every request, whatever its header, is the seeded `DEV_USER` (staff). This is the local default. |
+| Set, no `Authorization` header | `ANONYMOUS` (`id=None`) |
+| Set, `Bearer dev` and `DEV_AUTH` on | `DEV_USER`. Local only: the setting comment says never to set it when deployed. `.env.example` ships `DEV_AUTH=false`. |
+| Set, any other bearer token | Verified as a Supabase access token. A malformed header or invalid token is 401 (with `WWW-Authenticate: Bearer`). |
+
+Token verification (`verify_token`) fetches the project's JWKS from `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` through a cached `PyJWKClient`, run in a thread. It accepts `ES256` and `RS256`, requires audience `authenticated` and issuer `<SUPABASE_URL>/auth/v1`, and requires the `exp`, `sub`, `aud` and `iss` claims. Beyond that, `sub` must be a UUID and the token must carry an email. If not, the result is 401.
+
+A verified token is then mapped to a `users` row by `users.resolve_auth_user`, which runs on the **owner pool** because it writes `users` rows no caller may write. The lookup order is:
+
+1. Find the row by `auth_user_id`, and sync its email if it changed.
+2. Link a staff-pre-created row with the same email and a null `auth_user_id`.
+3. Insert a new row.
+
+If the email is already linked to a different Supabase account, the result is `EmailTakenError` and a 409. The sign-up trigger from migration 0022 normally creates this row first. `resolve_auth_user` is the fallback for anyone the trigger missed. The trigger downgrades its own errors to warnings so a failure cannot block a Supabase sign-up.
+
+The dev user has no Supabase account. Migration 0026 sets its `users.auth_user_id` to its own id, and the backend sends that as the `sub` claim, so the SQL access functions recognise it. In auth-off mode the dev user therefore still runs as the `authenticated` Postgres role under RLS, as a staff user. It does not bypass RLS.
+
+### Gates
+
+Routes read the principal the middleware left, never re-checking the token.
+
+| Dependency | Behaviour |
+|---|---|
+| `get_principal` | The resolved `CurrentUser`, or `ANONYMOUS` if the middleware did not run |
+| `get_current_user` | `users.id` or `None` |
+| `require_user` / `require_principal` | 401 `Sign in required` when anonymous |
+| `require_staff` | `require_principal`, then 403 `Staff only` when not staff |
+| `chat_access` | Signed in, and the chat thread is new or yours. Someone else's thread is 404, and staff may open any. |
+
+`chat_access` is attached to the `/agent` and `/ingest` AG-UI routes in `app/core/lifespan.py`. It runs `_own_thread`, which claims the thread through `threads.claim_thread` on the owner pool. It then sets two context variables for the run: `chat_user_id` and `chat_scope`. The tracing hook reads the first. Agent tools read the second.
+
+## The two pools
+
+```mermaid
+flowchart TD
+    MW["AuthMiddleware: principal, db_role, db_claims"] --> PD["PoolDep: CallerPool"]
+    MW --> OD["OwnerPoolDep or get_pool"]
+    PD -->|"SET LOCAL role + request.jwt.claims"| RLS["Postgres: grants + RLS apply"]
+    OD --> OWN["Owner connection: RLS bypassed"]
+    OWN --> CK["Checkpointer, agent tools, Import, matching, seeds"]
+    OWN --> ID["Identity code: users, threads claims"]
+```
+
+Caption: REST queries run as the caller and are filtered by Postgres. Everything on the owner side must check scope itself.
+
+There is one underlying `AsyncConnectionPool`, opened in the app lifespan and also assigned to `db_pool.pool`. It connects as the database owner (a superuser locally), runs with `autocommit=True`, and is shared by REST, the LangGraph checkpointer and the agent tools. The two access paths over it are:
+
+**`CallerPool` (via `PoolDep`).** This is what every router takes. Each `connection()` opens a transaction and first runs `set_config('role', …, true)` and `set_config('request.jwt.claims', …, true)`. These are transaction-local (`SET LOCAL` semantics), so they end with the transaction even on error. The connection returns to the pool as the owner, so the checkpointer and tools sharing the pool never inherit a caller. `db_role` and `db_claims` come from `_db_identity`:
+
+- anonymous gives role `anon` and empty claims
+- signed in gives role `authenticated` and claims `{"sub": <auth_user_id>, "role": "authenticated", "email": …}`
+
+`get_caller_pool` falls back to `anon` if the middleware left nothing on the request. A new route that takes `pool: PoolDep` runs as its caller without asking.
+
+**Owner pool (`OwnerPoolDep` and `get_pool()`).** The owner ignores grants and RLS. It is used by:
+
+- **Identity code:** `resolve_principal`, `_own_thread`, `request_scope`, `chat_access`, and `threads.can_open`. `saved_messages` calls it because checkpoints are closed to callers, so access is decided before anything is read.
+- **Agent tools:** the Ask Sangam SQL executor (`PsycopgExecutor`), `matching_tools`, and all Import tools in `app/ingest/tools/*`. They run outside any request and call `get_pool()`.
+- **Import and its REST surface:** `routes/ingest.py` uses `OwnerPoolDep` for research listing, undo and delete. It also pairs it with `request_scope` to filter in Python. Import writes the catalog as the owner.
+- **Matching:** `matching.may_run`, the matching writes in `funder_matches.create_run` (which takes both `PoolDep` and `OwnerPoolDep`), and the `make match` CLI. The CLI uses its own `make_pool` and saves runs with `run_by = NULL`.
+- **Other owner reads or writes:** the news routes that read `ingest_runs` or hide stories, and the seeds.
+
+**Because RLS does not apply on the owner pool, each of these paths has to check scope itself.** The mechanism is `CallerScope`.
+
+### CallerScope: Python-side scope for owner-pool code
+
+`caller_scope(pool, principal)` builds a frozen `CallerScope` of `user_id`, `is_staff`, `org_roles` (org id to `admin`, `member` or `steward`) and `org_names`. Staff and anonymous callers skip the membership query, because staff pass every check. Its predicates:
+
+- `can_read_org(org_id)`: staff, or any role in that org.
+- `can_research_org(org_id)`: staff, or a steward of that org. Members and admins research funders only.
+- `can_save_funder()`: staff, or any signed-in user.
+- `steward_of`: the org ids where the caller is a steward.
+
+Two entry points feed it:
+
+- **Chat runs** get it through `chat_access` into the `chat_scope` ContextVar. `app/ingest/caller.py` wraps it as `scope()`. Outside a chat request `scope()` is an empty, non-staff scope, so every gated tool refuses.
+- **REST routes that read data Import keeps off RLS** use the `request_scope` dependency.
+
+Import tools use it as follows:
+
+- `staff_only(tool)` returns a `REFUSED: …` string for non-staff. It guards `plan_import`, `run_import_now`, `import_run_summary`, `pending_resolutions`, `read_source_rows`, `read_workbook`, `publish_brief` and `record_registry_check`.
+- `can_read_org` guards vault documents.
+- `can_research_org` guards saving NGO research.
+- `without_private` strips staff-spreadsheet and vault findings from a row for non-staff callers.
+- `caller_note` writes the supervisor's per-run line about who it works for.
+
+See [Sangam Import and Scout](./sangam-import-scout.md) and [Ask Sangam](./ask-sangam.md) for those flows.
+
+## Database side
+
+```mermaid
+flowchart TD
+    A["0023: roles anon, authenticated"] --> B["0024: app.* access functions"]
+    B --> C["0025: revoke all, grant per table"]
+    C --> D["0026: dev user auth_user_id"]
+    D --> E["0027: RLS on, one policy per table kind"]
+    E --> F["0028-0029, 0042, 0044: member management, match saves, merged policies"]
+```
+
+Caption: the order in which the Postgres access layer was built.
+
+- **0023** creates `anon` and `authenticated` when missing (`NOLOGIN NOINHERIT`). The backend never connects as them. It switches into them with `set_config('role', …)`. The migration also grants them to the connecting role if it is not already a member.
+- **0024** adds `auth.uid()` where Supabase does not provide it, reading the `sub` claim. It also adds the `SECURITY DEFINER` functions, each with a pinned `search_path`:
+  - `app.user_id()` and `app.is_staff()`
+  - `app.my_org_ids()`: any role, so stewards read.
+  - `app.my_writable_org_ids()`: `member` and `admin` only.
+  - `app.can_open_thread(thread, user)`: the owner, staff, or org roles by thread `visibility` (`team` for member and admin, `team_and_stewards` for all roles).
+
+  The first four are executable by `anon` and `authenticated`. `can_open_thread` is deliberately granted to neither, because it takes the user as an argument for the owner-connected backend and answering about arbitrary users is a backend question.
+- **0025** revokes everything on `public` tables and sequences from both roles (and the defaults for future tables). This stops Supabase's `/rest/v1` from exposing tables to every browser. It then grants back per table kind and writes. It raises an error if any table has no access decision, so new tables must be classified. Writes granted to `authenticated` only are contacts (insert and update), documents (insert), score adjustments (insert), `rfp_matches` (update), proposals (insert and update) and threads (insert). There is no DELETE anywhere.
+- **0027** enables RLS on every `public` table, closed ones included, so an accidental grant still reads nothing. Rules by kind:
+  - **Public:** 23 tables with `USING (true)`.
+  - **Follows its parent:** `org_*` and `funder_*` children follow the org or funder, and `chunks` follows its document.
+  - **Public unless hidden:** `orgs` and `funders`. An org's own people still see their hidden org, and staff see all.
+  - **Public by flag:** `contacts`, `documents` and `org_identifiers` expose `is_public` rows to everyone, and the rest to that org's people and staff.
+  - **Org-private:** `proposals` and `rfp_matches`.
+  - **Own rows:** `users`, `org_members` and `threads`.
+  - **Staff only:** the Import tables.
+  - **Closed:** checkpoint and migration tables get no policy and no grant.
+
+  Policies wrap `app.*` calls in `(SELECT …)` so Postgres evaluates them once per query. A final check fails the migration if a table readable by either role has no read policy, to avoid silent empty pages.
+- **0028** and **0029** add org member management. Writes go through `SECURITY DEFINER` functions rather than table grants: `add_org_member`, `set_org_member_role` and `remove_org_member`. Each calls `app.can_manage_org` (staff or an admin of that org) first. They also enforce that an org always keeps an admin, that only someone who has signed in can be added, and that an admin or member belongs to one org. The `org_members_one_org_per_person` unique index backs the last rule even for the owner.
+- **0042** adds `app.my_match_org_ids()` (admin and steward) and the `funder_matches` tables. Insert policies require `run_by = app.user_id()`, and there is no update grant. This is why only staff, stewards and admins can save a match run, and `matching.may_run` mirrors that rule on the owner pool.
+- **0044** folds the admin-visibility policies into single `users_read` and `org_members_read` policies, to avoid two permissive policies evaluated per row.
+
+`InsufficientPrivilege` from a table a role has no grant on is mapped to a 403 `{"detail": "Not allowed"}` by an exception handler in `create_app`. Without that handler it would be a 500.
+
+## Frontend edge
+
+`frontend/proxy.ts` runs Supabase's `updateSession` (`lib/supabase/middleware.ts`) on every non-asset path. With no `NEXT_PUBLIC_SUPABASE_URL` or publishable key it passes everything through. Otherwise it refreshes the session cookie with `getClaims()` and redirects signed-out visitors on `/import` and its subpaths to `/auth/login?next=…`. `/ask` stays public: it shows a preview signed out and the workspace signed in. The browser then sends `Authorization: Bearer <access token>` to the backend, which is where real enforcement happens. See [Frontend](./frontend.md).
+
+## Not yet built
+
+Treat these as unfinished, not as current behaviour:
+
+- **Ask Sangam does not run as the caller yet** (step 8 of `features-plans/access/auth-plan.md`). The SQL tool uses the owner pool via `get_pool()` and applies no per-caller filter. The SQL catalog notes tell the model not to quote private vault uploads, or a hidden funder's eligibility document, to people outside the owning org or staff. `pool.py` marks the owner kept "until Ask Sangam runs as the caller too (step 8)". This is the largest remaining gap.
+- **Phase 2 items** (the plan's Part 2): a full per-route and per-table test matrix, letting staff write proposals and documents, grant and revoke functions with an audit log, screens for My organizations / org members / staff users, re-linking a recreated account with the same email, and email-domain matching or join requests. The `app.add_org_member`-style functions in 0028 exist and are tested, but the plan still lists the management screens as later work.
+- **`proposals` has no route yet**, and whether staff may write proposals is an open question in the plan. The current policy lets only writable-org members write them.
+- Rollout (plan step 9) means running migrations first, then deploying the backend with `SUPABASE_URL` set and `DEV_AUTH` unset, then the frontend, then marking staff accounts. The plan is still marked draft.
+
+## Tests
+
+- `backend/tests/test_security.py` runs `AuthMiddleware` in a small app with a locally generated ES256 key and a patched JWKS. It covers a valid token resolving the user row and role `authenticated`, an expired or malformed token returning 401, no header giving `anon`, auth off giving the dev user, and open paths skipping verification.
+- `backend/tests/test_caller_pool.py` covers `_db_identity` and `get_caller_pool` (unit). The `InsufficientPrivilege` to 403 mapping is also unit-tested. The integration tests prove a `CallerPool` connection runs as `anon` and cannot read `proposals`, that the connection returns as the owner with no claims, and that the access functions recognise the dev user.
+- `backend/tests/test_rls.py` is an integration suite against the compose Postgres on `localhost:5433`, in one rolled-back transaction. It builds orgs A and B, a hidden org, one person per role and private rows. It then asserts per-role visibility for contacts, documents, chunks, proposals, hidden orgs, threads and Import tables. It also tests steward read-only behaviour, member-write isolation, the org-member management functions, the last-admin rule, and match-run saving.
+
+For running these suites, see [Testing overview](../testing/overview.md). For how migrations are applied, see [Data and Migrations](./data-and-migrations.md).
+
+## Safe-change checklist
+
+- A new REST route should take `PoolDep` and a gate such as `require_principal` or `require_staff`. Use `OwnerPoolDep` only for identity work, and when you do, filter with `CallerScope`.
+- A new table needs a decision in `0025`'s lists, which fails the migration otherwise, and a read policy, which `0027`'s check requires for any table either role can read. Migrations such as 0041 and 0042 enable RLS and add policies for their own tables.
+- A new agent or Import tool that touches private data must check `scope()` itself.
+- Never set `DEV_AUTH` in a deployed environment.

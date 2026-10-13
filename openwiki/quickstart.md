@@ -1,0 +1,150 @@
+---
+type: quickstart
+title: Quickstart
+description: First run of the Sangam stack, the make targets that matter, a repo map, the ground rules, and a task-to-page routing table for the architecture, workflow, operations and testing pages.
+tags: [quickstart, onboarding, make, repo-map, routing]
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:20:59.385Z
+sources:
+  - id: openwiki-source-5f5b95b3d6a215fa02ceb945
+    resource: repo://.env.example
+  - id: openwiki-source-6766b7a0c14857435d2077c9
+    resource: repo://.github/workflows/deploy.yml
+  - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
+    resource: repo://backend/app/agent/build.py
+  - id: openwiki-source-7faba850789bc67a49b79a3f
+    resource: repo://backend/app/agent/tools/sql/catalog.py
+  - id: openwiki-source-e136029ec7d24feaceb8ce72
+    resource: repo://backend/app/core/lifespan.py
+  - id: openwiki-source-a2371d6362e5db4bc834ad03
+    resource: repo://CLAUDE.md
+  - id: openwiki-source-b79fbbd921df689b4bbdc82f
+    resource: repo://docker-compose.yml
+  - id: openwiki-source-012f2c78e3b1446dfc35803f
+    resource: repo://Makefile
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+---
+
+# Quickstart
+
+Sangam is grant intelligence for Indian civil-society organisations and funders. Two LangGraph agents share one database. **Ask Sangam** answers questions about the registry. **Sangam Import** (shown as Scout on screen) pulls new funder data in from public sources. Postgres is the system of record, and every fact an agent states carries a citation back to a row.
+
+This page covers the first run, the commands you will use, where things live, and which page to read next.
+
+## Ground rules
+
+These four hold across the repo. Break one and something fails in a non-obvious way.
+
+1. **Migrations are not automatic.** `db/init/` is only the baseline for a new database. Every later change is a plain SQL file in `db/migrations/`, applied by `make migrate`. Locally, `make up` and `make seed` run it for you. Against a managed database you run `make migrate ENV=staging` yourself, after a backup. The backend refuses to boot against an unmigrated database (see ground rule 4).
+2. **Nothing deploys automatically.** Deploying is a manual run of the Deploy workflow (Actions, Deploy, Run workflow, `workflow_dispatch` only). A merge or push builds nothing, and Vercel's Git integration is disabled. `ENV=staging` does not deploy anything either. It points your local tooling, and with `make up ENV=staging` your local containers, at the shared managed database. See [Deploying by Hand](workflows/deploying-by-hand.md).
+3. **Postgres is the system of record.** The Neo4j graph is derived from Postgres (`make graph-seed`) and can be wiped and rebuilt. Nothing should live only in the graph. If the two disagree, Postgres wins.
+4. **`catalog.py` is a security allowlist.** `backend/app/agent/tools/sql/catalog.py` lists the tables and columns Ask's model-written SQL may read. A table missing from it is invisible to the agent. At boot, `_verify_sql_catalog` in `core/lifespan.py` raises if the catalog and the database disagree, for example when a catalogued table is missing because migrations were not applied. A table that is merely undeclared is only logged, so it stays invisible until someone catalogues it or marks it excluded.
+
+## First run
+
+You need Docker Desktop, an `ANTHROPIC_API_KEY`, and a Supabase project. The Supabase project is not optional. The frontend middleware needs `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and without them every page returns 500. Reaching `/ask` or `/import` also needs a sign-in method, such as the Google provider enabled in Supabase.
+
+```bash
+cp .env.example .env     # set ANTHROPIC_API_KEY and the two NEXT_PUBLIC_SUPABASE_* values
+make up                  # bring up Postgres, migrate, then build and start the whole stack
+make seed                # load the cohort data: the app is empty without it
+make smoke               # confirm backend, frontend and the chat wire
+```
+
+- **`make seed` is required.** Without it the registry, the Ask workspace and Funder Match have nothing to show. Locally it runs `migrate` first, because the taxonomy seeder needs migration `0002`. It loads the cohort, the LGD geography, and the taxonomy.
+- **One smoke check is expected to fail on a fresh clone.** `documents: 96+ on file` fails because `make seed` does not create those documents. `SMOKE_SKIP_LLM=1 make smoke` skips the one real agent call.
+- `COMPOSE_PROFILES=localdb` in `.env` starts the bundled Postgres. Dropping it means you are pointing `DATABASE_URL` at a managed database, and `make up` then deliberately does not migrate.
+- `OPENAI_API_KEY` and `make graph-seed` are optional. Without a key the graph disables itself and the agent is told to use the database tools.
+
+Once the stack is up:
+
+| URL | What |
+|---|---|
+| http://localhost:3000 | Home; `/registry` is the public registry |
+| http://localhost:3000/ask | Ask Sangam (sign-in for the full workspace) |
+| http://localhost:3000/import | Sangam Import (sign-in required) |
+| http://localhost:8010/docs | FastAPI OpenAPI |
+| http://localhost:7474 | Neo4j browser |
+
+Ports are fixed in `docker-compose.yml`: frontend 3000, backend 8010 (published from container port 8000), Postgres 5433 (from 5432), and Neo4j 7474/7687. Outside Docker, `make dev-backend` serves uvicorn on 8000 directly, which is why `dev-frontend` points at 8000.
+
+## Make targets that matter
+
+`make help` lists everything, grouped. Bare `make` runs `help` and starts nothing.
+
+| Target | What it does | Notes |
+|---|---|---|
+| `make up` | Starts Postgres, runs `migrate`, then builds and starts Postgres, Neo4j, backend and frontend with `--wait` | The migrate step is local-only, and skipped when the bundled Postgres is off |
+| `make seed` | Loads cohort data, then the taxonomy | Depends on `migrate` when `ENV=local` |
+| `make migrate` / `migrate-status` | Applies, or lists, `db/migrations/*.sql` | Works on any `ENV` |
+| `make smoke` | End-to-end check of backend, frontend and chat wire | Runs `scripts/smoke.sh` |
+| `make match [ORG=slug]` | Saves a Funder Match run for every org, or one | In code, no model, no cost |
+| `make evals [TAG=canary]` | Golden questions through the real agent | **Costs money.** Runs on the host venv `backend/.venv` |
+| `make news-pull ORG=… / FUNDER=…` | Pulls news through Tavily | Prints the plan first; `CONFIRM=1` runs for everyone |
+| `make graph-seed` | Builds the Neo4j graph from Postgres | Needs `OPENAI_API_KEY` |
+| `make psql` | Interactive shell against the database `ENV` selects | |
+| `make dev-backend` | uvicorn `--reload` on the host against Postgres on 5433 | Needs host `uvicorn` |
+| `make dev-frontend` | `next dev` on the host with `AGENT_URL` at `localhost:8000` | Needs Node 22 and npm |
+
+Related targets: `down`, `logs`, `frontend-reinstall` (forces an `npm ci`), `locations-seed`, `taxonomy-seed`, `news-seed`, `news-visibility` (rewrites who sees each story after a bar or rule changes), `db-url`, `client-docs`, and `staff-source` (staging only). `db-clean`, `db-reset`, `db-backup` and `db-upgrade` are local-only. `db-reset` drops every volume, including Neo4j and any imported documents.
+
+### Choosing a database with `ENV`
+
+`ENV=local` (the default) uses the bundled Postgres. `ENV=staging` uses the `STAGING_DB_*` block through `docker-compose.staging.yml`. `ENV` is honoured by `up`, `down`, `logs`, `seed`, `migrate`, `psql`, `client-docs` and the remote targets. It is not honoured by the local-only maintenance group. `STAGING_DB_*` exist only for local tooling. A deployed backend reads `DATABASE_URL`. Details are in [Environments and Env Vars](operations/environments.md).
+
+## Repo map
+
+```
+backend/app/
+  main.py         create_app() and the ASGI entrypoint (wiring only)
+  core/           Settings, Supabase JWT security, lifespan, logging
+  db/             pool, LangGraph checkpointer, migrate runner
+  api/            one aggregate router plus routes/<resource>.py
+  repositories/   hand-written SQL, one module per resource (no ORM)
+  schemas/        Pydantic, one module per resource
+  agent/          Ask Sangam: build.py, tools/ (incl. tools/sql/catalog.py), instructions.md
+  ingest/         Sangam Import: agent, tools, skills/, pipeline, news/
+  matching/       Funder Match: rubric, rules, match, service, run
+  integrations/   Graphiti/Neo4j lifecycle, tracing, Supabase Storage
+backend/tests/    unit, integration and evals tiers
+frontend/
+  app/            routes only
+  features/       one folder per screen
+  components/ lib/  UI primitives, API client, auth headers, chat wiring
+db/init/          baseline schema (runs once on a new database)
+db/migrations/    every change after the baseline
+seed/             idempotent loaders and their vendored data
+scripts/          smoke.sh and the db-url resolver
+docs/             longer human-written design docs
+```
+
+Two structural rules: nothing that is not a route goes under `frontend/app/`, and no new module goes flat at the top of `backend/app/`. A REST resource is always a route, a repository and a schema file, plus one line in `api/router.py`.
+
+Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and opens the checkpointer at boot. The two agents are built under a lock on the first post to `/agent` or `/ingest`. Ask has exactly seven tools, and `compare_fit` is the only one whose SQL is fixed rather than model-written.
+
+## Task routing
+
+| I want to… | Read |
+|---|---|
+| Understand the backend app factory, settings, model tiers, lazy agent loading, tracing, deploy topology | [Platform](architecture/platform.md) |
+| Change Ask's tools, prompt, SQL validation, citations or answer audit | [Ask Sangam](architecture/ask-sangam.md) |
+| Change Import (Scout): subagents, research, brief, promote, undo | [Sangam Import / Scout](architecture/sangam-import-scout.md) |
+| Add a table to the SQL catalog, or understand the schema | [Data and Migrations](architecture/data-and-migrations.md) |
+| Understand roles, RLS, or which database pool code uses | [Auth, Roles and RLS](architecture/auth-roles-rls.md) |
+| Change the fit rubric or saved match runs | [Funder Match](architecture/funder-match.md) |
+| Work on the news pipeline or story visibility | [Media & Signals](architecture/media-and-signals.md) |
+| Change a screen, the chat proxy or the API client | [Frontend](architecture/frontend.md) |
+| Trace a question through the whole system | [One Ask Turn, End to End](workflows/ask-turn.md) |
+| Trace an import from source choice to undo | [One Import Turn](workflows/import-turn.md) |
+| Add a schema change | [Writing and Applying a Migration](workflows/writing-a-migration.md) |
+| Ship to Vercel | [Deploying by Hand](workflows/deploying-by-hand.md) |
+| Find an env var, or understand `ENV=local\|staging` | [Environments and Env Vars](operations/environments.md) |
+| Work on Vercel, Supabase pooler, Tavily, Langfuse or Aura specifics | [Vercel and Supabase Specifics](operations/deploy-and-vendors.md) |
+| Run or write tests, or learn what costs money | [Testing](testing/overview.md) |
+
+The folders are `architecture/` (how each subsystem is built), `workflows/` (end-to-end traces and step-by-step procedures), `operations/` (configuration and vendors) and `testing/`.
+
+## Testing at a glance
+
+Backend tests have three tiers. Unit tests never touch a database: they build a router-only app with a sentinel pool that raises on any use, so monkeypatch the `repositories/` function instead. Integration tests carry the `integration` mark and need the compose Postgres on 5433. Evals carry the `eval` mark, run only with `--run-evals`, and make real model calls (about 10 cents a case). Before pushing frontend changes, run `npm run build`, because type errors surface there and never in `next dev`. See [Testing](testing/overview.md).
