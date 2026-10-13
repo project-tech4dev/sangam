@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6f5d07aec390f42b59f605118ec086bbe8ac478f14f6d13109130eb76ea7d70a",
+  "pageVersion": "sha256:0555475f65ae730ee1f26db2b6e78df3ddf4c9de5e783aad42663b66e0b964d2",
   "claims": [
     {
       "id": "claim_80d2fb637e374fd1b2373e7269787859",
@@ -145,10 +145,48 @@
           "version": "repo-lines-v1:sha256:5ace881186679d7c9dc95239f2e05d2ae403fc1549803319eb1f125128dd8774:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjMjVkMjBhYTg4ZTZhZjgxMjdhNGE3NWVmZDgyZTdjOWQ4M2I4OTE3MGNhNTQ1M2E3YmY5YTllNGI4NjMyYzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3YzRiYzRiZmYxNzczNTZhYzA1MzcyNmRkMWQwOWE0N2Y4M2U3ZDFlYzBkNzQ1OTIyYWE5ZWFhM2RjMGI0MmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmMTIwN2FmYTU0MTQ3MzhlOTRjNDcyZDE3YTE3MDE3MWE5YTY5MjIxZjJmYjc2NjQ5NDM3NTM5MTAxNjcyMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0YzkyMmMyMzI3NjI5OGRiZWI1MjU0ODJiZTI4MDk5OTAzNDIzOTI2OTYzY2ZhYjA2ZTQ5ZWNhM2NlNzNkZWYifQ"
         }
       ]
+    },
+    {
+      "id": "claim_3f33c4f69ae0462095cb6371ff84acbb",
+      "statement": "The Makefile's `##@ Wiki` group has `make wiki` (generate openwiki/ from scratch, costs money), `make wiki-update` (refresh only pages whose source changed, no model call when nothing did) and `make wiki-fix MSG=...` (ask OpenWiki to correct pages; errors with a usage message when MSG is empty). All three run the pinned openwiki@0.7.2 via npx with the Anthropic provider set explicitly, source .env quietly, and delete openwiki/.run.json afterwards.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L176-L193",
+          "version": "repo-lines-v1:sha256:1cb2ce2d218251839b724c1a308f78770ed4050e96c14ae4adb7226ec6cf3a29:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyODA3ZDQ0MjA1NzUxODQxNTQ5ODk3NmM4NDcyYjE0YTkwM2QyNzE3N2FmOTE4OTU0MDkxZGY5ZTY4M2Q2YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1NzUyM2JmMmZiM2I4YTNlYmUxOGI3NDdkMmNiMzUzNTc2ZjRjMGI3OTczOTAwZTVjNDk0MTBkNTI3M2JmMDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjN2EzMWU4MzM5MzFjYTUyOGEwNjlhYmNhMTA4MjlkZjg1ZjA5NmM0YmRiNDI0NmQ5NTJjMWM2OTE2NmRhMmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNlZGY5ZDVmMTc5MWQwYWU5YTRjNmQ3OWI2YzUzZDNjNGRjMTIyNDMwODg0ZTBjNDhiM2I3OWVkYjM0NGY2NmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c34ac5b016864edeab63e4b08bc7e6f0",
+      "statement": "openwiki/ page text is generated: fixes go through openwiki/INSTRUCTIONS.md or `make wiki-fix`, not hand edits, and `--update` reacts to code changes only, so editing INSTRUCTIONS.md alone rewrites nothing.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L18-L18",
+          "version": "repo-lines-v1:sha256:ab53953bfb72c1262bbae2eaca72cabf1af49927a0bba1157b2d5bdb285c4bd2:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWI1Mzk1M2JmYjcyYzEyNjJiYmFlMmVhY2E3MmNhYmYxYWY0OTkyN2EwYmJhMTE1N2IyZDViZGIyODVjNGJkMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWI1Mzk1M2JmYjcyYzEyNjJiYmFlMmVhY2E3MmNhYmYxYWY0OTkyN2EwYmJhMTE1N2IyZDViZGIyODVjNGJkMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjZjYjMwYThmOTQ4MTMxNDkwODJmM2RjYjkxOWRiMTJmMjIwYjMxYTI5NWZiZWU5NTM1MWNmOGYxNGJhZGEyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzA4OWRmOTNmOGJhNTdhNGRkYmZkOGYwMTM5NjJjMzk3OGNlNGRiNjgxOTljNGRhNjY2NjQ5YjA5OTZjZWRhOSJ9"
+        },
+        {
+          "resource": "repo://Makefile#L176-L193",
+          "version": "repo-lines-v1:sha256:1cb2ce2d218251839b724c1a308f78770ed4050e96c14ae4adb7226ec6cf3a29:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyODA3ZDQ0MjA1NzUxODQxNTQ5ODk3NmM4NDcyYjE0YTkwM2QyNzE3N2FmOTE4OTU0MDkxZGY5ZTY4M2Q2YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1NzUyM2JmMmZiM2I4YTNlYmUxOGI3NDdkMmNiMzUzNTc2ZjRjMGI3OTczOTAwZTVjNDk0MTBkNTI3M2JmMDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjN2EzMWU4MzM5MzFjYTUyOGEwNjlhYmNhMTA4MjlkZjg1ZjA5NmM0YmRiNDI0NmQ5NTJjMWM2OTE2NmRhMmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNlZGY5ZDVmMTc5MWQwYWU5YTRjNmQ3OWI2YzUzZDNjNGRjMTIyNDMwODg0ZTBjNDhiM2I3OWVkYjM0NGY2NmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b1662939628543f1a0f188c0f78188b2",
+      "statement": "CLAUDE.md remains the source of repo invariants and commands; AGENTS.md is a pointer that sends agents to CLAUDE.md first (then docs/ARCHITECTURE.md and docs/CHANGELOG.md) and to openwiki/quickstart.md when OpenWiki retrieval tools are unavailable, treating source code and tests as authoritative.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L1-L18",
+          "version": "repo-lines-v1:sha256:d98927d8ca7f4ad69bb97a6f68ea9b3219d02616fa8e4fdd9de6bb605cada161:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjN2Y0NDA4YTJmOTM4NjU1OGZmNGJiYjNlNDM4NTZiNTE2Y2I4NzNjOWRmNGM0MGVlY2Q5YzhlOGY3YzRlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNTM5NTNiZmI3MmMxMjYyYmJhZTJlYWNhNzJjYWJmMWFmNDk5MjdhMGJiYTExNTdiMmQ1YmRiMjg1YzRiZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwODlkZjkzZjhiYTU3YTRkZGJmZDhmMDEzOTYyYzM5NzhjZTRkYjY4MTk5YzRkYTY2NjY0OWIwOTk2Y2VkYTkifQ"
+        },
+        {
+          "resource": "repo://CLAUDE.md#L1-L15",
+          "version": "repo-lines-v1:sha256:39e46ef8f6ddc049a56c5c89b847357f3c28d843a4b152da014fe34ec4436b55:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MTIyYmYyYmM2MmQ0OWZlYzRlYTBmMzU1YmIwMDBjYWJlZjJlMzk2ODc3OGI1MGMwNWVjMjNjOTc4YTY5NWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1NDdjMmNiMmZlZDI1M2ViNTBmNGJjODE1MGUxOWRkOTkwZjQyMTZiOGIwODA3MDA1OGI5MmFjYTRjMDA5MDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjZGNkN2VkMjVjOGFkOWI0NzA4ODE3MzE5N2NmNjhlNzNiOGU2NWNkN2E3YzZmYzA2MTg2MjYwMWZiYjNiZGEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-13T18:54:39.311Z"
   }
 }

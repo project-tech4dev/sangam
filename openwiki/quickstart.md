@@ -1,16 +1,18 @@
 ---
 type: quickstart
 title: Quickstart
-description: First run of the Sangam stack, the make targets that matter, a repo map, the ground rules, and a task-to-page routing table for the architecture, workflow, operations and testing pages.
+description: First run of the Sangam stack, the make targets that matter (including the Wiki group that regenerates openwiki/), a repo map, the ground rules, and a task-to-page routing table for the architecture, workflow, operations and testing pages.
 tags: [quickstart, onboarding, make, repo-map, routing]
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
+    at: 2026-10-13T18:54:39.311Z
 sources:
   - id: openwiki-source-5f5b95b3d6a215fa02ceb945
     resource: repo://.env.example
   - id: openwiki-source-6766b7a0c14857435d2077c9
     resource: repo://.github/workflows/deploy.yml
+  - id: openwiki-source-8037e2358a2c4f9b2c722a11
+    resource: repo://AGENTS.md
   - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
     resource: repo://backend/app/agent/build.py
   - id: openwiki-source-7faba850789bc67a49b79a3f
@@ -23,7 +25,7 @@ sources:
     resource: repo://docker-compose.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:54:39.311Z" }
 ---
 
 # Quickstart
@@ -86,8 +88,25 @@ Ports are fixed in `docker-compose.yml`: frontend 3000, backend 8010 (published 
 | `make psql` | Interactive shell against the database `ENV` selects | |
 | `make dev-backend` | uvicorn `--reload` on the host against Postgres on 5433 | Needs host `uvicorn` |
 | `make dev-frontend` | `next dev` on the host with `AGENT_URL` at `localhost:8000` | Needs Node 22 and npm |
+| `make wiki` | Generates `openwiki/` from scratch | **Costs money.** Real model calls |
+| `make wiki-update` | Refreshes only the `openwiki/` pages whose source changed | No model call when nothing changed |
+| `make wiki-fix MSG="…"` | Asks OpenWiki to correct pages, given what is wrong and where | **Costs money.** Real model calls; fails with a usage message if `MSG` is empty |
 
 Related targets: `down`, `logs`, `frontend-reinstall` (forces an `npm ci`), `locations-seed`, `taxonomy-seed`, `news-seed`, `news-visibility` (rewrites who sees each story after a bar or rule changes), `db-url`, `client-docs`, and `staff-source` (staging only). `db-clean`, `db-reset`, `db-backup` and `db-upgrade` are local-only. `db-reset` drops every volume, including Neo4j and any imported documents.
+
+### The `Wiki` group
+
+The `##@ Wiki` group in the Makefile drives the generated `openwiki/` code wiki, including this page. All three targets run the pinned `openwiki@0.7.2` through `npx`, source `.env` quietly, use Anthropic explicitly (otherwise OpenWiki would pick `OPENAI_API_KEY`, the graph's key, first), and delete `openwiki/.run.json` afterwards.
+
+- `make wiki` regenerates the whole wiki from scratch. It calls a model and costs money.
+- `make wiki-update` rewrites only pages whose cited source changed. When nothing changed it makes no model call.
+- `make wiki-fix MSG="what is wrong, and where"` asks OpenWiki's agent to correct pages. It calls a model and costs money.
+
+The page text is generated, so do not hand-edit it. Steer generation through `openwiki/INSTRUCTIONS.md`, and correct a wrong page with `make wiki-fix`, so the page and its evidence claims are changed by the same tool. `wiki-update` reacts to code changes only: editing `INSTRUCTIONS.md` alone rewrites nothing.
+
+### Agent instructions
+
+`CLAUDE.md` remains the source of the repo's invariants and commands. `AGENTS.md` is a thin pointer: it sends agents to `CLAUDE.md` first, then to `docs/ARCHITECTURE.md` and `docs/CHANGELOG.md`, and tells them to fall back to `openwiki/quickstart.md` (and its links) when the OpenWiki retrieval tools are unavailable. Source code and tests stay authoritative over this wiki.
 
 ### Choosing a database with `ENV`
 
