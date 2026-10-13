@@ -1,4 +1,4 @@
 # Platform
 
-How this works today is `docs/ARCHITECTURE.md`. §8 covers auth and the two pools, §10 model tiers and settings, and §11 deploy, tracing and the keep-warm cron.
+Facts: `openwiki/architecture/platform.md` (settings, lifespan, tracing) and `openwiki/architecture/auth-roles-rls.md`. Rules and decisions: `docs/ARCHITECTURE.md` §8, §10, §11.
 Agents are built on the first chat turn (`load_agents()`), so no REST module may import agent code at the top.

@@ -4,15 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Read first
 
-You do not need to read the code to learn how a subsystem works. Read these instead:
+You do not need to read the code to learn how a subsystem works. Three layers, each with one job:
 
-- **`docs/ARCHITECTURE.md`**: how every subsystem works today. It covers files, flows, tools, tables, routes and settings, with one section per area.
-- **`docs/CHANGELOG.md`**: everything that shipped, by subsystem and PR, plus **"Not finished"**, the plans that are only partly built.
-- **`docs/README.md`**: which deeper doc to read for which job.
+- **`openwiki/`** (start at `openwiki/quickstart.md`): the generated *what*: tools, routes, tables, settings and
+  walkthroughs, each claim pinned to source lines. Open the page for an unfamiliar area; don't preload it.
+- **`docs/ARCHITECTURE.md`**: the hand-written *why*: invariants, decisions and known regressions, one section per area.
+- **`docs/CHANGELOG.md`**: everything that shipped, by subsystem and PR, plus **"Not finished"**.
 
-Nested `CLAUDE.md` files load on their own when you work in their folder: `backend/app/agent/`, `backend/app/ingest/`,
-`backend/app/matching/`, `backend/app/core/`, `db/` and `frontend/`. Each points at its ARCHITECTURE section.
-A PR that changes a fact in ARCHITECTURE.md updates it, and a PR that ships adds a CHANGELOG line.
+Source code and tests win over all three. Nested `CLAUDE.md` files in `backend/app/agent/`, `backend/app/ingest/`,
+`backend/app/matching/`, `backend/app/core/`, `db/` and `frontend/` load on their own and point at their pages.
+A PR that changes a tool, table, route or flow runs `make wiki-update`; one that changes a rule edits ARCHITECTURE.md;
+one that ships adds a CHANGELOG line. **Never hand-edit `openwiki/`**: correct it with `make wiki-fix MSG="..."`.
 
 ## Commands
 
@@ -54,6 +56,9 @@ make smoke               # end-to-end check of backend + frontend + chat wire
                          # SMOKE_SKIP_LLM=1 make smoke  → skips the one real agent call
 make migrate             # apply db/migrations/*.sql   (make migrate-status to inspect)
 make psql                # interactive shell against whichever DB ENV selects
+make wiki-update         # refresh openwiki/ pages whose source changed (no model call when none did)
+make wiki-fix MSG="..."  # have OpenWiki correct a wrong page; never hand-edit openwiki/
+make wiki                # regenerate openwiki/ from scratch (~20 min, COSTS MONEY)
 ```
 
 Running a piece outside Docker:

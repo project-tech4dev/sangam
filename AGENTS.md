@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repo's agent instructions live in [`CLAUDE.md`](CLAUDE.md); read it first. Then read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the system works and [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for what shipped.
+This repo's agent instructions live in [`CLAUDE.md`](CLAUDE.md); read it first. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) holds the rules and decisions, [`openwiki/`](openwiki/quickstart.md) the generated facts, and [`docs/CHANGELOG.md`](docs/CHANGELOG.md) what shipped.
 
 <!-- OPENWIKI:START -->
 

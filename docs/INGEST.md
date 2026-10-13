@@ -6,8 +6,8 @@ endpoint (`/ingest`), its own UI, its own instructions, its own trace name (`san
 
 Ask Sangam reads the catalog. This one builds it.
 
-> **Out of date since #192–#197 (2026-10-13).** Where this file and `docs/ARCHITECTURE.md` §4 disagree,
-> §4 is right. Known wrong here:
+> **Out of date since #192–#197 (2026-10-13).** Where this file disagrees with `docs/ARCHITECTURE.md` §4 or
+> `openwiki/architecture/sangam-import-scout.md`, they are right. Known wrong here:
 > - **The durable record.** It is the merged brief (`source-archive/entities/<slug>.md`, with hidden fact blocks), not one
 >   `entity_research` row. Promotion reads `brief.promotable()`.
 > - **Pauses.** Two tools are in `INTERRUPT_ON` (`choose_sources`, `run_import_now`), and the catalog-writer also pauses every

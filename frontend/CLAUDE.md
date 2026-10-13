@@ -1,10 +1,4 @@
 # Frontend
 
-How this works today is `docs/ARCHITECTURE.md` §9: routes, feature folders, workspace views, proposals in localStorage and the list pattern.
-By feature, also read:
-- `features/ask/`: §3
-- `features/ingest/`: §4
-- Funder Match views: §5
-- the Media view: §6
-
+Facts (routes, features, workspace views): `openwiki/architecture/frontend.md`; per feature also `ask-sangam.md`, `sangam-import-scout.md`, `funder-match.md`, `media-and-signals.md` in the same folder. Rules: `docs/ARCHITECTURE.md` §9.
 For any UI change, read `docs/DESIGN_SYSTEM.md`.

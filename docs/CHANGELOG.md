@@ -4,7 +4,7 @@ Everything that has landed on `master`, from the first scaffold (2026-09-22) to 
 by subsystem and in date order within each. One line per change; a PR that touched two areas appears under both. A date is the day it merged, which is
 often later than its plan doc's filename. `#N` is the PR; a short sha means a commit before PRs.
 
-How the system looks *today* is `docs/ARCHITECTURE.md`; this file is how it got there. Add a line here
+How the system looks *today* is `openwiki/` (facts) and `docs/ARCHITECTURE.md` (rules); this file is how it got there. Add a line here
 in the PR that ships a change, under its subsystem.
 
 ---
@@ -156,6 +156,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-01 · #55 · Data platform architecture spec and the v3 data model, for review.
 - 2026-10-04 · #87 · UI roadmap after Phase 1.
 - 2026-10-08 · #99, #102, #119 · Plans: funder consolidation, CSO consolidation, Import update-or-ask.
+- 2026-10-14 · (unmerged) · `docs/ARCHITECTURE.md`, this changelog and nested `CLAUDE.md` pointers; then OpenWiki generates `openwiki/` (`make wiki-update`) and ARCHITECTURE.md keeps only the why.
 
 ---
 
