@@ -67,14 +67,13 @@ async def main() -> int:
         print("DATABASE_URL is not set", file=sys.stderr)
         return 1
     async with await psycopg.AsyncConnection.connect(url, row_factory=dict_row) as conn:
-        # The newest row per slug: re-researching an entity supersedes, it does
-        # not append a second file.
-        rows = await (
-            await conn.execute(
-                "SELECT DISTINCT ON (slug) * FROM entity_research "
-                "ORDER BY slug, researched_at DESC"
-            )
-        ).fetchall()
+        # Every run per slug, one file each: a re-research adds to the brief rather than replacing it.
+        history: dict[str, list[dict[str, Any]]] = {}
+        for r in await (await conn.execute(
+            "SELECT * FROM entity_research ORDER BY slug, researched_on, researched_at"
+        )).fetchall():
+            history.setdefault(r["slug"], []).append(r)
+        rows = [runs[-1] for runs in history.values()]
         # Names for the index, when the catalog happens to know them.
         named = {
             r["slug"]: r["name"]
@@ -93,7 +92,7 @@ async def main() -> int:
     ENTITIES.mkdir(parents=True, exist_ok=True)
     published = 0
     for row in rows:
-        markdown = entity_markdown(row)
+        markdown = entity_markdown(history[row["slug"]])
         (ENTITIES / f"{row['slug']}.md").write_text(markdown, encoding="utf-8")
         # The same file in the bucket, so the app can link to a brief without
         # reading the repo. git stays the place it is reviewed; this is the
