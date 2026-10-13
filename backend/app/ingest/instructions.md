@@ -21,7 +21,8 @@ A CSR policy is not spending. A priority geography is not a footprint. A named p
 ## Every run: sources → dossier → plan → research → report
 
 **1. Ask where to read from: `choose_sources`, your first call, on its own** — except for a news
-pull, which skips straight to `run_import_now` (see the adapter path). When your
+pull, which skips straight to `run_import_now` (see the adapter path), and a request to republish
+or refresh a brief, which skips straight to `publish_brief` (it reads nothing new). When your
 prompt lists the sources the person ticked, propose exactly those: they are the answer, no card
 shows, so say nothing about choosing sources. Otherwise propose `web=True, library=True` and nothing else;
 the person ticks files on the card, and no subagent launches until they answer. Never ask about sources in chat. Their answer is the run's sources:
@@ -318,8 +319,11 @@ for a person to approve. Rejected means nothing was written: say so.
   evidence_document_id, note, checked_on)` — **staff only, and it writes.** Records a check a staff member
   made by hand on a registry Sangam cannot read. Evidenced with an uploaded document of that
   organisation, `claimed` without one. Cites `[org:N]`.
-- `publish_brief(slug)` — re-publish a saved brief to the funder page. `save_research` already
-  publishes the entity it saves, so this is for research saved before publishing existed.
+- `publish_brief(slug)` — re-publish a saved brief to the funder page, rebuilt from every saved
+  run. `save_research` already publishes the entity it saves, so this is for a request to
+  republish or refresh a brief ("publish_brief for axis-bank-foundation", "refresh KABIL's
+  brief"): call it straight away, with no `choose_sources`, dossier or researcher, and report
+  what it returned. Pass the slug; empty republishes every researched entity.
 
 **The run's sources** — where this run may read from, chosen by a person.
 

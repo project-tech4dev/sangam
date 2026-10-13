@@ -23,7 +23,7 @@ from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
-from app.ingest.brief import publish
+from app.ingest.brief import publish, rows_for
 from app.ingest.caller import scope, staff_only
 from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
 from app.ingest.sources import rule_for_url
@@ -359,11 +359,12 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     ),
                 )
             ).fetchone()
+            history = await rows_for(conn, slug)
         # Publish the brief with the same call that saves it: waiting for a
         # person to run `make client-docs` left the funder page's link dead in
         # between. Silent on failure, like archiving — the model cannot act on
         # it and the findings are saved either way.
-        published = await publish(dict(row))
+        published = await publish(history)
 
         found = ", ".join(findings.concepts_found()) or "nothing"
         replaced = (
@@ -410,22 +411,25 @@ async def publish_brief(slug: str = "") -> str:
         async with pool.connection() as conn:
             rows = await (
                 await conn.execute(
-                    "SELECT DISTINCT ON (slug) * FROM entity_research "
+                    "SELECT * FROM entity_research "
                     + ("WHERE slug = %s " if slug else "")
-                    + "ORDER BY slug, researched_at DESC",
+                    + "ORDER BY slug, researched_on, researched_at",
                     (slug,) if slug else (),
                 )
             ).fetchall()
         if not rows:
             return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
 
-        done = [r["slug"] for r in rows if await publish(dict(r))]
+        by_slug: dict[str, list[dict]] = {}
+        for r in rows:
+            by_slug.setdefault(r["slug"], []).append(dict(r))
+        done = [s for s, history in by_slug.items() if await publish(history)]
         if not done:
             return (
-                f"Published nothing of {len(rows)}. Storage is not configured, so a brief "
+                f"Published nothing of {len(by_slug)}. Storage is not configured, so a brief "
                 f"exists only as docs/entities/<slug>.md after `make client-docs` on the host."
             )
-        missed = [r["slug"] for r in rows if r["slug"] not in done]
+        missed = [s for s in by_slug if s not in done]
         return (
             f"Published {len(done)} brief(s): {', '.join(done)}."
             + (f" Failed: {', '.join(missed)}." if missed else "")

@@ -35,6 +35,8 @@ class ConceptLine:
     fields_total: int
     held: int = 0
     extra_years: list[str] = field(default_factory=list)
+    untagged: list[str] = field(default_factory=list)  # programme names saved with no theme
+    programmes: int = 0
 
 
 @dataclass
@@ -100,7 +102,9 @@ def compute(row: dict[str, Any], years: list[str] | None = None,
         filled = sum(1 for name in expected if any(_filled(f.get(name)) for f in mine))
         extra = sorted({f["fiscal_year"] for f in mine
                         if concept in YEARLY and f.get("fiscal_year") and f["fiscal_year"] not in years})
-        lines.append(ConceptLine(concept, cells, filled, len(expected), _held_count(held, concept), extra))
+        untagged = [f.get("name") or "?" for f in mine if concept == "program" and not f.get("themes")]
+        lines.append(ConceptLine(concept, cells, filled, len(expected), _held_count(held, concept), extra,
+                                 untagged, len(mine) if concept == "program" else 0))
     return Coverage(row.get("canonical_name") or row.get("entity_name") or row.get("slug", "?"),
                     kind, years, lines, report is not None)
 
@@ -122,6 +126,8 @@ def _missing_text(line: ConceptLine) -> str:
         parts.append(f"{line.held} line(s) held back at the write")
     if line.extra_years:
         parts.append(f"also found {', '.join(line.extra_years)} (not asked)")
+    if line.untagged:
+        parts.append(f"{len(line.untagged)} of {line.programmes} programmes have no theme: {', '.join(line.untagged)}")
     return "; ".join(parts) or "–"
 
 

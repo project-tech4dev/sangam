@@ -39,7 +39,7 @@ function splitSummary(summary: string): { intro: string; fields: string[] } {
 }
 
 function FindingRow({ finding }: { finding: Finding }) {
-  const { headlines, year, basis, evidence, source } = finding;
+  const { headlines, year, basis, evidence, source, details } = finding;
   return (
     <li className="brief-finding">
       <div className="brief-finding-head">
@@ -60,6 +60,15 @@ function FindingRow({ finding }: { finding: Finding }) {
           Source:{" "}
           {safeHref(source.url) ? <External href={source.url}>{source.name} ↗</External> : <span>{source.name}</span>}
         </div>
+      )}
+      {details && (
+        <ul className="brief-sources">
+          {details.map((d) => (
+            <li key={d.label}>
+              <strong>{d.label}:</strong> {d.value}
+            </li>
+          ))}
+        </ul>
       )}
     </li>
   );
