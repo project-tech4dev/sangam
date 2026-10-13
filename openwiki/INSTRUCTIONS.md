@@ -63,7 +63,7 @@ Report an unfinished plan as unfinished, and a known regression as a regression.
 
 Check these against the code before restating them:
 - **SQL catalog size.** It allowlists 37 tables, and `KNOWN_EXCLUDED` holds 22 (`backend/app/agent/tools/sql/catalog.py`). State both counts.
-- **Import's subagents.** There are four: `entity-researcher`, `vault-reader`, `catalog-writer`, `workbook-reader`. `test_harness.py` checks that two of them are present and `general-purpose` is absent; it does not check an exact set.
+- **Import's subagents.** There are four: `entity-researcher`, `vault-reader`, `catalog-writer`, `workbook-reader`. In `test_harness.py`, `test_import_advertises_exactly_its_two_subagents` checks only that two are advertised and `general-purpose` is absent. `test_both_subagents_are_compiled_and_found` asserts the exact set of four.
 - **Import's NGO promote path.** It resolves a parent body (`_org_parent` in `promote.py`).
 - **The funder promote path's order** is: funder, then tags, then documents, then CSR years, then programmes.
 - **`StaffLastLock` and `SaveQuestions`** live in `app/agent/middleware.py`, but only Import uses them; Ask does not.

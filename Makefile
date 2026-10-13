@@ -1,4 +1,4 @@
-.PHONY: help up down logs wiki wiki-update seed locations-seed taxonomy-seed graph-seed match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs wiki wiki-update wiki-fix seed locations-seed taxonomy-seed graph-seed match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -185,6 +185,12 @@ wiki:  ## Generate openwiki/ from scratch (COSTS MONEY; Sonnet reads the repo)
 
 wiki-update:  ## Refresh openwiki/ pages whose source changed (no model call when nothing did)
 	@set -a; [ -f .env ] && . ./.env; set +a; $(OPENWIKI) --update --print; rm -f openwiki/.run.json
+
+# --update reacts to code changes only; an INSTRUCTIONS.md edit alone rewrites nothing. A wrong page
+# is fixed by asking OpenWiki's agent, so the page and its claims are edited by the same tool.
+wiki-fix:  ## Ask OpenWiki to correct pages: make wiki-fix MSG="what is wrong, and where"
+	@test -n "$(MSG)" || { echo 'usage: make wiki-fix MSG="..."'; exit 2; }
+	@set -a; [ -f .env ] && . ./.env; set +a; $(OPENWIKI) --print "$(MSG)"; rm -f openwiki/.run.json
 
 ##@ Generated docs
 # Render docs/entities and the generated blocks of docs/clients from the

@@ -90,7 +90,7 @@ One supervisor delegates to four subagents. Every subagent is `mode="isolated"` 
 
 Key design points:
 
-- **Tool lists are fixed and pinned by tests.** `test_ingest.py` checks that the instructions name every supervisor tool and that each subagent prompt names every tool its spec declares. It also checks that every `@tool` in `app/ingest/tools/` is registered somewhere, and that registered tools live only in that package. `test_harness.py` compiles the graph and compares each subagent's real tool set to an exact literal.
+- **Tool lists are fixed and pinned by tests.** `test_ingest.py` checks that the instructions name every supervisor tool and that each subagent prompt names every tool its spec declares. It also checks that every `@tool` in `app/ingest/tools/` is registered somewhere, and that registered tools live only in that package. `test_harness.py` compiles the graph, asserts the four compiled subagents by name, and compares the real tool sets of the entity-researcher, the vault-reader and the catalog-writer to exact literals (the workbook-reader has no literal there). Separately, the check on the `task` tool's advertised list only asserts that `entity-researcher` and `catalog-writer` are present and `general-purpose` is absent. It does not check an exact set.
 - **Every subagent carries its own `filesystem(...)` middleware.** An isolated subagent builds its own middleware stack, so the parent's restricted filesystem never reaches it. Left to the library, each subagent would get all eight filesystem tools, including writes against a backend whose `/skills/` route is real disk. `app/agent/harness.py` therefore exposes only `read_file` on subagents. The supervisor also keeps `ls`, which is how it recovers a stale skill path. `install()` also disables deepagents' `general-purpose` subagent. That subagent would otherwise carry the supervisor's whole tool list, including `run_import_now` and `promote_research`.
 - **The supervisor writes almost nothing.** Its only writes are `record_registry_check` (a staff member's manual registry check) and `run_import_now` (the adapter bulk pull). `research_goals` is deliberately left to researchers, because it requires an `entity_kind` and refuses `unknown`.
 - **Prompts are markdown beside the code.** `instructions.md` is the supervisor prompt and `prompts/*.md` are the subagent prompts. The only substitution is `{{MAX_PARALLEL_RESEARCH}}`. It is rendered from the `Settings` the graph was built with, so raising the setting changes what the model is told, and a test pins this.
@@ -98,7 +98,7 @@ Key design points:
 
 ## Middleware
 
-All of Import's own middleware is in `app/ingest/middleware.py`. `StaffLastLock` and `SaveQuestions` live in `app/agent/middleware.py` and are shared with Ask.
+Most of Import's middleware is in `app/ingest/middleware.py`. `StaffLastLock` and `SaveQuestions` are defined in `app/agent/middleware.py`, beside Ask's own middleware, but only Import uses them: `build_ingest_agent` is their sole caller and Ask does not.
 
 | Middleware | On | What it does |
 |---|---|---|
@@ -108,7 +108,8 @@ All of Import's own middleware is in `app/ingest/middleware.py`. `StaffLastLock`
 | `RunSources` | researcher, vault-reader, workbook-reader | Refuses any pulling tool outside what the person chose. A subagent running outside a `task` reads nothing. |
 | `SaveRefusal` | researcher, vault-reader | Turns a pydantic error on `save_research` or `save_vault_findings` into a short list of fixes. It also accepts a payload sent as a JSON string. |
 | `StaffLastLock` | researcher | Once `read_source_rows` has been requested, only an allowlist of tools stays open. The aim is that an injected instruction on a web page cannot carry a staff row out in a URL or query. |
-| `ReadingLimit`, `call_limit` | researcher, vault-reader, writer | Applied only when `RESEARCH_PAGE_LIMIT` or `RESEARCH_MODEL_CALL_LIMIT` is set (neither is by default). The writer always has a limit of 12 calls. |
+| `ReadingLimit` | researcher only | Caps page reads. Added only when `RESEARCH_PAGE_LIMIT` is set (it is not by default). The vault-reader and the catalog-writer have no reading limit. |
+| `call_limit` | researcher, vault-reader, writer | Caps model calls. On the researcher and vault-reader it is added only when `RESEARCH_MODEL_CALL_LIMIT` is set (not by default). The writer always has a limit of 12 calls (`WRITER_MODEL_CALL_LIMIT`). The workbook-reader has neither limit. |
 | `EscalateAfterFailedSave` | researcher | After one malformed save, the rest of the run uses the strong model. Added only when the research model differs from `MODEL`. |
 | `fallback` | all | On a failed call, switches to the next tier's model. |
 | `ResearchRubric` | researcher | A utility-model grader checks the save and summary against `prompts/research_rubric.md`, with at most one revision. It skips grading when a call limit ended the run. |
@@ -225,12 +226,14 @@ It retries once on a `UniqueViolation`, which happens when a concurrent save ins
 2. **Kind branch.** `_promote_funder` or `_promote_org`, which reach different tables through different matchers.
 3. **Funder path:**
    - Resolve the entity, preferring the one an earlier save wrote to.
-   - Write the funder, its CSR years and its tags.
+   - Resolve the parent company (`_parent`). A parent that is not in the catalog is reported as held, never created.
+   - Write the funder, then its tags.
    - Write a `documents` row for every public source a fact cites. A dry run skips this, because archiving moves storage objects that no rollback undoes.
+   - Write the CSR years.
    - Write programmes parents-first.
    - Write the facts in `WRITE_ORDER`.
    - Write `document_links`.
-4. **NGO path.** Same shape, except there is no parent resolution, `ORG_WRITE_ORDER` is used, and every finding carries a tier. `gate` is set to `None` for orgs. They keep fill-blanks with evidence-tier ranking and report conflicts, and a name resembling a stored NGO becomes a Review question.
+4. **NGO path.** Same shape, with three differences. It resolves a parent body (`_org_parent`), which links only a parent Sangam already holds and otherwise reports the link as held, never a new row. It uses `ORG_WRITE_ORDER`. And every finding carries a tier. It has no CSR-year step. `gate` is set to `None` for orgs. They keep fill-blanks with evidence-tier ranking and report conflicts, and a name resembling a stored NGO becomes a Review question.
 5. **Settling.** Every fact ends in exactly one state. `_unsettled` assigns "no column" or "held" with a reason to any fact no writer reached. Nothing is dropped silently.
 
 ## The writer and its Gate

@@ -39,11 +39,11 @@ These four hold across the repo. Break one and something fails in a non-obvious 
 1. **Migrations are not automatic.** `db/init/` is only the baseline for a new database. Every later change is a plain SQL file in `db/migrations/`, applied by `make migrate`. Locally, `make up` and `make seed` run it for you. Against a managed database you run `make migrate ENV=staging` yourself, after a backup. The backend refuses to boot against an unmigrated database (see ground rule 4).
 2. **Nothing deploys automatically.** Deploying is a manual run of the Deploy workflow (Actions, Deploy, Run workflow, `workflow_dispatch` only). A merge or push builds nothing, and Vercel's Git integration is disabled. `ENV=staging` does not deploy anything either. It points your local tooling, and with `make up ENV=staging` your local containers, at the shared managed database. See [Deploying by Hand](workflows/deploying-by-hand.md).
 3. **Postgres is the system of record.** The Neo4j graph is derived from Postgres (`make graph-seed`) and can be wiped and rebuilt. Nothing should live only in the graph. If the two disagree, Postgres wins.
-4. **`catalog.py` is a security allowlist.** `backend/app/agent/tools/sql/catalog.py` lists the tables and columns Ask's model-written SQL may read. A table missing from it is invisible to the agent. At boot, `_verify_sql_catalog` in `core/lifespan.py` raises if the catalog and the database disagree, for example when a catalogued table is missing because migrations were not applied. A table that is merely undeclared is only logged, so it stays invisible until someone catalogues it or marks it excluded.
+4. **`catalog.py` is a security allowlist.** `backend/app/agent/tools/sql/catalog.py` lists the tables and columns Ask's model-written SQL may read. It allowlists 37 tables, and `KNOWN_EXCLUDED` names 22 more that are deliberately kept out. A table missing from the catalog is invisible to the agent. At boot, `_verify_sql_catalog` in `core/lifespan.py` raises if the catalog and the database disagree, for example when a catalogued table is missing because migrations were not applied. A table that is merely undeclared is only logged, so it stays invisible until someone catalogues it or marks it excluded.
 
 ## First run
 
-You need Docker Desktop, an `ANTHROPIC_API_KEY`, and a Supabase project. The Supabase project is not optional. The frontend middleware needs `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and without them every page returns 500. Reaching `/ask` or `/import` also needs a sign-in method, such as the Google provider enabled in Supabase.
+You need Docker Desktop and an `ANTHROPIC_API_KEY`. To sign in you also need a Supabase project. Without `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, the frontend does not fail: `lib/supabase/middleware.ts` passes every request through and gates nothing, so the public pages and the `/ask` preview still render. But nobody can sign in (the sign-in dialog says the Supabase keys are not set), so the full Ask workspace and Import are out of reach. Reaching them needs a sign-in method too, such as the Google provider enabled in Supabase.
 
 ```bash
 cp .env.example .env     # set ANTHROPIC_API_KEY and the two NEXT_PUBLIC_SUPABASE_* values
@@ -121,7 +121,7 @@ docs/             longer human-written design docs
 
 Two structural rules: nothing that is not a route goes under `frontend/app/`, and no new module goes flat at the top of `backend/app/`. A REST resource is always a route, a repository and a schema file, plus one line in `api/router.py`.
 
-Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and opens the checkpointer at boot. The two agents are built under a lock on the first post to `/agent` or `/ingest`. Ask has exactly seven tools, and `compare_fit` is the only one whose SQL is fixed rather than model-written.
+Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and opens the checkpointer at boot. The two agents are built together, under a lock, on first use: the first post to `/agent` or `/ingest`, or the first REST route that calls `get_graph`. Ask has exactly seven tools, and `compare_fit` is the only one whose SQL is fixed rather than model-written.
 
 ## Task routing
 

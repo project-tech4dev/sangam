@@ -112,7 +112,7 @@ The supervisor plans (`write_todos`), reads `funder_dossier` to see what the cat
 - The researcher's tools are `research_goals`, `funder_dossier`, library, workbook-row, web and PDF readers, and `save_research` (`RESEARCHER_TOOLS`). It has no catalog-write tool.
 - Every web read passes `check_url` (source registry plus robots) before the fetch and again on every redirect (`_client` hook). A `REFUSED:` there is final. `search_public_sources` marks hits `READABLE` or `HELD`, and a held hit is a dead end.
 - `read_page` and `fetch_document` archive what they read to the `source-archive` bucket. Later, `promote()` turns each cited source into a `documents` row from that archive.
-- The researcher's middleware stack adds `SaveRefusal`, `RunSources`, the staff-last lock, optional `ReadingLimit` and call limits, model fallback, an escalation to the strong model after a malformed save, and a rubric grader that allows one revision. Page and call limits are unset by default.
+- The researcher's middleware stack adds `SaveRefusal`, `RunSources`, the staff-last lock (`StaffLastLock`), an optional `ReadingLimit` (researcher only) and model-call limit, model fallback, an escalation to the strong model after a malformed save, and a rubric grader that allows one revision. Page and call limits are unset by default.
 
 ## 3. save_research: where saves are refused
 
@@ -172,6 +172,8 @@ For a funder the order is:
 5. Write programmes parents-first, with spend lines as `kind='component'` programmes.
 6. Write the remaining facts in `WRITE_ORDER`.
 7. Write `document_links` and link the research row to the entity.
+
+Step 1 also resolves the parent company (`_parent`) before the funder is written. The NGO path has the same shape with three differences: it resolves a parent body (`_org_parent`) rather than a parent company, it writes in `ORG_WRITE_ORDER`, and it has no CSR-year step. In both, a parent that is not already in the catalog is reported as held and never created.
 
 ### Fact end-states
 

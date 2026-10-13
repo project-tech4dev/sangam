@@ -77,7 +77,7 @@ The agents themselves are covered in [Ask Sangam](ask-sangam.md) and [Sangam Imp
 - **Middleware order.** `AuthMiddleware` is added first and `CORSMiddleware` second, so CORS wraps auth. Preflights are answered before auth runs, and auth's 401s still carry CORS headers. The allowed origins come from `Settings.origins` (comma-separated `allowed_origins`). `allowed_origin_regex` admits Vercel preview hostnames and is passed as `None` when blank, because an empty pattern would match every origin.
 - **Routes and error handling.** It mounts `api_router`, maps a Postgres `InsufficientPrivilege` error to `403 {"detail": "Not allowed"}`, and defines `GET /health`.
 
-`AuthMiddleware` is plain ASGI, not `BaseHTTPMiddleware`, because buffering would break chat streaming. It skips `/health`, `/docs`, `/redoc` and `/openapi.json`. For every other request it resolves the caller once and stores the role (`anon` or `authenticated`) and claims on the request state. `PoolDep` then runs the request's queries as that caller (see [Auth, roles and RLS](auth-roles-rls.md)).
+`AuthMiddleware` is plain ASGI, not `BaseHTTPMiddleware`, because buffering would break chat streaming. It skips non-HTTP scopes and the open paths `/health`, `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json` (`_OPEN_PATHS` in `core/security.py`). For every other request it resolves the caller once and stores the role (`anon` or `authenticated`) and claims on the request state. `PoolDep` then runs the request's queries as that caller (see [Auth, roles and RLS](auth-roles-rls.md)).
 
 `backend/app/api/router.py` is the single mount point. It builds one `APIRouter(prefix="/api")` and includes the per-resource routers: orgs, org_members, funders, profiles, funder_matches, partner_lines, programs, rfps, contacts, scores, meta, news_stories, documents, ingest, news_runs, me and threads. `OPENAPI_TAGS` fixes the order resources appear in the docs. Two routes are not under `/api`: `/health` from the factory, and the AG-UI chat routes `/agent` and `/ingest` that the lifespan registers.
 
@@ -121,7 +121,7 @@ Details that matter when changing these:
 
 ## Lifespan and lazy agent loading
 
-`backend/app/core/lifespan.py` owns everything with a startup and shutdown. Boot is deliberately split in two. The lifespan keeps only what REST needs. The agent stack is built later, on the first chat request.
+`backend/app/core/lifespan.py` owns everything with a startup and shutdown. Boot is deliberately split in two. The lifespan keeps only what REST needs. The agent stack is built later, on first use: the first post to `/agent` or `/ingest`, or the first REST route that calls `get_graph`.
 
 **Boot, in order** (inside one `AsyncExitStack`, so shutdown unwinds in reverse):
 
@@ -134,7 +134,7 @@ Details that matter when changing these:
 
 On shutdown the lifespan flushes and shuts down Langfuse, but only if tracing is enabled and the agents were actually built. It then clears `db_pool.pool`.
 
-**First chat turn.** Both agents are built by `load_agents(app)` under `agents_lock`, once, and cached on `app.state.agents`:
+**First use.** Both agents are built together by `load_agents(app)` under `agents_lock`, once, and cached on `app.state.agents`. The trigger is whichever comes first: a post to `/agent` or `/ingest` (the AG-UI route calls `load_agents`), or a REST route that calls `get_graph` (`routes/ingest.py` and `routes/threads.py` do):
 
 1. `configure_langfuse(settings)` runs first. Building the client is what registers the mask, and a handler created earlier would bind to an unmasked client.
 2. `build_agent` builds Ask's graph, and `build_ingest_agent` builds Import's.
@@ -166,7 +166,7 @@ sequenceDiagram
     R->>T: flush_traces after the run
 ```
 
-Caption: the first chat request on an instance builds both agents under a lock. Later requests reuse them and clone the AG-UI wrapper per request.
+Caption: the first chat request on an instance builds both agents under a lock. Later requests reuse them and clone the AG-UI wrapper per request. A REST route that calls `get_graph` triggers the same build when no chat has happened yet.
 
 **The routes.** `_add_agent_route` registers its own `POST` for each path in place of the library's `add_langgraph_fastapi_endpoint`, which needs the built agent at registration time. It keeps `Depends(chat_access)` (signed in, and the thread is new or yours, with staff allowed on any thread, otherwise a 404) and a `GET {path}/health` route that `make smoke` checks. The wrapper is cloned per request because the LangGraph agent keeps per-run state on the instance.
 
@@ -177,7 +177,7 @@ Caption: the first chat request on an instance builds both agents under a lock. 
 - `integrations/storage.py` owns `_safe_name` so it does not import the agent's file tools.
 - Routes that need a compiled graph call `get_graph(app, "ask_graph" | "ingest_graph")`. It builds the agents if no chat has happened yet, and returns `None` outside a lifespan.
 
-The cost is a trade: the first chat turn on a fresh instance pays the deferred imports and build (about 1.4 s measured locally).
+The cost is a trade: the first request that needs an agent on a fresh instance pays the deferred imports and build (about 1.4 s measured locally).
 
 ## Tracing with Langfuse
 

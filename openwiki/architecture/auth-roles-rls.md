@@ -235,7 +235,7 @@ Caption: the order in which the Postgres access layer was built.
 
 ## Frontend edge
 
-`frontend/proxy.ts` runs Supabase's `updateSession` (`lib/supabase/middleware.ts`) on every non-asset path. With no `NEXT_PUBLIC_SUPABASE_URL` or publishable key it passes everything through. Otherwise it refreshes the session cookie with `getClaims()` and redirects signed-out visitors on `/import` and its subpaths to `/auth/login?next=…`. `/ask` stays public: it shows a preview signed out and the workspace signed in. The browser then sends `Authorization: Bearer <access token>` to the backend, which is where real enforcement happens. See [Frontend](./frontend.md).
+`frontend/proxy.ts` runs Supabase's `updateSession` (`lib/supabase/middleware.ts`) on every non-asset path. With no `NEXT_PUBLIC_SUPABASE_URL` or publishable key it passes every request through and gates nothing, so public pages and the `/ask` preview still render but nobody can sign in. Otherwise it refreshes the session cookie with `getClaims()` and redirects signed-out visitors on `/import` and its subpaths to `/auth/login?next=…`. `/ask` stays public: it shows a preview signed out and the workspace signed in. The browser then sends `Authorization: Bearer <access token>` to the backend, which is where real enforcement happens. See [Frontend](./frontend.md).
 
 ## Not yet built
 

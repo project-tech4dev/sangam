@@ -168,7 +168,7 @@ See [Auth, roles and RLS](auth-roles-rls.md) for `app.my_org_ids()`, `app.is_sta
 
 ## Unfinished: proposals
 
-Each match card has a "Start a proposal" action, but proposals are only the first part of a feature. Per `docs/CHANGELOG.md`, screens and steps 1–2 exist and are kept in the browser (`localStorage`). Proposal drafting, the section editor and assemble/polish/.docx export are listed as not yet done, and there is no proposals backend.
+Each match card has a "Start a proposal" action, but proposals are only the first part of a feature. Per `docs/CHANGELOG.md`, screens and steps 1–2 exist and are kept in the browser (`localStorage`). Proposal drafting, the section editor and assemble/polish/.docx export are listed as not yet done, and no backend code reads or writes proposals. A `proposals` table exists (migration `0009`, with grants and RLS), but it is unused and the SQL catalog keeps it in `KNOWN_EXCLUDED`.
 
 ## Version history
 
