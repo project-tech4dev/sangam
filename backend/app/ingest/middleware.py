@@ -488,8 +488,11 @@ def _digest(args: dict) -> dict:
         "goals": research.get("goals") or [],
         "finding_count": len(findings),
         "concepts_found": sorted({f.get("concept") for f in findings if f.get("concept")}),
+        "programs_untagged": [f.get("name") for f in findings
+                              if f.get("concept") == "program" and not f.get("themes")],
         "gaps": [
-            {k: g.get(k) for k in ("concept", "fiscal_year", "reason", "detail")} for g in research.get("gaps") or []
+            {k: g.get(k) for k in ("concept", "fiscal_year", "field", "reason", "detail")}
+            for g in research.get("gaps") or []
         ],
     }
 
