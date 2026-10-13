@@ -125,10 +125,10 @@ class Settings(BaseSettings):
     # db_pool_max_size with it — each researcher holds a pooled connection while its tools run.
     # A test pins this number against the one written into app/ingest/instructions.md.
     max_parallel_research: int = 8
-    # Hard stops per researcher run. The prompt asks for about fourteen reads; past this many pages the reading
-    # tools refuse and it saves what it has. The model-call cap ends a run that loops.
-    research_page_limit: int = 20
-    research_model_call_limit: int = 60
+    # Optional hard stops per researcher run; None means no limit. Set, the reading tools refuse past this many
+    # pages and it saves what it has, and the model-call cap ends a run that loops.
+    research_page_limit: int | None = None
+    research_model_call_limit: int | None = None
     # Connections this process may open. The ceiling is the database's, not ours: the Supabase project
     # allows 60 with 3 reserved, and a deployed backend runs several instances, so 10 leaves room for
     # roughly four of them plus the dashboard. The checkpointer writes on every graph step and shares

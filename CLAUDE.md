@@ -421,8 +421,9 @@ disables the audit. A deployed backend reads these from its
 Vercel env, which beats the code defaults.
 
 **Import's middleware** (`app/ingest/middleware.py`). Each tier falls back to the next one when a call
-fails. A researcher reads at most `RESEARCH_PAGE_LIMIT` pages per run, after which the reading tools
-refuse and it saves what it has. It is stopped outright after `RESEARCH_MODEL_CALL_LIMIT` model calls.
+fails. A researcher has no page, model-call or page-length limit by default: a long page is evicted to a
+file it pages back. `RESEARCH_PAGE_LIMIT` and `RESEARCH_MODEL_CALL_LIMIT`, when set, cap pages read (then
+it saves what it has) and model calls; Vercel's 1800 s is the stop that always applies.
 Once a `save_research` call is refused for a malformed payload, the rest of that run moves to `MODEL`.
 A Haiku grader checks the save and summary against `prompts/research_rubric.md` and allows one revision.
 Summaries of long runs are written by `UTILITY_MODEL` at the same thresholds as before.

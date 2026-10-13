@@ -162,8 +162,8 @@ class TestTheRubricGradesTheResearcher:
         graphs = next(c.cell_contents for c in (task.func or task.coroutine).__closure__
                       if isinstance(c.cell_contents, dict) and "entity-researcher" in c.cell_contents)
         edges = {(e.source, e.target) for e in graphs["entity-researcher"].get_graph().edges}
-        # "model" enters through the before_model hooks, so a revision still counts against the call limit.
-        assert ("ResearchRubric.after_agent", "ModelCallLimitMiddleware.before_model") in edges
+        # With no call limit set, nothing sits before the model.
+        assert ("ResearchRubric.after_agent", "model") in edges
 
     def test_a_save_reaches_the_grader_as_a_digest(self):
         findings = [{"concept": "csr_year", "evidence": "x" * 5000}, {"concept": "rfp", "evidence": "y"}]
