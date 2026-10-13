@@ -9,7 +9,6 @@ from langchain_tavily import TavilySearch
 
 from app.core.egress import EgressRefused, guarded_client
 
-MAX_CONTENT_CHARS = 8_000
 FETCH_TIMEOUT_SECONDS = 20
 USER_AGENT = "Mozilla/5.0 (compatible; DeepAgentApp/0.1; +https://github.com)"
 
@@ -23,8 +22,8 @@ async def fetch_url(url: str) -> str:
     """Fetch a web page and return its readable text content.
 
     Use this to read the full content of a page found via web search, or any
-    URL the user provides. Returns extracted article text, truncated to a safe
-    length. Do NOT use this on search-engine result pages (google.com/search
+    URL the user provides. Returns the extracted article text in full; a long page
+    is saved to a file you page through with read_file. Do NOT use this on search-engine result pages (google.com/search
     etc.) — they block automated clients; use the web search tool instead.
     """
     # Never raise: a raised tool exception aborts the whole agent run, whereas
@@ -56,6 +55,4 @@ async def fetch_url(url: str) -> str:
     text = trafilatura.extract(response.text, url=url) or ""
     if not text.strip():
         return f"No readable text content could be extracted from {url}."
-    if len(text) > MAX_CONTENT_CHARS:
-        return text[:MAX_CONTENT_CHARS] + f"\n\n[truncated at {MAX_CONTENT_CHARS} characters]"
     return text

@@ -34,7 +34,6 @@ from app.integrations import storage
 logger = logging.getLogger(__name__)
 
 MAX_DOWNLOAD_MB = 60
-PDF_TEXT_CHARS = 12_000
 PAGE_HEADERS = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,*/*",
                 "Accept-Encoding": "gzip, deflate"}
 
@@ -249,8 +248,8 @@ async def _fetch_document(url: str, filename: str | None) -> str:
 def read_document_pages(filename: str, start_page: int = 1, end_page: int | None = None) -> str:
     """Read text from a downloaded PDF, a page range at a time.
 
-    Pages are 1-indexed; omit end_page to read to the end. A long report is
-    truncated — call again with a later start_page to continue. A scanned PDF has
+    Pages are 1-indexed; omit end_page to read to the end. A long result is saved
+    to a file you page through with read_file. A scanned PDF has
     no text layer and returns nothing: say so rather than guessing at its contents.
     """
     destination = downloads_dir() / _safe_name(filename)
@@ -265,10 +264,6 @@ def read_document_pages(filename: str, start_page: int = 1, end_page: int | None
         return (
             f"{filename} has {total_pages} pages but no extractable text in that range — it is "
             f"most likely scanned. Report that honestly; do not guess at the contents."
-        )
-    if len(text) > PDF_TEXT_CHARS:
-        text = text[:PDF_TEXT_CHARS] + (
-            f"\n\n[truncated — {total_pages} pages in total; call again with a later start_page]"
         )
     return f"[{filename}: {total_pages} pages]\n\n{text}"
 
