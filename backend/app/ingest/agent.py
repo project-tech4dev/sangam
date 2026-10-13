@@ -257,6 +257,10 @@ RESEARCHER_EVICT_AT = 8_000
 # Promote, read back, report: a handful of calls, so a dozen is already a loop.
 WRITER_MODEL_CALL_LIMIT = 12
 
+
+def _call_limit(limit: int | None) -> list:
+    return [call_limit(limit)] if limit is not None else []
+
 # A person chooses where the run reads from before anything is read; rejecting means public websites only.
 # Sources ticked before sending are that choice already, so the card shows only when nothing was ticked.
 # run_import_now is the supervisor's one bulk write, so a person approves it as promote_research is approved.
@@ -302,8 +306,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             # Only what the person chose on the sources card; staff rows last.
             RunSources(),
             staff_last_lock(),
-            ReadingLimit(settings.research_page_limit),
-            call_limit(settings.research_model_call_limit),
+            *([ReadingLimit(settings.research_page_limit)] if settings.research_page_limit is not None else []),
+            *_call_limit(settings.research_model_call_limit),
             *([EscalateAfterFailedSave(strong)] if research_spec != settings.model else []),
             *fallback(research_spec, settings.model),
             research_rubric(utility),
@@ -334,7 +338,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             SaveRefusal(),
             RunSources(),
             DropFilesOnExit(),
-            call_limit(settings.research_model_call_limit),
+            *_call_limit(settings.research_model_call_limit),
             *fallback(research_spec, settings.model),
         ],
     }

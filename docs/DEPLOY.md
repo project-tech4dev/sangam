@@ -49,7 +49,7 @@ Point the host at `backend/Dockerfile`. Environment:
 | `RESEARCH_MODEL` | Import's entity-researchers. Defaults to `anthropic:claude-sonnet-5-5` |
 | `UTILITY_MODEL` | Fixed-shape work: article extraction, catalog-writer, workbook-reader. Defaults to `anthropic:claude-haiku-4-5` |
 | `SQL_AUDIT_MODEL` | Ask's post-answer SQL audit. Defaults to `anthropic:claude-haiku-4-5`; `off` turns it off. Blank or unset model variables take their defaults |
-| `RESEARCH_PAGE_LIMIT` / `RESEARCH_MODEL_CALL_LIMIT` | Optional. Hard stops per Import researcher: pages read (default 20), then model calls (default 60) |
+| `RESEARCH_PAGE_LIMIT` / `RESEARCH_MODEL_CALL_LIMIT` | Optional. Hard stops per Import researcher: pages read, then model calls. Unset means no limit |
 | `OPENAI_API_KEY` | Only for Graphiti extraction/embeddings. Omit to run without the graph |
 | `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | Omit to disable the graph |
 | `EMBEDDING_DIM` | **`768`** if you reuse the existing graph — mixing dimensions fails |

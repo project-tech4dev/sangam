@@ -33,7 +33,6 @@ from app.integrations import storage
 
 logger = logging.getLogger(__name__)
 
-MAX_CONTENT_CHARS = 8_000
 MAX_DOWNLOAD_MB = 60
 PDF_TEXT_CHARS = 12_000
 PAGE_HEADERS = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,*/*",
@@ -187,8 +186,7 @@ async def _read_page(url: str) -> str:
         text = trafilatura.extract(response.text, url=url) or ""
     if not text.strip():
         return f"No readable text could be extracted from {url}."
-    if len(text) > MAX_CONTENT_CHARS:
-        text = text[:MAX_CONTENT_CHARS] + f"\n\n[truncated at {MAX_CONTENT_CHARS} characters]"
+    # Uncut: a long page is evicted to a file the researcher pages back with read_file.
     return source_banner(str(response.url)) + text
 
 

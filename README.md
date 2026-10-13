@@ -173,7 +173,7 @@ the fuller reference. The tiers:
 | **Optional** | `OPENAI_API_KEY` + `NEO4J_*` | the graph disables itself cleanly |
 | **Optional** | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | no document archive or Doc Vault; uploads return 503 |
 | **Optional** | `MODEL`, `RESEARCH_MODEL`, `UTILITY_MODEL`, `SQL_AUDIT_MODEL` | the defaults in `backend/app/core/config.py`; see [Models](#models) |
-| **Optional** | `RESEARCH_PAGE_LIMIT`, `RESEARCH_MODEL_CALL_LIMIT` | 20 pages and 60 model calls per Import researcher |
+| **Optional** | `RESEARCH_PAGE_LIMIT`, `RESEARCH_MODEL_CALL_LIMIT` | no limit on pages or model calls per Import researcher |
 | **Optional** | `TAVILY_API_KEY` | the agents have no web-search tool |
 | **Optional** | `LANGFUSE_*`, `LANGSMITH_*` | no tracing. Both can run at once |
 | **Deployed only** | `ALLOWED_ORIGINS`, `ALLOWED_ORIGIN_REGEX`, `STAGING_DB_*` | irrelevant locally |
@@ -352,7 +352,7 @@ Each agent runs on a model matched to how hard its work is (`backend/app/core/co
 
 **Import's middleware** (`backend/app/ingest/middleware.py`, LangChain and deepagents middleware):
 - Each tier falls back to another model when a call fails.
-- A researcher stops reading after `RESEARCH_PAGE_LIMIT` pages and saves what it has. It is stopped outright after `RESEARCH_MODEL_CALL_LIMIT` model calls.
+- A researcher has no page or model-call limit unless `RESEARCH_PAGE_LIMIT` / `RESEARCH_MODEL_CALL_LIMIT` is set; then it stops reading and saves what it has, or is stopped outright.
 - After a malformed save, the rest of a researcher's run moves to `MODEL`.
 - A Haiku grader checks each researcher's save and summary against `prompts/research_rubric.md` and allows one revision.
 
