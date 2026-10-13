@@ -16,7 +16,7 @@ from psycopg.errors import UniqueViolation
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import CallerScope, chat_user_id
 from app.db.pool import get_pool
-from app.ingest import coverage, manual_checks, review, undo
+from app.ingest import brief, coverage, manual_checks, review, undo
 from app.ingest import vault as vault_store
 from app.ingest.caller import scope, staff_only, without_private
 from app.ingest.expectations import (
@@ -453,7 +453,7 @@ async def _held_per_concept(
 async def _research_rows(
     pool: Any, slug: str, caller: CallerScope | None = None, *, vault: bool = False
 ) -> list[dict[str, Any]]:
-    """The newest row per entity; for a caller who is not staff, without its private findings.
+    """The newest row per entity, its findings read from the brief; for a caller who is not staff, without private ones.
 
     `vault` adds Doc Vault findings: only for a writer or a person, never a context that briefs researchers."""
     caller = caller or scope()
@@ -469,7 +469,17 @@ async def _research_rows(
     # Vault findings live in vault_research alone: one in the shared row was never checked against a vault.
     out = [{**r, "findings": [f for f in r.get("findings") or [] if not vault_store.is_vault_url(f.get("source_url"))]}
            for r in (dict(r) if caller.is_staff else without_private(dict(r)) for r in rows)]
+    # The brief is the record: promotion, its plan and coverage all read its facts, not one run's.
+    async with pool.connection() as conn:
+        out = [await brief.promotable(r, [_public_row(x, caller) for x in await brief.rows_for(conn, r["slug"])])
+               for r in out]
     return [await _with_vault(pool, r, caller) for r in out] if vault else out
+
+
+def _public_row(row: dict[str, Any], caller: CallerScope) -> dict[str, Any]:
+    """An earlier run, without its Doc Vault findings and, for a caller who is not staff, its private ones."""
+    row = dict(row) if caller.is_staff else without_private(dict(row))
+    return {**row, "findings": [f for f in row.get("findings") or [] if not vault_store.is_vault_url(f.get("source_url"))]}
 
 
 async def _with_vault(pool: Any, row: dict[str, Any], caller: CallerScope) -> dict[str, Any]:
@@ -738,7 +748,19 @@ async def save_to_catalog(slug: str, caller: CallerScope, decisions: dict[str, s
                 if attempt:
                     raise
         reports.append(report)
+        await _publish_states(pool, row["slug"], report.get("facts") or {})
     return reports
+
+
+async def _publish_states(pool: Any, slug: str, states: dict[str, dict[str, Any]]) -> None:
+    """Write what the save did with each fact into the brief. The catalog is already committed, so a failure is logged."""
+    try:
+        async with pool.connection() as conn:
+            rows = await brief.rows_for(conn, slug)
+        if rows:
+            await brief.publish(rows, states=states)
+    except Exception:
+        logger.exception("brief for %s: the save's states were not written back", slug)
 
 
 @tool

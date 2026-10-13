@@ -151,7 +151,7 @@ class TestPromotingResearch:
     async def test_a_new_ngo_is_the_teams_to_add(self, monkeypatch):
         from app.ingest.matcher import Match
 
-        async def no_match(conn, name, identifiers=None):
+        async def no_match(conn, name, identifiers=None, website=None):
             return Match(method="none")
 
         monkeypatch.setattr(promote, "resolve_org", no_match)
@@ -164,7 +164,7 @@ class TestPromotingResearch:
 
         kabil = {"id": 8, "name": "Kabil Trust", "score": 0.7}
 
-        async def close(conn, name, identifiers=None):
+        async def close(conn, name, identifiers=None, website=None):
             return Match("trigram", None, 0.7, [kabil])
 
         monkeypatch.setattr(promote, "resolve_org", close)

@@ -1096,7 +1096,7 @@ class TestAParentIsLinkedOnlyWhenTheMatcherWouldMerge:
     def test_only_the_merging_methods_count(self):
         # Match.resolved happens to be False for a trigram hit because its
         # funder_id is None. Relying on that made the policy accidental.
-        assert set(MERGEABLE) == {"identifier", "exact", "alias", "boilerplate"}
+        assert set(MERGEABLE) == {"identifier", "exact", "alias", "boilerplate", "website"}
         assert "trigram" not in MERGEABLE
         assert "none" not in MERGEABLE
 

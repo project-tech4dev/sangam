@@ -242,6 +242,8 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
 
 # A fact's typed fields ride in an HTML comment the page strips; "--" is escaped so no value can close it.
 _BLOCK = re.compile(r"<!-- (fact|unplaced) (.*?) -->")
+# What promotion did with a fact, kept in its block: {"state": ..., "row": ..., "reason": ...}.
+STATE = "catalog"
 
 
 def _block(kind: str, data: dict[str, Any]) -> str:
@@ -318,15 +320,33 @@ def _program_details(p: dict[str, Any], findings: list[dict[str, Any]]) -> list[
     ]
 
 
+_STATE_LABELS = {
+    "written": "Saved in Sangam", "confirms": "Sangam already holds this", "waiting": "Waiting for a person",
+    "conflicts": "Sangam holds another value; a person decides", "kept": "A person kept Sangam's value",
+    "skipped": "A person skipped it", "held": "Not saved", "no column": "Sangam has no field for it yet",
+}
+NOT_IN_SANGAM = frozenset({"waiting", "conflicts", "held", "no column"})
+
+
+def _state_line(state: dict[str, Any]) -> str:
+    label = _STATE_LABELS.get(state.get("state"), state.get("state") or "")
+    bits = [label, state.get("row"), state.get("reason")]
+    return "  - In Sangam: " + " · ".join(" ".join(str(b).split()) for b in bits if b)
+
+
 def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]], prior: str | None = None,
-                    unplaced: list[dict[str, Any]] = ()) -> str:
-    """One organisation's brief: the `prior` brief's facts with every research row merged in; the newest row leads."""
+                    unplaced: list[dict[str, Any]] = (), states: dict[str, dict[str, Any]] | None = None) -> str:
+    """One organisation's brief: the `prior` brief's facts with every research row merged in; the newest row leads.
+    `states` is what a save did with each fact, by its fact_key; a fact keeps its last state until promoted again."""
     rows = sorted([rows] if isinstance(rows, dict) else rows,
                   key=lambda r: (str(r.get("researched_on")), str(r.get("researched_at") or "")))
     row = rows[-1]
     held, held_unplaced = record(prior)
     private = any(is_private_source(f.get("source_url")) for f in _findings(row))
     findings = [f for f in merge_findings(rows, held) if not is_private_source(f.get("source_url"))]
+    if states:
+        findings = [{**f, STATE: states[k]} if (k := json.dumps(list(fact_key(f)))) in states else f
+                    for f in findings]
     unplaced = _merge_unplaced(held_unplaced, unplaced)
     gaps = _json_list(row.get("gaps")) if row.get("status") != "wrong_entity" else []
     out = [
@@ -377,6 +397,8 @@ def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]], prior: str | No
                 f"  <sub>{', '.join(b for b in (f.get('source_name') or 'source', f.get('page')) if b)} · {f['source_url']} · "
                 f"confidence {f.get('confidence', 'unknown')}</sub> {_block('fact', f)}"
             )
+            if f.get(STATE):
+                out.append(_state_line(f[STATE]))
             if concept == "document" and f.get("summary"):
                 out.append(f"  - Summary: {' '.join(f['summary'].split())}")
             if concept == "program":
@@ -390,6 +412,13 @@ def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]], prior: str | No
             out += [f"- **{u['field']}: {' '.join(str(u['value']).split())}**", f"  > {u['evidence']}",
                     (f"  <sub>{', '.join(b for b in ('source', u.get('page')) if b)} · {u['source_url']} · "
                      f"confidence unknown</sub> {_block('unplaced', u)}")]
+        out.append("")
+
+    waiting = [f for f in findings if (f.get(STATE) or {}).get("state") in NOT_IN_SANGAM]
+    if waiting:
+        out += ["## Not in Sangam yet", ""]
+        out += [f"- {headline(f)}{f' ({y})' if (y := f.get('fiscal_year')) else ''}: "
+                f"{_state_line(f[STATE]).removeprefix('  - In Sangam: ')}" for f in waiting]
         out.append("")
 
     if len(rows) > 1:
@@ -426,17 +455,31 @@ async def publish_markdown(slug: str, markdown: str) -> str | None:
     )
 
 
-async def build(rows: dict[str, Any] | list[dict[str, Any]], unplaced: list[dict[str, Any]] = ()) -> str:
+async def build(rows: dict[str, Any] | list[dict[str, Any]], unplaced: list[dict[str, Any]] = (),
+                states: dict[str, dict[str, Any]] | None = None) -> str:
     """The published brief with these rows merged in. Raises when the brief could not be read, never overwriting it."""
     rows = [rows] if isinstance(rows, dict) else rows
     prior = await storage.read(storage.SOURCE_ARCHIVE, storage.brief_key(rows[0]["slug"]))
-    return entity_markdown(rows, prior.decode("utf-8") if prior else None, unplaced)
+    return entity_markdown(rows, prior.decode("utf-8") if prior else None, unplaced, states)
 
 
-async def publish(rows: dict[str, Any] | list[dict[str, Any]], unplaced: list[dict[str, Any]] = ()) -> str | None:
+async def publish(rows: dict[str, Any] | list[dict[str, Any]], unplaced: list[dict[str, Any]] = (),
+                  states: dict[str, dict[str, Any]] | None = None) -> str | None:
     """Merge a slug's research rows into its brief and publish it. Returns the key, or None."""
     rows = [rows] if isinstance(rows, dict) else rows
-    return await publish_markdown(rows[0]["slug"], await build(rows, unplaced))
+    return await publish_markdown(rows[0]["slug"], await build(rows, unplaced, states))
+
+
+async def promotable(row: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """The newest row as promotion reads it: every fact the brief holds or would hold once these rows are merged,
+    plus the row's own private findings, which the brief never holds."""
+    prior = await storage.read(storage.SOURCE_ARCHIVE, storage.brief_key(row["slug"]))
+    facts, unplaced = record(prior.decode("utf-8") if prior else None)
+    merged = merge_findings(rows or [row], [{k: v for k, v in f.items() if k != STATE} for f in facts])
+    # A pre-typed fact has no concept, so nothing could write it.
+    public = [f for f in merged if f.get("concept") and not is_private_source(f.get("source_url"))]
+    private = [f for f in _findings(row) if is_private_source(f.get("source_url"))]
+    return {**row, "findings": [*public, *private], "unplaced": unplaced}
 
 
 async def rows_for(conn: Any, slug: str) -> list[dict[str, Any]]:

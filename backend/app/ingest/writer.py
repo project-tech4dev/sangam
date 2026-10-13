@@ -13,7 +13,7 @@ from typing import Any, NamedTuple
 from psycopg import sql
 
 from app.ingest.expectations import RESERVED_DOC_TYPES
-from app.ingest.matcher import TRIGRAM_FLOOR, Match, name_key
+from app.ingest.matcher import TRIGRAM_FLOOR, Match, close_names, name_key
 from app.ingest.records import (
     FunderCsrYearRecord,
     FunderRecord,
@@ -206,14 +206,15 @@ class Gate:
         if column and key.get("funder_id") not in (None, UNWRITTEN):
             # Column names come from CLOSE_MATCH, never a caller; only values are parameterised.
             where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in agree)
-            candidate = await (
+            rows = await (
                 await conn.execute(
                     f"SELECT id, {column} AS name, similarity({column}, %s) AS score FROM {table} "
                     f"WHERE {where} AND {column} IS DISTINCT FROM %s AND similarity({column}, %s) >= %s "
-                    "ORDER BY score DESC LIMIT 1",
+                    "ORDER BY score DESC LIMIT 5",
                     (key[column], *(key[c] for c in agree), key[column], key[column], TRIGRAM_FLOOR),
                 )
-            ).fetchone()
+            ).fetchall()
+            candidate = next((r for r in rows if close_names(key[column], r["name"])), None)
         if candidate is None:
             self._item(5, table, key, outcome="planned" if self.plan else "written",
                        new={c: _plain(v) for c, v in proposed.items() if v is not None and c not in NOT_FACTS})
