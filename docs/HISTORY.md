@@ -1,7 +1,7 @@
 # What we have built
 
 Everything that has landed on `master`, from the first scaffold (2026-09-22) to Import M4 (2026-10-13),
-by subsystem and in date order within each. One line per change. A date is the day it merged, which is
+by subsystem and in date order within each. One line per change; a PR that touched two areas appears under both. A date is the day it merged, which is
 often later than its plan doc's filename. `#N` is the PR; a short sha means a commit before PRs.
 
 How the system looks *today* is `docs/ARCHITECTURE.md`; this file is how it got there. Add a line here
