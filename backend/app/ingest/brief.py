@@ -208,12 +208,8 @@ def fact_key(f: dict[str, Any]) -> tuple:
     return (concept, *(_norm(f.get(k)) for k in fields))
 
 
-def _json_list(value: Any) -> list[dict[str, Any]]:
-    return value if isinstance(value, list) else json.loads(value or "[]")
-
-
 def _findings(row: dict[str, Any]) -> list[dict[str, Any]]:
-    return _json_list(row["findings"])
+    return row["findings"] if isinstance(row["findings"], list) else json.loads(row["findings"] or "[]")
 
 
 def merge_findings(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -327,15 +323,6 @@ def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]]) -> str:
         names = ", ".join({**CONCEPT_TITLES, **LEGACY_TITLES}.get(c, c).lower() for c in missing)
         out += ["## Looked for, not found", "",
                 f"{names}. Not recorded is not the same as not existing.", ""]
-    unplaced = {(_norm(u.get("field")), _norm(u.get("value"))): u for r in rows for u in _json_list(r.get("unplaced"))
-                if not is_private_source(u.get("source_url"))}
-    if unplaced:
-        out += ["## Stated, but Sangam has no field for it", ""]
-        for u in unplaced.values():
-            out += [f"- **{u['field']}: {u['value']}**", f"  > {u['evidence']}",
-                    (f"  <sub>{', '.join(b for b in ('source', u.get('page')) if b)} · {u['source_url']} · "
-                     f"confidence unknown</sub>")]
-        out.append("")
     public_sources = list(dict.fromkeys(
         u for r in rows for u in r["sources_read"] or [] if not is_private_source(u)))
     if public_sources:

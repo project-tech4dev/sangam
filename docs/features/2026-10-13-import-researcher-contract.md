@@ -62,7 +62,8 @@ data block, e.g. `{"concept":"programme_spend","program_name":"Rural Livelihoods
    Its two "What to extract" lists move into the skills.
 4. **Schema v3.** `page` on every finding ("p.33", "pp.33-35", "Annexure 4"); `summary` on a `document`
    (what the whole document covers); `unplaced` on the save (a stated fact with no concept: field, value,
-   quote, source, page), stored in a new `entity_research.unplaced` column (`0046_research_unplaced`).
+   quote, source, page). No migration: from M2 the save merges into the brief, and unplaced facts live in its
+   `.md` as data blocks. Until then the save accepts them and stores nothing.
 5. **`save_research` refuses a `complete` or `partial` save that leaves a field unanswered.** Every concept
    of the kind has a finding or a gap; every asked year of a year-bound concept has one; every identity
    field has a value or a gap naming it. Example: Axis saved without `rfp` is refused with
