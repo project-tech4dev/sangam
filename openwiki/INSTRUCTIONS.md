@@ -59,6 +59,21 @@ Report an unfinished plan as unfinished, and a known regression as a regression.
 - Postgres is the system of record. The Neo4j graph is optional and rebuildable.
 - In Import, the published brief (`source-archive/entities/<slug>.md`) is the record that promotion reads.
 
+## Facts that earlier pages got wrong
+
+Check these against the code before restating them:
+- **SQL catalog size.** It allowlists 37 tables, and `KNOWN_EXCLUDED` holds 22 (`backend/app/agent/tools/sql/catalog.py`). State both counts.
+- **Import's subagents.** There are four: `entity-researcher`, `vault-reader`, `catalog-writer`, `workbook-reader`. `test_harness.py` checks that two of them are present and `general-purpose` is absent; it does not check an exact set.
+- **Import's NGO promote path.** It resolves a parent body (`_org_parent` in `promote.py`).
+- **The funder promote path's order** is: funder, then tags, then documents, then CSR years, then programmes.
+- **`StaffLastLock` and `SaveQuestions`** live in `app/agent/middleware.py`, but only Import uses them; Ask does not.
+- **`ReadingLimit`** applies to the entity-researcher only. The vault-reader and the catalog-writer have only `call_limit`.
+- **Proposals.** A `proposals` table exists (`0009`), with grants and RLS, but no backend code reads or writes it. Proposals live in browser `localStorage`.
+- **Missing Supabase keys on the frontend.** `lib/supabase/middleware.ts` passes requests through when the keys are absent. Describe the actual failure, and say it the same way on every page.
+- **When the agents are built.** It happens on first use: the first post to `/agent` or `/ingest`, or a REST route calling `get_graph`.
+- **Auth-skipped paths** include `/docs/oauth2-redirect`.
+- **The owner pool** connects as the database owner, a superuser locally. Do not claim more about the deployed role than the code shows.
+
 ## Out of scope
 
 Research outputs about real organisations (`docs/entities/`), seed data and anything under `.memory/` are not architecture. Never describe their contents.
