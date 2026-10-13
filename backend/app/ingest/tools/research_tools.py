@@ -25,6 +25,7 @@ from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish, rows_for
 from app.ingest.caller import scope, staff_only
+from app.ingest.contract import quoted_only, unanswered
 from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
 from app.ingest.sources import rule_for_url
 from app.ingest.staff_sources import is_staff_source_url
@@ -295,6 +296,13 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
     if findings.entity_kind == "org" and not (caller.is_staff or caller.steward_of):
         return ("REFUSED: researching an NGO is for its stewards and the Sangam team. Report what you "
                 "found in your summary instead.")
+    if missing := unanswered(findings):
+        return (
+            f"REFUSED: a save answers every field with a finding or a gap, and {len(missing)} have "
+            f"neither: {'; '.join(missing[:40])}. For each, add the finding, or a gap "
+            f"{{concept, field, fiscal_year, reason, detail}}: not_stated or blocked naming the source, or "
+            f"not_reached naming what was left unread when the run stopped. Then save again."
+        )
     try:
         slug = slugify(findings.canonical_name or findings.entity_name)
         pool = get_pool()
@@ -324,9 +332,9 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     INSERT INTO entity_research (
                         entity_name, canonical_name, entity_kind, slug, website, status,
                         stopped_reason, summary, findings, not_found, sources_read, fact_count,
-                        goals, schema_version, gaps, years, researched_by)
+                        goals, schema_version, gaps, years, unplaced, researched_by)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s,
-                            %s::jsonb, %s, %s::jsonb, %s, %s)
+                            %s::jsonb, %s, %s::jsonb, %s, %s::jsonb, %s)
                     ON CONFLICT (slug, researched_on) DO UPDATE SET
                         entity_name = EXCLUDED.entity_name,
                         canonical_name = EXCLUDED.canonical_name,
@@ -344,6 +352,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         gaps = EXCLUDED.gaps,
                         years = EXCLUDED.years,
                         researched_by = EXCLUDED.researched_by,
+                        unplaced = EXCLUDED.unplaced,
                         researched_at = now()
                     RETURNING *
                     """,
@@ -355,6 +364,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         findings.not_found, findings.sources_read, len(findings.findings),
                         json.dumps(findings.goals), SCHEMA_VERSION,
                         json.dumps([g.model_dump(mode="json") for g in findings.gaps]), findings.years,
+                        json.dumps([u.model_dump(mode="json") for u in findings.unplaced]),
                         caller.user_id,
                     ),
                 )
@@ -379,11 +389,17 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
             if published
             else f"It appears in docs/entities/{slug}.md on the next `make client-docs`. "
         )
+        quoted = quoted_only(findings)
+        unextracted = (
+            f" These numbers are only inside quotes: {' | '.join(quoted)}. If any is a reach figure, a "
+            f"count of places or an amount, add it as a finding and save again."
+            if quoted else ""
+        )
         return (
             f"Saved as entity_research #{row['id']} ({slug}): {len(findings.findings)} findings "
             f"across {found}; status {findings.status}. Report back with slug={slug!r} and "
             f"saved=true. {where}"
-            f"promote_research moves what has a writer into the catalog.{replaced}"
+            f"promote_research moves what has a writer into the catalog.{replaced}{unextracted}"
         )
     except Exception as exc:
         if staff_save:

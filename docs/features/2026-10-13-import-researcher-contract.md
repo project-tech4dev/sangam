@@ -63,10 +63,12 @@ data block, e.g. `{"concept":"programme_spend","program_name":"Rural Livelihoods
 4. **Schema v3.** `page` on every finding ("p.33", "pp.33-35", "Annexure 4"); `summary` on a `document`
    (what the whole document covers); `unplaced` on the save (a stated fact with no concept: field, value,
    quote, source, page), stored in a new `entity_research.unplaced` column (`0046_research_unplaced`).
-5. **`save_research` refuses a `complete` save that leaves a field unanswered.** Every concept of the kind
-   has a finding or a gap; every asked year of a year-bound concept has one; every identity field has a
-   value or a gap naming it. Example: Axis saved without `rfp` is refused with
-   "rfp: no finding and no gap". A `partial` run is not held to it.
+5. **`save_research` refuses a `complete` or `partial` save that leaves a field unanswered.** Every concept
+   of the kind has a finding or a gap; every asked year of a year-bound concept has one; every identity
+   field has a value or a gap naming it. Example: Axis saved without `rfp` is refused with
+   "rfp: no finding and no gap". Partial is held too, because 65 of the 68 staging saves since 1 Oct were
+   partial: a field the run never reached is a gap with the new reason `not_reached`, naming what was left
+   unread (shown as "not attempted" in the coverage report).
 6. **The save lists what it quoted and did not extract.** A number in an `evidence` sentence that no
    finding carries ("23,686 villages") is named in the reply, so the researcher can save it as a metric.
 7. CLAUDE.md, `docs/SKILLS.md`: the pull skills are the researcher's.

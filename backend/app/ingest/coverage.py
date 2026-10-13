@@ -95,7 +95,9 @@ def compute(row: dict[str, Any], years: list[str] | None = None,
                 continue
             gap = _gap_for(gaps, concept, year)
             if gap:
-                cells.append(Cell(concept, year, gap["reason"], gap.get("detail", "")))
+                # A run that stopped before looking has not attempted it, and says what was left unread.
+                status = "not_attempted" if gap["reason"] == "not_reached" else gap["reason"]
+                cells.append(Cell(concept, year, status, gap.get("detail", "")))
             else:
                 cells.append(Cell(concept, year, "not_attempted"))
         expected = [e.name for e in expected_fields(concept)]

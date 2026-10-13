@@ -47,7 +47,7 @@ from app.ingest.records import (
     http_url,
     normalise_cin,
 )
-from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, to_inr
+from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, TYPED_SINCE, to_inr
 from app.ingest.taxonomy import TAG_KINDS, resolve_classification, resolve_csr_sector
 from app.ingest.writer import (
     GATE,
@@ -1197,7 +1197,7 @@ async def _promote(conn: Any, row: dict[str, Any], asking: Gate | None = None) -
     # Before the kind branch, not after it. An org row researched under the old
     # shape used to be turned away for having no writer, which is a reason that
     # has stopped existing; "re-run the research" is the one that says what to do.
-    if findings and row.get("schema_version", 1) < SCHEMA_VERSION:
+    if findings and row.get("schema_version", 1) < TYPED_SINCE:
         report["reasons"].append(
             f"researched under finding shape v{row.get('schema_version', 1)}, which has no typed "
             f"fields to map. Re-run the research for {row['slug']} and promote that."
