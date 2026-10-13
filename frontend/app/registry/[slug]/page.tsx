@@ -1,10 +1,11 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Breadcrumbs, Hero, Tag } from "@/components/ui";
+import { notFound, permanentRedirect } from "next/navigation";
+import { Breadcrumbs } from "@/components/ui";
 import { apiGet, NotFoundError, type OrgProfile } from "@/lib/api";
-import { titleCase } from "@/lib/format";
-import { isOnFile, pickIdentifier, statusLabel } from "@/features/registry/identifierStatus";
-import { OrgProfileTabs } from "@/features/registry/ProfileTabs";
+import { displayName, monthYear, titleCase } from "@/lib/format";
+import { placeGroups } from "@/features/registry/profile/OrgPlaces";
+import { OrgProfileTabs } from "@/features/registry/profile/OrgProfileTabs";
+import { ProfileHero } from "@/features/registry/profile/ProfileHero";
+import { count } from "@/features/registry/profile/shared";
 
 export default async function OrgProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -15,52 +16,47 @@ export default async function OrgProfilePage({ params }: { params: Promise<{ slu
     if (err instanceof NotFoundError) notFound();
     throw err;
   }
-  const { org, funding, programs, scores, news } = profile;
+  // An org asked for by id lives at its slug; redirect throws, so it stays outside the try.
+  if (profile.org.slug !== slug) permanentRedirect(`/registry/${profile.org.slug}`);
+  const { org } = profile;
+  const name = displayName(org.name);
 
-  const isFull = org.identifiers.filter((i) => isOnFile(i)).length >= 4;
-  const displayName = titleCase(org.name);
+  const registered = monthYear(org.registration_date, true);
+  const kicker = ["CSO", org.legal_form, registered && `registered ${registered}`].filter(Boolean).join(" · ");
+  const { districts, states } = placeGroups(profile.places);
+  const office = profile.places.find((p) => p.role === "registered")?.name ?? org.district ?? org.state;
+  const line = [
+    office && `Registered office ${titleCase(office)}`,
+    states > 0 && `works in ${count(states, "state")}, ${count(districts, "district")}`,
+  ].filter((x): x is string => !!x);
+
+  const briefHref = profile.brief ? `/registry/${org.slug}/brief` : null;
 
   return (
-    <div className="page" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="page profile-page">
       <Breadcrumbs
         items={[
-          { label: "Sangam", href: "/registry" },
           { label: "Registry", href: "/registry" },
-          { label: org.state ?? "India" },
-          { label: displayName },
+          { label: "CSOs", href: "/registry?type=cso" },
+          { label: name },
         ]}
       />
-      <Hero
-        kind={isFull ? "org-full" : "org-partial"}
-        kicker={org.legal_form ?? "Civil-society organisation"}
-        name={displayName}
-        blurb={
-          org.registration_date
-            ? `Registered ${new Date(org.registration_date).toLocaleDateString("en-IN", { year: "numeric", month: "long" })}${org.district ? ` · ${titleCase(org.district)}, ${org.state}` : ""}`
-            : null
-        }
-        chips={
-          <>
-            <Tag tone="ondark">{isFull ? "Base coverage — good" : "Base coverage — partial"}</Tag>
-            {["fcra", "80g", "12a", "csr1"].map((idType) => {
-              const found = pickIdentifier(org.identifiers, idType);
-              return (
-                <Tag key={idType} tone="ondark">
-                  {`${idType.toUpperCase()} — ${statusLabel(found).toLowerCase()}`}
-                </Tag>
-              );
-            })}
-          </>
-        }
-        cta={
-          <Link
-            href={`/ask?q=${encodeURIComponent(`What does ${displayName} do, where does it work, and which funders fit it?`)}`}
-            className="btn" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
-            Ask Sangam about this CSO →
-          </Link>
-        }
+      <ProfileHero
+        name={name}
+        kicker={kicker}
+        description={org.description}
+        tags={profile.tags}
+        sdgs={profile.sdgs}
+        whoLabel="Who it serves"
+        line={line}
+        website={org.website}
+        ask={{
+          href: `/ask?q=${encodeURIComponent(`What does ${name} do, where does it work, and which funders fit it?`)}`,
+          label: `Ask Sangam about ${name} →`,
+        }}
+        brief={briefHref}
       />
-      <OrgProfileTabs org={org} funding={funding} programs={programs} scores={scores} news={news} />
+      <OrgProfileTabs profile={profile} name={name} briefHref={briefHref} />
     </div>
   );
 }

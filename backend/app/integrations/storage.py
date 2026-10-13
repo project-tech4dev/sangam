@@ -200,6 +200,23 @@ def brief_key(slug: str) -> str:
     return f"entities/{_safe_name(slug)}.md"
 
 
+class BriefUnreachable(Exception):
+    """A brief is published but no signed link could be made for it."""
+
+
+async def brief_link(slug: str) -> str | None:
+    """A signed link to an entity's published research brief; None when storage is off or none is published."""
+    if _disabled():
+        return None
+    key = brief_key(slug)
+    if await stat(SOURCE_ARCHIVE, key) is None:
+        return None
+    url = await signed_url(SOURCE_ARCHIVE, key, BRIEF_URL_TTL_SECONDS)
+    if url is None:
+        raise BriefUnreachable(slug)
+    return url
+
+
 async def move(bucket: str, source: str, destination: str) -> bool:
     """Rename an object in place. False on any failure, never raises.
 

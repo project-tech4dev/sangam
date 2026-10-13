@@ -64,7 +64,7 @@ class TestFunderBrief:
 
     def enable(self, monkeypatch):
         monkeypatch.setattr(
-            f"{self.ROUTE}.get_settings",
+            "app.integrations.storage.get_settings",
             lambda: Settings(supabase_url="https://p.supabase.co", supabase_service_key="svc"),
         )
 
@@ -109,7 +109,7 @@ class TestFunderBrief:
         assert response.status_code == 404
 
     async def test_no_storage_configured_is_404_not_a_crash(self, client_for, monkeypatch):
-        monkeypatch.setattr(f"{self.ROUTE}.get_settings", Settings)
+        monkeypatch.setattr("app.integrations.storage.get_settings", Settings)
         self.funder(monkeypatch, {"id": 1, "slug": "sbi-foundation", "name": "SBI"})
         async with client_for(funders_api.router) as client:
             response = await client.get("/api/funders/sbi-foundation/brief")

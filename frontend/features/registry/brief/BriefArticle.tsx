@@ -74,8 +74,8 @@ function FindingRow({ finding }: { finding: Finding }) {
   );
 }
 
-/** A funder's research brief as a page: the summary, then each finding with the sentence and source behind it. */
-export function BriefArticle({ brief, slug }: { brief: Brief; slug: string }) {
+/** A research brief as a page: the summary, then each finding with the sentence and source behind it. */
+export function BriefArticle({ brief, slug, kind = "funder" }: { brief: Brief; slug: string; kind?: "org" | "funder" }) {
   const summary = splitSummary(brief.summary);
   const index = [{ id: "summary", label: "Summary" }, ...brief.sections.map((s) => ({ id: s.id, label: s.title }))];
   if (brief.notFound || brief.sources.length) index.push({ id: "gaps", label: "Gaps and sources" });
@@ -86,8 +86,10 @@ export function BriefArticle({ brief, slug }: { brief: Brief; slug: string }) {
         <Breadcrumbs
           items={[
             { label: "Registry", href: "/registry" },
-            { label: "Funders", href: "/registry?type=funder" },
-            { label: brief.name, href: `/registry/funders/${slug}` },
+            kind === "funder"
+              ? { label: "Funders", href: "/registry?type=funder" }
+              : { label: "CSOs", href: "/registry?type=cso" },
+            { label: brief.name, href: kind === "funder" ? `/registry/funders/${slug}` : `/registry/${slug}` },
             { label: "Research brief" },
           ]}
         />

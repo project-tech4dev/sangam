@@ -39,6 +39,7 @@ class StoryOut(BaseModel):
     main_url: str | None = None
     main_host: str | None = None
     source_type: str | None = None
+    channel: str = "press"  # 'social' for a post on a social platform, else 'press'; decided in SQL
     visibility: str | None = None
     match_level: str
     confidence_level: str
