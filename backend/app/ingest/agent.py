@@ -104,6 +104,8 @@ INSTRUCTIONS = _render(_INSTRUCTIONS_MD, get_settings())
 # `COPY app/ app/`, so they deploy with no packaging change.
 SKILLS_DIR = Path(str(files("app.ingest") / "skills"))
 SKILLS_ROUTE = "/skills/"
+# A subfolder holds no SKILL.md itself, so the supervisor's listing of /skills/ skips these two.
+RESEARCH_SKILLS_ROUTE = "/skills/research/"
 
 
 def _backend() -> CompositeBackend:
@@ -182,12 +184,8 @@ ENTITY_RESEARCHER = {
     ),
     "mode": "isolated",
     "tools": RESEARCHER_TOOLS,
-    # No "skills" key, deliberately. It had one, and an isolated subagent
-    # inherits nothing (graph.py:701-703) so it had to be declared here — but
-    # the only skill it could load is an output format, and a researcher
-    # produces a ResearchSummary with no prose. Its targets come from
-    # research_goals, derived from the schema, which cannot go stale the way a
-    # written field list can. Skills are the supervisor's: see docs/SKILLS.md.
+    # The pull skills: the brief's field list it must answer. An isolated subagent inherits no skills.
+    "skills": [RESEARCH_SKILLS_ROUTE],
     # With a response_format the task tool returns the model's JSON instead of
     # its last message, so the parent and the screen both get structure. It is
     # a SUMMARY, not the findings: those reach the database through
@@ -285,9 +283,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     backend = _backend()
     # An isolated subagent builds its own middleware stack, so the parent's restricted
     # filesystem never reaches it: unset, both run write_file and delete against /skills/.
-    # Neither subagent loads a skill now, so neither gets `ls`. read_file is
-    # the floor FilesystemMiddleware refuses to be constructed below, not a
-    # capability either of them uses.
+    # No subagent gets `ls`: the researcher loads its skill by the path the listing prints, with read_file.
     strong = resolve_model(settings.model)
     research_spec = settings.research_model
     utility_spec = settings.utility_model

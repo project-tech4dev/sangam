@@ -52,7 +52,7 @@ from app.ingest.records import (
 from app.ingest.research_records import (
     CONCEPTS,
     FINDING_MODELS,
-    SCHEMA_VERSION,
+    TYPED_SINCE,
     ContactFinding,
     CsrSpendFinding,
     CsrYearFinding,
@@ -86,9 +86,7 @@ class TestSourcesGateOnAccessRules:
 
     def test_only_sources_with_an_adapter_are_actually_fetched(self):
         """Permitted and built are different things, and the run report says which."""
-        from app.ingest.runner import ADAPTERS
-
-        from app.ingest.runner import PARKED
+        from app.ingest.runner import ADAPTERS, PARKED
 
         assert set(ADAPTERS) == set() and set(PARKED) == {"india_csr", "gdelt"}
         assert set(ADAPTERS) <= {s.key for s in dispatchable()}, "an adapter for a held source"
@@ -597,7 +595,7 @@ class TestFindingsAreShapedLikeTheRowsTheyBecome:
 
     # The tier pair is the finding's own source, filled into source_type/evidence, never a target.
     EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis",
-                          "source_type", "evidence_tier"})
+                          "source_type", "evidence_tier", "page"})
 
     def fields_of(self, concept: str) -> set[str]:
         return set(FINDING_MODELS[concept].model_fields) - self.EVIDENCE
@@ -698,7 +696,7 @@ class TestOldFindingsAreNotPromoted:
         report = await promote(None, row)
         assert report["entity"] is None
         assert any("Re-run the research" in r for r in report["reasons"])
-        assert SCHEMA_VERSION == 2
+        assert TYPED_SINCE == 2
 
 
 class TestOneConversionTable:
@@ -1052,7 +1050,7 @@ class TestNothingResearchedIsSilentlyDropped:
     saved" complaint in miniature, and nothing in the code would have said so.
     """
 
-    EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis"})
+    EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis", "page"})
 
     @pytest.mark.parametrize("concept", sorted(CONCEPT_TABLES))
     def test_every_finding_field_reaches_a_record(self, concept):

@@ -42,9 +42,11 @@ from app.ingest.taxonomy import DOMAINS, LENS_CODES, POPULATION_CODES, THEME_COD
 CONCEPTS: tuple[str, ...] = tuple(_REGISTRY)
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 """Bumped when the finding shape changes. Version 1 rows are flat label/value
 pairs: still readable, not promotable, re-researched rather than migrated."""
+TYPED_SINCE = 2
+"""The first typed shape. v3 only added fields (page, a document's summary, unplaced), so v2 still promotes."""
 
 _UNITS: dict[str, int] = {"inr": 1, "lakh": 1_00_000, "crore": 1_00_00_000}
 
@@ -143,6 +145,10 @@ class FindingBase(BaseModel):
     source_name: str | None = None
     confidence: Literal["high", "medium", "low"]
     basis: Literal["explicit", "derived", "inferred"] = "explicit"
+    page: str | None = Field(
+        default=None, max_length=80,
+        description="where in the source: 'p.33', 'pp.33-35', 'Annexure 4', 'CSR page, Programmes tab'",
+    )
 
     _nulls = model_validator(mode="before")(classmethod(_drop_null_extras))
 
@@ -603,6 +609,11 @@ class DocumentFinding(FindingBase):
     as_of: str | None = Field(
         default=None, description="the period the document describes — not when you read it"
     )
+    summary: str | None = Field(
+        default=None,
+        description="two to four sentences on what the whole document covers: its programmes, years, figures "
+                    "and places, not only the line you quoted",
+    )
 
     @field_validator("doc_type")
     @classmethod
@@ -768,9 +779,10 @@ class Gap(BaseModel):
         default=None, description="for a year-bound concept, the year missing; empty means every year asked"
     )
     field: str | None = Field(default=None, description="one field, when the concept was found without it")
-    reason: Literal["not_stated", "blocked"] = Field(
+    reason: Literal["not_stated", "blocked", "not_reached"] = Field(
         description="'blocked' if the source could not be read (403, JS-only page, a staff file that "
-                    "failed or was not selected); 'not_stated' if it was read and does not say"
+                    "failed or was not selected); 'not_stated' if it was read and does not say; "
+                    "'not_reached' if the run stopped before looking (name what was left unread)"
     )
     detail: str = Field(min_length=3, description="one sentence: which source, and what happened")
 
@@ -788,6 +800,23 @@ class Gap(BaseModel):
         if self.fiscal_year and not FISCAL_YEAR.match(self.fiscal_year):
             raise ValueError(f"fiscal_year must look like 'FY2023-24', got {self.fiscal_year!r}")
         return self
+
+
+class Unplaced(BaseModel):
+    """A fact a source states that no concept has a field for; the brief shows it, the catalog cannot yet."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    field: str = Field(min_length=2, description="what it is, e.g. 'registered_address', 'co_funding_share'")
+    value: str = Field(min_length=1, description="the value as the source states it")
+    evidence: str = Field(min_length=20, description="the sentence from the source that states it")
+    source_url: str = Field(min_length=1)
+    page: str | None = Field(default=None, max_length=80)
+
+    @field_validator("source_url")
+    @classmethod
+    def _http(cls, v: str) -> str:
+        return FindingBase._http(v)
 
 
 class EntityResearch(BaseModel):
@@ -823,6 +852,10 @@ class EntityResearch(BaseModel):
                     "Unlisted and unfound reads as 'not attempted'",
     )
     sources_read: list[str] = Field(default_factory=list)
+    unplaced: list[Unplaced] = Field(
+        default_factory=list,
+        description="facts a source states that no concept has a field for: never dropped, never forced into one",
+    )
 
     _nulls = model_validator(mode="before")(classmethod(_drop_null_extras))
 

@@ -4,8 +4,9 @@ A skill is a directory with one file:
 
 ```
 backend/app/ingest/skills/
-├── funder-intake-research/      what to pull for a funder
-├── ngo-credential-research/     what to pull for an NGO
+├── research/                    the entity-researcher's, and only its
+│   ├── funder-intake-research/  what to pull for a funder
+│   └── ngo-credential-research/ what to pull for an NGO
 ├── entity-record/               the record we keep for one organisation
 ├── catalog-mapping/             onto the catalog, against what we hold
 ├── catalog-write-report/        what actually landed
@@ -29,7 +30,7 @@ catalog, one report, either kind.
 
 Both "what to pull" skills name the sources card (`choose_sources`, which the person answers)
 and `read_source_rows`, the researcher's reader for the staff workbooks, and the funder skill carries the per-sheet layout and unit notes the tool does not
-apply. The researcher's own prompt carries the same notes, since a subagent loads no skill. Neither
+apply. The researcher's own prompt carries the same notes, since those cannot be optional. Neither
 skill names a funder, a CSO or a file.
 
 Ask Sangam has three of its own, under `backend/app/agent/skills/`, with the
@@ -139,26 +140,31 @@ graphs rather than the parent's, which is why the original tests missed it.
   change the advertised description until a new thread; the body, read through
   `read_file`, is always current.
 
-## Skills are the supervisor's, and no subagent declares one
+## The pull skills are the researcher's; the rest are the supervisor's
 
 An isolated subagent inherits **nothing** from the parent
-(`graph.py:701-703`), so a subagent that wanted skills had to name
-`skills=["/skills/"]` itself, and `entity-researcher` did. It no longer does,
-and the reason is what a skill is for.
+(`graph.py:701-703`), so a subagent that wants skills names its own source.
+`entity-researcher` declares `skills=["/skills/research/"]`, which holds only
+the two pull skills. The supervisor's source is `/skills/`, and its listing
+skips `research/` because that folder has no `SKILL.md` of its own.
 
-A skill carries what the schema cannot: how to lay out a brief a person can
-act on. The researcher's targets come from `research_goals`, derived from the
-SQL catalog, which cannot go stale the way a written field list can — and the
-one thing a skill could add it cannot produce, because it returns a
-`ResearchSummary` with no prose. The supervisor writes the brief, so the
-supervisor holds the skills. `test_no_subagent_declares_any` pins it.
+The pull skills are a contract, not a suggestion: every field of the brief,
+with the concept and field it is saved as, and each must end as a finding or
+a gap. `research_goals` still names what the catalog holds; the skill names
+everything the brief shows, including fields with no column yet (`unplaced`).
+Because loading a skill is the model's choice, the prompt's STEP 2 tells the
+researcher to read its kind's file, and `save_research` enforces the result in
+code (`app/ingest/contract.py`): a save with a field that has neither a finding
+nor a gap is refused, naming it. Example: an Axis save with no `rfp` finding
+and no `rfp` gap comes back "rfp: no finding and no gap".
+`test_only_the_researcher_declares_skills_and_only_the_pull_ones` pins it.
 
 "Nothing" also includes the **filesystem middleware**, which is less obvious
 because the library supplies an unrestricted one rather than none. Each spec
 therefore carries its own `middleware=[filesystem_tools(backend)]`, which is
 `keep=("read_file",)` — the floor `FilesystemMiddleware` refuses to be built
-below, and not a capability either subagent uses. Neither gets `ls`: `ls` is
-how a skill is discovered, and on a subagent it is dead weight pointing at the
+below, and not a capability either subagent uses. Neither gets `ls`: the researcher
+reads its skill by the path the listing prints, so `ls` would only point at the
 one backend route that is real disk.
 
 ## The cost, honestly

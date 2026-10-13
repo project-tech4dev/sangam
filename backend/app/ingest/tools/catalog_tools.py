@@ -401,7 +401,8 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
         out.append(
             "\nFields nothing can fill are as useful as fields you fill: say which you looked "
             "for and did not get, and pass each to save_research as a gap: blocked if the source "
-            "could not be read, not_stated if it was read and does not say."
+            "could not be read, not_stated if it was read and does not say, not_reached if the run "
+            "stopped first. Every field gets a finding or a gap, or the save is refused."
         )
         return "\n".join(out)
     except Exception as exc:

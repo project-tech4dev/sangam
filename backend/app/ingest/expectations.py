@@ -117,6 +117,7 @@ CONCEPTS: dict[str, ConceptSpec] = {
             "title": "written by ensure_document, which takes a shim rather than a record",
             "doc_type": "written by ensure_document",
             "as_of": "written by ensure_document",
+            "summary": "shown in the brief; documents has no summary column, and content_md is the text itself",
         },
     ),
     "rfp": ConceptSpec("rfps", "Open calls for proposals"),
@@ -323,6 +324,14 @@ EXTRA: dict[str, tuple[Expected, ...]] = {
             type="text",
             note="the period the document describes, e.g. 'FY2023-24'. NOT when you read it: "
                  "a document finding carries no read date",
+            values=(),
+            required=False,
+        ),
+        Expected(
+            name="summary",
+            type="text",
+            note="two to four sentences on what the whole document covers: its programmes, years, figures "
+                 "and places, not only the line you quoted",
             values=(),
             required=False,
         ),

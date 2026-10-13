@@ -13,7 +13,7 @@ import re
 from typing import Any
 
 from app.ingest.expectations import CONCEPT_TITLES
-from app.ingest.research_records import SCHEMA_VERSION, to_inr
+from app.ingest.research_records import TYPED_SINCE, to_inr
 from app.ingest.source_guards import is_private_source
 from app.ingest.taxonomy import VOCABULARY
 from app.integrations import storage
@@ -46,7 +46,7 @@ def _place(f: dict[str, Any]) -> str | None:
     return ", ".join(bits) or None
 
 
-_EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis"})
+_EVIDENCE = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis", "page"})
 
 
 def _join(*bits: Any) -> str:
@@ -280,7 +280,7 @@ def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]]) -> str:
             out += ["## What it set out to find", ""]
             out += [f"- {g}" for g in goals]
             out.append("")
-    if findings and any(r.get("schema_version", 1) < SCHEMA_VERSION for r in rows):
+    if findings and any(r.get("schema_version", 1) < TYPED_SINCE for r in rows):
         out += [
             ("> Some of this was researched under an earlier finding shape, which has no typed fields "
              "to map to columns. It is readable here but cannot be promoted — re-run the research "
@@ -304,9 +304,11 @@ def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]]) -> str:
             out.append(f"- **{headline(f)}**{year}{flag}")
             out.append(f"  > {f['evidence']}")
             out.append(
-                f"  <sub>{f.get('source_name') or 'source'} · {f['source_url']} · "
+                f"  <sub>{', '.join(b for b in (f.get('source_name') or 'source', f.get('page')) if b)} · {f['source_url']} · "
                 f"confidence {f.get('confidence', 'unknown')}</sub>"
             )
+            if concept == "document" and f.get("summary"):
+                out.append(f"  - Summary: {' '.join(f['summary'].split())}")
             if concept == "program":
                 out += [f"  - {label}: {' '.join(str(v).split())}"
                         for label, v in _program_details(f, findings) if v]
