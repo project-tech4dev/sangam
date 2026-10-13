@@ -2,126 +2,155 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { EntityMark, StatusChip, Tag } from "@/components/ui";
-import type { RegistryEntry } from "@/features/registry/entries";
+import { BucketCards, FilterRow, initialsOf, ListMore, SearchBox, useShowMore, type Filter } from "@/components/ui";
+import { displayName, funderTypeLabel } from "@/lib/format";
+import type { RegistryRow } from "@/lib/api";
+import { SDG_NAME } from "./sdg";
+import {
+  DEFAULTS, kindLine, matches, NORTH_EAST, present, signal, type Filters,
+} from "./rows";
 
-export function RegistryClient({
-  entries,
-  initialType,
-}: {
-  entries: RegistryEntry[];
-  initialType: "all" | "CSO" | "Funder";
-}) {
-  const [q, setQ] = useState("");
-  const [type, setType] = useState<"all" | "CSO" | "Funder">(initialType);
-  const [place, setPlace] = useState("All places");
+const PAGE = 20;
+const SUB = { all: "Everyone in the Registry", org: "Civil-society organisations", funder: "CSR, foundations, trusts" };
 
-  const places = useMemo(
-    () => ["All places", ...Array.from(new Set(entries.flatMap((e) => e.states))).sort()],
-    [entries],
+function Row({ r }: { r: RegistryRow }) {
+  const name = displayName(r.name);
+  const themes = r.themes.slice(0, 3);
+  const lenses = r.lenses.slice(0, Math.max(1, 4 - themes.length));
+  return (
+    <Link href={r.kind === "org" ? `/registry/${r.slug}` : `/registry/funders/${r.slug}`} className="reg-row">
+      <span className="reg-mark" data-kind={r.kind} aria-hidden="true">{initialsOf(name)}</span>
+      <span className="reg-row-body">
+        <span className="reg-row-head">
+          <strong className="reg-row-name">{name}</strong>
+          <span className="muted reg-row-kind">{kindLine(r)}</span>
+        </span>
+        <span className="reg-row-tags">
+          {themes.length === 0 && lenses.length === 0 && <span className="reg-tag" data-tone="gap">Themes not tagged yet</span>}
+          {themes.map((t) => <span key={t.label} className="reg-tag" data-tone="theme">{t.label}</span>)}
+          {lenses.map((l) => <span key={l} className="reg-tag" data-tone="lens">{l}</span>)}
+          {r.sdgs.map((g) => (
+            <span key={g} className="reg-sdg" data-sdg={g} title={`SDG ${g}: ${SDG_NAME[g] ?? ""}`}>{g}</span>
+          ))}
+        </span>
+        <span className="muted reg-row-signal">{signal(r)}</span>
+      </span>
+    </Link>
   );
+}
 
-  const shown = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return entries.filter((entry) => {
-      if (type !== "all" && entry.kind !== type) return false;
-      if (place !== "All places" && !entry.states.includes(place)) return false;
-      if (!needle) return true;
-      const haystack = `${entry.name} ${entry.where} ${entry.blurb ?? ""} ${entry.tags.join(" ")} ${entry.kind}`.toLowerCase();
-      return haystack.includes(needle);
+export function RegistryClient({ rows, initialType }: { rows: RegistryRow[]; initialType: Filters["kind"] }) {
+  const [f, setF] = useState<Filters>({ kind: initialType, ...DEFAULTS });
+  const set = (patch: Partial<Filters>) => setF((prev) => ({ ...prev, ...patch }));
+
+  const counts = {
+    all: rows.length,
+    org: rows.filter((r) => r.kind === "org").length,
+    funder: rows.filter((r) => r.kind === "funder").length,
+  };
+  const inBucket = f.kind === "all" ? rows : rows.filter((r) => r.kind === f.kind);
+
+  const options = useMemo(() => {
+    const domains = present(rows.flatMap((r) => [...new Set(r.themes.map((t) => t.domain).filter((d): d is string => !!d))]));
+    const lenses = present(rows.flatMap((r) => r.lenses));
+    const sdgs = [...new Set(rows.flatMap((r) => r.sdgs))].sort((a, b) => Number(a) - Number(b));
+    const states = new Set(rows.flatMap((r) => r.states));
+    const types = present(rows.filter((r) => r.kind === "funder" && r.funder_type).map((r) => r.funder_type!));
+    return {
+      domains, lenses, sdgs, types,
+      ne: NORTH_EAST.filter((s) => states.has(s)),
+      open: rows.some((r) => r.open_call),
+      invites: rows.some((r) => r.intake_mode === "invitation_only"),
+    };
+  }, [rows]);
+
+  const filters: Filter[] = [
+    {
+      key: "theme", label: "Theme", value: f.theme, defaultValue: "all", onChange: (v) => set({ theme: v }),
+      options: [["all", "All themes"], ...options.domains.map((d): [string, string] => [d, d])],
+    },
+    {
+      key: "lens", label: "Who they serve", value: f.lens, defaultValue: "all", onChange: (v) => set({ lens: v }),
+      options: [["all", "Anyone served"], ...options.lenses.map((l): [string, string] => [l, l])],
+    },
+    {
+      key: "sdg", label: "SDG", value: f.sdg, defaultValue: "all", onChange: (v) => set({ sdg: v }),
+      options: [["all", "All SDGs"], ...options.sdgs.map((g): [string, string] => [g, `SDG ${g}: ${SDG_NAME[g] ?? ""}`.replace(/: $/, "")])],
+    },
+    {
+      key: "where", label: "Works in", value: f.where, defaultValue: "any", onChange: (v) => set({ where: v }),
+      options: [
+        ["any", "Anywhere"], ["ne", "North East, all 8 states"],
+        ...options.ne.map((s): [string, string] => [s, s]), ["out", "Outside the North East"],
+      ],
+    },
+  ];
+  if (f.kind === "org") {
+    filters.push({
+      key: "reg", label: "Registrations", value: f.reg, defaultValue: "any", onChange: (v) => set({ reg: v }),
+      options: [["any", "Any registrations"], ["csr1", "CSR-1 on file"], ["12a80g", "12A and 80G on file"], ["fcra", "FCRA registered"]],
     });
-  }, [entries, q, type, place]);
+  }
+  if (f.kind === "funder") {
+    filters.push({
+      key: "ftype", label: "Funder type", value: f.ftype, defaultValue: "all", onChange: (v) => set({ ftype: v }),
+      options: [["all", "All funder types"], ...options.types.map((t): [string, string] => [t, funderTypeLabel(t)])],
+    });
+    if (options.open || options.invites) {
+      filters.push({
+        key: "approach", label: "How to approach", value: f.approach, defaultValue: "any",
+        onChange: (v) => set({ approach: v }),
+        options: [
+          ["any", "Any approach"],
+          ...(options.open ? [["open", "Open call now"] as [string, string]] : []),
+          ...(options.invites ? [["invites", "Invites partners"] as [string, string]] : []),
+        ],
+      });
+    }
+  }
 
-  const vetting = entries.filter((e) => e.status === "partial").length;
+  const shown = rows.filter((r) => matches(r, f));
+  const anySet = (Object.keys(DEFAULTS) as (keyof typeof DEFAULTS)[]).some((k) => f[k] !== DEFAULTS[k]);
+  const resetKey = JSON.stringify(f);
+  const [n, more] = useShowMore(resetKey, PAGE);
+  const visible = shown.slice(0, n);
 
   return (
     <div className="reg">
       <header className="reg-head">
-        <div className="eyebrow">The Registry</div>
-        <h1>Every organisation and funder in the base</h1>
+        <h1>Registry</h1>
         <p className="muted reg-lede">
-          Vetted profiles of North East India CSOs and the funders active around them. Every
-          field traces to a source.
+          Civil-society organisations and funders working in India&apos;s North East, each with the sources behind it.
         </p>
       </header>
 
-      <div className="reg-controls">
-        <input
-          className="input"
-          placeholder="Search organisations, funders, districts, sectors…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <div className="seg" role="tablist">
-          {(["all", "CSO", "Funder"] as const).map((option) => (
-            <button
-              key={option}
-              className="seg-opt"
-              data-active={type === option}
-              onClick={() => setType(option)}
-            >
-              {option === "all" ? "All" : option === "CSO" ? "CSOs" : "Funders"}
-            </button>
-          ))}
-        </div>
-        <span className="muted reg-count">
-          {shown.length} of {entries.length} entries
-        </span>
+      <BucketCards
+        items={[
+          { key: "all", label: "All", count: counts.all, sub: SUB.all },
+          { key: "org", label: "CSOs", count: counts.org, sub: SUB.org },
+          { key: "funder", label: "Funders", count: counts.funder, sub: SUB.funder },
+        ]}
+        active={f.kind}
+        onPick={(kind) => set({ kind, reg: "any", ftype: "all", approach: "any" })}
+      />
+      <FilterRow filters={filters} />
+      <SearchBox value={f.q} onChange={(q) => set({ q })} placeholder="Search names, districts, programmes and funders…" />
+
+      <div className="reg-count">
+        <span className="muted">{anySet ? `${shown.length} match` : `${inBucket.length} in the Registry`}</span>
+        {anySet && (
+          <button type="button" className="reg-clear" onClick={() => set(DEFAULTS)}>Clear filters ✕</button>
+        )}
       </div>
 
-      <div className="reg-places">
-        {places.map((p) => (
-          <button key={p} className="pill" data-active={place === p} onClick={() => setPlace(p)}>
-            {p}
-          </button>
-        ))}
+      <div className="reg-list">
+        {visible.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} />)}
+        {shown.length === 0 && <div className="muted reg-none">No entries match these filters.</div>}
+        <ListMore shown={visible.length} total={shown.length} onMore={more} page={PAGE} />
+        {shown.length > 0 && (
+          <div className="muted reg-shown" aria-live="polite">{visible.length} of {shown.length} shown</div>
+        )}
       </div>
-
-      {shown.length === 0 ? (
-        <div className="card reg-empty">
-          <div className="card-title">Nothing matches</div>
-          <div className="card-body">Try a different search, or clear the filters.</div>
-        </div>
-      ) : (
-        <div className="reg-grid">
-          {shown.map((entry) => (
-            <article key={`${entry.kind}-${entry.id}`} className="card elev-sm reg-card">
-              <div className="reg-card-top">
-                <EntityMark name={entry.name} />
-                <div className="reg-chips">
-                  <Tag tone="neutral">{entry.kind}</Tag>
-                  <StatusChip status={entry.status} />
-                </div>
-              </div>
-              <div className="card-title">{entry.name}</div>
-              <div className="muted reg-where">{entry.where}</div>
-              {entry.blurb && <div className="card-body">{entry.blurb}</div>}
-              {entry.tags.length > 0 && (
-                <div className="reg-chips">
-                  {entry.tags.map((tag) => (
-                    <Tag key={tag} tone="accent-2">{tag}</Tag>
-                  ))}
-                </div>
-              )}
-              <div className="reg-foot">
-                <span className="muted-2">{entry.meta}</span>
-                <Link href={entry.href} className="btn btn-secondary">
-                  Open profile →
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-
-      {vetting > 0 && (
-        <div className="card reg-vetting">
-          <div className="card-body">
-            {vetting} of {entries.length} entries are still in vetting — their profiles show exactly
-            what has and hasn&apos;t been verified yet.
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import LegacyPageParams
-from app.core.config import get_settings
 from app.core.security import get_current_user
 from app.db.pool import PoolDep
 from app.integrations import storage
 from app.repositories import funders as repo
-from app.schemas.documents import FileLinkOut
 from app.schemas.funders import FunderDetail, FunderListItem, FunderScoreRow
+from app.schemas.profiles import BriefLinkOut
 
 router = APIRouter(prefix="/funders", tags=["funders"])
 
@@ -56,28 +56,23 @@ async def get_funder(
     return FunderDetail.model_validate(row)
 
 
-@router.get("/{slug_or_id}/brief", response_model=FileLinkOut,
+@router.get("/{slug_or_id}/brief", response_model=BriefLinkOut,
             summary="A link to the rendered research brief")
 async def funder_brief(
-    slug_or_id: str,
-    pool: PoolDep,
-    user_id: UUID = Depends(get_current_user),
-) -> FileLinkOut:
-    """The markdown `make client-docs` renders, served from the bucket.
+    slug_or_id: str, pool: PoolDep, user_id: Annotated[UUID, Depends(get_current_user)],
+) -> BriefLinkOut:
+    """404 rather than an empty answer: a funder in the catalog has not necessarily been researched."""
+    return await brief_for(await repo.get_funder(pool, slug_or_id), slug_or_id)
 
-    404 rather than an empty answer when there is none: a funder in the
-    catalog has not necessarily been researched, and a link to a brief that
-    does not exist is worse than no link.
-    """
-    row = await repo.get_funder(pool, slug_or_id)
+
+async def brief_for(row: dict | None, asked: str) -> BriefLinkOut:
+    """The brief of an org or funder row, looked up by its own slug; shared by both brief routes."""
     if row is None:
-        raise HTTPException(404, f"funder {slug_or_id!r} not found")
-    key = storage.brief_key(row["slug"])
-    if not get_settings().storage_enabled or await storage.stat(
-        storage.SOURCE_ARCHIVE, key
-    ) is None:
-        raise HTTPException(404, f"no research brief published for {row['slug']}")
-    url = await storage.signed_url(storage.SOURCE_ARCHIVE, key, storage.BRIEF_URL_TTL_SECONDS)
+        raise HTTPException(404, f"{asked!r} not found")
+    try:
+        url = await storage.brief_link(row["slug"])
+    except storage.BriefUnreachable as exc:
+        raise HTTPException(502, "could not reach document storage") from exc
     if url is None:
-        raise HTTPException(502, "could not reach document storage")
-    return FileLinkOut(url=url, expires_in_seconds=storage.BRIEF_URL_TTL_SECONDS)
+        raise HTTPException(404, f"no research brief published for {row['slug']}")
+    return BriefLinkOut(url=url, expires_in_seconds=storage.BRIEF_URL_TTL_SECONDS, slug=row["slug"], name=row["name"])

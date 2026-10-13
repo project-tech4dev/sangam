@@ -1,5 +1,4 @@
-import { apiGet, type FunderListItem, type OrgListItem } from "@/lib/api";
-import { toRegistryEntries } from "@/features/registry/entries";
+import { apiGet, type RegistryOut } from "@/lib/api";
 import { RegistryClient } from "@/features/registry/RegistryClient";
 
 export const metadata = { title: "Registry — Sangam" };
@@ -10,16 +9,12 @@ export default async function RegistryPage({
   searchParams: Promise<{ type?: string }>;
 }) {
   const { type } = await searchParams;
-  const [orgs, funders] = await Promise.all([
-    apiGet<OrgListItem[]>("/api/orgs"),
-    apiGet<FunderListItem[]>("/api/funders"),
-  ]);
-  const entries = toRegistryEntries(orgs, funders);
-  const initialType = type === "cso" ? "CSO" : type === "funder" ? "Funder" : "all";
+  const { rows } = await apiGet<RegistryOut>("/api/registry");
+  const initialType = type === "cso" ? "org" : type === "funder" ? "funder" : "all";
 
   return (
     <div className="page">
-      <RegistryClient entries={entries} initialType={initialType} />
+      <RegistryClient rows={rows} initialType={initialType} />
     </div>
   );
 }

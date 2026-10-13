@@ -29,7 +29,7 @@ is a copy of values.
 | `tokens/spacing.css` | `--radius`, `--radius-pill/surface/row`, `--shadow-*`, `--page-max`, `--page-pad`, `--nav-h` in `globals.css` |
 | `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link` |
 | `tokens/scout.css` | Sangam Scout's classes in `globals.css`, from "Import workspace" through "Import: the Review step", imported by `styles.css` after `base.css` |
-| `tokens/registry.css` | The Registry list's `.reg-*`, the funder profile's `.profile-*` and the research brief's `.brief-*` classes in `globals.css`, plus `.btn-ondark`; imported by `styles.css` after `scout.css` |
+| `tokens/registry.css` | The Registry list's `.reg-*`, the CSO and funder profiles' `.profile-*` (hero, board tabs, SDG tiles, cards, tables) and the research brief's `.brief-*` classes in `globals.css`, plus the list-page classes (`.bucket-card`, `.filter-row`, `.filter`, `.search-box`, `.list-*`), `.pill-tabs` and `.btn-ondark`; imported by `styles.css` after `scout.css` |
 | `guidelines/*.html` | Nothing; they are the specimen pages to check the repo against |
 
 The design system also carries tokens the repo does not use yet (`--surface-*`, `--text-*`,
@@ -48,13 +48,12 @@ and Tailwind. A component change means making both look and behave the same.
 | `components/core/Avatar` | `frontend/components/ui/avatar.tsx` |
 | `components/forms/{Input, Checkbox}` | `frontend/components/ui/{input,checkbox}.tsx` and `.input` |
 | `components/forms/{SegmentedControl, Pill, PillTabs}` | `.seg`, `.pill`, `frontend/components/ui/PillTabs.tsx` |
-| `components/surfaces/{Card, CardBody, Hero, Dialog}` | `frontend/components/ui/{card,Hero,dialog}.tsx` and `.card`, `.dialog` |
+| `components/surfaces/{Card, CardBody, Hero, Dialog}` | `frontend/components/ui/{card,Hero,dialog}.tsx` and `.card`, `.dialog`; `HeroFacets` = `features/registry/profile/ProfileHero.tsx` |
 | `components/surfaces/DropdownMenu` | `frontend/components/ui/dropdown-menu.tsx` |
 | `components/layout/{Nav, Footer}` | `frontend/components/layout/{Nav,NavBar,Footer}.tsx` |
 | `components/layout/UserMenu` | `frontend/features/auth/sign-in-button.tsx` (`UserMenu`) |
 | `components/layout/SectionIndex` | `frontend/components/ui/SectionIndex.tsx` |
 | `components/agent/{QuestionRow, AnswerCard, TraceCard, CitationChip, ComposerNotice}` | `frontend/features/ask/components/` |
-| `components/agent/ScoreCard` | `frontend/features/registry/ScoreCard.tsx` |
 
 **The UI kit recreates screens.** `ui_kits/sangam-web/` is a click-through of the app built
 from the components above, with sample data.
@@ -63,7 +62,7 @@ from the components above, with sample data.
 |---|---|
 | `Home.jsx` | `features/home/HomePage.tsx`, `HeroSlides.tsx` |
 | `Registry.jsx` | `features/registry/RegistryClient.tsx` |
-| `Profile.jsx` | `app/registry/[slug]/page.tsx`, `features/registry/ProfileTabs.tsx` |
+| `Profile.jsx` | `app/registry/[slug]/page.tsx`, `app/registry/funders/[slug]/page.tsx`, `features/registry/profile/*` (CSO and funder) |
 | `AskWorkspace.jsx` | `features/ask/preview/AskPreview.tsx`, `features/ask/components/*`, `features/ask/views/*` |
 | `Import.jsx`, `importData.js`, `import.html` | Sangam Scout at `/import`: `features/ingest/ImportPage.tsx`, `ScoutChat.tsx`, `components/*` (thread, run strip, rail and step bar use the `.scout-*` and `.import-*` classes; the Review and Done cards are still recreated inline) |
 | `index.html`, `import.html` | the routing and navbar behaviour in `app/` and `components/layout/` |

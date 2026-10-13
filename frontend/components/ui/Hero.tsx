@@ -1,54 +1,30 @@
 import type { ReactNode } from "react";
-import { EntityMark } from "./primitives";
+import { initialsOf } from "./primitives";
 
-const HERO_BG: Record<string, string> = {
-  "org-full": "var(--color-accent-2-800)",
-  "org-partial": "var(--color-accent-800)",
-  funder: "var(--color-accent-2-900)",
-};
-
+/* An entity's header: initials mark, kicker, name, blurb, then whatever the page adds (facets, a summary, CTAs). */
 export function Hero({
-  kind,
-  kicker,
   name,
+  kicker,
   blurb,
-  chips,
+  children,
   cta,
 }: {
-  kind: "org-full" | "org-partial" | "funder";
-  kicker?: string;
   name: string;
+  kicker?: string;
   blurb?: string | null;
-  chips?: ReactNode;
+  children?: ReactNode;
   cta?: ReactNode;
 }) {
   return (
-    <section
-      style={{
-        background: HERO_BG[kind],
-        color: "#fff",
-        borderRadius: "var(--radius-surface)",
-        padding: "32px 34px",
-        display: "flex",
-        gap: 24,
-        alignItems: "flex-start",
-        flexWrap: "wrap",
-      }}
-    >
-      <EntityMark name={name} size={64} />
-      <div style={{ flex: 1, minWidth: 260, display: "flex", flexDirection: "column", gap: 10 }}>
-        {kicker && (
-          <div className="eyebrow" style={{ color: "rgba(255,255,255,0.75)" }}>
-            {kicker}
-          </div>
-        )}
-        <h1 style={{ fontSize: "var(--fs-2xl)", color: "#fff" }}>{name}</h1>
-        {blurb && (
-          <p style={{ margin: 0, fontSize: "var(--fs-sm)", color: "rgba(255,255,255,0.85)", maxWidth: 640 }}>{blurb}</p>
-        )}
-        {chips && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>{chips}</div>}
+    <header className="profile-hero">
+      <div className="profile-hero-mark" aria-hidden="true">{initialsOf(name)}</div>
+      <div className="profile-hero-main">
+        {kicker && <div className="profile-hero-kicker">{kicker}</div>}
+        <h1>{name}</h1>
+        {blurb && <p className="profile-hero-desc">{blurb}</p>}
+        {children}
+        {cta && <div className="profile-hero-cta">{cta}</div>}
       </div>
-      {cta}
-    </section>
+    </header>
   );
 }

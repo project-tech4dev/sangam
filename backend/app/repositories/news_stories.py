@@ -11,6 +11,7 @@ from typing import Any, Literal
 from app.ingest.news.bars import level
 from app.ingest.news.feeds import STATES as NORTH_EAST
 from app.repositories import keyset
+from app.repositories.public_sql import PUBLIC_STORY, STORY_CHANNEL, is_private_url, public_url
 
 SOCIAL = ["LinkedIn", "Instagram", "X", "YouTube"]
 WEB = ["other web", "organisation site"]
@@ -39,7 +40,7 @@ _AREA = f"""
 
 
 # A profile reads the same signed in or out: only what clears the public bar.
-_PROFILE = "\n                 AND e.visibility = 'public'"
+_PROFILE = f"\n                 AND {PUBLIC_STORY}"
 _MY_ORGS = "\n                 AND (%(staff)s OR x.id IN (SELECT app.my_org_ids()))"
 
 
@@ -51,7 +52,8 @@ def _filters(bucket: str) -> str:
 
 
 _COLS = f"""s.id, s.headline, s.headline_generated, s.summary, s.published_on, s.date_source, s.content_kind,
-  s.is_news, s.scope, s.topic, s.sentiment, s.main_host, ml.url AS main_url, ml.source_type, {_PUB} AS pub"""
+  s.is_news, s.scope, s.topic, s.sentiment, s.main_host, {public_url("ml.url")} AS main_url, ml.source_type,
+  {STORY_CHANNEL} AS channel, {_PUB} AS pub"""
 
 
 @dataclass(frozen=True)
@@ -134,7 +136,8 @@ async def _enrich(pool, rows: list[dict]) -> list[dict]:
         return []
     async with pool.connection() as conn:
         links = await (await conn.execute(
-            "SELECT story_id, url, host, source_type FROM news_links WHERE story_id = ANY(%s) ORDER BY id",
+            f"SELECT story_id, url, host, source_type FROM news_links WHERE story_id = ANY(%s) "
+            f"AND NOT {is_private_url('url')} ORDER BY id",
             (ids,))).fetchall()
         ents = await (await conn.execute("""
             SELECT e.story_id, CASE WHEN e.org_id IS NOT NULL THEN 'org' ELSE 'funder' END AS kind,
@@ -150,7 +153,7 @@ async def _enrich(pool, rows: list[dict]) -> list[dict]:
         sid = r["id"]
         item = {k: r[k] for k in ("id", "headline", "headline_generated", "summary", "published_on", "date_source",
                                   "content_kind", "is_news", "scope", "topic", "sentiment", "main_url", "main_host",
-                                  "source_type", "visibility")}
+                                  "source_type", "channel", "visibility")}
         item["area_reason"], item["row_id"] = r.get("area_reason"), r["row_id"]
         item["match_level"], item["confidence_level"] = level(r["m"], "match"), level(r["c"], "confidence")
         item["also"] = [{k: x[k] for k in ("url", "host", "source_type")} for x in links

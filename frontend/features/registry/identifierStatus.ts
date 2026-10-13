@@ -1,4 +1,6 @@
-import type { Identifier } from "@/lib/api";
+import type { ProfileIdentifier } from "@/lib/api";
+
+type Identifier = Pick<ProfileIdentifier, "id_type" | "status" | "is_current" | "source_type" | "evidence" | "id_value">;
 
 /* One label per org_identifiers.status (0033). */
 export const STATUS_LABELS: Record<string, string> = {
@@ -21,7 +23,7 @@ const SOURCE_RANK: Record<string, number> = {
 };
 
 /* Current first, then the stronger source (an aggregator never hides the org's own "applied"), then numbered. */
-export function pickIdentifier(ids: Identifier[], idType: string): Identifier | undefined {
+export function pickIdentifier<T extends Identifier>(ids: T[], idType: string): T | undefined {
   const rank = (i: Identifier) => (i.source_type ? SOURCE_RANK[i.source_type] ?? 0 : 7);
   return ids
     .filter((i) => i.id_type === idType)
@@ -41,8 +43,4 @@ export function statusTone(id: Identifier | undefined): "good" | "pending" | "ba
   if (id.status === "registered" || id.status === "provisional") return "good";
   if (id.status === "applied" || id.status === "check_blocked") return "pending";
   return "bad";
-}
-
-export function isOnFile(id: Identifier | undefined): boolean {
-  return !!id && !!id.id_value && id.is_current && (id.status === "registered" || id.status === "provisional");
 }

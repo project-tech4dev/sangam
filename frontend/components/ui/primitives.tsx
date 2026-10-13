@@ -39,14 +39,14 @@ const MARK_COLORS = [
   "var(--color-neutral-700)",
 ];
 
+/* Two letters: the first two words' initials, or a one-word name's first two letters (KABIL → KA). */
 export function initialsOf(name: string): string {
-  return name
+  const words = name
     .replace(/[()[\]]/g, "")
     .split(/\s+/)
-    .filter((word) => word && !/^(the|of|and|&)$/i.test(word))
-    .slice(0, 2)
-    .map((word) => word[0]!.toUpperCase())
-    .join("");
+    .filter((word) => word && !/^(the|of|and|&)$/i.test(word));
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return words.slice(0, 2).map((word) => word[0]!.toUpperCase()).join("");
 }
 
 export function EntityMark({ name, size = 46 }: { name: string; size?: number }) {
