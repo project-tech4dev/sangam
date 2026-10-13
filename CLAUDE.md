@@ -59,6 +59,7 @@ make psql                # interactive shell against whichever DB ENV selects
 make wiki-update         # refresh openwiki/ pages whose source changed (no model call when none did)
 make wiki-fix MSG="..."  # have OpenWiki correct a wrong page; never hand-edit openwiki/
 make wiki                # regenerate openwiki/ from scratch (~20 min, COSTS MONEY)
+make wiki-deploy         # publish openwiki/ to https://sangam-wiki.vercel.app (by hand, like the app)
 ```
 
 Running a piece outside Docker:
