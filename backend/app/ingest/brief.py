@@ -338,6 +338,31 @@ def _state_line(state: dict[str, Any]) -> str:
     return "  - In Sangam: " + " · ".join(" ".join(str(b).split()) for b in bits if b)
 
 
+def _sources(findings: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Each cited source: its title and type, the pages facts cite and its document row, once saved."""
+    out: dict[str, dict[str, Any]] = {}
+    for f in findings:
+        if not (url := f.get("source_url")):
+            continue
+        s = out.setdefault(url, {"facts": 0, "pages": [], "title": None, "doc_type": None, "document": None})
+        s["facts"] += 1
+        if f.get("page") and f["page"] not in s["pages"]:
+            s["pages"].append(f["page"])
+        if f.get("concept") == "document":
+            s["title"], s["doc_type"] = f.get("title"), f.get("doc_type")
+        document, doc_type = ((f.get(STATE) or {}).get("documents") or {}).get(url) or (None, None)
+        s["document"] = s["document"] or document
+        s["doc_type"] = s["doc_type"] or doc_type
+    return out
+
+
+def _source_line(url: str, s: dict[str, Any]) -> str:
+    head = _join(s["title"], s["doc_type"], ", ".join(s["pages"]) or None,
+                 f"{s['facts']} fact{'s' if s['facts'] != 1 else ''}",
+                 f"[documents:{s['document']}]" if s["document"] else None)
+    return f"- {url} · {head}"
+
+
 def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]], prior: str | None = None,
                     unplaced: list[dict[str, Any]] = (), states: dict[str, dict[str, Any]] | None = None) -> str:
     """One organisation's brief: the `prior` brief's facts with every research row merged in; the newest row leads.
@@ -436,9 +461,11 @@ def entity_markdown(rows: dict[str, Any] | list[dict[str, Any]], prior: str | No
                 f"{names}. Not recorded is not the same as not existing.", ""]
     public_sources = list(dict.fromkeys(
         u for r in rows for u in r["sources_read"] or [] if not is_private_source(u)))
-    if public_sources:
+    cited = _sources(findings)
+    if public_sources or cited:
         out += ["## Sources read", ""]
-        out += [f"- {u}" for u in public_sources]
+        out += [_source_line(u, cited[u]) if u in cited else f"- {u} · read; no fact cites it"
+                for u in dict.fromkeys([*cited, *public_sources])]
         out.append("")
     out += ["---", "",
             ("_Findings, not catalog rows. A fact here is something a source said, with the "

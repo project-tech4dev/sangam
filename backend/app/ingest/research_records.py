@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -611,10 +611,31 @@ class EligibilityGuidelineFinding(FindingBase):
         return self
 
 
+DocType = Literal[
+    "annual_report", "csr_annexure", "brsr", "csr_policy", "csr_impact_report", "impact_assessment",
+    "programme_report", "audit_report", "financial_statements", "fcra_return", "registration_certificate",
+    "trust_deed", "exemption_order", "exemption_application", "csr1_approval", "fcra_certificate", "policy",
+    "press_release", "news_article", "grant_list", "registry_record", "research", "web_page", "other",
+]
+DOC_TYPES: frozenset[str] = frozenset(get_args(DocType))
+# Names research used before the list was fixed, mapped to their kind; anything else unknown is `other`.
+DOC_TYPE_ALIASES: dict[str, str] = {
+    "csr_report": "csr_impact_report", "csr_action_plan": "csr_annexure",
+    "impact_assessment_report": "impact_assessment", "sustainability_report": "brsr",
+    "case_study": "programme_report", "program_page": "web_page", "about_page": "web_page",
+    "contact_page": "web_page", "grant_guidelines_page": "web_page", "portal": "web_page",
+    "news_report": "news_article", "article": "news_article", "ngo_grant_listing": "grant_list",
+    "grants_list": "grant_list", "registry": "registry_record", "registry_profile": "registry_record",
+    "organisation_profile": "registry_record", "funder_profile": "registry_record",
+    "academic_paper": "research", "analysis": "research", "reference": "research", "encyclopedia": "research",
+    "subsidiary_financial_statements": "financial_statements",
+}
+
+
 class DocumentFinding(FindingBase):
     concept: Literal["document"] = "document"
     title: str = Field(min_length=2)
-    doc_type: str = Field(min_length=2, description="annual_report | csr_annexure | brsr | …")
+    doc_type: DocType = Field(description="the kind of document; a web page is web_page")
     as_of: str | None = Field(
         default=None, description="the period the document describes — not when you read it"
     )
@@ -624,14 +645,17 @@ class DocumentFinding(FindingBase):
                     "and places, not only the line you quoted",
     )
 
-    @field_validator("doc_type")
+    @field_validator("doc_type", mode="before")
     @classmethod
-    def _not_reserved(cls, v: str) -> str:
+    def _not_reserved(cls, v: Any) -> Any:
         if v in RESERVED_DOC_TYPES:
             raise ValueError(
                 f"doc_type {v!r} is reserved: eligibility is an eligibility_guideline finding, and "
                 f"templates and staff datasets have their own paths"
             )
+        if isinstance(v, str):
+            v = v.strip().lower()
+            return v if v in DOC_TYPES else DOC_TYPE_ALIASES.get(v, "other")
         return v
 
 

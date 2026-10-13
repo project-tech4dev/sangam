@@ -6,11 +6,11 @@ from typing import Any
 
 from psycopg import errors, sql
 
-# The tables 0041's and 0043's triggers log. A name read back from catalog_writes is checked against this before use.
+# The tables 0041's, 0043's and 0047's triggers log. A name read back from catalog_writes is checked against this before use.
 LOGGED = frozenset({
     "funders", "funder_csr_years", "funder_activity", "funder_locations", "funder_tags", "programs", "metrics",
     "contacts", "rfps", "rfp_locations", "rfp_tags", "documents", "orgs", "org_identifiers", "org_financials",
-    "org_locations", "org_tags", "program_tags",
+    "org_locations", "org_tags", "program_tags", "document_links",
 })
 # Research rows point at the entity a save created; undoing the creation unlinks them first.
 _RESOLVED = {"funders": "resolved_funder_id", "orgs": "resolved_org_id"}

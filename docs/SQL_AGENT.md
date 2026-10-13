@@ -155,8 +155,8 @@ class Table:
 Derived once at import: `TABLE_NAMES`, `COLUMNS`, `SQLGLOT_SCHEMA` (what `qualify()` wants),
 `STAR_COLUMNS` (non-heavy only), `CITE_COLUMNS`, `DEFECTS`.
 
-**In (36 tables after the v3 migrations, `tag_links`, `0031`'s funder consolidation, `0033`'s and `0034`'s drops, and `0044`'s news tables in place of `news_mentions`; 28 when this was written):** orgs, funders, programs, rfps, rfp_matches, fit_scores,
-fit_score_items, rubrics, rubric_criteria, score_adjustments, contacts, documents, chunks,
+**In (37 tables after the v3 migrations, `tag_links`, `0031`'s funder consolidation, `0033`'s and `0034`'s drops, and `0044`'s news tables in place of `news_mentions`, and `0047`'s `document_links`; 28 when this was written):** orgs, funders, programs, rfps, rfp_matches, fit_scores,
+fit_score_items, rubrics, rubric_criteria, score_adjustments, contacts, documents, document_links, chunks,
 news_stories, news_links, news_story_entities, news_story_locations, news_story_tags, tags, tag_links, locations, extraction_log, `org_identifiers`, `funder_activity`, and all seven
 `*_tags` / `*_locations` join tables.
 

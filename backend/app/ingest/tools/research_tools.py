@@ -186,8 +186,20 @@ async def _read_page(url: str) -> str:
         text = trafilatura.extract(response.text, url=url) or ""
     if not text.strip():
         return f"No readable text could be extracted from {url}."
+    # Kept as read, so a fact outlives a page that changes; silent like fetch_document's archive.
+    data = text.encode()
+    await storage.upload(storage.SOURCE_ARCHIVE, storage.archive_key(url, data, page_name(url)), data,
+                         "text/markdown; charset=utf-8")
     # Uncut: a long page is evicted to a file the researcher pages back with read_file.
     return source_banner(str(response.url)) + text
+
+
+def page_name(url: str) -> str:
+    """A readable file name for an archived page: axisbankfoundation.org-what-we-do.md."""
+    rest = url.split("://", 1)[-1].split("?")[0].split("#")[0].strip("/")
+    host, _, path = rest.partition("/")
+    stem = "-".join(p for p in [host.removeprefix("www."), *path.split("/")] if p)
+    return _safe_name(stem.removesuffix(".html").removesuffix(".htm"))[:100] + ".md"
 
 
 @tool
