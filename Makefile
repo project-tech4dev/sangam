@@ -1,4 +1,4 @@
-.PHONY: help up down logs seed locations-seed taxonomy-seed graph-seed match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs wiki wiki-update seed locations-seed taxonomy-seed graph-seed match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -172,6 +172,19 @@ evals:  ## Golden-question evals through the real agent (COSTS MONEY)
 	@set -a; [ -f .env ] && . ./.env; set +a; \
 	cd backend && TEST_DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
 	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) -q
+
+##@ Wiki
+# openwiki/ is a generated code wiki (OpenWiki): every claim is pinned to the source lines it came from,
+# and --update rewrites only pages whose evidence changed. Edit openwiki/INSTRUCTIONS.md, never a page.
+# Provider is set explicitly: with it unset, OpenWiki picks OPENAI_API_KEY (the graph's key) first.
+OPENWIKI = OPENWIKI_PROVIDER=anthropic OPENWIKI_MODEL_ID=claude-sonnet-5-5 OPENWIKI_TELEMETRY_DISABLED=1 \
+	OPENWIKI_PAGE_CONCURRENCY=2 npx -y openwiki@0.7.2 code
+
+wiki:  ## Generate openwiki/ from scratch (COSTS MONEY; Sonnet reads the repo)
+	@set -a; [ -f .env ] && . ./.env; set +a; $(OPENWIKI) --init --print; rm -f openwiki/.run.json
+
+wiki-update:  ## Refresh openwiki/ pages whose source changed (no model call when nothing did)
+	@set -a; [ -f .env ] && . ./.env; set +a; $(OPENWIKI) --update --print; rm -f openwiki/.run.json
 
 ##@ Generated docs
 # Render docs/entities and the generated blocks of docs/clients from the
