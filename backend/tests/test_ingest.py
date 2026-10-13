@@ -1344,10 +1344,10 @@ class TestTheOrgWriter:
         assert all("FROM orgs" in q for q in conn.sql)
 
     async def test_a_registered_address_only_fills_an_empty_one(self):
-        from app.ingest.writer import set_registered_location
+        from app.ingest.writer import Owner, set_registered_location
 
         conn = self._Conn([None])
-        assert await set_registered_location(conn, 42, 7) is False
+        assert await set_registered_location(conn, Owner.org(42), 7) is False
         assert "registered_location_id IS NULL" in conn.sql[0]
 
 

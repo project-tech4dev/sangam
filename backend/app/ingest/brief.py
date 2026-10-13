@@ -78,8 +78,10 @@ def headline(f: dict[str, Any]) -> str:
         return _join(f.get("label"), f.get("value"))
     concept = f.get("concept")
     if concept == "identity":
-        return _join(f.get("name"), f.get("funder_type"), f.get("website"),
-                     f"part of {f['parent_name']}" if f.get("parent_name") else None)
+        return _join(f.get("name"), f.get("funder_type"), f.get("legal_form"), f.get("website"),
+                     f"founded {f['founded_year']}" if f.get("founded_year") else None,
+                     f"part of {f['parent_name']}" if f.get("parent_name") else None,
+                     f.get("registered_address"))
     if concept == "identifier":
         return f"{f['id_type'].upper()} {f['id_value']}"
     if concept == "csr_year":
@@ -147,7 +149,9 @@ def headline(f: dict[str, Any]) -> str:
                      f.get("criterion"), f.get("notes"))
     if concept == "org_identity":
         return _join(f.get("name"), f.get("org_kind"), f.get("legal_form"),
-                     f"registered {f['registration_date']}" if f.get("registration_date") else None)
+                     f"registered {f['registration_date']}" if f.get("registration_date") else None,
+                     f"part of {f['parent_name']}" if f.get("parent_name") else None,
+                     f.get("registered_address"))
     if concept == "org_identifier":
         number = f.get("id_value") or (f"application {f['application_ref']}" if f.get("application_ref") else None)
         tier = f"{f.get('evidence_tier')} ({f['source_type']})" if f.get("source_type") else None
@@ -160,7 +164,7 @@ def headline(f: dict[str, Any]) -> str:
         return _join(*(f"{k.replace('_', ' ')} {v}" for k, v in money.items() if v),
                      audited) or "recorded"
     if concept == "org_location":
-        return _join(_place(f), f.get("role"))
+        return _join(_place(f), f.get("role"), f.get("program_name"))
     # A concept with no branch lands here and prints its raw fields. Every one
     # has a branch; this is what a new one looks like until it gets its own.
     return _join(*(v for k, v in f.items() if k not in _EVIDENCE and v is not None))

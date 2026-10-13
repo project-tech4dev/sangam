@@ -277,6 +277,15 @@ class IdentityFinding(FindingBase, Tagged):
         default_factory=list,
         description="other names it files or is reported under, e.g. the name on its MCA filings",
     )
+    legal_form: str | None = Field(default=None, description="free text as printed, e.g. 'Section 8 Company'")
+    founded_year: int | None = Field(
+        default=None, ge=1800, le=2100, description="the year it says it was founded or incorporated"
+    )
+    registered_address: str | None = Field(
+        default=None,
+        description="the registered office as printed. Its district and state are also a stated_geography "
+                    "finding with role 'registered'",
+    )
     intake_mode: (
         Literal["open", "rolling", "invitation_only", "rfp_only", "closed", "unknown"] | None
     ) = Field(default=None, description="how an NGO can approach it at all, as it says so")
@@ -478,7 +487,7 @@ class ProgrammeSpendFinding(YearlyFinding):
 class ProgramFinding(FindingBase, OptionallySourced, Tagged):
     concept: Literal["program"] = "program"
     name: str = Field(min_length=2)
-    kind: Literal["theme", "programme", "phase", "project"] = "programme"
+    kind: Literal["theme", "programme", "component", "phase", "project"] = "programme"
     parent_name: str | None = Field(
         default=None, description="the theme or programme above this one, when the source says so"
     )
@@ -669,6 +678,16 @@ class OrgIdentityFinding(FindingBase, Sourced, Tagged):
         default=None, description="free text as printed, e.g. 'Public Charitable Trust'"
     )
     registration_date: date | None = None
+    registered_address: str | None = Field(
+        default=None,
+        description="the registered office as printed. Its district and state are also an org_location finding "
+                    "with role 'registered'",
+    )
+    parent_name: str | None = Field(
+        default=None,
+        description="the organisation this one belongs to or was spun out of, as printed. Linked only when "
+                    "Sangam holds it; never merged with it",
+    )
     website: str | None = Field(default=None, description="the organisation's own site")
     description: str | None = Field(default=None, description="a few sentences in its own words")
     aliases: list[str] = Field(
@@ -742,6 +761,9 @@ class OrgLocationFinding(PlacedFinding, Sourced):
 
     concept: Literal["org_location"] = "org_location"
     role: Literal["registered", "operates", "funds"] = "operates"
+    program_name: str | None = Field(
+        default=None, description="the organisation's programme that runs here, as the source names it"
+    )
     note: str | None = None
 
 

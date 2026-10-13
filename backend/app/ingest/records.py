@@ -184,6 +184,9 @@ class FunderRecord(Provenance, Tags):
     typical_duration_months: int | None = Field(default=None, gt=0)
     grant_size_min: float | None = Field(default=None, ge=0, description="INR")
     grant_size_max: float | None = Field(default=None, ge=0, description="INR")
+    legal_form: str | None = None
+    founded_year: int | None = None
+    registered_address: str | None = None
 
     @field_validator("cin")
     @classmethod
@@ -362,7 +365,7 @@ class ProgramRecord(Provenance, Tiered, Tags):
     kind: Literal["program"] = "program"
     entity_name: str = Field(min_length=2)
     name: str = Field(min_length=2)
-    program_kind: Literal["theme", "programme", "phase", "project"] = "programme"
+    program_kind: Literal["theme", "programme", "component", "phase", "project"] = "programme"
     parent_name: str | None = None
     description: str | None = None
     status: str | None = None
@@ -499,6 +502,8 @@ class OrgRecord(Provenance, Tiered, Tags):
     intermediary and government row the cohort holds."""
     legal_form: str | None = None
     registration_date: date | None = None
+    registered_address: str | None = None
+    parent_name: str | None = None
     website: str | None = None
     description: str | None = None
     aliases: list[str] = Field(default_factory=list)
@@ -559,6 +564,7 @@ class OrgLocationRecord(Provenance, Tiered):
     state: str = Field(min_length=2)
     district: str | None = None
     role: Literal["registered", "operates", "funds"] = "operates"
+    program_name: str | None = None
     note: str | None = None
     source_type: SourceType
     evidence_tier: EvidenceTier

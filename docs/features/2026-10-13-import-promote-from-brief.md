@@ -16,8 +16,8 @@ and the save all read the same record.
 Example: Axis's newest row (#150) holds 10 findings; promotion now reads the brief's 300.
 
 ### 2. Every fact ends in a state, written back into the brief
-`promote()` reports a state per fact, keyed by `brief.fact_key`: written (with its row, e.g.
-`[activity:524]`), confirms (already held), conflicts (Sangam holds another value), waiting (a person
+`promote()` reports a state per fact, keyed by `brief.fact_key`: written (with its row where the writer
+returns one: a programme, a document or the entity itself, e.g. `[funder:29]`), confirms (already held), conflicts (Sangam holds another value), waiting (a person
 answers), held (with the reason). After a save commits, the brief is republished with each fact's
 state as a line under it, and a closing section lists every fact not in Sangam and why.
 
@@ -51,6 +51,10 @@ The skills' ★ marks for these fields become their new finding fields.
 
 ## Known limits
 - A fact read from the brief is stamped with the newest run's `fetched_at`; its block does not carry one.
+- Staging has not taken 0046, so the staging dry run covers sections 1–3; section 4 was checked on a local
+  database. Run `make migrate ENV=staging` before this deploys: `write_funder` reads the new columns.
+- An `org_location` naming a programme Sangam does not hold is written without `program_id`, not held:
+  the place is a fact on its own.
 
 ## Verification
 - `pytest -m "not integration"`, `ruff`; `make migrate` on a local database.

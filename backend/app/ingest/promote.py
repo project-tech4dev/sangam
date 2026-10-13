@@ -361,6 +361,9 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
             typical_duration_months=ident.get("typical_duration_months"),
             grant_size_min=to_inr(ident.get("grant_size_min")),
             grant_size_max=to_inr(ident.get("grant_size_max")),
+            legal_form=ident.get("legal_form"),
+            founded_year=ident.get("founded_year"),
+            registered_address=ident.get("registered_address"),
             as_of=ident.get("as_of"),
             **_tags(ident),
             **_provenance(anchor, row["researched_at"]),
@@ -406,6 +409,8 @@ def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord |
             org_kind=ident.get("org_kind"),
             legal_form=ident.get("legal_form"),
             registration_date=ident.get("registration_date"),
+            registered_address=ident.get("registered_address"),
+            parent_name=ident.get("parent_name"),
             website=ident.get("website") or _http_only(row.get("website")),
             description=ident.get("description"),
             aliases=ident.get("aliases") or [],
@@ -915,6 +920,8 @@ async def _write_facts(
                     conn, rec, funder_id, location_id=location_id, document_id=document_id
                 )
                 _count(report, "funder_locations", status)
+                if f.role == "registered":
+                    await set_registered_location(conn, owner, location_id)
 
             elif concept == "partner":
                 if owner.column == "org_id":
@@ -940,8 +947,7 @@ async def _write_facts(
                         ).fetchone()
                         org_names[owner.id] = found["name"]
                     catalogued = org_names[owner.id]
-                    # funder_activity has no tier column, so the org source's tier travels in notes.
-                    said = [f.notes, f"From the organisation's research: {f.source_type}, {f.evidence_tier}."]
+                    said = [f.notes]
                     if f.partner_name != catalogued:
                         said.append(f"Named in the source as {f.partner_name!r}.")
                     line_funder, line_program, partner_org_id = match.entity_id, None, owner.id
@@ -1100,11 +1106,12 @@ async def _write_facts(
                 if location_id is None:
                     return None
                 rec = OrgLocationRecord(
-                    state=f.state, district=f.district, role=f.role, note=f.note,
+                    state=f.state, district=f.district, role=f.role, program_name=f.program_name, note=f.note,
                     source_type=f.source_type, evidence_tier=f.evidence_tier, as_of=None, **shared,
                 )
                 status, _, found = await write_org_location(
-                    conn, rec, owner.id, location_id=location_id, document_id=document_id
+                    conn, rec, owner.id, location_id=location_id, document_id=document_id,
+                    program_id=program_id,
                 )
                 conflicts.extend(found)
                 _count(report, "org_locations", status)
@@ -1112,7 +1119,7 @@ async def _write_facts(
                 # not a second field on org_identity — so the column that
                 # names it is set here, where the place is already resolved.
                 if f.role == "registered":
-                    await set_registered_location(conn, owner.id, location_id)
+                    await set_registered_location(conn, owner, location_id)
 
             elif concept == "contact":
                 rec = ContactRecord(
@@ -1177,6 +1184,20 @@ async def _parent(conn: Any, record: FunderRecord, report: dict[str, Any]) -> in
         return None
     report["held"].append(
         f"parent {record.parent_name!r} of {record.name!r} is not in the catalog, so the link "
+        f"is not stored. Research the parent and promote it first."
+    )
+    return None
+
+
+async def _org_parent(conn: Any, record: OrgRecord, match: Match, report: dict[str, Any]) -> int | None:
+    """The parent body's org id when Sangam holds it; otherwise a held line, never a new row."""
+    if not record.parent_name:
+        return None
+    parent = await resolve_org(conn, record.parent_name)
+    if parent.method in MERGEABLE and parent.entity_id != match.entity_id:
+        return parent.entity_id
+    report["held"].append(
+        f"parent {record.parent_name!r} of {record.name!r} is not an organisation Sangam holds, so the link "
         f"is not stored. Research the parent and promote it first."
     )
     return None
@@ -1388,7 +1409,8 @@ async def _promote_org(
         if match is None:
             return
     record = await _reconcile_org_aliases(conn, record, match, report)
-    status, org_id, _, conflicts = await write_org(conn, record, match)
+    parent_id = await _org_parent(conn, record, match, report)
+    status, org_id, _, conflicts = await write_org(conn, record, match, parent_id=parent_id)
     report["entity"] = {"kind": "org", "status": status, "id": org_id, "name": record.name}
     _settle_identity(report, findings, "org_identity", status, f"[org:{org_id}]")
     if linked := await link_partner_lines(conn, org_id):
