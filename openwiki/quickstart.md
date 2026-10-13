@@ -3,9 +3,6 @@ type: quickstart
 title: Quickstart
 description: First run of the Sangam stack, the make targets that matter (including the Wiki group that regenerates openwiki/), a repo map, the ground rules, and a task-to-page routing table for the architecture, workflow, operations and testing pages.
 tags: [quickstart, onboarding, make, repo-map, routing]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:54:39.311Z
 sources:
   - id: openwiki-source-5f5b95b3d6a215fa02ceb945
     resource: repo://.env.example
@@ -25,7 +22,10 @@ sources:
     resource: repo://docker-compose.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:54:39.311Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:59:48.420Z
 ---
 
 # Quickstart
@@ -106,7 +106,11 @@ The page text is generated, so do not hand-edit it. Steer generation through `op
 
 ### Agent instructions
 
-`CLAUDE.md` remains the source of the repo's invariants and commands. `AGENTS.md` is a thin pointer: it sends agents to `CLAUDE.md` first, then to `docs/ARCHITECTURE.md` and `docs/CHANGELOG.md`, and tells them to fall back to `openwiki/quickstart.md` (and its links) when the OpenWiki retrieval tools are unavailable. Source code and tests stay authoritative over this wiki.
+`CLAUDE.md` remains the source of the repo's invariants and commands. `AGENTS.md` is a thin pointer: it sends agents to `CLAUDE.md` first, then names `docs/ARCHITECTURE.md` (rules and decisions), `openwiki/` (the generated facts) and `docs/CHANGELOG.md` (what shipped).
+
+The wiki is optional, just-in-time context rather than startup reading. Agents should not preload or search it at task start. They use `openwiki_search` and `openwiki_read` only when an unfamiliar area materially affects the task, and fall back to this page and its links only when those retrieval tools are unavailable. Source code and tests stay authoritative over the wiki, and over `docs/`.
+
+By `CLAUDE.md` convention, a PR that changes a tool, table, route or flow runs `make wiki-update`, one that changes a rule edits `docs/ARCHITECTURE.md`, and one that ships adds a `docs/CHANGELOG.md` line. Nested `CLAUDE.md` files in `backend/app/agent/`, `backend/app/ingest/`, `backend/app/matching/`, `backend/app/core/`, `db/` and `frontend/` load on their own and point at the matching wiki pages.
 
 ### Choosing a database with `ENV`
 
@@ -162,7 +166,7 @@ Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and op
 | Work on Vercel, Supabase pooler, Tavily, Langfuse or Aura specifics | [Vercel and Supabase Specifics](operations/deploy-and-vendors.md) |
 | Run or write tests, or learn what costs money | [Testing](testing/overview.md) |
 
-The folders are `architecture/` (how each subsystem is built), `workflows/` (end-to-end traces and step-by-step procedures), `operations/` (configuration and vendors) and `testing/`.
+The folders are `architecture/` (how each subsystem is built), `workflows/` (end-to-end traces and step-by-step procedures), `operations/` (configuration and vendors) and `testing/`. Each folder also has an `index.md` that lists its pages: [Architecture index](architecture/index.md), [Workflows index](workflows/index.md), [Operations index](operations/index.md) and [Testing index](testing/index.md). The wiki-wide [index](index.md) sits above them.
 
 ## Testing at a glance
 

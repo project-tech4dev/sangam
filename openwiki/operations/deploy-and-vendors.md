@@ -3,9 +3,6 @@ type: operations reference
 title: Vercel and Supabase Specifics
 description: Vendor-specific operating facts for Sangam - the two Vercel projects, region and duration settings, the keep-warm cron, Supabase pooler/Auth/Storage, Tavily, Langfuse and Neo4j Aura - and what each does when it is unconfigured or down.
 tags: [operations, vercel, supabase, deployment, tavily, langfuse, neo4j, storage]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-5f5b95b3d6a215fa02ceb945
     resource: repo://.env.example
@@ -51,7 +48,10 @@ sources:
     resource: repo://frontend/vercel.json
   - id: openwiki-source-23775c3de52f3ab95a13cb8b
     resource: repo://README.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:59:48.420Z
 ---
 
 # Vercel and Supabase Specifics
@@ -81,7 +81,7 @@ flowchart LR
 | `sangam` | `frontend` | Next.js app |
 | `sangam-backend` | `backend` | FastAPI, framework preset `fastapi`, entrypoint `app/main.py` |
 
-- Each project's `vercel.json` sets `"git": { "deploymentEnabled": false }`, so a push or merge never builds anything and there are no preview deployments. Production changes only when someone runs the manual **Deploy** workflow (`workflow_dispatch` only), which runs `vercel deploy --prod` against each project using the `VERCEL_TOKEN` secret. Each job is skipped when its directory is unchanged, except a manual run has no usable base ref and so deploys both.
+- Each project's `vercel.json` sets `"git": { "deploymentEnabled": false }`, so a push or merge never builds anything and there are no preview deployments. Production changes only when someone runs the manual **Deploy** workflow (`workflow_dispatch` only), which runs `vercel deploy --prod` against each project using the `VERCEL_TOKEN` secret. Each job is skipped when its directory is unchanged, except a manual run has no usable base ref and so deploys both. Runs are serialised per ref (`concurrency` group `deploy-<ref>`, `cancel-in-progress: false`), so a second run queues behind a deploy in flight rather than cancelling it.
 - A `vercel.json` only works inside its project's **Root Directory** (`frontend/` or `backend/`); a copy at the repo root does nothing.
 - `NEXT_PUBLIC_*` variables are inlined at build time, so changing one needs a fresh deploy, not just an environment edit.
 - The Python bundle limit is 500 MB; the backend's dependency tree is roughly 256 MB. This is also why Supabase Storage is called over plain `httpx` rather than the `supabase` SDK, which would pull in extra client libraries.

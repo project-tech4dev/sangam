@@ -3,9 +3,6 @@ type: architecture
 title: Frontend
 description: How the Next.js app in frontend/ is laid out, how it reaches the backend (server-component REST versus the CopilotKit/AG-UI chat proxy), how the Ask and Import/Scout screens work, and the auth, caching and design rules that govern it.
 tags: [frontend, nextjs, copilotkit, ag-ui, ask-workspace, scout, supabase-auth, design-system]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
@@ -87,7 +84,10 @@ sources:
     resource: repo://frontend/proxy.ts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:59:48.420Z
 ---
 
 # Frontend
@@ -105,7 +105,7 @@ The frontend is a Next.js 16 / React 19 app (`frontend/`, deployed as the Vercel
 | `components/` | `ui/` display primitives (and the `ListPage.tsx` list pattern) and `layout/` site chrome (`NavBar`, `Footer`). |
 | `lib/` | `api/` (server REST client, types, auth headers), `supabase/`, `AgentProviders.tsx`, `useAgentChat.ts`, `format.ts`, `safe-next-path.ts`. |
 
-Cross-folder imports use the `@/` alias. `frontend/CLAUDE.md` is only a pointer to `docs/ARCHITECTURE.md` §9 and `docs/DESIGN_SYSTEM.md`.
+`docs/ARCHITECTURE.md` §9 states the rule: `app/` holds routes only and everything else goes in `features/`. Cross-folder imports use the `@/` alias. `frontend/CLAUDE.md` is only a pointer to `docs/ARCHITECTURE.md` §9 and `docs/DESIGN_SYSTEM.md`.
 
 Routes: `/` (home), `/ask` (workspace when signed in, preview when not), `/import` (Scout), `/registry`, `/registry/[slug]`, `/registry/funders/[slug]` and its `/brief`, `/resources/[tab]` (methodology, taxonomy), `/settings`, `/terms`, `/auth/*`, plus `/api/copilotkit/[[...slug]]`. The root layout only renders `NavBar`, `<main>` and `Footer`; there is no global provider, so the agent provider is mounted per screen.
 
@@ -163,7 +163,7 @@ Caption: server components call REST directly, chat goes through the Next proxy 
 
 ### Funder Match, Proposals, Vault, Media
 
-These views use client REST (`call()`), not the agent. Funder Match (`views/funder-match/api.ts`) lists matches, fetches a detail, and POSTs a saved run; the backend decides who may run it. Lists across the app use the pattern in `components/ui/ListPage.tsx` (`BucketCards`, `FilterRow`, `SearchBox`, `ListMore`).
+These views use client REST (`call()`), not the agent. Funder Match (`views/funder-match/api.ts`) lists matches, fetches a detail, and POSTs a saved run; the backend decides who may run it. Lists across the app use the pattern in `components/ui/ListPage.tsx`: `BucketCards`, one `FilterRow` of dropdowns, a `SearchBox`, and `ListMore` with `useShowMore` (client-side paging) or `useCursorList` (server keyset paging). `CLAUDE.md` and `docs/ARCHITECTURE.md` §9 require a new list page to reuse it rather than invent its own pills or stats.
 
 **Proposals are browser-only and partly built.** `views/proposals/store.ts` keeps proposals in `localStorage` under `sangam.proposals.v1` with a module-level cache, a listener set and `useSyncExternalStore`, so tabs stay in sync via the `storage` event; a storage failure (private window, full disk) only loses persistence after reload. A `proposals` table exists (migration `0009`, with grants and RLS policies), but no backend code reads or writes it, and the SQL catalog keeps it in `KNOWN_EXCLUDED`. So proposals live only in this browser, and another person or device never sees them. A proposal is started from a Funder Match card by `start.ts`, which snapshots the saved match detail into its gates (G1/G2) and looks up a funder proposal template. `ProposalShell` implements stepper steps 1 (gates) and 2 (sources); step 3 (`SectionsStep`) is a read-only placeholder. Drafting, section editing and assembly are not built (`docs/CHANGELOG.md`: PRs 4–5 outstanding).
 

@@ -3,9 +3,6 @@ type: architecture
 title: Funder Match
 description: How the in-code match-v2 rubric scores one organisation against funders with no model involved, covering profile loading, the seven criteria, tiers, saved runs and their RLS, and the places it is consumed (compare_fit, REST, make match, the UI).
 tags: [funder-match, match-v2, rubric, rls, compare_fit, saved-runs]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
     resource: repo://backend/app/agent/build.py
@@ -47,7 +44,10 @@ sources:
     resource: repo://frontend/features/ask/views/FunderMatchView.tsx
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:59:48.420Z
 ---
 
 # Funder Match
@@ -65,7 +65,7 @@ The code lives in `backend/app/matching/`. The SQL that fills the profiles is in
 | Card wording, the summary, tier words | `matching/match.py` | The write-up is built from templates, not generated text. |
 | Which rows are read | `repositories/matching.py` | `rules.py` does not do I/O. |
 
-`matching/CLAUDE.md` asks for `docs/ARCHITECTURE.md` §5 to be updated in the same PR as any rule or rubric change. If you change the arithmetic in a way that alters scores, consider whether `RUBRIC_VERSION` (`"match-v2"`) should change, because saved runs record the version they were made under.
+`matching/CLAUDE.md` is now a short pointer: it says the facts (criteria, points, tiers, saved runs) live on this wiki page, the rules and decisions live in `docs/ARCHITECTURE.md` §5, a rule change goes in `rules.py`, a point value or tier in `rubric.py`, and `make wiki-update` should be run afterwards so this page is refreshed. If you change the arithmetic in a way that alters scores, consider whether `RUBRIC_VERSION` (`"match-v2"`) should change, because saved runs record the version they were made under.
 
 ## The pipeline
 

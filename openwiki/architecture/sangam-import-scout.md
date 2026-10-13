@@ -3,9 +3,6 @@ type: architecture
 title: Sangam Import / Scout
 description: How the Import agent (Scout on screen) is built. A supervisor and four isolated subagents research funders and NGOs. Findings merge into one published brief per organisation, and promote() moves the brief into the catalog through fixed-SQL writers with undo and human-in-the-loop pauses.
 tags: [import, scout, ingest, deep-agent, brief, promote, writer, matcher, geography, undo, hitl, access]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-d995a482e69484b19d5a4a34
     resource: repo://backend/app/agent/harness.py
@@ -65,7 +62,10 @@ sources:
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-a44fe58bbddbee96fe925ba2
     resource: repo://docs/INGEST.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:59:48.420Z
 ---
 
 # Sangam Import / Scout
@@ -74,7 +74,7 @@ Sangam Import is a second LangGraph deep agent, separate from [Ask Sangam](ask-s
 
 The agent never writes SQL. It proposes typed findings, and fixed-SQL code in `app/ingest/` does every write. A test asserts that no tool name contains `query` or `sql`.
 
-> **Source of truth.** `docs/INGEST.md` predates PRs #192–#197 and its header lists what is wrong in it. Trust the code and `docs/ARCHITECTURE.md` §4. `backend/app/ingest/CLAUDE.md` says the same and asks that a change to a fact in §4 update §4 in the same PR.
+> **Source of truth.** `docs/INGEST.md` predates PRs #192–#197 and its header (lines 9–27) lists what is wrong in it. Trust the code, this page and `docs/ARCHITECTURE.md` §4. `backend/app/ingest/CLAUDE.md` says the same: facts about agents, tools, middleware and skills live in this page, rules and decisions live in `ARCHITECTURE.md` §4 and §6, and where `INGEST.md` disagrees, source and the wiki are right. A changed tool or flow means regenerating the wiki (`make wiki-update`). A changed rule means editing §4.
 
 ## The agents
 
@@ -319,7 +319,7 @@ From the CHANGELOG "Not finished" table and `docs/INGEST.md`:
 - The programme-themes plan shipped steps 1–4. Step 5, `write_funder_tags_from_programs` (PR #172), is unmerged.
 - The access plan shipped Phase 1. Import and Ask SQL still run on the owner pool, and the branch that would run Ask SQL as the caller is unmerged. This is why every Import tool checks scope itself.
 - `2026-10-09-import-guided.md` shipped in #130, but its review follow-ups list is still open.
-- `docs/INGEST.md` is out of date on the record (brief, not one row), the pauses, the tool modules (five), `StaffLastLock`, the matcher order, districts, the NGO path, undo's table count and the `/ingest` endpoint wiring.
+- `docs/INGEST.md` is out of date on the record (brief, not one row), the pauses, the tool modules (five), `StaffLastLock`, the researcher's order, the matcher order, districts, the NGO path, undo's table count, the `/ingest` endpoint wiring, the source count (80, not 79) and the known gaps (the registry-check tool and `csr_sector_id` now exist).
 
 ## Where to change things
 

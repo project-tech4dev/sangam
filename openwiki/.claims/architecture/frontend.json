@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:56ee3b2dfa4c28e97eaabb7e910d70dd2b0546d8ea7942fd79379e3322f4ed47",
+  "pageVersion": "sha256:43c2d902e0e9f77800cd1a78e5d99f0d34f220a3fd910c7028eeb6a76a0400af",
   "claims": [
     {
       "id": "claim_c4947d35c7ba4e6884cb28e5433237e6",
       "statement": "The chat wire is still CopilotKit: the drop-CopilotKit plan's M3/M4 are not started, package.json still depends on @copilotkit/react-core and runtime, and app/api/copilotkit/[[...slug]]/route.ts still exists.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L166-L168",
+          "resource": "repo://docs/CHANGELOG.md#L167-L169",
           "version": "repo-lines-v1:sha256:3af7ea03a4b79b95593d75738742c827900eba3131f00b7496fc946c9c5a8de4:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2E1MzEzZTQ5Njk0ZWM4MzRjNDdlOThhYjA0ODgyYjdlNjRkODY3OTUyOWUxMzVhMTJlNTM0MmY4MWYwZTZjYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDNlMTRjMTQ4MmM2MmQ3NThiMGM1N2FkNDI5N2NhZjJhMGYzOWIzMzg2NWRiMjAyMmNlYmFjYjRiZjQ3MDM1MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWYwMDNmMjEwYzJkNzY3ZTIyNTEzMTdhODViMjkzN2ZhYzBmNmM3OTZlNjUzZTU5NDczMTUzZGZjOTY1Zjc2MyJ9"
         },
         {
@@ -53,11 +53,11 @@
       "statement": "AGENT_URL must end in /agent (used verbatim for Ask, suffix swapped for Import, stripped for REST) while NEXT_PUBLIC_API_URL has no suffix and is the browser-side REST base; docker compose sets AGENT_URL to the internal backend:8000/agent and NEXT_PUBLIC_API_URL to localhost:8010.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L188-L192",
+          "resource": "repo://CLAUDE.md#L193-L197",
           "version": "repo-lines-v1:sha256:e0f3b7068d04786ed6eb6c760693e61dea6694abaaa03e8326ba0271fdd5ca01:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODYwZWJiM2ZiY2JiMzk0YTNjZmVhZjYxM2U2MjNhMzVlNWEwZGY1MTNlMmZhZWRkYTY5MmRmOTkzMjEyOTcwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTRlZThjNjM3OTk3NTk0MDE0ZDNjMGEyZWZhZDE5MTQ4Yzg5OThjNDQ2OWE4NDcyODExZGExMTYwNDAwYmM3NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDRmZWRhYjZjN2U5ODU2ZGM0ZjcxNzMyOTEyZTA1ZWIyOGI0NzkzOTIzNjE5YzQzOWY5NTFmNWI1OGE5Y2MzOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjU2ZWJiMjRkNTg2NzNjOWYxM2JlZmI5OGQzMzEzYmNlYjkxNTEyNTgyMzlkNzhlY2E1OTM5OGZiZWQwZTI4NyJ9"
         },
         {
-          "resource": "repo://Makefile#L320-L320",
+          "resource": "repo://Makefile#L326-L326",
           "version": "repo-lines-v1:sha256:10edb845739bd8342fa78afb0adff30a556bc1c1d7d7c843ec0ef4eec31d6e3b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODgxOTFmZjUwOTZlYWFjMDcyNzBkZWU5YjIxODNhNTM4NGNhMTdhZTFiYzQ3NjAwNDc3NmNjNWM2YTJkMzcxNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
@@ -195,7 +195,7 @@
       "statement": "Proposals are browser-only: stored in localStorage under sangam.proposals.v1 behind a useSyncExternalStore store with cross-tab storage sync, no backend table; started from a Funder Match card by snapshotting match detail into gates; only steps 1-2 are implemented and step 3 sections is a read-only placeholder.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L171-L171",
+          "resource": "repo://docs/CHANGELOG.md#L172-L172",
           "version": "repo-lines-v1:sha256:cb8f24eb68232f05a09ffc509518523b1914769ffdeacadf4f99c411fe406f65:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I4ZjI0ZWI2ODIzMmYwNWEwOWZmYzUwOTUxODUyM2IxOTE0NzY5ZmZkZWFjYWRmNGY5OWM0MTFmZTQwNmY2NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I4ZjI0ZWI2ODIzMmYwNWEwOWZmYzUwOTUxODUyM2IxOTE0NzY5ZmZkZWFjYWRmNGY5OWM0MTFmZTQwNmY2NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDU2YWE5Y2EwNWNjY2ZlZWQ3NDFlMTg1MzZiNDExZjBkMjgzYTBjYjY4YzA5OGNhYmRmOGRhMTk1Mjc2YjE4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTYxZDc3OGIyNWZiMGU3MDYwYjk2YjFiZjczN2U2MDA3ZjYzMmRjOGU5YzA2MmQ4NzJiNDc1YjMzYmQyNGZhYiJ9"
         },
         {
@@ -342,25 +342,25 @@
     },
     {
       "id": "claim_a4730b4abff6471da9902c9d85d8caee",
-      "statement": "Frontend code is organised as routes-only app/, one features/ folder per screen, components/ui and components/layout, and lib/; list pages share the BucketCards/FilterRow/SearchBox/ListMore pattern in components/ui/ListPage.tsx.",
+      "statement": "Frontend code is organised as routes-only app/ (everything else goes in features/), one features/ folder per screen, components/ui and components/layout, and lib/; list pages share the BucketCards/FilterRow/SearchBox/ListMore pattern in components/ui/ListPage.tsx, with useShowMore for client-side paging and useCursorList for server cursor paging, and new list pages must reuse it.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L166-L176",
-          "version": "repo-lines-v1:sha256:82fc376248d75fa9085c705f535a767cb7459be5c1fd24d68ad97491f60d9ea5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhMzNmNmU0NzNmNWE2ZjlmYTAyMzk4MThkMzY0YTFiMzEwODI2MTg5NzFiOTljZDU2YjhjNjYzYzYyOWE3YTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkYjQyYTgxNmE5OWUyNDA5Yjk5MWE5OGYxYTE0ZDY5MWRhZGExOWJkMTFlMDVhMTQyOGUzM2JjN2Q0MmVmZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1MWYzMjU2ZTE2NmE0YTRjMjY0MjllYTlmODQ4MjMwZGM5YzI0Y2QyNDg0MWQwNDQ2Zjg5N2YxZjJlZmQ2NWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlNmEwYjc3MGNmZGQ4OWZhYjRiMzhmMDYwZWExNjhmNjFmNjk2MWVjNThmNmYxNGUzY2I0MjMxNGMzMDBkNjQifQ"
+          "resource": "repo://CLAUDE.md#L396-L399",
+          "version": "repo-lines-v1:sha256:da49d982fa4f6e65b3561a5dceddda7b12545f8220ffcdb3936f78ea7e67bf9f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTFjMDgwOTdlM2UyZTZkMGVkMTk3MDMxOGJjNTc0MDY1YWI3N2ExYmE2ODFjNjk2M2NmNzBkMTc2YWZkYzI1MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODhhNmEwMzg3MGU5OTEwMTg1NThhZmFhN2JhYzE0NjM1YTY3ZDZkZWJhMTY3OWEwYzc1ZjA2ZWE0NDhkZDgxMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FmMDE2YzMzYjliZGQxYWNkODc4N2Y2YTc3ZTdjNTExODhiMTg0ZjNiOTkyYzNlMDUxNzA2ODU3NjNjZmMwMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2QzYmI0ODhiOTcxNjAyYWQ3MjA5ZjFjN2U4ZmRlMjY1OGNhYTk2ODU4MTQ0N2MxOWRhMDE4ZDZkYzYyY2JkYyJ9"
         },
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L348-L374",
-          "version": "repo-lines-v1:sha256:8bb586fc2769c561ec1c943e579dd1e51b19e78ecfd8240631fc1b33af69b19f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMmZmNGU1M2MwYmNiNGViOTUzZDNhZDQxNzM5NzY1MzA1M2I3ZDE2ODE1YWUzZGIyOGU2ZmZlNDA2M2ZiMjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmYjYxNzg1YzM4NmNlNjk2YjA5NmNkYTIyYzViZTg1M2EwYmQzNGQ5M2E3Y2NlOTNiMGMwMzEwZTc5ZWU5ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxNzQ4OGNmMjYyYzU2NGY3MTdkZDYzZTQzODZiMjgzNGY4YTI2NGNkNmE0Y2FiZjZmYmE4MDM0NWYxNzRjNzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NzEyMTEyMzQwMWZhNDQ1OGI4ZGZhN2E3NjNmMjFmOTFiMGJhZjA4ZWRkNWEyNzc0MzQyNjllYWViZmIzOTkifQ"
+          "resource": "repo://docs/ARCHITECTURE.md#L133-L142",
+          "version": "repo-lines-v1:sha256:b6ad4ac1280f97c06c63f169a9d61eaaae8517993a08a86728f659a251d17840:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMmZmNGU1M2MwYmNiNGViOTUzZDNhZDQxNzM5NzY1MzA1M2I3ZDE2ODE1YWUzZGIyOGU2ZmZlNDA2M2ZiMjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MzdhMzlhMGRkOTgxMmIxOGIxNWNjZGIxMzEyMjk5NzIzNDQ1NjRiYzBkNmU2ZWMxNmIyNTVhNTFlMzYyOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlNjk2Y2FmODkxZGViNGExMzM5MjIwMTc2OGJmOTJjYjM3ZTNkMTg3NGQ3NmNjZjA1ZTBhMTk0NjgyMTczMjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NzEyMTEyMzQwMWZhNDQ1OGI4ZGZhN2E3NjNmMjFmOTFiMGJhZjA4ZWRkNWEyNzc0MzQyNjllYWViZmIzOTkifQ"
         },
         {
-          "resource": "repo://frontend/components/ui/ListPage.tsx#L1-L60",
-          "version": "repo-lines-v1:sha256:dd1e2f43f24d936db39562666cda44b6b7fad065024c0d8eb83ab792f06d2ee6:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiNGJlMzExYTk1YTlhZmM4OGVjZDRhMmUzYjA5OTE5NjE5ZWFiYzEwZjJiYWM5MGEyMDk1YjYxOTdmNDJiNDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVjM2Y1NzZiZjI0MWYzMzg0OTdlYzMwNjBiNWQ2NmE2NWZjODZjMGNlNmVjY2Q5OThkYTczNTczZjEwMWY4ZWYifQ"
+          "resource": "repo://frontend/components/ui/ListPage.tsx#L9-L151",
+          "version": "repo-lines-v1:sha256:c294d9996002d9a50f509c6408a7c055a7f1b0a3e567cb2f0a5322e450763079:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjYTM1NzIxODA2NDY2ZjRlYzAyMDhhYjdkNmUzM2E5MzQ3ZDNlYTk0ZjE2ZTcxNWUzMzJkMWFlMjFjOGJiYzMxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5ODU0OTYzZTYzMzc1YzM3OGZjYmE2YjkwOGRiMTFhNjYwMWE0ZTIyMWM0OWMyMGFlOGEzMzc1MjJkODI0YWYyIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhZmVmZjAyMmYyMGUyMGFiOWZlYmY3YjllN2ViODgzYWNmN2EyMmEzOWQwZGQ1MGI3OGQyYjg2YmFmMzQwZTc5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4ZGQwMDkwNzk0OGFiODdjNGVjMDU5MDRhZGYyNjM5MmI1ZmUwMDg5NWMxZjI3OTViZWQ5YTE2ZDdkMDc4YzMyIn0"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-13T18:59:48.420Z"
   }
 }

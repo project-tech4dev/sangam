@@ -3,9 +3,6 @@ type: workflow
 title: Writing and Applying a Migration
 description: Step-by-step for adding a schema change in db/migrations/ - file naming, transaction and checksum rules, RLS and grants for new tables, the separate SQL-catalog decision, and applying locally and then to staging after a backup.
 tags: [migrations, database, rls, sql-catalog, workflow, staging]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-7faba850789bc67a49b79a3f
     resource: repo://backend/app/agent/tools/sql/catalog.py
@@ -31,7 +28,10 @@ sources:
     resource: repo://docs/DATA_PLATFORM.md
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:59:48.420Z
 ---
 
 # Writing and Applying a Migration
@@ -43,7 +43,7 @@ Every schema change after the baseline is a new forward-only SQL file in `db/mig
 - **Schema changes go only in `db/migrations/*.sql`.** `db/init/02_schema.sql` is the baseline for a brand-new database and is not edited for later changes ([README](../../db/migrations/README.md), [db/CLAUDE.md](../../db/CLAUDE.md)).
 - **A new table needs RLS policies and an explicit grant.** Adding it to the agent's SQL catalog is a separate security decision (see below).
 - **Never edit a file once it has been applied anywhere.** Write a new migration instead.
-- **Record the change** in `docs/CHANGELOG.md` and the data section (§7) of `docs/ARCHITECTURE.md` in the same PR (per `db/CLAUDE.md`).
+- **Record the change** in `docs/CHANGELOG.md`, then run `make wiki-update` so the generated wiki pages that cite changed sources are refreshed (per `db/CLAUDE.md`). Do not hand-edit generated `openwiki/` pages. The rules themselves live in `docs/ARCHITECTURE.md` §7 (Data) and §8 (Auth, roles and RLS); edit those only if a rule changes, not for an ordinary schema change.
 
 ## 1. Create the file
 
@@ -93,7 +93,7 @@ Consequences for ordering: a migration that adds a table does not break the runn
 - `backend/tests/test_sql_catalog.py` checks catalog contents (readability of excluded tables and withheld columns, `SELECT *` expansion, citation kinds, defect wording). If you changed `catalog.py`, update or extend it, and run it.
 - `backend/tests/test_migration_integrity.py` is an integration test against the live compose Postgres (`localhost:5433`, or `TEST_DATABASE_URL`); it is skipped when the database is unreachable. It asserts preserved row counts and seeded content (documents, `graph_ingest_log`, specific org/funder ids, funder activity, contacts). If a migration legitimately changes such data it will need adjusting; it is not a general schema test and does not verify RLS or grants.
 - Check any code that selects the changed columns (repositories, routes, seeds). Seeds that write new columns depend on the migration (`seed.taxonomy_seed` needs `0002_taxonomy.sql`), which is why local `make seed` runs `migrate` first.
-- `docs/CHANGELOG.md` and the data section of `docs/ARCHITECTURE.md`.
+- `docs/CHANGELOG.md`, then `make wiki-update`. Touch `docs/ARCHITECTURE.md` §7/§8 only when the change alters a rule rather than a fact.
 
 ## 5. Apply locally
 
@@ -133,5 +133,5 @@ After applying, run `make up` (or restart the backend) and confirm it boots; a "
 - [ ] New `org_identifiers` columns: column-level `GRANT SELECT`
 - [ ] Catalog decision made (`_TABLES` entry or `KNOWN_EXCLUDED`) and `catalog.py` consistent with the schema
 - [ ] `make migrate-status`, `make migrate` locally, backend boots
-- [ ] Tests run; `docs/CHANGELOG.md` and architecture §7 updated
+- [ ] Tests run; `docs/CHANGELOG.md` updated and `make wiki-update` run
 - [ ] Staging: backup taken, `make migrate ENV=staging`, then deploy

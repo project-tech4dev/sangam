@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:cdc8844122f9b0d69212d5d0e37ce820b801c7e689c37b486fac19e6743c643a",
+  "pageVersion": "sha256:8090b5ccaf2ac3fc427b3677b966f42bbee3740c091cc99a97820f834091c5d5",
   "claims": [
     {
       "id": "claim_9f90138250a64bc2872e449d96ec27fe",
@@ -225,8 +225,12 @@
           "version": "repo-lines-v1:sha256:413436a2e23e357e1c52d22b49bb4592ff3f3a8707063ed727e86a60f1f88e14:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWM2OTdiNmQ1ODdmNzM3ODE4MjZkZjI3NTJmMTZmZTg1MDYxMjIwMzRlODEzN2Q5OGJiMzM1ZjEzMTU0ZTE1YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDE5YjlhMTk4NDY5MGQ1MGZiMjRjMjU0NjFmNmQ1YTIyY2E2OGUxNTJkZjE5MDFlYjM5NDlhYzFjMDU1OGVhNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzQ4MWE1MmRkMGEzNWMzMTc2NTllM2I1N2Y0MjZiZDg5ODQ3M2QwNmUyYzAwYTNmNWI3MDdiMDdlMjBhMDVlMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2NiM2VjMjY0Zjk5OTc1ZmFkNDE0ZmM3M2EwMzdiNjE1NzNlZWYzOTQ2NDMzZDM5NWE0YzVjYWVjNGM0OWQ2ZSJ9"
         },
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L122-L123",
-          "version": "repo-lines-v1:sha256:dc85c63efb06c31ff683351fa49748c3a64169f95fa95418fe49bb3293c60fc8:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjRmYmIxMjU1ZGU0NTc0YmM3NDhjZDhkNjZlMjIxNWUzMWU3MGE2YmVlNjM5MDJiNGJiNDU2YTU2Yjc4ZTdhOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjA4NTQzMmVmNTM3NDYwM2RhZTMyZWVjZjA4OTFjM2I1MWMzOTRkYTk3ZjgzNGNlZWU0NDNkNjNlZGViZTM3YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmFiMzFhOTVmZTExMzVhZDM2YjE4MTA0YWM0MThkODU3OWVjZWMxYzM4NGZkYjVjNTBlNjliYzRhNjdiNWFlOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjk2NzEwOWMyMDIzNTJiMDkxZjZlNDY1OWQyNTgyNmZhNzU0OWM2MDMzZmY2NTJjNDBhOTNjY2RmMTBjYTEyZSJ9"
+          "resource": "repo://docs/ARCHITECTURE.md#L128-L129",
+          "version": "repo-lines-v1:sha256:e71976e271e2c574810ec97afaa155284fffe1f47d914571f1ca1c8b6aee8b09:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWIzNDM5YzA0OGQ2ZDliZmE1ZWMzYzhmN2IyMzA3ODU4ZjQzODc4OTlkOWU0YjhhMmVkNGViZjAxMWI5ZTI5NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTY0NmQyNDJjOTJiNWFkMWFiOGNmYjlkZDUwNzg1OTE2YjVmODJjM2U1MTA1N2RmZTE2YWNlYzZjMjdjMDEzYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWQ4OTNkOTVhNDJhMTVmN2MwMDhjZDJjNTRjNTZhMjcwOWExMzk2NTBkNGZlYmIzMmI5YTRjNGY1MTIzNWEyMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2U2OTZjYWY4OTFkZWI0YTEzMzkyMjAxNzY4YmY5MmNiMzdlM2QxODc0ZDc2Y2NmMDVlMGExOTQ2ODIxNzMyNCJ9"
+        },
+        {
+          "resource": "repo://docs/ARCHITECTURE.md#L66-L67",
+          "version": "repo-lines-v1:sha256:d520f2209ed1c0dd2eee8653e79c7bdef95dd9afc565912347fa382070448e45:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzExMDkzYmIxMTVlZDBkOGJjY2NjNzc4Y2I3MDVjMTVhNjFiNjg1MGRiY2QwYmUxYTA0NWRiMGYzOTVjNmExNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjJjMmY1NjVmYjkzNjU3NGU3OGNjMWI2ZDI5YmRhOTk1ZjU1OWNmNjU1NjgyMTgxNjE3NzU3OTQxYmY5ZGY2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmE5NjhmNDVlM2JiOWY2YWVmMmI0ZmZjNjI0OWI5MDQ0MzYwMDI0NmQxMTJiNDQwMmU4NTQ0OTlhMmNlOWQxNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjZkOTFmMDY3YTA1ZDQxZDdmOWQyMjk4N2Y5NDQ0MjMxZmVjZWFmYjc4MDk1YjVjOGFjYjliMWYyNzRmNzYyZCJ9"
         }
       ]
     },
@@ -280,8 +284,16 @@
     },
     {
       "id": "claim_d1d79aa539d44970a294881a06e9843a",
-      "statement": "Adding an Ask tool takes four edits: the never-raising, citing function in app/agent/tools/, a line in TOOLS in build.py, a mention by exact name in instructions.md (enforced by test_prompt_names_every_registered_tool), and a label in frontend/features/ask/lib/toolLabels.ts; the pinned tool set in test_harness.py must also be updated.",
+      "statement": "Adding an Ask tool takes four edits: a never-raising, citing function in app/agent/tools/, a line in TOOLS in build.py, a mention by exact name in instructions.md (enforced by test_prompt_names_every_registered_tool), and a label in frontend/features/ask/lib/toolLabels.ts, which is unenforced because humanizeTool falls back to a humanised name; the pinned tool set in test_harness.py must also be updated.",
       "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L352-L373",
+          "version": "repo-lines-v1:sha256:adadda9df38c43fc24e4826e605f8c89b5820e411dac1b24bb7add5e4a314c9c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5NjliNGJjMTdmNmE2ZTk3M2U1YTUyNDNkNTYzYzBkYjgwYjY3MGNjOTM2YmYxN2NjNzlhNWEzM2RlNTNkZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjMmMxOWQwZGZlZDEzODkxNTU5M2I2OGIwMjc3NzRkNDRkOGI3YTI5NDJjZTNiZDc5Y2VlNjFiNDhmZTM4N2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2MTU1MGZlN2E5MTY4MmI1YjM2YjYzZDcwMTQ1M2ViZmVmZGM4ZWYzNTJjYzQzZGZmNGU0NmYwNDBkMTU1ZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRlZjk1YmY4OThkZGE3MmJjZDZjMTFkZDJjYjRjOGM5YWRmYWY5OTFlZDc1OWQ1NWQ0NjRiOGNjOGUxYWI5ZGYifQ"
+        },
+        {
+          "resource": "repo://backend/app/agent/build.py#L35-L43",
+          "version": "repo-lines-v1:sha256:4638871d5aa8b2c541fdc861e367bf4464c826370dcc8d4a9ddae254dfebf62c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzU5ODA0MTU5NDA4MWM2YzI5MzI4N2VjNGMzN2Y1YTlmYTg2ZDE2OGEwZjI5NzdhZjM2MTUzMWU2Y2ZhYmI2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjk0MTZlMDlmNzhiYTMxNmMwMzI1NjgyMTNiODU1ZWU3NTZlNDE1NjVkOTE4ZjA5NTE5YzgxZmQ2MjBmNDA2MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2E2MWEyYTUxMmJjMjRlYjE4NTBiMWFmNWEyZjE0YzIxMTg2NDU1ZTU0NDhjZTFhZjcyZWM1YTFlNGU4YjdhOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzZhYjUxYjlhNTY0ZGY5OTdmOWZjOGE4OTNhY2FmODYxNGMxYWE0Y2VkODI4OGJmZjFmNzc0MTQxZjYwMzI0OSJ9"
+        },
         {
           "resource": "repo://backend/tests/test_harness.py#L106-L114",
           "version": "repo-lines-v1:sha256:1b78770e44a0c811fff19f3df6e32e17a4519267f8cb2d78bfe5ffdd39fdb2d2:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGZhYjI3OGU5OWU2NzkzYjZiOGNkZmMwNjkyYjZhYWIzNDI2ZjBhN2M1MTRkZDMwZjNiNmFmZTRhZjVmZDc2NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTZiMDQ0OTE0Njk3MjJlODM2M2E5NGU0MDQ0NTM4ZTAxM2EyYTIxN2UzNmIxZTU2OGJhNjBhY2I3YjRjOGYyZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTViMjdiNjVjMGQwNmQ1Y2MzZWMyNGJiODgyYzRlZGUwZjc2NTEyMDhlYzYzNGE1YjBhYWE2MDkyYzMyNmJjNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWFjMWU2YTE5YzYzZWI1MGI5YjVmN2U1NzQyOTliMTlmOWUxYjQ3ZjRmODE4MmExOWRkNWQ2MGUzYTk1NzA3NiJ9"
@@ -291,12 +303,8 @@
           "version": "repo-lines-v1:sha256:daaf995af7f678e45c58f485d193e7fe4614b2f8ce71d59b49afa84db256aa8e:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDYzM2FkZWM2M2EwY2I2OTE3Y2Q2Y2Y2ZDk5ZjcyNDIxYWZmNTU5ZWEyYWM5Y2I5MTliZWZmY2Q4Y2I5NmRmMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTZmZTRkYzhkYzlmMDRhYzFiOGUwZjRkODYwOWU0ZjY4YmZlM2JlMWYzZWE4ZDhmMjZmM2VmZWNmZDhkZjlhOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTE3NDI2YmQ3MmJjNjExZGE5MjdkYzZjMzdlYjk3ZGNmZDI5MDA3NTNmZDMwMmM4OGE0ZGU0YzM3ZGE4MmU3MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTRlZTQyODE1MTE0YjdhY2NjZjcwYTQyNDM4MDRmMWExNjhkYmE4ZTFkNzRmM2RmMzBjNGEzNzg5NmEyNGQ5OSJ9"
         },
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L136-L137",
-          "version": "repo-lines-v1:sha256:f97a0db14c0a7bca16f2901af07f7ea3b001e65dc6984bf3881c3460a578df86:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWNhZjQ4ZjI3Zjg5YjMyNWIyNmYyYzlmMmQzZjdkYWE1MzhlZGMxZDQ0NmQwN2RkMjI3ZjEzNGRhOTI4YjVlZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjU1ODUyZTNmMzhkNTZhNWQzYWU3MWIyYjhiNWVkNzgxYmNkZGQ2OWJhOTZhNDdhOTQyZWFiNzdmOGRhYzY3NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTQ0ZGNiNjIxMWE0MmI5ZDYzNWNlYWY0MjlmMzNiM2FkM2UxNTk0NzFkNzM1MjcxODg1YmYwN2JkOWVjNGFmMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjI3NDZlYjk2MGQ1ZjhhN2VmYThmN2VjNmNhYWU2MDQ1ZDRhZWUwNGJkNTUzNzc2NTg2NDg4YTkzMmFmZDgwOCJ9"
-        },
-        {
-          "resource": "repo://frontend/features/ask/lib/toolLabels.ts",
-          "version": "repo-file-v1:sha256:77477925618aeb093613b384b845c21eba01f767818c7e9aa2c8a9332e70aa4d"
+          "resource": "repo://frontend/features/ask/lib/toolLabels.ts#L1-L36",
+          "version": "repo-lines-v1:sha256:77477925618aeb093613b384b845c21eba01f767818c7e9aa2c8a9332e70aa4d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmYWM4YzJkNjNiM2NiNWQ2NWJhOThmNDA2NGEzYzgyNmM0ZGM3N2Q2NDg4ZDZkNGFkNWY2MjYyMjdhNDliNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -313,10 +321,28 @@
           "version": "repo-lines-v1:sha256:96b5e000a080628ab6f64318b8f5731588f3a111fde7f55cf1d07ade86c023f6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5NWYwYTQxZDc0Zjk0ZWNkMmZhYTAxNzM4YWFkNDU4ZWJiMTNjNmY1Nzg4YTJhN2IwNjYwOTYyYzk4ZjI3MzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjYzk4YTZjYjA2NTNkM2E3ZTM1MDk0Njc4MjkwNTQ1YjZhNTMwMWI3ZmFmN2VjNDc4OGU0ZjZjNjU0M2VlMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_eaa3f45c039b439ea803c18a5cf10abc",
+      "statement": "The SQL catalog allowlists 37 tables in CATALOG, while KNOWN_EXCLUDED names 22 live tables (checkpoints, users, threads, org_members, proposals, funder_matches, import bookkeeping and others) deliberately kept out, so verify_against_db stays quiet about them but reports undeclared tables.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1003-L1043",
+          "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
+        },
+        {
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1100-L1102",
+          "version": "repo-lines-v1:sha256:68072764f780f6970e96e43d69fa6156bf0171d0965fa6d959117350965ac33e:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTk5ZjZkNjg5MTY0M2MzYWQxOTAyMGFhZGI4NmE3YTc4YWE2NzBkNWRhMGFkMmExNmM4MjI0MjA4MWE3YWQzNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTcxYjRmMDM0MmYwNzdkOGNkMDdjZmQwMmVjMDA0MGJlOTFjOTFhNzU1Yzk1Mzk2ZTE1NDdjZDYzMDliYTMxNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTI4YThkOWQ4MmZmYzgyZjJlNTI3MGRlOWEwYjEyYTg1MjlkM2FlNGRkZjFkM2VmNzM5YmNlZWE5YmYwY2U5MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L941-L943",
+          "version": "repo-lines-v1:sha256:97abba7c2b04b93cef51e4d6b55d8a3ffcf88b434f8c87bd18ab7d13f288a0ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGViN2FmYTU3NWU5NzhjYjkwMGNhMDVjODk5YmJmZWExZmU0ZWQ1YzgyY2MyNGE4N2Q1ZjllZDdkMzViNWNiZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTM3N2RjNTkxNTZiYWNlYzA1ZjZkMjUyOWQ3ZmQ2ZWMxZDE2NDM2Y2Y4M2I0Yjg3NWQ1ZWNkZTViZmQ1ZTNhYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTI3YWNjYzVkZTgyMWZjZWM0YjVjYzIzMTc5M2FlZTdmYmM0OGFkZmEwMTFiNGNlOWZjNzczOGE1MzY4NzZjZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODhjODJkNDg2YWUyNTIxM2M2YjNhMWY2NzVlNWQ4N2NlOTQyMDc0OWY4OGY2NDQ1NDg2OTI3MmQ5M2Y5NDA3MiJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-13T18:59:48.420Z"
   }
 }

@@ -3,9 +3,6 @@ type: architecture
 title: Ask Sangam
 description: How the Ask agent is built. It has a fixed list of seven tools plus read-only skill readers, four on-demand skills, an ordered middleware stack and a four-layer SQL path (catalog, validator, executor, render). It also has an optional answer audit, prompt rules and citation markers.
 tags: [ask, agent, deepagents, text-to-sql, sql-catalog, middleware, skills, citations, security]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-0d76e769c086fbb2b08128cd
     resource: repo://backend/app/agent/audit.py
@@ -51,11 +48,16 @@ sources:
     resource: repo://backend/tests/test_prompt.py
   - id: openwiki-source-b9b33576e920a6ec443c1309
     resource: repo://backend/tests/test_sql_catalog.py
+  - id: openwiki-source-a2371d6362e5db4bc834ad03
+    resource: repo://CLAUDE.md
   - id: openwiki-source-e8e61d605125cac4d909755e
     resource: repo://docs/ARCHITECTURE.md
   - id: openwiki-source-2ace3232a14f5163db46085f
     resource: repo://frontend/features/ask/lib/toolLabels.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:59:48.420Z
 ---
 
 # Ask Sangam
@@ -157,7 +159,7 @@ The `db_query` result header is: `N row(s). tables: ...`, then any `adjusted:` r
 
 ### The catalog is a security control
 
-Agent SQL runs on the **owner pool**, which connects as the database owner (a superuser locally; this page claims nothing more about the deployed role than the code shows). There is no per-caller role. The catalog and validator are therefore the only guard against reading sensitive tables (conversation checkpoints, user accounts, private org data) or personal contact columns. Moving the query to the caller's role is the branch `fix/ask-sql-runs-as-caller`, and it is **not merged**. `config.py` carries a `sql_reader_role` comment, but the executor has no role-switch code. See [Auth, roles and RLS](auth-roles-rls.md) for why owner-pool tools must check access themselves, as `compare_fit` does.
+Agent SQL runs on the **owner pool**, which connects as the database owner (a superuser locally; this page claims nothing more about the deployed role than the code shows). There is no per-caller role. The catalog and validator are therefore the only guard against reading sensitive tables (conversation checkpoints, user accounts, private org data) or personal contact columns. Moving the query to the caller's role is the branch `fix/ask-sql-runs-as-caller`, and it is **not merged**. `docs/ARCHITECTURE.md` section 3 states the same rule (owner pool, catalog as the only guard, adding a table is a security decision) and section 8 says agent tools run on the owner pool and check access themselves. `config.py` carries a `sql_reader_role` comment, but the executor has no role-switch code. See [Auth, roles and RLS](auth-roles-rls.md) for why owner-pool tools must check access themselves, as `compare_fit` does.
 
 **Adding a table to the catalog is a security decision.** In practice this means the following:
 
@@ -177,12 +179,12 @@ Agent SQL runs on the **owner pool**, which connects as the database owner (a su
 
 ## Adding an Ask tool
 
-Four edits, as documented in `docs/ARCHITECTURE.md` section 3:
+Four edits, as documented in the repository-root `CLAUDE.md` (`docs/ARCHITECTURE.md` section 3 now holds only the rules behind them: the tool list is pinned by tests, and tools never raise and cite every row):
 
 1. **The function** in `app/agent/tools/`, as a `@tool`. It must never raise and must return an error string on failure. Every database row it returns must carry a citation marker, and the marker kind must be one the prompt and frontend already know.
 2. **A line in `TOOLS`** in `app/agent/build.py`.
 3. **A mention in `instructions.md`**, naming the tool by its exact Python identifier. `test_prompt_names_every_registered_tool` iterates `TOOLS` and fails otherwise. A tool described only in a SKILL.md does not count, since skills load by choice and constraints must not sit behind a decision.
-4. **A label** in `frontend/features/ask/lib/toolLabels.ts`, which the trace UI uses. I found no backend test for this one.
+4. **A label** in `frontend/features/ask/lib/toolLabels.ts`, which the trace UI uses. It is the one edit nothing enforces, and skipping it is harmless: `humanizeTool` falls back to a humanised version of the tool name, so a label only improves the wording.
 
 Because the tool set is pinned, also update the literal set in `test_ask_sangam_holds_its_seven_tools_and_the_skill_readers` (`tests/test_harness.py`). If the tool emits a new citation kind, update the expectations in `tests/test_prompt.py` and `test_sql_catalog.py`, and update the frontend `citations.ts` link union.
 

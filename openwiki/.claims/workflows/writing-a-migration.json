@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:87c58276ea0ffca44f5029f608cc6d28ac9eaf4481fa5403fe72bd9921789033",
+  "pageVersion": "sha256:8c9a475d1702304021f00e0fe0e2e1a44c30edfb57f850ecb1ab0ed6460a2664",
   "claims": [
     {
       "id": "claim_163b637ead7644f9b6ecbe76acd3baf7",
@@ -67,7 +67,7 @@
       "statement": "make db-backup, db-reset, db-clean and db-upgrade are local-only (guarded by require_local); for staging the Makefile directs users to make migrate ENV=staging and the provider's snapshots, so a staging backup is taken outside the Makefile.",
       "evidence": [
         {
-          "resource": "repo://Makefile#L257-L280",
+          "resource": "repo://Makefile#L263-L286",
           "version": "repo-lines-v1:sha256:58af4b36062b2a2e4bc0e0d4603e337ca3c7c639aad62c882d2125b5e62cae6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyODFhYmRlNGJhMzk0YmJkZWI1MjE2NTE2Y2NiMTRkODc2MmYyYjg2MzkwNzQzZWVhZWJlYzBlYjJmMzg3MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5YzUwMzZlM2I4MWVlZTRmZWI0ZDg5MmUwN2VhMWMwNmZhNmZmY2QzMTQxM2RjY2I1MTJkYjJhMjYzZDBjM2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyN2Q3OTZiY2M4YzE2MjY5YTEyMTdlMGYwY2Y0MjQwZTgxNzJjNzkyMDE1YzkzODA1ZTRjMDBkMzE3MjcyZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiZjFjYmQ3MjhmNDVjODJlM2MzNGEwMjU1MWFiNDQxNWM1MjEzODFiZWU5ZTU0MzU4YmE5ZjNkZWU4NDg4YmYifQ"
         },
         {
@@ -112,11 +112,15 @@
     },
     {
       "id": "claim_48a9ac69352d44a3a4b26a310db581a5",
-      "statement": "Schema changes go only in a new db/migrations/*.sql file (db/init/02_schema.sql is the fresh-database baseline); a new table needs RLS policies, reaching the Ask agent requires a line in backend/app/agent/tools/sql/catalog.py which is a security decision, and the migration must be recorded in docs/CHANGELOG.md and §7 in the same PR.",
+      "statement": "Schema changes go only in a new db/migrations/*.sql file (db/init/02_schema.sql is the fresh-database baseline) together with the new table's RLS policies; reaching the Ask agent requires a line in backend/app/agent/tools/sql/catalog.py, which is a security decision; and the migration is recorded in docs/CHANGELOG.md followed by make wiki-update, with the rules themselves living in docs/ARCHITECTURE.md §7 and §8.",
       "evidence": [
         {
+          "resource": "repo://Makefile#L186-L187",
+          "version": "repo-lines-v1:sha256:e1df074de2bc4985e5bc826f885c98f7e4f786675669ff958d7f4872131469e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWEyNDY1NDljNjRhNjA2OGY1NDAwNmYxOGUxYzBkODFjMTczNWE1ODg5ZGM0YjljN2M1ZjExZDZlMWU5YzI2MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDIzN2MwNDJiNmZmNmI1M2Q2ODMxNWYzNDM5MTAzMTMwMzY2YjcxMDg0ZGE0YjEwYjU0ZmNkZDYwNTU3MjU3NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmQ0ZmI5YTczZjI2NWMwOWI4ZmRmOWQ5NDExNTZmOTljYjY5OTBiNjE4OGQxZDM2YTYxYjIyNTk3NDZjODdkZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGM0NDcwMDk0YTE5NjllZDZkYzkwZmQyMjEyNTkyY2RmMjJiNzI3Y2M3YzNkYzk1MzkzYWM3MmNmOTU1NjQyOSJ9"
+        },
+        {
           "resource": "repo://db/CLAUDE.md#L1-L6",
-          "version": "repo-lines-v1:sha256:5a91672b551d7e8cf579fb3eda9c26e28ce6963d4ba3262fecd2a58eb25e752f:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzJmNGE0NmZiOTYyNzE1MmU1YWJjYWY4N2Y3ZTQxZmIxYjE0MjE4M2U0ZDdhYTdkNmVlNTNmMWY4OWQxMjQ1MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGU2NDNhY2U0OTRlM2FhZDA4YmNiN2I2YjQyZmUxZjE0NzY4N2IzYWRlYzZmOGY3OGY0M2VmOTZjODM4Y2VjMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+          "version": "repo-lines-v1:sha256:560f2d4b948fdf30a39e5ac6679f3c1c033dc1cc0bbc6f29179b1d12495113cf:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzJmNGE0NmZiOTYyNzE1MmU1YWJjYWY4N2Y3ZTQxZmIxYjE0MjE4M2U0ZDdhYTdkNmVlNTNmMWY4OWQxMjQ1MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWY1YjYzYzdhNjU1ZTkzNjk1NDE1MjRmZjA3OGU4NWEwNDA0NzRkNjMzZTEzMWVkYzA4MWJmM2NmNzQyNmQ5NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
           "resource": "repo://db/migrations/README.md#L27-L36",
@@ -187,6 +191,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-13T18:59:48.420Z"
   }
 }

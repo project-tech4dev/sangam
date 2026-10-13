@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c851920f28ac62643e3ff93d87f2e0f2283dd32e6c2bed097d820f483d77fad1",
+  "pageVersion": "sha256:b5963ddb78f8bab64b88cccba05fed0f6291f7224135efc81560a37193e6e581",
   "claims": [
     {
       "id": "claim_8d5cf8f2478345fc8f2c86fc0e3f5809",
-      "statement": "Funder Match is judged entirely in code under match-v2 (RUBRIC_VERSION) with seven weighted criteria: theme 25, geography 15, population 15, eligibility 20, relationship 10, funding size 10, capacity 5. rubric.py counts and is pure, while rules.py judges, so rule changes go in rules.py and point values or tiers go in rubric.py.",
+      "statement": "Funder Match is judged entirely in code under match-v2 (RUBRIC_VERSION) with seven weighted criteria: theme 25, geography 15, population 15, eligibility 20, relationship 10, funding size 10, capacity 5. rubric.py counts and is pure, while rules.py judges, so rule changes go in rules.py and point values or tiers go in rubric.py. matching/CLAUDE.md is a short pointer that sends facts to the wiki page, rules and decisions to docs/ARCHITECTURE.md §5, and asks for make wiki-update after a change.",
       "evidence": [
         {
           "resource": "repo://backend/app/matching/CLAUDE.md",
-          "version": "repo-file-v1:sha256:6b38bd96b9cd8eddd1fdc6aeb7df03d2d458bdcc3cf923a48934433e02d85bfb"
+          "version": "repo-file-v1:sha256:38c304929bf7d501fea778b4ea2319a7517803e04952c5dc8cd59c89c1a2ad36"
         },
         {
           "resource": "repo://backend/app/matching/rubric.py#L1-L43",
@@ -227,7 +227,7 @@
           "version": "repo-lines-v1:sha256:766dcccff702e12eaeb212aa34a9034edb14848f46be5511cd246a72c4bc4e45:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTZmNGZlYTY3MWM0ZDA1MjgwNTgxMjU3OWY3ZjVkODBlYWE4ZmZmNmIxOWIzOTMwYWEyMzAzMGVkYmQ5YTZkNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDZhMzA4YzViZDhlMzJjZWNiNDY3NzI3Yzg5NDM5M2JlNjg3Y2VlODMxOWUxY2E5ZjBkMDIxNjM0MGVkZmU4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDE3YmZiZjhkMmQ1ZjkxYzhlNTM3ZjgyNGQxZDYwNTFhMWNiNmFjYjE1ZmFiZDg1MDQxYjAwNGUwNDVhYTZjOSJ9"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L168-L172",
+          "resource": "repo://docs/CHANGELOG.md#L169-L173",
           "version": "repo-lines-v1:sha256:a9ec04ea506241353739b1d35f33e29275264c945df5b01b13ca301af7130816:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjU3OWRiNjNhMjdhYTNmYjI5ODBhNDYyMDhhZWMzYjBmMjUyZDUwYWU2MDQ3OTkzYzg4ZWFhMDZmYjQxZTM3NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODAyNjZmYzM0ZTM1MDgxMjlkZDZmY2I0YjY5NTBiMWQ0MjM2NDA3MjFjMjM2MGJlZjU2YWJiMjRiMDI1MGNiNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2Y3ZTdlY2M0ZTZiYTAxYmVlYTk2OTdiOTFhOTM4MWIxMzNhYTIwZTk1N2YyMGMzMDY1Y2FhZGU4ZTg4NDZjYiJ9"
         },
         {
@@ -261,6 +261,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-13T18:59:48.420Z"
   }
 }

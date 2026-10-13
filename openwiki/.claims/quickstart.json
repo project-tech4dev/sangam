@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0555475f65ae730ee1f26db2b6e78df3ddf4c9de5e783aad42663b66e0b964d2",
+  "pageVersion": "sha256:2738356bbaae5bf70393249a7b693170de9d8c0c01732fe624fa00606c5266f8",
   "claims": [
     {
       "id": "claim_80d2fb637e374fd1b2373e7269787859",
@@ -17,7 +17,7 @@
       "statement": "`make seed` is required after first run because the app is empty without it; it runs seed.seed and seed.taxonomy_seed, and the taxonomy seeder needs migration 0002 (tags.code), which is why seed depends on migrate locally.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L19-L42",
+          "resource": "repo://CLAUDE.md#L21-L44",
           "version": "repo-lines-v1:sha256:7b8a52702fc984c544b620cded3b96688c2c9ddf6fa9c713bf3cf72512c136af:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTEyNTRmMGVhM2ExZDYzOTc2MWZjZGE4ZWIxMGJhMjA5YzFmNmMwNDg1YmYxNTFmZDAwNDU3MThhY2JiYzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0ZDY0MWVkYjRmZDRjMDc5NjY0ZmZlYzQ4MDUwNzRmZmFmZWE3NzE0ZmFmYzE1MjNjM2YwNmFmMTIzNWUxN2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRjZGNkN2VkMjVjOGFkOWI0NzA4ODE3MzE5N2NmNjhlNzNiOGU2NWNkN2E3YzZmYzA2MTg2MjYwMWZiYjNiZGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwMjM0NTE5NjkzMDI4M2FlNzlkY2U2M2I2MmM5MTg5MTAwOTkwYmFhZDgyMGNhNDIwODc1MDY4MTUyYjhjNjQifQ"
         },
         {
@@ -63,7 +63,7 @@
       "statement": "Postgres is the system of record; the Neo4j graph is derived from it by `make graph-seed` (which needs OPENAI_API_KEY) and is rebuildable, so nothing should live only in the graph.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L178-L186",
+          "resource": "repo://CLAUDE.md#L183-L191",
           "version": "repo-lines-v1:sha256:e06c241d2d084cfd392fa8c0efbf3a66a0c9179ea6969ce7b649deed2b92c0c1:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTVmMjI2Y2Q4MWQxZGNhMzc3ZDRmNDQ4ZjMyMWIzODQzNWNmOTg1MzQyYzI5ZDZmNGEzZjIzM2VmYzNkNGU1NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmEwZjIxMDI3MGM1MzVhYjk4ZmE4MjAwMGQ0N2U5NTIwYWU0MDAxMGIwZDMzNDRmMGUzZjg4MmU4YTc3NmI1MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjRlNTlkZWYzNTc2NWI5OTJhZTM4MmY4YzI3ZDE1ODVjOGJmZmQ3ODFjODk4Y2ExNzBhNDliNzg3NTFlMzY2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDIwYzA4MDU2ZDVjMjE3MTM3Y2FjN2Y4MDZlNDUzYmExZWFkZWRjOTM0YTA2ZjE3Y2E3ZTFmM2I4YzA1MDZiYSJ9"
         },
         {
@@ -91,7 +91,7 @@
       "statement": "Agents are built lazily: lifespan opens the pool, verifies the SQL catalog and opens the checkpointer at boot, while load_agents builds both agents once under a lock on the first post to /agent or /ingest; Ask has exactly seven tools, with compare_fit the only one using fixed rather than model-written SQL.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L216-L229",
+          "resource": "repo://CLAUDE.md#L221-L234",
           "version": "repo-lines-v1:sha256:77ca4a63fc4ef7e74fda399accc3f8fbb7b5573bfb5038ea8f7f605c50e38d15:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliY2QwMTNhNjI5OTkyZWM5NWVhZTlhNjU0NTQ1NDY4ODYxOThjNDM2MWMwY2UxNzU1ZmZkMjZhZGUxNDU5MjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlMTBkZjM4NTdiNTRmMDliODQ5YTc0MDdmN2YzZWQyNTI0YmI3NTMzMWRlMWE3ZGZhNTJiOGEwZjdiNDUyZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxMzQ1NDM2ZjZiOWU3YWYwYzc3NDhkMDRhOWI0MmFiNTc0ZjBjYzdlY2I4MGVkNjEyMTViYjIyOGFlYzI0ZDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ODRjOTI1ZDg4NGI3MWJkYWI4MGM4YTg4OTAxNjc1MGMxYmRlMTAxNTJmZDAxMWIzYjU1ZWMzYTk1N2IxMWQifQ"
         },
         {
@@ -109,7 +109,7 @@
       "statement": "`make evals` makes real model calls (about 10 cents per case) and runs on the host venv backend/.venv with --run-evals; TAG=canary selects the cheap subset. Unit tests never touch a database, using a router-only app with a sentinel pool.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L71-L103",
+          "resource": "repo://CLAUDE.md#L76-L108",
           "version": "repo-lines-v1:sha256:65608a2aeb2e00722d3920e7cae8344de551d92f29ccc4db7680ae1cf79d5854:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxMjA3MTQ4Yzc0YzdjOWRjMzE0NDQwNTMzNTRkYjFlODhmYWVmNWMwN2QyYWMyZmQ1YWQ3MWFhYWJlZjFkYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5NGJlMzBlYTE4OTNkYmNhZDIwMWVhNDI3NTNmNzk4NjM3NWMxYzM5Yjg3MmE5ZmMyZGRhOTIyZTI1NDU2NGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAzNmUxM2M4MTRhNWNhNmQ1MzdhNDE2OWM0N2FmNTQ2NmE2MWJmYTQ0OTAyOTA1NDRlNjY4MTI5MTMzNTZhYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmOTRkMzdhMzg1MDMzODg1OTZiNTM4YjgxNDAwMjcwMzA3Njg3ZjgxZjc5MDk5YjFlYmIxZjlhZTAxM2QxYmMifQ"
         },
         {
@@ -123,7 +123,7 @@
       "statement": "`make smoke` runs scripts/smoke.sh against backend, frontend and chat wire; SMOKE_SKIP_LLM=1 skips the real agent call, and the `documents: 96+` check is expected to fail on a fresh clone since seed does not create those documents.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L38-L42",
+          "resource": "repo://CLAUDE.md#L40-L44",
           "version": "repo-lines-v1:sha256:8f1fc3b47b03451a7633299c06661c7436ccf2d0ca367bce902cc0b914c1ad47:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTJiYjRmZWJmMjQxN2IxZTk2OTYzNmQzMWQ4ZmM4ZGVmZTMyYjk1NmFiNGVlZmNjM2UxMDljODQwZmZiNDMxMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzRkNjQxZWRiNGZkNGMwNzk2NjRmZmVjNDgwNTA3NGZmYWZlYTc3MTRmYWZjMTUyM2MzZjA2YWYxMjM1ZTE3ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDRjYzAwODFjM2U4YWMyMTQ2MzcyOTY0OTI4YzRhMDBkZDlkZjI3M2U2YTBlZmJiMWZmYTFhYzU5NjMyOWJmOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTAyMzQ1MTk2OTMwMjgzYWU3OWRjZTYzYjYyYzkxODkxMDA5OTBiYWFkODIwY2E0MjA4NzUwNjgxNTJiOGM2NCJ9"
         },
         {
@@ -137,7 +137,7 @@
       "statement": "The ENV variable (local default, staging) selects the database for DB-touching make targets and is honoured by up, down, logs, seed, migrate, psql, client-docs and remote targets but not by the local-only db-clean/db-reset/db-backup/db-upgrade group; STAGING_DB_* are local-tooling variables, as the backend reads DATABASE_URL.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L112-L132",
+          "resource": "repo://CLAUDE.md#L117-L137",
           "version": "repo-lines-v1:sha256:6e5e16fe7189be98109c9902d02eb0e1f6f45c52e5b84f0e3ebc4f14ee8cb3c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0N2Q5NGU0NzNkYzQ4MWJiMTVlZWQ0MTU3NjA3NDVlZDQ0MmQwYzA3MjI2YzU3M2FhNmRlODdmZmMzZjdjMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhZjY1MzZmNzBmNjcyZDFkNGU0YTdkMmI2ODMyZTY0NWE5NjU1NTAzYjAwZWIwMThiZjRiZjI2YzdmZGY4NGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1M2NiNDY1YTZhNzg0M2FhNzA1ZjBmMTMxNDFlODAwNGYzYmM5NDFiMjM5YjcyN2E4NTE1MTYzZTdlOTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3YTc1Nzk5NzNmYjA2ZGRhM2Y3MGMyMjM4YzQyMWExZTAwZGYxNjIxMGRlMzI2N2RiYWE4MmQ0YWU2ZjYyZGEifQ"
         },
         {
@@ -172,21 +172,21 @@
     },
     {
       "id": "claim_b1662939628543f1a0f188c0f78188b2",
-      "statement": "CLAUDE.md remains the source of repo invariants and commands; AGENTS.md is a pointer that sends agents to CLAUDE.md first (then docs/ARCHITECTURE.md and docs/CHANGELOG.md) and to openwiki/quickstart.md when OpenWiki retrieval tools are unavailable, treating source code and tests as authoritative.",
+      "statement": "CLAUDE.md remains the source of repo invariants and commands; AGENTS.md is a pointer that sends agents to CLAUDE.md first and names docs/ARCHITECTURE.md (rules and decisions), openwiki/ (generated facts) and docs/CHANGELOG.md (what shipped). The OpenWiki wiki is optional just-in-time context: agents use openwiki_search/openwiki_read only when needed and fall back to openwiki/quickstart.md only when retrieval tools are unavailable, with source code and tests authoritative.",
       "evidence": [
         {
           "resource": "repo://AGENTS.md#L1-L18",
-          "version": "repo-lines-v1:sha256:d98927d8ca7f4ad69bb97a6f68ea9b3219d02616fa8e4fdd9de6bb605cada161:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjN2Y0NDA4YTJmOTM4NjU1OGZmNGJiYjNlNDM4NTZiNTE2Y2I4NzNjOWRmNGM0MGVlY2Q5YzhlOGY3YzRlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNTM5NTNiZmI3MmMxMjYyYmJhZTJlYWNhNzJjYWJmMWFmNDk5MjdhMGJiYTExNTdiMmQ1YmRiMjg1YzRiZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwODlkZjkzZjhiYTU3YTRkZGJmZDhmMDEzOTYyYzM5NzhjZTRkYjY4MTk5YzRkYTY2NjY0OWIwOTk2Y2VkYTkifQ"
+          "version": "repo-lines-v1:sha256:16ee1016fcdc0d53470147fe4aa999690649d22232a5d709dd8a28cd2ba96077:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjN2Y0NDA4YTJmOTM4NjU1OGZmNGJiYjNlNDM4NTZiNTE2Y2I4NzNjOWRmNGM0MGVlY2Q5YzhlOGY3YzRlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNTM5NTNiZmI3MmMxMjYyYmJhZTJlYWNhNzJjYWJmMWFmNDk5MjdhMGJiYTExNTdiMmQ1YmRiMjg1YzRiZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwODlkZjkzZjhiYTU3YTRkZGJmZDhmMDEzOTYyYzM5NzhjZTRkYjY4MTk5YzRkYTY2NjY0OWIwOTk2Y2VkYTkifQ"
         },
         {
-          "resource": "repo://CLAUDE.md#L1-L15",
-          "version": "repo-lines-v1:sha256:39e46ef8f6ddc049a56c5c89b847357f3c28d843a4b152da014fe34ec4436b55:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MTIyYmYyYmM2MmQ0OWZlYzRlYTBmMzU1YmIwMDBjYWJlZjJlMzk2ODc3OGI1MGMwNWVjMjNjOTc4YTY5NWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1NDdjMmNiMmZlZDI1M2ViNTBmNGJjODE1MGUxOWRkOTkwZjQyMTZiOGIwODA3MDA1OGI5MmFjYTRjMDA5MDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjZGNkN2VkMjVjOGFkOWI0NzA4ODE3MzE5N2NmNjhlNzNiOGU2NWNkN2E3YzZmYzA2MTg2MjYwMWZiYjNiZGEifQ"
+          "resource": "repo://CLAUDE.md#L1-L17",
+          "version": "repo-lines-v1:sha256:d31bdf40ef41f1e377db7c258162aded59360680389bf48b8a1741de04c26b1d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MTIyYmYyYmM2MmQ0OWZlYzRlYTBmMzU1YmIwMDBjYWJlZjJlMzk2ODc3OGI1MGMwNWVjMjNjOTc4YTY5NWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzYzY2ZmYxZTNmN2Q1ZDg3ZjQwZWIzYTkzNmFhYTA4MWUyZTUzN2UwZTA2MTBjYjBlNTk0MzY4NDUzODRkZjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjZGNkN2VkMjVjOGFkOWI0NzA4ODE3MzE5N2NmNjhlNzNiOGU2NWNkN2E3YzZmYzA2MTg2MjYwMWZiYjNiZGEifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:54:39.311Z"
+    "at": "2026-10-13T18:59:48.420Z"
   }
 }

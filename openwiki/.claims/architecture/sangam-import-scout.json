@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:210ab6538effa165bb6b2dd44dfb9a1204906198ff38372c70b371cb14047b85",
+  "pageVersion": "sha256:05a8de94e7be58d2c0f3672a29df6ffde653db8aa18a6d508cff2e94f0d6ae37",
   "claims": [
     {
       "id": "claim_4cb3c62ff0f34116ae33de01c60bd2ef",
@@ -422,25 +422,25 @@
     },
     {
       "id": "claim_a7166dcf9ff54b90bff4f386b8ed986e",
-      "statement": "Per the CHANGELOG 'Not finished' table, the researcher-contract plan shipped M1-M4 with the M5 staging backfill outstanding, the programme-themes step 5 (PR #172) is unmerged, Import and Ask SQL still run on the owner pool pending an unmerged branch, and the import-guided review follow-ups remain open; docs/INGEST.md is out of date and docs/ARCHITECTURE.md section 4 wins.",
+      "statement": "Per the CHANGELOG 'Not finished' table, the researcher-contract plan shipped M1-M4 with the M5 staging backfill outstanding, the programme-themes step 5 (PR #172) is unmerged, Import and Ask SQL still run on the owner pool pending an unmerged branch, and the import-guided review follow-ups remain open. docs/INGEST.md's header lists it as out of date since #192-#197; per backend/app/ingest/CLAUDE.md, source and the wiki win over it, with rules in docs/ARCHITECTURE.md section 4.",
       "evidence": [
         {
           "resource": "repo://backend/app/ingest/CLAUDE.md#L1-L4",
-          "version": "repo-lines-v1:sha256:7046a35e2ba5b9341c5adc41c95e123143dbd21f46d4da16321f8546866b2616:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWUyZDNlOTQwOTc2NzRlNDNmMWY0NjFiNmU3ODVmYmNjZDQ0OTNkNjI2ZmU4OGJjZWQ1MzBiZTA4NjRmNDkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWVkMzJjODMzNmU0NWYxY2UyMDIzZDczYmFmMmY3ZjhjZTVkZWUzM2NhNmE4MGM1YWQyNDMyOGQzYjY3ZmIxYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+          "version": "repo-lines-v1:sha256:66ab1d7d590a26a0b13d05db51e64400c84ff230ef20b20d7f06cedf83206c00:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWUyZDNlOTQwOTc2NzRlNDNmMWY0NjFiNmU3ODVmYmNjZDQ0OTNkNjI2ZmU4OGJjZWQ1MzBiZTA4NjRmNDkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRmMjBmNTk3YTMxMTIzMThiM2M5MWY1NTkyNWMzMGRkZjQ3NTBlZDYwZGVkNjY4ZDFmYWUxZGFmNzYyYmY4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L162-L175",
-          "version": "repo-lines-v1:sha256:d659bd2cf1638e34b7e5041893a34a62d90695fb8d81d2c85e948f54ed1553fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYTY0MDEyMGUyNzRkZWIwZTM2MDM3ODkzYjMzMjAzNzZkMThmNWJmMjM1NTE2ODc2MTAwN2VjMzNjZjQ1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzZjA3OGRiYjkxY2Q2MjZhZjdiMWFkYzkzNjcxNjQyZTZmMGZlYTBlY2Y5MmI3OTY0YWY0NDZlZWFmNWY1NWUifQ"
+          "resource": "repo://docs/CHANGELOG.md#L163-L175",
+          "version": "repo-lines-v1:sha256:0569515162eda7e75b61a0515f797ec4db84c4b8634769fdf7f0cc473d931501:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0OTBhMDcxMGU0MjExNDJiNzFmMzlkYzcwOGFkZDA0YWEzNThkNTdhNjFiMmQzZmE4ODkyNzhjMGU4YTkyNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjNWExYWU4MDYxODU3OGJjNWVlZTU5NmQwYzdhNWNhMDI3OGM1NjBmNmNhMTE5NGI2ZTlkNjAzZWY4ZTc5NzIifQ"
         },
         {
           "resource": "repo://docs/INGEST.md#L9-L27",
-          "version": "repo-lines-v1:sha256:5c65464ab13f1d50185dc7f4195e13eac4ecffb9e6c5e7d066e376c2bd59a695:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxMzAxNjc2ZmJkZTZmYWNjNDg5ZTQzMTk3Y2ViNzI1MzY1ZmUwOTNiNTFiMTU0ZmM3OTUzZTM4MmQ4ZmE1NzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNWUyMWNiODE2ZDYyNjg0NmI5ZTc5MjIzMDY2YjU1NDE4ZGU3NDE2M2Y1NjI2NDZlMjU1YTE5MDVhOWJjMGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI0YjgwOGQ2YzI3MGIxOGMxZGM3MTYxNTE0ZDQ2OGViYTA1ZjQ4ZDkxMGFkZjI4NzZiYjBhZWE4NTk2ZTA2NmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjZjM2NmQ5NThhNjA5OTI5YjcwZjE0MGY3MDJiZDZlODE2OTNjNjhmMWZmZjAxOTc1ZjdmMWI0NjBiMWM5Y2QifQ"
+          "version": "repo-lines-v1:sha256:73f72aa75d880209aa96c725ce73ab1f5391ef83f0362246dda843dea911a80b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNDA3MmU3MTNlNTU4YmU3ZDRiYzI0MjY5MGRmZjRkOGI2OGI5M2M1OWM2MGMwZGYxYjM3YTA3NzVkZjU2YmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNWUyMWNiODE2ZDYyNjg0NmI5ZTc5MjIzMDY2YjU1NDE4ZGU3NDE2M2Y1NjI2NDZlMjU1YTE5MDVhOWJjMGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI0YjgwOGQ2YzI3MGIxOGMxZGM3MTYxNTE0ZDQ2OGViYTA1ZjQ4ZDkxMGFkZjI4NzZiYjBhZWE4NTk2ZTA2NmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjZjM2NmQ5NThhNjA5OTI5YjcwZjE0MGY3MDJiZDZlODE2OTNjNjhmMWZmZjAxOTc1ZjdmMWI0NjBiMWM5Y2QifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-13T18:59:48.420Z"
   }
 }

@@ -3,9 +3,6 @@ type: architecture overview
 title: Platform
 description: How the Sangam FastAPI backend is assembled and run. Covers the app factory and routers, Settings and the model tiers, the lifespan with lazy agent loading, Langfuse tracing, the Vercel deploy topology, the performance work behind it, and known regressions.
 tags: [platform, fastapi, settings, model-tiers, lifespan, langfuse, tracing, vercel, performance]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
     resource: repo://backend/app/agent/build.py
@@ -54,6 +51,9 @@ sources:
   - id: openwiki-source-a0ebc66d448ae6aa5723800b
     resource: repo://frontend/vercel.json
 generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:59:48.420Z
 ---
 
 # Platform

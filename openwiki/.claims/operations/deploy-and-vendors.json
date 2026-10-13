@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7b86503e92369e8e974d0f3a52f3afef0db94f0c8ed420a93a9204ecc7694e5c",
+  "pageVersion": "sha256:e33f43d2283963b10fb3bb92634a8356721a144698bb31287bf86e424820a659",
   "claims": [
     {
       "id": "claim_cbf4cc986efa451fb08f51996cdbb613",
@@ -35,8 +35,8 @@
           "version": "repo-lines-v1:sha256:7d8b3377d41ee80b7843c9ce9e847f53e44616c374f9e7e7290a583de41cb573:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Q4YjMzNzdkNDFlZTgwYjc4NDNjOWNlOWU4NDdmNTNlNDQ2MTZjMzc0ZjllN2U3MjkwYTU4M2RlNDFjYjU3MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Q4YjMzNzdkNDFlZTgwYjc4NDNjOWNlOWU4NDdmNTNlNDQ2MTZjMzc0ZjllN2U3MjkwYTU4M2RlNDFjYjU3MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmY5ZDU2YjdhNTg3ZTg0MjQ2NmFkMzM4NGYzNGI5MzQwNjQwMDk1ZmM1ZGM0MzI5ZDgzNGQ5ZjU4YmU1ZjQ3ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmE2ZGY5ZjM4MjczYWZmMjAxNTg1NjQ4MmZhZjI2MmRhZTgzYjQ1MDE1OTZmZGE0M2ZmMmYyZWU1MDVkNjY4NSJ9"
         },
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L405-L406",
-          "version": "repo-lines-v1:sha256:e89a42ac62738bcaa83c9ccb240b770a2f72a713e1d4f0418acda780dce4112e:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTdhMTVkYzE3YTViMGQxZWQ2ZWJlYzVmMGNmNzBiMmY5M2FjZWExODI0YTI4NDk4NmY0Nzc0ZTExMWExZWEyNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTYwMmVhZDI4N2U3NWJjMmIzMzk2NzllZmE3MDg4ZTk0MzMyNjc5YjQ3OTAwYzRkMzU0YTRkMmZjYzMzMDdmMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2Y5ZWNmOGIwZDllZDM5ZjhmNDg2ZWIyYjRiMmVlOWEwZDYzMGUxYjUyNTMzZjZhMzBkNjYzZTY5NWQzNzMzNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmUwZjEyZjQ0Y2FjYzlkMzQzY2EzMWZhOTk2YzE5MWVjYWRhZTBiNDA3MzA4ZjRmZTJmNDE3YjYxNTQxODg0NCJ9"
+          "resource": "repo://docs/ARCHITECTURE.md#L161-L161",
+          "version": "repo-lines-v1:sha256:c0bf7e30db76c33670beea24e44d23363f980168017b20c4ec6da52bb8d67d16:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBiZjdlMzBkYjc2YzMzNjcwYmVlYTI0ZTQ0ZDIzMzYzZjk4MDE2ODAxN2IyMGM0ZWM2ZGE1MmJiOGQ2N2QxNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBiZjdlMzBkYjc2YzMzNjcwYmVlYTI0ZTQ0ZDIzMzYzZjk4MDE2ODAxN2IyMGM0ZWM2ZGE1MmJiOGQ2N2QxNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDllNzdhOGQ2NTVhNGVjNzNkNjg2NDdhNjcyMDE4YWYzN2RjNTQwZGI4OGEwYWUzYjlkNzFhZmYwNDk3M2VmNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjU2M2JhNzkyNzMxNjQ2NjE1MjZhNGNjZjU1ZTk0YzA1OTI4NjZkYjU0NTdlY2UyM2VhNmI5ZDQ0MWVmNGIwYyJ9"
         },
         {
           "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L26-L26",
@@ -67,7 +67,7 @@
       "statement": "The deployed backend must connect to Supabase Postgres through the session pooler on port 5432: the direct host `db.<ref>.supabase.co` is IPv6-only and hangs from containers, and the transaction pooler (6543) breaks pg_restore. The backend pool also disables prepared statements (`prepare_threshold=0`).",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L540-L545",
+          "resource": "repo://CLAUDE.md#L545-L550",
           "version": "repo-lines-v1:sha256:e6fe376dbe657f6930b64e45283e59a751d9edfda64a214f7c71672eae4d4644:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzE4YWJmY2NhYjZhZmEzODFmMGM5NmQ0OTBkNGEwMGJhMDRmYTMxMjE5YjBhZmY0MGE3NmQ0NWJmYjFhYWRmYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQ5Mjg0Mzk5ZTFjZTM3NGZmODllYzM5NTcwZDExNDUwZTUxMjFiYjVkNjQ5MGQxYmVlMzE2MzFhNjRhZjZiMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTE3NzgxYjk0YTE0ZDVhODY3YjhlZTIyMWQ5OTljNzdhZGMyMmQwYWY0ZGMyMDNmM2NkODI3MWQzNmIyMzBiYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjc4MmNlMjg4ZmNlNmZjZjg0YjY2OTIzODkxOWZhNGJmZmEyYzI3ZjIzZmRjMDdmYWI3OWE3ZTg1YTRlY2UyMCJ9"
         },
         {
@@ -237,10 +237,32 @@
           "version": "repo-lines-v1:sha256:31cbd4b8055b4b3e404f0aab37697bd682744eedbfe66b689175819e46af95c4:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmNjY5N2I2NWMwOGI3YmIxZTQzZjA2MjIwMDg4MjVlMmIyMDE0NGZmYTg4YmFiODE4OWMxNWY2NWQ0NDEzZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MzhmZWE3ZTM0MjZmNGQ3NmI2M2IwOTRlNDEwNGU5N2E2MGRiM2Y4ODUyMTBhOTQyNzY1NTgwMGNiZDg3ZWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_cc138f6315824436a3d8b3e300f326f9",
+      "statement": "The Deploy workflow is workflow_dispatch-only and serialises runs per ref with a concurrency group and cancel-in-progress false, so a production deploy in flight is queued behind rather than cancelled; nothing deploys automatically because Git deployment is disabled in both vercel.json files.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/deploy.yml#L1-L13",
+          "version": "repo-lines-v1:sha256:865c6731e04469745fbd45ce0351016de9dc7975f81c36c8f55f4c9d22794979:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5ZTBkZDQxZDkzNzYwMWZiYjNiMGViMmM2NDFjNzZmYzFkZjU4ZTEyMjM0MTY1ZmQzNzI0NDYyNjljMTRmMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4OGNkYWQwZWZiNTIxMTJhODg3ODc0ZGE4NTZjZjgwZjBiMGUzNzk0ZjZmNzhjODhiNDg4MWFlYTQ4ZGU1YjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3NmM4NzEyMThlMjExMGNjMzk3YmJkNDY5YmFmYjM5MDBhN2VjM2RmZjc1MTFiMjQxNTg2MGY4MzM0NmU1NTEifQ"
+        },
+        {
+          "resource": "repo://backend/vercel.json#L3-L3",
+          "version": "repo-lines-v1:sha256:d5fc7bc7332dc9bd916c67e1a39e404aa298a4e1859e7e9145595f3bf49dec94:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTkzZDBiZGIzNzgwMDdhMGI5YzNiNjIyNmNhN2Y3MTRjN2JmZGQwMjNiYjA4NDBiMzExOGMyNDA3NjViZDFjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWEwNTM1ZjM1NTljMWYyNDM1NmI0NjJiYWE4MzQ1MDU4MDUzNzc5ZDVlYzc3NWE2ODRiNzMxYmE1NzNhZTNlMCJ9"
+        },
+        {
+          "resource": "repo://docs/ARCHITECTURE.md#L159-L159",
+          "version": "repo-lines-v1:sha256:6356231698b572f2414f1c82a59bfd294960fe92484353b6cbd852129f5703e0:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM1NjIzMTY5OGI1NzJmMjQxNGYxYzgyYTU5YmZkMjk0OTYwZmU5MjQ4NDM1M2I2Y2JkODUyMTI5ZjU3MDNlMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM1NjIzMTY5OGI1NzJmMjQxNGYxYzgyYTU5YmZkMjk0OTYwZmU5MjQ4NDM1M2I2Y2JkODUyMTI5ZjU3MDNlMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTBmYjQ2NjJjY2Q5MTVkMjQyODQ3MjI5NmJkZGM1YTdiN2Q2ZmE4ZWFlODQxMmFmZGRiNTE0MmMxNDJhMTI1OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODA4MGFiYjZiZTRlZDllYjYxMjhiZDlmZjRhYWU4YjQ4Nzk1ODRlMDAzYTBhNjRkOTM0Yzg2ZGQyYmZmYTA4YSJ9"
+        },
+        {
+          "resource": "repo://frontend/vercel.json#L3-L3",
+          "version": "repo-lines-v1:sha256:d5fc7bc7332dc9bd916c67e1a39e404aa298a4e1859e7e9145595f3bf49dec94:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTkzZDBiZGIzNzgwMDdhMGI5YzNiNjIyNmNhN2Y3MTRjN2JmZGQwMjNiYjA4NDBiMzExOGMyNDA3NjViZDFjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmQyYjUwZTAzODcyZThkZWFhOGEyNzY3NjY2MWFmNjhmZDg5Y2MzOTRkMjg2ZmE3ZWJkMzBmOWZiMjFjMDkxYiJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-13T18:59:48.420Z"
   }
 }

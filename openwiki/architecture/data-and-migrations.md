@@ -5,7 +5,7 @@ description: How Sangam's Postgres schema is organised by table group, why a bas
 tags: [database, postgres, migrations, provenance, storage, neo4j, schema]
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
+    at: 2026-10-13T18:59:48.420Z
 sources:
   - id: openwiki-source-7faba850789bc67a49b79a3f
     resource: repo://backend/app/agent/tools/sql/catalog.py
