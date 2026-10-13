@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:00d47bc6e5c5e1645b5eb74bc2430b1809a7fd43d0062fd3f6618bad3009bb81",
+  "claims": [
+    {
+      "id": "claim_272447998d234309a6054aa500636495",
+      "statement": "ENV is a Make variable defaulting to local; ENV=staging layers docker-compose.staging.yml over docker-compose.yml, any other value is a make error, and ENV only changes which Postgres the local Docker tooling and containers use (it deploys nothing).",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L25-L40",
+          "version": "repo-lines-v1:sha256:bef108313170c9d812dae5ebb9a2d83b2364379f8a059768711f2d54c70c7779:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZjcwYzRiMDAyMDUxODE5YzlmZTIyMjlhOGE3NTBhMGY3ZjUyOWU1OGEzNTU1OWU5NWFmYWFmNThmNDQ3ZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyZGE5YTVmOTk3NGZlOTRlYzc4NWQ3NTFlZjBjMmRkNDY0NGM2ZmExYjNhZjYyNDYwZDc2NDAxZjgxZWY3M2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwODMxZmM3YWE3ZjRiOWRlNmVmZTU4OTk0NTE1Mzk3MDNmY2E3ODI2NmU0ZTk3OWFlYjAzY2FlYjJmN2M5MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk4YzIzOWNiOGRjZTUxOWQwMzY3MjJlNjA4YTc2OTc0YmE4YmQ1ZTVkZTk5NTc1MjdhZDhhOThkZDJmMjIzOGUifQ"
+        },
+        {
+          "resource": "repo://docker-compose.staging.yml#L1-L26",
+          "version": "repo-lines-v1:sha256:d12488efc13fb4397552cf4810debf319faedc85d066a407d5c9318dea6d6caf:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2NjJlOTQyMTY2YmNjY2VkYmI4NzViZjE2ZDA5ZDJiYmRiNTY3OTZjZGQzNTE1NTc5NzFlMDA3ODEwMzRhZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMzRhYmY2OTBhNTEzYzgzODgwMjU5MzI5NTg2YzIzMjJmYTZhNmI1ZjRmNzhiNTk4NDFlNzA4N2IzMjI1YjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_207a62d2b1b446acaa7c86af136fe802",
+      "statement": "The staging overlay redefines only the backend DATABASE_URL from STAGING_DATABASE_URL or the STAGING_DB_* parts, using :? guards on host, user and password so an empty staging block fails fast instead of connecting to localhost; scripts/db-url.sh resolves the effective URL via 'compose config' so compose is the single source of truth for the connection string.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L42-L46",
+          "version": "repo-lines-v1:sha256:598f1ee12bb168fcf32161f52fedc3cace61ce731fc2a11d0e48328571348803:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzM3MGViOGQ2ZGI2OWZiOTQxYzFiMzIzMWIxMjI1MGJhZTNlMTY3NWQ4NjRkZTE0NjE0NGEyM2M1ZWM0NzFkYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDcxMmUwNTkyMTI3M2U4ZWRiMGFjYTcyMDk3MmE0N2NlOTliZTgxM2NjMGQ5MDgwMzY4ZDlmMmZkNTljZmQwMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTUzN2M3ZTkyMDRhNjA3YWMwZDkzNTExMTUwZjcxNzdiMTNmYjhhYmI1YTQzNzU1YWI5Nzg0ZDRlZmFkZTY2OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzk2YmE2NmJiZDUxYzRhODE3ZGNkODQxMGEyZTY1YTAyZGZjOWMwYTM0Y2JkMTA1Y2MxNGJkM2Q0MGRmMzg5YyJ9"
+        },
+        {
+          "resource": "repo://docker-compose.staging.yml#L20-L26",
+          "version": "repo-lines-v1:sha256:6e28aad1aeb650419a9a6da6a13cd8f0b62603fe44b2a6d1d57a037381896806:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzRiMjI0ZGRkOGI3NmQxMDA1ZDk0NGI1NjExZGY1YzliOTI2MWZlZTAxODU0ZTcxYWVjZDA1NjRmMWFlNWQ4YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQzNGFiZjY5MGE1MTNjODM4ODAyNTkzMjk1ODZjMjMyMmZhNmE2YjVmNGY3OGI1OTg0MWU3MDg3YjMyMjViNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzYyMmYyNWMxZjRjODc2ZTU5NmY5ZmE3NzI4MzNlMzIxY2E5OTg3NzQ3ZjEwOGYwOThiYjkyMWVmZGI1NWVhZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://scripts/db-url.sh#L1-L42",
+          "version": "repo-lines-v1:sha256:e30dd0e66a0fb978b91cecb8093f34388d2cce7e2dc66235dd962eb7e984b3ac:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkOTVmYzA0YTgwYzk1MmY0OWNlNDE4ODYyN2M1M2IwZmJlOGM0NDA0MWI5NTJkNTkyYWNkMWRlOTk4NjE0NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0MTU1NzYzZjYxMDFlYjFhYjkwODEzODA2NDE2NTQ0ZGMxYWM2NTVkNzQwNWIzOThhZWMwMjdmNDcwOGRiNjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_38f7d678da6547fb93eb2e64d11b8838",
+      "statement": "The local backend DATABASE_URL is built in keyword/value form from LOCAL_DB_* parts (overridable by LOCAL_DATABASE_URL, with POSTGRES_PASSWORD as legacy fallback), so passwords need no percent-encoding; the bundled Postgres only starts under the localdb compose profile and the backend's dependency on it is required:false so a managed DB can replace it.",
+      "evidence": [
+        {
+          "resource": "repo://.env.example#L15-L30",
+          "version": "repo-lines-v1:sha256:5a9b76940547e48141cffa907ff994d3b1d5bb50e24f81dd196a4a227b27dd58:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2OTNiZjc3MGM0MDFhNWMzYmU3MzRlMWUxOTg4Mjg4MmIzMjRhNjlhNGQxMzdmMTljYTljMjliNTZiODRkN2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc1MGRjY2VkNTVhYTE5YTQ1Y2U0M2I5Mjk4NjlkMTEyZWZmYWZiN2NjYjhjYzNkOTFhNjM1Yzc3ZTE1ZWI1ZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4ODdiOTU3NDkzMmE4Y2ZmYTgzMjA5YzM0YTFjMTIwYjBhY2FjMWI0ZDEyNzlhMjVlMGMxOWZlNjNhYzY5MDUifQ"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L1-L22",
+          "version": "repo-lines-v1:sha256:9f4f4a68c5503f73a1a5efc9c900c8b0a36ef15f6f9b0f5a9271c4b4c9a2b527:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhNzNmY2NkYzk5ZWE4MzU5NjdjN2RlZTdlZmJlZDFmM2NhODcyNjBkOTI5MzE4NTBmZGQ2NmRhOGNiMTJmMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0ZWU4NDMzYzMxOGY2Mzc3NzM0ZWExNjMwM2NiNTViMWMxMjg1YTkzZDNiYmM1MzJkY2Q5Y2I3ZThkZmE0MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFhMGZhODNiNGI1M2U5ODEyMGUyMGNlZDYzZjFhYzExOTZmYmIyNzlkZmNlNWY5NDA5NzNiMjQ3MzAzOGQzYTAifQ"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L43-L107",
+          "version": "repo-lines-v1:sha256:d99496c2d14afbac78384838ca2a2325c3b8775408b19023aa08c2317ebfe1ef:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2YzgyZWI0NzlhN2VlMWRjMmU4Y2QxMjZjZjA4NTg5ODc2ZjM4ZGFkYWI1NjVhYzMwZjQ0YmQ3OGY2YzMyYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyZTYxNmRkNDBkZGIyNjg1NjM5OGY2Yzk1NThiODIyNjJkMjhjMzk0YzkwNTQwMGU2OWQ5OTMxODYzOGVlZTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwZjE1NDAxMjY3YjQ1M2QzZjZhZGQzYjJhYWRjMGVmMjA2ZTJiYTc1YzcwODI1ODA5ZWMyNTFlNDBmMGFkZjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5MzhmMTMyMGM4NDljMzU2MmM4Yjg5MTBiZjI5NzU3M2I1YzYzNGJlMjdiODg4Y2I2NzFmMzg5NTUyNDBhZGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_be4c7066b01a4b959f4435b2d5ba6623",
+      "statement": "STAGING_DB_* variables are local-tooling-only; the backend reads DATABASE_URL (Settings.database_url), so setting STAGING_DB_* on a deployed host has no effect.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L112-L132",
+          "version": "repo-lines-v1:sha256:6e5e16fe7189be98109c9902d02eb0e1f6f45c52e5b84f0e3ebc4f14ee8cb3c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0N2Q5NGU0NzNkYzQ4MWJiMTVlZWQ0MTU3NjA3NDVlZDQ0MmQwYzA3MjI2YzU3M2FhNmRlODdmZmMzZjdjMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhZjY1MzZmNzBmNjcyZDFkNGU0YTdkMmI2ODMyZTY0NWE5NjU1NTAzYjAwZWIwMThiZjRiZjI2YzdmZGY4NGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1M2NiNDY1YTZhNzg0M2FhNzA1ZjBmMTMxNDFlODAwNGYzYmM5NDFiMjM5YjcyN2E4NTE1MTYzZTdlOTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3YTc1Nzk5NzNmYjA2ZGRhM2Y3MGMyMjM4YzQyMWExZTAwZGYxNjIxMGRlMzI2N2RiYWE4MmQ0YWU2ZjYyZGEifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/config.py#L47-L48",
+          "version": "repo-lines-v1:sha256:2504167abf289d2f7f41a4738008a1c927f0c13365e790951e41347c324fdc4d:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I5MTJmOGM1MjcxYTE2Mzg3NDFkNjkyNDg3NDY0ODdmMzViMGNmYjk1ZTdiMDZiMmQ2ZTNlZWYxMDAzN2MzYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOThiZDRmODZlYWVkMzI1Nzg0NjNiOWZjMzdhOTQ5YWY2YzY2ODU5OWYwMjZkODk5MjUwOWQ5NmYxN2UwODhhYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzA4NWJhN2MwNjNmYjRiZDgwY2RiZWU5YzJjN2U2ZTMzMTY2NmQ0ZDgwYmY3MjMwZjA0OGVhNmY0NWRlZDc2OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzU0OWI5MzkxN2M1NGU1ZjhhYjhkM2FiYmNlMGRiZGJlYzQxYmZlM2RmNzJjN2M3YWQwMGRlY2NiOWU3NWY4YSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2d2891aad9d440999757098d14258b87",
+      "statement": "make up and make seed are pinned to ENV=local for migrations: make up migrates only when ENV=local and the compose file has a postgres service (localdb profile), and seed depends on migrate only under ENV=local; against a managed database migrations are a separate deliberate 'make migrate ENV=staging' because the backend refuses to boot on an unmigrated database.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L29-L36",
+          "version": "repo-lines-v1:sha256:cbd1014d0a566fd9d80607219c82f6b4202db238d4818941925f1c28258d2cb2:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDA1YjE5ZWVhZDE1ZWM1YWU4OTQxMmUyOGViOGY4OGZiMzJiYzY2MTJjNjNhNzFmMmU0NjZjZWI2NjIxNjUwZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWMyZjUxN2QxZTYwYzEzNjQ1NTcyMTVmY2FiNGI3OGJhMGQ5NTk2ZjJjNWYyNWMyYWNkNGU2YzQ0MjVjYjA4YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTMxZDQ3MjkyNGJkMDRjOWFmM2Y3NGI5NTk2MDJhOTI3NWQ5NDg4YWE1ZjBjZmNhM2M5MzA3MjVmNzBkMjVjNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTllNzZjMWE4NTZhNmU4ZGQxZmIwZGEyMDk1MjI3NTRmNmRjZWUxNmI5MTk2Y2ZkNmNlMWEyNTcyMDk5MjE2NSJ9"
+        },
+        {
+          "resource": "repo://Makefile#L103-L120",
+          "version": "repo-lines-v1:sha256:51e19a578ba35c3ea1c3e714d1ca30b4f99650f0f8e769052b5f2513b62cdedb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2NWRlM2QxN2UwMThiYTZlNjUzMjUxYTcwNjE1Y2VhNzkxYmExZTUzMjM3ODhlMTcyMmVjNTY5MWM1ZmI5NDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyZGE5YTVmOTk3NGZlOTRlYzc4NWQ3NTFlZjBjMmRkNDY0NGM2ZmExYjNhZjYyNDYwZDc2NDAxZjgxZWY3M2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3ZjE3ZThhYzE3OTUyOWNmNTljZGYyODFlZDZhNTI4ZDRhOTkxYTcyOWQwOTFlNmVmYTdhNjY5MDkyZDM0NGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZhNzJiZDI3NTkwYWZhZjc2NWViNGI3Mjg0OTU1NTYwNGFkNGJkNTc0MmIzM2YwZmY3Y2ZmYzEyMDIzZjMwNWMifQ"
+        },
+        {
+          "resource": "repo://Makefile#L65-L89",
+          "version": "repo-lines-v1:sha256:85709706700941d6f0a0ca2232dc7bdaa57283847bf7919deda5db100b7153b9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NGM4M2E2N2VjMzI4MjVjNTQ3ZmIwZDgzNTM3MGZiMTc2YTM0YjE1MjJlMTFkN2UzMmZhYmJiYWEyOTRmZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmNDk5MmZmOGEyOWFmYTlhYzExMDMzZjc2M2FiZDdjNzVmN2E5OGU1NTNlMTE5ZGZhMzM5MzQ4ZTU2NzYzYjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkNjk2MzJmNDZkZDI0NjJhZDc1MGEzNjA0MTVjYTE1YjRkZjk1MjdhMTE1NWQxZmRlMjlhODBiNTFmOGM3ZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjMTg3OTg2Yjc2ZDZiYzg2NWMwOTUzMjY4OWY2YmIxMDY5OTgzZjk2N2I3N2NlMDAzMTRjODdlY2M5YWY1NDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_461f0290e82e4446aa4ee2d6c53c2f0f",
+      "statement": "make up ENV=staging runs the local containers against the shared managed database, so a local research run writes directly into the database the deployed app serves.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L18-L23",
+          "version": "repo-lines-v1:sha256:558a45d44cce1bc95058988038d62dd1b308136f9fe089c9e401ff6c42bf18be:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTc3YmVlMDUwZmU3OGE2NTgyM2MzYjE0ZTM4YTIyYjgxZGNjZDFkMjY1ZDQ5ZGI1YTRmODZmM2M1OTEwYjRhMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODg0ZmZhY2YwOWIzODViMWU4OTAzMzA2OWM4ODc2NzE3Yjg2MTc5OTQxYTYyZTcxMDM2MGNmN2U0MjViN2IwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzhiY2M5NmE4OTE2ZDg2MzJlZDU4NTUzOGU1ZjE2ZDNhMGM0ZTFiNzVhMWVmYjA0OTRjMjIxYzE4NGU3MDI5NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGIzNTgyNGYzOTEyZWEwYWZiNTRiNDc3ODI2NzlhNGFmZGQ2ZDI5YjI0MTc0MzM5MDczN2E1YTg5Y2NhNTFhMSJ9"
+        },
+        {
+          "resource": "repo://docker-compose.staging.yml#L6-L15",
+          "version": "repo-lines-v1:sha256:5ba18fa76f206f00906077d03ac9d831daa02b0339acf808a68adb89fb9a0cef:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjNmM3MmMwMmQ1ZmFmODg5NzY2OTBhMGRiZDlhYmYxZGY1MjI5ODY2YjFlNDlmM2U0ODg3MzFkYjM4YTdkMDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkNjY0ZTk4OTA4ODJmYjRkNGNhOTViZDUwNGNkMzgyZjhkZGY5ZTlmMzIzMzQ4NWEzZGUwODI3YWNmMGU1NmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlNTY4Njc2MzYyNmNlNzJmMzkwMjcwMGQ3OGY4NDVjZGY5OWExNzA5NDdmMDY0NTk3ZDExNjI5NWRiODJlMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmM2FhNWIwZWVlNGViNjZlZDZmODU3NTRiZWI5M2IwNWNlMjQ4NjIyMjY0MTBjMjJjNGMxZTRlMGNjN2NmNWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6b99659d3d284efa9033a9a11ee2b9e5",
+      "statement": "The db-clean, db-reset, db-backup and db-upgrade targets are local-only (require_local refuses other ENV), while db-init-remote and db-push-remote refuse ENV=local and refuse to run against a database that already has an orgs table.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L212-L311",
+          "version": "repo-lines-v1:sha256:ddb6e9cf22e27ad2bd1508a026397bdf19de7803bbfd23b03e1d2756e716e50d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmYjFhZDE1NGRhZmY4NTk5ODZlOGY2NTA2MDNkYjc3YzM2MmUxNWQwODA4YTA2NmNkMmZmMDY1ZDE5ZjczOTU5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0YzU0YThkNjk1ZjVhOGJlMzZhYzQzZGVjNzM5MDA5YTFkNTEzNGZkNjQzZTNkMzY4MjA2ZTA2MTE2YTBkZTI3IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyOGJhMGYzODhhMDc3OTU1MjQ2NTc2OTg0ZGE3ODU4YzQ2ZmY3YTA5MTUyMmJjN2RkY2M2Nzg3M2QzYWUxN2FhIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmZGM2MDk2N2U4ZGIxNzA5ZGZmYzU5ZWM1OGU0YjljNzQ5ZTc2MzA4NzU2NzBiNDBiYmNkYjQ4MTg5ODMwNmI1In0"
+        },
+        {
+          "resource": "repo://Makefile#L52-L58",
+          "version": "repo-lines-v1:sha256:f01464cbfa0cd3863c5e81c231d7a814d7f71ed36f11e5e943c7922cb293073f:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2VkMjg1OWU0ZWY4MmRiYmFiYTE2ZGJmMzAwYWViZmQ4OWIwYWRmNDdmNTgxY2NjZTgxYjBjZmNjY2ZhZmZjZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjdjNGJjNGJmZjE3NzM1NmFjMDUzNzI2ZGQxZDA5YTQ3ZjgzZTdkMWVjMGQ3NDU5MjJhYTllYWEzZGMwYjQyYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmFjYTZiYTg4NDc2NTMyZjZiMWNmZTZkOWIyNzRkNjAyNzA0ODZhMDZlYmMxM2Y2MzUxYjM1M2Y3MDdhMWQ1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTRjOTIyYzIzMjc2Mjk4ZGJlYjUyNTQ4MmJlMjgwOTk5MDM0MjM5MjY5NjNjZmFiMDZlNDllY2EzY2U3M2RlZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_7f53599dfd5b45d3bbd353a5725b97cc",
+      "statement": "Supabase Storage configuration (SUPABASE_URL, SUPABASE_SERVICE_KEY) is global rather than per-environment: with the backend on local Postgres, documents rows are local but archived objects land in the cloud bucket; ENV=staging puts both together, and staff-source is therefore staging-only.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L124-L128",
+          "version": "repo-lines-v1:sha256:09fd4692b83716854c968e260ab23d6501fbea08cee107e2372663fe196959db:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjlmYTgzNzY1YTM2ZTYwNjY0NGQxYzQ1NjFkMDliZGY0YzdjNzM5MjRkYmY3NDYxZjAwNTQxNDIwZWE4MTA2YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTE2OWVlYTA3MzdkMWM0OTI3Nzc5OWY3NzkwODZhYmU1MDQ4MmQxNDRjNjI0YTI2YWYwMjZkYzEzMGViNGQ4ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTg0ZTcyNjU2ZDk2NjkzMzk1OGJkMGZiOTEzZjYwMTg2NzNkMjIxOTEyNDhjZTBjNTM1OGI3ZDY0OWIzZWI5NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWY0ZGYxNmQ4MWRjYWUzMDRmYzBiMTIwODI1ODYyZDdiM2QyZGE2MzlkZDQ0MDRlNTcwZTk5YTc3OGNjMjBiYyJ9"
+        },
+        {
+          "resource": "repo://Makefile#L202-L210",
+          "version": "repo-lines-v1:sha256:d10fab0cab3ccee3a47f4188208f52584ffc86e8a8f798f6954d90e2dc8f6c38:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmRlM2NjMGUzNjVlMzllNjFjOThjODIxNWNmNGYxYzQ5MjFiNGIwMmEwMWRjZGQ1OTk4Y2ViNGY4MTQwMTVjNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjQyOWI1MDg2ZDhhMWIyYzc2MzQxNjRhNTdhMDNlMTQxZDc5ZGExMzE4NjMxNTM1NjQwMDRhMjc3MWNjMDU5NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWY3NWNiYWM1ZjYxZWMwNWY1OWRjYmUxNTUwOGNmZTA5ZjAxYTBkMjE2MjBiOTBjMGJhNTU3N2JiZDJjYzExMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzA2YjMyNDEzOGYzMGVmNjk5ZjE5YmU2Yjc3YjQ3ZmE2OGZjYmMzNTI2N2Y4YzNjN2M4MTllN2Y2MTM3NTVmNCJ9"
+        },
+        {
+          "resource": "repo://docker-compose.staging.yml#L11-L15",
+          "version": "repo-lines-v1:sha256:83f6a6dbea9d2704dd037dba41dd89204c9a90c2cd25b968df31dc8c02e67ff4:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmMzNzQ4M2UyODM2MzQwNTJlZTY4NzNmZjI2NzUyZWVlNDg1YTFjYzk3MTdhYWJhY2ZiMzI3MWQwYmY3NjM4ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2Q2NjRlOTg5MDg4MmZiNGQ0Y2E5NWJkNTA0Y2QzODJmOGRkZjllOWYzMjMzNDg1YTNkZTA4MjdhY2YwZTU2ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmNhMzM1ZTNiYjY3MjY3YmNmOGRhZDAwMGRkNTkzNzllNDJiODdkZjVhMjRkODQ5NDk0YjE4NmYwZWI1OTUzYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmYzYWE1YjBlZWU0ZWI2NmVkNmY4NTc1NGJlYjkzYjA1Y2UyNDg2MjIyNjQxMGMyMmM0YzFlNGUwY2M3Y2Y1YSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_910df3e8abec4a9686adf94a85c51d46",
+      "statement": "Settings treats blank as default: a before-validator returns the field's declared default for a blank string on the model tiers, sql_audit_model, max_parallel_research, research_page_limit, research_model_call_limit and db_pool_max_size (None for the two limits means no limit), because compose forwards unset variables as empty strings; dev_auth blank means False.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/config.py#L142-L178",
+          "version": "repo-lines-v1:sha256:4e8496b50e474af1a68d7431e4f4cf0b83d2d377db8cc3de96d91a781af39838:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlZWQyODU4N2U1M2NiOGM1NzgxY2E5ZTllMTIyNmIxMDdkNDE2YTQ1OGNlODliNTM1YjFhYWQzMmVmZGJkODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4MTBjZWMzZjE2MWU2NmM5MmFhNjVhYzI3YmM2ODRiNDhjODVmMjYyMmQxYTU0YWFhMTM4YTI3OTA4YmZjYzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjYWE4YzA4OGNjOThmZWU5Njk2NDdjNWU5YjcxZDc4ZDg5ZjY5YmNmMWQ5NzVjYjE4YTdlODIzZTBmNjZiZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4NWM1MmUxMjQyYTBlMjNiNjA0YWE1NTIxMGViOTgwNjYwNjNjYjNkMjIwZTI4YWNjNjU4MjJiZjIyMTEyZjIifQ"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L54-L70",
+          "version": "repo-lines-v1:sha256:a0ff06f946760beb015b967e4b853e255c911b1f710cf8e3e4cac410a668729c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5MTg3YWIxN2QwYzRmOTBjMjBlNGEwZGEyNjdmNmI1NTQ3Yzc1NzcwMmMwZDYxOTJlMDhiZmE3MTBlNzk1NjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0OTAxYjgzOGIwMDlkOTlhMGZhOTdmZWE3ZjdkNDM2MWFlMTVkMmJjYmM3NGQwNGExMzk1MmFmN2ZkMGU1YTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlZTEwYmZiMGE0MGQ1M2FhZjJhZmFhNTcxN2IwZGVhNDI0ZGFjZTIyZDllYjg2ZjNjOTQ3ZGExNTRhYTY3ZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0M2I0NWQwNDM5NzgwMmJkZTljNzI3ZTIxMzNiN2RlZDFmM2ExN2E3OTc3Y2ExZmU1MjMzMTIxNWVmNzRkYWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_16d7203faba443059ee2d0030f28c47e",
+      "statement": "SQL_AUDIT_MODEL=off (case-insensitive) is normalised to an empty string which disables the post-answer SQL audit middleware, whereas a blank value gets the Haiku default so the audit stays on.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/build.py#L73-L75",
+          "version": "repo-lines-v1:sha256:13b3bb13428f8e33373c9b6201d6499a6064680db067c7eab7736fd32788da04:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2U5NTdmZDAyM2I2NTdmMTJlODQxZjgwMGZlYTlhZTIzMDFkZWQwYzBiOTM0NGQ0YzkxODJmN2VlMGUyMzc4ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmQxZGQyYmU4ODc0ODY5Zjc2ZDg0YThiZmQ3OTY1MGE3ZTIzMzI1YmU1NjkwMDIwYjU0Y2U3MmI5MmJiZjk3YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTdhYWJmNWNjNGRjNDQ5YzVhOTNiZmYyNjcxMThiZjZmYmExZmNjNjVlMDM1OTljODgyNzJkNjlmZmYyYmU0YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDQ5ZTVmNTFmOWYzYjVjMjcxOWJiN2QzZGU3OGY3NThjZGM1NDEwMTgwNjYzZTkyNWViMjdkMzExMTAwMTAwMCJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/config.py#L161-L164",
+          "version": "repo-lines-v1:sha256:62a354ef29e4196f94283847fed30955d676611552ac47a7ac999538a26b00a8:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2NjYmU4ZDExOWQxOWUwNDFhMTA4Nzg5NTM3YWMzNGUzZWIyM2JhOTJjMTkwOGJkODVhODU4ODExMDk5Yjc4MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2FkOWI0NDA4Y2ZlY2Q0ODVjNzY5NTdkZWFhZmRjN2ZmOTkxOTk5YjFjZWMwZjI1MjAxZTJhN2Q1MWQ1MGI1MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjg0YzY5NTI1NmMzMTM4YjcwNjI2MzkxMDZkMGM2ZWI3OWQzNTRhZWNjNTBmNmU2NGFmM2QwMjA4ODY1ZDQ5NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzEzNjU4ZjkzNTdhOTc4MWVjNTAzMDZmZTkwNjYyYjliMmYyZTAyZWJlMDhjZGMxMmI0MTFmOTQyYTNkYTQ3NyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3033b73fd7b74fe2b36467e0b17308b2",
+      "statement": "Optional subsystems are enabled by derived Settings properties: auth_enabled when SUPABASE_URL is set (empty means every request is the seeded dev user), graph_enabled needs both NEO4J_URI and OPENAI_API_KEY, langfuse_enabled needs both Langfuse keys, storage_enabled needs SUPABASE_URL and SUPABASE_SERVICE_KEY; unset, they degrade rather than crash (uploads return 503, archiving skipped).",
+      "evidence": [
+        {
+          "resource": "repo://.env.example#L53-L76",
+          "version": "repo-lines-v1:sha256:de328b84fbb902e74e6e64a356550152db4da8dfd97fbdfd01776143a82a9263:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2OTNiZjc3MGM0MDFhNWMzYmU3MzRlMWUxOTg4Mjg4MmIzMjRhNjlhNGQxMzdmMTljYTljMjliNTZiODRkN2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZDYyYjljYzZkOGYxYTM4ZjRkNTMxODc2OTgwYjhmMTkwNDkxNDEwZTdkMjE3NzlmMTcxM2M2OWNiZGZkNzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjODE1ODk2MjUyMGM3ZjQ3YWU2YzdkMjllMTk1MTk3M2UwMTAzOWJjZDg1ZjdiNmUwZTI5Njk5M2U1ZDBhZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4MmFiMzdiNGI5NDJmYjZhYzQwYTNlMmQxODdhZTViMWFhMzlkODdhMWExOTZiYWUwMzAxMjY1NDFjYzg4OWIifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/config.py#L186-L200",
+          "version": "repo-lines-v1:sha256:e3b2ee6ae76570ea85a6fa0c1b3241f947789fd2896ed306c057b7e85d612bb6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzZDAwY2YyNzA5NjRkNDRhMTNkZmFjODc1MmIwOWZjYzQzNWIwZjE5YjMxNmFiY2Y4MWE3YWE2NGJiMTIyZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDk4NzM5OGRkNTJmNDlkOTQwZTliM2FlNjFmNzVlNzllNGY0MzEzNTU1OTYyZmVjZGE2NjIyN2U0OTYxZWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjViNTc2YjAzNjJkOGMyNjQ1YzNmYzI1ODA0NjkwYzJkMTYzNDM1OTMyNzJhODM5ZGNhNDg2NDRjYWUzYjdmNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5NzBkZWFkNWY0YTU4ZDhhZDYxZGMxMDM1ZGVkN2Q3MzEwY2JkZGJmZTkyOGEwMGU1YzIwY2VlOGZjNTk2NWMifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L90-L107",
+          "version": "repo-lines-v1:sha256:26200740f15885303fde4433889e661fb1345324a4256a563fd84053d525113d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkYmEzZTlmY2ZiNWYwYzIwYTI2MjIyNTNlZmZkZDY1YzYxZDU0YzNkOWMyZmVkZWE4MGMxNzhlNjc0YzhjNmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxY2ZjZmI0YmI4ODg3NzA5OWQ3OTIzMGI3NjNkYzg5NmIxZDJhYjE3OTBhMWZiNjI4MjlmY2M0NDI3MTU5MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyMDc3ZjMwMTdkNjc3ODBlZTg4MjgxZGY5MDFhMWJkMDMwZWRlOWUxN2Y0MThhODAyZWQ2NTg0NmQ1N2JkN2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_82268ef2ae1c46fca784b189624eab65",
+      "statement": "DEV_AUTH accepts 'Bearer dev' as the dev user only when auth is enabled and the flag is set; it is local-only and must not be set on a deployed backend.",
+      "evidence": [
+        {
+          "resource": "repo://.env.example#L99-L101",
+          "version": "repo-lines-v1:sha256:5e0c6c24eba456ac40340beb598830e496bcbcbd8bbc94253de1df8694a24c50:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDU5N2NmNjMzM2Q1MWE3YWMzY2VkOTk2ZDA4NjI4ZjM5ZjA4ZTI0YTRhYzk0YjhjMWUyMzYxYjEyNTIzZTI4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDdhMmU5ZWIwN2E0NzAzZTU0MDQ0ZTcxY2E2MTMwMjcwODU1NmJkYTUxYjViODliNTQzZGY5NmMxMzBmOWY0NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjk3ODViODk1MmI3OGRiMjgxNTJiNTM0MGZmYTM4MjczNTcyODE2ZmU2MDIxMWUzZDg0OWM3YjlhZmY2M2UxOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWViNTA3OGEyNWViMzE0OTI3YThhMjNmZGIzMGQyNTQ1ZDY5MjdhMDU1ZTY4N2RjMjEzN2U4NjdlZWIxNDhiOCJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L90-L103",
+          "version": "repo-lines-v1:sha256:4d3d6a5550a8ef719701db4b8b583344554fa7f18c428663c3dc74176a7a5c4d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkYmEzZTlmY2ZiNWYwYzIwYTI2MjIyNTNlZmZkZDY1YzYxZDU0YzNkOWMyZmVkZWE4MGMxNzhlNjc0YzhjNmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4NDQ2Yjc3NzA2ZDdjYWY1NmFlOTYzOTJhYjkzMjg0YWNmODY0NzUwMDJjZTRiM2FmMDE0NWUwNjFhYTM1OGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_eb470d4ae74743ab8ab67c773eee4c8d",
+      "statement": "db_gate_slots is max(2, DB_POOL_MAX_SIZE - 3) so concurrency gates sit under the shared pool, leaving room for the LangGraph checkpointer, which writes on every graph step; MAX_PARALLEL_RESEARCH and DB_POOL_MAX_SIZE should be raised together.",
+      "evidence": [
+        {
+          "resource": "repo://.env.example#L136-L143",
+          "version": "repo-lines-v1:sha256:85f73deb126dd0590fb7fb399b9a4a293d5d56414aaedb16ffbab51e07d16b68:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTI1MzI4YmI5NzViZDYwZTI3MTdhN2VmMDg5MjVmMDEwYTIzMDY2YmVjOTMyNTM4MGY3YjQ3MzZmN2UyMzM5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzdmYzUzMWM0YmNjZWNhMjEwZGRmZmUzNGNmMTk0YjU5NDY4YWVkNDI2ZTAzY2JkNzRjYmEwYWMwNjhmZWRmMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGU4MzM2NjZiZDI4YjA5N2ViNDU3YmFiMzBiZGRlNTNhMGRkM2E2NzZhNzU5NzQ0ZGU2Y2ZjZWNmZjUwNDZhZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODQ4MTdhYjAwNmVhYWUxMzA1MTY0ZGFhMTY3NzkxMDExYTUzY2RmNzUxNGY5ZjIwMjYyNTNmZDZhZTRiN2RlNSJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/config.py#L123-L136",
+          "version": "repo-lines-v1:sha256:4e4a655e9ed7fb16677a02921008592fe8c1f523da188a6604921d6c86993d48:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5NDA5YWVjOTJlZTQ3ZjZkYjExYTQwZGRhNDViYjAxZDM0MjMxOGNmZGFkNGE3ZjAzMjgxYWUxYmZjNWRkM2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyZjQ2ZTFhYmQ2MTUyMDhlYjQ4MmQzYjJiOTVkNDA5ODI4MTViZWEyMzZjMzgwZTgyNzBjYWYwODQ3YTE5NTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1NjRmNzQ0NzEwNjA1MTJmOTllMThkYzIzYjU0Y2QwZjkxYTIwYzg4ZDJhNzczMWRjMjJlYTU2YWExMzZhMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmODk5NTNhZDZkYjQ0Y2ExYjAwMDQyYjM5YTFiNWI4YmJlYjc2MTUwMzE1YTM0M2ZiZmI4NTZlMmEzMzI0N2UifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/config.py#L166-L173",
+          "version": "repo-lines-v1:sha256:352b7e07b6f02380978d18558c5a50c4d238635b0b6b92f6ced9bd75cef16b5d:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjNkMDBjZjI3MDk2NGQ0NGExM2RmYWM4NzUyYjA5ZmNjNDM1YjBmMTliMzE2YWJjZjgxYTdhYTY0YmIxMjJkNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmRiZTY2YWNhM2E3YzZkMWY3YzUyOGM0MzQ2MWUzZjRiMmFhZmExZmU3Zjg4MmE4ZWM3ZTY1NTU1ZThjODQ2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjBkMDliZDg1MTdhZmEzMjhlNzIwMTUzNTRlOTY0MzNhOGZkMTFlY2Q0N2NlZTAyMGVhNDM2YmExYjY4YzU2NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2I4Njk5YjEyYmRjOTk2YzM1ZGM2YzY0YTRjMDk0NWM2MjhlMmEwOTQ1ZjgzMzBkOTcyNjhkYjIxZGI3YTIwNCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_d12f042af48940a08a14fbc51ed68ac8",
+      "statement": "Only variables listed in the compose backend environment block reach the container (.env is not mounted into it), so unlisted Settings fields such as the NEWS_* tunables, SQL limits and MCP settings stay at code defaults in Docker, and NEO4J_URI/credentials and EMBEDDING_DIM are hard-coded in compose rather than taken from .env.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/config.py#L28-L29",
+          "version": "repo-lines-v1:sha256:ed74a76d95285b42245be63a620a1f7ec4d2d94d0591af18331c0a87a11abf10:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmM4NjMzMWM5MGI3OGNkYjkxN2ZkNWJkNjlmYzA3MTRkNWE1ZmU4NDYwZDg3NjI3OWUxNWZmNDJmZmM3MjM1YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTAwZDM1YTA1NjU1ODgyNDMwMTExN2QzMGJlMWRhNjYzZTVhZGJkMGI5ZThmN2E4YmFiN2M1YmE1M2YwODFmMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDNkMTcxZGU3NTQzMWEwMjFhMGQ5NGZhNzZmYWJmMGQ3MTM5Yzg5OGMxYTBiNDRiNDNjYTYwOTAzZmExYjg0NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTAyYzkwMDczNDQyZGQyMjVkOGIyYjBmNzc0ODMwNzE3YWNkOTUxNDlmYzRiOTZlM2UyNzUyY2QxZTFlN2ViMyJ9"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L43-L112",
+          "version": "repo-lines-v1:sha256:cd56d365d3989de0600e17ba1cf2a9b8a05f71a1f7f99a2de8977e6cffb765a2:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2YzgyZWI0NzlhN2VlMWRjMmU4Y2QxMjZjZjA4NTg5ODc2ZjM4ZGFkYWI1NjVhYzMwZjQ0YmQ3OGY2YzMyYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMmVhNmJhNWE0NzNjOGIyNjA2NzE1ZDU1Mjk0ZmU0M2M1ZTc1M2U0MTlmMTI0MDk3YTQ4ZDZhMzQ2NTMzMzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwZjE1NDAxMjY3YjQ1M2QzZjZhZGQzYjJhYWRjMGVmMjA2ZTJiYTc1YzcwODI1ODA5ZWMyNTFlNDBmMGFkZjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzMGM5NDNjZGI1N2I0NTU0NGVlOTg3MWU1Zjc0YzFhZTI3YWU2NzhlZTU0NjhlZWYxMWMzMmZlZWEzZDBkZDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a5857b14df1c46d0bb6e804ced67e4f9",
+      "statement": "CORS is configured from ALLOWED_ORIGINS (comma-separated, default http://localhost:3000) and ALLOWED_ORIGIN_REGEX, and an empty regex is passed as None because an empty pattern would match every origin.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/config.py#L137-L140",
+          "version": "repo-lines-v1:sha256:35c5b1a712a15734dc15e4ea0891fb3d8739ed95438ae7f67b69530f10e5f698:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQwYTlhODIwM2Y4MzQ2Njc3YTQwNTM1OTIwOTc1Yjg2MGNiMzgzODQxYjk2NDFiNjk3ZTkzNzE2MDViMDVmYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzljMDBlODRiZDgyMjRjNTMzMWUzMjE4YTU2NzgyZjI4ODk5NzgxN2Q5NWQyMjg0NzI0NDM4ZmM4ODMwYjdiZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2NkNGVmYzZmY2FlMDY3ZWZhODE5Y2UxYTY3OWU2ZWU4NmM3MmYxNTc2MWYxNzhmOWJhYjBiYWQwZmI5MjcyMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzdmZTY1MDgwZDllMjU5MzExMTZmODFlZGFlY2I1Nzg5NzA0MTRlMjg0MDY5MGE3ZDg2ZmIyZTEwZDBmNTM2ZSJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/config.py#L202-L204",
+          "version": "repo-lines-v1:sha256:1d0ab6b79a0013f1fb4cd3a6126c4f7a6a3d433627a65fa2c0bd55fc667d6704:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjNkMDBjZjI3MDk2NGQ0NGExM2RmYWM4NzUyYjA5ZmNjNDM1YjBmMTliMzE2YWJjZjgxYTdhYTY0YmIxMjJkNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGZmM2Q3YWQ4Y2JjM2MxZDg1Yjc3YTU0Y2E5NTA1YTJiMDI4MTZmM2I5ZmY5YjA0MWNmMjBhNjdjNmNiMmUyNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTYwOWJmMTQ2NDgyMWNkMGY5NWNhMjYwZWQ4ZjA3NDE4ZWY5OWFjZjhhYzYyNjFkMDUyOGE2YzRmNTIzNjZjYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzFmOGMwYTlkNWZkOWY5MzVmZWQ1YTQyYjFjOWI0MGM0NjRhMTA5NjA5YmIxMDJkYTM0ZmVlYmZkODRhYjdmMCJ9"
+        },
+        {
+          "resource": "repo://backend/app/main.py#L29-L38",
+          "version": "repo-lines-v1:sha256:f2f907e6c0004b3a305f6bf944817e23ab89be976dd3016524445d7c0662188d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNjllODFmMzY4OWQzY2IyMTY1ODYyYjEzMmMxZmJmNWVmNTIxMTE2MDlkMmE2OGFlMTkxZThiZDQ2NDYxNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NGY5MGQ4MGYzNDIzMjQ5ZmQxNWY4ZTZkMjI0YTFmZWYyN2RlOTg4MWM1YTZmMDkwNDBlOTRiMmE3YzRjNTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkNWJhMWQzZmUyN2E4ODdiNGMxNDUyZTU1ZGUwNTJmY2ZkODc1YzUzZGEwMDNhMzFjOTc3OGM2NzkwMzA5ZjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_46577bc30aba4a18b78e6761e8f88078",
+      "statement": "Langfuse tracing environment falls back to VERCEL_ENV and release to VERCEL_GIT_COMMIT_SHA when LANGFUSE_TRACING_ENVIRONMENT/LANGFUSE_RELEASE are unset; LangSmith is switched on purely by process environment variables, and the boot log reports when it is half-configured.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/integrations/tracing.py#L103-L120",
+          "version": "repo-lines-v1:sha256:d17c67f04d4b6070fc1ea0f2e5334494521f5eb25fd5b70433698a3e2b949fb0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiYmU3N2UyY2RkNWFlNTczZTcxNmQ2Zjc3NjBhYTYwMGJkNjE1ODFjNjFkNWYzOGJlNWZhY2FkNmNmZGJkNzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1ODA5ZTgyY2Q1NzEzNGIwMTY3NzU2MzE1NzgzYmUyM2U1ZDk4Yzg4ZDMzMDg2MThhZWM3Yzk2NTU4YmMyOTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhODFjZjczZmI1MTZjZjNlODQzNGJiZGUxYmM4MDE2MTRhYWE5NjBhYTlhN2UzYTIzMmEwODMwN2U2OGUyZWUifQ"
+        },
+        {
+          "resource": "repo://backend/app/integrations/tracing.py#L482-L499",
+          "version": "repo-lines-v1:sha256:a6d18a5a290209eaaa1bb4282c267baea5f123f67f082288254b99c4c0d4e00c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3ZGM1MTJmNmJhYzBjODVhMzU0YjkzMjdhNTVkN2FmYzYxMDllZWNlMjY3YTE5MmE3NjM3MjYwZDllNDU5MzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyYmJhNDEzMWYwZDY0N2Q0OTJlOGRhMjMyOTUzYTFjNTRkM2Q5NTY3N2ZiMjc4MWU5MGE1NTIxNGM1MWIxMzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJiYzNkMWRiYmVmOTkwZDY0M2VmOTBmNWVmNWYyNTg0ZTI5MzM1MzcxMjdlZTMzNzM1ODQxYzIzZWJmYWQ4NzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_90146782c41d4430afaccb48229d1a68",
+      "statement": "Local ports: frontend 3000, backend 8010 published from container 8000, Postgres 5433 from 5432, Neo4j 7474/7687; make dev-backend runs uvicorn on the host at 8000 against localhost:5433, and the frontend uses AGENT_URL ending in /agent while NEXT_PUBLIC_API_URL does not.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L313-L320",
+          "version": "repo-lines-v1:sha256:8fff086ac0a1b5187f49007e408df55e4737c8944c93ad29f2ee62adb20a0e27:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODBiYzc4NTY0OGMwNzk2ZTMxNjc5MjlkNmMxOGFmY2M3YmU5OTlkODMwMDI4OTA1NWZmNmI2MDE3OTlkNzE0ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzE5ZDdmMDA1ODE1ZWY3MjJkNDVjOTkxNmY2Mjk5OGUzMTI5MjE1ZDZiYTJiMjJkN2M3NjdjOTM5YzcyMDE0YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L5-L35",
+          "version": "repo-lines-v1:sha256:850a7d5f9445676c5308217150e0522b644748fb8286079f2412d4fd2935c188:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwZjhkYzgzYTlkMTA3NzQxZTUzNjRhZTBjZjZmNDg1OTU3MDIyMDkwMzExMjIwYWFmOTAxOGI4NzcwZmUxNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxM2Y0ZDk2NjFlOWQyYzNlMWEyODllNTgzMjI5OWJlYTE0Y2RiNjRiZjg4NjYxZGY3MTdiMTJmYTAyZDAxMWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0NTc1YmQzMWFmYjZhZDVhYmMxOTE3ZWU4ZTNkNjE0MWUzMjYxZjQ0YWM1Njk1OWMyYTk5MmMyNTIxZjJjN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2YTg0Yzk2YzY3ZDZhNzVjM2JiNjU3NTg2ZmE1ZWU0ZDBhMTBhMzVmMzhmMmI4MDE0NTc2MTkwOGQ3NTkxODcifQ"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L98-L132",
+          "version": "repo-lines-v1:sha256:0497f7c394405e979c2688724ce0405406fd4c35eabcc7c450b95f2cb71cd55c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMTZlZDIzOWEzNjUxYjUwNzljMGU0ZTdmMDc4NDRlYTMyOWM4NzYyOGJmOWZjYzQ2MzY3NzMzZjVlMWU5M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MzJhYjdkZjE1MDZlYzM0ZjU0MjYzYWJjYmEwNmIyY2M0NzkzZWIxNjdmNmIyMjZhMmNkZjhkYWNhNzNjZTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiYjA0YzhjMjZkYWE2ZDE1MzE0Y2Q5ZTA1OTZlZGI5YTY4ZjZlYmZjNmQwYmVmNzgwYTNkOGI1MWUyZDY1YjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM5MTNmZWQ2NTY2ZTgyNWIwMzY1ZTY5YTM1N2M4MzUxMmIzYTA1YTUyNzNlODljNGU0Y2E2M2IwYzZmNzkxMDQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-13T18:20:59.385Z"
+  }
+}

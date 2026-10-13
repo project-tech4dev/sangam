@@ -1,0 +1,446 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:05a8de94e7be58d2c0f3672a29df6ffde653db8aa18a6d508cff2e94f0d6ae37",
+  "claims": [
+    {
+      "id": "claim_4cb3c62ff0f34116ae33de01c60bd2ef",
+      "statement": "Import is a supervisor deep agent plus four isolated subagents (entity-researcher, vault-reader, catalog-writer, workbook-reader), each with its own context window and its own model tier (strong for the supervisor, research tier for researcher and vault-reader, utility tier for writer and workbook-reader). The supervisor has no web tools and researches nothing.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L136-L250",
+          "version": "repo-lines-v1:sha256:e23a73716698aa1e5a70997650a2367f5a605f62ff4748867f79133ef495dcbf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTk4MDQxNTk0MDgxYzZjMjkzMjg3ZWM0YzM3ZjVhOWZhODZkMTY4YTBmMjk3N2FmMzYxNTMxZTZjZmFiYjY3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhOTE0NGQ4OWQzOWYxYTNlNjcyODhlYjlkOTk4MTIzNTczYmY2NWMyNmQ1YzEzNTNjMmRiMTMxNGYxYmYzOGZkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmYWM0N2YzYmE3NGUyYTg4MDZmODhiYjMyNGMxNTFmMDIzNjYxNTMxNTM2MTQxMzZjYzgyODE5YmM5ZGU3NDgxIn0"
+        },
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L278-L362",
+          "version": "repo-lines-v1:sha256:ae4efe9a5e2b9712337f59df64630b3b49bba68870eb26b01823e675802ee419:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0ZTY2NGU2NjI1ZmYwNmIwN2RkZjRlMGJiZmFkMGI2M2I1ZDgxNmM3NzM1ZGE5YzI4ZmM2OWZmOWQ1N2ZlOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5ZjkzMDgzYzE5NzEyMWI5ODI3MDBiYThhZmFiZDE3MjJjZjFkM2U3NDA0NTA5ZTgwZWZhMjcyNDdmNjJmMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA5YTc2ZjIwNzNjYjJkNDUyNzI3MTNkOGFlODBkMmRmYWVjYzJmYjlkZDBiODVjNTcwZWY4ZGRkMTRhNjBkZDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_71ba4c02cbb048f781c388ac9e525367",
+      "statement": "Tool lists are fixed and pinned by tests: instructions must name every supervisor tool, each subagent prompt must name every tool its spec declares, every @tool in app/ingest/tools/ must be registered and nothing registered may live elsewhere, and compiled subagent graphs are compared to exact tool-set literals. The importer has no SQL/query tool.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_harness.py#L309-L374",
+          "version": "repo-lines-v1:sha256:a7e5d8f86f44e6c75b28bb84d78545036419d251590baaecf8fb639832227e47:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3MTkwNGFkMzMyMDg2YjI0MzFjYTAwN2E1OGVlYzgyNjZmMThjMmQ3M2U4N2RiM2NlY2I2NmE4M2RmZjhiNDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNjAwY2M2NWJlYWVhNzI2ZGVkZmIxNTM2NzhlN2E2ODUyMzYwMGY1NzQ0ZWI4MWFiZDM3NzE3MzJkMTFhZmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGVkMzA4NGE4OTQzMDE1MDA5YzhkYmVhYjBkNzFlNDllMDU4N2RmYjRkMTI1NDU0MGYyNDU2OGYzZTZhNzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_ingest.py#L245-L370",
+          "version": "repo-lines-v1:sha256:dcf71e66c563daa780e65a800abb490929b4f85fc683ef6c9c403dfe30776037:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhZjAyY2ZjMjUzOGJkMWVkNDUxMjA5MjAyYTQxYzAzNGJhODRjNWI4NTMwMDJiZGU2ZTQ3NDgwOTZkYjhmYWRjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiOTBhNjFlNDlmMDdiMDVhYzQzYWUxZjc0NjY0ZTg3NTdjNGFiZDA4NThlMTFhNGE4YTRmN2E0ZWFmZjFlYjYwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJkZTQwNmQ5ODM1ZTBlZTA4Mzc2Yzc2OWUyZDM0NjRjZWZkMjBjZjFlNDg5MzM1ZWVkYTVmYjdlZDRjYWIzMWZjIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_5488485573b4486dab755da88a76f4c4",
+      "statement": "Every subagent carries its own filesystem middleware because an isolated subagent builds its own stack and would otherwise get all eight filesystem tools; subagents keep only read_file, the supervisor keeps read_file and ls, and the general-purpose subagent is disabled globally so no unconstrained sibling can call run_import_now or promote_research.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/harness.py#L1-L97",
+          "version": "repo-lines-v1:sha256:24c585204b9817ab778e603f28fce356692f421c781cd4ca372f626fcd2f36ba:eyJzZWxlY3RlZExpbmVDb3VudCI6OTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhNDkyZGJkZWFhN2MzNzFmZmEwZmQxZDk5YjY0MDlmNDFiYThjNTZhMDZiNDA1OWVkZWRiYjdlNzM5NDYzODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlNTA3MmJlOTY0MGNkZjc1MTUzY2U2MzA3Njg2Y2FmYzk3NTg0NmE2ZjlhMGU1NjAyNGUzOWUyZWJlMTI1NTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L283-L340",
+          "version": "repo-lines-v1:sha256:f7848468a543e8a65bb259ee23cea81436af1e46a05164d52764576f8f70dfa9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhNmU1YTY0YjBkOGM0YWRjMGM2Y2ZhMDRhMWYxMzFkMGMzYzU4ZDdiMWJlYTBiNDVmYjVkODE2ZTM2Y2RkYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmZmM4ZmY4OGYzYmQzOWYxMTNmMmM4OTM3ZWMxZTQzNGZmZDA5NTY5MDQyZmEyMDJhNWEwODUzMGYyYWE1ZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliMDgzMzk3Y2Y1YTNhODY2YzRkMTM4MzFlMzRiMzM0NWY5N2Y1Yzg2N2Y0MGFmMTQyNWE2NDhhZDY4MTdhMjQifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_harness.py#L317-L374",
+          "version": "repo-lines-v1:sha256:46f080e505332a0cb5c92234c8a0f03d0c3242fc5ffdb70a190184acf288c4a2:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4NmY4YzJkMTMyZDVlZDJiODNhNTM1MGFlNDkxYmUzYzUwNjIyZjlkODk3NzVhODEzNTUxMTZkYTU4NzgyYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNjAwY2M2NWJlYWVhNzI2ZGVkZmIxNTM2NzhlN2E2ODUyMzYwMGY1NzQ0ZWI4MWFiZDM3NzE3MzJkMTFhZmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlN2NmMzhlM2I0ZTkzZjUwOWI2Nzk1NjA2YjBlNTA2NGY4MTFmZTAwOWYyY2JiYjYxNGUyZTM5YTQzYjk1NDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ce8ff04afcd249879940aa834012cc57",
+      "statement": "The agent's backend is a CompositeBackend with virtual state for everything and real disk only for /skills/ in virtual_mode (preventing path traversal); the researcher alone gets the research/ pull skills, and the skill set the supervisor indexes is pinned by a test.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L102-L124",
+          "version": "repo-lines-v1:sha256:6e2aa9987ef831dd242ea1833eae798465d14f8d809f900080fbf252cfb92eef:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmNWRmNzIyODZmMGI0MGViMTYzN2E4ZTU0NmI4MzZlMjcwZmIxMjUzN2UyYmM1MzViYzJiNjUzNzU5NDEyZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5N2QzYzZlYTBiZmY1YmIxOTM4NGIxODFkYTBlZDE0MTJlM2UxNzdjNDY1ZTVlNTc5NmMyZDJhY2NlM2U2NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmNmM4MjcwYzQ4YWU1MzA4YzM1NjhlMmYyZDJmNmNmODdhMDAzYTlmNWE2ZDViNzlhYTdhNTU1ODEyMTQ1NDgifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_harness.py#L250-L281",
+          "version": "repo-lines-v1:sha256:2718891d9948f88d9fe0cd27d6f292bd6491cc083e475eed2693a7d4bb38d70b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4YTFiZjJmYjViMzdmMzMzNjVhYWM4NTI3MTA5MDE3MGViMjBlMDk4NWY0ZTJmZDA2Njk0NDE5ZmFiYTI0NDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5YzE3ZjI1MmRiYWIwYTE1MWQxNjRmZDlhMmY5N2M0NTNjZGVhNDhkMTUxNWM4MDQ3MzMyNGFiZTA0NDQ0MzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4NTNhMDJkMjJiNWZmNzA1M2E0OTVmNTYyM2ZlMjYyODNmOTY4ZWZlNDFkYmU4YmJjOWJmMmQ2NWMxZWYwMGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b7db26283d3641fb955d251c5c346ec6",
+      "statement": "Tools never raise: failures are returned as strings (REFUSED or 'failed: ExceptionType'), and tools that may touch confidential cells or vault files return only the exception type.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L1-L5",
+          "version": "repo-lines-v1:sha256:1c050da2a351ff99d8993cbf4d02150489f3d7c952bf50430dcdd10a527f124f:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDNjMjkxN2NmYzlmMjZjNTExODAxNmI1YTkwMWJkZTBiNTA1MjdkMjNlNTA0ODgyNmUxMDZkZjgxOWVkNzhlYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTliZGViZmU1ZTE2NjU5MmNiZDNhMTVjMWFkNGZhOTI0YjYxYTI2YTFlNTNlNmJlZDJkNDkwNjM0YWRjZjc1ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTViNmU4NzA2YjQzMDQ3ZjJhNmRiNjdmMTMyNjM4NTk1NjA0ZTY3ZjM2OTY2ODc2Y2UwMTU4ZjAwNTNlNmJkMSJ9"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L440-L474",
+          "version": "repo-lines-v1:sha256:b46fc87adca941fd1372d28f548ccf473764629cd2d1e725abdc621471883a71:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhYzFkYjhmZjE5N2E5ZjM0NzkyYmY2ODQzYWI5MTZjMmZlODAyMGU2Nzc3OGQ4MDgzYzY2MjM4NGUzNzA5MWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4ZDYxN2FmNzlmM2Q0ZDc2NzhkMWI2ODkzYmMxZTg4YmM3YWViN2I2OTAzMjNmNGQ1YTEwODgzZmJjMTQ4NGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzYjgwOWYwYjQ3OGQ3NThhY2Q3MGE1MjFjMDY3ZTNjZGY4NmYzZmVjNjdjYTNiYjM3ZTA0NmJmOGYwYjFmMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L419-L424",
+          "version": "repo-lines-v1:sha256:5435692095517b984f718b8b4c025ac2418bef40442ebf3886b2e27273076853:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmNjZGVmNWRlYjY2ZGQ4YTZhOTE4MWQ1Y2Y0NmFkM2U5MmUzNWE4ZDVlMWI3NThiNGI0Y2EwMDhkZTUxYzI2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNThiZDAxM2RkMzRlZjQ4ZWE2NTlkNWM5N2IxZDA3YzNlYjNhNjEzMmRjMDdjZjdkMzBjMjdmN2FlYjAyNDdmOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWUyMjRlZTNiMThkZGFhYTJkYjQ2ZTU5MDFhN2Y2MTQ0ZGVmZmE3OThiZDcwOGQ5ODkxZTRhN2IwNzIwZDViNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWRmYzFiYWY3OGU1ODc3OWFlMTE2OWU1NjBlYmQ5YmNjODM5MDE3MDc0MTM1MjY5YjE2MWZhNWNmMWQxMjJlZCJ9"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/vault_tools.py#L93-L153",
+          "version": "repo-lines-v1:sha256:a97ecda50ad97e67fdacddf0841a2d8cf5eb128627d9105643e7975944d6ac61:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTVjNjZlMTdiMTQ1Mzk3ODM0YjhjODU0ZGM0MTkzZTIxMjUxODBhODk5NmExNGMzMTg4MzMyNmIyZWZiY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxMzdkMWQ2YmQ0OTVmNWM1M2Y3ZmUwMWNjNmM1MGZmN2YyZmU1MGIyOTRkY2FhYmZmYzYzYzU4NTBjN2FlNTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkZmNjYmY1MWJiMGU3ZWQ2OGJhNDM1OTBkNjY2Mjk5MGE3M2MxZTBiZDg1ZDY4MmJhNzFjNzQ4ODE5NTJlNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9bfb2a773a3b43ae84e431e6e21dedf2",
+      "statement": "The supervisor prompt is markdown rendered with one substitution, {{MAX_PARALLEL_RESEARCH}}, taken from the Settings the graph was built with, so the configured wave size is what the model is told.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L68-L100",
+          "version": "repo-lines-v1:sha256:9fa6fefdba2b1cf062b7bb36112ff48c34cb25939559e2e83d1ee1a5d2a85dd2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4NWQ3MTQ1ZDUzZDIwM2RmMjIyOTU0MDc1YWE5MGIwOTFjNjY2NDc4NmJjMTNmOWQ0NjljYmFjNjdjNzZlYTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4MmFhYmMyZDc2NDJmN2M5YTQ4NTI2NzljNTlhNzZmOThjOGJlOGUxMDljY2ZmNDUxMGMzNWY0NDZlOTdlMzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkNzhmMmEzNzZiNzI5NTFlODM2OWJjNDA5ZjU1ODdiMWMzNmRjNjQzYmUzMmVjYzJmYjI2MWYyNjQ1OWVjNGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxNTM4ODdhZjc5ODNlZDE2ZDcwZmNjOTcwNjFmMjJhMjJjNzljZmEwNjUxYjU3ZGU3ZDQ1NWQxZTYzMjZkZTIifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_ingest.py#L281-L298",
+          "version": "repo-lines-v1:sha256:a9f52a0199f6259300c6642fc2cdd11c2d406d7e9ebcd187f57c9de8547475b2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2MDBhNDI5YTlmNjU1ZDUzYWUzZGU4MGYyOTdmZWQ2NjZkMjUxMTIzODZjM2MwMWY4ZjA1YTBhYjhhNjhiYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjODljNGQxZmE2NmJmNmU2NDRmOTAyM2M2NzMzYWQxZDBlYTE1MzYyNzFlYTRhOGExMTFkNTVjMzdhYzI1MjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzMmMyNGFmOWI4YmM3M2UzNzZkMzFmNDZlYWRkMjc4NjljNGQzNjE5M2Y3M2YyMjhjN2FiOGMwNWRkOTcyY2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViMTIxNTI1YjY2Njc3ZThkNTc4YTE4NzMwNTYxYjBkZDMzODk1YTA0MzgwYzM1Y2VlNjIwZTNmZjg1ZWRlNzQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3dee42cc90134256ab28bb77a3ebddca",
+      "statement": "There are three human-in-the-loop pauses: choose_sources (approve/edit/reject, shown only when nothing was ticked before sending), run_import_now (approve/reject, the supervisor's bulk write), and every promote_research via SaveQuestions on the catalog-writer, which carries a preview of questions, planned rows and coverage and overwrites any decisions the model wrote so only a person's edit sets them.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/middleware.py#L151-L215",
+          "version": "repo-lines-v1:sha256:ee88ac559d62feef125bf480015a8aca14f2aa994c026b863d9770bbcc4573d0:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1MTk5ZjM4MWI1ZTgzZjliNGZiMzYxYmM0YzczZTYzZTJiZjIzMTM0MmUwZTkyYjhjNmExNmM3NjNiMTRmZWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMGIzNGZmY2NlYjk0MzM0ZWI3MGMzODk2N2Q1MzJkODc5OGU4YTYwMTBlZDQ3YzRmNzAxOTgyZDkzYjA4NjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1MWMzZTFlOWE0YWEzMGY2ZWQ3YjZiNWM4YzkzNWUxMDJkYzMxMzBlNTRmY2RhYmJhYjI0YTU4MzAxOGM0YzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L262-L275",
+          "version": "repo-lines-v1:sha256:0ac1658ebf4e69fe314635eba423e4c1e7902b306eef1179961982be90cb5c35:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmOGM0MDE2N2VkYWUwMDlkZjNjNmNkOTE3ZGQ0OGU1Njg5YjQ1NmMwM2FmNWRmNWY2ZmZiNzZiNGY4NWNmOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkNTE4MGQ5ODlkNTU1NmI5MzI2MzFlYTlmNzM3NjUzZjc4OTkxMTEzOGZmNWUzYWJkMDBkZmM1YmUxYmJjNTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMwMzk1ZDIxYzlkNTJkZjJkMmEzZmM5NWQwNjQxYTcxMjE2ZWZmODk4ZTNmZGE5Mjg0NmNkM2FlZDA4ZjcxNjcifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/middleware.py#L307-L309",
+          "version": "repo-lines-v1:sha256:6fedf7053666eaff83458bd3208cb7a2f76503f09a3368972209d1c84a50e383:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2YyYzI3MzA1ZTgwMDVkY2M0Mzc2MmIyYmZhM2I5Y2EwMDNlZTM5OGExYWVlMDhkM2JhYWM3NWUwYTkzMGE2NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDRhZGYyZWVjMTM5NGNhOWRhNGI5MTJhZmQ5ZWM0MTk5OGYxNmIzNTRlODFmYjdhZDViZmZlNmU0NWZlMTFmMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWFjYTEyNWNkOGEwOWY0NzU1MjYwODM1ZTI1ODU0ZjQxZTc0YWJkZmVjYmJiYjQzOGQ0ZGRkYzZlZTU3YjNlNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzIwZDA4M2Q0ZmIwZTE1NTY5ZDY3OWI2M2NjMDQ3ZGExNTRmMTA4MmUxZDc0MWVkOGM0OTkyNmMyZTI5NWI4NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_eaf7fd8c8e954c3eaa1445e6956a389e",
+      "statement": "The person's source choice is enforced end to end: TickedSources overwrites the choose_sources call with ticks, ChosenSources refuses every task launch until choose_sources is answered and publishes the answer via a context variable, and RunSources in each subagent refuses any pulling tool outside the chosen web/library/vault/staff sources (a missing choice reads nothing, a rejected card means web only).",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/middleware.py#L264-L406",
+          "version": "repo-lines-v1:sha256:1b5150ba5b964343639add0f7f97730b5792475479075133d7289355e1f2bc37:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNjJmMDEwNTE3ZmM1ZjZjM2ZiYTA5N2MyZTMzNjVjNzI2ZGIwN2I2NDhhMDVjOTBjNjBjNmNhOGNlNDQ4YTY4IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJiMDBjNDU1NmFjYzIzY2ZkY2ZkNjllZWQxY2ZlNmNmMTEyZDhkOTBlNzZlZDRhMTJlOGIyMWE3NWNhZmUyODZjIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIzODU1YTM4MTQ2YjU3ZWNkN2ZlNzc4ZWQ3NDQ2N2ZjYmZhOTQ2MDljMjM5MjI4ZDE0ZDlmNjcxN2Q3MmIyMzhlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4YmY3NDZmZDA3NzkyOTg3MDg0OWQ0NmZkNDM2NzFkMTNjNjI2YjVkZDg3ZDc2NTYwODY0NjY3ODc1ZjM4NDIzIn0"
+        },
+        {
+          "resource": "repo://backend/app/ingest/run_sources.py#L1-L85",
+          "version": "repo-lines-v1:sha256:d84ca7612c6a67160fe5f391f8d31b04c2770b688c2467b9dbb9e30059a61407:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwZWZkMDc5ZjYwOTkwYzk1MjU0OTdkMTEwZWY2MzQzNmQ0ODE0NjIwNDE4ZDlmYTgzN2M1NjJiMzg5NDdlNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTYwMGE3M2QyZTAyZjM1MmI5MGZlZjFkOGQ2MzgxMWJhNGE4ZWUwYzFiZWFhN2FlNDY1OGYzNmFhMmUxOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ee8b89ea982e4dbebd7eedfe4994ac85",
+      "statement": "The researcher's middleware stack combines SaveRefusal, RunSources, StaffLastLock, optional ReadingLimit and call limits (only when configured), EscalateAfterFailedSave (only when the research model differs from MODEL), model fallback, a utility-model research rubric grader allowing one revision, and a cheap summarizer.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L295-L312",
+          "version": "repo-lines-v1:sha256:28a56eba7ed8b9881c83dc42d43dbf123d677dcd4ad9305ab772860760b182a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMmUxZmE1OWE2YTE4NGE1NjJkZDhhZGMxYmQ1MjZlOTNmNDYwNmJhNDUyYjVkYjMxYjQxY2RlMzFkNmY1MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkZmU4N2ExOTc2MTA3OTYxYmFlNzZlODExNzkwMWQ3YmUyNDM3NjhjMjk2YTQzODRmZjUwZmIyOTJlNTdjYzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyNmUwNTE0YThlMjliYmQ3ZjViNjRmY2YxODMwZjEyMWZkNGE1MTFmZDY4NTYzYmViZTgwZTI4ZWY1NDdhYzEifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/middleware.py#L185-L234",
+          "version": "repo-lines-v1:sha256:d781e589742a4b03ea32e6066e2f7ee8facb5bdad89edcc5741e23c572ae6d05:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3NjA2ODc4NjAwNzIxMTE2ZDVjYTk4MjUyN2NmMjQwMWNhZDEyMDQ5MGUxODhmNTgxNzQ3NGJmY2RkMDdkYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBlMTM1ZTA5ZjA0YTQ5NGYyZGViMWEzYmRjZjIwYmQ0NzNmOWUwMzdlOGVjYWFmMTA4MWMxZGI3YWJkMThhMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA3OWFkNTQ0YmE3ZWQwOTAwMDIwNTNmMmY1Y2RlMjllNjI1YThlN2E2N2EwZTRkYjM2OTJhYTM1MWQxNWUwYTgifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/middleware.py#L409-L533",
+          "version": "repo-lines-v1:sha256:4fc144b17e9c7774f07be4eecdb626093a62b3f3611befcce14ab00c37e47986:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJkNmEwZDFhNzRiM2Y0NTU4Y2EyZGM2OTkxZDczNzhiODM3NGMzZmI4NmZiM2ZmMTY4MGE3NDdiMzllYWFjMDcxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhMWFhNjQ5OGE0ZmM4YThmNGI4OWEyZWQ5NmVkOGE0NjhiYjUwMzlhMDUxMmQ3OGMxNTZhZjI5NjQzZWU3ZDlkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyNWEyNzA0NDM1MmIxOGU2MGE2MzljY2I5ZDVlMjkzMGM0M2I0NTlhMjE0N2Y4MTA4MGE4NmM0MmZiNmRiZjg1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://backend/app/ingest/middleware.py#L68-L98",
+          "version": "repo-lines-v1:sha256:8dea9a666224fc14feddee4a7b04938ce5126f4d07b3620ec25553c130cefbe0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0MjA1NTNiZDBhYTZlNDlhNTY2ZGQwZTAwMjAxZTQyNTYwYzVjMTA5Mzk1YzQxNWRkZDk5OTY4MDBkMjhhZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhZmI0ZjYxY2MyMWQzOTIxNjdlM2ZkM2ZiMTVlOThiMWY3NjNmNGJkNjEzZGIxMzBhNDVhZjNkNGU0ZGY2MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjMGRiOGM1ZDE3NzNhNDNhMjViYzFkNGE4MzgzNDdmMDMzZWRkNzM0YzAwZTk4ODBkNDU2OGJhN2JiOTE1NDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_879fa37fd0ee4d15a34fc370bab8b697",
+      "statement": "StaffLastLock closes every researcher tool outside a short allowlist once read_source_rows has been requested, so an injected instruction on a web page cannot carry a staff row out through a URL or query; unreadable state fails closed.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/middleware.py#L103-L148",
+          "version": "repo-lines-v1:sha256:536d0c2f2b1ab5c3464e139ec4e930dd25cf938450237db338467d707694cf41:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NTRhOTc0MjlkNDFiYjY1ZjQyMzc5MTJjNmEyMDgwMWZiMjI5MzUwZWVmMDc4NmNkZjRhZDBhYTJmN2U1ZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhYTgwMTg4ZmI5YzliNDRiOTI5ODY0MDFjMWM5YWU5MTdmNDliMGI0NDAzMzVkYTFlNWMwNTE0ODA3YWZhMWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkYjVhYTU3ZDE1OTMxYTY2OWI5MGE4YjY1ODQ3NDI2MzFlMjkyZGJiMGIzNzA5ZWRhMDIxYTZhNGU2ZTAwZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3NWMyMWEwYzhlNzZhNzQ1ODdlODM1MjIxMGFjMWY0YjdkYWI5YTUyNTE2Nzk0MGQzZThhMjAzN2Y1YjkyMDYifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_harness.py#L331-L363",
+          "version": "repo-lines-v1:sha256:7193f3aefea04c87b73efe8fce84799592a784c81bdbae212ba3d0a49152250f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkOTI0ODA0ZDIwNDQ2NjEzMWE5NWI4NTBjN2NjNmY1MThjNGRiNGI3MzU2Y2ZhZjM1MjRiMTA4OTgwY2M1NzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkY2VjZjhlZmU2Zjg3ZTg4NTkzMmZiMmMxYmEzMzFjOTU1ZjliODZjYzQ2YTk1YzI2Zjk1NTJhOTYyZjQyMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI0Zjc1MzI5ZjVhODg0ZGJkNTgzMzBjM2QyMDRjNDBjNjlkNDQ0OTBlMDAyODIwOGM2NWZlNzM4NWI5ZDQ1N2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0MjIyOTRkNmEyMGU0OTMwMGM0NWY1NjdmNzYzYjI0ZWRkNWI5M2Y0ZTgzMjQzMWZiN2JiZmQ2YjE3N2I2YzUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bee87b88449b43359975ef6aede6c90e",
+      "statement": "The vault-reader never shares a context with web tools: it has only vault tools, research_goals and save_vault_findings, filesystem eviction is off, and DropFilesOnExit deletes its state files on exit so private text cannot flow through the parent to a researcher.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L236-L250",
+          "version": "repo-lines-v1:sha256:2999aa2736dbc2531f4942343c387c9b11c65ae47605a4d1eac7fcd57cf65eba:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkYTgwMjQ4NjA2ZmU1NzVkNmQ5YmFlZWIzNzgyMjdkZjE0NmI0ZWE4Y2Y1OGFjNjZhNTdhMDhjYWFhY2YxZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5ZjkzMDgzYzE5NzEyMWI5ODI3MDBiYThhZmFiZDE3MjJjZjFkM2U3NDA0NTA5ZTgwZWZhMjcyNDdmNjJmMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhYzQ3ZjNiYTc0ZTJhODgwNmY4OGJiMzI0YzE1MWYwMjM2NjE1MzE1MzYxNDEzNmNjODI4MTliYzlkZTc0ODEifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L329-L340",
+          "version": "repo-lines-v1:sha256:2d367e5e3b0ffadfefdb973d77a6868add2c6a41c44bb3615a23b3dde8599692:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExYTFkNTUzODVlMjg1MzhhYWU3YjVlZTQwMWFkZTRhMDRjYjdiODdmNmE2MWE3ZjNlNTAzMmM0YjE1OTJjYjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5YTI3ZDI0YTI5YTgxNGQ2Mzg1YmI2ZmYyOWNkNDZlNTBhNzZiZjFmNTQ5MjFhOTVhODk3OTc2NDIyMDllODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliMDgzMzk3Y2Y1YTNhODY2YzRkMTM4MzFlMzRiMzM0NWY5N2Y1Yzg2N2Y0MGFmMTQyNWE2NDhhZDY4MTdhMjQifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/middleware.py#L236-L248",
+          "version": "repo-lines-v1:sha256:eb957f61309881825b4c31b08a4d9bb317e6628ee5e3bdae2f48273ce571f220:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5YjZiNjBmM2QxYjRmMmQ2NjgyODkyNGY2YWFjYzc1NTQ5MDBlYTE2ZmVmZmUzZWJlY2VjMmFiODk3OTk3MzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4N2ZiYzEyNmI1ZWMxYjk1OTRmYmRjYmFlM2EyMzQxODU0NWRhOWVmZDUwZjgxNmIyZjhiNTAxNjhlNWI3NTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczZjM4MWExNTg2NDhjN2IxOTQ2M2UxOGVmMzkzZGY4ZTRiYjA5NWQ3ZDZlMThjMmUwZDg1MTI1MWIxYWNiZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjYmE3YWFkYjI4Y2ZkOTg0MTE1ODhjMGZiOTY3NWE5NDQyNTg1YjliMTgzODY4ODE4NzE1MmM3N2ZiYjZlYzcifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_harness.py#L325-L329",
+          "version": "repo-lines-v1:sha256:84b4aa11b3e577b6e61975f1c7e7078c50f5b6bf734e27af4c4f169a9b4cac8a:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjFkOTlhMTJhMTc0ODAyOWQxODljOTRiOTY3MTVkNTM4MjU1MzEwMDY0OWI3OWQ3NjcwZTZmZmVkYTFkY2JiMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTZiMDQ0OTE0Njk3MjJlODM2M2E5NGU0MDQ0NTM4ZTAxM2EyYTIxN2UzNmIxZTU2OGJhNjBhY2I3YjRjOGYyZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzkzMzMxYWNkM2U3NjcwYzdhOTUyODc4NWVkMzk5MzJkOTk0M2UwYzI1Nzc5NjgzZTg1MGQ4N2UwOWQ4YTEwYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDc0NDFiYTI5YzYyNGMyNmI2M2YyYWFhMTVjZjI1YWIyODUzNzdiY2UyZDM0MTU4MGM5Yjg1OTRiZGRhODVlNCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c03cce589d07451ab85e41b13960cc86",
+      "statement": "save_research enforces the research contract in code: schema and source-label validation first, then refusal for an NGO by a non-staff non-steward, then contract.unanswered() (every concept of the kind needs a finding or a gap, yearly concepts per asked year defaulting to recent fiscal years, identity fields plus themes), then a one-save-per-slug-per-day rule where only staff replace another person's row, then a no-shrink rule unless replace=true; success upserts entity_research on (slug, researched_on) and publishes the brief.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/contract.py#L23-L45",
+          "version": "repo-lines-v1:sha256:b6b14f456e0b8e6c188a63a39cd09fd5ddbf3433ca46b1ea783a82b385e68643:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkYTM3NTU4OWY5MzI3MmQwYWI5NDQ2ODIyNDJmZGU3ZDg2NTc2YTgxODkzZWQ0MmE4ZGQzMzViOGRjYjk2NzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmODhhZTA5MmU4MWZkZDY5M2MyZGNhNWVjYWU2YjdkMjA3OWE3ODNmNDlhOTViOWY4YmYyZmViZTQ5ZGJjMzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlNzU5ZDA2NDU4MGI5ZWYwZjg0NDVkYTVkY2E2NjgyODQxNTQ5YWYzZjdiN2NkOTE3YjA1ZGYzOGY4NGI1YmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxMDA5NWFmMjhkMDA1OWE4ZDQyYWQ3OTEwMGJiOTg3MzQyY2Y5YTM4NmQxYmYzM2RlMTZkYmI1NjI4NDM0ODIifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/research_records.py#L868-L966",
+          "version": "repo-lines-v1:sha256:0c06c42bddac35bf85698a4993f7d1a28ee98cf52d84b237f3e2333bd2cd705e:eyJzZWxlY3RlZExpbmVDb3VudCI6OTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0NmRkM2Q0ZDU3YzBmOTU4ODU1N2QyMjk3YjY4ZGYyMzhjYTkyMWYzZDE4NDc4MmFmMzU1ZTk2NGQxMTc4YzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyYWIwOTBiY2QxNjIwZmE2MmVhZWUxNTdhNzRmY2E2MzVhYTI5ZTEyY2JmZmQ2MThiNTc5MmQ4N2JjMDNhM2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3M2YwNmFiMjMyZmM5OTYxNWFmNDFjYTc1MGNmNjlhNTdhMDgwZjQzMDliOTBjOTIwODRjM2Q3ODU0ZTAxYmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwMzE1YjVmYjZiNDEyYWM3ODYwNWQ3NDk1NDA4ZmU3NDdlMjg1M2I0NzAzZjllMDcyZGM0NTc5MDhhYTBiN2UifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L284-L424",
+          "version": "repo-lines-v1:sha256:4fa029e39cc0c022d93d11a373bc2b7997babda7a04b549b29c4cd1bc28e7e25:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIxMzRlNTlkN2VhZGNhOGE5MjlhMjVmYTYwYmI1NGZmNmI4YWZiMGZhZDk0MDk5Y2QxYzg4OThkY2Q1YmU5NjhjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI1OGJkMDEzZGQzNGVmNDhlYTY1OWQ1Yzk3YjFkMDdjM2ViM2E2MTMyZGMwN2NmN2QzMGMyN2Y3YWViMDI0N2Y5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJjMTU4ZDE3NzIxZmEzZWZhODViZTJiNTQ0ZGI0M2NkNDhkMTFkZTRjMjQzNThlY2M4MDM5MGU4OTM4ZDZkOGJlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1ZGZjMWJhZjc4ZTU4Nzc5YWUxMTY5ZTU2MGViZDliY2M4MzkwMTcwNzQxMzUyNjliMTYxZmE1Y2YxZDEyMmVkIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_f92f4e76a9c249cdb1b8f9da85dee21a",
+      "statement": "Findings from aggregators and the team's earlier research must be saved as claimed with the right source_type; this is enforced at save and re-checked at promotion, where a fact whose table cannot mark a value claimed is held.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/research_records.py#L959-L966",
+          "version": "repo-lines-v1:sha256:a6a3af9ac51fd63f1cbd6ceb816ec9c85d6c96a0339c5f0794fa8b2fc5b363cc:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWVmMWNkZDBmNTc0MzNjZTUwNzc5MDcyMmUyZjUxZDk3MzU2Y2JmZmE3YjI0ZGQ3Y2ExMzQ0ODMyZDRlNTI0OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTJhYjA5MGJjZDE2MjBmYTYyZWFlZTE1N2E3NGZjYTYzNWFhMjllMTJjYmZmZDYxOGI1NzkyZDg3YmMwM2EzZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2YxM2QyYzg1NDkxNWQ4ODI5MTFmOWMyYjI5YjcwOTljOWQwYzg2ZDcxOTE1YzgyZmYxZjQ0NTc1OGQyZmZhMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjAzMTViNWZiNmI0MTJhYzc4NjA1ZDc0OTU0MDhmZTc0N2UyODUzYjQ3MDNmOWUwNzJkYzQ1NzkwOGFhMGI3ZSJ9"
+        },
+        {
+          "resource": "repo://backend/app/ingest/source_guards.py#L37-L106",
+          "version": "repo-lines-v1:sha256:8b72d10f3acfd06c4bdcd25af36ed30cfdbf8d36fc43f951146ae7e3cd7b78ad:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2M2YyYWRiNDk5N2NjYzgyNDExMDQwMzMwYjExMDNhZWQwYTBkMGVjYzhlN2U2ZDU2YzY2ODZmYmNiNDUzYmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlOWZmMzA5ZDAyY2RlYTk0NTE1MTRkNzJiYTMyY2M2MTQ3MzI3MDA0OGUwMGRhMWU3OTc5MTMxYzI3NGJhNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcyMmZkZDg4ZDc5YWI2N2FhMmUwZjMyNjA5ZmJiMzIwYzZhODE5OTEzZTQyY2E3MTY4NDQyYzg1MGQwZWFhZDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a7f6bd28d093478f9c60942fac72854f",
+      "statement": "The published brief at source-archive/entities/<slug>.md is the record that promotion reads and there is no brief table: each fact carries its typed finding in a hidden HTML-comment block, new runs merge into the brief by fact_key (later run wins unless an earlier source is strictly stronger by evidence tier then confidence), facts no field can hold live only in an unplaced block, and the brief is left untouched when Storage cannot be read.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/brief.py#L181-L270",
+          "version": "repo-lines-v1:sha256:1958984079587584746a5c5eb19f60e1d37bd2268de2af917f0da9a7ff4d657f:eyJzZWxlY3RlZExpbmVDb3VudCI6OTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0NzNkZDY3MjE4MDcwYjAxYmZhNTJmZTY1YTljZmI3Y2FjZmRmODJjMGJhYzk1MmFiNWY4ZDRiN2U1NDU0NzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ0MWU1MTdlOWJjNTFiYmM5OTExY2JhNDdjMTZiZTgyMmFmMTVmYjIxODcwY2QyODM5YWQ2YWI3YWE5ZjUxMjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI1YTkzNjg0NWY0OGRjMWQ4ZWYyMjIwNDQ1YmNhYmUwZDU2ZGRlZTk2OTU1Mzc2MDY0NWE3NWExYjhmODUyM2UifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/brief.py#L476-L520",
+          "version": "repo-lines-v1:sha256:52e00b008535ae98fae763beb329a2082472f1e34f2f72386fb7255db23c46d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyYWUxYzA4NGYwYTkwOTgzYzA3ZmFkYzY0MDBlNzkzNGQ0YzA1NTQ4YTRiNWY4OGU1NTMxNjdmNjM5NjI0MmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0ZmFiZmMxYjc3YTJjYzg4NzEzNTcxODgyYTMxYTI3OTkwMzJmNjNkN2ZkY2UzYWQ5ZmVkYWY4OWQ5YWYyOTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkZWY4NWZkZTFlOGUwMjg4OWQ1MWFlMGMwOTBhY2I5NGQ0YTBjM2EzNzM2N2ZjNzBmMDZjYzM5MzBjZmY4NTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L383-L392",
+          "version": "repo-lines-v1:sha256:df68677f1cfe9c9744ca4c59331879f96a125baac3608e1e9c11e340c4d1cd76:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExYmIyMzdlZDkyOWU0OWMzYmJmZDhjMTUwYmRlNzliMWY1NjgzM2NkNTUxYzg3ODkwMDNjYzUzMDAxMmNlYTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmMzcxNGExNTRkNjFkZGMzZTliMjMzOWRmOTAwZDY4NGUyN2MzNjc5YWMxYzdmYmQxYTc2Y2EyMmE5NjUzOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0NjBiOGU2OTQ0MzllZWJlYTc5MjgzNzZkNWVjZTZlZGUyNDcyYTU1ZWIzOTE4OTNlMmQ2YzE2YTVlY2UxNTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4MzcxYTUxMTMzMjkwNTc0MzVlNWZkOTE3ODNjOGE3MzY4MzFkY2Q5MWUwZGRkZjkxM2U0MWQ0N2VjOTE1ZGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_386270526dea400b8e35254f59c8a3d1",
+      "statement": "Private findings (reserved sangam.invalid URLs for staff datasets and the Doc Vault) are filtered out of the rendered brief and replaced by a fixed private note, while brief.promotable() returns the merged public facts plus the newest row's own private findings for promotion, and drops findings with no concept.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/brief.py#L19-L22",
+          "version": "repo-lines-v1:sha256:0b1f3326d0d0746f1f5ecf8de5de17632a4056bd90c7ffab179d8a5c5af2c2c0:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzcxMWQzMmQ0ZTk5ZWQ5YzFmZjdmZTk3NTdiY2M4N2Q5ZjMwYTYzNjhlNGMzMzkyMmZmMDUxMmJiYjk5NzAwMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjVlNWU1NGU3MDNlZTY0YWYwYWY1MWEzZjE1ZTYxODUzNmExMWE3ZDRkOWU5MTE2MDBlZDA5MDE4NTIxZDU3MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTdmZjY1Mjk5YzUzM2M4NGNhNmNiODIzNmJhZDYzZjdkNWUzZGUzMmYwMWU5M2Y0ZGUxZTg0NGFhMTFjZjAyYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDc1OTg4ZDdhZDgwYmYwNjUzNDM5NWRkNDYwMTY1NDE2MjMyNGUzZmI0Y2ExZjQyZjMxYmZjMTc2NWU3YjIyNCJ9"
+        },
+        {
+          "resource": "repo://backend/app/ingest/brief.py#L366-L395",
+          "version": "repo-lines-v1:sha256:f162f1119f80b6fe57109f5a9f7e253658bb20f8347402fdc42cb6e2a447f1cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjNWQzMDg1YWNjZGQ0ODI3OGUzN2MwZGQ2ZmFhZThiZTFmNzg4N2RiNmFmNzlhYmJkYTgyMTA0MTFlY2I2YmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzM2IwMmRiYzhjZTFlM2ZmYjE1OTM5NGVlNDY3NDlkNGQ2MDM0NjkxOWUyNDBiYWU0ZjEwNmUwNTcyMTg0N2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmZjVkMGI2MjA1MGNkNWRmNjg3NWQ4YjcyMmZhNzk2NTNkYjAxY2NjMTM3ZGZmZjJlMzBhNWJlODc5NGYyYjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1NGI2YjQ5MmYyMDMwOWU1YzQ2Mjc4ZWRhZDkyYWI3Y2E0YjBjZGI5OWVjYjE3ZmEyNTcyMjVjMDI5NzhlNDAifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/brief.py#L504-L513",
+          "version": "repo-lines-v1:sha256:7381e147caf92f6cea4ed5aeb36ec0e0fc36f94212588fa8f7a215d67df6adbc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4MjFmOGYyZjAzN2ZmYjZjYmIxMWFjODlkZmQxOGFlYzE2MjZkMTEzNjIxYjE1YzkxYjE1MWFjMTBjZDIzNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3OWM5YTcyOTQxYTQ5OWVhYjRkMmNkMzM1YjgxNTVjNzc3YmNhY2MzNWI2NTFmYzgwM2NkYWVmNGQwMjI2MzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkZGNmMGFmODk3ZmJkN2NmMjljM2NmNDgxMGQ3ZGYyNWE1NzYzNWZmOGQ3OGFlYmFlOTQ5ZWQxYjZkZDQzZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkNzQ5OWFlMTIxYjYxYTc1NzAzYzEyYjk5YWYwY2U4ZDQ1YTE1MWZmNjMyMDNkYmY2ZDFjMzRiZDU4ZGU2Y2MifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/source_guards.py#L18-L27",
+          "version": "repo-lines-v1:sha256:d5ddae40d52a1782ea2f96104aa8aec95c480aa8aa63a7db7806249ae7e9258c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNDhiNTdkZWQyYTYyMjBhOGE3NDJjZTIzNjNiNjVmYmEzZTJhMWVhM2UxMTRlMTAzMDIzMDZmMDIzYmFmYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyYWMzNzA3MGQ3ZWJjZGIwOWViYzVjN2VkNzA0YTA1MDJkMDUxNmZiOTU5M2MxNTM5Y2Y5ZDk4NTkxZjk5MzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhNGEwNTUyYzYwYjdhZjk2ZGRiMWJhMzY2YmZlMjVhMDczNTAxMzhiOTY4MzI2YzFlZTVhNjQ2MDY5Yzc5NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_334edb3ab5d54a2686d1f4cd8fdfd71e",
+      "statement": "Saving has two entry points (POST /api/ingest/research/{slug}/save and chat promote_research) that both call save_to_catalog(), which runs undo.start, promote(), _record_save and undo.finish in one transaction per organisation, retries once on UniqueViolation, and afterwards writes per-fact states back into the brief on a best-effort basis.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L234-L252",
+          "version": "repo-lines-v1:sha256:fabea09467950c92db474c28aefdb476a7789a56ba625d1b726ef33cb05e6481:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiNGNkOWZjY2FlMzljMTI0YjIyNmQ3MGU0MTIyNGQ2OTkwYzAwNTE0MTBmYjE3MGM2OWIwMTBmOWNlYzk0OWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhOGUzNzU0NWI2MTBiNzA5NjU1NWE1Nzc5ZjE3OGZjNTE4OTQ5YTdhODEzY2U5NzUyM2U4OGQ5ZjNjYzdhOWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2NDFmY2UyNzEzZDRlNDJjY2IwMjQwYzA4NjBiYjIyZjk5NDQ0OWY0MWI0NzMxODlmY2UzOTVhZmZiNWQ5MmIifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/catalog_tools.py#L723-L763",
+          "version": "repo-lines-v1:sha256:6417862f38fb509d39b5c5b497bc7f0a9418e07fb5f9a3c6fe9dae0d197f619a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBkNGNmZWExM2ZjNzljYTViNDNhNmVmZGYwNmI5ZWY3NmNhZmQ1MWVmZjg2NzUwNmZmNTRlOTcxYjg4OTA1NmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkN2M3MzVjYTQxNzA0NDA0ODliZmViNjMzNWIwMTZiN2MwNzNlZDhmMTJiYTAwZTBlMmJhNjgyYzJlMTViOGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ4ZTAyYTZiODk3NTUwMWI3MDMyN2YwN2I1OTlhMzI2NWQ3N2E5NmJmMjU3ZWJjMDE2MmMyZTIxOTMzZmZlODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkZmMxYmFmNzhlNTg3NzlhZTExNjllNTYwZWJkOWJjYzgzOTAxNzA3NDEzNTI2OWIxNjFmYTVjZjFkMTIyZWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_17128da2e3b54fb78cc17711618b40e4",
+      "statement": "promote() applies source guards (staff-cell markers and figure checks, vault holds, aggregator labels, pre-typed shape refusal) before branching to a funder or NGO path; the funder path uses a Gate with five cases while the NGO path runs without a gate (fill blanks, evidence-tier ranking, reported conflicts), and every fact ends in exactly one state (written, confirms, conflicts, waiting, kept, skipped, held, no column) that is written back to the brief.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/promote.py#L1402-L1566",
+          "version": "repo-lines-v1:sha256:b895e880f8815b4c1ffbe600dbe864146bf8440780efaf263930e7e1cda0e8f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTY1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI3ZjkzOGEyODQ2NjZmOWM5N2JlNGVmMDQ1OTI3MWM3ZDY3ZDIyYzYwYzUyZTZhN2Q3NjMwOGI3MWQzMzQzZmUxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJkNWUxYTE3M2Q1YjE0YTEzOTE3YWMwOGQ4ZTExYjY1YjZkOTBkOTU0YWUyNDY0ZWJiN2QxNjM3M2UxNTQ3OThlIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIzYWM2Y2ViMmQ4NTBlNGE5ODY0OTFiZGFhYzViNjMzZDIzOWM0NWMxYTg5MjNiOTIyZmUzZjg0YTg1NWRhNmRlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI2YTFlZTU3YjRjNTBlYmY3MDRkNmY5N2M1MGM3NmNiZjJiMjc3YjY4ZDdlMGYxMmMyYWIzODA3YTlhZmJiZGFlIn0"
+        },
+        {
+          "resource": "repo://backend/app/ingest/promote.py#L209-L246",
+          "version": "repo-lines-v1:sha256:6086185936006f6c7c7bcd8c9fae82800667651d2cbe2dc01f4a549ea570a2c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4ZTg0NDBlMDViNGY3OGZlM2MzMDQ4OWJmOTBmNDA1YTU4YmFmNzY4NDE4ZWNlMGY0ZmU4YzU4NTBiNmRmOGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3OWRkZDJlYmI2MDAzNjA1YWFhNzVkMjQ3MDU0MzAxZjAyZTNjYWI1NDg0ZGVmYzUxMDRmYjk1NDI2Y2Q5ZjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiMzBjNmZiNzMzYjQ5NDVmM2IwYTAxNjE2YzFhOTJjNDk0N2QxOWI2ZTEwMGY1ZjFjZmEzZTM2MDE0ZTUwZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3ZDUzZTMyMDZkMTA4NDMxMWQ2MjQxMDcwMjE4YTY4YTY0OTljZDhiM2JlMmI4YjFkZjU4MjNjNDljMzE0MjgifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/promote.py#L89-L110",
+          "version": "repo-lines-v1:sha256:5bc682973e158aa774f140b9ed08c9f8691e62d1b695a2da96edec3759c56df6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhYmFkOGIxZDY1YjMzNDc1OGE5NWRhMTMxYmJiMmQwYWZjYmFlNzg3ZGQ5YmU2MGRjZTI3NGM2MzllM2UyMzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1YzFjNDYyZTJhMzlkNzQ3NTlmNWUxYjEyNmY3NjgzYTJiNzMwMTE4ZTE4ZjUxMjJiMDhjZWRlZWI2NTBlMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiZTQzOWU5Zjk4NmFhMzFkZTkyZWIwY2VlMTdiYTk0ZGExODc1YTlkZWE3NDg0OTY1NjNlNGY4OTM4ZmQ2MjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_97a99ff44f7e4c69b1d6c184d726d2cd",
+      "statement": "writer.py is the only place Import writes, with fixed SQL and a Gate that sorts funder writes into five cases: same value, newer-or-equal source (updates), older or undated source (asks update/keep), close name (asks update/new/skip) and new (inserts); provenance-only changes are never questions, question ids exclude database ids, and Gate(plan=True) writes nothing and backs compare_with_catalog, coverage and the review card.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/tools/catalog_tools.py#L517-L603",
+          "version": "repo-lines-v1:sha256:192f1a280ee95e0026babde366a421358417781aa27069006ec54c7e1331ebb2:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzNGU1OWQ3ZWFkY2E4YTkyOWEyNWZhNjBiYjU0ZmY2YjhhZmIwZmFkOTQwOTljZDFjODg5OGRjZDViZTk2OGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkOTIyNTExZjM0Y2E4MjNlNmFjODM2Y2U1YTQ4OWU1YmMyN2NmM2VkYjgzYTFhYjE4MmZjMzZkZWY2MmQwYmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiNDY4YWQwYWJkNWRmODYyMGJiOTRiZGZmZTg1ZjQyMTEwZWNkYThhZjc2NGE0ZDVjM2JhMDZiYWE1Zjc3M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFhZTQ0Y2E1MTE5YzNhNmU0NWJjYzM3MmEzYzZmZDUyYWE5NTEwNzQ1MzFiMzA1NzE5M2U2MzAzNWZmMDEwYzkifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/writer.py#L108-L245",
+          "version": "repo-lines-v1:sha256:27210399b12ce0b1fbb4d670ca5cb208516bf7d0256fc9466dd57ee5d694992a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0NGJiYThhMmEzY2U3MDY5ZWQyZjQ4ZTg2ZWU1ZmU3MGUxZjk0Y2IwZjVjMjMxNmI0ZjhjM2I2YjhkOTRjYjZjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlZjNlODgwNjUxZWE1MzlmZWE1YzEyNGEzMTllY2FmMzkwM2VjOTMwYTRmM2M2ZjM3MGZkZjA1OGU0MzdjNTU5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJiODBiMWIyMzE1ZTJjNjYwMGVhYTJkNWJmNTNhZjNlMTBlNGQxZDg3YjBlOTFlNTk2OGY4MTc5Mjc4ZTdhZjU4In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_a8ea289c0bb34ceca02e1ab727df24b0",
+      "statement": "matcher.resolve_funder resolves in order CIN (only if the name also looks like the same organisation), exact name, alias, name variants, website domain (same-organisation check), boilerplate, then trigram; identifier, exact, alias, boilerplate and website merge while a trigram hit only proposes a Review question, and resolve_org follows the same ladder while ignoring reg_no identifiers.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/matcher.py#L154-L300",
+          "version": "repo-lines-v1:sha256:145c2882976534838025da99936b9ca221ad2a1031a22be11220e613f43e5bc3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQ3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIxMDNiNTZhMGJlYTUwZDJkYWU3NjJjMTE3Yzk0MjEwYzMyYjFjMzFmYzNmN2NiMDM1ZDIwZmQxMGZiNTcyY2M5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJlNmIwNDQ5MTQ2OTcyMmU4MzYzYTk0ZTQwNDQ1MzhlMDEzYTJhMjE3ZTM2YjFlNTY4YmE2MGFjYjdiNGM4ZjJlIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyYzEwOWM1NjkyOTdmMjlkNTA3NWE1ZWZiODE0MWRkYjRhMmFmNzVmODM3NjRiYmJhMGMyZjk3MWU3ZThlY2VmIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI2ODkzNDBmOTc4OGUwYWU4YjA5NDk1M2IyZWQ3Y2E3MTIzZjM5Y2ExZTdjMjE5MzEyY2Q4OGM2NDg5MTEwYjM5In0"
+        },
+        {
+          "resource": "repo://backend/app/ingest/promote.py#L89-L95",
+          "version": "repo-lines-v1:sha256:f711065dac6f35bae0d6077850d591adea05444c7b3829dd78811977a1f0d7e9:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2FiYWQ4YjFkNjViMzM0NzU4YTk1ZGExMzFiYmIyZDBhZmNiYWU3ODdkZDliZTYwZGNlMjc0YzYzOWUzZTIzMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDE4MWIzOWYxNmYyNzI1MmEyYzZmZTI2NTVkNmU0NDY4NzgwZjFjOGQxYjQwMGM2MTExZDBiZmI2YWZmZjFhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTVjMWM0NjJlMmEzOWQ3NDc1OWY1ZTFiMTI2Zjc2ODNhMmI3MzAxMThlMThmNTEyMmIwOGNlZGVlYjY1MGUyMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGI3NWY3ZDVmZjJkZTU3M2E4Y2RjYmU1Njk0ZTA0MDk3MjQyOTFjZTQ4MTY0YjhlZDU3ZjQ4N2YwMTc4ODhiZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_db24164f81864fe08e41eaeec7232841",
+      "statement": "geography.py resolves places against a closed list of 28 states and 8 UTs and seeded LGD districts: unknown states and stateless districts are refused, a near district is accepted only above NEAR_FLOOR with NEAR_MARGIN lead and matching qualifiers, otherwise it is held for a person; only the country and a canonical state row may be created, and a plan preview returns -1 instead.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/geography.py#L1-L176",
+          "version": "repo-lines-v1:sha256:f2367d2852db08f48e097a3859c9930fda995ac9540d76ddb9e52d0ad4a962dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTc2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyZjBiMjlkYjYyZWM2MTBhNTZiZGQwMzdiZGZiNDMzNTQxZmVjNGUwNGZlZjU2MDRjN2FjMDEzNTExNDFmM2RjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIzMGMxZjE4OGYxNDJlZDdhODI0NjgwYjIwNzE3MmM1NTE5YmM2MTRhNDhmZGE3Y2YxNjdlZGI4ZGRmNzk5NTZjIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_30b0600ff1534707b9f00d34fe9dbb8b",
+      "statement": "Undo is staff-only and replays catalog_writes newest-first in one transaction across 19 logged tables, restoring updated rows and deleting inserted ones; it refuses the entire undo (HTTP 409) if any row changed since, is referenced elsewhere, or is outside LOGGED, unlinks resolved entity ids, clears the research's saved marker, and delete_research is refused while a save still stands.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L206-L231",
+          "version": "repo-lines-v1:sha256:653fc9c4ce9ff598b2decedef7d91637482474597ee5137c3b77b8e9d9b527e3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2MjY0M2MwNzE2MzI3NTlhMGE5ZDIwYTYyN2U2NWZkMjg4NDA3MDcyYWRkNzgzMjY1ODMxN2I0NDhjZjYzYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmN2U2ZDZiMmM5ZjUzYTJhMGVkMGI3MjY5NWE1YmIxNTU2M2FhNjlkYWE1NWQ1N2NhYjYwNTAzNmU1ODc3YmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIxZGIyYTk0OGExNjFmZDUzN2U3MDljOGUzNGJiNTYzZjU3MzUyYmExMDFkNGMxMmQ3NjI1NWMwNzE5OTAzYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkN2NkMzQ4ODZiYTZmZjZkMmI4NjJiZmI1NTVjNzU1OTE5NDBkNzZmMTM5MmQ5ZmQ5YzNmN2M2NTM0OGNlOTMifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/undo.py#L1-L128",
+          "version": "repo-lines-v1:sha256:5a389cc630e90229fa1d081a2a7136dd16abc30476225389158cd32b4c035b9a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwNDQwZDNlYWIzMWE3NTQ2YWI3ODNjYTQ2ZGEzYTg1ODYzMGZkOWJiNjkxOGE3OTZmZWRmZmQ3NDYwYWRmZmU2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5YjczYzgzMDBjNzJhOTQ1ZTY5NjljMGExNGY5ZTEzODYwZTVhMGMyNDY4MmZkYjNiN2Q5OWY2ZmI0ZTQ3ZmYwIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://backend/tests/test_import_undo.py#L55-L140",
+          "version": "repo-lines-v1:sha256:bb04b8d91d4ef4bdb7927d495798ded6cd88328a2cf3ba26089fddbc870f1d84:eyJzZWxlY3RlZExpbmVDb3VudCI6ODYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1NjdiYTFhMjM0NjNjMTQzNzk0NjFlOTQzNDJlZGJjYmE4MDhlZmU5YTljMWQ3OGRkNzcyOGY2ZmVmZDg1NjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwNTBjZmJmOTMzY2E5ODgwMWZjNzAxODVlNDk2OTY3MDI5ODE1NmI2ZWJjYzhjNjljYzc1ZTViNjVlOWNlMmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1MWIwZWYyMTY4OTFlOTE5ZWJmZDg5Y2E5Y2JlYTk2Nzg3MTUxMDQwMjZhNTZlMzg1NThmYzFkYmFmMmZmMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_57973b457dba4fc2b39ba2bf98823f2d",
+      "statement": "Import tools run on the owner pool, so RLS does not apply and each tool checks the caller's chat_scope itself (outside a chat request the caller has no access): staff_only gates the pipeline, registry-check, workbook and publish tools, can_read_org gates Doc Vault access, and can_research_org limits NGO research and saves to stewards and staff.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/security.py#L211-L274",
+          "version": "repo-lines-v1:sha256:4eb66a583b23f79b7d57fef01a22e3da4556b7cbb1cab9112d2316892ad2558d:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2OWExMzk3NWMyNTZlYzgzMjBlMjAxNjA4M2M5NmRmNjM3Y2EzZDM1YmViZGUyMzE0YmVlM2E0NzExYjU2Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNTBhMmRiZGM2YTEwNGI5OWNiNTdmZmQ0NjhlMjVmNjc2M2ZiN2ZiYjRiOTM2MmMyZmRmZWMzMDIwMGQ1MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyMjQxN2RiNzdlYWZhMjE5NjMxYmM1MmQ4OWNmYjIwNDViNGIxNDJjMDc5YzFkOWE3NmI3MTc1ODIzNzc5MDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzZTk0MDgwMmQyZWU4YTk5ZDI0ZWFmMTkwNmY4NDQ0OGE3MjY1MDMxNTgxZTIyMTJkYTUyNjA3MTQ4MGNiNTMifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/caller.py#L1-L50",
+          "version": "repo-lines-v1:sha256:876e2b172e62781248e91ff6419161addbeeb4b69fa9e10c78a2e1ac62109beb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmOGRlZWRjNzM5YTMyOTZjMGUzMTRlNzc3MDNmZWNlYWVlMDI4ZDZiY2IzYjM4NWM4ODEwNzc3YmY2ZDU2OWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZTdiYjMxNTZkZjFmNzcyOGY0NTMxOTM0NDlhYTc0NmQ3MWE1NDEzYTQ0M2FjZGVkMTZkYzcwNTI2Nzg0ODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/catalog_tools.py#L700-L716",
+          "version": "repo-lines-v1:sha256:947a783c161c9277e2d68c9e55407972b3eb59f7e2fdf3b7df6ea26281e3a8b4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyODYxZTMxYzIxMTk2YzdmNDU4ZTIxMzllNzM2NzI0NTIyYmZhM2Y2ZjRhMjZlN2E0MmM5NDJkYmZjYWZjZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTYwMGE3M2QyZTAyZjM1MmI5MGZlZjFkOGQ2MzgxMWJhNGE4ZWUwYzFiZWFhN2FlNDY1OGYzNmFhMmUxOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlYjFiZGJkZjUxYjkzODg1NTg0MGI1OTQ3MWRmMmY4Yjg0NjNhOTBiMjNkNThlYjg1OWEwNzQzZTZhZmY1ZTIifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L238-L300",
+          "version": "repo-lines-v1:sha256:9f8b079678644ec706e17971bdb86b9b4fcb88c3c27819433853138f55b4684c:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0OGYxYjcyNmJjNDgzNGEwOTg3YjM1ODRkNTA3ZmQyODljYmY5NWNhY2VhNmIyZjAzMjdhNTE0MjJiODk2ZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5ODc1NDE1ZGQyYjMzYWU3MmNkYmI2MzExZDk0MzM3NDIxZDRlZjdlMjRjNDk4YmIxZDQ4YmRjNjRjZWIyYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3N2FiZGJmZjkwNWIyMWIxZTlkMDZmZGQ4YTI3MGMyOTM2MDE2NGRlMWM4NGI4NDRhMzkwOWYwYjU2MTNkNTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1NGQ4Mjc3NjUwYWYyY2MxY2ZkY2U4ODRiNmM2MTRmNmFiNmE3NTU0YjIxODljOGIwNzBiZWI3MjIyZGFhODcifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/vault_tools.py#L24-L120",
+          "version": "repo-lines-v1:sha256:8c02f96ba2819cb0b533f00e8bcd62936fea9325d796e59bda3e8539df86cca8:eyJzZWxlY3RlZExpbmVDb3VudCI6OTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlN2FhMTE5OTk4ZjBmMzlhZGYyOGQ0NTczNTJjZDk2YmM5ZDk2ZmU2NzRkNmMwMWEzN2I1YTBmYjRjZTVlMTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTVjNjZlMTdiMTQ1Mzk3ODM0YjhjODU0ZGM0MTkzZTIxMjUxODBhODk5NmExNGMzMTg4MzMyNmIyZWZiY2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyMDA5N2U0YWE1MDA2OGJhMTU3ZjlhMjczOWZhZDg2OTk1ZTFlMGNkY2NkYWRjNTg5N2MyMDM0Yzc0ZDNlZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA3OWUwYzA2YTRkNjU1YTEyNjAwZTY2NjliNGQ3YTNlMmI0MmI4YTM5MWNmNjg4YTEwNmQ4MWQwOTE0YTQ5OTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7fa759e45ac34f8b882ebe68654afaab",
+      "statement": "Private findings (staff-spreadsheet and Doc Vault) are stripped from research rows for non-staff callers via without_private, and vault findings are included only for callers who can read the owning organisation.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/caller.py#L24-L31",
+          "version": "repo-lines-v1:sha256:d5bba98f35754c9599e53207199e1b16617c32500cd649631a3f575f99bcea0e:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGM1MTc1MmIyY2Y3ZWQ0MjA4ODkwYjVkMmY4OTJmYmYzNmU2MjE1NWU0OWM3YTQ4NGJiYTRlMzQ4ZWQwYWQ0YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjQ2ZjI4YTE3MzZjZGFiYWYyYThkNmViN2M2YTRkYzYyYmQzNWFlNzg1OTQ2YzI1YWZkMmM3OGU4NmNlOGM2NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjgzMzNlMTUyOTEzNTBiNzMzNWJjZDQ2NmNjZDY0N2Q1YTBiYzUwYWVmM2Y5YjhhOTE0MTU5N2QzOGMyMjM3OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODM5NmMyYzY2NzA3M2QxMjQwZjhiMGM0ZjBlNDQ1YTAzNTExZDM5YTJmN2M4YzFmZmRjMGQ0ODU1YmMzMTQ1MCJ9"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/catalog_tools.py#L453-L501",
+          "version": "repo-lines-v1:sha256:85e5f51dadd51a9059a52870734909b67c17e6ec0967b8e3e29b38df815a61ef:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwNmZkNjI3YTlmMDUwNTJlNmUwYTVhZWU4ZWRhODZhMWViNTUzMzNhNjVmMDQ3ODU1ODRmMGIxN2QxZDk3ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNWIzODRmOTM4OTU0MTZmNTQzYzgyODA5ZTc5MmM3YTIxZjA0NjdkN2Y5NjYxMTAwMzNhYTMxNGVlNDZmNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiNDY4YWQwYWJkNWRmODYyMGJiOTRiZGZmZTg1ZjQyMTEwZWNkYThhZjc2NGE0ZDVjM2JhMDZiYWE1Zjc3M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyYWYyNjFkMWZmMmI4YTVjZWQyYjc1Yjk0OThkZDA2MTNhOWY4MGViYzdmOTc4ZGEyYzJiM2RkMDZmNjkzMmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9b126fdf4221408fbfe36db2edb615c2",
+      "statement": "Outbound reads pass access.check_url (never raising): http(s) scheme only, no embedded credentials, private/loopback/link-local/metadata address refusal before and after DNS, the source registry's access rule (held sources are dead ends), and robots.txt where an unreadable file is not permission for an unclassified host; robots.txt is fetched via guarded_client, page and document downloads run check_url on every redirect hop through a request hook, and unclassified readable hosts are recorded in ingest_source_proposals best-effort.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/egress.py#L47-L90",
+          "version": "repo-lines-v1:sha256:b97233b267002f787cffbf465af9d1b50ab713b40ce8ecf06baf381c3b8bb182:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmNzA5ZGRkZmMyN2RkMTk3MjU1Yzg5MjcyNDhhYzRiMzk3MjE0ZjRkZDRmYjRjN2ZkOGQ1Zjg2Zjk5NmNhNjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMWYwZDc5YjE1NjFlN2I3YjMxNzZmNWE4MTJhZTMzOGJjMDY2ZDNlNDU5ZmUwYWI2ZjVlMTRmZWVhN2UzZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzODVkZDJlZDg5OGU3Mzg1MmNkYjJkYmZkODlhMjc0NjZlYjU0ZmM3ZTg2YWRjNjg5NDY3YTM3OGM5MzFlN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/access.py#L25-L142",
+          "version": "repo-lines-v1:sha256:ae52d53e41ea62bafba113d240d854bb44762c2cbc72c514411f5507eb0d3267:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI5NmQyODc3ZDY1MjIzMmVlYjY3ZjAxMmM5NTNmZmJiNGY0ZjcwNWQ0YjhkNDdmOTdmZWExMWI5ODg2Y2M4NDU5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhZTJhMjIxNjdiOTMzODFkODJjYTE2NjhmZDMxMzdmZDllMDcwYmM0ZGMzNDdkOTJhYjUxZDUzOWQ2ODIzYjY0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlOTBjMzM0NDAzZjQzZTk1OGRiYWQyMjE4MTA3YWE0OTNkZjIxODJhOGNkYTA0MGQxMDQ5MGU0OGU1NjMxOGM4IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1MmE4OWYxNjgzYzQwYWU2ZWUyMTBhYTk3NzY5YjUwZDM4NzE5MDZlZmM0NGNlNmJkOTk4MTI5Yzg2NWZiNGM3In0"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L50-L68",
+          "version": "repo-lines-v1:sha256:84557c6275052f11b9dbfbc3a3a83f1312c62ac01794bec0d6685d311e68f529:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGM3YWIxNGMzZmI4OGQ2YmUwZDU4ZjJhNTNhY2YxNjUxNTllNzhmZDIzOTJiYmU3MTEwNGJkZGVlMTk4YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMWYwZDc5YjE1NjFlN2I3YjMxNzZmNWE4MTJhZTMzOGJjMDY2ZDNlNDU5ZmUwYWI2ZjVlMTRmZWVhN2UzZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxZjg2ODhiMzgyMzJhMjlmY2Y3ZjdmZDYxMzc1YWFiYzU4MzY4NTcxNTg4YmI1YmNjNGU4MTM2Nzg1ZjAxNzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2NzIyNDc0ZmI5NTNlYmNlY2NlYjdjNjNkZjZkN2IwZGRmODAyOGMzYWMwOTJmODE0NDE3ZWNhMzQwYjkyNDgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1ecd58c559a74f44808900eef90821e0",
+      "statement": "Reviewing, coverage and saving routes are open to signed-in users scoped to the caller, while the source registry, runs, queue, undo and research-delete routes are require_staff, and only staff receive a promotion_id from a save.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L206-L297",
+          "version": "repo-lines-v1:sha256:29f2d4c13c0f79543148d4227eb84a54e4f89242c4a0d3925539988f1ffcd969:eyJzZWxlY3RlZExpbmVDb3VudCI6OTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2MjY0M2MwNzE2MzI3NTlhMGE5ZDIwYTYyN2U2NWZkMjg4NDA3MDcyYWRkNzgzMjY1ODMxN2I0NDhjZjYzYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjZGY2NjU5MjZjMGJlYzhiYTJhMGIyZjJmYzg4MTI4NmFhNzM0YmE3NmM3MzI0NWY1OTRhZWY2MTYyMWJkMDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIxZGIyYTk0OGExNjFmZDUzN2U3MDljOGUzNGJiNTYzZjU3MzUyYmExMDFkNGMxMmQ3NjI1NWMwNzE5OTAzYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzNDgyOTFmNzNmMTA4NDJmNTliOGRmMjEwZDcyOTEwYzhjZWQ1M2YxMGJlOWQ4MGQ3NTFhN2I5YzNjNTNiZTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L51-L55",
+          "version": "repo-lines-v1:sha256:ec2c0382e7cbb205623027aca13b9a99f7ad5337c3812f5c5d822d5c04210abe:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmY2YTIyMzc0ODY0NmZlYWYzYWI0MzExZjI1ZTJkNTEwZTE3ZmU1OWE5ZWQzYjcxYWM3ZTIxMDUyYjEwMzU3ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWQ2Zjk1MDA5NzJhYWI3NmZiNTc5OTAwNmRmMjVlYzAxYTE2Y2U5ZWUwMjg0NGZlYmE1Nzc1NjY2YzZiMzg1YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWQ3MGI4ZDcxNWFlZTk4OWVkMTVhZGIyZmIxYzg3MzQyMWU4Yzk5YmJlZDc0NDAyMmU1NDViYjVkYTkzNGI5MiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_a7166dcf9ff54b90bff4f386b8ed986e",
+      "statement": "Per the CHANGELOG 'Not finished' table, the researcher-contract plan shipped M1-M4 with the M5 staging backfill outstanding, the programme-themes step 5 (PR #172) is unmerged, Import and Ask SQL still run on the owner pool pending an unmerged branch, and the import-guided review follow-ups remain open. docs/INGEST.md's header lists it as out of date since #192-#197; per backend/app/ingest/CLAUDE.md, source and the wiki win over it, with rules in docs/ARCHITECTURE.md section 4.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/CLAUDE.md#L1-L4",
+          "version": "repo-lines-v1:sha256:66ab1d7d590a26a0b13d05db51e64400c84ff230ef20b20d7f06cedf83206c00:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWUyZDNlOTQwOTc2NzRlNDNmMWY0NjFiNmU3ODVmYmNjZDQ0OTNkNjI2ZmU4OGJjZWQ1MzBiZTA4NjRmNDkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRmMjBmNTk3YTMxMTIzMThiM2M5MWY1NTkyNWMzMGRkZjQ3NTBlZDYwZGVkNjY4ZDFmYWUxZGFmNzYyYmY4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://docs/CHANGELOG.md#L163-L175",
+          "version": "repo-lines-v1:sha256:0569515162eda7e75b61a0515f797ec4db84c4b8634769fdf7f0cc473d931501:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0OTBhMDcxMGU0MjExNDJiNzFmMzlkYzcwOGFkZDA0YWEzNThkNTdhNjFiMmQzZmE4ODkyNzhjMGU4YTkyNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjNWExYWU4MDYxODU3OGJjNWVlZTU5NmQwYzdhNWNhMDI3OGM1NjBmNmNhMTE5NGI2ZTlkNjAzZWY4ZTc5NzIifQ"
+        },
+        {
+          "resource": "repo://docs/INGEST.md#L9-L27",
+          "version": "repo-lines-v1:sha256:73f72aa75d880209aa96c725ce73ab1f5391ef83f0362246dda843dea911a80b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNDA3MmU3MTNlNTU4YmU3ZDRiYzI0MjY5MGRmZjRkOGI2OGI5M2M1OWM2MGMwZGYxYjM3YTA3NzVkZjU2YmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNWUyMWNiODE2ZDYyNjg0NmI5ZTc5MjIzMDY2YjU1NDE4ZGU3NDE2M2Y1NjI2NDZlMjU1YTE5MDVhOWJjMGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI0YjgwOGQ2YzI3MGIxOGMxZGM3MTYxNTE0ZDQ2OGViYTA1ZjQ4ZDkxMGFkZjI4NzZiYjBhZWE4NTk2ZTA2NmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjZjM2NmQ5NThhNjA5OTI5YjcwZjE0MGY3MDJiZDZlODE2OTNjNjhmMWZmZjAxOTc1ZjdmMWI0NjBiMWM5Y2QifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-13T18:59:48.420Z"
+  }
+}

@@ -408,7 +408,7 @@ Two traps worth knowing before touching this:
 | [`docs/INGEST.md`](docs/INGEST.md) | Sangam Import end to end: sources, matching, what it refuses to do |
 | [`docs/SKILLS.md`](docs/SKILLS.md) | How the importer loads procedures from `SKILL.md` files, and the cost |
 | [`docs/features/`](docs/features/) | One plan per change, e.g. `2026-10-09-model-tiers.md` and `2026-10-09-import-middleware.md` |
-| [`docs/DEPLOY.md`](docs/DEPLOY.md) | Deployment detail. **Its premise that the backend cannot run on Vercel is out of date** — the Deployment section above is authoritative |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How every subsystem works today; [`docs/CHANGELOG.md`](docs/CHANGELOG.md) is what shipped, by PR |
 | [`db/migrations/README.md`](db/migrations/README.md) | Why migrations are plain SQL and how to add one |
 | [`seed/data/README.md`](seed/data/README.md) | Provenance for every seeded record |
 | [`docs/entities/`](docs/entities/) | Generated funder briefs — written by `make client-docs`, not by hand |

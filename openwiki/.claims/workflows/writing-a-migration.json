@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8c9a475d1702304021f00e0fe0e2e1a44c30edfb57f850ecb1ab0ed6460a2664",
+  "claims": [
+    {
+      "id": "claim_163b637ead7644f9b6ecbe76acd3baf7",
+      "statement": "The migration runner sorts db/migrations/*.sql by filename, records the full file stem plus a SHA-256 checksum prefix in schema_migrations, and runs each pending file in its own transaction together with its ledger insert; on any error it rolls back that file, reports it, and stops without attempting later files.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/db/migrate.py#L29-L95",
+          "version": "repo-lines-v1:sha256:219c152db7b361a41d3b5969759122bb0c23cab2820e5106bec7bcea8260cd0e:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzNTkzNGJkODRhMDA3YzMwYTdhZjk5ZDNmMWNjMTVlMzE3YjRiYzE0ZjVhNmJlOTRlZmFkNjBlM2UxNWJjZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhMTY4MDljMDc1ZGIzMDllMDliYmM5YWI3ZWZlZTY5ZWZiNWY0MTliZDRkODkzMGQwMzgwNjYwMmRkMDJmZDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxYWY2NzE1NDVhZGY2ZWM2NzYzNzM5MzNiNjQwOWQyZjg5YjdjY2VlNTdiZGU5Yjk1NGY0YTNiMzUwOTM3ZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNDEzNDBjYzIzOWExNTljZTliNjAyMmU5ZjYzMjI4MzJlMmVhZDc2Y2FlOWU0NzU0ZDIxMGViOGZiNmQ1ZTgifQ"
+        },
+        {
+          "resource": "repo://db/migrations/README.md#L13-L25",
+          "version": "repo-lines-v1:sha256:1e4e7f826c1fc402bac8e2b31db41bee14ee3520e44951cd43bd7503ea24b3d7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2ZTBmOTI2ZjM2ZmIzNGMxY2UwNDAxMjFiYWM5ZjhjMDNjMGQ3YjUxZmEyMjgwYjhlMzlhNjcyMjUzZTEzN2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhZGI5NmM4N2ZmY2UyOWY4NTAyZDU5YmYyZTNmNWI4OGMxYzU1NjA5Mzc0OGUyYmNkMzU3NTI0N2E1MTAwOWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4MDhkM2I1YTQwMTVhNzMzMzFjYjllNDc3ZjMzZWM5NDM4YTZmYmU5NjFmNDE4OWZiZGIwNzRkNGRhOWY4NmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5N2Y3ZWExNjI3MzI3ZjAxNWI4MmQwZDVmMzdiYTJiZDUwMjFjZWI5MTUxMDMxYjdhZTA1YTAzMGY0YjY5Y2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8d5c085561da425bbd994d047c67ae13",
+      "statement": "If an already-applied migration file's checksum differs from the recorded one, the runner prints a DRIFT warning and skips it rather than failing; the convention is never to edit applied files and to write a new migration instead.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/db/migrate.py#L57-L68",
+          "version": "repo-lines-v1:sha256:73e6e12dc8cc6b667488d5cfdfebb41c303072196b9b715d52d7f9c6642f3159:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxNjdkY2FmZDRlNWI2YTc1ZTQ0NWViNTVhNjgwYjFmNWI4MmVkMjYzODBiMTAyMGM2MmMyZGNiYWIzMjIzOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwODdjZDBlMzI4ZGMxMjM1MTU1MTg4NGJlNGJlNjU5YmI4NDllOGViZDkyMGMwZmZlZGE2MzU1MWJkZmE4MDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiODUzNzY1MzRjYmNkNTNhMjdiYjkzYWI4YmYzOWZmNTBiYTUzOGE5YTczZjc4YWFiMjAzODU3NmExMTA4MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmZjUwMTFkYWFlNWFlOTQ0NmEzMWJiNTcwMTI2M2UzMjY4ZGEyMmYxZGNmZTIzOTk3MzliZWExYmRmODNhOGUifQ"
+        },
+        {
+          "resource": "repo://db/migrations/README.md#L24-L25",
+          "version": "repo-lines-v1:sha256:39fae284412064436efafde4ff1a25987fa4d8ed434273afba0c91a43a731f1a:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTNiMzQ2OTgzYTI4ZGQxYTI0YTc0NGU3Y2FlNTg0MGUxODcyZDk3OWYyMDc3M2NlMDRjYzU4ODdmZGJhNTZiYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmFkYjk2Yzg3ZmZjZTI5Zjg1MDJkNTliZjJlM2Y1Yjg4YzFjNTU2MDkzNzQ4ZTJiY2QzNTc1MjQ3YTUxMDA5ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTFlMmY3OWE0NGNlZDlhOTdjYzFhNTg5MzY2NDhjZTdhZDhhMWEwMjgyODI0NzlmZjI4ZDdlZjk5YjM5M2VhMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDk3ZjdlYTE2MjczMjdmMDE1YjgyZDBkNWYzN2JhMmJkNTAyMWNlYjkxNTEwMzFiN2FlMDVhMDMwZjRiNjljZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_d3789f0c78804e9dbcc08644c4c111df",
+      "statement": "make migrate and make migrate-status run python -m app.db.migrate in a one-off backend container selected by ENV (local or staging); migrate-status passes --status and reports pending files without applying them. The runner reads db/migrations from the /srv/db mount.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L147-L155",
+          "version": "repo-lines-v1:sha256:7d98b676a011ce5ee36fdb1e41fb17658e7b5ba66678fb91daa97c87c398d1de:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmVjMDA5YzVlMmE2NWMwODM4NjA4ODU5NWUyMjJlNjkxMTIxYTM4OWQ3Y2Q3NDY3YTcyZjAwZDE5ZTRlMDE2MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTQxNGQ2MjNjYmNkYzM2OGE2NzkyOGViNjVmNTA2ZjdmOTNlZTlmMDIyNTU2Mjc5ZjBhNjY3NDA3ODc3MDQyZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTJhMDExM2Q3M2M1ZmFlZGE2Zjg4MDgwY2EyM2UwMWQ3YzcyNGJiNmQ1Y2JmZGM0MzM4Njk2YmJiMDJmNDk2MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjU1OWMyZDlkMTM4YTg0NDczZTdiZDcxZTQzZDAyNGViMTg0NGJjN2E3YWJkMGRlN2M0MTRmNzVkMTVlY2RjNSJ9"
+        },
+        {
+          "resource": "repo://backend/app/db/migrate.py#L12-L12",
+          "version": "repo-lines-v1:sha256:d58825f4203ac9a5df564fca357a21cf8c985e1a8245fa0fac674264eb239964:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDU4ODI1ZjQyMDNhYzlhNWRmNTY0ZmNhMzU3YTIxY2Y4Yzk4NWUxYTgyNDVmYTBmYWM2NzQyNjRlYjIzOTk2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDU4ODI1ZjQyMDNhYzlhNWRmNTY0ZmNhMzU3YTIxY2Y4Yzk4NWUxYTgyNDVmYTBmYWM2NzQyNjRlYjIzOTk2NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODdmNDg5YmUyYWM2OGI0MjIxMDQ0YTBmYzdmYjJjMGVmODQ3ZDY5OTYxMzFjNjZjYmFjMGY0ZWMxOWViNTM0NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmVhOWEzMWQwODg4MDRjZWZjODFiM2M0ZTc4MGYzYzI3ZGEwY2JmYTZjYjE2YzIwMjRhNGRkZmVhN2ZiYWQ1NyJ9"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L111-L111",
+          "version": "repo-lines-v1:sha256:5310b4c498ee69e9346c37a5efa4653cc3f361e98dbe4a58b4acf71910db44c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMxMGI0YzQ5OGVlNjllOTM0NmMzN2E1ZWZhNDY1M2NjM2YzNjFlOThkYmU0YTU4YjRhY2Y3MTkxMGRiNDRjNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMxMGI0YzQ5OGVlNjllOTM0NmMzN2E1ZWZhNDY1M2NjM2YzNjFlOThkYmU0YTU4YjRhY2Y3MTkxMGRiNDRjNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODkzOGYxMzIwYzg0OWMzNTYyYzhiODkxMGJmMjk3NTczYjVjNjM0YmUyN2I4ODhjYjY3MWYzODk1NTI0MGFkYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWI3OTIxZmUzOWQzYzYwY2MxYjU0ZDFmMGYzYTA1MDYxNDE1NjE0ZWM5ODJhYTQyYTNjZDdiYjgxNjNhYWU0NiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_435f2eab31da4881a62dddfa601c8219",
+      "statement": "Migrations are applied automatically only for the local bundled Postgres: make up migrates before starting the backend when ENV=local, and make seed depends on migrate only locally. For managed/staging databases migration is deliberately a separate explicit step (make migrate ENV=staging) because the instance can be many migrations behind and needs a backup first.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L103-L120",
+          "version": "repo-lines-v1:sha256:51e19a578ba35c3ea1c3e714d1ca30b4f99650f0f8e769052b5f2513b62cdedb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2NWRlM2QxN2UwMThiYTZlNjUzMjUxYTcwNjE1Y2VhNzkxYmExZTUzMjM3ODhlMTcyMmVjNTY5MWM1ZmI5NDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyZGE5YTVmOTk3NGZlOTRlYzc4NWQ3NTFlZjBjMmRkNDY0NGM2ZmExYjNhZjYyNDYwZDc2NDAxZjgxZWY3M2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3ZjE3ZThhYzE3OTUyOWNmNTljZGYyODFlZDZhNTI4ZDRhOTkxYTcyOWQwOTFlNmVmYTdhNjY5MDkyZDM0NGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZhNzJiZDI3NTkwYWZhZjc2NWViNGI3Mjg0OTU1NTYwNGFkNGJkNTc0MmIzM2YwZmY3Y2ZmYzEyMDIzZjMwNWMifQ"
+        },
+        {
+          "resource": "repo://Makefile#L65-L89",
+          "version": "repo-lines-v1:sha256:85709706700941d6f0a0ca2232dc7bdaa57283847bf7919deda5db100b7153b9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NGM4M2E2N2VjMzI4MjVjNTQ3ZmIwZDgzNTM3MGZiMTc2YTM0YjE1MjJlMTFkN2UzMmZhYmJiYWEyOTRmZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmNDk5MmZmOGEyOWFmYTlhYzExMDMzZjc2M2FiZDdjNzVmN2E5OGU1NTNlMTE5ZGZhMzM5MzQ4ZTU2NzYzYjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkNjk2MzJmNDZkZDI0NjJhZDc1MGEzNjA0MTVjYTE1YjRkZjk1MjdhMTE1NWQxZmRlMjlhODBiNTFmOGM3ZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjMTg3OTg2Yjc2ZDZiYzg2NWMwOTUzMjY4OWY2YmIxMDY5OTgzZjk2N2I3N2NlMDAzMTRjODdlY2M5YWY1NDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6d663175dbae4bcfa135cb70ebcf1362",
+      "statement": "make db-backup, db-reset, db-clean and db-upgrade are local-only (guarded by require_local); for staging the Makefile directs users to make migrate ENV=staging and the provider's snapshots, so a staging backup is taken outside the Makefile.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L263-L286",
+          "version": "repo-lines-v1:sha256:58af4b36062b2a2e4bc0e0d4603e337ca3c7c639aad62c882d2125b5e62cae6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyODFhYmRlNGJhMzk0YmJkZWI1MjE2NTE2Y2NiMTRkODc2MmYyYjg2MzkwNzQzZWVhZWJlYzBlYjJmMzg3MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5YzUwMzZlM2I4MWVlZTRmZWI0ZDg5MmUwN2VhMWMwNmZhNmZmY2QzMTQxM2RjY2I1MTJkYjJhMjYzZDBjM2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyN2Q3OTZiY2M4YzE2MjY5YTEyMTdlMGYwY2Y0MjQwZTgxNzJjNzkyMDE1YzkzODA1ZTRjMDBkMzE3MjcyZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiZjFjYmQ3MjhmNDVjODJlM2MzNGEwMjU1MWFiNDQxNWM1MjEzODFiZWU5ZTU0MzU4YmE5ZjNkZWU4NDg4YmYifQ"
+        },
+        {
+          "resource": "repo://Makefile#L52-L58",
+          "version": "repo-lines-v1:sha256:f01464cbfa0cd3863c5e81c231d7a814d7f71ed36f11e5e943c7922cb293073f:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2VkMjg1OWU0ZWY4MmRiYmFiYTE2ZGJmMzAwYWViZmQ4OWIwYWRmNDdmNTgxY2NjZTgxYjBjZmNjY2ZhZmZjZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjdjNGJjNGJmZjE3NzM1NmFjMDUzNzI2ZGQxZDA5YTQ3ZjgzZTdkMWVjMGQ3NDU5MjJhYTllYWEzZGMwYjQyYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmFjYTZiYTg4NDc2NTMyZjZiMWNmZTZkOWIyNzRkNjAyNzA0ODZhMDZlYmMxM2Y2MzUxYjM1M2Y3MDdhMWQ1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTRjOTIyYzIzMjc2Mjk4ZGJlYjUyNTQ4MmJlMjgwOTk5MDM0MjM5MjY5NjNjZmFiMDZlNDllY2EzY2U3M2RlZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_59380e33cfc84cddba77f17a3475a813",
+      "statement": "Migration 0025 revoked all table and sequence privileges (and default privileges for future tables and sequences) from anon and authenticated, so a newly created table is closed until a migration explicitly grants it; RLS decides rows, grants decide table access.",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/0025_table_grants.sql#L1-L16",
+          "version": "repo-lines-v1:sha256:b47371094ad1ef25bfd7e51c9721182b19dfd24daab09068c18d374de409c23e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2NjFiNzk4YzMzMDI0MWRkNDU2NDU0MWY2NWU2Y2E5NWZkYjU2OThhMGUwMjg5Nzg2Y2MyMDQ3YzYzNzUzNzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlOTM3MTM2MjIyOWFmNGQ2OGVhNDhmMWExMjMyZDFjY2E3MDE2NGQyMDk1YjRiZmM0MzAwM2UxM2QxOWM4ZmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwOWNjOTQ4ZDU1ODYzYjY1YjU3ZDcxNzVjMjYyYTRlZjM4ZGNmNjY0ZDg5MDZjN2ZjNzk1MDRjN2E3ZTJhM2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6466c4252f8d484caf40b2b2f0a2f4b1",
+      "statement": "Migration 0027 enabled RLS on tables existing at that time via a loop, so later tables must enable RLS and add policies themselves; policies wrap app.* calls in (SELECT ...) for once-per-query evaluation. 0047_document_links.sql is a model: enable RLS, grant SELECT, a policy tied to the parent documents row, and the log_catalog_write trigger.",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/0027_rls.sql#L1-L60",
+          "version": "repo-lines-v1:sha256:6f9d4b6e59eb8e9383643292a799830a34b40495022422a439fa9021925f5146:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNjBmNmQ1YTIwNzY4ZjY4MjFjOWM5YjU5OGRjYzMxMmMyZGU1MzA4OWFmYzk0OWFlZTRlMTM1YmJjMWIyYzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNmVjMzJmMjM4MDJlZDdjZWE3OWYyMDkwMDM5OWVhMGZlZmI5YjViNjU4Yzc3MjM5NDExNWYwNzcwMzExZjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwZTg3MjM5YjU1ODE0MDEzMDQ1NGY5MjIzYTU1NDAyZDE4YjAwZDkzNWQxYzEyZWM4YWFmOTY0YjQzODcwMGQifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0047_document_links.sql#L19-L27",
+          "version": "repo-lines-v1:sha256:4b4602c19fe312f8a38c64d8c1dcea135ae8e35c6ead86a8af1b86dd87a686e8:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzQzNTgyOTRiMzc3OGM1NWVkNzc0MzllMmY1YTc1MzdjNDc1NDAwODliZjNhYjcwOTFiNjQ1ZjRhM2E3OTAxZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmM5MjFmMDQxZThlZjc3OTU2ODgzYjJjMmExZjVkNmQ5NzE0N2FhODI5NzE0MDg3NzRmYWRlZmNkMDEyOTAxYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGM3ZDJhNjc3M2ViNGM1YTMzMDE4ODIyNDhjZWUzZDAzN2M4NWEwMTBiMjUyNTAzZjNiY2ZiN2E1ZjZmYjEwZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_08cefe6885f1479183162ef0758eb0a0",
+      "statement": "org_identifiers is granted by column, so a new column on it needs an explicit GRANT SELECT (col) ON org_identifiers TO anon, authenticated to be readable.",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/README.md#L22-L23",
+          "version": "repo-lines-v1:sha256:c295b675f92ce020d5cf4c2e2528f69ee19e67ad03652930de97acccbf14564c:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTJmMTc2YzcwZmQwYjI3NDQ2YmNmZmE4ZDNmYWY0NDYxYzMxNWI5Y2YzNDI2NTZkNmEzYmQxMjE4MjI0Y2E3MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmJlNjc4NzcwZWM5MTBjNDIwODE2NThhZTU0MzM0M2I1MzZlOTA4NWZkYjgzYzk4YzU3NDk1MjU5NTZhMWEyZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjc4MWIyMjM1OGJjYjM4YzI5NWNiMGM1ZTllNDcxOTk0NmY1YzVmM2VmNzU2MDg4NWNhMWRjODIxMGZlNjUxMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGJkZDE2YTVmYTY0YWM0Njk2NzcxODIzZjY3YTc2ZjhjODg2OTFmYmEzM2Q0ZTgyMGVjNDBlYWRkNTg3NDAzMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_48a9ac69352d44a3a4b26a310db581a5",
+      "statement": "Schema changes go only in a new db/migrations/*.sql file (db/init/02_schema.sql is the fresh-database baseline) together with the new table's RLS policies; reaching the Ask agent requires a line in backend/app/agent/tools/sql/catalog.py, which is a security decision; and the migration is recorded in docs/CHANGELOG.md followed by make wiki-update, with the rules themselves living in docs/ARCHITECTURE.md §7 and §8.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L186-L187",
+          "version": "repo-lines-v1:sha256:e1df074de2bc4985e5bc826f885c98f7e4f786675669ff958d7f4872131469e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWEyNDY1NDljNjRhNjA2OGY1NDAwNmYxOGUxYzBkODFjMTczNWE1ODg5ZGM0YjljN2M1ZjExZDZlMWU5YzI2MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDIzN2MwNDJiNmZmNmI1M2Q2ODMxNWYzNDM5MTAzMTMwMzY2YjcxMDg0ZGE0YjEwYjU0ZmNkZDYwNTU3MjU3NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmQ0ZmI5YTczZjI2NWMwOWI4ZmRmOWQ5NDExNTZmOTljYjY5OTBiNjE4OGQxZDM2YTYxYjIyNTk3NDZjODdkZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGM0NDcwMDk0YTE5NjllZDZkYzkwZmQyMjEyNTkyY2RmMjJiNzI3Y2M3YzNkYzk1MzkzYWM3MmNmOTU1NjQyOSJ9"
+        },
+        {
+          "resource": "repo://db/CLAUDE.md#L1-L6",
+          "version": "repo-lines-v1:sha256:560f2d4b948fdf30a39e5ac6679f3c1c033dc1cc0bbc6f29179b1d12495113cf:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzJmNGE0NmZiOTYyNzE1MmU1YWJjYWY4N2Y3ZTQxZmIxYjE0MjE4M2U0ZDdhYTdkNmVlNTNmMWY4OWQxMjQ1MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWY1YjYzYzdhNjU1ZTkzNjk1NDE1MjRmZjA3OGU4NWEwNDA0NzRkNjMzZTEzMWVkYzA4MWJmM2NmNzQyNmQ5NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://db/migrations/README.md#L27-L36",
+          "version": "repo-lines-v1:sha256:386abfd2a6879190e3b6e7529a8fd813ff79c627e7a72ce9a0c235f4e4fca6f6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiYzY1MjQ4ZjIzMjhjZjQ3YTkyOTEyOTU4NDhmODY4ZTkzMGZlOTQ5OWEzOTE4YTJiOWMyMTk1NmE1YWQ0ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1MjJkMzI1OTg2NjcyM2I4MWI0YzAzOGYxMGFlMDhkM2VjOWRmZTk4ZjAyYjRiZTM3OTFjZWY4OGE3NGIzNDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiZGQxNmE1ZmE2NGFjNDY5Njc3MTgyM2Y2N2E3NmY4Yzg4NjkxZmJhMzNkNGU4MjBlYzQwZWFkZDU4NzQwMzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_aad2169e729a47c7ab9a750d0d0256a1",
+      "statement": "At backend boot, the lifespan calls verify_against_db and raises RuntimeError if the SQL catalog lists a table or column absent from the database; extra live tables not in the catalog or KNOWN_EXCLUDED are only logged at INFO and extra columns are not checked, so a new table stays invisible to the agent until deliberately catalogued or excluded.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1003-L1043",
+          "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
+        },
+        {
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1076-L1102",
+          "version": "repo-lines-v1:sha256:b90e40e4a42c2d5f5504a46770164213c7f6657eb93b5609c93963bd50e433e3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3YTMyOGIzYmNmNTEyNWMxZmRkNzg5MDRiZTI4MTliNzI0MjRmYjE0MmM0MjE4OGE3NmQwY2I1YmVhMjNiMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MWI0ZjAzNDJmMDc3ZDhjZDA3Y2ZkMDJlYzAwNDBiZTkxYzkxYTc1NWM5NTM5NmUxNTQ3Y2Q2MzA5YmEzMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4N2IzMGM1YWM0NTA0YzdiNWRhMjEyZjYxN2JmNzA1MzAyYTIxYzhhOTNiZGU3YmRlYWJkYzc3ODI0ZTFmM2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/lifespan.py#L205-L230",
+          "version": "repo-lines-v1:sha256:cf3b236c246d19b0f524d3cdd1f31896b3c85cc22de5c4eb74c8b857c061cfbb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmYzlmYjNkMDcwNGQxYzMzZTI3YzZjZjdmMjM0YjNkNGM4N2UyZGMxOWZjM2EzZWEzZWY2YzQwNGNhNjJkNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NjRmYjUzYjI3MjE2MzZkNDg0NjljZTdjNDNkOWU5YjJlODQ2NWQzNmNhZTI0ZjMwN2MzZWY0M2I3MDNjYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://docs/DATA_PLATFORM.md#L250-L253",
+          "version": "repo-lines-v1:sha256:b7b65293f484e03c49f591ea39002d032abec64f71f45ebdc132482a6d02292d:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmZhM2FhMzY0ZGU2YzJmYzU0ZDNhNTA2YmY0YWY2NTE4ZTM3M2I5NDYzMDlhNDFiOGJjNTBjMjE5MDM1ZTQ2ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGZjNWM3MGVjOWQ3NWZiNjFiZGM3MTc3MDU3MTY2MTRjMWE5YmVmZjA4ZDJlZjdmOTdhYjY1OWVkNTk5ODk3MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzczMDcyNGZhNDNiMTVkMTVjNjgwNTk4MWJkYmU1OTM0ZWNhZjI5NTYwMzBiN2JhYTBhZTQzYzgxYTY5MWM4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTMyZjBlMjIwYjI5YWJlYTY2ODhlNGY5ZTU1MzExZjM2NWY0NzM5YTJiYTcyNTQzMDBjNjI0MzNhYzcwMjdjOSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_7bc16f9c4a024d198af29fd93e9c787c",
+      "statement": "catalog.py runs _self_check() at import, rejecting catalogued tables with no columns or primary key and foreign keys referencing tables or columns missing from the catalog; KNOWN_EXCLUDED holds tables intentionally outside the catalog such as checkpoints, users, threads, proposals and schema_migrations.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1003-L1043",
+          "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
+        },
+        {
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1046-L1073",
+          "version": "repo-lines-v1:sha256:3b5d0d797e59297f9d753bfddeaae91fc9b4395298da8094346f247030c06981:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyMzliNTdiZDA2M2FjNDcxMDg1M2NiMmRjN2U1YTczYjJiZDA5YTQ2ZWI5NDBkOWNmZjFkZDc1ZGJmOWQ3ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MDAzZTMxOTA0ZmY1Y2ZlOWJjMjdlYzcwYTZhMDFhZGZlOWU0MWJiYjJlMWVhNDI3YmFjM2ZkMmJiNzgyOTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjYjllNWJjYjFjMjlmZWU0OTM1NjAyNWEyMGI0YmFmMGNjMWM0NDQ1ZjVhMTg0NjBmMzkxMjkyZjU3NWRkNTQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4410fe6a096e45879453742b5735922e",
+      "statement": "make up migrates the bundled Postgres before starting the backend because the backend cannot boot against an unmigrated database: catalogued tables that arrive only via db/migrations would fail _verify_sql_catalog.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L65-L89",
+          "version": "repo-lines-v1:sha256:85709706700941d6f0a0ca2232dc7bdaa57283847bf7919deda5db100b7153b9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NGM4M2E2N2VjMzI4MjVjNTQ3ZmIwZDgzNTM3MGZiMTc2YTM0YjE1MjJlMTFkN2UzMmZhYmJiYWEyOTRmZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmNDk5MmZmOGEyOWFmYTlhYzExMDMzZjc2M2FiZDdjNzVmN2E5OGU1NTNlMTE5ZGZhMzM5MzQ4ZTU2NzYzYjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkNjk2MzJmNDZkZDI0NjJhZDc1MGEzNjA0MTVjYTE1YjRkZjk1MjdhMTE1NWQxZmRlMjlhODBiNTFmOGM3ZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjMTg3OTg2Yjc2ZDZiYzg2NWMwOTUzMjY4OWY2YmIxMDY5OTgzZjk2N2I3N2NlMDAzMTRjODdlY2M5YWY1NDkifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/lifespan.py#L205-L215",
+          "version": "repo-lines-v1:sha256:e0750aeed68d96fbea82dd7a3ab07811e519dbb8b1f14a07339e739911a9a32e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmYzlmYjNkMDcwNGQxYzMzZTI3YzZjZjdmMjM0YjNkNGM4N2UyZGMxOWZjM2EzZWEzZWY2YzQwNGNhNjJkNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NjRmYjUzYjI3MjE2MzZkNDg0NjljZTdjNDNkOWU5YjJlODQ2NWQzNmNhZTI0ZjMwN2MzZWY0M2I3MDNjYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjNDJkZjA0ZTNlY2QwNWFmZGMzNGMxYmJhNzFjOWYzOTllN2VmMzQxNjFkZWIyZTAxZWQxMmMzMmQwMWMzZTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8370a753f1404b839dc6739f968e7d2f",
+      "statement": "backend/tests/test_migration_integrity.py is an integration test against the live compose Postgres (TEST_DATABASE_URL or localhost:5433, skipped when unreachable) asserting preserved row counts and seeded content, not a general schema, RLS or grants test.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_migration_integrity.py#L1-L61",
+          "version": "repo-lines-v1:sha256:b259aa607006f5768def54444b635a5b49aac5cb5cbffa5fbc13400d81dfb84f:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3YTZjN2QxODg5NDhiMDVjMzNjODQzMDdmNTFiNGNkZWUyYzQwMmM2ODNhZjQ2NzE1OTYzMzQ0OGU3M2VmZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0MDU4MmU3YTU2YjcyYzYxZDI3NGJhMTE2NTg3YTAzMWJmNDc1ZTQzMDM5NTY0YWFjN2Y1ZDMwZDQxM2VlZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-13T18:59:48.420Z"
+  }
+}

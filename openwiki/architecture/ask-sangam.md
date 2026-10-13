@@ -1,0 +1,208 @@
+---
+type: architecture
+title: Ask Sangam
+description: How the Ask agent is built. It has a fixed list of seven tools plus read-only skill readers, four on-demand skills, an ordered middleware stack and a four-layer SQL path (catalog, validator, executor, render). It also has an optional answer audit, prompt rules and citation markers.
+tags: [ask, agent, deepagents, text-to-sql, sql-catalog, middleware, skills, citations, security]
+sources:
+  - id: openwiki-source-0d76e769c086fbb2b08128cd
+    resource: repo://backend/app/agent/audit.py
+  - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
+    resource: repo://backend/app/agent/build.py
+  - id: openwiki-source-d995a482e69484b19d5a4a34
+    resource: repo://backend/app/agent/harness.py
+  - id: openwiki-source-9861d76bc6d4956d245dc5b9
+    resource: repo://backend/app/agent/instructions.md
+  - id: openwiki-source-813dbe9c3eeb378112388ccd
+    resource: repo://backend/app/agent/middleware.py
+  - id: openwiki-source-fd4dd8c90e306d2e719774bb
+    resource: repo://backend/app/agent/prompt.py
+  - id: openwiki-source-d283e7d3b1dc789fadafd127
+    resource: repo://backend/app/agent/skills/funder-matching/SKILL.md
+  - id: openwiki-source-712de428a387a07399345d95
+    resource: repo://backend/app/agent/skills/news-brief/SKILL.md
+  - id: openwiki-source-1f8b3caaa82d707d101e103d
+    resource: repo://backend/app/agent/tools/matching_tools.py
+  - id: openwiki-source-ecac68c83347b18f912f2a53
+    resource: repo://backend/app/agent/tools/sql_tools.py
+  - id: openwiki-source-7faba850789bc67a49b79a3f
+    resource: repo://backend/app/agent/tools/sql/catalog.py
+  - id: openwiki-source-222af4e67e63555592cb830f
+    resource: repo://backend/app/agent/tools/sql/errors.py
+  - id: openwiki-source-01e57798bc5bab328d91b9b3
+    resource: repo://backend/app/agent/tools/sql/executor.py
+  - id: openwiki-source-46195b4a55dad2cad73620fe
+    resource: repo://backend/app/agent/tools/sql/render.py
+  - id: openwiki-source-6318d07911624223a5b202ae
+    resource: repo://backend/app/agent/tools/sql/validator.py
+  - id: openwiki-source-3aa6b5f9d31a7d4ba9f5dd99
+    resource: repo://backend/app/agent/tools/web.py
+  - id: openwiki-source-6dcfc1451bcbf8009d0484a9
+    resource: repo://backend/app/core/config.py
+  - id: openwiki-source-e136029ec7d24feaceb8ce72
+    resource: repo://backend/app/core/lifespan.py
+  - id: openwiki-source-b52886aad1fc413e4e030f22
+    resource: repo://backend/app/core/security.py
+  - id: openwiki-source-62d4dd57642429b3aa7980e3
+    resource: repo://backend/tests/test_harness.py
+  - id: openwiki-source-fe6e4c3f43ca6fccc586454c
+    resource: repo://backend/tests/test_prompt.py
+  - id: openwiki-source-b9b33576e920a6ec443c1309
+    resource: repo://backend/tests/test_sql_catalog.py
+  - id: openwiki-source-a2371d6362e5db4bc834ad03
+    resource: repo://CLAUDE.md
+  - id: openwiki-source-e8e61d605125cac4d909755e
+    resource: repo://docs/ARCHITECTURE.md
+  - id: openwiki-source-2ace3232a14f5163db46085f
+    resource: repo://frontend/features/ask/lib/toolLabels.ts
+generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-13T18:59:48.420Z
+---
+
+# Ask Sangam
+
+Ask Sangam answers staff and cohort questions about organisations, funders and fit by writing its own SQL against a curated catalog of tables. Every fact in an answer must carry a citation marker. The agent is a single LangGraph deep agent assembled in `backend/app/agent/build.py`. It has no subagents, no `task` tool and no write capability. For the request-level flow (streaming, threads, checkpoints) see [Ask turn](../workflows/ask-turn.md). For the funder-fit tool see [Funder Match](funder-match.md).
+
+## Responsibilities and shape
+
+| Concern | Owner |
+|---|---|
+| Wiring: model, tools, backend, skills, middleware, prompt, tracing | `build_agent()` in `app/agent/build.py` |
+| Taking back what the deepagents preset adds | `app/agent/harness.py` |
+| Retry budget, context trimming, post-answer audit | `app/agent/middleware.py`, `app/agent/audit.py` |
+| Schema discovery and SELECT execution | `app/agent/tools/sql_tools.py` plus `app/agent/tools/sql/` |
+| System prompt | `app/agent/instructions.md`, loaded by `app/agent/prompt.py` |
+| Procedures loaded on demand | `app/agent/skills/<name>/SKILL.md` |
+
+`build_agent()` calls `harness.install()` first, because deepagents reads the harness profile while the graph is built. It then builds the middleware list, calls `create_deep_agent(...)` and wraps the result with `trace_config(name="sangam_ask")` and `recursion_limit` (default 200 graph steps). The limit counts graph steps rather than tool calls, because every middleware hook is its own node.
+
+## The fixed tool list
+
+`TOOLS` in `build.py` is the whole tool surface, and `tests/test_harness.py` pins it:
+
+| Tool | Purpose |
+|---|---|
+| `db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query` | Discover the catalog, then run one model-written SELECT (`tools/sql_tools.py`). |
+| `search_graph` | Graphiti relationship search with `[graph:<uuid8>]` markers and validity dates. It returns a "not available, answer from the database tools" string when the graph is not configured. |
+| `fetch_url` | One live page through the egress-guarded client. It is uncapped and carries no citation marker. |
+| `compare_fit` | Funder Match in one call: fixed queries, rules in code, the match-v2 rubric. It refuses callers who may not run a match for the organisation, using `chat_user_id` and `matching.may_run`. |
+| `read_file`, `ls` | Skill reading only, supplied by `harness.filesystem(keep=SKILL_READING_TOOLS)`. |
+
+The agent used to have hand-written lookup tools (`search_orgs`, `get_funder`, and others). They were removed, and `db_query` is now the only route to the database. `compare_fit` is the one deliberate exception, because matching is a fixed checklist and its queries are fixed too.
+
+**Tools never raise.** Each tool body is wrapped in `try/except` and returns an error string (`"db_list_tables failed: ..."`, `"compare_fit failed: ..."`, `"ERROR: ..."` from `fetch_url`). A raised tool exception would abort the whole run, whereas a string lets the model see the failure and adapt. The rejection prefixes `db_query rejected:` and `db_query failed:` (in `sql/errors.py`) are a wire format. The retry limiter matches on them.
+
+### Taking back the preset (`harness.py`)
+
+`create_deep_agent` brings two things Ask does not want:
+
+- **Eight filesystem tools** (`ls`, `read_file`, `write_file`, `edit_file`, `delete`, `glob`, `grep`, `execute`). `harness.filesystem()` returns a `FilesystemMiddleware` restricted to `keep`. It is passed in `middleware=`, so it replaces the stack's own by name. An excluded tool is never registered, not merely hidden. Ask keeps `read_file` and `ls`. `read_file` is the floor, since `FilesystemMiddleware` refuses to be built without it.
+- **A `general-purpose` subagent** that would inherit the main tool list. `harness.install()` registers a `HarnessProfile` that disables it for every provider in `PROVIDERS` (`anthropic`, `openai`, `google`, `google_genai`). It is global per provider and idempotent.
+
+`test_ask_sangam_has_no_subagents` asserts there is no `task` tool. `test_ask_sangam_holds_its_seven_tools_and_the_skill_readers` asserts the exact tool set. `test_neither_agent_can_write_a_file_or_run_a_command` asserts that no writing tool, `glob` or `grep` exists on Ask or Import.
+
+## Skills
+
+Four skills live in `app/agent/skills/`: `funder-matching`, `funder-comparison`, `funder-shortlist-brief` and `news-brief`. Their descriptions are advertised to the model on every request, and each begins with "Use when ...". The body is loaded only when the model chooses it, by calling `read_file` on the SKILL.md. There is no dedicated skill-loading tool, and `ls` is how the model recovers from a stale path.
+
+- The backend is a `CompositeBackend`. Everything is virtual `StateBackend`, except `/skills/`, which routes to a `FilesystemBackend(root_dir=SKILLS_DIR, virtual_mode=True)`. `virtual_mode` roots the route so `/skills/../../etc/passwd` cannot read the host. Ask has no write tool, so the real-disk route is read-only in practice.
+- `instructions.md` rule 13 maps intents to skills. Funders for an org use `funder-matching`, named funders use `funder-comparison`, a write-up uses `funder-shortlist-brief`, and an org's or funder's news uses `news-brief`.
+- Skills hold procedure only. The judging itself is `compare_fit`'s, in code (`app/matching/rules.py`), so none of the skills carries a matching rule. Constraints that must hold on every run stay in the prompt. See `docs/SKILLS.md` for the design rationale. That doc's header corrects its older body, which still lists three Ask skills.
+
+## Middleware order
+
+`build_agent()` passes, in order:
+
+1. `filesystem(backend, keep=("read_file", "ls"))`. It only adds tools, so its position does not matter.
+2. `sql_retry_limiter`, a `before_model` hook with `can_jump_to=["end"]`. It counts `ToolMessage`s from `db_query` whose content starts with `db_query failed:` or `db_query rejected:` since the latest `HumanMessage`. At `MAX_SQL_ATTEMPTS = 5` it appends a fixed "couldn't get a working result, rephrase or tell me the table" `AIMessage` and jumps to the end. It sits before the hooks that do work for exactly this reason. Only `db_query` counts.
+3. `clear_old_tool_results()`, a `ContextEditingMiddleware` with `ClearToolUsesEdit`. Past 40,000 tokens it clears old tool output but keeps the latest five results, so follow-up questions can still refer back.
+4. `answer_audit(settings.sql_audit_model)`, appended only when that setting is non-empty.
+
+`app/agent/middleware.py` also defines `StaffLastLock` and `SaveQuestions`, but Ask does not use them. Only Import does (see [Sangam Import / Scout](sangam-import-scout.md)).
+
+The prompt says "After 5 failed attempts" and the middleware enforces 5. `test_retry_budget_in_the_prompt_matches_the_middleware` pins the two together.
+
+### Answer audit
+
+`audit.py` is an `after_agent` hook. It runs once on the finished answer, not after every model call. The default `sql_audit_model` is `anthropic:claude-haiku-4-5`, and the value `off` (any case) disables it. `docs/SQL_AGENT.md` section 5d still says "off by default". The code and `config.py` default say otherwise. `test_the_defaults_are_strong_mid_cheap` asserts the Haiku default and `test_off_disables_the_sql_audit` asserts the switch.
+
+- `collect_turn` extracts the question, the `executed:` SQL lines from `db_query` results, the last result block and the final non-caveat AI answer. If no SQL ran or there is no answer, it returns `None` and spends no model call, so a turn that used only `compare_fit`, `search_graph` or skills is never audited.
+- A cheap model checks four things: grain, filters, false zero and numbers. It returns JSON `{"verdict": "ok"}` or `{"verdict": "warn", "caveat": ...}`.
+- On `warn` the hook appends a **second** `AIMessage` prefixed with `CAVEAT_PREFIX` ("⚠️"). The answer has already streamed, so nothing can be edited in place. Anything that reads "the final answer" must skip messages with that prefix, and `collect_turn` does.
+- Both `ok` and `warn` are scored as `answer_audit` (1.0 or 0.0) through `score_answer`, so a dashboard can see the rate and not just the failures.
+- The audit **fails open**. Any exception, unparseable reply or disabled model returns `None` and the turn continues unaudited. It never blocks.
+
+## The four SQL layers
+
+The full design record is [docs/SQL_AGENT.md](../../docs/SQL_AGENT.md). It predates several catalog changes, so its table counts and "reader role" language are historical. This section gives only the architecture.
+
+```mermaid
+flowchart TD
+    M["model SQL string"] --> V["validator.validate: parse, check, regenerate"]
+    C["catalog.py: tables, columns, cites, defects"] --> V
+    V -->|"SqlRejected"| E1["db_query rejected: message"]
+    V --> X["executor: READ ONLY txn, timeouts, prepare"]
+    X -->|"psycopg error"| E2["db_query failed: message with next step"]
+    X --> R["render: markers, caveats, sources block"]
+    R --> O["tool result string"]
+```
+
+Caption: a `db_query` call either becomes a rejection, a failure explanation, or a cited result string. Only the regenerated SQL ever reaches Postgres.
+
+1. **Catalog (`sql/catalog.py`).** An allowlist expressed as frozen dataclasses (`Table`, `Column`, `ForeignKey`). The catalog allowlists 37 tables. A table or column not listed does not exist for the agent, and an unlisted column fails as "unknown column" with the allowed list attached. The catalog derives `TABLE_NAMES`, `COLUMNS`, `SQLGLOT_SCHEMA`, `STAR_COLUMNS` (heavy columns are selectable by name but excluded from `*`), `CITE_COLUMNS`, `DEFECTS` and `PROVENANCE_COLUMNS`. `CITE_COLUMNS` maps a table and column to a citation kind. `DEFECTS` are data caveats injected into every result that touches the table. `PROVENANCE_COLUMNS` is derived from tables that carry a `source_url` column (plus `source_name` and `fetched_at`). `KNOWN_EXCLUDED` names 22 live tables deliberately kept out: checkpoints, `users`, `threads`, `org_members`, `proposals`, `funder_matches`, the import bookkeeping tables and others. `_self_check()` runs at import and raises on a dangling foreign key or an unknown cite kind.
+2. **Validator (`sql/validator.py`).** Pure, sqlglot only, no I/O. It enforces one statement that parses to a query, rejects write nodes anywhere in the tree (a DELETE inside a CTE included), rejects `INTO`, locking clauses and `WITH RECURSIVE`, and rejects cross-schema references and table functions in `FROM`. Every table must be in the catalog, and CTEs may not shadow real tables. Non-standard functions are an allowlist (`ALLOWED_FUNCTIONS`, for example `similarity`). Session-identity and row-generating functions, placeholders and catalog casts are denied. Columns are resolved with `qualify` and then re-checked by scope. `SELECT *` is expanded and trimmed of heavy columns, duplicate output names are aliased, and `LIMIT` is clamped (default `sql_max_rows` 50, hard cap 200, plus one row to detect truncation). It also plans citations and provenance by appending hidden `__prov__` columns. The model's string never executes: `ValidatedQuery.sql` is the regenerated AST without comments.
+3. **Executor (`sql/executor.py`).** `PsycopgExecutor` runs inside `conn.transaction()`, which is what emits `BEGIN` because the shared pool is autocommit. It issues `SET TRANSACTION READ ONLY`, then `SET LOCAL statement_timeout` (`sql_timeout_ms`, default 5000), a `lock_timeout` of 1 s and an idle-in-transaction timeout of 10 s. The query goes through `traced_fetch(..., prepare=True)`, which forces the extended protocol so the server itself refuses multi-statement strings. A semaphore of `db_gate_slots` keeps tool concurrency under the pool size so the checkpointer can still write. All the settings are transaction-local, so nothing leaks onto the pooled connection that the checkpointer reuses.
+4. **Render and errors (`sql/render.py`, `sql/errors.py`).** `render_rows` prefixes each row with markers such as `[org:12]`, built from the projected id columns the validator mapped. It drops source columns from the body, caps cells at 200 characters and output at 6,000, and says plainly when rows were truncated or no citable id column was projected. `render_sources` emits a deduplicated `sources:` block (at most 8 entries). Its grammar is a contract parsed by the frontend (`features/ask/lib/sources.ts`) and pinned by `tests/test_sql_render.py`. `explain_db_error` turns a Postgres SQLSTATE into the primary message, the executed SQL and a concrete "Next:" step. Connection errors are deliberately generic, because driver text can contain the DSN.
+
+The `db_query` result header is: `N row(s). tables: ...`, then any `adjusted:` rewrites, `caveats:`, `executed: <sql>`, the `sources:` block, and finally the `columns:` body. The sources block sits above the `columns:` line on purpose, because tracing redaction cuts everything from `columns:` downward.
+
+### The catalog is a security control
+
+Agent SQL runs on the **owner pool**, which connects as the database owner (a superuser locally; this page claims nothing more about the deployed role than the code shows). There is no per-caller role. The catalog and validator are therefore the only guard against reading sensitive tables (conversation checkpoints, user accounts, private org data) or personal contact columns. Moving the query to the caller's role is the branch `fix/ask-sql-runs-as-caller`, and it is **not merged**. `docs/ARCHITECTURE.md` section 3 states the same rule (owner pool, catalog as the only guard, adding a table is a security decision) and section 8 says agent tools run on the owner pool and check access themselves. `config.py` carries a `sql_reader_role` comment, but the executor has no role-switch code. See [Auth, roles and RLS](auth-roles-rls.md) for why owner-pool tools must check access themselves, as `compare_fit` does.
+
+**Adding a table to the catalog is a security decision.** In practice this means the following:
+
+- A new table in `CATALOG` makes every listed column readable by anyone who can chat, so review it like a permission change. Per-column exclusions (for example `contacts.email` and `contacts.phone`) are expressed by omission.
+- At boot, `lifespan._verify_sql_catalog` runs `verify_against_db`. It **raises** if the catalog names a table or column the database lacks (drift), which refuses to start. A live table in neither the catalog nor `KNOWN_EXCLUDED` is only logged at INFO, so a new table stays invisible until someone decides. Migrations that add tables should land with that decision. See [Data and migrations](data-and-migrations.md).
+- `tests/test_sql_catalog.py` asserts what must **not** be present. Checkpoint and user tables must be absent and declared in `KNOWN_EXCLUDED`. Contact email and phone, embeddings and similar columns must be absent. `STAR_COLUMNS` must not leak them. Cite kinds must stay within `{org, funder, activity, score, news}`, which is the frontend union. The `_self_check` guard must fire on a dangling foreign key.
+
+## Prompt rules and citations
+
+`instructions.md` is sent verbatim as the system prompt (`render_prompt` ignores settings). `prompt.py` fails at import if the file is empty. Its numbered rules fall into three groups.
+
+- **Rules 1-5, answering.** Answer only from tool results. Cite every database fact inline with its marker. A sentence without a marker must not state a database fact, and the one exception is a figure computed from cited rows, which must be labelled as computed. Show freshness and say where a fact came from in words, without pasting URLs. Fit scores are single-rater rubric judgements. Keep answers short, with the direct answer first. `fetch_url` text carries no marker, so its source is named in words.
+- **Rules 6-11, SQL.** Discover before writing. Profile a text column before filtering on a literal. Project the id column, since `db_query` can only attach a marker if the row id is in the SELECT list. Read the error and fix the SQL, and stop after 5 failures. Zero rows is an answer, and a CAVEAT from a table is repeated. A registration is an `org_identifiers` row with a status.
+- **Rules 12-16, matching.** `compare_fit` judges fit and the model never does. Call it once per question. Repeat its score, tier, points and cites exactly. "Not recorded" is never "poor fit", a `compare_fit refused` reply is relayed and the model stops, and the computed score is never merged with a stored `fit_scores` row.
+
+**Citation markers** are `[org:N]`, `[funder:N]`, `[activity:N]`, `[score:N]`, `[news:N]` and `[graph:<uuid8>]`. SQL kinds come from `Column.cites` through the validator's `CitationPlan`. `[graph:...]` is written literally by `search_graph`, and `compare_fit` embeds `[org:N]`, `[funder:N]` and per-criterion cites in its JSON. The frontend turns markers into chips (`features/ask/lib/citations.ts`). `test_prompt_documents_every_marker_the_tools_emit` fails if a tool can emit a kind the prompt never mentions, because the model will not repeat markers it was not told about. `test_tools_emit_the_markers_we_think_they_do` guards that test against passing vacuously.
+
+## Adding an Ask tool
+
+Four edits, as documented in the repository-root `CLAUDE.md` (`docs/ARCHITECTURE.md` section 3 now holds only the rules behind them: the tool list is pinned by tests, and tools never raise and cite every row):
+
+1. **The function** in `app/agent/tools/`, as a `@tool`. It must never raise and must return an error string on failure. Every database row it returns must carry a citation marker, and the marker kind must be one the prompt and frontend already know.
+2. **A line in `TOOLS`** in `app/agent/build.py`.
+3. **A mention in `instructions.md`**, naming the tool by its exact Python identifier. `test_prompt_names_every_registered_tool` iterates `TOOLS` and fails otherwise. A tool described only in a SKILL.md does not count, since skills load by choice and constraints must not sit behind a decision.
+4. **A label** in `frontend/features/ask/lib/toolLabels.ts`, which the trace UI uses. It is the one edit nothing enforces, and skipping it is harmless: `humanizeTool` falls back to a humanised version of the tool name, so a label only improves the wording.
+
+Because the tool set is pinned, also update the literal set in `test_ask_sangam_holds_its_seven_tools_and_the_skill_readers` (`tests/test_harness.py`). If the tool emits a new citation kind, update the expectations in `tests/test_prompt.py` and `test_sql_catalog.py`, and update the frontend `citations.ts` link union.
+
+## Failure semantics at a glance
+
+- A bad query comes back as `db_query rejected:` (validator) or `db_query failed:` (database), each naming the problem and the next step. Five of these in one question end the turn with the fixed give-up message.
+- A database outage tells the model to stop and not retry. The message is generic and carries no DSN.
+- A missing graph, a refused match and an unreachable page are all strings, never exceptions.
+- The audit can only add a caveat. It cannot block or alter the answer, and it does nothing when no SQL ran.
+
+## Key tests
+
+| Test file | What it pins |
+|---|---|
+| `tests/test_harness.py` | The exact Ask tool set, no `task` tool and no writing filesystem tools. The harness profile disables the general-purpose subagent. The `Settings` audit switch. |
+| `tests/test_prompt.py` | Every registered tool and every emitted marker kind is named in the prompt. The retry budget matches the middleware. |
+| `tests/test_sql_catalog.py` | Withheld tables and columns, derived indexes, citation kinds, defect wording and the self-check. |
+| `tests/test_sql_validator.py`, `test_sql_errors.py`, `test_sql_render.py` | Adversarial validation, error guidance and the `sources:` grammar contract. |
+| `tests/test_sql_integration.py` | Execution against a real database. |
+
+See [Testing overview](../testing/overview.md) for how these suites are run.

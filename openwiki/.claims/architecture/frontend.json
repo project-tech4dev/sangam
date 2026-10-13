@@ -1,0 +1,366 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:43c2d902e0e9f77800cd1a78e5d99f0d34f220a3fd910c7028eeb6a76a0400af",
+  "claims": [
+    {
+      "id": "claim_c4947d35c7ba4e6884cb28e5433237e6",
+      "statement": "The chat wire is still CopilotKit: the drop-CopilotKit plan's M3/M4 are not started, package.json still depends on @copilotkit/react-core and runtime, and app/api/copilotkit/[[...slug]]/route.ts still exists.",
+      "evidence": [
+        {
+          "resource": "repo://docs/CHANGELOG.md#L167-L169",
+          "version": "repo-lines-v1:sha256:3af7ea03a4b79b95593d75738742c827900eba3131f00b7496fc946c9c5a8de4:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2E1MzEzZTQ5Njk0ZWM4MzRjNDdlOThhYjA0ODgyYjdlNjRkODY3OTUyOWUxMzVhMTJlNTM0MmY4MWYwZTZjYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDNlMTRjMTQ4MmM2MmQ3NThiMGM1N2FkNDI5N2NhZjJhMGYzOWIzMzg2NWRiMjAyMmNlYmFjYjRiZjQ3MDM1MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWYwMDNmMjEwYzJkNzY3ZTIyNTEzMTdhODViMjkzN2ZhYzBmNmM3OTZlNjUzZTU5NDczMTUzZGZjOTY1Zjc2MyJ9"
+        },
+        {
+          "resource": "repo://frontend/lib/AgentProviders.tsx#L1-L29",
+          "version": "repo-lines-v1:sha256:96d9a7546e8fe7be3b6a1f1e95708d7a12237b17352f76c47680de0563bb5b75:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/package.json#L11-L16",
+          "version": "repo-lines-v1:sha256:8a14422d7efc13d8b1b06e3652b813c6e89411508006d29e01cc92310e963fe1:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmEzYjQ2OWQ5ZTA5NzU3MjI0NjY2NzM0YzllZjdiMjU0ZDg4NTM0ZjVkNWJiNzA5ODk2MDgwNWM1NTNkYzMwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWI3MDhiYWZlMjg1YTc5NjI3NDI4NzA3ZGIwNzQ4Nzk3YzdiNzZmYTU0ZGQxYzgyOGIwODcyZmM2YmFmMTRlMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWJhNDU5MjU2MGI4OGUzODgxYmU0MzMyN2NhM2U4NzE0N2ExZDI0OWMzOTMxMjVlNzkyOWNjYjhkYjMzYjg1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2E1YWJkOTc0MTJhYTY4YWU1OTNjZTI0NWZiMWIzZmViMTY1YjQyNDdjOWNmNmZiMzdiOTJjOWE5YTE2NDQzYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_65c74f31f5e84f878b68de642c12cc01",
+      "statement": "Server components call the backend over REST via apiGet in lib/api/client.ts, whose base is AGENT_URL with the trailing /agent stripped, falling back to NEXT_PUBLIC_API_URL then http://localhost:8010; it attaches the user's Supabase bearer token and throws NotFoundError on 404.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/lib/api/auth-headers.server.ts#L1-L8",
+          "version": "repo-lines-v1:sha256:8e0f6276a232c2932c7935a2fddaca307e02f47b191ce72c47dfd05056db8ecc:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjA0OTFiZWIyNDhkYjI3ZjBiMmM3MDAwMThhYTFkZTIyODgxZTMxZDMxMDQzYTMwMTVmM2YxMDI4ZWQzYzQxNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://frontend/lib/api/client.ts#L1-L30",
+          "version": "repo-lines-v1:sha256:acd2dd3e3bf55154fb256df9d168dc55749e9047b945a6809b81a9dd9eefb78b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MjIzYWM1MzkxNTk1YTBmOGRjMjQzOGY1MDdlMjY3N2EzNzlkYTE0NDQ1MGVlYjFiODlhOWE1NmY2MjVhYzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_abd426ca3d1045268d91e314191c9aea",
+      "statement": "Chat does not call the backend from the browser: AgentProviders points CopilotKit at /api/copilotkit, whose CopilotRuntime registers two HttpAgents (sangam_agent at AGENT_URL, sangam_ingest at AGENT_URL with /agent replaced by /ingest) behind an InMemoryAgentRunner, with maxDuration 1800 to match the backend.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L1-L31",
+          "version": "repo-lines-v1:sha256:df64c528fdf55c0a66e4ad306683ad1f129d817da85e03c856372cbf2e3a95de:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4MjAwOTY0YTk3ODYzNTUyMmIyYWIwOTBjNjUwNjVkOGVmOGU4NWM0NzMwYmIyZWIwNDYwZDM0YzY3N2RkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlOTk5MTliNDhiNWVkMDUzYjBhYWQ3YjUxZGU5MmNmM2ZmODM1ODVlMDgzYzljMjJjOTZiNmM0MmIwYmVlMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/lib/AgentProviders.tsx#L7-L29",
+          "version": "repo-lines-v1:sha256:a741370297c7db010b86990ce49da252c158398bb8bd95a965427753193f2219:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlZjVhMmYxNGQ4ZWNlNWMyZDUxN2E1M2E3MzhiMTEwZWRhMWU4MDQ2ZDFkZjk4NjYwODliNTMxMTlhYmI5YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhM2NlNDNhMDczZTI2ZjNhMzk1YmU3ODMwZjc5NzYwOWI3Yjg3MWE2Nzg4ZmUwNDc5NWRhZTM4N2U3Mjc4M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7e97d50617274c17a044f0d82e1374d4",
+      "statement": "AGENT_URL must end in /agent (used verbatim for Ask, suffix swapped for Import, stripped for REST) while NEXT_PUBLIC_API_URL has no suffix and is the browser-side REST base; docker compose sets AGENT_URL to the internal backend:8000/agent and NEXT_PUBLIC_API_URL to localhost:8010.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L193-L197",
+          "version": "repo-lines-v1:sha256:e0f3b7068d04786ed6eb6c760693e61dea6694abaaa03e8326ba0271fdd5ca01:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODYwZWJiM2ZiY2JiMzk0YTNjZmVhZjYxM2U2MjNhMzVlNWEwZGY1MTNlMmZhZWRkYTY5MmRmOTkzMjEyOTcwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTRlZThjNjM3OTk3NTk0MDE0ZDNjMGEyZWZhZDE5MTQ4Yzg5OThjNDQ2OWE4NDcyODExZGExMTYwNDAwYmM3NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDRmZWRhYjZjN2U5ODU2ZGM0ZjcxNzMyOTEyZTA1ZWIyOGI0NzkzOTIzNjE5YzQzOWY5NTFmNWI1OGE5Y2MzOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjU2ZWJiMjRkNTg2NzNjOWYxM2JlZmI5OGQzMzEzYmNlYjkxNTEyNTgyMzlkNzhlY2E1OTM5OGZiZWQwZTI4NyJ9"
+        },
+        {
+          "resource": "repo://Makefile#L326-L326",
+          "version": "repo-lines-v1:sha256:10edb845739bd8342fa78afb0adff30a556bc1c1d7d7c843ec0ef4eec31d6e3b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODgxOTFmZjUwOTZlYWFjMDcyNzBkZWU5YjIxODNhNTM4NGNhMTdhZTFiYzQ3NjAwNDc3NmNjNWM2YTJkMzcxNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L126-L127",
+          "version": "repo-lines-v1:sha256:bd01af747145791d8dd46ac48efbfbbafc496da96b3d160622843dabcf762313:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzY4N2JjZWI2OGM5YTQyMzk4NjgxZGIwOWI4MGMxZjNmNWM3ZThlNmMzMmJhNzU5ZTI2ZDg3OGQ1NmU3ZTBkNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmE5YTQ0MWQ1MDE0MDg5MGNiMzk0N2I1YjIyNWJlZjkwYzFhZWQ1ODhmNjg3YzZlOGVmZTkyYjIxOWQwNjVhOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzJjZmU0OGU0NDcwNTgyMTEwMjhhNmU1ODdlNGI3YTdhM2Y1YWY1MDA1ZWM5NTRkODRkZDM4OTlmZDcyZjIyMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDIzYjg1NDYxNjM4ZGI0YWU3NDdlNmZhZDVlMmMxZTgzZmNkZjMzY2E0MzRjNzM0MzIwMDU0MGRkOWVhMWU5ZiJ9"
+        },
+        {
+          "resource": "repo://frontend/lib/api/client.ts#L5-L8",
+          "version": "repo-lines-v1:sha256:a169ddbe7ee1358c0fb2d49a4b0eda18ba890e6ef668d0118dba236753756f2c:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDRkMDY1ZWQyMTcwNjJlZGRkMmJlZjk0ODA5ZDIwMWQ4Yjg0Y2Q1Njk2NTY1YzJiYzIzYmFkZDRlYmVlODdhMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzkzZjQ1NTRjZmQxMGI4ZmE0NTJhMWI0Y2Q1ZDM5ZjExNGM3ZTQzY2IyMWI4MzFkYTE1NzViMGE1ZmFhZmNmMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDBkNWRkNTA5Mzc3MjVmMjRhZjFlMWYxYjRjZmMxZDgyNThhNzg2YTkzMWNjMTRhYzAxNmE3N2Y1NmRjMjQ0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWM0ZjI0ZDM5YWUwMjc4MWM5OTYxODEzYjczNmVjYWU5N2Y5MTQxODczMTNhOWNiNTBmMDA4MjczMjMxNWNjZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_48acfea2e11748d99e8648f0f79e6d56",
+      "statement": "Client components do REST with fetch to NEXT_PUBLIC_API_URL using authHeaders(), with a shared call() helper that throws ApiError carrying status and body.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/lib/rest.ts#L1-L21",
+          "version": "repo-lines-v1:sha256:945b785375848df7730ba80dd0129be1dba8279f7e6e39712318215eee491a5d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhMjliYzg4MzJkMmJhZDY4ZDZmMjA2ODYxMDNmMmI2NjBiNzM0NDFmZmRmYWI3YTBiYzk5NjhkMGM2YTVkODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NjNkZGE3YTJiYzNmZmY5MTZiNDJjMGRmMTRlZjBkYzVjZDVhODE1MzFlOWY4ZTRlYzIxN2MxNjkzNjQ3MmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/lib/threads.ts#L1-L35",
+          "version": "repo-lines-v1:sha256:000c25afbac8e3a23ec511907cd2ce1c4a89b58cfb531107537eed45976da776:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0YmJlNjRkMzBjYmIwOWI4ZWQxOTBkNjAwYzY1M2I3YWFhZTQ2ZGM0MjM5M2NjNmU0ZjE0YTA0YWVlMzQzMWUifQ"
+        },
+        {
+          "resource": "repo://frontend/lib/api/auth-headers.ts#L1-L7",
+          "version": "repo-lines-v1:sha256:b8c90a0bb07ef4ec3cfeeaaa49eb277dc3216aece420262dc08574d90f6cd335:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFkNmI0ZjE2ODM5MjQ0ZTcyYWUwODViMjY3ZTNjZWE4MmI4ZTg0YTJkOWZjMjgxMmY3NjRkNzY2NzM0NTYyYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c9ead26fc86f41cead76b3def0275da1",
+      "statement": "proxy.ts runs Supabase updateSession on all non-static paths, refreshing the session via getClaims and redirecting signed-out visitors on /import (the only protected prefix) to /auth/login?next=; /ask stays public, and without Supabase env keys nothing is gated.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/lib/supabase/middleware.ts#L4-L58",
+          "version": "repo-lines-v1:sha256:e2dd7241ec0bf6759215850da88c652c81256f10666875e696fee6736bc9de8f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxZTQ3MTkyOGVlNjNhNjgxOTEyNWU4ZDM0MWJkYmVmNjQ3OGM5M2Y2N2NmZDYyZDM3MjQ4MzJmNDFiM2MzYTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkYWE4OTcyZGQ1MGYwZDk1MDcyMmVhYmYzNmJhNDcyMzI0ZWFkMzUxZTg1NzA4YjBkOWUwODEwYTI2YmQ3MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlN2QwYjJlOWE3MTE5ZWIxMzg2YzBjMDRjNTBjNjI5YzM0M2I5ZDM0MTliN2NjOTgyNDgyZDIzMjZiYjc5OTIifQ"
+        },
+        {
+          "resource": "repo://frontend/proxy.ts#L1-L20",
+          "version": "repo-lines-v1:sha256:e6d59bcfaf5f7bb6b57e7e6791db8c48ef73a6605076146818c805478c506e8e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlZWFhMWQ5Yzc1MTdkMDM4OWY0MTQwMmExYzQxZjIwMDA5OWZkOWVmYzJhMmVjZTA5NzA1NGNlYTVkNWEwMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8886f0f7917c4f7198ffd548ec5a7573",
+      "statement": "AgentProviders holds the Supabase access token (initial session plus onAuthStateChange) and sends it as an Authorization Bearer header on chat requests; the auth callback only honours same-origin next paths via safeNextPath.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/auth/callback/route.ts#L7-L32",
+          "version": "repo-lines-v1:sha256:5bdbc8b84f4bba368e0e67e8cec233ab133365a548bc4a06fb6289d190761d12:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjNGFhMjExZDg5ZTY1NDM5MThlNzkzZDIxNjFmYTA2ZjdkMzJkZWU4MDlkNzkzYzdhMDFmOTE3MjEyNjAwYzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjExOWJjMWQyN2VmZjMyNWU5YjUyYjc3N2Q5ZWFhNDA1YjQ0YzVjZWY5ZmU3M2I4NjdiOGYyMDNhMTFhY2JkMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/lib/AgentProviders.tsx#L7-L29",
+          "version": "repo-lines-v1:sha256:a741370297c7db010b86990ce49da252c158398bb8bd95a965427753193f2219:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlZjVhMmYxNGQ4ZWNlNWMyZDUxN2E1M2E3MzhiMTEwZWRhMWU4MDQ2ZDFkZjk4NjYwODliNTMxMTlhYmI5YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhM2NlNDNhMDczZTI2ZjNhMzk1YmU3ODMwZjc5NzYwOWI3Yjg3MWE2Nzg4ZmUwNDc5NWRhZTM4N2U3Mjc4M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6761cfda83664984b5c030c76ae39b1c",
+      "statement": "apiGet caches signed-out reads with next revalidate 300 only in production and only when there is no Authorization header; signed-in and development requests use no-store.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/lib/api/client.ts#L16-L30",
+          "version": "repo-lines-v1:sha256:68874640a82396c8fb04f9362c35a4ee7aa27687d1bb5f239fe80bfda3e0158f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjNzc4MmM4Mzg1NmFlNmNjMTA1YWU0OTFiZDE2YWY1MzAwOTI2MTZjODk5ZTFkOGM2ZmZlY2U5NmI5MTcwZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4b15fca23c9c4231b93260f7a831f58c",
+      "statement": "/ask is force-dynamic and checks the session server-side: signed out it renders AskPreview (sample content, no agent call, question parked in sessionStorage across sign-in and prefilled but not sent), signed in it fetches an index payload via apiGet and renders the workspace; ?view=import redirects to /import.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/(agent)/ask/page.tsx#L16-L80",
+          "version": "repo-lines-v1:sha256:0bbdc4a557260bcf203dc2f91bf72378295200daa29a7515209a87f40f9f9576:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0YzIyYTk2NjcwMDYwNzg3YmRjYmUxY2VkNmFiMDk5YTdlODNjOTkxZGU5YmM1ZmMyNWQ3YTNlMzM4NjM1NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2NGViYjI0MTVhNGIwZGVkYzNjZDMwNWJmMmY2ZGIyNjA4NzBmNTZkMjY5MTZlNjkwMzQxYzQ4ZmI2OTZmZmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhN2IxMmVmN2RlOWNhNDcwMTM0MTRiMDk2YjAwOGMxY2Q1MGM5M2Y2MTMyZjZiYTBjMmU5NjAyODUwMzBmM2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkMmE5YzQwZTY0NzYwMDA3ZmQwMzFhN2Y0M2RiYjQyMGY2NGZlNDUxMmE3NjcwMGJjZjkxOGZiNTE2OWM1NTQifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/lib/pendingQuestion.ts#L1-L22",
+          "version": "repo-lines-v1:sha256:983e20db5e12b34c8534b738c48ca0d5882bbbb02ecad1cadb82459884d18fbb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZmQwYTA5ZTU2M2MwMzVjMzM5ZGQ4NGNhMzkyNzQ2OGM2YzYxZjViMThiMmUzNDYxNmNkNGQ1NTAxNGEwZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/preview/AskPreview.tsx#L26-L50",
+          "version": "repo-lines-v1:sha256:5fd5757df6e9a7f4c9769aa1a6925eab952fc29f868e209601bb3fb52d91acb6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MWI4MmFhZDQ0OTFiNzg0NDc0Y2JjMzNkMTAzMGM2YjBjMjJhZWMzOTNiMGZkNzcxMjFkMjllYjJmZThhYmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwZjNjZWNjZGNiZGM2ZDk0MjFmNDkwNjdhZDgyNWVmM2MzOGU5MjVkNmI4ZDMwMWE0OGEzM2M3ODg5NGVmNGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bf8d1e649e2b43a391acf7f614afa3df",
+      "statement": "The Ask workspace lazy-loads via next/dynamic so the CopilotKit runtime downloads only when rendered; AskWorkspace keeps its views (ask, chats, funder-match, proposals, rfpwatch, vault, media) as in-app state, and ChatPane is keyed by threadId so switching chats remounts it.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L29-L170",
+          "version": "repo-lines-v1:sha256:29c3f89842ca61aaad93bbb6b86ad9d87b561c1841cf47bb6812c99f134146f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0MTg3NjVkOTJhYjAxNDM4NTU3ZDdlMTE2NzNmMWJiMDA2YzEwNzNkYjczM2JiNGM0MTRhMDIzYjZlNjc0NGRjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIzNzYyOGJmOTNmOTliOTY1OWM3ZmZmYzQyOTVhYWNmNDljODBjNDc0NTcxMjRiMDBlODExODYyMmIyNTEyNjI3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://frontend/features/ask/SignedInWorkspace.tsx#L1-L18",
+          "version": "repo-lines-v1:sha256:f7ee4f7b5bc49dbae9e7246a3f8c6260030fdfc6ad24b05e836bdcc45ddcdd2f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/WorkspaceLoader.tsx#L1-L25",
+          "version": "repo-lines-v1:sha256:1fbb6c3adcffeffd974d64fcf9c8c03997ffd6091d10e791c2e08a4091d75857:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/components/Sidebar.tsx#L18-L30",
+          "version": "repo-lines-v1:sha256:f52dc4cd90ba8fb6487937d03547dcb7396c1de8e74d73b270a4017becb0783c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhMmNlODA1NmNlMWVkNDliOWI1MDc3YTU5MTIwYTc1NTQ5MWY4ZjI4MTI5OWY1ZGFjMzRkNDAzYThhZTljMTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2MDFiMmMzZDUwMWIzZWU4OGU0MzQxNmZhOGEyYzRjNDE1NmQ3Y2RhYmM0YzljY2E5NDljNDA2ODM0ZjQ5MjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUwMmFlN2M0YTI1MmQ1NTgzNTg0OTc1ODAxZDg3NGRjMjkwZWM4NmQ4ZjM3OWIyMzU5YzUzNTJjZjFiNzA2NjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwZjZhMTFhZjFjMDgzZGMyZmRjM2YzNWU0Zjg3NGZiNmJhNjA4OTRhMmM2NDFjNWU0YmYxNmQxNDhmMGEwMjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4bf5c70111b24b70bfe1af5e393e0b84",
+      "statement": "Ask thread lists come from GET /api/threads with localStorage (sangam_threads_v1) only as a title fallback and for a just-started chat; reopened chats load saved messages from /api/threads/{id}/messages, where a 404 means an empty chat.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/lib/threads.ts#L1-L60",
+          "version": "repo-lines-v1:sha256:eef228c83d9b31fb8f7215a8e1abbe99bc787fb391cd8175d6c5b89d17245ba6:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2c0da7c2d9f9469ba20fc8923cfe7b35",
+      "statement": "useAgentChat is the shared chat hook for Ask (sangam_agent) and Scout (sangam_ingest): it wraps CopilotKit useAgent and folds messages into turns, turning tool calls into trace steps matched to tool results, excluding subagent-run prose from the answer, tracking subagent lane owners from live events only, loading history only after the agent is ready and empty, and running/stopping via copilotkit.runAgent/stopAgent.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/lib/useSangamChat.ts#L1-L13",
+          "version": "repo-lines-v1:sha256:4ec94aca060b6053a4ce1657137d59e0122d2fdfff0dcee17cdf0f1914185dca:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/lib/useAgentChat.ts#L45-L145",
+          "version": "repo-lines-v1:sha256:5097fcafbb47e6cc3153b122baeeeabf538ab3e11afc5e09f7d7d0ae282bc7a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJkZDJmMTJlNzNhOTNhZTI0MDgyZTQyY2VjZGZlOGY5ZjM2ZmNlYzZiNTBjZjI0Y2E4MWIzZDVlYWVkM2Y0OWI5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwZjdlMzU5ZDk2MTJjOTg4NGU4NTNjYTliNDEwMjFlMDlmZDQzMTI5NTg5OTYxNmU4ZTFhOTJjNmRmNjhhNjFjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_75d24235094f40a7b2fd3b1132249a56",
+      "statement": "Proposals are browser-only: stored in localStorage under sangam.proposals.v1 behind a useSyncExternalStore store with cross-tab storage sync, no backend table; started from a Funder Match card by snapshotting match detail into gates; only steps 1-2 are implemented and step 3 sections is a read-only placeholder.",
+      "evidence": [
+        {
+          "resource": "repo://docs/CHANGELOG.md#L172-L172",
+          "version": "repo-lines-v1:sha256:cb8f24eb68232f05a09ffc509518523b1914769ffdeacadf4f99c411fe406f65:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I4ZjI0ZWI2ODIzMmYwNWEwOWZmYzUwOTUxODUyM2IxOTE0NzY5ZmZkZWFjYWRmNGY5OWM0MTFmZTQwNmY2NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I4ZjI0ZWI2ODIzMmYwNWEwOWZmYzUwOTUxODUyM2IxOTE0NzY5ZmZkZWFjYWRmNGY5OWM0MTFmZTQwNmY2NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDU2YWE5Y2EwNWNjY2ZlZWQ3NDFlMTg1MzZiNDExZjBkMjgzYTBjYjY4YzA5OGNhYmRmOGRhMTk1Mjc2YjE4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTYxZDc3OGIyNWZiMGU3MDYwYjk2YjFiZjczN2U2MDA3ZjYzMmRjOGU5YzA2MmQ4NzJiNDc1YjMzYmQyNGZhYiJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/proposals/ProposalShell.tsx#L71-L84",
+          "version": "repo-lines-v1:sha256:131a9b764b5f8819e4abbd1b55dfcc6f8e89030b8d01df2f6d3497f9ad11c783:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkNDViMjcxY2M1M2I5Yjc5NTNjYTI4NmY3ZGE3ZWE4ZjgyZTZlMzZiMGIwY2ZkMDQ1MGQ2M2ZmMWZjNTMyNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmMjJlMzE0ZmQ2ZjA4NmFmMDE4NmNkZThmNWYyOGNmNTc3Mjc5Zjk1ZWJjMGM4YzExOTVlYTJmZWY1NTI1ZTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhZTA3OTdjOWQzMzRjODJiMTBkZWRjNWVlMTk3MTk2M2ZkMGZhNDA1OWY4ZTVlM2Y1MGE4ODA1ZmNjMjQwYmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5NTFlNzlkZDI1MjU2ZTZlMjg1YzRkMzJmYjA3NWJkOTQ3NDljYmQ0ZjI4ZjgxN2FkZThlNGE3YjUxMjkwMDcifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/proposals/start.ts#L12-L65",
+          "version": "repo-lines-v1:sha256:41f9767b74e8d822f80457f9f924f3fb788815317b600df90d84628f83605bc7:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyMjliZDE0NTU2OTVkZDg3MGQ4MjNlZTkyMjYzNjA5MGViZTE3NmI3YTI1ZDk2NTk1OWVkMjQ1NzE0OTUzYjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MGI5N2U0ZGE0ZDhlOWNmNzg5MjA0MjRkY2U1Zjg1NDNmYTAzODY2ZTJmOGFmYWRhZDhjMTUzMTc1OWIyNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/proposals/store.ts#L32-L96",
+          "version": "repo-lines-v1:sha256:f0076c4bc352e9561cee26bba28f5e701326bc2dcdbc7ea396511a8b4b0735e0:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3MGM1ZjQ1NjQ5NjI4YTMyYjA1ZTY2NTJmN2Y0ZTdiZmQxMDJmNjBmNTFhMGQ1M2I0OGFmMWI5YmU0Y2EwYzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMwYjhmMzkyZmQ0ZTIyMjVhNjAyMDY1OTk4NTg1N2YxMmUxYTI0YmJlMjVlNzdhYjQ3ZmE0YTA2MTJhZjA2NGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7814891cce1d493d99715a791ef8a4e1",
+      "statement": "The /import route is force-dynamic and validates ?thread= against an import-uuid pattern; ImportLoader lazy-loads ImportPage with ssr false; ImportShell owns the thread id mirrored into the URL and lists past runs; ImportView loads all panels with a single GET /api/ingest/overview and shows team tools only to staff.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/(agent)/import/page.tsx#L1-L16",
+          "version": "repo-lines-v1:sha256:1f5499b52417e03e4e202da3b96877f60c5ee9cba9e4938a11a4568b283b7d51:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjM2VkNTdjMzk2ZGRkNWJhOWZjMjliMTE0MzI2NWI5OGI4ZmIzMjVkNmNkNjYyOGFkM2QyMzE2ZTU0MGI1MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/ImportLoader.tsx#L1-L13",
+          "version": "repo-lines-v1:sha256:b7fee0e965dcf74aedbff218a9d7b0a85b63981e226ea8be4384ff01d4e806b8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/ImportPage.tsx#L18-L91",
+          "version": "repo-lines-v1:sha256:a48ae7ffae20bd12eb8dbe063f523449aa91cfc515f25de7cd671e530aae3b6d:eyJzZWxlY3RlZExpbmVDb3VudCI6NzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliZTRkN2I5MDQxODk2MmJkODUwZDQ0Y2UxNGE3OTIwMmI0YWM2NmM4ZjFkYzE5OGFlYWM1YWE4ZjZkNjVkYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgwN2QzYWM5MTljZmI0YzEyMjkxYzU3N2YyMzkwODA0MjNiN2E2MTg3MWFjNmFkOWJmY2IzYTg3NzJmNDJlNTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/ImportView.tsx#L36-L123",
+          "version": "repo-lines-v1:sha256:cbb344e7dc09526fc1833902c07d48e37ce872dc9edad89edc3d5b0fe722cd49:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzMmY4YTkzNDEwZjY3Njk4MDJjNGQ3ZGFiZmQzYTRiNjU1NzM3NzdlY2EzMWVlYjAxZDZkY2U2ODM4Y2RjN2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1MTQwN2NkOTIwMTBmOGIzNmFiODFjODA2ZjAyYWNkZTgyZmUwNTRjZGQwMTg1OWI3MzEwM2Q1YjhkYmMyZGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a45c9b1608124e8092b08e5c3901ff8e",
+      "statement": "Import pause cards (SourcesCard, SaveQuestions, ImportApproval) answer backend interrupts through CopilotKit useInterrupt with renderInChat false, rendered once into a single DOM node that ScoutChat portals into the visible layout; SaveQuestions resolves with the decision and slug so parallel paused writers can be addressed.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ingest/ScoutChat.tsx#L269-L297",
+          "version": "repo-lines-v1:sha256:0bc2e4572a68a4a6eb902f9bb83a1b93837504009a8ce611742fcc03b47a42da:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhMGNjZTNhZWNjNjc2NjE5NzAzNDJiMWVmZjkyZTRlYmYzMGU3OWE4OGVkYjc0OGM5ZTNiNDEwYzljZTZjZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ZWYwMWJjMDhkYmMzYjYzZTRlNzVlYTNkMjZhNWI5NDE4OTE4NzdlMjdhZDg5MTMyOWM4NDExZDdkOGRjNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEwNDNiNDRiZTc0ZjVmZWVhNmJjNjM1NjE1MjY2YzQxZmMwYzg2YzRjZjAxZjE3YzJjMDgzOWQ1NjNkZTVlMTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2YmFkNzU5NGZkMDlhODE0MTE2OGY0ZGNjYmYyYTcyNmY3ODNlMzljOTkyZWRhZGY2YmY1ZjlmYTI5ZjExMDcifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/ScoutChat.tsx#L477-L477",
+          "version": "repo-lines-v1:sha256:2838cf1d6cacb93bb5c1a1386564eb8ab11900fbc17ef6c3383332fc0590d052:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjgzOGNmMWQ2Y2FjYjkzYmI1YzFhMTM4NjU2NGViOGFiMTE5MDBmYmMxN2VmNmMzMzgzMzMyZmMwNTkwZDA1MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjgzOGNmMWQ2Y2FjYjkzYmI1YzFhMTM4NjU2NGViOGFiMTE5MDBmYmMxN2VmNmMzMzgzMzMyZmMwNTkwZDA1MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmMwYzJmYTk4OWNiN2UwYzM2ZWUyMTZmNTAyMDg0N2E2YTU5MjY5Y2E5ZmViODEyYzQ0ZDVmZDcxYjIxM2VhOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzllMzc3ZGNiN2ZlM2VkNGE1ZWQ1MGVkYWFmODY2MDY1ODNiNGJjYzI2M2Y5ODczMGJhNGE1ZThhZDc0ZmU4ZiJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/components/SaveQuestions.tsx#L29-L53",
+          "version": "repo-lines-v1:sha256:8d097bd01a23fa00a9a69e140766385552339cc7ebe92cf5fdd27ed09941d4c6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1ZjhmMDhiNzNkNTZhMjdjMmFiMjlmZjQ5ZTNjZGQ5YTJkMTQ5YjNlZmQ3YTQ1Y2Q4YjE2NWU4NzY1NzgyNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyMDQwZTA5NWE5NGUyYWRhNzRlNDIxZjM3MTg3NTFhOTFhODEwYmZkNjZmNDhmNGU5MzljN2I3NDgwZWI2NzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/components/SourcesCard.tsx#L74-L104",
+          "version": "repo-lines-v1:sha256:8c592b8688b3e5a6b6a125010f16c060e39d6eadc9c1bea931e25a29d6a04b48:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5ZjVjNjNiOGRmZmYzODFkMTljNTZhOTYxYWU5ZTI4MDNlYWYwMjU5MDY5NjM3MjQzODFmYTRhZTQ4OGI1ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhOGVhYTdjMzk5ODcxZWJjNDk0YjRjMjA5ZDIyNWNmMzUzOTdkNGQ5MGM1MDhmY2Q1OTZlNjE3ZTVmZDQwNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_686c83ed66e44d5cb23c892b48f74aea",
+      "statement": "useRunPause records the tool a run stopped on from the interrupt custom event or a RunFinished with outcome interrupt, and ScoutChat disables its composer as stuck when the run is idle, no card is open and a pause is recorded.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ingest/ScoutChat.tsx#L87-L125",
+          "version": "repo-lines-v1:sha256:9365e85c0d400ba447a8c1f52848f0c489084b90f59a4ed7f124499a4e2a1abe:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzMDg3ZGNlMjdlYWI2Y2M1NjllZDRjZTc0MDMxMzQ4MTkzNWY2N2UzMGFmNTFmZTQzNWQ3NzQyYWQzNzI5ODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0MmVjMjM0NmM1ZDI3NzZhZGFhNGVkYmRjYWYwNGM1YWIyYTk1NDE3NTRmMWE2MjQyZmM3OWNmMGY0ZjQ1NzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNmQ1ZGFjYzg2NTE1MTQ3NGUyMWJjMmI1ZjczMmZmMDQ4ZWQ4MTNkODcyMTU0Njk4NzZlYmEyNGRiNzkzNzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwNDJmMjlhYmE2ZDM4OWIwMWFiYWNmNDdlYWE1ZmNlMDE3YzM0Y2ZkYmUzNTVkOGQzZmQxOTgxMzllODM3YzAifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/lib/useRunPause.ts#L19-L38",
+          "version": "repo-lines-v1:sha256:dfca1634d6bc5247318c336bd9d7d245cf71a444c5bbbd98968157be5ae692c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5NGZkMGM5YjBjZGFkOWQ5YzYzM2NjNzdiNGM4NTIzNTQwM2NlNGJiMTBjODFjNjA0YjE3NDNjMDJmNTRhYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0MDk0ZTc0MTQ1ZmZiZjBjZjNhNmQ4OGQ1ZDM4ZTJjMjYyNjM2MGRhYTg2NTQ1ZTQ3YjBlZWRkOTYwMTcwZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c8b167998f8649cba09bdb65c064a483",
+      "statement": "Sources ticked before the first message are sent to the backend as AG-UI agent context with the exact description 'Sources the person ticked for this Import run', which the backend's TickedSources middleware looks up.",
+      "evidence": [
+        {
+          "resource": "repo://docs/features/2026-10-11-drop-copilotkit.md#L136-L138",
+          "version": "repo-lines-v1:sha256:48b05a253977f974d1636f117461b8a616534ac975e342a5017d97f444550cc8:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTViYzc5M2RlY2I4NDkzODYzYmY3YjE3ODJhM2FjOTZlMmY1ODAzYmFhODU2NTBjMzliNTM0Zjg5NjdlYmE1NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjVmNWU0MjIzN2FkNWNhYjQxM2FmMmM0OTc1MjM5Zjk0NjFjNDU1ZjdmMjFiYThmNTI4YzBhYjk2NTVhMzcxNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWVkMWIwMTI3MjVjNWU3YjY3OGU0N2VkZjFhNjBkN2VkNGU4MTgzNmIyNjNiMWU3NmY2NWE4YWNhM2ViMzQyYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjI0M2UwNTZmYjFiMDM3OWQ0MjgxZTFlOWM4NzIzMDljYTU5NTY3YzY2MTE5ODE3ZmY1NTM5YThmMWNiZWFlNSJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/ScoutChat.tsx#L25-L29",
+          "version": "repo-lines-v1:sha256:5a8023de5c4cd3cb23bcc0b62cfb131676c110660f29772e2b82766ba72dba10:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDM1YWZiYjlmOTNjZjNjY2UxYjAzYmYyMWY3ZDY4ZWVlODIxNDA3NjMzZTk5NmVjZDUxNTQ1MTg5YzgyOTY1ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGFhMjBlYzA2NTU0NjdhODA2MDBlMjZjZWQzMTgwZGE1Nzg4MTQzNGYwYmNhNWMwYTdkYjgzZDNhMGMxZDNhMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWIwYmQ3MmQ4NTk4ZTIyMzc5Mzk4MDU1YWY3MGM3MDQyMWFiZjMxOGRiZTE0Mzg3MWJhMTMyYTJiZjA1NzM0YyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_d1277a9cf2ad429ab24965dd896aa8b8",
+      "statement": "While an Import run is going, composer messages are not sent to the agent: askLive posts to /api/ingest/threads/{id}/ask-live and the backend answers from run state; text classified as an instruction is queued and sent as the next message after the run ends with no card open.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ingest/ScoutChat.tsx#L148-L199",
+          "version": "repo-lines-v1:sha256:f0cb0b6b42a4c0e7e7ddaa1d7ce5e0e50fb81eb4db987d4234978dd6f29a650e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkMzEwYTIwMjNiZWNhMTRhNWFhOGQxZmZlZjQzNGIyZWIyMDhmYjQ5ZmQyM2E3ZjM2ZTc4ZjkxOTBkZDU2MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5YTc1ODBjZWM0OWMwMjIzYjcwOTc4NTU5OTA1MTcyNDhlOTI4ZTE5OGIxYmVhYjA1NWNiOWU2N2E2YjcyZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyOGRmNzdmNGZiMmQ3NDZmNjU0OTgxOTJmMzJiYTBiYWZjZGNhOGNiN2QzODliNWVhYWMwNjkxNTE4YTdkOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhhMDM1NjNiYTM2MzY3N2Q4NGZiZTc1OGRmNDIwZjlhOWRiMjlmZDMwM2I0MWIyODc1ZTllZmI3Y2MxMjI4YzkifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/lib/threads.ts#L36-L48",
+          "version": "repo-lines-v1:sha256:08f2d456aa2ac8b17affaf9222e9e73f1f8c0cd0cd067e9637850fd53013578e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5YmViODQwZjNmM2FkN2YzZjc4YmNhNjEwZWMzZGYyMDAyZDRkYmJlODAxMjQxOTZiN2VkMTg0NzcyNDlhNTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5ZmVmYzIwMTI0ZTI4Njc4ZDZmNjQ5NjQ1ZDEyMDY3OGM5ZTU0YjM0NTg2ZjBlYTUzMjM0NjRlNDA2NmMzMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_111e78e5f3f049c89ab3c3d473c8ee9b",
+      "statement": "The Scout step shown in the UI (Start, Working, Review, Done) is derived on the client from isRunning, whether a review card is open and counts from DoneReport, with the working board built from the turn's tool steps and lane owners.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ingest/ScoutChat.tsx#L309-L350",
+          "version": "repo-lines-v1:sha256:7485c3048c78f37d7279f65646da041f07d1c2072438c21f29ace16b819014f2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxYjg5YzY4NTYzZDNhMDk5MmEyNDk5NzBkY2RjMzM2YjhlMWMyZGNjOTYwZGQyMTRjYTdmYzBjMjRlNTdmZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2OGE5MWY3NWVmZGE4NzZiNzZhNzEyNmU4NTQ2YTZlZTE4ZjdjNTExMTBmYjliOTFiZmFjNWUxZmQwMDFlOTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEyYTYxZDA1OWI0MzQxZDI4ZGI3MTQ4ODQyNTA2Nzk2ODFjMzdmMWZlOWFmMGNhZWVlNjJmNmU0NDUzM2UyZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhZThjOTQwZDIyZGUzZjZkMmFhZmRlZWE4YWY0NjlhZDM4NTBjZWNhYThiMTdkZmI5ZTExNzZkZTlmNDMzMzkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c127730bb47b4c9d88c0a4e3b8f5e092",
+      "statement": "The drop-CopilotKit plan targets an out-of-memory failure in the relay (InMemoryAgentRunner buffering every event plus raw LangGraph event copies); its M3 would replace CopilotKit hooks with an @ag-ui/client HttpAgent talking directly to NEXT_PUBLIC_API_URL /agent and /ingest, delete the proxy route, and accept losing mid-run reload replay.",
+      "evidence": [
+        {
+          "resource": "repo://docs/features/2026-10-11-drop-copilotkit.md#L122-L145",
+          "version": "repo-lines-v1:sha256:5ac063c42e3c3f37f2fae9ca883a21092501978073919bff4695cafd96e0c098:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZjk5NTFlMGUxZGYyYmY3MjUzYmZiNDNhOGFiMGNiNzg4YmFkNWVhMjFlMTliODAyY2E5YmIxNmU1ZmQ2MWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZlYjljNTY5M2E0YTI0YzgxN2UyOGRmZTkwNDQ1YzdjN2MyMGFmNWU2MmZhNGFmOTczOTEwOTNjM2JiYWYxN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmNWU2ZmU0Mjg0NDE4ZTJjZWZkNmRkNjk5MzkyYzNkYjE1MGVlZWM5ZmIxNzVkZTZlNzljNzM3OGRjOTA3MDMifQ"
+        },
+        {
+          "resource": "repo://docs/features/2026-10-11-drop-copilotkit.md#L18-L45",
+          "version": "repo-lines-v1:sha256:98a6f9f852ad6cccb784cfa098a32f361225bb6208b5b8ccccf2d1809eba6b1d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2YWVlNmQ5NjRjNjJkYmNjY2NiZWVhNDZjZmM5NGY4N2E3OWFmNGJiOWQ2M2ExOWI2NmUxOTk2Nzc2NzMzM2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1Mjg0ZDlhN2RjN2I2NzA4MGNmZDM5N2E0MTkyZDEwYzhiODFjNWJhOTczZDk5MTMyMWExZWJjZTA4NjYxNzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZhZTIwOTZiNDc5MjZiMzVkMTVjYmUxN2QyNTA1NWRiNTE4YTk3MzZjY2Q2MzgyNWY4NjZiMzNhMDI3MzU5OTQifQ"
+        },
+        {
+          "resource": "repo://docs/features/2026-10-11-drop-copilotkit.md#L91-L96",
+          "version": "repo-lines-v1:sha256:b9481d1319c06fbd413e58ef22cf2e8cd187b46087d624e8038b4a934e9d8026:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDQ0ZjVjMWI4ZDE4YzE0YjQ2YzlkM2M4ZmJmZjM4MWM4NTExN2UzOGQ2YzgyZWY5MGI1MjU2NDZlNjVlNWQwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGE3NWVjOWI4NDMyZDhkOTI2ZWNkOTkxODdjYjdmYjViZjk3YTBlMDZkZGQ5OWYxZTI4MjU3MjE0OWRjNTQ4YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDliMTE2YWJiZmMyNDE4ODlmN2NlMTdjOTk0ODMwOGYzNzllMWVmZjY4OGRjN2MxNWQyYjYxNzBiNjM5OTE3YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDQ2YTRmZjhlYWJlMzQxZjQxMDkzOWVmYTYyZjQ5OTM5MDE0YjgyMTc2ZmVlZGI1YTBkMWUwOWRiMzBhYjYyYiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_f6e466f679cc4517bd5be3115a10ec0f",
+      "statement": "The design system lives in the Claude Design project 'Sangam Design System v2' as system of record; UI PRs must update it in the same PR, tokens share CSS variable names with globals.css, and rules fix corner radii, type scale, AA contrast, Lucide icons and a single page-max column.",
+      "evidence": [
+        {
+          "resource": "repo://docs/DESIGN_SYSTEM.md#L1-L35",
+          "version": "repo-lines-v1:sha256:ed18669a568beec306e440000023ba05999004ee276b4e6f4301763a02011c1b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZWE4NDQxMGM4ZWMxMGI2NGExYWQ2ZWJjMDQwMmNlMGJjMDk0ZmNhNDllZDYyMjYxNmFkMTNjMjMxMjA2M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkY2Y1OTVkMWQzZGE3YzE2NGY3NDczMTZkMTliNmVjYTc4YTQ2ZWNjZDM0NzY2ZmM3YWMzMzc4OWQxY2M3MzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwNDUwZDk0NjhjOGUwYmQ0OTFjYTQ5ZTZjMjRkZTNmNDA0ZThjNGUyMjRhZGM1YmFiZWQzZDM5YjZlNmFiM2UifQ"
+        },
+        {
+          "resource": "repo://docs/DESIGN_SYSTEM.md#L107-L127",
+          "version": "repo-lines-v1:sha256:5ba4ccf8e52e300503c26f046cca37e966b3a64ab1f3537c2287c078afce95c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlOWIxOTIyYmY5ZWQxMjFlYjEwOGMyZWM4YjllYzQzODg4MGQ1ZGE5YTEzOTcwOWYwZDViOWE0Zjc1ZjI4ZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2ODE0NGNlM2IzM2Y2YWVmMWFkNDRmODc0ZjZjN2E0M2E5NzM5N2EwYTFmN2I5NzdjZDc1MjlkZTA0ZWEyZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkZmNmN2RiMWRhNTBjNjM3MWU2NmNhZjY2ODc1MzI2MmMzNTM4NDY1NzZlNjJiZDY4MWZhMjI2MDRlM2NiMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a4730b4abff6471da9902c9d85d8caee",
+      "statement": "Frontend code is organised as routes-only app/ (everything else goes in features/), one features/ folder per screen, components/ui and components/layout, and lib/; list pages share the BucketCards/FilterRow/SearchBox/ListMore pattern in components/ui/ListPage.tsx, with useShowMore for client-side paging and useCursorList for server cursor paging, and new list pages must reuse it.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L396-L399",
+          "version": "repo-lines-v1:sha256:da49d982fa4f6e65b3561a5dceddda7b12545f8220ffcdb3936f78ea7e67bf9f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTFjMDgwOTdlM2UyZTZkMGVkMTk3MDMxOGJjNTc0MDY1YWI3N2ExYmE2ODFjNjk2M2NmNzBkMTc2YWZkYzI1MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODhhNmEwMzg3MGU5OTEwMTg1NThhZmFhN2JhYzE0NjM1YTY3ZDZkZWJhMTY3OWEwYzc1ZjA2ZWE0NDhkZDgxMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FmMDE2YzMzYjliZGQxYWNkODc4N2Y2YTc3ZTdjNTExODhiMTg0ZjNiOTkyYzNlMDUxNzA2ODU3NjNjZmMwMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2QzYmI0ODhiOTcxNjAyYWQ3MjA5ZjFjN2U4ZmRlMjY1OGNhYTk2ODU4MTQ0N2MxOWRhMDE4ZDZkYzYyY2JkYyJ9"
+        },
+        {
+          "resource": "repo://docs/ARCHITECTURE.md#L133-L142",
+          "version": "repo-lines-v1:sha256:b6ad4ac1280f97c06c63f169a9d61eaaae8517993a08a86728f659a251d17840:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMmZmNGU1M2MwYmNiNGViOTUzZDNhZDQxNzM5NzY1MzA1M2I3ZDE2ODE1YWUzZGIyOGU2ZmZlNDA2M2ZiMjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MzdhMzlhMGRkOTgxMmIxOGIxNWNjZGIxMzEyMjk5NzIzNDQ1NjRiYzBkNmU2ZWMxNmIyNTVhNTFlMzYyOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlNjk2Y2FmODkxZGViNGExMzM5MjIwMTc2OGJmOTJjYjM3ZTNkMTg3NGQ3NmNjZjA1ZTBhMTk0NjgyMTczMjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NzEyMTEyMzQwMWZhNDQ1OGI4ZGZhN2E3NjNmMjFmOTFiMGJhZjA4ZWRkNWEyNzc0MzQyNjllYWViZmIzOTkifQ"
+        },
+        {
+          "resource": "repo://frontend/components/ui/ListPage.tsx#L9-L151",
+          "version": "repo-lines-v1:sha256:c294d9996002d9a50f509c6408a7c055a7f1b0a3e567cb2f0a5322e450763079:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjYTM1NzIxODA2NDY2ZjRlYzAyMDhhYjdkNmUzM2E5MzQ3ZDNlYTk0ZjE2ZTcxNWUzMzJkMWFlMjFjOGJiYzMxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5ODU0OTYzZTYzMzc1YzM3OGZjYmE2YjkwOGRiMTFhNjYwMWE0ZTIyMWM0OWMyMGFlOGEzMzc1MjJkODI0YWYyIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhZmVmZjAyMmYyMGUyMGFiOWZlYmY3YjllN2ViODgzYWNmN2EyMmEzOWQwZGQ1MGI3OGQyYjg2YmFmMzQwZTc5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4ZGQwMDkwNzk0OGFiODdjNGVjMDU5MDRhZGYyNjM5MmI1ZmUwMDg5NWMxZjI3OTViZWQ5YTE2ZDdkMDc4YzMyIn0"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-13T18:59:48.420Z"
+  }
+}

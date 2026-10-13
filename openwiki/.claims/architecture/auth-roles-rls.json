@@ -1,0 +1,404 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:804aff3ef4685657bd084cb6d00d24e9a1bfbad5ad07d53d03eacffec13d7a04",
+  "claims": [
+    {
+      "id": "claim_ad1457a859a34d0d88ee82f2b89ad7fe",
+      "statement": "AuthMiddleware is a plain ASGI middleware (not BaseHTTPMiddleware, to keep chat streaming) that resolves the caller once per request, skips non-HTTP scopes and the open paths /health, /docs, /redoc and /openapi.json, answers bad tokens with its own JSON 401, and stores principal, db_role and db_claims in request state. It is added before CORSMiddleware so CORS wraps it.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/security.py#L145-L173",
+          "version": "repo-lines-v1:sha256:e63ac8253daa8fef76c411ddc73da36a51f8df54309f154d9d6a51664a5e567a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZTc5N2EzYjUxMGJjMjU5YmFhOWIzMDlmZDI5ZjBlMThiYjVhYjFhZTk3ODU1YzY4ZTI3OTMyYzgyZmE2YTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkMWE4NWQwMDhmM2Q3OTk1ZDYwOTVmMWNlYTc2YWY5MjAwMzRmNjZhMWQ5MWE5MTZkYWJiMTFhYzZjNThjZTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5NGNhNTgxNDFjYTc0NTE0MDJmM2JhMzI5ZDYzMGE3MTNlYTExMzBlOTg0Yzc4ZTUyMzIwYjA2ODUxN2IxMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViMzE0NWQ2YjczYWRjMjZiNDIwODY3NTkzMDI2OTI0YmQ5Mjg5YTYzNGE5M2UwOTM4ZjE4YmNlNThlYzlmNzYifQ"
+        },
+        {
+          "resource": "repo://backend/app/main.py#L29-L38",
+          "version": "repo-lines-v1:sha256:f2f907e6c0004b3a305f6bf944817e23ab89be976dd3016524445d7c0662188d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNjllODFmMzY4OWQzY2IyMTY1ODYyYjEzMmMxZmJmNWVmNTIxMTE2MDlkMmE2OGFlMTkxZThiZDQ2NDYxNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NGY5MGQ4MGYzNDIzMjQ5ZmQxNWY4ZTZkMjI0YTFmZWYyN2RlOTg4MWM1YTZmMDkwNDBlOTRiMmE3YzRjNTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkNWJhMWQzZmUyN2E4ODdiNGMxNDUyZTU1ZGUwNTJmY2ZkODc1YzUzZGEwMDNhMzFjOTc3OGM2NzkwMzA5ZjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0af7f6015dec4d1bb812b4b657f2176c",
+      "statement": "resolve_principal has four outcomes: with SUPABASE_URL unset every request is the seeded staff DEV_USER; with it set, no Authorization header is ANONYMOUS; 'Bearer dev' is DEV_USER only when DEV_AUTH is on (local only); any other bearer token is verified as a Supabase access token, and malformed or invalid headers are 401.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/config.py#L186-L188",
+          "version": "repo-lines-v1:sha256:9ec2256df7a1ae82d85de770daac60846dccfbe26b36aec0fb522e91d7958861:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjNkMDBjZjI3MDk2NGQ0NGExM2RmYWM4NzUyYjA5ZmNjNDM1YjBmMTliMzE2YWJjZjgxYTdhYTY0YmIxMjJkNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTE5NjE2NGQ1YjRmMjMwODViMjQzM2VkZTdiYTg2NzlkZjQ2OWFkNDYyZjBjOWIxNjIzYzZmYmMyMzZiNTYwNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWI1NzZiMDM2MmQ4YzI2NDVjM2ZjMjU4MDQ2OTBjMmQxNjM0MzU5MzI3MmE4MzlkY2E0ODY0NGNhZTNiN2Y0OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWU5NWFmYmYyNDgyZmJlYWJjMDE5YjE0ODYxN2ZjOTBlYTUxY2U3ODRiOGM3ODUwMDE2YTBjZjdmNTIyYmYxZCJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/config.py#L44-L45",
+          "version": "repo-lines-v1:sha256:c87958cf54e6a00fb0521648a3699aa9da55a44eb8d5a7ad588d6004c5c629da:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjZlODEyMjM5MzhmMTI1MjUwMDhlZTQxZDdiNmJmZWJlNDQzODdiYmZkMzgxNGFlYWFhYTU4ZWQ3Y2VmMjRkOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTUyODEwYWQ1NWZmMGZlYTFmYjk0ZjAwZDE1NDI1ZTUyZWVhZDUzNmY4NjNhOGYxYjViZGIzMzk2NjY2MzdhNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FjZDY5Y2QwOWFkN2IwMzVmNzBiNzVmZDAzOThjZGFjY2QxZmVlZjQwMTkwNDA5Zjg3ZWEyMDJlNWI1Y2ZlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGM4Y2RkOWU5MzM2MWY1ZmI3MzM1MjNhMGM3OWIzMzFiMWMyNDRlODdmMjg4Y2Y1YjMzN2U3NGJjZThjMjZiOCJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L90-L134",
+          "version": "repo-lines-v1:sha256:0f49d7398fdca926cc872144136934eff35984361cda3db24ffef2e8329661c3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkYmEzZTlmY2ZiNWYwYzIwYTI2MjIyNTNlZmZkZDY1YzYxZDU0YzNkOWMyZmVkZWE4MGMxNzhlNjc0YzhjNmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1ZGE3YjAxZGI2OTY4NzY4Njk3ZTc0M2Y0YjJlZjY5YmMxMTM5NDZjMzY3NGM1YzhkYjY2OWE3YWQxYjg5OWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyOGRlYTc4Mjg3NWNjMDFlYTRmYTc2MGNkYWMyYmRiZWIyOGI2MWY0NjFmN2ZkMzc5ZTk4ODI1OWVkZTg0MWMifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_security.py#L76-L110",
+          "version": "repo-lines-v1:sha256:c1e8552003cfd3f82bd65241be82661f32cae0fcfd808c776750e4f2aebf320b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzOGM5NDFmMjg4ZGFlZDRhODhhYjNlNWNmNjQ0ODgzMjhjNDM3MDY4MjUzZjQwMWI1NWJiMWRkNmExNDFjNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyOTUxNDkwZDg3Mzk3NjJlNDFkYWE0YTA5ZGRiZGQ4MTViMDFlNGI1YzIxYjhhMzlmZTdkODY2YjllMjM5YTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc2MGVmNDg0MzcxODBhNDkyZDkxNTYzNjljMWQ1YjUwYjU4ZWM1ZmJkZmI4ZWNlYzEyMzg4Y2MzM2ExNWI2N2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_22dbe68419014f40b47414162a6c4258",
+      "statement": "Supabase token verification fetches the project's JWKS through a cached PyJWKClient, accepts ES256 and RS256, requires audience 'authenticated', issuer <SUPABASE_URL>/auth/v1 and the exp, sub, aud and iss claims; the sub must be a UUID and the token must carry an email, otherwise 401.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/security.py#L104-L115",
+          "version": "repo-lines-v1:sha256:284c606fcf43315813084f89d8241a982d81973135be5718becc97e789092a2d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTVjNjZlMTdiMTQ1Mzk3ODM0YjhjODU0ZGM0MTkzZTIxMjUxODBhODk5NmExNGMzMTg4MzMyNmIyZWZiY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwNjlkODBiMjk3ODM0MDYxYTg2MGM2ZGJhZWQ3MzVkZTMzNDc3Y2E4YWE0NmJiZDRmZWQ5Y2JiZWRhYTY4NjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3ZTQ3YjQzZTVjYTI1NThjZWIyMmFkNjk1NTNlNGFmYjAyNDMzMGNmMTFhZTZjNDkzMGE2MGJkNTBkZWY1YWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0ZDRhM2RlYzE1YWYzM2U1OWFhNTE4MWIyMmVlODlkZTM0YmIzOGU5ZjBhY2QwODc2MzBlNDgxMmUxYTg5MDgifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L64-L82",
+          "version": "repo-lines-v1:sha256:c0d90534616ed2b76735b079ca79909dab0c34e82e4868e74679e432ca1fc1b3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOWNjNWY4ZmFjY2ZkZWJlZTk4ZGE5OWRlMWY3NDdhZGM1OWRjODg3MzRmMjEwYWJmNDMwMjlmYmIzY2YzNDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiZjRlMzQ2OWVjOTlhNTUyMTJhNWI0MDQzYzMzZmJlZDliZTg1YTVlY2FkYTE3MDlmMDZkMTkyOTc3NmVkMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1YWQ4MWU2YTlkN2QzMmM1MmE0ZTdmNWQ5ZGFjYzFmOTg0MTIyNDBmZDM3NDMzMTY2NmQ1MGNmOWUyZmUyYzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b07b371e49814019aebdfa5ba4517769",
+      "statement": "A verified token is mapped to a users row on the owner pool by resolve_auth_user: look up by auth_user_id (syncing email), else link a staff-pre-created row with the same email and null auth_user_id, else insert; an email linked to a different Supabase account raises EmailTakenError, returned as 409. The sign-up trigger from migration 0022 normally creates the row first and downgrades its errors to warnings.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/security.py#L117-L134",
+          "version": "repo-lines-v1:sha256:4e9614e837f86b86f8afd54c91e5f17229474791ebb11adf4992e3df7a5ed163:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTVjNjZlMTdiMTQ1Mzk3ODM0YjhjODU0ZGM0MTkzZTIxMjUxODBhODk5NmExNGMzMTg4MzMyNmIyZWZiY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1ZGE3YjAxZGI2OTY4NzY4Njk3ZTc0M2Y0YjJlZjY5YmMxMTM5NDZjMzY3NGM1YzhkYjY2OWE3YWQxYjg5OWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg0YzVlNDUwMGU3ODQyOTQ1NjQwZDY3ZGEwMTEyODMyMDhhYWRhZGJhZTYxMTgxYmRjOGUzZTVjODE0OGJiZjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyOGRlYTc4Mjg3NWNjMDFlYTRmYTc2MGNkYWMyYmRiZWIyOGI2MWY0NjFmN2ZkMzc5ZTk4ODI1OWVkZTg0MWMifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/users.py#L17-L68",
+          "version": "repo-lines-v1:sha256:ea69e472cbb52eac2a0c5f6c088d0c1cb4e62dda1cb10838f53eed06675a9132:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjOTE5ZjgzYjlmMDUwMjg4YjZmN2JlYjUwZDkxN2I4Mzg0ODhiOGQwZDY4OWZkNzgxNTkwNjBhYjVhMjUxMmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNWQyNzI0ODdhZGM2YzdkZTkwNWI0ZmVjNTMzY2Y5N2NhOTFmZTU2MDAzNzJjMjY0OTExYjE5NjM2YzE1NWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlNDE0Y2QxNDYzM2ExZjBhOTc3MGViZDViYThkYzU3MGViMDc0M2JlNWQxOGY4YjI1NTIyMzM1Y2VjYjQzYzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0022_signup_trigger.sql#L22-L49",
+          "version": "repo-lines-v1:sha256:68c87f66c1541d1e2dab81352dda974a9186a962753055fbd738e135ad9791fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyMGQ3ZThkNDNjZGQ0NTdlNWY4NzViMjQwMDg2NzVmZTJlZWEyMmFiODU0N2RlZDBkNDgxYzRiY2RmMjkyMTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1ZDEzMmQ5NWZkNjIyYzM5MDIxYzU3MTczMDI1ZDc1MjcxODllNTQyN2RhOTMzYWZiYWFhMjFjYzg2ZDIwMDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhZmEzNTA4MmMyMzM4MzQ2NWY5N2NmMTk3MjczNDdlZjZmMGI3NmI3ODliZjc4OWE1YTkzNGZhZjY0YzBlODAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhODBhYWFjMzY2NDdjNDllYjg1NmZjOWY0ZjcyNGNmODA1MDdjNDE1MjNjYjI0YzJjZWViZTE0MzcwMTBkNzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9b978e36182342eda87e0ee8a769f517",
+      "statement": "The dev user has no Supabase account; migration 0026 sets its users.auth_user_id to its own id and the backend sends that as the sub claim, so even in auth-off mode the dev user runs as the authenticated Postgres role under RLS (as staff) rather than bypassing it.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/security.py#L137-L142",
+          "version": "repo-lines-v1:sha256:0909cc51ba3f68c6468a8cb166be955ef4677200f06ad0d26d8ffb03e00b9423:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTUwODRkNTRhYzEwOGQ4MzljODA3MmQ2OTVlZDRjMzU4MDI4YzM3OGY5ZGRkMTU5YWZmYzczNWNiNjEzY2VkZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTA2ODU1OTQ1YjY2NGEwODE4OTc3ODgzMjFiMTNkOWJiZjk2NjgzOGVhZTc2ZjA3MTE5MzBlNjA5NjE4MzkxNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTgzYWRiNWM3OTZlODQ4YmJjN2NhMzJlYjVjMzU3NzZhYzY5MTdlNGI1ZGUzNjIzZDk0NWRkNTlmMGJiNDVhMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTlkNTcyYTY5ZjZiOTI0NDJkMDljZmMwNzY3YjIwMWNjODFjOTUyZDZlYmNlNTY1ZDhjZjMwOWI3Yjg3MjY5YiJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L40-L57",
+          "version": "repo-lines-v1:sha256:f3f8da8c3713b9fd3312eecfe1bbf585d0d5e04a800f7aa68f686e194ed142d0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwZDliNDhkNWQxZjJlMTZkZGRhZTBiMjViMjk5MzBmOThhNjUxNjM3NWM5ZWNjY2ZjY2I3NzgyMmUxYWYwZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNWU0N2Y4MGY1N2VkNWIzNTJlODdjMDcwYzhiOWNkMTI4N2M0NGQxNDMxOTBiMzhkYWU2NjdjZWI2M2YyMmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1YzFjNDYyZTJhMzlkNzQ3NTlmNWUxYjEyNmY3NjgzYTJiNzMwMTE4ZTE4ZjUxMjJiMDhjZWRlZWI2NTBlMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjZDE3ZWY2OTNmNThmZWMzOWQ5NTE3YjRjYWQxMDY2YmViMjA3MGYxODY0N2JjMGRlYzAzN2M4MzYyOWViZmMifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_caller_pool.py#L98-L107",
+          "version": "repo-lines-v1:sha256:80a93564ad54c883eed6a559bc408f705643ba8a2b9e8c2289bc35d7e9136f24:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ODg2YTFjNjI0MTVlZGNjMjkzN2E3ZWZjMTVlMjJmNTk3NTM2ZDY4NTgxMzA0MTVhMmFmY2YxMDdlMmQ4NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4ZjBmN2VhNDhlNjE2YjFiMzQ4MGMxZmEzOGFmYmM2ZThlZDhhNmFlYTdlZTlmNzE4MjgwYjE4NzJiMzFmOTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiZDgxZTYyNGNiMDEwYTcyOTM4YTNkMmI1OWE0NzhjOWUxYWQwN2JiY2I5OWQ5NjM3MGUzYmIzNDhmOTA1ZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0026_dev_user_auth_id.sql#L1-L6",
+          "version": "repo-lines-v1:sha256:09a9294d574e4e532bc3a0b3e64a3e48eed697998f89684903ae05ed434280c9:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODdmZmFlNGI2YWE0Nzc5Y2Y1OGNkZGMzYTkyODM0MGU4ZjAwMGFlNzNjNDg3NjA3MGE5M2I1YzBkN2ZjY2Y3NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTVlNThjZDJlZTg3MDhmNTM0NTgwNDQ3MTI5YjhlOWM4ODc2ZTI0MjI0MjRmZTcxZDJhNGJmNDAwZWY5MGU4OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_04afdd047c0f4d609075d48acd869a0b",
+      "statement": "Route gates read the principal left by the middleware: require_user and require_principal return 401 when anonymous, require_staff adds a 403 for non-staff, and chat_access (attached to the /agent and /ingest AG-UI routes) requires sign-in and a new or owned thread, with someone else's thread returning 404 and staff allowed to open any.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/lifespan.py#L136-L150",
+          "version": "repo-lines-v1:sha256:ee3a160c701e0a1105b95439a85ac6907e0dfaf9c9b0a1672b3ad6933770a789:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3MmM5ZjM3YjQ4ZjBkMjBkNTdmYWQ0MGNiMDdkZTYzNmY2NWIxNWE4MTRiZDU0ZDFjMWIyZWFiZWYxYTc5NDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmY2FhOTU5OTA2YjNiY2JiMjMyZjNjMDc4OTA5ZWJkNjg3MzAyYzJhMTcyODA0OTY0ODMxNGIwYTY2MDgyNTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5YjY2MTBiN2U3M2E2YzQxZWVhYzgzZDY2YzU1MDBjN2YwYTUyZmIzZjJkNmFmZWE5MzIzY2I4NWZhY2Y4MDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhYjFmOWExMTkwN2NlZTUzOTQyMTNiYjQ3MDAyMTA5YTg2NDk2NGUxZGY3ZTEyZmUyN2M4MWRjOTc5ZWRiYjUifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L176-L204",
+          "version": "repo-lines-v1:sha256:eb21d844152e0dd93c554c1fe4557a2cf37444b97a11f153c653c42931caf890:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3ZGEzODgzY2Y5YTZkM2JmYWNhZmExYzNhYjY0NDBmOTQ3OTNmZTNkMzJmYzI4MTJhOWRlMjNlMDc4NjA3NzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmY2M0NTc4NGY2ZWY5MWVmZmFmNzg2MDYwZWJlNzk2M2IzZDY1ZjU3N2RlZjUzZGM0NTM2OGEyNTM2MDljNDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZGU2NGJiNjIwMDc4ODY0MWVmOWFkY2QyNTE2ODA2MTYwZTk3M2NkZTFkMWI4NWRmNGZkODMyOWU1ZjhiNWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0ODFhNTJkZDBhMzVjMzE3NjU5ZTNiNTdmNDI2YmQ4OTg0NzNkMDZlMmMwMGEzZjViNzA3YjA3ZTIwYTA1ZTIifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L263-L288",
+          "version": "repo-lines-v1:sha256:b2719c262e265505c036a45155f859635e54737e71b1643a5d6ffa63e206c8a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZGQ5ODNiYjE5YTlhYWUzNDNlZWZmYTQ2YzNlMjA1MjM0Y2I5MGViMzI4MWNjY2M3ZjlkOTY4MmY5YWU5MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmMjYwYjZlYzY0YmQxZmFlYTVlMWEyYjRhNjFjNzU1M2Y4OTliM2NiYWM1YmYwNmE4NTE5NjZiYmMyYzBhZWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MDE0OWUwNjlhZDY3ZWNjZjQ3MzY0NmZmMWM3NTAwNTBkMzI5ZDExMDAxOGRjNTc2Njg3OGVhZmExZDYwN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_af8b5eade19946dfa31079e28cabdb69",
+      "statement": "CallerPool wraps the shared owner-connected psycopg pool: each connection() opens a transaction and sets the Postgres role (anon or authenticated) and request.jwt.claims with transaction-local set_config, so the connection returns to the pool as the owner and the checkpointer and agent tools never inherit a caller. get_caller_pool falls back to anon without middleware state, and PoolDep is what routers take.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/db/pool.py#L30-L62",
+          "version": "repo-lines-v1:sha256:3361d826f9cf2500772222cc5092275fd90ae66674962f0f8cdabd26e4dd2c42:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3NzU3ZTc5YmY4Yzg2NzQ4NTEzMGJlNDM5Y2FiODg1YjI5ZTIxMmZiMjc4NjkxODYyOGE4NmY3YzRlMzhiZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTRlYjFmZGMwMjgxNTdjMmUxNGEwZmNiYThkNTE4Mzk4ZmQyMDMzZjdmYjAzZmViZGE0ODY4ODNmZWZhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1MmRmYTIxZDkwMTBhYzJhMTQwYTQ4NmZjZGUxZmQ1MjM1ZGZlMzRiZTc2YzlhNTNkZWU1ZjUzOTlkZWM2M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_caller_pool.py#L79-L96",
+          "version": "repo-lines-v1:sha256:82e302425dc17c2c0f446c21022c05a0f565d479dd8329ff7a5caba98d052e2e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ODg2YTFjNjI0MTVlZGNjMjkzN2E3ZWZjMTVlMjJmNTk3NTM2ZDY4NTgxMzA0MTVhMmFmY2YxMDdlMmQ4NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiYjA3MmVlNDQ5ODkxZjRmOGQyZDE3NjMzZWY1YjEyNmU4MGI4NjY5ZmRmMDYzMTRjOGFkMmY1YjZlZGI1NDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxZWJhNWYwMDM2YjZmMTc3MWM5YzhiZTY2YWVlNjFlNmIwNjI2NmEyMjg2OGY2MGU2NTJhYzUyZGY0NWZiMzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0fd17536d1cf4a7bbfd122433d588cf6",
+      "statement": "The identity sent to Postgres is derived by _db_identity: anonymous gives role anon with empty claims, a signed-in caller gives role authenticated with claims containing the auth_user_id as sub, role and email.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/security.py#L137-L142",
+          "version": "repo-lines-v1:sha256:0909cc51ba3f68c6468a8cb166be955ef4677200f06ad0d26d8ffb03e00b9423:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTUwODRkNTRhYzEwOGQ4MzljODA3MmQ2OTVlZDRjMzU4MDI4YzM3OGY5ZGRkMTU5YWZmYzczNWNiNjEzY2VkZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTA2ODU1OTQ1YjY2NGEwODE4OTc3ODgzMjFiMTNkOWJiZjk2NjgzOGVhZTc2ZjA3MTE5MzBlNjA5NjE4MzkxNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTgzYWRiNWM3OTZlODQ4YmJjN2NhMzJlYjVjMzU3NzZhYzY5MTdlNGI1ZGUzNjIzZDk0NWRkNTlmMGJiNDVhMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTlkNTcyYTY5ZjZiOTI0NDJkMDljZmMwNzY3YjIwMWNjODFjOTUyZDZlYmNlNTY1ZDhjZjMwOWI3Yjg3MjY5YiJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_caller_pool.py#L26-L37",
+          "version": "repo-lines-v1:sha256:0221837802c952d4cdc12ce09297eeab75a357d138938687e963bfc0dae63329:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyZDk2ZTMyMTEzYjZmODJhZTlmNzM5MzU3OGEyODNlM2M1NDk2YjRiZDIwZGEwNDlmMjhlMjYwOTM0MjQzMzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkMzQ4NTMyNjYxMjBjNTZmNzJkZjU5M2RjMmVhOTYxMDI5YTYxMGZmYWE1YzFmMGE1MTJmMmRmNjhlMGE1ZjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliNDU2YWE4NTIyZTc1MDA0YmQzYWFiYjdjYjUzOGMyOGQzMGFkNmYwOWQyZmFlNmEyMTg3NDViOTBjNWE2OTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6c44a85c7f91456297ad45758b891798",
+      "statement": "The owner pool (OwnerPoolDep and get_pool()) bypasses grants and RLS and is used by identity code (resolve_principal, thread claiming, can_open_thread checks, request_scope), Ask Sangam's SQL executor and matching tools, all Import tools, Import's owner-side REST handlers, the matching run and the make match CLI, so those paths must check scope themselves.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/tools/matching_tools.py#L78-L86",
+          "version": "repo-lines-v1:sha256:a954e750181a2a9a0afbcefd2a24c0125694a94d08f1a46ed58edfedf701a667:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmE3ZTUyOWFhNDA0MDI0Yjg3MTFmNjIzMmY1OWM4MGFkYmQxZjg3ODA2MmZjNDk3MjQ3ZTlhN2EzNDAxNzNlMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkwOWE1M2E2MThkMDI4ZTFkMzAwMGMwYTdhYmNlZWNiZTVmYjM3ZjRlNTExZWZlNDY2NDNmYWQ2ZTY2ODcyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2MyYzBlMTFmMjdhOTBkMjEzYzZlZjk2ODk0YzcxY2E3ZDg1OGRhN2NhMzgwM2Y2YzI0ZjAwOWQxOGY3M2ZiYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDYwZGU1OGM3YmVlZmYxNjZkYzkzMWY1MTBhZGY1ZmM2MjViYWEzZjgwYTg3NDY4ODgzMDJjMWZhZDU3YzJjZiJ9"
+        },
+        {
+          "resource": "repo://backend/app/agent/tools/sql/executor.py#L45-L63",
+          "version": "repo-lines-v1:sha256:1ef33aa4c7d0536017985f2fcd2ec01d81802594491a3b28abdb678e55de07d8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNmNkOTM4NTIyZmVmOWM0ZDg5OTc3MDgzMmM2NzNiNjYxZmY1OGNmNDA5ZWUxYTdiOTFjZmM4MTdiYjc1ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxMTllMDYwYmY5ZmM4OTU0Yzg2MGFkYjhkN2FkODRhYjlkNmZiZTExNjdjZGVkMTM2MzhiN2Q0YTc2YWNjNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZmE1NjFjM2I2MTEyNjEzNjg0YjVmYTJmZTkzYzdhMDljYjA3MmFjY2Q5M2Q4ZDZmODZmMDNjMGMzMzkxMmQifQ"
+        },
+        {
+          "resource": "repo://backend/app/api/routes/funder_matches.py#L47-L59",
+          "version": "repo-lines-v1:sha256:da1148851b360ca033d9c939aa4604fff2f3ed62d19260817ae0eed2217dfc48:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5NWNkOTA2YjM1OTAzNWNlZGU2NThiM2FhMjAxMmYzZGExZTVmMjViNjJlY2U5ZjQ0NDkzZGNkMzIyMTE4ZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2YWU4NmFiNDgwYTFkYjczOTBhYmZiNjRhNTQ2M2E0OGM3YjUwZTQ2Y2M0OWVkOGJmMTM5MzQ5ODk1ZGMyODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZlYTg4ZTQyMDQ3ZTc4MTg2NzU1ZWFlOTFjYTgzODlhYjVkOTA5MDkzNDc2MGI4MmQxY2M0MDlhYjRmZDg1MTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L180-L231",
+          "version": "repo-lines-v1:sha256:433272789e6320db3165c6dc26799f9bb4c36b696f1a06f69cbf639c9bd61c05:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmNDYyMDg2ODBkMTYwNmM1OTAzODJjMWVhYjM0NWVkOGRkMWIzYzdkNmVkNDc2Njc4YTFhZDA0YmEzNTI1NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmN2U2ZDZiMmM5ZjUzYTJhMGVkMGI3MjY5NWE1YmIxNTU2M2FhNjlkYWE1NWQ1N2NhYjYwNTAzNmU1ODc3YmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhODJlYmU5ZWQ0MDdjM2E2YmE0YjAwMzQyOTJiYWE1MmMxMWNlNWFlMjg2MTA3NDAyZGU0NzkyZWVlY2FjZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkN2NkMzQ4ODZiYTZmZjZkMmI4NjJiZmI1NTVjNzU1OTE5NDBkNzZmMTM5MmQ5ZmQ5YzNmN2M2NTM0OGNlOTMifQ"
+        },
+        {
+          "resource": "repo://backend/app/api/routes/threads.py#L34-L40",
+          "version": "repo-lines-v1:sha256:7463e185b4ad7315cc6670d8cbe7101326d9b5ab2029fe68f5b52a93c594f407:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjBmMDYwYTk0YTdhNDNlYWJkNGExZGI4NWNiZDJkODVmOGFkM2FiNDQ3ODVhNDVjZGM0ZGY3YzMyMjA4NjUwNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODRmY2I1YzYxZjliMTBjMDFkNWYzMTBkZWRhNTY1NjI4OGJjOTk0ZTA2ZmY0ZTAxNjY2ZDNhMjZhMmI2N2M0OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTViNmEyMThiNGIzNmRmZjc3N2FiYjBhNmZkZGZlZDVlODllMTZjNGFjZGEwYzJmNDFjMWRiMDE3MThhYzgyZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGEyNWI2YTU5NjY2OWMwYjJkMmUxMjkwNDdmMDBkMGYxNjFkYWIyNzkwZTgxN2JjYjUwYmQxOGFmMmY3YzJmZCJ9"
+        },
+        {
+          "resource": "repo://backend/app/db/pool.py#L13-L27",
+          "version": "repo-lines-v1:sha256:42ab4d04fd7eba6ad3fa254d18e1d2fa933cc3f5cce5f12808f656304671291a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxOTliZjc5YmVhOTA1YjA3NGMyZTEwZGMzMjgxODkzNmM1Zjk0NWZmMTdhYmZhZWY4ZDY2MDM0YmM3MjVjYjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5NjE5ZTI1YWI2M2ZlN2U5N2E5NDAwMmQ3NmMzMTNkZmNhZmNlY2ExYzY2Y2YzNzExZTg3MzhlODMyY2YwYzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyZmNlNTNlOGNjZWU0NWY1NWY2N2RlYmY2NGEwYmNiYzE3NTEyN2E4M2I3NjUyNzZjMzc0ODBmOTRlNmQzZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyYzI2YWQ4OGZmNjY3MDE4MWQ3MjFiNTNlNzUzMmI1NDg1OGU3NGNkMmM1ZGE1ZWUxODMwOTk0MDQwYjg4ZTkifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/caller.py#L1-L13",
+          "version": "repo-lines-v1:sha256:f2df649df99f9df4dac04d7eef2c53da77e79fefdcb07d498f47e5a725237ad5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmOGRlZWRjNzM5YTMyOTZjMGUzMTRlNzc3MDNmZWNlYWVlMDI4ZDZiY2IzYjM4NWM4ODEwNzc3YmY2ZDU2OWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNmYxZTkzZjQxY2ZjY2RiNDBmNjI3N2M2NzhkMGQ0ODUxNjQxY2U3MDgyMDVjNGQ1NTkwNGI4OTE4YTUzNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4MThiNWUxODE5NWRlMjg4MmE4MDcyNzk4YTFiMzNmNjVhY2Q4Njc5MmVmNzUyOGI1ZTA5YmNmYjRiMmUyNmMifQ"
+        },
+        {
+          "resource": "repo://backend/app/matching/run.py#L13-L25",
+          "version": "repo-lines-v1:sha256:d50f38d4150cc466e60629ee8255edb19e2bad37e2eeba2ff11d8d112b258ab7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkMzRjMDM0Nzg2MzFjNzQ2ZDczMWQ1ZTRhMmE1ZTc4OWZmNTBiYzI1NDI1MjUzZjZjMTRhYjZiNDJjMjhiYjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1NGE3ZmNjMTY2MTFhYWQ1NWU3NTIyZmZjNWU5YTk3YjY3NDYxNDEyMzhhNjZmYzVmZDQ2YTNjYjE1ZGIzNWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViODAzNTUwYTQxYTZhNjA2YzhkNWJlNjNjZGFlMGExMTJmMjI5YmEzNmJiOGQzZjI1ZmUwYmY1MDk3MmMwZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiYzRlYzg3YTVlMWUzMDQ5OGY1YmFkYjllMmE2YTE3NDEwM2ViNDFkMWZiZDRmNGFjNzFiNzhjZWJlNzFjNTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_da53411ef56f46a997731d093522a54e",
+      "statement": "CallerScope carries user_id, is_staff and org_id-to-role maps and implements the Python-side checks used by owner-pool code: can_read_org (staff or any role in the org), can_research_org (staff or steward of the org), can_save_funder, and steward_of. It is built by caller_scope, skipping membership lookup for staff and anonymous callers.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/security.py#L211-L247",
+          "version": "repo-lines-v1:sha256:dd158eb7fbe5f15d268e1adab4d4e27dbb9332b5909813b3f561a6e20c66ee88:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2OWExMzk3NWMyNTZlYzgzMjBlMjAxNjA4M2M5NmRmNjM3Y2EzZDM1YmViZGUyMzE0YmVlM2E0NzExYjU2Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxZWYxMjQ1MjQ3N2I5NzlhNmQ0ODNlODkyNjdhMTczZmJiOWIwNmU2ZWMyMjM3MTMxNTE4N2IyOThjYTdkNTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyMjQxN2RiNzdlYWZhMjE5NjMxYmM1MmQ4OWNmYjIwNDViNGIxNDJjMDc5YzFkOWE3NmI3MTc1ODIzNzc5MDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyZDdlMmQ4NjczY2JlZGQ2MTNkMTE1OThmNThmNzM0MWZhNmY0YWVkOGZjYzcwNTA3Zjc1ZjE2MjJiYTJiZjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7d7888a763f344299735b8aba935e7a6",
+      "statement": "Chat runs receive their CallerScope through the chat_scope ContextVar set in chat_access, and Import tools read it via ingest.caller.scope(); outside a chat request the scope is empty and non-staff, so gated tools refuse. staff_only returns a REFUSED message for non-staff and guards staff-only tools such as plan_import, run_import_now and read_workbook; without_private strips private findings for non-staff.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/security.py#L237-L238",
+          "version": "repo-lines-v1:sha256:2757d2326a57473ec12dd03660929aa7890252e67223184abe327bf75b7bf539:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTBkOTA3ZWFmY2M1YjI0ZjRlYjgxYzkxOTgyMWY0OTQwNThjNjNiZjk4NGU2MWY0Mjc3YzFhNTM3YzEwNWU3OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTIwM2JlOTQxZWNkZDM5ZmM1OTQxOTRiZTNiZGRhYTFmOWUxOTFhZDk0MzlmNzlkNjc3OTZmOGE1ODlkMjVlZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDFkN2ZlYzMwODU5MjJjODVhYjU1Zjk2MjJiMjhlZjRkYmQwN2Q0M2YwMmM1YmQ2NWI2YmFlNmM4MmViMDVlNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDBmNjZkY2MwZGQ2NWU0MmJkNmJkMTJjZmFkMGRhNDViMzUwOTQ4NDc3YTAwNWI2YjY0ZDAyZmUyMjg1MzcyZiJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L263-L274",
+          "version": "repo-lines-v1:sha256:15356902db886d0b32d3855efb2af8697f66daa437994d3e4e2d6e205df01712:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZGQ5ODNiYjE5YTlhYWUzNDNlZWZmYTQ2YzNlMjA1MjM0Y2I5MGViMzI4MWNjY2M3ZjlkOTY4MmY5YWU5MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNTBhMmRiZGM2YTEwNGI5OWNiNTdmZmQ0NjhlMjVmNjc2M2ZiN2ZiYjRiOTM2MmMyZmRmZWMzMDIwMGQ1MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MDE0OWUwNjlhZDY3ZWNjZjQ3MzY0NmZmMWM3NTAwNTBkMzI5ZDExMDAxOGRjNTc2Njg3OGVhZmExZDYwN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzZTk0MDgwMmQyZWU4YTk5ZDI0ZWFmMTkwNmY4NDQ0OGE3MjY1MDMxNTgxZTIyMTJkYTUyNjA3MTQ4MGNiNTMifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/caller.py#L11-L31",
+          "version": "repo-lines-v1:sha256:bcbc7e6f31ccca3a72e0e720baee9fc2146a27b017032d15afcd7fec176fe4ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZjMTMxNTcyMzZlMWYxN2UyZTJiNzQwOWFkODE5M2M4ZTkyNjk4YjM3MTk5OWE2ZTRmZWE0NTk3YTRmYjdlOTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0NmYyOGExNzM2Y2RhYmFmMmE4ZDZlYjdjNmE0ZGM2MmJkMzVhZTc4NTk0NmMyNWFmZDJjNzhlODZjZThjNjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI1NjJlZDYxNmI2NzFkZTcxY2E4Mzk5MTRhMWY3Y2Q2Y2IyNWU0NjdhM2Y4YjJlZGRkN2VhMjJkOThlYzc1OTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgzOTZjMmM2NjcwNzNkMTI0MGY4YjBjNGYwZTQ0NWEwMzUxMWQzOWEyZjdjOGMxZmZkYzBkNDg1NWJjMzE0NTAifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L125-L126",
+          "version": "repo-lines-v1:sha256:a273ea14e2d0de5f45f2c88e6466acdd324f73a7ab30d96e85d6840a131bd230:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTNlYTQ5N2JmYWM2YjZkZjcyN2UwNTBiNTU4YzFkNGE0NGZjNThjNjhhNzU1MWRjNzU0MzVlYzMzNTQ5MzYyZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0MzliMTZjNWU1NmI2ZTcwZGY0NmFjZTE5MDdmODE1MWY0YzYyNjMzOWZkMGVmMTU0YWNjOGQ5YzBmOWI2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmRiZjRlNGU5N2IyNmE1NWE2ZjVkZjkwZmUyYTg1ZWU5ZmQ3MDVkNDg0ZDQ5NjY2OGVjN2JkOTdlMmViNjI3NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzMyZmU0ODYwYjAzMTY1ZTZkMzMxM2E0NzJhYTZmZDhlYzQwOWIwNjg0ZDQ2N2QzZmJlOTU2ODgzODZlNTZjNSJ9"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L238-L239",
+          "version": "repo-lines-v1:sha256:d88c38aaa76e3b2f0075d77f83bb09ede14f998b32b59f5100e9974842d1bc01:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzQ4ZjFiNzI2YmM0ODM0YTA5ODdiMzU4NGQ1MDdmZDI4OWNiZjk1Y2FjZWE2YjJmMDMyN2E1MTQyMmI4OTZlZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0MzliMTZjNWU1NmI2ZTcwZGY0NmFjZTE5MDdmODE1MWY0YzYyNjMzOWZkMGVmMTU0YWNjOGQ5YzBmOWI2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDc3YWJkYmZmOTA1YjIxYjFlOWQwNmZkZDhhMjcwYzI5MzYwMTY0ZGUxYzg0Yjg0NGEzOTA5ZjBiNTYxM2Q1NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjUyNmUxZTNiYTMzMDc3ZDJhZDJhOWM4NzlkMWJiMDgwODBlMjE3Y2M5MTdkZmUyZjM2MDNkNTlkNGExZWU4NiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_a358d52cd28f461481f02d1205897be0",
+      "statement": "REST routes that read data Import keeps off RLS take the request_scope dependency, which builds a CallerScope on the owner pool for the signed-in caller, and filter in Python (for example list_research shows staff everything but others only what they saved plus NGOs they steward).",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L180-L203",
+          "version": "repo-lines-v1:sha256:d3c4a5a26733ca0b7b4727ae710dc7275c4b901fe0aa7b94f48010a5d7de9d0b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmNDYyMDg2ODBkMTYwNmM1OTAzODJjMWVhYjM0NWVkOGRkMWIzYzdkNmVkNDc2Njc4YTFhZDA0YmEzNTI1NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiZGQwY2NiMDU2NGU4NTc0NTlhOWQzYmYwNDE1MzljYmFiNzc2NTcxZjExMTM3ZGJjNTg3NGFhNGZkZmNhMzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhODJlYmU5ZWQ0MDdjM2E2YmE0YjAwMzQyOTJiYWE1MmMxMWNlNWFlMjg2MTA3NDAyZGU0NzkyZWVlY2FjZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0YjY1NmIyNWZmNzBjOTZkYjQyNzM1Mzg1ZTAxOGM3YTlkNjE4Mjk5YTkwYTFhNDllMDExYjQzYmE2ZWY5NGYifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L277-L281",
+          "version": "repo-lines-v1:sha256:890210a51ac1cbd3e9f78462b4ad2d276bb5b876ad0ea257e892542ffe109b6c:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQ5MDI3YmM1NjkwMWFlZmU0NjM4YTJkNzlkNDljOGJhZjE4NmU5OTcwNmU0OTc1ZTdjOTgwOTg1ZjJkZTkwMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDBjNzQ4ODVhNTkwMzgwZWIxYjc2NzNjYjA2NTExZjYxMWY1YjQ1NDU4MDAzYmNkZDQ0Y2NmZDUwZTZkMmU5NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWFlYTI3YWY2Yzk3ZTFhZjA4YmQ5MGY5OWI5NGJmZWE5MzBjNzBiMWZkZmQ5NmJmZjllYjhkMzgxMzg1NDkyNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmYxMmY1MGI2NTM5ODI3YzU5MTczOWI5NzZhZjc2ODk0OTNlNWM4MTY3MTI2YTI3MDllMDQ1NDViOTE4ZWE5MiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0974b8761e5d4a838b24b8bdb444f506",
+      "statement": "Migration 0023 creates the NOLOGIN NOINHERIT roles anon and authenticated when missing and ensures the connecting role can switch to them; the backend never connects as them but switches with set_config('role').",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/0023_db_roles.sql#L1-L27",
+          "version": "repo-lines-v1:sha256:dd3cc964dc5abd87e916f12720673c90dc0d33ac359be9b3f93adb7685e1a15b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyNTdjOGE5YTcyN2QwZGYzNjNjY2EyNzliYjU3MzhjOTNlMWNkZWNiMzkwMjJmMjVjZTlmZTA5ODM4MzA3NGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NjJkZjg1ODFiZmM2MjUwMTk5YTQ1NDhhMGZmYTUxZmYyZTE0NzJlMDBhZjk0ZWUwY2I2YTZmZWViN2ZjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b8b18eee0a02451b91ff87a78d488c9b",
+      "statement": "Migration 0024 defines SECURITY DEFINER access functions with a fixed search_path: app.user_id, app.is_staff, app.my_org_ids (any org role, so stewards read) and app.my_writable_org_ids (member and admin only), executable by anon and authenticated; app.can_open_thread takes the user as an argument and is granted to neither role because the owner-connected backend calls it.",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/0024_access_functions.sql#L24-L83",
+          "version": "repo-lines-v1:sha256:c76544dcf9f40bb00865bddb1e6ef8ced17e587646015f06d8e5091d7cc8feec:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzNzRjZDg4NWUyODJhNjU0OTRhZDYxY2FhMWQ0YTk3Y2RkMTNhY2IzNjgyYmVmYWNmMDA2MWNiNjM1OGMwNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiM2NkMTFlYTk0YWI2YmRhZWE4YTkzMGVjMWFhN2M4MGMzMzU3MTk0OWU5NzRhMjE3MDYwNWZhMTY4NzM0MjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzMTM1Njg2NTNmNmM0Zjg0MGRhZWQ3NGIxZGE1YWJlMDdiNGQzZjc3OTk5Y2QxNjIyNDFmODdmM2VmNDAyNTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3fc834002bb2425eadd91b9dda90845f",
+      "statement": "Migration 0025 revokes all table and sequence privileges (and defaults) on public from anon and authenticated, grants back per table kind (public-readable, signed-in-only, closed), fails if a table has no access decision, and grants authenticated only specific writes (contacts, documents, score_adjustments, rfp_matches update, proposals, threads insert) with no DELETE.",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/0025_table_grants.sql#L8-L71",
+          "version": "repo-lines-v1:sha256:c32b921a409db592ad8171aee194a9a03f060030f09c8dc0a55c23cd36d4f8c7:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmNWVjZmU1MDhhNmNjMjE0OTRhYWMxNDI2OTYzNmJiNWU4YWIzNDYyYmFhYTljMDc1Zjc4NjMwNWY4NmIzNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlZTM1ZWU1YmQ4N2NiOTk4ZWQ3NWE4NTdkNWVjMjkwNDg5ZTYyMGNhM2YyMzZlMmExNWJkNTE5NmE4MGM0NzgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3MWRkZDlmOTAwODI0MTJjNTEzZDQwYmJmZGE5OTAzNjYyYjBjY2Y5ZjFiMWFkZDMxMDZiNTE0MDU4NjhkOTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_267d2a5d6592423cb6db18abfd7adfb6",
+      "statement": "Migration 0027 enables RLS on every public table and creates one read policy per table kind: public USING(true) tables, org and funder children that follow their parent, orgs and funders public unless hidden, contacts/documents/org_identifiers public by flag with org people and staff seeing more, chunks following documents, org-private proposals and rfp_matches, own-row users/org_members/threads, and staff-only Import tables; it fails the migration if a readable table lacks a read policy.",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/0027_rls.sql#L11-L114",
+          "version": "repo-lines-v1:sha256:3d424ed0a31f2116fbcbc9913dd6189d97124851914dac9eba2ce1944f252e95:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzYmEwZDVkODJhMDI0MjdlNjNjYzBlMWI3ZGM0YTVmNjNkNDJiNWM4MDllYTk3MjIzZGJiOTRiMjAwYjNlNDBlIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5NWVmMDFiYzA4ZGJjM2I2M2U0ZTc1ZWEzZDI2YTViOTQxODkxODc3ZTI3YWQ4OTEzMjljODQxMWQ3ZDhkYzRkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0MWE3NjZjZTJlNzU5OWZjYjU3ZTVjMDI1OTA2ZmJiMjAwODZhMWZmOWM3YjJmMzlkODE2ZTg2YjYyOWU0YmUxIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlY2I1MDE1YWI2OTVkMzNkM2U3YWUyNzM1ZDViOTU5NDg2NTNkMzVkMmFmMzFlYWExNWJjNjViNDFiZWQ1ZDM1In0"
+        },
+        {
+          "resource": "repo://db/migrations/0027_rls.sql#L148-L162",
+          "version": "repo-lines-v1:sha256:5d46640320550243ecf3856140513dabd0fbd04cd00476cc84a67567a0c48d31:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMTZhOTJkYjE1MmRiN2RkZTJiNGNmNjhlMzZlYjg1OGE2OWM1Yjk5MmFmMTM2MDE2ZTdlMGYwMzE3MGY2NmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NjJkZjg1ODFiZmM2MjUwMTk5YTQ1NDhhMGZmYTUxZmYyZTE0NzJlMDBhZjk0ZWUwY2I2YTZmZWViN2ZjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmZDQ5MzJlMWRiZDNiNjA1MjU1NzEyY2EwMGNiNzExNjBlZmU4YTQxODVkZGZiYWJkZDUzYzkzNTliODJkOTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_cf9de39cb5fb45e594441585a5014740",
+      "statement": "RLS write policies in 0027 let member or admin of the row's org (never a steward) write contacts, documents, score adjustments, rfp_matches updates and proposals, with staff also allowed on all but proposals, and threads insert only as oneself.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_rls.py#L161-L175",
+          "version": "repo-lines-v1:sha256:ce4c62d2755797f86189dd6e7971805b9d1ffb8fb7f7f794db07530ff575f3d3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1YTUwMDU5ODYxMGVhNDI2ODUxNDM3NTIyMGNkYzNhNjYyY2JhNjFjNzhkMzk3MTNjMWU5MzFkNDJlNGYzZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3Nzg2MzdlNGVjYzJmN2NlODk2YmMwMTI5NDcyZmUzOTY3YmFmYzI4NjEzNTA5Y2NmMWIyNzcwNjE1NWRkZWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4YTRjNDMzYWIwOWRmMjIyNWNhNmVjYTVjODMyMDcyZjQ1M2ZlODY4MDkwZjZlMWFjYjA5ZmVjZDJhZjMyOGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlNGE1MzBiYzFlOWM0Njk5ZGQ5MWRjYTVkODI5ZmUyNzJjZWQ0MWIxMDVjZjRjYzU2Zjc1MjVkOTJjMzk3NzUifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0027_rls.sql#L116-L146",
+          "version": "repo-lines-v1:sha256:16d8b646a1eef06197c6306bbabe2cb0def93f5432c573621105a972fd2aeada:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MmY1MjNlMTBiNzgwM2MyNmEyODJkMGYxN2RkNTJkY2Q4YjcxZDc2Y2U1NzMwYThlZmE3NzQ3Y2UyMTc4NDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0YjE2OWQ3YWJlMGVlMmM4MjgyNzIzY2RiZjA2MWIyYzMwNTFhY2E5OTM2NDZlMzZhNTFiZDVmYTlkMGI5N2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmZmNkNmNlMWM0N2I2MTRjNTA1MzljZWQ0M2FjNDNhNzY2NTllMjZkNzNjMmVlYmFiY2JiMGVkNzM2NTM5YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjOTk1MDIyNjRjYjg1YWQwOWM1OTkxNWQxOTJkZTEyNmYzMGVmM2ZmZTdiMDllNTI4NTJlOWNiNWNkZWJkN2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9647caa3136d477594fe05fe95e4e2cd",
+      "statement": "Org membership is managed through SECURITY DEFINER functions (add_org_member, set_org_member_role, remove_org_member) that require app.can_manage_org (staff or admin of the org), keep at least one admin, and only add users who have signed in; a unique index allows an admin or member to belong to one org only, while stewards may support several, and the index holds even for the owner.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_rls.py#L202-L262",
+          "version": "repo-lines-v1:sha256:a1e1afdcbb9dfd138ad351bed32449a8dff977de11fd71b187aefd19a19cfa12:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMzQ1ODNhNTk4NzY3YmY1NmFlZmViNjVlMjAzM2ExNjUxY2M0YzhkN2U2ZjBhZjNlNWNmZDMyOTNmOTMzYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMWI1ZWFmZWEyM2QyNzU0ZjFhNzBkMWFiMGU1MGQ0NGQ0ZWQyNzNkY2FhM2IyNTUxZjc3M2ZmY2RkYjY0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5MmNmNjNjZTg1YjkzMTE5MjM3NTk2N2YxYWUyMTE0NGRkNTRmYTE2ZDUxNmQxNjhkNDFlZDdiNjU4YmIwYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzZjhmOGRmZjk4NmRkODc5YTZmNDU3NzZmNjYzNjMxNTNhMjY0MjYwMDM4OTk3OGU3ZmIxNTViMDQ1OGQxYzAifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0028_org_member_management.sql#L31-L104",
+          "version": "repo-lines-v1:sha256:d775f6319278499613c15296054cb4c71636e1e6f70341f79d2077743378310d:eyJzZWxlY3RlZExpbmVDb3VudCI6NzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1YTI2OGQ2MjdmZTBhMTJmOWQzNmU0YTAwNzU4NmI3NWQwMTgzZTExM2E1MzhlZDRmMmRiY2NhZmVmNmZkZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkNGUwODhmOTEyMTc0NGU1ZjY3MDdjNDU3OTQ5NzBjYTliMjZjMmY4MTIyYzE3MmFjOWVlZmIwYWYzMzU0ODQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1MGE4NTZiMDJlMGUwMDgyZTA4Mzc3YTgzOWY2MDdkNjAzYmRlMzFiOWU3OTk2ODBmZjBiNzI3ZWNmYjdlZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0029_one_org_per_member.sql#L1-L45",
+          "version": "repo-lines-v1:sha256:9a208d06dcd6f9ebb3a699d2a91932d1695b51588efa72d1c2cdffd834307b24:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmMDA0OTJmNmQ1MWNkMjMzZjU3YWFkNWQyZDE1YzlhZjlhOGYxYWZkNzg3YjlkODcyODg3OTQ3ODUxZmQyZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NjJkZjg1ODFiZmM2MjUwMTk5YTQ1NDhhMGZmYTUxZmYyZTE0NzJlMDBhZjk0ZWUwY2I2YTZmZWViN2ZjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxMzI2MTk1YTFiNDllYzVkZDk1YTMzMDBiNDRiNDhhMTEzZjZmNjcxNmFkOTAyZmZlYWEwYjljM2E3NzZiOTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d3f8b0c92e274c389981bbc9443f80b4",
+      "statement": "Funder Match runs are saved under RLS in migration 0042: app.my_match_org_ids covers admin and steward, funder_matches inserts require run_by to equal app.user_id and staff or a match org, and there is no update grant; matching.may_run mirrors the rule on the owner pool.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/repositories/matching.py#L219-L230",
+          "version": "repo-lines-v1:sha256:db082ee09a8315118938b8873b97bb0c26f8dd67116db2226ee49c2e1e7ded7a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwY2I3NmM0OGNhZjMxYWRkZjRiOWQ3NGIzM2ZlYzg2OTdmN2E5ODE3OTUxY2FhYmQxMGEzNjRkNTQzNjhiZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4YjIwMjIxZmZhMTA3MGVmMjFlZDVlZDA4ZTk5YmZjZTU4ZTcyZDA3MWY4OWNiOGYyOWJkODZhNmM5NjJjMTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhOWYzNzEwYTM0YjRmZGYxMzU4OWI3ZDllNjg1NWMwYTQxNmM0NjE2MzllNDlkMjliNDFhZTQwNDkxMjU2MDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_rls.py#L281-L289",
+          "version": "repo-lines-v1:sha256:f56128a3f4827f9c67936b0fafc0243adde766b7d8f28b4271a1fd1a6b7b6fe0:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2IxMTUzMTAzNTBhOWE5MjBkMWRkMmQxNzNjYTJiNGM1MjhmYTdkZmE5OGJiZDI5NzIzMGJjZTcwMGZhNmIwOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjhmNzg5YzgzNmNkMTQ0NzFjNzQwMjRjYTg3NDc3ZDI4MDQyZjE3NGJiMDE2NzE2MjE3YTU2MGU2ZTNmZGRjNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDRmN2ZhNTJmZTYwNDRmMWMzNTI0ODI3NzI0NTRkMTEzYmQ2ZDE4NWQ5ZDRhMDBkODQzMDZiNDBhYjc2MTE5MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjUwYTIyMzQzOTZmNTUwMWM1ZTk4NDM3OTBiNzk0ZGM5OTk1YzZlOTM5YmM1ZWRhMGEzZjNmMDI4N2ZkOWY3NCJ9"
+        },
+        {
+          "resource": "repo://db/migrations/0042_funder_matches.sql#L1-L51",
+          "version": "repo-lines-v1:sha256:ef47e5a30a2663a3bb552a9c1bf943a75225bf3da4fe266298d231dd34bd22d5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlZWZjYzM0NWVkNTc2ZjhjOWI2YmQ0ZmUxNjFkNTVlMmJjMDc5MjdmNmY3OTFmMjY2MzAzZmI3MjFjZDk5MzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzZmQzZDcyODljY2Q5ZjI2OTM0YmRkZTQzZDk5MzUyYjVkYjE1NTU0OTk2OWI4NWFkNjNiNDEzYWYxY2FkZTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_280b5aaa332a47e19a6203139a14e29b",
+      "statement": "A table that the caller's Postgres role has no grant on raises InsufficientPrivilege, which create_app maps to a 403 with detail 'Not allowed' instead of a 500.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/main.py#L41-L44",
+          "version": "repo-lines-v1:sha256:1ce01469d6f26a53d18ec7d2d4d909a8573bdbbe1eafc591c0113071f8c4b581:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDc3ZDVjMzEwY2M0YTNmOTRhY2RiN2RiMTI1OTgxNjNiNzEyNzVlYTI3ZjFmZjA1MzFlOTNiMjhkNTg4YmZlMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDFjM2VhOTAyZTEzYTI3YmNlZTlkNWMzMjgyMWNjMzNiZjQ1NzJiYjY1NTU5YzJkZTc2NTE5NjU4ZTQ2Mzg5NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODE5NjNkZjU2ZmU3NjY5MWIyMjQ5MzZjYzFhM2I0NzEyNGZjMWE1Y2I4MWE1OTk1ZTBmYzIzMTJmMDFmZmRkZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGM0MjBmNGQ2Y2E0OGUzY2ViNDJhNDYwOTY3YjczMDg1ODE3NzRhNjY1Y2FjNTA4MWQ3MWNkZmMzODQ3ZGVkMCJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_caller_pool.py#L51-L61",
+          "version": "repo-lines-v1:sha256:e76474037cdf61ce03a9eb9f39cf4e6a78aa29f87649a2de4d18d41f1db5bd34:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3MzcxMjVhOWE2NGNkMWVlNDFmZWU2ODc1YjY4NTkyMzE2Zjk3YTMwZjM0MGFlYjZlYmM5Y2M0NGQzZDgwODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5NDc1YzIxM2FjNzU1ZjQ1ZjI0OTQyYTkxYzc0N2U5MTA5NTVmMGRiNTljYjdiOGJjMmM4ODliYTVkNjMxYTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyYTcwN2I1YThiOTM1ZTdjOGNiNGIzM2I0YzM2YWM2ZTcxMWI2ZWU5NTZkZDM4NWZjOTViODdiMzJhNzU3NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgxYzE0MjZiZWE3ZmFiYTA1YTEyYzFlMWM4NjBkYTY3YzYxNzM4ZmZjY2NjYTRmNjc2ZTRiOTI2ZGVhNjZlMDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f9dbf18df1db476caf3bbd5a7997fe4c",
+      "statement": "The Next.js proxy runs Supabase updateSession on all non-asset paths: without Supabase env keys it gates nothing; otherwise it refreshes the session via getClaims and redirects signed-out visitors on /import to /auth/login with a next parameter, while /ask stays public. Real enforcement is in the backend, which receives the Bearer access token.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/lib/api/auth-headers.ts#L1-L7",
+          "version": "repo-lines-v1:sha256:b8c90a0bb07ef4ec3cfeeaaa49eb277dc3216aece420262dc08574d90f6cd335:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFkNmI0ZjE2ODM5MjQ0ZTcyYWUwODViMjY3ZTNjZWE4MmI4ZTg0YTJkOWZjMjgxMmY3NjRkNzY2NzM0NTYyYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://frontend/lib/supabase/middleware.ts#L1-L58",
+          "version": "repo-lines-v1:sha256:41bb45a95e869eaa309f865b921fb845f2e8fdeca7fda86139d4778d5f1844ac:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4OTFiYWY0ODhiYTkzOWIwNDU2MDExMTE0Y2NlMzJmZWMzNTNlMWZhMTQ2YTY5YjI0MDRhY2NhMmM3Y2FhMTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlN2QwYjJlOWE3MTE5ZWIxMzg2YzBjMDRjNTBjNjI5YzM0M2I5ZDM0MTliN2NjOTgyNDgyZDIzMjZiYjc5OTIifQ"
+        },
+        {
+          "resource": "repo://frontend/proxy.ts#L1-L20",
+          "version": "repo-lines-v1:sha256:e6d59bcfaf5f7bb6b57e7e6791db8c48ef73a6605076146818c805478c506e8e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlZWFhMWQ5Yzc1MTdkMDM4OWY0MTQwMmExYzQxZjIwMDA5OWZkOWVmYzJhMmVjZTA5NzA1NGNlYTVkNWEwMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e0558101637d4751bae2d031aabc3201",
+      "statement": "Not yet built: Ask Sangam does not run as the caller (auth plan step 8). Its SQL tool uses the owner pool via get_pool() and applies no per-caller filter, the catalog warns the model not to quote private uploads to outsiders, and pool.py notes the owner is kept until Ask Sangam runs as the caller.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L130-L133",
+          "version": "repo-lines-v1:sha256:b145843b3e1764240532a72b9b42c262ac5a6497c9b5fa5d643fb8dbf3dc7a67:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmI4NDg3MDkyMmE4MTQ3MGVhMTcwYmVjZjgzZDkyYmYwYmJmOTU1NjZmYWE2OTExNTNmNjkyYWZiYzY5NTk3MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjM2Y2Q5NWU5NjRlODNjMmZlNTkxOTAwZWQ5ZjdmMDY0MThlMzcwM2I4M2RkMjY4MTk2NjdiMDkwYThiNTJlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzM1YjI5NmFlYzI0M2U4MmZkYmZjYjVkMDE0NjZkN2U4ODlmNTk3YjIwMjQwZjEyOGUzZGUxYjNiM2VlNmE1YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjEyMTkxMDYzYWY0YzE1YzE4NGFmMGFlZTZhZDZhNzBmMTIzNDJiYzkzMmM1NjA5OWMyNDBhNjc4OGRhODcwZCJ9"
+        },
+        {
+          "resource": "repo://backend/app/agent/tools/sql/executor.py#L45-L63",
+          "version": "repo-lines-v1:sha256:1ef33aa4c7d0536017985f2fcd2ec01d81802594491a3b28abdb678e55de07d8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNmNkOTM4NTIyZmVmOWM0ZDg5OTc3MDgzMmM2NzNiNjYxZmY1OGNmNDA5ZWUxYTdiOTFjZmM4MTdiYjc1ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxMTllMDYwYmY5ZmM4OTU0Yzg2MGFkYjhkN2FkODRhYjlkNmZiZTExNjdjZGVkMTM2MzhiN2Q0YTc2YWNjNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZmE1NjFjM2I2MTEyNjEzNjg0YjVmYTJmZTkzYzdhMDljYjA3MmFjY2Q5M2Q4ZDZmODZmMDNjMGMzMzkxMmQifQ"
+        },
+        {
+          "resource": "repo://backend/app/db/pool.py#L60-L62",
+          "version": "repo-lines-v1:sha256:34882164606faee0947452430d3cc51f1d3eef3640531a9901c75f3114e3a343:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTRiYzMzMGE3NzgxMWJjMjg2NmZkMTIwNTAwYjhmY2YwMGZmZDMxYTVlZDIyMzUwOWI2NjMxOWRiMTczZTFlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzFlNGViMWZkYzAyODE1N2MyZTE0YTBmY2JhOGQ1MTgzOThmZDIwMzNmN2ZiMDNmZWJkYTQ4Njg4M2ZlZmE5OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTk3Y2ZmMTg1MzIyYTMyOWQwZmMyODJmMmQ0NzlhMDE3OWVhNWJiZTczZGI5N2FhZDEyMWQ4NTg3OWVhMmQxZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://features-plans/access/auth-plan.md#L292-L296",
+          "version": "repo-lines-v1:sha256:7ef7236dec69d89117f28df86278b9ef85a2a0827e7ae43ff201717c0bc61029:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDUyMTFjNzU2YjI4Mzk2NGY4YWZlNjFlOGU5YmQ2ZjUyYzY4MTNmMGExNzdlNjQ5MjNkODRhMjZmNjhjNDFkZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTliNjc0ODVkZTE0YWJiNGM0YzYzNWI3NzliOWM0Y2FmNjc3M2JjZTE3ZDFmNmJmZjMyZjhkNDllNjZmM2Y5OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGVhYjVjNDM1MDE2ZTAzNGI3ZmIxMzJkMmIwN2YwMzA5ZTgyMzIwYjE1ZDUzYjdjOGJkM2VkZTU2YWRmYWVlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTA0ZGUyN2IzYzZhNGNmMjI2N2M4MmM2YTM5MTcwYmM0MTlhNDU1ODEzNDAwNTFkOGFmN2I5MTAxYzI0M2VjYiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_8f64841aba82416fbcc5701d94ea466a",
+      "statement": "Not yet built: auth plan Part 2 (full per-route and per-table test matrix, staff writing proposals and documents, grant/revoke functions with audit log, management screens, re-linking recreated accounts, email-domain matching and join requests) and the proposals route remain unfinished, and the plan itself is still marked draft.",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/0027_rls.sql#L116-L120",
+          "version": "repo-lines-v1:sha256:846f5002812fbcc38f307e873f16ccfe8e04459fc5c62213f8e5345b9abc01cc:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTcyZjUyM2UxMGI3ODAzYzI2YTI4MmQwZjE3ZGQ1MmRjZDhiNzFkNzZjZTU3MzBhOGVmYTc3NDdjZTIxNzg0NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2MyMjkxYjY5YWVjNjJjY2JiOWQ0NjJkNGE5MzVhMzhiZGNiYTVmYTAyZWE0ODMyMzBjNDBmMzYwY2VkNzc1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGZmY2Q2Y2UxYzQ3YjYxNGM1MDUzOWNlZDQzYWM0M2E3NjY1OWUyNmQ3M2MyZWViYWJjYmIwZWQ3MzY1MzliNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGFhODhjMmFmYTEwZWZiNDYzOTUwMjY0NTFjN2Q3ZThmYTU0NjFiZDc0YjljNDViOWM4ZDM4MjY1M2ZmY2M3NSJ9"
+        },
+        {
+          "resource": "repo://features-plans/access/auth-plan.md#L1-L9",
+          "version": "repo-lines-v1:sha256:deac825e5825a8115ced12cd9c2583f5380ae09e6ad08694947392de33efdc60:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTRiY2IzZGE5ZTczYjNlMTdlMThiZTMyZWMzNTZjODliMWZhOTI5YjlkNmE4MmFiNTJmM2RlMTJiNDk0MmQ4YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjhhYmE4YjhhNDRmZWU5YjEwY2M5M2ZjNjc4YmQ0MTQ5YmM2MGNjZDIzNmM5YWI4OTljNzQxOTIwMWViNWFlYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGRmMzg2NTZlM2Q2MGU4NGM2YmMzMmU3OGNiMmI0YzNmNzBlMzU2ZWIxMGZlYjA2NThhMzFiMzliYjQzM2QxOCJ9"
+        },
+        {
+          "resource": "repo://features-plans/access/auth-plan.md#L182-L190",
+          "version": "repo-lines-v1:sha256:49224952c89f734480aa3efa592074fde31446ef36821a649d15ffea1377789d:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzVjY2Q0NTdmY2EyYzdlZTI3MWYxYTA0ZjMyNjQ0MDE3OGYwN2FmNTAzYzRjNzM0MzFmNjEyYTRiNzc1NmVlOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDE5MjAzZjY4MzU2NzZhNjJmNmY3YzhiYWZhYzk5NDA3Nzc5ODFhZmQ4OWYzZDc0ZDU3ZGFhNjc3ZDEzZThkOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmMyZjdkZmI2ZmM2ZGZkZDQ0NjJjNGVhZDVhNGRlZDNhNWUwMGE0OWJjZTRiMDQ2OTdkMmY2NTY1NzU0YzRmZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWM1ZjE4YzA4MmEwMmFjZmExN2I3MGE0ODAxMjRkYzQzOGMwOWNmNmIyNDU1M2U5NTdhZTRiODdlYjFlMTljMSJ9"
+        },
+        {
+          "resource": "repo://features-plans/access/auth-plan.md#L308-L318",
+          "version": "repo-lines-v1:sha256:ab6db664de45149c69bf66fa419e2afb445a3725601766daebdaf0f1a3dfe033:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzNzZjNmQ1YjEwYmY2M2IwM2Y5OGQyNTFkZmUxN2ExZjEyNjA1MWM2YWExYzkyYzJiYWFiYzI3YzgzM2ViYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0YTIyYmNjNzY5OTNkMWMwZWNkZmMzNjgwOGEyODY0NGY0MWQ3ZTk2NzMzYWJhZWE0Y2YxNTEyNDBhNmMzMGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZlNmUzMjMwNjFhZWU1ZjFhMTNhYTU2NTg5NWE5NzlkNDE2OWIwZWUxNjRkYmMyODdkZmNmYTFhYjhiMWY0MjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3NjM4NDE1NjY3ZDNiN2JhM2FiZDBiMTg3MWNmMDA4ZGQ5MjA0Y2EzM2UzYjQxY2UxZDc2ODEyYmFlNTFkNjEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-13T18:20:59.385Z"
+  }
+}
