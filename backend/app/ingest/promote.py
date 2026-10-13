@@ -20,6 +20,7 @@ import logging
 import re
 from datetime import UTC, date, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from pydantic import ValidationError
 
@@ -487,7 +488,8 @@ async def _write_documents(
     conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], owner: Owner,
     report: dict[str, Any],
 ) -> dict[str, int]:
-    """Returns source_url -> document id, so many facts can cite one report."""
+    """Returns source_url -> document id: a row for every public source a fact cites, typed by its
+    document finding when there is one."""
     # funders and orgs both key their archive folder on the catalog slug,
     # which is assigned at write time and so is not known before now.
     table = "orgs" if owner.column == "org_id" else "funders"
@@ -495,38 +497,90 @@ async def _write_documents(
         f"SELECT slug FROM {table} WHERE id = %s", (owner.id,)
     )).fetchone())["slug"]
 
+    async def document(url: str, title: str | None, source_name: str | None, as_of: str | None,
+                       doc_type: str | None) -> tuple[int, str]:
+        # Whether the research run archived this URL; Storage being unreachable returns None, never raises.
+        key = await storage.archived_key(storage.SOURCE_ARCHIVE, url)
+        digest = storage.hash_from_key(key) if key else None
+        doc_type = doc_type or ("web_page" if (key or "").endswith(".md") or not _is_file(url) else "other")
+        if key:
+            key = await _shelve(key, slug, as_of, digest, prefix=table)
+        shim = type("Doc", (), {"source_url": url, "title": title, "source_name": source_name or "research",
+                                "fetched_at": row["researched_at"], "as_of": as_of})()
+        document_id, status = await ensure_document(
+            conn, shim, owner=owner, doc_type=doc_type,
+            storage_path=storage.qualify(storage.SOURCE_ARCHIVE, key) if key else None, content_hash=digest,
+        )
+        report.setdefault("documents", {})[url] = {"id": document_id, "doc_type": doc_type, "title": title}
+        _count(report, "documents", status)
+        return document_id, status
+
     by_url: dict[str, int] = {}
     for f in _validated(findings, "document", report):
         mark = _Mark(report)
-        if staff_sources.is_staff_source_url(f.source_url) or vault.is_vault_url(f.source_url):
+        if _private(f.source_url):
             # the private row exists; ensure_document would add a public one
             report["held"].append("document: skipped: private document already on file")
             mark.settle(f, "skipped")
             continue
-        shim = type("Doc", (), {
-            "source_url": f.source_url, "title": f.title,
-            "source_name": f.source_name or "research",
-            "fetched_at": row["researched_at"], "as_of": f.as_of,
-        })()
-        # Whether the research run managed to archive this URL. Looked up
-        # rather than assumed: a page read with read_page was never downloaded,
-        # and claiming a storage_path for it would be a lie about provenance.
-        # Storage being unreachable returns None here, never raises.
-        key = await storage.archived_key(storage.SOURCE_ARCHIVE, f.source_url)
-        digest = storage.hash_from_key(key) if key else None
-        if key:
-            key = await _shelve(key, slug, f.as_of, digest, prefix=table)
-        document_id, status = await ensure_document(
-            conn, shim, owner=owner, doc_type=f.doc_type,
-            storage_path=storage.qualify(storage.SOURCE_ARCHIVE, key) if key else None,
-            content_hash=digest,
-        )
+        document_id, status = await document(f.source_url, f.title, f.source_name, f.as_of, f.doc_type)
         by_url[f.source_url] = document_id
-        _count(report, "documents", status)
         mark.settle(f, status, f"[documents:{document_id}]")
+    for f in findings:
+        url = f.get("source_url")
+        if f.get("concept") and url and url not in by_url and not _private(url):
+            by_url[url], _ = await document(url, None, f.get("source_name"), None, None)
     by_url.update(await _staff_datasets(conn, findings))
     by_url.update(await vault.document_rows(conn, findings))
     return by_url
+
+
+_FILES = frozenset({"pdf", "xls", "xlsx", "csv", "doc", "docx", "ppt", "pptx", "zip"})
+
+
+def _is_file(url: str) -> bool:
+    """A URL naming a downloadable file rather than a page: an annual report's .pdf, a .xlsx."""
+    last = urlsplit(url).path.rsplit("/", 1)[-1]
+    return "." in last and last.rsplit(".", 1)[-1].lower() in _FILES
+
+
+def _private(url: str | None) -> bool:
+    return staff_sources.is_staff_source_url(url) or vault.is_vault_url(url)
+
+
+async def write_document_links(
+    conn: Any, findings: list[dict[str, Any]], owner: Owner, programs: Programmes, docs: dict[str, int],
+    report: dict[str, Any],
+) -> None:
+    """One link per document, owner, programme and year, from every fact written or confirmed."""
+    links: dict[tuple, list[str]] = {}
+    described = report.get("documents", {})
+    for f in findings:
+        key = json.dumps(list(fact_key(f)))
+        settled = report.get("facts", {}).get(key)
+        document_id = docs.get(f.get("source_url"))
+        if settled is None or document_id is None:
+            continue
+        # The brief lists each source from its facts' states; one key can hold the fact from several sources,
+        # so the state maps each source to its document. A new dict: one state can be shared by several facts.
+        url = f["source_url"]
+        settled = report["facts"][key] = {**settled, "documents": {
+            **settled.get("documents", {}), url: [document_id, described.get(url, {}).get("doc_type")]}}
+        if settled.get("state") not in ("written", "confirms"):
+            continue
+        named = f.get("name") if f.get("concept") == "program" else f.get("program_name")
+        pages = links.setdefault((document_id, programs.get(named), f.get("fiscal_year")), [])
+        if f.get("page") and f["page"] not in pages:
+            pages.append(f["page"])
+    for (document_id, program_id, year), pages in links.items():
+        await conn.execute(
+            f"INSERT INTO document_links (document_id, {owner.column}, program_id, fiscal_year, pages) "
+            "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (document_id, org_id, funder_id, program_id, fiscal_year) "
+            "DO UPDATE SET pages = ARRAY(SELECT DISTINCT unnest(document_links.pages || excluded.pages))",
+            (document_id, owner.id, program_id, year, pages),
+        )
+    if links:
+        report["written"].setdefault("document_links", collections.Counter())["written"] += len(links)
 
 
 async def _staff_datasets(conn: Any, findings: list[dict[str, Any]]) -> dict[str, int]:
@@ -1390,6 +1444,7 @@ async def _promote_funder(
     findings = [*findings, *_legacy_grants(findings, report)]
     await _write_facts(conn, row, findings, owner, programs, docs, report)
     if not (gate and gate.plan):
+        await write_document_links(conn, findings, owner, programs, docs, report)
         await _link_research(conn, row, funder_id=funder_id)
 
 
@@ -1429,6 +1484,7 @@ async def _promote_org(
     await _write_facts(
         conn, row, findings, owner, programs, docs, report, order=ORG_WRITE_ORDER
     )
+    await write_document_links(conn, findings, owner, programs, docs, report)
     await _link_research(conn, row, org_id=org_id)
 
 

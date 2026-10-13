@@ -27,7 +27,7 @@ registry_record · research · web_page · other. The three reserved types keep 
 Vault upload keeps whatever type its uploader chose: the list is enforced on research, not as a CHECK.
 
 ### `document_links`
-One row per (document, owner, programme, fiscal year), with `pages int[]`; exactly one of `org_id` /
+One row per (document, owner, programme, fiscal year), with `pages text[]` as facts cite them ('p.33', 'Annexure 4'); exactly one of `org_id` /
 `funder_id`. Written at promotion from every fact that was written or confirmed, so a link says "this
 document backs these facts". A link to a private document is readable only where the document is
 (row security joins through `documents`). Added to the SQL catalog: a security decision, and it exposes
@@ -42,6 +42,9 @@ nothing the `documents` row does not.
 ## Known limits
 - A plan (the Gate's dry run) writes no documents and no links, as today.
 - A page archived before this PR has no copy; its row has no `storage_path` until it is read again.
+- The news verifier reads pages with `read_page` too, so a verified article is archived as well.
+- Staging has taken neither 0046 nor 0047: run `make migrate ENV=staging` before this deploys.
+- A source's earlier `doc_type` (e.g. KABIL's `other` from a pre-list run) stays until a document finding re-types it; M5's backfill does.
 
 ## Verification
 - `pytest -m "not integration"`, `ruff`; `make migrate` on a local database.

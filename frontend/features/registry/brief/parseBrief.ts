@@ -103,7 +103,12 @@ export function parseBrief(markdown: string): Brief {
       continue;
     }
     if (special === GOALS || special === SOURCES) {
-      if (line.startsWith("- ")) (special === GOALS ? brief.goals : brief.sources).push(line.slice(2).trim());
+      // A source line is "<url> · <type, pages, document>"; the page links the url.
+      if (line.startsWith("- ")) {
+        const item = line.slice(2).trim();
+        if (special === GOALS) brief.goals.push(item);
+        else brief.sources.push(item.split(" · ")[0]);
+      }
       continue;
     }
     if (special === NOT_FOUND) {

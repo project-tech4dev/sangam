@@ -247,6 +247,9 @@ class Gate:
 GATE: ContextVar[Gate | None] = ContextVar("import_gate", default=None)
 
 
+UNTYPED = frozenset({"web_page", "other", None})
+
+
 async def ensure_document(
     conn: Any, rec: Any, *, owner: Owner | None, doc_type: str,
     storage_path: str | None = None, content_hash: str | None = None,
@@ -265,7 +268,7 @@ async def ensure_document(
     mine = f" AND {owner.column} = %s" if kind and owner else ""
     row = await (
         await conn.execute(
-            "SELECT id, storage_path, content_hash FROM documents WHERE source_url = %s "
+            "SELECT id, storage_path, content_hash, doc_type, title FROM documents WHERE source_url = %s "
             "AND (CASE WHEN doc_type = ANY(%s) THEN doc_type ELSE '' END) = %s" + mine
             + " ORDER BY id LIMIT 1",
             (rec.source_url, sorted(RESERVED_DOC_TYPES), kind, *([owner.id] if mine else [])),
@@ -277,6 +280,9 @@ async def ensure_document(
         fill = {c: v for c, v in
                 (("storage_path", storage_path), ("content_hash", content_hash))
                 if v and not row[c]}
+        # A source first seen only as a cited URL takes the type and title a document finding states.
+        if row["doc_type"] in UNTYPED and doc_type not in UNTYPED:
+            fill |= {"doc_type": doc_type, "title": getattr(rec, "title", None) or row["title"]}
         if not fill:
             return row["id"], "matched"
         sets = ", ".join(f"{c} = %s" for c in fill)
