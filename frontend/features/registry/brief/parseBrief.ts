@@ -1,7 +1,15 @@
 // Reads the markdown `backend/app/ingest/brief.py::entity_markdown` writes; keep the two in step.
 
 export type Source = { name: string; url: string; confidence: string };
-export type Finding = { headlines: string[]; year?: string; basis?: string; evidence: string; source?: Source };
+export type Detail = { label: string; value: string };
+export type Finding = {
+  headlines: string[];
+  year?: string;
+  basis?: string;
+  evidence: string;
+  source?: Source;
+  details?: Detail[];
+};
 export type BriefSection = { id: string; title: string; findings: Finding[]; text?: string };
 export type Brief = {
   name: string;
@@ -23,6 +31,7 @@ const SOURCES = "Sources read";
 const FINDING = /^- \*\*(.+?)\*\*(?: \(([^)]+)\))?(?: _([^_]+)_)?\s*$/;
 const STATUS = /^Researched (\S+) · status \*\*([^*]+)\*\*(?: · (.*))?$/;
 const SOURCE = /^\s*<sub>(.*)<\/sub>\s*$/;
+const DETAIL = /^  - ([^:]+): (.*)$/; // a programme's description, themes, places, funders, spend and results
 
 function slugify(title: string) {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -122,6 +131,11 @@ export function parseBrief(markdown: string): Brief {
     const source = line.match(SOURCE);
     if (current && source) {
       current.source = parseSource(source[1]);
+      continue;
+    }
+    const detail = line.match(DETAIL);
+    if (current && detail) {
+      (current.details ??= []).push({ label: detail[1], value: detail[2] });
       continue;
     }
     raw.push(line);
