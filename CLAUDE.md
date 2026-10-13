@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Read first
+
+You do not need to read the code to learn how a subsystem works. Read these instead:
+
+- **`docs/ARCHITECTURE.md`**: how every subsystem works today. It covers files, flows, tools, tables, routes and settings, with one section per area.
+- **`docs/HISTORY.md`**: everything that shipped, by subsystem and PR, plus **"Not finished"**, the plans that are only partly built.
+- **`docs/README.md`**: which deeper doc to read for which job.
+
+`.claude/rules/arch-*.md` load the matching ARCHITECTURE section on their own when you touch that part of the tree.
+A PR that changes a fact in ARCHITECTURE.md updates it, and a PR that ships adds a HISTORY line.
+
 ## Commands
 
 First run, from a clean checkout (needs Docker, an `ANTHROPIC_API_KEY`, and a Supabase
@@ -75,8 +86,8 @@ make evals TAG=import               # Import canaries, only by tag: one funder, 
 
 `asyncio_mode = "auto"` — async tests need no `@pytest.mark.asyncio`. **Unit tests never
 touch a database**: `client_for(*routers)` builds a router-only FastAPI app with no lifespan
-(no pool, no agent, no model) and overrides two dependencies — `get_current_user`, and
-`get_pool` with a `_SentinelPool` that raises on any attribute access. Routers take the pool
+(no pool, no agent, no model) and overrides three dependencies — `get_current_user`, `get_principal`
+(the dev user), and `get_pool` with a `_SentinelPool` that raises on any attribute access. Routers take the pool
 as `PoolDep`, so that one override covers every router; monkeypatch the `repositories/`
 function rather than the pool. `tests/test_migration_integrity.py` and
 `tests/test_sql_integration.py` carry the `integration` mark.
@@ -128,7 +139,7 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
               └────── FastAPI ── LangGraph deep agent
                           │          tools: db_list_tables · db_describe_table
                           │                 db_profile_column · db_query
-                          │                 search_graph · fetch_url
+                          │                 search_graph · fetch_url · compare_fit
                           ▼
               Postgres + pgvector        Neo4j (optional)
 ```
@@ -149,13 +160,13 @@ backend/app/
                    tools/ every tool it has, and nothing else in ingest/ is one
                    the rest is the pipeline: runner · writer · promote · matcher
   matching/        Funder Match: rubric · rules · match (pure) · service (a saved run) · run (make match)
-  integrations/    graphiti.py (Neo4j client lifecycle)
+  integrations/    graphiti.py (Neo4j client lifecycle) · tracing.py (Langfuse) · storage.py (Supabase Storage)
 
 frontend/
   app/             routes ONLY — pages, layouts, route handlers
-  features/        one folder per screen: ask/ auth/ home/ ingest/ registry/ terms/
+  features/        one folder per screen: ask/ auth/ home/ ingest/ registry/ resources/ settings/ taxonomy/ terms/
   components/      ui/ (display primitives) · layout/ (site chrome)
-  lib/             api/ (client + types) · supabase/ · format.ts
+  lib/             api/ (client, types, auth headers) · supabase/ · AgentProviders · useAgentChat · format.ts
 ```
 
 Two rules keep this from eroding: **nothing that is not a route goes under
@@ -277,10 +288,10 @@ relationships and answered seven. Two paths to the same rows also meant two plac
 correct — a data caveat added to the catalog reached `db_query` and not `search_orgs`. The cost
 is latency: a curated lookup was one tool call, the same question in SQL is three to five.
 
-`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) and `web.make_web_search` (Tavily)
-are complete but imported nowhere, and the `Settings` fields that feed them — `tavily_api_key`,
-`github_pat`, `github_mcp_url`, `playwright_mcp_url`, `mcp_servers` — therefore do nothing until
-those tools are registered. Setting them changes no behaviour.
+`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) is complete but imported nowhere, and
+the `Settings` fields that feed it — `github_pat`, `github_mcp_url`, `playwright_mcp_url`,
+`mcp_servers` — therefore do nothing. `web.make_web_search` (Tavily) is not an Ask tool, but Sangam
+Import's `search_public_sources` and the news pipeline use it, so `tavily_api_key` matters.
 
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
@@ -324,10 +335,10 @@ baseline is what a brand-new database gets; migrations carry everything after it
 `db/migrations/README.md`. `0001_`–`0010_` carry the v3 data model on top of the v2 baseline:
 provenance columns, the taxonomy, geography, identity, credentials, funder activity, org facts,
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
-dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0029_`
-continue on top, and `0030_tag_links` adds the theme taxonomy's join table, and `0031_funder_consolidation` is the first
-that drops tables: nine funder tables became five, and `0032_staff_sources_bucket` adds the private bucket. `0033_cso_consolidation` puts an evidence tier (`source_type`, `evidence`) on the seven CSO tables, gives `org_identifiers` a status so an application needs no number, and drops `credential_events` and `program_locations`. `0034_grants_into_funder_activity` retires `grants` and `grant_locations`: a grant is a `funder_activity` partner line, cited `[activity:N]` and served at `/api/partner-lines`. `0035_research_coverage` adds `gaps` and `years` to `entity_research` for the coverage report. `0036_taxonomy_crosswalk` maps each Darpan sector tag to its Schedule VII clause (unread since match-v2, which compares the theme taxonomy), and `0037_drop_criteria_sets` drops a table only the removed matching engine used. `0038_research_saved` adds `saved` and `saved_at`, what each Import save wrote, for the Done step's before and after. `0039_research_by` records who last saved a research row, and `0040_vault_research` keeps what Import read in one org's Doc Vault apart from the shared research row. `0041_catalog_writes` logs who saved Import research and every catalog row each save wrote, so staff can undo a save. `0042_funder_matches` adds Funder Match's saved runs, and `0043_tag_writes_logged` logs Import's `org_tags` and `program_tags` writes for undo. `0044_one_read_policy_and_fk_indexes` folds the admin read policies on `users` and `org_members` into one each and indexes three foreign keys. `0044_news` adds Media & Signals' seven tables, and `0045_drop_news_mentions` drops the table they replace, apart so the tables can land before the code that stops reading it. The two 0044s are both kept, because staging had applied `0044_news` before the other landed and the runner keys on the file name. `0046_import_columns` gives Import's researched identity, place and partner-tier facts their columns, and `'component'` to `programs.kind`, and `0047_document_links` records which owner, programme and year each document backs, with the pages its facts cite. There are 48 in total. The design and the
-before/after are in `docs/DATA_PLATFORM.md`.
+dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0047_`
+continue on top (48 files; two are numbered `0044`, both kept because the runner keys on the file
+name). Which PR added each one, and what it did, is in `docs/HISTORY.md`; the tables they leave are in
+`docs/ARCHITECTURE.md` §7. The design and the before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
 private, loopback and metadata addresses on every redirect hop.
@@ -459,8 +470,8 @@ the honest cost.
 
 **Ask Sangam loads its matching procedures the same way**, from `app/agent/skills/`:
 `funder-matching` (resolve the organisation → one `compare_fit` over the catalog),
-`funder-comparison` (named funders → one `compare_fit` with their ids) and `funder-shortlist-brief`
-(the write-up). The rules they lean on — compare_fit judges, call it once, an unknown is "not
+`funder-comparison` (named funders → one `compare_fit` with their ids), `funder-shortlist-brief`
+(the write-up), and `news-brief` (what changed in the news for one org or funder, cited `[news:N]`). The rules they lean on — compare_fit judges, call it once, an unknown is "not
 recorded" — stay in `instructions.md`, rules 12–16.
 
 **Optional subsystems degrade, they do not crash.** The graph activates only when
@@ -497,11 +508,13 @@ settings are load-bearing in ways the Langfuse docs do not advertise:
 checks the access token against the project's JWKS and finds or creates the `users` row for it;
 no header is anonymous. With `SUPABASE_URL` empty every request is the seeded dev user, and
 `DEV_AUTH=1` accepts `Bearer dev` locally — which `make smoke` sends, so it needs that set.
-`require_user` (401) gates saving and editing, and a chat someone else owns is 404. Import is open
+`require_user`/`require_principal` (401) gate saving, editing, Funder Match, news and chat, and a chat someone else owns is 404. Import is open
 to anyone signed in, by role: its tools run on the owner pool, so they check `chat_scope` themselves
 (`app/ingest/caller.py`), and its pipeline routes keep `require_staff` (403). The frontend sends the token from `lib/api/auth-headers.ts` (browser)
-and `auth-headers.server.ts` (server components). The plan, and what comes next (requests running
-as the caller, then RLS), is `features-plans/access/auth-plan.md`.
+and `auth-headers.server.ts` (server components). REST routes already run as the caller under RLS
+(`PoolDep` sets the role and JWT claims per transaction); agent tools, Import and the matching reader
+still use the owner pool. The plan is `features-plans/access/auth-plan.md`; its Phase 2 (email-domain
+matching, join requests) is not built.
 
 ## Deployment
 

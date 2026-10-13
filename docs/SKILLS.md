@@ -1,5 +1,16 @@
 # Skills: procedures the agent loads, constraints it always carries
 
+> **Corrections as of 2026-10-13.**
+> - Ask has four skills: `news-brief` too.
+> - The source registry is 80, not 74.
+> - Import has four subagents.
+> - The researcher *does* use `read_file`, for its pull skill and for evicted pages.
+> - The supervisor indexes five skills, and the researcher two (`/skills/research/`).
+> - `contract.py` also requires one finding or gap per asked fiscal year, and `themes` on identity.
+> - `.agents/skills/` is not in this repo.
+> 
+> `docs/ARCHITECTURE.md` §3–4 is current.
+
 A skill is a directory with one file:
 
 ```

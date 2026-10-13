@@ -6,6 +6,26 @@ endpoint (`/ingest`), its own UI, its own instructions, its own trace name (`san
 
 Ask Sangam reads the catalog. This one builds it.
 
+> **Out of date since #192–#197 (2026-10-13).** Where this file and `docs/ARCHITECTURE.md` §4 disagree,
+> §4 is right. Known wrong here:
+> - **The durable record.** It is the merged brief (`source-archive/entities/<slug>.md`, with hidden fact blocks), not one
+>   `entity_research` row. Promotion reads `brief.promotable()`.
+> - **Pauses.** Two tools are in `INTERRUPT_ON` (`choose_sources`, `run_import_now`), and the catalog-writer also pauses every
+>   `promote_research`.
+> - **Tool modules.** There are five, not three.
+> - **`StaffLastLock`.** It refuses every tool outside a short allowlist, not just the three web tools.
+> - **The researcher's order.** It reads its pull skill before `research_goals`, and `contract.py` refuses a field with neither
+>   finding nor gap.
+> - **Saves and promotion.** A save merges every run for the slug into the brief. Promote writes a `documents` row per cited
+>   source, plus `document_links` (`0047`).
+> - **Matcher.** The order is identifier → exact → alias → name variants → website → boilerplate → trigram; five methods merge.
+> - **Districts.** They come from a closed LGD list (784) and are never created.
+> - **NGOs.** They promote through `_promote_org`.
+> - **Undo.** It logs 19 tables, not 16.
+> - **The `/ingest` endpoint.** It is `_add_agent_route`, not `add_langgraph_fastapi_endpoint`.
+> - **Sources.** The registry has 80, not 79.
+> - **Known gaps.** The registry-check tool and `csr_sector_id` both exist now.
+
 ## The rule everything else follows from
 
 **The model never writes SQL.** Ask Sangam's safety story is that model-authored SQL is read-only
