@@ -18,7 +18,7 @@ tables below ends as one of two things:**
 Marks in the tables:
 - **★** — Sangam has no column yet. Save it in `unplaced` as `{field, value, evidence, source_url, page}`,
   using the field name given. It still appears in the brief. One you looked for and did not find is a gap
-  with its section's concept and the ★ name as `field`: `{concept: "org_identity", field: "parent_or_network", reason: "not_stated", …}`.
+  with its section's concept and the ★ name as `field`: `{concept: "document", field: "governance", reason: "not_stated", …}`.
 - **⚙** — filled by code from what you save. You do not pull it.
 
 ## Two things to confirm first
@@ -32,10 +32,10 @@ Marks in the tables:
 
 | Section | Fields |
 |---|---|
-| 1. Identity | legal name, other names, kind, legal form, registration date, registered office (state, district, address★), website, own description, staff count and what was counted, network or parent★ |
+| 1. Identity | legal name, other names, kind, legal form, registration date, registered office (state, district, address), website, own description, staff count and what was counted, network or parent |
 | 2. Registrations | 12A, 80G, FCRA, PAN, Darpan, CIN, CSR-1, registration no.: number or application ref, status, valid from / until, how checked, evidence tier |
-| 3. Where it works | state → districts, role (registered / operates / funds), note, programme★, source |
-| 4. Programmes | theme → programme → phase → project: kind, description, status, start / end, places★, metrics (value, target, unit, period, stage, method, place), tags with their note, documents |
+| 3. Where it works | state → districts, role (registered / operates / funds), note, programme, source |
+| 4. Programmes | theme → programme → phase → project: kind, description, status, start / end, places, metrics (value, target, unit, period, stage, method, place), tags with their note, documents |
 | 5. Money in | per funder per FY: amount, project, dates, status, evidence tier, link to funder⚙; per FY: income, programme / other spend, foreign contribution and unspent, audited |
 | 6. People | public contacts and role mailboxes; count of non-public ones⚙ |
 | 7. Documents | title, type, period, summary, original link, archived copy⚙, pages used, facts drawn⚙ |
@@ -51,11 +51,11 @@ Marks in the tables:
 | legal form | `org_identity.legal_form` | As printed: "Public Charitable Trust", "Section 8 Company". A Section 8 company: say so — some funders exempt them from 12A/80G. |
 | registration date | `org_identity.registration_date` | |
 | registered office: state, district | `org_location` with `role` `registered` | |
-| registered office: address | ★ `registered_address` | The street address as printed. |
+| registered office: address | `org_identity.registered_address` | The street address as printed. |
 | website | `org_identity.website` | |
 | own description | `org_identity.description` | Short, in its own words. |
 | staff count, and what was counted | `org_identity.staff_count`, `staff_count_note` | Two pages giving different counts are two findings, each with a note saying what was counted ("45 staff"; "60 including volunteers") — never pick one. Permanent staff is the count we want first. |
-| network or parent | ★ `parent_or_network` | Named as printed; never created or merged. |
+| network or parent | `org_identity.parent_name` | Named as printed; linked only when Sangam holds it, never created or merged. |
 
 ## 2. Registrations — `org_identifier`, one per registration
 
@@ -76,7 +76,7 @@ Marks in the tables:
 | state → districts | `state`, `district` | A district always travels with its state. Never a district from a city or a programme name. |
 | role | `role` | `registered`, `operates`, `funds`. |
 | note | `note` | |
-| programme | ★ `programme_places` | `{programme, places}`, alongside the `org_location` rows. |
+| programme | `program_name` | The programme that runs in this place, as named in its `program` finding. |
 | source | `source_type`, `evidence_tier`, the URL | |
 
 ## 4. Programmes — `program`, `metric`
@@ -87,7 +87,7 @@ Marks in the tables:
 |---|---|---|
 | each level | `program` with `name`, `kind`, `parent_name` | `parent_name` points one level up. |
 | description, status, start / end | `description`, `status`, `start_date`, `end_date` | |
-| places | ★ `programme_places`, and an `org_location` per place | |
+| places | an `org_location` per place, with `program_name` | |
 | metrics | `metric` with `name`, `value`, `target`, `unit`, `period`, `stage`, `method`, `is_self_reported`, `program_name` | A target only when the report states one, on the same metric as its achievement. Each with its year; self-reported is `claimed`. |
 | metric place | `metric.state`, `district` | |
 | tags with their note | `program.themes` / `populations` / `lenses`, `tag_note` | From its own description, never its name. Or a gap `{concept: "program", field: "themes", reason: "not_stated"}` naming the programme and the source. |

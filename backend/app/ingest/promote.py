@@ -15,16 +15,19 @@ from __future__ import annotations
 
 import collections
 import hashlib
+import json
 import logging
+import re
 from datetime import UTC, date, datetime
 from typing import Any
 
 from pydantic import ValidationError
 
 from app.ingest import source_guards, staff_sources, vault
+from app.ingest.brief import fact_key
 from app.ingest.expectations import PROMOTABLE, activity_kind
 from app.ingest.geography import resolve_location
-from app.ingest.matcher import Match, _is_foundation, name_key, resolve_funder, resolve_org
+from app.ingest.matcher import Match, _is_foundation, name_key, resolve_funder, resolve_org, variants
 from app.ingest.records import (
     CIN_FORMAT,
     ContactRecord,
@@ -51,6 +54,7 @@ from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, TYPED_SI
 from app.ingest.taxonomy import TAG_KINDS, resolve_classification, resolve_csr_sector
 from app.ingest.writer import (
     GATE,
+    UNWRITTEN,
     Conflict,
     Gate,
     Owner,
@@ -83,7 +87,7 @@ logger = logging.getLogger(__name__)
 
 # The matcher methods that mean "this is the same organisation". 'trigram'
 # proposes and a person accepts; 'none' is a new entity.
-MERGEABLE = ("identifier", "exact", "alias", "boilerplate")
+MERGEABLE = ("identifier", "exact", "alias", "boilerplate", "website")
 # Only a match made on the name makes the research's spelling an alias; a number match says nothing of names.
 NAME_MATCHES = ("exact", "alias", "boilerplate")
 # A number resolves an org only when a finding says it is a live registration, not a listing that was not found.
@@ -176,7 +180,7 @@ def _validated(
         if f.get("concept") != concept:
             continue
         try:
-            out.append(FINDING_MODELS[concept].model_validate(f))
+            model = FINDING_MODELS[concept].model_validate(f)
         except ValidationError as exc:
             err = exc.errors()[0]
             where = ".".join(str(p) for p in err.get("loc", ())) or "finding"
@@ -186,12 +190,81 @@ def _validated(
                 report["held"].append(
                     f"{msg}. It stays on the research row; re-research it in the current shape to promote it."
                 )
+                _settle(report, f, {"state": "held", "reason": msg})
+            continue
+        if report is not None:
+            # The fact as the brief keys it: validation may reshape a value the key is built from.
+            report.setdefault("_raw", {})[id(model)] = f
+        out.append(model)
     return out
 
 
 def _count(report: dict[str, Any], table: str, status: str) -> None:
     if status in ("added", "updated"):
         report["written"].setdefault(table, collections.Counter())[status] += 1
+
+
+# A writer's status, as the brief says it.
+STATES = {"added": "written", "updated": "written", "planned": "written", "matched": "confirms",
+          "asked": "waiting", "kept": "kept", "skipped": "skipped"}
+
+
+def _settle(report: dict[str, Any], raw: dict[str, Any], state: dict[str, Any]) -> None:
+    report.setdefault("facts", {})[json.dumps(list(fact_key(raw)))] = state
+
+
+def _settle_identity(report: dict[str, Any], findings: list[dict[str, Any]], concept: str, status: str,
+                     row: str) -> None:
+    for f in findings:
+        if f.get("concept") == concept and status in STATES:
+            _settle(report, f, {"state": STATES[status], **({"row": row} if "-1" not in row else {})})
+
+
+def _guarded(report: dict[str, Any], findings: list[dict[str, Any]],
+             held: tuple[list[dict[str, Any]], list[str]]) -> list[dict[str, Any]]:
+    """What a source guard let through; each fact it held gets the guard's reasons as its state."""
+    kept, reasons = held
+    report["held"].extend(reasons)
+    passed = {id(f) for f in kept}
+    for f in findings:
+        if id(f) not in passed and f.get("concept"):
+            _settle(report, f, {"state": "held", "reason": " ".join(dict.fromkeys(reasons))})
+    return kept
+
+
+def _unsettled(report: dict[str, Any], findings: list[dict[str, Any]]) -> None:
+    """Every fact ends in a state: one no writer reached says why, from the promotion's own reasons."""
+    why = (" ".join(report["reasons"]) if report["entity"] is None else "") or "promotion did not reach it"
+    for f in findings:
+        if not f.get("concept") or json.dumps(list(fact_key(f))) in report.get("facts", {}):
+            continue
+        if f["concept"] in report["skipped"]:
+            state = {"state": "no column", "reason": "Sangam has no table for this yet"}
+        else:
+            state = {"state": "held", "reason": why}
+        _settle(report, f, state)
+
+
+class _Mark:
+    """What one fact became, read off its status or the held and conflict lines it added."""
+
+    def __init__(self, report: dict[str, Any], conflicts: list[Conflict] | None = None) -> None:
+        self.report, self.conflicts = report, conflicts if conflicts is not None else []
+        self.held, self.found = len(report["held"]), len(self.conflicts)
+
+    def settle(self, f: Any, status: str | None, row: str | None = None) -> None:
+        raw = self.report.get("_raw", {}).get(id(f))
+        if raw is None:
+            return
+        found = self.conflicts[self.found:]
+        held = self.report["held"][self.held:]
+        if found:
+            state = {"state": "conflicts", "reason": "; ".join(c.describe() for c in found)}
+        elif status in STATES:
+            state = {"state": STATES[status], **({"row": row} if row else {})}
+        else:
+            state = {"state": "held", "reason": " ".join(held) or "not written, and no reason was recorded"}
+        _settle(self.report, raw, state)
 
 
 # Concepts from before 0031 and 0034 that promotion still reads, so they are not reported as "no writer".
@@ -288,6 +361,9 @@ def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRe
             typical_duration_months=ident.get("typical_duration_months"),
             grant_size_min=to_inr(ident.get("grant_size_min")),
             grant_size_max=to_inr(ident.get("grant_size_max")),
+            legal_form=ident.get("legal_form"),
+            founded_year=ident.get("founded_year"),
+            registered_address=ident.get("registered_address"),
             as_of=ident.get("as_of"),
             **_tags(ident),
             **_provenance(anchor, row["researched_at"]),
@@ -333,6 +409,8 @@ def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord |
             org_kind=ident.get("org_kind"),
             legal_form=ident.get("legal_form"),
             registration_date=ident.get("registration_date"),
+            registered_address=ident.get("registered_address"),
+            parent_name=ident.get("parent_name"),
             website=ident.get("website") or _http_only(row.get("website")),
             description=ident.get("description"),
             aliases=ident.get("aliases") or [],
@@ -419,9 +497,11 @@ async def _write_documents(
 
     by_url: dict[str, int] = {}
     for f in _validated(findings, "document", report):
+        mark = _Mark(report)
         if staff_sources.is_staff_source_url(f.source_url) or vault.is_vault_url(f.source_url):
             # the private row exists; ensure_document would add a public one
             report["held"].append("document: skipped: private document already on file")
+            mark.settle(f, "skipped")
             continue
         shim = type("Doc", (), {
             "source_url": f.source_url, "title": f.title,
@@ -443,6 +523,7 @@ async def _write_documents(
         )
         by_url[f.source_url] = document_id
         _count(report, "documents", status)
+        mark.settle(f, status, f"[documents:{document_id}]")
     by_url.update(await _staff_datasets(conn, findings))
     by_url.update(await vault.document_rows(conn, findings))
     return by_url
@@ -498,47 +579,170 @@ async def _shelve(
     ) else key
 
 
+# "Mission 2 Million (2019-2025)"; "SLP - Rural Livelihoods"; "Rural Livelihoods (SLP component)".
+_PAREN = re.compile(r"\s*\(([^)]*)\)\s*$")
+_PREFIX = re.compile(r"^([A-Z][A-Z0-9&]{1,9})\s*[-–:]\s+(.+)$")
+_SMALL = frozenset({"of", "the", "and", "for", "in", "a"})
+
+
+def programme_key(name: str) -> str:
+    """A programme's name as it is matched: no trailing parenthetical, no `ABBR - ` prefix."""
+    bare = _PAREN.sub("", name).strip() or name
+    m = _PREFIX.match(bare)
+    return name_key(m[2] if m else bare)
+
+
+def _abbreviation(name: str) -> str | None:
+    """The parent a spend line names by its initials: SLP in "SLP - Rural Livelihoods" or "(SLP component)"."""
+    bare = _PAREN.sub("", name).strip()
+    if m := _PREFIX.match(bare):
+        return m[1]
+    paren = _PAREN.search(name)
+    word = paren and re.match(r"([A-Z][A-Z0-9&]{1,9})\b", paren[1])
+    return word[1] if word else None
+
+
+def _initials(name: str) -> str:
+    return "".join(w[0] for w in re.findall(r"[A-Za-z]+", name) if w.lower() not in _SMALL).upper()
+
+
+class Programmes:
+    """One owner's programmes by programme_key: those written this run, then those already stored."""
+
+    def __init__(self, stored: dict[str, tuple[int, str]]) -> None:
+        self.stored = stored
+        self.ids: dict[str, int] = {}
+        self.names: dict[str, str] = {}
+        self.held: dict[str, str] = {}
+
+    @classmethod
+    async def load(cls, conn: Any, owner: Owner) -> Programmes:
+        rows = await (await conn.execute(
+            f"SELECT id, name FROM programs WHERE {owner.column} = %s ORDER BY id", (owner.id,)
+        )).fetchall()
+        stored: dict[str, tuple[int, str]] = {}
+        for r in rows:
+            stored.setdefault(programme_key(r["name"]), (r["id"], r["name"]))
+        return cls(stored)
+
+    def get(self, name: str | None, default: int | None = None) -> int | None:
+        if not name:
+            return default
+        key = programme_key(name)
+        if key in self.ids:
+            return self.ids[key]
+        return self.stored[key][0] if key in self.stored else default
+
+    def name(self, name: str) -> str:
+        """The spelling the row has, or will have: a stored or just-written one wins over this one."""
+        key = programme_key(name)
+        return self.names.get(key) or (self.stored[key][1] if key in self.stored else name)
+
+    def why_not(self, name: str) -> str:
+        return self.held.get(programme_key(name)) or "no programme of that name was researched or is held"
+
+    def by_initials(self, abbreviation: str) -> tuple[int, str] | None:
+        found = {(i, n) for k, i in self.ids.items() if _initials(n := self.names[k]) == abbreviation}
+        found |= {v for v in self.stored.values() if _initials(v[1]) == abbreviation}
+        return found.pop() if len(found) == 1 else None
+
+
+def _parents_first(found: list[Any]) -> list[Any]:
+    """Shallowest kind first, and a programme after the programme it names as parent, whatever their kinds."""
+    depth = {"theme": 0, "programme": 1, "component": 2, "phase": 2, "project": 3}
+    pending = sorted(found, key=lambda f: depth.get(f.kind, 9))
+    out: list[Any] = []
+    while pending:
+        waiting = {programme_key(f.name) for f in pending}
+        ready = [f for f in pending if not f.parent_name or programme_key(f.parent_name) not in waiting
+                 or programme_key(f.parent_name) == programme_key(f.name)]
+        ready = ready or pending[:1]  # a cycle: write one, and its parent lookup decides
+        out += ready
+        pending = [f for f in pending if f not in ready]
+    return out
+
+
 async def _write_programs(
     conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], owner: Owner,
     docs: dict[str, int], report: dict[str, Any],
-) -> dict[str, int]:
-    """Returns programme name -> id, so later concepts can resolve program_name."""
-    # A theme has to exist before a phase can point at it, so shallowest first.
-    depth = {"theme": 0, "programme": 1, "phase": 2, "project": 3}
-    ids: dict[str, int] = {}
+) -> Programmes:
+    """Every programme, parents first, so later concepts can resolve program_name; a held parent holds its children."""
+    programs = await Programmes.load(conn, owner)
     conflicts: list[Conflict] = []
-    for f in sorted(_validated(findings, "program", report), key=lambda f: depth.get(f.kind, 9)):
+    for f in _parents_first(_validated(findings, "program", report)):
+        mark = _Mark(report, conflicts)
+        key = programme_key(f.name)
+        if key in programs.names:
+            # "Mission 2 Million (2019-2025)" after "Mission 2 Million": one programme, written once.
+            mark.settle(f, "matched", f"[programs:{programs.ids[key]}]" if programs.ids[key] != UNWRITTEN else None)
+            continue
         if _untiered(owner, f, f"programme {f.name!r}", report):
+            programs.held[key] = "its own finding has no evidence tier"
+            mark.settle(f, None)
             continue
-        try:
-            rec = ProgramRecord(
-                entity_name=row["canonical_name"] or row["entity_name"], name=f.name,
-                program_kind=f.kind, description=f.description, status=f.status,
-                start_date=f.start_date, end_date=f.end_date, is_enabler=f.is_enabler,
-                themes=f.themes, populations=f.populations, lenses=f.lenses, tag_note=f.tag_note,
-                source_type=f.source_type, evidence_tier=f.evidence_tier,
-                as_of=None, **_provenance(f, row["researched_at"]),
-            )
-        except ValidationError as exc:
-            report["held"].append(f"programme {f.name!r}: {exc.errors()[0]['msg']}")
+        parent_id = programs.get(f.parent_name)
+        if f.parent_name and parent_id is None:
+            why = f"its parent {f.parent_name!r} is not in Sangam ({programs.why_not(f.parent_name)})"
+            report["held"].append(f"programme {f.name!r}: {why}; held with it rather than written with no parent.")
+            programs.held[key] = why
+            mark.settle(f, None)
             continue
-        status, program_id, _ = await write_program(
-            conn, rec, owner, parent_id=ids.get(f.parent_name or ""),
-            document_id=docs.get(f.source_url), conflicts=conflicts,
-        )
-        if program_id is not None:
-            ids[f.name] = program_id
-        _count(report, "programs", status)
-        await _write_tags(conn, "program_id", program_id, rec, f"programme {f.name!r}", report)
+        status, program_id = await _write_program(
+            conn, row, f, programs.name(f.name), f.kind, parent_id, owner, docs, report, conflicts)
+        if program_id is None:
+            programs.held[key] = "it is waiting for a person" if status == "asked" else "it was not written"
+        else:
+            programs.ids[key], programs.names[key] = program_id, programs.name(f.name)
+        mark.settle(f, status, f"[programs:{program_id}]" if program_id not in (None, UNWRITTEN) else None)
+    await _write_components(conn, row, findings, owner, programs, docs, report, conflicts)
     report["conflicts"].extend(c.describe() for c in conflicts)
-    return ids
+    return programs
 
 
-async def _funder_program(conn: Any, funder_id: int, name: str) -> int | None:
-    row = await (
-        await conn.execute("SELECT id FROM programs WHERE funder_id = %s AND name = %s", (funder_id, name))
-    ).fetchone()
-    return row["id"] if row else None
+async def _write_program(
+    conn: Any, row: dict[str, Any], f: Any, name: str, kind: str, parent_id: int | None, owner: Owner,
+    docs: dict[str, int], report: dict[str, Any], conflicts: list[Conflict],
+) -> tuple[str | None, int | None]:
+    try:
+        rec = ProgramRecord(
+            entity_name=row["canonical_name"] or row["entity_name"], name=name,
+            program_kind=kind, description=getattr(f, "description", None), status=getattr(f, "status", None),
+            start_date=getattr(f, "start_date", None), end_date=getattr(f, "end_date", None),
+            is_enabler=getattr(f, "is_enabler", None),
+            themes=getattr(f, "themes", None) or [], populations=getattr(f, "populations", None) or [],
+            lenses=getattr(f, "lenses", None) or [], tag_note=getattr(f, "tag_note", None),
+            source_type=getattr(f, "source_type", None), evidence_tier=getattr(f, "evidence_tier", None),
+            as_of=None, **_provenance(f, row["researched_at"]),
+        )
+    except ValidationError as exc:
+        report["held"].append(f"programme {name!r}: {exc.errors()[0]['msg']}")
+        return None, None
+    status, program_id, _ = await write_program(
+        conn, rec, owner, parent_id=parent_id, document_id=docs.get(f.source_url), conflicts=conflicts,
+    )
+    _count(report, "programs", status)
+    await _write_tags(conn, "program_id", program_id, rec, f"programme {name!r}", report)
+    return status, program_id
+
+
+async def _write_components(
+    conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], owner: Owner, programs: Programmes,
+    docs: dict[str, int], report: dict[str, Any], conflicts: list[Conflict],
+) -> None:
+    """A spend line naming no programme, but its parent by initials, is a component of that parent.
+    "SLP - Ecosystem Action" with no such programme becomes "Ecosystem Action" under Sustainable Livelihood Programme."""
+    for f in _validated([f for f in findings if f.get("concept") == "programme_spend"], "programme_spend"):
+        if programs.get(f.program_name) is not None or not (abbreviation := _abbreviation(f.program_name)):
+            continue
+        parent = programs.by_initials(abbreviation)
+        if parent is None:
+            continue
+        key = programme_key(f.program_name)
+        name = _PREFIX.sub(r"\2", _PAREN.sub("", f.program_name).strip())
+        _, program_id = await _write_program(
+            conn, row, f, name, "component", parent[0], owner, docs, report, conflicts)
+        if program_id is not None:
+            programs.ids[key], programs.names[key] = program_id, name
 
 
 def _activity_identity(
@@ -602,7 +806,7 @@ def _describe(concept: str, f: Any) -> str:
 
 async def _write_facts(
     conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], owner: Owner,
-    programs: dict[str, int], docs: dict[str, int], report: dict[str, Any],
+    programs: Programmes, docs: dict[str, int], report: dict[str, Any],
     *, order: tuple[str, ...] = WRITE_ORDER,
 ) -> None:
     """Every remaining concept, in dependency order.
@@ -619,308 +823,323 @@ async def _write_facts(
     org_names: dict[int, str] = {}
     conflicts: list[Conflict] = []
 
+    async def write(concept: str, f: Any) -> str | None:
+        status: str | None = None
+        named = getattr(f, "program_name", None)
+        program_id = programs.get(named)
+        # An NGO's funder line names the funder's programme, which is not this owner's.
+        if named and program_id is None and concept != "programme_spend" and owner.column == "funder_id":
+            report["held"].append(
+                f"{concept} {_describe(concept, f)}: its programme {named!r} is not in Sangam "
+                f"({programs.why_not(named)}); held with it rather than written with no programme."
+            )
+            return None
+        document_id = docs.get(f.source_url)
+        state_id, district_id = await _place(conn, f, report)
+        sector_id = await resolve_csr_sector(conn, getattr(f, "sector", None))
+        if sector_id is not None:
+            themes.setdefault(sector_id, getattr(f, "sector", "") or "")
+        prov = _provenance(f, fetched)
+        # metric and contact sit on tables with both foreign keys, so
+        # they name the entity; the rest are funder-only records.
+        base = {"funder_name": name, **prov}
+        shared = {"entity_name": name, **prov}
+
+        if concept in ("metric", "contact", "partner") and _untiered(
+            owner, f, f"{concept} {_describe(concept, f)}", report
+        ):
+            return None
+        # Two findings can be distinct and still resolve to one row:
+        # "Healthcare" and "Sanitation" are both Schedule VII clause (i),
+        # and two programme names neither of which resolved are both a
+        # NULL program_id. Writing both made each promote overwrite the
+        # last — six rows churned on every run, forever, with no duplicate
+        # to show for it. Two sources that disagree is a finding, not an
+        # edit, so the second is reported and left alone.
+        identity = _row_identity(concept, f, program_id, state_id, district_id, sector_id)
+        if identity in seen:
+            report["held"].append(
+                f"{concept}: two findings resolve to the same row "
+                f"({_describe(concept, f)}). The first was written; the second is "
+                f"reported rather than overwriting it."
+            )
+            return None
+        seen.add(identity)
+        try:
+            if concept == "csr_spend":
+                domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
+                report["held"].extend(f"csr_spend {_describe(concept, f)}: {r}" for r in why)
+                if domain_id is None:
+                    return None
+                rec = FunderCsrSpendRecord(
+                    fiscal_year=f.fiscal_year, amount=f.amount.inr,
+                    outlay=f.outlay.inr if f.outlay else None,
+                    project_name=f.project_name, project_count=f.project_count,
+                    designation=f.designation, partner_name=f.partner_name,
+                    partner_csr1=f.partner_csr1, implementation_mode=f.implementation_mode,
+                    is_ongoing=f.is_ongoing, domain=f.domain, theme=f.theme,
+                    classified_by=f.classified_by, classification_note=f.classification_note,
+                    as_of=f.fiscal_year, notes=_with_sector(f), **base,
+                )
+                status, change = await write_csr_spend(
+                    conn, rec, funder_id, program_id=program_id, state_id=state_id,
+                    district_id=district_id, csr_sector_id=sector_id,
+                    domain_id=domain_id, theme_id=theme_id, document_id=document_id,
+                )
+                if status == "held":
+                    report["held"].append(f"csr_spend {_describe(concept, f)}: {change['reason']}")
+                _count(report, "funder_activity (spend)", status)
+
+            elif concept == "footprint":
+                if state_id is None and district_id is None:
+                    report["held"].append(
+                        f"footprint {f.state!r}: no place to attach it to, and a footprint line "
+                        f"needs one"
+                    )
+                    return None
+                rec = FunderFootprintRecord(
+                    fiscal_year=f.fiscal_year, state=f.state, district=f.district,
+                    name_as_printed=f.name_as_printed or f.district or f.state,
+                    notes=f.notes, as_of=f.fiscal_year, **base,
+                )
+                status, _ = await write_footprint(
+                    conn, rec, funder_id, program_id=program_id, state_id=state_id,
+                    district_id=district_id, document_id=document_id,
+                )
+                _count(report, "funder_activity (footprint)", status)
+
+            elif concept == "stated_geography":
+                location_id = district_id or state_id
+                if location_id is None:
+                    return None
+                rec = FunderLocationRecord(
+                    state=f.state, district=f.district, role=f.role, note=f.note,
+                    as_of=None, **base,
+                )
+                status, _ = await write_funder_location(
+                    conn, rec, funder_id, location_id=location_id, document_id=document_id
+                )
+                _count(report, "funder_locations", status)
+                if f.role == "registered":
+                    await set_registered_location(conn, owner, location_id)
+
+            elif concept == "partner":
+                if owner.column == "org_id":
+                    # The line is the funder's, so an NGO's record never creates the funder.
+                    if not f.funder_name:
+                        report["held"].append(
+                            f"partner {_describe(concept, f)}: an NGO's funder line needs funder_name, "
+                            f"whose money it was"
+                        )
+                        return None
+                    match = await resolve_funder(conn, f.funder_name)
+                    if match.method not in MERGEABLE:
+                        like = ", ".join(c["name"] for c in match.candidates)
+                        report["held"].append(
+                            f"partner {f.funder_name!r}: not a funder Sangam holds"
+                            + (f" (resembles {like})" if like else "")
+                            + ". A person adds or links the funder first."
+                        )
+                        return None
+                    if owner.id not in org_names:
+                        found = await (
+                            await conn.execute("SELECT name FROM orgs WHERE id = %s", (owner.id,))
+                        ).fetchone()
+                        org_names[owner.id] = found["name"]
+                    catalogued = org_names[owner.id]
+                    said = [f.notes]
+                    if f.partner_name != catalogued:
+                        said.append(f"Named in the source as {f.partner_name!r}.")
+                    line_funder, line_program, partner_org_id = match.entity_id, None, owner.id
+                    line_name, project = catalogued, f.project_name
+                    # The funder's own record of this grant may carry a programme or another title.
+                    lines = await _org_line(conn, line_funder, owner.id, f.fiscal_year)
+                    if len(lines) > 1:
+                        report["held"].append(
+                            f"partner {f.funder_name!r} {f.fiscal_year}: the funder already has "
+                            f"{len(lines)} lines for this organisation that year ("
+                            + ", ".join(f"[activity:{x['id']}]" for x in lines)
+                            + "). A person says which one this finding is."
+                        )
+                        return None
+                    if lines:
+                        line = lines[0]
+                        line_program, line_name, project = (
+                            line["program_id"], line["partner_name"], line["project_name"])
+                        if f.project_name and project and f.project_name.strip() != project.strip():
+                            conflicts.append(Conflict(
+                                "funder_activity",
+                                f"[activity:{line['id']}] partner {line_name!r} {f.fiscal_year}",
+                                "project_name", project, None, None, f.project_name,
+                                f.source_type or "unranked", prov.get("source_url")))
+                        elif f.project_name and not project:
+                            said.append(f"The organisation's source titles it {f.project_name!r}.")
+                    names = {"funder_name": f.funder_name, "partner_name": line_name,
+                             "partner_canonical": catalogued, "notes": "\n".join(s for s in said if s)}
+                else:
+                    line_funder, line_program, project = funder_id, program_id, f.project_name
+                    org = await _partner_org(conn, f.partner_name)
+                    partner_org_id = org[0] if org else None
+                    # A catalogued partner is named as Sangam holds it, as 0034 and the seed do.
+                    line_name = org[1] if org else f.partner_name
+                    said = [f.notes]
+                    if line_name != f.partner_name:
+                        said.append(f"Named in the source as {f.partner_name!r}.")
+                    names = {"funder_name": name, "partner_name": line_name,
+                             "partner_canonical": f.partner_canonical or f.partner_name,
+                             "notes": "\n".join(s for s in said if s) or None}
+                rec = FunderPartnerRecord(
+                    fiscal_year=f.fiscal_year, partner_kind=f.partner_kind,
+                    partner_csr1=f.partner_csr1, project_name=project,
+                    start_date=f.start_date, end_date=f.end_date,
+                    relationship_status=f.relationship_status,
+                    outlay=f.outlay.inr if f.outlay else None,
+                    amount=f.amount.inr if f.amount else None,
+                    source_type=f.source_type, evidence_tier=f.evidence_tier,
+                    as_of=f.fiscal_year, **names, **prov,
+                )
+                status, _ = await write_partner(
+                    conn, rec, line_funder, program_id=line_program, document_id=document_id,
+                    partner_org_id=partner_org_id, fill_only=owner.column == "org_id",
+                    conflicts=conflicts,
+                )
+                _count(report, "funder_activity (partner)", status)
+
+            elif concept == "programme_spend":
+                if program_id is None:
+                    report["held"].append(
+                        f"programme_spend {f.program_name!r} {f.fiscal_year}: no programme of that "
+                        f"name for this funder ({programs.why_not(f.program_name)}), and the funder's own "
+                        f"figure has to hang off one."
+                    )
+                    return None
+                domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
+                report["held"].extend(f"programme_spend {f.program_name!r}: {r}" for r in why)
+                if domain_id is None:
+                    return None
+                rec = FunderProgrammeSpendRecord(
+                    fiscal_year=f.fiscal_year, program_name=f.program_name, amount=f.amount.inr,
+                    domain=f.domain, theme=f.theme, classified_by=f.classified_by,
+                    classification_note=f.classification_note, notes=f.notes,
+                    as_of=f.fiscal_year, **base,
+                )
+                status, _ = await write_programme_spend(
+                    conn, rec, funder_id, program_id=program_id, domain_id=domain_id,
+                    theme_id=theme_id, document_id=document_id,
+                )
+                _count(report, "funder_activity (programme)", status)
+
+            elif concept == "metric":
+                rec = MetricRecord(
+                    name=f.name, value=f.value, target=f.target, unit=f.unit,
+                    period=f.period, stage=f.stage, method=f.method,
+                    is_self_reported=f.is_self_reported, baseline=f.baseline,
+                    comparison_value=f.comparison_value, chain_key=f.chain_key,
+                    sequence=f.sequence, notes=f.notes, as_of=f.period,
+                    source_type=f.source_type, evidence_tier=f.evidence_tier, **shared,
+                )
+                status, _ = await write_metric(
+                    conn, rec, owner, program_id=program_id,
+                    location_id=district_id or state_id, document_id=document_id,
+                    conflicts=conflicts,
+                )
+                _count(report, "metrics", status)
+
+            elif concept == "rfp":
+                rec = RfpRecord(
+                    title=f.title, status=f.status, url=f.url, deadline=f.deadline,
+                    amount_min=f.amount_min.inr if f.amount_min else None,
+                    amount_max=f.amount_max.inr if f.amount_max else None,
+                    eligibility=f.eligibility, state=f.state, district=f.district,
+                    sector=f.sector, as_of=None, **base,
+                )
+                status, _, _ = await write_rfp(
+                    conn, rec, funder_id,
+                    location_id=district_id or state_id,
+                    tag_id=sector_id, document_id=document_id,
+                )
+                _count(report, "rfps", status)
+
+            elif concept == "eligibility_guideline":
+                rec = EligibilityGuidelineRecord(
+                    title=f.title, statutory_restatement=f.statutory_restatement,
+                    own_bar=f.own_bar, disqualifiers=f.disqualifiers, not_stated=f.not_stated,
+                    as_of=f.as_of, **base,
+                )
+                _, status = await write_eligibility_document(conn, rec, funder_id)
+                _count(report, "documents (funder_eligibility)", status)
+
+            elif concept == "org_identifier":
+                rec = OrgIdentifierRecord(
+                    entity_name=name, id_type=f.id_type, id_value=f.id_value, status=f.status,
+                    valid_from=f.valid_from, valid_until=f.valid_until, check_method=f.check_method,
+                    application_ref=f.application_ref, notes=f.notes, source_type=f.source_type,
+                    evidence_tier=f.evidence_tier, as_of=None, **prov,
+                )
+                status, _, found = await write_org_identifier(conn, rec, owner.id, document_id)
+                conflicts.extend(found)
+                _count(report, "org_identifiers", status)
+
+            elif concept == "org_financials":
+                rec = OrgFinancialsRecord(
+                    fiscal_year=f.fiscal_year,
+                    total_income=f.total_income.inr if f.total_income else None,
+                    program_spend=f.program_spend.inr if f.program_spend else None,
+                    non_program_spend=(
+                        f.non_program_spend.inr if f.non_program_spend else None
+                    ),
+                    foreign_contribution=(
+                        f.foreign_contribution.inr if f.foreign_contribution else None
+                    ),
+                    foreign_unspent=f.foreign_unspent.inr if f.foreign_unspent else None,
+                    is_audited=f.is_audited, notes=f.notes, as_of=f.fiscal_year,
+                    source_type=f.source_type, evidence_tier=f.evidence_tier, **shared,
+                )
+                status, _, found = await write_org_financials(
+                    conn, rec, owner.id, document_id
+                )
+                conflicts.extend(found)
+                _count(report, "org_financials", status)
+
+            elif concept == "org_location":
+                location_id = district_id or state_id
+                if location_id is None:
+                    return None
+                rec = OrgLocationRecord(
+                    state=f.state, district=f.district, role=f.role, program_name=f.program_name, note=f.note,
+                    source_type=f.source_type, evidence_tier=f.evidence_tier, as_of=None, **shared,
+                )
+                status, _, found = await write_org_location(
+                    conn, rec, owner.id, location_id=location_id, document_id=document_id,
+                    program_id=program_id,
+                )
+                conflicts.extend(found)
+                _count(report, "org_locations", status)
+                # A registered address is this concept with role='registered',
+                # not a second field on org_identity — so the column that
+                # names it is set here, where the place is already resolved.
+                if f.role == "registered":
+                    await set_registered_location(conn, owner, location_id)
+
+            elif concept == "contact":
+                rec = ContactRecord(
+                    name=f.name, contact_kind=f.kind, role=f.role, email=f.email,
+                    is_role_mailbox=f.is_role_mailbox, notes=f.notes, as_of=None,
+                    source_type=f.source_type, evidence_tier=f.evidence_tier, **shared,
+                )
+                status, _ = await write_contact(
+                    conn, rec, owner, document_id=document_id, conflicts=conflicts
+                )
+                _count(report, "contacts", status)
+
+        except ValidationError as exc:
+            report["held"].append(f"{concept}: {exc.errors()[0]['msg']}")
+        return status
+
     for concept in order:
         for f in _validated(findings, concept, report):
-            program_id = programs.get(getattr(f, "program_name", None) or "")
-            document_id = docs.get(f.source_url)
-            state_id, district_id = await _place(conn, f, report)
-            sector_id = await resolve_csr_sector(conn, getattr(f, "sector", None))
-            if sector_id is not None:
-                themes.setdefault(sector_id, getattr(f, "sector", "") or "")
-            prov = _provenance(f, fetched)
-            # metric and contact sit on tables with both foreign keys, so
-            # they name the entity; the rest are funder-only records.
-            base = {"funder_name": name, **prov}
-            shared = {"entity_name": name, **prov}
-
-            if concept in ("metric", "contact", "partner") and _untiered(
-                owner, f, f"{concept} {_describe(concept, f)}", report
-            ):
-                continue
-            # Two findings can be distinct and still resolve to one row:
-            # "Healthcare" and "Sanitation" are both Schedule VII clause (i),
-            # and two programme names neither of which resolved are both a
-            # NULL program_id. Writing both made each promote overwrite the
-            # last — six rows churned on every run, forever, with no duplicate
-            # to show for it. Two sources that disagree is a finding, not an
-            # edit, so the second is reported and left alone.
-            identity = _row_identity(concept, f, program_id, state_id, district_id, sector_id)
-            if identity in seen:
-                report["held"].append(
-                    f"{concept}: two findings resolve to the same row "
-                    f"({_describe(concept, f)}). The first was written; the second is "
-                    f"reported rather than overwriting it."
-                )
-                continue
-            seen.add(identity)
-            try:
-                if concept == "csr_spend":
-                    domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
-                    report["held"].extend(f"csr_spend {_describe(concept, f)}: {r}" for r in why)
-                    if domain_id is None:
-                        continue
-                    rec = FunderCsrSpendRecord(
-                        fiscal_year=f.fiscal_year, amount=f.amount.inr,
-                        outlay=f.outlay.inr if f.outlay else None,
-                        project_name=f.project_name, project_count=f.project_count,
-                        designation=f.designation, partner_name=f.partner_name,
-                        partner_csr1=f.partner_csr1, implementation_mode=f.implementation_mode,
-                        is_ongoing=f.is_ongoing, domain=f.domain, theme=f.theme,
-                        classified_by=f.classified_by, classification_note=f.classification_note,
-                        as_of=f.fiscal_year, notes=_with_sector(f), **base,
-                    )
-                    status, change = await write_csr_spend(
-                        conn, rec, funder_id, program_id=program_id, state_id=state_id,
-                        district_id=district_id, csr_sector_id=sector_id,
-                        domain_id=domain_id, theme_id=theme_id, document_id=document_id,
-                    )
-                    if status == "held":
-                        report["held"].append(f"csr_spend {_describe(concept, f)}: {change['reason']}")
-                    _count(report, "funder_activity (spend)", status)
-
-                elif concept == "footprint":
-                    if state_id is None and district_id is None:
-                        report["held"].append(
-                            f"footprint {f.state!r}: no place to attach it to, and a footprint line "
-                            f"needs one"
-                        )
-                        continue
-                    rec = FunderFootprintRecord(
-                        fiscal_year=f.fiscal_year, state=f.state, district=f.district,
-                        name_as_printed=f.name_as_printed or f.district or f.state,
-                        notes=f.notes, as_of=f.fiscal_year, **base,
-                    )
-                    status, _ = await write_footprint(
-                        conn, rec, funder_id, program_id=program_id, state_id=state_id,
-                        district_id=district_id, document_id=document_id,
-                    )
-                    _count(report, "funder_activity (footprint)", status)
-
-                elif concept == "stated_geography":
-                    location_id = district_id or state_id
-                    if location_id is None:
-                        continue
-                    rec = FunderLocationRecord(
-                        state=f.state, district=f.district, role=f.role, note=f.note,
-                        as_of=None, **base,
-                    )
-                    status, _ = await write_funder_location(
-                        conn, rec, funder_id, location_id=location_id, document_id=document_id
-                    )
-                    _count(report, "funder_locations", status)
-
-                elif concept == "partner":
-                    if owner.column == "org_id":
-                        # The line is the funder's, so an NGO's record never creates the funder.
-                        if not f.funder_name:
-                            report["held"].append(
-                                f"partner {_describe(concept, f)}: an NGO's funder line needs funder_name, "
-                                f"whose money it was"
-                            )
-                            continue
-                        match = await resolve_funder(conn, f.funder_name)
-                        if match.method not in MERGEABLE:
-                            like = ", ".join(c["name"] for c in match.candidates)
-                            report["held"].append(
-                                f"partner {f.funder_name!r}: not a funder Sangam holds"
-                                + (f" (resembles {like})" if like else "")
-                                + ". A person adds or links the funder first."
-                            )
-                            continue
-                        if owner.id not in org_names:
-                            found = await (
-                                await conn.execute("SELECT name FROM orgs WHERE id = %s", (owner.id,))
-                            ).fetchone()
-                            org_names[owner.id] = found["name"]
-                        catalogued = org_names[owner.id]
-                        # funder_activity has no tier column, so the org source's tier travels in notes.
-                        said = [f.notes, f"From the organisation's research: {f.source_type}, {f.evidence_tier}."]
-                        if f.partner_name != catalogued:
-                            said.append(f"Named in the source as {f.partner_name!r}.")
-                        line_funder, line_program, partner_org_id = match.entity_id, None, owner.id
-                        line_name, project = catalogued, f.project_name
-                        # The funder's own record of this grant may carry a programme or another title.
-                        lines = await _org_line(conn, line_funder, owner.id, f.fiscal_year)
-                        if len(lines) > 1:
-                            report["held"].append(
-                                f"partner {f.funder_name!r} {f.fiscal_year}: the funder already has "
-                                f"{len(lines)} lines for this organisation that year ("
-                                + ", ".join(f"[activity:{x['id']}]" for x in lines)
-                                + "). A person says which one this finding is."
-                            )
-                            continue
-                        if lines:
-                            line = lines[0]
-                            line_program, line_name, project = (
-                                line["program_id"], line["partner_name"], line["project_name"])
-                            if f.project_name and project and f.project_name.strip() != project.strip():
-                                conflicts.append(Conflict(
-                                    "funder_activity",
-                                    f"[activity:{line['id']}] partner {line_name!r} {f.fiscal_year}",
-                                    "project_name", project, None, None, f.project_name,
-                                    f.source_type or "unranked", prov.get("source_url")))
-                            elif f.project_name and not project:
-                                said.append(f"The organisation's source titles it {f.project_name!r}.")
-                        names = {"funder_name": f.funder_name, "partner_name": line_name,
-                                 "partner_canonical": catalogued, "notes": "\n".join(s for s in said if s)}
-                    else:
-                        line_funder, line_program, project = funder_id, program_id, f.project_name
-                        org = await _partner_org(conn, f.partner_name)
-                        partner_org_id = org[0] if org else None
-                        # A catalogued partner is named as Sangam holds it, as 0034 and the seed do.
-                        line_name = org[1] if org else f.partner_name
-                        said = [f.notes]
-                        if line_name != f.partner_name:
-                            said.append(f"Named in the source as {f.partner_name!r}.")
-                        names = {"funder_name": name, "partner_name": line_name,
-                                 "partner_canonical": f.partner_canonical or f.partner_name,
-                                 "notes": "\n".join(s for s in said if s) or None}
-                    rec = FunderPartnerRecord(
-                        fiscal_year=f.fiscal_year, partner_kind=f.partner_kind,
-                        partner_csr1=f.partner_csr1, project_name=project,
-                        start_date=f.start_date, end_date=f.end_date,
-                        relationship_status=f.relationship_status,
-                        outlay=f.outlay.inr if f.outlay else None,
-                        amount=f.amount.inr if f.amount else None,
-                        source_type=f.source_type, evidence_tier=f.evidence_tier,
-                        as_of=f.fiscal_year, **names, **prov,
-                    )
-                    status, _ = await write_partner(
-                        conn, rec, line_funder, program_id=line_program, document_id=document_id,
-                        partner_org_id=partner_org_id, fill_only=owner.column == "org_id",
-                        conflicts=conflicts,
-                    )
-                    _count(report, "funder_activity (partner)", status)
-
-                elif concept == "programme_spend":
-                    program_id = program_id or await _funder_program(conn, funder_id, f.program_name)
-                    if program_id is None:
-                        report["held"].append(
-                            f"programme_spend {f.program_name!r} {f.fiscal_year}: no programme of that "
-                            f"name for this funder, and the funder's own figure has to hang off one. "
-                            f"Add it as a program finding and promote again."
-                        )
-                        continue
-                    domain_id, theme_id, why = await resolve_classification(conn, f.domain, f.theme)
-                    report["held"].extend(f"programme_spend {f.program_name!r}: {r}" for r in why)
-                    if domain_id is None:
-                        continue
-                    rec = FunderProgrammeSpendRecord(
-                        fiscal_year=f.fiscal_year, program_name=f.program_name, amount=f.amount.inr,
-                        domain=f.domain, theme=f.theme, classified_by=f.classified_by,
-                        classification_note=f.classification_note, notes=f.notes,
-                        as_of=f.fiscal_year, **base,
-                    )
-                    status, _ = await write_programme_spend(
-                        conn, rec, funder_id, program_id=program_id, domain_id=domain_id,
-                        theme_id=theme_id, document_id=document_id,
-                    )
-                    _count(report, "funder_activity (programme)", status)
-
-                elif concept == "metric":
-                    rec = MetricRecord(
-                        name=f.name, value=f.value, target=f.target, unit=f.unit,
-                        period=f.period, stage=f.stage, method=f.method,
-                        is_self_reported=f.is_self_reported, baseline=f.baseline,
-                        comparison_value=f.comparison_value, chain_key=f.chain_key,
-                        sequence=f.sequence, notes=f.notes, as_of=f.period,
-                        source_type=f.source_type, evidence_tier=f.evidence_tier, **shared,
-                    )
-                    status, _ = await write_metric(
-                        conn, rec, owner, program_id=program_id,
-                        location_id=district_id or state_id, document_id=document_id,
-                        conflicts=conflicts,
-                    )
-                    _count(report, "metrics", status)
-
-                elif concept == "rfp":
-                    rec = RfpRecord(
-                        title=f.title, status=f.status, url=f.url, deadline=f.deadline,
-                        amount_min=f.amount_min.inr if f.amount_min else None,
-                        amount_max=f.amount_max.inr if f.amount_max else None,
-                        eligibility=f.eligibility, state=f.state, district=f.district,
-                        sector=f.sector, as_of=None, **base,
-                    )
-                    status, _, _ = await write_rfp(
-                        conn, rec, funder_id,
-                        location_id=district_id or state_id,
-                        tag_id=sector_id, document_id=document_id,
-                    )
-                    _count(report, "rfps", status)
-
-                elif concept == "eligibility_guideline":
-                    rec = EligibilityGuidelineRecord(
-                        title=f.title, statutory_restatement=f.statutory_restatement,
-                        own_bar=f.own_bar, disqualifiers=f.disqualifiers, not_stated=f.not_stated,
-                        as_of=f.as_of, **base,
-                    )
-                    _, status = await write_eligibility_document(conn, rec, funder_id)
-                    _count(report, "documents (funder_eligibility)", status)
-
-                elif concept == "org_identifier":
-                    rec = OrgIdentifierRecord(
-                        entity_name=name, id_type=f.id_type, id_value=f.id_value, status=f.status,
-                        valid_from=f.valid_from, valid_until=f.valid_until, check_method=f.check_method,
-                        application_ref=f.application_ref, notes=f.notes, source_type=f.source_type,
-                        evidence_tier=f.evidence_tier, as_of=None, **prov,
-                    )
-                    status, _, found = await write_org_identifier(conn, rec, owner.id, document_id)
-                    conflicts.extend(found)
-                    _count(report, "org_identifiers", status)
-
-                elif concept == "org_financials":
-                    rec = OrgFinancialsRecord(
-                        fiscal_year=f.fiscal_year,
-                        total_income=f.total_income.inr if f.total_income else None,
-                        program_spend=f.program_spend.inr if f.program_spend else None,
-                        non_program_spend=(
-                            f.non_program_spend.inr if f.non_program_spend else None
-                        ),
-                        foreign_contribution=(
-                            f.foreign_contribution.inr if f.foreign_contribution else None
-                        ),
-                        foreign_unspent=f.foreign_unspent.inr if f.foreign_unspent else None,
-                        is_audited=f.is_audited, notes=f.notes, as_of=f.fiscal_year,
-                        source_type=f.source_type, evidence_tier=f.evidence_tier, **shared,
-                    )
-                    status, _, found = await write_org_financials(
-                        conn, rec, owner.id, document_id
-                    )
-                    conflicts.extend(found)
-                    _count(report, "org_financials", status)
-
-                elif concept == "org_location":
-                    location_id = district_id or state_id
-                    if location_id is None:
-                        continue
-                    rec = OrgLocationRecord(
-                        state=f.state, district=f.district, role=f.role, note=f.note,
-                        source_type=f.source_type, evidence_tier=f.evidence_tier, as_of=None, **shared,
-                    )
-                    status, _, found = await write_org_location(
-                        conn, rec, owner.id, location_id=location_id, document_id=document_id
-                    )
-                    conflicts.extend(found)
-                    _count(report, "org_locations", status)
-                    # A registered address is this concept with role='registered',
-                    # not a second field on org_identity — so the column that
-                    # names it is set here, where the place is already resolved.
-                    if f.role == "registered":
-                        await set_registered_location(conn, owner.id, location_id)
-
-                elif concept == "contact":
-                    rec = ContactRecord(
-                        name=f.name, contact_kind=f.kind, role=f.role, email=f.email,
-                        is_role_mailbox=f.is_role_mailbox, notes=f.notes, as_of=None,
-                        source_type=f.source_type, evidence_tier=f.evidence_tier, **shared,
-                    )
-                    status, _ = await write_contact(
-                        conn, rec, owner, document_id=document_id, conflicts=conflicts
-                    )
-                    _count(report, "contacts", status)
-
-            except ValidationError as exc:
-                report["held"].append(f"{concept}: {exc.errors()[0]['msg']}")
+            mark = _Mark(report, conflicts)
+            mark.settle(f, await write(concept, f))
     report["conflicts"].extend(c.describe() for c in conflicts)
 
     # Every Schedule VII clause this funder's spending touched, recorded once
@@ -965,6 +1184,25 @@ async def _parent(conn: Any, record: FunderRecord, report: dict[str, Any]) -> in
         return None
     report["held"].append(
         f"parent {record.parent_name!r} of {record.name!r} is not in the catalog, so the link "
+        f"is not stored. Research the parent and promote it first."
+    )
+    return None
+
+
+async def _org_parent(conn: Any, record: OrgRecord, match: Match, report: dict[str, Any]) -> int | None:
+    """The parent body's org id when Sangam holds it; otherwise a held line, never a new row."""
+    if not record.parent_name:
+        return None
+    parent = await resolve_org(conn, record.parent_name)
+    if parent.method in MERGEABLE and parent.entity_id != match.entity_id:
+        return parent.entity_id
+    if parent.method == "trigram":
+        names = ", ".join(c["name"] for c in parent.candidates)
+        report["held"].append(f"parent {record.parent_name!r} of {record.name!r} resembles {names} without "
+                              f"matching. Not linked — a person decides which, if either, it is.")
+        return None
+    report["held"].append(
+        f"parent {record.parent_name!r} of {record.name!r} is not an organisation Sangam holds, so the link "
         f"is not stored. Research the parent and promote it first."
     )
     return None
@@ -1066,12 +1304,44 @@ def _answered(asking: Gate | None, table: str, name: str, match: Match, report: 
     return None
 
 
+async def link_partner_lines(conn: Any, org_id: int) -> int:
+    """Funder partner lines that name this NGO but were written before Sangam held it, linked now. No model:
+    the line's name, or a variant of it, must be the NGO's name or one of its aliases."""
+    org = await (await conn.execute("SELECT name, aliases FROM orgs WHERE id = %s", (org_id,))).fetchone()
+    if org is None:
+        return 0
+    keys = {name_key(n) for n in (org["name"], *(org["aliases"] or []))}
+    rows = await (await conn.execute(
+        "SELECT id, partner_name, partner_canonical FROM funder_activity "
+        "WHERE kind = 'partner' AND partner_org_id IS NULL"
+    )).fetchall()
+    ids = [r["id"] for r in rows
+           if keys & {name_key(n) for raw in (r["partner_name"], r["partner_canonical"]) if raw
+                      for n in (raw, *variants(raw))}]
+    if ids:
+        await conn.execute("UPDATE funder_activity SET partner_org_id = %s WHERE id = ANY(%s)", (org_id, ids))
+    return len(ids)
+
+
+async def _resolved(conn: Any, row: dict[str, Any]) -> Match | None:
+    """The entity an earlier save of this slug wrote to, while it still exists: a re-run never matches again.
+    An "alias" match, because a person or the matcher already settled that this spelling is that entity."""
+    column, table = (("resolved_org_id", "orgs") if row.get("entity_kind") == "org"
+                     else ("resolved_funder_id", "funders"))
+    found = await (await conn.execute(
+        f"SELECT r.{column} AS id FROM entity_research r JOIN {table} t ON t.id = r.{column} "
+        "WHERE r.slug = %s ORDER BY r.researched_at DESC LIMIT 1", (row["slug"],),
+    )).fetchone()
+    return Match("alias", found["id"]) if found else None
+
+
 async def org_match(conn: Any, row: dict[str, Any], asking: Gate | None = None) -> Match | None:
     """The NGO a save of this research would write to, after any answer to "the same organisation?"; None waits."""
     findings = row["findings"] if isinstance(row.get("findings"), list) else []
     record = org_from(row, findings)
     name = record.name if record else row.get("canonical_name") or row.get("entity_name") or row["slug"]
-    match = await resolve_org(conn, name, record.identifiers if record else None)
+    match = await _resolved(conn, row) or await resolve_org(
+        conn, name, record.identifiers if record else None, record.website if record else None)
     return _answered(asking, "orgs", name, match, {"reasons": []}) if match.method == "trigram" else match
 
 
@@ -1084,30 +1354,38 @@ async def _promote_funder(
         report["reasons"].append("no identity finding to build a funder from")
         return
 
-    match = await resolve_funder(conn, record.name, record.cin)
+    match = await _resolved(conn, row) or await resolve_funder(conn, record.name, record.cin, record.website)
     if match.method == "trigram":
         match = _answered(asking, "funders", record.name, match, report)
         if match is None:
             return
-        if match.resolved:  # the same funder: its research spelling becomes an alias
-            record = record.model_copy(update={"aliases": [*record.aliases, record.name]})
+    if match.resolved:  # the same funder: every spelling the research used becomes an alias
+        record = record.model_copy(update={"aliases": [*record.aliases, record.name]})
     record = await _reconcile_with_stored(conn, record, match, report)
     parent_id = await _parent(conn, record, report)
     status, funder_id, _ = await write_funder(conn, record, match, parent_id=parent_id)
     report["entity"] = {
         "kind": "funder", "status": status, "id": funder_id, "name": record.name
     }
+    _settle_identity(report, findings, "identity", status, f"[funder:{funder_id}]")
     await _write_tags(conn, "funder_id", funder_id, record, record.name, report)
 
     owner = Owner.funder(funder_id)
     gate = GATE.get()
     # A plan writes nothing, and archiving moves storage objects, which no rollback undoes.
     docs = {} if gate and gate.plan else await _write_documents(conn, row, findings, owner, report)
+    if gate and gate.plan:
+        for f in findings:
+            if f["concept"] == "document":
+                _settle(report, f, {"state": "written"})
+    years = {f["fiscal_year"]: f for f in findings if f["concept"] == "csr_year"}
     for year_record in csr_years_from(row, findings):
         state, _ = await write_csr_year(
             conn, year_record, funder_id, docs.get(year_record.source_url)
         )
         report["csr_years"].append({"fiscal_year": year_record.fiscal_year, "status": state})
+        if year_record.fiscal_year in years and state in STATES:
+            _settle(report, years[year_record.fiscal_year], {"state": STATES[state]})
     programs = await _write_programs(conn, row, findings, owner, docs, report)
     findings = [*findings, *_legacy_grants(findings, report)]
     await _write_facts(conn, row, findings, owner, programs, docs, report)
@@ -1129,14 +1407,19 @@ async def _promote_org(
         )
         return
 
-    match = await resolve_org(conn, record.name, record.identifiers)
+    match = await _resolved(conn, row) or await resolve_org(
+        conn, record.name, record.identifiers, record.website)
     if match.method == "trigram":
         match = _answered(asking, "orgs", record.name, match, report)
         if match is None:
             return
     record = await _reconcile_org_aliases(conn, record, match, report)
-    status, org_id, _, conflicts = await write_org(conn, record, match)
+    parent_id = await _org_parent(conn, record, match, report)
+    status, org_id, _, conflicts = await write_org(conn, record, match, parent_id=parent_id)
     report["entity"] = {"kind": "org", "status": status, "id": org_id, "name": record.name}
+    _settle_identity(report, findings, "org_identity", status, f"[org:{org_id}]")
+    if linked := await link_partner_lines(conn, org_id):
+        report["written"].setdefault("funder_activity (partner link)", collections.Counter())["updated"] += linked
     await _write_tags(conn, "org_id", org_id, record, record.name, report)
     report["conflicts"].extend(c.describe() for c in conflicts)
 
@@ -1188,7 +1471,7 @@ async def _promote(conn: Any, row: dict[str, Any], asking: Gate | None = None) -
     findings = row["findings"] if isinstance(row["findings"], list) else []
     report: dict[str, Any] = {
         "slug": row["slug"], "entity": None, "csr_years": [],
-        "written": {}, "held": [], "conflicts": [], "skipped": {}, "reasons": [],
+        "written": {}, "held": [], "conflicts": [], "skipped": {}, "reasons": [], "facts": {},
     }
     for concept in sorted({f["concept"] for f in findings}):
         if concept not in PROMOTABLE and concept not in FOLDED:
@@ -1205,16 +1488,13 @@ async def _promote(conn: Any, row: dict[str, Any], asking: Gate | None = None) -
         return report
 
     datasets = await _staff_dataset_rows(conn, findings)
-    findings, unmarked = staff_sources.hold_unmarked(findings, {u: d["id"] for u, d in datasets.items()})
-    report["held"].extend(unmarked)
+    findings = _guarded(report, findings, staff_sources.hold_unmarked(
+        findings, {u: d["id"] for u, d in datasets.items()}))
     # A marked staff figure is still held unless its cited row prints it, in the unit it was saved in.
-    findings, mismatched = await staff_sources.hold_mismatched(findings, datasets)
-    report["held"].extend(mismatched)
+    findings = _guarded(report, findings, await staff_sources.hold_mismatched(findings, datasets))
     # A vault finding was checked against its org's files at save; here only the funder's general facts pass.
-    findings, private = vault.hold_at_promote(findings, row.get("entity_kind"))
-    report["held"].extend(private)
-    findings, mislabelled = source_guards.hold_at_promote(findings, row.get("entity_kind"))
-    report["held"].extend(mislabelled)
+    findings = _guarded(report, findings, vault.hold_at_promote(findings, row.get("entity_kind")))
+    findings = _guarded(report, findings, source_guards.hold_at_promote(findings, row.get("entity_kind")))
 
     # An NGO is not a funder, and the two kinds reach different tables through
     # different resolvers. Nothing below this line is shared but the report.
@@ -1222,6 +1502,8 @@ async def _promote(conn: Any, row: dict[str, Any], asking: Gate | None = None) -
         await _promote_org(conn, row, findings, report, asking)
     else:
         await _promote_funder(conn, row, findings, report, asking)
+    _unsettled(report, row["findings"] if isinstance(row["findings"], list) else [])
+    report.pop("_raw", None)
     # Ten findings citing the same unresolvable state is one problem, not ten.
     report["held"] = list(dict.fromkeys(report["held"]))
     report["conflicts"] = list(dict.fromkeys(report["conflicts"]))

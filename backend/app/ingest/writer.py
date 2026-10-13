@@ -13,7 +13,7 @@ from typing import Any, NamedTuple
 from psycopg import sql
 
 from app.ingest.expectations import RESERVED_DOC_TYPES
-from app.ingest.matcher import TRIGRAM_FLOOR, Match, name_key
+from app.ingest.matcher import TRIGRAM_FLOOR, Match, close_names, name_key
 from app.ingest.records import (
     FunderCsrYearRecord,
     FunderRecord,
@@ -49,6 +49,7 @@ class Owner(NamedTuple):
 FUNDER_UPDATABLE = (
     "funder_type", "website", "section_135_bound", "parent_id", "cin",
     "intake_mode", "funds_external", "typical_duration_months", "grant_size_min", "grant_size_max",
+    "legal_form", "founded_year", "registered_address",
     "source_url", "source_name", "fetched_at", "as_of", "content_hash", "extractor_version",
 )
 # All ten statutory items, not the four this used to carry. The researcher
@@ -206,14 +207,15 @@ class Gate:
         if column and key.get("funder_id") not in (None, UNWRITTEN):
             # Column names come from CLOSE_MATCH, never a caller; only values are parameterised.
             where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in agree)
-            candidate = await (
+            rows = await (
                 await conn.execute(
                     f"SELECT id, {column} AS name, similarity({column}, %s) AS score FROM {table} "
                     f"WHERE {where} AND {column} IS DISTINCT FROM %s AND similarity({column}, %s) >= %s "
-                    "ORDER BY score DESC LIMIT 1",
+                    "ORDER BY score DESC LIMIT 5",
                     (key[column], *(key[c] for c in agree), key[column], key[column], TRIGRAM_FLOOR),
                 )
-            ).fetchone()
+            ).fetchall()
+            candidate = next((r for r in rows if close_names(key[column], r["name"])), None)
         if candidate is None:
             self._item(5, table, key, outcome="planned" if self.plan else "written",
                        new={c: _plain(v) for c, v in proposed.items() if v is not None and c not in NOT_FACTS})
@@ -323,6 +325,8 @@ async def write_funder(
         "intake_mode": rec.intake_mode, "funds_external": rec.funds_external,
         "typical_duration_months": rec.typical_duration_months,
         "grant_size_min": rec.grant_size_min, "grant_size_max": rec.grant_size_max,
+        "legal_form": rec.legal_form, "founded_year": rec.founded_year,
+        "registered_address": rec.registered_address,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
         "content_hash": rec.content_hash, "extractor_version": rec.extractor_version,
@@ -367,14 +371,14 @@ async def write_funder(
         await conn.execute(
             "INSERT INTO funders (slug, name, funder_type, website, section_135_bound, parent_id, cin, "
             "aliases, intake_mode, funds_external, typical_duration_months, grant_size_min, "
-            "grant_size_max, registry_status, source_url, source_name, fetched_at, as_of, "
-            "content_hash, extractor_version) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'placeholder', "
+            "grant_size_max, legal_form, founded_year, registered_address, registry_status, source_url, "
+            "source_name, fetched_at, as_of, content_hash, extractor_version) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'placeholder', "
             "%s, %s, %s, %s, %s, %s) RETURNING id",
             (slug, rec.name, rec.funder_type, rec.website, rec.section_135_bound, parent_id, rec.cin,
              new_aliases([], rec.aliases, rec.name), rec.intake_mode, rec.funds_external,
              rec.typical_duration_months, rec.grant_size_min, rec.grant_size_max,
-             rec.source_url, rec.source_name, rec.fetched_at, rec.as_of,
+             rec.legal_form, rec.founded_year, rec.registered_address, rec.source_url, rec.source_name, rec.fetched_at, rec.as_of,
              rec.content_hash, rec.extractor_version),
         )
     ).fetchone()
@@ -475,7 +479,8 @@ FUNDER_ACTIVITY_UPDATABLE = ("domain_tag_id", "theme_tag_id", "classified_by", "
                              "name_as_printed", "implementation_mode", "partner_canonical",
                              "partner_csr1", "partner_kind", "outlay", "amount", "project_count",
                              "is_ongoing", "notes", "source_url", "source_name", "fetched_at", "as_of",
-                             "start_date", "end_date", "relationship_status", "partner_org_id")
+                             "start_date", "end_date", "relationship_status", "partner_org_id",
+                             "source_type", "evidence")
 _CLASSIFICATION = ("domain_tag_id", "theme_tag_id", "classified_by", "classification_note")
 FUNDER_LOCATION_KEY = ("funder_id", "location_id")
 FUNDER_LOCATION_UPDATABLE = ("role", "note", "source_url", "source_name", "fetched_at", "as_of")
@@ -711,6 +716,7 @@ async def write_partner(
         "relationship_status": rec.relationship_status, "notes": rec.notes,
         "source_url": rec.source_url, "source_name": rec.source_name,
         "fetched_at": rec.fetched_at, "as_of": rec.as_of,
+        "source_type": rec.source_type, "evidence": rec.evidence_tier,
     }
     where = " AND ".join(f"{c} IS NOT DISTINCT FROM %s" for c in key)
     stored = await (
@@ -719,6 +725,8 @@ async def write_partner(
     ).fetchone()
     if stored:
         proposed["notes"] = _appended(stored["notes"], rec.notes)
+        if rec.source_type and _outranks(stored["source_type"], rec.source_type):
+            proposed["source_type"] = proposed["evidence"] = None
         for c in (c for c in proposed if fill_only and c != "notes" and stored[c] is not None):
             if c in PARTNER_GUARDED and _diff({c: stored[c]}, {c: proposed[c]}):
                 _sink(conflicts, [Conflict(
@@ -1111,22 +1119,22 @@ async def _upsert_ranked(
 
 
 ORG_UPDATABLE = ("org_kind", "legal_form", "registration_date", "website", "description",
-                 "staff_count", "staff_count_note")
+                 "staff_count", "staff_count_note", "registered_address", "parent_id")
 ORG_PROVENANCE = ("source_url", "source_name", "fetched_at", "as_of",
                   "content_hash", "extractor_version")
 ORG_FINANCIALS_KEY = ("org_id", "fiscal_year")
 ORG_FINANCIALS_VALUES = ("total_income", "program_spend", "non_program_spend", "foreign_contribution",
                          "foreign_unspent", "is_audited", "notes")
 ORG_LOCATION_KEY = ("org_id", "location_id")
-ORG_LOCATION_VALUES = ("role", "note")
+ORG_LOCATION_VALUES = ("role", "note", "program_id")
 
 
 async def write_org(
-    conn: Any, rec: OrgRecord, match: Match
+    conn: Any, rec: OrgRecord, match: Match, *, parent_id: int | None = None
 ) -> tuple[str, int, dict, list[Conflict]]:
     """Returns (status, org_id, changes, conflicts). Status is added | updated | matched.
     Aliases are appended, never replaced, whatever the tier: a spelling a source used still finds the org."""
-    proposed = {c: getattr(rec, c) for c in ORG_UPDATABLE}
+    proposed = {c: getattr(rec, c, None) for c in ORG_UPDATABLE} | {"parent_id": parent_id}
     provenance = {c: getattr(rec, c) for c in ORG_PROVENANCE}
     tier = Tier.of(rec)
     if match.resolved:
@@ -1168,13 +1176,13 @@ async def write_org(
     row = await (
         await conn.execute(
             "INSERT INTO orgs (slug, name, org_kind, legal_form, registration_date, website, description, "
-            "aliases, staff_count, staff_count_note, registry_status, source_type, evidence, source_url, "
-            "source_name, fetched_at, as_of, content_hash, extractor_version) "
-            "VALUES (%s, %s, COALESCE(%s, 'cso'), %s, %s, %s, %s, %s, %s, %s, 'placeholder', %s, %s, "
+            "aliases, staff_count, staff_count_note, registered_address, parent_id, registry_status, "
+            "source_type, evidence, source_url, source_name, fetched_at, as_of, content_hash, extractor_version) "
+            "VALUES (%s, %s, COALESCE(%s, 'cso'), %s, %s, %s, %s, %s, %s, %s, %s, %s, 'placeholder', %s, %s, "
             "%s, %s, %s, %s, %s, %s) RETURNING id",
             (slug, rec.name, rec.org_kind, rec.legal_form, rec.registration_date, rec.website,
              rec.description, new_aliases([], rec.aliases, rec.name), rec.staff_count,
-             rec.staff_count_note, tier.source_type, tier.evidence, *provenance.values()),
+             rec.staff_count_note, rec.registered_address, parent_id, tier.source_type, tier.evidence, *provenance.values()),
         )
     ).fetchone()
     return "added", row["id"], {"name": {"old": None, "new": rec.name}}, []
@@ -1333,24 +1341,28 @@ async def write_org_financials(
 
 
 async def write_org_location(
-    conn: Any, rec: OrgLocationRecord, org_id: int, *, location_id: int, document_id: int | None
+    conn: Any, rec: OrgLocationRecord, org_id: int, *, location_id: int, document_id: int | None,
+    program_id: int | None = None,
 ) -> tuple[str, dict, list[Conflict]]:
     return await _upsert_ranked(
         conn, "org_locations", {"org_id": org_id, "location_id": location_id}, ORG_LOCATION_VALUES,
-        {"role": rec.role, "note": rec.note, "source_url": rec.source_url, "source_name": rec.source_name,
-         "fetched_at": rec.fetched_at, "as_of": rec.as_of},
+        {"role": rec.role, "note": rec.note, "program_id": program_id, "source_url": rec.source_url,
+         "source_name": rec.source_name, "fetched_at": rec.fetched_at, "as_of": rec.as_of},
         Tier.of(rec), document_id, row=f"[org:{org_id}] location {location_id}",
     )
 
 
-async def set_registered_location(conn: Any, org_id: int, location_id: int) -> bool:
-    """orgs.registered_location_id from the 'registered' org_location finding: fill-only and untiered,
-    unlike the ranked columns beside it."""
+async def set_registered_location(conn: Any, owner: Owner, location_id: int) -> bool:
+    """registered_location_id from a 'registered' place finding: fill-only and untiered, unlike the ranked
+    columns beside it. A planned save writes nothing."""
+    if (gate := GATE.get()) and gate.plan:
+        return False
+    table = "orgs" if owner.column == "org_id" else "funders"
     row = await (
         await conn.execute(
-            "UPDATE orgs SET registered_location_id = %s "
+            f"UPDATE {table} SET registered_location_id = %s "
             "WHERE id = %s AND registered_location_id IS NULL RETURNING id",
-            (location_id, org_id),
+            (location_id, owner.id),
         )
     ).fetchone()
     return row is not None

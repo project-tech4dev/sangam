@@ -18,14 +18,14 @@ below ends as one of two things:**
 Marks in the tables:
 - **★** — Sangam has no column yet. Save it in `unplaced` as `{field, value, evidence, source_url, page}`,
   using the field name given. It still appears in the brief. One you looked for and did not find is a gap
-  with its section's concept and the ★ name as `field`: `{concept: "identity", field: "founded", reason: "not_stated", …}`.
+  with its section's concept and the ★ name as `field`: `{concept: "identity", field: "intake_route", reason: "not_stated", …}`.
 - **⚙** — filled by code from what you save. You do not pull it.
 
 ## The brief at a glance
 
 | Section | Fields |
 |---|---|
-| 1. Identity | name, other names, type, parent and its CIN, CIN, Section 135, website, founded and legal form★, registered office★, intake posture (intake mode, funds external, duration, grant band) |
+| 1. Identity | name, other names, type, parent and its CIN, CIN, Section 135, website, founded, legal form, registered office, intake posture (intake mode, funds external, duration, grant band) |
 | 2. CSR by year | every statutory figure, impact assessment done |
 | 3. Spend lines | per FY per project: name, filed sector → Schedule VII clause⚙, domain / theme, state / district, partner and CSR-1, implementation mode, outlay, amount, project count, ongoing |
 | 4. Programme tree | theme → programme → component → phase, with its own figure per component per FY, documents |
@@ -48,9 +48,10 @@ Marks in the tables:
 | CIN | `identity.cin` | A company only; a trust has none. Never guessed. |
 | Section 135 | `identity.section_135_bound` | |
 | website | `identity.website` | |
-| founded | ★ `founded` | The year, as printed. |
-| legal form | ★ `legal_form` | As printed: "Public Charitable Trust", "Section 8 Company". |
-| registered office | ★ `registered_office` | Address, state, district. |
+| founded | `identity.founded_year` | The year, as printed. |
+| legal form | `identity.legal_form` | As printed: "Public Charitable Trust", "Section 8 Company". |
+| registered office: address | `identity.registered_address` | The street address as printed. |
+| registered office: state, district | `stated_geography` with `role` `registered` | |
 | intake mode | `identity.intake_mode` | `open`, `rolling`, `invitation_only`, `rfp_only`, `closed`, `unknown`, as it says so. "No stated route" is a real finding — never infer one from a contact-us page. |
 | intake route, and whether it is live | ★ `intake_route` | Portal URL, email address or RFP process; the date you checked, and what you saw: does the portal load, is the form years old, does the page still exist. A readable but stale form is said here, not as an access state. |
 | funds external | `identity.funds_external` | `true` for a grantmaker (gives to NGOs), `false` for an implementer (runs the work itself and solicits corporate payers), null when it does not say. Closed or informational only is `intake_mode` `closed`. A "Partner with us" page can mean any of these: quote what decided it. |
@@ -102,7 +103,7 @@ Stated focus (themes, populations, lenses) is section 11.
 
 | Field | Saved as | How |
 |---|---|---|
-| each level: theme, programme, component, phase, project | `program` with `name`, `kind`, `parent_name` | `kind` is `theme`, `programme`, `phase` or `project`; `parent_name` points one level up. A theme is the funder's own area heading ("Livelihoods"); a programme sits under it; a component is kind `programme` with its programme as parent. |
+| each level: theme, programme, component, phase, project | `program` with `name`, `kind`, `parent_name` | `kind` is `theme`, `programme`, `component`, `phase` or `project`; `parent_name` points one level up. A theme is the funder's own area heading ("Livelihoods"); a programme sits under it; a component is a part of a programme the funder reports spend on, kind `component` with its programme as parent. |
 | description, status, start / end | `description`, `status`, `start_date`, `end_date` | |
 | its own figure per component per FY | `programme_spend` with `program_name`, `fiscal_year`, `amount` | Name the exact component. Never spread across spend lines, never added to them. `classified_by = 'report'`. |
 | themes | `program.themes` with `tag_note` | From its own description, never its name. Or a gap `{concept: "program", field: "themes", reason: "not_stated"}` naming the programme and the source. |
