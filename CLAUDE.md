@@ -7,11 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 You do not need to read the code to learn how a subsystem works. Read these instead:
 
 - **`docs/ARCHITECTURE.md`**: how every subsystem works today. It covers files, flows, tools, tables, routes and settings, with one section per area.
-- **`docs/HISTORY.md`**: everything that shipped, by subsystem and PR, plus **"Not finished"**, the plans that are only partly built.
+- **`docs/CHANGELOG.md`**: everything that shipped, by subsystem and PR, plus **"Not finished"**, the plans that are only partly built.
 - **`docs/README.md`**: which deeper doc to read for which job.
 
-`.claude/rules/arch-*.md` load the matching ARCHITECTURE section on their own when you touch that part of the tree.
-A PR that changes a fact in ARCHITECTURE.md updates it, and a PR that ships adds a HISTORY line.
+Nested `CLAUDE.md` files load on their own when you work in their folder: `backend/app/agent/`, `backend/app/ingest/`,
+`backend/app/matching/`, `backend/app/core/`, `db/` and `frontend/`. Each points at its ARCHITECTURE section.
+A PR that changes a fact in ARCHITECTURE.md updates it, and a PR that ships adds a CHANGELOG line.
 
 ## Commands
 
@@ -337,7 +338,7 @@ provenance columns, the taxonomy, geography, identity, credentials, funder activ
 proposals and signals. They are purely additive — 23 tables gain columns, 14 are new, nothing is
 dropped — so a fresh database is `db/init/02_schema.sql` plus `make migrate`. `0011_`–`0047_`
 continue on top (48 files; two are numbered `0044`, both kept because the runner keys on the file
-name). Which PR added each one, and what it did, is in `docs/HISTORY.md`; the tables they leave are in
+name). Which PR added each one, and what it did, is in `docs/CHANGELOG.md`; the tables they leave are in
 `docs/ARCHITECTURE.md` §7. The design and the before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
@@ -518,13 +519,7 @@ matching, join requests) is not built.
 
 ## Deployment
 
-> **`docs/DEPLOY.md` describes a hosting setup that is not the live one — ignore it.** It
-> argues the backend cannot run on Vercel and belongs on a container host. **This table is
-> authoritative.** (The root `vercel.json`, which described the same non-deployed shape, is
-> gone; the two that remain are real config — see below.)
-
-Docker is local development only. Deployed, the stack splits across three hosts — see
-`docs/DEPLOY.md`:
+Docker is local development only. Deployed, the stack splits across three hosts:
 
 | Piece | Runs on |
 |---|---|

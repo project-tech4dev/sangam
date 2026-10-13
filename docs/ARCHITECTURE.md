@@ -3,7 +3,7 @@
 How Sangam works **today** (verified against `master` @ f7a8614, 2026-10-13). One section per subsystem:
 what it is for, its files, how a request moves through it, and the rules that must not break. Read the
 section for the area you are changing before opening its code; open the code only for what this does
-not answer. How each piece got here is `docs/HISTORY.md`.
+not answer. How each piece got here is `docs/CHANGELOG.md`.
 
 **Keeping it true:** a PR that changes a section's facts (a tool, a table, a route, a flow) edits that
 section in the same PR. A wrong line here is worse than no line, because agents trust it.
@@ -411,7 +411,6 @@ imported nowhere. `TAVILY_API_KEY` *is* used, by Import's `search_public_sources
 - **Known regression:** #178 dropped `emit_raw_events=False` from both agents (`core/lifespan.py`). Raw events stream
   again: one answer was 1.69 MB with them, 107 KB without.
 - `make smoke` checks the wiring end to end, and `make evals` runs golden questions through the real agent (this costs money).
-- `docs/DEPLOY.md` describes a container-host setup that was never used; the table above is the live one.
 
 ## 12. Knowledge graph
 
@@ -429,5 +428,5 @@ Optional. It turns on only when `NEO4J_URI` and an OpenAI key are both set.
 | `docs/SKILLS.md` | how skills are discovered and loaded, for either agent |
 | `docs/DATA_PLATFORM.md` | the v3 data model and why it is shaped this way |
 | `docs/DESIGN_SYSTEM.md` | any UI change |
-| `docs/features/*.md` | the plan behind a feature; check `HISTORY.md` → "Not finished" before trusting a plan's status |
+| `docs/features/*.md` | the plan behind a feature; check `CHANGELOG.md` → "Not finished" before trusting a plan's status |
 | `db/migrations/README.md` | writing a migration |

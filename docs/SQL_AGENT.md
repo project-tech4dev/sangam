@@ -43,7 +43,7 @@ The safety bar is set by what's actually in this database, verified live today:
   1,348 rows of serialized conversation history. One `SELECT` reaches all of it.
 - As superuser, `SELECT pg_read_file('/etc/passwd')` is a valid single-statement `SELECT`
   that succeeds even inside a `READ ONLY` transaction.
-- Per `docs/DEPLOY.md:100-113`, the deployed backend has **no authentication**.
+- When this was designed, the deployed backend had **no authentication** (Supabase auth arrived in #74/#92).
 
 So the design is not "validate the SQL." It is: validate the SQL, *and* make the database
 refuse anything the validator missed.
