@@ -725,6 +725,8 @@ async def write_partner(
     ).fetchone()
     if stored:
         proposed["notes"] = _appended(stored["notes"], rec.notes)
+        if rec.source_type and _outranks(stored["source_type"], rec.source_type):
+            proposed["source_type"] = proposed["evidence"] = None
         for c in (c for c in proposed if fill_only and c != "notes" and stored[c] is not None):
             if c in PARTNER_GUARDED and _diff({c: stored[c]}, {c: proposed[c]}):
                 _sink(conflicts, [Conflict(

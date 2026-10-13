@@ -1196,6 +1196,11 @@ async def _org_parent(conn: Any, record: OrgRecord, match: Match, report: dict[s
     parent = await resolve_org(conn, record.parent_name)
     if parent.method in MERGEABLE and parent.entity_id != match.entity_id:
         return parent.entity_id
+    if parent.method == "trigram":
+        names = ", ".join(c["name"] for c in parent.candidates)
+        report["held"].append(f"parent {record.parent_name!r} of {record.name!r} resembles {names} without "
+                              f"matching. Not linked — a person decides which, if either, it is.")
+        return None
     report["held"].append(
         f"parent {record.parent_name!r} of {record.name!r} is not an organisation Sangam holds, so the link "
         f"is not stored. Research the parent and promote it first."

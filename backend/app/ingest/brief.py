@@ -189,7 +189,7 @@ _SAME_FACT: dict[str, tuple[str, ...]] = {
     "csr_spend": ("project_name", "sector", "state", "district", "program_name", "fiscal_year"),
     "footprint": ("state", "district", "name_as_printed", "program_name", "fiscal_year"),
     "stated_geography": ("state", "district", "role"),
-    "org_location": ("state", "district", "role"),
+    "org_location": ("state", "district", "role", "program_name"),
     "metric": ("name", "period", "program_name"),
     "contact": ("name", "role"),
     "document": ("title", "source_url"),
