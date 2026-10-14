@@ -76,6 +76,7 @@ export function Sidebar({
   onPickThread,
   onNewChat,
   counts = {},
+  canScout = false,
 }: {
   collapsed: boolean;
   onToggle: () => void;
@@ -86,6 +87,7 @@ export function Sidebar({
   onPickThread: (id: string) => void;
   onNewChat: () => void;
   counts?: Partial<Record<WorkspaceView, number>>;
+  canScout?: boolean;
 }) {
   // Held here rather than in each section, so the collapsed rail can open the sidebar at one.
   const [open, setOpen] = useState<Record<SectionId, boolean>>({
@@ -123,9 +125,11 @@ export function Sidebar({
             </button>
           );
         })}
-        <button type="button" className="rail-mini rail-mini-foot" onClick={() => jump("tools")} title="Tools" aria-label="Tools">
-          <Wrench className="icon" aria-hidden />
-        </button>
+        {canScout && (
+          <button type="button" className="rail-mini rail-mini-foot" onClick={() => jump("tools")} title="Tools" aria-label="Tools">
+            <Wrench className="icon" aria-hidden />
+          </button>
+        )}
       </div>
     );
   }
@@ -190,12 +194,14 @@ export function Sidebar({
       </div>
 
       {/* Tools that change the data, kept apart from conversations at the foot of the rail.
-          Shown to everyone signed in: Scout offers each person the tasks their role allows. */}
-      <Section label="Tools" open={open.tools} onToggle={() => toggle("tools")} className="rail-foot">
-        <Link href="/import" className="rail-item">
-          Sangam Scout
-        </Link>
-      </Section>
+          Scout is for staff and stewards, so only they see it. */}
+      {canScout && (
+        <Section label="Tools" open={open.tools} onToggle={() => toggle("tools")} className="rail-foot">
+          <Link href="/import" className="rail-item">
+            Sangam Scout
+          </Link>
+        </Section>
+      )}
     </div>
   );
 }

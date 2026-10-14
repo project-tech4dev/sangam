@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 
 from app.agent.tools.sql import catalog as sql_catalog
 from app.core.config import Settings, get_settings
-from app.core.security import ask_access, chat_access
+from app.core.security import ask_access, chat_access, require_scout
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
 from app.integrations import graphiti
@@ -137,9 +137,12 @@ def _add_agent_route(app: FastAPI, path: str) -> None:
     """The AG-UI route add_langgraph_fastapi_endpoint registers, minus its need for a built agent."""
 
     # Ask Sangam's SQL runs as the caller; Import keeps the owner, since it writes the catalog.
-    access = ask_access if path == "/agent" else chat_access
+    if path == "/agent":
+        access = [Depends(ask_access)]
+    else:
+        access = [Depends(require_scout), Depends(chat_access)]
 
-    @app.post(path, dependencies=[Depends(access)])
+    @app.post(path, dependencies=access)
     async def run_agent(input_data: RunAgentInput, request: Request) -> StreamingResponse:
         agents = await load_agents(request.app)
         # Cloned per request: LangGraphAgent keeps per-run state on the instance.

@@ -521,8 +521,8 @@ settings are load-bearing in ways the Langfuse docs do not advertise:
 checks the access token against the project's JWKS and finds or creates the `users` row for it;
 no header is anonymous. With `SUPABASE_URL` empty every request is the seeded dev user, and
 `DEV_AUTH=1` accepts `Bearer dev` locally — which `make smoke` sends, so it needs that set.
-`require_user`/`require_principal` (401) gate saving, editing, Funder Match, news and chat, and a chat someone else owns is 404. Import is open
-to anyone signed in, by role: its tools run on the owner pool, so they check `chat_scope` themselves
+`require_user`/`require_principal` (401) gate saving, editing, Funder Match, news and chat, and a chat someone else owns is 404. Import (Scout) is for
+staff and stewards only (`require_scout`, on the `/ingest` agent route and every `/api/ingest` route): its tools run on the owner pool, so they check `chat_scope` themselves
 (`app/ingest/caller.py`), and its pipeline routes keep `require_staff` (403). The frontend sends the token from `lib/api/auth-headers.ts` (browser)
 and `auth-headers.server.ts` (server components). REST routes already run as the caller under RLS
 (`PoolDep` sets the role and JWT claims per transaction); agent tools, Import and the matching reader

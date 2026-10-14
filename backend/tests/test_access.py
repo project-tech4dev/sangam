@@ -42,12 +42,45 @@ async def test_saving_signed_out_is_401():
     assert response.json()["detail"] == "Sign in required"
 
 
+def memberships(monkeypatch, *roles):
+    rows = [{"org_id": i, "role": role, "org_name": f"Org {i}"} for i, role in enumerate(roles, 1)]
+
+    async def fake(pool, user_id):
+        return rows
+
+    monkeypatch.setattr(security.me_repo, "list_memberships", fake)
+
+
 @pytest.mark.parametrize(("principal", "status"), [(ANONYMOUS, 401), (MEMBER, 403)])
-async def test_import_routes_need_staff(principal, status):
+async def test_import_routes_need_staff(principal, status, monkeypatch):
+    memberships(monkeypatch, "steward")
     app = as_caller(make_app(ingest.router), principal)
     async with client(app) as c:
         response = await c.get("/api/ingest/sources")
     assert response.status_code == status
+
+
+@pytest.mark.parametrize("roles", [(), ("member",), ("admin",), ("member", "admin")],
+                         ids=["no org", "member", "admin", "member and admin"])
+async def test_scout_refuses_anyone_not_a_steward_or_staff(roles, monkeypatch):
+    memberships(monkeypatch, *roles)
+    app = as_caller(make_app(ingest.router), MEMBER)
+    async with client(app) as c:
+        response = await c.get("/api/ingest/research")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Scout is for stewards and Sangam staff"
+
+
+@pytest.mark.parametrize(("roles", "status"), [(("member",), 403), (("member", "steward"), 422)])
+async def test_the_scout_agent_route_lets_in_only_stewards_and_staff(roles, status, monkeypatch):
+    from app.core.lifespan import _add_agent_route
+
+    memberships(monkeypatch, *roles)
+    app = as_caller(make_app(), MEMBER)
+    _add_agent_route(app, "/ingest")
+    async with client(app) as c:
+        response = await c.post("/ingest", json={})
+    assert response.status_code == status  # a steward gets past the gate, to the body's own 422
 
 
 async def test_import_routes_open_to_staff():
