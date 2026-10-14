@@ -112,6 +112,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-07 · #92 · REST requests run as the caller: `CallerPool` sets role + claims per transaction; `0023`–`0027` roles, access functions, grants, RLS on every table.
 - 2026-10-07 · #97 · Settings page, `/api/me`, org member management (`0028`, `0029`).
 - 2026-10-12 · #181 · One read policy each on `users` and `org_members`, three FK indexes.
+- 2026-10-14 · Each agent route declares its access in `AGENT_ACCESS`; a route with none fails at boot instead of falling back.
 
 ## Frontend and design system
 

@@ -321,7 +321,8 @@ Import's `search_public_sources` and the news pipeline use it, so `tavily_api_ke
   transaction-scoped, because this pool is shared with the LangGraph checkpointer, which writes.
   **The app connects as the database owner, a superuser, but the chat's queries run as the
   caller.** `ask_access` (`core/security.py`) puts the caller's role and JWT claims in
-  `agent_caller` (`db/pool.py`) on every `/agent` request, and the executor `set_config`s them
+  `agent_caller` (`db/pool.py`) on every `/agent` request — declared per route in
+  `AGENT_ACCESS` (`core/lifespan.py`), so a new agent route with none fails at boot — and the executor `set_config`s them
   after `SET TRANSACTION READ ONLY`, as `CallerPool` does for REST — so RLS applies, and the server
   itself refuses the checkpoint tables and `pg_read_file`. With no caller it runs as `anon`, never
   the owner. Every catalog column must be SELECT-able by `authenticated` (`test_agent_rls.py`), or
