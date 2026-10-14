@@ -11,7 +11,7 @@ Draft v2 · 2026-10-14 · branch `feat/proposal-copilot`
 - assemble → polish → .docx with versions;
 - PATCH `work` by path with a section `rev`;
 - several proposals per org and funder;
-- stewards and staff can write.
+- anyone in the org (member or admin), its stewards and staff can start and write a proposal.
 
 What it replaces is "draft every section at once with ~20 fixed calls". **The steps are the Funder Match prototype's**
 (https://claude.ai/artifact/H1b4nv5ReQn8mvHg2HhPB5): 1 Eligibility gates → 2 Template, documents and style → 3 Proposal,
@@ -264,7 +264,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 1. **One shared chat per proposal.** The thread is created by REST with `use_case='proposal'` and `visibility='team_and_stewards'`.
    - A new `proposal_chat_access` opens it with `can_open` and never claims it.
    - So SeSTA's admin and steward share `proposal-42`, and it stays out of Ask's Recent Chats.
-2. **No saved Funder Match run means no proposal.** `POST /api/proposals` returns 409 "run Funder Match first". The gates have one source, the saved run.
+2. **No saved Funder Match run means no proposal.** `POST /api/proposals` returns 409 "run Funder Match first". The gates have one source, the saved run. An org admin can save that run themselves (`0042`'s `my_match_org_ids()` is admins and stewards); a member who meets the 409 is told to ask their admin.
 3. **Public org rows plus the Doc Vault.** `read_org_record` uses `org_facts` (public only). Private details come from the vault reader and the person's answers.
 4. **Typing in the drawer while a question is open answers it.** The text resumes the pending `ask_user` interrupt, and the agent may still pick answers to other open slots out of it.
 5. **Each section is graded inside `write_section`.** A6, A15 and F1 get one allowed rewrite when they score below 2.
@@ -286,7 +286,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 ### M1: storage, REST resource, uploads, the list on the API
 
-**Goal:** proposals live on the server; stewards and staff can write; Word and Excel uploads become readable; the browser store goes.
+**Goal:** proposals live on the server; the org's members and admins keep writing, and stewards and staff can now write too; Word and Excel uploads become readable; the browser store goes.
 
 **Files**
 - New: `db/migrations/0048_proposal_work.sql`.
@@ -329,7 +329,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - A SeSTA workplan in .docx gets `content_md`.
 - `npm run build`.
 
-**Exit gate:** SeSTA's steward starts "SeSTA: women's farm enterprises, Baksa → ABF" from the Match card, ticks both gates, and sees it on another device.
+**Exit gate:** SeSTA's admin starts "SeSTA: women's farm enterprises, Baksa → ABF" from the Match card and answers the gates; the steward opens it on another device and carries on.
 
 ### M2: agent skeleton, route, step 1 and the sources card, chat drawer
 
@@ -547,7 +547,7 @@ No new tests. These existing tests must stay green:
 
 ## 8. Acceptance criteria
 
-1. A steward or staff member starts two SeSTA → ABF proposals. Both appear in the list on any device.
+1. SeSTA's admin starts a SeSTA → ABF proposal, and a steward or staff member starts a second. Both appear in the list on any device. A plain member can start one too.
 2. A stranger gets 404 on the proposal, its messages and its thread. A member can read and write.
 3. Step 2 opens once every gate is answered and step 3 once the first draft is asked for. Reopening an earlier step keeps later work.
 4. Only ticked files are read. A read outside them is refused, even days later after the chat was summarised.
