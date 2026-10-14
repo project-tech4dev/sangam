@@ -335,6 +335,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - `curl` the create, PATCH and 409 cases.
 - A SeSTA workplan in .docx gets `content_md`.
 - `npm run build`.
+- **Tests:** `work.apply` (allowed paths only, stale `rev` → 409, every write logged); the 0048 insert and update policies for member, steward, staff and stranger (`integration`).
 
 **Exit gate:** SeSTA's admin starts "SeSTA: women's farm enterprises, Baksa → ABF" from the Match card and answers the gates; the steward opens it on another device and carries on.
 
@@ -366,7 +367,9 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - `ProposalBrief`: `context.stable(work)` appended to the system message with a `cache_control` breakpoint (the `MemoryMiddleware(add_cache_control=True)` pattern).
   - `ProposalNote`: `context.live(...)` added as the last message of each model call through `request.override(messages=...)`, not returned as a state update. It sets `work.agent_seen` at the end of each run.
   - `CallerNote`, `cheap_summarizer`, `clear_old_tool_results` and `fallback`, as in Import.
-- **Interrupts:** none yet; `ask_user` arrives in M3.
+- **One run at a time:** `work.run = {id, by, started_at, last_step_at}` is set when a turn starts and cleared when it ends. A second person starting a turn sees "Sangam is already working, started by Ravi 3 min ago". A run with no step for 30 minutes counts as stopped.
+- **Browser closed mid-turn:** the plan does not rely on the run carrying on after the stream drops (to be checked in this milestone). Whatever was saved stays; on reopening, the live block says what is done and the drawer offers "Continue".
+- **Interrupts:** none yet; `ask_user` arrives in M3a.
 - **Frontend:**
   - `route.ts` registers `sangam_proposal`;
   - `ProposalShell` becomes the three-step stepper, with "How this works" shown once before step 1;
@@ -381,16 +384,17 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - No checkpointed message contains the live block.
 - With the problem part open, "make this stronger" works on that part without being told which. After a teammate edits the budget, the next reply mentions it unprompted.
 - One answer's SSE payload is about 100 KB, not about 1.7 MB.
+- **Tests:** `steps.exit_check` gives the same list for the same `work`; `context.stable/live` are deterministic and the stable block carries no private fact; a member's run gets 403 and a stranger 404; every write tool refuses when `can_edit` is false; a second run while `work.run` is set is refused.
 
 **Exit gate:** step 1 → 2 happens only after every gate is answered. The sources answer survives a forced summary.
 
-### M3: facts, asking, the readers, step 2
+### M3a: facts and asking
 
-**Goal:** what ABF wants and what SeSTA has become facts in the list, and questions are asked by rule.
+**Goal:** facts from SeSTA's record and the person's answers fill the list, and questions are asked by rule. No reader yet, so this is testable end to end on its own.
 
 **Files**
-- New: `backend/app/proposals/{facts,reliability,questions,records}.py`, `tools/{ledger_tools,reading_tools}.py`, `prompts/{funder_file_reader,evidence_reader}.md`.
-- New frontend: `QuestionCard.tsx`, `FactList.tsx` (each fact: Yes, it's right · No, change it · Don't use it), and "What ABF looks for" on F1.
+- New: `backend/app/proposals/{facts,reliability,questions,records}.py`, `tools/ledger_tools.py`.
+- New frontend: `QuestionCard.tsx`, `FactList.tsx` (each fact: Yes, it's right · No, change it · Don't use it).
 
 **Changes**
 - **`add_facts`** verifies each fact by its origin:
@@ -400,25 +404,14 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - you_said: the quote must appear in one of this thread's human messages;
   - derived: it cites `from=[k…]` and stays amber.
   - Tier and colour are set by `reliability.py`.
-- **`read_brief(entity)`** resolves `entity_research.resolved_funder_id` / `resolved_org_id` before the catalog slug, and returns `brief.record()` facts.
-- **`read_template()`** (decision 6).
-- **`funder-file-reader`** (`RESEARCH_MODEL`, isolated):
-  - tools: `read_brief`, `read_document_pages` (only documents linked to this funder), `read_template`, `add_facts`;
-  - middleware: `filesystem(backend)`, `ProposalSources`, `fallback`;
-  - no web tool and no Doc Vault tool;
-  - returns `FunderWants`: priorities, places, eligibility, terminology, past grants, form sections, limits. What it does not find it says, so the form upload opens in step 2.
-- **`evidence-reader`** (`RESEARCH_MODEL`, isolated):
-  - tools: `list_vault_documents`, `read_vault_document`, `read_brief`, `add_facts`;
-  - middleware: `filesystem(backend, evict=False)`, `RunSources()`, `DropFilesOnExit()`, `fallback`;
-  - one per ticked file, up to `MAX_PARALLEL_RESEARCH` at once;
-  - no web tools, and nothing written to `vault_research`.
+  - **Idempotent:** a fact with the same origin, source (marker or `document_id` + page), subject and value returns the existing id, so a retried turn adds no duplicates.
+- **Where web facts come from.** No proposal reader searches the web. `origin=web` facts arrive through `read_brief`: Import's briefs hold findings researched from public pages, with http links. *Example:* "sesta.org: 120 villages" comes from SeSTA's brief and shows amber.
 - **`ask_user`** is an interrupt whose `reason` is one of the six below.
   - `AskGate` (the `ChosenSources` pattern) refuses unless `questions.warranted(...)` holds, no other question is open, and the section is the current one.
   - The resume value is `{kind: "pick", choice}` from a card button, or `{kind: "text", text}` from the chat box. `questions.classify(text)` (one `UTILITY_MODEL` call) returns answer, question back or skip, and `ask_user` returns accordingly (decision 4).
   - Only an answer becomes a you_said fact. A question back leaves `work.questions.open` unchanged; a skip sets it to `parked`, and `AskGate` lets a parked question be asked again only for the part on screen or at "Before you send it".
   - Before a parked question is asked again, `questions.warranted(...)` runs again; if a fact now fills the gap, the question closes without being asked. If the fact that answered a question is later corrected or rejected, the gap returns and the question can be asked again.
   - *Example:* "Do you have a baseline survey?" is parked; the person then ticks the March 2026 survey, its reader adds the figure, and the question is never shown again.
-- **A changed file:** when a ticked file's content hash no longer matches its facts' `content_hash` (checked when the proposal opens and when step 2's ticks change), those facts go back to `proposed` and the sections using them are flagged, through the same buttons and path as a correction. Nothing new on screen.
 
 | Reason to ask | Code check | SeSTA → ABF example |
 |---|---|---|
@@ -431,13 +424,43 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 - **Question shape:** found → missing → why the funder cares → suggestion.
   - *Example:* "Found 412 SHGs [k12] in your 2024-25 report p.14. Missing: an outcome for the last 12 months. ABF scores A6 on outcomes, not counts. Suggestion: the March 2026 household survey, if you have it."
+- **Tests:** `reliability`, `questions.warranted` (each reason and the unwarranted case), `add_facts` verification and idempotency.
+
+**Validation:** with only SeSTA's record, the agent adds registry facts, asks one warranted question, and an `ask_user` with no warrant is refused. A typed question back is answered and the card stays.
+
+**Exit gate:** registry and you_said facts show in words with their buttons; one question at a time, by rule.
+
+### M3b: the readers and step 2
+
+**Goal:** what ABF wants and what SeSTA's ticked files say become facts, read in parallel, and a failed or repeated read loses nothing.
+
+**Files**
+- New: `tools/reading_tools.py`, `prompts/{funder_file_reader,evidence_reader}.md`.
+- New frontend: step 2 (form, documents, style), the readers' progress, and "What ABF looks for" on F1.
+
+**Changes**
+- **`read_brief(entity)`** resolves `entity_research.resolved_funder_id` / `resolved_org_id` before the catalog slug, and returns `brief.record()` facts.
+- **`read_template()`** (decision 6).
+- **`funder-file-reader`** (`RESEARCH_MODEL`, isolated):
+  - tools: `read_brief`, `read_document_pages` (only documents linked to this funder), `read_template`, `add_facts`;
+  - middleware: `filesystem(backend)`, `ProposalSources`, `fallback`;
+  - no web tool and no Doc Vault tool;
+  - returns `FunderWants`: priorities, places, eligibility, terminology, past grants, form sections, limits. What it does not find it says, so the form upload opens in step 2.
+- **`evidence-reader`** (`RESEARCH_MODEL`, isolated):
+  - tools: `list_vault_documents`, `read_vault_document`, `read_brief`, `add_facts`;
+  - middleware: `filesystem(backend, evict=False)`, `RunSources()`, `DropFilesOnExit()`, `fallback`;
+  - one per ticked file, up to `MAX_PARALLEL_RESEARCH` at once;
+  - no web tools, and nothing written to `vault_research`.
+- **Reader status in `work.readers`:** `{document_id: running | done | failed, error, at}`. A file whose reader fails shows one line, "Couldn't read Workplan 2025.docx. Try again", which re-runs that file only; drafting goes on with gaps where it would have helped. A re-read replaces that file's `proposed` facts and never a confirmed one.
+- **A changed file:** when a ticked file's content hash no longer matches its facts' `content_hash` (checked when the proposal opens and when step 2's ticks change), those facts go back to `proposed` and the sections using them are flagged, through the same buttons and path as a correction. Nothing new on screen.
 - **Exit checks in `steps.py`:**
   - step 1: every gate answered;
   - step 2: form set or skipped, style set, "Write the first draft" pressed.
+- **Tests:** `ProposalSources` refuses an unticked file; each reader's compiled graph carries only its declared tools and no web tool; re-reading a file keeps confirmed facts.
 
-**Validation:** SeSTA → ABF on local with a seeded ABF brief and two Doc Vault PDFs. The funder-file reader's trace has no web call and no SeSTA Doc Vault text, and an `ask_user` with no warrant is refused.
+**Validation:** SeSTA → ABF on local with a seeded ABF brief and two Doc Vault PDFs. The funder-file reader's trace has no web call and no SeSTA Doc Vault text. One reader forced to fail leaves the other's facts and offers "Try again".
 
-**Exit gate:** ABF's priorities are facts, the readers ran in parallel, and every fact shows its source in words.
+**Exit gate:** ABF's priorities are facts, the readers ran in parallel, and one failed file can be retried alone.
 
 ### M4: writing section by section
 
@@ -463,6 +486,8 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
 - **Order:** `StageGate` allows `write_section` only for the next section in `DEPENDS_ON` order, or one the person picked.
 
 - **A stopped turn:** each section saves on its own, so a timeout or failed run loses only the section in progress. The drawer then shows one line, "Sangam stopped after The Idea. Continue?", and the next turn picks up from `work`.
+
+- **Tests:** `trace` matches numbers, lakh and crore, places and names, and ignores FY and Schedule VII patterns.
 
 **Validation:** SeSTA's A3 is refused once for an untraced "62%", then saved. A1 is written last.
 
@@ -494,6 +519,8 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
   - no open conflict.
 - **"Before you send it" has two lists.** *Fix first* (these stop "Ready"): a gate answered No, a used fact not confirmed, an open conflict, a core section at 0. *Worth checking* (shown, never blocking): a score of 1, a gate promised "before sending", a parked question, an `[Add: …]` gap. Download always works and the Word file highlights what is left.
 
+- **Tests:** `review.correct` replaces in place, flags for rewrite and follows derived facts (1,240 → 1,180 turns 471 into 448); readiness puts each case in *Fix first* or *Worth checking*.
+
 **Exit gate:** "Before you send it" lists what is left, including any gate answered "We'll have it before sending".
 
 ### M6: finish
@@ -515,6 +542,8 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
   - `work.versions[]` gets `{n, document_id, at, by, facts_snapshot}`.
 
 - **Staff numbers, no screen:** a saved query (`make psql`) over `proposals.work` and `summary`: days in each step, refusals by reason, corrections by origin, parked questions, proposals idle 14+ days. NGOs see nothing.
+
+- **Tests:** the code part of the polish check refuses any number, place or name that changed.
 
 **Validation:** a polish that turns "₹4.2 crore" into "₹42 lakh" is refused. v2 keeps v1. A steward can save a version.
 
@@ -540,20 +569,34 @@ stack (`make up`, `make seed`, `make match ORG=sesta`), driven through Claude in
 |---|---|
 | M1 | Start from the Match card as admin → answer the gates → reopen on a second browser profile as steward; a member sees "View proposal" and no buttons |
 | M2 | Stepper and "How this works"; step 1 → 2 only once every gate is answered; admin and steward see one shared chat; a member's chat has no box |
-| M3 | Step 2: link, upload or skip the form; tick files; "Write the first draft" → the readers' progress; facts show sources in words with Yes / No / Don't use it; one question card; a typed question back is answered and the card stays |
+| M3a | Facts from SeSTA's record show sources in words with Yes / No / Don't use it; one question card; a typed question back is answered and the card stays; "later" parks it |
+| M3b | Step 2: link, upload or skip the form; tick files; "Write the first draft" → the readers' progress; one file forced to fail shows "Try again" and the rest carry on |
 | M4 | Each tab's parts draft with marked gaps; a part's score moves from 1 to 2 after an answer; hints tick off |
 | M5 | Correct a fact and watch every part that used it update or get flagged; "Before you send it" lists the open CSR-1 gate |
 | M6 | Smooth the language; the check passes or names the change; download the Word file and open it; version 1 is listed |
 
 ## 6. Test plan
 
-No new tests. These existing tests must stay green:
+**New tests, for the code-only safeguards only.** An exception to the usual "no new tests in a PR", because these checks are what keep the agent safe and a browser run cannot prove them. Each milestone's **Tests** line lists its own; all but the RLS test run with no database.
+
+| Safeguard | Milestone |
+|---|---|
+| `work.apply`: allowed paths, stale `rev` → 409, log | M1 |
+| 0048 RLS: member, steward, staff, stranger (`integration`) | M1 |
+| `steps.exit_check`, `context.stable/live`, access (403/404, `can_edit`), one run at a time | M2 |
+| `reliability`, `questions.warranted`, `add_facts` verification and idempotency | M3a |
+| `ProposalSources`; readers carry only their declared tools and no web tool; a re-read keeps confirmed facts | M3b |
+| `trace` | M4 |
+| `review.correct`, readiness lists | M5 |
+| polish check (code part) | M6 |
+
+No tests for model output, and no evals. These existing tests must stay green:
 
 | Test | Why it matters here |
 |---|---|
 | `tests/test_ingest.py::test_every_tool_defined_is_also_registered` | Green only if the Import tools are imported, not redefined |
 | `tests/test_ingest.py` prompt/instructions tests | Import only; confirm unchanged |
-| `tests/test_harness.py` | Builds Ask and Import only; check by hand that the proposal subagents carry only `read_file` |
+| `tests/test_harness.py` | Builds Ask and Import only; the proposal readers' own tool test is in M3b |
 | `tests/test_import_threads.py::test_thread_listing_sql_is_fixed_per_kind` | Proposal threads are `use_case='proposal'`, so the listing is unchanged |
 | `tests/test_vault.py` | The upload fake ignores `write`; confirm |
 | `tests/test_rls.py::test_a_proposal_reaches_only_the_org_and_staff` | The read policy is unchanged after 0048 |
@@ -567,6 +610,20 @@ No new tests. These existing tests must stay green:
   - Phone width.
   - `npm run lint && npm run build` and `ruff check .`.
 - **No evals.** One SeSTA → ABF run on local, with its cost recorded in Langfuse (`sangam_proposal`).
+
+**Latency and cost budgets.** Set before building; checked on the first SeSTA → ABF run and the first three real proposals. A budget broken there gets a cap (for example a page limit per reader), not a new number.
+
+| What | Budget |
+|---|---|
+| REST read / save (bom1) | p95 under 300 ms / under 500 ms |
+| Agents built on first use | under 1 s |
+| First word of a chat reply | under 5 s |
+| Answer → next question card | under 30 s |
+| Readers, 5 files in parallel | under 5 min |
+| Drafting one tab / the whole first draft | under 4 min / under 20 min |
+| Polish / Word file | under 60 s / under 10 s |
+| Cached share of the supervisor's input tokens | at least 70% |
+| Cost to the first draft | target set from the first run; estimate under $5 |
 
 ## 7. Risks and edge cases
 
@@ -583,6 +640,8 @@ No new tests. These existing tests must stay green:
 | Saved .docx in Scout's Doc Vault list | "v1.docx" shows up for Scout's vault-reader. Documented, not fixed |
 | Screen context is client input | A tampered context names another proposal's part. It sets focus only: `context.current()` binds the proposal by thread, and unknown part codes are dropped |
 | Long turns | Several sections in one turn approach 1800 s. One section per turn unless the person asks |
+| A reader fails or a turn is retried | 4 of 5 readers finish: their facts are saved, the fifth shows "Try again" for that file alone. A retried turn adds no duplicate facts (`add_facts` is idempotent) and a stale section save gets 409 |
+| Two people start Sangam at once | `work.run` refuses the second: "Sangam is already working, started by Ravi 3 min ago" |
 
 ## 8. Acceptance criteria
 
@@ -598,7 +657,7 @@ No new tests. These existing tests must stay green:
 9. Correcting a fact updates or flags every section that used it. Ready requires every used fact to be confirmed or corrected.
 10. A polish that changes any number, place or name is refused.
 11. Each version is a .docx in the Doc Vault with a facts snapshot, and earlier versions stay.
-12. Doc Vault facts never appear in a brief, in `entity_research` or `vault_research`, or in the funder-file reader's context. No reader makes a web call.
+12. Doc Vault facts never appear in a brief, in `entity_research` or `vault_research`, or in the funder-file reader's context. No reader makes a web call; web facts come only from Import's briefs.
 13. Ask and Scout are unchanged: an Ask question and a Scout import still run in the browser, and Recent Chats is unchanged.
 14. No storage code or marker appears on screen; every source is in words.
 15. A gate answered "We'll have it before sending" shows as open on "Before you send it" until it is done.
@@ -627,8 +686,9 @@ No new tests. These existing tests must stay green:
 
 - [ ] M1: 0048, the REST resource, uploads, the list on the API. Exit: shared across devices.
 - [ ] M2: `/proposal`, shared chat access, agent skeleton, sources kept in `work`, drawer. Exit: admin and steward share a thread.
-- [ ] M3: facts, reliability, `ask_user` with AskGate, the readers, step 2. Exit: readers ran in parallel; facts in words.
+- [ ] M3a: facts, reliability, `ask_user` with AskGate and reply sorting. Exit: facts in words; one question at a time, by rule.
+- [ ] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
 - [ ] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
 - [ ] M5: review, propagation, conflicts, ready. Exit: Ready or the exact list.
 - [ ] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
-- [ ] Each PR: a passing browser run (above) before the next milestone starts, `make wiki-update`, a CHANGELOG line, ARCHITECTURE and CLAUDE.md where rules change, a design-system sync, `npm run build`, `ruff check .`, `pytest`, and `pytest -m integration`.
+- [ ] Each PR: a passing browser run (above) before the next milestone starts, `make wiki-update`, a CHANGELOG line, ARCHITECTURE and CLAUDE.md where rules change, a design-system sync, that milestone's safeguard tests, `npm run build`, `ruff check .`, `pytest`, and `pytest -m integration`.
