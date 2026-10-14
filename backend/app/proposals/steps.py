@@ -6,6 +6,9 @@ from typing import Any
 
 from app.proposals import readiness
 
+# The screen's names for work.stage, as frontend/features/ask/views/proposals/steps.ts writes them.
+STAGES = {1: "Can you apply?", 2: "Your documents and style", 3: "Write the proposal", 4: "Before you send it"}
+
 
 def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
     """What is missing before `stage` can be left; empty means it can."""

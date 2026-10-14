@@ -4,6 +4,7 @@ stewards, staff). Every change to `work` goes through `save`, which locks the ro
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -80,21 +81,12 @@ async def me(pool: Any) -> dict:
 
 async def create(pool: Any, *, org_id: int, funder_id: int, title: str, work: dict, summary: dict,
                  created_by: Any) -> int:
-    """The proposal and its shared chat thread, in one transaction."""
     async with pool.connection() as conn:
-        pid = (await (await conn.execute(
+        return (await (await conn.execute(
             """INSERT INTO proposals (org_id, funder_id, title, work, summary, created_by)
                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
             (org_id, funder_id, title, Jsonb(work), Jsonb(summary), created_by),
         )).fetchone())["id"]
-        thread_id = f"proposal-{pid}"
-        await conn.execute(
-            """INSERT INTO threads (thread_id, user_id, title, use_case, org_id, visibility, updated_by)
-               VALUES (%s, %s, %s, 'proposal', %s, 'team_and_stewards', %s)""",
-            (thread_id, created_by, title, org_id, created_by),
-        )
-        await conn.execute("UPDATE proposals SET thread_id = %s WHERE id = %s", (thread_id, pid))
-    return pid
 
 
 async def save(pool: Any, proposal_id: int, change: Callable[[dict, str], Applied]) -> Applied | None:
@@ -112,3 +104,44 @@ async def save(pool: Any, proposal_id: int, change: Callable[[dict, str], Applie
             (Jsonb(applied.work), Jsonb(applied.summary), applied.title, proposal_id),
         )
     return applied
+
+
+# The agent's side, on the owner pool: chat access and require_edit decide who gets here, not RLS.
+_CHAT = re.compile(r"^proposal-(\d+)-([0-9a-f-]{36})$")
+
+
+def chat_thread(proposal_id: int, user_id: Any) -> str:
+    """Each person's own chat about a proposal; teammates never share one."""
+    return f"proposal-{proposal_id}-{user_id}"
+
+
+def parse_chat_thread(thread_id: str) -> tuple[int, str] | None:
+    m = _CHAT.match(thread_id or "")
+    return (int(m.group(1)), m.group(2)) if m else None
+
+
+async def org_of(pool: Any, proposal_id: int) -> int | None:
+    async with pool.connection() as conn:
+        row = await (await conn.execute("SELECT org_id FROM proposals WHERE id = %s", (proposal_id,))).fetchone()
+    return row["org_id"] if row else None
+
+
+async def load(pool: Any, proposal_id: int) -> dict | None:
+    """The proposal with its org's and funder's names, for the agent's context."""
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            """SELECT p.id, p.title, p.org_id, p.funder_id, p.thread_id, p.work,
+                      o.name AS org_name, f.name AS funder_name
+               FROM proposals p JOIN orgs o ON o.id = p.org_id JOIN funders f ON f.id = p.funder_id
+               WHERE p.id = %s""",
+            (proposal_id,),
+        )).fetchone()
+
+
+async def user_name(pool: Any, user_id: Any) -> dict:
+    async with pool.connection() as conn:
+        row = await (await conn.execute(
+            "SELECT id, coalesce(display_name, split_part(email, '@', 1)) AS name FROM users WHERE id = %s",
+            (user_id,),
+        )).fetchone()
+    return {"id": str(row["id"]), "name": row["name"]} if row else {"id": None, "name": "Someone"}

@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.api.routes.threads import saved_messages
 from app.core.security import CurrentUser, require_principal
-from app.db.pool import PoolDep
+from app.db.pool import OwnerPoolDep, PoolDep
 from app.proposals import gates, readiness, rubric, steps
 from app.proposals import work as work_rules
 from app.repositories import funder_matches
 from app.repositories import proposals as repo
+from app.repositories import threads as threads_repo
 from app.schemas.proposals import (
     ProposalCreatedOut,
     ProposalCreateIn,
@@ -19,6 +21,7 @@ from app.schemas.proposals import (
     TitleIn,
     WorkPatchIn,
 )
+from app.schemas.threads import ThreadMessagesOut
 
 router = APIRouter(prefix="/proposals", tags=["proposals"])
 Principal = Annotated[CurrentUser, Depends(require_principal)]
@@ -126,7 +129,10 @@ async def get_proposal(proposal_id: int, pool: PoolDep, principal: Principal) ->
     work = row["work"]
     sections = rubric.sections_for(bool(work.get("earlier_phase")), work.get("template"))
     tabs = [{"key": k, "label": label, "question": q} for k, label, q in rubric.TABS]
-    return ProposalOut.model_validate({**row, "sections": [s.out() for s in sections], "tabs": tabs})
+    # Recomputed, so a proposal saved before a summary field existed still shows it.
+    return ProposalOut.model_validate({**row, "thread_id": repo.chat_thread(proposal_id, principal.id),
+                                       "summary": readiness.summary(work),
+                                       "sections": [s.out() for s in sections], "tabs": tabs})
 
 
 @router.patch("/{proposal_id}", response_model=SavedOut, summary="Rename a proposal")
@@ -142,3 +148,13 @@ async def patch_work(proposal_id: int, body: WorkPatchIn, pool: PoolDep, princip
 @router.post("/{proposal_id}/advance", response_model=SavedOut, summary="Move to the next step, if nothing is missing")
 async def advance(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
     return await _save(pool, proposal_id, advancing=True)
+
+
+@router.get("/{proposal_id}/messages", response_model=ThreadMessagesOut, summary="Your own chat about this proposal")
+async def messages(proposal_id: int, request: Request, pool: PoolDep, owner_pool: OwnerPoolDep,
+                   principal: Principal) -> ThreadMessagesOut:
+    await _readable(pool, proposal_id)
+    thread_id = repo.chat_thread(proposal_id, principal.id)
+    if not await threads_repo.can_open(owner_pool, thread_id=thread_id, user_id=principal.id):
+        return ThreadMessagesOut(thread_id=thread_id, messages=[])  # no question asked yet
+    return await saved_messages(request, owner_pool, principal.id, thread_id, graph_name="proposal_graph")

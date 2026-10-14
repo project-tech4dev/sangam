@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 
 from app.agent.tools.sql import catalog as sql_catalog
 from app.core.config import Settings, get_settings
-from app.core.security import ask_access, chat_access, require_scout
+from app.core.security import ask_access, chat_access, proposal_chat_access, require_scout
 from app.db import pool as db_pool
 from app.db.checkpointer import make_pool, open_checkpointer
 from app.integrations import graphiti
@@ -31,10 +31,16 @@ INGEST_DESCRIPTION = (
     "Imports funder data from permitted external sources into the catalog, "
     "matches it against what is already there, and reports what it could not process."
 )
-AGENT_NAMES = {"/agent": "sangam_agent", "/ingest": "sangam_ingest"}
+PROPOSAL_DESCRIPTION = "Works on one grant proposal with the NGO's team, step by step, inside rules the code checks."
+AGENT_NAMES = {"/agent": "sangam_agent", "/ingest": "sangam_ingest", "/proposal": "sangam_proposal"}
 # Who may post to each agent, and as whom its tools read. Ask Sangam's SQL runs as the caller; Import keeps
-# the owner, since it writes the catalog. A path missing here fails at boot rather than fall back to another.
-AGENT_ACCESS = {"/agent": (ask_access,), "/ingest": (require_scout, chat_access)}
+# the owner, since it writes the catalog. A proposal chat is one person's, like an Ask chat.
+# A path missing here fails at boot rather than fall back to another.
+AGENT_ACCESS = {
+    "/agent": (ask_access,),
+    "/ingest": (require_scout, chat_access),
+    "/proposal": (proposal_chat_access,),
+}
 
 
 def _flush_telemetry() -> None:
@@ -67,12 +73,14 @@ def _build_agents(settings: Settings, checkpointer: Any) -> dict[str, Any]:
         langsmith_status,
         masking_enabled,
     )
+    from app.proposals.agent import build_proposal_agent
 
     # Before build_agent: building the client is what registers the
     # mask, and a handler created first would bind to an unmasked one.
     tracing_live = configure_langfuse(settings)
     ask_graph = build_agent(settings, checkpointer)
     ingest_graph = build_ingest_agent(settings, checkpointer)
+    proposal_graph = build_proposal_agent(settings, checkpointer)
     # Not redundant with the graph's own with_config. AG-UI builds each
     # request's config from THIS one, and a config passed at invocation beats
     # the one bound to the graph — see the comment on the test in tests/test_tracing.py.
@@ -98,6 +106,7 @@ def _build_agents(settings: Settings, checkpointer: Any) -> dict[str, Any]:
     return {
         "ask_graph": ask_graph,
         "ingest_graph": ingest_graph,
+        "proposal_graph": proposal_graph,
         "/agent": SessionScopedAGUIAgent(
             name=AGENT_NAMES["/agent"], description=AGENT_DESCRIPTION, graph=ask_graph, config=config,
         ),
@@ -109,11 +118,16 @@ def _build_agents(settings: Settings, checkpointer: Any) -> dict[str, Any]:
             # Each researcher's steps arrive tagged with its run, so the board can tell them apart.
             emit_subagent_events=True,
         ),
+        # No raw events: the drawer reads messages only, and they were most of an answer's SSE bytes.
+        "/proposal": SessionScopedAGUIAgent(
+            name=AGENT_NAMES["/proposal"], description=PROPOSAL_DESCRIPTION, graph=proposal_graph, config=config,
+            emit_raw_events=False,
+        ),
     }
 
 
 async def load_agents(app: FastAPI) -> dict[str, Any] | None:
-    """Both agents, built once on the first request that needs one. None outside a lifespan."""
+    """Every agent, built once on the first request that needs one. None outside a lifespan."""
     state = app.state
     if getattr(state, "agents", None) is None:
         if getattr(state, "checkpointer", None) is None:
@@ -128,7 +142,7 @@ async def load_agents(app: FastAPI) -> dict[str, Any] | None:
 
 
 async def get_graph(app: FastAPI, name: str) -> Any | None:
-    """The compiled `ask_graph` or `ingest_graph`, building the agents if no request has yet."""
+    """A compiled graph by name (`ask_graph`, `ingest_graph`, `proposal_graph`), building the agents if needed."""
     graph = getattr(app.state, name, None)
     if graph is None:
         agents = await load_agents(app)

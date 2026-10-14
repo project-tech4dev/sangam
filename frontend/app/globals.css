@@ -1491,3 +1491,14 @@ body:has(.import-shell) > footer { display: none; }
     min-height: 100vh;
   }
 }
+
+/* A proposal: the step on the left, Sangam's side panel on the right; the panel drops below on a phone. */
+.pr-wrap { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.pr-main { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.pr-side { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.pr-side-card { display: flex; flex-direction: column; gap: 10px; }
+.pr-chat-note { margin: 0; font-size: var(--fs-sm); }
+.pr-chat-turns { gap: 16px; }
+.pr-chat-composer { display: flex; flex-direction: column; gap: 8px; }
+.pr-chat-input { min-height: 72px; resize: vertical; font-family: var(--font-body); }
+.pr-promises { margin: 0; padding-left: 18px; font-size: var(--fs-sm); display: flex; flex-direction: column; gap: 6px; }

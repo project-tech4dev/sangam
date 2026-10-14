@@ -19,6 +19,8 @@ def _plural(n: int, one: str, many: str) -> str:
 
 
 def summary(work: dict[str, Any]) -> dict[str, Any]:
+    from app.proposals import steps  # steps reads ANSWERS from here
+
     requirements = work.get("requirements") or []
     gates = work.get("gates") or {}
     sections = work.get("sections") or {}
@@ -85,4 +87,5 @@ def summary(work: dict[str, Any]) -> dict[str, Any]:
         "fix_first": fix_first,
         "worth_checking": worth_checking,
         "ready": not fix_first,
+        "to_continue": steps.exit_check(work.get("stage", 1), work),
     }
