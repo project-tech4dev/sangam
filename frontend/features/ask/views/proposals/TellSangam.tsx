@@ -3,12 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAgentContext } from "@copilotkit/react-core/v2";
 import { useAgentChat } from "@/lib/useAgentChat";
-import { AnswerCard } from "../../components/AnswerCard";
+import { AnswerCard, type SourceWords } from "../../components/AnswerCard";
 import { TraceCard } from "../../components/TraceCard";
 import { fetchProposalMessages, type Proposal } from "./api";
 
 // The backend's ProposalContext looks this description up (app/proposals/context.py SCREEN).
 const SCREEN = "What the person is looking at";
+
+// Sources in words: this screen shows no codes.
+const WORDS: SourceWords = {
+  org: "Organisation's record",
+  funder: "Funder's record",
+  activity: "Past grant",
+  grant: "Past grant",
+  score: "Funder Match",
+  news: "News",
+  graph: "Sangam's links",
+};
 
 export type Screen = { step: string; tab?: string; part?: string; selection?: string };
 
@@ -64,7 +75,7 @@ export function TellSangam({ proposal, screen, onTurnEnd }: { proposal: Proposal
                 <div className="chat-question-text">{turn.question}</div>
               </div>
               <TraceCard steps={turn.steps} streaming={turn.streaming && !turn.answer} />
-              {turn.answer && <AnswerCard answer={turn.answer} index={null} />}
+              {turn.answer && <AnswerCard answer={turn.answer} index={null} words={WORDS} />}
             </div>
           ))}
         </div>
