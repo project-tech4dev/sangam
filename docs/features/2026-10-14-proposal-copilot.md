@@ -202,6 +202,31 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 - Corroboration raises a fact one colour. Ties use brief's `_strength` order.
 - *Example:* sesta.org's "120 villages" is amber. If the 2024-25 annual report says 120 on p.14, the fact becomes green.
 
+**The context layer: the agent is told where it is on every model call, and never has to remember.**
+`app/proposals/context.py::build(work, screen, since)` is pure code. A `ProposalNote` middleware (the `CallerNote`
+pattern, `ingest/middleware.py`) appends its output to the system message before each model call. No model call is needed to build it, and it is about 15 lines.
+
+| Layer | What it says | Comes from | Trusted for |
+|---|---|---|---|
+| Where the proposal is | step, tab, parts finished, scores, open gates, ticked files, readers done | `work` and `summary`, read fresh each call | everything |
+| What the person is looking at | step, tab and part open on screen; text they have selected | the screen, through `useAgentContext` (as Scout sends its ticks) | focus only, never permission. A part code the server doesn't know is dropped |
+| What changed since the agent last spoke | edits by the person or a teammate, facts confirmed or corrected, files added | `work.log[]`, appended by `work.apply()` with who, what and when; the note shows entries after `work.agent_seen` | everything |
+| What is waiting | the open question; facts not yet confirmed; parts flagged to rewrite | `work` | everything |
+| What it may do next | the tools this step allows, and the next part in order | `steps.py` and `DEPENDS_ON` | everything; the tools check again |
+
+*Example*, SeSTA's steward opens the problem part after a colleague edited the budget yesterday:
+
+```
+Proposal: SeSTA → Axis Bank Foundation · step 3 · 4 of 19 parts finished
+On screen: The Idea › The problem, with figures (score 1 of 2) · selected: "38% of the 1,240 households"
+Since you last spoke: Ravi changed the budget total to ₹2.4 crore (yesterday 16:10); fact k5 marked "Don't use it"
+Waiting: no open question · 3 facts not confirmed · "What will change" flagged to rewrite (uses the old total)
+Gates: CSR-1 "will have it before sending", still open
+Next allowed: ask one question about this part, or rewrite "What will change"
+```
+
+The details (fact values, section text) stay behind `read_proposal()`, so the note stays short however big `work` grows.
+
 **What it is tracking lives in the proposal row, not the conversation.** Sources chosen, the open question and confirmed priorities are kept in `work`, because a proposal chat spans days and `cheap_summarizer` drops old tool messages.
 
 **Review and "Before you send it" are mostly code.** Correction propagation, the equal-tier contradiction check, readiness, the polish check and the .docx are deterministic. Polish is one `Settings.model` call made by a REST route.
@@ -233,6 +258,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 14. **Five tabs** in step 3 (above); rubric codes and scoring unchanged.
 15. **Past studies are facts, not a scored section.**
 16. **No storage code on screen** (above). The screens do not say who can read a document.
+17. **A context layer on every model call** (`ProposalNote`), built by code from `work`, the screen and `work.log`.
 
 ## 5. Implementation steps (one PR each)
 
@@ -259,6 +285,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 - **`work.py`:**
   - `ALLOWED_PATHS` covers gates, template, style, stage, `sections.<code>.text|done` and `facts.<id>.status|value`.
   - `apply()` runs `SELECT … FOR UPDATE`, then `jsonb_set` per path, then the section-`rev` 409, then recomputes `summary`.
+  - Every write appends `{at, by, path, from, to}` to `work.log[]` (kept to the last 200), which the context layer reads.
   - The agent tools use the same function.
 - **REST routes:** `GET /api/proposals?org&funder`, `POST /api/proposals`, `GET /{id}`, `PATCH /{id}`, `PATCH /{id}/work`, `POST /{id}/advance`. All `require_user`, on the caller pool.
   - POST, in one transaction: inserts the proposal at stage 1, creates thread `proposal-<id>` (decision 1), and sets `proposals.thread_id`.
@@ -287,9 +314,9 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 **Goal:** a `/proposal` agent that knows which proposal it is in, is shared by the team, and advances only through code.
 
 **Files**
-- New: `backend/app/proposals/{agent.py,instructions.md,middleware.py,steps.py,context.py}`, `tools/{__init__,proposal_tools,record_tools}.py`.
+- New: `backend/app/proposals/{agent.py,instructions.md,middleware.py,steps.py,context.py}` (`context.py` loads the proposal for the thread and builds the note), `tools/{__init__,proposal_tools,record_tools}.py`.
 - Edited: `core/lifespan.py`, `core/security.py`, `frontend/app/api/copilotkit/[[...slug]]/route.ts`.
-- New frontend: `proposals/{Stepper,HowItWorks,TellSangam}.tsx` and `toolLabels.ts`.
+- New frontend: `proposals/{Stepper,HowItWorks,TellSangam}.tsx` (the proposal screen calls `useAgentContext` with the open step, tab, part and selection) and `toolLabels.ts`.
 
 **Changes**
 - **Lifespan:**
@@ -305,6 +332,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 - **Middleware:**
   - `ProposalSources` replaces `ChosenSources`. It reads `work.sources`, not the messages, and pins `vault_org` to the proposal's org.
   - `StageGate`.
+  - `ProposalNote`: the context layer, built by `context.build()` on every model call. It sets `work.agent_seen` at the end of each run.
   - `CallerNote`, `cheap_summarizer`, `clear_old_tool_results` and `fallback`, as in Import.
 - **Interrupts:** none yet; `ask_user` arrives in M3.
 - **Frontend:**
@@ -316,6 +344,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 **Validation**
 - SeSTA's admin and steward open the same thread, and a stranger gets 404.
 - "Write A3" at step 1 is refused.
+- With the problem part open, "make this stronger" works on that part without being told which. After a teammate edits the budget, the next reply mentions it unprompted.
 - One answer's SSE payload is about 100 KB, not about 1.7 MB.
 
 **Exit gate:** step 1 → 2 happens only after every gate is answered. The sources answer survives a forced summary.
@@ -488,6 +517,7 @@ No new tests. These existing tests must stay green:
 | Polish refusal loop | Rewording lakh as crore is refused on purpose, and the polish prompt says so |
 | Cost | One reader per ticked file, the funder-file reader, and one Opus turn per tab. Measure on the first three proposals |
 | Saved .docx in Scout's Doc Vault list | "v1.docx" shows up for Scout's vault-reader. Documented, not fixed |
+| Screen context is client input | A tampered context names another proposal's part. It sets focus only: `context.current()` binds the proposal by thread, and unknown part codes are dropped |
 | Long turns | Several sections in one turn approach 1800 s. One section per turn unless the person asks |
 
 ## 8. Acceptance criteria
@@ -507,6 +537,7 @@ No new tests. These existing tests must stay green:
 13. Ask and Scout are unchanged: canary evals pass and Recent Chats is unchanged.
 14. No storage code or marker appears on screen; every source is in words.
 15. A gate answered "We'll have it before sending" shows as open on "Before you send it" until it is done.
+16. Every agent turn knows the step, the part on screen and what changed since its last reply, without calling a tool. A teammate's edit is mentioned on the next turn.
 
 ## 9. Files expected to change
 
