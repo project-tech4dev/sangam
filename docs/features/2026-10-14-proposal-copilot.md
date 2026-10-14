@@ -286,6 +286,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 20. **No run lock** (changed 15 Oct). Two people may chat at once; clashing saves are refused by `work.apply`'s row lock and section `rev` (409).
 21. **Web facts come only from Import's briefs**; no proposal reader searches the web.
 22. **A trimmed first version** (15 Oct): colour by source only, three reasons to ask, no meaning-clash tool, no changed-file check, a polish check on numbers, places and names only, the form's questions without its limits, no staff numbers. Each is in "Later".
+23. **The agent is called Sangam Pitch on screen** (15 Oct). The route, threads and code keep "proposal", as Scout's keep "ingest".
 
 ## 5. Implementation steps (one PR each)
 
