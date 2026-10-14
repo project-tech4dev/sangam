@@ -129,7 +129,7 @@ _TABLES: tuple[Table, ...] = (
         ),
         defects=(
             "53 of 96 rows have neither org_id nor funder_id set, so ownership filters silently under-count. There is no CHECK enforcing exactly-one-owner on this table.",
-            "Rows with is_public = false are private Doc Vault uploads belonging to one organisation, or the eligibility document (doc_type 'funder_eligibility') of a hidden funder, which is staff only. This tool applies no per-caller filter: their content_md and storage_path are readable by every user. Deliberate and temporary - it ends when queries run as the caller (docs/DATA_PLATFORM.md, 'Authorization: run every query as the caller'). Until then, do not quote a private upload to anyone outside the organisation that owns it, nor a hidden funder's eligibility document to anyone but staff.",
+            "Row security filters this table to the caller: a row with is_public = false (a private Doc Vault upload, a hidden funder's eligibility document, a staff dataset) is returned only to staff or to members of the organisation that owns it. So a count or an empty result covers only the documents this caller may read - say 'none you can see', never 'none exist'.",
             "doc_type 'source_dataset' rows are staff-only workbooks with no content_md; their contents are read only by Sangam Import. Facts promoted from them cite a non-resolving https://staff-sources.sangam.invalid/ URL by design - never present that URL as a link.",
             "doc_type 'funder_eligibility' is sparse: filled from promoted research one funder at a time, so no eligibility document means nobody has read that funder's policy - never that it sets no conditions.",
             "doc_type 'funder_eligibility' is a funder's STANDING policy only. A requirement printed in one open call lives in rfps.eligibility, and the same sentence can legitimately appear in both. Counting across the two double-counts.",
@@ -297,7 +297,7 @@ _TABLES: tuple[Table, ...] = (
             "There is no grants table: grants moved here in 0034 as 'partner' lines with partner_org_id set. Their notes end 'Moved from grants #N by 0034.', which is how a citation of an old grant number is traced.",
             "Only partner lines carry source_type and evidence, and only those written since 0046; older lines an organisation's research added say their tier in notes ('From the organisation's research: <source_type>, <tier>.'). The tier is the strongest source that has written the line, not of every column on it; a 'claimed' partner line is never presented as a confirmed grant.",
             "A partner line whose notes say 'fiscal_year is the year the source was read' (or 'the year the row was recorded') had no stated date: it is NOT dated to that fiscal year, so never count it as that year's grant.",
-            "Rows with is_public = false are internal: this tool runs as the owner, so row security does not hide them here. Add WHERE is_public to any answer that may be shown publicly, and when an internal row is shown, say it is internal and must not be shown publicly.",
+            "Row security filters this table to the caller: lines with is_public = false are internal and are returned to staff only, so a non-staff total silently excludes them. When an internal line appears in an answer, say it is internal and must not be shown publicly; do not filter it out.",
         ),
     ),
     Table(
@@ -1093,6 +1093,26 @@ async def verify_against_db(conn: Any) -> list[str]:
         missing = sorted({c.name for c in table.columns} - live[name])
         if missing:
             problems.append(f"{name}: catalog lists columns the database does not have: {', '.join(missing)}")
+
+    # The chat runs as the caller, so a column `authenticated` cannot SELECT fails 42501 for everyone.
+    # anon may be shut out of a whole table (rfp_matches), but a table it reads in part breaks `SELECT *`.
+    pairs = [(t, c.name) for t, table in CATALOG.items() for c in table.columns if c.name in live[t]]
+    denied = await (
+        await conn.execute(
+            "WITH p AS (SELECT t, c, has_column_privilege('authenticated', t, c, 'SELECT') AS auth, "
+            "has_column_privilege('anon', t, c, 'SELECT') AS anon "
+            "FROM unnest(%s::text[], %s::text[]) AS p(t, c)) "
+            "SELECT 'authenticated' AS role, t, string_agg(c, ', ' ORDER BY c) AS cols FROM p "
+            "WHERE NOT auth GROUP BY t "
+            "UNION ALL "
+            "SELECT 'anon', t, string_agg(c, ', ' ORDER BY c) FILTER (WHERE NOT anon) FROM p "
+            "GROUP BY t HAVING bool_or(anon) AND NOT bool_and(anon) "
+            "ORDER BY role, t",
+            ([t for t, _ in pairs], [c for _, c in pairs]),
+        )
+    ).fetchall()
+    for row in denied:
+        problems.append(f"{row['t']}: role {row['role']} cannot SELECT catalog column(s): {row['cols']}")
     return problems
 
 

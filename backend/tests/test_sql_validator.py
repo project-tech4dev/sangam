@@ -258,6 +258,28 @@ class TestStarExpansion:
         assert result.aggregate is True
         assert "COUNT(*)" in result.sql.upper()
 
+    def test_a_star_in_a_derived_table_still_expands(self):
+        assert '"x"."name"' in validate("SELECT x.* FROM (SELECT c.* FROM contacts c) x").sql
+
+
+class TestWholeRowReferences:
+    """Only a top-level `*` is expanded to catalog columns; anywhere else it reads the whole row."""
+
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            "SELECT array_agg(c.*) FROM contacts c",
+            "SELECT count(oi.*) FROM org_identifiers oi",
+            "SELECT count(DISTINCT c.*) FROM contacts c",
+            "SELECT CAST(oi.* AS TEXT) FROM org_identifiers oi",
+            "SELECT (c.*)::text FROM contacts c",
+            "SELECT id FROM contacts c WHERE c.* IS NOT NULL",
+        ],
+    )
+    def test_alias_star_inside_an_expression_is_rejected(self, sql):
+        with pytest.raises(SqlRejected, match="reads every column of the row"):
+            validate(sql)
+
 
 class TestCitations:
     def test_a_story_id_cites_news(self):

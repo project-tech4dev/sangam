@@ -28,7 +28,7 @@ async def owner_pool(monkeypatch):
     except psycopg.OperationalError:
         pytest.skip("compose Postgres not reachable on localhost:5433")
     pool = AsyncConnectionPool(
-        DSN, min_size=1, max_size=4, open=False,
+        DSN, min_size=1, max_size=1, open=False,
         kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row},
     )
     await pool.open()
