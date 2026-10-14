@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -27,6 +28,18 @@ def get_pool() -> AsyncConnectionPool:
 OwnerPoolDep = Annotated[AsyncConnectionPool, Depends(get_pool)]
 
 
+_SET_CALLER = "SELECT set_config('role', %s, true), set_config('request.jwt.claims', %s, true)"
+
+
+async def set_caller(conn: AsyncConnection, role: str, claims: str) -> None:
+    """Run the rest of this transaction as the caller, so RLS applies. SET LOCAL: it ends with the transaction."""
+    await conn.execute(_SET_CALLER, (role, claims))
+
+
+# The (role, claims) an Ask Sangam run queries as, set per /agent request. Unset, its SQL runs as anon.
+agent_caller: ContextVar[tuple[str, str] | None] = ContextVar("agent_caller", default=None)
+
+
 class CallerPool:
     """The shared pool, with every connection running as the caller rather than the owner.
 
@@ -44,10 +57,7 @@ class CallerPool:
     @asynccontextmanager
     async def connection(self) -> AsyncIterator[AsyncConnection]:
         async with self._pool.connection() as conn, conn.transaction():
-            await conn.execute(
-                "SELECT set_config('role', %s, true), set_config('request.jwt.claims', %s, true)",
-                (self._role, self._claims),
-            )
+            await set_caller(conn, self._role, self._claims)
             yield conn
 
 
@@ -57,6 +67,6 @@ def get_caller_pool(request: Request, owner: OwnerPoolDep) -> CallerPool:
     return CallerPool(owner, role=getattr(state, "db_role", "anon"), claims=getattr(state, "db_claims", ""))
 
 
-# What every router takes. A route runs as its caller without asking; agent tools, which run outside any
-# request, keep the owner through get_pool() until Ask Sangam runs as the caller too (step 8).
+# What every router takes. A route runs as its caller without asking; Ask Sangam's SQL tools, which run
+# outside any request, take the caller from agent_caller instead.
 PoolDep = Annotated[CallerPool, Depends(get_caller_pool)]

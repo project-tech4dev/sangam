@@ -209,7 +209,8 @@ tests' pool override is dependency-based, so neither needs editing.
 
 Routers take the pool as `pool: PoolDep` (from `app/db/pool.py`) rather than calling
 `get_pool()` in the body — that is what makes it overridable per-app. Agent tools, which run
-outside any request, still call `get_pool()` directly.
+outside any request, still call `get_pool()` directly; Ask Sangam's SQL executor then sets the
+caller itself (below).
 
 **Only one file is called `graph`**: `app/agent/tools/graph_tools.py`, the `search_graph` agent
 tool. The deep agent is built in `app/agent/build.py`, and the Graphiti/Neo4j client lifecycle
@@ -318,10 +319,13 @@ Import's `search_public_sources` and the news pipeline use it, so `tavily_api_ke
 - `executor.py` wraps every query in a read-only transaction with `SET LOCAL statement_timeout`,
   and passes `prepare=True` so the *server* refuses multi-command statements. All
   transaction-scoped, because this pool is shared with the LangGraph checkpointer, which writes.
-  **The app connects as the database owner, which is a superuser**, so the catalog is what keeps
-  the checkpoint tables and `pg_read_file` out of reach — there is no second line of defence. A
-  SELECT-only role was built and dropped as too much deploy surface for a first cut; see
-  `docs/SQL_AGENT.md`.
+  **The app connects as the database owner, a superuser, but the chat's queries run as the
+  caller.** `ask_access` (`core/security.py`) puts the caller's role and JWT claims in
+  `agent_caller` (`db/pool.py`) on every `/agent` request, and the executor `set_config`s them
+  after `SET TRANSACTION READ ONLY`, as `CallerPool` does for REST — so RLS applies, and the server
+  itself refuses the checkpoint tables and `pg_read_file`. With no caller it runs as `anon`, never
+  the owner. Every catalog column must be SELECT-able by `authenticated` (`test_agent_rls.py`), or
+  `SELECT *` breaks. `compare_fit` and Sangam Import still read as the owner, by design.
 
 `SQL_AUDIT_MODEL` turns on a post-answer audit (`app/agent/audit.py`): a cheap second model
 checks grain, missing filters, false zeros and whether the figures in the prose match the rows,

@@ -11,11 +11,13 @@ from app.core.security import (
     ANONYMOUS,
     DEV_USER,
     CurrentUser,
+    ask_access,
     chat_access,
     chat_user_id,
     get_current_user,
     get_principal,
 )
+from app.db.pool import agent_caller
 from tests.conftest import make_app
 
 MEMBER = CurrentUser(id=UUID("11111111-2222-3333-4444-555555555555"), is_staff=False)
@@ -142,6 +144,22 @@ async def test_the_run_knows_what_the_caller_may_reach(owners):
 
     response = await run(as_caller(app, MEMBER), "new")
     assert response.text == "False {7: 'member'}"
+
+
+@pytest.mark.parametrize(("access", "expected"), [(ask_access, "authenticated"), (chat_access, "None")])
+async def test_ask_sangam_queries_as_the_caller_and_import_keeps_the_owner(owners, access, expected):
+    app = make_app()
+
+    @app.post("/agent", dependencies=[Depends(access)])
+    async def agent():
+        async def stream():
+            caller = agent_caller.get()
+            yield caller[0] if caller else "None"
+
+        return StreamingResponse(stream())
+
+    response = await run(as_caller(app, MEMBER), "new")
+    assert response.text == expected
 
 
 class TestCallerScope:
