@@ -205,8 +205,8 @@ a separate block with its own cache breakpoint.
 
 | Block | What it says | Comes from | Where it goes | Changes |
 |---|---|---|---|---|
-| **Stable** | the proposal, org, funder and programme; the funder's confirmed priorities; the form's questions; gate answers; the writing style | `work` | appended to the system message by `ProposalBrief`, with its own `cache_control` breakpoint (as `MemoryMiddleware(add_cache_control=True)`) | rarely: step 2 done, a priority confirmed, a gate answered |
-| **Live** | where the proposal is (step, tab, parts finished, scores, readers done); what is on screen; what changed since the agent last spoke; what is waiting; what it may do next | `work`, `summary`, the screen and `work.log[]`, read fresh each call | added by `ProposalNote` as the last message of that one model call, never written to the graph state, so the chat history and the checkpoint never hold it | every call |
+| **Stable** | the proposal, org, funder and programme; the funder's confirmed priorities; the form's questions; gate answers; the writing style | `work` | appended to the system message by `ProposalContext`, ending on a `cache_control` breakpoint (Anthropic models only) | rarely: step 2 done, a priority confirmed, a gate answered |
+| **Live** | where the proposal is (step, tab, parts finished, scores, readers done); what is on screen; what teammates changed (not in this chat); what is waiting; what it may do next | `work`, `summary`, the screen and `work.log[]`, read fresh each call | added by `ProposalContext` after the stable block's breakpoint, on that one model call only, so the chat history and the checkpoint never hold it | every call |
 
 Each line of the live block has its own source and trust:
 
@@ -280,7 +280,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 14. **Five tabs** in step 3 (above); rubric codes and scoring unchanged.
 15. **Past studies are facts, not a scored section.**
 16. **No storage code on screen** (above). The screens do not say who can read a document.
-17. **A context layer on every model call, in two blocks.** A stable block in the system prompt with its own cache breakpoint (`ProposalBrief`), and a live block as the last message of each call, never saved (`ProposalNote`). Both are built by code from `work`, the screen and `work.log`.
+17. **A context layer on every model call, in two blocks.** One middleware, `ProposalContext` (as built in M2): a stable block in the system prompt ending on a cache breakpoint, then a live block after it, never saved. Both are built by code from `work`, the screen and `work.log`.
 18. **Tests for the code-only safeguards** (15 Oct): each milestone tests its own; no tests of model output and no evals. An exception to "no new tests in a PR" for this feature.
 19. **M3 is two PRs:** facts and asking (M3a), then the readers and step 2 (M3b).
 20. **No run lock** (changed 15 Oct). Two people may chat at once; clashing saves are refused by `work.apply`'s row lock and section `rev` (409).
@@ -364,9 +364,8 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - `advance_step()`;
 - **Middleware:**
   - `ProposalSources` replaces `ChosenSources`. It reads `work.sources`, not the messages, and pins `vault_org` to the proposal's org.
-  - `StageGate`.
-  - `ProposalBrief`: `context.stable(work)` appended to the system message with a `cache_control` breakpoint (the `MemoryMiddleware(add_cache_control=True)` pattern).
-  - `ProposalNote`: `context.live(...)` added after the stable block's cache breakpoint on each model call, never saved to the thread.
+  - `ProposalContext` (as built): reads the proposal fresh on each model call and appends `context.stable(...)` with a cache breakpoint, then `context.live(...)`, to the system message. Never saved to the thread.
+  - `StageGate` waits for M3a: M2's only write tool, `advance_step`, checks `steps.exit_check` itself.
   - `CallerNote`, `cheap_summarizer`, `clear_old_tool_results` and `fallback`, as in Import.
 - **Browser closed mid-turn:** the plan does not rely on the run carrying on after the stream drops (to be checked in this milestone). Whatever was saved stays; on reopening, the live block says what is done and the chat offers "Continue".
 - **Interrupts:** none yet; `ask_user` arrives in M3a.
@@ -392,23 +391,31 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 **Goal:** facts from SeSTA's record and the person's answers fill the list, and questions are asked by rule. No reader yet, so this is testable end to end on its own.
 
+**What M2 changes here** (15 Oct): each editor has their own chat, so a question is asked in one person's chat but its answer belongs to the shared proposal.
+- **The open question lives in `work.questions`, with who it was asked of**, not only in that chat's interrupt. One open question per person, and a gap asked of one person is not asked of another while it is open. *Example:* Sangam asks the admin about the food gap's causes; the steward's Sangam sees "asked of Admin, waiting" in its live block and asks something else.
+- **"Later" frees it for anyone.** A parked question can be asked of whoever next opens that part. An answer becomes a fact both chats see, so nobody is asked twice.
+- **The question card sits at the top of the side panel**, above the asker's chat (the canvas's "Sangam's question" card). Members see no question card and no chat; they see facts read-only.
+- **Every fact and question change goes through `work.apply` with `via="agent"`**, so it is logged and a teammate's live block says, for example, "Admin confirmed: 1,240 households surveyed". `context._what` names facts by subject, never by code.
+- **`StageGate` and `AskGate` are added to `ProposalContext`'s agent here**, the first milestone with tools that write more than the step.
+
 **Files**
 - New: `backend/app/proposals/{facts,reliability,questions,records}.py`, `tools/ledger_tools.py`.
-- New frontend: `QuestionCard.tsx`, `FactList.tsx` (each fact: Yes, it's right · No, change it · Don't use it).
+- Edited: `proposals/work.py` (allowed paths for new facts and `questions.*`), `proposals/context.py` (the "waiting" lines), `proposals/agent.py`.
+- New frontend: `QuestionCard.tsx` in the side panel; `FactList.tsx` in the main column on step 3, per part (each fact: Yes, it's right · No, change it · Don't use it).
 
 **Changes**
 - **`add_facts`** verifies each fact by its origin:
   - registry: the marker's row is re-read with fixed SQL and the value must appear in it;
   - vault: `vault.check_findings` against the picked documents;
   - web: an http URL and evidence of at least 20 characters;
-  - you_said: the quote must appear in one of this thread's human messages;
+  - you_said: the quote must appear in one of the asker's own human messages in their thread; the fact records who said it;
   - derived: it cites `from=[k…]` and stays amber.
   - Tier and colour are set by `reliability.py`.
   - **Idempotent:** a fact with the same origin, source (marker or `document_id` + page), subject and value returns the existing id, so a retried turn adds no duplicates.
 - **Where web facts come from.** No proposal reader searches the web. `origin=web` facts arrive through `read_brief`: Import's briefs hold findings researched from public pages, with http links. *Example:* "sesta.org: 120 villages" comes from SeSTA's brief and shows amber.
 - **`ask_user`** is an interrupt whose `reason` is one of the three below.
-  - `AskGate` (the `ChosenSources` pattern) refuses unless `questions.warranted(...)` holds, no other question is open, and the section is the current one.
-  - The resume value is `{kind: "pick", choice}` from a card button, or `{kind: "text", text}` from the chat box. `questions.classify(text)` (one `UTILITY_MODEL` call) returns answer, question back or skip, and `ask_user` returns accordingly (decision 4).
+  - `AskGate` (the `ChosenSources` pattern) refuses unless `questions.warranted(...)` holds, this person has no other question open, nobody else holds that gap's question open, and the section is the current one.
+  - The resume value is `{kind: "pick", choice}` from a card button, or `{kind: "text", text}` from the asker's chat box (CopilotKit `useInterrupt` in `TellSangam`). `questions.classify(text)` (one `UTILITY_MODEL` call) returns answer, question back or skip, and `ask_user` returns accordingly (decision 4).
   - Only an answer becomes a you_said fact. A question back leaves `work.questions.open` unchanged; a skip sets it to `parked`, and `AskGate` lets a parked question be asked again only for the part on screen or at "Before you send it".
   - Before a parked question is asked again, `questions.warranted(...)` runs again; if a fact now fills the gap, the question closes without being asked. If the fact that answered a question is later corrected or rejected, the gap returns and the question can be asked again.
   - *Example:* "Do you have a baseline survey?" is parked; the person then ticks the March 2026 survey, its reader adds the figure, and the question is never shown again.
@@ -421,11 +428,11 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 - **Question shape:** found → missing → why the funder cares → suggestion.
   - *Example:* "Found 412 SHGs [k12] in your 2024-25 report p.14. Missing: an outcome for the last 12 months. ABF scores A6 on outcomes, not counts. Suggestion: the March 2026 household survey, if you have it."
-- **Tests:** `reliability`, `questions.warranted` (each of the three reasons and the unwarranted case), `add_facts` verification and idempotency.
+- **Tests:** `reliability`, `questions.warranted` (each of the three reasons and the unwarranted case), `add_facts` verification and idempotency, `AskGate` refusing a gap already open with a teammate.
 
-**Validation:** with only SeSTA's record, the agent adds registry facts, asks one warranted question, and an `ask_user` with no warrant is refused. A typed question back is answered and the card stays.
+**Validation:** with only SeSTA's record, the agent adds registry facts, asks one warranted question, and an `ask_user` with no warrant is refused. A typed question back is answered and the card stays. The admin parks a question; the steward opening that part is asked it; the admin's answer to another shows as a fact in the steward's screen.
 
-**Exit gate:** registry and you_said facts show in words with their buttons; one question at a time, by rule.
+**Exit gate:** registry and you_said facts show in words with their buttons; one question at a time, by rule, and never the same one to two people.
 
 ### M3b: the readers and step 2
 
@@ -433,7 +440,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 **Files**
 - New: `tools/reading_tools.py`, `prompts/{funder_file_reader,evidence_reader}.md`.
-- New frontend: step 2 (form, documents, style), the readers' progress, and "What ABF looks for" on F1.
+- New frontend: step 2's "Write the first draft" button and the readers' progress (M2 already has the form, documents and style), step 2's side-panel explainer ("What happens when you press Write the first draft"), and "What ABF looks for" on F1.
 
 **Changes**
 - **`read_brief(entity)`** resolves `entity_research.resolved_funder_id` / `resolved_org_id` before the catalog slug, and returns `brief.record()` facts.
@@ -449,9 +456,8 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - one per ticked file, up to `MAX_PARALLEL_RESEARCH` at once;
   - no web tools, and nothing written to `vault_research`.
 - **Reader status in `work.readers`:** `{document_id: running | done | failed, error, at}`. A file whose reader fails shows one line, "Couldn't read Workplan 2025.docx. Try again", which re-runs that file only; drafting goes on with gaps where it would have helped. A re-read replaces that file's `proposed` facts and never a confirmed one.
-- **Exit checks in `steps.py`:**
-  - step 1: every gate answered;
-  - step 2: form set or skipped, style set, "Write the first draft" pressed.
+- **Exit checks in `steps.py`:** step 1's is built (M2). Step 2: form set or skipped, style set, "Write the first draft" pressed.
+- **Who runs the readers:** the editor who presses "Write the first draft", in their own chat turn. Progress is in `work.readers`, so every teammate's screen shows it. While readers run, a second press is refused with "Admin started reading the files 2 min ago": the one lock in the feature, on reading only, never on chatting.
 - **Tests:** `ProposalSources` refuses an unticked file; each reader's compiled graph carries only its declared tools and no web tool; re-reading a file keeps confirmed facts.
 
 **Validation:** SeSTA → ABF on local with a seeded ABF brief and two Doc Vault PDFs. The funder-file reader's trace has no web call and no SeSTA Doc Vault text. One reader forced to fail leaves the other's facts and offers "Try again".
@@ -679,7 +685,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 
 - [ ] M1: 0048, the REST resource, uploads, the list on the API. Exit: shared across devices.
 - [ ] M2: `/proposal`, own-chat access, agent skeleton, sources kept in `work`, side panel. Exit: admin and steward each have their own chat on one proposal.
-- [ ] M3a: facts, reliability, `ask_user` with AskGate and reply sorting. Exit: facts in words; one question at a time, by rule.
+- [ ] M3a: facts, reliability, `ask_user` with AskGate and reply sorting, questions shared across each person's chat. Exit: facts in words; one question at a time, by rule, never asked of two people.
 - [ ] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
 - [ ] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
 - [ ] M5: review, propagation, ready. Exit: Ready or the exact list.
