@@ -142,6 +142,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-12 · #167–#169 · Plan to drop CopilotKit; frontend container restarts; `emit_raw_events=False` (an answer went from 1.69 MB to 107 KB).
 - 2026-10-12 · #179 · One backend call per registry profile page.
 - 2026-10-12 · #180 · Signed-out reads come from Next's data cache; a cron keeps one backend warm.
+- 2026-10-14 · Signed-out cached reads are keyed per deploy, so a new deploy never renders the last one's API shapes (profile pages 500ed after #202).
 
 ## Tracing and evals
 
