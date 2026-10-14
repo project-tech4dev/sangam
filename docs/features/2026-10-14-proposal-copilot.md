@@ -185,7 +185,8 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
   - `status`: proposed / confirmed / corrected / rejected;
   - `used_in`, `supersedes`;
   - `origin`: registry / vault / web / you_said / derived;
-  - `private`.
+  - `private`;
+  - `document_id` and `content_hash` for a fact read from a file, so a changed file can be noticed.
 - Sections cite facts as ⟦k7⟧.
 
 **Reliability in code** (`app/proposals/reliability.py`).
@@ -312,8 +313,8 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - **`work.py`:**
   - `ALLOWED_PATHS` covers gates, template, style, stage, `sections.<code>.text|done` and `facts.<id>.status|value`.
   - `apply()` runs `SELECT … FOR UPDATE`, then `jsonb_set` per path, then the section-`rev` 409, then recomputes `summary`.
-  - Every write appends `{at, by, path, from, to}` to `work.log[]` (kept to the last 200), which the context layer reads.
-  - The agent tools use the same function.
+  - Every write appends `{at, by, via, run_id, path, from, to, facts, reason}` to `work.log[]`, where `via` is `rest` or `agent`. The log is kept in full; the context layer reads only entries after `work.agent_seen`.
+  - It is the only write path: the agent tools, `PATCH /{id}` (title) and `POST /{id}/versions` all call it. ARCHITECTURE.md states the rule.
 - **REST routes:** `GET /api/proposals?org&funder`, `POST /api/proposals`, `GET /{id}`, `PATCH /{id}`, `PATCH /{id}/work`, `POST /{id}/advance`. Reads are `require_user`; writes need an admin, steward or staff (403 otherwise, as RLS would refuse anyway), on the caller pool. `GET /{id}` returns `can_edit`, which the screen uses.
   - POST, in one transaction: inserts the proposal at stage 1, creates thread `proposal-<id>` (decision 1), and sets `proposals.thread_id`.
   - It returns 409 without a saved match (decision 2).
@@ -325,6 +326,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - **Frontend:**
   - an API hook replaces `useProposals`, and ids become numbers;
   - `MatchCard` calls POST;
+  - a 409 on a section shows one line, not an error: "Ravi changed this a minute ago. Showing his version." (name and time from `work.log`);
   - proposals saved in the browser are not migrated, and a one-line notice shows if any exist.
 
 **Validation**
@@ -351,10 +353,10 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - `_build_agents` adds `proposal_graph` with `SessionScopedAGUIAgent(..., emit_raw_events=False)`;
   - `_add_agent_route(app, path, access=chat_access)`, with `/proposal` passing `proposal_chat_access` (decision 1).
 - **Binding to the proposal:** `context.current()` loads the proposal by thread id on the owner pool and refuses unless the caller is staff or in the proposal's org. Tools never take a proposal id from the model.
-- **Members read only.** `proposal_chat_access` lets a member open the thread's history (GET) but refuses a new run (403), because every agent tool writes on the owner pool. Every write tool also re-checks `can_edit` from `context.current()`.
+- **Members read only.** `proposal_chat_access` lets a member open the thread's history (GET) but refuses a new run (403), because every agent tool writes on the owner pool. Every write tool also calls one shared `require_edit(ctx)`, which re-checks `can_edit` from `context.current()` and returns `REFUSED: you can read this proposal` otherwise.
 - **Screen:** a member sees every step, the facts and the sections, with no buttons or chat box, and one line: "You can read this proposal. Ask SeSTA's admin to make changes." The Match card shows them "View proposal", never "Start".
 - **Supervisor tools:**
-  - `read_proposal()`;
+  - `read_proposal(part=None)`: one tab or section with the facts it cites; the whole proposal only when no part is given. Working on the budget reads about 8 KB, not 200 KB;
   - `read_match()`, cited `[score:N]`;
   - `read_org_record()`, cited `[org:N]` and `[activity:N]`;
   - `advance_step()`;
@@ -368,6 +370,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - **Frontend:**
   - `route.ts` registers `sangam_proposal`;
   - `ProposalShell` becomes the three-step stepper, with "How this works" shown once before step 1;
+  - under a disabled "Next", the stepper shows `exit_check`'s list in words: "To continue: answer CSR-1.";
   - the drawer uses `useAgentChat`, with history from `GET /api/proposals/{id}/messages` (reusing `saved_messages(graph_name="proposal_graph")`);
   - step 2's form, documents and style are REST writes to `work`, not an interrupt.
 
@@ -413,6 +416,9 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - `AskGate` (the `ChosenSources` pattern) refuses unless `questions.warranted(...)` holds, no other question is open, and the section is the current one.
   - The resume value is `{kind: "pick", choice}` from a card button, or `{kind: "text", text}` from the chat box. `questions.classify(text)` (one `UTILITY_MODEL` call) returns answer, question back or skip, and `ask_user` returns accordingly (decision 4).
   - Only an answer becomes a you_said fact. A question back leaves `work.questions.open` unchanged; a skip sets it to `parked`, and `AskGate` lets a parked question be asked again only for the part on screen or at "Before you send it".
+  - Before a parked question is asked again, `questions.warranted(...)` runs again; if a fact now fills the gap, the question closes without being asked. If the fact that answered a question is later corrected or rejected, the gap returns and the question can be asked again.
+  - *Example:* "Do you have a baseline survey?" is parked; the person then ticks the March 2026 survey, its reader adds the figure, and the question is never shown again.
+- **A changed file:** when a ticked file's content hash no longer matches its facts' `content_hash` (checked when the proposal opens and when step 2's ticks change), those facts go back to `proposed` and the sections using them are flagged, through the same buttons and path as a correction. Nothing new on screen.
 
 | Reason to ask | Code check | SeSTA → ABF example |
 |---|---|---|
@@ -456,6 +462,8 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
   - On save: `rev+1`, `used_in` is set on the cited facts, and `[Add: …]` remains where nothing supports the text.
 - **Order:** `StageGate` allows `write_section` only for the next section in `DEPENDS_ON` order, or one the person picked.
 
+- **A stopped turn:** each section saves on its own, so a timeout or failed run loses only the section in progress. The drawer then shows one line, "Sangam stopped after The Idea. Continue?", and the next turn picks up from `work`.
+
 **Validation:** SeSTA's A3 is refused once for an untraced "62%", then saved. A1 is written last.
 
 **Exit gate:** a full draft where every number cites a fact.
@@ -474,7 +482,8 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
   - it creates a you_said fact with `supersedes=k` and sets the old one to `corrected`;
   - where the old value appears verbatim in a sentence that cites k, code replaces it;
   - otherwise the section is marked `needs_rewrite` and goes back through `write_section`.
-  - *Example:* villages corrected from 120 to 96 fixes A2 and A1 in place, and A4's "reach all 120" is flagged for a rewrite.
+  - derived facts whose `from=[k…]` includes k are recomputed when the arithmetic is simple, else turned amber; their sections follow the same two rules.
+  - *Example:* villages corrected from 120 to 96 fixes A2 and A1 in place, and A4's "reach all 120" is flagged for a rewrite. Households 1,240 → 1,180 also turns "38% = 471 households" into 448.
 - **Contradiction pass:** code first, over equal-tier facts. Then the agent's `flag_conflict` for clashes in meaning, such as a "3-year project" against a 24-month workplan.
 - **Ready:**
   - both gates;
@@ -483,6 +492,7 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
   - overlays met;
   - no used fact still `proposed`;
   - no open conflict.
+- **"Before you send it" has two lists.** *Fix first* (these stop "Ready"): a gate answered No, a used fact not confirmed, an open conflict, a core section at 0. *Worth checking* (shown, never blocking): a score of 1, a gate promised "before sending", a parked question, an `[Add: …]` gap. Download always works and the Word file highlights what is left.
 
 **Exit gate:** "Before you send it" lists what is left, including any gate answered "We'll have it before sending".
 
@@ -497,11 +507,14 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
 **Changes**
 - **Polish:** one `Settings.model` call. `trace.extract` runs before and after.
   - Any number, place or name added, dropped or changed refuses the polish and shows the difference.
+  - Then one `UTILITY_MODEL` call lists each sentence's commitments and negations before and after; any change refuses too. *Example:* "We will train 400 women" → "We aim to train 400 women" is refused.
   - The result is stored with a hash of the sections, which drives the stale banner.
 - **.docx:** built from `work.polished` (title, funder and date, headings, highlighted `[Add:]` gaps).
   - Stored at `<org_id>/proposals/<id>/v<N>.docx`.
   - A `documents` row with `doc_type 'proposal_draft'` and `is_ai_generated`, inserted on the caller pool.
   - `work.versions[]` gets `{n, document_id, at, by, facts_snapshot}`.
+
+- **Staff numbers, no screen:** a saved query (`make psql`) over `proposals.work` and `summary`: days in each step, refusals by reason, corrections by origin, parked questions, proposals idle 14+ days. NGOs see nothing.
 
 **Validation:** a polish that turns "₹4.2 crore" into "₹42 lakh" is refused. v2 keeps v1. A steward can save a version.
 
@@ -553,7 +566,7 @@ No new tests. These existing tests must stay green:
   - Two people editing different sections (no clash) and the same section (409).
   - Phone width.
   - `npm run lint && npm run build` and `ruff check .`.
-- **Evals:** `make evals TAG=canary` before and after M2, to show Ask is unaffected. One SeSTA → ABF run on local, with its cost recorded in Langfuse (`sangam_proposal`).
+- **No evals.** One SeSTA → ABF run on local, with its cost recorded in Langfuse (`sangam_proposal`).
 
 ## 7. Risks and edge cases
 
@@ -563,7 +576,7 @@ No new tests. These existing tests must stay green:
 | A member writing through the agent | Agent tools run on the owner pool, past RLS. `proposal_chat_access` refuses a member's run, and each write tool re-checks `can_edit` |
 | Owner-pool tools skip RLS | A steward of two NGOs must not reach `proposal-43` by guessing. `context.current()` is the guard |
 | A reader seeing more than it should | SeSTA's unticked salary sheet is never opened: `ProposalSources` refuses it. The funder-file reader has no Doc Vault tool |
-| `work` size | ~200 facts plus 19 sections is about 150–200 KB, rewritten on each write. The list reads only `summary` |
+| `work` size | ~200 facts plus 19 sections is about 150–200 KB, rewritten on each write, and the full log adds about 300 bytes per change. The list reads only `summary`; the agent reads one part at a time |
 | Trace false positives | "FY2024-25" and "Schedule VII" read as numbers. Exempt fiscal-year patterns and taxonomy codes |
 | Polish refusal loop | Rewording lakh as crore is refused on purpose, and the polish prompt says so |
 | Cost | One reader per ticked file, the funder-file reader, and one Opus turn per tab. Measure on the first three proposals |
@@ -586,7 +599,7 @@ No new tests. These existing tests must stay green:
 10. A polish that changes any number, place or name is refused.
 11. Each version is a .docx in the Doc Vault with a facts snapshot, and earlier versions stay.
 12. Doc Vault facts never appear in a brief, in `entity_research` or `vault_research`, or in the funder-file reader's context. No reader makes a web call.
-13. Ask and Scout are unchanged: canary evals pass and Recent Chats is unchanged.
+13. Ask and Scout are unchanged: an Ask question and a Scout import still run in the browser, and Recent Chats is unchanged.
 14. No storage code or marker appears on screen; every source is in words.
 15. A gate answered "We'll have it before sending" shows as open on "Before you send it" until it is done.
 16. Every agent turn knows the step, the part on screen and what changed since its last reply, without calling a tool. A teammate's edit is mentioned on the next turn.
