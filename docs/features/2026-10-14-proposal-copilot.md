@@ -1,6 +1,6 @@
 # Proposal Copilot: a human-in-the-loop agent that builds a proposal with the NGO
 
-Draft v1 · 2026-10-14 · branch `feat/proposal-copilot`
+Draft v2 · 2026-10-14 · branch `feat/proposal-copilot`
 
 **Replaces** the 9 Oct proposals spec (`features-plans/proposals/2026-10-09-proposals-design.md` on
 `docs/proposals-spec`, never merged). These parts of that spec carry over unchanged:
@@ -13,8 +13,10 @@ Draft v1 · 2026-10-14 · branch `feat/proposal-copilot`
 - several proposals per org and funder;
 - stewards and staff can write.
 
-What it replaces is "draft every section at once with ~20 fixed calls". The UI was agreed on the Guided prototype
-(https://claude.ai/artifact/VcqNEkToJbDZk67fDCkvYF). Every path below was checked against `origin/master` at
+What it replaces is "draft every section at once with ~20 fixed calls". **The steps are the Funder Match prototype's**
+(https://claude.ai/artifact/H1b4nv5ReQn8mvHg2HhPB5): 1 Eligibility gates → 2 Template, documents and style → 3 Proposal,
+then Assemble → Polish → Save. **The screens are the Claude Design canvas** (https://claude.ai/artifact/Vhy3vqLJPs43rKpeNCFydr),
+reviewed for NGO staff who are not technical. Every path below was checked against `origin/master` at
 `9e7e6f0`. The running example is SeSTA (the NGO) writing to Axis Bank Foundation (ABF, the funder).
 
 ## 1. Requirement summary
@@ -24,7 +26,7 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
   - the funder's research brief;
   - the NGO's Doc Vault;
   - the org, programme, partner-line and match rows;
-  - the funder's form and public pages.
+  - what Sangam already holds about the funder: its brief, archived documents and past grants. No web research.
 - **It reasons about what the funder wants,** compares that with what Sangam knows about the NGO, and finds what is missing.
 - **It never fills a gap with an assumption.** It asks one targeted question at the moment a section needs it, never a questionnaire upfront.
 - **It builds the proposal section by section.** The person reviews, corrects and approves every fact, and every fact keeps its source.
@@ -90,16 +92,40 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
 
 **A third deep agent, `/proposal`.** It is built like `ingest/agent.py`: `create_deep_agent`, `install_harness()`, `filesystem(...)` on the supervisor and every subagent, and `fallback` tiers.
 
-**Six steps, owned by code.** The current step is in `work.stage`. `app/proposals/steps.py::exit_check(stage, work) -> list[str]` returns what is missing. Both the agent's `advance_step` and REST `POST /api/proposals/{id}/advance` call it. A `StageGate` middleware refuses tools that do not belong to the current step.
+**Three steps, owned by code.** The current step is in `work.stage`. `app/proposals/steps.py::exit_check(stage, work) -> list[str]` returns what is missing. Both the agent's `advance_step` and REST `POST /api/proposals/{id}/advance` call it. A `StageGate` middleware refuses tools that do not belong to the current step. A "How this works" screen comes first, once.
 
-| Step | Gathered automatically | Exit check (code) |
+| Step (on screen) | What happens | Exit check (code) |
 |---|---|---|
-| 1 Can you apply? | G1/G2 from the saved match (`start.ts` logic moved server-side) | both gates answered |
-| 2 What the funder wants | sources picked first; then `funder-reader` reads the brief, site, CSR report and form | sources set, priorities confirmed, template set or skipped |
-| 3 Your pitch | programmes, `program_tags`, partner lines, `document_links`, the match's theme note naming a programme | programme, amount, style set by the person |
-| 4 Write | per section, `evidence-reader` reads the picked Doc Vault files and the org brief | every planned section has text and a score |
-| 5 Review | the facts view, the contradiction check, readiness | ready, or the list of what is missing |
-| 6 Finish | assemble, polish, .docx | a version saved |
+| 1 Can you apply? | Each funder requirement shows the rule and what Sangam has on record. The person answers *Yes, we have it* · *We'll have it before sending* · *No*. No uploads | every gate answered. *No* on a hard gate stops the proposal; answers stay saved |
+| 2 Your documents and style | **Funder form:** used if Sangam holds it, else a link or an upload (Axis), or "use Sangam's usual order". **Documents:** upload to the Doc Vault and tick what Sangam may read (impact assessments, evaluations, outside studies, annual reports, workplans, budgets, baselines). **Writing style:** the default, editable. The ticks are `work.sources` | form set or skipped; style set; "Write the first draft" pressed |
+| 3 Write the proposal | Readers run, every section is drafted with a marked gap wherever nothing supports it, then one question at a time closes the gaps | ready (M5), or the list of what is missing |
+| Before you send it | Assemble; smooth the language (checked); download as Word, or save a copy | a version saved |
+
+**Step 3's five tabs.** Rubric codes and scoring stay `proposal-v2`; only the grouping changes. The prototype's four tabs
+(the case and the plan, people, durability and money, this funder) become five by splitting the first.
+
+| Tab | Sections (storage code) |
+|---|---|
+| **The Idea**: what is this all about? | Past studies (facts) · Context A2 · Problem and baseline A3 · Objectives and results A4 · Summary A1, written last |
+| **Your Project**: how will we do it? | Workplan by quarter A5 · Measuring results A6 · Learning A7 · the funder form's own questions (ABF §6, convergence with government) |
+| **The People**: who will do it? | Community participation A8 · Inclusion A9 · Team A10 · Track record A11 · Partnerships A12 |
+| **The Ask and Risk**: how much, and what could stop it? | Budget A15 · Other funding A16 · Risks A13 · After the grant A14 |
+| **Why me and you** | Fit with the funder's goals F1 · Earlier phase results F4 |
+
+- **Past studies open The Idea.** The evidence readers pull findings from impact assessments, evaluations and outside
+  studies into the fact list; A3, A4 and A11 cite them. A list of facts, not a scored section, so A1–A16 and readiness are unchanged.
+  - *Example:* "Impact assessment 2023: federation credit added 2 food-secure months a year (page 12)" is k9; A4's "from 9 to 11 months" cites it.
+  - Outside studies come only from step 2's files and documents Sangam archived. One nobody uploaded is not found, and the tab says so.
+- **Hints are the rubric's** (`rubric.ts`, from Preetisha's templates): the question, a strong answer's elements ticking off,
+  what a weak answer looks like, and "Score 1 of 2" with the key "2 = strong, 1 = one thing missing, 0 = not usable yet".
+  A1's elements run problem → place → objective → results with numbers → the ask, so the summary leads with impact.
+- **Programme and amount are not a step.** The programme is the proposal's title at creation. The amount is asked as the
+  org's call when A15 or A1 first needs it.
+
+**Plain language on screen.** The person never sees a storage code or marker: no A3, G1, k9, `vault:41#p12`, `score:212`,
+"core 18 / 32" or "Doc Vault". Sections show their names, sources show in words ("Impact assessment 2023, page 12"), and
+each fact shows its standing in words as well as colour ("✓ From your document", "! From the web, not checked"). The codes
+stay in `work` and in the agent's context. The agent's prompt carries the same rule for its chat text.
 
 **The agent proposes, code checks.** Every write tool validates and returns `REFUSED: …`, never raises:
 - `add_facts`: the source is verified for its kind;
@@ -110,39 +136,40 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
 **Architecture**
 
 ```
- Browser · Ask → Proposals → one proposal
- ┌─────────────────────────────────────────────────────────────┐
- │ step rail │ step card (facts · question · draft) │ Tell Sangam│
- └────┬──────────────────┬─────────────────────────────┬───────┘
-      │ REST             │ interrupt answers           │ chat
-      ▼                  ▼                             ▼
- ┌──────────────┐   ┌────────────────────────────────────────────────┐
- │ /api/        │   │ /proposal · thread proposal-<id> · shared      │
- │ proposals    │   │  SUPERVISOR (MODEL)                            │
- │ route→repo→  │   │   reads:  read_proposal · read_org_record ·    │
- │ schema       │   │           read_match                           │
- └──────┬───────┘   │   pauses: choose_sources · ask_user  ◄─ HITL   │
-        │           │   writes: add_facts · write_section ·          │
-        │           │           flag_conflict · advance_step         │
-        │           │      every write passes CODE CHECKS:           │
-        │           │      steps · reliability · questions · trace · │
-        │           │      grade · rubric                            │
-        │           │      task(...) gated by RunSources             │
-        │           │  ┌────────────────┐  ┌──────────────────┐      │
-        │           │  │ funder-reader  │  │ evidence-reader  │      │
-        │           │  │ RESEARCH_MODEL │  │ RESEARCH_MODEL   │      │
-        │           │  │ web + brief +  │  │ Doc Vault + org  │      │
-        │           │  │ template       │  │ brief, no web    │      │
-        │           │  └────────────────┘  └──────────────────┘      │
-        │           └──────────────┬─────────────────────────────────┘
+ Browser · Proposals → one proposal
+ ┌──────────────────────────────────────────────────────────────┐
+ │ 3 steps │ step 3: 5 tabs · part (hints · facts · draft) │ chat │
+ └────┬───────────────────┬─────────────────────────────┬───────┘
+      │ REST              │ question answers            │ chat
+      ▼                   ▼                             ▼
+ ┌──────────────┐   ┌─────────────────────────────────────────────────┐
+ │ /api/        │   │ /proposal · thread proposal-<id> · shared       │
+ │ proposals    │   │  SUPERVISOR (MODEL)                             │
+ │ route→repo→  │   │   reads:  read_proposal · read_org_record ·     │
+ │ schema       │   │           read_match                            │
+ └──────┬───────┘   │   pauses: ask_user  ◄─ HITL, one at a time      │
+        │           │   writes: add_facts · write_section ·           │
+        │           │           flag_conflict · advance_step          │
+        │           │   every write passes CODE CHECKS: steps ·       │
+        │           │   reliability · questions · trace · grade       │
+        │           │   task(...) gated by ProposalSources            │
+        │           │  ┌───────────────────┐ ┌──────────────────────┐ │
+        │           │  │ funder-file-reader│ │ evidence-reader × N  │ │
+        │           │  │ RESEARCH_MODEL    │ │ one per ticked file, │ │
+        │           │  │ brief · archived  │ │ in parallel          │ │
+        │           │  │ funder documents ·│ │ RESEARCH_MODEL       │ │
+        │           │  │ past grants · form│ │ that file + org brief│ │
+        │           │  └───────────────────┘ └──────────────────────┘ │
+        │           │   neither has a web tool                        │
+        │           └──────────────┬──────────────────────────────────┘
         ▼                          ▼
- Postgres: proposals.work {stage, gates, sources, funder, pitch, facts[], sections, conflicts, versions}
+ Postgres: proposals.work {stage, gates, template, sources, style, facts[], sections, conflicts, versions}
            funder_matches · programs · funder_activity · document_links · documents
  Storage:  source-archive/entities/<slug>.md (briefs, read-only) · org-vault/<org>/proposals/<id>/vN.docx
 ```
 
-**One turn, worked through (step 4, section A11 "Track record"):**
-1. The supervisor sends the `evidence-reader` for facts for A11. `RunSources` lets it read only the picked Doc Vault files.
+**One turn, worked through (step 3, The People tab, A11 "Track record"):**
+1. The evidence readers have already run, one per ticked file. `ProposalSources` let each read only its own file.
 2. It returns "24,765 families, 2019–22 [activity:41]" and "no 2025-26 outcome found". `add_facts` stores k15, which is green because it is registry data.
 3. The supervisor calls `ask_user(reason="missing_required", section="A11")`. Code confirms that A11 has no outcome from the last 24 months, and the card appears.
 4. The person answers "1,150 households, 9 → 10.5 food-secure months". It is stored as k16, "you said".
@@ -177,7 +204,7 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
 
 **What it is tracking lives in the proposal row, not the conversation.** Sources chosen, the open question and confirmed priorities are kept in `work`, because a proposal chat spans days and `cheap_summarizer` drops old tool messages.
 
-**Steps 5 and 6 are mostly code.** Correction propagation, the equal-tier contradiction check, readiness, the polish check and the .docx are deterministic. Polish is one `Settings.model` call made by a REST route.
+**Review and "Before you send it" are mostly code.** Correction propagation, the equal-tier contradiction check, readiness, the polish check and the .docx are deterministic. Polish is one `Settings.model` call made by a REST route.
 
 **Alternatives considered and rejected**
 - **An agent per section:** costs too much and splits the fact list.
@@ -194,11 +221,18 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
 3. **Public org rows plus the Doc Vault.** `read_org_record` uses `org_facts` (public only). Private details come from the vault reader and the person's answers.
 4. **Typing in the drawer while a question is open answers it.** The text resumes the pending `ask_user` interrupt, and the agent may still pick answers to other open slots out of it.
 5. **Each section is graded inside `write_section`.** A6, A15 and F1 get one allowed rewrite when they score below 2.
-6. **An uploaded funder form gets its own tool.** `read_template()` is bound to `proposals.template_id`, because the funder-reader has no Doc Vault tools.
+6. **An uploaded funder form gets its own tool.** `read_template()` is bound to `proposals.template_id`, because the funder-file reader has no Doc Vault tools.
 7. **`fit_score_id` stays on `proposals`, unused.**
 8. **Word files in the Doc Vault are read by paragraph.** `vault.read` cites them as `[vault:<id>#para<N>]`.
-9. **Storage code F4** for "Earlier phase", shown as F2 by `displayCodes`.
+9. **Storage code F4** for "Earlier phase"; screens show section names, not codes.
 10. **Confirmed facts do not write back** to the org's record or brief in v1. Private (vault) facts never leave the proposal.
+11. **The funder side reads only what Sangam holds** (14 Oct review): the brief, archived documents linked to the funder,
+    `funder_activity` and the form. No web tools on any reader.
+12. **Gates are answered, not uploaded.** "We'll have it before sending" stays an open item on "Before you send it".
+13. **No `choose_sources` interrupt.** Step 2's ticks are `work.sources`; `ask_user` is the one interrupt.
+14. **Five tabs** in step 3 (above); rubric codes and scoring unchanged.
+15. **Past studies are facts, not a scored section.**
+16. **No storage code on screen** (above). The screens do not say who can read a document.
 
 ## 5. Implementation steps (one PR each)
 
@@ -255,7 +289,7 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
 **Files**
 - New: `backend/app/proposals/{agent.py,instructions.md,middleware.py,steps.py,context.py}`, `tools/{__init__,proposal_tools,record_tools}.py`.
 - Edited: `core/lifespan.py`, `core/security.py`, `frontend/app/api/copilotkit/[[...slug]]/route.ts`.
-- New frontend: `proposals/{StepRail,TellSangam}.tsx` and `toolLabels.ts`.
+- New frontend: `proposals/{Stepper,HowItWorks,TellSangam}.tsx` and `toolLabels.ts`.
 
 **Changes**
 - **Lifespan:**
@@ -268,32 +302,31 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
   - `read_match()`, cited `[score:N]`;
   - `read_org_record()`, cited `[org:N]` and `[activity:N]`;
   - `advance_step()`;
-  - `choose_sources`, imported from Import.
 - **Middleware:**
   - `ProposalSources` replaces `ChosenSources`. It reads `work.sources`, not the messages, and pins `vault_org` to the proposal's org.
   - `StageGate`.
   - `CallerNote`, `cheap_summarizer`, `clear_old_tool_results` and `fallback`, as in Import.
-- **Interrupts:** `INTERRUPT_ON = {"choose_sources": …}`.
+- **Interrupts:** none yet; `ask_user` arrives in M3.
 - **Frontend:**
   - `route.ts` registers `sangam_proposal`;
-  - `ProposalShell` becomes a six-step rail;
+  - `ProposalShell` becomes the three-step stepper, with "How this works" shown once before step 1;
   - the drawer uses `useAgentChat`, with history from `GET /api/proposals/{id}/messages` (reusing `saved_messages(graph_name="proposal_graph")`);
-  - `choose_sources` reuses the `SourcesCard` pattern.
+  - step 2's form, documents and style are REST writes to `work`, not an interrupt.
 
 **Validation**
 - SeSTA's admin and steward open the same thread, and a stranger gets 404.
 - "Write A3" at step 1 is refused.
 - One answer's SSE payload is about 100 KB, not about 1.7 MB.
 
-**Exit gate:** step 1 → 2 happens only after both gates are ticked. The sources answer survives a forced summary.
+**Exit gate:** step 1 → 2 happens only after every gate is answered. The sources answer survives a forced summary.
 
-### M3: facts, asking, the two readers, steps 2 and 3
+### M3: facts, asking, the readers, step 2
 
 **Goal:** what ABF wants and what SeSTA has become facts in the list, and questions are asked by rule.
 
 **Files**
-- New: `backend/app/proposals/{facts,reliability,questions,records}.py`, `tools/{ledger_tools,reading_tools}.py`, `prompts/{funder_reader,evidence_reader}.md`.
-- New frontend: `QuestionCard.tsx`, `FunderWantsCard.tsx`, `PitchCard.tsx`.
+- New: `backend/app/proposals/{facts,reliability,questions,records}.py`, `tools/{ledger_tools,reading_tools}.py`, `prompts/{funder_file_reader,evidence_reader}.md`.
+- New frontend: `QuestionCard.tsx`, `FactList.tsx` (each fact: Yes, it's right · No, change it · Don't use it), and "What ABF looks for" on F1.
 
 **Changes**
 - **`add_facts`** verifies each fact by its origin:
@@ -305,13 +338,15 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
   - Tier and colour are set by `reliability.py`.
 - **`read_brief(entity)`** resolves `entity_research.resolved_funder_id` / `resolved_org_id` before the catalog slug, and returns `brief.record()` facts.
 - **`read_template()`** (decision 6).
-- **`funder-reader`** (`RESEARCH_MODEL`, isolated):
-  - tools: `read_page`, `search_public_sources`, `fetch_document`, `read_document_pages`, `read_brief`, `read_template`, `add_facts`;
-  - middleware: `filesystem(backend)`, `RunSources()`, `fallback`;
-  - returns `FunderWants`: priorities, themes, places, terminology, past grants, template sections, limits and form.
+- **`funder-file-reader`** (`RESEARCH_MODEL`, isolated):
+  - tools: `read_brief`, `read_document_pages` (only documents linked to this funder), `read_template`, `add_facts`;
+  - middleware: `filesystem(backend)`, `ProposalSources`, `fallback`;
+  - no web tool and no Doc Vault tool;
+  - returns `FunderWants`: priorities, places, eligibility, terminology, past grants, form sections, limits. What it does not find it says, so the form upload opens in step 2.
 - **`evidence-reader`** (`RESEARCH_MODEL`, isolated):
   - tools: `list_vault_documents`, `read_vault_document`, `read_brief`, `add_facts`;
   - middleware: `filesystem(backend, evict=False)`, `RunSources()`, `DropFilesOnExit()`, `fallback`;
+  - one per ticked file, up to `MAX_PARALLEL_RESEARCH` at once;
   - no web tools, and nothing written to `vault_research`.
 - **`ask_user`** is an interrupt whose `reason` is one of the six below.
   - `AskGate` (the `ChosenSources` pattern) refuses unless `questions.warranted(...)` holds, no other question is open, and the section is the current one.
@@ -329,16 +364,19 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
 - **Question shape:** found → missing → why the funder cares → suggestion.
   - *Example:* "Found 412 SHGs [k12] in your 2024-25 report p.14. Missing: an outcome for the last 12 months. ABF scores A6 on outcomes, not counts. Suggestion: the March 2026 household survey, if you have it."
 - **Exit checks in `steps.py`:**
-  - step 2: sources, funder and confirmed priorities are set, and the template is set or skipped;
-  - step 3: programme, amount and style are set by the person.
+  - step 1: every gate answered;
+  - step 2: form set or skipped, style set, "Write the first draft" pressed.
 
-**Validation:** SeSTA → ABF on local with a seeded ABF brief and two Doc Vault PDFs. No Doc Vault text appears in the funder-reader's trace, and an `ask_user` with no warrant is refused.
+**Validation:** SeSTA → ABF on local with a seeded ABF brief and two Doc Vault PDFs. The funder-file reader's trace has no web call and no SeSTA Doc Vault text, and an `ask_user` with no warrant is refused.
 
-**Exit gate:** ABF's priorities and SeSTA's pitch are confirmed, and every fact shown has a colour and a source.
+**Exit gate:** ABF's priorities are facts, the readers ran in parallel, and every fact shows its source in words.
 
 ### M4: writing section by section
 
 **Goal:** sections drafted in dependency order, each traced to cited facts and scored 0–2.
+
+The first draft is written tab by tab, one turn per tab, with a marked gap where nothing supports the text; then
+`ask_user` closes the gaps one at a time.
 
 **Files**
 - New: `backend/app/proposals/{trace,grade}.py`, `prompts/section_grade.md`. `write_section` is added to `ledger_tools.py`.
@@ -369,7 +407,7 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
 - New frontend: `ReviewCard.tsx`.
 
 **Changes**
-- **Facts view:** grouped by colour, with "Confirm all".
+- **Facts:** each with *Yes, it's right* · *No, change it* · *Don't use it*, plus "Confirm all". Only confirmed facts reach the final text.
 - **Correct:**
   - it creates a you_said fact with `supersedes=k` and sets the old one to `corrected`;
   - where the old value appears verbatim in a sentence that cites k, code replaces it;
@@ -384,7 +422,7 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
   - no used fact still `proposed`;
   - no open conflict.
 
-**Exit gate:** "Ready", or the exact list of what is missing.
+**Exit gate:** "Before you send it" lists what is left, including any gate answered "We'll have it before sending".
 
 ### M6: finish
 
@@ -392,7 +430,7 @@ What it replaces is "draft every section at once with ~20 fixed calls". The UI w
 
 **Files**
 - New: `backend/app/proposals/{polish,assemble}.py`, `prompts/polish.md`; routes `POST /{id}/polish` and `POST /{id}/versions`.
-- New frontend: `FinishCard.tsx`.
+- New frontend: `FinishCard.tsx`. The main action is "Download as a Word file"; "Save a copy" writes the version. Sangam sends nothing to the funder.
 
 **Changes**
 - **Polish:** one `Settings.model` call. `trace.extract` runs before and after.
@@ -444,11 +482,11 @@ No new tests. These existing tests must stay green:
 |---|---|
 | First-turn latency | Three graphs compile on the first chat turn. Measure "Agents built on first use"; split loading per graph if it passes ~1 s |
 | Owner-pool tools skip RLS | A steward of two NGOs must not reach `proposal-43` by guessing. `context.current()` is the guard |
-| Doc Vault text reaching web context | SeSTA's salary sheet must never reach the funder-reader. The evidence-reader has no web tools, and `DropFilesOnExit` cleans up |
+| A reader seeing more than it should | SeSTA's unticked salary sheet is never opened: `ProposalSources` refuses it. The funder-file reader has no Doc Vault tool |
 | `work` size | ~200 facts plus 19 sections is about 150–200 KB, rewritten on each write. The list reads only `summary` |
 | Trace false positives | "FY2024-25" and "Schedule VII" read as numbers. Exempt fiscal-year patterns and taxonomy codes |
 | Polish refusal loop | Rewording lakh as crore is refused on purpose, and the polish prompt says so |
-| Cost | Two research subagents and one Opus turn per section. Measure on the first three proposals |
+| Cost | One reader per ticked file, the funder-file reader, and one Opus turn per tab. Measure on the first three proposals |
 | Saved .docx in Scout's Doc Vault list | "v1.docx" shows up for Scout's vault-reader. Documented, not fixed |
 | Long turns | Several sections in one turn approach 1800 s. One section per turn unless the person asks |
 
@@ -456,8 +494,8 @@ No new tests. These existing tests must stay green:
 
 1. A steward or staff member starts two SeSTA → ABF proposals. Both appear in the list on any device.
 2. A stranger gets 404 on the proposal, its messages and its thread. A member can read and write.
-3. Step N+1 opens only when step N's exit check passes. Reopening an earlier step keeps later work.
-4. Sources are picked before any read. A read outside them is refused, even days later after the chat was summarised.
+3. Step 2 opens once every gate is answered and step 3 once the first draft is asked for. Reopening an earlier step keeps later work.
+4. Only ticked files are read. A read outside them is refused, even days later after the chat was summarised.
 5. Every fact shown has a colour, a source and a status.
 6. At most one question is open. It names its reason and follows found → missing → why → suggestion, with no suggestion for an inferred number.
 7. A question with no warranting gap is refused.
@@ -465,8 +503,10 @@ No new tests. These existing tests must stay green:
 9. Correcting a fact updates or flags every section that used it. Ready requires every used fact to be confirmed or corrected.
 10. A polish that changes any number, place or name is refused.
 11. Each version is a .docx in the Doc Vault with a facts snapshot, and earlier versions stay.
-12. Doc Vault facts never appear in a brief, in `entity_research` or `vault_research`, or in the funder-reader's context.
+12. Doc Vault facts never appear in a brief, in `entity_research` or `vault_research`, or in the funder-file reader's context. No reader makes a web call.
 13. Ask and Scout are unchanged: canary evals pass and Recent Chats is unchanged.
+14. No storage code or marker appears on screen; every source is in words.
+15. A gate answered "We'll have it before sending" shows as open on "Before you send it" until it is done.
 
 ## 9. Files expected to change
 
@@ -491,7 +531,7 @@ No new tests. These existing tests must stay green:
 
 - [ ] M1: 0048, the REST resource, uploads, the list on the API. Exit: shared across devices.
 - [ ] M2: `/proposal`, shared chat access, agent skeleton, sources kept in `work`, drawer. Exit: admin and steward share a thread.
-- [ ] M3: facts, reliability, `ask_user` with AskGate, the two readers, steps 2–3. Exit: priorities and pitch confirmed.
+- [ ] M3: facts, reliability, `ask_user` with AskGate, the readers, step 2. Exit: readers ran in parallel; facts in words.
 - [ ] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
 - [ ] M5: review, propagation, conflicts, ready. Exit: Ready or the exact list.
 - [ ] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
