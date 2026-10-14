@@ -113,6 +113,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-07 · #97 · Settings page, `/api/me`, org member management (`0028`, `0029`).
 - 2026-10-12 · #181 · One read policy each on `users` and `org_members`, three FK indexes.
 - 2026-10-14 · Each agent route declares its access in `AGENT_ACCESS`; a route with none fails at boot instead of falling back.
+- 2026-10-15 · Only a thread's owner may post a turn in it, staff included, so rows read as one user are never replayed to another.
 
 ## Frontend and design system
 
