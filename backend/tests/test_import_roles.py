@@ -19,6 +19,7 @@ ME = UUID(int=2)
 MEMBER = CallerScope(ME, False, {7: "member"}, {7: "Arpan"})
 STEWARD = CallerScope(UUID(int=3), False, {7: "steward", 8: "steward"}, {7: "Arpan", 8: "Kabil"})
 STAFF = CallerScope(UUID(int=1), True)
+ARPAN_STEWARD = CallerScope(UUID(int=4), False, {7: "steward"}, {7: "Arpan"})
 
 STAFF_URL = "https://staff-sources.sangam.invalid/12"
 PUBLIC_URL = "https://example.org/csr"
@@ -319,9 +320,10 @@ class TestStaffUndoAndDelete:
 
         return _make
 
-    async def test_members_cannot_undo_or_delete(self, app_as):
-        from tests.test_access import MEMBER, client
+    async def test_stewards_cannot_undo_or_delete(self, app_as, monkeypatch):
+        from tests.test_access import MEMBER, client, memberships
 
+        memberships(monkeypatch, "steward")
         async with client(app_as(MEMBER)) as c:
             assert (await c.post("/api/ingest/promotions/5/undo")).status_code == 403
             assert (await c.delete("/api/ingest/research/acme")).status_code == 403
@@ -376,10 +378,10 @@ class TestSaveFromTheScreen:
 
         return _post, seen
 
-    async def test_a_member_saves_a_funder_with_their_answers(self, post):
+    async def test_a_steward_saves_a_funder_with_their_answers(self, post):
         _post, seen = post
-        res = await _post(MEMBER, "acme", {"decisions": {"q1": "update"}})
-        assert res.status_code == 200 and seen["decisions"] == {"q1": "update"} and seen["caller"] is MEMBER
+        res = await _post(ARPAN_STEWARD, "acme", {"decisions": {"q1": "update"}})
+        assert res.status_code == 200 and seen["decisions"] == {"q1": "update"} and seen["caller"] is ARPAN_STEWARD
         body = res.json()
         assert body["entity"]["id"] == 9 and body["written"] == 2 and body["held"] == 1
         assert body["promotion_id"] is None  # undo is staff's
@@ -389,10 +391,13 @@ class TestSaveFromTheScreen:
         assert (await _post(STAFF, "acme", {})).json()["promotion_id"] == 4
 
     async def test_refusals_and_missing_research(self, post):
-        _post, _ = post
-        refused = await _post(MEMBER, "kabil", {})
+        _post, seen = post
+        refused = await _post(ARPAN_STEWARD, "kabil", {})
         assert refused.status_code == 403 and refused.json()["detail"].startswith("Kabil is an NGO")
-        assert (await _post(MEMBER, "missing", {})).status_code == 404
+        assert (await _post(ARPAN_STEWARD, "missing", {})).status_code == 404
+        seen.clear()
+        member = await _post(MEMBER, "acme", {})
+        assert member.status_code == 403 and seen == {}  # refused before the save is reached
 
 
 class TestACloseNameIsAsked:
