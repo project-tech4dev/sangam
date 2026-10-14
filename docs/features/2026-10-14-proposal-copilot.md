@@ -312,7 +312,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - **`readiness.py`:** `summary(work)` in the 9 Oct shape, plus `stage`, `facts_open` and `questions_open`.
 - **`gates.py`:** ports `start.ts`, using `latest_run` and `get_detail`.
 - **`work.py`:**
-  - `ALLOWED_PATHS` covers gates, template, style, stage, `sections.<code>.text|done` and `facts.<id>.status|value`.
+  - `ALLOWED_PATHS` covers gates, template, style, stage, `sections.<code>.text|done`, `facts.<id>.status` and `facts.<id>.correct` (M3a: a correction keeps the old fact as `corrected` and adds the person's as a you_said fact with `supersedes`).
   - `apply()` runs `SELECT … FOR UPDATE`, then `jsonb_set` per path, then the section-`rev` 409, then recomputes `summary`.
   - Every write appends `{at, by, via, run_id, path, from, to, facts, reason}` to `work.log[]`, where `via` is `rest` or `agent`. The log is kept in full; the context layer reads only the latest entries by other people.
   - It is the only write path: the agent tools, `PATCH /{id}` (title) and `POST /{id}/versions` all call it. ARCHITECTURE.md states the rule.
@@ -397,7 +397,8 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - **"Later" frees it for anyone.** A parked question can be asked of whoever next opens that part. An answer becomes a fact both chats see, so nobody is asked twice.
 - **The question card sits at the top of the side panel**, above the asker's chat (the canvas's "Sangam's question" card). Members see no question card and no chat; they see facts read-only.
 - **Every fact and question change goes through `work.apply` with `via="agent"`**, so it is logged and a teammate's live block says, for example, "Admin confirmed: 1,240 households surveyed". `context._what` names facts by subject, never by code.
-- **`StageGate` and `AskGate` are added to `ProposalContext`'s agent here**, the first milestone with tools that write more than the step.
+- **The two gates are checks inside the tools, not middleware.** `steps.too_early(tool, stage)` stops `add_facts` before step 2 and `ask_user` before step 3; `questions.may_ask` is AskGate. Each tool calls its check first, so a refusal is a returned "REFUSED: …" the model can read.
+- **The person's screen rides on their latest message too**, only in the model request, never saved. *Example:* after twenty turns about Problem and baseline, the person opens Context and target area and asks "add what you hold for this part"; with the screen line in the system prompt alone the model kept answering about Problem and baseline.
 
 **Files**
 - New: `backend/app/proposals/{facts,reliability,questions,records}.py`, `tools/ledger_tools.py`.
@@ -686,7 +687,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 
 - [ ] M1: 0048, the REST resource, uploads, the list on the API. Exit: shared across devices.
 - [ ] M2: `/proposal`, own-chat access, agent skeleton, sources kept in `work`, side panel. Exit: admin and steward each have their own chat on one proposal.
-- [ ] M3a: facts, reliability, `ask_user` with AskGate and reply sorting, questions shared across each person's chat. Exit: facts in words; one question at a time, by rule, never asked of two people.
+- [x] M3a: facts, reliability, `ask_user` with AskGate and reply sorting, questions shared across each person's chat. Exit: facts in words; one question at a time, by rule, never asked of two people.
 - [ ] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
 - [ ] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
 - [ ] M5: review, propagation, ready. Exit: Ready or the exact list.
