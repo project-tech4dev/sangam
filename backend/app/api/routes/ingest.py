@@ -16,6 +16,7 @@ from app.core.security import (
     get_current_user,
     request_scope,
     require_principal,
+    require_scout,
     require_staff,
     require_user,
 )
@@ -48,8 +49,8 @@ from app.schemas.ingest import (
 from app.schemas.me import MembershipOut, MeOut
 from app.schemas.threads import ThreadMessagesOut, ThreadOut
 
-# Open to any signed-in user; the research routes are scoped to the caller, the rest are staff's.
-router = APIRouter(prefix="/ingest", tags=["ingest"])
+# Staff and stewards only; the research routes are scoped to the caller, the rest are staff's.
+router = APIRouter(prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_scout)])
 STAFF = [Depends(require_staff)]
 logger = logging.getLogger(__name__)
 

@@ -18,11 +18,13 @@ export class NotFoundError extends Error {
 // Not in development, where nobody is signed in and a fresh Import save should show at once.
 const ANON_REVALIDATE_SECONDS = 300;
 const CACHE_ANON = process.env.NODE_ENV === "production";
+// Headers are part of the cache key, so each deploy starts clean instead of serving the last one's shapes.
+const BUILD = process.env.VERCEL_DEPLOYMENT_ID ?? process.env.VERCEL_GIT_COMMIT_SHA ?? "";
 
 export async function apiGet<T>(path: string): Promise<T> {
   const headers = await serverAuthHeaders();
   const res = await fetch(`${BASE}${path}`, CACHE_ANON && !headers.Authorization
-    ? { next: { revalidate: ANON_REVALIDATE_SECONDS } }
+    ? { headers: { "x-sangam-build": BUILD }, next: { revalidate: ANON_REVALIDATE_SECONDS } }
     : { headers, cache: "no-store" });
   if (res.status === 404) throw new NotFoundError(path);
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);

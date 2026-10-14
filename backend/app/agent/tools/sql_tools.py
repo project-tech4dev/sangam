@@ -129,7 +129,10 @@ async def db_profile_column(table: str, column: str) -> str:
         )
         rows = await _executor().run(query)
         if not rows:
-            return f"{table}.{column} has no rows to profile (the table is empty)."
+            return (
+                f"{table}.{column} has no rows this user can read: the table is empty, or row "
+                "security hides every row from them. Do not report it as empty."
+            )
 
         lines = [f"{table}.{column} — {len(rows)} most common value(s), as stored:"]
         lines += [f"  {render.render_cell(r['value'])}  ({r['n']})" for r in rows]
@@ -182,6 +185,8 @@ async def db_query(sql: str, purpose: str) -> str:
     )
 
     header = [f"{len(shown)} row(s). tables: {', '.join(query.tables)}."]
+    if not shown:
+        header.append("Only rows this user may read are returned: none here is not 'none exist'.")
     if query.rewrites:
         header.append("adjusted: " + "; ".join(query.rewrites) + ".")
     caveats = _caveats_for(query.tables)

@@ -24,6 +24,8 @@ export type IndexPayload = {
   scores: { id: number; funderSlug: string; orgName: string; funderName: string; rubricVersion: string | null }[];
   activities: ({ id: number; href: string; title: string } & Sourced)[];
   stats: Record<string, number>;
+  /** Staff or a steward: the sidebar offers Sangam Scout. */
+  canScout: boolean;
 };
 
 export function AskWorkspace({
@@ -128,6 +130,7 @@ export function AskWorkspace({
         onPickThread={pickThread}
         onNewChat={() => newChat()}
         counts={{ proposals: proposalCount }}
+        canScout={payload.canScout}
       />
 
       <div className="ask-main" style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", gap: 24 }}>

@@ -10,6 +10,7 @@ import type {
 } from "@/lib/api";
 import type { IndexPayload } from "@/features/ask/AskWorkspace";
 import { AskPreview } from "@/features/ask/preview/AskPreview";
+import { canUseScout, type Me } from "@/features/ingest/lib/access";
 import { WorkspaceLoader } from "@/features/ask/WorkspaceLoader";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,12 +38,13 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
   if (params.view === "import") redirect("/import");
   if (!(await isSignedIn())) return <AskPreview initialQuestion={q} />;
 
-  const [orgs, funders, scores, lines, stats] = await Promise.all([
+  const [orgs, funders, scores, lines, stats, me] = await Promise.all([
     apiGet<OrgListItem[]>("/api/orgs"),
     apiGet<FunderListItem[]>("/api/funders"),
     apiGet<PageOf<ScoreRow>>("/api/scores?limit=100").then((p) => p.items),
     apiGet<PageOf<PartnerLineRow>>("/api/partner-lines?limit=100").then((p) => p.items),
     apiGet<Record<string, number>>("/api/meta/stats"),
+    apiGet<Me>("/api/me").catch(() => null),
   ]);
 
   const funderSlugById = new Map(funders.map((f) => [f.id, f.slug]));
@@ -83,6 +85,7 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
       fetchedAt: l.fetched_at,
     })),
     stats,
+    canScout: me ? canUseScout(me) : false,
   };
 
   // The workspace fills the viewport below the sticky navbar; the footer sits below the fold.

@@ -89,6 +89,8 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
 - **Geography is a closed list.** The matcher never creates a place; a weak near-match is held, not guessed.
 - **Undo replays `catalog_writes` newest-first**, and refuses when a row has changed since.
 - **Tools run on the owner pool**, so each checks `chat_scope` itself; private findings are stripped for non-staff.
+- **Scout is for staff and stewards only.** `require_scout` refuses everyone else (403) on the `/ingest` agent route
+  and every `/api/ingest` route, before a thread is claimed; the sidebar link and `/import` are hidden from them too.
 
 ## 5. Funder Match
 

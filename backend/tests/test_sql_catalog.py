@@ -127,3 +127,37 @@ def test_self_check_rejects_a_dangling_foreign_key():
             cat._self_check()
     finally:
         cat.CATALOG = original
+
+
+class _Conn:
+    """Answers verify_against_db's two queries: the live columns, then the denied grants."""
+
+    def __init__(self, denied: list[dict]):
+        self._results = [
+            [{"table_name": t, "column_name": c.name} for t, table in cat.CATALOG.items() for c in table.columns],
+            denied,
+        ]
+
+    async def execute(self, *_):
+        rows = self._results.pop(0)
+
+        class _Cursor:
+            async def fetchall(self):
+                return rows
+
+        return _Cursor()
+
+
+class TestVerifyAgainstDb:
+    async def test_a_matching_schema_with_every_grant_is_clean(self):
+        assert await cat.verify_against_db(_Conn(denied=[])) == []
+
+    async def test_a_column_authenticated_cannot_read_fails_the_boot(self):
+        denied = [{"role": "authenticated", "t": "org_identifiers", "cols": "id_value"}]
+        problems = await cat.verify_against_db(_Conn(denied=denied))
+        assert problems == ["org_identifiers: role authenticated cannot SELECT catalog column(s): id_value"]
+
+    async def test_a_table_anon_reads_only_in_part_fails_the_boot(self):
+        denied = [{"role": "anon", "t": "org_identifiers", "cols": "evidence"}]
+        problems = await cat.verify_against_db(_Conn(denied=denied))
+        assert problems == ["org_identifiers: role anon cannot SELECT catalog column(s): evidence"]
