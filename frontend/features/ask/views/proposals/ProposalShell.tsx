@@ -158,10 +158,10 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
           {canEdit ? (
             <TellSangam proposal={proposal} screen={{ step: STEPS[work.stage - 1], selection }} onTurnEnd={load} />
           ) : (
-            <section className="card pr-side-card" aria-label="Ask Sangam">
-              <div className="card-title">Ask Sangam</div>
+            <section className="card pr-side-card" aria-label="Sangam Pitch">
+              <div className="card-title">Sangam Pitch</div>
               <p className="muted pr-chat-note">
-                Each person who can change this proposal has their own private chat with Sangam. You see what they change, not what
+                Each person who can change this proposal has their own private chat with Sangam Pitch. You see what they change, not what
                 they asked.
               </p>
             </section>

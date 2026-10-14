@@ -31,7 +31,7 @@ INGEST_DESCRIPTION = (
     "Imports funder data from permitted external sources into the catalog, "
     "matches it against what is already there, and reports what it could not process."
 )
-PROPOSAL_DESCRIPTION = "Works on one grant proposal with the NGO's team, step by step, inside rules the code checks."
+PROPOSAL_DESCRIPTION = "Sangam Pitch: works on one grant proposal with the NGO's team, step by step, inside rules the code checks."
 AGENT_NAMES = {"/agent": "sangam_agent", "/ingest": "sangam_ingest", "/proposal": "sangam_proposal"}
 # Who may post to each agent, and as whom its tools read. Ask Sangam's SQL runs as the caller; Import keeps
 # the owner, since it writes the catalog. A proposal chat is one person's, like an Ask chat.

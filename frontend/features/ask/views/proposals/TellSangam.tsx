@@ -12,7 +12,7 @@ const SCREEN = "What the person is looking at";
 
 export type Screen = { step: string; tab?: string; part?: string; selection?: string };
 
-/** Your own chat with Sangam about this proposal, in the side panel; teammates each have theirs. */
+/** Your own chat with Sangam Pitch about this proposal, in the side panel; teammates each have theirs. */
 export function TellSangam({ proposal, screen, onTurnEnd }: { proposal: Proposal; screen: Screen; onTurnEnd: () => void }) {
   const threadId = proposal.thread_id;
   const load = useCallback(() => fetchProposalMessages(proposal.id), [proposal.id]);
@@ -46,10 +46,10 @@ export function TellSangam({ proposal, screen, onTurnEnd }: { proposal: Proposal
   }
 
   return (
-    <section className="card pr-side-card" aria-label="Ask Sangam">
-      <div className="card-title">Ask Sangam</div>
+    <section className="card pr-side-card" aria-label="Sangam Pitch">
+      <div className="card-title">Sangam Pitch</div>
       <p className="muted pr-chat-note">
-        Only you see this chat. Sangam sees the step you are on, any text you select, and what your teammates change.
+        Only you see this chat. Sangam Pitch sees the step you are on, any text you select, and what your teammates change.
       </p>
       {turns.length === 0 ? (
         <p className="muted">{isLoadingHistory ? "Loading your chat…" : "Ask anything about this step."}</p>
@@ -71,7 +71,7 @@ export function TellSangam({ proposal, screen, onTurnEnd }: { proposal: Proposal
       )}
       {failed && (
         <p className="pr-stop" role="alert">
-          Sangam could not answer. Try again in a moment.
+          Sangam Pitch could not answer. Try again in a moment.
         </p>
       )}
       <div className="pr-chat-composer">
@@ -83,7 +83,7 @@ export function TellSangam({ proposal, screen, onTurnEnd }: { proposal: Proposal
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") void submit();
           }}
-          aria-label="Ask Sangam"
+          aria-label="Ask Sangam Pitch"
         />
         <button className="btn btn-primary" type="button" onClick={() => void submit()} disabled={!ready || isRunning || !draft.trim()}>
           {isRunning ? "Working…" : ready ? "Ask" : "Connecting…"}
