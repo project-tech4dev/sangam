@@ -1,6 +1,6 @@
 # Proposal Copilot: a human-in-the-loop agent that builds a proposal with the NGO
 
-Draft v2 · 2026-10-14 · branch `feat/proposal-copilot`
+Draft v3 · 2026-10-15 · first version trimmed · branch `feat/proposal-copilot`
 
 **Replaces** the 9 Oct proposals spec (`features-plans/proposals/2026-10-09-proposals-design.md` on
 `docs/proposals-spec`, never merged). These parts of that spec carry over unchanged:
@@ -17,7 +17,7 @@ What it replaces is "draft every section at once with ~20 fixed calls". **The st
 (https://claude.ai/artifact/H1b4nv5ReQn8mvHg2HhPB5): 1 Eligibility gates → 2 Template, documents and style → 3 Proposal,
 then Assemble → Polish → Save. **The screens are the Claude Design canvas** (https://claude.ai/artifact/Vhy3vqLJPs43rKpeNCFydr),
 reviewed for NGO staff who are not technical. Every path below was checked against `origin/master` at
-`9e7e6f0`. The running example is SeSTA (the NGO) writing to Axis Bank Foundation (ABF, the funder).
+`20fe18c`. The running example is SeSTA (the NGO) writing to Axis Bank Foundation (ABF, the funder).
 
 ## 1. Requirement summary
 
@@ -130,8 +130,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 **The agent proposes, code checks.** Every write tool validates and returns `REFUSED: …`, never raises:
 - `add_facts`: the source is verified for its kind;
 - `ask_user`: the reason to ask must be warranted by the fact list;
-- `write_section`: trace check, then grade, then `rev`;
-- `flag_conflict`: both facts exist and are of equal tier.
+- `write_section`: trace check, then grade, then `rev`.
 
 **Architecture**
 
@@ -149,7 +148,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
  │ schema       │   │           read_match                            │
  └──────┬───────┘   │   pauses: ask_user  ◄─ HITL, one at a time      │
         │           │   writes: add_facts · write_section ·           │
-        │           │           flag_conflict · advance_step          │
+        │           │           advance_step                          │
         │           │   every write passes CODE CHECKS: steps ·       │
         │           │   reliability · questions · trace · grade       │
         │           │   task(...) gated by ProposalSources            │
@@ -163,7 +162,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
         │           │   neither has a web tool                        │
         │           └──────────────┬──────────────────────────────────┘
         ▼                          ▼
- Postgres: proposals.work {stage, gates, template, sources, style, facts[], sections, conflicts, versions}
+ Postgres: proposals.work {stage, gates, template, sources, style, facts[], sections, questions, readers, run, log[], versions}
            funder_matches · programs · funder_activity · document_links · documents
  Storage:  source-archive/entities/<slug>.md (briefs, read-only) · org-vault/<org>/proposals/<id>/vN.docx
 ```
@@ -171,7 +170,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 **One turn, worked through (step 3, The People tab, A11 "Track record"):**
 1. The evidence readers have already run, one per ticked file. `ProposalSources` let each read only its own file.
 2. It returns "24,765 families, 2019–22 [activity:41]" and "no 2025-26 outcome found". `add_facts` stores k15, which is green because it is registry data.
-3. The supervisor calls `ask_user(reason="missing_required", section="A11")`. Code confirms that A11 has no outcome from the last 24 months, and the card appears.
+3. The supervisor calls `ask_user(reason="missing_required", section="A11")`. Code confirms that A11's required outcome has no fact, and the card appears.
 4. The person answers "1,150 households, 9 → 10.5 food-secure months". It is stored as k16, "you said".
 5. The supervisor calls `write_section("A11", "…24,765 families ⟦k15⟧ … 1,150 households ⟦k16⟧")`. The trace check passes, and the section is graded 2 of 2.
    - Had the draft said "1,200", it would be refused, and the error would name the untraced number.
@@ -186,7 +185,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
   - `used_in`, `supersedes`;
   - `origin`: registry / vault / web / you_said / derived;
   - `private`;
-  - `document_id` and `content_hash` for a fact read from a file, so a changed file can be noticed.
+  - `document_id` for a fact read from a file, so a re-read replaces only that file's facts.
 - Sections cite facts as ⟦k7⟧.
 
 **Reliability in code** (`app/proposals/reliability.py`).
@@ -195,13 +194,8 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
   - web: amber;
   - "you said": its own colour;
   - derived by the agent: amber until confirmed.
-- Then freshness by kind:
-  - registrations: until expiry;
-  - financials: the last FY;
-  - outcomes and baselines: 24 months;
-  - staff: 6 months.
-- Corroboration raises a fact one colour. Ties use brief's `_strength` order.
-- *Example:* sesta.org's "120 villages" is amber. If the 2024-25 annual report says 120 on p.14, the fact becomes green.
+- The colour is the fact's tier; nothing else changes it. Every fact shows its year, so the person sees an old one.
+- *Example:* sesta.org's "120 villages" is amber; "96 villages" from the 2024-25 annual report, p.14, is green.
 
 **The context layer: the agent is told where it is on every model call, and never has to remember.**
 `app/proposals/context.py` is pure code with two functions, `stable(work)` and `live(work, screen, since)`. It is split in
@@ -211,7 +205,7 @@ a separate block with its own cache breakpoint.
 
 | Block | What it says | Comes from | Where it goes | Changes |
 |---|---|---|---|---|
-| **Stable** | the proposal, org, funder and programme; the funder's confirmed priorities; the form's sections and limits; gate answers; the writing style | `work` | appended to the system message by `ProposalBrief`, with its own `cache_control` breakpoint (as `MemoryMiddleware(add_cache_control=True)`) | rarely: step 2 done, a priority confirmed, a gate answered |
+| **Stable** | the proposal, org, funder and programme; the funder's confirmed priorities; the form's questions; gate answers; the writing style | `work` | appended to the system message by `ProposalBrief`, with its own `cache_control` breakpoint (as `MemoryMiddleware(add_cache_control=True)`) | rarely: step 2 done, a priority confirmed, a gate answered |
 | **Live** | where the proposal is (step, tab, parts finished, scores, readers done); what is on screen; what changed since the agent last spoke; what is waiting; what it may do next | `work`, `summary`, the screen and `work.log[]`, read fresh each call | added by `ProposalNote` as the last message of that one model call, never written to the graph state, so the chat history and the checkpoint never hold it | every call |
 
 Each line of the live block has its own source and trust:
@@ -231,7 +225,7 @@ Stable block (cached; unchanged since step 2):
 ```
 Proposal 42: SeSTA → Axis Bank Foundation · programme: SHG federations, Udalguri
 ABF's confirmed priorities: rural livelihoods through community institutions, North-East India; ₹1–5 crore over 3 years
-Form: ABF proposal format 2026 · summary up to 2,000 characters · workplan by quarter · §6 convergence with government
+Form: ABF proposal format 2026 · workplan by quarter · §6 convergence with government
 Gates: 12A, 80G, standing: yes · CSR-1: will have it before sending · 2025-26 accounts: yes
 Style: plain, specific English for a CSR programme officer; ₹ in lakh and crore; every figure with source and year
 ```
@@ -252,7 +246,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 **What it is tracking lives in the proposal row, not the conversation.** Sources chosen, the open question and confirmed priorities are kept in `work`, because a proposal chat spans days and `cheap_summarizer` drops old tool messages.
 
-**Review and "Before you send it" are mostly code.** Correction propagation, the equal-tier contradiction check, readiness, the polish check and the .docx are deterministic. Polish is one `Settings.model` call made by a REST route.
+**Review and "Before you send it" are mostly code.** Correction propagation, readiness, the polish check and the .docx are deterministic. Polish is one `Settings.model` call made by a REST route.
 
 **Alternatives considered and rejected**
 - **An agent per section:** costs too much and splits the fact list.
@@ -286,6 +280,11 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 15. **Past studies are facts, not a scored section.**
 16. **No storage code on screen** (above). The screens do not say who can read a document.
 17. **A context layer on every model call, in two blocks.** A stable block in the system prompt with its own cache breakpoint (`ProposalBrief`), and a live block as the last message of each call, never saved (`ProposalNote`). Both are built by code from `work`, the screen and `work.log`.
+18. **Tests for the code-only safeguards** (15 Oct): each milestone tests its own; no tests of model output and no evals. An exception to "no new tests in a PR" for this feature.
+19. **M3 is two PRs:** facts and asking (M3a), then the readers and step 2 (M3b).
+20. **One agent turn at a time per proposal** (`work.run`).
+21. **Web facts come only from Import's briefs**; no proposal reader searches the web.
+22. **A trimmed first version** (15 Oct): colour by source only, three reasons to ask, no meaning-clash tool, no changed-file check, a polish check on numbers, places and names only, the form's questions without its limits, no staff numbers. Each is in "Later".
 
 ## 5. Implementation steps (one PR each)
 
@@ -307,7 +306,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - Keep the 0027 `DO` guard.
 - **`rubric.py`:** the rubric moves server-side (`proposal-v2`).
   - `DEPENDS_ON`: A2/A3 before A4, A4 before A5/A6, A5 before A15, everything before A1.
-  - `sections_for(earlier_phase, template)` adds T sections and overlays.
+  - `sections_for(earlier_phase, template)` adds F4 for an earlier phase and the funder form's own questions as T sections; the form's limits are later.
 - **`readiness.py`:** `summary(work)` in the 9 Oct shape, plus `stage`, `facts_open` and `questions_open`.
 - **`gates.py`:** ports `start.ts`, using `latest_run` and `get_detail`.
 - **`work.py`:**
@@ -339,7 +338,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 **Exit gate:** SeSTA's admin starts "SeSTA: women's farm enterprises, Baksa → ABF" from the Match card and answers the gates; the steward opens it on another device and carries on.
 
-### M2: agent skeleton, route, step 1 and the sources card, chat drawer
+### M2: agent skeleton, route, step 1, chat drawer
 
 **Goal:** a `/proposal` agent that knows which proposal it is in, is shared by the team, and advances only through code.
 
@@ -352,7 +351,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - **Lifespan:**
   - `AGENT_NAMES["/proposal"]="sangam_proposal"`;
   - `_build_agents` adds `proposal_graph` with `SessionScopedAGUIAgent(..., emit_raw_events=False)`;
-  - `_add_agent_route(app, path, access=chat_access)`, with `/proposal` passing `proposal_chat_access` (decision 1).
+  - `_add_agent_route` already picks its access by path (`/ingest` adds `require_scout`, #207); `/proposal` gets `proposal_chat_access` instead of `chat_access` (decision 1).
 - **Binding to the proposal:** `context.current()` loads the proposal by thread id on the owner pool and refuses unless the caller is staff or in the proposal's org. Tools never take a proposal id from the model.
 - **Members read only.** `proposal_chat_access` lets a member open the thread's history (GET) but refuses a new run (403), because every agent tool writes on the owner pool. Every write tool also calls one shared `require_edit(ctx)`, which re-checks `can_edit` from `context.current()` and returns `REFUSED: you can read this proposal` otherwise.
 - **Screen:** a member sees every step, the facts and the sections, with no buttons or chat box, and one line: "You can read this proposal. Ask SeSTA's admin to make changes." The Match card shows them "View proposal", never "Start".
@@ -374,8 +373,8 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - `route.ts` registers `sangam_proposal`;
   - `ProposalShell` becomes the three-step stepper, with "How this works" shown once before step 1;
   - under a disabled "Next", the stepper shows `exit_check`'s list in words: "To continue: answer CSR-1.";
-  - the drawer uses `useAgentChat`, with history from `GET /api/proposals/{id}/messages` (reusing `saved_messages(graph_name="proposal_graph")`);
-  - step 2's form, documents and style are REST writes to `work`, not an interrupt.
+  - the drawer uses `useAgentChat`, with history from `GET /api/proposals/{id}/messages` (reusing `saved_messages(graph_name="proposal_graph")`).
+- **Step 2's screen is M3b**, where the readers use it.
 
 **Validation**
 - SeSTA's admin and steward open the same thread, and a stranger gets 404.
@@ -386,7 +385,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - One answer's SSE payload is about 100 KB, not about 1.7 MB.
 - **Tests:** `steps.exit_check` gives the same list for the same `work`; `context.stable/live` are deterministic and the stable block carries no private fact; a member's run gets 403 and a stranger 404; every write tool refuses when `can_edit` is false; a second run while `work.run` is set is refused.
 
-**Exit gate:** step 1 → 2 happens only after every gate is answered. The sources answer survives a forced summary.
+**Exit gate:** step 1 → 2 happens only after every gate is answered. The gate answers and the open step survive a forced summary.
 
 ### M3a: facts and asking
 
@@ -406,7 +405,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - Tier and colour are set by `reliability.py`.
   - **Idempotent:** a fact with the same origin, source (marker or `document_id` + page), subject and value returns the existing id, so a retried turn adds no duplicates.
 - **Where web facts come from.** No proposal reader searches the web. `origin=web` facts arrive through `read_brief`: Import's briefs hold findings researched from public pages, with http links. *Example:* "sesta.org: 120 villages" comes from SeSTA's brief and shows amber.
-- **`ask_user`** is an interrupt whose `reason` is one of the six below.
+- **`ask_user`** is an interrupt whose `reason` is one of the three below.
   - `AskGate` (the `ChosenSources` pattern) refuses unless `questions.warranted(...)` holds, no other question is open, and the section is the current one.
   - The resume value is `{kind: "pick", choice}` from a card button, or `{kind: "text", text}` from the chat box. `questions.classify(text)` (one `UTILITY_MODEL` call) returns answer, question back or skip, and `ask_user` returns accordingly (decision 4).
   - Only an answer becomes a you_said fact. A question back leaves `work.questions.open` unchanged; a skip sets it to `parked`, and `AskGate` lets a parked question be asked again only for the part on screen or at "Before you send it".
@@ -415,16 +414,13 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 | Reason to ask | Code check | SeSTA → ABF example |
 |---|---|---|
-| Missing element | A required Strong element has no fact | A6 needs a baseline; there is "412 SHGs" but no survey figure |
-| Disagreement | Same kind, subject and period at equal tier, different values | sesta.org: 120 villages; the 2024-25 report: 96 |
-| Stale | Older than its kind's window | "Income up 38%" is from FY2021-22 |
-| Weak support | A6, A15 or F1 rests only on amber facts | A15's "₹8,500 per household" comes only from a web page |
-| Org's call | The kind is programme, amount or gate | Baksa farm enterprises or Udalguri SHG federations? |
-| Would infer a number | The draft needs a number no fact gives | ABF's ceiling is ₹5 crore, but SeSTA has no requested amount (no suggestion offered) |
+| Missing | A required Strong element has no fact | A6 needs a baseline; there is "412 SHGs" but no survey figure |
+| Sources disagree | Same kind, subject and period at equal tier, different values | the 2024-25 report says 96 villages; the 2023-24 report, 104 |
+| Org's call | The kind is programme, amount or gate, or the draft needs a number no fact gives (no suggestion offered) | Baksa farm enterprises or Udalguri SHG federations? · ABF's ceiling is ₹5 crore, but SeSTA has no requested amount |
 
 - **Question shape:** found → missing → why the funder cares → suggestion.
   - *Example:* "Found 412 SHGs [k12] in your 2024-25 report p.14. Missing: an outcome for the last 12 months. ABF scores A6 on outcomes, not counts. Suggestion: the March 2026 household survey, if you have it."
-- **Tests:** `reliability`, `questions.warranted` (each reason and the unwarranted case), `add_facts` verification and idempotency.
+- **Tests:** `reliability`, `questions.warranted` (each of the three reasons and the unwarranted case), `add_facts` verification and idempotency.
 
 **Validation:** with only SeSTA's record, the agent adds registry facts, asks one warranted question, and an `ask_user` with no warrant is refused. A typed question back is answered and the card stays.
 
@@ -445,14 +441,13 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - tools: `read_brief`, `read_document_pages` (only documents linked to this funder), `read_template`, `add_facts`;
   - middleware: `filesystem(backend)`, `ProposalSources`, `fallback`;
   - no web tool and no Doc Vault tool;
-  - returns `FunderWants`: priorities, places, eligibility, terminology, past grants, form sections, limits. What it does not find it says, so the form upload opens in step 2.
+  - returns `FunderWants`: priorities, places, eligibility, terminology, past grants, the form's questions. It says plainly what it did not find (a funder with no brief yields little; only staff and stewards can run Scout since #207), and the form link or upload in step 2 fills the gap.
 - **`evidence-reader`** (`RESEARCH_MODEL`, isolated):
   - tools: `list_vault_documents`, `read_vault_document`, `read_brief`, `add_facts`;
   - middleware: `filesystem(backend, evict=False)`, `RunSources()`, `DropFilesOnExit()`, `fallback`;
   - one per ticked file, up to `MAX_PARALLEL_RESEARCH` at once;
   - no web tools, and nothing written to `vault_research`.
 - **Reader status in `work.readers`:** `{document_id: running | done | failed, error, at}`. A file whose reader fails shows one line, "Couldn't read Workplan 2025.docx. Try again", which re-runs that file only; drafting goes on with gaps where it would have helped. A re-read replaces that file's `proposed` facts and never a confirmed one.
-- **A changed file:** when a ticked file's content hash no longer matches its facts' `content_hash` (checked when the proposal opens and when step 2's ticks change), those facts go back to `proposed` and the sections using them are flagged, through the same buttons and path as a correction. Nothing new on screen.
 - **Exit checks in `steps.py`:**
   - step 1: every gate answered;
   - step 2: form set or skipped, style set, "Write the first draft" pressed.
@@ -507,19 +502,17 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
   - it creates a you_said fact with `supersedes=k` and sets the old one to `corrected`;
   - where the old value appears verbatim in a sentence that cites k, code replaces it;
   - otherwise the section is marked `needs_rewrite` and goes back through `write_section`.
-  - derived facts whose `from=[k…]` includes k are recomputed when the arithmetic is simple, else turned amber; their sections follow the same two rules.
-  - *Example:* villages corrected from 120 to 96 fixes A2 and A1 in place, and A4's "reach all 120" is flagged for a rewrite. Households 1,240 → 1,180 also turns "38% = 471 households" into 448.
-- **Contradiction pass:** code first, over equal-tier facts. Then the agent's `flag_conflict` for clashes in meaning, such as a "3-year project" against a 24-month workplan.
+  - derived facts whose `from=[k…]` includes k go back to `proposed` (amber), so the person checks them again.
+  - *Example:* villages corrected from 120 to 96 fixes A2 and A1 in place, and A4's "reach all 120" is flagged for a rewrite. Households 1,240 → 1,180 turns "38% = 471 households" amber.
 - **Ready:**
   - both gates;
   - no core section at 0;
   - A6, A15 and F1 at 2;
-  - overlays met;
   - no used fact still `proposed`;
-  - no open conflict.
-- **"Before you send it" has two lists.** *Fix first* (these stop "Ready"): a gate answered No, a used fact not confirmed, an open conflict, a core section at 0. *Worth checking* (shown, never blocking): a score of 1, a gate promised "before sending", a parked question, an `[Add: …]` gap. Download always works and the Word file highlights what is left.
+  - no open "sources disagree" question.
+- **"Before you send it" has two lists.** *Fix first* (these stop "Ready"): a gate answered No, a used fact not confirmed, sources that disagree, a core section at 0. *Worth checking* (shown, never blocking): a score of 1, a gate promised "before sending", a parked question, an `[Add: …]` gap. Download always works and the Word file highlights what is left.
 
-- **Tests:** `review.correct` replaces in place, flags for rewrite and follows derived facts (1,240 → 1,180 turns 471 into 448); readiness puts each case in *Fix first* or *Worth checking*.
+- **Tests:** `review.correct` replaces in place, flags for rewrite, and turns derived facts amber; readiness puts each case in *Fix first* or *Worth checking*.
 
 **Exit gate:** "Before you send it" lists what is left, including any gate answered "We'll have it before sending".
 
@@ -534,14 +527,11 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
 **Changes**
 - **Polish:** one `Settings.model` call. `trace.extract` runs before and after.
   - Any number, place or name added, dropped or changed refuses the polish and shows the difference.
-  - Then one `UTILITY_MODEL` call lists each sentence's commitments and negations before and after; any change refuses too. *Example:* "We will train 400 women" → "We aim to train 400 women" is refused.
   - The result is stored with a hash of the sections, which drives the stale banner.
 - **.docx:** built from `work.polished` (title, funder and date, headings, highlighted `[Add:]` gaps).
   - Stored at `<org_id>/proposals/<id>/v<N>.docx`.
   - A `documents` row with `doc_type 'proposal_draft'` and `is_ai_generated`, inserted on the caller pool.
   - `work.versions[]` gets `{n, document_id, at, by, facts_snapshot}`.
-
-- **Staff numbers, no screen:** a saved query (`make psql`) over `proposals.work` and `summary`: days in each step, refusals by reason, corrections by origin, parked questions, proposals idle 14+ days. NGOs see nothing.
 
 - **Tests:** the code part of the polish check refuses any number, place or name that changed.
 
@@ -641,6 +631,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 | Screen context is client input | A tampered context names another proposal's part. It sets focus only: `context.current()` binds the proposal by thread, and unknown part codes are dropped |
 | Long turns | Several sections in one turn approach 1800 s. One section per turn unless the person asks |
 | A reader fails or a turn is retried | 4 of 5 readers finish: their facts are saved, the fifth shows "Try again" for that file alone. A retried turn adds no duplicate facts (`add_facts` is idempotent) and a stale section save gets 409 |
+| A funder with no research brief | Only staff and stewards can run Scout (#207), so an admin cannot refresh ABF's brief. The funder-file reader says what it did not find, and step 2 asks for the form link or upload |
 | Two people start Sangam at once | `work.run` refuses the second: "Sangam is already working, started by Ravi 3 min ago" |
 
 ## 8. Acceptance criteria
@@ -680,6 +671,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 | `frontend/app/api/copilotkit/[[...slug]]/route.ts` | edit | `sangam_proposal` |
 | `frontend/features/ask/views/proposals/*` and their callers | edit/new | API store, step rail, cards, drawer |
 | `frontend/app/globals.css` | edit | `.pr-*` classes, design system first |
+| `backend/tests/test_proposals_*.py` | new | The code-only safeguards, per milestone (decision 18) |
 | `docs/ARCHITECTURE.md`, `CLAUDE.md`, `docs/CHANGELOG.md`, `openwiki/**` | edit | Rules, facts, changelog, wiki |
 
 ## 10. Order of work
@@ -689,10 +681,20 @@ No tests for model output, and no evals. These existing tests must stay green:
 - [ ] M3a: facts, reliability, `ask_user` with AskGate and reply sorting. Exit: facts in words; one question at a time, by rule.
 - [ ] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
 - [ ] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
-- [ ] M5: review, propagation, conflicts, ready. Exit: Ready or the exact list.
+- [ ] M5: review, propagation, ready. Exit: Ready or the exact list.
 - [ ] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
 - [ ] Each PR: a passing browser run (above) before the next milestone starts, `make wiki-update`, a CHANGELOG line, ARCHITECTURE and CLAUDE.md where rules change, a design-system sync, that milestone's safeguard tests, `npm run build`, `ruff check .`, `pytest`, and `pytest -m integration`.
 
 ## 11. Later (not in M1–M6)
+
+Cut from the first version on 15 Oct (decision 22); each can be added without reshaping M1–M6:
+- **Freshness and corroboration in fact colours:** windows by kind (registrations until expiry, financials the last FY, outcomes 24 months, staff 6 months), and a second source raising a fact one colour.
+- **Three more reasons to ask:** stale ("income up 38%" from FY2021-22), weak support (A15 resting only on a web figure).
+- **Derived figures recomputed** after a correction (1,240 → 1,180 turning 471 into 448) instead of turning amber.
+- **A changed file noticed:** a `content_hash` on file facts, checked on open, sending its facts back to "please check".
+- **A promise check in polish:** "We will train 400 women" → "We aim to…" refused.
+- **`flag_conflict`** for clashes in meaning, such as a "3-year project" against a 24-month workplan.
+- **The funder form's limits** (summary up to 2,000 characters) checked on each section.
+- **Staff numbers:** a saved query over `work.log`: days per step, refusals by reason, corrections by origin, idle proposals.
 
 - **"How others have done this"** (14 Oct): once The Idea is drafted, a goal card from A2–A4 drives a `landscape-reader`, the only reader with web search, that finds similar work in the region, India and the world, with links and the funder's closest past grants. Results are amber web facts the person marks "Useful" and confirms. It needs: Import's web tools imported, searches written from the goal card only, `add_facts` re-fetching the page to find the quote, and decision 11, criterion 12 and the M3b tool test edited to allow that one reader. One milestone after M3b; nothing in M1–M6 changes.
