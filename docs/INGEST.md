@@ -36,13 +36,15 @@ and how it maps; it cannot decide which table or which row.
 
 ## Who can use it
 
-Import is open to every signed-in role. Agent tools run on the owner pool, so each one checks the
-caller itself (`app/ingest/caller.py`, the `chat_scope` ContextVar) and returns a refusal string
-outside its scope.
+Import is for staff and the stewards of an org. `require_scout` (`app/core/security.py`) returns 403
+to anyone else on the `/ingest` agent route and every `/api/ingest` route, and the frontend hides the
+sidebar link and sends them from `/import` to `/ask`. Agent tools run on the owner pool, so each one
+checks the caller itself (`app/ingest/caller.py`, the `chat_scope` ContextVar) and returns a refusal
+string outside its scope.
 
 | Role | Researches | Reads first | Also |
 |---|---|---|---|
-| Org member or admin | any funder | their org's Doc Vault, if they tick it | saves after the same Review pause |
+| Org member or admin | no access | | |
 | Steward | the NGOs it supports, and any funder | those orgs' Doc Vaults, if ticked | saves both |
 | Staff | anything | team spreadsheets, any vault, if ticked | the adapter path, deleting research, undoing a save |
 

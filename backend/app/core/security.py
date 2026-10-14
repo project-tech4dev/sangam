@@ -281,6 +281,13 @@ async def request_scope(
     return await caller_scope(pool, principal)
 
 
+async def require_scout(scope: Annotated[CallerScope, Depends(request_scope)]) -> CallerScope:
+    """Scout (Import) is for Sangam staff and the stewards of an org; anyone else is 403."""
+    if not (scope.is_staff or scope.steward_of):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Scout is for stewards and Sangam staff")
+    return scope
+
+
 async def chat_access(
     request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
 ) -> None:

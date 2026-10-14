@@ -92,6 +92,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-13 · #195 · M2: the brief is the record; saves merge by `fact_key`, and the stronger source wins.
 - 2026-10-13 · #196 · M3: promotion reads the brief; every fact ends written, confirms, conflicts, waiting or held (`0046`).
 - 2026-10-13 · #197 · M4: every public source a fact cites becomes a typed `documents` row, linked by `document_links` (`0047`).
+- 2026-10-14 · `feat/scout-steward-staff-only` · Scout is for staff and stewards only: `require_scout` (403) on `/ingest` and `/api/ingest`; the sidebar link and `/import` are hidden from everyone else.
 
 ## Funder Match and the taxonomy
 
