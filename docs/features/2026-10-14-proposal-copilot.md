@@ -11,7 +11,7 @@ Draft v2 · 2026-10-14 · branch `feat/proposal-copilot`
 - assemble → polish → .docx with versions;
 - PATCH `work` by path with a section `rev`;
 - several proposals per org and funder;
-- anyone in the org (member or admin), its stewards and staff can start and write a proposal.
+- the org's admins, its stewards and staff start and write a proposal; members read it and do not edit it.
 
 What it replaces is "draft every section at once with ~20 fixed calls". **The steps are the Funder Match prototype's**
 (https://claude.ai/artifact/H1b4nv5ReQn8mvHg2HhPB5): 1 Eligibility gates → 2 Template, documents and style → 3 Proposal,
@@ -264,7 +264,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 1. **One shared chat per proposal.** The thread is created by REST with `use_case='proposal'` and `visibility='team_and_stewards'`.
    - A new `proposal_chat_access` opens it with `can_open` and never claims it.
    - So SeSTA's admin and steward share `proposal-42`, and it stays out of Ask's Recent Chats.
-2. **No saved Funder Match run means no proposal.** `POST /api/proposals` returns 409 "run Funder Match first". The gates have one source, the saved run. An org admin can save that run themselves (`0042`'s `my_match_org_ids()` is admins and stewards); a member who meets the 409 is told to ask their admin.
+2. **No saved Funder Match run means no proposal.** `POST /api/proposals` returns 409 "run Funder Match first". The gates have one source, the saved run. An org admin can save that run themselves (`0042`'s `my_match_org_ids()` is admins and stewards).
 3. **Public org rows plus the Doc Vault.** `read_org_record` uses `org_facts` (public only). Private details come from the vault reader and the person's answers.
 4. **Typing in the drawer while a question is open answers it.** The text resumes the pending `ask_user` interrupt, and the agent may still pick answers to other open slots out of it.
 5. **Each section is graded inside `write_section`.** A6, A15 and F1 get one allowed rewrite when they score below 2.
@@ -286,7 +286,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 ### M1: storage, REST resource, uploads, the list on the API
 
-**Goal:** proposals live on the server; the org's members and admins keep writing, and stewards and staff can now write too; Word and Excel uploads become readable; the browser store goes.
+**Goal:** proposals live on the server; admins, stewards and staff write, members only read; Word and Excel uploads become readable; the browser store goes.
 
 **Files**
 - New: `db/migrations/0048_proposal_work.sql`.
@@ -297,7 +297,8 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 **Changes**
 - **0048:**
   - `proposals` gains `work` and `summary` jsonb (`NOT NULL DEFAULT '{}'`).
-  - `proposals_insert`, `proposals_update` and `documents_insert` become `org_id IN (SELECT app.my_org_ids()) OR (SELECT app.is_staff())`.
+  - `proposals_insert` and `proposals_update` become `org_id IN (SELECT app.my_match_org_ids()) OR (SELECT app.is_staff())`: admins and stewards, the same people who may save a Funder Match run. Members lose write; `proposals_read` (`my_org_ids()`) is unchanged, so they still read.
+  - `documents_insert` becomes `org_id IN (SELECT app.my_org_ids()) OR (SELECT app.is_staff())`, so a steward can upload in step 2. A member's Doc Vault uploads elsewhere are unchanged.
   - Keep the 0027 `DO` guard.
 - **`rubric.py`:** the rubric moves server-side (`proposal-v2`).
   - `DEPENDS_ON`: A2/A3 before A4, A4 before A5/A6, A5 before A15, everything before A1.
@@ -309,7 +310,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - `apply()` runs `SELECT … FOR UPDATE`, then `jsonb_set` per path, then the section-`rev` 409, then recomputes `summary`.
   - Every write appends `{at, by, path, from, to}` to `work.log[]` (kept to the last 200), which the context layer reads.
   - The agent tools use the same function.
-- **REST routes:** `GET /api/proposals?org&funder`, `POST /api/proposals`, `GET /{id}`, `PATCH /{id}`, `PATCH /{id}/work`, `POST /{id}/advance`. All `require_user`, on the caller pool.
+- **REST routes:** `GET /api/proposals?org&funder`, `POST /api/proposals`, `GET /{id}`, `PATCH /{id}`, `PATCH /{id}/work`, `POST /{id}/advance`. Reads are `require_user`; writes need an admin, steward or staff (403 otherwise, as RLS would refuse anyway), on the caller pool. `GET /{id}` returns `can_edit`, which the screen uses.
   - POST, in one transaction: inserts the proposal at stage 1, creates thread `proposal-<id>` (decision 1), and sets `proposals.thread_id`.
   - It returns 409 without a saved match (decision 2).
 - **Uploads:**
@@ -345,7 +346,9 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - `AGENT_NAMES["/proposal"]="sangam_proposal"`;
   - `_build_agents` adds `proposal_graph` with `SessionScopedAGUIAgent(..., emit_raw_events=False)`;
   - `_add_agent_route(app, path, access=chat_access)`, with `/proposal` passing `proposal_chat_access` (decision 1).
-- **Binding to the proposal:** `context.current()` loads the proposal by thread id on the owner pool and refuses unless the caller is staff or a member of the proposal's org. Tools never take a proposal id from the model.
+- **Binding to the proposal:** `context.current()` loads the proposal by thread id on the owner pool and refuses unless the caller is staff or in the proposal's org. Tools never take a proposal id from the model.
+- **Members read only.** `proposal_chat_access` lets a member open the thread's history (GET) but refuses a new run (403), because every agent tool writes on the owner pool. Every write tool also re-checks `can_edit` from `context.current()`.
+- **Screen:** a member sees every step, the facts and the sections, with no buttons or chat box, and one line: "You can read this proposal. Ask SeSTA's admin to make changes." The Match card shows them "View proposal", never "Start".
 - **Supervisor tools:**
   - `read_proposal()`;
   - `read_match()`, cited `[score:N]`;
@@ -502,7 +505,7 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
 **Every PR, M1–M6**
 - Run `make wiki-update` and add a CHANGELOG line.
 - Edit `docs/ARCHITECTURE.md` where a rule changes:
-  - M1: "a steward never writes", and "proposals live in localStorage";
+  - M1: "a steward never writes", "proposals live in localStorage", and that a member reads a proposal but does not edit it;
   - M2: "two agents".
 - Root `CLAUDE.md` gets 0048 and the third agent.
 - Frontend PRs sync the design system (`docs/DESIGN_SYSTEM.md`).
@@ -535,6 +538,7 @@ No new tests. These existing tests must stay green:
 | Risk | Example and mitigation |
 |---|---|
 | First-turn latency | Three graphs compile on the first chat turn. Measure "Agents built on first use"; split loading per graph if it passes ~1 s |
+| A member writing through the agent | Agent tools run on the owner pool, past RLS. `proposal_chat_access` refuses a member's run, and each write tool re-checks `can_edit` |
 | Owner-pool tools skip RLS | A steward of two NGOs must not reach `proposal-43` by guessing. `context.current()` is the guard |
 | A reader seeing more than it should | SeSTA's unticked salary sheet is never opened: `ProposalSources` refuses it. The funder-file reader has no Doc Vault tool |
 | `work` size | ~200 facts plus 19 sections is about 150–200 KB, rewritten on each write. The list reads only `summary` |
@@ -547,8 +551,8 @@ No new tests. These existing tests must stay green:
 
 ## 8. Acceptance criteria
 
-1. SeSTA's admin starts a SeSTA → ABF proposal, and a steward or staff member starts a second. Both appear in the list on any device. A plain member can start one too.
-2. A stranger gets 404 on the proposal, its messages and its thread. A member can read and write.
+1. SeSTA's admin starts a SeSTA → ABF proposal, and a steward or staff member starts a second. Both appear in the list on any device.
+2. A stranger gets 404 on the proposal, its messages and its thread. A member can read the proposal and its chat, and gets 403 on any edit, start or new chat message.
 3. Step 2 opens once every gate is answered and step 3 once the first draft is asked for. Reopening an earlier step keeps later work.
 4. Only ticked files are read. A read outside them is refused, even days later after the chat was summarised.
 5. Every fact shown has a colour, a source and a status.
