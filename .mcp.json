@@ -11,6 +11,19 @@
     "github": {
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "openwiki": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "openwiki@0.7.2",
+        "mcp",
+        "--host",
+        "claude"
+      ],
+      "env": {
+        "OPENWIKI_TELEMETRY_DISABLED": "1"
+      }
     }
   }
 }
