@@ -203,29 +203,51 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 - *Example:* sesta.org's "120 villages" is amber. If the 2024-25 annual report says 120 on p.14, the fact becomes green.
 
 **The context layer: the agent is told where it is on every model call, and never has to remember.**
-`app/proposals/context.py::build(work, screen, since)` is pure code. A `ProposalNote` middleware (the `CallerNote`
-pattern, `ingest/middleware.py`) appends its output to the system message before each model call. No model call is needed to build it, and it is about 15 lines.
+`app/proposals/context.py` is pure code with two functions, `stable(work)` and `live(work, screen, since)`. It is split in
+two because deepagents caches the system prompt (`AnthropicPromptCachingMiddleware`), and text there that changes after
+every save would invalidate the cached prefix on each call. Its own `MemoryMiddleware` handles changing memory the same way:
+a separate block with its own cache breakpoint.
 
-| Layer | What it says | Comes from | Trusted for |
-|---|---|---|---|
-| Where the proposal is | step, tab, parts finished, scores, open gates, ticked files, readers done | `work` and `summary`, read fresh each call | everything |
-| What the person is looking at | step, tab and part open on screen; text they have selected | the screen, through `useAgentContext` (as Scout sends its ticks) | focus only, never permission. A part code the server doesn't know is dropped |
-| What changed since the agent last spoke | edits by the person or a teammate, facts confirmed or corrected, files added | `work.log[]`, appended by `work.apply()` with who, what and when; the note shows entries after `work.agent_seen` | everything |
-| What is waiting | the open question; facts not yet confirmed; parts flagged to rewrite | `work` | everything |
-| What it may do next | the tools this step allows, and the next part in order | `steps.py` and `DEPENDS_ON` | everything; the tools check again |
+| Block | What it says | Comes from | Where it goes | Changes |
+|---|---|---|---|---|
+| **Stable** | the proposal, org, funder and programme; the funder's confirmed priorities; the form's sections and limits; gate answers; the writing style | `work` | appended to the system message by `ProposalBrief`, with its own `cache_control` breakpoint (as `MemoryMiddleware(add_cache_control=True)`) | rarely: step 2 done, a priority confirmed, a gate answered |
+| **Live** | where the proposal is (step, tab, parts finished, scores, readers done); what is on screen; what changed since the agent last spoke; what is waiting; what it may do next | `work`, `summary`, the screen and `work.log[]`, read fresh each call | added by `ProposalNote` as the last message of that one model call, never written to the graph state, so the chat history and the checkpoint never hold it | every call |
 
-*Example*, SeSTA's steward opens the problem part after a colleague edited the budget yesterday:
+Each line of the live block has its own source and trust:
+
+| Line | Comes from | Trusted for |
+|---|---|---|
+| Where the proposal is | `work` and `summary` | everything |
+| What the person is looking at | the screen, through `useAgentContext` (as Scout sends its ticks) | focus only, never permission. A part code the server doesn't know is dropped |
+| What changed since the agent last spoke | `work.log[]`, appended by `work.apply()` with who, what and when; entries after `work.agent_seen` | everything |
+| What is waiting | the open question; facts not yet confirmed; parts flagged to rewrite | everything |
+| What it may do next | `steps.py` and `DEPENDS_ON` | everything; the tools check again |
+
+*Example*, SeSTA's steward opens the problem part after a colleague edited the budget yesterday.
+
+Stable block (cached; unchanged since step 2):
 
 ```
-Proposal: SeSTA → Axis Bank Foundation · step 3 · 4 of 19 parts finished
+Proposal 42: SeSTA → Axis Bank Foundation · programme: SHG federations, Udalguri
+ABF's confirmed priorities: rural livelihoods through community institutions, North-East India; ₹1–5 crore over 3 years
+Form: ABF proposal format 2026 · summary up to 2,000 characters · workplan by quarter · §6 convergence with government
+Gates: 12A, 80G, standing: yes · CSR-1: will have it before sending · 2025-26 accounts: yes
+Style: plain, specific English for a CSR programme officer; ₹ in lakh and crore; every figure with source and year
+```
+
+Live block (this call only):
+
+```
+Step 3 · 4 of 19 parts finished · readers done (5 files)
 On screen: The Idea › The problem, with figures (score 1 of 2) · selected: "38% of the 1,240 households"
 Since you last spoke: Ravi changed the budget total to ₹2.4 crore (yesterday 16:10); fact k5 marked "Don't use it"
 Waiting: no open question · 3 facts not confirmed · "What will change" flagged to rewrite (uses the old total)
-Gates: CSR-1 "will have it before sending", still open
 Next allowed: ask one question about this part, or rewrite "What will change"
 ```
 
-The details (fact values, section text) stay behind `read_proposal()`, so the note stays short however big `work` grows.
+- The details (fact values, section text) stay behind `read_proposal()`, so both blocks stay short however big `work` grows.
+- Building them needs no model call.
+- `ProposalNote` sets `work.agent_seen` at the end of each run, so "since you last spoke" moves forward.
 
 **What it is tracking lives in the proposal row, not the conversation.** Sources chosen, the open question and confirmed priorities are kept in `work`, because a proposal chat spans days and `cheap_summarizer` drops old tool messages.
 
@@ -258,7 +280,7 @@ The details (fact values, section text) stay behind `read_proposal()`, so the no
 14. **Five tabs** in step 3 (above); rubric codes and scoring unchanged.
 15. **Past studies are facts, not a scored section.**
 16. **No storage code on screen** (above). The screens do not say who can read a document.
-17. **A context layer on every model call** (`ProposalNote`), built by code from `work`, the screen and `work.log`.
+17. **A context layer on every model call, in two blocks.** A stable block in the system prompt with its own cache breakpoint (`ProposalBrief`), and a live block as the last message of each call, never saved (`ProposalNote`). Both are built by code from `work`, the screen and `work.log`.
 
 ## 5. Implementation steps (one PR each)
 
@@ -332,7 +354,8 @@ The details (fact values, section text) stay behind `read_proposal()`, so the no
 - **Middleware:**
   - `ProposalSources` replaces `ChosenSources`. It reads `work.sources`, not the messages, and pins `vault_org` to the proposal's org.
   - `StageGate`.
-  - `ProposalNote`: the context layer, built by `context.build()` on every model call. It sets `work.agent_seen` at the end of each run.
+  - `ProposalBrief`: `context.stable(work)` appended to the system message with a `cache_control` breakpoint (the `MemoryMiddleware(add_cache_control=True)` pattern).
+  - `ProposalNote`: `context.live(...)` added as the last message of each model call through `request.override(messages=...)`, not returned as a state update. It sets `work.agent_seen` at the end of each run.
   - `CallerNote`, `cheap_summarizer`, `clear_old_tool_results` and `fallback`, as in Import.
 - **Interrupts:** none yet; `ask_user` arrives in M3.
 - **Frontend:**
@@ -344,6 +367,8 @@ The details (fact values, section text) stay behind `read_proposal()`, so the no
 **Validation**
 - SeSTA's admin and steward open the same thread, and a stranger gets 404.
 - "Write A3" at step 1 is refused.
+- In Langfuse, the second model call of a turn reads the system prompt and tools from the cache (`cache_read_input_tokens` > 0) after a save changed the live block.
+- No checkpointed message contains the live block.
 - With the problem part open, "make this stronger" works on that part without being told which. After a teammate edits the budget, the next reply mentions it unprompted.
 - One answer's SSE payload is about 100 KB, not about 1.7 MB.
 
