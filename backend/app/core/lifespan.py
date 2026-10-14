@@ -32,6 +32,9 @@ INGEST_DESCRIPTION = (
     "matches it against what is already there, and reports what it could not process."
 )
 AGENT_NAMES = {"/agent": "sangam_agent", "/ingest": "sangam_ingest"}
+# Who may post to each agent, and as whom its tools read. Ask Sangam's SQL runs as the caller; Import keeps
+# the owner, since it writes the catalog. A path missing here fails at boot rather than fall back to another.
+AGENT_ACCESS = {"/agent": (ask_access,), "/ingest": (require_scout, chat_access)}
 
 
 def _flush_telemetry() -> None:
@@ -136,13 +139,7 @@ async def get_graph(app: FastAPI, name: str) -> Any | None:
 def _add_agent_route(app: FastAPI, path: str) -> None:
     """The AG-UI route add_langgraph_fastapi_endpoint registers, minus its need for a built agent."""
 
-    # Ask Sangam's SQL runs as the caller; Import keeps the owner, since it writes the catalog.
-    if path == "/agent":
-        access = [Depends(ask_access)]
-    else:
-        access = [Depends(require_scout), Depends(chat_access)]
-
-    @app.post(path, dependencies=access)
+    @app.post(path, dependencies=[Depends(check) for check in AGENT_ACCESS[path]])
     async def run_agent(input_data: RunAgentInput, request: Request) -> StreamingResponse:
         agents = await load_agents(request.app)
         # Cloned per request: LangGraphAgent keeps per-run state on the instance.
