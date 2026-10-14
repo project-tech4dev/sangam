@@ -142,7 +142,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
       │ REST              │ question answers            │ chat
       ▼                   ▼                             ▼
  ┌──────────────┐   ┌─────────────────────────────────────────────────┐
- │ /api/        │   │ /proposal · thread proposal-<id> · shared       │
+ │ /api/        │   │ /proposal · thread proposal-<id>-<user> · own   │
  │ proposals    │   │  SUPERVISOR (MODEL)                             │
  │ route→repo→  │   │   reads:  read_proposal · read_org_record ·     │
  │ schema       │   │           read_match                            │
@@ -214,7 +214,7 @@ Each line of the live block has its own source and trust:
 |---|---|---|
 | Where the proposal is | `work` and `summary` | everything |
 | What the person is looking at | the screen, through `useAgentContext` (as Scout sends its ticks) | focus only, never permission. A part code the server doesn't know is dropped |
-| What changed since the agent last spoke | `work.log[]`, appended by `work.apply()` with who, what and when; entries after `work.agent_seen` | everything |
+| What teammates changed | `work.log[]`, appended by `work.apply()` with who, what and when; the latest entries by anyone but the caller. Never their chat | everything |
 | What is waiting | the open question; facts not yet confirmed; parts flagged to rewrite | everything |
 | What it may do next | `steps.py` and `DEPENDS_ON` | everything; the tools check again |
 
@@ -235,14 +235,14 @@ Live block (this call only):
 ```
 Step 3 · 4 of 19 parts finished · readers done (5 files)
 On screen: The Idea › The problem, with figures (score 1 of 2) · selected: "38% of the 1,240 households"
-Since you last spoke: Ravi changed the budget total to ₹2.4 crore (yesterday 16:10); fact k5 marked "Don't use it"
+Changed by others: Ravi changed the budget total to ₹2.4 crore (yesterday 16:10); fact k5 marked "Don't use it"
 Waiting: no open question · 3 facts not confirmed · "What will change" flagged to rewrite (uses the old total)
 Next allowed: ask one question about this part, or rewrite "What will change"
 ```
 
 - The details (fact values, section text) stay behind `read_proposal()`, so both blocks stay short however big `work` grows.
 - Building them needs no model call.
-- `ProposalNote` sets `work.agent_seen` at the end of each run, so "since you last spoke" moves forward.
+- Each person's chat is private, so the log is the only way one agent learns what a teammate did.
 
 **What it is tracking lives in the proposal row, not the conversation.** Sources chosen, the open question and confirmed priorities are kept in `work`, because a proposal chat spans days and `cheap_summarizer` drops old tool messages.
 
@@ -256,9 +256,10 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 ## 4. Decisions taken (14 Oct)
 
-1. **One shared chat per proposal.** The thread is created by REST with `use_case='proposal'` and `visibility='team_and_stewards'`.
-   - A new `proposal_chat_access` opens it with `can_open` and never claims it.
-   - So SeSTA's admin and steward share `proposal-42`, and it stays out of Ask's Recent Chats.
+1. **The proposal is shared; each person's chat is their own** (changed 15 Oct). SeSTA's steward works on proposal 42 in `proposal-42-<steward id>`, its admin in `proposal-42-<admin id>`, and neither sees the other's.
+   - `proposal_chat_access` claims the caller's own thread like an Ask chat (`use_case='proposal'`, `visibility='private'`, the proposal's `org_id`), so another person's thread is 404. It stays out of Ask's Recent Chats.
+   - A teammate's changes reach the agent through `work.log`, never through their chat.
+   - The chat sits in the right-hand panel of step 1, as in the design canvas; members get no chat.
 2. **No saved Funder Match run means no proposal.** `POST /api/proposals` returns 409 "run Funder Match first". The gates have one source, the saved run. An org admin can save that run themselves (`0042`'s `my_match_org_ids()` is admins and stewards).
 3. **Public org rows plus the Doc Vault.** `read_org_record` uses `org_facts` (public only). Private details come from the vault reader and the person's answers.
 4. **Typing while a question is open resumes it, and `ask_user` sorts the reply** into one of three kinds:
@@ -282,7 +283,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 17. **A context layer on every model call, in two blocks.** A stable block in the system prompt with its own cache breakpoint (`ProposalBrief`), and a live block as the last message of each call, never saved (`ProposalNote`). Both are built by code from `work`, the screen and `work.log`.
 18. **Tests for the code-only safeguards** (15 Oct): each milestone tests its own; no tests of model output and no evals. An exception to "no new tests in a PR" for this feature.
 19. **M3 is two PRs:** facts and asking (M3a), then the readers and step 2 (M3b).
-20. **One agent turn at a time per proposal** (`work.run`).
+20. **No run lock** (changed 15 Oct). Two people may chat at once; clashing saves are refused by `work.apply`'s row lock and section `rev` (409).
 21. **Web facts come only from Import's briefs**; no proposal reader searches the web.
 22. **A trimmed first version** (15 Oct): colour by source only, three reasons to ask, no meaning-clash tool, no changed-file check, a polish check on numbers, places and names only, the form's questions without its limits, no staff numbers. Each is in "Later".
 
@@ -312,7 +313,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - **`work.py`:**
   - `ALLOWED_PATHS` covers gates, template, style, stage, `sections.<code>.text|done` and `facts.<id>.status|value`.
   - `apply()` runs `SELECT … FOR UPDATE`, then `jsonb_set` per path, then the section-`rev` 409, then recomputes `summary`.
-  - Every write appends `{at, by, via, run_id, path, from, to, facts, reason}` to `work.log[]`, where `via` is `rest` or `agent`. The log is kept in full; the context layer reads only entries after `work.agent_seen`.
+  - Every write appends `{at, by, via, run_id, path, from, to, facts, reason}` to `work.log[]`, where `via` is `rest` or `agent`. The log is kept in full; the context layer reads only the latest entries by other people.
   - It is the only write path: the agent tools, `PATCH /{id}` (title) and `POST /{id}/versions` all call it. ARCHITECTURE.md states the rule.
 - **REST routes:** `GET /api/proposals?org&funder`, `POST /api/proposals`, `GET /{id}`, `PATCH /{id}`, `PATCH /{id}/work`, `POST /{id}/advance`. Reads are `require_user`; writes need an admin, steward or staff (403 otherwise, as RLS would refuse anyway), on the caller pool. `GET /{id}` returns `can_edit`, which the screen uses.
   - POST, in one transaction: inserts the proposal at stage 1, creates thread `proposal-<id>` (decision 1), and sets `proposals.thread_id`.
@@ -338,9 +339,9 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 
 **Exit gate:** SeSTA's admin starts "SeSTA: women's farm enterprises, Baksa → ABF" from the Match card and answers the gates; the steward opens it on another device and carries on.
 
-### M2: agent skeleton, route, step 1, chat drawer
+### M2: agent skeleton, route, step 1, chat side panel
 
-**Goal:** a `/proposal` agent that knows which proposal it is in, is shared by the team, and advances only through code.
+**Goal:** a `/proposal` agent that knows which proposal it is in, gives each editor their own chat, and advances only through code.
 
 **Files**
 - New: `backend/app/proposals/{agent.py,instructions.md,middleware.py,steps.py,context.py}` (`context.py` loads the proposal for the thread and builds the note), `tools/{__init__,proposal_tools,record_tools}.py`.
@@ -352,9 +353,9 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - `AGENT_NAMES["/proposal"]="sangam_proposal"`;
   - `_build_agents` adds `proposal_graph` with `SessionScopedAGUIAgent(..., emit_raw_events=False)`;
   - `AGENT_ACCESS` (#210) declares each route's checks and a path missing from it fails at boot, so `/proposal` gets its own entry: `"/proposal": (proposal_chat_access,)` (decision 1).
-  - `proposal_chat_access` does not reuse `_own_thread`: #213 makes that refuse anyone but the thread's owner, and a proposal thread belongs to the org. It uses `app.can_open_thread` plus the caller's role in the proposal's org.
+  - `proposal_chat_access` reads the proposal id from `proposal-<id>-<user>`, refuses a thread id naming someone else (404), then claims the caller's own thread through `threads.claim_thread` as #213 does, with the proposal's org.
 - **Binding to the proposal:** `context.current()` loads the proposal by thread id on the owner pool and refuses unless the caller is staff or in the proposal's org. Tools never take a proposal id from the model.
-- **Members read only.** `proposal_chat_access` lets a member open the thread's history (GET) but refuses a new run (403), because every agent tool writes on the owner pool. Every write tool also calls one shared `require_edit(ctx)`, which re-checks `can_edit` from `context.current()` and returns `REFUSED: you can read this proposal` otherwise.
+- **Members read only.** A member has no chat: `proposal_chat_access` refuses their run (403), because every agent tool writes on the owner pool. Every write tool also calls one shared `require_edit(ctx)`, which re-checks `can_edit` from `context.current()` and returns `REFUSED: you can read this proposal` otherwise.
 - **Screen:** a member sees every step, the facts and the sections, with no buttons or chat box, and one line: "You can read this proposal. Ask SeSTA's admin to make changes." The Match card shows them "View proposal", never "Start".
 - **Supervisor tools:**
   - `read_proposal(part=None)`: one tab or section with the facts it cites; the whole proposal only when no part is given. Working on the budget reads about 8 KB, not 200 KB;
@@ -365,26 +366,25 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - `ProposalSources` replaces `ChosenSources`. It reads `work.sources`, not the messages, and pins `vault_org` to the proposal's org.
   - `StageGate`.
   - `ProposalBrief`: `context.stable(work)` appended to the system message with a `cache_control` breakpoint (the `MemoryMiddleware(add_cache_control=True)` pattern).
-  - `ProposalNote`: `context.live(...)` added as the last message of each model call through `request.override(messages=...)`, not returned as a state update. It sets `work.agent_seen` at the end of each run.
+  - `ProposalNote`: `context.live(...)` added after the stable block's cache breakpoint on each model call, never saved to the thread.
   - `CallerNote`, `cheap_summarizer`, `clear_old_tool_results` and `fallback`, as in Import.
-- **One run at a time:** `work.run = {id, by, started_at, last_step_at}` is set when a turn starts and cleared when it ends. A second person starting a turn sees "Sangam is already working, started by Ravi 3 min ago". A run with no step for 30 minutes counts as stopped.
-- **Browser closed mid-turn:** the plan does not rely on the run carrying on after the stream drops (to be checked in this milestone). Whatever was saved stays; on reopening, the live block says what is done and the drawer offers "Continue".
+- **Browser closed mid-turn:** the plan does not rely on the run carrying on after the stream drops (to be checked in this milestone). Whatever was saved stays; on reopening, the live block says what is done and the chat offers "Continue".
 - **Interrupts:** none yet; `ask_user` arrives in M3a.
 - **Frontend:**
   - `route.ts` registers `sangam_proposal`;
-  - `ProposalShell` becomes the three-step stepper, with "How this works" shown once before step 1;
+  - `ProposalShell` becomes the three-step stepper with the canvas's two columns: the step on the left, a side panel on the right (below it on a phone). The panel holds "Your promises from Sangam" before step 1, the chat on step 1 ("Only you see this chat"), and step 2's explainer;
   - under a disabled "Next", the stepper shows `exit_check`'s list in words: "To continue: answer CSR-1.";
-  - the drawer uses `useAgentChat`, with history from `GET /api/proposals/{id}/messages` (reusing `saved_messages(graph_name="proposal_graph")`).
+  - the panel uses `useAgentChat` on `proposal-<id>-<user>`, with history from `GET /api/proposals/{id}/messages`: the caller's own thread only (reusing `saved_messages(graph_name="proposal_graph")`).
 - **Step 2's screen is M3b**, where the readers use it.
 
 **Validation**
-- SeSTA's admin and steward open the same thread, and a stranger gets 404.
+- SeSTA's admin and steward each get their own chat on the same proposal and cannot read each other's; a stranger gets 404.
 - "Write A3" at step 1 is refused.
 - In Langfuse, the second model call of a turn reads the system prompt and tools from the cache (`cache_read_input_tokens` > 0) after a save changed the live block.
 - No checkpointed message contains the live block.
 - With the problem part open, "make this stronger" works on that part without being told which. After a teammate edits the budget, the next reply mentions it unprompted.
 - One answer's SSE payload is about 100 KB, not about 1.7 MB.
-- **Tests:** `steps.exit_check` gives the same list for the same `work`; `context.stable/live` are deterministic and the stable block carries no private fact; a member's run gets 403 and a stranger 404; every write tool refuses when `can_edit` is false; a second run while `work.run` is set is refused.
+- **Tests:** `steps.exit_check` gives the same list for the same `work`; `context.stable/live` are deterministic and the stable block carries no private fact; a member's run gets 403 and a stranger 404; every write tool refuses when `can_edit` is false; two editors get two threads and neither can open the other's.
 
 **Exit gate:** step 1 → 2 happens only after every gate is answered. The gate answers and the open step survive a forced summary.
 
@@ -481,7 +481,7 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
   - On save: `rev+1`, `used_in` is set on the cited facts, and `[Add: …]` remains where nothing supports the text.
 - **Order:** `StageGate` allows `write_section` only for the next section in `DEPENDS_ON` order, or one the person picked.
 
-- **A stopped turn:** each section saves on its own, so a timeout or failed run loses only the section in progress. The drawer then shows one line, "Sangam stopped after The Idea. Continue?", and the next turn picks up from `work`.
+- **A stopped turn:** each section saves on its own, so a timeout or failed run loses only the section in progress. The chat then shows one line, "Sangam stopped after The Idea. Continue?", and the next turn picks up from `work`.
 
 - **Tests:** `trace` matches numbers, lakh and crore, places and names, and ignores FY and Schedule VII patterns.
 
@@ -559,7 +559,7 @@ stack (`make up`, `make seed`, `make match ORG=sesta`), driven through Claude in
 | Milestone | What the browser run walks |
 |---|---|
 | M1 | Start from the Match card as admin → answer the gates → reopen on a second browser profile as steward; a member sees "View proposal" and no buttons |
-| M2 | Stepper and "How this works"; step 1 → 2 only once every gate is answered; admin and steward see one shared chat; a member's chat has no box |
+| M2 | Stepper and "How this works"; step 1 → 2 only once every gate is answered; admin and steward each see only their own chat, in the side panel; a member sees no chat |
 | M3a | Facts from SeSTA's record show sources in words with Yes / No / Don't use it; one question card; a typed question back is answered and the card stays; "later" parks it |
 | M3b | Step 2: link, upload or skip the form; tick files; "Write the first draft" → the readers' progress; one file forced to fail shows "Try again" and the rest carry on |
 | M4 | Each tab's parts draft with marked gaps; a part's score moves from 1 to 2 after an answer; hints tick off |
@@ -574,7 +574,7 @@ stack (`make up`, `make seed`, `make match ORG=sesta`), driven through Claude in
 |---|---|
 | `work.apply`: allowed paths, stale `rev` → 409, log | M1 |
 | 0048 RLS: member, steward, staff, stranger (`integration`) | M1 |
-| `steps.exit_check`, `context.stable/live`, access (403/404, `can_edit`), one run at a time | M2 |
+| `steps.exit_check`, `context.stable/live`, access (403/404, `can_edit`), own thread per person | M2 |
 | `reliability`, `questions.warranted`, `add_facts` verification and idempotency | M3a |
 | `ProposalSources`; readers carry only their declared tools and no web tool; a re-read keeps confirmed facts | M3b |
 | `trace` | M4 |
@@ -633,7 +633,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 | Long turns | Several sections in one turn approach 1800 s. One section per turn unless the person asks |
 | A reader fails or a turn is retried | 4 of 5 readers finish: their facts are saved, the fifth shows "Try again" for that file alone. A retried turn adds no duplicate facts (`add_facts` is idempotent) and a stale section save gets 409 |
 | A funder with no research brief | Only staff and stewards can run Scout (#207), so an admin cannot refresh ABF's brief. The funder-file reader says what it did not find, and step 2 asks for the form link or upload |
-| Two people start Sangam at once | `work.run` refuses the second: "Sangam is already working, started by Ravi 3 min ago" |
+| Two people chat at once | Both run. If both save the same section, the second gets 409 (stale `rev`) and Sangam says a teammate changed it |
 
 ## 8. Acceptance criteria
 
@@ -678,7 +678,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 ## 10. Order of work
 
 - [ ] M1: 0048, the REST resource, uploads, the list on the API. Exit: shared across devices.
-- [ ] M2: `/proposal`, shared chat access, agent skeleton, sources kept in `work`, drawer. Exit: admin and steward share a thread.
+- [ ] M2: `/proposal`, own-chat access, agent skeleton, sources kept in `work`, side panel. Exit: admin and steward each have their own chat on one proposal.
 - [ ] M3a: facts, reliability, `ask_user` with AskGate and reply sorting. Exit: facts in words; one question at a time, by rule.
 - [ ] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
 - [ ] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
