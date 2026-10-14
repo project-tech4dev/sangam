@@ -30,7 +30,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import get_settings
-from app.db.pool import OwnerPoolDep, get_pool
+from app.db.pool import OwnerPoolDep, agent_caller, get_pool
 from app.repositories import me as me_repo
 from app.repositories import threads
 from app.repositories import users as repo
@@ -268,7 +268,8 @@ async def _own_thread(request: Request, pool: OwnerPoolDep, principal: CurrentUs
     owner = await threads.claim_thread(
         pool, thread_id=run.thread_id, user_id=principal.id, title=_thread_title(run)
     )
-    if owner != principal.id and not principal.is_staff:
+    # Staff too: a turn checkpoints rows read as this caller, which the owner's next turn would replay.
+    if owner != principal.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
     chat_user_id.set(principal.id)
     chat_scope.set(await caller_scope(pool, principal))
@@ -281,9 +282,23 @@ async def request_scope(
     return await caller_scope(pool, principal)
 
 
+async def require_scout(scope: Annotated[CallerScope, Depends(request_scope)]) -> CallerScope:
+    """Scout (Import) is for Sangam staff and the stewards of an org; anyone else is 403."""
+    if not (scope.is_staff or scope.steward_of):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Scout is for stewards and Sangam staff")
+    return scope
+
+
 async def chat_access(
     request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
 ) -> None:
-    """Signed in, and the thread is new or yours (staff may open any); someone else's thread is 404."""
+    """Signed in, and the thread is new or yours; someone else's thread is 404, staff included."""
     await _own_thread(request, pool, principal)
 
+
+async def ask_access(
+    request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
+) -> None:
+    """chat_access, and Ask Sangam's SQL runs as this caller. Import keeps the owner: it writes the catalog."""
+    await _own_thread(request, pool, principal)
+    agent_caller.set(_db_identity(principal))

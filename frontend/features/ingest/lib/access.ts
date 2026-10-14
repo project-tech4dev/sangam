@@ -13,7 +13,7 @@ export type VaultFile = {
   orgName: string;
 };
 
-type Me = { is_staff: boolean; memberships: { org_slug: string; org_name: string; role: string }[] };
+export type Me = { is_staff: boolean; memberships: { org_slug: string; org_name: string; role: string }[] };
 
 export function accessOf(me: Me): ImportAccess {
   return {
@@ -23,8 +23,13 @@ export function accessOf(me: Me): ImportAccess {
   };
 }
 
-/** Staff: every task. A steward: funders and the NGOs it supports. Anyone else: funders. */
+/** Scout is for Sangam staff and the stewards of an org; the backend refuses everyone else. */
+export function canUseScout(me: Me): boolean {
+  return me.is_staff || me.memberships.some((m) => m.role === "steward");
+}
+
+/** Staff: every task. A steward: funders and the NGOs it supports. Anyone else: none. */
 export function tasksFor(access: ImportAccess): ImportTask[] {
   if (access.staff) return ["funder", "ngo", "news"];
-  return access.stewardOf.length ? ["funder", "ngo"] : ["funder"];
+  return access.stewardOf.length ? ["funder", "ngo"] : [];
 }

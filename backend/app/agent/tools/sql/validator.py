@@ -171,6 +171,7 @@ def validate(
     had_star = _has_star_projection(root)
     qualified = _qualify(root, root_tables=_referenced_tables(root, cte_names), dialect=dialect)
     _recheck_columns(qualified)
+    _reject_whole_row_references(qualified)
     _reject_reserved_aliases(qualified)
     if had_star:
         _trim_expanded_star(qualified, rewrites)
@@ -386,6 +387,18 @@ def _recheck_columns(qualified: exp.Query) -> None:
             table = source.name.lower()
             if table in COLUMNS and column.name not in COLUMNS[table]:
                 _reject(_column_error(f"Column '{column.name}' does not exist on {table}", {table}))
+
+
+def _reject_whole_row_references(qualified: exp.Query) -> None:
+    """A star left after expansion reads the whole row, columns the catalog hides included."""
+    for star in qualified.find_all(exp.Star):
+        if isinstance(star.parent, exp.Count):
+            continue
+        _reject(
+            "`alias.*` inside an expression reads every column of the row, including ones this "
+            "tool cannot read. Name the columns you need instead: count(*) or count(alias.id) "
+            "to count rows, array_agg(alias.name) to collect a column."
+        )
 
 
 def _dedupe_output_names(qualified: exp.Query, rewrites: list[str]) -> None:

@@ -13,6 +13,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 from app.agent.audit import CAVEAT_PREFIX
 from app.agent.build import build_agent
 from app.core.config import Settings
+from app.core.security import DEV_USER, _db_identity
+from app.db.pool import agent_caller
 from tests.evals.sql_compare import answer_contains_value, gold_satisfied
 
 EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
@@ -58,6 +60,8 @@ def message_text(message: Any) -> str:
 async def run_agent(question: str, settings: Settings) -> tuple[str, list[str], set[str]]:
     """(answer, SQL the agent actually ran, citation markers it emitted)."""
     graph = build_agent(settings, InMemorySaver())
+    # The staff dev user, so the agent reads what the gold SQL (run as the owner) reads.
+    agent_caller.set(_db_identity(DEV_USER))
     state = await asyncio.wait_for(
         graph.ainvoke(
             {"messages": [("user", question)]},

@@ -92,6 +92,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-13 · #195 · M2: the brief is the record; saves merge by `fact_key`, and the stronger source wins.
 - 2026-10-13 · #196 · M3: promotion reads the brief; every fact ends written, confirms, conflicts, waiting or held (`0046`).
 - 2026-10-13 · #197 · M4: every public source a fact cites becomes a typed `documents` row, linked by `document_links` (`0047`).
+- 2026-10-14 · `feat/scout-steward-staff-only` · Scout is for staff and stewards only: `require_scout` (403) on `/ingest` and `/api/ingest`; the sidebar link and `/import` are hidden from everyone else.
 
 ## Funder Match and the taxonomy
 
@@ -111,6 +112,8 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-07 · #92 · REST requests run as the caller: `CallerPool` sets role + claims per transaction; `0023`–`0027` roles, access functions, grants, RLS on every table.
 - 2026-10-07 · #97 · Settings page, `/api/me`, org member management (`0028`, `0029`).
 - 2026-10-12 · #181 · One read policy each on `users` and `org_members`, three FK indexes.
+- 2026-10-14 · Each agent route declares its access in `AGENT_ACCESS`; a route with none fails at boot instead of falling back.
+- 2026-10-15 · Only a thread's owner may post a turn in it, staff included, so rows read as one user are never replayed to another.
 
 ## Frontend and design system
 
@@ -142,6 +145,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-12 · #167–#169 · Plan to drop CopilotKit; frontend container restarts; `emit_raw_events=False` (an answer went from 1.69 MB to 107 KB).
 - 2026-10-12 · #179 · One backend call per registry profile page.
 - 2026-10-12 · #180 · Signed-out reads come from Next's data cache; a cron keeps one backend warm.
+- 2026-10-14 · Signed-out cached reads are keyed per deploy, so a new deploy never renders the last one's API shapes (profile pages 500ed after #202).
 
 ## Tracing and evals
 
