@@ -8,6 +8,7 @@ You do not need to read the code to learn how a subsystem works. Three layers, e
 
 - **`openwiki/`** (start at `openwiki/quickstart.md`): the generated *what*: tools, routes, tables, settings and
   walkthroughs, each claim pinned to source lines. Open the page for an unfamiliar area; don't preload it.
+  In Claude Code, `openwiki_search` / `openwiki_read` (`.mcp.json`, skill `.claude/skills/openwiki/`) return just the section.
 - **`docs/ARCHITECTURE.md`**: the hand-written *why*: invariants, decisions and known regressions, one section per area.
 - **`docs/CHANGELOG.md`**: everything that shipped, by subsystem and PR, plus **"Not finished"**.
 

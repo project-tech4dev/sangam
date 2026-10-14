@@ -19,7 +19,8 @@ db/backups/
 
 # Agent skills installed with `npx skills` — tooling, not application code.
 .agents/
-.claude/skills/
+.claude/skills/*
+!.claude/skills/openwiki/
 skills-lock.json
 
 # Vercel CLI link (contains projectId/orgId)
