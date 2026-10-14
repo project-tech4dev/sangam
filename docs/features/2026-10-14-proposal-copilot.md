@@ -515,6 +515,23 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
 - Root `CLAUDE.md` gets 0048 and the third agent.
 - Frontend PRs sync the design system (`docs/DESIGN_SYSTEM.md`).
 
+**Browser test before the next milestone.** Every milestone here has UI, so each ends with a browser run on the local
+stack (`make up`, `make seed`, `make match ORG=sesta`), driven through Claude in Chrome, before the next one starts:
+- walk that milestone's exit gate end to end as SeSTA's admin, then as a steward, a member (read only) and a stranger (404);
+- repeat the main path at phone width (390 px);
+- check the browser console and network for errors, and that no storage code or marker shows on screen;
+- record a GIF of the main path and attach it to the PR with what was checked;
+- anything broken is fixed in the same PR, and the next milestone does not start until the run passes.
+
+| Milestone | What the browser run walks |
+|---|---|
+| M1 | Start from the Match card as admin → answer the gates → reopen on a second browser profile as steward; a member sees "View proposal" and no buttons |
+| M2 | Stepper and "How this works"; step 1 → 2 only once every gate is answered; admin and steward see one shared chat; a member's chat has no box |
+| M3 | Step 2: link, upload or skip the form; tick files; "Write the first draft" → the readers' progress; facts show sources in words with Yes / No / Don't use it; one question card; a typed question back is answered and the card stays |
+| M4 | Each tab's parts draft with marked gaps; a part's score moves from 1 to 2 after an answer; hints tick off |
+| M5 | Correct a fact and watch every part that used it update or get flagged; "Before you send it" lists the open CSR-1 gate |
+| M6 | Smooth the language; the check passes or names the change; download the Word file and open it; version 1 is listed |
+
 ## 6. Test plan
 
 No new tests. These existing tests must stay green:
@@ -601,4 +618,4 @@ No new tests. These existing tests must stay green:
 - [ ] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
 - [ ] M5: review, propagation, conflicts, ready. Exit: Ready or the exact list.
 - [ ] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
-- [ ] Each PR: `make wiki-update`, a CHANGELOG line, ARCHITECTURE and CLAUDE.md where rules change, a design-system sync, `npm run build`, `ruff check .`, `pytest`, and `pytest -m integration`.
+- [ ] Each PR: a passing browser run (above) before the next milestone starts, `make wiki-update`, a CHANGELOG line, ARCHITECTURE and CLAUDE.md where rules change, a design-system sync, `npm run build`, `ruff check .`, `pytest`, and `pytest -m integration`.
