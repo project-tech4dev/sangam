@@ -13,7 +13,7 @@ import { MediaView } from "./views/media/MediaView";
 import { RfpWatchView } from "./views/RfpWatchView";
 import { FunderMatchView } from "./views/FunderMatchView";
 import { type ProposalTarget, ProposalsView } from "./views/ProposalsView";
-import { useProposals } from "./views/proposals/store";
+import { useProposals } from "./views/proposals/api";
 import { ChatsView } from "./views/ChatsView";
 
 type Sourced = { sourceUrl: string | null; sourceName: string | null; fetchedAt: string | null };

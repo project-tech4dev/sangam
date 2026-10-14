@@ -3,15 +3,15 @@
 import { useState } from "react";
 import { BucketCards, FilterRow, ListMore, SearchBox, Tag, useShowMore } from "@/components/ui";
 import { shortDate } from "@/lib/format";
-import { STEPS } from "./rubric";
-import { type Proposal, summary } from "./store";
+import type { ProposalItem as Proposal } from "./api";
+import { STEPS } from "./steps";
 
 type Bucket = "all" | "progress" | "ready";
 const DAY = 86_400_000;
 
 const haystack = (p: Proposal) => [p.title, p.funder.name, p.org.name].join(" ").toLowerCase();
 
-/* Every proposal in this browser, newest first; Funder Match's "Proposals (N) →" lands here filtered. */
+/* Every proposal the caller may read, newest first; Funder Match's "Proposals (N) →" lands here filtered. */
 export function ProposalList({
   rows,
   initialFunder,
@@ -20,7 +20,7 @@ export function ProposalList({
 }: {
   rows: Proposal[];
   initialFunder: number | null;
-  onOpen: (id: string) => void;
+  onOpen: (id: number) => void;
   onFunderMatch: () => void;
 }) {
   const [bucket, setBucket] = useState<Bucket>("all");
@@ -36,7 +36,7 @@ export function ProposalList({
     (started.value === "any" || Date.parse(p.created_at) >= started.since) &&
     (!q || haystack(p).includes(q));
   const narrowed = rows.filter(passes);
-  const ready = (p: Proposal) => summary(p.work).ready;
+  const ready = (p: Proposal) => p.summary.ready;
   const shown = narrowed.filter((p) => bucket === "all" || (bucket === "ready") === ready(p));
   const [n, more] = useShowMore([bucket, funder, org, started.value, q].join("|"));
 
@@ -64,7 +64,7 @@ export function ProposalList({
         items={[
           { key: "all", label: "All proposals", count: narrowed.length, sub: "Newest first" },
           { key: "progress", label: "In progress", count: narrowed.filter((p) => !ready(p)).length, sub: "Something still to do" },
-          { key: "ready", label: "Ready", count: narrowed.filter(ready).length, sub: "Gates ticked, every section done" },
+          { key: "ready", label: "Ready", count: narrowed.filter(ready).length, sub: "Nothing left to fix" },
         ]}
         active={bucket}
         onPick={setBucket}
@@ -105,7 +105,7 @@ export function ProposalList({
         <div className="muted">No proposals match these filters.</div>
       ) : (
         shown.slice(0, n).map((p) => {
-          const sum = summary(p.work);
+          const sum = p.summary;
           return (
             <button key={p.id} type="button" className="pr-row" onClick={() => onOpen(p.id)}>
               <span className="pr-row-title">{p.title}</span>
@@ -114,8 +114,8 @@ export function ProposalList({
                 <span className="pr-row-meta">Updated {shortDate(p.updated_at)}</span>
               </span>
               <span className="pr-row-meta">
-                To {p.funder.name} · {p.org.name} · Step {sum.step} of {STEPS.length}, {STEPS[sum.step - 1]?.toLowerCase()} ·{" "}
-                {sum.done} of {sum.total} sections done
+                To {p.funder.name} · {p.org.name} · Step {sum.stage} of {STEPS.length}, {STEPS[sum.stage - 1]?.toLowerCase()} ·{" "}
+                {sum.done} of {sum.total} parts done
                 {p.fit_score !== null && ` · fit ${p.fit_score} / 100`}
               </span>
             </button>

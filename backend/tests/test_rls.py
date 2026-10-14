@@ -109,6 +109,43 @@ def test_a_proposal_reaches_only_the_org_and_staff(db, name, expected):
                  (world["proposal"],)) == expected
 
 
+@pytest.mark.parametrize("name, allowed", [("admin_a", True), ("steward_a", True), ("staff", True),
+                                           ("member_a", False), ("member_b", False), ("nobody", False)])
+def test_only_admins_stewards_and_staff_start_or_edit_a_proposal(db, name, allowed):
+    conn, world = db
+    who = world["people"][name]
+    for sql, params in [("INSERT INTO proposals (org_id, title) VALUES (%s, 'x') RETURNING id", (world["a"],)),
+                        ("UPDATE proposals SET title = 'y' WHERE id = %s RETURNING id", (world["proposal"],))]:
+        if allowed:
+            with conn.transaction(force_rollback=True):
+                _as(conn, who)
+                assert conn.execute(sql, params).fetchone() is not None
+        elif sql.startswith("INSERT"):
+            with pytest.raises(InsufficientPrivilege), conn.transaction(force_rollback=True):
+                _as(conn, who)
+                conn.execute(sql, params)
+        else:
+            # An update RLS hides changes no row, rather than raising.
+            with conn.transaction(force_rollback=True):
+                _as(conn, who)
+                assert conn.execute(sql, params).fetchone() is None
+
+
+@pytest.mark.parametrize("name, allowed", [("member_a", True), ("steward_a", True), ("admin_a", True),
+                                           ("staff", True), ("member_b", False), ("nobody", False)])
+def test_every_role_in_the_org_uploads_to_its_doc_vault(db, name, allowed):
+    conn, world = db
+    sql = "INSERT INTO documents (org_id, title, is_public) VALUES (%s, 'upload', false) RETURNING id"
+    if allowed:
+        with conn.transaction(force_rollback=True):
+            _as(conn, world["people"][name])
+            assert conn.execute(sql, (world["a"],)).fetchone() is not None
+    else:
+        with pytest.raises(InsufficientPrivilege), conn.transaction(force_rollback=True):
+            _as(conn, world["people"][name])
+            conn.execute(sql, (world["a"],))
+
+
 def test_signed_out_cannot_use_an_org_private_table_at_all(db):
     conn, _ = db
     with pytest.raises(InsufficientPrivilege), conn.transaction(force_rollback=True):
