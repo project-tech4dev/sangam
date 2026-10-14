@@ -17,7 +17,7 @@ What it replaces is "draft every section at once with ~20 fixed calls". **The st
 (https://claude.ai/artifact/H1b4nv5ReQn8mvHg2HhPB5): 1 Eligibility gates → 2 Template, documents and style → 3 Proposal,
 then Assemble → Polish → Save. **The screens are the Claude Design canvas** (https://claude.ai/artifact/Vhy3vqLJPs43rKpeNCFydr),
 reviewed for NGO staff who are not technical. Every path below was checked against `origin/master` at
-`20fe18c`. The running example is SeSTA (the NGO) writing to Axis Bank Foundation (ABF, the funder).
+`5c63bb4`. The running example is SeSTA (the NGO) writing to Axis Bank Foundation (ABF, the funder).
 
 ## 1. Requirement summary
 
@@ -351,7 +351,8 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - **Lifespan:**
   - `AGENT_NAMES["/proposal"]="sangam_proposal"`;
   - `_build_agents` adds `proposal_graph` with `SessionScopedAGUIAgent(..., emit_raw_events=False)`;
-  - `_add_agent_route` already picks its access by path (`/ingest` adds `require_scout`, #207); `/proposal` gets `proposal_chat_access` instead of `chat_access` (decision 1).
+  - `AGENT_ACCESS` (#210) declares each route's checks and a path missing from it fails at boot, so `/proposal` gets its own entry: `"/proposal": (proposal_chat_access,)` (decision 1).
+  - `proposal_chat_access` does not reuse `_own_thread`: #213 makes that refuse anyone but the thread's owner, and a proposal thread belongs to the org. It uses `app.can_open_thread` plus the caller's role in the proposal's org.
 - **Binding to the proposal:** `context.current()` loads the proposal by thread id on the owner pool and refuses unless the caller is staff or in the proposal's org. Tools never take a proposal id from the model.
 - **Members read only.** `proposal_chat_access` lets a member open the thread's history (GET) but refuses a new run (403), because every agent tool writes on the owner pool. Every write tool also calls one shared `require_edit(ctx)`, which re-checks `can_edit` from `context.current()` and returns `REFUSED: you can read this proposal` otherwise.
 - **Screen:** a member sees every step, the facts and the sections, with no buttons or chat box, and one line: "You can read this proposal. Ask SeSTA's admin to make changes." The Match card shows them "View proposal", never "Start".
