@@ -692,3 +692,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 - [ ] M5: review, propagation, conflicts, ready. Exit: Ready or the exact list.
 - [ ] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
 - [ ] Each PR: a passing browser run (above) before the next milestone starts, `make wiki-update`, a CHANGELOG line, ARCHITECTURE and CLAUDE.md where rules change, a design-system sync, that milestone's safeguard tests, `npm run build`, `ruff check .`, `pytest`, and `pytest -m integration`.
+
+## 11. Later (not in M1–M6)
+
+- **"How others have done this"** (14 Oct): once The Idea is drafted, a goal card from A2–A4 drives a `landscape-reader`, the only reader with web search, that finds similar work in the region, India and the world, with links and the funder's closest past grants. Results are amber web facts the person marks "Useful" and confirms. It needs: Import's web tools imported, searches written from the goal card only, `add_facts` re-fetching the page to find the quote, and decision 11, criterion 12 and the M3b tool test edited to allow that one reader. One milestone after M3b; nothing in M1–M6 changes.
