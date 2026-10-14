@@ -266,7 +266,11 @@ Next allowed: ask one question about this part, or rewrite "What will change"
    - So SeSTA's admin and steward share `proposal-42`, and it stays out of Ask's Recent Chats.
 2. **No saved Funder Match run means no proposal.** `POST /api/proposals` returns 409 "run Funder Match first". The gates have one source, the saved run. An org admin can save that run themselves (`0042`'s `my_match_org_ids()` is admins and stewards).
 3. **Public org rows plus the Doc Vault.** `read_org_record` uses `org_facts` (public only). Private details come from the vault reader and the person's answers.
-4. **Typing in the drawer while a question is open answers it.** The text resumes the pending `ask_user` interrupt, and the agent may still pick answers to other open slots out of it.
+4. **Typing while a question is open resumes it, and `ask_user` sorts the reply** into one of three kinds:
+   - *an answer*: stored as a you_said fact; the question closes;
+   - *a question back* ("What does ABF mean by convergence?"): answered from what Sangam holds; the question stays open and its card shows again under the reply;
+   - *skip or later*: the question is parked in `work.questions` with the gap still marked, and comes back when that part is opened again or on "Before you send it".
+   With no question open, a typed message is an ordinary turn: Sangam answers from the context layer and its read tools, names sources in words, says when it does not hold the answer, and changes the proposal only through the write tools.
 5. **Each section is graded inside `write_section`.** A6, A15 and F1 get one allowed rewrite when they score below 2.
 6. **An uploaded funder form gets its own tool.** `read_template()` is bound to `proposals.template_id`, because the funder-file reader has no Doc Vault tools.
 7. **`fit_score_id` stays on `proposals`, unused.**
@@ -407,7 +411,8 @@ Next allowed: ask one question about this part, or rewrite "What will change"
   - no web tools, and nothing written to `vault_research`.
 - **`ask_user`** is an interrupt whose `reason` is one of the six below.
   - `AskGate` (the `ChosenSources` pattern) refuses unless `questions.warranted(...)` holds, no other question is open, and the section is the current one.
-  - The answer becomes a you_said fact. Text typed in the drawer resumes the interrupt (decision 4).
+  - The resume value is `{kind: "pick", choice}` from a card button, or `{kind: "text", text}` from the chat box. `questions.classify(text)` (one `UTILITY_MODEL` call) returns answer, question back or skip, and `ask_user` returns accordingly (decision 4).
+  - Only an answer becomes a you_said fact. A question back leaves `work.questions.open` unchanged; a skip sets it to `parked`, and `AskGate` lets a parked question be asked again only for the part on screen or at "Before you send it".
 
 | Reason to ask | Code check | SeSTA → ABF example |
 |---|---|---|
@@ -557,6 +562,7 @@ No new tests. These existing tests must stay green:
 4. Only ticked files are read. A read outside them is refused, even days later after the chat was summarised.
 5. Every fact shown has a colour, a source and a status.
 6. At most one question is open. It names its reason and follows found → missing → why → suggestion, with no suggestion for an inferred number.
+   - A question typed while one is open is answered, and the open question stays open. "Later" parks it; it returns with its part.
 7. A question with no warranting gap is refused.
 8. A section with an untraced number, place or name is refused. Saved sections cite ⟦k⟧ and carry a score from 0 to 2.
 9. Correcting a fact updates or flags every section that used it. Ready requires every used fact to be confirmed or corrected.
