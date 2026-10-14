@@ -187,9 +187,9 @@ async def test_someone_elses_thread_is_404(owners):
     assert response.status_code == 404
 
 
-async def test_staff_may_open_any_thread(owners):
+async def test_staff_may_not_post_in_someone_elses_thread(owners):
     response = await run(chat_app(DEV_USER), "theirs")
-    assert response.status_code == 200
+    assert response.status_code == 404
 
 
 async def test_chat_signed_out_is_401(owners):

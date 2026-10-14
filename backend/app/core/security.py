@@ -268,7 +268,8 @@ async def _own_thread(request: Request, pool: OwnerPoolDep, principal: CurrentUs
     owner = await threads.claim_thread(
         pool, thread_id=run.thread_id, user_id=principal.id, title=_thread_title(run)
     )
-    if owner != principal.id and not principal.is_staff:
+    # Staff too: a turn checkpoints rows read as this caller, which the owner's next turn would replay.
+    if owner != principal.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
     chat_user_id.set(principal.id)
     chat_scope.set(await caller_scope(pool, principal))
@@ -291,7 +292,7 @@ async def require_scout(scope: Annotated[CallerScope, Depends(request_scope)]) -
 async def chat_access(
     request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
 ) -> None:
-    """Signed in, and the thread is new or yours (staff may open any); someone else's thread is 404."""
+    """Signed in, and the thread is new or yours; someone else's thread is 404, staff included."""
     await _own_thread(request, pool, principal)
 
 
