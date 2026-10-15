@@ -106,6 +106,19 @@ async def save(pool: Any, proposal_id: int, change: Callable[[dict, str], Applie
     return applied
 
 
+async def insert_draft(pool: Any, *, org_id: int, title: str, storage_path: str, content_hash: str,
+                       content_md: str, uploaded_by: Any) -> int:
+    """A saved version's Word file in the org's Doc Vault: private, and marked as written with AI."""
+    async with pool.connection() as conn:
+        return (await (await conn.execute(
+            """INSERT INTO documents (org_id, title, doc_type, source_name, storage_path, content_hash, content_md,
+                                      uploaded_by, fetched_at, is_public, is_ai_generated, status)
+               VALUES (%s, %s, 'proposal_draft', 'Sangam Pitch', %s, %s, %s, %s, now(), false, true, 'received')
+               RETURNING id""",
+            (org_id, title, storage_path, content_hash, content_md, uploaded_by),
+        )).fetchone())["id"]
+
+
 # The agent's side, on the owner pool: chat access and require_edit decide who gets here, not RLS.
 _CHAT = re.compile(r"^proposal-(\d+)-([0-9a-f-]{36})$")
 

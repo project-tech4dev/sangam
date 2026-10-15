@@ -133,6 +133,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-15 · M3b · Sangam Pitch reads the ticked files and what the funder looks for, one reader each, in parallel, from "Write the first draft"; every screen shows each file's progress, and "Try again" re-reads only a file that failed.
 - 2026-10-15 · M4 · Sangam Pitch writes each part from the facts: "Write" per tab, every number, amount, place and partner traced to a fact cited in the same paragraph or refused, a gap where no fact supports it, parts in dependency order with the Summary last, each scored 0–2.
 - 2026-10-15 · M5 · "Before you send it": every fact the text uses with Yes / change it / Don't use it and Confirm all; a correction rewrites each sentence that states the old value word for word and marks the rest for a rewrite, facts worked out from it go back to amber, and Fix first / Worth checking decide Ready.
+- 2026-10-15 · M6 · Finish: "Smooth the language" in one model call, kept only when code finds every figure, place, name and gap unchanged (else it says what changed); "Download as a Word file" saves the next version to the org's Doc Vault (`proposal_draft`, written with AI) with a snapshot of the facts it cites, and every version stays listed.
 
 ## Media & Signals
 

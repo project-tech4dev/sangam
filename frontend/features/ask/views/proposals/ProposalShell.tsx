@@ -7,6 +7,7 @@ import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
 import { advance, changedByLine, getProposal, missingFrom, type Proposal, type Reader, rename, type Saved, saveWork } from "./api";
 import { FactList } from "./FactList";
+import { FinishCard } from "./FinishCard";
 import { WriteCard } from "./WriteCard";
 import { HowItWorks } from "./HowItWorks";
 import { ANSWERS, STEPS } from "./steps";
@@ -81,6 +82,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   const { work, summary, can_edit: canEdit } = proposal;
   const toContinue = summary.to_continue ?? [];
   const save: Save = (set) => run(() => saveWork(id, set));
+  const onSaved = (saved: Saved) => setProposal((p) => (p ? { ...p, work: saved.work, summary: saved.summary } : p));
 
   function submitRename(event: React.FormEvent) {
     event.preventDefault();
@@ -151,7 +153,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
             {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
             {work.stage === 2 && <SourcesStep proposal={proposal} save={save} send={send} />}
             {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} send={send} />}
-            {work.stage === 4 && <FinishStep proposal={proposal} save={save} send={send} />}
+            {work.stage === 4 && <FinishStep proposal={proposal} save={save} send={send} onSaved={onSaved} />}
           </div>
 
           {canEdit && work.stage < STEPS.length && (
@@ -439,7 +441,7 @@ function SectionsStep({
 }
 
 /** What is left before sending, and every fact the text uses for the person to check; Ready is code's call. */
-function FinishStep({ proposal, save, send }: { proposal: Proposal; save: Save; send: Send }) {
+function FinishStep({ proposal, save, send, onSaved }: { proposal: Proposal; save: Save; send: Send; onSaved: (saved: Saved) => void }) {
   const { summary, work, can_edit: canEdit } = proposal;
   const { fix_first: fix, worth_checking: check } = summary;
   const unchecked = Object.entries(work.facts ?? {}).filter(([, f]) => f.status === "proposed" && f.used_in?.length);
@@ -484,6 +486,7 @@ function FinishStep({ proposal, save, send }: { proposal: Proposal; save: Save; 
         </div>
         <FactList proposal={proposal} part="used" save={save} />
       </div>
+      <FinishCard proposal={proposal} onSaved={onSaved} />
     </div>
   );
 }

@@ -564,6 +564,13 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
 
 **Validation:** a polish that turns "₹4.2 crore" into "₹42 lakh" is refused. v2 keeps v1. A steward can save a version.
 
+**As built (15 Oct):**
+- One action, not two: "Download as a Word file" saves the next version and opens it, so there is no separate "Save a copy"; anyone who reads the proposal can download any saved version, and only admins, stewards and staff save one.
+- The check compares which claims a part states, not how often: smoothing may say "2026" once where the text said it twice, but a figure, place, name or `[Add: …]` gap that disappears, changes or is new refuses it, years included. `trace.extract` holds the list; amounts compare in rupees, so "₹2.4 crore" and "₹2,40,00,000" are the same.
+- The stale signal is each part's `rev`, stored as `polished.revs`, rather than a hash: a part changed since smoothing goes into the Word file as written, and the card says how many.
+- `polished` and `versions` are set only by these two routes (`via` "polish" / "version"); `PATCH /work` refuses both, and a version whose number someone took at the same moment is refused.
+- The Word file leaves out the ⟦k⟧ marks and puts the Summary first; its facts snapshot is the facts the text cites, as they stood.
+
 **Exit gate:** SeSTA downloads v1.docx from the Doc Vault, with its facts snapshot.
 
 **Every PR, M1–M6**
@@ -709,7 +716,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 - [x] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
 - [x] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
 - [x] M5: review, propagation, ready. Exit: Ready or the exact list.
-- [ ] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
+- [x] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
 - [ ] Each PR: a passing browser run (above) before the next milestone starts, `make wiki-update`, a CHANGELOG line, ARCHITECTURE and CLAUDE.md where rules change, a design-system sync, that milestone's safeguard tests, `npm run build`, `ruff check .`, `pytest`, and `pytest -m integration`.
 
 ## 11. Later (not in M1–M6)

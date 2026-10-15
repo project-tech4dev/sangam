@@ -122,6 +122,16 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
             raise BadChange("files are read by Sangam Pitch")
         if not (isinstance(value, dict) and value.get("status") in READER_STATUS and value.get("at")):
             raise BadChange("a reader has a status and a time")
+    elif path == "polished":
+        if via != "polish" or not (isinstance(value, dict) and isinstance(value.get("parts"), dict)):
+            raise BadChange("the smoothed wording is saved only once code has checked it")
+    elif path == "versions":
+        held = work.get("versions") or []
+        if via != "version" or not isinstance(value, list):
+            raise BadChange("a version is saved with its Word file")
+        # Two people saving at once would both claim the same number, and the same file.
+        if value[:-1] != held or len(value) != len(held) + 1 or value[-1].get("n") != len(value):
+            raise BadChange("someone saved a copy at the same moment; try again")
     else:
         raise BadChange(f"{path!r} cannot be changed")
 
@@ -145,7 +155,10 @@ def _set(work: dict[str, Any], path: str, value: Any) -> None:
 
 def _short(value: Any) -> Any:
     if isinstance(value, dict):  # a whole fact, question or reader is logged by what it says
-        return _short(f"{value.get('subject') or value.get('title')}: {value.get('value') or value.get('status')}")
+        said = value.get("value") or value.get("status")
+        return _short(f"{value.get('subject') or value.get('title')}" + (f": {said}" if said else ""))
+    if isinstance(value, list) and value and isinstance(value[-1], dict):  # the versions, by the one just added
+        return _short(value[-1])
     return value if not isinstance(value, str) or len(value) <= LOG_TEXT else f"{value[:LOG_TEXT]}…"
 
 
