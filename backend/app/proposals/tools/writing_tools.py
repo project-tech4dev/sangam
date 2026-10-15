@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter
-from typing import Any
 
 from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
@@ -23,26 +22,14 @@ from app.repositories import proposals as repo
 
 logger = logging.getLogger(__name__)
 
-TEXT_LIMIT = 12000
+TEXT_LIMIT = work_rules.TEXT_LIMIT
 PROBLEMS_SHOWN = 8
 _PARAGRAPH = re.compile(r"^paragraph \d+:? ")
 SUGGESTION = "proposal_suggestion"  # the interrupt's type; QuestionCard.tsx shows it as a suggestion card
+
+
 def _names(p: context.Current) -> set[str]:
-    """Partner and people names in the fact list; the proposal's own org and funder are free to name."""
-    own = {fact_rules.norm(p.org_name), fact_rules.norm(p.funder_name)}
-    return {fact_rules.norm(f.get("value")) for f in (p.work.get("facts") or {}).values()
-            if f.get("kind") == "name" and fact_rules.is_live(f) and fact_rules.norm(f.get("value")) not in own}
-
-
-def _used_in(work: dict[str, Any], code: str, ids: list[str]) -> dict[str, Any]:
-    """Each fact's used_in, with this section added where it is cited now and dropped where it no longer is."""
-    out = {}
-    for k, f in (work.get("facts") or {}).items():
-        was = list(f.get("used_in") or [])
-        now = sorted({*(c for c in was if c != code), *([code] if k in ids else [])})
-        if now != sorted(was):
-            out[f"facts.{k}.used_in"] = now
-    return out
+    return fact_rules.partner_names(p.work, p.org_name, p.funder_name)
 
 
 @tool
@@ -53,7 +40,7 @@ async def write_section(code: str, text: str, runtime: ToolRuntime, rev: int = 0
       paragraph must be in a fact cited in that same paragraph; a year or a Schedule VII clause needs none.
     - Where no fact supports what the section needs, write a gap as [Add: what is missing], for example
       [Add: households food-secure in 2025, with the source].
-    - Sections go in order: The Idea's context and problem before its objectives, objectives before the workplan
+    - Sections go in order: context and problem before its objectives, objectives before the workplan
       and measuring, the workplan before the budget, and the Summary last. The part the person has open on screen
       may be written at any time.
     - Paragraphs are separated by a blank line. Follow the proposal's writing style.
@@ -82,9 +69,10 @@ async def write_section(code: str, text: str, runtime: ToolRuntime, rev: int = 0
             return f"REFUSED: a section's text is 1 to {TEXT_LIMIT:,} characters."
         if not_yet := steps.may_write(p.work, code, context.screen_part(p.work, runtime.state)):
             return f"NOT YET: {not_yet}."
-        if refused := await _untraced(p, section, text):
+        districts, names = await records.districts(get_pool()), _names(p)
+        if refused := _untraced(p, section, text, districts, names):
             return refused
-        return await _store(p, section, text, rev, "traced to its facts")
+        return await _store(p, section, text, rev, "traced to its facts", districts, names)
     except Exception as exc:
         logger.exception("write_section failed")
         return f"write_section failed: {type(exc).__name__}"
@@ -95,9 +83,10 @@ def _unnumbered(problem: str) -> str:
     return _PARAGRAPH.sub("", problem, count=1)
 
 
-async def _untraced(p: context.Current, section: rubric.Section, text: str, before: str = "") -> str | None:
+def _untraced(p: context.Current, section: rubric.Section, text: str, districts: set[str], names: set[str],
+              before: str = "") -> str | None:
     """REFUSED with each claim that traces to no fact the paragraph cites, beyond those `before` already had."""
-    facts, districts, names = p.work.get("facts") or {}, await records.districts(get_pool()), _names(p)
+    facts = p.work.get("facts") or {}
     was = Counter(_unnumbered(x) for x in trace.check(before, facts, districts=districts, names=names)) \
         if before else Counter()
     problems = []
@@ -114,25 +103,26 @@ async def _untraced(p: context.Current, section: rubric.Section, text: str, befo
             + ". Cite the fact that holds each one, change it to what a cited fact says, or make it a gap.")
 
 
-async def _store(p: context.Current, section: rubric.Section, text: str, rev: int, reason: str) -> str:
+async def _store(p: context.Current, section: rubric.Section, text: str, rev: int, reason: str,
+                 districts: set[str], names: set[str]) -> str:
     """Grade the text and save it as the section's next rev; refused when a teammate changed it since `rev`."""
     code = section.code
     graded = await grade.grade(section, text, resolve_model(get_settings().utility_model))
     ids = trace.cited(text)
     pool = get_pool()
     by = await repo.user_name(pool, p.scope.user_id)
-    traces = not trace.check(text, p.work.get("facts") or {}, districts=await records.districts(pool),
-                             names=_names(p))
+
+    traces = not trace.check(text, p.work.get("facts") or {}, districts=districts, names=names)
 
     def change(work: dict, title: str) -> work_rules.Applied:
         # A suggestion may leave a problem the part already had, so only a text that fully traces clears the flag.
         changes = {f"sections.{code}.text": text,
-                   f"sections.{code}.score": grade.score(graded.missing) if graded else None,
                    **({f"sections.{code}.needs_rewrite": False}
                       if traces and (work.get("sections") or {}).get(code, {}).get("needs_rewrite") else {}),
-                   **_used_in(work, code, ids)}
+                   **work_rules.used_in(work, code, ids)}
         return work_rules.apply(work, changes, {code: rev}, by=by, via="agent", facts=ids, reason=reason,
-                                title=title)
+                                title=title, districts=districts, names=names,
+                                graded={code: graded.missing if graded else None})
 
     try:
         if await repo.save(pool, p.id, change) is None:
@@ -192,14 +182,15 @@ async def suggest_edit(code: str, now: str, better: str, why: str, runtime: Tool
                     "and long enough to appear only once in the section.")
         if len(text) > TEXT_LIMIT:
             return f"REFUSED: a section's text is at most {TEXT_LIMIT:,} characters."
-        if refused := await _untraced(p, section, text, before=held):
+        districts, names = await records.districts(get_pool()), _names(p)
+        if refused := _untraced(p, section, text, districts, names, before=held):
             return refused
 
         reply = interrupt({"type": SUGGESTION, "ask": runtime.tool_call_id, "part": section.label,
                            "now": assemble.plain(now), "better": assemble.plain(better), "why": why.strip()})
         reply = reply if isinstance(reply, dict) else {"kind": "text", "text": str(reply or "")}
         if reply.get("kind") == "pick" and reply.get("choice") == "use":
-            return await _store(p, section, text, rev, "wording the person accepted")
+            return await _store(p, section, text, rev, "wording the person accepted", districts, names)
         if reply.get("kind") == "pick":
             return f"KEPT: the person kept their own wording in {section.label}. Leave it as it is."
         said = str(reply.get("text") or "").strip()
@@ -218,7 +209,7 @@ def _saved(section: rubric.Section, text: str, graded: grade.Graded | None) -> s
         out.append("Not graded" + (": it has no strong answer to grade against." if not section.strong
                                    else ": the grader failed; it can be graded on the next save."))
     else:
-        score = grade.score(graded.missing)
+        score = rubric.score(graded.missing)
         out.append(f"Score {score} of 2." + (f" A strong answer still needs: {'; '.join(graded.missing)}."
                                               if graded.missing else ""))
         if score < 2 and section.code in rubric.MUST_SCORE_2:

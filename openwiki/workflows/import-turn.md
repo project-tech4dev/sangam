@@ -2,13 +2,12 @@
 type: workflow
 title: "One Import Turn: choose_sources to Undo"
 description: End-to-end trace of a Sangam Import (Scout) turn. It runs from the choose_sources pause through research, save_research refusals, brief publish, the Review save transaction and promote, to staff undo. It lists the refusal points, the pauses, the fact end-states and the unfinished work.
-tags: [import, scout, ingest, workflow, brief, promote, undo, human-in-the-loop]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
+tags: [import, scout, ingest, workflow, brief, promote, undo, human-in-the-loop, doc-vault]
 sources:
   - id: openwiki-source-813dbe9c3eeb378112388ccd
     resource: repo://backend/app/agent/middleware.py
+  - id: openwiki-source-ca736c25c2a1bb0e95531706
+    resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-11c734346bddf773fd80ed0e
     resource: repo://backend/app/api/routes/ingest.py
   - id: openwiki-source-62958d5b14b0717233a7ec0b
@@ -19,6 +18,8 @@ sources:
     resource: repo://backend/app/ingest/contract.py
   - id: openwiki-source-7d480e75db10aae51a0f227b
     resource: repo://backend/app/ingest/middleware.py
+  - id: openwiki-source-ad46879e0b8b0bcc9e65aaee
+    resource: repo://backend/app/ingest/office.py
   - id: openwiki-source-b16585eb308b018d24ffae26
     resource: repo://backend/app/ingest/promote.py
   - id: openwiki-source-3dbb7a958f50a2650e081c34
@@ -29,8 +30,12 @@ sources:
     resource: repo://backend/app/ingest/tools/pipeline_tools.py
   - id: openwiki-source-51e6adf4243b3601b40e5803
     resource: repo://backend/app/ingest/tools/research_tools.py
+  - id: openwiki-source-01018d1868720c2e42fdafe4
+    resource: repo://backend/app/ingest/tools/vault_tools.py
   - id: openwiki-source-98ca8658ce31f093cdacdd76
     resource: repo://backend/app/ingest/undo.py
+  - id: openwiki-source-f7dba013696636c8f50fd1cc
+    resource: repo://backend/app/ingest/vault.py
   - id: openwiki-source-5ff63cf3bcc0508701587aa2
     resource: repo://backend/tests/test_import_undo.py
   - id: openwiki-source-77a336ada304965e7aa89c22
@@ -39,11 +44,16 @@ sources:
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-bf630aa6c5a52f454e55b12d
     resource: repo://frontend/features/ingest/components/ScreenReview.tsx
+  - id: openwiki-source-bd46ad9eddc92ab8d716768e
+    resource: repo://frontend/features/ingest/ImportView.tsx
   - id: openwiki-source-816413157b8843ac76fe4f8f
     resource: repo://frontend/features/ingest/lib/saveActions.ts
   - id: openwiki-source-f664951b6aca64864b5843f3
     resource: repo://frontend/features/ingest/lib/staffActions.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # One Import Turn: choose_sources to Undo
@@ -86,6 +96,16 @@ sequenceDiagram
 
 *Order of one turn: sources are chosen, the researcher saves findings (with refusals), the brief is published, the save transaction runs, and staff may undo.*
 
+## 0. Opening the Import screen
+
+Before any turn, `ImportView` loads its panels with a single `GET /api/ingest/overview`, because separate calls could each land on a cold backend instance. The route (open to staff and stewards through `require_scout`) returns the caller's memberships, their research list (25 rows), and their Doc Vault files. For staff it also returns the source registry, recent runs, the name queue and source proposals. Anyone else gets those four as empty lists.
+
+- **Role decides what is shown.** `accessOf(o.me)` derives staff and steward access, and until the overview answers the screen uses `NO_ACCESS`, so nothing can be run. "Team tools" (sources, run history, proposals) render only for staff.
+- **Research list scope.** Staff see every row. Anyone else sees what they saved plus research on NGOs they steward, with private sources dropped from `sources_read`, a summary written from private findings replaced by `PRIVATE_NOTE`, and `promotion_id` and `saved_by` blanked (`_public`).
+- **Vault listing is best-effort.** `_vault` lists up to 100 documents per membership organisation and keeps only private ones (`is_public` false, with an org). If listing fails it logs a warning and returns an empty list, so Import still opens without Vault files. These files feed the sources card.
+- **Spreadsheet card.** `GET /api/ingest/workbooks` (staff only) lists `.xlsx` files so the card can show them at the first pause. It accepts only the `staff-sources` bucket, the same rule `choose_sources` applies to a pick, and answers 422 for any other bucket.
+- After an undo or delete, `ImportView` reloads only the research list (`/api/ingest/research?limit=25`), not the whole overview.
+
 ## 1. choose_sources: the first pause
 
 - The supervisor must call `choose_sources` first and alone (`pipeline_tools.choose_sources`). It takes `web`, `library`, `vault_org`, `vault_docs` and `staff_paths`. The result is an artifact that `run_sources.Sources` turns into the run's allowed sources. The person's answer replaces the model's proposal.
@@ -113,6 +133,17 @@ The supervisor plans (`write_todos`), reads `funder_dossier` to see what the cat
 - Every web read passes `check_url` (source registry plus robots) before the fetch and again on every redirect (`_client` hook). A `REFUSED:` there is final. `search_public_sources` marks hits `READABLE` or `HELD`, and a held hit is a dead end.
 - `read_page` and `fetch_document` archive what they read to the `source-archive` bucket. Later, `promote()` turns each cited source into a `documents` row from that archive.
 - The researcher's middleware stack adds `SaveRefusal`, `RunSources`, the staff-last lock (`StaffLastLock`), an optional `ReadingLimit` (researcher only) and model-call limit, model fallback, an escalation to the strong model after a malformed save, and a rubric grader that allows one revision. Page and call limits are unset by default.
+
+### Doc Vault files and Word/Excel text
+
+An organisation's private files can enter a run only if the person picked them in `choose_sources`. They are read by the `vault-reader`, never the researcher, so vault text never shares a context with web tools (`backend/app/ingest/vault.py`).
+
+- **Which files count.** A Vault document is a `documents` row with `NOT is_public` and a `storage_path` under the `org-vault` bucket. `vault.in_vault` checks picked ids against that org. `list_vault_documents` and `read_vault_document` use the owner pool, so each checks `can_read_org` itself. A file the caller may not read and one that does not exist get the same answer. A run's picked org is the only vault it may list.
+- **What can be read.** `vault.read` downloads at most 50 MB and handles `.pdf`, `.docx` and `.xlsx`. Anything else, or a document with no stored file, returns a plain explanation. Each read is capped at `MAX_CHARS` (24,000), with a note on how to continue.
+- **Citation markers.** Every line is cited as `[vault:<id>#p<page>]`, `[vault:<id>#para<n>]` or `[vault:<id>#<sheet>!<cell>]`. A scanned PDF with no text range is reported as such rather than guessed at.
+- **Office extraction.** `office.py` is pure (bytes in, text out). `docx_paragraphs` returns paragraphs and table rows as `a | b | c` in document order, keeping a merged cell once. `xlsx_markdown` renders each sheet as a heading plus its first `SHEET_ROWS` (200) rows. The same helpers produce `content_md` when a document is uploaded (`documents._extract`, which stores `None` text but still a hash if a file is damaged), and the vault reader's `.docx` pages by paragraph while `.xlsx` goes through `staff_sources`.
+- **Saving.** `save_vault_findings` refuses the whole save, writing nothing, unless every finding has a vault `source_url` (`https://org-vault.<private domain>/<id>`), names a document in that org's vault, and quotes that document's `[vault:<id>#…]` marker. NGO research needs `can_research_org`. Findings go to `vault_research`, one row per `(slug, researched_on, org_id)`, never into the shared `entity_research` row.
+- **Promotion holds.** `_research_rows` strips vault URLs from `entity_research` findings. It adds an org's `vault_research` findings only for a writer or person, and only for orgs the caller can read. At promote, `vault.hold_at_promote` keeps only the funder's general facts (`PROMOTABLE`: identity, CSR year, stated geography, eligibility guideline, RFP, programme). The org's own facts are shown on Review but held back, and an NGO's vault findings are never promoted.
 
 ## 3. save_research: where saves are refused
 

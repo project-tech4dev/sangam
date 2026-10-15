@@ -101,18 +101,17 @@ reviewed for NGO staff who are not technical. Every path below was checked again
 | 3 Write the proposal | Readers run, every section is drafted with a marked gap wherever nothing supports it, then one question at a time closes the gaps | ready (M5), or the list of what is missing |
 | Before you send it | Assemble; smooth the language (checked); download as Word, or save a copy | a version saved |
 
-**Step 3's five tabs.** Rubric codes and scoring stay `proposal-v2`; only the grouping changes. The prototype's four tabs
-(the case and the plan, people, durability and money, this funder) become five by splitting the first.
+**Step 3's four tabs, exactly as the prototype.** Rubric codes and scoring stay `proposal-v2`; the tabs, their order and
+the section names are the prototype's (changed in M8 from an earlier five-tab split).
 
 | Tab | Sections (storage code) |
 |---|---|
-| **The Idea**: what is this all about? | Past studies (facts) · Context A2 · Problem and baseline A3 · Objectives and results A4 · Summary A1, written last |
-| **Your Project**: how will we do it? | Workplan by quarter A5 · Measuring results A6 · Learning A7 · the funder form's own questions (ABF §6, convergence with government) |
-| **The People**: who will do it? | Community participation A8 · Inclusion A9 · Team A10 · Track record A11 · Partnerships A12 |
-| **The Ask and Risk**: how much, and what could stop it? | Budget A15 · Other funding A16 · Risks A13 · After the grant A14 |
-| **Why me and you** | Fit with the funder's goals F1 · Earlier phase results F4 |
+| **The case and the plan** | Summary A1, written last · Context and target area A2 · Problem and baseline A3 · Objectives and results A4 · Activities and workplan A5 · Indicators and M&E A6 · Learning and knowledge sharing A7 |
+| **People** | Community participation A8 · Inclusion A9 · Team and organisational capacity A10 · Track record A11 · Partnerships A12 |
+| **Durability and money** | Risks and mitigation A13 · Sustainability and exit A14 · Budget A15 · Other funding A16 |
+| **This funder** | Fit with funder priorities F1 · Earlier phase results F4 · the funder form's own questions (ABF §6, convergence with government) |
 
-- **Past studies open The Idea.** The evidence readers pull findings from impact assessments, evaluations and outside
+- **Past studies feed The case and the plan.** The evidence readers pull findings from impact assessments, evaluations and outside
   studies into the fact list; A3, A4 and A11 cite them. A list of facts, not a scored section, so A1–A16 and readiness are unchanged.
   - *Example:* "Impact assessment 2023: federation credit added 2 food-secure months a year (page 12)" is k9; A4's "from 9 to 11 months" cites it.
   - Outside studies come only from step 2's files and documents Sangam archived. One nobody uploaded is not found, and the tab says so.
@@ -608,6 +607,19 @@ Added after M6 testing. Asked to improve, reframe or tighten wording (often the 
 - `write_section` stays for drafting and rewriting whole parts, and "Smooth the language" for the whole document.
 
 **Exit gate:** a steward asks for a clearer sentence on step 3, presses Use this, and the part shows it.
+
+### M8: write in place
+From the shared prototype's section editor (15 Oct). On step 3 an open part is a text box the person writes in; Write / Write again per tab stays, and members read it as now.
+- **Layout, as the prototype:** a tab bar (each tab with its score, as 3/8), the tab's parts listed on the left with a score dot (✓ once Done), and one part open on the right; on a phone the list sits above it. No codes: labels only. Write / Write again sits beside the tabs, and an empty part has its own Write button for that part alone. The part's facts to confirm fold under it, and a line below sums sources, gaps, parts done and Ready.
+- **The chat is a window, not a column:** a fixed 380 × 560 px panel in the corner (shorter on a short screen, 480 px tall on a phone). Its turns scroll inside it, the box to type in stays at its foot, and it opens on the latest turn, so most of the proposal stays in view.
+- **The box:** the text, with each source as [1], [2] in the order they are first used (the numbered source list below), saved about a second after typing stops. On save, code turns each [n] back into the fact it stood for in the text as it was, so a deleted [n] drops that citation.
+- **Around it:** the part's question; "Write this last" on the Summary; "must score 2" where it applies; a chip per strong element (✓ / ○); the gaps to add; any figure, place or name with no source; the score in words (Strong, One element missing, Reads as weak: …); Done or Done · reopen; the next part →.
+- **Checks:** a typed figure, place or name no cited fact holds still saves. Code stores it as the part's `untraced` list, and step 4's Fix first shows "Context and target area: “120” has no source" until it is cited, changed or made a gap. Every text change also recomputes which facts each part uses.
+- **Done:** the save route grades the text once (the same cheap grader Sangam Pitch uses) and stores `score` and `missing`. A text edit clears Done. `missing` and `untraced` are code-only, like `score`.
+- **Teammates:** each save carries the part's rev. If someone saved first, the box loads their text, keeps the person's own below it to copy from, and names who changed it.
+- **Left out:** live keyword ticks, the character count (Sangam holds no funder limits) and drafting every part on entry.
+
+**Exit gate:** a steward edits a part, adds a figure with no source, sees it listed in step 4, cites it, presses Done and sees the ticks.
 
 ## 6. Test plan
 

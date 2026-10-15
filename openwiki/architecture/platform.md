@@ -12,6 +12,8 @@ sources:
     resource: repo://backend/app/api/router.py
   - id: openwiki-source-11c734346bddf773fd80ed0e
     resource: repo://backend/app/api/routes/ingest.py
+  - id: openwiki-source-e0103e1ba2cbec5a0f421c56
+    resource: repo://backend/app/api/routes/proposals.py
   - id: openwiki-source-424eb6e9128a678a28e6d5ca
     resource: repo://backend/app/api/routes/threads.py
   - id: openwiki-source-df5be7b214c1649f540daf09
@@ -50,10 +52,10 @@ sources:
     resource: repo://docs/features/2026-10-10-page-load-performance.md
   - id: openwiki-source-a0ebc66d448ae6aa5723800b
     resource: repo://frontend/vercel.json
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-13T18:59:48.420Z
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Platform
@@ -63,7 +65,7 @@ The platform is the cross-cutting backend layer that every feature runs on. It d
 - how the ASGI app is built;
 - where configuration and defaults live;
 - what happens at boot and shutdown;
-- when the two agents are constructed;
+- when the three agents (Ask, Import, proposal) are constructed;
 - how runs are traced;
 - how the backend is deployed.
 
@@ -77,9 +79,9 @@ The agents themselves are covered in [Ask Sangam](ask-sangam.md) and [Sangam Imp
 - **Middleware order.** `AuthMiddleware` is added first and `CORSMiddleware` second, so CORS wraps auth. Preflights are answered before auth runs, and auth's 401s still carry CORS headers. The allowed origins come from `Settings.origins` (comma-separated `allowed_origins`). `allowed_origin_regex` admits Vercel preview hostnames and is passed as `None` when blank, because an empty pattern would match every origin.
 - **Routes and error handling.** It mounts `api_router`, maps a Postgres `InsufficientPrivilege` error to `403 {"detail": "Not allowed"}`, and defines `GET /health`.
 
-`AuthMiddleware` is plain ASGI, not `BaseHTTPMiddleware`, because buffering would break chat streaming. It skips non-HTTP scopes and the open paths `/health`, `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json` (`_OPEN_PATHS` in `core/security.py`). For every other request it resolves the caller once and stores the role (`anon` or `authenticated`) and claims on the request state. `PoolDep` then runs the request's queries as that caller (see [Auth, roles and RLS](auth-roles-rls.md)).
+`AuthMiddleware` is plain ASGI, not `BaseHTTPMiddleware`, because buffering would break chat streaming. It skips non-HTTP scopes and the open paths `/health`, `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json` (`_OPEN_PATHS` in `core/security.py`). For every other request it resolves the caller once, answers a bad token itself with a JSON 401/409, and stores the principal plus `db_role` (`anon` or `authenticated`) and `db_claims` on the request state. `get_caller_pool` turns those into a `CallerPool`, which `PoolDep` hands to routers. Each `connection()` opens a transaction and runs `set_config('role', ...)` and `request.jwt.claims` with `SET LOCAL` semantics, so RLS applies and the connection returns to the shared pool as the owner (see [Auth, roles and RLS](auth-roles-rls.md)). Identity code and agent tools take the owner pool (`OwnerPoolDep`, `get_pool()`), and Ask Sangam's SQL reads its caller from the `agent_caller` context variable.
 
-`backend/app/api/router.py` is the single mount point. It builds one `APIRouter(prefix="/api")` and includes the per-resource routers: orgs, org_members, funders, profiles, funder_matches, partner_lines, programs, rfps, contacts, scores, meta, news_stories, documents, ingest, news_runs, me and threads. `OPENAPI_TAGS` fixes the order resources appear in the docs. Two routes are not under `/api`: `/health` from the factory, and the AG-UI chat routes `/agent` and `/ingest` that the lifespan registers.
+`backend/app/api/router.py` is the single mount point. It builds one `APIRouter(prefix="/api")` and includes the per-resource routers: orgs, org_members, funders, profiles, registry, funder_matches, proposals, partner_lines, partner_groups, programs, rfps, contacts, scores, meta, news_stories, documents, ingest, news_runs, me and threads. `OPENAPI_TAGS` fixes the order resources appear in the docs. Routes outside `/api` are `/health` from the factory and the three AG-UI chat routes `/agent`, `/ingest` and `/proposal` (with their `{path}/health`) that the lifespan registers.
 
 ## Settings and model tiers
 
@@ -121,7 +123,7 @@ Details that matter when changing these:
 
 ## Lifespan and lazy agent loading
 
-`backend/app/core/lifespan.py` owns everything with a startup and shutdown. Boot is deliberately split in two. The lifespan keeps only what REST needs. The agent stack is built later, on first use: the first post to `/agent` or `/ingest`, or the first REST route that calls `get_graph`.
+`backend/app/core/lifespan.py` owns everything with a startup and shutdown. Boot is deliberately split in two. The lifespan keeps only what REST needs. The agent stack is built later, on first use: the first post to `/agent`, `/ingest` or `/proposal` (each route calls `load_agents`), or the first REST route that calls `get_graph`. The REST callers today are the Import route in `routes/ingest.py` (`ingest_graph`) and `saved_messages` in `routes/threads.py`, which serves Ask's thread messages (`ask_graph`) and the proposal chat's in `routes/proposals.py` (`proposal_graph`).
 
 **Boot, in order** (inside one `AsyncExitStack`, so shutdown unwinds in reverse):
 
@@ -129,16 +131,16 @@ Details that matter when changing these:
 2. Run `_verify_sql_catalog`. If the SQL tool's catalog disagrees with the database, it logs each `SQL catalog drift:` problem and raises `RuntimeError`, so **the app refuses to boot on catalog drift**. Tables that exist but are in neither the catalog nor `KNOWN_EXCLUDED` are only logged at info level. They stay invisible to the agent until someone decides.
 3. Open the Graphiti graph, which logs and does nothing when the graph is not configured.
 4. Open the Postgres checkpointer (`AsyncPostgresSaver.setup()`, idempotent DDL).
-5. Set `app.state.settings`, `checkpointer`, `agents = None` and an `agents_lock`, then register the `/agent` and `/ingest` routes.
+5. Set `app.state.settings`, `checkpointer`, `agents = None` and an `agents_lock`, then register a route for every path in `AGENT_NAMES`: `/agent`, `/ingest` and `/proposal`.
 6. Log boot timings: process age from `/proc`, connect plus catalog time, total boot, the model, the research concurrency, the pool size and the gate.
 
 On shutdown the lifespan flushes and shuts down Langfuse, but only if tracing is enabled and the agents were actually built. It then clears `db_pool.pool`.
 
-**First use.** Both agents are built together by `load_agents(app)` under `agents_lock`, once, and cached on `app.state.agents`. The trigger is whichever comes first: a post to `/agent` or `/ingest` (the AG-UI route calls `load_agents`), or a REST route that calls `get_graph` (`routes/ingest.py` and `routes/threads.py` do):
+**First use.** All three agents are built together by `load_agents(app)` under `agents_lock`, once, and cached on `app.state.agents`. The trigger is whichever comes first: a post to `/agent`, `/ingest` or `/proposal` (the AG-UI route calls `load_agents`), or a REST route that calls `get_graph` (`routes/ingest.py` and `routes/threads.py` do, and the latter also serves the proposal chat). `load_agents` returns `None` outside a lifespan:
 
 1. `configure_langfuse(settings)` runs first. Building the client is what registers the mask, and a handler created earlier would bind to an unmasked client.
-2. `build_agent` builds Ask's graph, and `build_ingest_agent` builds Import's.
-3. Each graph is wrapped in a `SessionScopedAGUIAgent`. `/agent` is named `sangam_agent`. `/ingest` is named `sangam_ingest` and passes `emit_subagent_events=True`, so each researcher's steps arrive attributed to its run.
+2. `build_agent` builds Ask's graph, `build_ingest_agent` builds Import's and `build_proposal_agent` builds the proposal copilot's (see [Ask Sangam](ask-sangam.md) and [Sangam Import](sangam-import-scout.md); the proposal agent is the one behind `/api/proposals`).
+3. Each graph is wrapped in a `SessionScopedAGUIAgent`. `/agent` is named `sangam_agent`, `/ingest` is `sangam_ingest` and passes `emit_subagent_events=True` so each researcher's steps arrive attributed to its run, and `/proposal` is `sangam_proposal` and passes `emit_raw_events=False`. All three receive `config={"recursion_limit": ...}`.
 4. The Langfuse and LangSmith status is logged. A configured-but-failing backend logs a warning, because a silently disabled tracer looks the same as a working one.
 
 The build is synchronous on purpose, since imports and graph compiles are not safe to move off the event loop. The whole thing is logged as "Agents built on first use".
@@ -150,15 +152,15 @@ sequenceDiagram
     participant L as load_agents
     participant T as tracing
     participant G as Agent builders
-    B->>R: POST /agent or /ingest
-    R->>R: chat_access checks sign-in and thread owner
+    B->>R: POST /agent, /ingest or /proposal
+    R->>R: the path's AGENT_ACCESS checks run
     R->>L: load_agents(app)
     alt agents already built
         L-->>R: cached agents
     else first request on this instance
         L->>L: take agents_lock
         L->>T: configure_langfuse(settings)
-        L->>G: build_agent and build_ingest_agent
+        L->>G: build_agent, build_ingest_agent, build_proposal_agent
         L-->>R: agents stored on app.state
     end
     R->>R: clone the AG-UI agent per request
@@ -166,16 +168,26 @@ sequenceDiagram
     R->>T: flush_traces after the run
 ```
 
-Caption: the first chat request on an instance builds both agents under a lock. Later requests reuse them and clone the AG-UI wrapper per request. A REST route that calls `get_graph` triggers the same build when no chat has happened yet.
+Caption: the first chat request on an instance builds all three agents under a lock. Later requests reuse them and clone the AG-UI wrapper per request. A REST route that calls `get_graph` triggers the same build when no chat has happened yet.
 
-**The routes.** `_add_agent_route` registers its own `POST` for each path in place of the library's `add_langgraph_fastapi_endpoint`, which needs the built agent at registration time. It keeps `Depends(chat_access)` (signed in, and the thread is new or yours, with staff allowed on any thread, otherwise a 404) and a `GET {path}/health` route that `make smoke` checks. The wrapper is cloned per request because the LangGraph agent keeps per-run state on the instance.
+**The routes.** `_add_agent_route` registers its own `POST` for each path in place of the library's `add_langgraph_fastapi_endpoint`, which needs the built agent at registration time, plus a `GET {path}/health` route that `make smoke` checks. The wrapper is cloned per request because the LangGraph agent keeps per-run state on the instance.
+
+**Per-route chat access.** Who may post is set by `AGENT_ACCESS`, a dict keyed by path. `_add_agent_route` looks the path up directly, so a path missing from it fails at boot instead of falling back to another route's checks. All of them require sign-in (anonymous is 401) and claim the thread in the `threads` table:
+
+| Path | Dependencies | Effect |
+|---|---|---|
+| `/agent` | `ask_access` | Signed in; the thread is new or yours (someone else's is 404, staff included). Also sets `agent_caller` so Ask's SQL runs as this caller (`anon`/`authenticated`) rather than the owner. |
+| `/ingest` | `require_scout`, `chat_access` | Staff or a steward of an org (403 otherwise), then the same thread-ownership check. Import keeps the owner pool because it writes the catalog. |
+| `/proposal` | `proposal_chat_access` | The thread id must parse as a proposal chat belonging to the caller, on an org the caller can read (else 404); a reader who cannot edit the proposal gets 403. It claims the thread with `use_case="proposal"` and sets `chat_proposal` from the thread, never from the model. |
+
+`_own_thread` and `proposal_chat_access` also set the `chat_user_id` and `chat_scope` context variables (a `CallerScope` of org roles) that the tracing hook and agent tools read; outside a chat request they are unset, which tools treat as no access. A body that fails validation skips the check and is answered by the endpoint's own 422.
 
 **Invariant for REST code.** No REST module may import agent code at module top level. A REST cold start must not pay for `deepagents`, model clients, `copilotkit` or Langfuse. The existing routes follow this:
 
 - `threads.py` imports `ag_ui_langgraph.utils` inside the function that needs it, since that import takes about 0.5 s.
 - `documents.py` and `ingest.py` import agent tool modules and `live_status` lazily.
 - `integrations/storage.py` owns `_safe_name` so it does not import the agent's file tools.
-- Routes that need a compiled graph call `get_graph(app, "ask_graph" | "ingest_graph")`. It builds the agents if no chat has happened yet, and returns `None` outside a lifespan.
+- Routes that need a compiled graph call `get_graph(app, "ask_graph" | "ingest_graph" | "proposal_graph")`. It builds the agents if no chat has happened yet, and returns `None` outside a lifespan.
 
 The cost is a trade: the first request that needs an agent on a fresh instance pays the deferred imports and build (about 1.4 s measured locally).
 
@@ -253,11 +265,11 @@ Two Vercel projects deploy from one repository: the frontend (`sangam`, root `fr
 
 ## Known regressions
 
-- **`emit_raw_events` is back on.** The CopilotKit-removal plan had both `SessionScopedAGUIAgent(...)` calls in `core/lifespan.py` pass `emit_raw_events=False`. With raw events off, one answer went from 1.69 MB to 107 KB (#167–#169). Then #178 removed that argument. The `SessionScopedAGUIAgent` constructor defaults `emit_raw_events=True`, and `_build_agents` passes only `emit_subagent_events=True` for `/ingest`. So every AG-UI event again carries a copy of the LangGraph event it came from, including run metadata such as `langfuse_user_id` and model settings. The plan doc found that no frontend file reads `rawEvent`. The fix is to pass `emit_raw_events=False` for both agents. See the [CHANGELOG "Not finished" table](../../docs/CHANGELOG.md) and the Performance entry for #167–#169.
+- **`emit_raw_events` is back on for Ask and Import.** The CopilotKit-removal plan had the `SessionScopedAGUIAgent(...)` calls in `core/lifespan.py` pass `emit_raw_events=False`. With raw events off, one answer went from 1.69 MB to 107 KB (#167–#169). Then #178 removed that argument from the two existing agents. The `SessionScopedAGUIAgent` constructor defaults `emit_raw_events=True`, and `_build_agents` passes only `emit_subagent_events=True` for `/ingest` and nothing for `/agent`. So every AG-UI event on those two routes again carries a copy of the LangGraph event it came from, including run metadata such as `langfuse_user_id` and model settings. The plan doc found that no frontend file reads `rawEvent`. The newer `/proposal` agent is built with `emit_raw_events=False` and is not affected. The fix for the others is to pass `emit_raw_events=False` too. See the [CHANGELOG "Not finished" table](../../docs/CHANGELOG.md) and the Performance entry for #167–#169.
 
 ## Where to change things
 
 - **A new REST resource:** add a router module under `api/routes`, include it in `api/router.py`, add an `OPENAPI_TAGS` entry, and import any agent code inside functions.
 - **A new default or model tier:** edit `core/config.py` only, add the field to the blank-means-default validator if it is an int or a model spec, and forward the variable in `docker-compose.yml`. Set it in Vercel for deployed backends.
-- **A new agent or trace root:** pass a distinct `name` and tags to `trace_config`, wrap the graph in `SessionScopedAGUIAgent`, and register the path in `AGENT_NAMES` and `_build_agents`.
+- **A new agent or trace root:** pass a distinct `name` and tags to `trace_config`, build the graph in `_build_agents`, wrap it in `SessionScopedAGUIAgent`, and register the path in both `AGENT_NAMES` and `AGENT_ACCESS`. A path without an access entry fails at boot.
 - **A new table the SQL tool may read:** update the SQL catalog, or the lifespan's catalog check will refuse to boot.

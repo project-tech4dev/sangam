@@ -66,12 +66,12 @@ class TestTheOrder:
 
     def test_the_summary_is_written_last(self):
         written = {s.code: {"text": "x"} for s in rubric.CORE if s.code not in ("A1", "A14")}
-        assert "After the grant [A14]" in steps.may_write({"sections": written}, "A1", None)
+        assert "Sustainability and exit [A14]" in steps.may_write({"sections": written}, "A1", None)
 
 
 class TestScoring:
     def test_none_missing_scores_two_one_scores_one_more_scores_zero(self):
-        assert [grade.score([]), grade.score(["a"]), grade.score(["a", "b"])] == [2, 1, 0]
+        assert [rubric.score([]), rubric.score(["a"]), rubric.score(["a", "b"])] == [2, 1, 0]
 
     def test_only_sangam_pitch_scores_a_section_or_marks_where_a_fact_is_used(self):
         with pytest.raises(rules.BadChange):
@@ -93,3 +93,58 @@ class TestScoring:
 
         graded = await grade.grade(a3, "text", Model())
         assert graded.missing == ["The causes the project will act on"]
+
+
+class TestWritingInPlace:
+    def test_an_unsourced_claim_is_listed_as_written(self):
+        text = ("In FY2024-25 it reached 120 villages in Kamrup ⟦k4⟧ and spent ₹1.5 crore.\n\n"
+                "It reached 96 villages ⟦k4⟧.")
+        assert trace.unsourced(text, FACTS, districts=DISTRICTS) == ["120", "₹1.5 crore", "Kamrup"]
+
+    def test_a_typed_part_tracks_its_facts_clears_done_and_stops_ready(self):
+        work = {"facts": {"k4": dict(FACTS["k4"], used_in=["A2"])},
+                "sections": {"A2": {"text": "96 villages ⟦k4⟧", "done": True, "rev": 2, "score": 2,
+                                    "missing": []}}}
+        out = rules.apply(work, {"sections.A2.text": "It works in 120 villages."}, {"A2": 2}, by=ADMIN,
+                          districts=DISTRICTS)
+        part = out.work["sections"]["A2"]
+        assert (part["done"], part["untraced"], part["rev"]) == (False, ["120"], 3)
+        assert (part["score"], part["missing"]) == (None, None)
+        assert out.work["facts"]["k4"]["used_in"] == []
+        assert "Context and target area: “120” has no source" in out.summary["fix_first"]
+
+    def test_citing_it_clears_the_list(self):
+        work = {"facts": {"k4": FACTS["k4"]},
+                "sections": {"A2": {"text": "120 villages", "untraced": ["120"], "rev": 1}}}
+        out = rules.apply(work, {"sections.A2.text": "96 villages ⟦k4⟧"}, {"A2": 1}, by=ADMIN)
+        assert out.work["sections"]["A2"]["untraced"] == []
+        assert out.work["facts"]["k4"]["used_in"] == ["A2"]
+
+    @pytest.mark.parametrize("via", ["rest", "agent"])
+    def test_what_a_part_misses_or_cannot_trace_is_never_set_from_outside(self, via):
+        for field in ("missing", "untraced"):
+            with pytest.raises(rules.BadChange):
+                rules.apply({}, {f"sections.A3.{field}": []}, {"A3": 0}, by=ADMIN, via=via)
+
+    def test_done_stores_the_grade(self):
+        work = {"sections": {"A3": {"text": "t", "rev": 1}}}
+        out = rules.apply(work, {"sections.A3.done": True}, {"A3": 1}, by=ADMIN,
+                          graded={"A3": ["The causes the project will act on"]})
+        assert out.work["sections"]["A3"] == {"text": "t", "done": True, "score": 1, "rev": 2,
+                                              "missing": ["The causes the project will act on"]}
+
+    async def test_the_route_grades_only_parts_marked_done(self, monkeypatch):
+        from app.api.routes import proposals as route
+
+        seen = []
+
+        async def graded(section, text, model):
+            seen.append((section.code, text))
+            return grade.Graded(covered=[], missing=[])
+
+        monkeypatch.setattr(grade, "grade", graded)
+        monkeypatch.setattr("app.agent.models.resolve_model", lambda name: None)
+        work = {"sections": {"A3": {"text": "held"}, "A4": {"text": "x"}}}
+        out = await route._grade_done(work, {"sections.A3.done": True, "sections.A4.done": False,
+                                             "sections.A2.done": True}, {"A3": 0, "A4": 0, "A2": 0})
+        assert out == {"A3": []} and seen == [("A3", "held")]

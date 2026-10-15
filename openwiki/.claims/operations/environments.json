@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:00d47bc6e5c5e1645b5eb74bc2430b1809a7fd43d0062fd3f6618bad3009bb81",
+  "pageVersion": "sha256:0ceda9bf5878c3e61875f91e7c6015f8da2945554d7919f548cedc8abbf6b35c",
   "claims": [
     {
       "id": "claim_272447998d234309a6054aa500636495",
@@ -57,7 +57,7 @@
       "statement": "STAGING_DB_* variables are local-tooling-only; the backend reads DATABASE_URL (Settings.database_url), so setting STAGING_DB_* on a deployed host has no effect.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L112-L132",
+          "resource": "repo://CLAUDE.md#L119-L139",
           "version": "repo-lines-v1:sha256:6e5e16fe7189be98109c9902d02eb0e1f6f45c52e5b84f0e3ebc4f14ee8cb3c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0N2Q5NGU0NzNkYzQ4MWJiMTVlZWQ0MTU3NjA3NDVlZDQ0MmQwYzA3MjI2YzU3M2FhNmRlODdmZmMzZjdjMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhZjY1MzZmNzBmNjcyZDFkNGU0YTdkMmI2ODMyZTY0NWE5NjU1NTAzYjAwZWIwMThiZjRiZjI2YzdmZGY4NGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1M2NiNDY1YTZhNzg0M2FhNzA1ZjBmMTMxNDFlODAwNGYzYmM5NDFiMjM5YjcyN2E4NTE1MTYzZTdlOTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3YTc1Nzk5NzNmYjA2ZGRhM2Y3MGMyMjM4YzQyMWExZTAwZGYxNjIxMGRlMzI2N2RiYWE4MmQ0YWU2ZjYyZGEifQ"
         },
         {
@@ -71,7 +71,7 @@
       "statement": "make up and make seed are pinned to ENV=local for migrations: make up migrates only when ENV=local and the compose file has a postgres service (localdb profile), and seed depends on migrate only under ENV=local; against a managed database migrations are a separate deliberate 'make migrate ENV=staging' because the backend refuses to boot on an unmigrated database.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L29-L36",
+          "resource": "repo://CLAUDE.md#L32-L39",
           "version": "repo-lines-v1:sha256:cbd1014d0a566fd9d80607219c82f6b4202db238d4818941925f1c28258d2cb2:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDA1YjE5ZWVhZDE1ZWM1YWU4OTQxMmUyOGViOGY4OGZiMzJiYzY2MTJjNjNhNzFmMmU0NjZjZWI2NjIxNjUwZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWMyZjUxN2QxZTYwYzEzNjQ1NTcyMTVmY2FiNGI3OGJhMGQ5NTk2ZjJjNWYyNWMyYWNkNGU2YzQ0MjVjYjA4YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTMxZDQ3MjkyNGJkMDRjOWFmM2Y3NGI5NTk2MDJhOTI3NWQ5NDg4YWE1ZjBjZmNhM2M5MzA3MjVmNzBkMjVjNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTllNzZjMWE4NTZhNmU4ZGQxZmIwZGEyMDk1MjI3NTRmNmRjZWUxNmI5MTk2Y2ZkNmNlMWEyNTcyMDk5MjE2NSJ9"
         },
         {
@@ -103,7 +103,7 @@
       "statement": "The db-clean, db-reset, db-backup and db-upgrade targets are local-only (require_local refuses other ENV), while db-init-remote and db-push-remote refuse ENV=local and refuse to run against a database that already has an orgs table.",
       "evidence": [
         {
-          "resource": "repo://Makefile#L212-L311",
+          "resource": "repo://Makefile#L224-L323",
           "version": "repo-lines-v1:sha256:ddb6e9cf22e27ad2bd1508a026397bdf19de7803bbfd23b03e1d2756e716e50d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmYjFhZDE1NGRhZmY4NTk5ODZlOGY2NTA2MDNkYjc3YzM2MmUxNWQwODA4YTA2NmNkMmZmMDY1ZDE5ZjczOTU5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0YzU0YThkNjk1ZjVhOGJlMzZhYzQzZGVjNzM5MDA5YTFkNTEzNGZkNjQzZTNkMzY4MjA2ZTA2MTE2YTBkZTI3IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyOGJhMGYzODhhMDc3OTU1MjQ2NTc2OTg0ZGE3ODU4YzQ2ZmY3YTA5MTUyMmJjN2RkY2M2Nzg3M2QzYWUxN2FhIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmZGM2MDk2N2U4ZGIxNzA5ZGZmYzU5ZWM1OGU0YjljNzQ5ZTc2MzA4NzU2NzBiNDBiYmNkYjQ4MTg5ODMwNmI1In0"
         },
         {
@@ -117,11 +117,11 @@
       "statement": "Supabase Storage configuration (SUPABASE_URL, SUPABASE_SERVICE_KEY) is global rather than per-environment: with the backend on local Postgres, documents rows are local but archived objects land in the cloud bucket; ENV=staging puts both together, and staff-source is therefore staging-only.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L124-L128",
+          "resource": "repo://CLAUDE.md#L131-L135",
           "version": "repo-lines-v1:sha256:09fd4692b83716854c968e260ab23d6501fbea08cee107e2372663fe196959db:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjlmYTgzNzY1YTM2ZTYwNjY0NGQxYzQ1NjFkMDliZGY0YzdjNzM5MjRkYmY3NDYxZjAwNTQxNDIwZWE4MTA2YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTE2OWVlYTA3MzdkMWM0OTI3Nzc5OWY3NzkwODZhYmU1MDQ4MmQxNDRjNjI0YTI2YWYwMjZkYzEzMGViNGQ4ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTg0ZTcyNjU2ZDk2NjkzMzk1OGJkMGZiOTEzZjYwMTg2NzNkMjIxOTEyNDhjZTBjNTM1OGI3ZDY0OWIzZWI5NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWY0ZGYxNmQ4MWRjYWUzMDRmYzBiMTIwODI1ODYyZDdiM2QyZGE2MzlkZDQ0MDRlNTcwZTk5YTc3OGNjMjBiYyJ9"
         },
         {
-          "resource": "repo://Makefile#L202-L210",
+          "resource": "repo://Makefile#L214-L222",
           "version": "repo-lines-v1:sha256:d10fab0cab3ccee3a47f4188208f52584ffc86e8a8f798f6954d90e2dc8f6c38:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmRlM2NjMGUzNjVlMzllNjFjOThjODIxNWNmNGYxYzQ5MjFiNGIwMmEwMWRjZGQ1OTk4Y2ViNGY4MTQwMTVjNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjQyOWI1MDg2ZDhhMWIyYzc2MzQxNjRhNTdhMDNlMTQxZDc5ZGExMzE4NjMxNTM1NjQwMDRhMjc3MWNjMDU5NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWY3NWNiYWM1ZjYxZWMwNWY1OWRjYmUxNTUwOGNmZTA5ZjAxYTBkMjE2MjBiOTBjMGJhNTU3N2JiZDJjYzExMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzA2YjMyNDEzOGYzMGVmNjk5ZjE5YmU2Yjc3YjQ3ZmE2OGZjYmMzNTI2N2Y4YzNjN2M4MTllN2Y2MTM3NTVmNCJ9"
         },
         {
@@ -160,7 +160,7 @@
     },
     {
       "id": "claim_3033b73fd7b74fe2b36467e0b17308b2",
-      "statement": "Optional subsystems are enabled by derived Settings properties: auth_enabled when SUPABASE_URL is set (empty means every request is the seeded dev user), graph_enabled needs both NEO4J_URI and OPENAI_API_KEY, langfuse_enabled needs both Langfuse keys, storage_enabled needs SUPABASE_URL and SUPABASE_SERVICE_KEY; unset, they degrade rather than crash (uploads return 503, archiving skipped).",
+      "statement": "Optional subsystems are enabled by derived Settings properties: auth_enabled when SUPABASE_URL is set (empty means every request resolves to the seeded dev user, except that with DEV_AUTH on a 'Bearer dev:<email>@local.test' header picks a seeded local test user), graph_enabled needs both NEO4J_URI and OPENAI_API_KEY, langfuse_enabled needs both Langfuse keys, storage_enabled needs SUPABASE_URL and SUPABASE_SERVICE_KEY; unset, they degrade rather than crash (uploads return 503, archiving skipped).",
       "evidence": [
         {
           "resource": "repo://.env.example#L53-L76",
@@ -171,22 +171,26 @@
           "version": "repo-lines-v1:sha256:e3b2ee6ae76570ea85a6fa0c1b3241f947789fd2896ed306c057b7e85d612bb6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzZDAwY2YyNzA5NjRkNDRhMTNkZmFjODc1MmIwOWZjYzQzNWIwZjE5YjMxNmFiY2Y4MWE3YWE2NGJiMTIyZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDk4NzM5OGRkNTJmNDlkOTQwZTliM2FlNjFmNzVlNzllNGY0MzEzNTU1OTYyZmVjZGE2NjIyN2U0OTYxZWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjViNTc2YjAzNjJkOGMyNjQ1YzNmYzI1ODA0NjkwYzJkMTYzNDM1OTMyNzJhODM5ZGNhNDg2NDRjYWUzYjdmNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5NzBkZWFkNWY0YTU4ZDhhZDYxZGMxMDM1ZGVkN2Q3MzEwY2JkZGJmZTkyOGEwMGU1YzIwY2VlOGZjNTk2NWMifQ"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L90-L107",
-          "version": "repo-lines-v1:sha256:26200740f15885303fde4433889e661fb1345324a4256a563fd84053d525113d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkYmEzZTlmY2ZiNWYwYzIwYTI2MjIyNTNlZmZkZDY1YzYxZDU0YzNkOWMyZmVkZWE4MGMxNzhlNjc0YzhjNmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxY2ZjZmI0YmI4ODg3NzA5OWQ3OTIzMGI3NjNkYzg5NmIxZDJhYjE3OTBhMWZiNjI4MjlmY2M0NDI3MTU5MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyMDc3ZjMwMTdkNjc3ODBlZTg4MjgxZGY5MDFhMWJkMDMwZWRlOWUxN2Y0MThhODAyZWQ2NTg0NmQ1N2JkN2MifQ"
+          "resource": "repo://backend/app/core/security.py#L90-L96",
+          "version": "repo-lines-v1:sha256:2cf21f905c3b18fe4cbf5081229efe1326b5e6bda0b9df0f8c3b007cd7d0ef50:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGRiYTNlOWZjZmI1ZjBjMjBhMjYyMjI1M2VmZmRkNjVjNjFkNTRjM2Q5YzJmZWRlYTgwYzE3OGU2NzRjOGM2YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjg0M2IyODFhZjlhOTExNjMwYmIwZDU0MzFmOTYwYjU5ZmZmNjc2OTU1NzIyMjkxN2UzZmViMDE4Y2UwYmJjZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTk4YjA2M2Q5YjQ3ZTY1Mzc5NjI1NTcyY2NlMTk3NjY5ZDU3NjdlMTJjMThiZTA3NTY1MmI4Y2Q5ODFjZThkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmM1ZjJkOWM2YzAxODVkMDYzYzc5MTFkM2JjYTExYTIxMWYyZmVkM2Y1NzBlMmZhYzExMjc4NjA4MWRjMjI4ZCJ9"
         }
       ]
     },
     {
       "id": "claim_82268ef2ae1c46fca784b189624eab65",
-      "statement": "DEV_AUTH accepts 'Bearer dev' as the dev user only when auth is enabled and the flag is set; it is local-only and must not be set on a deployed backend.",
+      "statement": "DEV_AUTH is a local-only flag that must not be set on a deployed backend, and its effect depends on SUPABASE_URL: with auth enabled it makes 'Bearer dev' resolve to the dev user; with auth disabled it makes 'Bearer dev:<email>' resolve a seeded @local.test user that has an auth_user_id (other domains or unknown emails are 401).",
       "evidence": [
         {
           "resource": "repo://.env.example#L99-L101",
           "version": "repo-lines-v1:sha256:5e0c6c24eba456ac40340beb598830e496bcbcbd8bbc94253de1df8694a24c50:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDU5N2NmNjMzM2Q1MWE3YWMzY2VkOTk2ZDA4NjI4ZjM5ZjA4ZTI0YTRhYzk0YjhjMWUyMzYxYjEyNTIzZTI4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDdhMmU5ZWIwN2E0NzAzZTU0MDQ0ZTcxY2E2MTMwMjcwODU1NmJkYTUxYjViODliNTQzZGY5NmMxMzBmOWY0NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjk3ODViODk1MmI3OGRiMjgxNTJiNTM0MGZmYTM4MjczNTcyODE2ZmU2MDIxMWUzZDg0OWM3YjlhZmY2M2UxOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWViNTA3OGEyNWViMzE0OTI3YThhMjNmZGIzMGQyNTQ1ZDY5MjdhMDU1ZTY4N2RjMjEzN2U4NjdlZWIxNDhiOCJ9"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L90-L103",
-          "version": "repo-lines-v1:sha256:4d3d6a5550a8ef719701db4b8b583344554fa7f18c428663c3dc74176a7a5c4d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkYmEzZTlmY2ZiNWYwYzIwYTI2MjIyNTNlZmZkZDY1YzYxZDU0YzNkOWMyZmVkZWE4MGMxNzhlNjc0YzhjNmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4NDQ2Yjc3NzA2ZDdjYWY1NmFlOTYzOTJhYjkzMjg0YWNmODY0NzUwMDJjZTRiM2FmMDE0NWUwNjFhYTM1OGQifQ"
+          "resource": "repo://backend/app/core/security.py#L139-L149",
+          "version": "repo-lines-v1:sha256:fb32eb0f241fc259bf8772089a249ce06ce3a64e38e1eac52f26ca88f7672a50:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhNTJmMGFmNTcwNmQxYTAzMTYwMjhhMTEzMTQxNWIzYzk3MjJjNzc1OWMwMzY1MmY5MzJmZjQ2YTIxM2EzZDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMTNjYjRmMDE3OWY5MjM4ZWZhMGU2NWIwYjk0MjEwZmI3NWViNGZjZTdhNzJjMTkxNjU2YjBmMjY1MDY0MTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4M2FkYjVjNzk2ZTg0OGJiYzdjYTMyZWI1YzM1Nzc2YWM2OTE3ZTRiNWRlMzYyM2Q5NDVkZDU5ZjBiYjQ1YTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyOGRlYTc4Mjg3NWNjMDFlYTRmYTc2MGNkYWMyYmRiZWIyOGI2MWY0NjFmN2ZkMzc5ZTk4ODI1OWVkZTg0MWMifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L90-L104",
+          "version": "repo-lines-v1:sha256:4f226187a5c3856de9d5462e0076a2b2ebca5b0d7e0d68ccbe0575da29e65077:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkYmEzZTlmY2ZiNWYwYzIwYTI2MjIyNTNlZmZkZDY1YzYxZDU0YzNkOWMyZmVkZWE4MGMxNzhlNjc0YzhjNmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4NDNiMjgxYWY5YTkxMTYzMGJiMGQ1NDMxZjk2MGI1OWZmZjY3Njk1NTcyMjI5MTdlM2ZlYjAxOGNlMGJiY2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2MTIwNGJhNGYyMTlkNThjOThlNWE4NjcyNGE1ZmFlZDA0M2MxZDcwNjg1ZjM4NmQ1ODk0YTA1ZTNjNDkxN2QifQ"
         }
       ]
     },
@@ -259,7 +263,7 @@
       "statement": "Local ports: frontend 3000, backend 8010 published from container 8000, Postgres 5433 from 5432, Neo4j 7474/7687; make dev-backend runs uvicorn on the host at 8000 against localhost:5433, and the frontend uses AGENT_URL ending in /agent while NEXT_PUBLIC_API_URL does not.",
       "evidence": [
         {
-          "resource": "repo://Makefile#L313-L320",
+          "resource": "repo://Makefile#L325-L332",
           "version": "repo-lines-v1:sha256:8fff086ac0a1b5187f49007e408df55e4737c8944c93ad29f2ee62adb20a0e27:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODBiYzc4NTY0OGMwNzk2ZTMxNjc5MjlkNmMxOGFmY2M3YmU5OTlkODMwMDI4OTA1NWZmNmI2MDE3OTlkNzE0ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzE5ZDdmMDA1ODE1ZWY3MjJkNDVjOTkxNmY2Mjk5OGUzMTI5MjE1ZDZiYTJiMjJkN2M3NjdjOTM5YzcyMDE0YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
@@ -275,6 +279,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-15T18:08:53.060Z"
   }
 }

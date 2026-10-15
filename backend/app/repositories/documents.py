@@ -10,6 +10,7 @@ async def list_documents(pool: AsyncConnectionPool, *, limit: int, offset: int,
     sql = """
     SELECT d.id, d.org_id, d.funder_id, d.title, d.doc_type,
            d.source_name, d.source_url, d.fetched_at, d.is_public,
+           COALESCE(d.storage_path, '') <> '' AS has_file,
            COUNT(*) OVER () AS total
     FROM documents d
     LEFT JOIN orgs o ON o.id = d.org_id

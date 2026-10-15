@@ -8,10 +8,14 @@ sources:
     resource: repo://backend/app/agent/harness.py
   - id: openwiki-source-813dbe9c3eeb378112388ccd
     resource: repo://backend/app/agent/middleware.py
+  - id: openwiki-source-ca736c25c2a1bb0e95531706
+    resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-11c734346bddf773fd80ed0e
     resource: repo://backend/app/api/routes/ingest.py
   - id: openwiki-source-933c62fa2383d76225c96eb5
     resource: repo://backend/app/core/egress.py
+  - id: openwiki-source-e136029ec7d24feaceb8ce72
+    resource: repo://backend/app/core/lifespan.py
   - id: openwiki-source-b52886aad1fc413e4e030f22
     resource: repo://backend/app/core/security.py
   - id: openwiki-source-170bddac5f057a262a61a895
@@ -32,6 +36,8 @@ sources:
     resource: repo://backend/app/ingest/matcher.py
   - id: openwiki-source-7d480e75db10aae51a0f227b
     resource: repo://backend/app/ingest/middleware.py
+  - id: openwiki-source-ad46879e0b8b0bcc9e65aaee
+    resource: repo://backend/app/ingest/office.py
   - id: openwiki-source-b16585eb308b018d24ffae26
     resource: repo://backend/app/ingest/promote.py
   - id: openwiki-source-abbf8087e0fbf1d43537276f
@@ -50,6 +56,8 @@ sources:
     resource: repo://backend/app/ingest/tools/vault_tools.py
   - id: openwiki-source-98ca8658ce31f093cdacdd76
     resource: repo://backend/app/ingest/undo.py
+  - id: openwiki-source-f7dba013696636c8f50fd1cc
+    resource: repo://backend/app/ingest/vault.py
   - id: openwiki-source-92db74b572f27e7f2c656ed0
     resource: repo://backend/app/ingest/writer.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
@@ -62,10 +70,10 @@ sources:
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-a44fe58bbddbee96fe925ba2
     resource: repo://docs/INGEST.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-13T18:59:48.420Z
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Sangam Import / Scout
@@ -161,6 +169,9 @@ Ordering rules that hold across a turn:
 
 - `choose_sources` comes first and alone, except for a news pull or a `publish_brief` republish. The answer lives only in the checkpoint, as the tool message's artifact (`run_sources.chosen`).
 - When the Doc Vault was picked, a `vault-reader` runs before the researcher. It hands back only concept names and ids, never file text, and the researcher is told which concepts are still missing.
+  - `app/ingest/vault.py` reads three file types from an organisation's private `org-vault` uploads: PDF, Word (`.docx`) and `.xlsx`. Each line is cited by a marker: `[vault:<id>#p<page>]` for a PDF page, `[vault:<id>#para<n>]` for a Word paragraph and `[vault:<id>#<sheet>!<cell>]` for a workbook cell. Any other file type returns a "cannot be read here" message.
+  - A read is capped at 24,000 characters (`MAX_CHARS`), so the text never needs evicting to a file. Continuation uses `start_page`, which counts paragraphs in a Word file. A PDF with no extractable text is reported as probably scanned, never guessed at.
+  - `save_vault_findings` refuses the whole save unless every finding cites a document in that organisation's vault, by `https://org-vault.sangam.invalid/<id>` URL and its `[vault:<id>#…]` marker. Findings go to `vault_research`, one row per org per day, never to `entity_research`.
 - When the request is about everyone in a staff file, a `workbook-reader` returns the names, and one researcher per name follows.
 
 ## The research contract
@@ -282,8 +293,9 @@ Five match methods resolve and merge: `MERGEABLE` in `promote.py` lists `identif
 
 ## Access
 
-Anyone signed in may use Import. Staff-only routes and tools are the exception. For wider context see [Auth, roles and RLS](auth-roles-rls.md).
+Import is for Sangam staff and for stewards of an organisation. Within that group, some routes and tools are staff-only. For wider context see [Auth, roles and RLS](auth-roles-rls.md).
 
+- **The Scout gate.** `require_scout` (`app/core/security.py`) returns 403 ("Scout is for stewards and Sangam staff") unless the caller is staff or steward of at least one organisation. It is a router-level dependency on every `/api/ingest` route, and `AGENT_ACCESS` in `app/core/lifespan.py` pairs it with `chat_access` for the `/ingest` agent endpoint. A signed-in member or admin who is not a steward therefore cannot reach Import at all. Ask uses `ask_access` instead, and its SQL runs as the caller.
 - **Owner pool and `chat_scope`.** Agent tools run on the owner pool, so Postgres RLS does not apply. `chat_access` sets a `chat_scope` context variable holding a `CallerScope` (staff flag, org roles, steward list). `ingest/caller.py` reads it, and outside a chat request it yields a caller with no access. Each tool checks the scope itself:
   - `staff_only(tool)` returns a `REFUSED` string for `run_import_now`, `plan_import`, `import_run_summary`, `pending_resolutions`, `read_source_rows`, `read_workbook`, `publish_brief` and `record_registry_check`.
   - `can_read_org` gates Doc Vault tools. A file the caller cannot read gets the same answer as a file that does not exist.
@@ -299,7 +311,14 @@ Anyone signed in may use Import. Staff-only routes and tools are the exception. 
   5. `robots.txt`. An unreadable file is not permission for an unclassified host, while a host a person has already classified keeps that decision. A 5xx response counts as unreadable, and a 4xx response as no restrictions.
   
   `robots.txt` itself is fetched with `guarded_client`. The page and document downloads use a client whose request hook runs `check_url` on every redirect hop before it is followed. Hosts that are readable but unclassified are recorded in `ingest_source_proposals`, best-effort. Newly read pages and documents are archived to the `source-archive` bucket.
-- **Routes.** Review, coverage and save use `request_scope` and are open to any signed-in user, scoped to the caller. Source registry, runs, queue, undo and delete are `require_staff`. Only staff see `promotion_id`.
+- **Routes.** Behind the Scout gate, `overview`, `research` list, review, coverage and save use `request_scope` and are scoped to the caller. A non-staff list sees only what the caller saved plus research on NGOs they steward, with private summaries replaced and `promotion_id` and `saved_by` blanked. `overview` returns the whole Import page in one request and gives non-staff empty sources, runs, queue and proposals. The source registry (`/sources`, `/proposals`), runs, queue, workbooks list, undo and research delete are `require_staff`. Only staff receive a `promotion_id` from a save. A refused save is HTTP 403.
+
+## Office text extraction
+
+`app/ingest/office.py` is a pure bytes-to-text helper for Word and Excel files, shared by two callers:
+
+- **Document upload.** `_extract` in `app/api/routes/documents.py` uses `docx_paragraphs` (paragraphs, with each table row as `a | b | c`, in document order) or `xlsx_markdown` (each sheet as a heading plus its first `SHEET_ROWS` = 200 rows) to fill `content_md` for a new upload. A damaged file leaves the text empty and the upload is still stored with its hash.
+- **Vault reading.** `vault.docx_text` numbers `docx_paragraphs` for citation. Workbooks go through `staff_sources` rendering with a `vault` marker, so the vault-reader can page past the 200 rows an upload keeps.
 
 ## Skills
 
@@ -317,9 +336,9 @@ From the CHANGELOG "Not finished" table and `docs/INGEST.md`:
 
 - The researcher-contract plan (`2026-10-13-import-researcher-contract.md`) shipped M1–M4. **M5**, a backfill of two organisations on staging, is not done.
 - The programme-themes plan shipped steps 1–4. Step 5, `write_funder_tags_from_programs` (PR #172), is unmerged.
-- The access plan shipped Phase 1. Import and Ask SQL still run on the owner pool, and the branch that would run Ask SQL as the caller is unmerged. This is why every Import tool checks scope itself.
+- The access plan shipped Phase 1. The CHANGELOG still says Ask's SQL and Import run on the owner pool, but the code has moved on: `ask_access` sets `agent_caller`, so Ask's SQL runs as the caller. Import deliberately keeps the owner pool, because it writes the catalog. This is why every Import tool checks scope itself.
 - `2026-10-09-import-guided.md` shipped in #130, but its review follow-ups list is still open.
-- `docs/INGEST.md` is out of date on the record (brief, not one row), the pauses, the tool modules (five), `StaffLastLock`, the researcher's order, the matcher order, districts, the NGO path, undo's table count, the `/ingest` endpoint wiring, the source count (80, not 79) and the known gaps (the registry-check tool and `csr_sector_id` now exist).
+- `docs/INGEST.md` is out of date on the record (brief, not one row), the pauses, the tool modules (five), `StaffLastLock`, who may use Import (staff and stewards, via `require_scout`, not any signed-in user), the researcher's order, the matcher order, districts, the NGO path, undo's table count, the `/ingest` endpoint wiring, the source count (80, not 79) and the known gaps (the registry-check tool and `csr_sector_id` now exist).
 
 ## Where to change things
 

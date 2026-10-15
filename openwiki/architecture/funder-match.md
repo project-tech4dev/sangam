@@ -1,7 +1,7 @@
 ---
 type: architecture
 title: Funder Match
-description: How the in-code match-v2 rubric scores one organisation against funders with no model involved, covering profile loading, the seven criteria, tiers, saved runs and their RLS, and the places it is consumed (compare_fit, REST, make match, the UI).
+description: How the in-code match-v2 rubric scores one organisation against funders with no model involved, covering profile loading, the seven criteria, tiers, saved runs and their RLS, the places it is consumed (compare_fit, REST, make match, the UI), and how a match card starts a proposal.
 tags: [funder-match, match-v2, rubric, rls, compare_fit, saved-runs]
 sources:
   - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
@@ -10,6 +10,8 @@ sources:
     resource: repo://backend/app/agent/tools/matching_tools.py
   - id: openwiki-source-3bce7721dfe72764acead2da
     resource: repo://backend/app/api/routes/funder_matches.py
+  - id: openwiki-source-e0103e1ba2cbec5a0f421c56
+    resource: repo://backend/app/api/routes/proposals.py
   - id: openwiki-source-1e8ec9e14fbff85f6151dc94
     resource: repo://backend/app/matching/assessment.py
   - id: openwiki-source-36ea5281072d37df20fefc14
@@ -24,30 +26,42 @@ sources:
     resource: repo://backend/app/matching/run.py
   - id: openwiki-source-db330c163e3ee3c3a53be7d2
     resource: repo://backend/app/matching/service.py
+  - id: openwiki-source-36ac392450d467930fbb7994
+    resource: repo://backend/app/proposals/gates.py
+  - id: openwiki-source-30727b5305cff883c087a7d1
+    resource: repo://backend/app/proposals/steps.py
   - id: openwiki-source-92830c579a4b35108978ae40
     resource: repo://backend/app/repositories/funder_matches.py
   - id: openwiki-source-3abf34cc8ec9bdd9fd5c27d3
     resource: repo://backend/app/repositories/matching.py
+  - id: openwiki-source-1157f5d2ae5aa2bccc1057d0
+    resource: repo://backend/app/repositories/proposals.py
   - id: openwiki-source-51f4392f2fa38bb658665986
     resource: repo://backend/tests/test_funder_match_runs.py
   - id: openwiki-source-2939d404ec1a27d9be23ffd5
     resource: repo://db/migrations/0042_funder_matches.sql
+  - id: openwiki-source-3d121c1ca466c424ca2b4936
+    resource: repo://db/migrations/0048_proposal_work.sql
   - id: openwiki-source-88fdf568b0f25b1d21f041da
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-a8e86de9db091e4489b95699
     resource: repo://docs/features/2026-10-11-funder-match-v2-themes.md
+  - id: openwiki-source-24408c4513e55a7d3b655c58
+    resource: repo://frontend/features/ask/AskWorkspace.tsx
   - id: openwiki-source-6f60a62e50bf4cca50bd6002
     resource: repo://frontend/features/ask/views/funder-match/api.ts
   - id: openwiki-source-14705a3866e29a5d7c9df8ee
     resource: repo://frontend/features/ask/views/funder-match/MatchCard.tsx
   - id: openwiki-source-46b81f1c20a0d436a481779f
     resource: repo://frontend/features/ask/views/FunderMatchView.tsx
+  - id: openwiki-source-a6acd51674a7bb40ec0a9785
+    resource: repo://frontend/features/ask/views/proposals/api.ts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-13T18:59:48.420Z
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Funder Match
@@ -164,11 +178,39 @@ See [Auth, roles and RLS](auth-roles-rls.md) for `app.my_org_ids()`, `app.is_sta
   - `GET /{match_id}/detail` returns one match's full reasoning, and 404 when RLS hides it.
   - `POST /runs?org=` returns 201 with a run summary. It returns 404 for an unseen org and 403 for someone who can read but not run. It calls `service.run_and_save(owner, pool, …, principal.id)`.
 - **`make match [ORG=<slug>]`** runs `python -m app.matching.run` (`matching/run.py`) in the backend container. It saves a run for every org, or one by slug or id, as the owner with `run_by` NULL, and prints funders checked and tiers.
-- **UI.** The Ask workspace's Funder Match view (`frontend/features/ask/views/FunderMatchView.tsx` and `funder-match/MatchCard.tsx`) lists the latest run on the shared list pattern. It offers strong, medium and all buckets with weak and not-scored folded, a score delta against `prev_score`, lazy-loaded detail per card, and a Rerun button that posts a run and reloads. See [Frontend](frontend.md).
+- **UI.** The Ask workspace's Funder Match view (`frontend/features/ask/views/FunderMatchView.tsx` and `funder-match/MatchCard.tsx`) fetches the latest run from `/api/funder-matches` (`funder-match/api.ts`) and ranks it on the shared list pattern. Strong and medium matches are the ranked buckets. Weak and not-scored matches are folded into a "Weak or no fit" disclosure that shows only while no filter is applied. Search and the funder-type and proposal-status filters narrow every bucket. Each card shows the tier, the score and a delta against `prev_score`, and lazy-loads its "Why this score" detail the first time it is opened. A Rerun button, shown only when the list's `may_run` is true, posts a run and reloads. See [Frontend](frontend.md).
 
-## Unfinished: proposals
+## From a match card to a proposal
 
-Each match card has a "Start a proposal" action, but proposals are only the first part of a feature. Per `docs/CHANGELOG.md`, screens and steps 1–2 exist and are kept in the browser (`localStorage`). Proposal drafting, the section editor and assemble/polish/.docx export are listed as not yet done, and no backend code reads or writes proposals. A `proposals` table exists (migration `0009`, with grants and RLS), but it is unused and the SQL catalog keeps it in `KNOWN_EXCLUDED`.
+A match card is the only way a proposal begins. The card's `ProposalAction` (in `MatchCard.tsx`) shows what is already started for that org and funder, and, when the list's `may_run` is true (passed down as `mayStart`), a "Start a proposal" or "Start another" button. A member who may not run sees only "View proposal" or the count of proposals.
+
+```mermaid
+sequenceDiagram
+    participant C as MatchCard
+    participant A as POST /api/proposals
+    participant M as repositories/proposals.match_for
+    participant G as proposals/gates.build
+    participant DB as proposals table
+    C->>A: org slug, funder_id, title
+    A->>A: find_org, may_read then may_run
+    A->>M: this funder in the latest saved run
+    M-->>A: score, run_at, full detail
+    A->>G: detail, funder_type, section_135_bound
+    G-->>A: step 1 requirements
+    A->>DB: insert work at stage 1, summary
+    A-->>C: 201 id
+    C->>C: nav.open(id), list reloads
+```
+
+1. **Naming.** The card opens an inline form prefilled with `"<funder> proposal"`. `startProposal(org.slug, funder.id, title)` in `proposals/api.ts` posts `{org, funder_id, title}` (title 1–200 characters) and refreshes the shared proposals store (`useProposals`) that also feeds the sidebar count and the "Has a proposal" filter. On success, `nav.open(id)` switches `AskWorkspace` to the Proposals view on that proposal. A failure is shown beside the form.
+2. **Permission.** `create_proposal` uses `funder_matches.find_org` on the caller's pool: 404 when the org is unseen, 403 ("for the organisation's admins and stewards") when the caller can read but not run. This is the same `may_run` rule that guards saving a run, and migration `0048_proposal_work.sql` aligned the `proposals` insert and update policies to `app.my_match_org_ids()` or staff, so RLS enforces it again. Members still read.
+3. **A saved match is required.** `match_for` reads the funder's row, with its full detail, from the org's **latest** saved run only. If the funder is not in it, the route returns 409 "Run Funder Match first". A proposal therefore always rests on a stored, cited judgement, and not on a live recomputation.
+4. **Step 1 comes from the match detail.** `proposals/gates.build` is pure. It turns the saved `eligibility` criterion, its `not_judged` lines and its `cites` into the requirements the user answers in step 1: 12A, 80G and audited accounts, plus CSR Form 1 when the funder type is in `SECTION_135_TYPES` or the funder is `section_135_bound`. Each shows what the match found on record. CSR Form 1 is `hard`, so answering No stops the step. Each "The funder's own bar" line becomes a free-text requirement of 240 characters at most that Sangam does not check. `earlier_phase` is true when the `relationship` criterion earned points.
+5. **The record.** `new_work` stores the requirements, an empty `gates` map, the match id, score and `run_at`, the funder's newest `proposal_template` document when Sangam holds one, a default style, and `stage: 1`. `readiness.summary` gives the initial summary, and `repositories/proposals.create` inserts the row.
+
+After creation the proposal is edited through code-checked steps, which this page does not cover. See [Proposal Copilot](proposal-copilot.md) and [Proposal lifecycle](../workflows/proposal-lifecycle.md).
+
+Rerunning Funder Match later does not change a started proposal. The proposal keeps the match id, score, `run_at` and requirements it was created with, and `fit_score` in the list reads that stored score.
 
 ## Version history
 

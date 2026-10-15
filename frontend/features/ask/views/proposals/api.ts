@@ -30,7 +30,7 @@ export type Work = {
   skipped_template: boolean;
   sources: number[];
   style: string;
-  sections: Record<string, { text?: string; done?: boolean; rev?: number; score?: number; needs_rewrite?: boolean }>;
+  sections: Record<string, Part>;
   facts?: Record<string, Fact>;
   questions?: Record<string, { section: string; subject: string; status: "open" | "parked" | "answered" | "closed"; asked_of: { id: string; name: string } | null }>;
   /** Keyed by document id, plus "funder" for what the funder looks for. */
@@ -38,6 +38,17 @@ export type Work = {
   /** The smoothed wording, kept only when code found every figure, place, name and gap unchanged. */
   polished?: { parts: Record<string, string>; revs: Record<string, number>; at: string; by: { id: string; name: string } };
   versions?: Version[];
+};
+
+/** One part's text, and what code worked out about it: the elements it misses (on Done) and claims with no source. */
+export type Part = {
+  text?: string;
+  done?: boolean;
+  rev?: number;
+  score?: number;
+  needs_rewrite?: boolean;
+  missing?: string[] | null;
+  untraced?: string[];
 };
 
 /** A saved Word file in the org's Doc Vault. */
@@ -75,8 +86,18 @@ export type ProposalItem = {
   can_edit: boolean;
 };
 
-export type Section = { code: string; label: string; question: string; tab: string; strong: string[]; weak: string };
-export type Tab = { key: string; label: string; question: string };
+export type Section = {
+  code: string;
+  label: string;
+  question: string;
+  tab: string;
+  strong: string[];
+  weak: string;
+  must_score_2: boolean;
+  /** Written last, from the finished parts. */
+  last: boolean;
+};
+export type Tab = { key: string; label: string };
 export type Proposal = ProposalItem & { /** The caller's own chat; teammates each have theirs. */ thread_id: string; work: Work; sections: Section[]; tabs: Tab[] };
 export type Saved = { summary: Summary; work: Work };
 export type ChangedBy = { by: { id: string; name: string }; at: string } | null;
@@ -161,6 +182,13 @@ export function differencesFrom(error: unknown): string[] | null {
   if (!(error instanceof ApiError) || error.status !== 409) return null;
   const detail = (error.body as { detail?: { differences?: string[] } } | null)?.detail;
   return detail?.differences ?? null;
+}
+
+/** What a part holds now, from a refused save of it. */
+export function staleFrom(error: unknown): { current: Part; changed_by: ChangedBy } | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const detail = (error.body as { detail?: { section?: string; current?: Part; changed_by?: ChangedBy } } | null)?.detail;
+  return detail?.section && detail.current ? { current: detail.current, changed_by: detail.changed_by ?? null } : null;
 }
 
 /** "Ravi changed this a minute ago. Showing his version." from a 409, or null for any other failure. */

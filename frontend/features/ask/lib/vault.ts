@@ -8,6 +8,7 @@ export type Doc = {
   source_name: string | null;
   source_url: string | null;
   fetched_at: string | null;
+  has_file?: boolean;
 };
 
 /* Upload in three steps, because the file never passes through the backend:

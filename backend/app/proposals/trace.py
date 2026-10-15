@@ -24,6 +24,8 @@ _SKIP = re.compile(
     r"|\b(?:clause|item)\s*\(?[ivx\d]+\)?"
 )
 _NUMBER = re.compile(r"\d+(?:\.\d+)?")
+_SKIP_ANY_CASE = re.compile(_SKIP.pattern, re.IGNORECASE)  # unsourced() reads the text as written
+_WRITTEN = re.compile(r"₹?\s*\d[\d,]*(?:\.\d+)?(?:\s*(?:lakhs?|lac|crores?|cr)\b)?", re.IGNORECASE)
 TOLERANCE = 0.005  # "₹2.4 crore" against "₹2,40,00,000": equal within rounding of the printed figure
 
 
@@ -105,6 +107,27 @@ def check(text: str, facts: dict[str, dict[str, Any]], *, districts: set[str] = 
             if f" {name} " in _words(GAP.sub(" ", para)) and f" {name} " not in haystack:
                 problems.append(f"paragraph {i}: {name.title()} is in no fact it cites")
     return problems
+
+
+def unsourced(text: str, facts: dict[str, dict[str, Any]], *, districts: set[str] = frozenset(),
+              names: set[str] = frozenset()) -> list[str]:
+    """Each claim no fact its paragraph cites holds, as the person wrote it, for the screen."""
+    out: list[str] = []
+    for para in paragraphs(text):
+        ids = cited(para)
+        held = [facts[k] for k in ids if k in facts and fact_rules.is_live(facts[k])]
+        numbers, amounts = _values(held)
+        haystack = _words(" ".join(f"{f.get('subject')} {f.get('value')} {f.get('evidence') or ''}" for f in held))
+        body = GAP.sub(" ", CITE.sub(" ", para))
+        for written in _WRITTEN.findall(_SKIP_ANY_CASE.sub(" ", body)):
+            says, rupees = _claims(written)
+            if (any(not (_held(r, amounts) or _held(r, numbers)) for r in rupees)
+                    or any(not _held(n, numbers) for n in says)):
+                out.append(" ".join(written.split()))
+        out += [place.title() for place in _places(para, districts) if f" {place} " not in haystack]
+        words = _words(body)
+        out += [n.title() for n in sorted(names) if f" {n} " in words and f" {n} " not in haystack]
+    return list(dict.fromkeys(out))
 
 
 def extract(text: str, *, districts: set[str] = frozenset(), names: set[str] = frozenset()) -> list[tuple[str, str]]:

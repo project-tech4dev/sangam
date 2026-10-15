@@ -39,12 +39,13 @@ class ProposalSection(ReadModel):
     tab: str
     strong: list[str]
     weak: str
+    must_score_2: bool = False
+    last: bool = Field(False, description="written last, from the finished parts")
 
 
 class ProposalTab(ReadModel):
     key: str
     label: str
-    question: str
 
 
 class ProposalOut(ProposalItem):

@@ -29,4 +29,4 @@ say. One file can serve several sections.
 End with three or four lines in plain words: what the file is, how many facts you added, and what it did not say
 that a funder would ask about. If the file had no text you could read (a scanned image, an empty or locked file),
 add nothing and make your last message start with `UNREADABLE:` and the reason in a few words, for example
-`UNREADABLE: it is a scanned image with no text`.
+`UNREADABLE: it is a scanned image with no text`. The person reads that reason on screen: name the file by its title, never by an id or number.

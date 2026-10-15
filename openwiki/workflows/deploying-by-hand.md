@@ -3,9 +3,6 @@ type: workflow
 title: Deploying by Hand
 description: How to deploy Sangam, which only happens when someone runs the Deploy GitHub Actions workflow by hand. Covers what the workflow does and diffs, how to order a deploy with migrations, the 1800 s function limits, and the checks to run afterwards.
 tags: [deploy, vercel, github-actions, migrations, operations, workflow]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-6766b7a0c14857435d2077c9
     resource: repo://.github/workflows/deploy.yml
@@ -27,7 +24,10 @@ sources:
     resource: repo://README.md
   - id: openwiki-source-0908473e2445de9a37b6928f
     resource: repo://scripts/smoke.sh
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Deploying by Hand
@@ -96,6 +96,10 @@ Why this order:
 - The backend refuses to boot against a schema it does not match. The lifespan runs `_verify_sql_catalog`, which raises `RuntimeError` when the SQL tool's allowlist (`catalog.py`) disagrees with the database. Deploying code that expects a table or column before migrating gives a backend that fails on cold start.
 - Migrations are additive by default, so an already-running older backend keeps working on a migrated schema. That is what makes migrate-then-deploy safe. A destructive migration breaks that assumption, so plan it as a two-step change.
 - The one rollout order the repo spells out (for the auth plan) is migrations, then backend, then frontend. The workflow does not enforce backend-before-frontend, because it starts both jobs together. If a frontend change depends on a new backend endpoint, deploy backend alone first (see below) or expect a short window where they disagree.
+
+### The wiki is deployed separately
+
+`make wiki-deploy` is a third, unrelated manual deploy. It is not part of `deploy.yml`. It exports `openwiki/` as a static site with `openwiki visualize --export` into a temp directory named `sangam-wiki`, then runs `vercel deploy --prod --yes --scope team-t4d-projects` on it, so the directory name becomes the Vercel project `sangam-wiki`. It runs from your machine and needs a one-time `npx vercel login`. The Deploy workflow never touches it, and dispatching the workflow does not republish the wiki ([CLAUDE.md](../../CLAUDE.md) lists the published URL).
 
 ### Deploying only one project
 

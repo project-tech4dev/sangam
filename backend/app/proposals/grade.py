@@ -21,10 +21,6 @@ class Graded(BaseModel):
     missing: list[str] = Field(default_factory=list, description="Strong elements it does not cover, in the rubric's words.")
 
 
-def score(missing: list[str]) -> int:
-    """None missing scores 2, one missing 1, more 0."""
-    return 2 if not missing else 1 if len(missing) == 1 else 0
-
 
 async def grade(section: rubric.Section, text: str, model: Any) -> Graded | None:
     """None when the call fails or the section has no strong elements to grade against (a form's own question)."""

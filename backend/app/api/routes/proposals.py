@@ -81,13 +81,16 @@ async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **k
     """Every write: refused for a reader, checked and logged by work.apply under the row lock."""
     row = await _editable(pool, proposal_id)
     by = await repo.me(pool)
-    picked = (kwargs.get("changes") or {}).get("sources")
+    changes = kwargs.get("changes") or {}
+    picked = changes.get("sources")
     if (isinstance(picked, list) and all(isinstance(d, int) for d in picked)
             and set(picked) - await documents_repo.org_document_ids(pool, row["org"]["id"], picked)):
         raise HTTPException(422, "Only this organisation's own files can be ticked.")
-    # A corrected fact's fixed sentence must still trace, places included.
-    correcting = any(path.endswith(".correct") for path in kwargs.get("changes") or {})
-    districts = await records.districts(pool) if correcting else frozenset()
+    # A corrected fact's fixed sentence and a typed part must still trace, places included.
+    tracing = any(path.endswith((".correct", ".text")) for path in changes)
+    districts = await records.districts(pool) if tracing else frozenset()
+    names = fact_rules.partner_names(row["work"], row["org"]["name"], row["funder"]["name"])
+    graded = await _grade_done(row["work"], changes, kwargs.get("rev") or {})
 
     def change(work: dict, title: str) -> work_rules.Applied:
         if advancing:
@@ -95,7 +98,8 @@ async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **k
             if missing := steps.exit_check(stage, work):
                 raise _NotYet(missing)
             kwargs.update(changes={"stage": stage + 1}, advance=True)
-        return work_rules.apply(work, by=by, title=title, districts=districts, **kwargs)
+        return work_rules.apply(work, by=by, title=title, districts=districts, names=names, graded=graded,
+                                **kwargs)
 
     try:
         applied = await repo.save(pool, proposal_id, change)
@@ -109,6 +113,29 @@ async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **k
     if applied is None:
         raise HTTPException(403, READ_ONLY)
     return SavedOut(summary=applied.summary, work=applied.work)
+
+
+async def _grade_done(work: dict, changes: dict[str, Any],
+                      rev: dict[str, int]) -> dict[str, list[str] | None]:
+    """Each part marked Done, graded on its text; skipped when stale or already graded on that text."""
+    from app.agent.models import resolve_model
+    from app.proposals import grade
+
+    out: dict[str, list[str] | None] = {}
+    for path, value in changes.items():
+        code = path.removeprefix("sections.").removesuffix(".done")
+        if value is not True or path != f"sections.{code}.done":
+            continue
+        section = fact_rules.section_of(work, code)
+        part = (work.get("sections") or {}).get(code) or {}
+        text = changes.get(f"sections.{code}.text", part.get("text"))
+        if section is None or not (text or "").strip() or rev.get(code) != part.get("rev", 0):
+            continue
+        if text == part.get("text") and part.get("missing") is not None:
+            continue
+        graded = await grade.grade(section, text, resolve_model(get_settings().utility_model))
+        out[code] = graded.missing if graded else None
+    return out
 
 
 @router.get("", response_model=list[ProposalItem], summary="Proposals the caller may read, newest first")
@@ -145,7 +172,7 @@ async def get_proposal(proposal_id: int, pool: PoolDep, principal: Principal) ->
     row = await _readable(pool, proposal_id)
     work = row["work"]
     sections = rubric.sections_for(bool(work.get("earlier_phase")), work.get("template"))
-    tabs = [{"key": k, "label": label, "question": q} for k, label, q in rubric.TABS]
+    tabs = [{"key": k, "label": label} for k, label in rubric.TABS]
     # Recomputed, so a proposal saved before a summary field existed still shows it.
     return ProposalOut.model_validate({**row, "thread_id": repo.chat_thread(proposal_id, principal.id),
                                        "summary": readiness.summary(work),

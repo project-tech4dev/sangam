@@ -68,8 +68,8 @@ async def read_proposal(part: str = "") -> str:
     """Read this chat's proposal: the whole outline, or one part of it in full.
 
     Leave `part` empty for the outline: the step, the requirements and answers, the form, the documents
-    Sangam may read, the style, and each section's state. Pass a tab (idea, project, people, ask_risk,
-    why_you) for its sections in full with their facts, a section's code (for example A3) for that section,
+    Sangam may read, the style, and each section's state. Pass a tab (case, people, money, funder)
+    for its sections in full with their facts, a section's code (for example A3) for that section,
     "facts" for every fact in use with the id write_section cites, or one of requirements, form, documents, style.
 
     Args:
@@ -83,7 +83,7 @@ async def read_proposal(part: str = "") -> str:
         saved = work.get("sections") or {}
         facts = work.get("facts") or {}
         all_sections = context.sections(work)
-        tabs = {key: label for key, label, _ in rubric.TABS}
+        tabs = dict(rubric.TABS)
         stage = int(work.get("stage") or 1)
 
         if part in tabs:
@@ -111,7 +111,7 @@ async def read_proposal(part: str = "") -> str:
             out.append(f"Writing style: {(work.get('style') or '').strip() or 'not set'}")
         if part == "":
             out.insert(0, f"Step {stage} of 4: {steps.STAGES.get(stage, '')}")
-            for key, label, _ in rubric.TABS:
+            for key, label in rubric.TABS:
                 out.append(f"## {label} ({key})")
                 out += ["\n".join(_section(s, saved.get(s.code) or {}, False)) for s in all_sections if s.tab == key]
         return "\n\n".join(out)

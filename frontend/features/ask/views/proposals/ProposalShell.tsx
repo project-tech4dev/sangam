@@ -5,10 +5,10 @@ import { MessageCircle, Pencil, Upload, X } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
-import { advance, changedByLine, getProposal, missingFrom, type Proposal, type Reader, rename, type Saved, saveWork } from "./api";
+import { advance, changedByLine, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork } from "./api";
 import { FactList } from "./FactList";
 import { FinishCard } from "./FinishCard";
-import { WriteCard } from "./WriteCard";
+import { PartEditor, WriteCard } from "./WriteCard";
 import { ANSWERS, STEPS } from "./steps";
 import { TellSangam } from "./TellSangam";
 
@@ -127,7 +127,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
         {!canEdit && <p className="pr-readonly">You can read this proposal. Ask your organisation&apos;s admin to make changes.</p>}
       </div>
 
-      <div className="pr-wrap">
+      <div className="pr-wrap" data-chat={canEdit && chatOpen}>
         <div className="pr-main">
           <ol className="pr-steps" aria-label="Steps">
             {STEPS.map((label, i) => (
@@ -155,7 +155,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
           <div onMouseUp={() => setSelection(window.getSelection()?.toString().trim() ?? "")}>
             {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
             {work.stage === 2 && <SourcesStep proposal={proposal} save={save} send={ask} />}
-            {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} send={ask} />}
+            {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} send={ask} onSaved={onSaved} />}
             {work.stage === 4 && <FinishStep proposal={proposal} save={save} send={ask} onSaved={onSaved} />}
           </div>
           {work.stage === 2 && <WhatHappensNext funder={proposal.funder.name} />}
@@ -196,6 +196,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
               screen={{ step: STEPS[work.stage - 1], selection, ...(work.stage === 3 && part ? { part } : {}) }}
               onTurnEnd={load}
               onSend={onSend}
+              open={chatOpen}
             />
           </div>
           {!chatOpen && (
@@ -351,12 +352,16 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
               <label key={d.id} className="pr-tick">
                 <input
                   type="checkbox"
-                  disabled={!canEdit}
+                  disabled={!canEdit || (d.has_file === false && !work.sources.includes(d.id))}
                   checked={work.sources.includes(d.id)}
                   onChange={(e) => tick(d.id, e.target.checked)}
                 />
                 {d.title ?? "Untitled file"}
-                {d.doc_type && <span className="muted fm-meta">{d.doc_type.replaceAll("_", " ")}</span>}
+                {d.has_file === false ? (
+                  <span className="muted fm-meta">a link to a web page, so Sangam cannot read it; upload the file instead</span>
+                ) : (
+                  d.doc_type && <span className="muted fm-meta">{d.doc_type.replaceAll("_", " ")}</span>
+                )}
               </label>
             ))}
           </div>
@@ -394,57 +399,106 @@ function SectionsStep({
   onPart,
   save,
   send,
+  onSaved,
 }: {
   proposal: Proposal;
   part: string | null;
   onPart: (code: string | null) => void;
   save: Save;
   send: Send;
+  onSaved: (saved: Saved) => void;
 }) {
-  const saved = proposal.work.sections;
+  const { sections, work, can_edit: canEdit } = proposal;
+  const saved = work.sections;
+  const tabs = proposal.tabs.filter((t) => sections.some((s) => s.tab === t.key));
+  const open = sections.find((s) => s.code === part) ?? sections.find((s) => s.tab === tabs[0]?.key) ?? null;
+  // One part is always open, and Sangam Pitch is told which.
+  useEffect(() => {
+    if (!part && open) onPart(open.code);
+  }, [part, open, onPart]);
+  if (!open) return null;
+
+  const tab = tabs.find((t) => t.key === open.tab)!;
+  const parts = sections.filter((s) => s.tab === tab.key);
+  const next = sections[sections.indexOf(open) + 1] ?? null;
+  const score = (key: string) => sections.filter((s) => s.tab === key).reduce((n, s) => n + (saved[s.code]?.score ?? 0), 0);
+  const written = parts.filter((s) => saved[s.code]?.text?.trim()).length;
+  const cited = new Set(Object.values(saved).flatMap((s) => [...(s.text ?? "").matchAll(/⟦(k\d+)⟧/g)].map((m) => m[1]))).size;
+  const gaps = Object.values(saved).reduce((n, s) => n + ((s.text ?? "").match(/\[Add:/g)?.length ?? 0), 0);
+  const facts = Object.values(work.facts ?? {}).filter((f) => f.section === open.code && (f.status === "proposed" || f.status === "confirmed")).length;
+
   return (
     <div className="pr-pane">
       <p className="muted">
         Press Write on a tab and Sangam Pitch drafts its parts from the facts, each figure with its source. Where no fact
         supports a part, it leaves a gap and asks you, one question at a time.
+        {canEdit && " You can also write in any part yourself."}
       </p>
-      {proposal.tabs.map((tab) => {
-        const parts = proposal.sections.filter((s) => s.tab === tab.key);
-        if (parts.length === 0) return null;
-        const written = parts.filter((s) => saved[s.code]?.text?.trim()).length;
-        return (
-          <div key={tab.key} className="card pr-group">
-            <div className="pr-group-head">
+      <div className="pr-tabs" role="tablist" aria-label="Proposal sections">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            className="pr-tab"
+            type="button"
+            role="tab"
+            aria-selected={t.key === tab.key}
+            onClick={() => onPart(sections.find((s) => s.tab === t.key)!.code)}
+          >
+            {t.label}
+            <span className="pr-tab-score">
+              {score(t.key)}/{sections.filter((s) => s.tab === t.key).length * 2}
+            </span>
+          </button>
+        ))}
+      </div>
+      {canEdit && (
+        <div className="pr-tab-actions">
+          <button className="btn" type="button" disabled={!send} onClick={() => send?.(`Write ${tab.label}.`)}>
+            {written === 0 ? `Write ${tab.label}` : `Write ${tab.label} again`}
+          </button>
+        </div>
+      )}
+      <div className="pr-body">
+        <nav className="pr-parts" aria-label="Parts">
+          {parts.map((s) => (
+            <button key={s.code} type="button" data-active={s.code === open.code} onClick={() => onPart(s.code)}>
+              <span className="pr-parts-label">{s.label}</span>
+              <PartDot part={saved[s.code]} />
+            </button>
+          ))}
+        </nav>
+        <div className="card pr-editor">
+          {canEdit ? (
+            <PartEditor key={open.code} proposal={proposal} section={open} next={next} onNext={() => onPart(next?.code ?? null)} onSaved={onSaved} send={send} />
+          ) : (
+            <>
               <div>
-                <div className="card-title">{tab.label}</div>
-                <p className="muted">{tab.question}</p>
+                <div className="card-title">{open.label}</div>
+                <p className="muted pr-part-question">{open.question}</p>
               </div>
-              {proposal.can_edit && (
-                <button className="btn" type="button" disabled={!send} onClick={() => send?.(`Write ${tab.label}.`)}>
-                  {written === 0 ? "Write" : "Write again"}
-                </button>
-              )}
-            </div>
-            {parts.map((s) => (
-              <div key={s.code} className="pr-section" data-open={part === s.code}>
-                <button
-                  className="pr-section-head"
-                  type="button"
-                  aria-expanded={part === s.code}
-                  onClick={() => onPart(part === s.code ? null : s.code)}
-                >
-                  <strong>{s.label}</strong>
-                  <span className="muted">{saved[s.code]?.text?.trim() ? "Written" : s.question}</span>
-                </button>
-                {part === s.code && <WriteCard proposal={proposal} code={s.code} />}
-                {part === s.code && <FactList proposal={proposal} part={s.code} save={save} />}
-              </div>
-            ))}
-          </div>
-        );
-      })}
+              {saved[open.code]?.text?.trim() ? <WriteCard proposal={proposal} code={open.code} /> : <p className="muted">Not written yet.</p>}
+            </>
+          )}
+          <details className="import-disclosure">
+            <summary className="btn-ghost">Facts for this part ({facts})</summary>
+            <FactList proposal={proposal} part={open.code} save={save} />
+          </details>
+        </div>
+      </div>
+      <p className="muted fm-meta">
+        Cites {cited === 1 ? "1 source" : `${cited} sources`} · {gaps === 1 ? "1 gap" : `${gaps} gaps`} to add · {proposal.summary.done} of{" "}
+        {proposal.summary.total} parts done
+      </p>
     </div>
   );
+}
+
+/** A part's state in the list: a dashed dot unwritten, its score once graded, a tick once Done. */
+function PartDot({ part }: { part?: Part }) {
+  if (!part?.text?.trim()) return <span className="pr-dot" data-score="none" aria-label="Not written">·</span>;
+  if (part.done) return <span className="pr-dot" data-score={part.score ?? "none"} aria-label="Done">✓</span>;
+  if (part.score == null) return <span className="pr-dot" data-score="none" aria-label="Written, not checked">·</span>;
+  return <span className="pr-dot" data-score={part.score} aria-label={`Scored ${part.score} of 2`}>{part.score}</span>;
 }
 
 /** What is left before sending, and every fact the text uses for the person to check; Ready is code's call. */

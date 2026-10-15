@@ -35,7 +35,7 @@ function asked(value: unknown): Asked | Suggested | null {
   return type === "proposal_question" || type === "proposal_suggestion" ? (v as Asked | Suggested) : null;
 }
 
-/** Sangam Pitch's one open question or suggestion, above its chat while the run waits for the reply. */
+/** Sangam Pitch's one open question or suggestion, as the chat's latest message while the run waits for the reply. */
 export function QuestionCard({ agentId, onOpen }: { agentId: string; onOpen: (answer: ((r: Reply) => void) | null) => void }) {
   return useInterrupt({
     agentId,
@@ -82,18 +82,19 @@ function Card({ q, ...answer }: { q: Asked } & Answer) {
   const { sent, reply } = useReply(answer);
   return (
     <section className="card pr-side-card pr-question" aria-label="Sangam Pitch asks">
-      <div className="card-title">Sangam Pitch asks</div>
-      <div className="eyebrow">{q.part}</div>
+      <div className="eyebrow">Sangam Pitch needs one answer · {q.part}</div>
+      <p className="pr-question-ask">{q.missing}</p>
       <p>
-        <strong>Found:</strong> {q.found}
+        <strong>What Sangam found:</strong> {q.found}
       </p>
-      <p>
-        <strong>Missing:</strong> {q.missing}
-      </p>
-      <p className="muted">{q.why}</p>
+      {q.why && (
+        <p>
+          <strong>Why it matters:</strong> {q.why}
+        </p>
+      )}
       {q.suggestion && (
         <p>
-          <strong>Suggestion:</strong> {q.suggestion}
+          <strong>Where to find it:</strong> {q.suggestion}
         </p>
       )}
       <div className="pr-question-actions">
@@ -106,7 +107,7 @@ function Card({ q, ...answer }: { q: Asked } & Answer) {
           Later
         </button>
       </div>
-      <p className="muted pr-chat-note">{sent ? "Sent." : "Or type your answer, or a question about it, in the box below."}</p>
+      <p className="muted pr-chat-note">{sent ? "Sent." : "Type your answer in the box below and press Reply. Not sure yet? Press Later."}</p>
     </section>
   );
 }
@@ -115,8 +116,7 @@ function Suggestion({ s, ...answer }: { s: Suggested } & Answer) {
   const { sent, reply } = useReply(answer);
   return (
     <section className="card pr-side-card pr-question" aria-label="Sangam Pitch suggests">
-      <div className="card-title">Sangam Pitch suggests</div>
-      <div className="eyebrow">{s.part}</div>
+      <div className="eyebrow">Sangam Pitch suggests · {s.part}</div>
       <p className="pr-suggest-now">{s.now}</p>
       <p className="pr-suggest-better">{s.better}</p>
       {s.why && <p className="muted">{s.why}</p>}

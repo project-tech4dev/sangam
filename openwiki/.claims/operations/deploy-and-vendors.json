@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e33f43d2283963b10fb3bb92634a8356721a144698bb31287bf86e424820a659",
+  "pageVersion": "sha256:48e5d21c4a593f497848d27bb45ce38053eadead49b2349c14bf8d08d88c2b20",
   "claims": [
     {
       "id": "claim_cbf4cc986efa451fb08f51996cdbb613",
@@ -35,11 +35,11 @@
           "version": "repo-lines-v1:sha256:7d8b3377d41ee80b7843c9ce9e847f53e44616c374f9e7e7290a583de41cb573:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Q4YjMzNzdkNDFlZTgwYjc4NDNjOWNlOWU4NDdmNTNlNDQ2MTZjMzc0ZjllN2U3MjkwYTU4M2RlNDFjYjU3MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Q4YjMzNzdkNDFlZTgwYjc4NDNjOWNlOWU4NDdmNTNlNDQ2MTZjMzc0ZjllN2U3MjkwYTU4M2RlNDFjYjU3MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmY5ZDU2YjdhNTg3ZTg0MjQ2NmFkMzM4NGYzNGI5MzQwNjQwMDk1ZmM1ZGM0MzI5ZDgzNGQ5ZjU4YmU1ZjQ3ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmE2ZGY5ZjM4MjczYWZmMjAxNTg1NjQ4MmZhZjI2MmRhZTgzYjQ1MDE1OTZmZGE0M2ZmMmYyZWU1MDVkNjY4NSJ9"
         },
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L161-L161",
+          "resource": "repo://docs/ARCHITECTURE.md#L163-L163",
           "version": "repo-lines-v1:sha256:c0bf7e30db76c33670beea24e44d23363f980168017b20c4ec6da52bb8d67d16:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBiZjdlMzBkYjc2YzMzNjcwYmVlYTI0ZTQ0ZDIzMzYzZjk4MDE2ODAxN2IyMGM0ZWM2ZGE1MmJiOGQ2N2QxNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBiZjdlMzBkYjc2YzMzNjcwYmVlYTI0ZTQ0ZDIzMzYzZjk4MDE2ODAxN2IyMGM0ZWM2ZGE1MmJiOGQ2N2QxNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDllNzdhOGQ2NTVhNGVjNzNkNjg2NDdhNjcyMDE4YWYzN2RjNTQwZGI4OGEwYWUzYjlkNzFhZmYwNDk3M2VmNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjU2M2JhNzkyNzMxNjQ2NjE1MjZhNGNjZjU1ZTk0YzA1OTI4NjZkYjU0NTdlY2UyM2VhNmI5ZDQ0MWVmNGIwYyJ9"
         },
         {
-          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L26-L26",
+          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L29-L29",
           "version": "repo-lines-v1:sha256:5d8f3e574046a8dbb6640f2aa4931ee2312444fa4c9d5c7d3b000b020eeb88c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWQ4ZjNlNTc0MDQ2YThkYmI2NjQwZjJhYTQ5MzFlZTIzMTI0NDRmYTRjOWQ1YzdkM2IwMDBiMDIwZWViODhjNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWQ4ZjNlNTc0MDQ2YThkYmI2NjQwZjJhYTQ5MzFlZTIzMTI0NDRmYTRjOWQ1YzdkM2IwMDBiMDIwZWViODhjNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2VkZjU2OGZmMTdmYTMzODlmMDE2MGRiN2IyOTlhMDg3NzE5MDZlZDQ5MWRlOTRiMzcxMzVhOWRmNTM0ZWJlNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2VjYzk1Y2NmYmZkNzJjMTE3ZTk4NzBjZTE4OGFlNjhiNDA3MzA1MjViNWE2YTE5NjlkNzAxYzk4Njc3MjkwMSJ9"
         }
       ]
@@ -49,7 +49,7 @@
       "statement": "A Vercel cron in backend/vercel.json calls `/health` every five minutes (`*/5 * * * *`) to keep one instance warm; `/health` returns `{status: ok}` and is an open path that skips authentication.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/security.py#L146-L146",
+          "resource": "repo://backend/app/core/security.py#L161-L161",
           "version": "repo-lines-v1:sha256:3a4f7782a9003ed6d1cc01432310f2e1f09fd66b1a5d774f4e97bdf4c57ddc5f:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2E0Zjc3ODJhOTAwM2VkNmQxY2MwMTQzMjMxMGYyZTFmMDlmZDY2YjFhNWQ3NzRmNGU5N2JkZjRjNTdkZGM1ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2E0Zjc3ODJhOTAwM2VkNmQxY2MwMTQzMjMxMGYyZTFmMDlmZDY2YjFhNWQ3NzRmNGU5N2JkZjRjNTdkZGM1ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTlkNTcyYTY5ZjZiOTI0NDJkMDljZmMwNzY3YjIwMWNjODFjOTUyZDZlYmNlNTY1ZDhjZjMwOWI3Yjg3MjY5YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWQ4NzE0OTllNjBjNDVkODQwOWFmYzQ5YWU3MjlmOWIxYzdmOWZjNzQzYzdjM2E2OGI2ZTA2ODFlN2U0NjQ1OSJ9"
         },
         {
@@ -67,7 +67,7 @@
       "statement": "The deployed backend must connect to Supabase Postgres through the session pooler on port 5432: the direct host `db.<ref>.supabase.co` is IPv6-only and hangs from containers, and the transaction pooler (6543) breaks pg_restore. The backend pool also disables prepared statements (`prepare_threshold=0`).",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L545-L550",
+          "resource": "repo://CLAUDE.md#L556-L561",
           "version": "repo-lines-v1:sha256:e6fe376dbe657f6930b64e45283e59a751d9edfda64a214f7c71672eae4d4644:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzE4YWJmY2NhYjZhZmEzODFmMGM5NmQ0OTBkNGEwMGJhMDRmYTMxMjE5YjBhZmY0MGE3NmQ0NWJmYjFhYWRmYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQ5Mjg0Mzk5ZTFjZTM3NGZmODllYzM5NTcwZDExNDUwZTUxMjFiYjVkNjQ5MGQxYmVlMzE2MzFhNjRhZjZiMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTE3NzgxYjk0YTE0ZDVhODY3YjhlZTIyMWQ5OTljNzdhZGMyMmQwYWY0ZGMyMDNmM2NkODI3MWQzNmIyMzBiYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjc4MmNlMjg4ZmNlNmZjZjg0YjY2OTIzODkxOWZhNGJmZmEyYzI3ZjIzZmRjMDdmYWI3OWE3ZTg1YTRlY2UyMCJ9"
         },
         {
@@ -100,19 +100,23 @@
     },
     {
       "id": "claim_b42b960e92ba4e16aa4f851a9074db0d",
-      "statement": "SUPABASE_URL is the auth switch: when set, the backend verifies Supabase access tokens against the project's JWKS (ES256/RS256, audience `authenticated`, issuer `<url>/auth/v1`) and anonymous requests have no identity; when empty every request is the seeded dev user, and `Bearer dev` is accepted only with DEV_AUTH.",
+      "statement": "SUPABASE_URL is the auth switch: when set, the backend verifies Supabase access tokens against the project's JWKS (ES256/RS256, audience `authenticated`, issuer `<url>/auth/v1`), anonymous requests (no header) have no identity, malformed/invalid tokens are 401, and `Bearer dev` is accepted as the dev user only with DEV_AUTH; when empty every request is the seeded dev user, except that with DEV_AUTH `Bearer dev:<email>` selects a seeded @local.test user.",
       "evidence": [
         {
           "resource": "repo://.env.example#L65-L76",
           "version": "repo-lines-v1:sha256:68535f619dfc286e65f68917100a9a05a58dafcde4d00676fcea3dedc2782d3b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxN2Q3NDBmNDk3ZGMxMTUzNDdmNGEwYzMzZWRkN2NkYWQ0NGI5MjBlMGY1MThjMzI0YWI1MDFhM2FhYTNhMTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZDYyYjljYzZkOGYxYTM4ZjRkNTMxODc2OTgwYjhmMTkwNDkxNDEwZTdkMjE3NzlmMTcxM2M2OWNiZGZkNzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRjYzIyM2ZjMTQ5ZTAzMjZiNTM4NTAzOTU4NDg2MmJiYzk4NGJiZjRlZjBjNTIxYjRiNjMyNzc2ODgzOWE2YzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4MmFiMzdiNGI5NDJmYjZhYzQwYTNlMmQxODdhZTViMWFhMzlkODdhMWExOTZiYWUwMzAxMjY1NDFjYzg4OWIifQ"
         },
         {
+          "resource": "repo://backend/app/core/config.py#L44-L45",
+          "version": "repo-lines-v1:sha256:c87958cf54e6a00fb0521648a3699aa9da55a44eb8d5a7ad588d6004c5c629da:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjZlODEyMjM5MzhmMTI1MjUwMDhlZTQxZDdiNmJmZWJlNDQzODdiYmZkMzgxNGFlYWFhYTU4ZWQ3Y2VmMjRkOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTUyODEwYWQ1NWZmMGZlYTFmYjk0ZjAwZDE1NDI1ZTUyZWVhZDUzNmY4NjNhOGYxYjViZGIzMzk2NjY2MzdhNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FjZDY5Y2QwOWFkN2IwMzVmNzBiNzVmZDAzOThjZGFjY2QxZmVlZjQwMTkwNDA5Zjg3ZWEyMDJlNWI1Y2ZlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGM4Y2RkOWU5MzM2MWY1ZmI3MzM1MjNhMGM3OWIzMzFiMWMyNDRlODdmMjg4Y2Y1YjMzN2U3NGJjZThjMjZiOCJ9"
+        },
+        {
           "resource": "repo://backend/app/core/config.py#L66-L73",
           "version": "repo-lines-v1:sha256:7555501b7df1dc255480eea5e73daedb7a0e2cb703b864fad55358b36f5ef945:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWNkMzIyZjc4MWYwNWNlNThlMTRlMzAwZTUwMjJlYjU2NjQyZGU4ZGFhMTgzNWExYzJiZDI0NGI4N2RkYzM3OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjYyMDc4M2Q1MmZlM2U4OWIyNGZiYWJjMjM5YzRjOGEzMjdhZmRjMTNjZmUxZmNhMGM4N2IzYzIwZWFiNzE0YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhlNDA2YTgwYjg0MzQzNDc2NjRkMWQ2Y2VkMTE0ZjI5ZGNiNzJiNTZmYzk3OWZjYzQ3YjI3M2UwNDI2NjFkYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTJkYWE3NDAzMGQzOWE0OTMzODI4Nzc2YjY2N2JmMzY1ZWI3ZGNkZmEyZDI2NjZmNDNlZjljZGEyY2ZhMDIyYyJ9"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L64-L115",
-          "version": "repo-lines-v1:sha256:634078b72a92e6f9b7274b7117e0d292d49a46a4aa30a5f23d2f3436492605c0:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOWNjNWY4ZmFjY2ZkZWJlZTk4ZGE5OWRlMWY3NDdhZGM1OWRjODg3MzRmMjEwYWJmNDMwMjlmYmIzY2YzNDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwNjlkODBiMjk3ODM0MDYxYTg2MGM2ZGJhZWQ3MzVkZTMzNDc3Y2E4YWE0NmJiZDRmZWQ5Y2JiZWRhYTY4NjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiZjRlMzQ2OWVjOTlhNTUyMTJhNWI0MDQzYzMzZmJlZDliZTg1YTVlY2FkYTE3MDlmMDZkMTkyOTc3NmVkMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0ZDRhM2RlYzE1YWYzM2U1OWFhNTE4MWIyMmVlODlkZTM0YmIzOGU5ZjBhY2QwODc2MzBlNDgxMmUxYTg5MDgifQ"
+          "resource": "repo://backend/app/core/security.py#L64-L149",
+          "version": "repo-lines-v1:sha256:d868a76dc44c729bf7cd6fc413211905992e55c9f1c0dc25f92f252dce981045:eyJzZWxlY3RlZExpbmVDb3VudCI6ODYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOWNjNWY4ZmFjY2ZkZWJlZTk4ZGE5OWRlMWY3NDdhZGM1OWRjODg3MzRmMjEwYWJmNDMwMjlmYmIzY2YzNDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMTNjYjRmMDE3OWY5MjM4ZWZhMGU2NWIwYjk0MjEwZmI3NWViNGZjZTdhNzJjMTkxNjU2YjBmMjY1MDY0MTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiZjRlMzQ2OWVjOTlhNTUyMTJhNWI0MDQzYzMzZmJlZDliZTg1YTVlY2FkYTE3MDlmMDZkMTkyOTc3NmVkMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyOGRlYTc4Mjg3NWNjMDFlYTRmYTc2MGNkYWMyYmRiZWIyOGI2MWY0NjFmN2ZkMzc5ZTk4ODI1OWVkZTg0MWMifQ"
         }
       ]
     },
@@ -143,7 +147,7 @@
           "version": "repo-lines-v1:sha256:1df7a86dc44f46361c25ec4d35ce59af2cb684f8d3ee5f8281759527e3eafc6d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5YjY4MTgyYWFkNTc4MzUwNzMyZDQ1YWNmOTIxMDgzMzE2YmU3YzBlMWU5ZGMwZTMyNWY5ODFiNzUyMzViMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5ZjE1MGFkZjE0ZGVhMDQyNWE3YjUxMWJkYTBhMDAzZTBmNjA3ZjdmNGI0ODM0ZjY5ODUyM2U2YjU0ZTI5YmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1YzFjNDYyZTJhMzlkNzQ3NTlmNWUxYjEyNmY3NjgzYTJiNzMwMTE4ZTE4ZjUxMjJiMDhjZWRlZWI2NTBlMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2ZGJjNTllNGU1YWY5NGRlOTI1NzY0NzZmYzg4YjZkMmU2YTI0NGJmZTlhNWE2NWEwNGM1OWM5NjBkMzU4NTkifQ"
         },
         {
-          "resource": "repo://backend/app/integrations/storage.py#L395-L410",
+          "resource": "repo://backend/app/integrations/storage.py#L412-L427",
           "version": "repo-lines-v1:sha256:3731fe372356177b5da81185c761b5afb87a6cad38dbb25e821005140e057c8b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1Yjk0ZGY1NmJhMTE4OTUyNDJhOGY5N2U1OTA0ZjJiMDFmNDBiNDkyNTEzOTJiNzAwNDY1NzQ4ZGEyNTdkMjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwODYzY2Q0ZjY3YzBhMjY1MjczM2U1YTU1ODM5YzJiOGYxNmY4NzM3NWJkZjNhMDJlNmFjZWFlZWIxMjE5MGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxZTZlMzZiMmM1NDFkMDNmZmUwMjlmNmY4NWI5ODFiZWQ5ZGQwYTE2MzViMTVlYzU3MTdlZWM5YWNjZDI1YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3YWY5ZGYzYmFhMWRhNTdjNjkyMzE0M2MxMGJkNzRiYjk1NjM4OWZlNmQ5NzQzMjI2OWUwZGNiNWFlNjBhNGMifQ"
         },
         {
@@ -157,7 +161,7 @@
       "statement": "Browser uploads to the Doc Vault go directly to Supabase Storage through a backend-minted signed upload URL (valid 2 hours) because Vercel Functions cap request bodies at a few MB; signed download URLs default to 10 minutes, archive uploads over 50 MB are refused client-side, and a duplicate upload (reported by Supabase as HTTP 400 with statusCode 409) counts as success.",
       "evidence": [
         {
-          "resource": "repo://backend/app/integrations/storage.py#L227-L284",
+          "resource": "repo://backend/app/integrations/storage.py#L244-L301",
           "version": "repo-lines-v1:sha256:b4b9fba4a6c3b4e4f128a684d01f06f3a9de5daa4d449214d0ad8f9c3b4ed782:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyN2YyMjI0MDU3YWY5MmVlODc1MWE3MzYzZWQ2ZDYwNTk1NzMzMDdjZWNjNDgyMzczZWE5YWU1OGNkZWJiY2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5MDljZDkxMThmMzAzZTI3MWQyYzE3M2Q4ZmM3ODg4ZTAwNTI2ZDRhNWM4NjdmYzNjMjU3N2I0NTNlMmM0NTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRlNzU3NWMzYjc3NzZjZjJmOWMyYmZiY2E0NGYyMTQ4MTNhNzgyN2VhYTljMzg0NTRjNzAzYjY4OWE3NDQzODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4YjM5Zjc3M2NjZTcxYmYwYWM4MDFlYTkzYjA1MzljYjFmN2QzNWZhNmM1ODkyNzc1YmFjZTQwNDBlNGFlNmEifQ"
         },
         {
@@ -165,7 +169,7 @@
           "version": "repo-lines-v1:sha256:da31720ae8f7581b21dfa532fb5e8c6e2b8bd5ee39825c2d543cf7a571e29943:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ3YzcyZTNlZDQzNTZlZjc4NmE0YWFiMzU5MjU5NGRiZDBjOWZjZTg1YmI0YTljN2QwYmQ2YTEyMzAyY2NmZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5ZjE1MGFkZjE0ZGVhMDQyNWE3YjUxMWJkYTBhMDAzZTBmNjA3ZjdmNGI0ODM0ZjY5ODUyM2U2YjU0ZTI5YmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE3NWZkZWM0ZDgxNDk2MTZlMTkwOTBiMzA0YjQxMjkzNmEyNDU1NzE1ZjMzMDA5OTRlZTk2ZjNlYmI4MTIyMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2ZGJjNTllNGU1YWY5NGRlOTI1NzY0NzZmYzg4YjZkMmU2YTI0NGJmZTlhNWE2NWEwNGM1OWM5NjBkMzU4NTkifQ"
         },
         {
-          "resource": "repo://backend/app/integrations/storage.py#L413-L433",
+          "resource": "repo://backend/app/integrations/storage.py#L430-L450",
           "version": "repo-lines-v1:sha256:15152e0c7b9b15801b3f2c600584b4bcd827e9799132214562487c28d6f4e567:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0NTdlZjIxMTU3YmE4ODNkNDc3NGFlYjE4OTcwYTVjNTQ2OTk4MTY5ZTI1ZmVlZTYwMjJmN2FjOTAxNjZhMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhZDIyNzg1NWQzMGJlYzNhNDYxMmM0NDUyNGIwZWNhMTE2YzkyNzM1MmNjNDYyNTczZGNmNzVkZTI4ZWNjMjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM2YzFkMzJiZmUwOTkzNjkzNjg3NzdmZTQxN2JlZmRiNWIzNjNlODg4Mjk4NGVjOTZjZjJiOTg2ZDk1MmZiODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1MTRmYWMzYzRhOTQwNDMwNTAzZDg2YjkwNjNkNjk3MzZiNDdjOGZlMTJjODc2NzlhMmY3YjQyNTAyNzkyY2QifQ"
         }
       ]
@@ -204,11 +208,19 @@
     },
     {
       "id": "claim_a22103cbcba642658419f8576a1a6395",
-      "statement": "Langfuse tracing is enabled only when both public and secret keys are set; it falls back to VERCEL_ENV and VERCEL_GIT_COMMIT_SHA for environment and release, attaches a payload mask before agents are built, verifies credentials at boot (disabling tracing with an error if rejected), never takes the app down on failure, and flushes after each agent run because serverless functions freeze after responding.",
+      "statement": "Langfuse tracing is enabled only when both public and secret keys are set; configure_langfuse falls back to VERCEL_ENV and VERCEL_GIT_COMMIT_SHA for environment and release, attaches a payload mask when building the client, verifies credentials via auth_check (disabling tracing with an error if rejected), never takes the app down on failure, and runs lazily when agents are first built (before build_agent) rather than at process boot; traces are flushed after each agent run because serverless functions freeze after responding, with a best-effort client shutdown at lifespan teardown.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/lifespan.py#L57-L93",
-          "version": "repo-lines-v1:sha256:45dc00cd777a2463d7c68ffc7fa522fd0889f2a23efe8fdff7a0d1bf51d696d4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyYWIzNzFmZjEzNTNiNjA3MjNhN2UzYjgyN2M5NGM2MzEzOGMxODQ5YThlNmUzNGI2NWY1YTg1OWE4NDhmYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxYzYyM2NmMzYyNzhjYmFkZmY3NjYyYTZmZDkwZjM2YzY5N2FmMTEzOTkzYzBmMjhjNjgyYzc5NzA0OWI2ZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczM2U4NDg3Yzg1ZGZkY2Y5ZmE3YjkzYzc0NmM5NDYyNWFlNDdlMTIwYzc5N2U3OTFlNzM3ZjllZDdmZmM3M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxNjQ4NmI3ZjRmYTY5ZDZiZmNjN2U4Mjg4NGE2YmM1MGVmNTA5Nzg3ZGUzNjU2ZjM4ODljMmI5OWZhYTI4Y2UifQ"
+          "resource": "repo://backend/app/core/lifespan.py#L129-L141",
+          "version": "repo-lines-v1:sha256:e7e8a3897edbaf271a324452b138d3e5278689ede8b81d8d4029b57926432549:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwY2ViMDM3M2M0MTE2NTJiZmY1ZTFkOGZlMmNlODc0ZDkzODBiOTE1OGY4ZDM3MDZiNWQxMjhiZTc1OTkwMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhM2NiZmY2ZTViYWUwYjc5MmU1ZTJkMGI1NDkxZTIzNmVlOTQ2NjQ2MjQyOGJjNzZjZDhiZDIwMzEzMTNkNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1ZmU1MTU2MjUxNGNhMWRmMDM4ZWI1NzViM2QxZGQ3MGI1MjE0ZDBjZTk0OGE4MDhkMGEzMzAyMDVhYWQ5MTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/lifespan.py#L213-L217",
+          "version": "repo-lines-v1:sha256:3975951b266b23c27fd5e462145e8eb0cf83dd8dd6a60548b238352413522c5e:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2MyNmRlMGQyZTkwZjdmOThhZTEzZTVlZmJhY2E2ZGVhNzhmMTAyNGQ3MDY2ZTBiYTc2OGM1ZDJlMDEyNGY3MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDE5MjY3MTY4OWFiZmRmODFkZDAxMDlkNTliNDVmNjdkYjRmZWVlMTZlMWU2OGIzNDk4YjIwNzgzOGFiNzBjMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTQ1N2Q3NjUxZmI2MzJiMDA5Njk3MmFkMjIyNTg4ZjExNDliMGYwYjZmMjg3MjlhMGE4NmIzOWFlOGY3ZTI1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWE3ZjE0YjEzZjBkZGY5YmYwNzE5ZDJlMzEzOTAyNGJkZjQ1Nzg1YjZkMzYzNzhkMTU5YjM1MGVjZDg2MjdkNiJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/lifespan.py#L46-L126",
+          "version": "repo-lines-v1:sha256:cda2b3bd1a417e28531951f85fb47c3e839a011ab6481f251202701fd8e16f4b:eyJzZWxlY3RlZExpbmVDb3VudCI6ODEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxZGE5NzA0ZGE2Nzk3NTE2NTZjMzRkMjFkMTI0YjUxNWZjZmExOWY1Zjc5M2JjZDk2NWU4MGQ0OGY0ZTc5MGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5ZjkzMDgzYzE5NzEyMWI5ODI3MDBiYThhZmFiZDE3MjJjZjFkM2U3NDA0NTA5ZTgwZWZhMjcyNDdmNjJmMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgzMGM3NDU3YzM4YjI1ZGNmMGE2MDc4ZTViMDQ5MTM4YzcxNzdjOGY5ZTg1MWFmMTllNjM1MWYzM2Y5M2JjZWUifQ"
         },
         {
           "resource": "repo://backend/app/integrations/tracing.py#L353-L377",
@@ -251,7 +263,7 @@
           "version": "repo-lines-v1:sha256:d5fc7bc7332dc9bd916c67e1a39e404aa298a4e1859e7e9145595f3bf49dec94:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTkzZDBiZGIzNzgwMDdhMGI5YzNiNjIyNmNhN2Y3MTRjN2JmZGQwMjNiYjA4NDBiMzExOGMyNDA3NjViZDFjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWEwNTM1ZjM1NTljMWYyNDM1NmI0NjJiYWE4MzQ1MDU4MDUzNzc5ZDVlYzc3NWE2ODRiNzMxYmE1NzNhZTNlMCJ9"
         },
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L159-L159",
+          "resource": "repo://docs/ARCHITECTURE.md#L161-L161",
           "version": "repo-lines-v1:sha256:6356231698b572f2414f1c82a59bfd294960fe92484353b6cbd852129f5703e0:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM1NjIzMTY5OGI1NzJmMjQxNGYxYzgyYTU5YmZkMjk0OTYwZmU5MjQ4NDM1M2I2Y2JkODUyMTI5ZjU3MDNlMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM1NjIzMTY5OGI1NzJmMjQxNGYxYzgyYTU5YmZkMjk0OTYwZmU5MjQ4NDM1M2I2Y2JkODUyMTI5ZjU3MDNlMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTBmYjQ2NjJjY2Q5MTVkMjQyODQ3MjI5NmJkZGM1YTdiN2Q2ZmE4ZWFlODQxMmFmZGRiNTE0MmMxNDJhMTI1OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODA4MGFiYjZiZTRlZDllYjYxMjhiZDlmZjRhYWU4YjQ4Nzk1ODRlMDAzYTBhNjRkOTM0Yzg2ZGQyYmZmYTA4YSJ9"
         },
         {
@@ -263,6 +275,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:59:48.420Z"
+    "at": "2026-10-15T18:08:53.060Z"
   }
 }
