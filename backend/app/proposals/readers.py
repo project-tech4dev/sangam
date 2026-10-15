@@ -124,12 +124,16 @@ def _last_text(result: dict[str, Any]) -> str:
     return message.text.strip() if message is not None else ""
 
 
-async def _titles(ids: list[int]) -> dict[str, str]:
+async def _titles(org_id: int, ids: list[int]) -> tuple[dict[str, str], set[str]]:
+    """The org's own files' titles, and which are only a saved link; another org's file stays unnamed."""
     if not ids:
-        return {}
+        return {}, set()
     async with get_pool().connection() as conn:
-        rows = await (await conn.execute("SELECT id, title FROM documents WHERE id = ANY(%s)", (ids,))).fetchall()
-    return {str(r["id"]): r["title"] or "Untitled file" for r in rows}
+        rows = await (await conn.execute(
+            "SELECT id, title, COALESCE(storage_path, '') = '' AS link FROM documents"
+            " WHERE id = ANY(%s) AND org_id = %s", (ids, org_id)
+        )).fetchall()
+    return {str(r["id"]): r["title"] or "Untitled file" for r in rows}, {str(r["id"]) for r in rows if r["link"]}
 
 
 async def _mark(proposal_id: int, changes: dict[str, dict[str, Any]], by: dict[str, Any], reason: str) -> None:
@@ -144,7 +148,8 @@ async def read(p: context.Current) -> str:
     """Run every pending reader at once and record each one's outcome; returns what happened, file by file."""
     pool = get_pool()
     by = await repo.user_name(pool, p.scope.user_id)
-    titles = {**await _titles(p.work.get("sources") or []), FUNDER: f"what {p.funder_name} looks for"}
+    files, links = await _titles(p.org_id, p.work.get("sources") or [])
+    titles = {**files, FUNDER: f"what {p.funder_name} looks for"}
     keys: list[str] = []
     try:
         await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by))
@@ -154,7 +159,7 @@ async def read(p: context.Current) -> str:
         return "Every ticked file has been read. Tick another file in step 2 to read more."
 
     gate = asyncio.Semaphore(BUILT.parallel)
-    results = await asyncio.gather(*(_one(p, k, titles.get(k, "a file"), gate, by) for k in keys))
+    results = await asyncio.gather(*(_one(p, k, titles.get(k, "a file"), gate, by, k in links) for k in keys))
     return "\n".join(results)
 
 
@@ -169,8 +174,14 @@ def _claim(work: dict, title: str, keys: list[str], titles: dict[str, str], by: 
     return work_rules.apply(work, running, by=by, via="agent", reason="reading the files", title=title)
 
 
-async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore, by: dict[str, Any]) -> str:
+async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore, by: dict[str, Any],
+               link: bool = False) -> str:
     """One reader, with its own sources: the contextvar is set inside the task, so no two readers share one."""
+    if link:
+        error = "it is a link to a web page, not a stored file; upload the file to read it"
+        failed = {"status": "failed", "at": datetime.now(UTC).isoformat(), "by": by, "title": title, "error": error}
+        await _mark(p.id, {key: failed}, by, "could not read it")
+        return f"{title}: could not read it ({error})."
     graph = BUILT.funder if key == FUNDER else BUILT.evidence
     async with gate:
         token = run_sources.CURRENT.set(sources_for(p, key))

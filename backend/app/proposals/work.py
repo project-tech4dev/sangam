@@ -14,13 +14,14 @@ from typing import Any
 
 from app.proposals import facts as fact_rules
 from app.proposals import questions as question_rules
-from app.proposals import readiness, reliability, review, rubric
+from app.proposals import readiness, reliability, review, rubric, trace
 
 STAGES = (1, 2, 3, 4)  # 4 is "Before you send it"
 FACT_STATUS = ("proposed", "confirmed", "corrected", "rejected")
 LOG_TEXT = 200  # a logged value longer than this is cut; the section itself keeps it all
+TEXT_LIMIT = 12000
 
-_SECTION = re.compile(r"^sections\.([A-Z]\d{1,2})\.(text|done|score|needs_rewrite)$")
+_SECTION = re.compile(r"^sections\.([A-Z]\d{1,2})\.(text|done|score|needs_rewrite|missing|untraced)$")
 _FACT = re.compile(r"^facts\.(k\d+)\.(status|correct|used_in)$")
 _NEW_FACT = re.compile(r"^facts\.(k\d+)$")
 _QUESTION = re.compile(r"^questions\.(q\d+)(\.status)?$")
@@ -85,8 +86,10 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
             raise BadChange("a section is scored by Sangam Pitch, 0 to 2")
         if m.group(2) == "needs_rewrite" and (via != "agent" or not isinstance(value, bool)):
             raise BadChange("a part is marked for rewriting when a fact it cites changes")
-        if m.group(2) == "text" and not isinstance(value, str):
-            raise BadChange("text is a string")
+        if m.group(2) == "text" and not (isinstance(value, str) and len(value) <= TEXT_LIMIT):
+            raise BadChange(f"text is up to {TEXT_LIMIT:,} characters")
+        if m.group(2) in ("missing", "untraced"):
+            raise BadChange("what a part misses and what it cannot trace are worked out by code")
     elif m := _FACT.match(path):
         fact = (work.get("facts") or {}).get(m.group(1))
         if fact is None:
@@ -177,6 +180,36 @@ def _expand(work: dict[str, Any], changes: dict[str, Any], by: dict[str, Any]) -
     return out
 
 
+def used_in(work: dict[str, Any], code: str, ids: list[str]) -> dict[str, Any]:
+    """Each fact's used_in, with this section added where it is cited and dropped where it no longer is."""
+    out = {}
+    for k, f in (work.get("facts") or {}).items():
+        was = list(f.get("used_in") or [])
+        now = sorted({*(c for c in was if c != code), *([code] if k in ids else [])})
+        if now != sorted(was):
+            out[f"facts.{k}.used_in"] = now
+    return out
+
+
+def _after_typing(work: dict[str, Any], changes: dict[str, Any]) -> dict[str, Any]:
+    """What a person's own edit to a part carries: where facts are used, Done and a rewrite flag cleared,
+    and the grade dropped, since it graded other text."""
+    out: dict[str, Any] = {}
+    for path, text in changes.items():
+        if not ((m := _SECTION.match(path)) and m.group(2) == "text"):
+            continue
+        code, part = m.group(1), (work.get("sections") or {}).get(m.group(1)) or {}
+        out.update(used_in(work, code, trace.cited(text)))
+        if part.get("done") and f"sections.{code}.done" not in changes:
+            out[f"sections.{code}.done"] = False
+        if text != part.get("text"):
+            if part.get("needs_rewrite"):
+                out[f"sections.{code}.needs_rewrite"] = False
+            if part.get("score") is not None or part.get("missing") is not None:
+                out.update({f"sections.{code}.score": None, f"sections.{code}.missing": None})
+    return out
+
+
 def last_change(work: dict[str, Any], code: str) -> dict[str, Any] | None:
     """Who last changed a section, for "Ravi changed this a minute ago"."""
     prefix = f"sections.{code}."
@@ -187,8 +220,11 @@ def last_change(work: dict[str, Any], code: str) -> dict[str, Any] | None:
 def apply(work: dict[str, Any], changes: dict[str, Any], rev: dict[str, int] | None = None, *,
           by: dict[str, Any], via: str = "rest", run_id: str | None = None, reason: str | None = None,
           facts: list[str] | None = None, title: str | None = None, advance: bool = False,
-          now: datetime | None = None, districts: set[str] = frozenset()) -> Applied:
-    """Check every change first, then make them all and log each; nothing is half-applied."""
+          now: datetime | None = None, districts: set[str] = frozenset(), names: set[str] = frozenset(),
+          graded: dict[str, list[str] | None] | None = None) -> Applied:
+    """Check every change first, then make them all and log each; nothing is half-applied.
+
+    `graded` is the grader's missing elements per section, trusted because code ran it, not the person."""
     if not changes:
         raise BadChange("nothing to change")
     rev = rev or {}
@@ -203,6 +239,11 @@ def apply(work: dict[str, Any], changes: dict[str, Any], rev: dict[str, int] | N
             raise BadChange(f"a change to section {code} carries its rev")
         if rev[code] != current.get("rev", 0):
             raise StaleSection(code, current, last_change(work, code))
+    if via == "rest":
+        changes = {**changes, **_after_typing(work, changes)}
+    for code, missing in (graded or {}).items():
+        changes = {**changes, f"sections.{code}.score": None if missing is None else rubric.score(missing),
+                   f"sections.{code}.missing": missing}
     # What a correction carries into the text is code's, not the person's: no rev of theirs to check.
     changes = {**changes, **review.follow(work, changes, districts)}
     touched = sorted({m.group(1) for p in changes if (m := _SECTION.match(p))})
@@ -221,5 +262,10 @@ def apply(work: dict[str, Any], changes: dict[str, Any], rev: dict[str, int] | N
                     "from": _short(before), "to": _short(new_title if path == "title" else value),
                     "facts": facts or [], "reason": reason})
     for code in touched:
-        out["sections"][code]["rev"] = out["sections"][code].get("rev", 0) + 1
+        part = out["sections"][code]
+        part["rev"] = part.get("rev", 0) + 1
+        if f"sections.{code}.text" in changes:  # derived, like rev, so not logged
+            untraced = trace.unsourced(part["text"], out.get("facts") or {}, districts=districts, names=names)
+            if untraced != (part.get("untraced") or []):
+                part["untraced"] = untraced
     return Applied(out, readiness.summary(out), new_title)

@@ -51,6 +51,9 @@ def summary(work: dict[str, Any]) -> dict[str, Any]:
         gaps += len(_GAP.findall(part.get("text") or ""))
         if part.get("needs_rewrite"):
             fix_first.append(f"{s.label}: a fact it uses changed, so it needs rewriting")
+        if untraced := part.get("untraced"):
+            more = f" and {len(untraced) - 1} more have" if len(untraced) > 1 else " has"
+            fix_first.append(f"{s.label}: “{untraced[0]}”{more} no source")
         if score is None:
             continue
         if s.code in rubric.MUST_SCORE_2 and score < 2:

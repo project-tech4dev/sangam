@@ -52,6 +52,13 @@ def next_id(work: dict[str, Any]) -> str:
     return f"k{max(taken, default=0) + 1}"
 
 
+def partner_names(work: dict[str, Any], *own: str) -> set[str]:
+    """Partner and people names in the fact list; the proposal's own org and funder are free to name."""
+    mine = {norm(o) for o in own}
+    return {norm(f.get("value")) for f in (work.get("facts") or {}).values()
+            if f.get("kind") == "name" and is_live(f) and norm(f.get("value")) not in mine}
+
+
 def section_of(work: dict[str, Any], code: str | None) -> rubric.Section | None:
     return next((s for s in rubric.sections_for(bool(work.get("earlier_phase")), work.get("template"))
                  if s.code == code), None)

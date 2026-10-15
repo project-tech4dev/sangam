@@ -1,5 +1,6 @@
 """Suggested wording's code-only safeguards: an exact passage, traced claims, and nothing saved unless used."""
 
+import sys
 from types import SimpleNamespace
 from uuid import UUID
 
@@ -119,3 +120,46 @@ class TestTheCard:
 def test_only_code_may_save_through_it():
     with pytest.raises(work_rules.BadChange):
         work_rules.apply({}, {"sections.A2.score": 2}, {"A2": 0}, by={"id": None, "name": "Asha"})
+
+
+class TestWhatAUseMayNotDo:
+    async def test_an_empty_suggestion_is_refused(self, run):
+        out, shown, saved = await run("It has done good work.", "  ", {"kind": "pick", "choice": "use"})
+        assert out.startswith("REFUSED") and shown == [] and saved is None
+
+    async def test_a_new_paragraph_does_not_make_an_old_problem_new(self, run, monkeypatch):
+        monkeypatch.setattr(sys.modules[__name__], "TEXT", TEXT + " It reached 120 villages.")
+        out, shown, _ = await run("It has done good work.", "It has done good work.\n\nIt runs gardens.",
+                                  {"kind": "pick", "choice": "keep"})
+        assert shown and out.startswith("KEPT")
+
+    async def test_a_used_suggestion_keeps_needs_rewrite_while_an_old_problem_stays(self, run, monkeypatch):
+        text = TEXT + " It reached 120 villages."
+        monkeypatch.setattr(sys.modules[__name__], "TEXT", text)
+        base = current().work | {"sections": {"A2": {"text": text, "rev": 2, "needs_rewrite": True}}}
+        out, _, saved = await run("It has done good work.", "It runs gardens.", {"kind": "pick", "choice": "use"},
+                                  base=base)
+        assert out.startswith("SAVED") and saved["sections"]["A2"]["needs_rewrite"] is True
+
+
+async def test_only_the_orgs_own_files_can_be_ticked(monkeypatch):
+    from fastapi import HTTPException
+
+    from app.api.routes import proposals as route
+    from app.repositories import documents as documents_repo
+
+    async def editable(pool, proposal_id):
+        return {"org": {"id": ORG, "name": "AJAGAR"}, "funder": {"name": "APF"}, "work": {}}
+
+    async def me(pool):
+        return {"id": None, "name": "Asha"}
+
+    async def own(pool, org_id, ids):
+        return {1} if org_id == ORG else set()
+
+    monkeypatch.setattr(route, "_editable", editable)
+    monkeypatch.setattr(repo, "me", me)
+    monkeypatch.setattr(documents_repo, "org_document_ids", own)
+    with pytest.raises(HTTPException) as refused:
+        await route._save(None, 1, changes={"sources": [1, 4412]})
+    assert refused.value.status_code == 422

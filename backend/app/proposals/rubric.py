@@ -10,15 +10,14 @@ from typing import Any, Literal
 
 RUBRIC_VERSION = "proposal-v2"
 
-Tab = Literal["idea", "project", "people", "ask_risk", "why_you"]
+Tab = Literal["case", "people", "money", "funder"]
 
-# Step 3's five tabs, in screen order.
-TABS: list[tuple[Tab, str, str]] = [
-    ("idea", "The Idea", "What is this all about?"),
-    ("project", "Your Project", "How will we do it?"),
-    ("people", "The People", "Who will do it?"),
-    ("ask_risk", "The Ask and Risk", "How much, and what could stop it?"),
-    ("why_you", "Why me and you", "Why this funder, and why us?"),
+# Step 3's four tabs, in screen order, as the prototype names them.
+TABS: list[tuple[Tab, str]] = [
+    ("case", "The case and the plan"),
+    ("people", "People"),
+    ("money", "Durability and money"),
+    ("funder", "This funder"),
 ]
 
 MUST_SCORE_2 = ("A6", "A15", "F1")
@@ -34,34 +33,35 @@ class Section:
     weak: str
 
     def out(self) -> dict[str, Any]:
-        return {**asdict(self), "strong": list(self.strong)}
+        return {**asdict(self), "strong": list(self.strong), "must_score_2": self.code in MUST_SCORE_2,
+                "last": self.code == "A1"}
 
 
 def _s(code: str, label: str, question: str, tab: Tab, strong: list[str], weak: str) -> Section:
     return Section(code, label, question, tab, tuple(strong), weak)
 
 
-# In each tab's screen order; A1 is listed first in The Idea but written last (DEPENDS_ON).
+# In screen order; A1 is listed first but written last (DEPENDS_ON).
 CORE: list[Section] = [
-    _s("A2", "Context and target area", "Do I know exactly where this happens and who lives there?", "idea",
-       ["State, district, block and villages", "Population and livelihoods", "Existing community institutions",
-        "A source for each fact"], "General description of the state or region"),
-    _s("A3", "Problem and baseline", "Is the problem real, local and measured?", "idea",
-       ["The specific problem at the site", "Current figures with source and year", "The causes the project will act on"],
-       "Broad claims about poverty or climate with no local data"),
-    _s("A4", "Objectives and results", "What will be different at the end, and by how much?", "idea",
-       ["Objectives stated as changes", "Results as numbers with units", "Each result linked to an objective"],
-       "Objectives written as activities; results with no numbers"),
-    _s("A1", "Summary", "Can I repeat this project in two sentences?", "idea",
+    _s("A1", "Summary", "Can I repeat this project in two sentences?", "case",
        ["The problem", "The site and community", "The objective", "Two or three results with numbers",
         "The amount and the duration"], "Mission statement or activity list with no numbers or place"),
-    _s("A5", "Workplan by quarter", "Can this team deliver this sequence in this time?", "project",
+    _s("A2", "Context and target area", "Do I know exactly where this happens and who lives there?", "case",
+       ["State, district, block and villages", "Population and livelihoods", "Existing community institutions",
+        "A source for each fact"], "General description of the state or region"),
+    _s("A3", "Problem and baseline", "Is the problem real, local and measured?", "case",
+       ["The specific problem at the site", "Current figures with source and year", "The causes the project will act on"],
+       "Broad claims about poverty or climate with no local data"),
+    _s("A4", "Objectives and results", "What will be different at the end, and by how much?", "case",
+       ["Objectives stated as changes", "Results as numbers with units", "Each result linked to an objective"],
+       "Objectives written as activities; results with no numbers"),
+    _s("A5", "Activities and workplan", "Can this team deliver this sequence in this time?", "case",
        ["Activities grouped under results", "An owner, target and timing for each", "Reviews and reports scheduled"],
        "Activities listed with no timing, owner or target"),
-    _s("A6", "Measuring results", "How will we know it worked?", "project",
+    _s("A6", "Indicators and M&E", "How will we know it worked?", "case",
        ["Indicators for each result", "Baseline, target, source and frequency", "A named owner",
         "Mid-term and final reviews"], "Indicators that only count activities"),
-    _s("A7", "Learning", "What will others learn from this?", "project",
+    _s("A7", "Learning and knowledge sharing", "What will others learn from this?", "case",
        ["Named knowledge products", "Who each is for", "How each will be shared"], "One line promising a report"),
     _s("A8", "Community participation", "Did the community shape this, and will they steer it?", "people",
        ["Consultations held, with dates and numbers", "Community roles in delivery and monitoring",
@@ -69,7 +69,7 @@ CORE: list[Section] = [
     _s("A9", "Inclusion", "Who could be left out, and what stops that?", "people",
        ["Targets for women, youth, persons with disabilities as relevant", "Their roles in decisions",
         "Budget lines that pay for it"], "Women counted only as attendees; nothing in the budget"),
-    _s("A10", "Team", "Who exactly does the work?", "people",
+    _s("A10", "Team and organisational capacity", "Who exactly does the work?", "people",
        ["Named staff with role, qualifications and years", "Structure, governance and finance systems"],
        "Team described as experienced professionals with no names"),
     _s("A11", "Track record", "Has this organisation done this before, and what changed?", "people",
@@ -77,25 +77,25 @@ CORE: list[Section] = [
        "Project names or partner logos with no results"),
     _s("A12", "Partnerships", "Who else is involved, and doing what?", "people",
        ["Each partner named with its role", "A letter or MoU for each"], "A list of names with no roles"),
-    _s("A15", "Budget", "Does every rupee trace to an activity?", "ask_risk",
-       ["Every line tied to an activity", "Unit costs shown", "Totals consistent across sections",
-        "Within the funder's ceiling"], "Lump sums; totals that differ"),
-    _s("A16", "Other funding", "Who else is paying, and is it real?", "ask_risk",
-       ["Each source with its amount", "Cash or in-kind, committed or projected", "Proof attached"],
-       "Other funding claimed with no source or status"),
-    _s("A13", "Risks", "What could stop this working?", "ask_risk",
+    _s("A13", "Risks and mitigation", "What could stop this working?", "money",
        ["Internal and external risks specific to this project", "A concrete mitigation for each"],
        "Generic risks answered with 'we will monitor'"),
-    _s("A14", "After the grant", "What happens the day the grant ends?", "ask_risk",
+    _s("A14", "Sustainability and exit", "What happens the day the grant ends?", "money",
        ["Who runs the work after", "How it is paid for", "Handover steps before, during and at the end"],
        "A statement that community institutions will sustain it"),
+    _s("A15", "Budget", "Does every rupee trace to an activity?", "money",
+       ["Every line tied to an activity", "Unit costs shown", "Totals consistent across sections",
+        "Within the funder's ceiling"], "Lump sums; totals that differ"),
+    _s("A16", "Other funding", "Who else is paying, and is it real?", "money",
+       ["Each source with its amount", "Cash or in-kind, committed or projected", "Proof attached"],
+       "Other funding claimed with no source or status"),
 ]
 
-F1 = _s("F1", "Fit with the funder's goals", "Does this serve what this funder is trying to do?", "why_you",
+F1 = _s("F1", "Fit with funder priorities", "Does this serve what this funder is trying to do?", "funder",
         ["Names the funder's programme or theme", "Explains the link", "Names related schemes it builds on"],
         "Claims to fit every priority")
 # Only when the org has an earlier partner line with this funder.
-F4 = _s("F4", "Earlier phase results", "What did the last phase achieve, and what was learned?", "why_you",
+F4 = _s("F4", "Earlier phase results", "What did the last phase achieve, and what was learned?", "funder",
         ["Outputs, outcomes and impact of the earlier phase", "Its financial assessment", "Lessons applied now"],
         "Claims of success with no assessment")
 
@@ -111,12 +111,11 @@ def default_style(org: str) -> str:
 
 
 def sections_for(earlier_phase: bool, template: dict[str, Any] | None = None) -> list[Section]:
-    """Every section of this proposal: the rubric's, F4 when there was an earlier phase, and the form's own questions."""
+    """Every section: the rubric's, F4 after an earlier phase, then the form's own questions under This funder."""
     out = [*CORE, F1, *([F4] if earlier_phase else [])]
     questions = (template or {}).get("questions") or {}
-    extra = [_s(code, q.get("label") or code, q.get("ask") or "", "project", [], "") for code, q in questions.items()]
-    at = max(i for i, s in enumerate(out) if s.tab == "project") + 1
-    return [*out[:at], *extra, *out[at:]]
+    return [*out, *(_s(code, q.get("label") or code, q.get("ask") or "", "funder", [], "")
+                    for code, q in questions.items())]
 
 
 def depends_on(code: str, codes: list[str]) -> tuple[str, ...]:
@@ -128,3 +127,8 @@ def depends_on(code: str, codes: list[str]) -> tuple[str, ...]:
 
 def is_core(code: str) -> bool:
     return code.startswith("A")
+
+
+def score(missing: list[str]) -> int:
+    """None missing scores 2, one missing 1, more 0."""
+    return 2 if not missing else 1 if len(missing) == 1 else 0

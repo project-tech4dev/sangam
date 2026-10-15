@@ -16,6 +16,7 @@ class DocumentOut(ReadModel):
     source_url: str | None = None
     fetched_at: datetime | None = None
     is_public: bool | None = None
+    has_file: bool = False  # False for a saved link: nothing stored to read
 
 
 # --- the Doc Vault ---------------------------------------------------------

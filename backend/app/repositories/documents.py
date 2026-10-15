@@ -10,6 +10,7 @@ async def list_documents(pool: AsyncConnectionPool, *, limit: int, offset: int,
     sql = """
     SELECT d.id, d.org_id, d.funder_id, d.title, d.doc_type,
            d.source_name, d.source_url, d.fetched_at, d.is_public,
+           COALESCE(d.storage_path, '') <> '' AS has_file,
            COUNT(*) OVER () AS total
     FROM documents d
     LEFT JOIN orgs o ON o.id = d.org_id
@@ -148,3 +149,13 @@ async def list_source_datasets(pool: AsyncConnectionPool, ids: list[int] | None 
     """
     async with pool.connection() as conn:
         return await (await conn.execute(sql, {"ids": ids})).fetchall()
+
+
+async def org_document_ids(pool: AsyncConnectionPool, org_id: int, ids: list[int]) -> set[int]:
+    """Which of `ids` are this org's own documents."""
+    if not ids:
+        return set()
+    async with pool.connection() as conn:
+        rows = await (await conn.execute(
+            "SELECT id FROM documents WHERE id = ANY(%s) AND org_id = %s", (ids, org_id))).fetchall()
+    return {r["id"] for r in rows}
