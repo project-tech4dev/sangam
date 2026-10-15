@@ -92,7 +92,7 @@ reviewed for NGO staff who are not technical. Every path below was checked again
 
 **A third deep agent, `/proposal`.** It is built like `ingest/agent.py`: `create_deep_agent`, `install_harness()`, `filesystem(...)` on the supervisor and every subagent, and `fallback` tiers.
 
-**Three steps, owned by code.** The current step is in `work.stage`. `app/proposals/steps.py::exit_check(stage, work) -> list[str]` returns what is missing. Both the agent's `advance_step` and REST `POST /api/proposals/{id}/advance` call it. A `StageGate` middleware refuses tools that do not belong to the current step. A "How this works" screen comes first, once.
+**Three steps, owned by code.** The current step is in `work.stage`. `app/proposals/steps.py::exit_check(stage, work) -> list[str]` returns what is missing. Both the agent's `advance_step` and REST `POST /api/proposals/{id}/advance` call it. Each writing tool refuses itself before its step (`steps.too_early`), and `write_section` also before the parts it depends on (`steps.may_write`). A "How this works" screen comes first, once.
 
 | Step (on screen) | What happens | Exit check (code) |
 |---|---|---|
@@ -485,11 +485,11 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
 `ask_user` closes the gaps one at a time.
 
 **Files**
-- New: `backend/app/proposals/{trace,grade}.py`, `prompts/section_grade.md`. `write_section` is added to `ledger_tools.py`.
+- New: `backend/app/proposals/{trace,grade}.py`, `prompts/section_grade.md`, `tools/writing_tools.py` (`write_section`).
 - New frontend: `WriteCard.tsx`.
 
 **Changes**
-- **`write_section(code, text, cites, rev)`**
+- **`write_section(code, text, rev)`**: citations are read from the ⟦k⟧ marks in the text, because only they say which paragraph a fact supports.
   - **Trace check** (`trace.py`, shared with polish):
     - numbers, %, lakh and crore normalised through `Money`/`to_inr`;
     - places matched against `geography.py` and `locations`;
@@ -497,10 +497,14 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
     - Each must appear in the value or evidence of a fact cited in the same paragraph.
     - *Example:* "60 villages in Baksa" with only ⟦k4⟧ = "96 villages" is refused.
   - **Grade:** one `UTILITY_MODEL` call returns `{covered, missing}`. None missing scores 2, one missing scores 1, more scores 0 (decision 5).
-  - On save: `rev+1`, `used_in` is set on the cited facts, and `[Add: …]` remains where nothing supports the text.
-- **Order:** `StageGate` allows `write_section` only for the next section in `DEPENDS_ON` order, or one the person picked.
+  - Years, FY ranges and Schedule VII clauses need no fact; a three-letter district (Mon, Una) is not checked, since it reads as a word.
+  - On save, in one change carrying the rev: the text, `sections.X.score` and each cited fact's `used_in`. A teammate's edit since the read refuses it ("Ravi changed it since you read it").
+  - A grader failure saves the text unscored; it never blocks. A6, A15 and F1 below 2 get one rewrite, prompted by the tool's reply rather than a counter.
+- **Order:** `steps.may_write` allows `write_section` only once the sections it depends on have text, or for the part the person has open. "Write The Idea" therefore writes A2, A3 and A4 and leaves A1 until every other part is written.
+- **On screen:** a "Write" button per tab sends "Write The Idea."; each part shows its draft read-only, with numbered source marks and a source list in words, gaps in amber, and the score in words (Strong / Nearly there / Needs more).
+- **The trace gates the model, not the person.** A person's REST edit to `sections.X.text` is not traced; editing by hand on screen is in §11.
 
-- **A stopped turn:** each section saves on its own, so a timeout or failed run loses only the section in progress. The chat then shows one line, "Sangam stopped after The Idea. Continue?", and the next turn picks up from `work`.
+- **A stopped turn:** each section saves on its own, so a timeout or failed run loses only the section in progress; pressing Write again picks up from `work`. (The one-line "Sangam stopped after The Idea. Continue?" is in §11.)
 
 - **Tests:** `trace` matches numbers, lakh and crore, places and names, and ignores FY and Schedule VII patterns.
 
@@ -700,7 +704,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 - [x] M2: `/proposal`, own-chat access, agent skeleton, sources kept in `work`, side panel. Exit: admin and steward each have their own chat on one proposal.
 - [x] M3a: facts, reliability, `ask_user` with AskGate and reply sorting, questions shared across each person's chat. Exit: facts in words; one question at a time, by rule, never asked of two people.
 - [x] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
-- [ ] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
+- [x] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
 - [ ] M5: review, propagation, ready. Exit: Ready or the exact list.
 - [ ] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
 - [ ] Each PR: a passing browser run (above) before the next milestone starts, `make wiki-update`, a CHANGELOG line, ARCHITECTURE and CLAUDE.md where rules change, a design-system sync, that milestone's safeguard tests, `npm run build`, `ruff check .`, `pytest`, and `pytest -m integration`.
@@ -708,6 +712,9 @@ No tests for model output, and no evals. These existing tests must stay green:
 ## 11. Later (not in M1–M6)
 
 Cut from the first version on 15 Oct (decision 22); each can be added without reshaping M1–M6:
+- **Editing a part by hand on screen** (cut in M4): the draft is read-only, and changes are asked for in the chat, where the trace check applies. A hand edit would need the score cleared and the ⟦k⟧ marks kept without showing them.
+- **"Sangam stopped after The Idea. Continue?"** (cut in M4): a stopped turn loses only the part in progress, and Write picks up from what is saved.
+- **The grade's missing elements on screen** (cut in M4): the score is shown in words; what a strong answer still needs is said in the chat.
 - **A re-read replaces the file's proposed facts it no longer finds** (cut in M3b): today a re-read only adds, so a proposed fact the new read did not find stays until the person declines it.
 - **`read_template` saves the form's questions to `work.template.questions`** (M4): in M3b the funder reader puts them in its summary only; M4's writer is what needs them saved.
 - **Freshness and corroboration in fact colours:** windows by kind (registrations until expiry, financials the last FY, outcomes 24 months, staff 6 months), and a second source raising a fact one colour.

@@ -132,6 +132,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-15 · M2 · Proposal Copilot agent (`/proposal`): steps advance only through code, each editor has their own private chat in the side panel, teammates' changes reach it from the proposal's log.
 - 2026-10-15 · M3a · Sangam Pitch facts and asking: facts from the record checked against it and shown in words with Yes / No, change it / Don't use it; one question at a time, by rule, never asked of two people; "Later" frees it for anyone.
 - 2026-10-15 · M3b · Sangam Pitch reads the ticked files and what the funder looks for, one reader each, in parallel, from "Write the first draft"; every screen shows each file's progress, and "Try again" re-reads only a file that failed.
+- 2026-10-15 · M4 · Sangam Pitch writes each part from the facts: "Write" per tab, every number, amount, place and partner traced to a fact cited in the same paragraph or refused, a gap where no fact supports it, parts in dependency order with the Summary last, each scored 0–2.
 
 ## Media & Signals
 

@@ -23,7 +23,7 @@ function standing(f: Fact): string {
   }[f.origin];
 }
 
-function source(f: Fact): string | null {
+export function source(f: Fact): string | null {
   const kind = f.marker?.match(/^\[(\w+):/)?.[1];
   const name = f.source_name || (kind ? RECORD[kind] : null);
   return name ? `${name}${f.page ? `, page ${f.page}` : ""}` : null;

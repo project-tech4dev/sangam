@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.proposals import readiness
+from app.proposals import readiness, rubric
 
 # The screen's names for work.stage, as frontend/features/ask/views/proposals/steps.ts writes them.
 STAGES = {1: "Can you apply?", 2: "Your documents and style", 3: "Write the proposal", 4: "Before you send it"}
@@ -38,7 +38,7 @@ def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
 
 
 # The step each writing tool may first be used on; the tools check, not the prompt.
-FIRST_STAGE = {"add_facts": 2, "read_files": 2, "ask_user": 3}
+FIRST_STAGE = {"add_facts": 2, "read_files": 2, "ask_user": 3, "write_section": 3}
 READING_STALE = timedelta(minutes=30)  # a run lasts 1800 s at most, so a "running" older than that died
 
 
@@ -54,3 +54,16 @@ def readers_stale(reader: dict[str, Any], now: datetime | None = None) -> bool:
 def too_early(tool: str, stage: int) -> str | None:
     first = FIRST_STAGE.get(tool, 1)
     return None if stage >= first else f"{tool} is used from step {first}, {STAGES[first]}; this is step {stage}"
+
+
+def may_write(work: dict[str, Any], code: str, on_screen: str | None) -> str | None:
+    """Sections are written in DEPENDS_ON order, unless the person has this one open: then it is their pick."""
+    if code == on_screen:
+        return None
+    codes = [s.code for s in rubric.sections_for(bool(work.get("earlier_phase")), work.get("template"))]
+    saved = work.get("sections") or {}
+    waiting = [c for c in rubric.depends_on(code, codes) if not (saved.get(c) or {}).get("text", "").strip()]
+    if not waiting:
+        return None
+    labels = {s.code: s.label for s in rubric.sections_for(bool(work.get("earlier_phase")), work.get("template"))}
+    return f"write {', '.join(f'{labels[c]} [{c}]' for c in waiting)} first, or have the person open this part"

@@ -68,9 +68,11 @@ def stable(p: Current) -> str:
     """The part that changes only when the proposal does: cached. Names, steps and states only; no record text."""
     stage = int(p.work.get("stage") or 1)
     saved = p.work.get("sections") or {}
-    states = [f"{s.label} [{s.code}]: " + ("finished" if (saved.get(s.code) or {}).get("done")
-                                          else "draft" if (saved.get(s.code) or {}).get("text") else "empty")
-              for s in sections(p.work)]
+    def state(part: dict[str, Any]) -> str:
+        word = "finished" if part.get("done") else "draft" if part.get("text") else "empty"
+        return word + (f", score {part['score']} of 2" if part.get("score") is not None else "")
+
+    states = [f"{s.label} [{s.code}]: {state(saved.get(s.code) or {})}" for s in sections(p.work)]
     return "\n".join([
         "## This proposal",
         f"\"{p.title}\": {p.org_name} [org:{p.org_id}] asking {p.funder_name} [funder:{p.funder_id}].",
@@ -101,7 +103,7 @@ def _what(work: dict[str, Any], entry: dict[str, Any]) -> str:
     if head == "sections":
         code, _, field = rest.partition(".")
         label = next((s.label for s in sections(work) if s.code == code), code)
-        return f"{label} [{code}]" + (" (marked finished or not)" if field == "done" else "")
+        return f"{label} [{code}]" + {"done": " (marked finished or not)", "score": " (its score)"}.get(field, "")
     if head == "gates":
         return next((r["label"] for r in work.get("requirements") or [] if r["key"] == rest), "a requirement")
     if head in ("facts", "questions"):
@@ -110,7 +112,8 @@ def _what(work: dict[str, Any], entry: dict[str, Any]) -> str:
         subject = item.get("subject") or "a fact"
         if head == "questions":
             return f"the question about {subject}"
-        return {"status": f"{subject} (set to {entry.get('to')})"}.get(field, f"{subject} (added)")
+        return {"status": f"{subject} (set to {entry.get('to')})",
+                "used_in": f"where {subject} is cited"}.get(field, f"{subject} (added)")
     if head == "readers":
         title, _, status = str(entry.get("to") or "").rpartition(": ")
         return f"the reading of {title or 'a file'} ({status})"
