@@ -35,7 +35,6 @@ in the PR that ships a change, under its subsystem.
 - 2026-10-12 · #181, #188 · Two migrations share the number `0044`; both are kept because staging applied `0044_news` first and the runner keys on file name.
 - 2026-10-13 · #196 · `0046`: columns for Import's researched identity, place and partner-tier facts; `programs.kind` gains `'component'`.
 - 2026-10-13 · #197 · `0047`: `document_links` — which owner, programme and year each document backs, with the pages cited.
-- 2026-10-15 · #228 · `0048`: `funders.calls_url` and `calls_url_found_at`; `rfp_matches.status` gains `'saved'`.
 
 Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · `0021` #89 · `0022` #74 ·
 `0023`–`0029` #92/#97 · `0030` #98 · `0032` #105 · `0035` #127 · `0036`–`0037` #100 · `0038` #130 ·

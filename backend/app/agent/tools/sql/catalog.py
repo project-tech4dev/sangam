@@ -370,8 +370,6 @@ _TABLES: tuple[Table, ...] = (
             Column("founded_year", "integer", note="the year the funder says it was founded or incorporated"),
             Column("registered_address", "text", note="the registered office as printed"),
             Column("registered_location_id", "bigint", note="-> locations.id of the registered office, usually a district"),
-            Column("calls_url", "text", note="the one page where the funder lists open calls, as make calls-pull found it; NULL when none was found"),
-            Column("calls_url_found_at", "timestamp with time zone"),
         ),
     ),
     Table(
@@ -803,13 +801,13 @@ _TABLES: tuple[Table, ...] = (
             Column("org_id", "bigint", cites="org"),
             Column("match_score", "numeric"),
             Column("match_notes", "text"),
-            Column("status", "text", values=('flagged', 'saved', 'reviewed', 'dismissed')),
+            Column("status", "text", values=('flagged', 'reviewed', 'dismissed')),
             Column("matched_by", "text"),
             Column("matched_at", "timestamp with time zone"),
             Column("week_of", "date"),
         ),
         defects=(
-            "Rows are written only by RFP Watch matching. status is the org's own choice (saved, dismissed), never a judgement of fit; no row means the call was not matched, not that it does not fit.",
+            "Rows are written only by RFP Watch matching. status is the org's own choice (dismissed means 'not for us'), never a judgement of fit; no row means the call was not matched, not that it does not fit.",
         ),
     ),
     Table(
