@@ -20,8 +20,8 @@ STAGES = (1, 2, 3, 4)  # 4 is "Before you send it"
 FACT_STATUS = ("proposed", "confirmed", "corrected", "rejected")
 LOG_TEXT = 200  # a logged value longer than this is cut; the section itself keeps it all
 
-_SECTION = re.compile(r"^sections\.([A-Z]\d{1,2})\.(text|done)$")
-_FACT = re.compile(r"^facts\.(k\d+)\.(status|correct)$")
+_SECTION = re.compile(r"^sections\.([A-Z]\d{1,2})\.(text|done|score)$")
+_FACT = re.compile(r"^facts\.(k\d+)\.(status|correct|used_in)$")
 _NEW_FACT = re.compile(r"^facts\.(k\d+)$")
 _QUESTION = re.compile(r"^questions\.(q\d+)(\.status)?$")
 SET_BY_PERSON = ("proposed", "confirmed", "rejected")  # "corrected" comes only with the fact that replaces it
@@ -81,12 +81,16 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
             raise BadChange(f"no section {m.group(1)!r} in this proposal")
         if m.group(2) == "done" and not isinstance(value, bool):
             raise BadChange("done is true or false")
+        if m.group(2) == "score" and (via != "agent" or value not in (0, 1, 2, None)):
+            raise BadChange("a section is scored by Sangam Pitch, 0 to 2")
         if m.group(2) == "text" and not isinstance(value, str):
             raise BadChange("text is a string")
     elif m := _FACT.match(path):
         fact = (work.get("facts") or {}).get(m.group(1))
         if fact is None:
             raise BadChange(f"no fact {m.group(1)!r}")
+        if m.group(2) == "used_in" and (via != "agent" or not isinstance(value, list)):
+            raise BadChange("where a fact is used is set by Sangam Pitch")
         if m.group(2) == "status" and value not in SET_BY_PERSON:
             raise BadChange(f"a fact's status is set to one of {', '.join(SET_BY_PERSON)}")
         if m.group(2) == "correct":

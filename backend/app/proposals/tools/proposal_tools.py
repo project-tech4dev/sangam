@@ -9,6 +9,7 @@ from langchain_core.tools import tool
 
 from app.db.pool import get_pool
 from app.proposals import context, rubric, steps
+from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.repositories import proposals as repo
 
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 NO_PROPOSAL = "No proposal is open in this chat."
 READ_ONLY = "REFUSED: you can read this proposal; only its organisation's admins and stewards and the Sangam team change it."
-PARTS = ("requirements", "form", "documents", "style")
+PARTS = ("requirements", "form", "documents", "style", "facts")
 
 
 def require_edit(p: context.Current) -> str | None:
@@ -33,15 +34,27 @@ async def _documents(ids: list[int]) -> list[dict[str, Any]]:
         )).fetchall()
 
 
-def _section(s: rubric.Section, saved: dict[str, Any], whole: bool) -> list[str]:
+def _fact_lines(facts: dict[str, Any], code: str | None = None) -> list[str]:
+    """Each live fact with the id write_section cites it by, its standing and its source."""
+    lines = []
+    for k, f in facts.items():
+        if fact_rules.is_live(f) and (code is None or f.get("section") == code):
+            when = f" ({f['as_of']})" if f.get("as_of") else ""
+            where = f.get("source_name") or f.get("marker") or f.get("source_url") or f.get("origin")
+            lines.append(f"- {k} · {f.get('subject')}: {f.get('value')}{when} · {f.get('status')}, {f.get('origin')} · {where}")
+    return lines
+
+
+def _section(s: rubric.Section, saved: dict[str, Any], whole: bool, facts: dict[str, Any] | None = None) -> list[str]:
     text = (saved.get("text") or "").strip()
     state = "finished" if saved.get("done") else ("draft" if text else "empty")
-    lines = [f"### {s.label} [{s.code}] · {state}" + (f" · score {saved['score']} of 2" if "score" in saved else ""),
+    lines = [f"### {s.label} [{s.code}] · {state}" + (f" · score {saved['score']} of 2" if saved.get("score") is not None else ""),
              f"Asks: {s.question}"]
     if whole:
         lines += [f"A strong answer holds: {'; '.join(s.strong)}" if s.strong else "",
                   f"A weak answer: {s.weak}" if s.weak else "",
-                  f"Text (rev {saved.get('rev', 0)}):\n{text}" if text else "No text yet."]
+                  f"Text (rev {saved.get('rev', 0)}):\n{text}" if text else "No text yet (rev 0).",
+                  "Facts for this part:\n" + "\n".join(_fact_lines(facts or {}, s.code) or ["- none yet"])]
     else:
         lines.append(f"{len(text.split())} words" if text else "No text yet.")
     return [line for line in lines if line]
@@ -53,11 +66,11 @@ async def read_proposal(part: str = "") -> str:
 
     Leave `part` empty for the outline: the step, the requirements and answers, the form, the documents
     Sangam may read, the style, and each section's state. Pass a tab (idea, project, people, ask_risk,
-    why_you) for its sections in full, a section's code (for example A3) for that section, or one of
-    requirements, form, documents, style.
+    why_you) for its sections in full with their facts, a section's code (for example A3) for that section,
+    "facts" for every fact in use with the id write_section cites, or one of requirements, form, documents, style.
 
     Args:
-        part: empty, a tab key, a section code, or requirements / form / documents / style.
+        part: empty, a tab key, a section code, facts, or requirements / form / documents / style.
     """
     try:
         p = await context.current()
@@ -65,19 +78,22 @@ async def read_proposal(part: str = "") -> str:
             return NO_PROPOSAL
         work, part = p.work, part.strip()
         saved = work.get("sections") or {}
+        facts = work.get("facts") or {}
         all_sections = context.sections(work)
         tabs = {key: label for key, label, _ in rubric.TABS}
         stage = int(work.get("stage") or 1)
 
         if part in tabs:
             chosen = [s for s in all_sections if s.tab == part]
-            return "\n\n".join([f"## {tabs[part]}", *["\n".join(_section(s, saved.get(s.code) or {}, True))
+            return "\n\n".join([f"## {tabs[part]}", *["\n".join(_section(s, saved.get(s.code) or {}, True, facts))
                                                      for s in chosen]])
         if section := next((s for s in all_sections if s.code == part), None):
-            return "\n".join(_section(section, saved.get(section.code) or {}, True))
+            return "\n".join(_section(section, saved.get(section.code) or {}, True, facts))
         if part and part not in PARTS:
             return f"No part {part!r}. Use a tab ({', '.join(tabs)}), a section code, or one of {', '.join(PARTS)}."
 
+        if part == "facts":
+            return "\n".join(["Every fact in use, cited by its id:", *(_fact_lines(facts) or ["- none yet"])])
         out: list[str] = []
         if part in ("", "requirements"):
             out.append("\n".join(["What the funder requires:", *context.requirements(work)]))

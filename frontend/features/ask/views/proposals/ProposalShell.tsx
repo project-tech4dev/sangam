@@ -7,6 +7,7 @@ import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
 import { advance, changedByLine, getProposal, missingFrom, type Proposal, type Reader, rename, type Saved, saveWork } from "./api";
 import { FactList } from "./FactList";
+import { WriteCard } from "./WriteCard";
 import { HowItWorks } from "./HowItWorks";
 import { ANSWERS, STEPS } from "./steps";
 import { TellSangam } from "./TellSangam";
@@ -37,10 +38,10 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   }, [load]);
 
   // Files are read in someone's chat turn; every teammate's screen follows the progress from the proposal itself.
-  // The presser's own turn counts too: their readers are claimed mid-turn, before the proposal says so.
+  // The presser's own turn counts too: readers are claimed, and parts saved, mid-turn.
   const reading =
     Object.values(proposal?.work.readers ?? {}).some((r) => r.status === "running") ||
-    (proposal?.work.stage === 2 && proposal.can_edit && send === null);
+    ((proposal?.work.stage === 2 || proposal?.work.stage === 3) && proposal.can_edit && send === null);
   useEffect(() => {
     if (!reading) return;
     const timer = setInterval(() => void load(), POLL_MS);
@@ -149,7 +150,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
           <div onMouseUp={() => setSelection(window.getSelection()?.toString().trim() ?? "")}>
             {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
             {work.stage === 2 && <SourcesStep proposal={proposal} save={save} send={send} />}
-            {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} />}
+            {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} send={send} />}
             {work.stage === 4 && <FinishStep proposal={proposal} />}
           </div>
 
@@ -383,25 +384,38 @@ function SectionsStep({
   part,
   onPart,
   save,
+  send,
 }: {
   proposal: Proposal;
   part: string | null;
   onPart: (code: string | null) => void;
   save: Save;
+  send: Send;
 }) {
+  const saved = proposal.work.sections;
   return (
     <div className="pr-pane">
       <p className="muted">
-        Open a part to see the facts Sangam Pitch holds for it. It asks you about what is missing, one question at a time. Writing
-        is not switched on yet.
+        Press Write on a tab and Sangam Pitch drafts its parts from the facts, each figure with its source. Where no fact
+        supports a part, it leaves a gap and asks you, one question at a time.
       </p>
       {proposal.tabs.map((tab) => {
         const parts = proposal.sections.filter((s) => s.tab === tab.key);
         if (parts.length === 0) return null;
+        const written = parts.filter((s) => saved[s.code]?.text?.trim()).length;
         return (
           <div key={tab.key} className="card pr-group">
-            <div className="card-title">{tab.label}</div>
-            <p className="muted">{tab.question}</p>
+            <div className="pr-group-head">
+              <div>
+                <div className="card-title">{tab.label}</div>
+                <p className="muted">{tab.question}</p>
+              </div>
+              {proposal.can_edit && (
+                <button className="btn" type="button" disabled={!send} onClick={() => send?.(`Write ${tab.label}.`)}>
+                  {written === 0 ? "Write" : "Write again"}
+                </button>
+              )}
+            </div>
             {parts.map((s) => (
               <div key={s.code} className="pr-section" data-open={part === s.code}>
                 <button
@@ -411,8 +425,9 @@ function SectionsStep({
                   onClick={() => onPart(part === s.code ? null : s.code)}
                 >
                   <strong>{s.label}</strong>
-                  <span className="muted">{s.question}</span>
+                  <span className="muted">{saved[s.code]?.text?.trim() ? "Written" : s.question}</span>
                 </button>
+                {part === s.code && <WriteCard proposal={proposal} code={s.code} />}
                 {part === s.code && <FactList proposal={proposal} part={s.code} save={save} />}
               </div>
             ))}
