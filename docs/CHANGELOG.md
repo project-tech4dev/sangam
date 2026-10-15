@@ -35,7 +35,7 @@ in the PR that ships a change, under its subsystem.
 - 2026-10-12 · #181, #188 · Two migrations share the number `0044`; both are kept because staging applied `0044_news` first and the runner keys on file name.
 - 2026-10-13 · #196 · `0046`: columns for Import's researched identity, place and partner-tier facts; `programs.kind` gains `'component'`.
 - 2026-10-13 · #197 · `0047`: `document_links` — which owner, programme and year each document backs, with the pages cited.
-- 2026-10-15 · #PR · `0048`: `funders.calls_url` and `calls_url_found_at`; `rfp_matches.status` gains `'saved'`.
+- 2026-10-15 · #228 · `0048`: `funders.calls_url` and `calls_url_found_at`; `rfp_matches.status` gains `'saved'`.
 
 Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · `0021` #89 · `0022` #74 ·
 `0023`–`0029` #92/#97 · `0030` #98 · `0032` #105 · `0035` #127 · `0036`–`0037` #100 · `0038` #130 ·
@@ -187,7 +187,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 
 ## RFP Watch
 
-- 2026-10-15 · #PR · M1: `make calls-pull` reads each funder's calls page (pinned six first) and writes open calls; dead ends print as "Needs a look". UNDP's notices feed is registered permission-only (robots.txt disallows it).
+- 2026-10-15 · #228 · M1: `make calls-pull` reads each funder's calls page (pinned six first) and writes open calls; dead ends print as "Needs a look". UNDP's notices feed is registered permission-only (robots.txt disallows it).
 
 ## Not finished
 
@@ -195,7 +195,7 @@ Plans that shipped in part, and what is left. Check here before assuming a plan 
 
 | Plan | Shipped | Left |
 |---|---|---|
-| `2026-10-15-rfp-watch.md` | M1 (#PR) | M2 (match by domain, `GET /rfps/feed`), M3 (the screen). |
+| `2026-10-15-rfp-watch.md` | M1 (#228) | M2 (match by domain, `GET /rfps/feed`), M3 (the screen). |
 | `2026-10-11-drop-copilotkit.md` | M1 (#168), M2 (#169) | **#178 removed `emit_raw_events=False`, so raw events stream again** (`core/lifespan.py`). M3 (drop CopilotKit from the frontend) and M4 (from `pyproject.toml`) not started. |
 | `2026-10-13-import-researcher-contract.md` | M1–M4 (#194–#197) | M5: backfill KABIL and Axis on staging. |
 | `2026-10-13-programme-themes-required.md` | steps 1–4 (#192) | Step 5, `write_funder_tags_from_programs`: PR #172, unmerged. |
