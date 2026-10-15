@@ -1516,15 +1516,20 @@ body:has(.import-shell) > footer { display: none; }
 }
 
 /* A proposal: the step on the left, Sangam's side panel on the right; the panel drops below on a phone. */
-.pr-wrap { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.pr-wrap { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; padding-bottom: 64px; }
 .pr-main { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
-.pr-side { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.pr-chat-float { position: fixed; right: 24px; bottom: 24px; z-index: 30; display: flex; flex-direction: column; align-items: flex-end; }
+.pr-chat-panel { position: relative; width: min(400px, calc(100vw - 32px)); max-height: calc(100vh - 96px); overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.pr-chat-panel[hidden] { display: none; }
+.pr-chat-panel > .card { box-shadow: var(--shadow-md); }
+.pr-chat-close { position: absolute; top: 10px; right: 10px; z-index: 1; }
+.pr-chat-bubble { box-shadow: var(--shadow-md); }
+@media (max-width: 640px) { .pr-chat-float { right: 16px; bottom: 16px; } }
 .pr-side-card { display: flex; flex-direction: column; gap: 10px; }
 .pr-chat-note { margin: 0; font-size: var(--fs-sm); }
 .pr-chat-turns { gap: 16px; }
 .pr-chat-composer { display: flex; flex-direction: column; gap: 8px; }
 .pr-chat-input { min-height: 72px; resize: vertical; font-family: var(--font-body); }
-.pr-promises { margin: 0; padding-left: 18px; font-size: var(--fs-sm); display: flex; flex-direction: column; gap: 6px; }
 .pr-section-head { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; text-align: left; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .pr-section[data-open="true"] { gap: 10px; }
 .pr-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

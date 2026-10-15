@@ -35,7 +35,13 @@ export type Work = {
   questions?: Record<string, { section: string; subject: string; status: "open" | "parked" | "answered" | "closed"; asked_of: { id: string; name: string } | null }>;
   /** Keyed by document id, plus "funder" for what the funder looks for. */
   readers?: Record<string, Reader>;
+  /** The smoothed wording, kept only when code found every figure, place, name and gap unchanged. */
+  polished?: { parts: Record<string, string>; revs: Record<string, number>; at: string; by: { id: string; name: string } };
+  versions?: Version[];
 };
+
+/** A saved Word file in the org's Doc Vault. */
+export type Version = { n: number; title: string; document_id: number; at: string; by: { id: string; name: string } };
 
 export type Reader = { status: "running" | "done" | "failed"; at: string; by?: { id: string; name: string }; title: string; error?: string };
 
@@ -135,6 +141,26 @@ export async function advance(id: number) {
   const saved = await call<Saved>(`/api/proposals/${id}/advance`, "POST");
   void reloadProposals();
   return saved;
+}
+
+export async function polishProposal(id: number) {
+  return call<Saved>(`/api/proposals/${id}/polish`, "POST");
+}
+
+export async function saveVersion(id: number) {
+  const saved = await call<Saved>(`/api/proposals/${id}/versions`, "POST");
+  void reloadProposals();
+  return saved;
+}
+
+/** A short-lived link to a saved version's Word file. */
+export const versionLink = (documentId: number) => call<{ url: string }>(`/api/documents/${documentId}/file`).then((r) => r.url);
+
+/** What a refused polish changed, in words, or null for any other failure. */
+export function differencesFrom(error: unknown): string[] | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const detail = (error.body as { detail?: { differences?: string[] } } | null)?.detail;
+  return detail?.differences ?? null;
 }
 
 /** "Ravi changed this a minute ago. Showing his version." from a 409, or null for any other failure. */

@@ -1,6 +1,6 @@
 """The trace check: every number, place and name in a paragraph is in a fact that paragraph cites. Pure.
 
-Shared with polish (M6), so it only reads text and facts; the tool loads the district names it is given.
+Shared with polish, so it only reads text and facts; the caller loads the district names it is given.
 """
 
 from __future__ import annotations
@@ -105,3 +105,16 @@ def check(text: str, facts: dict[str, dict[str, Any]], *, districts: set[str] = 
             if f" {name} " in _words(GAP.sub(" ", para)) and f" {name} " not in haystack:
                 problems.append(f"paragraph {i}: {name.title()} is in no fact it cites")
     return problems
+
+
+def extract(text: str, *, districts: set[str] = frozenset(), names: set[str] = frozenset()) -> list[tuple[str, str]]:
+    """Every figure, place, name and gap the text states, years included, as (what it is, as written)."""
+    body = fact_rules.norm(GAP.sub(" ", CITE.sub(" ", text)))
+    # "₹2.4 crore" and "₹2,40,00,000" are one figure; "₹42 lakh" is another.
+    out = [(f"{float(n) * _UNITS[u]:.2f}", f"{n} {u}") for n, u in _AMOUNT.findall(body)]
+    out += [(f"{float(n):.2f}", n) for n in _NUMBER.findall(_AMOUNT.sub(" ", body))]
+    words = _words(GAP.sub(" ", text))
+    out += [(f"place {p}", p.title()) for p in _places(text, districts)]
+    out += [(f"name {n}", n.title()) for n in sorted(names) if f" {n} " in words]
+    out += [(f"gap {fact_rules.norm(g)}", f"the gap “{g[5:-1].strip()}”") for g in GAP.findall(text or "")]
+    return out

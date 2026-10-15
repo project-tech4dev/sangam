@@ -120,7 +120,8 @@ def _what(work: dict[str, Any], entry: dict[str, Any]) -> str:
         title, _, status = str(entry.get("to") or "").rpartition(": ")
         return f"the reading of {title or 'a file'} ({status})"
     return {"stage": "the step", "template": "the form", "skipped_template": "the form", "sources": "the files to read",
-            "style": "the writing style", "title": "the title"}.get(head, head)
+            "style": "the writing style", "title": "the title", "polished": "the smoothed wording (checked by code)",
+            "versions": f"the saved Word files ({entry.get('to')})"}.get(head, head)
 
 
 def outside(p: Current) -> list[str]:

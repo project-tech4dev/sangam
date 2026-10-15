@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.api.routes.threads import saved_messages
+from app.core.config import get_settings
 from app.core.security import CurrentUser, require_principal
 from app.db.pool import OwnerPoolDep, PoolDep
-from app.proposals import gates, readiness, records, rubric, steps
+from app.integrations import storage
+from app.proposals import assemble, gates, readiness, records, rubric, steps
+from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.repositories import funder_matches
 from app.repositories import proposals as repo
@@ -60,6 +64,13 @@ async def _readable(pool: PoolDep, proposal_id: int) -> dict:
     return row
 
 
+async def _editable(pool: PoolDep, proposal_id: int) -> dict:
+    row = await _readable(pool, proposal_id)
+    if not row["can_edit"]:
+        raise HTTPException(403, READ_ONLY)
+    return row
+
+
 class _NotYet(Exception):
     def __init__(self, missing: list[str]):
         self.missing = missing
@@ -67,9 +78,7 @@ class _NotYet(Exception):
 
 async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **kwargs: Any) -> SavedOut:
     """Every write: refused for a reader, checked and logged by work.apply under the row lock."""
-    row = await _readable(pool, proposal_id)
-    if not row["can_edit"]:
-        raise HTTPException(403, READ_ONLY)
+    await _editable(pool, proposal_id)
     by = await repo.me(pool)
     # A corrected fact's fixed sentence must still trace, places included.
     correcting = any(path.endswith(".correct") for path in kwargs.get("changes") or {})
@@ -151,6 +160,65 @@ async def patch_work(proposal_id: int, body: WorkPatchIn, pool: PoolDep, princip
 @router.post("/{proposal_id}/advance", response_model=SavedOut, summary="Move to the next step, if nothing is missing")
 async def advance(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
     return await _save(pool, proposal_id, advancing=True)
+
+
+def _names(row: dict) -> set[str]:
+    """The names polish may not drop or change: the org, the funder and every partner or person in the facts."""
+    facts = (row["work"].get("facts") or {}).values()
+    named = [row["org"]["name"], row["funder"]["name"],
+             *(f.get("value") for f in facts if f.get("kind") == "name" and fact_rules.is_live(f))]
+    return {n for n in (fact_rules.norm(v) for v in named) if n}
+
+
+@router.post("/{proposal_id}/polish", response_model=SavedOut,
+             summary="Smooth the language; refused if any figure, place, name or gap changed")
+async def polish_language(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
+    from app.agent.models import resolve_model  # the model stack loads only when it is used
+    from app.proposals import polish
+
+    row = await _editable(pool, proposal_id)
+    work = row["work"]
+    written = assemble.parts(work)
+    if not written:
+        raise HTTPException(409, {"message": "Nothing is written yet.", "differences": []})
+    style = work.get("style") or rubric.default_style(row["org"]["name"])
+    smoothed = await polish.smooth(written, style, resolve_model(get_settings().model))
+    if smoothed is None:
+        raise HTTPException(502, "Sangam couldn't smooth the language just now. Try again.")
+    if changed := polish.differences(written, smoothed, districts=await records.districts(pool), names=_names(row)):
+        raise HTTPException(409, {"message": "The smoothed wording changed what the proposal says, so it was not kept.",
+                                  "differences": changed})
+    held = work.get("sections") or {}
+    polished = {"title": "Smoothed wording", "parts": {s.code: smoothed[s.code] for s, _ in written},
+                "revs": {s.code: held[s.code].get("rev", 0) for s, _ in written},
+                "at": datetime.now(UTC).isoformat(), "by": await repo.me(pool)}
+    return await _save(pool, proposal_id, changes={"polished": polished}, via="polish")
+
+
+@router.post("/{proposal_id}/versions", response_model=SavedOut, status_code=201,
+             summary="Save the proposal as a Word file in the org's Doc Vault, as its next version")
+async def save_version(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
+    row = await _editable(pool, proposal_id)
+    if not get_settings().storage_enabled:
+        raise HTTPException(503, "Saving Word files is not set up on this deployment.")
+    work = row["work"]
+    written = assemble.final(work)
+    if not written:
+        raise HTTPException(409, "Nothing is written yet.")
+    n = len(work.get("versions") or []) + 1
+    now = datetime.now(UTC)
+    data = assemble.docx(row["title"], f"For {row['funder']['name']} from {row['org']['name']} · version {n} · "
+                                       f"{now:%d %B %Y}", written)
+    key = f"{row['org']['id']}/proposals/{proposal_id}/v{n}.docx"
+    if await storage.upload(storage.ORG_VAULT, key, data, assemble.DOCX_TYPE) is None:
+        raise HTTPException(502, "Could not reach document storage. Try again.")
+    document_id = await repo.insert_draft(
+        pool, org_id=row["org"]["id"], title=f"{row['title']}, version {n}",
+        storage_path=storage.qualify(storage.ORG_VAULT, key), content_hash=storage.content_hash(data),
+        content_md="\n\n".join(f"## {s.label}\n\n{text}" for s, text in written), uploaded_by=principal.id)
+    entry = {"n": n, "title": f"Version {n}", "document_id": document_id, "at": now.isoformat(),
+             "by": await repo.me(pool), "facts_snapshot": assemble.snapshot(work)}
+    return await _save(pool, proposal_id, changes={"versions": [*(work.get("versions") or []), entry]}, via="version")
 
 
 @router.get("/{proposal_id}/messages", response_model=ThreadMessagesOut, summary="Your own chat about this proposal")
