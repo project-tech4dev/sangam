@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.proposals import readiness
@@ -25,6 +26,11 @@ def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
             missing.append("add the funder's form, or choose Sangam's usual order")
         if not (work.get("style") or "").strip():
             missing.append("set the writing style")
+        readers = work.get("readers") or {}
+        if not readers:
+            missing.append("press Write the first draft")
+        elif any(r.get("status") == "running" and not readers_stale(r) for r in readers.values()):
+            missing.append("wait until the files are read")
         return missing
     if stage == 3:
         return []
@@ -32,7 +38,17 @@ def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
 
 
 # The step each writing tool may first be used on; the tools check, not the prompt.
-FIRST_STAGE = {"add_facts": 2, "ask_user": 3}
+FIRST_STAGE = {"add_facts": 2, "read_files": 2, "ask_user": 3}
+READING_STALE = timedelta(minutes=30)  # a run lasts 1800 s at most, so a "running" older than that died
+
+
+def readers_stale(reader: dict[str, Any], now: datetime | None = None) -> bool:
+    """A reader still marked running after the longest a run can last: its browser or function went away."""
+    try:
+        at = datetime.fromisoformat(str(reader.get("at")))
+    except ValueError:
+        return True
+    return (now or datetime.now(UTC)) - at > READING_STALE
 
 
 def too_early(tool: str, stage: int) -> str | None:

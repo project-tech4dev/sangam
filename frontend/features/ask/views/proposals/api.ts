@@ -33,7 +33,11 @@ export type Work = {
   sections: Record<string, { text?: string; done?: boolean; rev?: number; score?: number }>;
   facts?: Record<string, Fact>;
   questions?: Record<string, { section: string; subject: string; status: "open" | "parked" | "answered" | "closed"; asked_of: { id: string; name: string } | null }>;
+  /** Keyed by document id, plus "funder" for what the funder looks for. */
+  readers?: Record<string, Reader>;
 };
+
+export type Reader = { status: "running" | "done" | "failed"; at: string; by?: { id: string; name: string }; title: string; error?: string };
 
 /** One fact in the proposal's list; the screen shows its standing and source in words, never its id or marker. */
 export type Fact = {
@@ -48,6 +52,7 @@ export type Fact = {
   source_name?: string;
   page?: number;
   said_by?: { id: string; name: string };
+  document_id?: number;
 };
 
 export type ProposalItem = {

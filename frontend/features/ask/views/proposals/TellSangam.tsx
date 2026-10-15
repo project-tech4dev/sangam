@@ -34,10 +34,13 @@ export function TellSangam({
   proposal,
   screen,
   onTurnEnd,
+  onSend,
 }: {
   proposal: Proposal;
   screen: Screen;
   onTurnEnd: () => void;
+  /** Lets a button on the step send a fixed message; null while a turn runs or the chat is not ready. */
+  onSend: (send: ((text: string) => void) | null) => void;
 }) {
   const threadId = proposal.thread_id;
   const load = useCallback(
@@ -73,6 +76,11 @@ export function TellSangam({
   }, [agent]);
 
   const ready = isReady && !isLoadingHistory;
+
+  useEffect(() => {
+    onSend(ready && !isRunning && !answer ? (text) => void send(text) : null);
+  }, [ready, isRunning, answer, send, onSend]);
+  useEffect(() => () => onSend(null), [onSend]);
 
   async function submit() {
     const text = draft.trim();

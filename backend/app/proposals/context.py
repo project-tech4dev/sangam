@@ -111,6 +111,9 @@ def _what(work: dict[str, Any], entry: dict[str, Any]) -> str:
         if head == "questions":
             return f"the question about {subject}"
         return {"status": f"{subject} (set to {entry.get('to')})"}.get(field, f"{subject} (added)")
+    if head == "readers":
+        title, _, status = str(entry.get("to") or "").rpartition(": ")
+        return f"the reading of {title or 'a file'} ({status})"
     return {"stage": "the step", "template": "the form", "skipped_template": "the form", "sources": "the files to read",
             "style": "the writing style", "title": "the title"}.get(head, head)
 
@@ -151,6 +154,17 @@ def waiting(p: Current) -> list[str]:
     return lines
 
 
+def reading(work: dict[str, Any]) -> list[str]:
+    """Each reader's outcome, so a "why is this file not in the facts?" has its answer."""
+    out = []
+    for r in (work.get("readers") or {}).values():
+        status = r.get("status")
+        what = {"done": "read", "running": f"being read, started by {(r.get('by') or {}).get('name') or 'a teammate'}",
+                "failed": f"could not be read: {r.get('error') or 'no reason given'}"}.get(status, status)
+        out.append(f"- {r.get('title') or 'a file'}: {what}")
+    return out
+
+
 def on_screen(p: Current, state: Any) -> str:
     """Where the person is as they send: the step, and the part they have open."""
     screen = _screen(state)
@@ -177,6 +191,8 @@ def live(p: Current, state: Any) -> str:
              *(["Still to fix before sending: " + "; ".join(fix[:6]) + "."] if fix and stage > 1 else [])]
     if others := by_others(p):
         lines += ["Changed by teammates (not in this chat):", *others]
+    if files := reading(p.work):
+        lines += ["Files read for this proposal:", *files]
     lines += ["Waiting:", *(waiting(p) or ["- nothing"])]
     if selection:
         lines.append(f"Selected text: \"{selection[:SCREEN_TEXT]}{'…' if len(selection) > SCREEN_TEXT else ''}\"")

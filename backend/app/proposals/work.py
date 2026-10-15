@@ -26,6 +26,8 @@ _NEW_FACT = re.compile(r"^facts\.(k\d+)$")
 _QUESTION = re.compile(r"^questions\.(q\d+)(\.status)?$")
 SET_BY_PERSON = ("proposed", "confirmed", "rejected")  # "corrected" comes only with the fact that replaces it
 _GATE = re.compile(r"^gates\.([a-z0-9]{1,16})$")
+_READER = re.compile(r"^readers\.(funder|\d+)$")
+READER_STATUS = ("running", "done", "failed")
 
 
 class BadChange(ValueError):
@@ -109,6 +111,11 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
         elif not (isinstance(value, dict) and value.get("reason") in question_rules.REASONS
                   and value.get("status") in question_rules.STATUSES):
             raise BadChange("a question has a reason and a status")
+    elif _READER.match(path):
+        if via != "agent":
+            raise BadChange("files are read by Sangam Pitch")
+        if not (isinstance(value, dict) and value.get("status") in READER_STATUS and value.get("at")):
+            raise BadChange("a reader has a status and a time")
     else:
         raise BadChange(f"{path!r} cannot be changed")
 
@@ -131,8 +138,8 @@ def _set(work: dict[str, Any], path: str, value: Any) -> None:
 
 
 def _short(value: Any) -> Any:
-    if isinstance(value, dict):  # a whole fact or question is logged by what it says
-        return _short(f"{value.get('subject')}: {value.get('value') or value.get('status')}")
+    if isinstance(value, dict):  # a whole fact, question or reader is logged by what it says
+        return _short(f"{value.get('subject') or value.get('title')}: {value.get('value') or value.get('status')}")
     return value if not isinstance(value, str) or len(value) <= LOG_TEXT else f"{value[:LOG_TEXT]}…"
 
 

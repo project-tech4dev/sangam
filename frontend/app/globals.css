@@ -904,6 +904,14 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .pr-section { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); padding: 6px 0; border-bottom: 1px solid var(--color-divider); }
 .pr-readonly, .pr-notice { margin: 0; padding: 8px 12px; border-radius: var(--radius-row); background: var(--color-neutral-100); font-size: var(--fs-sm); }
 .pr-stop { color: var(--color-bad); font-size: var(--fs-sm); }
+.pr-reads { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-sm); }
+.pr-read { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; padding: 6px 10px; border-radius: var(--radius-row); border-left: 3px solid var(--color-neutral-400); background: var(--color-neutral-100); }
+.pr-read[data-status="done"] { border-left-color: var(--color-accent-2-600); }
+.pr-read[data-status="failed"] { border-left-color: var(--color-bad); }
+.pr-read-title { font-weight: 600; }
+.pr-read-state { color: var(--color-neutral-700); font-size: var(--fs-xs); }
+.pr-read[data-status="failed"] .pr-read-state { color: var(--color-bad); }
+.pr-explain { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-sm); }
 .pr-answers { flex-wrap: wrap; align-self: flex-start; }
 .pr-strip { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: var(--fs-xs); color: var(--color-neutral-700); border-top: 1px solid var(--color-divider); padding-top: 12px; }
 @media (max-width: 860px) { .pr-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

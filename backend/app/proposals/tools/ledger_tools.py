@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from app.agent.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
+from app.ingest import run_sources
 from app.proposals import context, records, steps
 from app.proposals import facts as fact_rules
 from app.proposals import questions as question_rules
@@ -95,6 +96,10 @@ async def add_facts(facts: list[FactIn]) -> str:
             why = fact_rules.problem(p.work, fact)
             if why is None and fact["origin"] == "registry":
                 why = await records.check(pool, p, fact)
+            # A reader cites only the file it was given; the funder's reader, none of the org's.
+            reading = run_sources.CURRENT.get()
+            if why is None and fact["origin"] == "vault" and reading and fact.get("document_id") not in reading.vault_docs:
+                why = f"{fact['subject']}: this reader may cite only the file it was given"
             if why:
                 out.append(f"REFUSED {why}")
                 continue
