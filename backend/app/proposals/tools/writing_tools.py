@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import logging
+import re
+from collections import Counter
 from typing import Any
 
 from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
+from langgraph.errors import GraphBubbleUp
+from langgraph.types import interrupt
 
 from app.agent.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
-from app.proposals import context, grade, records, rubric, steps, trace
+from app.proposals import assemble, context, grade, records, rubric, steps, trace
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.proposals.tools.proposal_tools import NO_PROPOSAL, require_edit
@@ -21,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 TEXT_LIMIT = 12000
 PROBLEMS_SHOWN = 8
+_PARAGRAPH = re.compile(r"^paragraph \d+:? ")
+SUGGESTION = "proposal_suggestion"  # the interrupt's type; QuestionCard.tsx shows it as a suggestion card
 def _names(p: context.Current) -> set[str]:
     """Partner and people names in the fact list; the proposal's own org and funder are free to name."""
     own = {fact_rules.norm(p.org_name), fact_rules.norm(p.funder_name)}
@@ -76,39 +82,133 @@ async def write_section(code: str, text: str, runtime: ToolRuntime, rev: int = 0
             return f"REFUSED: a section's text is 1 to {TEXT_LIMIT:,} characters."
         if not_yet := steps.may_write(p.work, code, context.screen_part(p.work, runtime.state)):
             return f"NOT YET: {not_yet}."
-        facts = p.work.get("facts") or {}
-        if problems := trace.check(text, facts, districts=await records.districts(get_pool()), names=_names(p)):
-            shown = problems[:PROBLEMS_SHOWN] + ([f"and {len(problems) - PROBLEMS_SHOWN} more"]
-                                                 if len(problems) > PROBLEMS_SHOWN else [])
-            return (f"REFUSED: {section.label} [{code}] was not saved. "
-                    + "; ".join(shown)
-                    + ". Cite the fact that holds each one, change it to what a cited fact says, or make it a gap.")
-
-        graded = await grade.grade(section, text, resolve_model(get_settings().utility_model))
-        ids = trace.cited(text)
-        pool = get_pool()
-        by = await repo.user_name(pool, p.scope.user_id)
-
-        def change(work: dict, title: str) -> work_rules.Applied:
-            changes = {f"sections.{code}.text": text,
-                       f"sections.{code}.score": grade.score(graded.missing) if graded else None,
-                       **({f"sections.{code}.needs_rewrite": False}
-                          if (work.get("sections") or {}).get(code, {}).get("needs_rewrite") else {}),
-                       **_used_in(work, code, ids)}
-            return work_rules.apply(work, changes, {code: rev}, by=by, via="agent", facts=ids,
-                                    reason="traced to its facts", title=title)
-
-        try:
-            if await repo.save(pool, p.id, change) is None:
-                return NO_PROPOSAL
-        except work_rules.StaleSection as stale:
-            who = (stale.changed_by or {}).get("by", {}).get("name") or "A teammate"
-            return (f"REFUSED: {who} changed {section.label} since you read it (now rev "
-                    f"{stale.current.get('rev', 0)}). Read it again with read_proposal and build on their text.")
-        return _saved(section, text, graded)
+        if refused := await _untraced(p, section, text):
+            return refused
+        return await _store(p, section, text, rev, "traced to its facts")
     except Exception as exc:
         logger.exception("write_section failed")
         return f"write_section failed: {type(exc).__name__}"
+
+
+def _unnumbered(problem: str) -> str:
+    """A problem without its paragraph number, so adding a paragraph break does not make it new."""
+    return _PARAGRAPH.sub("", problem, count=1)
+
+
+async def _untraced(p: context.Current, section: rubric.Section, text: str, before: str = "") -> str | None:
+    """REFUSED with each claim that traces to no fact the paragraph cites, beyond those `before` already had."""
+    facts, districts, names = p.work.get("facts") or {}, await records.districts(get_pool()), _names(p)
+    was = Counter(_unnumbered(x) for x in trace.check(before, facts, districts=districts, names=names)) \
+        if before else Counter()
+    problems = []
+    for x in trace.check(text, facts, districts=districts, names=names):
+        if was[_unnumbered(x)] > 0:
+            was[_unnumbered(x)] -= 1
+        else:
+            problems.append(x)
+    if not problems:
+        return None
+    shown = problems[:PROBLEMS_SHOWN] + ([f"and {len(problems) - PROBLEMS_SHOWN} more"]
+                                         if len(problems) > PROBLEMS_SHOWN else [])
+    return (f"REFUSED: {section.label} [{section.code}] was not saved. " + "; ".join(shown)
+            + ". Cite the fact that holds each one, change it to what a cited fact says, or make it a gap.")
+
+
+async def _store(p: context.Current, section: rubric.Section, text: str, rev: int, reason: str) -> str:
+    """Grade the text and save it as the section's next rev; refused when a teammate changed it since `rev`."""
+    code = section.code
+    graded = await grade.grade(section, text, resolve_model(get_settings().utility_model))
+    ids = trace.cited(text)
+    pool = get_pool()
+    by = await repo.user_name(pool, p.scope.user_id)
+    traces = not trace.check(text, p.work.get("facts") or {}, districts=await records.districts(pool),
+                             names=_names(p))
+
+    def change(work: dict, title: str) -> work_rules.Applied:
+        # A suggestion may leave a problem the part already had, so only a text that fully traces clears the flag.
+        changes = {f"sections.{code}.text": text,
+                   f"sections.{code}.score": grade.score(graded.missing) if graded else None,
+                   **({f"sections.{code}.needs_rewrite": False}
+                      if traces and (work.get("sections") or {}).get(code, {}).get("needs_rewrite") else {}),
+                   **_used_in(work, code, ids)}
+        return work_rules.apply(work, changes, {code: rev}, by=by, via="agent", facts=ids, reason=reason,
+                                title=title)
+
+    try:
+        if await repo.save(pool, p.id, change) is None:
+            return NO_PROPOSAL
+    except work_rules.StaleSection as stale:
+        who = (stale.changed_by or {}).get("by", {}).get("name") or "A teammate"
+        return (f"REFUSED: {who} changed {section.label} since you read it (now rev "
+                f"{stale.current.get('rev', 0)}). Read it again with read_proposal and build on their text.")
+    return _saved(section, text, graded)
+
+
+def swap(text: str, now: str, better: str) -> str | None:
+    """The text with `now` replaced by `better`; None unless `now` is in it exactly once."""
+    now = now.strip()
+    if not now or text.count(now) != 1:
+        return None
+    return text.replace(now, better.strip(), 1)
+
+
+@tool
+async def suggest_edit(code: str, now: str, better: str, why: str, runtime: ToolRuntime) -> str:
+    """Suggest better wording for one passage of a written section, on a card the person accepts or declines.
+
+    Use it when the person asks to improve, reframe, shorten or tighten wording, often of the text they selected.
+    One passage per call: a sentence or a few. Keep every figure, place and name, with their ⟦k⟧ citations;
+    code refuses wording whose claims trace to no cited fact, before the person sees it.
+
+    It returns SAVED (they used it), KEPT (they kept their own wording: leave it), or FEEDBACK with what they
+    said: suggest again from it, or leave it.
+
+    Args:
+        code: the section's code, for example A3.
+        now: the passage exactly as read_proposal shows it, ⟦k⟧ marks included; it must appear once.
+        better: the new wording for that passage, with ⟦k⟧ citations.
+        why: in one short line, what the new wording does better, for example "names the scale the funder asks for".
+    """
+    try:
+        p = await context.current()
+        if p is None:
+            return NO_PROPOSAL
+        if refused := require_edit(p):
+            return refused
+        if early := steps.too_early("suggest_edit", int(p.work.get("stage") or 1)):
+            return f"REFUSED: {early}."
+        code = code.strip()
+        section = fact_rules.section_of(p.work, code)
+        # Read again when the person answers, so the swap lands on the part as it is then, at its rev then.
+        part = (p.work.get("sections") or {}).get(code) or {}
+        held, rev = part.get("text") or "", int(part.get("rev") or 0)
+        if section is None or not held.strip():
+            return f"REFUSED: {code!r} is not a written section of this proposal; write it with write_section."
+        if not better.strip():
+            return "REFUSED: suggest wording to put in its place; to remove a passage, rewrite the part."
+        text = swap(held, now, better)
+        if text is None:
+            return ("REFUSED: quote the passage exactly as read_proposal shows it, ⟦k⟧ marks included, "
+                    "and long enough to appear only once in the section.")
+        if len(text) > TEXT_LIMIT:
+            return f"REFUSED: a section's text is at most {TEXT_LIMIT:,} characters."
+        if refused := await _untraced(p, section, text, before=held):
+            return refused
+
+        reply = interrupt({"type": SUGGESTION, "ask": runtime.tool_call_id, "part": section.label,
+                           "now": assemble.plain(now), "better": assemble.plain(better), "why": why.strip()})
+        reply = reply if isinstance(reply, dict) else {"kind": "text", "text": str(reply or "")}
+        if reply.get("kind") == "pick" and reply.get("choice") == "use":
+            return await _store(p, section, text, rev, "wording the person accepted")
+        if reply.get("kind") == "pick":
+            return f"KEPT: the person kept their own wording in {section.label}. Leave it as it is."
+        said = str(reply.get("text") or "").strip()
+        return f"FEEDBACK: the person said {said!r} about the suggestion. Suggest again from it, or leave it."
+    except GraphBubbleUp:
+        raise  # the pause itself: the run waits here for the person's choice
+    except Exception as exc:
+        logger.exception("suggest_edit failed")
+        return f"suggest_edit failed: {type(exc).__name__}"
 
 
 def _saved(section: rubric.Section, text: str, graded: grade.Graded | None) -> str:

@@ -19,8 +19,10 @@ type Asked = {
   options: string[];
 };
 
-// ask_user's interrupt (app/proposals/tools/ledger_tools.py QUESTION); any other interrupt is not ours.
-function asked(value: unknown): Asked | null {
+type Suggested = { type: "proposal_suggestion"; ask: string; part: string; now: string; better: string; why: string };
+
+// ask_user's and suggest_edit's interrupts (QUESTION, SUGGESTION in app/proposals/tools/); any other is not ours.
+function asked(value: unknown): Asked | Suggested | null {
   let v = value;
   if (typeof v === "string") {
     try {
@@ -29,10 +31,11 @@ function asked(value: unknown): Asked | null {
       return null;
     }
   }
-  return (v as Asked | null)?.type === "proposal_question" ? (v as Asked) : null;
+  const type = (v as Asked | Suggested | null)?.type;
+  return type === "proposal_question" || type === "proposal_suggestion" ? (v as Asked | Suggested) : null;
 }
 
-/** Sangam Pitch's one open question, at the top of the side panel while the run waits for the reply. */
+/** Sangam Pitch's one open question or suggestion, above its chat while the run waits for the reply. */
 export function QuestionCard({ agentId, onOpen }: { agentId: string; onOpen: (answer: ((r: Reply) => void) | null) => void }) {
   return useInterrupt({
     agentId,
@@ -40,12 +43,20 @@ export function QuestionCard({ agentId, onOpen }: { agentId: string; onOpen: (an
     enabled: (event) => asked(event.value) !== null,
     render: ({ event, resolve }) => {
       const q = asked(event.value);
-      return q ? <Card key={q.ask} q={q} resolve={resolve} onOpen={onOpen} /> : <></>;
+      if (!q) return <></>;
+      return q.type === "proposal_suggestion" ? (
+        <Suggestion key={q.ask} s={q} resolve={resolve} onOpen={onOpen} />
+      ) : (
+        <Card key={q.ask} q={q} resolve={resolve} onOpen={onOpen} />
+      );
     },
   });
 }
 
-function Card({ q, resolve, onOpen }: { q: Asked; resolve: (r: Reply) => unknown; onOpen: (answer: ((r: Reply) => void) | null) => void }) {
+type Answer = { resolve: (r: Reply) => unknown; onOpen: (answer: ((r: Reply) => void) | null) => void };
+
+/** One reply per card, from its buttons or from the chat box under it. */
+function useReply({ resolve, onOpen }: Answer) {
   const [sent, setSent] = useState(false);
   const latest = useRef(resolve);
   useEffect(() => {
@@ -64,7 +75,11 @@ function Card({ q, resolve, onOpen }: { q: Asked; resolve: (r: Reply) => unknown
     });
     return () => onOpen(null);
   }, [onOpen]);
+  return { sent, reply };
+}
 
+function Card({ q, ...answer }: { q: Asked } & Answer) {
+  const { sent, reply } = useReply(answer);
   return (
     <section className="card pr-side-card pr-question" aria-label="Sangam Pitch asks">
       <div className="card-title">Sangam Pitch asks</div>
@@ -92,6 +107,28 @@ function Card({ q, resolve, onOpen }: { q: Asked; resolve: (r: Reply) => unknown
         </button>
       </div>
       <p className="muted pr-chat-note">{sent ? "Sent." : "Or type your answer, or a question about it, in the box below."}</p>
+    </section>
+  );
+}
+
+function Suggestion({ s, ...answer }: { s: Suggested } & Answer) {
+  const { sent, reply } = useReply(answer);
+  return (
+    <section className="card pr-side-card pr-question" aria-label="Sangam Pitch suggests">
+      <div className="card-title">Sangam Pitch suggests</div>
+      <div className="eyebrow">{s.part}</div>
+      <p className="pr-suggest-now">{s.now}</p>
+      <p className="pr-suggest-better">{s.better}</p>
+      {s.why && <p className="muted">{s.why}</p>}
+      <div className="pr-question-actions">
+        <button className="btn btn-primary" type="button" disabled={sent} onClick={() => reply({ kind: "pick", choice: "use" })}>
+          Use this
+        </button>
+        <button className="btn btn-ghost" type="button" disabled={sent} onClick={() => reply({ kind: "pick", choice: "keep" })}>
+          Keep mine
+        </button>
+      </div>
+      <p className="muted pr-chat-note">{sent ? "Sent." : "Or say what you would change, in the box below."}</p>
     </section>
   );
 }

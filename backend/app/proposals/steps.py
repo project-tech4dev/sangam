@@ -38,7 +38,7 @@ def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
 
 
 # The step each writing tool may first be used on; the tools check, not the prompt.
-FIRST_STAGE = {"add_facts": 2, "read_files": 2, "ask_user": 3, "write_section": 3}
+FIRST_STAGE = {"add_facts": 2, "read_files": 2, "ask_user": 3, "write_section": 3, "suggest_edit": 3}
 READING_STALE = timedelta(minutes=30)  # a run lasts 1800 s at most, so a "running" older than that died
 
 

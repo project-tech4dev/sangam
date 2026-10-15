@@ -600,6 +600,15 @@ stack (`make up`, `make seed`, `make match ORG=sesta`), driven through Claude in
 | M5 | Correct a fact and watch every part that used it update or get flagged; "Before you send it" lists the open CSR-1 gate |
 | M6 | Smooth the language; the check passes or names the change; download the Word file and open it; version 1 is listed |
 
+### M7: suggested wording
+Added after M6 testing. Asked to improve, reframe or tighten wording (often the text selected on screen), Sangam Pitch calls `suggest_edit(code, now, better, why)`:
+- Code first checks that `now` appears exactly once in the part (⟦k⟧ marks included), and that the new text adds no claim that traces to no cited fact; claims already untraced in the part don't block it.
+- A card in the chat shows Now (struck), Better and Why, with **Use this** and **Keep mine**; the chat box under it sends feedback, and the agent suggests again.
+- "Use this" re-reads the part and saves through the same path as `write_section` (graded, `via="agent"`), at the rev it has then, so a teammate's edit in between is refused by name.
+- `write_section` stays for drafting and rewriting whole parts, and "Smooth the language" for the whole document.
+
+**Exit gate:** a steward asks for a clearer sentence on step 3, presses Use this, and the part shows it.
+
 ## 6. Test plan
 
 **New tests, for the code-only safeguards only.** An exception to the usual "no new tests in a PR", because these checks are what keep the agent safe and a browser run cannot prove them. Each milestone's **Tests** line lists its own; all but the RLS test run with no database.

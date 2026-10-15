@@ -25,12 +25,14 @@ def require_edit(p: context.Current) -> str | None:
     return None if p.can_edit else READ_ONLY
 
 
-async def _documents(ids: list[int]) -> list[dict[str, Any]]:
+async def _documents(org_id: int, ids: list[int]) -> list[dict[str, Any]]:
+    """The org's own ticked files; the owner pool skips RLS, so the org filter is the check."""
     if not ids:
         return []
     async with get_pool().connection() as conn:
         return await (await conn.execute(
-            "SELECT id, title, doc_type, as_of FROM documents WHERE id = ANY(%s) ORDER BY id", (ids,)
+            "SELECT id, title, doc_type, as_of FROM documents WHERE id = ANY(%s) AND org_id = %s ORDER BY id",
+            (ids, org_id),
         )).fetchall()
 
 
@@ -101,7 +103,7 @@ async def read_proposal(part: str = "") -> str:
         if part in ("", "form"):
             out.append(f"Form: {context.form(work)}")
         if part in ("", "documents"):
-            docs = await _documents(work.get("sources") or [])
+            docs = await _documents(p.org_id, work.get("sources") or [])
             out.append("Documents Sangam may read: " + ("none ticked" if not docs else "; ".join(
                 f"document {d['id']} · {d['title'] or 'untitled'} · {d['doc_type'] or 'file'}"
                 + (f" · {d['as_of']}" if d["as_of"] else "") for d in docs)))

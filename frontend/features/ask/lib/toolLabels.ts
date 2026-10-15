@@ -30,6 +30,7 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
   ask_user: { label: "Asking you a question", detail: (a) => a?.subject ?? "" },
   read_files: { label: "Reading your files", detail: () => "one reader per file, at the same time" },
   write_section: { label: "Writing a part", detail: () => "every figure checked against its source" },
+  suggest_edit: { label: "Suggesting a better wording", detail: () => "you choose whether to use it" },
   read_brief: { label: "Reading Sangam's research brief", detail: (a) => (a?.side === "org" ? "the organisation" : "the funder") },
   list_funder_documents: { label: "Listing the funder's documents", detail: () => "" },
   read_funder_document: { label: "Reading a funder document", detail: () => "" },

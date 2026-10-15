@@ -1547,3 +1547,5 @@ body:has(.import-shell) > footer { display: none; }
 .pr-question p { margin: 0; font-size: var(--fs-sm); }
 .pr-question { border-color: var(--color-accent-400); }
 .pr-question-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.pr-suggest-now { color: var(--color-neutral-600); text-decoration: line-through; }
+.pr-suggest-better { padding-left: 10px; border-left: 3px solid var(--color-accent-2-600); }
