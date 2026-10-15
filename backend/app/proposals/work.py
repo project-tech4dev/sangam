@@ -14,13 +14,13 @@ from typing import Any
 
 from app.proposals import facts as fact_rules
 from app.proposals import questions as question_rules
-from app.proposals import readiness, reliability, rubric
+from app.proposals import readiness, reliability, review, rubric
 
 STAGES = (1, 2, 3, 4)  # 4 is "Before you send it"
 FACT_STATUS = ("proposed", "confirmed", "corrected", "rejected")
 LOG_TEXT = 200  # a logged value longer than this is cut; the section itself keeps it all
 
-_SECTION = re.compile(r"^sections\.([A-Z]\d{1,2})\.(text|done|score)$")
+_SECTION = re.compile(r"^sections\.([A-Z]\d{1,2})\.(text|done|score|needs_rewrite)$")
 _FACT = re.compile(r"^facts\.(k\d+)\.(status|correct|used_in)$")
 _NEW_FACT = re.compile(r"^facts\.(k\d+)$")
 _QUESTION = re.compile(r"^questions\.(q\d+)(\.status)?$")
@@ -83,6 +83,8 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
             raise BadChange("done is true or false")
         if m.group(2) == "score" and (via != "agent" or value not in (0, 1, 2, None)):
             raise BadChange("a section is scored by Sangam Pitch, 0 to 2")
+        if m.group(2) == "needs_rewrite" and (via != "agent" or not isinstance(value, bool)):
+            raise BadChange("a part is marked for rewriting when a fact it cites changes")
         if m.group(2) == "text" and not isinstance(value, str):
             raise BadChange("text is a string")
     elif m := _FACT.match(path):
@@ -172,7 +174,7 @@ def last_change(work: dict[str, Any], code: str) -> dict[str, Any] | None:
 def apply(work: dict[str, Any], changes: dict[str, Any], rev: dict[str, int] | None = None, *,
           by: dict[str, Any], via: str = "rest", run_id: str | None = None, reason: str | None = None,
           facts: list[str] | None = None, title: str | None = None, advance: bool = False,
-          now: datetime | None = None) -> Applied:
+          now: datetime | None = None, districts: set[str] = frozenset()) -> Applied:
     """Check every change first, then make them all and log each; nothing is half-applied."""
     if not changes:
         raise BadChange("nothing to change")
@@ -188,6 +190,9 @@ def apply(work: dict[str, Any], changes: dict[str, Any], rev: dict[str, int] | N
             raise BadChange(f"a change to section {code} carries its rev")
         if rev[code] != current.get("rev", 0):
             raise StaleSection(code, current, last_change(work, code))
+    # What a correction carries into the text is code's, not the person's: no rev of theirs to check.
+    changes = {**changes, **review.follow(work, changes, districts)}
+    touched = sorted({m.group(1) for p in changes if (m := _SECTION.match(p))})
 
     out = copy.deepcopy(work)
     at = (now or datetime.now(UTC)).isoformat()

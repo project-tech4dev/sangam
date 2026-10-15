@@ -29,19 +29,25 @@ export function source(f: Fact): string | null {
   return name ? `${name}${f.page ? `, page ${f.page}` : ""}` : null;
 }
 
-/** The facts Sangam Pitch keeps for one part: each with its standing and source in words, and the person's say. */
-export function FactList({ proposal, part, save }: { proposal: Proposal; part: string; save: Save }) {
+/** The facts for one part, or every fact the text uses: each with its standing and source in words, and the person's say. */
+export function FactList({ proposal, part, save }: { proposal: Proposal; part: string | "used"; save: Save }) {
   const canEdit = proposal.can_edit;
-  const all = Object.entries(proposal.work.facts ?? {}).filter(([, f]) => f.section === part);
+  const used = part === "used";
+  const labels = Object.fromEntries(proposal.sections.map((s) => [s.code, s.label]));
+  const all = Object.entries(proposal.work.facts ?? {}).filter(([, f]) => (used ? f.used_in?.length : f.section === part));
   const live = all.filter(([, f]) => f.status === "proposed" || f.status === "confirmed");
   const setAside = all.length - live.length;
   const [fixing, setFixing] = useState<{ key: string; value: string } | null>(null);
 
   if (live.length === 0)
-    return <p className="muted pr-facts-empty">No facts for this part yet. Ask Sangam Pitch what it holds.</p>;
+    return (
+      <p className="muted pr-facts-empty">
+        {used ? "No part cites a fact yet. Write the proposal in step 3 first." : "No facts for this part yet. Ask Sangam Pitch what it holds."}
+      </p>
+    );
 
   return (
-    <ul className="pr-facts" aria-label="Facts for this part">
+    <ul className="pr-facts" aria-label={used ? "Facts the proposal uses" : "Facts for this part"}>
       {live.map(([key, f]) => (
         <li key={key} className="pr-fact" data-tier={f.status === "confirmed" && f.origin !== "you_said" ? "confirmed" : f.tier}>
           <div className="pr-fact-line">
@@ -52,6 +58,7 @@ export function FactList({ proposal, part, save }: { proposal: Proposal; part: s
           <div className="pr-fact-standing">
             {standing(f)}
             {source(f) && <span className="muted"> · {source(f)}</span>}
+            {used && <span className="muted"> · used in {(f.used_in ?? []).map((c) => labels[c] ?? c).join(", ")}</span>}
           </div>
           {canEdit && f.status === "proposed" && fixing?.key !== key && (
             <div className="pr-fact-actions">

@@ -48,7 +48,8 @@ def _fact_lines(facts: dict[str, Any], code: str | None = None) -> list[str]:
 def _section(s: rubric.Section, saved: dict[str, Any], whole: bool, facts: dict[str, Any] | None = None) -> list[str]:
     text = (saved.get("text") or "").strip()
     state = "finished" if saved.get("done") else ("draft" if text else "empty")
-    lines = [f"### {s.label} [{s.code}] · {state}" + (f" · score {saved['score']} of 2" if saved.get("score") is not None else ""),
+    lines = [f"### {s.label} [{s.code}] · {state}" + (f" · score {saved['score']} of 2" if saved.get("score") is not None else "")
+             + (" · NEEDS REWRITING: it cites a fact that was corrected or set aside" if saved.get("needs_rewrite") else ""),
              f"Asks: {s.question}"]
     if whole:
         lines += [f"A strong answer holds: {'; '.join(s.strong)}" if s.strong else "",

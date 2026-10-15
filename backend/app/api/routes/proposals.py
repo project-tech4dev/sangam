@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from app.api.routes.threads import saved_messages
 from app.core.security import CurrentUser, require_principal
 from app.db.pool import OwnerPoolDep, PoolDep
-from app.proposals import gates, readiness, rubric, steps
+from app.proposals import gates, readiness, records, rubric, steps
 from app.proposals import work as work_rules
 from app.repositories import funder_matches
 from app.repositories import proposals as repo
@@ -71,6 +71,9 @@ async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **k
     if not row["can_edit"]:
         raise HTTPException(403, READ_ONLY)
     by = await repo.me(pool)
+    # A corrected fact's fixed sentence must still trace, places included.
+    correcting = any(path.endswith(".correct") for path in kwargs.get("changes") or {})
+    districts = await records.districts(pool) if correcting else frozenset()
 
     def change(work: dict, title: str) -> work_rules.Applied:
         if advancing:
@@ -78,7 +81,7 @@ async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **k
             if missing := steps.exit_check(stage, work):
                 raise _NotYet(missing)
             kwargs.update(changes={"stage": stage + 1}, advance=True)
-        return work_rules.apply(work, by=by, title=title, **kwargs)
+        return work_rules.apply(work, by=by, title=title, districts=districts, **kwargs)
 
     try:
         applied = await repo.save(pool, proposal_id, change)

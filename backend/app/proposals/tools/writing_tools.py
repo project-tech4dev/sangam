@@ -11,7 +11,7 @@ from langchain_core.tools import tool
 from app.agent.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
-from app.proposals import context, grade, rubric, steps, trace
+from app.proposals import context, grade, records, rubric, steps, trace
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.proposals.tools.proposal_tools import NO_PROPOSAL, require_edit
@@ -21,20 +21,6 @@ logger = logging.getLogger(__name__)
 
 TEXT_LIMIT = 12000
 PROBLEMS_SHOWN = 8
-_DISTRICTS: set[str] = set()
-
-
-async def _districts() -> set[str]:
-    """Every district Sangam knows, read once: the trace check needs only their names."""
-    if not _DISTRICTS:
-        async with get_pool().connection() as conn:
-            rows = await (await conn.execute("SELECT DISTINCT lower(name) AS name FROM locations WHERE kind = 'district'"
-                                             )).fetchall()
-        # A three-letter district (Mon, Una, Leh) reads as an ordinary word too often to check.
-        _DISTRICTS.update(n for r in rows if r["name"] and len(n := " ".join(r["name"].replace("-", " ").split())) > 3)
-    return _DISTRICTS
-
-
 def _names(p: context.Current) -> set[str]:
     """Partner and people names in the fact list; the proposal's own org and funder are free to name."""
     own = {fact_rules.norm(p.org_name), fact_rules.norm(p.funder_name)}
@@ -91,7 +77,7 @@ async def write_section(code: str, text: str, runtime: ToolRuntime, rev: int = 0
         if not_yet := steps.may_write(p.work, code, context.screen_part(p.work, runtime.state)):
             return f"NOT YET: {not_yet}."
         facts = p.work.get("facts") or {}
-        if problems := trace.check(text, facts, districts=await _districts(), names=_names(p)):
+        if problems := trace.check(text, facts, districts=await records.districts(get_pool()), names=_names(p)):
             shown = problems[:PROBLEMS_SHOWN] + ([f"and {len(problems) - PROBLEMS_SHOWN} more"]
                                                  if len(problems) > PROBLEMS_SHOWN else [])
             return (f"REFUSED: {section.label} [{code}] was not saved. "
@@ -106,6 +92,8 @@ async def write_section(code: str, text: str, runtime: ToolRuntime, rev: int = 0
         def change(work: dict, title: str) -> work_rules.Applied:
             changes = {f"sections.{code}.text": text,
                        f"sections.{code}.score": grade.score(graded.missing) if graded else None,
+                       **({f"sections.{code}.needs_rewrite": False}
+                          if (work.get("sections") or {}).get(code, {}).get("needs_rewrite") else {}),
                        **_used_in(work, code, ids)}
             return work_rules.apply(work, changes, {code: rev}, by=by, via="agent", facts=ids,
                                     reason="traced to its facts", title=title)
