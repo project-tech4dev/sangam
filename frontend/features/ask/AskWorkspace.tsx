@@ -11,6 +11,8 @@ import { Sidebar, type WorkspaceView } from "./components/Sidebar";
 import { VaultView } from "./views/VaultView";
 import { MediaView } from "./views/media/MediaView";
 import { RfpWatchView } from "./views/RfpWatchView";
+import { ComingSoonView } from "./views/ComingSoonView";
+import { COMING_SOON } from "./lib/comingSoon";
 import { FunderMatchView } from "./views/FunderMatchView";
 import { type ProposalTarget, ProposalsView } from "./views/ProposalsView";
 import { useProposals } from "./views/proposals/store";
@@ -159,14 +161,28 @@ export function AskWorkspace({
             nav={{ open: (id) => openProposals({ id }), list: (funderId) => openProposals({ funderId }) }}
           />
         )}
-        {view === "proposals" && (
+        {view === "proposals" && COMING_SOON.has("proposals") && (
+          <ComingSoonView
+            title="Proposals"
+            body="Draft a proposal to a matched funder, checked section by section against what the funder asks for and grounded in your own documents."
+          />
+        )}
+        {view === "proposals" && !COMING_SOON.has("proposals") && (
           <ProposalsView
             key={proposalTarget.key}
             target={proposalTarget.target}
             onFunderMatch={() => setView("funder-match")}
           />
         )}
-        {view === "rfpwatch" && <RfpWatchView />}
+        {view === "rfpwatch" &&
+          (COMING_SOON.has("rfpwatch") ? (
+            <ComingSoonView
+              title="RFP Watch"
+              body="Open calls and RFPs gathered every week, each shown with the organisations it plausibly fits."
+            />
+          ) : (
+            <RfpWatchView />
+          ))}
       </div>
     </div>
   );

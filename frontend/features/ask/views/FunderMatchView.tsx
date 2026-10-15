@@ -10,6 +10,7 @@ import { funderTypeGroup, funderTypeLabel } from "./funder-match/funderType";
 import { shortDate } from "@/lib/format";
 import { MatchCard, type ProposalNav } from "./funder-match/MatchCard";
 import { useProposals } from "./proposals/store";
+import { COMING_SOON } from "../lib/comingSoon";
 
 type Bucket = "all" | "strong" | "medium";
 
@@ -182,18 +183,22 @@ export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: strin
                 options: [["all", "All funder types"], ...types.map((t): [string, string] => [t, t])],
                 onChange: setType,
               },
-              {
-                key: "proposal",
-                label: "Proposal",
-                value: proposal,
-                defaultValue: "any",
-                options: [
-                  ["any", "Any proposal status"],
-                  ["has", "Has a proposal"],
-                  ["none", "No proposal yet"],
-                ],
-                onChange: setProposal,
-              },
+              ...(COMING_SOON.has("proposals")
+                ? []
+                : [
+                    {
+                      key: "proposal",
+                      label: "Proposal",
+                      value: proposal,
+                      defaultValue: "any",
+                      options: [
+                        ["any", "Any proposal status"],
+                        ["has", "Has a proposal"],
+                        ["none", "No proposal yet"],
+                      ] as [string, string][],
+                      onChange: setProposal,
+                    },
+                  ]),
             ]}
           />
           <SearchBox value={query} onChange={setQuery} placeholder="Search funders and reasons…" />
