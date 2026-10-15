@@ -142,7 +142,7 @@ class TestWhatTheModelIsTold:
         block = context.live(current(can_edit=False), screen)
         assert "can only read this proposal" in block
         assert "To leave this step: answer FCRA registration." in block
-        assert "On screen: step Can you apply?." in block
+        assert "On screen now: step Can you apply?. No part is open." in block
         assert 'Selected text: "baseline of 2019"' in block
 
     def test_only_anthropic_gets_the_cache_breakpoint(self):
@@ -164,14 +164,14 @@ class TestWhatTheModelIsTold:
         assert "Asha" not in block
 
 
-def test_the_agent_has_its_four_tools_and_read_file_only():
+def test_the_agent_has_its_six_tools_and_read_file_only():
     from langgraph.checkpoint.memory import InMemorySaver
 
     from app.proposals.agent import build_proposal_agent
 
     graph = build_proposal_agent(Settings(), InMemorySaver())
     assert sorted(graph.nodes["tools"].bound.tools_by_name) == [
-        "advance_step", "read_file", "read_match", "read_org_record", "read_proposal"]
+        "add_facts", "advance_step", "ask_user", "read_file", "read_match", "read_org_record", "read_proposal"]
 
 
 async def test_a_local_test_sign_in_is_refused_once_supabase_is_on(monkeypatch):

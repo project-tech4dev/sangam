@@ -95,16 +95,22 @@ def _screen(state: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _what(work: dict[str, Any], path: str) -> str:
-    head, _, rest = path.partition(".")
+def _what(work: dict[str, Any], entry: dict[str, Any]) -> str:
+    """A log entry's change in words: sections and requirements by label, facts and questions by subject."""
+    head, _, rest = entry["path"].partition(".")
     if head == "sections":
         code, _, field = rest.partition(".")
         label = next((s.label for s in sections(work) if s.code == code), code)
         return f"{label} [{code}]" + (" (marked finished or not)" if field == "done" else "")
     if head == "gates":
         return next((r["label"] for r in work.get("requirements") or [] if r["key"] == rest), "a requirement")
-    if head == "facts":
-        return f"fact {rest.partition('.')[0]}"
+    if head in ("facts", "questions"):
+        key, _, field = rest.partition(".")
+        item = (work.get(head) or {}).get(key) or {}
+        subject = item.get("subject") or "a fact"
+        if head == "questions":
+            return f"the question about {subject}"
+        return {"status": f"{subject} (set to {entry.get('to')})"}.get(field, f"{subject} (added)")
     return {"stage": "the step", "template": "the form", "skipped_template": "the form", "sources": "the files to read",
             "style": "the writing style", "title": "the title"}.get(head, head)
 
@@ -113,8 +119,49 @@ def by_others(p: Current) -> list[str]:
     """Teammates' latest changes, newest first: each person's chat is private, so this is how the agent hears of them."""
     me = str(p.scope.user_id) if p.scope.user_id else None
     theirs = [e for e in reversed(p.work.get("log") or []) if str((e.get("by") or {}).get("id")) != me]
-    return [f"- {(e.get('by') or {}).get('name') or 'Someone'} changed {_what(p.work, e['path'])}, "
+    return [f"- {(e.get('by') or {}).get('name') or 'Someone'} changed "
+            f"{_what(p.work, e)}, "
             f"{str(e.get('at', ''))[:16].replace('T', ' ')} UTC" for e in theirs[:OTHERS_SHOWN]]
+
+
+def screen_part(work: dict[str, Any], state: Any) -> str | None:
+    """The section code on screen; one the server does not know is dropped."""
+    code = _screen(state).get("part")
+    return code if isinstance(code, str) and any(s.code == code for s in sections(work)) else None
+
+
+def waiting(p: Current) -> list[str]:
+    """The open and parked questions, by whom, and the facts nobody has checked yet."""
+    me = str(p.scope.user_id) if p.scope.user_id else None
+    labels = {s.code: s.label for s in sections(p.work)}
+    lines = []
+    for k, q in (p.work.get("questions") or {}).items():
+        where = labels.get(q.get("section"), "the proposal")
+        who = q.get("asked_of") or {}
+        if q.get("status") == "open":
+            lines.append(f"- {k} {where}, {q.get('subject')}: " + (
+                "asked of this person, waiting for their answer" if str(who.get("id")) == me
+                else f"asked of {who.get('name') or 'a teammate'}, waiting; do not ask it again"))
+        elif q.get("status") == "parked":
+            lines.append(f"- {k} {where}, {q.get('subject')}: saved for later by whoever was asked; ask it of this person "
+                         f"only while {where} is the part open on their screen")
+    unchecked = sum(1 for f in (p.work.get("facts") or {}).values() if f.get("status") == "proposed")
+    if unchecked:
+        lines.append(f"- {unchecked} fact{'s' if unchecked != 1 else ''} not yet confirmed by anyone")
+    return lines
+
+
+def on_screen(p: Current, state: Any) -> str:
+    """Where the person is as they send: the step, and the part they have open."""
+    screen = _screen(state)
+    part = screen_part(p.work, state)
+    labels = {s.code: s.label for s in sections(p.work)}
+    where = [f"step {screen['step']}"] if screen.get("step") else []
+    if part:
+        where.append(f"part {labels[part]} [{part}]")
+    if not where:
+        return "On screen now: not known."
+    return "On screen now: " + ", ".join(where) + "." + ("" if part else " No part is open.")
 
 
 def live(p: Current, state: Any) -> str:
@@ -122,17 +169,15 @@ def live(p: Current, state: Any) -> str:
     stage = int(p.work.get("stage") or 1)
     missing = steps.exit_check(stage, p.work)
     fix = readiness.summary(p.work).get("fix_first") or []
-    screen = _screen(state)
-    selection = " ".join(str(screen.get("selection") or "").split())
+    selection = " ".join(str(_screen(state).get("selection") or "").split())
     lines = ["## Right now",
+             on_screen(p, state),
              "The person " + ("can change this proposal." if p.can_edit else "can only read this proposal."),
              ("To leave this step: " + "; ".join(missing) + ".") if missing else "Nothing stops this step being left.",
              *(["Still to fix before sending: " + "; ".join(fix[:6]) + "."] if fix and stage > 1 else [])]
     if others := by_others(p):
         lines += ["Changed by teammates (not in this chat):", *others]
-    where = [f"{k} {screen[k]}" for k in ("step", "tab", "part") if screen.get(k)]
-    if where:
-        lines.append("On screen: " + ", ".join(where) + ".")
+    lines += ["Waiting:", *(waiting(p) or ["- nothing"])]
     if selection:
         lines.append(f"Selected text: \"{selection[:SCREEN_TEXT]}{'…' if len(selection) > SCREEN_TEXT else ''}\"")
     return "\n".join(lines)

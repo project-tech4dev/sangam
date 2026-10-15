@@ -6,6 +6,7 @@ import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
 import { advance, changedByLine, getProposal, missingFrom, type Proposal, rename, type Saved, saveWork } from "./api";
+import { FactList } from "./FactList";
 import { HowItWorks } from "./HowItWorks";
 import { ANSWERS, STEPS } from "./steps";
 import { TellSangam } from "./TellSangam";
@@ -20,6 +21,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   const [missing, setMissing] = useState<string[]>([]);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [selection, setSelection] = useState("");
+  const [part, setPart] = useState<string | null>(null);
 
   const load = useCallback(() => getProposal(id).then(setProposal, () => setFailed(true)), [id]);
   useEffect(() => {
@@ -128,7 +130,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
           <div onMouseUp={() => setSelection(window.getSelection()?.toString().trim() ?? "")}>
             {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
             {work.stage === 2 && <SourcesStep proposal={proposal} save={save} />}
-            {work.stage === 3 && <SectionsStep proposal={proposal} />}
+            {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} />}
             {work.stage === 4 && <FinishStep proposal={proposal} />}
           </div>
 
@@ -156,7 +158,11 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
 
         <aside className="pr-side" aria-label="Sangam">
           {canEdit ? (
-            <TellSangam proposal={proposal} screen={{ step: STEPS[work.stage - 1], selection }} onTurnEnd={load} />
+            <TellSangam
+              proposal={proposal}
+              screen={{ step: STEPS[work.stage - 1], selection, ...(work.stage === 3 && part ? { part } : {}) }}
+              onTurnEnd={load}
+            />
           ) : (
             <section className="card pr-side-card" aria-label="Sangam Pitch">
               <div className="card-title">Sangam Pitch</div>
@@ -349,10 +355,23 @@ function SourcesStep({ proposal, save }: { proposal: Proposal; save: Save }) {
   );
 }
 
-function SectionsStep({ proposal }: { proposal: Proposal }) {
+function SectionsStep({
+  proposal,
+  part,
+  onPart,
+  save,
+}: {
+  proposal: Proposal;
+  part: string | null;
+  onPart: (code: string | null) => void;
+  save: Save;
+}) {
   return (
     <div className="pr-pane">
-      <p className="muted">Sangam will write these parts with you, one at a time. Writing is not switched on yet.</p>
+      <p className="muted">
+        Open a part to see the facts Sangam Pitch holds for it. It asks you about what is missing, one question at a time. Writing
+        is not switched on yet.
+      </p>
       {proposal.tabs.map((tab) => {
         const parts = proposal.sections.filter((s) => s.tab === tab.key);
         if (parts.length === 0) return null;
@@ -361,9 +380,17 @@ function SectionsStep({ proposal }: { proposal: Proposal }) {
             <div className="card-title">{tab.label}</div>
             <p className="muted">{tab.question}</p>
             {parts.map((s) => (
-              <div key={s.code} className="pr-section">
-                <strong>{s.label}</strong>
-                <span className="muted">{s.question}</span>
+              <div key={s.code} className="pr-section" data-open={part === s.code}>
+                <button
+                  className="pr-section-head"
+                  type="button"
+                  aria-expanded={part === s.code}
+                  onClick={() => onPart(part === s.code ? null : s.code)}
+                >
+                  <strong>{s.label}</strong>
+                  <span className="muted">{s.question}</span>
+                </button>
+                {part === s.code && <FactList proposal={proposal} part={s.code} save={save} />}
               </div>
             ))}
           </div>

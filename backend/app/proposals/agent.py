@@ -1,5 +1,5 @@
-"""Sangam's proposal agent: one shared chat per proposal, beside the steps on screen. It reads and moves steps;
-the person writes and answers on screen."""
+"""Sangam Pitch, the proposal agent: one private chat per person per proposal, beside the steps on screen. It reads,
+keeps the fact list and asks one question at a time; the person writes and answers on screen."""
 
 from __future__ import annotations
 
@@ -17,10 +17,11 @@ from app.core.config import Settings
 from app.ingest.middleware import cheap_summarizer, fallback
 from app.integrations.tracing import trace_config
 from app.proposals.middleware import ProposalContext
+from app.proposals.tools.ledger_tools import add_facts, ask_user
 from app.proposals.tools.proposal_tools import advance_step, read_proposal
 from app.proposals.tools.record_tools import read_match, read_org_record
 
-TOOLS = [read_proposal, advance_step, read_match, read_org_record]
+TOOLS = [read_proposal, advance_step, read_match, read_org_record, add_facts, ask_user]
 
 _INSTRUCTIONS = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 if not _INSTRUCTIONS.strip():

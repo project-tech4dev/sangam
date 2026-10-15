@@ -12,14 +12,19 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from app.proposals import readiness, rubric
+from app.proposals import facts as fact_rules
+from app.proposals import questions as question_rules
+from app.proposals import readiness, reliability, rubric
 
 STAGES = (1, 2, 3, 4)  # 4 is "Before you send it"
 FACT_STATUS = ("proposed", "confirmed", "corrected", "rejected")
 LOG_TEXT = 200  # a logged value longer than this is cut; the section itself keeps it all
 
 _SECTION = re.compile(r"^sections\.([A-Z]\d{1,2})\.(text|done)$")
-_FACT = re.compile(r"^facts\.(k\d+)\.(status|value)$")
+_FACT = re.compile(r"^facts\.(k\d+)\.(status|correct)$")
+_NEW_FACT = re.compile(r"^facts\.(k\d+)$")
+_QUESTION = re.compile(r"^questions\.(q\d+)(\.status)?$")
+SET_BY_PERSON = ("proposed", "confirmed", "rejected")  # "corrected" comes only with the fact that replaces it
 _GATE = re.compile(r"^gates\.([a-z0-9]{1,16})$")
 
 
@@ -43,7 +48,7 @@ class Applied:
     title: str | None
 
 
-def _check(work: dict[str, Any], path: str, value: Any, advance: bool) -> None:
+def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str) -> None:
     if path == "title":
         if not isinstance(value, str) or not value.strip() or len(value) > 200:
             raise BadChange("title must be 1 to 200 characters")
@@ -77,10 +82,33 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool) -> None:
         if m.group(2) == "text" and not isinstance(value, str):
             raise BadChange("text is a string")
     elif m := _FACT.match(path):
-        if m.group(1) not in (work.get("facts") or {}):
+        fact = (work.get("facts") or {}).get(m.group(1))
+        if fact is None:
             raise BadChange(f"no fact {m.group(1)!r}")
-        if m.group(2) == "status" and value not in FACT_STATUS:
-            raise BadChange(f"a fact's status is one of {', '.join(FACT_STATUS)}")
+        if m.group(2) == "status" and value not in SET_BY_PERSON:
+            raise BadChange(f"a fact's status is set to one of {', '.join(SET_BY_PERSON)}")
+        if m.group(2) == "correct":
+            if not fact_rules.is_live(fact):
+                raise BadChange("that fact was already replaced or set aside")
+            if not isinstance(value, str) or not value.strip() or len(value) > fact_rules.VALUE_TEXT:
+                raise BadChange(f"a corrected value is 1 to {fact_rules.VALUE_TEXT} characters")
+    elif m := _NEW_FACT.match(path):
+        if via != "agent":
+            raise BadChange("facts are added by Sangam Pitch, which checks their source first")
+        if m.group(1) in (work.get("facts") or {}):
+            raise BadChange(f"fact {m.group(1)} exists")
+        if not (isinstance(value, dict) and value.get("status") in FACT_STATUS
+                and value.get("origin") in reliability.ORIGINS and value.get("subject") and value.get("value")):
+            raise BadChange("a fact has a subject, a value, an origin and a status")
+    elif m := _QUESTION.match(path):
+        if via != "agent":
+            raise BadChange("questions are asked and answered in the chat")
+        if m.group(2):
+            if m.group(1) not in (work.get("questions") or {}) or value not in question_rules.STATUSES:
+                raise BadChange(f"a question's status is one of {', '.join(question_rules.STATUSES)}")
+        elif not (isinstance(value, dict) and value.get("reason") in question_rules.REASONS
+                  and value.get("status") in question_rules.STATUSES):
+            raise BadChange("a question has a reason and a status")
     else:
         raise BadChange(f"{path!r} cannot be changed")
 
@@ -103,7 +131,24 @@ def _set(work: dict[str, Any], path: str, value: Any) -> None:
 
 
 def _short(value: Any) -> Any:
+    if isinstance(value, dict):  # a whole fact or question is logged by what it says
+        return _short(f"{value.get('subject')}: {value.get('value') or value.get('status')}")
     return value if not isinstance(value, str) or len(value) <= LOG_TEXT else f"{value[:LOG_TEXT]}…"
+
+
+def _expand(work: dict[str, Any], changes: dict[str, Any], by: dict[str, Any]) -> dict[str, Any]:
+    """A correction becomes two changes: the person's value as a new fact, and the old one marked corrected."""
+    out: dict[str, Any] = {}
+    held = dict(work.get("facts") or {})
+    for path, value in changes.items():
+        if (m := _FACT.match(path)) and m.group(2) == "correct":
+            old, new = m.group(1), fact_rules.next_id({"facts": held})
+            held[new] = fact_rules.said(held[old], value.strip(), by, supersedes=old)
+            out[f"facts.{old}.status"] = "corrected"
+            out[f"facts.{new}"] = held[new]
+        else:
+            out[path] = value
+    return out
 
 
 def last_change(work: dict[str, Any], code: str) -> dict[str, Any] | None:
@@ -122,7 +167,8 @@ def apply(work: dict[str, Any], changes: dict[str, Any], rev: dict[str, int] | N
         raise BadChange("nothing to change")
     rev = rev or {}
     for path, value in changes.items():
-        _check(work, path, value, advance)
+        _check(work, path, value, advance, via)
+    changes = _expand(work, changes, by)
 
     touched = sorted({m.group(1) for p in changes if (m := _SECTION.match(p))})
     for code in touched:

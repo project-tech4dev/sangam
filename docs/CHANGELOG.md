@@ -130,6 +130,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-11 · #153 · Proposals screens and steps 1–2, kept in the browser (`localStorage`), started from a Funder Match card.
 - 2026-10-15 · — · Proposals and RFP Watch show "Coming soon" (`COMING_SOON` in `features/ask/lib/comingSoon.ts`); Funder Match's proposal button and filter are hidden with them.
 - 2026-10-15 · M2 · Proposal Copilot agent (`/proposal`): steps advance only through code, each editor has their own private chat in the side panel, teammates' changes reach it from the proposal's log.
+- 2026-10-15 · M3a · Sangam Pitch facts and asking: facts from the record checked against it and shown in words with Yes / No, change it / Don't use it; one question at a time, by rule, never asked of two people; "Later" frees it for anyone.
 
 ## Media & Signals
 

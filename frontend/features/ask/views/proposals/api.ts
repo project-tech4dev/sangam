@@ -31,6 +31,23 @@ export type Work = {
   sources: number[];
   style: string;
   sections: Record<string, { text?: string; done?: boolean; rev?: number; score?: number }>;
+  facts?: Record<string, Fact>;
+  questions?: Record<string, { section: string; subject: string; status: "open" | "parked" | "answered" | "closed"; asked_of: { id: string; name: string } | null }>;
+};
+
+/** One fact in the proposal's list; the screen shows its standing and source in words, never its id or marker. */
+export type Fact = {
+  subject: string;
+  value: string;
+  origin: "registry" | "vault" | "web" | "you_said" | "derived";
+  tier: "green" | "amber" | "said";
+  status: "proposed" | "confirmed" | "corrected" | "rejected";
+  section?: string;
+  as_of?: string;
+  marker?: string;
+  source_name?: string;
+  page?: number;
+  said_by?: { id: string; name: string };
 };
 
 export type ProposalItem = {

@@ -29,3 +29,12 @@ def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
     if stage == 3:
         return []
     return ["this is the last step"]
+
+
+# The step each writing tool may first be used on; the tools check, not the prompt.
+FIRST_STAGE = {"add_facts": 2, "ask_user": 3}
+
+
+def too_early(tool: str, stage: int) -> str | None:
+    first = FIRST_STAGE.get(tool, 1)
+    return None if stage >= first else f"{tool} is used from step {first}, {STAGES[first]}; this is step {stage}"
