@@ -609,6 +609,17 @@ Added after M6 testing. Asked to improve, reframe or tighten wording (often the 
 
 **Exit gate:** a steward asks for a clearer sentence on step 3, presses Use this, and the part shows it.
 
+### M8: write in place
+From the shared prototype's section editor (15 Oct). On step 3 an open part is a text box the person writes in; Write / Write again per tab stays, and members read it as now.
+- **The box:** the text, with each source as [1], [2] in the order they are first used (the numbered source list below), saved about a second after typing stops. On save, code turns each [n] back into the fact it stood for in the text as it was, so a deleted [n] drops that citation.
+- **Around it:** the part's question; "Write this last" on the Summary; "must score 2" where it applies; a chip per strong element (✓ / ○); the gaps to add; any figure, place or name with no source; the score in words (Strong, One element missing, Reads as weak: …); Done or Done · reopen; the next part →.
+- **Checks:** a typed figure, place or name no cited fact holds still saves. Code stores it as the part's `untraced` list, and step 4's Fix first shows "Context and target area: “120” has no source" until it is cited, changed or made a gap. Every text change also recomputes which facts each part uses.
+- **Done:** the save route grades the text once (the same cheap grader Sangam Pitch uses) and stores `score` and `missing`. A text edit clears Done. `missing` and `untraced` are code-only, like `score`.
+- **Teammates:** each save carries the part's rev. If someone saved first, the box loads their text, keeps the person's own below it to copy from, and names who changed it.
+- **Left out:** live keyword ticks, the character count (Sangam holds no funder limits) and drafting every part on entry.
+
+**Exit gate:** a steward edits a part, adds a figure with no source, sees it listed in step 4, cites it, presses Done and sees the ticks.
+
 ## 6. Test plan
 
 **New tests, for the code-only safeguards only.** An exception to the usual "no new tests in a PR", because these checks are what keep the agent safe and a browser run cannot prove them. Each milestone's **Tests** line lists its own; all but the RLS test run with no database.
