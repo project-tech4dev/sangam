@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Upload } from "lucide-react";
+import { MessageCircle, Pencil, Upload, X } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
@@ -9,7 +9,6 @@ import { advance, changedByLine, getProposal, missingFrom, type Proposal, type R
 import { FactList } from "./FactList";
 import { FinishCard } from "./FinishCard";
 import { WriteCard } from "./WriteCard";
-import { HowItWorks } from "./HowItWorks";
 import { ANSWERS, STEPS } from "./steps";
 import { TellSangam } from "./TellSangam";
 
@@ -32,6 +31,8 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   const [part, setPart] = useState<string | null>(null);
   const [send, setSend] = useState<Send>(null);
   const onSend = useCallback((fn: Send) => setSend(() => fn), []);
+  // The chat floats over the page: open from the start on a wide screen, behind its button on a phone.
+  const [chatOpen, setChatOpen] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches);
 
   const load = useCallback(() => getProposal(id).then(setProposal, () => setFailed(true)), [id]);
   useEffect(() => {
@@ -82,6 +83,8 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   const { work, summary, can_edit: canEdit } = proposal;
   const toContinue = summary.to_continue ?? [];
   const save: Save = (set) => run(() => saveWork(id, set));
+  // A step's button talks to Sangam Pitch, so the chat opens to show the reply.
+  const ask: Send = send ? (text) => { setChatOpen(true); send(text); } : null;
   const onSaved = (saved: Saved) => setProposal((p) => (p ? { ...p, work: saved.work, summary: saved.summary } : p));
 
   function submitRename(event: React.FormEvent) {
@@ -151,10 +154,11 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
           {/* What the person selects here is sent with their next question to Sangam. */}
           <div onMouseUp={() => setSelection(window.getSelection()?.toString().trim() ?? "")}>
             {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
-            {work.stage === 2 && <SourcesStep proposal={proposal} save={save} send={send} />}
-            {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} send={send} />}
-            {work.stage === 4 && <FinishStep proposal={proposal} save={save} send={send} onSaved={onSaved} />}
+            {work.stage === 2 && <SourcesStep proposal={proposal} save={save} send={ask} />}
+            {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} send={ask} />}
+            {work.stage === 4 && <FinishStep proposal={proposal} save={save} send={ask} onSaved={onSaved} />}
           </div>
+          {work.stage === 2 && <WhatHappensNext funder={proposal.funder.name} />}
 
           {canEdit && work.stage < STEPS.length && (
             <div className="pr-next">
@@ -178,27 +182,30 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
           </div>
         </div>
 
-        <aside className="pr-side" aria-label="Sangam">
-          {canEdit ? (
+      </div>
+
+      {canEdit && (
+        <div className="pr-chat-float">
+          {/* Hidden, not removed, so a turn keeps streaming while the panel is closed. */}
+          <div className="pr-chat-panel" hidden={!chatOpen}>
+            <button className="btn btn-ghost pr-chat-close" type="button" onClick={() => setChatOpen(false)} aria-label="Close chat">
+              <X className="icon icon-sm" />
+            </button>
             <TellSangam
               proposal={proposal}
               screen={{ step: STEPS[work.stage - 1], selection, ...(work.stage === 3 && part ? { part } : {}) }}
               onTurnEnd={load}
               onSend={onSend}
             />
-          ) : (
-            <section className="card pr-side-card" aria-label="Sangam Pitch">
-              <div className="card-title">Sangam Pitch</div>
-              <p className="muted pr-chat-note">
-                Each person who can change this proposal has their own private chat with Sangam Pitch. You see what they change, not what
-                they asked.
-              </p>
-            </section>
+          </div>
+          {!chatOpen && (
+            <button className="btn btn-primary pr-chat-bubble" type="button" onClick={() => setChatOpen(true)}>
+              <MessageCircle className="icon icon-sm" />
+              Sangam Pitch
+            </button>
           )}
-          {work.stage === 1 && <HowItWorks proposal={proposal} />}
-          {work.stage === 2 && <WhatHappensNext funder={proposal.funder.name} />}
-        </aside>
-      </div>
+        </div>
+      )}
     </>
   );
 }

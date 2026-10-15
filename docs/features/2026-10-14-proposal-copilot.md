@@ -570,6 +570,7 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
 - The stale signal is each part's `rev`, stored as `polished.revs`, rather than a hash: a part changed since smoothing goes into the Word file as written, and the card says how many.
 - `polished` and `versions` are set only by these two routes (`via` "polish" / "version"); `PATCH /work` refuses both, and a version whose number someone took at the same moment is refused.
 - The Word file leaves out the ⟦k⟧ marks and puts the Summary first; its facts snapshot is the facts the text cites, as they stood.
+- After testing: the side column is gone. The steps take the full width and the chat floats bottom-right, open on a wide screen and behind a "Sangam Pitch" button on a phone; a step's button opens it. "Your promises from Sangam" was removed, and members see no chat.
 
 **Exit gate:** SeSTA downloads v1.docx from the Doc Vault, with its facts snapshot.
 
