@@ -113,8 +113,8 @@ Plan: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md).
   first, so robots.txt and the source registry decide, as in Import.
 - **The pinned list is read first and never skipped** (`calls/pinned.json`); a dead end there is a "Needs a look"
   line, and its `note` records what a person found, so it is not rediscovered each run.
-- **`funders.calls_url` is kept only when the page held a call**, so a wrong pick is searched again; one set by hand
-  is never overwritten.
+- **No column of its own.** A call goes into `rfps`, `rfp_locations` and `rfp_tags`; a re-run reads a funder's
+  page again from its newest call's `rfps.source_url`, so a page that held no call is searched afresh.
 - **Only a call with a future deadline is written.** Past and undated calls are reported, not stored.
 - **`rfp_matches.status` belongs to the NGO**; nothing the pull or matching writes may change it.
 

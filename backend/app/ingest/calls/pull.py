@@ -105,11 +105,14 @@ async def read_page(url: str, *, feed: bool = False) -> tuple[str | None, str | 
 
 
 async def _funders(pool, slugs: list[str] | None) -> list[dict]:
-    sql = "SELECT id, slug, name, website, calls_url FROM funders WHERE registry_status <> 'hidden'"
+    # The page a call was last read from, so a re-run reads it again instead of searching.
+    sql = ("SELECT f.id, f.slug, f.name, f.website, (SELECT r.source_url FROM rfps r WHERE r.funder_id = f.id "
+           "ORDER BY r.fetched_at DESC NULLS LAST LIMIT 1) AS calls_url "
+           "FROM funders f WHERE f.registry_status <> 'hidden'")
     async with pool.connection() as conn:
         if slugs:
-            return await (await conn.execute(sql + " AND slug = ANY(%s) ORDER BY name", (slugs,))).fetchall()
-        return await (await conn.execute(sql + " ORDER BY name")).fetchall()
+            return await (await conn.execute(sql + " AND f.slug = ANY(%s) ORDER BY f.name", (slugs,))).fetchall()
+        return await (await conn.execute(sql + " ORDER BY f.name")).fetchall()
 
 
 async def _tag_ids(conn, call: extract.Call) -> list[int]:
@@ -185,10 +188,6 @@ async def pull_one(pool, funder: dict, deps: Deps, *, pinned: dict | None) -> Ou
                 else:
                     await _write(conn, funder, call, page=page, text=text)
                     out.written.append(call.title)
-            if calls:  # kept only when it held a call, so a wrong pick is searched again next time
-                await conn.execute(
-                    "UPDATE funders SET calls_url = coalesce(calls_url, %s), calls_url_found_at = now() "
-                    "WHERE id = %s", (page, funder["id"]))
     except Exception as exc:  # one funder's failure is a report line, not the end of the pull
         logger.exception("calls: %s failed", funder["slug"])
         out.look = f"the pull failed here ({type(exc).__name__}: {exc})."
