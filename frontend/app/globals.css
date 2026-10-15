@@ -770,6 +770,7 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .view { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
 .view-title { font-size: var(--fs-lg); }
 .view-measure { max-width: 760px; }
+.soon-card { align-items: flex-start; }
 
 /* --- List pages: bucket cards, one row of dropdowns, search, a list that grows ---- */
 .bucket-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
