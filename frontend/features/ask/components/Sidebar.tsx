@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ThreadMeta } from "../lib/threads";
+import { COMING_SOON } from "../lib/comingSoon";
 
 export type WorkspaceView = "ask" | "chats" | "funder-match" | "proposals" | "rfpwatch" | "vault" | "media";
 
@@ -22,8 +23,8 @@ type SectionId = "recent" | "usecases" | "context" | "tools";
 
 const USE_CASES: Item[] = [
   { id: "funder-match", label: "Funder Match" },
-  { id: "proposals", label: "Proposals" },
-  { id: "rfpwatch", label: "RFP Watch" },
+  { id: "proposals", label: "Proposals", soon: COMING_SOON.has("proposals") },
+  { id: "rfpwatch", label: "RFP Watch", soon: COMING_SOON.has("rfpwatch") },
   { id: "media", label: "Media & Signals" },
 ];
 
