@@ -7,6 +7,7 @@ import type { MatchDetail, MatchRow, MatchTier } from "@/lib/api";
 import { shortDate } from "@/lib/format";
 import { startProposal } from "../proposals/start";
 import { useProposals } from "../proposals/store";
+import { COMING_SOON } from "../../lib/comingSoon";
 import { getDetail } from "./api";
 import { funderTypeLabel } from "./funderType";
 
@@ -123,7 +124,16 @@ export function MatchCard({ match, rank, org, nav }: { match: MatchRow; rank: nu
         ))}
       </ul>
 
-      <ProposalAction match={match} org={org} nav={nav} />
+      {COMING_SOON.has("proposals") ? (
+        <div className="fm-actions">
+          <button className="btn" type="button" disabled title="Proposals are coming soon">
+            Start a proposal
+          </button>
+          <span className="tag tag-outline">Coming soon</span>
+        </div>
+      ) : (
+        <ProposalAction match={match} org={org} nav={nav} />
+      )}
 
       <details className="import-disclosure fm-reason" onToggle={onToggle}>
         <summary className="btn-ghost">Why this score</summary>
