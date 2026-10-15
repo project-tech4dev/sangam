@@ -148,3 +148,13 @@ async def list_source_datasets(pool: AsyncConnectionPool, ids: list[int] | None 
     """
     async with pool.connection() as conn:
         return await (await conn.execute(sql, {"ids": ids})).fetchall()
+
+
+async def org_document_ids(pool: AsyncConnectionPool, org_id: int, ids: list[int]) -> set[int]:
+    """Which of `ids` are this org's own documents."""
+    if not ids:
+        return set()
+    async with pool.connection() as conn:
+        rows = await (await conn.execute(
+            "SELECT id FROM documents WHERE id = ANY(%s) AND org_id = %s", (ids, org_id))).fetchall()
+    return {r["id"] for r in rows}

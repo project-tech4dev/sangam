@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import re
+from collections import Counter
 from typing import Any
 
 from langchain.tools import ToolRuntime
@@ -23,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 TEXT_LIMIT = 12000
 PROBLEMS_SHOWN = 8
+_PARAGRAPH = re.compile(r"^paragraph \d+:? ")
 SUGGESTION = "proposal_suggestion"  # the interrupt's type; QuestionCard.tsx shows it as a suggestion card
 def _names(p: context.Current) -> set[str]:
     """Partner and people names in the fact list; the proposal's own org and funder are free to name."""
@@ -87,11 +90,22 @@ async def write_section(code: str, text: str, runtime: ToolRuntime, rev: int = 0
         return f"write_section failed: {type(exc).__name__}"
 
 
+def _unnumbered(problem: str) -> str:
+    """A problem without its paragraph number, so adding a paragraph break does not make it new."""
+    return _PARAGRAPH.sub("", problem, count=1)
+
+
 async def _untraced(p: context.Current, section: rubric.Section, text: str, before: str = "") -> str | None:
     """REFUSED with each claim that traces to no fact the paragraph cites, beyond those `before` already had."""
     facts, districts, names = p.work.get("facts") or {}, await records.districts(get_pool()), _names(p)
-    was = set(trace.check(before, facts, districts=districts, names=names)) if before else set()
-    problems = [x for x in trace.check(text, facts, districts=districts, names=names) if x not in was]
+    was = Counter(_unnumbered(x) for x in trace.check(before, facts, districts=districts, names=names)) \
+        if before else Counter()
+    problems = []
+    for x in trace.check(text, facts, districts=districts, names=names):
+        if was[_unnumbered(x)] > 0:
+            was[_unnumbered(x)] -= 1
+        else:
+            problems.append(x)
     if not problems:
         return None
     shown = problems[:PROBLEMS_SHOWN] + ([f"and {len(problems) - PROBLEMS_SHOWN} more"]
@@ -107,12 +121,15 @@ async def _store(p: context.Current, section: rubric.Section, text: str, rev: in
     ids = trace.cited(text)
     pool = get_pool()
     by = await repo.user_name(pool, p.scope.user_id)
+    traces = not trace.check(text, p.work.get("facts") or {}, districts=await records.districts(pool),
+                             names=_names(p))
 
     def change(work: dict, title: str) -> work_rules.Applied:
+        # A suggestion may leave a problem the part already had, so only a text that fully traces clears the flag.
         changes = {f"sections.{code}.text": text,
                    f"sections.{code}.score": grade.score(graded.missing) if graded else None,
                    **({f"sections.{code}.needs_rewrite": False}
-                      if (work.get("sections") or {}).get(code, {}).get("needs_rewrite") else {}),
+                      if traces and (work.get("sections") or {}).get(code, {}).get("needs_rewrite") else {}),
                    **_used_in(work, code, ids)}
         return work_rules.apply(work, changes, {code: rev}, by=by, via="agent", facts=ids, reason=reason,
                                 title=title)
@@ -167,6 +184,8 @@ async def suggest_edit(code: str, now: str, better: str, why: str, runtime: Tool
         held, rev = part.get("text") or "", int(part.get("rev") or 0)
         if section is None or not held.strip():
             return f"REFUSED: {code!r} is not a written section of this proposal; write it with write_section."
+        if not better.strip():
+            return "REFUSED: suggest wording to put in its place; to remove a passage, rewrite the part."
         text = swap(held, now, better)
         if text is None:
             return ("REFUSED: quote the passage exactly as read_proposal shows it, ⟦k⟧ marks included, "

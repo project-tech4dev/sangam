@@ -13,6 +13,7 @@ from app.integrations import storage
 from app.proposals import assemble, gates, readiness, records, rubric, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
+from app.repositories import documents as documents_repo
 from app.repositories import funder_matches
 from app.repositories import proposals as repo
 from app.repositories import threads as threads_repo
@@ -78,8 +79,12 @@ class _NotYet(Exception):
 
 async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **kwargs: Any) -> SavedOut:
     """Every write: refused for a reader, checked and logged by work.apply under the row lock."""
-    await _editable(pool, proposal_id)
+    row = await _editable(pool, proposal_id)
     by = await repo.me(pool)
+    picked = (kwargs.get("changes") or {}).get("sources")
+    if (isinstance(picked, list) and all(isinstance(d, int) for d in picked)
+            and set(picked) - await documents_repo.org_document_ids(pool, row["org"]["id"], picked)):
+        raise HTTPException(422, "Only this organisation's own files can be ticked.")
     # A corrected fact's fixed sentence must still trace, places included.
     correcting = any(path.endswith(".correct") for path in kwargs.get("changes") or {})
     districts = await records.districts(pool) if correcting else frozenset()

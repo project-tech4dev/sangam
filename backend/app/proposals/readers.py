@@ -124,11 +124,13 @@ def _last_text(result: dict[str, Any]) -> str:
     return message.text.strip() if message is not None else ""
 
 
-async def _titles(ids: list[int]) -> dict[str, str]:
+async def _titles(org_id: int, ids: list[int]) -> dict[str, str]:
+    """The org's own files' titles; another org's file stays unnamed."""
     if not ids:
         return {}
     async with get_pool().connection() as conn:
-        rows = await (await conn.execute("SELECT id, title FROM documents WHERE id = ANY(%s)", (ids,))).fetchall()
+        rows = await (await conn.execute(
+            "SELECT id, title FROM documents WHERE id = ANY(%s) AND org_id = %s", (ids, org_id))).fetchall()
     return {str(r["id"]): r["title"] or "Untitled file" for r in rows}
 
 
@@ -144,7 +146,7 @@ async def read(p: context.Current) -> str:
     """Run every pending reader at once and record each one's outcome; returns what happened, file by file."""
     pool = get_pool()
     by = await repo.user_name(pool, p.scope.user_id)
-    titles = {**await _titles(p.work.get("sources") or []), FUNDER: f"what {p.funder_name} looks for"}
+    titles = {**await _titles(p.org_id, p.work.get("sources") or []), FUNDER: f"what {p.funder_name} looks for"}
     keys: list[str] = []
     try:
         await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by))
