@@ -23,7 +23,19 @@ const runtime = new CopilotRuntime({
   runner: new InMemoryAgentRunner(),
 });
 
-const handler = createCopilotRuntimeHandler({ runtime, basePath: "/api/copilotkit" });
+// The runtime also serves its in-memory store of every thread (threads/*, memories/*, inspector/*) to any
+// caller. Sangam reads history from the backend's /api/threads, so only what the chat client calls is served.
+const SERVED = new Set(["info", "agent/run", "agent/connect", "agent/stop", "agent/suggest"]);
+
+const handler = createCopilotRuntimeHandler({
+  runtime,
+  basePath: "/api/copilotkit",
+  hooks: {
+    onBeforeHandler: ({ route }) => {
+      if (!SERVED.has(route.method)) throw new Response("Not found", { status: 404 });
+    },
+  },
+});
 
 // An Import turn streams for 15–20 minutes; must match backend/vercel.json (Pro's extended-duration beta).
 export const maxDuration = 1800;
