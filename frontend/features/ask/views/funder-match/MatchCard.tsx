@@ -6,6 +6,7 @@ import { EntityMark, Tag } from "@/components/ui";
 import type { MatchDetail, MatchRow, MatchTier } from "@/lib/api";
 import { shortDate } from "@/lib/format";
 import { startProposal, useProposals } from "../proposals/api";
+import { COMING_SOON } from "../../lib/comingSoon";
 import { getDetail } from "./api";
 import { funderTypeLabel } from "./funderType";
 
@@ -136,7 +137,16 @@ export function MatchCard({
         ))}
       </ul>
 
-      <ProposalAction match={match} org={org} nav={nav} mayStart={mayStart} />
+      {COMING_SOON.has("proposals") ? (
+        <div className="fm-actions">
+          <button className="btn" type="button" disabled title="Proposals are coming soon">
+            Start a proposal
+          </button>
+          <span className="tag tag-outline">Coming soon</span>
+        </div>
+      ) : (
+        <ProposalAction match={match} org={org} nav={nav} mayStart={mayStart} />
+      )}
 
       <details className="import-disclosure fm-reason" onToggle={onToggle}>
         <summary className="btn-ghost">Why this score</summary>
