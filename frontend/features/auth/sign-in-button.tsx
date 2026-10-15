@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { LoginForm } from '@/features/auth/login-form'
+import { DEV_LOGIN, DEV_USERS, devEmail, setDevEmail } from '@/lib/devAuth'
 import { createClient } from '@/lib/supabase/client'
 
 function initials(user: User) {
@@ -57,7 +58,34 @@ function UserMenu({ user }: { user: User }) {
   )
 }
 
+// Local testing only: pick which seeded @local.test user the app runs as.
+function DevSignIn() {
+  const router = useRouter()
+  const [email, setEmail] = useState<string | null>(null)
+  useEffect(() => setEmail(devEmail()), [])
+  function pick(value: string) {
+    setDevEmail(value || null)
+    setEmail(value || null)
+    router.refresh()
+  }
+  return (
+    <select className="input" aria-label="Sign in as" value={email ?? ''} onChange={(e) => pick(e.target.value)}>
+      <option value="">Signed out</option>
+      {DEV_USERS.map((u) => (
+        <option key={u} value={u}>
+          {u}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 export function SignInButton() {
+  if (DEV_LOGIN) return <DevSignIn />
+  return <SupabaseSignIn />
+}
+
+function SupabaseSignIn() {
   const [user, setUser] = useState<User | null | undefined>(undefined)
   const [open, setOpen] = useState(false)
 

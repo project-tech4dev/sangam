@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import type { Message } from "@ag-ui/client";
 import { ApiError, call } from "../../lib/rest";
 
 export type Answer = "yes" | "will_have" | "no";
@@ -16,6 +17,8 @@ export type Summary = {
   fix_first: string[];
   worth_checking: string[];
   ready: boolean;
+  /** What stops the open step being left, in words; empty when Next is allowed. */
+  to_continue?: string[];
 };
 
 export type Work = {
@@ -44,7 +47,7 @@ export type ProposalItem = {
 
 export type Section = { code: string; label: string; question: string; tab: string; strong: string[]; weak: string };
 export type Tab = { key: string; label: string; question: string };
-export type Proposal = ProposalItem & { thread_id: string | null; work: Work; sections: Section[]; tabs: Tab[] };
+export type Proposal = ProposalItem & { /** The caller's own chat; teammates each have theirs. */ thread_id: string; work: Work; sections: Section[]; tabs: Tab[] };
 export type Saved = { summary: Summary; work: Work };
 export type ChangedBy = { by: { id: string; name: string }; at: string } | null;
 
@@ -81,6 +84,16 @@ export async function startProposal(org: string, funderId: number, title: string
 }
 
 export const getProposal = (id: number) => call<Proposal>(`/api/proposals/${id}`);
+
+/** The proposal's shared chat, as the backend rebuilt it; empty before anyone has asked. */
+export async function fetchProposalMessages(id: number): Promise<Message[]> {
+  try {
+    return (await call<{ messages: Message[] }>(`/api/proposals/${id}/messages`)).messages;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return [];
+    throw error;
+  }
+}
 
 export async function saveWork(id: number, set: Record<string, unknown>, rev: Record<string, number> = {}) {
   const saved = await call<Saved>(`/api/proposals/${id}/work`, "PATCH", { set, rev });

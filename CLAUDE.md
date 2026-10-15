@@ -337,6 +337,9 @@ Adding a table to the catalog is a **security decision**, not bookkeeping: a new
 invisible to the agent until someone puts it there, and boot logs any live table that is
 neither catalogued nor in `KNOWN_EXCLUDED`.
 
+**Sangam Pitch is the proposal agent's name on screen.** The route stays `/proposal`, threads stay
+`proposal-<id>-<user>`, and the backend and code keep "proposal". Each editor has their own private chat with it.
+
 **Sangam Scout is Sangam Import's name on screen.** The route stays `/import`, threads stay
 `import-<uuid>`, and the backend, endpoint and prompts keep "ingest"/"Import". Scout is one chat
 thread like Ask: task cards over the composer, sources ticked in the right rail before the first

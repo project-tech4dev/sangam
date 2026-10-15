@@ -6,7 +6,9 @@ import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
 import { advance, changedByLine, getProposal, missingFrom, type Proposal, rename, type Saved, saveWork } from "./api";
+import { HowItWorks } from "./HowItWorks";
 import { ANSWERS, STEPS } from "./steps";
+import { TellSangam } from "./TellSangam";
 
 type Save = (set: Record<string, unknown>) => Promise<void>;
 
@@ -17,6 +19,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   const [notice, setNotice] = useState<string | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [selection, setSelection] = useState("");
 
   const load = useCallback(() => getProposal(id).then(setProposal, () => setFailed(true)), [id]);
   useEffect(() => {
@@ -54,6 +57,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
     );
 
   const { work, summary, can_edit: canEdit } = proposal;
+  const toContinue = summary.to_continue ?? [];
   const save: Save = (set) => run(() => saveWork(id, set));
 
   function submitRename(event: React.FormEvent) {
@@ -96,50 +100,74 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
         {!canEdit && <p className="pr-readonly">You can read this proposal. Ask your organisation&apos;s admin to make changes.</p>}
       </div>
 
-      <ol className="pr-steps" aria-label="Steps">
-        {STEPS.map((label, i) => (
-          <li key={label} className="pr-step" data-current={work.stage === i + 1}>
-            <button
-              type="button"
-              disabled={!canEdit || i + 1 >= work.stage}
-              onClick={() => save({ stage: i + 1 })}
-              aria-current={work.stage === i + 1 ? "step" : undefined}
-            >
-              <span className="pr-step-num">{i + 1}</span>
-              {label}
-            </button>
-          </li>
-        ))}
-      </ol>
+      <div className="pr-wrap">
+        <div className="pr-main">
+          <ol className="pr-steps" aria-label="Steps">
+            {STEPS.map((label, i) => (
+              <li key={label} className="pr-step" data-current={work.stage === i + 1}>
+                <button
+                  type="button"
+                  disabled={!canEdit || i + 1 >= work.stage}
+                  onClick={() => save({ stage: i + 1 })}
+                  aria-current={work.stage === i + 1 ? "step" : undefined}
+                >
+                  <span className="pr-step-num">{i + 1}</span>
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ol>
 
-      {notice && (
-        <p className="pr-notice" role="status">
-          {notice}
-        </p>
-      )}
+          {notice && (
+            <p className="pr-notice" role="status">
+              {notice}
+            </p>
+          )}
 
-      {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
-      {work.stage === 2 && <SourcesStep proposal={proposal} save={save} />}
-      {work.stage === 3 && <SectionsStep proposal={proposal} />}
-      {work.stage === 4 && <FinishStep proposal={proposal} />}
+          {/* What the person selects here is sent with their next question to Sangam. */}
+          <div onMouseUp={() => setSelection(window.getSelection()?.toString().trim() ?? "")}>
+            {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
+            {work.stage === 2 && <SourcesStep proposal={proposal} save={save} />}
+            {work.stage === 3 && <SectionsStep proposal={proposal} />}
+            {work.stage === 4 && <FinishStep proposal={proposal} />}
+          </div>
 
-      {canEdit && work.stage < STEPS.length && (
-        <div className="pr-next">
-          <button className="btn" type="button" onClick={() => run(() => advance(id))}>
-            Continue to {STEPS[work.stage].toLowerCase()} →
-          </button>
-          {missing.length > 0 && <span className="muted fm-meta">Before you continue: {missing.join("; ")}.</span>}
+          {canEdit && work.stage < STEPS.length && (
+            <div className="pr-next">
+              <button className="btn" type="button" disabled={toContinue.length > 0} onClick={() => run(() => advance(id))}>
+                Continue to {STEPS[work.stage].toLowerCase()} →
+              </button>
+              {(missing.length > 0 ? missing : toContinue).length > 0 && (
+                <span className="muted fm-meta">To continue: {(missing.length > 0 ? missing : toContinue).join("; ")}.</span>
+              )}
+            </div>
+          )}
+
+          <div className="pr-strip">
+            <Tag tone={summary.ready ? "accent-2" : "outline"}>{summary.ready ? "Ready" : "In progress"}</Tag>
+            <span>
+              Answered {summary.gates_answered} of {summary.gates_total}
+            </span>
+            <span>
+              Parts done {summary.done} of {summary.total}
+            </span>
+          </div>
         </div>
-      )}
 
-      <div className="pr-strip">
-        <Tag tone={summary.ready ? "accent-2" : "outline"}>{summary.ready ? "Ready" : "In progress"}</Tag>
-        <span>
-          Answered {summary.gates_answered} of {summary.gates_total}
-        </span>
-        <span>
-          Parts done {summary.done} of {summary.total}
-        </span>
+        <aside className="pr-side" aria-label="Sangam">
+          {canEdit ? (
+            <TellSangam proposal={proposal} screen={{ step: STEPS[work.stage - 1], selection }} onTurnEnd={load} />
+          ) : (
+            <section className="card pr-side-card" aria-label="Sangam Pitch">
+              <div className="card-title">Sangam Pitch</div>
+              <p className="muted pr-chat-note">
+                Each person who can change this proposal has their own private chat with Sangam Pitch. You see what they change, not what
+                they asked.
+              </p>
+            </section>
+          )}
+          {work.stage === 1 && <HowItWorks proposal={proposal} />}
+        </aside>
       </div>
     </>
   );

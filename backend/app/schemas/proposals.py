@@ -48,7 +48,7 @@ class ProposalTab(ReadModel):
 
 
 class ProposalOut(ProposalItem):
-    thread_id: str | None
+    thread_id: str = Field(description="the caller's own chat about this proposal; teammates each have theirs")
     work: dict[str, Any]
     sections: list[ProposalSection]
     tabs: list[ProposalTab]

@@ -20,6 +20,10 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     detail: (a) => (a?.file_path ?? "").split("/").at(-2) ?? "",
   },
   ls: { label: "Listing skills", detail: () => "" },
+  read_proposal: { label: "Reading the proposal", detail: (a) => a?.part || "the outline" },
+  advance_step: { label: "Moving to the next step", detail: () => "" },
+  read_match: { label: "Reading the Funder Match", detail: () => "" },
+  read_org_record: { label: "Reading the organisation's record", detail: () => "" },
   compare_fit: {
     label: "Comparing funders",
     detail: (a) => `org ${a?.org_id ?? ""}` + (a?.funder_ids?.length ? ` · funders ${a.funder_ids.join(", ")}` : " · every funder"),

@@ -12,6 +12,8 @@ import type { IndexPayload } from "@/features/ask/AskWorkspace";
 import { AskPreview } from "@/features/ask/preview/AskPreview";
 import { canUseScout, type Me } from "@/features/ingest/lib/access";
 import { WorkspaceLoader } from "@/features/ask/WorkspaceLoader";
+import { cookies } from "next/headers";
+import { DEV_COOKIE, DEV_LOGIN } from "@/lib/devAuth";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Ask Sangam" };
@@ -19,6 +21,7 @@ export const metadata = { title: "Ask Sangam" };
 export const dynamic = "force-dynamic";
 
 async function isSignedIn(): Promise<boolean> {
+  if (DEV_LOGIN) return Boolean((await cookies()).get(DEV_COOKIE)?.value);
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getClaims();

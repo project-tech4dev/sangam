@@ -11,11 +11,14 @@ const AGENT_URL = process.env.AGENT_URL || "http://localhost:8000/agent";
 // Sangam Import is a second graph on the same backend. One env var still
 // configures both: the importer hangs off /ingest where Ask hangs off /agent.
 const INGEST_URL = AGENT_URL.replace(/\/agent$/, "/ingest");
+// The proposal agent: one shared chat per proposal, beside its steps.
+const PROPOSAL_URL = AGENT_URL.replace(/\/agent$/, "/proposal");
 
 const runtime = new CopilotRuntime({
   agents: {
     sangam_agent: new HttpAgent({ url: AGENT_URL }),
     sangam_ingest: new HttpAgent({ url: INGEST_URL }),
+    sangam_proposal: new HttpAgent({ url: PROPOSAL_URL }),
   },
   runner: new InMemoryAgentRunner(),
 });

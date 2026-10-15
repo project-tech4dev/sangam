@@ -91,6 +91,8 @@ async def resolve_principal(authorization: str | None) -> CurrentUser:
     """Who an Authorization header is. Runs as the owner: it writes users rows no caller may write."""
     settings = get_settings()
     if not settings.auth_enabled:
+        if settings.dev_auth and authorization and authorization.startswith("Bearer dev:"):
+            return await _local_test_user(authorization.removeprefix("Bearer dev:"))
         return DEV_USER
 
     if not authorization:
@@ -132,6 +134,19 @@ async def resolve_principal(authorization: str | None) -> CurrentUser:
             status.HTTP_409_CONFLICT, "This email is already linked to another account"
         ) from exc
     return CurrentUser(id=row["id"], is_staff=row["is_staff"], auth_user_id=auth_user_id, email=email)
+
+
+async def _local_test_user(email: str) -> CurrentUser:
+    """Local testing only: a seeded @local.test user, so each role can be tried without Supabase."""
+    if not email.endswith("@local.test"):
+        raise _unauthorized("Only @local.test users sign in this way")
+    async with get_pool().connection() as conn:
+        row = await (await conn.execute(
+            "SELECT id, is_staff, auth_user_id FROM users WHERE email = %s AND auth_user_id IS NOT NULL", (email,)
+        )).fetchone()
+    if row is None:
+        raise _unauthorized(f"No local test user {email}")
+    return CurrentUser(id=row["id"], is_staff=row["is_staff"], auth_user_id=row["auth_user_id"], email=email)
 
 
 def _db_identity(principal: CurrentUser) -> tuple[str, str]:
@@ -233,9 +248,15 @@ class CallerScope:
     def can_save_funder(self) -> bool:
         return self.is_staff or self.user_id is not None
 
+    def can_edit_proposal(self, org_id: int) -> bool:
+        """Write an org's proposals: staff, its admins and its stewards, as 0048's RLS allows."""
+        return self.is_staff or self.org_roles.get(org_id) in ("admin", "steward")
+
 
 # Set with chat_user_id on every chat request. Unset outside one, which tools treat as no access.
 chat_scope: ContextVar[CallerScope | None] = ContextVar("chat_scope", default=None)
+# The proposal a /proposal run works on, from its thread; the model never names one.
+chat_proposal: ContextVar[int | None] = ContextVar("chat_proposal", default=None)
 
 
 async def caller_scope(pool, principal: CurrentUser) -> CallerScope:
@@ -302,3 +323,33 @@ async def ask_access(
     """chat_access, and Ask Sangam's SQL runs as this caller. Import keeps the owner: it writes the catalog."""
     await _own_thread(request, pool, principal)
     agent_caller.set(_db_identity(principal))
+
+
+async def proposal_chat_access(
+    request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
+) -> None:
+    """Your own chat about a proposal you may change: someone else's thread or org is 404, a member is 403."""
+    from app.repositories import proposals
+
+    try:
+        run = RunAgentInput.model_validate(await request.json())
+    except (ValueError, ValidationError):
+        return
+    parsed = proposals.parse_chat_thread(run.thread_id)
+    if parsed is None or parsed[1] != str(principal.id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
+    proposal_id = parsed[0]
+    org_id = await proposals.org_of(pool, proposal_id)
+    scope = await caller_scope(pool, principal)
+    if org_id is None or not scope.can_read_org(org_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
+    if not scope.can_edit_proposal(org_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "You can read this proposal. Ask your organisation's admin to make changes.")
+    owner = await threads.claim_thread(pool, thread_id=run.thread_id, user_id=principal.id,
+                                       title=_thread_title(run), use_case="proposal", org_id=org_id)
+    if owner != principal.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
+    chat_user_id.set(principal.id)
+    chat_scope.set(scope)
+    chat_proposal.set(proposal_id)

@@ -2,12 +2,18 @@
 
 import { CopilotKitProvider } from "@copilotkit/react-core/v2";
 import { useEffect, useState, type ReactNode } from "react";
+import { DEV_LOGIN, devEmail } from "@/lib/devAuth";
 import { createClient } from "@/lib/supabase/client";
 
 export function AgentProviders({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
+    if (DEV_LOGIN) {
+      const email = devEmail();
+      setToken(email ? `dev:${email}` : null);
+      return;
+    }
     const supabase = createClient();
     supabase.auth.getSession().then(({ data }) => setToken(data.session?.access_token ?? null));
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
