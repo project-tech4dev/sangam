@@ -1,14 +1,13 @@
 ---
 type: architecture concept
 title: Data and Migrations
-description: How Sangam's Postgres schema is organised by table group, why a baseline plus forward-only migrations define it, how the SQL catalog drift check gates backend boot, where documents live in storage buckets, and how provenance columns keep the optional Neo4j graph rebuildable.
+description: How Sangam's Postgres schema is organised by table group (including server-side proposals and document links), why a baseline plus forward-only migrations (latest 0048) define it, how the SQL catalog drift check gates backend boot, where documents live in storage buckets, and how provenance columns keep the optional Neo4j graph rebuildable.
 tags: [database, postgres, migrations, provenance, storage, neo4j, schema]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:59:48.420Z
 sources:
   - id: openwiki-source-7faba850789bc67a49b79a3f
     resource: repo://backend/app/agent/tools/sql/catalog.py
+  - id: openwiki-source-ca736c25c2a1bb0e95531706
+    resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
     resource: repo://backend/app/core/lifespan.py
   - id: openwiki-source-51ead927cc43f35e220ea627
@@ -25,6 +24,10 @@ sources:
     resource: repo://backend/app/integrations/graphiti.py
   - id: openwiki-source-bbb88a9dc2dd928de209ddbb
     resource: repo://backend/app/integrations/storage.py
+  - id: openwiki-source-697868bd3a418ce8115944eb
+    resource: repo://backend/app/repositories/documents.py
+  - id: openwiki-source-1157f5d2ae5aa2bccc1057d0
+    resource: repo://backend/app/repositories/proposals.py
   - id: openwiki-source-c19bf12e33dd13dd52164b8e
     resource: repo://backend/tests/test_migration_integrity.py
   - id: openwiki-source-b9b33576e920a6ec443c1309
@@ -35,8 +38,6 @@ sources:
     resource: repo://db/init/02_schema.sql
   - id: openwiki-source-5d936c732a0a021ab7221170
     resource: repo://db/migrations/0001_provenance.sql
-  - id: openwiki-source-08e2faf5e9ca58033a948545
-    resource: repo://db/migrations/0009_proposals.sql
   - id: openwiki-source-dfac4787d4864ec73643d276
     resource: repo://db/migrations/0020_storage_buckets.sql
   - id: openwiki-source-4f00b570b8820dd507c244db
@@ -49,14 +50,20 @@ sources:
     resource: repo://db/migrations/0034_grants_into_funder_activity.sql
   - id: openwiki-source-bedfa05c67900013e140a5fc
     resource: repo://db/migrations/0041_catalog_writes.sql
+  - id: openwiki-source-2939d404ec1a27d9be23ffd5
+    resource: repo://db/migrations/0042_funder_matches.sql
   - id: openwiki-source-3a57c4fb7f0662ab72e2805d
     resource: repo://db/migrations/0044_news.sql
   - id: openwiki-source-afa502fc99bdec75aa59f7f1
     resource: repo://db/migrations/0044_one_read_policy_and_fk_indexes.sql
   - id: openwiki-source-d1c5532960252357e823b43e
     resource: repo://db/migrations/0047_document_links.sql
+  - id: openwiki-source-3d121c1ca466c424ca2b4936
+    resource: repo://db/migrations/0048_proposal_work.sql
   - id: openwiki-source-82b4a7ca109f9768db60ccbf
     resource: repo://db/migrations/README.md
+  - id: openwiki-source-093cd3e20819d97ab4faddda
+    resource: repo://db/scripts/truncate_all.sql
   - id: openwiki-source-e8e61d605125cac4d909755e
     resource: repo://docs/ARCHITECTURE.md
   - id: openwiki-source-88fdf568b0f25b1d21f041da
@@ -67,14 +74,17 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-60b751726aee2d4aae078a12
     resource: repo://seed/graph_seed.py
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Data and Migrations
 
 Postgres is Sangam's system of record. Everything researched, imported, scored or saved ends up as rows there, and every other store is either derived from it (the Neo4j graph) or holds bytes that rows point at (Supabase Storage). This page covers the shape of the schema, how it changes, what stops the backend from booting against a mismatched schema, and how provenance ties facts back to sources.
 
-Related pages: [Auth, roles and RLS](auth-roles-rls.md) (the policies and grants those migrations create), [Ask Sangam](ask-sangam.md) (the SQL tool whose catalog is checked at boot), [Sangam Import / Scout](sangam-import-scout.md) (the main writer of catalog rows and documents), and the how-to [Writing a migration](../workflows/writing-a-migration.md).
+Related pages: [Auth, roles and RLS](auth-roles-rls.md) (the policies and grants those migrations create), [Proposal Copilot](proposal-copilot.md) (the feature that owns `proposals.work`), [Ask Sangam](ask-sangam.md) (the SQL tool whose catalog is checked at boot), [Sangam Import / Scout](sangam-import-scout.md) (the main writer of catalog rows and documents), and the how-to [Writing a migration](../workflows/writing-a-migration.md).
 
 ## Baseline plus forward-only migrations
 
@@ -105,7 +115,7 @@ Nothing applies migrations behind your back, with one local exception. `make up`
 
 ### Two files numbered `0044`
 
-The directory holds 48 files and **two are numbered `0044`**: `0044_news.sql` (the Media & Signals tables) and `0044_one_read_policy_and_fk_indexes.sql` (folds duplicate `users`/`org_members` read policies and adds three FK indexes). Both landed in parallel branches; staging had already applied `0044_news`, and because the runner keys on the full file name (not the number), both were kept rather than renumbered. Order between them is alphabetical (`0044_news` before `0044_one_read…`). Do not "fix" this by renaming either file, as that would make the runner treat the renamed file as new and re-run it. `0045_drop_news_mentions.sql` follows.
+The directory holds 49 `.sql` files (the latest is `0048_proposal_work.sql`) and **two are numbered `0044`**: `0044_news.sql` (the Media & Signals tables) and `0044_one_read_policy_and_fk_indexes.sql` (folds duplicate `users`/`org_members` read policies and adds three FK indexes). Both landed in parallel branches; staging had already applied `0044_news`, and because the runner keys on the full file name (not the number), both were kept rather than renumbered. Order between them is alphabetical (`0044_news` before `0044_one_read…`). Do not "fix" this by renaming either file, as that would make the runner treat the renamed file as new and re-run it. `0045_drop_news_mentions.sql`, `0046_import_columns.sql`, `0047_document_links.sql` and `0048_proposal_work.sql` follow.
 
 ### Conventions worth knowing
 
@@ -113,7 +123,7 @@ The directory holds 48 files and **two are numbered `0044`**: `0044_news.sql` (t
 - `org_identifiers` is granted **by column** (`0033`), so a new column there needs an explicit `GRANT SELECT (col) … TO anon, authenticated` to be readable.
 - Storage-related migrations are guarded: `0020` and `0032` skip bucket creation when there is no `storage` schema (the local Postgres container is not Supabase), recording themselves as applied so the ledgers still match.
 - A migration that adds a table also needs it listed in `docs/CHANGELOG.md` and `docs/ARCHITECTURE.md` §7 in the same PR.
-- `make db-clean` truncates all tables but keeps the ledger; `app.db.replicate` copies one database's rows into another with an **identical** schema (see below).
+- `make db-clean` (`db/scripts/truncate_all.sql`) truncates every public table with `RESTART IDENTITY CASCADE` but keeps `schema_migrations` (dropping it would make `make migrate` replay everything), then re-inserts the local dev user and marks it staff, because every local request resolves to it; `app.db.replicate` copies one database's rows into another with an **identical** schema (see below).
 
 ## Table groups
 
@@ -129,6 +139,8 @@ erDiagram
     documents ||--o{ funder_activity : "document_id evidence"
     documents ||--o{ chunks : "text and embeddings"
     documents ||--o{ document_links : "backs"
+    orgs ||--o{ proposals : "writes"
+    funders ||--o{ proposals : "applied to"
     orgs ||--o{ org_members : "who may see"
     users ||--o{ org_members : "role"
     users ||--o{ threads : "owns"
@@ -143,10 +155,11 @@ Caption: a simplified slice of the entity relationships; every fact table also c
 | CSOs | `orgs`, `org_identifiers` (carries a status, validity dates and an evidence tier), `org_locations`, `org_tags`, `org_financials`, `metrics`, `programs`, `program_tags`, `contacts` |
 | Funders | `funders`, `funder_activity` (one row per filing line, `kind` = spend / footprint / partner / programme; a grant is a partner line), `funder_csr_years`, `funder_locations`, `funder_tags` |
 | Taxonomy and geography | `tags` (every vocabulary by `kind`), `tag_links`, `locations` (LGD codes), `location_designations` |
-| Documents | `documents`, `chunks` (pgvector embeddings plus a generated `tsvector`), `document_links`, `extraction_log` |
+| Documents | `documents` (`doc_type` is free text, with reserved and proposal-related values described below), `chunks` (pgvector embeddings plus a generated `tsvector`), `document_links`, `extraction_log` |
 | Import | `entity_research`, `vault_research`, `ingest_runs`, `ingest_run_items`, `resolution_queue`, `ingest_source_proposals`, `promotions`, `catalog_writes` |
 | Scores and RFPs | `rubrics`, `rubric_criteria`, `fit_scores`, `fit_score_items`, `score_adjustments`, `rfps`, `rfp_*` link tables, `reference_figures` |
 | Match | `funder_matches`, `funder_match_details` (saved runs, private to an org) |
+| Proposals | `proposals` (an org's proposal to one funder; `work` and `summary` jsonb added in `0048`); a funder's form is a `documents` row of type `proposal_template`, since `0031` dropped `proposal_templates` and `template_items` and re-pointed `proposals.template_id` at `documents` |
 | News | `news_stories`, `news_links`, `news_link_scores`, `news_story_entities`, `news_story_locations`, `news_story_tags`, `news_watch` (from `0044_news`; `news_mentions` was dropped in `0045`) |
 | Access | `users`, `org_members`, `threads` |
 | Infrastructure | `schema_migrations`, `graph_ingest_log`, and LangGraph's `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations` |
@@ -156,12 +169,18 @@ A few notes on specific groups:
 - **Import bookkeeping.** `promotions` and `catalog_writes` (`0041`) are the undo log for saving Import research into the catalog. A trigger `app.log_catalog_write()` records old and new row JSON for a fixed list of catalog tables, but only while a save has set `sangam.promotion_id`; nothing else is logged. A newly added table that Import saves into must be given the same trigger, as `0047` does for `document_links`. See [Sangam Import / Scout](sangam-import-scout.md).
 - **`resolution_queue`.** Names that identifiers, exact match and trigram similarity could not resolve wait here for a reviewer; a new name is never auto-merged into a registry org without an identifier or exact match.
 - **Checkpoint tables** are not in any migration. `open_checkpointer` (`backend/app/db/checkpointer.py`) calls LangGraph's `AsyncPostgresSaver.setup()` on every boot, which issues idempotent DDL. They hold every user's serialized conversation history and are deliberately kept away from the SQL tool and from `app.db.replicate`.
-- **`proposals` exists but is unused.** `0009_proposals` created the table, but no backend code reads or writes it; the SQL catalog lists it in `KNOWN_EXCLUDED`, and the only references are RLS and caller-pool tests. Proposals today live in the browser (`localStorage`), started from a Funder Match card. Do not assume it is a live data path.
+- **`proposals` is a live, server-side table.** `0009_proposals` created it (with `status`, `requested_amount`, `thread_id`, document pointers and so on), and `0048_proposal_work` made it the store for the [Proposal Copilot](proposal-copilot.md): `work jsonb NOT NULL DEFAULT '{}'` holds everything the proposal screen and its agent edit, and `summary jsonb` is what the list shows, recomputed from `work` on every save. `backend/app/repositories/proposals.py` runs as the caller (RLS decides access): `list_proposals` never reads `work`, and every change to `work` goes through `save`, which takes `SELECT … FOR UPDATE` on the row, applies a change function (`app.proposals.work`) and writes `work`, `summary`, title and `updated_at` back in one transaction. The agent side (`org_of`, `load`) uses the owner pool, since chat access and `require_edit` decide who gets there. Each person's chat is a per-user thread `proposal-<id>-<user_id>`. `proposals` is still in the SQL catalog's `KNOWN_EXCLUDED`, because it holds every org's private drafts. Older `0009` columns such as `status`, `template_id` (now a foreign key to `documents`) and `awarded_activity_id` (replacing `grant_id`, `0034`) remain in the schema.
+- **Who may write proposals.** `0048` rewrites the `proposals_insert` and `proposals_update` policies to `app.my_match_org_ids()` (the org's admins and stewards, the same set that may save a Funder Match run) or staff; ordinary members still read through the unchanged `proposals_read` and no longer write. The same migration widens `documents_insert` to `app.my_org_ids()` or staff, so a Doc Vault upload is open to every role in the org, and re-runs `0027`'s guard that fails the migration if any readable public table has no read policy. In code, `org_id_for_member(..., write=False)` in `backend/app/repositories/documents.py` is what the vault upload routes pass so stewards are admitted. See [Auth, roles and RLS](auth-roles-rls.md).
+- **Proposal-related document types.** `documents.doc_type` is free text, not a CHECK enum. `proposal_template` (a funder's application form, one of `RESERVED_DOC_TYPES` in `backend/app/ingest/expectations.py` that Import research may not write; `funder_form` picks the newest by `fetched_at`) and `proposal_draft` are the two proposal types. `insert_draft` stores a saved proposal version's Word file as a private (`is_public = false`) `proposal_draft` document in the org's Doc Vault, with `is_ai_generated = true`, `source_name = 'Sangam Pitch'` and status `received`. The other reserved values are `funder_eligibility` and `source_dataset`.
 - **RLS everywhere.** `0027` enables row-level security on every public table, and later migrations add their tables' policies; the grants and policies are covered in [Auth, roles and RLS](auth-roles-rls.md).
 
 ## Connection pools and the runtime view of the schema
 
-`make_pool` (`backend/app/db/checkpointer.py`) builds the single `AsyncConnectionPool` shared by REST, agent tools and the checkpointer; it is opened in the FastAPI lifespan, set as `app.db.pool.pool`, and sized by `DB_POOL_MAX_SIZE` (default 10). It connects as the owner with `autocommit=True`, `prepare_threshold=0` and dict rows. `CallerPool` (`backend/app/db/pool.py`) wraps that pool so each REST connection starts a transaction with `SET LOCAL` role (`anon` or `authenticated`) and JWT claims; the connection returns to the pool as the owner. Agent tools, Import and seeds still use the owner pool through `get_pool()`.
+`make_pool` (`backend/app/db/checkpointer.py`) builds the single `AsyncConnectionPool` shared by REST, agent tools and the checkpointer; it is opened in the FastAPI lifespan, set as `app.db.pool.pool`, and sized by `DB_POOL_MAX_SIZE` (default 10). It connects as the owner with `autocommit=True`, `prepare_threshold=0` and dict rows. `backend/app/db/pool.py` exposes it in three ways:
+
+- `get_pool()` / `OwnerPoolDep` return the raw owner pool. Only identity code (which decides who the caller is and writes `users` and `threads` rows no caller may write), Import, seeds and the proposal agent's `org_of`/`load` helpers take it; unit tests override `get_pool` to keep a real database.
+- `CallerPool` (`PoolDep`, built by `get_caller_pool` from the role and claims `AuthMiddleware` put on the request; anon without them) wraps the pool so each connection is one transaction that first runs `set_caller`, a `set_config(..., true)` (`SET LOCAL`) of the Postgres role and `request.jwt.claims`. Both end with the transaction, error included, so the connection returns to the pool as the owner. Routers and repositories such as `proposals.py` take this, so RLS applies without each route asking.
+- `agent_caller`, a `ContextVar` holding `(role, claims)` set per `/agent` request, is how Ask Sangam's SQL tools, which run outside any request, query as the caller; unset, their SQL runs as `anon`.
 
 ## SQL catalog drift check at boot
 
@@ -169,8 +188,8 @@ Ask Sangam's SQL tool can only read what `backend/app/agent/tools/sql/catalog.py
 
 ```mermaid
 flowchart TD
-    A["lifespan opens pool"] --> B["verify_against_db reads information_schema.columns"]
-    B --> C{"catalog table or column missing from DB"}
+    A["lifespan opens pool"] --> B["verify_against_db reads information_schema.columns and column privileges"]
+    B --> C{"catalog table or column missing, or not SELECTable by a role"}
     C -- yes --> D["log SQL catalog drift errors and raise RuntimeError, boot fails"]
     C -- no --> E["list live base tables"]
     E --> F{"tables in neither CATALOG nor KNOWN_EXCLUDED"}
@@ -184,8 +203,9 @@ Caption: the boot-time catalog gate in `_verify_sql_catalog` (`backend/app/core/
 Semantics, which matter when you write a migration:
 
 - **Fails boot** when the catalog lists a table that does not exist, or a column the table lacks. So a migration that drops or renames a catalogued table or column must update `catalog.py` in the same change, and an unmigrated database fails fast (this is why `make up` migrates first).
+- **Also fails boot on privileges.** Chat queries run as the caller, so `verify_against_db` additionally checks `has_column_privilege`: any catalogued column that `authenticated` cannot `SELECT` is a problem, as is a table `anon` reads only in part (a whole table closed to `anon` is allowed), because that would break `SELECT *`. A migration that narrows grants, such as the column-level grant on `org_identifiers`, can therefore break boot until the catalog matches.
 - **Does not fail** for extra live tables or extra live columns. New tables are logged at INFO as "not readable by the SQL tool and not declared as excluded" until someone either adds them to the catalog or to `KNOWN_EXCLUDED`. That means a migration can ship without making the agent see the table; exposing it is a deliberate, separate step.
-- The catalog allowlists 37 tables. `KNOWN_EXCLUDED` names the 22 tables deliberately withheld (checkpoints, `users`, `threads`, `org_members`, `proposals`, Import bookkeeping, `vault_research`, `funder_matches`, `schema_migrations`, `graph_ingest_log`). `backend/tests/test_sql_catalog.py` asserts that the most sensitive of these are not in `TABLE_NAMES` and are declared excluded, and that withheld columns such as `contacts.email` are absent even from the `*` expansion.
+- The catalog allowlists 37 tables. `KNOWN_EXCLUDED` names the 22 tables deliberately withheld (the four checkpoint tables, `users`, `threads`, `org_members`, `proposals`, Import bookkeeping, `vault_research`, `funder_matches` and `funder_match_details`, the Media pipeline state `news_link_scores` and `news_watch`, `promotions` and `catalog_writes`, `schema_migrations`, `graph_ingest_log`). `backend/tests/test_sql_catalog.py` asserts that the most sensitive of these are not in `TABLE_NAMES` and are declared excluded, and that withheld columns such as `contacts.email` are absent even from the `*` expansion.
 - The catalog also validates itself at import (`_self_check`): every table needs columns and a primary key, and foreign keys must target catalogued tables and columns.
 - `backend/app/ingest/expectations.py` derives Import's researchable fields from the same catalog, so it stays in sync with the schema without a second list.
 

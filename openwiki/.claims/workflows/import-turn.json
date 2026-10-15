@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7399c0bd6890a1c094d1e95b0128fc921aaf3479f490571f7dc642a20384181d",
+  "pageVersion": "sha256:6da1a2cb5b0c0419afba243a2651e1da8feec52e319c054e3f3fcd2e094d81d7",
   "claims": [
     {
       "id": "claim_6e780f0bc0e24d0c8f01570655142673",
@@ -147,7 +147,7 @@
       "statement": "save_to_catalog is the single save path used by both the Review screen route (POST /api/ingest/research/{slug}/save) and the catalog-writer's promote_research. It role-gates the caller (SaveRefused to 403 or REFUSED, LookupError to 404), reads the brief-merged research rows, then per organisation in one transaction runs undo.start, promote, _record_save and undo.finish, retrying once on UniqueViolation.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/ingest.py#L234-L252",
+          "resource": "repo://backend/app/api/routes/ingest.py#L235-L253",
           "version": "repo-lines-v1:sha256:fabea09467950c92db474c28aefdb476a7789a56ba625d1b726ef33cb05e6481:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiNGNkOWZjY2FlMzljMTI0YjIyNmQ3MGU0MTIyNGQ2OTkwYzAwNTE0MTBmYjE3MGM2OWIwMTBmOWNlYzk0OWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhOGUzNzU0NWI2MTBiNzA5NjU1NWE1Nzc5ZjE3OGZjNTE4OTQ5YTdhODEzY2U5NzUyM2U4OGQ5ZjNjYzdhOWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2NDFmY2UyNzEzZDRlNDJjY2IwMjQwYzA4NjBiYjIyZjk5NDQ0OWY0MWI0NzMxODlmY2UzOTVhZmZiNWQ5MmIifQ"
         },
         {
@@ -249,7 +249,7 @@
       "statement": "undo.undo (POST /api/ingest/promotions/{id}/undo, staff only) replays catalog_writes newest-first in one transaction, deleting inserts and restoring updates, only for the 19 LOGGED tables, and is all-or-nothing: UndoRefused (HTTP 409) if the promotion is already undone, a row changed since the save, or a row is now referenced elsewhere. Success stamps undone_at and resets the research to unsaved when no live save remains.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/ingest.py#L219-L231",
+          "resource": "repo://backend/app/api/routes/ingest.py#L220-L232",
           "version": "repo-lines-v1:sha256:b6c656676ea7896551617e93e7f2a6cce268c6d6f064fef3bcd33148b68c14d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmOGUzNmI2NzFjMmU4NzU0OGM5MmQ1OGRlMDk0YzhhMzQ2N2E4MzYxOGRhMDE1MTY0ZmE3MDA2ZWZiZWM1YmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmN2U2ZDZiMmM5ZjUzYTJhMGVkMGI3MjY5NWE1YmIxNTU2M2FhNjlkYWE1NWQ1N2NhYjYwNTAzNmU1ODc3YmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0YTAxODliNmM0MjExOWZhNzY4ZjI4ZmY5ZDUyNTM4M2JlZmUwMDRiNmE1MWE2NDM0YjcwMTY0ZmMyN2QyYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkN2NkMzQ4ODZiYTZmZjZkMmI4NjJiZmI1NTVjNzU1OTE5NDBkNzZmMTM5MmQ5ZmQ5YzNmN2M2NTM0OGNlOTMifQ"
         },
         {
@@ -267,7 +267,7 @@
       "statement": "delete_research (DELETE /api/ingest/research/{slug}) removes research and vault findings only when no un-undone save of the slug stands, returning 409 otherwise.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/ingest.py#L206-L216",
+          "resource": "repo://backend/app/api/routes/ingest.py#L207-L217",
           "version": "repo-lines-v1:sha256:7b340aaca4f00b249dde8d7da1f530ffdc406e59024a0d6b76971b652b1448ce:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2MjY0M2MwNzE2MzI3NTlhMGE5ZDIwYTYyN2U2NWZkMjg4NDA3MDcyYWRkNzgzMjY1ODMxN2I0NDhjZjYzYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5NjRjMGE2MjgyOTAyMWExNGVjMzk3MWM0YzhiN2RlZjM4NzU0ZDU2Y2Q4ODY3NWY0MGNiZjA1ZmMzZGM4YWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIxZGIyYTk0OGExNjFmZDUzN2U3MDljOGUzNGJiNTYzZjU3MzUyYmExMDFkNGMxMmQ3NjI1NWMwNzE5OTAzYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmMzQ1NjU4NzU0MjVmYTdjNmFlZmVhMDY5ZGU0YTUwNzE0MDc1MWVmYjU4OWFiZjgwMTZiMThjYWMxZDkzZjgifQ"
         },
         {
@@ -285,7 +285,7 @@
           "version": "repo-lines-v1:sha256:947a783c161c9277e2d68c9e55407972b3eb59f7e2fdf3b7df6ea26281e3a8b4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyODYxZTMxYzIxMTk2YzdmNDU4ZTIxMzllNzM2NzI0NTIyYmZhM2Y2ZjRhMjZlN2E0MmM5NDJkYmZjYWZjZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTYwMGE3M2QyZTAyZjM1MmI5MGZlZjFkOGQ2MzgxMWJhNGE4ZWUwYzFiZWFhN2FlNDY1OGYzNmFhMmUxOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlYjFiZGJkZjUxYjkzODg1NTg0MGI1OTQ3MWRmMmY4Yjg0NjNhOTBiMjNkNThlYjg1OWEwNzQzZTZhZmY1ZTIifQ"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L162-L175",
+          "resource": "repo://docs/CHANGELOG.md#L175-L188",
           "version": "repo-lines-v1:sha256:d659bd2cf1638e34b7e5041893a34a62d90695fb8d81d2c85e948f54ed1553fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYTY0MDEyMGUyNzRkZWIwZTM2MDM3ODkzYjMzMjAzNzZkMThmNWJmMjM1NTE2ODc2MTAwN2VjMzNjZjQ1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzZjA3OGRiYjkxY2Q2MjZhZjdiMWFkYzkzNjcxNjQyZTZmMGZlYTBlY2Y5MmI3OTY0YWY0NDZlZWFmNWY1NWUifQ"
         }
       ]
@@ -307,10 +307,136 @@
           "version": "repo-lines-v1:sha256:39c73be56c3099b2ef15b2057d0d4080bf3d57c1722659b63ae3ef5668c12337:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNkODE2ZWYyM2E4MzcwOWFmMDljNTUwZWY1YTc3ZjUyMTU1ZDk3ZjRmMTMwNzU1ZGU2MjY4ZGQyNjc3YWE3OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2ZlZTAyYjY0YzY5NjAyZjg5NjVmMWE2NWQxZWEyYWI3NzRkZDg3YjBlNzNhY2NjNzhkYjI4NDMzMDZhM2U1NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWIwYzI3YTgyMGU5MmJjNmMyNTllOThjZTY0NjdhNDcyN2YyMDAwNjUzZjc2NzRkMzU1OTZmN2QyMTAzMzVlNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_61f3b20dbdec4a31b5311fd46ba39b77",
+      "statement": "ImportView loads all its panels with one GET /api/ingest/overview (to avoid cold-instance calls). For staff the overview includes sources, runs, queue and proposals; for other callers those are empty. Role access comes from accessOf, the screen uses NO_ACCESS until the overview answers, and Team tools render only for staff. After undo or delete only the research list is reloaded.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L127-L160",
+          "version": "repo-lines-v1:sha256:cda964428e37c953dde3dbd0d88f24d4bacb722e6216ca9b67a52e8fb130ccb4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmZTA1NzE5NGM2YzFkNzUxNDc4MWFmMGM4ZjNiZmU2MzQ1MTY5MDVmODQxNzBjMThhZTZlNWU4YWJmNDBlYTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1YTcwMjYzYjE2MzRkM2EyZGMyZjQ3NWZkMmYwMzFjNmU0NGYxMDgxNTcwNjkyODY1ZDlhOWJiMTc1ODc4OGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM5MGFiYjU4MjIwOGNkMThkZWE5MWQ5MjA2NjNiNzRiMjM1YTQ0MzkzNThmMzkyYzljMzBhNTM5NjcyZGZjY2IifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/ImportView.tsx#L33-L122",
+          "version": "repo-lines-v1:sha256:7688ca0c022c154b5abeb157be7fcf799be5af2719c8e8cace8765166ad6bdb3:eyJzZWxlY3RlZExpbmVDb3VudCI6OTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllZWUwMGFlYmVjYTk4N2NmMTZjNTJhYWNjYTQ2NzU1Mjg5ZmRiOTQ0NjkyM2QxMThiZDk0Yzc4OGM3ZDZmZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ZWYwMWJjMDhkYmMzYjYzZTRlNzVlYTNkMjZhNWI5NDE4OTE4NzdlMjdhZDg5MTMyOWM4NDExZDdkOGRjNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlOGNmMDBhMWM0NTcwYTZhNWY4YjM4ODQyZjQyMTIwYmNiM2NhZTA3MTMyMWYxZmYyOGMxYzdiMWY2MzhiZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ffb7a160f4074ea9a15dc54d67bfc94d",
+      "statement": "The research list is scoped to the caller: staff see everything; others see what they saved plus research on NGOs they steward, with private sources removed, a summary from private findings replaced by PRIVATE_NOTE, and promotion_id and saved_by blanked.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L181-L204",
+          "version": "repo-lines-v1:sha256:d3c4a5a26733ca0b7b4727ae710dc7275c4b901fe0aa7b94f48010a5d7de9d0b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmNDYyMDg2ODBkMTYwNmM1OTAzODJjMWVhYjM0NWVkOGRkMWIzYzdkNmVkNDc2Njc4YTFhZDA0YmEzNTI1NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiZGQwY2NiMDU2NGU4NTc0NTlhOWQzYmYwNDE1MzljYmFiNzc2NTcxZjExMTM3ZGJjNTg3NGFhNGZkZmNhMzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhODJlYmU5ZWQ0MDdjM2E2YmE0YjAwMzQyOTJiYWE1MmMxMWNlNWFlMjg2MTA3NDAyZGU0NzkyZWVlY2FjZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0YjY1NmIyNWZmNzBjOTZkYjQyNzM1Mzg1ZTAxOGM3YTlkNjE4Mjk5YTkwYTFhNDllMDExYjQzYmE2ZWY5NGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b38e6bf7b5c1425591379beb2f55458a",
+      "statement": "The overview's Doc Vault listing is best-effort: it lists up to 100 documents per membership org, keeps only private org documents, and on any failure logs a warning and returns an empty list so Import still opens.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L163-L178",
+          "version": "repo-lines-v1:sha256:f589c0b69650ba27141dc27e98134018ee8ac50082535d24da3c9e06e610ab0d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyMjZjMWQ2ZmMxNmU4NWEwMzlhNTE0NGE5ZDUwN2RmNzQ1Nzg5YzhkYTBiZTY1OWE1OTQ0MjJlZDI2YWQyNTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZDI0NDU4MmI2ZmIwM2QyM2I4NDE1YWJlY2QzNDZiMGM5ZjQ2NmI2Zjc1MmIwNjgxODljZTdlOWEyZGMzNTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmNzIyZTllODBjODExZDFkMjQ0ZTEwYzhiZDgyNGE1ZjcyOGIxNzE0NzJlNTJkNjIwNzUyYzIyMDMxNzczY2MifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4fc40aeef9e4e60aa8743baee49c4ae",
+      "statement": "GET /api/ingest/workbooks (staff only) lists .xlsx files for the spreadsheets card at the first pause and accepts only the staff-sources bucket (422 otherwise), matching the rule choose_sources applies to a pick.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/ingest.py#L267-L287",
+          "version": "repo-lines-v1:sha256:0b68edbd597cf28af6740014880ea1bbc3456330c9e05cfcf4070a5e0815261d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3ZTg2YTgwMGJjM2ZjOWIzZmUzMmEzOGQ1YjRhOTZjNWRlNGJlZGJhNWMzZjc5ZjU1Njg2ZGFkNWM3MDUzZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0NTI2YWZkNzhlMmJiZGM0N2QwODZmNjliOTdhZjYwZTQ5MjAzZDNjNDlhMTAwMDNmNTQxNzEyODlmOTYxZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5MWI1NGI3Yjg4NTllMTBiNjZmNDZjNjk3MTZjMjgyMzVkYTZhMDAzMDMwZWJhZjIxYzRjZWQwYTRiNmE5MGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdlMTVmOGVmOTBkM2UxYmEzMDA0NmM4MWVhYmJkY2VkMTQzOTJlMjg5M2ZkNjYyMjU4MjEwYTJjZTkzNGI1Y2UifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L387-L398",
+          "version": "repo-lines-v1:sha256:4282a4304020ff982e86868acc1285d0f01083287697a1be9f15eafa9e2dceb5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0YjIwYmQ5NTJhNzA4NTNkNDhiOTdkMzM5NTM5MGEwMzY2Yzc2NzNlMTg0NGU1ZWY5NTk4ZWRiMTA1NmRjMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4N2FkY2U5YjBjMGZlOGRjOTIyNWU4OWM5NGYxZjlkOWNkMTBhMDgwMWQyZjIyMDdlZTg1ZTE1ZTJkMTIwMjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmZmVkNDgxMmNiNjRmYThhZjc0MjdjMmVhOTNmMTQ1N2MzNzUxN2NlYTE4M2I1MmI5NDJkMjEwZWFiNTZmYTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkMmIwZTc3N2ZjM2NjZTA4NGVkZjE1YTg2NzM4YjIwOGZjNWM3NGU0ZTQ4YzU3M2Q3NTA4ZjExZmU2MWE1MDQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7b8239c9fa7b4e99ab923f3093c3b442",
+      "statement": "A Doc Vault document is a documents row that is not public and whose storage_path is under the org-vault bucket. The vault-reader tools use the owner pool, so each checks can_read_org itself, returns the same answer for an unreadable and a missing file, and a run's picked org is the only vault it may list. Vault text sits only in the vault-reader, which has no web tools.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/tools/vault_tools.py#L1-L100",
+          "version": "repo-lines-v1:sha256:47b6edf51a06193236abdbc5b80a0809abc29940f3f1b71eac96c8a7f25dc473:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlOThkNDU2MTg3NGE5NDg1ODVmN2MyNWMzMDk4ZmIzOTBhYTU3MWU2ZjZiNWJkNDcxZjMxNmYzNzE0YTViMzYzIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwN2RhM2JjYTQyYmIyMmJhNDQ5YTAyOWM4ZWNjMzhlYjBiMzkzNzkwOTU2M2QyMzdlOGFkOTE3NmZkYzVmMWY3IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1ZGZjMWJhZjc4ZTU4Nzc5YWUxMTY5ZTU2MGViZDliY2M4MzkwMTcwNzQxMzUyNjliMTYxZmE1Y2YxZDEyMmVkIn0"
+        },
+        {
+          "resource": "repo://backend/app/ingest/vault.py#L1-L84",
+          "version": "repo-lines-v1:sha256:8b467b1474d70d2685ec9d976efeca190e4bf6bb150105b70ca0cd4719e08dd3:eyJzZWxlY3RlZExpbmVDb3VudCI6ODQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5OWZlOGM4Njg0ZTRhODcxZTQ0MjdiOGQ4ZjNhMjNlYWZjMzA2OGUwZjJhZDI1Mzc5Mzg1Y2UxNDMyNjE4MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlNjhhYmI2NTIyZmY0NjU5ODgwMWJlODkzMDRhMTljOTEyNDUzNmMyNWI3MjU4ZmUwMTIyZDA3ZWVmZTU0N2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1MjJkMjk5OWNhMDNiNjk3MjI1MDUxM2FjYmNkNjkyMzU0MjVhZGM4MDc2NmJhNTRlZWYwYTM2NjZlYzQ3NDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9b2ee0cc84a94224923cb08661f92861",
+      "statement": "vault.read downloads up to 50 MB and reads only PDF, DOCX and XLSX, capping each read at 24,000 characters and citing every line with [vault:<id>#p<page>], #para<n> or #<sheet>!<cell> markers; a scanned PDF is reported as having no text rather than guessed.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/vault.py#L92-L149",
+          "version": "repo-lines-v1:sha256:adcdfb18333f426ab53bba228861934f9988a31c501154cb75fa8d4df85a4b6b:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlMDEzODJhNDkxMDRkYjhmNTY0YzM4N2FlNjI5ZWQwNzE2MDM1N2M1Y2M5OGYzMDAzMjYwOGIwZmJlMDBmMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyNTVlMDU4YzEyYjZjZWY4NzA1NDJhYTE3NGQyYzU3ZGVhOThmZDdmM2ViYmNjZTAzODNlMDc5NTg0ZDE2Y2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyMjE0Mzg0MTAxNzM2NTY4MmU1YzkwYWIyMmYxY2VmNGQwNzM5ZjA3MGY1OGZmMTNiZmVhYWExMWZiYzFiMzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5MGZlMzMyMTQzYTNlZjJlNWZmNzhjY2NlNmNjNmEyNDkyNWQ5Zjc5ZGVkMTEwNjY2Y2MyZGRlOTQ3ODVkNzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0a4687fed7df46eba24bba4236f3fd30",
+      "statement": "office.py is a pure bytes-to-text helper: docx_paragraphs returns paragraphs and table rows (a | b | c, merged cells once) in order, and xlsx_markdown renders each sheet's first 200 rows. It is used both for an upload's content_md (a damaged file leaves text None but keeps the hash) and by the vault reader for .docx files.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L120-L150",
+          "version": "repo-lines-v1:sha256:f19a6e147db117823375ed6eed3a28ff44623a123830ebb42e8eacb02017e082:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5N2UwNWJkMjA3OGJkZGEyYWE2MzViN2ZkNGMzMGJkNGE0ZDY0NWM1N2JlNmI4NWQ2ZjY1ODU5NThjYzEwYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmOWM5NTMxZmJjNWM3MDkyY2I1MTMzYTdjYWRlNmIwNDQ2MzIyMmE5ODVjZDllZTE5ZDVhZmU5YWY0MWYyNjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjNjY5OTJmNmY3NWZjMTVkMzRlZGZlZWUyYThlYjllMWVjYjllNmI3Njc4ODYzNmZjODcyMzc1NDljNWNhNTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNjdkYTVhMDM1NmEwNzRkZDgzOWQ2OGFhMmNjNTg3MWU0NGUyZjJjMTgzMjU4NmJiNDVkZTNkN2M2MmYzNzUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/office.py#L1-L51",
+          "version": "repo-lines-v1:sha256:4ed3d49c3a80534f3033ef5bcdf517a8c0db8e5d2dd9403c703d47c67cb8b0eb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0ZGNkOGZhMzQxZTRiNjg4MzcwMWNmZGVmMWQ1ZGEzN2E2NGFiNmQ3MmZmODQxZDU2NTZlOTZmOGExMDM5MjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZTdiYjMxNTZkZjFmNzcyOGY0NTMxOTM0NDlhYTc0NmQ3MWE1NDEzYTQ0M2FjZGVkMTZkYzcwNTI2Nzg0ODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/vault.py#L107-L120",
+          "version": "repo-lines-v1:sha256:b3077cb8c84c03e1ee67a8bae41266faafd9bc653f6e136351ef3963d4858f87:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzZmE4YzUyZjFmNDM3ZjM2ZDk2NzRlYjc5ZmRkMzZkZjMwYzM0NjJlMDdhY2UzM2Q4OWI1NTI3MDlmYTRmMmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlYTZlMTgzZjA2MzY5N2U3MjI5NGYzNjUyYzM3NjJiNWRmMjEzYmM4MTU0M2IzNzUzMzcwMDFkODU0MzgxMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0MzkyYjFhOWFkMWQ1NzI5NDUzODJlNzEwM2EzMWM0ODE0NThkYzZkNjVhZDQ3MjdhMDcxMjI2ZTRhMjBjMGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEyMzc1ODJhYWY5Njc0YWE4NTMyNzNkZjk2YTNjMGQwZTBkNzEwZDg0YjBlOTljMWNmNjE0MGViN2U5OTUzZDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ebc8a62aa772405f9494ef0e42ca4587",
+      "statement": "save_vault_findings refuses the whole save, writing nothing, unless every finding has a vault source_url, cites a document in that org's vault and quotes its [vault:<id>#…] marker; NGO research also requires can_research_org. Findings go to vault_research (one row per slug, day and org), never into entity_research.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/tools/vault_tools.py#L103-L153",
+          "version": "repo-lines-v1:sha256:90d1da688578249fa0a132fb84e34f3f418bd766c78b85442ba8ee9539f228a6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzNGU1OWQ3ZWFkY2E4YTkyOWEyNWZhNjBiYjU0ZmY2YjhhZmIwZmFkOTQwOTljZDFjODg5OGRjZDViZTk2OGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxMzdkMWQ2YmQ0OTVmNWM1M2Y3ZmUwMWNjNmM1MGZmN2YyZmU1MGIyOTRkY2FhYmZmYzYzYzU4NTBjN2FlNTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0Zjg5MDI1ZDk1NGIwODljODU2YWVjZWZmMmViMzE0ZmE2ZmY3MjJjZmJmYzcyYTEwM2NjOWZkMTQxODE0MzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/vault.py#L152-L164",
+          "version": "repo-lines-v1:sha256:bc0c4b2fcdd3a78c1c5fbb5eb0d92721ebd7eae015e0ce3c40a6a85014b8a644:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1ODg4OWZiZDI4ZjJlMDVkYzI3NTc3ODMzZjc3ZWY1M2E5OTEzODRiOTlhMDRkNWYxY2VkYzY4NWQ2MzE5OTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyMzRiMTc2NjE2MmIxYzk4YTYyNjkxNWVhODZiZTU4ZWQ5MmRmOWM5NmY1ZDU4OTA5NWQ5NjIwYjc1MTk2NmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1MThmYjgwMDVmZTY3YmRmNmY0NjU0ZTY2YmVkYjY1ZWEyZjZiMWJlYTVhNDY1OWExODU0NjlkZmEyYTQ0YWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkNGJlMjA5MDRjMmY5NDA2YjQ4ZTYzZDc1YzE0NzllNzUwYzM2ZmM3NDE0ZjEyOTVlNjc2YWIyYTQzNjdlMDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_91c988fae569466f832ec7beeaf951fa",
+      "statement": "Vault findings are handled separately at promotion: _research_rows strips vault URLs from entity_research and adds vault_research findings only for a writer or person and only for orgs the caller can read; vault.hold_at_promote lets only a funder's general facts (PROMOTABLE concepts) through, holding the org's own facts and any NGO's vault findings.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/promote.py#L1551-L1552",
+          "version": "repo-lines-v1:sha256:e1a7606af44a91d491476424ad9bcd8af5abedb596f3086e1fa72fc0ee9f3b1d:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTk2NDIxNWM5ZmMwNjExZjc2MWIwMmFlZmY5OWRjOTAxMWE5MTBmNGJkZDQxZWE0NDUxNWRjMTA5M2FjZmRjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTUzYmFlYzQ5OWQxMjc3MDczMTc4M2JjMzgyMTk1NTlhYjk4ZDM3NDk0ZmUyZjFlNTg4NDgxOGQ4MTljMDBhMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODQxMmIzMjA3MGI5ZjUzMWQ5MTViMjYwYmUwYmUzOTU4ZGZlYmZmNWZkMWFjZTk0OGU0ZmExODE5MmRmNGE2YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmRmMzFhNGNkNGY1YmJmYjI1MDVhMjIzMWVlNjhmNmQwNDY0YjhjODdjMDk5YWVkNGI3MzZlOWE5MmJlNWIxNyJ9"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/catalog_tools.py#L453-L501",
+          "version": "repo-lines-v1:sha256:85e5f51dadd51a9059a52870734909b67c17e6ec0967b8e3e29b38df815a61ef:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwNmZkNjI3YTlmMDUwNTJlNmUwYTVhZWU4ZWRhODZhMWViNTUzMzNhNjVmMDQ3ODU1ODRmMGIxN2QxZDk3ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNWIzODRmOTM4OTU0MTZmNTQzYzgyODA5ZTc5MmM3YTIxZjA0NjdkN2Y5NjYxMTAwMzNhYTMxNGVlNDZmNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiNDY4YWQwYWJkNWRmODYyMGJiOTRiZGZmZTg1ZjQyMTEwZWNkYThhZjc2NGE0ZDVjM2JhMDZiYWE1Zjc3M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyYWYyNjFkMWZmMmI4YTVjZWQyYjc1Yjk0OThkZDA2MTNhOWY4MGViYzdmOTc4ZGEyYzJiM2RkMDZmNjkzMmYifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/vault.py#L167-L185",
+          "version": "repo-lines-v1:sha256:e8598a1a4d45370577db43514a0beadfbfa871bb42f8cf18a239e2dc444a515c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzYTFhOWY5NGVkY2ZiNDI0MjM4M2JkMDAxMmYwYmZjNjk3MTRkYmRkMjUwODJmYzQ1NmE0OWZlMmFhYTZmMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzU1MTJhMDJjY2QxZGZlZDE1NGIyMTdlNGIyMzc1ODU0MmE2OTM2OGVmZGZhN2M1YzA1ZDkxMTc5NzhmMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyOGE4ZDlkODJmZmM4MmYyZTUyNzBkZTlhMGIxMmE4NTI5ZDNhZTRkZGYxZDNlZjczOWJjZWVhOWJmMGNlOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ2MDgzNGEwOGZmOTA4ZDE4ZGE1ODBmZDc3ZWY5ZDBiYWY0MTMwOGViYzk1NjZjMjhkNDY0MjZhOTc3ZjQwOTQifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/vault.py#L27-L29",
+          "version": "repo-lines-v1:sha256:537db2e64abf61e142b740786c49a5f6fe72a81c4b2fdc02a7a8dd0399797af5:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTBlMjkxMWIyNjU1MzM1ZDA5ZWRmYmFiMDk2ZmU2OTdlMDljMzNhMGY5ZjAyMzQ3MzdjOWNhODUyZjBlNjc2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzNhMjA3MDRkOTA5MmRkZTJjOGIwNGVkYjVkZDRhODIzNDQzYWFlYmJjNzY0ZjkwOWJmNzZkZTkxOGIxZGM2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzRlNTg5MmE1ZmRkMGZiY2EyZjFkNTIyZWJmMWU5MmI1NWQ1YjA3ZGNhNTQxODYyMjhjMDFiMzYzOTc4ZWQ1OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDgxZjBlOTEzYzQ3M2ZkMDkxOGI5YWNiMTE0NDg1NGU1MWU2OTg3OGFjMWNkOWQ4Y2UxZTg3NDJlOTY4NzczYyJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-15T18:08:53.060Z"
   }
 }

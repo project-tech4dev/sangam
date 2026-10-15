@@ -3,9 +3,6 @@ type: operations reference
 title: Environments and Env Vars
 description: How ENV=local and ENV=staging select a database for local Docker tooling, how the two docker-compose files and the Makefile fit together, a grouped reference of the env vars, and how blank values and defaults resolve in Settings.
 tags: [operations, environments, env-vars, docker-compose, makefile, configuration, staging]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-5f5b95b3d6a215fa02ceb945
     resource: repo://.env.example
@@ -29,7 +26,10 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-41397cbbfbde65db108b394c
     resource: repo://scripts/db-url.sh
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Environments and Env Vars
@@ -126,9 +126,9 @@ Provider keys: `ANTHROPIC_API_KEY` is the one required key and must match `MODEL
 
 ### Auth and the Supabase project
 
-- `SUPABASE_URL` is the project API URL (`https://<ref>.supabase.co`), not the database host. **Setting it turns auth on**: requests must carry a Supabase access token. Empty means every request is the seeded dev user. Compose forwards `SUPABASE_URL` defaulting to `NEXT_PUBLIC_SUPABASE_URL`.
+- `SUPABASE_URL` is the project API URL (`https://<ref>.supabase.co`), not the database host. **Setting it turns auth on**: a request with no `Authorization` header is anonymous, a valid Supabase access token is that user, and anything else is 401. Empty means every request is the seeded dev user (with `DEV_AUTH` on, `Bearer dev:<email>@local.test` instead picks a seeded local test user). Compose forwards `SUPABASE_URL` defaulting to `NEXT_PUBLIC_SUPABASE_URL`.
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` serve the frontend's sign-in. Unset, public pages and the `/ask` preview still render but nobody can sign in. They are inlined at build time on Vercel.
-- `DEV_AUTH` (default off): additionally accepts `Authorization: Bearer dev` as the dev user. Local only; never set on a deployed backend. `make smoke` sends that token, so it needs it set. It is only consulted when auth is enabled.
+- `DEV_AUTH` (default off; blank is off): a local-only switch that never belongs on a deployed backend. Its meaning depends on `SUPABASE_URL`. With auth enabled it accepts `Authorization: Bearer dev` as the dev user. With auth disabled it accepts `Bearer dev:<email>`, which resolves a seeded `@local.test` user that already has an `auth_user_id` (other domains or unknown emails are 401), so each role can be tried without Supabase; any other header is still the dev user. `make smoke` sends `Bearer dev`, which only needs `DEV_AUTH` when `SUPABASE_URL` is set. See [Auth, Roles and RLS](../architecture/auth-roles-rls.md).
 
 ### Optional integrations (all degrade, none crash)
 

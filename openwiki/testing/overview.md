@@ -1,11 +1,8 @@
 ---
 type: testing guide
 title: Testing
-description: How the backend test suite is split into unit tests (no database), integration tests (compose Postgres on :5433) and evals (real model calls that cost money), how to run each tier, and which tests pin the system's security and tool-surface invariants.
-tags: [testing, pytest, integration-tests, evals, invariants]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
+description: How the backend test suite is split into unit tests (no database), integration tests (compose Postgres on :5433) and evals (real model calls that cost money), how to run each tier, and which tests pin the system's security, tool-surface and proposal-copilot invariants.
+tags: [testing, pytest, integration-tests, evals, invariants, proposals, rls]
 sources:
   - id: openwiki-source-070c6307b3860e1806baf566
     resource: repo://backend/pyproject.toml
@@ -23,6 +20,8 @@ sources:
     resource: repo://backend/tests/evals/test_agent_evals.py
   - id: openwiki-source-d5d06fda351e6cb412c401d8
     resource: repo://backend/tests/evals/test_import_evals.py
+  - id: openwiki-source-bc3c2ebc658cef90ceb7a159
+    resource: repo://backend/tests/test_agent_rls.py
   - id: openwiki-source-0808792899dda5ae43456460
     resource: repo://backend/tests/test_caller_pool.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
@@ -33,6 +32,16 @@ sources:
     resource: repo://backend/tests/test_migration_integrity.py
   - id: openwiki-source-fe6e4c3f43ca6fccc586454c
     resource: repo://backend/tests/test_prompt.py
+  - id: openwiki-source-1a719932f8db409931d9e2ef
+    resource: repo://backend/tests/test_proposal_agent.py
+  - id: openwiki-source-ab7099b7aa694a12e8caad1a
+    resource: repo://backend/tests/test_proposal_finish.py
+  - id: openwiki-source-899c8be49aae16febe309b1e
+    resource: repo://backend/tests/test_proposal_readers.py
+  - id: openwiki-source-339d8fb79805ceb04a42a9e6
+    resource: repo://backend/tests/test_proposal_suggest.py
+  - id: openwiki-source-0607cb79e3440fdec4d15b13
+    resource: repo://backend/tests/test_proposals_work.py
   - id: openwiki-source-e3d5b96924a7ab50f4e2652f
     resource: repo://backend/tests/test_rls.py
   - id: openwiki-source-b9b33576e920a6ec443c1309
@@ -45,7 +54,10 @@ sources:
     resource: repo://CLAUDE.md
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Testing
@@ -104,13 +116,21 @@ Because routers resolve the pool through `Depends(get_pool)`, that single overri
 
 The `build_import` fixture builds the Import agent with `resolve_model` replaced by `FakeListChatModel` instances named after their model spec and `create_deep_agent` replaced by a capture function. Tests can then assert which model, subagents and middleware the builder handed over without calling any model. Other unit tests use `httpx.MockTransport` (Supabase Storage in `test_storage.py`) or a generated ES256 key and patched JWKS client (`test_security.py`) to exercise auth without a network.
 
+### Proposal copilot suites (unit, no database)
+
+The Sangam Pitch agent's safeguards are pinned by a family of unit tests, none marked `integration`. They follow the design rule "the agent proposes, code checks" from [Proposal Copilot](../architecture/proposal-copilot.md): the tests call the pure rule modules and tool coroutines directly, and monkeypatch `repositories.proposals` functions (`save`, `org_of`, `user_name`) and `context.current` instead of touching a pool.
+
+- **`test_proposals_work.py`** pins `work.apply`, the one way a proposal changes. Paths outside the allowed shapes (`summary`, `log`, `work`, unknown gates, unknown sections or fact ids, `stage` jumps, `sources`, a blank `title`) raise `BadChange`. A batch is atomic: if one change of several is refused, nothing is applied or logged. A section change must carry the `rev` it was read at, and a stale one raises `StaleSection` naming the current text and who changed it. A section's `rev` goes up once per save, and different sections do not clash. Every change is logged with who, `via`, `run_id`, path, `from`, `to`, facts and reason, with long values cut in the log but kept whole in the section. A step goes back by patch and forward only with `advance=True`, one step at a time. The summary is recomputed from the new work.
+- **`test_proposal_agent.py`** covers `proposal_chat_access` through a small app built with `make_app`: admins and stewards run their own chat on a proposal, a member gets 403, a stranger gets 404 (so existence is not leaked), a thread that is not `proposal-<id>-<user id>` for that proposal is 404, and two editors get two chats that neither can open. It also checks that `advance_step` refuses a reader before `repo.save` is reached and otherwise names what is missing (`NOT YET: ...`), and what the model is told: the stable context block is deterministic and holds no written text, the live block carries the screen and the reader's read-only status, teammates' changes appear but not the caller's own, and only Anthropic gets the `cache_control` breakpoint. `test_the_agent_has_its_nine_tools_and_read_file_only` builds the real agent with an `InMemorySaver` and asserts the tools node holds exactly `add_facts`, `advance_step`, `ask_user`, `read_file`, `read_files`, `read_match`, `read_org_record`, `read_proposal`, `suggest_edit` and `write_section` (its name says nine and the list has ten because `read_file` is counted apart). The file ends with a security check that a local `dev:` test sign-in is refused with 401 once Supabase is configured.
+- **Companion files** cover the rule modules: `test_proposal_facts.py` (source colours, when `ask_user` may ask, fact checks per origin and de-duplication), `test_proposal_writing.py` (trace check per paragraph, section order, grade-to-score mapping, `missing` and `untraced` never set from outside), `test_proposal_suggest.py` (the passage must appear exactly once; untraced wording is refused before the person sees it; `KEPT`, `SAVED` and `FEEDBACK` outcomes; a teammate's newer save refuses "use"), `test_proposal_finish.py` (the polish check refuses any changed figure, year, place, name or gap, and `polished` and `versions` are writable only by their own routes), `test_proposal_readers.py` (reader tool sets, one file per reader, the busy lock and the 30-minute stale limit, step 2's exit check) and `test_proposal_review.py` (how a corrected or set-aside fact propagates to the parts citing it and what stops `ready`).
+
 ## Tier 2: integration tests (database)
 
 Integration tests connect to `TEST_DATABASE_URL`, defaulting to `postgresql://sangam:sangam@localhost:5433/sangam` (the compose Postgres published port). Each file declares its own DSN and fixture, and each fixture does `pytest.skip("compose Postgres not reachable on localhost:5433")` on `OperationalError` after a 3-second connect timeout. So on a machine with no database the suite stays green by skipping rather than failing, and `pytest -m "not integration"` avoids even the connection attempts.
 
-Isolation is by rollback. The shared `db` fixture in `conftest.py` opens a non-autocommit connection and rolls back afterwards; `test_rls.py` runs each test inside `connection.transaction(force_rollback=True)`. Test rows never persist.
+Isolation is by rollback. The shared `db` fixture in `conftest.py` opens a non-autocommit connection and rolls back afterwards; `test_rls.py` runs each test inside `connection.transaction(force_rollback=True)`. Test rows never persist. The exception is `test_agent_rls.py`, which needs a real pool (the agent's SQL executor reads `app.db.pool.pool`), so it commits rows tagged with a per-run `MARKER` and deletes them in a `finally` block.
 
-The marker is applied either per file with `pytestmark = pytest.mark.integration` (`test_rls.py`, `test_sql_integration.py`, `test_migration_integrity.py`, `test_import_undo.py`, `test_news_rls.py`, `test_news_store.py`, `test_news_stories_sql.py`) or per test (`test_caller_pool.py`, `test_news_pipeline.py`, `test_storage.py`, `test_locations_seed.py`, `test_taxonomy_seed.py`, `test_vault.py` and a few import tests). Files with per-test marks mix DB-free and DB-backed cases, so check the decorator rather than assuming a whole file needs Postgres. Applying the marker consistently matters: `-m "not integration"` only excludes what is marked.
+The marker is applied either per file with `pytestmark = pytest.mark.integration` (`test_rls.py`, `test_agent_rls.py`, `test_sql_integration.py`, `test_migration_integrity.py`, `test_import_undo.py`, `test_news_rls.py`, `test_news_store.py`, `test_news_stories_sql.py`, `test_profile_facts_sql.py`) or per test (`test_caller_pool.py`, `test_news_pipeline.py`, `test_storage.py`, `test_locations_seed.py`, `test_taxonomy_seed.py`, `test_vault.py` and a few import tests). Files with per-test marks mix DB-free and DB-backed cases, so check the decorator rather than assuming a whole file needs Postgres. Applying the marker consistently matters: `-m "not integration"` only excludes what is marked.
 
 The data under test must already be loaded: run `make up` (which migrates) and `make seed` first. `test_migration_integrity.py` asserts seeded facts, for example at least 96 `documents` rows (a floor, because the importer adds more), exactly 29 `graph_ingest_log` rows, stable seed-order ids (`kabil` = 9, `bdf` = 10, `axis-bank-foundation` = 1, `tata-trusts` = 4) and that the `documents` id sequence has advanced past the restored rows. It fails if migrations and seeds drifted apart. See [Data and Migrations](../architecture/data-and-migrations.md).
 
@@ -125,7 +145,7 @@ The data under test must already be loaded: run `make up` (which migrates) and `
 
 ### Ask evals (`test_agent_evals.py`)
 
-Cases come from `cases/golden.jsonl` (10 cases at the time of writing, 8 tagged `canary`). `load_cases(tag)` reads every `*.jsonl` directly under `cases/` and filters by `--eval-tag`. Each case runs `build_agent` with an `InMemorySaver`, a recursion limit of 60 and a 180-second wall-clock timeout (added after a hung model request blocked a suite for hours). The harness extracts the SQL the agent actually executed from `db_query` tool messages (`executed: ...` lines) and the `[kind:id]` citation markers from the final answer, ignoring the audit's appended caveat message.
+Cases come from `cases/golden.jsonl` (10 cases at the time of writing, 8 tagged `canary`). `load_cases(tag)` reads every `*.jsonl` directly under `cases/` and filters by `--eval-tag`. Each case runs `build_agent` with an `InMemorySaver`, a recursion limit of 60 and a 180-second wall-clock timeout (added after a hung model request blocked a suite for hours). The harness runs as the staff dev user (`agent_caller` is set to the `DEV_USER` identity) so the agent reads what the owner-run gold SQL reads. It extracts the SQL the agent actually executed from `db_query` tool messages (`executed: ...` lines) and the `[kind:id]` citation markers (kinds `org`, `funder`, `activity`, `grant`, `score`, `news`, `graph`) from the final answer, ignoring the audit's appended caveat message (`CAVEAT_PREFIX`), which is a second `AIMessage` and would otherwise be scored as the answer. A timeout fails the case with a message saying the model request hung or the agent looped.
 
 Scoring (`harness.score`) applies whatever gates a case declares:
 
@@ -186,7 +206,9 @@ The SQL tool is the agent's only door to the database, so its guards are tested 
 
 ### Roles and row-level security
 
-`test_rls.py` builds a world (orgs A and B, a hidden org, one person per role, private contacts, documents, chunks, proposals and a thread) and queries it as each caller by setting the Postgres role and `request.jwt.claims` exactly as `CallerPool` does per request. It pins that private rows reach only the owning org and staff, hidden orgs reach only staff, signed-out callers cannot touch org-private tables at all, threads reach only their owner and staff, stewards read but cannot write their org, an admin sees the rest of the org, an org keeps its last admin, admins and members belong to one org only, saved match runs cannot be forged, edited or deleted, and Import tables are staff-only. `test_caller_pool.py` checks that a request runs as `anon` or `authenticated` with the token subject, that the connection returns to the pool as the owner with claims cleared, and that a permission error becomes a 403 with `{"detail": "Not allowed"}`. `test_security.py` covers JWT verification, and `test_import_roles.py` covers what members, stewards and staff may run, save and see in Import. See [Auth, Roles and RLS](../architecture/auth-roles-rls.md).
+`test_rls.py` builds a world (orgs A and B, a hidden org, one person per role, private contacts, documents, chunks, proposals and a thread) and queries it as each caller by setting the Postgres role and `request.jwt.claims` exactly as `CallerPool` does per request (`_as` runs `set_config('role', ...)` and `set_config('request.jwt.claims', ...)`). It pins that private rows reach only the owning org and staff, hidden orgs reach only staff, signed-out callers cannot touch org-private tables at all, threads reach only their owner and staff, stewards read but cannot write their org, an admin sees the rest of the org, an org keeps its last admin, admins and members belong to one org only, saved match runs cannot be forged, edited or deleted, and Import tables are staff-only. Proposal-specific rules sit in the same file: a proposal reaches only its org and staff, only admins, stewards and staff may insert or update one (a blocked `INSERT` raises `InsufficientPrivilege`, while a blocked `UPDATE` silently changes no row), and every role in the org, plus staff, may upload to the org's document vault. This is the database-side half of the edit rule that the unit tests above check in Python.
+
+`test_agent_rls.py` proves that the Ask agent's SQL runs as the caller. It sets `agent_caller` to a `("authenticated", claims)` identity and runs validated SQL through `PsycopgExecutor`: a member of Org A sees its own private document and not Org B's, nor a staff-only `funder_activity` row; a user with no organisation sees no private row; with no caller the agent reads as `anon`; the connection returns to the pool as the owner with claims cleared; and every catalogued column is `SELECT`-able by `authenticated`, since the chat runs as the caller and an unreadable column would break `SELECT *`. See [Ask Sangam](../architecture/ask-sangam.md). `test_caller_pool.py` checks that a request runs as `anon` or `authenticated` with the token subject, that the connection returns to the pool as the owner with claims cleared, and that a permission error becomes a 403 with `{"detail": "Not allowed"}`. `test_security.py` covers JWT verification, and `test_import_roles.py` covers what members, stewards and staff may run, save and see in Import. See [Auth, Roles and RLS](../architecture/auth-roles-rls.md).
 
 ### Migrations
 
@@ -195,6 +217,7 @@ Schema changes are protected by three separate checks: the catalog-drift tests a
 ## Writing and changing tests
 
 - Unit-test a router with `client_for(router)` and monkeypatch its repository function. If code under test touches the pool, the sentinel will fail it.
+- Proposal rules belong in pure-function unit tests over a `work` dict (`work.apply`, `trace.check`, `steps.exit_check`); a new agent tool also needs adding to the pinned tool list in `test_proposal_agent.py`, and a new editing rule must be mirrored in `test_rls.py`.
 - A DB-backed test must carry `pytest.mark.integration`, skip on `OperationalError`, and roll back.
 - Adding a table needs a catalog entry or a `KNOWN_EXCLUDED` entry, or `test_every_live_table_is_either_catalogued_or_knowingly_excluded` fails. Adding an agent tool needs it named in the prompt and in the pinned tool-set tests.
 - Adding an eval case means a line in `cases/golden.jsonl` (or `cases/import/`) with an `id`, optional `tags`, and the gates described above. Keep `canary` for cheap, stable cases.

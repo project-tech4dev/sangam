@@ -48,10 +48,10 @@ sources:
     resource: repo://frontend/vercel.json
   - id: openwiki-source-23775c3de52f3ab95a13cb8b
     resource: repo://README.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-13T18:59:48.420Z
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Vercel and Supabase Specifics
@@ -120,7 +120,7 @@ One Supabase project supplies Postgres, Storage and Auth, in ap-south-1 (Mumbai)
 
 - The frontend signs in with Supabase using `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Without them the public pages render but nobody can sign in.
 - The backend verifies the access token against the project's JWKS (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`), accepting `ES256`/`RS256`, audience `authenticated` and issuer `<SUPABASE_URL>/auth/v1`.
-- **`SUPABASE_URL` is also the auth switch.** Set, every request needs a valid token (no header is anonymous). Empty, every request is the seeded dev user. `DEV_AUTH=1` additionally accepts `Bearer dev` for local use and must never be set on a deployed backend. `SUPABASE_URL` is the project API URL (`https://<ref>.supabase.co`), not the database host. Roles and RLS are described in [Auth, Roles and RLS](../architecture/auth-roles-rls.md).
+- **`SUPABASE_URL` is also the auth switch.** Set, every request needs a valid token (no header is anonymous). Empty, every request is the seeded dev user (with `DEV_AUTH` on, `Bearer dev:<email>` can instead pick a seeded `@local.test` user, so each role can be tried locally). With `SUPABASE_URL` set, `DEV_AUTH=1` additionally accepts `Bearer dev` as the dev user; it is for local use and must never be set on a deployed backend. A malformed header or invalid token is a 401, and a valid token whose email is already linked to a different auth user is a 409. `SUPABASE_URL` is the project API URL (`https://<ref>.supabase.co`), not the database host. Roles and RLS are described in [Auth, Roles and RLS](../architecture/auth-roles-rls.md).
 - Browser calls to the backend need CORS: `ALLOWED_ORIGINS` for exact origins, and optionally an anchored `ALLOWED_ORIGIN_REGEX`. An unanchored pattern would also match look-alike hosts.
 
 ### Storage
@@ -161,8 +161,9 @@ Tracing (`backend/app/integrations/tracing.py`) turns on only when both `LANGFUS
 
 - **Deployed traces are labelled automatically.** The environment falls back from `LANGFUSE_TRACING_ENVIRONMENT` to Vercel's `VERCEL_ENV`, and the release from `LANGFUSE_RELEASE` to `VERCEL_GIT_COMMIT_SHA`.
 - **Masking and clipping.** Payloads are clipped to 4000 characters; `LANGFUSE_MASK_TOOL_RESULTS=1` redacts query result rows (SQL and counts stay). The mask must be attached when the first client is built, so `configure_langfuse()` runs before agents are built; if a client already exists without the mask, tracing is refused rather than leaking rows.
-- **Fails loudly but never fatally.** At boot it calls `auth_check()`; wrong keys or host would otherwise be dropped silently with a background 401, so it logs an error and disables tracing. Any other failure continues untraced.
-- **Serverless flush.** A Vercel function freezes after answering, so each agent run and each news run flushes traces in a `finally` (`SessionScopedAGUIAgent.run`, `flush_traces`).
+- **Configured on first agent use, not at process boot.** `configure_langfuse()` is called from `_build_agents` in `backend/app/core/lifespan.py`, which runs lazily on the first request that needs an agent (and the news run configures it for itself), so a cold REST-only instance never touches Langfuse. The "Langfuse tracing enabled/disabled/NOT tracing" log lines and the LangSmith status line therefore appear when agents are first built, not in the "Sangam backend ready" line.
+- **Fails loudly but never fatally.** When it configures, it calls `auth_check()`; wrong keys or host would otherwise be dropped silently with a background 401, so it logs an error and disables tracing. Any other failure continues untraced.
+- **Serverless flush.** A Vercel function freezes after answering, so each agent run and each news run flushes traces in a `finally` (`SessionScopedAGUIAgent.run`, `flush_traces`). On shutdown the lifespan also does a best-effort `shutdown()` of the client, but only if Langfuse is enabled and agents were built.
 - AG-UI thread ids map to Langfuse sessions so a multi-turn chat is one session. FastAPI's own spans are off.
 - LangSmith is independent and switched on by environment variables alone (`LANGSMITH_TRACING`, `LANGSMITH_API_KEY`); the boot log states which is missing.
 
@@ -173,6 +174,6 @@ The Graphiti knowledge graph is optional. It activates only when `NEO4J_URI` **a
 ## Checking a deployment
 
 - `GET /health` on the backend returns 200 and `x-vercel-id` starts `bom1`.
-- The boot log reports pool size, gate slots, and whether Langfuse/LangSmith and the graph are on.
+- The boot log line ("Sangam backend ready") reports process age, connect time, model, research concurrency, pool size and gate slots. Whether Langfuse/LangSmith are on is logged later, when agents are first built ("Agents built on first use"); the graph's state is logged by `open_graph`.
 - Frontend and backend `maxDuration` are both 1800.
 - Backend env has `DATABASE_URL` (session pooler), `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ALLOWED_ORIGINS`; `DEV_AUTH` is unset.

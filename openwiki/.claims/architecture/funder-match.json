@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b5963ddb78f8bab64b88cccba05fed0f6291f7224135efc81560a37193e6e581",
+  "pageVersion": "sha256:8bf20d83b58b2b5311e01c6b4f6a5221ed2fdf5ca691ce8639a62c951a711063",
   "claims": [
     {
       "id": "claim_8d5cf8f2478345fc8f2c86fc0e3f5809",
@@ -220,27 +220,23 @@
     },
     {
       "id": "claim_676c724e85e0499e823c7575b3c58dfa",
-      "statement": "The Funder Match UI (FunderMatchView and MatchCard) fetches the latest run from /api/funder-matches, lazy-loads per-match detail, shows tier, score and delta against prev_score, offers a Rerun that POSTs a run and reloads, and starts proposals from a card. Proposals remain unfinished: only screens and steps 1-2 kept in localStorage exist, while drafting, section editor and .docx assembly are not done and there is no proposals backend.",
+      "statement": "The Funder Match UI (FunderMatchView and MatchCard) fetches the latest run from /api/funder-matches, ranks strong and medium matches while folding weak and not-scored ones into a disclosure shown only with no filter applied, lazy-loads per-match detail on first open, shows tier, score and delta against prev_score, and offers a Rerun (shown only when the list's may_run is true) that POSTs a run and reloads.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L125-L128",
-          "version": "repo-lines-v1:sha256:766dcccff702e12eaeb212aa34a9034edb14848f46be5511cd246a72c4bc4e45:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTZmNGZlYTY3MWM0ZDA1MjgwNTgxMjU3OWY3ZjVkODBlYWE4ZmZmNmIxOWIzOTMwYWEyMzAzMGVkYmQ5YTZkNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDZhMzA4YzViZDhlMzJjZWNiNDY3NzI3Yzg5NDM5M2JlNjg3Y2VlODMxOWUxY2E5ZjBkMDIxNjM0MGVkZmU4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDE3YmZiZjhkMmQ1ZjkxYzhlNTM3ZjgyNGQxZDYwNTFhMWNiNmFjYjE1ZmFiZDg1MDQxYjAwNGUwNDVhYTZjOSJ9"
+          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L20-L125",
+          "version": "repo-lines-v1:sha256:5699113b7ae41ceb587a173b149bfffa039b7d6df126f216c9d3f5b32ba97d1a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwNmVlNzk4ZWI0Y2Q5ZjQ0MTg1N2U3ZDMwYTc2N2YxOWNjNmM3Y2Q1Y2U2ZTdkOTg2YjZkNWRiMDM0YmE4NDlhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwNzIyMGRlMzY2YmRmZTY4ZWM0NWRiNGVlY2IwNjIzM2Y3ZmU5Y2NmZmEyYTI0YjljMWJlNzNkMWY3ZGI5MzgxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1NTFhZmYyZDQ2M2ZkZDdiMmJiNDkwODM1M2U2NWUxN2NjZmU3YjBmNWNkNTIwNGU1Yzc2MTU3YWZjYTA1ZjRhIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwOGEyNTk0OWYxZDc2ZTE0ZTY3OTg0MGFhODg3MTdhNDMxN2MxYWU2ZTExMGE0M2RkYWZhNTFmOTg2ODUzMWNlIn0"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L169-L173",
-          "version": "repo-lines-v1:sha256:a9ec04ea506241353739b1d35f33e29275264c945df5b01b13ca301af7130816:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjU3OWRiNjNhMjdhYTNmYjI5ODBhNDYyMDhhZWMzYjBmMjUyZDUwYWU2MDQ3OTkzYzg4ZWFhMDZmYjQxZTM3NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODAyNjZmYzM0ZTM1MDgxMjlkZDZmY2I0YjY5NTBiMWQ0MjM2NDA3MjFjMjM2MGJlZjU2YWJiMjRiMDI1MGNiNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2Y3ZTdlY2M0ZTZiYTAxYmVlYTk2OTdiOTFhOTM4MWIxMzNhYTIwZTk1N2YyMGMzMDY1Y2FhZGU4ZTg4NDZjYiJ9"
+          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L204-L225",
+          "version": "repo-lines-v1:sha256:836de64ca3a34e5eaedeb4a74e1647f7112252f4aba00de1393804a2439fb7c9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NTdlZDU5OTU2ODUyZjQwMjJkZDE1YzQwM2FkNWU5NTg0NDI4YjE3ODRkMjhmODRhYzBmNTZhYWQwMmRiY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ODNlODNhNjM2NzFlMjhjOTVmZmVmZjA2NTA3ODE3MzU1Mzk3OTBlNTU4MTU1YTk1ZGZiYzJlYjA0ZTQ2NTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5MWI1ZWJiZGJmZjk3NjA5NmU5OWNmZDQ3OTZjMjc2ZDAyOWJjZGZhMGRkNDJjMWEwZDdiODRjNzkyYzM3OTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQxZTEyMTM5MzIwNTJhMzYzNmMwMWQ1OGJjZDI4ZjczNjhkMTA0MjQwNzdlZmM2ODAyZjI2MjU4ODQ4ZmYzNjAifQ"
         },
         {
-          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L20-L80",
-          "version": "repo-lines-v1:sha256:6dda88e1fc5cf16f71b4ae462087f42c80848ebfc836cd8f63f10587329eecf1:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2ZWU3OThlYjRjZDlmNDQxODU3ZTdkMzBhNzY3ZjE5Y2M2YzdjZDVjZTZlN2Q5ODZiNmQ1ZGIwMzRiYTg0OWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhZTZkOTA5ZjZiZWVjZWE2YWM2NzZmNTU4YzNkMGU2NDMzOTczNDM1Yzg2M2UxZDg0OWRjNzU1Yjc5MDgwM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MWFmZjJkNDYzZmRkN2IyYmI0OTA4MzUzZTY1ZTE3Y2NmZTdiMGY1Y2Q1MjA0ZTVjNzYxNTdhZmNhMDVmNGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzMjliNDZmM2U0YTVmNDUyNThmMDQ0ZTIzOGJhNjFlMjc2ZjVjOWE2OTIwNzcwM2Q4YmIzZGQxOWY4NmY5MzQifQ"
+          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L87-L145",
+          "version": "repo-lines-v1:sha256:af2783b6d32d7b5fad180b459229cad71e3ad5d1e8c9c9e2237e4a8f20a381c9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkZDE5ZGUyNmYyZDM4ODJhZGU3NGE2ZDZhMDAyYzk0OGQ1NDgwNDg0MTg0ZDhiYjNkOTdjMjQyOTA3OGFlMTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiZmU4ZWJiMDFhNjllYzM2MjljZTRlZTA0ZjFhNTNmNWY0ZGM0NDdiZTgzODNmNWZkNjRkMzgwNjA1YjI5ZjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhZjIwODI5MTAzMWQyOTk4Y2U3MTZmNTk0NTc5NzI3ZDhjM2E4ZTk4OGIxMTFhYmMxZjQxYWMzNzQ5NWZkZDgifQ"
         },
         {
-          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L86-L120",
-          "version": "repo-lines-v1:sha256:01babd4c19dee8866d6aae6d9d84080ab916d50cb4db55268d7f5a1e9967ea02:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMzk0OWE5NzVkMzMyMWJkYWI2NDY0MDhmYzQ3ZjkwOGFmYTQxODAyNjE4OWIxNjNhMmQ5YWQyNjRmZjM5ZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5M2RmOGJlOThmODIwMDVlMDdiYTljMzRiNDhhNTg5MDQ2ZmU3NzFkYzY5MjUzMTcxZTU0YzM1MTFmMjA3ODkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0NTc4YzMzMTc0OTg5NWFkMzhhMTY1YmQ4OTZmOGRjZDBhNmNiOWFmNTc4OWMzNmYwMWQyMTEzMGIzNTJiYjcifQ"
-        },
-        {
-          "resource": "repo://frontend/features/ask/views/funder-match/api.ts",
-          "version": "repo-file-v1:sha256:f3d94d14a579f33b661237993cfb4657423f04ddb4cf628e1a37b175a3fd9431"
+          "resource": "repo://frontend/features/ask/views/funder-match/api.ts#L1-L10",
+          "version": "repo-lines-v1:sha256:f3d94d14a579f33b661237993cfb4657423f04ddb4cf628e1a37b175a3fd9431:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhNzczNDA2YjkxOWJiMjcwZDU2YzI1MDFlMjliNTBhNjk2OGM4Mjk1Y2JkY2Y2MDdhZWZhOWI5NTJjYzE5NTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2YTkxOTA5ZGE5YzVhNjRjYThlZmQ3NjFkMmQzOTEyNjg4YjQ2ZmZhN2JjY2Q5ZGI1MTVhMmE5NGRiZDJkZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -249,7 +245,7 @@
       "statement": "match-v2 (2026-10-11) changed only the theme criterion and the rubric version: theme now compares the taxonomy tree rather than Darpan sector tags, Others never counts as a shared area, and older saved runs keep their stored rubric_version.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L104-L104",
+          "resource": "repo://docs/CHANGELOG.md#L105-L105",
           "version": "repo-lines-v1:sha256:b019a839953c26531b6559ad273557ce1e2a73ffa2599b867db1649dc58cffa6:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWY0NDIxYTY4NjcwNDI5MmM4NjJkYWQxMDQwYTczNTI2ZTVkODQyZmNiNGE3NmQ2YTdjMDE2Nzc0ODYxNmIwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWQ0MzU3MjY3YTM5NDcyNjVkN2RiODJhNWIxYjg2MmVjYzcyNmZjMjBhNGE2Mjg1ZmRiN2U3ZjczMzIxOTZkMSJ9"
         },
         {
@@ -257,10 +253,96 @@
           "version": "repo-file-v1:sha256:2eca0102562c067e10071f3e4c28ce9e237d0e5a774b8fce3420ea8a3a1c53ea"
         }
       ]
+    },
+    {
+      "id": "claim_597c0c7d16184c90965e88daf64e2a3b",
+      "statement": "A proposal starts only from a match card: ProposalAction (shown with the Start button only when the list's may_run is true) posts {org, funder_id, title} via startProposal to POST /api/proposals, refreshes the shared proposals store, and navigates into the new proposal. Members who may not run only see View/count actions.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L156-L161",
+          "version": "repo-lines-v1:sha256:ed468f29e597846a0d6f4575702e0992b16e442f149d0fe3c13cd68dff26f71e:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzNjZWVhNDdkY2RhOGUzMGE2YTUwM2Q4MGI4MWIxNDBhN2U3MjExN2VmMjJiMTMxODFmNmFmNWM4OTQzMzNjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdiOGMxMDg1Zjk1YTFhZmFiZTVkMTUyYWQ1OGRiOWRjMjYzMzZjMTIxOGUyYjg0MGFlN2FkODI2YTBkNTc0OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzQzNjI3NDA2ZTExZmEwMjhjNTAyMDg0Y2Y4Y2IxN2ZhNWYzNjM5ZjhhNzY5NzYwZjNiMjRhZGI2YTg2ODg5ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzIyZGE3NjNmYjZmNTc2NDMyNWJiYTc4MTFmMGM3NGJlMGRiMjYxNDBlOTIxZjFhMzU2YzA3M2M1MWVjNGFhMCJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L90-L94",
+          "version": "repo-lines-v1:sha256:3a5d15d3f6f25923b450b0fd5a936feaa21540c93534c9f878ce8ab345e4d3c8:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFiYjNjNmU4Y2JhYTM2N2E1NTg5YjM1MTBjYmRlOTE5ZGM2YTM5MDczNWY0Yjc5YmY4YTY1MjY2MzJlOTE4MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDAzODE1ODcwZjkwYzI3NjdjZjFhYThmYTE0YzhlY2ZhMDY5MWE5ZjFiYWRmYTkxNjVmZmE1NTJkNjQ3MzViNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDFhYWQ3MDYxZmM4YjZhNDE2NjU0Mzc0ZWYzY2Q1OWJkNzk0MTA3YzQ0NjkyZDQ1MzMxZTliNjI4NzA4Njg4OCJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L31-L85",
+          "version": "repo-lines-v1:sha256:53edc253250c6d9631e965fe46675f54263cfbdced23ae91d6d125e0cad3edcb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1OTEzNzAyOTgyOWI4YmUyYTFkNWI3YTc4MTEwYzE2NTJlZTZhZjM2ZDU5ZDkzM2E5OTBjYjJjNjc0ZWM4NzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjYmM2MzMzZjUyNmQ4NmFiZGVmNDE1YTQ3YTliNTE3NmJhNzE4MTI3MjZiZGM1MjdmMDAxNGU2ZjJlMzQ2MDIifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/proposals/api.ts#L105-L135",
+          "version": "repo-lines-v1:sha256:1972829aedf46b7e71088839d50b38cdcd09426ad946dbadd83cccd555c6054f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwNmE2NTQ3ZTA4ZDE2MGJlNTcwMDBlYzE4MDY2ODEzNzFjNTdmOWExNDQxNDM2ZjMyZjFjYmVhNTY3ZGJhZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4N2Q1MDE5N2FkMzg5ODMzNjE5YTdjNjFjZjg0ZTZhZTk1YTNlZmJmNjMxZjczNWY2ZTI0YjMzY2U1OTY0NzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc3M2UwN2NmM2ZhMWZiZDc3ZTI1OGM4ZGM0ODQ5Y2FjMzEyODI0NjA2YWNiZDExODc2YTgwMzI2OTExNTA3YmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_05efcb97997d4125a97634011755cf63",
+      "statement": "POST /proposals gates creation: 404 when the caller cannot read the org, 403 when they can read but not run (admins, stewards, staff), and 409 'Run Funder Match first' when the funder is absent from the org's latest saved run. match_for reads only the latest run's row with its full detail, so a proposal always rests on a stored match judgement.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/proposals.py#L154-L167",
+          "version": "repo-lines-v1:sha256:b823c20a39eef63bf8f921398a025c2ade9bc2b7e6aeb2583de6e82b85b7d1b2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0MWU0ZjNlNjg0Mjg4ZjhmMjVmMWRiN2FmNDFiMGFlZjFhYWFkNTI3ODdmMTQ2MjNiNTVkZWU5NGMxMTYyMTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyYWM3ZGExNTczMjQ0MWU1YzZiMGNkMWQ2ZDJiZDk3ZDBhNWRlMWE0OGM2MDJiNTNlMDdiMjUyMTVlYThmNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwNjBjZmExOTMyODZmMTJjNDk2MjE2YjBjNWE2ZjdiZDEzNjA0ZDBkODU4NWRhMWM2YTc2NzJmN2Y1Yjk4NGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjY2E5OGY2NTZmZmIxMmQ1YWE2N2I3YTFjNmRjMjNjZGNkZDY1NGYyM2QzNDU0MzI1ZDg5MDk2MjdjMTM5YTkifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/funder_matches.py#L14-L24",
+          "version": "repo-lines-v1:sha256:a9ad6a7dec678f284f7c1f4c38c1fbbfb1bafb9bf567718cbdbe5fcffd7b1c3e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiN2MyZTE2NDk0NWI4OTZlYjY4ZTc0NjNkNjIzZjg1NjgwODQ4YWQ2NGFkNTg5MmQzZmQwYzA5Y2IwYTcxODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlMDFmM2YwZTczOTU0ODY2ZTFmNjNhZGFlNjNjZTI3NTg4ZTdmYmQ3ZDMyMDUzNzQwZmZiZDQ3NGFlYjA0ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjZTVhNWRkODk5OTg4OTFmOTFmN2ZiZThjZGQyNmUzZmY5NWQ4MmZkOWVlMWZhMDc3Y2M5N2E5MzI0YWJkNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhmMDAzY2M5M2EyMTZmZGRlYmQ2ZDcxZDgyNjU1ODhmMTU2NjI1NWIyNTllODJmNGI2NmQyMmMzY2I5MjMwNzUifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/proposals.py#L44-L59",
+          "version": "repo-lines-v1:sha256:2c0197f2a9bf581e9ab83e735dc523cc54253b2cfef960374bf2d2e9fa9f5964:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlYWQ5ODcwNWJjZDBlNDFhNjExMjUzMGFiYTRjNzYwNTY5MzI0YzdmN2MwZTEzMzU4YzJkNzU0NzUzZjY3N2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1NzNiMzBlYjlmZjQ1OGFhN2MzMWU0ODliNzU0YTY5MjgwOGI4YzQ1ODMxNGI4NjY2NDllYzdlYmQ1MTFjMzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5MGQ2NjIwMDRkZjJmOTc0NGQ3ODA0NTliMjY2OWEzNGNkNTA2ODJmNTA5N2NlNjM2ZjRhZGM2NTQ5MTU4OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ5YzQyODljZjFhNGY4MjE3NjVhOTRmNmEyNWI1M2Q0YzZiYjViMGMxOTZkNDE3MmMzZThhN2JiZmZiMjY4NDQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b6695b52be9f4c85a6799e069e235e6e",
+      "statement": "Proposal step 1 is derived from the saved match detail by the pure gates.build: requirements for 12A, 80G, audited accounts and (for Section 135 or corporate CSR funders) CSR Form 1, with on-record text from the eligibility criterion and not_judged; CSR Form 1 is hard so No stops the step; each funder's-own-bar line becomes an unchecked free-text requirement clipped to 240 characters; earlier_phase is true when the relationship criterion earned points.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/proposals/gates.py#L1-L64",
+          "version": "repo-lines-v1:sha256:cc584d90c55d7ce16deeda2a2811d5c33b66807bf028b9e1688bd588b50e0917:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5ZjUzMGY0ZTkzYzgzOGFiMDAwNWVkNTg3NzI5ZDlhMDUxZDYxM2E1NjcxOGNmNWVjODk5ZmYxYTQ5YTQ2YjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/proposals/steps.py#L14-L22",
+          "version": "repo-lines-v1:sha256:bbf0e3e3b29584d40573ee3ac9c0e89dbac2017edfa42d09ec41dba2e0524353:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODRmZWMwMzliYzI4MzViOWY0ZDQ2NjE4NDI1OTg1MWNlY2I1ZGFiNTIwZTkzM2M3YTNiMGZkYjJlMzViM2M0OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTIwMTQxNzdiMzNjNjk1ZTFjMDgwMTU0Y2UzYWMwOGFlNmNmYmIzNjg2NWNmNDlhNTljZDUwYWY5MmFhMzRjYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTFhYzQwODQ5NGZjYWRiMTlhZTk5MDFmOWI3OWEzOThlNDg1YzBlMzljMGQ5ZWYxOWM5NDhkOTNmMzEyNWVjYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWIzYjUzNmIwYmU4NzMwNDdkOWE4ZGEwZDJjOWVjNzQyMTliOGViYmIyMTYwYzdlMDNkZTA3YTg4MzBlNzM5ZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b340191a8b014fea89e59ecf29459a18",
+      "statement": "new_work stores in a new proposal at stage 1 the requirements, an empty gates map, the match id/score/run_at, the funder's newest proposal_template document if any, and a default style; create inserts it with an initial readiness summary. The proposal keeps this snapshot, so a later Funder Match rerun does not change it, and the list's fit_score reads the stored match score.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/proposals.py#L36-L58",
+          "version": "repo-lines-v1:sha256:02bc3051d9d11bea629535f4cd6037e089b2cb5f2b012697b50b2175401d7dcf:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4NjM2NjE1ZTY3ZTY5NDFiNmNlOGIxYmNjODI4NWMyODk4ZTYwNzk0OTU4MWYyNTZkZDI1Y2Y2ODhjMDE2YjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0M2U2ZDkwN2YwNGNhMWYxZWRjYzg4ZTVlNjBmNTA4NDNhMmMyZWIxM2Y3ODRiNjdkOWQ0MGQ5YzE5ZTJiMzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiZWIxMzIzY2Y4ZTY0ZTk3NzViNjNlMjQzYmVhN2VmOGUyZTljYjlmZGRmMTZhNzhhODlmN2M1NzU4M2Q0ZDEifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/proposals.py#L15-L35",
+          "version": "repo-lines-v1:sha256:022870ac32f3870a16285c6380337c8e24471f86b6a3c7a58d62cfe2843dd171:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NjMwYTlhNDUwY2Q4NmJkMTQ5MmEwOGVlZjE1ZmQ0MTgyMmY4OWUxMGQ3YjZmODQ0MTVhYjc4MjQxY2IwNzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFiNGEwM2UwMTU5YjQyOTBhOTllNzI5ZjhiNTgzYTFmYzRhNjQ0MDE1ZDc3YmQyMTJlOWYyYzZjYjhlYjk3ZjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2YmJiNDNlODIzODllODRkNzlkMTlmNWIxNmI2YzcwZmNiOThhZTIxZjljN2EwNTZiMmQwNzczMWU1MzM0ZWYifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/proposals.py#L62-L89",
+          "version": "repo-lines-v1:sha256:3457b07c655c7b3f703d278a6b5d1d043ca9c305acfb72379a42bd67c772af09:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5MmRhYTk0MDNjMWVmZjY2YTljM2VkYmRjMDNiZmZmODFhOWZmMzc5ZmQ4MmJiOTA5NzZiZjRjNjI4Mzg3MmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlM2Y5YjhlMzExNjgzZDM4ZWExZjcwMmM1OWFmNDQxYWU4NjdiM2Y1NTE1ZjI0MDE3MGNmZjMyNDRmZGQzYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5MGQ2NjIwMDRkZjJmOTc0NGQ3ODA0NTliMjY2OWEzNGNkNTA2ODJmNTA5N2NlNjM2ZjRhZGM2NTQ5MTU4OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1ODcxYjQ1Y2ViYWJmYjQ1ZmQzYWZiZGQzYjRjZDVjNzg3NDVjYTAwYWQ4ZTZkODY0ZTVkNzFmYmRlNWNlMTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c2c987758b25476f9db9fea1db05e61d",
+      "statement": "Migration 0048 aligns the proposals insert and update RLS policies with the Funder Match run rule (app.my_match_org_ids() or staff), so members read proposals but cannot start or write them; the proposals table now has work and summary jsonb columns and a server backend, so proposals are no longer browser-only.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/repositories/proposals.py#L1-L22",
+          "version": "repo-lines-v1:sha256:9fb45fe907a30b8372b03f1306f180fe6ff2b6435a13c98ba6cfd480b247e066:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0NmNlOTU5OGU4MDljNmQyNWI5YThlODhjNjg5NGFmYWE3NDVjOWFiZjZiMjczNmEwYTg4NzRlOThkZDZiODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZDQyMmE4MzM3Y2QwYjMzNzZmM2JkZmY0ZTQ4MDQ1ZGJkYjJlZDBhNmVjZmI5NzQ0NTIzZmJmZjEwN2FhY2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0OWIwMGFhMjk2MGY5ZDcyNGM3MGNiNjExZmMyODFiYTliYThhZTNiYWVhNjdiNDcxODY5YTA4NDI4ZmQyMDcifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0048_proposal_work.sql#L1-L13",
+          "version": "repo-lines-v1:sha256:2c352118923b3fc649925fef330b6279bd2c331e6cf59d935c9b37796d1ed325:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5YmMwNDAwMjQ1M2U3MjRlOGQ3ZGJiZmEzMTNjMDdhYjg0MGZiZTMxNjNlYjNhZDEwMjVkNTRhMDQ0YmRlNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyNzU2YjkxNGQ0MTQ2ZTEzYTg2MmZmMjJlMGZiYzNiMTk4M2RmZjMwOTAyYWMwNjQ0NTAzMmQ2Y2I0ZDlhNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkZmJhMWFhNmJjMDdjYzE2YzE5MTI1OWVhZjhjNTdhZmMzZjc2ODNjOGVjNzEzZmEwMTRiNWIyZDFjZTRlYzEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:59:48.420Z"
+    "at": "2026-10-15T18:08:53.060Z"
   }
 }

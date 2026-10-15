@@ -20,18 +20,20 @@ sources:
     resource: repo://db/migrations/0027_rls.sql
   - id: openwiki-source-d1c5532960252357e823b43e
     resource: repo://db/migrations/0047_document_links.sql
+  - id: openwiki-source-3d121c1ca466c424ca2b4936
+    resource: repo://db/migrations/0048_proposal_work.sql
   - id: openwiki-source-82b4a7ca109f9768db60ccbf
     resource: repo://db/migrations/README.md
+  - id: openwiki-source-093cd3e20819d97ab4faddda
+    resource: repo://db/scripts/truncate_all.sql
   - id: openwiki-source-b79fbbd921df689b4bbdc82f
     resource: repo://docker-compose.yml
-  - id: openwiki-source-3625960871aaf9afc169d0c3
-    resource: repo://docs/DATA_PLATFORM.md
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-13T18:59:48.420Z
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Writing and Applying a Migration
@@ -47,7 +49,7 @@ Every schema change after the baseline is a new forward-only SQL file in `db/mig
 
 ## 1. Create the file
 
-Name it `NNNN_short_name.sql`, taking the next number after the highest in `db/migrations/` (currently `0047_document_links.sql`). Order is plain filename order, because the runner sorts `*.sql` by name. The runner records the *full stem* as the version, so two files may share a prefix without a primary-key clash: `0044_news.sql` and `0044_one_read_policy_and_fk_indexes.sql` both exist. Still, pick the next free number rather than relying on that.
+Name it `NNNN_short_name.sql`, taking the next number after the highest in `db/migrations/` (currently `0048_proposal_work.sql`, so the next file is `0049_…`; re-list the directory before you pick, since another branch may have taken it). Order is plain filename order, because the runner sorts `*.sql` by name. The runner records the *full stem* as the version, so two files may share a prefix without a primary-key clash: `0044_news.sql` and `0044_one_read_policy_and_fk_indexes.sql` both exist. Still, pick the next free number rather than relying on that.
 
 Conventions from the migrations README:
 
@@ -65,6 +67,8 @@ Two layers decide whether a role can read a table, and a new table must satisfy 
 
 `0047_document_links.sql` is a compact worked example: it creates the table with indexes on its foreign keys, enables RLS, grants `SELECT` to `anon, authenticated`, adds a `document_links_read` policy that is only as visible as the parent `documents` row (via `EXISTS`), and attaches the `log_catalog_write` trigger so Import's undo covers it. Staff-only tables (`promotions`, `catalog_writes` in `0041`) use `FOR SELECT USING ((SELECT app.is_staff()))` with no grant to the public roles.
 
+`0048_proposal_work.sql` is the recent example for changing an *existing* table. It adds two `NOT NULL DEFAULT '{}'::jsonb` columns (`work`, `summary`) to `proposals`, so existing rows backfill without a rewrite step; it tightens who may write with `ALTER POLICY` on `proposals_insert`, `proposals_update` and `documents_insert` rather than dropping and recreating them; and it ends with a `DO $$` guard, repeating `0027`'s, that raises an exception if any table readable by `anon` or `authenticated` has no read policy. Because the whole file is one transaction, that guard aborts and rolls back the entire migration if a policy is missing. Note that `proposals` is in the catalog's `KNOWN_EXCLUDED` list, so adding columns to it needed no `catalog.py` change.
+
 Choose the policy by the kind of table: public rows, a child that follows its org or funder, signed-in-only, or staff-only. The existing rules in `0027` are the patterns to copy.
 
 ## 3. Decide separately about the SQL catalog
@@ -78,11 +82,12 @@ If you do add it, supply a `Table` with a one-line description, primary key, col
 
 ### Drift fails the boot
 
-`verify_against_db()` compares the catalog with `information_schema.columns`. In the backend lifespan (`app/core/lifespan.py`), any catalogued table that is missing, or any catalogued column the database lacks, makes `_verify_sql_catalog` log "SQL catalog drift" and raise `RuntimeError`, so the app does not start. The check is one-directional:
+`verify_against_db()` compares the catalog with `information_schema.columns` and with column privileges. In the backend lifespan (`app/core/lifespan.py`), any problem it returns makes `_verify_sql_catalog` log "SQL catalog drift" and raise `RuntimeError`, so the app does not start. It reports a problem when a catalogued table is missing, when a catalogued column is missing, or when a catalogued column cannot be read by a role: `authenticated` must be able to `SELECT` every catalogued column (the chat runs as the caller, so one denied column fails with 42501 for everyone), and `anon` may be shut out of a whole table but not out of part of one, because that breaks `SELECT *`. The check is otherwise one-directional:
 
 | Situation | Effect |
 | --- | --- |
 | Catalog lists a table/column the DB lacks (code deployed before the migration, or a column renamed/dropped in a migration but left in the catalog) | Backend refuses to boot |
+| A catalogued column is not `SELECT`-able by `authenticated`, or by `anon` on a table it reads only in part (for example a new column on a column-granted table such as `org_identifiers` with no `GRANT SELECT (col)`) | Backend refuses to boot |
 | DB has extra tables not in the catalog or `KNOWN_EXCLUDED` | INFO log only |
 | DB has extra columns on a catalogued table | Not checked |
 
@@ -111,6 +116,8 @@ Both targets run `python -m app.db.migrate` in a one-off backend container (`doc
 5. `--status` (via `make migrate-status`) only reports; it never writes migrations, though it does create the ledger table if absent.
 
 Fix a failed migration by correcting the file (it was never recorded, so editing it is safe) and re-running. If you see DRIFT, someone edited an applied file: restore it and put the change in a new migration.
+
+`make db-clean` (which runs `db/scripts/truncate_all.sql`) empties every public table except `schema_migrations`, so it keeps the schema and the ledger and never causes migrations to replay; it then restores the local dev user. A new table needs nothing added to that script.
 
 After applying, run `make up` (or restart the backend) and confirm it boots; a "SQL catalog drift" error means the catalog and database disagree. Run `cd backend && pytest tests/test_sql_catalog.py`, plus `tests/test_migration_integrity.py` with compose Postgres up.
 

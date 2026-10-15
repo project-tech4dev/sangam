@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:04243b498c4bff09b4f4a8165c6d5f3db7a601c5aa34f130320f9fd54a1d404b",
+  "pageVersion": "sha256:3aa900948006c5f4baf9a68252513628f856a8a61a1be127a0880efe2855a0a5",
   "claims": [
     {
       "id": "claim_01345909426749c9a9ea637374f7feca",
@@ -255,7 +255,7 @@
       "statement": "Ask's SQL catalog exposes news_stories, news_links, news_story_entities, news_story_locations and news_story_tags (news ids cite [news:N]) while news_link_scores, news_watch, ingest_runs and ingest_run_items are in KNOWN_EXCLUDED, so verifier evidence and watermarks are not queryable from Ask.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1003-L1043",
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1002-L1042",
           "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
         },
         {
@@ -284,7 +284,7 @@
     },
     {
       "id": "claim_06cb3d454ffd45cda28342c37a5ba06a",
-      "statement": "REST surface: GET /news/stories (caller-run, RLS-governed, keyset-paged by match, confidence, date, with three bucket counts capped at 501 and last_pull), GET /orgs/{slug}/news and /funders/{slug}/news (public entity links only), POST /news/stories/{id}/hide (staff, exactly one of org_id or funder_id) and the staff-only GET /ingest/news-runs/plan.",
+      "statement": "REST surface: GET /news/stories (caller-run so RLS governs it, keyset-paged by match, confidence, date, with three bucket counts capped at 501; area defaults to all for staff and mine otherwise; last_pull read via the owner pool), GET /orgs/{slug}/news and /funders/{slug}/news (public entity links only), profile endpoints that embed the same entity_news read with a failure-tolerant empty fallback, POST /news/stories/{id}/hide (staff, exactly one of org_id or funder_id, 404 if no such link) and the staff-only GET /ingest/news-runs/plan.",
       "evidence": [
         {
           "resource": "repo://backend/app/api/routes/news_runs.py#L13-L32",
@@ -295,14 +295,18 @@
           "version": "repo-lines-v1:sha256:d81b81f0a7fea01fb2bec835fee4f1d36e3526d3a11c47a80d05a715ffcf39e2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViMzBjMTZhNWMzNzgwNmY0MjFlYmQwY2UzNjI4NDIzY2QzYmNjOTA5ZjdkYmQzZTUyZDdiZGE5Y2Q2ZjIxN2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4YjExZTEzZTBkNDIwMTIzZTg5NGQzYWIxYzQxZGEzZDg2ZGRkMDg4M2QwN2M5ZDIwOTFhZjM3OWE2NjEwZjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3YjZlNWRlMzZmZWU3YmRmZDY3MDA4ODYyY2RmNzVmNDVhMzQ4Y2I0YTY5Njk1NTZlYWRiOGUxNmM4NmI1MmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/app/repositories/news_stories.py#L41-L214",
-          "version": "repo-lines-v1:sha256:afdf3dafc43792b9f6e82561a208f44712daea88140ebd8fa0dd7f79b4c0f5b9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTc0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI3M2FmNmRkZTFjMjNiYmIzM2FlMjgxMzA1NzFjNmEyNDg5ZWQ0ZmQ3NjYxOGFlNTZhMmQzYzViYmM4Y2EwM2YyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJlMTEyMTkzODk1YjU3MTRmOTJjOWE2OTdiY2VlYjliODhlZjE0MDQ2ZDVkNGEwYWJhNzM2MzU1YjQyMjBiNzI5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI2MjA1NTIzOTE3ZjQxMzI5ZTA4MzE3YzI1YWM1NjI3YjQyMjNlZTlkNThhZTQwOGI3OTc1MTQ4Yzg2MGQ0NzI2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+          "resource": "repo://backend/app/api/routes/profiles.py#L28-L53",
+          "version": "repo-lines-v1:sha256:24a88641716439bcc0da21b43af747c1ee357d09ec4577fcd33bf7e38102ff84:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MGRhMjM0ZGQ4Y2YwNDgwMDI5OGE2NmY0MzFiMjY1ZjRlMGEwODkyODZhNjAyOTc1MWE3ZTMzOTU2ZGYyNTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiMWJmOTJmNWMwNDFkN2FkNzcxNGUwMDM5ZGI5NzBjMmU4ZDViY2ZmZjFmN2RiMTIwY2YzNDkzODJmNWNlY2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhY2M0M2NiYmY3YjAxYjg5ZjIyNzQwNmM3ZTNiOTkxMjU3NmNjMDAzMjhiNmUxZjI2MDUwYzVjMzRlYTQxNGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmNDQxNTMwMTI4NTc2MGQ0YWFiMTRhMDBkMjk0ZTI2MDc4NzBmYWM0YzlkNDEyZGE1ODZhZTE0NDU1ZThkY2MifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/news_stories.py#L41-L217",
+          "version": "repo-lines-v1:sha256:1943becdb052e5d8bfba2a2a1ce49d34c6e376be17a32694673128f79cb8cb77:eyJzZWxlY3RlZExpbmVDb3VudCI6MTc3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJlMTEyMTkzODk1YjU3MTRmOTJjOWE2OTdiY2VlYjliODhlZjE0MDQ2ZDVkNGEwYWJhNzM2MzU1YjQyMjBiNzI5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI2N2RjZmFmNzg5NGQ1NTdkZDg4OGM2OTkyMDU2ZDRlNWU4YWMzM2EzYzVjOTVmMWI0NTg4MmQ4MWE2MTZjNmEyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         }
       ]
     },
     {
       "id": "claim_7f261744ea944203ad64670f004e40c4",
-      "statement": "UI surfaces: the Media & Signals view (MediaView/StoryCard) with org, funder and general buckets and a staff hide action; the Registry 'In the news' tab (InTheNews in ProfileTabs); and the Scout ImportApproval card, which fetches the news-runs plan route before the pull is approved.",
+      "statement": "UI surfaces: the Media & Signals view (MediaView/StoryCard) with org, funder and general buckets and a staff hide action; the Registry profile 'News & social' tab, where OrgProfileTabs and FunderProfileTabs mount NewsSocial with profile.news and SQL-derived press/social counts (press list, social posts grouped by platform); and the Scout ImportApproval card, which fetches the news-runs plan route before the pull is approved.",
       "evidence": [
         {
           "resource": "repo://frontend/features/ask/views/media/MediaView.tsx#L16-L120",
@@ -313,8 +317,16 @@
           "version": "repo-lines-v1:sha256:89bb0e3d8b070b9fcbb7887a23cbd3cab0c3fc66d64778cb4544ee3fbc61e283:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjMzI0YTI2YTkzZTBlYWFhNTc5MTIzYjRjOTAyNDk2YzA1NDExMDUzMDUzZTllYzY2NTY5NDExNzA0NWFmOTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiNzFlMTUyYzYyOTU1ZWRkMDY5MmM2MmVmMDI5ODRjZjYyOWJkNTc2NTEwNGJhMTZjYjc4YjE1MzAwOWVmNTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmZjdmZGI2ZTljYzM5MjI4ODllNDAyOGU1NzFhMDFmOWUyZjNmMjZhOTI3ZGRlZGEwMDU3OTRkMjYwMmQ1NWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjZGI3OTFhMzAzOGYwN2M3YjVmNTU1M2ZmNDFlYmUzMzNiZDkwZDRmNjJjMDEyMGMzZTFjNmMzZWI0YWVhN2UifQ"
         },
         {
-          "resource": "repo://frontend/features/registry/ProfileTabs.tsx#L68-L87",
-          "version": "repo-lines-v1:sha256:4cc303788d34b70f4a71be30d7b148e68b728b7e884c84044b0f391dcb0a386d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjOGE2NmU0NDA2YzQ5OGIwZTRmODA4NmYwYTQzYTVmMDlmNThjNjY1YTk2MzBmODYyN2M4MTgzYjYxMzQ2NTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMDY2NTQwM2M5ZmZmOTNmY2ZmNzdjY2Y0N2E3MWE3YTQ1MjZhYzg3MDc3YzJiY2ExOWZhZjMyN2IwNWU1YzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllMzc5ZDM3ZDYzOGRkY2RjOWY1MTQ2ZmFjOGQ5ZGEyMjI4Nzc1MGJhMDc5ODdkYjRmNTM2ZDU2NjIzNDRhOGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJmYzZlM2Y3NzcyZjY3YjM3MmI0Zjc0NWUyN2YzZjQ1YTRjNDQxYzAwNTExNGM0MThjOGUyYmEyYjlmMzMxYTYifQ"
+          "resource": "repo://frontend/features/registry/profile/FunderProfileTabs.tsx#L16-L39",
+          "version": "repo-lines-v1:sha256:00e6ca7d0c0db880db0998787db45cf1844244c96f9e0bbc569b5bac9643652e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMWM5MzczMmUyOTVmOWY1MzUxYjM3MDVjZTM1OGU4ODg3MjZkZGYzYzIwOGE5Yjk2ZDcwZDI5ZDI3MjJlMGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2ZmYzNDg5YjI5ODUwMTA0MmI5N2MyNTU4MzAxNWZjMzI5MzMyZjMzYmFkMmQ0MzhhOTY3ZDUwMTllZWI5YjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1NzIyZmYyYTQxM2I1Yjk2N2MxYTI4MmQ4YjUzNDZhM2Y1NDZjYmZlMDRlYThlZDI3OGMxZmNhY2MzMzJhNWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkYzI4NjRmMzIzYjhlMzRkZWRjNDI0MjRiNTFhNjFkZDlkYmM4NDY0YjljN2Q2ZmRlYjkzZjRiZTJhMmQyNDQifQ"
+        },
+        {
+          "resource": "repo://frontend/features/registry/profile/NewsSocial.tsx#L28-L134",
+          "version": "repo-lines-v1:sha256:19873dfe2b7e65ac52799c38906e2a204e55354a46cb072f713af72b68acc764:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2N2Q5NDkzZTliNjBjM2M4ODQ5YTU3OTk5NmE0NDFjNDdhNzNmNjM1NWM5ZTBhYWJiZjdiNzY1Y2FjMzgzMGQ3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhZDYzZjkwM2VkMWM1NzYyNzE2MWMwYzU3NmZlN2FjYmZmNzc2YzUyYWIyYmU2NjMzMDFmZWYyZmViOTc2YzgwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://frontend/features/registry/profile/OrgProfileTabs.tsx#L12-L28",
+          "version": "repo-lines-v1:sha256:8efc6b30eb9c6171ca5eaa783218a25f01ccc62c499bc5d4e650df9f1be20b33:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3OGViZmE3OTAwYzllODAwMjJiNmU2MjcyYjM2OWI4M2UwMGQxNDk5YzNhYzdjNjFiNjg1N2Q3ZjNhNDlmZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2YWFiOTU0MTUwNTNkYmRiNTNlNTcxYzk2MjFlZWFjMDQ3MWZhZTNmMWFlMGU5YjRjM2VhMjkyMDdlMGYzYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5NmY4NGQxNzk0NTlkYTY0NGY3MzAwMWRlOTVmYWU2OWQyYzVlNWIyNjBjYjM4ZGZmN2QzODdkODBiMzQ0N2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkYzI4NjRmMzIzYjhlMzRkZWRjNDI0MjRiNTFhNjFkZDlkYmM4NDY0YjljN2Q2ZmRlYjkzZjRiZTJhMmQyNDQifQ"
         }
       ]
     },
@@ -361,6 +373,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-13T18:20:59.385Z"
+    "at": "2026-10-15T18:08:53.060Z"
   }
 }

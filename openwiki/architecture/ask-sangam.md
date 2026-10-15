@@ -1,7 +1,7 @@
 ---
 type: architecture
 title: Ask Sangam
-description: How the Ask agent is built. It has a fixed list of seven tools plus read-only skill readers, four on-demand skills, an ordered middleware stack and a four-layer SQL path (catalog, validator, executor, render). It also has an optional answer audit, prompt rules and citation markers.
+description: How the Ask agent is built. It has a fixed list of seven tools plus read-only skill readers, four on-demand skills, an ordered middleware stack and a four-layer SQL path (catalog, validator, executor, render) that runs as the signed-in caller under RLS. It also has a default-on answer audit, prompt rules and citation markers.
 tags: [ask, agent, deepagents, text-to-sql, sql-catalog, middleware, skills, citations, security]
 sources:
   - id: openwiki-source-0d76e769c086fbb2b08128cd
@@ -42,6 +42,12 @@ sources:
     resource: repo://backend/app/core/lifespan.py
   - id: openwiki-source-b52886aad1fc413e4e030f22
     resource: repo://backend/app/core/security.py
+  - id: openwiki-source-10e08c1deca7d7728d8240c4
+    resource: repo://backend/app/db/pool.py
+  - id: openwiki-source-0c2810df96342c5efec98a57
+    resource: repo://backend/app/proposals/agent.py
+  - id: openwiki-source-bc3c2ebc658cef90ceb7a159
+    resource: repo://backend/tests/test_agent_rls.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
     resource: repo://backend/tests/test_harness.py
   - id: openwiki-source-fe6e4c3f43ca6fccc586454c
@@ -52,17 +58,21 @@ sources:
     resource: repo://CLAUDE.md
   - id: openwiki-source-e8e61d605125cac4d909755e
     resource: repo://docs/ARCHITECTURE.md
+  - id: openwiki-source-0261bb6aabbfdf1c40983663
+    resource: repo://docs/SQL_AGENT.md
   - id: openwiki-source-2ace3232a14f5163db46085f
     resource: repo://frontend/features/ask/lib/toolLabels.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:59:48.420Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-13T18:59:48.420Z
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Ask Sangam
 
 Ask Sangam answers staff and cohort questions about organisations, funders and fit by writing its own SQL against a curated catalog of tables. Every fact in an answer must carry a citation marker. The agent is a single LangGraph deep agent assembled in `backend/app/agent/build.py`. It has no subagents, no `task` tool and no write capability. For the request-level flow (streaming, threads, checkpoints) see [Ask turn](../workflows/ask-turn.md). For the funder-fit tool see [Funder Match](funder-match.md).
+
+Ask is one of three agents the backend serves. `AGENT_NAMES` in `app/core/lifespan.py` registers `/agent` (Ask, `sangam_agent`), `/ingest` (Import / Scout, `sangam_ingest`) and `/proposal` (the proposal copilot, `sangam_proposal`). The third agent, `/proposal`, is covered in [Proposal copilot](proposal-copilot.md). It reuses `harness.install()` and `harness.filesystem()` from this page's agent package, but has its own tools. The frontend's `toolLabels.ts` carries labels for its tools too (see "Adding an Ask tool").
 
 ## Responsibilities and shape
 
@@ -86,7 +96,7 @@ Ask Sangam answers staff and cohort questions about organisations, funders and f
 | `db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query` | Discover the catalog, then run one model-written SELECT (`tools/sql_tools.py`). |
 | `search_graph` | Graphiti relationship search with `[graph:<uuid8>]` markers and validity dates. It returns a "not available, answer from the database tools" string when the graph is not configured. |
 | `fetch_url` | One live page through the egress-guarded client. It is uncapped and carries no citation marker. |
-| `compare_fit` | Funder Match in one call: fixed queries, rules in code, the match-v2 rubric. It refuses callers who may not run a match for the organisation, using `chat_user_id` and `matching.may_run`. |
+| `compare_fit` | Funder Match in one call: fixed queries, rules in code, the match-v2 rubric. It reads through the shared pool directly (the owner pool, not the caller-scoped SQL path), so it refuses callers who may not run a match for the organisation itself, using `chat_user_id` and `matching.may_run`. |
 | `read_file`, `ls` | Skill reading only, supplied by `harness.filesystem(keep=SKILL_READING_TOOLS)`. |
 
 The agent used to have hand-written lookup tools (`search_orgs`, `get_funder`, and others). They were removed, and `db_query` is now the only route to the database. `compare_fit` is the one deliberate exception, because matching is a fixed checklist and its queries are fixed too.
@@ -135,14 +145,14 @@ The prompt says "After 5 failed attempts" and the middleware enforces 5. `test_r
 
 ## The four SQL layers
 
-The full design record is [docs/SQL_AGENT.md](../../docs/SQL_AGENT.md). It predates several catalog changes, so its table counts and "reader role" language are historical. This section gives only the architecture.
+The full design record is [docs/SQL_AGENT.md](../../docs/SQL_AGENT.md). It predates several catalog changes, so its table counts are historical, and its "reader role" section is marked superseded by the caller's role (#114). This section gives only the architecture.
 
 ```mermaid
 flowchart TD
     M["model SQL string"] --> V["validator.validate: parse, check, regenerate"]
     C["catalog.py: tables, columns, cites, defects"] --> V
     V -->|"SqlRejected"| E1["db_query rejected: message"]
-    V --> X["executor: READ ONLY txn, timeouts, prepare"]
+    V --> X["executor: READ ONLY txn, timeouts, run as caller (RLS), prepare"]
     X -->|"psycopg error"| E2["db_query failed: message with next step"]
     X --> R["render: markers, caveats, sources block"]
     R --> O["tool result string"]
@@ -150,21 +160,25 @@ flowchart TD
 
 Caption: a `db_query` call either becomes a rejection, a failure explanation, or a cited result string. Only the regenerated SQL ever reaches Postgres.
 
-1. **Catalog (`sql/catalog.py`).** An allowlist expressed as frozen dataclasses (`Table`, `Column`, `ForeignKey`). The catalog allowlists 37 tables. A table or column not listed does not exist for the agent, and an unlisted column fails as "unknown column" with the allowed list attached. The catalog derives `TABLE_NAMES`, `COLUMNS`, `SQLGLOT_SCHEMA`, `STAR_COLUMNS` (heavy columns are selectable by name but excluded from `*`), `CITE_COLUMNS`, `DEFECTS` and `PROVENANCE_COLUMNS`. `CITE_COLUMNS` maps a table and column to a citation kind. `DEFECTS` are data caveats injected into every result that touches the table. `PROVENANCE_COLUMNS` is derived from tables that carry a `source_url` column (plus `source_name` and `fetched_at`). `KNOWN_EXCLUDED` names 22 live tables deliberately kept out: checkpoints, `users`, `threads`, `org_members`, `proposals`, `funder_matches`, the import bookkeeping tables and others. `_self_check()` runs at import and raises on a dangling foreign key or an unknown cite kind.
-2. **Validator (`sql/validator.py`).** Pure, sqlglot only, no I/O. It enforces one statement that parses to a query, rejects write nodes anywhere in the tree (a DELETE inside a CTE included), rejects `INTO`, locking clauses and `WITH RECURSIVE`, and rejects cross-schema references and table functions in `FROM`. Every table must be in the catalog, and CTEs may not shadow real tables. Non-standard functions are an allowlist (`ALLOWED_FUNCTIONS`, for example `similarity`). Session-identity and row-generating functions, placeholders and catalog casts are denied. Columns are resolved with `qualify` and then re-checked by scope. `SELECT *` is expanded and trimmed of heavy columns, duplicate output names are aliased, and `LIMIT` is clamped (default `sql_max_rows` 50, hard cap 200, plus one row to detect truncation). It also plans citations and provenance by appending hidden `__prov__` columns. The model's string never executes: `ValidatedQuery.sql` is the regenerated AST without comments.
-3. **Executor (`sql/executor.py`).** `PsycopgExecutor` runs inside `conn.transaction()`, which is what emits `BEGIN` because the shared pool is autocommit. It issues `SET TRANSACTION READ ONLY`, then `SET LOCAL statement_timeout` (`sql_timeout_ms`, default 5000), a `lock_timeout` of 1 s and an idle-in-transaction timeout of 10 s. The query goes through `traced_fetch(..., prepare=True)`, which forces the extended protocol so the server itself refuses multi-statement strings. A semaphore of `db_gate_slots` keeps tool concurrency under the pool size so the checkpointer can still write. All the settings are transaction-local, so nothing leaks onto the pooled connection that the checkpointer reuses.
+1. **Catalog (`sql/catalog.py`).** An allowlist expressed as frozen dataclasses (`Table`, `Column`, `ForeignKey`). `CATALOG` allowlists 37 tables, and `db_list_tables` reports the live count. A table or column not listed does not exist for the agent, and an unlisted column fails as "unknown column" with the allowed list attached. The catalog derives `TABLE_NAMES`, `COLUMNS`, `SQLGLOT_SCHEMA`, `STAR_COLUMNS` (heavy columns are selectable by name but excluded from `*`), `CITE_COLUMNS`, `DEFECTS` and `PROVENANCE_COLUMNS`. `CITE_COLUMNS` maps a table and column to a citation kind. `DEFECTS` are data caveats injected into every result that touches the table. `PROVENANCE_COLUMNS` is derived from tables that carry a `source_url` column (plus `source_name` and `fetched_at`). `KNOWN_EXCLUDED` names 22 live tables deliberately kept out: the four checkpoint tables, `users`, `threads`, `org_members`, `proposals`, `funder_matches` and `funder_match_details`, `vault_research`, the media pipeline state (`news_link_scores`, `news_watch`), the import bookkeeping tables and the infrastructure tables. `_self_check()` runs at import and raises on a dangling foreign key or an unknown cite kind.
+2. **Validator (`sql/validator.py`).** Pure, sqlglot only, no I/O. It enforces one statement that parses to a query, rejects write nodes anywhere in the tree (a DELETE inside a CTE included), rejects `INTO`, locking clauses and `WITH RECURSIVE`, and rejects cross-schema references and table functions in `FROM`. Every table must be in the catalog, and CTEs may not shadow real tables. Non-standard functions are an allowlist (`ALLOWED_FUNCTIONS`, for example `similarity`), and `Set`, `Transaction` and `Command` nodes are write nodes, so a query cannot change its own role or settings. Session-identity and row-generating functions, placeholders and catalog casts are denied. Columns are resolved with `qualify` and then re-checked by scope. `SELECT *` is expanded and trimmed of heavy columns, duplicate output names are aliased, and `LIMIT` is clamped (default `sql_max_rows` 50, hard cap 200, plus one row to detect truncation). It also plans citations and provenance by appending hidden `__prov__` columns. The model's string never executes: `ValidatedQuery.sql` is the regenerated AST without comments.
+3. **Executor (`sql/executor.py`).** `PsycopgExecutor` runs inside `conn.transaction()`, which is what emits `BEGIN` because the shared pool is autocommit. It issues `SET TRANSACTION READ ONLY` first (Postgres refuses it once a query has run), then `SET LOCAL statement_timeout` (`sql_timeout_ms`, default 5000), a `lock_timeout` of 1 s and an idle-in-transaction timeout of 10 s. Then it calls `set_caller` (`app/db/pool.py`), which runs `set_config('role', ...)` and `set_config('request.jwt.claims', ...)` transaction-locally, using the `(role, claims)` pair from the `agent_caller` context variable (`anon` with empty claims when unset). From that point the query runs as `authenticated` or `anon`, so row-level security applies exactly as it does for REST routes. The query goes through `traced_fetch(..., prepare=True)`, which forces the extended protocol so the server itself refuses multi-statement strings. A semaphore of `db_gate_slots` keeps tool concurrency under the pool size so the checkpointer can still write. All the settings are transaction-local, so the connection returns to the pool as the owner and nothing leaks onto the pooled connection that the checkpointer reuses.
 4. **Render and errors (`sql/render.py`, `sql/errors.py`).** `render_rows` prefixes each row with markers such as `[org:12]`, built from the projected id columns the validator mapped. It drops source columns from the body, caps cells at 200 characters and output at 6,000, and says plainly when rows were truncated or no citable id column was projected. `render_sources` emits a deduplicated `sources:` block (at most 8 entries). Its grammar is a contract parsed by the frontend (`features/ask/lib/sources.ts`) and pinned by `tests/test_sql_render.py`. `explain_db_error` turns a Postgres SQLSTATE into the primary message, the executed SQL and a concrete "Next:" step. Connection errors are deliberately generic, because driver text can contain the DSN.
 
 The `db_query` result header is: `N row(s). tables: ...`, then any `adjusted:` rewrites, `caveats:`, `executed: <sql>`, the `sources:` block, and finally the `columns:` body. The sources block sits above the `columns:` line on purpose, because tracing redaction cuts everything from `columns:` downward.
 
-### The catalog is a security control
+### The catalog and the caller's role are the security controls
 
-Agent SQL runs on the **owner pool**, which connects as the database owner (a superuser locally; this page claims nothing more about the deployed role than the code shows). There is no per-caller role. The catalog and validator are therefore the only guard against reading sensitive tables (conversation checkpoints, user accounts, private org data) or personal contact columns. Moving the query to the caller's role is the branch `fix/ask-sql-runs-as-caller`, and it is **not merged**. `docs/ARCHITECTURE.md` section 3 states the same rule (owner pool, catalog as the only guard, adding a table is a security decision) and section 8 says agent tools run on the owner pool and check access themselves. `config.py` carries a `sql_reader_role` comment, but the executor has no role-switch code. See [Auth, roles and RLS](auth-roles-rls.md) for why owner-pool tools must check access themselves, as `compare_fit` does.
+Agent SQL runs **as the signed-in caller**, under row-level security. `ask_access`, the dependency on the `/agent` route (`app/core/security.py`), claims the thread and then sets `agent_caller` to the caller's `(role, claims)`. The executor applies it with `set_caller` inside the read-only transaction (see layer 3). RLS therefore hides other organisations' private documents, staff-only `funder_activity` lines and similar rows, and the server refuses `checkpoints` outright. Without a caller the query runs as `anon`. `/ingest` keeps the owner, because Import writes the catalog. The catalog and validator remain the first guard, and RLS is the second one underneath them. `tests/test_agent_rls.py` pins it against a real database: a member of org A reads its own private document but not org B's, a user with no organisation reads no private row, no caller means `anon`, and the connection goes back to the pool as the owner.
 
-**Adding a table to the catalog is a security decision.** In practice this means the following:
+Two consequences follow for the model's answers. Counts and empty results cover only what this user can see, so the prompt (rule 10) says "none that you can see" rather than "none exist", and `db_query` and `db_profile_column` say so when they return zero rows. A user also needs `SELECT` on every catalogued column, or `SELECT *` fails with SQLSTATE 42501.
 
-- A new table in `CATALOG` makes every listed column readable by anyone who can chat, so review it like a permission change. Per-column exclusions (for example `contacts.email` and `contacts.phone`) are expressed by omission.
-- At boot, `lifespan._verify_sql_catalog` runs `verify_against_db`. It **raises** if the catalog names a table or column the database lacks (drift), which refuses to start. A live table in neither the catalog nor `KNOWN_EXCLUDED` is only logged at INFO, so a new table stays invisible until someone decides. Migrations that add tables should land with that decision. See [Data and migrations](data-and-migrations.md).
+Not everything in Ask runs as the caller. Tools that go to the shared pool directly, like `compare_fit`, still use the owner connection and must check access themselves through `chat_user_id` or `chat_scope`. See [Auth, roles and RLS](auth-roles-rls.md). Two docs lag the code: `docs/ARCHITECTURE.md` sections 3 and 8 still say Ask's SQL runs on the owner pool and that running it as the caller is the unmerged branch `fix/ask-sql-runs-as-caller`. Treat the executor and `docs/SQL_AGENT.md` (which marks the reader-role section superseded) as the truth. The stale `sql_reader_role` comment in `config.py` and the "superuser until the reader role lands" comment in `validator.py` describe the old design.
+
+**Adding a table to the catalog is still a security decision.** In practice this means the following:
+
+- A new table in `CATALOG` makes every listed column available to the agent. What a caller actually sees is bounded by RLS, but review it like a permission change: the table needs its RLS policies, and `SELECT` for `authenticated`. Per-column exclusions (for example `contacts.email` and `contacts.phone`) are expressed by omission.
+- At boot, `lifespan._verify_sql_catalog` runs `verify_against_db`. It **raises** if the catalog names a table or column the database lacks (drift). It also raises if the `authenticated` role cannot `SELECT` a catalogued column, or if `anon` can read only part of a table, since that would break `SELECT *`. A live table in neither the catalog nor `KNOWN_EXCLUDED` is only logged at INFO (via `undeclared_tables`), so a new table stays invisible until someone decides. `KNOWN_EXCLUDED` is the explicit "decided no" list. Migrations that add tables should land with that decision. See [Data and migrations](data-and-migrations.md).
 - `tests/test_sql_catalog.py` asserts what must **not** be present. Checkpoint and user tables must be absent and declared in `KNOWN_EXCLUDED`. Contact email and phone, embeddings and similar columns must be absent. `STAR_COLUMNS` must not leak them. Cite kinds must stay within `{org, funder, activity, score, news}`, which is the frontend union. The `_self_check` guard must fire on a dangling foreign key.
 
 ## Prompt rules and citations
@@ -172,7 +186,7 @@ Agent SQL runs on the **owner pool**, which connects as the database owner (a su
 `instructions.md` is sent verbatim as the system prompt (`render_prompt` ignores settings). `prompt.py` fails at import if the file is empty. Its numbered rules fall into three groups.
 
 - **Rules 1-5, answering.** Answer only from tool results. Cite every database fact inline with its marker. A sentence without a marker must not state a database fact, and the one exception is a figure computed from cited rows, which must be labelled as computed. Show freshness and say where a fact came from in words, without pasting URLs. Fit scores are single-rater rubric judgements. Keep answers short, with the direct answer first. `fetch_url` text carries no marker, so its source is named in words.
-- **Rules 6-11, SQL.** Discover before writing. Profile a text column before filtering on a literal. Project the id column, since `db_query` can only attach a marker if the row id is in the SELECT list. Read the error and fix the SQL, and stop after 5 failures. Zero rows is an answer, and a CAVEAT from a table is repeated. A registration is an `org_identifiers` row with a status.
+- **Rules 6-11, SQL.** Discover before writing. Profile a text column before filtering on a literal. Project the id column, since `db_query` can only attach a marker if the row id is in the SELECT list. Read the error and fix the SQL, and stop after 5 failures. Zero rows is an answer, a CAVEAT from a table is repeated, and because every query runs as the caller and row security hides what they may not read, an empty result is reported as "none that you can see". A registration is an `org_identifiers` row with a status.
 - **Rules 12-16, matching.** `compare_fit` judges fit and the model never does. Call it once per question. Repeat its score, tier, points and cites exactly. "Not recorded" is never "poor fit", a `compare_fit refused` reply is relayed and the model stops, and the computed score is never merged with a stored `fit_scores` row.
 
 **Citation markers** are `[org:N]`, `[funder:N]`, `[activity:N]`, `[score:N]`, `[news:N]` and `[graph:<uuid8>]`. SQL kinds come from `Column.cites` through the validator's `CitationPlan`. `[graph:...]` is written literally by `search_graph`, and `compare_fit` embeds `[org:N]`, `[funder:N]` and per-criterion cites in its JSON. The frontend turns markers into chips (`features/ask/lib/citations.ts`). `test_prompt_documents_every_marker_the_tools_emit` fails if a tool can emit a kind the prompt never mentions, because the model will not repeat markers it was not told about. `test_tools_emit_the_markers_we_think_they_do` guards that test against passing vacuously.
@@ -184,7 +198,7 @@ Four edits, as documented in the repository-root `CLAUDE.md` (`docs/ARCHITECTURE
 1. **The function** in `app/agent/tools/`, as a `@tool`. It must never raise and must return an error string on failure. Every database row it returns must carry a citation marker, and the marker kind must be one the prompt and frontend already know.
 2. **A line in `TOOLS`** in `app/agent/build.py`.
 3. **A mention in `instructions.md`**, naming the tool by its exact Python identifier. `test_prompt_names_every_registered_tool` iterates `TOOLS` and fails otherwise. A tool described only in a SKILL.md does not count, since skills load by choice and constraints must not sit behind a decision.
-4. **A label** in `frontend/features/ask/lib/toolLabels.ts`, which the trace UI uses. It is the one edit nothing enforces, and skipping it is harmless: `humanizeTool` falls back to a humanised version of the tool name, so a label only improves the wording.
+4. **A label** in `frontend/features/ask/lib/toolLabels.ts`, which the trace UI uses. The file holds one `TOOL_LABELS` map for every agent's tools: the Ask tools above, `read_file` and `ls`, and the proposal copilot's (`read_proposal`, `advance_step`, `write_section`, `ask_user` and others, see [Proposal copilot](proposal-copilot.md)). Each entry has a label and a `detail` function over the call's arguments (`db_query` shows its `purpose` rather than the raw SQL, because the rail shows the SQL that actually ran). It is the one edit nothing enforces, and skipping it is harmless: `humanizeTool` falls back to a humanised version of the tool name, so a label only improves the wording.
 
 Because the tool set is pinned, also update the literal set in `test_ask_sangam_holds_its_seven_tools_and_the_skill_readers` (`tests/test_harness.py`). If the tool emits a new citation kind, update the expectations in `tests/test_prompt.py` and `test_sql_catalog.py`, and update the frontend `citations.ts` link union.
 
@@ -192,6 +206,7 @@ Because the tool set is pinned, also update the literal set in `test_ask_sangam_
 
 - A bad query comes back as `db_query rejected:` (validator) or `db_query failed:` (database), each naming the problem and the next step. Five of these in one question end the turn with the fixed give-up message.
 - A database outage tells the model to stop and not retry. The message is generic and carries no DSN.
+- A column or table the caller's role cannot read fails with SQLSTATE 42501, and the explanation sends the model back to `db_list_tables`.
 - A missing graph, a refused match and an unreachable page are all strings, never exceptions.
 - The audit can only add a caveat. It cannot block or alter the answer, and it does nothing when no SQL ran.
 
@@ -204,5 +219,6 @@ Because the tool set is pinned, also update the literal set in `test_ask_sangam_
 | `tests/test_sql_catalog.py` | Withheld tables and columns, derived indexes, citation kinds, defect wording and the self-check. |
 | `tests/test_sql_validator.py`, `test_sql_errors.py`, `test_sql_render.py` | Adversarial validation, error guidance and the `sources:` grammar contract. |
 | `tests/test_sql_integration.py` | Execution against a real database. |
+| `tests/test_agent_rls.py` | The executor runs as the caller: org A's member reads its own private row and not org B's, no caller means `anon`, the connection returns as the owner, and every catalogued column is readable by `authenticated`. |
 
 See [Testing overview](../testing/overview.md) for how these suites are run.

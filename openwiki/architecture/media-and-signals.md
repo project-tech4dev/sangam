@@ -3,9 +3,6 @@ type: architecture
 title: Media & Signals
 description: How Sangam pulls news with Tavily, classifies each link per organisation, groups links into stories, applies visibility bars, optionally re-checks borderline matches with a verifier agent, stores the result, and serves it through REST routes, the Media & Signals view, Registry profiles and the Ask news-brief skill.
 tags: [news, media-signals, ingest, tavily, verifier, visibility, rls]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-13T18:20:59.385Z
 sources:
   - id: openwiki-source-9861d76bc6d4956d245dc5b9
     resource: repo://backend/app/agent/instructions.md
@@ -17,6 +14,8 @@ sources:
     resource: repo://backend/app/api/routes/news_runs.py
   - id: openwiki-source-74ad089b5ef170229a50f82f
     resource: repo://backend/app/api/routes/news_stories.py
+  - id: openwiki-source-2dc2262235c0fa8bd81f1205
+    resource: repo://backend/app/api/routes/profiles.py
   - id: openwiki-source-6dcfc1451bcbf8009d0484a9
     resource: repo://backend/app/core/config.py
   - id: openwiki-source-8c4d96626089e75f0817872b
@@ -65,11 +64,18 @@ sources:
     resource: repo://frontend/features/ask/views/media/MediaView.tsx
   - id: openwiki-source-d6037beaa11ae38e613a17e5
     resource: repo://frontend/features/ingest/components/ImportApproval.tsx
-  - id: openwiki-source-d82d1b1b90e6afd7de3fc653
-    resource: repo://frontend/features/registry/ProfileTabs.tsx
+  - id: openwiki-source-2df03770fc98883975cdb28c
+    resource: repo://frontend/features/registry/profile/FunderProfileTabs.tsx
+  - id: openwiki-source-e13a4c1f23c208af6abdc2af
+    resource: repo://frontend/features/registry/profile/NewsSocial.tsx
+  - id: openwiki-source-f33c385003e437ae3c6fd25e
+    resource: repo://frontend/features/registry/profile/OrgProfileTabs.tsx
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-13T18:20:59.385Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-15T18:08:53.060Z
 ---
 
 # Media & Signals
@@ -216,16 +222,17 @@ The `news-brief` skill (`backend/app/agent/skills/news-brief/SKILL.md`, loaded v
 ## REST routes
 
 - `GET /ingest/news-runs/plan` (staff only, writes nothing) takes `names` and `feeds`. It returns subjects, newcomers, searches, checks, cost, matched and unmatched names, and feed labels. Names that match nothing plan nothing, not everyone.
-- `GET /news/stories` takes `bucket` (`org`, `funder` or `general`), `area`, filters (`topic`, `sentiment`, `source`, `since`, `q`) and a keyset `cursor`. It runs as the caller, so RLS applies. It orders by match, then confidence, then date, returns counts for all three buckets (capped at 501, shown as "500+"), and adds `last_pull` from the latest finished news run. The `org` bucket shows only the caller's organisations unless the caller is staff. The `general` bucket shows listed topic stories filtered by "my area".
-- `GET /orgs/{slug}/news` and `GET /funders/{slug}/news` are the public profile feeds. They return only `public` entity links.
-- `POST /news/stories/{id}/hide` (staff) sets one entity link to `hidden` and stamps who and when. It needs exactly one of `org_id` or `funder_id`.
+- `GET /news/stories` (`routes/news_stories.py`, SQL in `repositories/news_stories.py`) takes `bucket` (`org`, `funder` or `general`), `area` (`mine`, `north_east`, `all`; it defaults to `all` for staff and `mine` for everyone else), filters (`topic`, `sentiment`, `source`, `since`, `q`) and a keyset `cursor`, with `limit` from 1 to 50. It runs as the caller, so RLS applies. It orders by match, then confidence, then date, returns counts for all three buckets (capped at 501, shown as "500+"), and adds `last_pull`. `last_pull` is the latest finished news run, read through the owner pool because `ingest_runs` is not readable as the caller. The `org` bucket shows only the caller's organisations unless the caller is staff. The `general` bucket shows listed topic stories filtered by "my area". In the `org` and `funder` buckets the sentiment filter is that organisation's own stance.
+- `GET /orgs/{slug}/news` and `GET /funders/{slug}/news` are the public profile feeds. They return only `public` entity links of news stories, newest first, for any organisation.
+- The profile endpoints `GET /orgs/{slug_or_id}/profile` and `GET /funders/{slug_or_id}/profile` (`routes/profiles.py`) embed the same `entity_news` read as `news`, plus press and social `stories` counts from `public_sql.story_counts`. A failed news read leaves that list empty rather than failing the profile.
+- `POST /news/stories/{id}/hide` (staff) sets one entity link to `hidden` and stamps who and when. It needs exactly one of `org_id` or `funder_id` (otherwise 422), and answers 404 when no such link exists.
 
 Background and hidden stories reach no list, not even staff's. A malformed cursor is a 400.
 
 ## UI surfaces
 
 - The Media & Signals view (`frontend/features/ask/views/media/MediaView.tsx` and `StoryCard.tsx`) shows the three buckets, filters, search and the last pull date. Staff can hide a wrong match from the card.
-- The Registry profile tab "In the news" (`frontend/features/registry/InTheNews.tsx`, mounted in `ProfileTabs.tsx`) shows only public stories.
+- The Registry profile tab "News & social" shows only public stories. `OrgProfileTabs.tsx` and `FunderProfileTabs.tsx` (in `frontend/features/registry/profile/`) mount `NewsSocial.tsx` with `profile.news` and `profile.stories`. It splits stories into press and social by `channel`. Press items list the main link and "Also reported by" copies. Social posts are grouped by platform, with a six-month bar chart of posts per month. Headers use the SQL counts, not the length of the listed stories. The older `InTheNews.tsx` and `ProfileTabs.tsx` no longer exist.
 - The Scout approval card (`frontend/features/ingest/components/ImportApproval.tsx`) fetches the plan route and shows who is covered, the searches, any checks and the cost before the person approves the pull.
 
 ## Tests
