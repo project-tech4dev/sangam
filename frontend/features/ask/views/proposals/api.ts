@@ -30,7 +30,7 @@ export type Work = {
   skipped_template: boolean;
   sources: number[];
   style: string;
-  sections: Record<string, { text?: string; done?: boolean; rev?: number; score?: number }>;
+  sections: Record<string, { text?: string; done?: boolean; rev?: number; score?: number; needs_rewrite?: boolean }>;
   facts?: Record<string, Fact>;
   questions?: Record<string, { section: string; subject: string; status: "open" | "parked" | "answered" | "closed"; asked_of: { id: string; name: string } | null }>;
   /** Keyed by document id, plus "funder" for what the funder looks for. */
@@ -53,6 +53,8 @@ export type Fact = {
   page?: number;
   said_by?: { id: string; name: string };
   document_id?: number;
+  /** The parts whose text cites it. */
+  used_in?: string[];
 };
 
 export type ProposalItem = {

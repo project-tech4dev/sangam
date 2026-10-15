@@ -517,8 +517,11 @@ The first draft is written tab by tab, one turn per tab, with a marked gap where
 **Goal:** the person checks every fact, a correction reaches every section that uses it, and readiness is computed.
 
 **Files**
-- New: `backend/app/proposals/review.py`; routes `POST /{id}/facts/confirm` and `POST /{id}/facts/{k}/correct`.
-- New frontend: `ReviewCard.tsx`.
+- New: `backend/app/proposals/review.py` (pure), called inside `work.apply`, so a correction made anywhere (step 3, step 4) follows into the text. No new routes: "Confirm all" and "No, change it" are the existing `PATCH /{id}/work` paths `facts.kN.status` and `facts.kN.correct`.
+- Frontend: step 4 in `ProposalShell.tsx` (`FinishStep`) reuses `FactList` for every fact the text uses; no `ReviewCard.tsx`.
+- `sections.X.needs_rewrite` marks a part a correction could not fix; only `write_section` clears it, and a "Rewrite" button in Fix first asks Sangam Pitch to.
+- A fix in place must still pass the trace check, or the part is marked instead: a sentence whose place or number only the old fact held is never left untraced.
+- The agent's live block lists "Changed outside this chat", the person's own clicks included (before M5 it showed teammates only, so a correction made on screen was invisible to that person's own chat), and the parts marked NEEDS REWRITING.
 
 **Changes**
 - **Facts:** each with *Yes, it's right* · *No, change it* · *Don't use it*, plus "Confirm all". Only confirmed facts reach the final text.
@@ -705,7 +708,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 - [x] M3a: facts, reliability, `ask_user` with AskGate and reply sorting, questions shared across each person's chat. Exit: facts in words; one question at a time, by rule, never asked of two people.
 - [x] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
 - [x] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
-- [ ] M5: review, propagation, ready. Exit: Ready or the exact list.
+- [x] M5: review, propagation, ready. Exit: Ready or the exact list.
 - [ ] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
 - [ ] Each PR: a passing browser run (above) before the next milestone starts, `make wiki-update`, a CHANGELOG line, ARCHITECTURE and CLAUDE.md where rules change, a design-system sync, that milestone's safeguard tests, `npm run build`, `ruff check .`, `pytest`, and `pytest -m integration`.
 

@@ -133,6 +133,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-15 · M3a · Sangam Pitch facts and asking: facts from the record checked against it and shown in words with Yes / No, change it / Don't use it; one question at a time, by rule, never asked of two people; "Later" frees it for anyone.
 - 2026-10-15 · M3b · Sangam Pitch reads the ticked files and what the funder looks for, one reader each, in parallel, from "Write the first draft"; every screen shows each file's progress, and "Try again" re-reads only a file that failed.
 - 2026-10-15 · M4 · Sangam Pitch writes each part from the facts: "Write" per tab, every number, amount, place and partner traced to a fact cited in the same paragraph or refused, a gap where no fact supports it, parts in dependency order with the Summary last, each scored 0–2.
+- 2026-10-15 · M5 · "Before you send it": every fact the text uses with Yes / change it / Don't use it and Confirm all; a correction rewrites each sentence that states the old value word for word and marks the rest for a rewrite, facts worked out from it go back to amber, and Fix first / Worth checking decide Ready.
 
 ## Media & Signals
 

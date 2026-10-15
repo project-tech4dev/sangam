@@ -70,7 +70,8 @@ def stable(p: Current) -> str:
     saved = p.work.get("sections") or {}
     def state(part: dict[str, Any]) -> str:
         word = "finished" if part.get("done") else "draft" if part.get("text") else "empty"
-        return word + (f", score {part['score']} of 2" if part.get("score") is not None else "")
+        return (word + (f", score {part['score']} of 2" if part.get("score") is not None else "")
+                + (", NEEDS REWRITING: a fact it cites was corrected or set aside" if part.get("needs_rewrite") else ""))
 
     states = [f"{s.label} [{s.code}]: {state(saved.get(s.code) or {})}" for s in sections(p.work)]
     return "\n".join([
@@ -103,7 +104,8 @@ def _what(work: dict[str, Any], entry: dict[str, Any]) -> str:
     if head == "sections":
         code, _, field = rest.partition(".")
         label = next((s.label for s in sections(work) if s.code == code), code)
-        return f"{label} [{code}]" + {"done": " (marked finished or not)", "score": " (its score)"}.get(field, "")
+        return f"{label} [{code}]" + {"done": " (marked finished or not)", "score": " (its score)",
+                                      "needs_rewrite": " (marked for rewriting)"}.get(field, "")
     if head == "gates":
         return next((r["label"] for r in work.get("requirements") or [] if r["key"] == rest), "a requirement")
     if head in ("facts", "questions"):
@@ -121,11 +123,12 @@ def _what(work: dict[str, Any], entry: dict[str, Any]) -> str:
             "style": "the writing style", "title": "the title"}.get(head, head)
 
 
-def by_others(p: Current) -> list[str]:
-    """Teammates' latest changes, newest first: each person's chat is private, so this is how the agent hears of them."""
+def outside(p: Current) -> list[str]:
+    """Changes this chat did not make, newest first: teammates' and the person's own clicks on screen."""
     me = str(p.scope.user_id) if p.scope.user_id else None
-    theirs = [e for e in reversed(p.work.get("log") or []) if str((e.get("by") or {}).get("id")) != me]
-    return [f"- {(e.get('by') or {}).get('name') or 'Someone'} changed "
+    theirs = [e for e in reversed(p.work.get("log") or [])
+              if str((e.get("by") or {}).get("id")) != me or e.get("via") != "agent"]
+    return [f"- {'The person, on screen,' if str((e.get('by') or {}).get('id')) == me else (e.get('by') or {}).get('name') or 'Someone'} changed "
             f"{_what(p.work, e)}, "
             f"{str(e.get('at', ''))[:16].replace('T', ' ')} UTC" for e in theirs[:OTHERS_SHOWN]]
 
@@ -192,8 +195,12 @@ def live(p: Current, state: Any) -> str:
              "The person " + ("can change this proposal." if p.can_edit else "can only read this proposal."),
              ("To leave this step: " + "; ".join(missing) + ".") if missing else "Nothing stops this step being left.",
              *(["Still to fix before sending: " + "; ".join(fix[:6]) + "."] if fix and stage > 1 else [])]
-    if others := by_others(p):
-        lines += ["Changed by teammates (not in this chat):", *others]
+    if rewrite := [f"{s.label} [{s.code}]" for s in sections(p.work)
+                   if ((p.work.get("sections") or {}).get(s.code) or {}).get("needs_rewrite")]:
+        lines.append("Marked NEEDS REWRITING, because a fact it cites was corrected or set aside: "
+                     + ", ".join(rewrite) + ".")
+    if others := outside(p):
+        lines += ["Changed outside this chat:", *others]
     if files := reading(p.work):
         lines += ["Files read for this proposal:", *files]
     lines += ["Waiting:", *(waiting(p) or ["- nothing"])]

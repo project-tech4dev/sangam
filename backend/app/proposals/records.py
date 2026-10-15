@@ -8,6 +8,19 @@ from app.proposals import facts as fact_rules
 from app.repositories import profile_facts
 from app.repositories import proposals as repo
 
+_DISTRICTS: set[str] = set()
+
+
+async def districts(pool: Any) -> set[str]:
+    """Every district Sangam knows, read once: the trace check needs only their names."""
+    if not _DISTRICTS:
+        async with pool.connection() as conn:
+            rows = await (await conn.execute("SELECT DISTINCT lower(name) AS name FROM locations WHERE kind = 'district'"
+                                             )).fetchall()
+        # A three-letter district (Mon, Una, Leh) reads as an ordinary word too often to check.
+        _DISTRICTS.update(n for r in rows if r["name"] and len(n := " ".join(r["name"].replace("-", " ").split())) > 3)
+    return _DISTRICTS
+
 
 async def _lines(pool: Any, p: Any, marker: str) -> list[str] | str:
     from app.proposals.tools.record_tools import match_text, org_text

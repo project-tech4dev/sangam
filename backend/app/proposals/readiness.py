@@ -49,6 +49,8 @@ def summary(work: dict[str, Any]) -> dict[str, Any]:
         part = sections.get(s.code) or {}
         score = part.get("score")
         gaps += len(_GAP.findall(part.get("text") or ""))
+        if part.get("needs_rewrite"):
+            fix_first.append(f"{s.label}: a fact it uses changed, so it needs rewriting")
         if score is None:
             continue
         if s.code in rubric.MUST_SCORE_2 and score < 2:

@@ -41,7 +41,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   // The presser's own turn counts too: readers are claimed, and parts saved, mid-turn.
   const reading =
     Object.values(proposal?.work.readers ?? {}).some((r) => r.status === "running") ||
-    ((proposal?.work.stage === 2 || proposal?.work.stage === 3) && proposal.can_edit && send === null);
+    ((proposal?.work.stage ?? 1) >= 2 && proposal?.can_edit && send === null);
   useEffect(() => {
     if (!reading) return;
     const timer = setInterval(() => void load(), POLL_MS);
@@ -151,7 +151,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
             {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
             {work.stage === 2 && <SourcesStep proposal={proposal} save={save} send={send} />}
             {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} send={send} />}
-            {work.stage === 4 && <FinishStep proposal={proposal} />}
+            {work.stage === 4 && <FinishStep proposal={proposal} save={save} send={send} />}
           </div>
 
           {canEdit && work.stage < STEPS.length && (
@@ -438,17 +438,51 @@ function SectionsStep({
   );
 }
 
-function FinishStep({ proposal }: { proposal: Proposal }) {
-  const { fix_first: fix, worth_checking: check } = proposal.summary;
+/** What is left before sending, and every fact the text uses for the person to check; Ready is code's call. */
+function FinishStep({ proposal, save, send }: { proposal: Proposal; save: Save; send: Send }) {
+  const { summary, work, can_edit: canEdit } = proposal;
+  const { fix_first: fix, worth_checking: check } = summary;
+  const unchecked = Object.entries(work.facts ?? {}).filter(([, f]) => f.status === "proposed" && f.used_in?.length);
+  const rewrite = proposal.sections.filter((s) => work.sections[s.code]?.needs_rewrite).map((s) => s.label);
   return (
     <div className="pr-pane">
+      <p className="muted">
+        {summary.ready
+          ? "Nothing stops this proposal. Look over what is worth checking, then send it."
+          : "Check each fact the proposal uses. Everything under Fix first stops it being ready; the rest is worth a look."}
+      </p>
       <div className="card pr-block">
-        <div className="card-title">Fix first</div>
+        <div className="pr-group-head">
+          <div className="card-title">Fix first</div>
+          {canEdit && rewrite.length > 0 && (
+            <button className="btn" type="button" disabled={!send} onClick={() => send?.(`Rewrite ${rewrite.join(", ")}: a fact it uses changed.`)}>
+              Rewrite {rewrite.length === 1 ? "that part" : `those ${rewrite.length} parts`}
+            </button>
+          )}
+        </div>
         {fix.length ? <Lines lines={fix} /> : <p>Nothing to fix.</p>}
       </div>
       <div className="card pr-block">
         <div className="card-title">Worth checking</div>
         {check.length ? <Lines lines={check} /> : <p>Nothing else to check.</p>}
+      </div>
+      <div className="card pr-block">
+        <div className="pr-group-head">
+          <div>
+            <div className="card-title">The facts in your proposal</div>
+            <p className="muted">Only facts you confirm go into the final text. Change one and every part that states it follows.</p>
+          </div>
+          {canEdit && unchecked.length > 1 && (
+            <button
+              className="btn"
+              type="button"
+              onClick={() => save(Object.fromEntries(unchecked.map(([k]) => [`facts.${k}.status`, "confirmed"])))}
+            >
+              Confirm all {unchecked.length}
+            </button>
+          )}
+        </div>
+        <FactList proposal={proposal} part="used" save={save} />
       </div>
     </div>
   );

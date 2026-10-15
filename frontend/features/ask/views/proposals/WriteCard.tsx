@@ -21,6 +21,7 @@ export function WriteCard({ proposal, code }: { proposal: Proposal; code: string
     <div className="pr-draft">
       <div className="pr-draft-state">
         {saved.score != null && <span data-score={saved.score}>{SCORE[saved.score]}</span>}
+        {saved.needs_rewrite && <span className="pr-draft-gaps">A fact it uses changed: needs rewriting</span>}
         {gaps > 0 && <span className="pr-draft-gaps">{gaps === 1 ? "1 gap to fill" : `${gaps} gaps to fill`}</span>}
       </div>
       {text.split(/\n\s*\n/).map((para, i) => (
