@@ -9,7 +9,7 @@ import { getMatches, runMatch } from "./funder-match/api";
 import { funderTypeGroup, funderTypeLabel } from "./funder-match/funderType";
 import { shortDate } from "@/lib/format";
 import { MatchCard, type ProposalNav } from "./funder-match/MatchCard";
-import { useProposals } from "./proposals/store";
+import { useProposals } from "./proposals/api";
 import { COMING_SOON } from "../lib/comingSoon";
 
 type Bucket = "all" | "strong" | "medium";
@@ -209,7 +209,7 @@ export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: strin
           {shown.length === 0 ? (
             <div className="muted">No funders match these filters for {list.org.name}.</div>
           ) : (
-            shown.map((m) => <MatchCard key={m.id} match={m} rank={ranked.indexOf(m) + 1} org={list.org} nav={nav} />)
+            shown.map((m) => <MatchCard key={m.id} match={m} rank={ranked.indexOf(m) + 1} org={list.org} nav={nav} mayStart={list.may_run} />)
           )}
 
           {atDefault && folded.length > 0 && (

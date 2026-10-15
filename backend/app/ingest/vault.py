@@ -22,7 +22,7 @@ URL_PREFIX = f"https://org-vault.{PRIVATE_SOURCE_DOMAIN}/"
 MAX_BYTES = 50 * 1024 * 1024
 # Bounded so a read never needs evicting to a file a web-reading agent could open.
 MAX_CHARS = 24_000
-PDF, XLSX = ".pdf", ".xlsx"
+PDF, XLSX, DOCX = ".pdf", ".xlsx", ".docx"
 
 # What a funder's research may save from an org's own files: the funder's general facts. Facts about the
 # org itself (its grants, amounts, contacts, results, the file) are shown on Review and held back.
@@ -104,6 +104,22 @@ def pdf_text(doc: dict[str, Any], data: bytes, start_page: int, end_page: int | 
     return "\n".join([*_head(doc), f"{total} pages. Cite a fact by the page marker before it.", "", text])
 
 
+def docx_text(doc: dict[str, Any], data: bytes, start: int) -> str:
+    from app.ingest import office
+
+    paras = office.docx_paragraphs(data)
+    lines, size, n = [], 0, start
+    for n in range(max(start, 1), len(paras) + 1):
+        line = f"[vault:{doc['id']}#para{n}] {paras[n - 1]}"
+        if size + len(line) > MAX_CHARS and lines:
+            lines.append(f"… cut at paragraph {n - 1} of {len(paras)}. Call again with start_page={n}.")
+            break
+        lines.append(line)
+        size += len(line) + 1
+    head = f"{len(paras)} paragraphs (start_page counts paragraphs in a Word file). Cite a fact by its paragraph marker."
+    return "\n".join([*_head(doc), head, "", *lines])
+
+
 def xlsx_text(doc: dict[str, Any], data: bytes, sheet: str, start_row: int, limit: int) -> str:
     sheets, notes = staff_sources._browse(data, sheet, start_row, limit)
     body = staff_sources.render({"id": doc["id"], "source_name": doc.get("title") or "workbook",
@@ -116,18 +132,20 @@ def xlsx_text(doc: dict[str, Any], data: bytes, sheet: str, start_row: int, limi
 
 async def read(doc: dict[str, Any], *, start_page: int = 1, end_page: int | None = None,
                sheet: str = "", start_row: int = 1, limit: int = 100) -> str:
-    """One vault file's text, every line cited [vault:<id>#p<page>] or [vault:<id>#<sheet>!<cell>]."""
+    """One vault file's text, every line cited [vault:<id>#p<page>], [vault:<id>#para<n>] or [vault:<id>#<sheet>!<cell>]."""
     parts = storage.split(doc["storage_path"] or "")
     if parts is None:
         return f"document {doc['id']} has no file on record."
     name = parts[1].lower()
-    if not name.endswith((PDF, XLSX)):
-        return f"document {doc['id']} is neither a PDF nor an .xlsx workbook, so it cannot be read here."
+    if not name.endswith((PDF, XLSX, DOCX)):
+        return f"document {doc['id']} is not a PDF, Word file or .xlsx workbook, so it cannot be read here."
     data = await storage.download(*parts, max_bytes=MAX_BYTES)
     if data is None:
         return f"document {doc['id']} could not be downloaded."
     if name.endswith(PDF):
         return await asyncio.to_thread(pdf_text, doc, data, start_page, end_page)
+    if name.endswith(DOCX):
+        return await asyncio.to_thread(docx_text, doc, data, start_page)
     return await asyncio.to_thread(xlsx_text, doc, data, sheet, start_row, min(limit, staff_sources.BROWSE_MAX_ROWS))
 
 

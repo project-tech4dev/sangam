@@ -66,11 +66,11 @@ async def create_upload_url(
     user_id: UUID = Depends(require_user),
 ) -> UploadUrlOut:
     _require_storage()
-    org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=True)
+    org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=False)
     if org_id is None:
         # Deliberately the same answer for "no such org" and "not your org":
         # which organisations exist is not something an outsider learns here.
-        raise HTTPException(403, f"no write access to org {body.org!r}")
+        raise HTTPException(403, f"not a member of org {body.org!r}")
     key = storage.vault_key(org_id, body.filename)
     url = await storage.signed_upload_url(storage.ORG_VAULT, key)
     if url is None:
@@ -89,9 +89,9 @@ async def confirm_upload(
     user_id: UUID = Depends(require_user),
 ) -> DocumentOut:
     _require_storage()
-    org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=True)
+    org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=False)
     if org_id is None:
-        raise HTTPException(403, f"no write access to org {body.org!r}")
+        raise HTTPException(403, f"not a member of org {body.org!r}")
 
     parts = storage.split(body.storage_path)
     if parts is None or parts[0] != storage.ORG_VAULT:
@@ -125,7 +125,17 @@ def _extract(data: bytes | None, key: str) -> tuple[str | None, str | None]:
         logger.warning("uploaded object %s could not be read back; stored without text", key)
         return None, None
     digest = storage.content_hash(data)
-    if not key.lower().endswith(".pdf"):
+    name = key.lower()
+    if name.endswith((".docx", ".xlsx")):
+        from app.ingest import office
+
+        try:
+            text = "\n\n".join(office.docx_paragraphs(data)) if name.endswith(".docx") else office.xlsx_markdown(data)
+        except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
+            logger.warning("no text from %s (%s: %s)", key, type(exc).__name__, exc)
+            return None, digest
+        return (text or None), digest
+    if not name.endswith(".pdf"):
         return None, digest
     from app.agent.tools.files import extract_pdf_text  # agent-tool module; only an upload needs it
 

@@ -5,8 +5,7 @@ import { Check, CircleAlert } from "lucide-react";
 import { EntityMark, Tag } from "@/components/ui";
 import type { MatchDetail, MatchRow, MatchTier } from "@/lib/api";
 import { shortDate } from "@/lib/format";
-import { startProposal } from "../proposals/start";
-import { useProposals } from "../proposals/store";
+import { startProposal, useProposals } from "../proposals/api";
 import { COMING_SOON } from "../../lib/comingSoon";
 import { getDetail } from "./api";
 import { funderTypeLabel } from "./funderType";
@@ -30,11 +29,11 @@ function Delta({ now, before }: { now: number | null; before: number | null }) {
   );
 }
 
-export type ProposalNav = { open: (id: string) => void; list: (funderId: number) => void };
+export type ProposalNav = { open: (id: number) => void; list: (funderId: number) => void };
 export type MatchOrg = { slug: string; name: string };
 
-/* Start a proposal to this funder, or go back to the ones already started. */
-function ProposalAction({ match, org, nav }: { match: MatchRow; org: MatchOrg; nav: ProposalNav }) {
+/* Start a proposal to this funder, or go back to the ones already started; a member only views them. */
+function ProposalAction({ match, org, nav, mayStart }: { match: MatchRow; org: MatchOrg; nav: ProposalNav; mayStart: boolean }) {
   const [naming, setNaming] = useState(false);
   const [title, setTitle] = useState(`${match.funder.name} proposal`);
   const [busy, setBusy] = useState(false);
@@ -46,7 +45,7 @@ function ProposalAction({ match, org, nav }: { match: MatchRow; org: MatchOrg; n
     setBusy(true);
     setProblem(null);
     try {
-      nav.open(await startProposal(org, match, title.trim()));
+      nav.open(await startProposal(org.slug, match.funder.id, title.trim()));
     } catch (error) {
       setProblem(error instanceof Error ? error.message : "The proposal was not started.");
       setBusy(false);
@@ -70,21 +69,35 @@ function ProposalAction({ match, org, nav }: { match: MatchRow; org: MatchOrg; n
     <div className="fm-actions">
       {started.length === 1 ? (
         <button className="btn" type="button" onClick={() => nav.open(started[0].id)}>
-          Continue proposal →
+          {mayStart ? "Continue proposal →" : "View proposal →"}
         </button>
       ) : started.length > 1 ? (
         <button className="btn" type="button" onClick={() => nav.list(match.funder.id)}>
           Proposals ({started.length}) →
         </button>
       ) : null}
-      <button className={started.length ? "btn btn-ghost" : "btn"} type="button" onClick={() => setNaming(true)}>
-        {started.length ? "Start another" : "Start a proposal"}
-      </button>
+      {mayStart && (
+        <button className={started.length ? "btn btn-ghost" : "btn"} type="button" onClick={() => setNaming(true)}>
+          {started.length ? "Start another" : "Start a proposal"}
+        </button>
+      )}
     </div>
   );
 }
 
-export function MatchCard({ match, rank, org, nav }: { match: MatchRow; rank: number; org: MatchOrg; nav: ProposalNav }) {
+export function MatchCard({
+  match,
+  rank,
+  org,
+  nav,
+  mayStart,
+}: {
+  match: MatchRow;
+  rank: number;
+  org: MatchOrg;
+  nav: ProposalNav;
+  mayStart: boolean;
+}) {
   const [detail, setDetail] = useState<MatchDetail | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -132,7 +145,7 @@ export function MatchCard({ match, rank, org, nav }: { match: MatchRow; rank: nu
           <span className="tag tag-outline">Coming soon</span>
         </div>
       ) : (
-        <ProposalAction match={match} org={org} nav={nav} />
+        <ProposalAction match={match} org={org} nav={nav} mayStart={mayStart} />
       )}
 
       <details className="import-disclosure fm-reason" onToggle={onToggle}>

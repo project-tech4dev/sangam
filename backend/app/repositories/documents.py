@@ -54,8 +54,8 @@ async def org_id_for_member(
 ) -> int | None:
     """The org's id if this user may act on it, else None.
 
-    `write=True` excludes stewards: 0004 defines a steward as someone who reads
-    an org's private data and cannot write. Staff pass either way.
+    `write=True` excludes stewards. Doc Vault uploads pass `write=False`: a steward adds the files a
+    proposal draws on (0048). Staff pass either way.
     """
     async with pool.connection() as conn:
         row = await (
