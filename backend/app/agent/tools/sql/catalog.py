@@ -370,6 +370,8 @@ _TABLES: tuple[Table, ...] = (
             Column("founded_year", "integer", note="the year the funder says it was founded or incorporated"),
             Column("registered_address", "text", note="the registered office as printed"),
             Column("registered_location_id", "bigint", note="-> locations.id of the registered office, usually a district"),
+            Column("calls_url", "text", note="the one page where the funder lists open calls, as make calls-pull found it; NULL when none was found"),
+            Column("calls_url_found_at", "timestamp with time zone"),
         ),
     ),
     Table(
@@ -788,7 +790,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows) because rfps is empty.",
+            "Filled only with rfps, by make calls-pull and Import. Few funders run open calls, so no row means none was found, not that none exists.",
         ),
     ),
     Table(
@@ -801,13 +803,13 @@ _TABLES: tuple[Table, ...] = (
             Column("org_id", "bigint", cites="org"),
             Column("match_score", "numeric"),
             Column("match_notes", "text"),
-            Column("status", "text", values=('flagged', 'reviewed', 'dismissed')),
+            Column("status", "text", values=('flagged', 'saved', 'reviewed', 'dismissed')),
             Column("matched_by", "text"),
             Column("matched_at", "timestamp with time zone"),
             Column("week_of", "date"),
         ),
         defects=(
-            "Table is empty (0 rows) because rfps is empty; no org has been matched to a call for proposals yet.",
+            "Rows are written only by RFP Watch matching. status is the org's own choice (saved, dismissed), never a judgement of fit; no row means the call was not matched, not that it does not fit.",
         ),
     ),
     Table(
@@ -824,7 +826,7 @@ _TABLES: tuple[Table, ...] = (
             Column("note", "text"),
         ),
         defects=(
-            "Table is empty (0 rows) because rfps is empty.",
+            "Filled only with rfps, by make calls-pull and Import. Few funders run open calls, so no row means none was found, not that none exists.",
         ),
     ),
     Table(
@@ -855,7 +857,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows): the RFP subsystem is built but no calls for proposals have been loaded. A zero result says nothing about whether such RFPs exist.",
+            "Filled by make calls-pull (a one-time pull of known funders' call pages) and by Import. Few Indian funders publish open calls, so few rows exist: zero rows means none was found, not that none exists. status 'open' with a past deadline means the pull has not run since.",
         ),
     ),
     Table(
