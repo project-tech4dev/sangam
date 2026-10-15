@@ -151,7 +151,8 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
         │           │           advance_step                          │
         │           │   every write passes CODE CHECKS: steps ·       │
         │           │   reliability · questions · trace · grade       │
-        │           │   task(...) gated by ProposalSources            │
+        │           │   read_files() runs the readers from code,      │
+        │           │   each with its own RunSources                  │
         │           │  ┌───────────────────┐ ┌──────────────────────┐ │
         │           │  │ funder-file-reader│ │ evidence-reader × N  │ │
         │           │  │ RESEARCH_MODEL    │ │ one per ticked file, │ │
@@ -168,7 +169,7 @@ stay in `work` and in the agent's context. The agent's prompt carries the same r
 ```
 
 **One turn, worked through (step 3, The People tab, A11 "Track record"):**
-1. The evidence readers have already run, one per ticked file. `ProposalSources` let each read only its own file.
+1. The evidence readers have already run, one per ticked file. `RunSources` let each read only its own file.
 2. It returns "24,765 families, 2019–22 [activity:41]" and "no 2025-26 outcome found". `add_facts` stores k15, which is green because it is registry data.
 3. The supervisor calls `ask_user(reason="missing_required", section="A11")`. Code confirms that A11's required outcome has no fact, and the card appears.
 4. The person answers "1,150 households, 9 → 10.5 food-secure months". It is stored as k16, "you said".
@@ -445,22 +446,32 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 - New frontend: step 2's "Write the first draft" button and the readers' progress (M2 already has the form, documents and style), step 2's side-panel explainer ("What happens when you press Write the first draft"), and "What ABF looks for" on F1.
 
 **Changes**
+- **The readers run from code, not `task`** (15 Oct). The supervisor has one tool, `read_files()`; `readers.py` claims
+  the pending files under the proposal's row lock, then runs one deep agent per file and one for the funder with
+  `asyncio.gather` under `MAX_PARALLEL_RESEARCH`. Which files are pending, the lock and each status are decided in
+  code, so "Try again" re-reads only what failed, and the model cannot skip a file or read one twice.
+  *Example:* three ticked files and a scanned PDF that fails: the press claims four readers at once; "Try again"
+  claims only the PDF; the other three keep their facts and times.
+- **Each reader is its own run.** Run inside a tool, a graph inherits the chat's callbacks and its steps stream into
+  the person's chat; each reader task clears the inherited run config and passes only tracing.
 - **`read_brief(entity)`** resolves `entity_research.resolved_funder_id` / `resolved_org_id` before the catalog slug, and returns `brief.record()` facts.
 - **`read_template()`** (decision 6).
 - **`funder-file-reader`** (`RESEARCH_MODEL`, isolated):
-  - tools: `read_brief`, `read_document_pages` (only documents linked to this funder), `read_template`, `add_facts`;
-  - middleware: `filesystem(backend)`, `ProposalSources`, `fallback`;
+  - tools: `read_brief`, `list_funder_documents`, `read_funder_document` (only public PDFs linked to this funder), `read_template`, `add_facts`;
+  - middleware: `filesystem(backend, evict=False)`, `RunSources()` with no Doc Vault file, `fallback`;
   - no web tool and no Doc Vault tool;
   - returns `FunderWants`: priorities, places, eligibility, terminology, past grants, the form's questions. It says plainly what it did not find (a funder with no brief yields little; only staff and stewards can run Scout since #207), and the form link or upload in step 2 fills the gap.
 - **`evidence-reader`** (`RESEARCH_MODEL`, isolated):
-  - tools: `list_vault_documents`, `read_vault_document`, `read_brief`, `add_facts`;
-  - middleware: `filesystem(backend, evict=False)`, `RunSources()`, `DropFilesOnExit()`, `fallback`;
+  - tools: `read_vault_document`, `read_brief`, `add_facts`; `add_facts` refuses a vault fact citing any other file;
+  - middleware: `filesystem(backend, evict=False)`, `RunSources()` holding that one file, `fallback`;
+  - a file with nothing to read ends `UNREADABLE: <reason>`, and that file is marked failed with the reason;
   - one per ticked file, up to `MAX_PARALLEL_RESEARCH` at once;
   - no web tools, and nothing written to `vault_research`.
-- **Reader status in `work.readers`:** `{document_id: running | done | failed, error, at}`. A file whose reader fails shows one line, "Couldn't read Workplan 2025.docx. Try again", which re-runs that file only; drafting goes on with gaps where it would have helped. A re-read replaces that file's `proposed` facts and never a confirmed one.
-- **Exit checks in `steps.py`:** step 1's is built (M2). Step 2: form set or skipped, style set, "Write the first draft" pressed.
+- **Reader status in `work.readers`:** `{<document_id> | funder: {status: running | done | failed, at, by, title, error?}}`, written by the agent only. A file whose reader fails shows one line, "Couldn't read: the PDF could not be opened · Try again", which re-runs that file only; drafting goes on with gaps where it would have helped. A re-read adds idempotently (`same_as`) and never touches a confirmed fact.
+- **A stale lock frees itself:** a reader still `running` after 30 minutes (Vercel's 1800 s) counts as failed, so a crashed turn never locks reading for good.
+- **Exit checks in `steps.py`:** step 1's is built (M2). Step 2: form set or skipped, style set, "Write the first draft" pressed, no reader still running. A failed file does not hold up step 3.
 - **Who runs the readers:** the editor who presses "Write the first draft", in their own chat turn. Progress is in `work.readers`, so every teammate's screen shows it. While readers run, a second press is refused with "Admin started reading the files 2 min ago": the one lock in the feature, on reading only, never on chatting.
-- **Tests:** `ProposalSources` refuses an unticked file; each reader's compiled graph carries only its declared tools and no web tool; re-reading a file keeps confirmed facts.
+- **Tests:** a file's `RunSources` refuses another ticked file and the funder's refuses every org file; each reader's compiled graph carries only its declared tools and no web tool; re-reading a file keeps confirmed facts.
 
 **Validation:** SeSTA → ABF on local with a seeded ABF brief and two Doc Vault PDFs. The funder-file reader's trace has no web call and no SeSTA Doc Vault text. One reader forced to fail leaves the other's facts and offers "Try again".
 
@@ -584,7 +595,7 @@ stack (`make up`, `make seed`, `make match ORG=sesta`), driven through Claude in
 | 0048 RLS: member, steward, staff, stranger (`integration`) | M1 |
 | `steps.exit_check`, `context.stable/live`, access (403/404, `can_edit`), own thread per person | M2 |
 | `reliability`, `questions.warranted`, `add_facts` verification and idempotency | M3a |
-| `ProposalSources`; readers carry only their declared tools and no web tool; a re-read keeps confirmed facts | M3b |
+| Each file reader's `RunSources`; readers carry only their declared tools and no web tool; a re-read keeps confirmed facts | M3b |
 | `trace` | M4 |
 | `review.correct`, readiness lists | M5 |
 | polish check (code part) | M6 |
@@ -631,7 +642,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 | First-turn latency | Three graphs compile on the first chat turn. Measure "Agents built on first use"; split loading per graph if it passes ~1 s |
 | A member writing through the agent | Agent tools run on the owner pool, past RLS. `proposal_chat_access` refuses a member's run, and each write tool re-checks `can_edit` |
 | Owner-pool tools skip RLS | A steward of two NGOs must not reach `proposal-43` by guessing. `context.current()` is the guard |
-| A reader seeing more than it should | SeSTA's unticked salary sheet is never opened: `ProposalSources` refuses it. The funder-file reader has no Doc Vault tool |
+| A reader seeing more than it should | SeSTA's unticked salary sheet is never opened: its reader's `RunSources` refuses it. The funder-file reader has no Doc Vault tool |
 | `work` size | ~200 facts plus 19 sections is about 150–200 KB, rewritten on each write, and the full log adds about 300 bytes per change. The list reads only `summary`; the agent reads one part at a time |
 | Trace false positives | "FY2024-25" and "Schedule VII" read as numbers. Exempt fiscal-year patterns and taxonomy codes |
 | Polish refusal loop | Rewording lakh as crore is refused on purpose, and the polish prompt says so |
@@ -685,10 +696,10 @@ No tests for model output, and no evals. These existing tests must stay green:
 
 ## 10. Order of work
 
-- [ ] M1: 0048, the REST resource, uploads, the list on the API. Exit: shared across devices.
-- [ ] M2: `/proposal`, own-chat access, agent skeleton, sources kept in `work`, side panel. Exit: admin and steward each have their own chat on one proposal.
+- [x] M1: 0048, the REST resource, uploads, the list on the API. Exit: shared across devices.
+- [x] M2: `/proposal`, own-chat access, agent skeleton, sources kept in `work`, side panel. Exit: admin and steward each have their own chat on one proposal.
 - [x] M3a: facts, reliability, `ask_user` with AskGate and reply sorting, questions shared across each person's chat. Exit: facts in words; one question at a time, by rule, never asked of two people.
-- [ ] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
+- [x] M3b: the readers, reader status and retry, step 2. Exit: readers ran in parallel; one failed file retried alone.
 - [ ] M4: `write_section`, trace, grade, order. Exit: a fully traced draft.
 - [ ] M5: review, propagation, ready. Exit: Ready or the exact list.
 - [ ] M6: checked polish, .docx, versions. Exit: v1.docx in the Doc Vault.
@@ -697,6 +708,8 @@ No tests for model output, and no evals. These existing tests must stay green:
 ## 11. Later (not in M1–M6)
 
 Cut from the first version on 15 Oct (decision 22); each can be added without reshaping M1–M6:
+- **A re-read replaces the file's proposed facts it no longer finds** (cut in M3b): today a re-read only adds, so a proposed fact the new read did not find stays until the person declines it.
+- **`read_template` saves the form's questions to `work.template.questions`** (M4): in M3b the funder reader puts them in its summary only; M4's writer is what needs them saved.
 - **Freshness and corroboration in fact colours:** windows by kind (registrations until expiry, financials the last FY, outcomes 24 months, staff 6 months), and a second source raising a fact one colour.
 - **Three more reasons to ask:** stale ("income up 38%" from FY2021-22), weak support (A15 resting only on a web figure).
 - **Derived figures recomputed** after a correction (1,240 → 1,180 turning 471 into 448) instead of turning amber.

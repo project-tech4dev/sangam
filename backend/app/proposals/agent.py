@@ -15,13 +15,25 @@ from app.agent.middleware import clear_old_tool_results
 from app.agent.models import resolve_model
 from app.core.config import Settings
 from app.ingest.middleware import cheap_summarizer, fallback
+from app.ingest.tools.vault_tools import read_vault_document
 from app.integrations.tracing import trace_config
+from app.proposals import readers
 from app.proposals.middleware import ProposalContext
 from app.proposals.tools.ledger_tools import add_facts, ask_user
 from app.proposals.tools.proposal_tools import advance_step, read_proposal
+from app.proposals.tools.reading_tools import (
+    list_funder_documents,
+    read_brief,
+    read_files,
+    read_funder_document,
+    read_template,
+)
 from app.proposals.tools.record_tools import read_match, read_org_record
 
-TOOLS = [read_proposal, advance_step, read_match, read_org_record, add_facts, ask_user]
+TOOLS = [read_proposal, advance_step, read_match, read_org_record, add_facts, ask_user, read_files]
+# The readers read_files runs: neither asks the person anything, and neither has a web tool.
+EVIDENCE_TOOLS = [read_vault_document, read_brief, add_facts]
+FUNDER_TOOLS = [read_brief, list_funder_documents, read_funder_document, read_template, add_facts]
 
 _INSTRUCTIONS = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 if not _INSTRUCTIONS.strip():
@@ -30,6 +42,7 @@ if not _INSTRUCTIONS.strip():
 
 def build_proposal_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     install_harness()
+    readers.build(settings, EVIDENCE_TOOLS, FUNDER_TOOLS)
     backend = StateBackend()
     strong = resolve_model(settings.model)
     utility = resolve_model(settings.utility_model)

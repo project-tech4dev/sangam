@@ -164,14 +164,15 @@ class TestWhatTheModelIsTold:
         assert "Asha" not in block
 
 
-def test_the_agent_has_its_six_tools_and_read_file_only():
+def test_the_agent_has_its_seven_tools_and_read_file_only():
     from langgraph.checkpoint.memory import InMemorySaver
 
     from app.proposals.agent import build_proposal_agent
 
     graph = build_proposal_agent(Settings(), InMemorySaver())
     assert sorted(graph.nodes["tools"].bound.tools_by_name) == [
-        "add_facts", "advance_step", "ask_user", "read_file", "read_match", "read_org_record", "read_proposal"]
+        "add_facts", "advance_step", "ask_user", "read_file", "read_files", "read_match", "read_org_record",
+        "read_proposal"]
 
 
 async def test_a_local_test_sign_in_is_refused_once_supabase_is_on(monkeypatch):

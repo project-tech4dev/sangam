@@ -28,6 +28,12 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     detail: (a) => (a?.facts?.length ? `${a.facts.length} ${a.facts.length === 1 ? "fact" : "facts"}` : ""),
   },
   ask_user: { label: "Asking you a question", detail: (a) => a?.subject ?? "" },
+  read_files: { label: "Reading your files", detail: () => "one reader per file, at the same time" },
+  read_brief: { label: "Reading Sangam's research brief", detail: (a) => (a?.side === "org" ? "the organisation" : "the funder") },
+  list_funder_documents: { label: "Listing the funder's documents", detail: () => "" },
+  read_funder_document: { label: "Reading a funder document", detail: () => "" },
+  read_template: { label: "Reading the funder's form", detail: () => "" },
+  read_vault_document: { label: "Reading one of your files", detail: () => "" },
   read_match: { label: "Reading the Funder Match", detail: () => "" },
   read_org_record: { label: "Reading the organisation's record", detail: () => "" },
   compare_fit: {

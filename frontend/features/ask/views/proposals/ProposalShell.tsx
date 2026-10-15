@@ -5,13 +5,19 @@ import { Pencil, Upload } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
-import { advance, changedByLine, getProposal, missingFrom, type Proposal, rename, type Saved, saveWork } from "./api";
+import { advance, changedByLine, getProposal, missingFrom, type Proposal, type Reader, rename, type Saved, saveWork } from "./api";
 import { FactList } from "./FactList";
 import { HowItWorks } from "./HowItWorks";
 import { ANSWERS, STEPS } from "./steps";
 import { TellSangam } from "./TellSangam";
 
 type Save = (set: Record<string, unknown>) => Promise<void>;
+type Send = ((text: string) => void) | null;
+
+// Fixed messages the step's buttons send to Sangam Pitch, which calls read_files on either.
+const WRITE_FIRST_DRAFT = "Write the first draft.";
+const READ_AGAIN = "Read the files again.";
+const POLL_MS = 5000;
 
 /* One proposal: the header, the four steps and the step on screen; every change is saved on the server as it is made. */
 export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }) {
@@ -22,11 +28,24 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   const [renaming, setRenaming] = useState<string | null>(null);
   const [selection, setSelection] = useState("");
   const [part, setPart] = useState<string | null>(null);
+  const [send, setSend] = useState<Send>(null);
+  const onSend = useCallback((fn: Send) => setSend(() => fn), []);
 
   const load = useCallback(() => getProposal(id).then(setProposal, () => setFailed(true)), [id]);
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Files are read in someone's chat turn; every teammate's screen follows the progress from the proposal itself.
+  // The presser's own turn counts too: their readers are claimed mid-turn, before the proposal says so.
+  const reading =
+    Object.values(proposal?.work.readers ?? {}).some((r) => r.status === "running") ||
+    (proposal?.work.stage === 2 && proposal.can_edit && send === null);
+  useEffect(() => {
+    if (!reading) return;
+    const timer = setInterval(() => void load(), POLL_MS);
+    return () => clearInterval(timer);
+  }, [reading, load]);
 
   async function run(action: () => Promise<Saved>, patch: Partial<Proposal> = {}) {
     setNotice(null);
@@ -129,7 +148,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
           {/* What the person selects here is sent with their next question to Sangam. */}
           <div onMouseUp={() => setSelection(window.getSelection()?.toString().trim() ?? "")}>
             {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
-            {work.stage === 2 && <SourcesStep proposal={proposal} save={save} />}
+            {work.stage === 2 && <SourcesStep proposal={proposal} save={save} send={send} />}
             {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} />}
             {work.stage === 4 && <FinishStep proposal={proposal} />}
           </div>
@@ -162,6 +181,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
               proposal={proposal}
               screen={{ step: STEPS[work.stage - 1], selection, ...(work.stage === 3 && part ? { part } : {}) }}
               onTurnEnd={load}
+              onSend={onSend}
             />
           ) : (
             <section className="card pr-side-card" aria-label="Sangam Pitch">
@@ -173,6 +193,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
             </section>
           )}
           {work.stage === 1 && <HowItWorks proposal={proposal} />}
+          {work.stage === 2 && <WhatHappensNext funder={proposal.funder.name} />}
         </aside>
       </div>
     </>
@@ -222,7 +243,7 @@ function GatesStep({ proposal, save }: { proposal: Proposal; save: Save }) {
   );
 }
 
-function SourcesStep({ proposal, save }: { proposal: Proposal; save: Save }) {
+function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save; send: Send }) {
   const { work, can_edit: canEdit } = proposal;
   const org = proposal.org.slug;
   const [docs, setDocs] = useState<Doc[] | null>(null);
@@ -339,6 +360,8 @@ function SourcesStep({ proposal, save }: { proposal: Proposal; save: Save }) {
         )}
       </div>
 
+      <Reading proposal={proposal} send={send} />
+
       <div className="card pr-block">
         <div className="card-title">Writing style</div>
         <p className="muted">Every part is written in this voice. Change it if you like.</p>
@@ -423,3 +446,76 @@ const Lines = ({ lines }: { lines: string[] }) => (
     ))}
   </ul>
 );
+
+const READ_STATE: Record<Reader["status"], string> = { done: "✓ Read", running: "Reading…", failed: "! Couldn't read" };
+
+/** "Write the first draft", then each file's reader as it runs: read, reading, or what went wrong and "Try again". */
+function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
+  const { work, can_edit: canEdit } = proposal;
+  const readers = work.readers ?? {};
+  const started = Object.keys(readers).length > 0;
+  const unread = work.sources.filter((d) => !readers[String(d)]);
+  const running = Object.values(readers).find((r) => r.status === "running");
+  // The funder's reader cites public links, so its facts are the web ones.
+  const factsFrom = (key: string) =>
+    Object.values(work.facts ?? {}).filter((f) => (key === "funder" ? f.origin === "web" : String(f.document_id) === key)).length;
+  const rows = Object.entries(readers).filter(([key]) => key === "funder" || work.sources.includes(Number(key)));
+
+  return (
+    <div className="card pr-block">
+      <div className="card-title">Reading your files</div>
+      {!started ? (
+        <p className="muted">
+          When the files are ticked and the style is set, Sangam Pitch reads each file and what {proposal.funder.name} looks for, all
+          at once. Every figure it finds becomes a fact for you to check.
+        </p>
+      ) : (
+        <ul className="pr-reads" aria-label="Files read">
+          {rows.map(([key, r]) => (
+            <li key={key} className="pr-read" data-status={r.status}>
+              <span className="pr-read-title">{key === "funder" ? `What ${proposal.funder.name} looks for` : r.title}</span>
+              <span className="pr-read-state">
+                {READ_STATE[r.status]}
+                {r.status === "done" && ` · ${factsFrom(key)} ${factsFrom(key) === 1 ? "fact" : "facts"}`}
+                {r.status === "failed" && r.error && `: ${r.error}`}
+              </span>
+              {r.status === "failed" && canEdit && (
+                <button className="btn btn-ghost" type="button" disabled={!send || Boolean(running)} onClick={() => send?.(READ_AGAIN)}>
+                  Try again
+                </button>
+              )}
+            </li>
+          ))}
+          {unread.length > 0 && <li className="muted pr-facts-empty">{unread.length === 1 ? "1 file" : `${unread.length} files`} ticked since, not read yet.</li>}
+        </ul>
+      )}
+      {running && (
+        <p className="muted fm-meta">
+          {running.by?.name ?? "A teammate"} started reading the files. This takes a few minutes; you can leave this page.
+        </p>
+      )}
+      {canEdit && !running && (!started || unread.length > 0) && (
+        <div className="pr-next">
+          <button className="btn btn-primary" type="button" disabled={!send} onClick={() => send?.(started ? READ_AGAIN : WRITE_FIRST_DRAFT)}>
+            {started ? "Read the new files" : "Write the first draft"}
+          </button>
+          {!send && <span className="muted fm-meta">Wait for Sangam Pitch to finish its answer.</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WhatHappensNext({ funder }: { funder: string }) {
+  return (
+    <section className="card pr-side-card" aria-label="What happens next">
+      <div className="card-title">What happens when you press Write the first draft</div>
+      <ol className="pr-explain">
+        <li>Sangam Pitch reads every ticked file at the same time, and what Sangam holds on {funder}.</li>
+        <li>Each figure, place and finding becomes a fact, with the file and page it came from.</li>
+        <li>In step 3 you check the facts part by part, and it asks you about what no file says.</li>
+      </ol>
+      <p className="muted pr-chat-note">A file it cannot read, such as a scanned image, is listed with a Try again button. The rest carry on.</p>
+    </section>
+  );
+}
