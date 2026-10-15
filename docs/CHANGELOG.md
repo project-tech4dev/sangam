@@ -137,6 +137,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-15 · M6 · Finish: "Smooth the language" in one model call, kept only when code finds every figure, place, name and gap unchanged (else it says what changed); "Download as a Word file" saves the next version to the org's Doc Vault (`proposal_draft`, written with AI) with a snapshot of the facts it cites, and every version stays listed.
 - 2026-10-15 · M7 · Suggested wording: asked to improve a sentence, Sangam Pitch calls `suggest_edit` and a card shows it before and after with why; only "Use this" saves it, as the part's next rev, and code refuses wording whose figures, places or names trace to no cited fact before the person sees it.
 - 2026-10-15 · M8 · Write in place: step 3 is the prototype's four tabs, with each part a text box that saves as the person types, sources as [1], [2] that code maps back to facts, and any typed figure, place or name with no source listed under the part and in Fix first; Done grades the part once on its text, and typing clears the old grade. Ticked files must be the org's own, and a saved link is shown as one Sangam cannot read.
+- 2026-10-16 · — · Proposals are on for everyone: `"proposals"` leaves `COMING_SOON`, so the sidebar, the view and Funder Match's Start a proposal button and filter come back. RFP Watch stays Coming soon.
 
 ## Media & Signals
 
