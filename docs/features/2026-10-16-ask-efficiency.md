@@ -1,7 +1,7 @@
 # Ask efficiency: one compare_fit, a cache that holds, fewer wasted queries
 
 Status: **Draft v2**, 2026-10-16 (v1 the same day; v2 adds the tool-design gaps in §1.1 and
-milestones M1 and M4). Branch `feat/ask-efficiency`. No earlier document covers this; it
+milestones M1 and M4; M1 then grew the eval loop). Branch `feat/ask-efficiency`. No earlier document covers this; it
 builds on `2026-10-10-funder-matching-match-v1.md` and `2026-10-11-funder-match-v2-themes.md`
 (what `compare_fit` returns) and does not change either rubric.
 
@@ -379,14 +379,36 @@ One PR per milestone, each stacked on the last, stopping for review between them
 
 - **Deliverable**: Draft v2 of this document, committed before any code.
 
-#### Milestone 1: Measure, and teach evals to measure
+#### Milestone 1: Measure, and close the eval loop
 
-- **Deliverable**: §4.7; the numbers in §4.1–4.2 (shortlist size by field, worst case, the chosen trigger
-  and batch values); a Better Life Foundation canary with `max_calls.compare_fit = 1` and no `read_file`
-  on `/large_tool_results`.
-- **Touches**: `tests/evals/` only.
-- **Acceptance criteria**: `make evals TAG=canary` prints each case's tool calls, tokens and cost; the
-  plan's numbers are measured, not estimated.
+The loop: production traces in Langfuse (Trace) → a dashboard flags an expensive question (Monitor) → the
+question becomes a line in `golden.jsonl`, copied to the Langfuse dataset `ask-golden` (Build datasets) →
+`make evals` runs it as a dataset experiment named `branch-sha` (Experiment) → plain-code scores on each
+item (Evaluate) → Deploy, and back to Trace.
+
+- **Deliverable**:
+  - `harness.py`: `RunStats` counts tool calls by name, model calls, input/output/cache tokens (from
+    `AIMessage.usage_metadata`) and reads of `/large_tool_results`. Cost is not computed here: Langfuse
+    prices each generation from its model.
+  - Cases gain `max_calls` (e.g. `{"compare_fit": 1}`) and `max_large_result_reads`, which fail the case;
+    token and total-call counts are reported, never gates.
+  - `experiment.py`: with Langfuse keys set, the cases selected by pytest run once, through
+    `run_experiment` on `ask-golden` (items upserted by `ask:<case id>`; `golden.jsonl` stays the source
+    of truth). Scores per item: `passed`, `total_tool_calls`, `model_calls`, the token counts,
+    `large_result_reads`, `calls.<tool>`; per run: `pass_rate`. Without keys the same cases run untraced.
+    There is one runner, so nothing is billed twice.
+  - `make evals` sets `LANGFUSE_TRACING_ENVIRONMENT=eval`, so eval traces never mix with real traffic, and
+    takes `K=<case>` for one case. The terminal summary prints each case's counts and the run's URL.
+  - The `blf-profile-and-fit` case, tagged `cost` (one run ≈ $0.90, so not `canary`), strict-xfail until M2.
+- **Not code**: a Langfuse dashboard on `sangam_ask` traces, environment `production`: cost and latency
+  p50/p95 and tool calls per trace. An expensive trace found there becomes a `golden.jsonl` line.
+- **When evals run**: only on `make evals`. Not on user questions, not in CI. Real questions are traced (no
+  extra model call) and audited by `answer_audit` (Haiku, `SQL_AUDIT_MODEL=off` turns it off).
+- **Later, not in M1**: repeated runs per case with a median, and a manual GitHub Action
+  (`langfuse/experiment-action`, `workflow_dispatch` only, since every run bills).
+- **Acceptance criteria**: `cd backend && pytest tests/evals` (unit tests, no model); `make evals K=org-count`
+  shows one item in the Langfuse run whose trace holds the generations with tokens and cost;
+  `make evals TAG=cost` reports the BLF baseline, recorded here.
 
 #### Milestone 2: One compare_fit, and a cache that holds (gaps 1–2)
 
