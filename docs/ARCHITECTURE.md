@@ -123,6 +123,9 @@ Plan: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md).
   update to `saved` / `dismissed`, open to the org's members and admins and staff.
 - **`rfp_matches.status` belongs to the NGO**; matching inserts with `ON CONFLICT DO NOTHING`, so a re-run never
   changes it. A saved call stays in the feed after it closes.
+- **The screen asks the server once per org** (`features/ask/views/RfpWatchView.tsx`): the buckets, search and theme
+  filter all narrow that one feed in the browser, and the buttons show only when `can_act` says RLS would allow them.
+  "Ask about this call" fills a new chat's composer and sends nothing.
 
 ## 6. Media & Signals
 
