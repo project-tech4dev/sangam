@@ -203,7 +203,7 @@ async def plan_for(pool, *, org_ids: list[int] | None, funder_ids: list[int] | N
                    feeds: list[str]) -> windows.NewsPlan:
     """What a pull of these subjects would search and cost: one plan for the card, Scout and the CLI."""
     subjects = await plan_subjects(pool, org_ids=org_ids, funder_ids=funder_ids, feeds=feeds)
-    return windows.plan(subjects, today=date.today(), settings=get_settings())
+    return windows.plan(subjects, today=datetime.now(UTC).date(), settings=get_settings())
 
 
 async def run_summary(pool, run_id: int) -> dict:
@@ -249,7 +249,7 @@ async def _finish(pool, run_id: int, status: str, note: str | None) -> None:
 
 async def execute_run(pool, run_id: int, deps: Deps, *, today: date | None = None) -> dict:
     """Run a created run to the end. A run that already ran is not run again; its summary comes back."""
-    today = today or date.today()
+    today = today or datetime.now(UTC).date()
     async with pool.connection() as conn:
         run = await (await conn.execute(
             "SELECT status, subjects, requested_sources, claimed_at FROM ingest_runs WHERE id = %s",

@@ -85,10 +85,14 @@ class TestSeedAgainstPostgres:
         seed_schedule_vii(cur)
         first = seed_taxonomy(cur)
         assert seed_taxonomy(cur) == first
-        cur.execute("SELECT kind, count(*) FROM tags WHERE kind = ANY(%s) GROUP BY 1", (list(TAG_COUNTS),))
+        # Only the seed's own slugs: other integration tests commit scratch tags to this database.
+        slugs = [t.slug for t in taxonomy_rows(*load())[0]]
+        cur.execute("SELECT kind, count(*) FROM tags WHERE slug = ANY(%s) GROUP BY 1", (slugs,))
         assert dict(cur.fetchall()) == TAG_COUNTS
         cur.execute(
-            "SELECT k.kind, count(*) FROM tag_links l JOIN tags k ON k.id = l.linked_tag_id GROUP BY 1"
+            "SELECT k.kind, count(*) FROM tag_links l JOIN tags k ON k.id = l.linked_tag_id "
+            "JOIN tags t ON t.id = l.tag_id WHERE t.slug = ANY(%s) GROUP BY 1",
+            (slugs,),
         )
         assert dict(cur.fetchall()) == {"sdg": 123, "csr_sector": 82, "scheme": 76}
 

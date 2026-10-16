@@ -1,0 +1,22 @@
+# Codecov merges the backend-unit and backend-integration uploads into one report per commit.
+coverage:
+  status:
+    project:
+      default:
+        target: auto      # the base commit's coverage: a PR may not lower it
+        threshold: 1%
+    patch:
+      default:
+        target: 70%       # lines a PR adds or changes
+
+# coverage.xml paths are relative to backend/.
+fixes:
+  - "app/::backend/app/"
+
+flag_management:
+  default_rules:
+    carryforward: true
+
+comment:
+  layout: "condensed_header, diff, flags, files"
+  require_changes: false

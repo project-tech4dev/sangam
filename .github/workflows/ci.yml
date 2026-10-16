@@ -1,0 +1,126 @@
+# Checks every PR and every push to master. Deploys nothing: that stays deploy.yml, by hand.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run ruff check . --output-format=github
+
+  backend-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run pytest -m "not integration" --cov --cov-report=xml -q
+      # OIDC, so there is no token to store; a fork gets none and falls back to tokenless, which public repos allow.
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: backend/coverage.xml
+          flags: backend-unit
+          disable_search: true
+          use_oidc: ${{ !github.event.pull_request.head.repo.fork }}
+
+  backend-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: sangam
+          POSTGRES_PASSWORD: sangam
+          POSTGRES_DB: sangam
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sangam -d sangam"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://sangam:sangam@localhost:5433/sangam
+      TEST_DATABASE_URL: postgresql://sangam:sangam@localhost:5433/sangam
+      MIGRATIONS_DIR: ${{ github.workspace }}/db/migrations
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --frozen
+        working-directory: backend
+      # What the compose Postgres gets from /docker-entrypoint-initdb.d, then `make migrate` and `make seed`.
+      - name: Baseline, migrate, seed
+        run: |
+          for f in db/init/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"; done
+          uv run --project backend python -m app.db.migrate
+          uv run --project backend python -m seed.seed
+          uv run --project backend python -m seed.taxonomy_seed
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/backend
+      # -rs lists skips: a test that skips for "Postgres not reachable" here is a broken job, not a pass.
+      # The two deselected tests check a restore of the original dump (96 documents), which make seed never creates.
+      - run: >-
+          uv run pytest -m integration --cov --cov-report=xml -q -rs
+          --deselect tests/test_migration_integrity.py::test_preserved_row_counts
+          --deselect tests/test_migration_integrity.py::test_documents_sequence_advanced
+        working-directory: backend
+      # OIDC, so there is no token to store; a fork gets none and falls back to tokenless, which public repos allow.
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: backend/coverage.xml
+          flags: backend-integration
+          disable_search: true
+          use_oidc: ${{ !github.event.pull_request.head.repo.fork }}
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build

@@ -30,3 +30,8 @@ skills-lock.json
 *.xlsx
 *.xls
 *.xlsm
+
+# coverage (CI and local --cov runs)
+.coverage
+.coverage.*
+coverage.xml
