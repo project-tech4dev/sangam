@@ -400,6 +400,13 @@ item (Evaluate) → Deploy, and back to Trace.
   - `make evals` sets `LANGFUSE_TRACING_ENVIRONMENT=eval`, so eval traces never mix with real traffic, and
     takes `K=<case>` for one case. The terminal summary prints each case's counts and the run's URL.
   - The `blf-profile-and-fit` case, tagged `cost` (one run ≈ $0.90, so not `canary`), strict-xfail until M2.
+  - Seconds per case, scored and printed; `max_seconds` (BLF: 30) is reported as a note, never a failure.
+- **Tracking, from here on**: Langfuse holds every run (`ask-golden`, named `branch-sha`); each milestone PR carries
+  an Evals section with the comparison link and a before/after table for the `cost` and `canary` cases; §1's
+  table gains a measured column per milestone.
+- **Measured locally (17 Oct)**: the compose database has 4 funders, so `compare_fit(BLF)` is 8,737 chars
+  (≈2.2k tokens) and does not reproduce production's eviction. Per weak funder ≈2,200 chars: criteria 50%,
+  improve 13%, summary 12%, not_judged 11%. At 26–37 funders that is 57–81k chars, matching the trace.
 - **Not code**: a Langfuse dashboard on `sangam_ask` traces, environment `production`: cost and latency
   p50/p95 and tool calls per trace. An expensive trace found there becomes a `golden.jsonl` line.
 - **When evals run**: only on `make evals`. Not on user questions, not in CI. Real questions are traced (no

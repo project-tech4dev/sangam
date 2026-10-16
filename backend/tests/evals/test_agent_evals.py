@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+import time
 from typing import Any
 
 import psycopg_pool
@@ -68,6 +69,7 @@ def _make_task(eval_settings, slug_ids, db):
         )
         await pool.open()
         db_pool.pool = pool
+        started = time.monotonic()
         try:
             run = await run_agent(case["question"], eval_settings, timeout=timeout)
         except TimeoutError:
@@ -88,12 +90,14 @@ def _make_task(eval_settings, slug_ids, db):
                 # Every query the agent ran, not just the last: agents work in steps, and
                 # scoring only the final one failed a correct answer.
                 agent_rows = _best_match(db, run.agent_sql, gold_rows, run.answer, result)
+        result.stats.seconds = round(time.monotonic() - started, 1)
         score(resolved, result, gold_rows=gold_rows, agent_rows=agent_rows)
         return {
             "answer": run.answer,
             "agent_sql": run.agent_sql,
             "citations": sorted(run.citations),
             "failures": result.failures,
+            "warnings": result.warnings,
             "stats": run.stats.as_dict(),
         }
 

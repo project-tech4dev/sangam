@@ -115,3 +115,11 @@ def test_untraced_run_loops_over_every_case():
     outputs, url = experiment.run_cases([{"id": "a"}, {"id": "b"}], task, traced=False)
     assert url is None
     assert {k: v["seen"] for k, v in outputs.items()} == {"a": "a", "b": "b"}
+
+
+def test_a_slow_run_is_a_warning_never_a_failure():
+    result = CaseResult(case_id="blf", stats=run_stats(MESSAGES))
+    result.stats.seconds = 45.0
+    score({"max_seconds": 30}, result, gold_rows=None, agent_rows=None)
+    assert result.failures == []
+    assert result.warnings == ["took 45.0s; the target is 30s"]
