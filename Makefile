@@ -160,7 +160,8 @@ migrate-status:  ## Show which migrations would run
 smoke:  ## End-to-end check of backend, frontend and the chat wire
 	bash scripts/smoke.sh
 
-# Golden-question evals through the real agent. Real model calls: ~10c/case.
+# Golden-question evals through the real agent. Real model calls: ~10c/case, except
+# the `cost` cases (~$0.90), which a run with no TAG includes.
 #   make evals             every case
 #   make evals TAG=canary  the cheap subset
 #   make evals TAG=cost    the cost cases (Better Life Foundation: ~$0.90 a run)

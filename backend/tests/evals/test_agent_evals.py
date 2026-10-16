@@ -56,6 +56,8 @@ def _make_task(eval_settings, slug_ids, db):
         for key in ("required_citations", "forbidden_citations"):
             resolved[key] = [slug_ids.get(m, m) for m in case.get(key, [])]
 
+        # A cost case runs long before its fix, and a timeout would lose the very numbers it measures.
+        timeout = case.get("timeout_seconds", CASE_TIMEOUT_SECONDS)
         # Opened per case, inside the loop that runs it: Langfuse may run the experiment on its own loop.
         pool = psycopg_pool.AsyncConnectionPool(
             DSN,
@@ -67,9 +69,9 @@ def _make_task(eval_settings, slug_ids, db):
         await pool.open()
         db_pool.pool = pool
         try:
-            run = await run_agent(case["question"], eval_settings)
+            run = await run_agent(case["question"], eval_settings, timeout=timeout)
         except TimeoutError:
-            return {"failures": [f"timed out after {CASE_TIMEOUT_SECONDS}s: the model hung or the agent looped"]}
+            return {"failures": [f"timed out after {timeout}s: the model hung or the agent looped"]}
         except Exception as exc:  # noqa: BLE001 - one broken case must not lose the rest of the run
             return {"failures": [f"the agent raised {type(exc).__name__}: {exc}"]}
         finally:
