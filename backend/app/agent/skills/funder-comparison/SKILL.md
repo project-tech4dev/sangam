@@ -15,7 +15,8 @@ never merge Axis Bank Limited with Axis Bank Foundation.
 
 `compare_fit(org_id, [funder_id, ...])` with every named funder in one call.
 It scores exactly those, even one with nothing in common (score null, tier
-not_scored), and returns them in `matches`, highest score first. If it
+not_scored), and gives each in full, highest score first: card lines, a
+`summary:` line, every criterion, `not judged:` and `to raise the score:` lines. If it
 returns "compare_fit failed", report the error and never judge the funders
 yourself. If it returns "compare_fit refused", say running a match for this
 organisation is for its stewards, admins and Sangam staff, and stop.
@@ -23,10 +24,10 @@ organisation is for its stewards, admins and Sangam staff, and stop.
 ## 3a. One funder: explain it
 
 - The score out of 100 and its tier, with "judged on N of M points" when some
-  criteria were unknown, then its `summary`.
+  criteria were unknown, then its `summary:` line.
 - Then every criterion in the order given: points/max or "unknown", the note,
   and its cites.
-- Then `not_judged`, then `improve` as actions, each with its points.
+- Then its `not judged:` line, then each `to raise the score:` action, with its points.
 
 ## 3b. Two or more: one table
 
@@ -39,7 +40,7 @@ organisation is for its stewards, admins and Sangam staff, and stop.
 
 - The seven criteria are rows, in the rubric's order, with score and tier on top.
 - Under the table: where to start, in one or two sentences, from the scores
-  and each funder's first `improve` action.
+  and each funder's first `to raise the score:` action.
 
 ## Rules that keep it honest
 

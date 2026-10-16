@@ -110,7 +110,7 @@ Built by hand from `CLAUDE.md`'s Architecture section, `backend/app/agent/build.
 | `agent/tools/sql/validator.py`, `render.py` | 0 | auto citation id, single-row cells | in scope | |
 | `agent/tools/sql/catalog.py` | 1 | source of the table list and `CITE_COLUMNS` | read only | no table added; not a security change |
 | `agent/instructions.md`, `agent/prompt.py` | 0 | table map, rule 8 wording | in scope | |
-| Sangam Import (`ingest/`) | 1 | shares `harness.filesystem`, not `clear_old_tool_results` | unaffected | Import's own eviction stays as is |
+| Sangam Import (`ingest/agent.py:349`) | 1 | also uses `clear_old_tool_results()` (corrected in M2: v1 said it did not) | in scope | gets the same cache fix; `compare_fit` exclusion is a no-op there |
 | Funder Match page and saved runs (`matching/service.py`) | 2 | store `match()`, never `compare()` | unaffected | |
 | `tests/evals/` | 1 | golden questions run through the real agent | in scope | one new canary for this question |
 | `agent/tools/web.py::fetch_url`, `build.py` | 0 | `fetch_url` removed from Ask (M4) | in scope | `make_web_search` stays: Import uses it (`ingest/tools/research_tools.py:21`) |
