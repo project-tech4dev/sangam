@@ -181,7 +181,7 @@ export function AskWorkspace({
               body="Open calls and RFPs gathered every week, each shown with the organisations it plausibly fits."
             />
           ) : (
-            <RfpWatchView />
+            <RfpWatchView orgs={payload.orgs} onAsk={(q) => newChat(q)} onFunderMatch={() => setView("funder-match")} />
           ))}
       </div>
     </div>

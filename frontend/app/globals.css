@@ -914,6 +914,46 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .fm-start .input { flex: 1; min-width: 200px; }
 @media (max-width: 640px) { .fm-actions, .fm-start { padding-left: 0; } }
 
+/* --- RFP Watch: one open call ------------------------------------------------------------------ */
+.rfp-sub { font-size: var(--fs-sm); color: var(--color-neutral-700); max-width: 640px; }
+.rfp-sub strong { color: var(--color-accent-2-800); }
+.rfp-tools { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 240px); gap: 8px; align-items: center; }
+.rfp-tools:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+.rfp-list { display: flex; flex-direction: column; gap: 12px; }
+.rfp-card { background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius-surface); padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.rfp-card[data-closed="true"] { background: var(--color-bg); }
+.rfp-card-top { display: flex; gap: 12px; align-items: flex-start; }
+.rfp-card-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.rfp-funder { font-size: var(--fs-xs); font-weight: 600; color: var(--color-neutral-700); }
+.rfp-title { font-size: var(--fs-md); font-weight: 600; line-height: 1.35; }
+.rfp-due { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.rfp-due-date { font-size: var(--fs-xs); color: var(--color-neutral-700); white-space: nowrap; }
+.rfp-facts { display: flex; gap: 16px; flex-wrap: wrap; font-size: var(--fs-sm); color: var(--color-neutral-800); }
+.rfp-facts > span { display: inline-flex; align-items: center; gap: 6px; }
+.rfp-facts .icon { color: var(--color-neutral-700); }
+.rfp-themes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rfp-themes .tag { white-space: normal; }
+.rfp-themes-label { font-size: var(--fs-xs); color: var(--color-neutral-700); }
+.rfp-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--color-divider); }
+.rfp-actions .btn { min-height: 44px; }
+.rfp-saved { background: var(--color-accent-2-700); color: #fff; }
+.rfp-saved .icon[data-filled="true"] { fill: currentColor; }
+.rfp-dismiss { background: var(--color-bg); border-color: var(--color-divider); color: var(--color-neutral-700); }
+.rfp-readonly { font-size: var(--fs-xs); color: var(--color-neutral-700); max-width: 300px; }
+.rfp-link { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 600; min-height: 44px; }
+.rfp-empty { gap: 12px; align-items: flex-start; }
+.rfp-foot { font-size: var(--fs-sm); }
+.rfp-inline-link { background: none; border: 0; padding: 0; font: inherit; color: var(--color-accent-750); font-weight: 600; cursor: pointer; text-decoration: underline; }
+@media (max-width: 640px) {
+  .rfp-tools { grid-template-columns: minmax(0, 1fr); }
+  .rfp-card { padding: 16px; }
+  .rfp-card-top { flex-direction: column-reverse; gap: 8px; }
+  .rfp-due { flex-direction: row; align-items: center; gap: 8px; }
+  .rfp-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rfp-actions .btn-secondary, .rfp-readonly { grid-column: 1 / -1; }
+  .rfp-link { margin-left: 0; grid-column: 1 / -1; }
+}
+
 /* --- Media & Signals: one story card, shared with the Registry's "In the news" ----------------- */
 .story-card { background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
 .story-top { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
