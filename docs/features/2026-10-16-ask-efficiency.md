@@ -1,6 +1,7 @@
 # Ask efficiency: one compare_fit, a cache that holds, fewer wasted queries
 
-Status: **Draft v1**, 2026-10-16. Branch `feat/ask-efficiency`. No earlier document covers this; it
+Status: **Draft v2**, 2026-10-16 (v1 the same day; v2 adds the tool-design gaps in §1.1 and
+milestones M1 and M4). Branch `feat/ask-efficiency`. No earlier document covers this; it
 builds on `2026-10-10-funder-matching-match-v1.md` and `2026-10-11-funder-match-v2-themes.md`
 (what `compare_fit` returns) and does not change either rubric.
 
@@ -65,6 +66,34 @@ Four separate causes, each with its own fix:
 (`CLAUDE.md`, "There used to be four hand-written tools"). Every fix below is to an existing tool's
 output, one middleware setting, or the prompt.
 
+### 1.1 Tool-design gaps (Draft v2)
+
+Draft v2 checks Ask's seven tools, prompt, skills, middleware and evals against published
+tool-design guidance and adds the gaps chosen for fixing. Milestone numbers are §7's.
+
+Sources: Anthropic, "Writing effective tools for agents" [W], "Effective context engineering" [C],
+"Building effective agents" [B]; Claude docs on defining tools [D], context editing [CE] and prompt
+caching [PC]; LangChain deepagents context management [LC] and SQL agent [SQL]; Google Cloud
+text-to-SQL [G].
+
+**The gap table (guidance → Ask today → fix)**
+
+| # | Guidance | Ask today | Fix | In |
+|---|---|---|---|---|
+| 1 | Cap every response, page it, steer on truncation [W]; return only what the next step needs [D] | `compare_fit(org_id)` has no cap. It returns every scored funder at full detail as **one JSON line**, which got evicted and was unreadable | A compact shortlist, rendered as text with a line per fact, under a 15k-token budget. `funder_ids` keeps full detail, so it acts as `response_format` without adding a parameter | M2 |
+| 2 | Clearing breaks the cache, so use `clear_at_least` and `exclude_tools` [CE] | `ClearToolUsesEdit(trigger=40k, keep=5)` with no batching. It cleared on every call, the cache read stayed stuck at 7,338 tokens, and ~$0.66 of $0.87 went there | Raise the trigger, set `clear_at_least`, and `exclude_tools=("compare_fit",)`. Sangam Pitch shares the function | M2 |
+| 3 | Preload a little, retrieve the rest on demand [C]; list the tables first [SQL] | No table list in the prompt, so the model guessed `org_themes`/`themes` and then called `db_list_tables` | Put a `{{TABLE_MAP}}` in `instructions.md`, built from `CATALOG` in `prompt.py` | M3 |
+| 4 | Poka-yoke: make mistakes hard to make [B] | A row is cited only if its id is in the SELECT. A locations query came back uncited and was re-run | The validator adds a `__cite__<alias>` id column, the same way `_plan_provenance` adds `__prov__` | M3 |
+| 5 | Return meaningful context [W] | `MAX_CELL_CHARS=200` cut `orgs.description`, which led to two `substring()` queries | For a one-row result, text cells go up to 2,000 characters | M3 |
+| 6 | Token-efficient responses [W] | Every `db_query` repeats each table's full caveats (orgs ≈ 840 chars, funder_activity ≈ 2,465) and the full rewritten SQL | **Caveats once per turn** (user's choice). **Remove the SQL echo** from the text and move it to the tool artifact | M3 |
+| 7 | One clear place for each instruction [D]; avoid ambiguity [C] | The prompt duplicates tool docstrings (rule 7 ≈ profile_column's, rules 6, 8, 9, 10, 12, 14, 15). `fetch_url` points to a web-search tool that doesn't exist. `db_profile_column` errors use the `db_query rejected:` prefix, so the retry limiter doesn't count them. Rule 4 cites "rule 16" for compare_fit, which is rule 12. `build.py` says the audit is "off unless configured", but it is on by default | Cleanup PR (detail below) | M4 |
+| 8 | Evaluate with realistic tasks; track tool calls, tokens, cost [W] | Evals score rows, citations and text only. Nothing counts tool calls or cost | The eval harness records tool calls, tokens and cost per case. Cases get optional budgets. Add a Better Life Foundation canary | M1 |
+
+**Considered and not done.** A workflow tool like `get_org_profile` ([W] principle 1). The repo removed
+four such lookups because they were worse than the model's own SQL (CLAUDE.md, "There used to be four
+hand-written tools"). Gaps 3–5 bring the org lookup down to about 2 SQL calls without one. `strict`
+tools and `input_examples` [D/S]: no failures in the trace call for them.
+
 ## 2. Blast radius
 
 Built by hand from `CLAUDE.md`'s Architecture section, `backend/app/agent/build.py`,
@@ -77,14 +106,18 @@ Built by hand from `CLAUDE.md`'s Architecture section, `backend/app/agent/build.
 | `agent/skills/funder-shortlist-brief/SKILL.md` | 1 | reads weak fits, `summary`, `improve` | in scope | only wording; it already uses one line per weak fit |
 | `agent/skills/funder-comparison/SKILL.md` | 1 | uses `compare_fit(org_id, funder_ids)` | unaffected | that path keeps every field |
 | `agent/middleware.py::clear_old_tool_results` | 0 | the cache fix | in scope | |
-| Sangam Pitch (`proposals/agent.py`) | 1 | also uses `clear_old_tool_results()` | in scope | gets the cache fix for free; prefill guard in M4 |
+| Sangam Pitch (`proposals/agent.py`) | 1 | also uses `clear_old_tool_results()` | in scope | gets the cache fix for free; prefill guard in M5 |
 | `agent/tools/sql/validator.py`, `render.py` | 0 | auto citation id, single-row cells | in scope | |
 | `agent/tools/sql/catalog.py` | 1 | source of the table list and `CITE_COLUMNS` | read only | no table added; not a security change |
 | `agent/instructions.md`, `agent/prompt.py` | 0 | table map, rule 8 wording | in scope | |
 | Sangam Import (`ingest/`) | 1 | shares `harness.filesystem`, not `clear_old_tool_results` | unaffected | Import's own eviction stays as is |
 | Funder Match page and saved runs (`matching/service.py`) | 2 | store `match()`, never `compare()` | unaffected | |
 | `tests/evals/` | 1 | golden questions run through the real agent | in scope | one new canary for this question |
-| frontend | 2 | renders tool calls by name only | unaffected | no tool added or renamed |
+| `agent/tools/web.py::fetch_url`, `build.py` | 0 | `fetch_url` removed from Ask (M4) | in scope | `make_web_search` stays: Import uses it (`ingest/tools/research_tools.py:21`) |
+| `agent/skills/news-brief/SKILL.md` | 1 | its "fetch_url its main link" step | in scope | cites `[news:N]` and gives the link as is |
+| `agent/middleware.py::sql_retry_limiter` | 0 | counts `db_profile_column` errors too (M4) | in scope | |
+| frontend `features/ask/lib/sources.ts` | 1 | `executedSql` reads the SQL echo that moves to the artifact (M3) | in scope | fall back to the call's `sql` argument; `fetch_url` labels stay for old chats |
+| `tests/evals/harness.py`, `test_golden.py` | 1 | record tool calls, tokens, cost; per-case budgets (M1) | in scope | `EXECUTED` regex reads the artifact after M3 |
 | `openwiki/`, `docs/CHANGELOG.md`, `docs/SQL_AGENT.md` | 1 | describe the changed tools | in scope | `make wiki-update`; never hand-edit openwiki |
 
 ## 3. High-level design (HLD)
@@ -118,29 +151,59 @@ Built by hand from `CLAUDE.md`'s Architecture section, `backend/app/agent/build.
 ### After
 
 ```
- user ─▶ Next.js /api/copilotkit ─AG-UI─▶ FastAPI /agent ─▶ Ask deep agent (MODEL)
-                                                               │
-   system prompt  + table map: 37 names, one line each, from catalog.py   (cached, ~1k tokens)
-                                                               │
-   middleware ─────────────────────────────────────────────────┤
-   1 FilesystemMiddleware   unchanged (now a safety net, not the normal path)
-   2 sql_retry_limiter      unchanged
-   3 ClearToolUsesEdit      trigger raised, clears in one large batch (clear_at_least),
-                            never clears compare_fit                ── fires rarely, prefix stable
-   4 answer_audit           unchanged
-                                                               │
-   db_query ─▶ validator (+source cols, +__cite__ id when none projected) ─▶ executor ─▶ render
-                                     one-row results show long text in full
-   compare_fit(org_id)          ─▶ shortlist: strong/medium in full, weak as one line,
-                                   no summary, text with a line per fact      (< 15k tokens)
-   compare_fit(org_id, ids)     ─▶ unchanged: every field, for funder-comparison
+ browser ─▶ Next.js /api/copilotkit ─AG-UI─▶ FastAPI /agent ─▶ Ask deep agent (MODEL)
+ ┌─ system prompt ───────────────────────────────────────────────────────────────────────────┐
+ │ instructions.md: rules only; each tool's how-to lives once, in its docstring        (M4)   │
+ │ + {{TABLE_MAP}}: 37 tables, one line each, from catalog.py, cached                  (M3)   │
+ └────────────────────────────────────────────────────────────────────────────────────────────┘
+ ┌─ middleware ───────────────────────────────────────────────────────────────────────────────┐
+ │ Filesystem   unchanged ─ a safety net, no longer the normal path                           │
+ │ sql_retry    also counts db_profile_column errors                                   (M4)   │
+ │ ClearToolUses higher trigger · clear_at_least (one batch) · never compare_fit       (M2)   │
+ │               ─▶ fires rarely, prefix stable, cache keeps climbing                         │
+ │ answer_audit unchanged                                                                     │
+ └────────────────────────────────────────────────────────────────────────────────────────────┘
+ ┌─ tools ────────────────────────────────────────────────────────────────────────────────────┐
+ │ db_list_tables · db_describe_table · db_profile_column (own error prefix)           (M4)   │
+ │ db_query ─▶ validator (+__prov__, +__cite__ id when none projected)                 (M3)   │
+ │          ─▶ executor (unchanged)                                                           │
+ │          ─▶ render: caveats once per turn, then one line · SQL in artifact, not text (M3)  │
+ │                     one-row text up to 2,000 chars · every row cited first time            │
+ │ compare_fit(org_id)        ─▶ shortlist text: strong/medium full, weak 1 line, <15k  (M2)  │
+ │ compare_fit(org_id, ids)   ─▶ full detail, text                                            │
+ │ search_graph            fetch_url REMOVED: Ask has six tools                       (M4)   │
+ │ skills: unchanged names; funder-matching's reply table updated                      (M2)   │
+ └────────────────────────────────────────────────────────────────────────────────────────────┘
+ evals: + tool calls, tokens, cost per case; budgets like compare_fit ≤ 1           (M1)
 
- the same question:
-   db_query orgs (cited) ─▶ db_query places + themes (cited) ─▶ compare_fit(8) once ─▶ write-up
+ BLF question: db_query org ─▶ db_query places+themes ─▶ compare_fit once ─▶ write-up
+               ≈ 4 tool calls · ≈ 5 model calls · target < 60 s, < $0.25
 ```
 
+### How the agent picks tables, per question (after M3)
+
+```
+question ─▶ table map in the prompt (37 lines: name — catalog description)
+         ─▶ model matches the question's nouns to descriptions ─▶ 2-4 candidate tables
+         ─▶ db_describe_table(candidates): columns, allowed values, FKs BOTH directions, caveats
+         ─▶ db_profile_column, only before filtering on free text (legal_form, locations.name)
+         ─▶ ONE joined db_query ─▶ rows cited automatically
+```
+
+| question part | words | map line that matches | tables |
+|---|---|---|---|
+| "what does BLF do" | org, does | `orgs — CSOs/NGOs in the FFRH cohort` | orgs (description, website) |
+| "where does it work" | where, works | `org_locations — Where an org is registered or operates` | org_locations ⨝ locations |
+| "its themes" | theme, sector | `org_tags — Which sector/population/theme tags an org carries` | org_tags ⨝ tags |
+| "which funders fit" | funders, fit | rule 12 + `funder-matching` skill, not a table | compare_fit |
+| "who funded X in 2023" | funded, grant | `funder_activity — … A grant to an organisation is a 'partner' line … there is no grants table` | funder_activity ⨝ funders |
+
+The catalog descriptions are the routing layer. Where a question still picks the wrong table, the fix
+goes in that table's `description` in `catalog.py`, not in the prompt, so the map and
+`db_list_tables` stay one text.
+
 **Touched:** the model (fewer, cheaper calls). **Not touched:** Postgres schema, Neo4j, Supabase
-Storage, REST routes, the frontend.
+Storage, REST routes. The frontend only for the evidence rail's SQL source (M3).
 
 ### The key trade-off
 
@@ -221,6 +284,45 @@ compact shortlist is bounded. Sangam Pitch shares the function and gets the same
   `frontend/lib/useAgentChat.ts:133` always adds a user message, so look at the `load` path and any
   `runAgent` after `advance`. Fix that too, if found.
 
+### 4.7 Evals measure cost — `backend/tests/evals/`
+
+- `harness.py::run_agent` also returns a `RunStats`: tool calls by name, model calls, and
+  input / output / cache-read / cache-write tokens from `AIMessage.usage_metadata`, with a cost.
+- `cases/golden.jsonl` gains optional `max_tool_calls` and `max_calls` (e.g. `{"compare_fit": 1}`),
+  checked in `test_golden.py`; `make evals` prints each case's stats.
+
+### 4.8 Caveats once per turn — `backend/app/agent/tools/sql/render.py`
+
+- A `ContextVar[set[str]]` of tables already caveated, set fresh per `/agent` request beside
+  `agent_caller` (`db/pool.py:40`).
+- `_caveats_for` gives a table's full caveats the first time it appears in a turn, then one line:
+  "orgs: caveats as above. Rows here are only what this user can see; 0 rows is not 'none exist'",
+  so the result still stands alone if the earlier one was cleared.
+- Example: `funder_activity`'s caveats are ≈2,465 chars; three queries on it in one turn pay that once.
+
+### 4.9 The SQL echo moves to the artifact — `db_query`
+
+- `db_query` returns `(content, artifact)` with `response_format="content_and_artifact"`. The executed
+  SQL goes in the artifact; the `adjusted:` line in the text still says what the validator changed.
+- Consumers: the evals' `EXECUTED` regex reads `ToolMessage.artifact`; the evidence rail
+  (`frontend/features/ask/lib/sources.ts:40`, `executedSql`) uses the artifact if AG-UI delivers it,
+  else the tool call's `sql` argument.
+
+### 4.10 Tool text cleanup, and `fetch_url` removed (M4)
+
+- Prompt rules that restate a docstring (rule 7 ≈ `db_profile_column`'s; rules 6, 8, 9, 10, 12, 14, 15)
+  shrink to one line pointing at the tool. The docstring is the single source; the test that every
+  registered tool is named in the prompt still passes.
+- `db_profile_column` errors get their own prefix (`db_profile_column rejected:`) and
+  `sql_retry_limiter` counts them.
+- Rule 4's "rule 16" becomes rule 12; `build.py:73`'s "off unless configured" comment is corrected
+  (the audit is on by default).
+- `fetch_url` is removed (decided 16 Oct). It pointed at a web-search tool Ask does not have. Ask then has
+  six tools: drop it from `TOOLS` and the import in `build.py`, delete it from `tools/web.py`, drop its
+  paragraph from `instructions.md:9` and the step in `news-brief`, update `tests/test_harness.py:113`,
+  CLAUDE.md ("seven tools", the diagram, the citation-exception line) and the comments in
+  `tools/files.py:63` and `core/egress.py:2`. Frontend labels stay, for old chats.
+
 ## 5. Security review
 
 - **No new endpoint, table or catalog entry.** The SQL catalog's 37 tables are unchanged, so nothing
@@ -232,6 +334,9 @@ compact shortlist is bounded. Sangam Pitch shares the function and gets the same
   It names tables, not rows.
 - **`compare_fit` permissions are unchanged:** `matching.may_run` still refuses anyone who is not staff,
   a steward or an admin, before any output is built.
+- **Removing `fetch_url` shrinks Ask's egress surface**: Ask no longer fetches any model-supplied URL.
+  `guarded_client` stays for Import and the news pipeline.
+- **The SQL in the artifact is the SQL the text echoed before**, to the same caller.
 - No PII, credentials or tokens are touched. Langfuse keys stay in the environment.
 
 ## 6. Testing
@@ -249,6 +354,11 @@ Unit tests, no database:
 - `test_sql_render.py`: `__cite__` columns make markers and never print; one row keeps a 1,500-char
   description; ten rows still cut at 200.
 - `test_prompt.py`: every `CATALOG` table name appears in the rendered prompt; no `{{` is left.
+- `test_sql_render.py`: a second result on the same table in one turn prints the one-line caveat;
+  a new request starts the set empty.
+- `test_harness.py`: Ask's tool list is the six, without `fetch_url`; `db_profile_column` errors count
+  toward the retry limit.
+- `tests/evals`: `RunStats` sums `usage_metadata` correctly on a recorded message list (no model call).
 - `test_proposal_agent.py`: a state ending in an `AIMessage` makes no model call.
 
 Integration: none new; no SQL changes against the compose Postgres beyond what the validator tests
@@ -262,40 +372,49 @@ never folded into "weak". A test pins it.
 
 ## 7. Milestones
 
-One PR per milestone, each stacked on the last, stopping for review between them.
+One PR per milestone, each stacked on the last, stopping for review between them. Every PR runs
+`make wiki-update` and adds a CHANGELOG line.
 
-#### Milestone 1: Measure
+#### Milestone 0: This plan
 
-- **Deliverable**: numbers in this document's §4.1 and §4.2: shortlist size today by field, worst
-  case, and the chosen trigger and batch values.
-- **Touches**: none shipped (a script under `backend/scripts/` or a test that prints).
-- **Key tasks**: [ ] render `compare_fit(8)` locally [ ] worst case from fixtures [ ] update §4.1–4.2
-- **Acceptance criteria**: the plan's numbers are measured, not estimated.
+- **Deliverable**: Draft v2 of this document, committed before any code.
 
-#### Milestone 2: One compare_fit, and a cache that holds
+#### Milestone 1: Measure, and teach evals to measure
 
-- **Deliverable**: the shortlist fits; clearing is batched and spares `compare_fit`.
-- **Touches**: backend (`matching_tools.py`, `middleware.py`), prompt (two skills).
-- **Key tasks**: [ ] §4.1 [ ] §4.2 [ ] skills' reply table [ ] tests [ ] `make wiki-update`
-  [ ] CHANGELOG
+- **Deliverable**: §4.7; the numbers in §4.1–4.2 (shortlist size by field, worst case, the chosen trigger
+  and batch values); a Better Life Foundation canary with `max_calls.compare_fit = 1` and no `read_file`
+  on `/large_tool_results`.
+- **Touches**: `tests/evals/` only.
+- **Acceptance criteria**: `make evals TAG=canary` prints each case's tool calls, tokens and cost; the
+  plan's numbers are measured, not estimated.
+
+#### Milestone 2: One compare_fit, and a cache that holds (gaps 1–2)
+
+- **Deliverable**: §4.1, §4.2; the reply table in `funder-matching` and wording in `funder-shortlist-brief`.
+- **Touches**: backend (`matching_tools.py`, `middleware.py`), two skills.
 - **Acceptance criteria**: `cd backend && pytest tests/test_compare_fit.py tests/test_agent_middleware.py`;
-  then, after Deploy, the same question in production: one `compare_fit`, no `/large_tool_results`
-  read, cache read only climbing (`trace_cost.sh <trace>`).
+  the BLF canary passes; after Deploy, the production re-run calls `compare_fit` once, reads no
+  `/large_tool_results`, and its cache read only climbs.
 
-#### Milestone 3: Fewer wasted SQL calls
+#### Milestone 3: Fewer and leaner SQL calls (gaps 3–6)
 
-- **Deliverable**: rows come back cited without a re-run; no guessed table names; one-row text in full.
-- **Touches**: backend (`validator.py`, `render.py`, `prompt.py`), prompt (`instructions.md`),
-  `docs/SQL_AGENT.md`.
-- **Key tasks**: [ ] §4.3 [ ] §4.4 [ ] §4.5 [ ] tests [ ] `make wiki-update` [ ] CHANGELOG
+- **Deliverable**: §4.3, §4.4, §4.5, §4.8, §4.9; rule 8 reworded; `docs/SQL_AGENT.md` and CLAUDE.md's
+  "only substitution" sentence updated.
+- **Touches**: backend (`validator.py`, `render.py`, `prompt.py`, `db_query`), `instructions.md`,
+  frontend (`sources.ts`).
 - **Acceptance criteria**: `cd backend && pytest tests/test_sql_validator.py tests/test_sql_render.py tests/test_prompt.py`;
-  `make evals TAG=canary` passes; the production re-run meets §1's targets.
+  `cd frontend && npm run lint && npm run build`; the production re-run meets §1's targets.
 
-#### Milestone 4: Pitch prefill guard
+#### Milestone 4: Tool text cleanup (gap 7)
 
-- **Deliverable**: a Pitch run with nothing new to answer ends quietly, never with a 400.
+- **Deliverable**: §4.10.
+- **Touches**: `instructions.md`, `build.py`, `tools/web.py`, `middleware.py`, `news-brief`, CLAUDE.md.
+- **Acceptance criteria**: `cd backend && pytest && ruff check .`; Ask registers six tools.
+
+#### Milestone 5: Pitch prefill guard
+
+- **Deliverable**: §4.6: a Pitch run with nothing new to answer ends quietly, never with a 400.
 - **Touches**: backend (`proposals/`), maybe frontend (`useAgentChat.ts`).
-- **Key tasks**: [ ] §4.6 hook [ ] find the empty-run trigger [ ] test [ ] CHANGELOG
 - **Acceptance criteria**: `cd backend && pytest tests/test_proposal_agent.py`; no prefill 400 in
   Langfuse for a week of local use.
 
@@ -313,3 +432,7 @@ One PR per milestone, each stacked on the last, stopping for review between them
 - **The re-run is in production, so nothing shows until Deploy runs** (Actions → Deploy, by hand).
   Production runs `claude-sonnet-5` as `MODEL` (from its Vercel env), so compare like with like.
 - **Other questions may still hit the 40k path** before M2 ships. No mitigation beyond shipping M2 first.
+- **AG-UI may not deliver a tool's artifact to the browser.** Then the evidence rail reads the SQL
+  from the tool call's `sql` argument, which is the model's SQL, not the rewritten one. Checked in M3.
+- **One-line caveats rely on the first result still being in context.** The one-line form repeats the
+  RLS and false-zero warning, which is the part that changes an answer.
