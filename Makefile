@@ -163,6 +163,12 @@ smoke:  ## End-to-end check of backend, frontend and the chat wire
 # Golden-question evals through the real agent. Real model calls: ~10c/case.
 #   make evals             every case
 #   make evals TAG=canary  the cheap subset
+#   make evals TAG=cost    the cost cases (Better Life Foundation: ~$0.90 a run)
+#   make evals K=org-count one case, by pytest -k
+#
+# With LANGFUSE_* keys set, each run is a Langfuse dataset experiment on `ask-golden`,
+# named branch-sha and filed under the `eval` environment, so runs compare side by side
+# and never mix with real traffic. Without keys the same cases run untraced.
 #
 # Runs on the HOST venv, not in the container: the image installs only the
 # runtime dependencies from pyproject.toml, so it has no pytest. The recipe is
@@ -171,7 +177,8 @@ smoke:  ## End-to-end check of backend, frontend and the chat wire
 evals:  ## Golden-question evals through the real agent (COSTS MONEY)
 	@set -a; [ -f .env ] && . ./.env; set +a; \
 	cd backend && TEST_DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
-	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) -q
+	LANGFUSE_TRACING_ENVIRONMENT=eval LANGFUSE_RELEASE="$$(git rev-parse --short HEAD)" \
+	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) $(if $(K),-k $(K),) -q
 
 ##@ Wiki
 # openwiki/ is a generated code wiki (OpenWiki): every claim is pinned to the source lines it came from,
