@@ -29,8 +29,13 @@ _FAILURE_PREFIXES = (FAILED_PREFIX, REJECTED_PREFIX)
 
 # Bulky old result grids are dead weight once the model has read them, but the
 # most recent few are what a follow-up question refers back to.
-TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 40_000
+TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 60_000
 TOOL_RESULTS_KEPT = 5
+# Edits are recomputed on every call: clearing a fixed amount from the oldest end keeps the cleared set,
+# and so the cached prompt prefix, the same from call to call. Clearing "all but the last 5" moved it every call.
+TOOL_RESULTS_CLEAR_AT_LEAST = 20_000
+# compare_fit is bounded and is what the write-up reads; clearing it made the model call it again.
+NEVER_CLEARED = ("compare_fit",)
 
 _GIVE_UP = (
     "I tried a few ways to query this but couldn't get a working result. Could you "
@@ -71,7 +76,9 @@ def clear_old_tool_results() -> ContextEditingMiddleware:
         edits=[
             ClearToolUsesEdit(
                 trigger=TOOL_RESULT_CLEAR_TRIGGER_TOKENS,
+                clear_at_least=TOOL_RESULTS_CLEAR_AT_LEAST,
                 keep=TOOL_RESULTS_KEPT,
+                exclude_tools=NEVER_CLEARED,
             )
         ]
     )
