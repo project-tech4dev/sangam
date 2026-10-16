@@ -11,7 +11,7 @@ import pytest
 from psycopg.rows import dict_row
 
 import app.db.pool as db_pool
-from tests.evals.conftest import DSN, SUMMARY_KEY, load_cases
+from tests.evals.conftest import DSN, SUMMARY_KEY, load_cases, read_only
 from tests.evals.experiment import run_cases
 from tests.evals.harness import CASE_TIMEOUT_SECONDS, CaseResult, run_agent, score
 
@@ -66,6 +66,7 @@ def _make_task(eval_settings, slug_ids, db):
             max_size=3,
             open=False,
             kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row},
+            configure=read_only,
         )
         await pool.open()
         db_pool.pool = pool

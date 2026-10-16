@@ -15,6 +15,8 @@ from app.integrations.tracing import configure_langfuse
 
 CASES_DIR = pathlib.Path(__file__).parent / "cases"
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
+# Evals may run against staging, so nothing they open can write.
+READ_ONLY = "SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY"
 # Where the agent evals leave {case id: output} and the Langfuse run URL for the summary.
 SUMMARY_KEY = pytest.StashKey[tuple[dict, str | None]]()
 
@@ -94,6 +96,10 @@ def pytest_terminal_summary(terminalreporter, config):
     write(f"Langfuse run (cost per case, compare runs): {url}" if url else "Langfuse off: no run recorded")
 
 
+async def read_only(conn) -> None:
+    await conn.execute(READ_ONLY)
+
+
 @pytest.fixture(scope="session")
 def slug_ids() -> dict[str, str]:
     """slug -> id, for every citable entity."""
@@ -105,13 +111,14 @@ def slug_ids() -> dict[str, str]:
                     mapping[f"{kind}:{row['slug']}"] = f"{kind}:{row['id']}"
             return mapping
     except psycopg.OperationalError:
-        pytest.skip("compose Postgres not reachable on localhost:5433")
+        pytest.skip("eval database not reachable (TEST_DATABASE_URL)")
 
 
 @pytest.fixture(scope="session")
 def db():
     try:
-        with psycopg.connect(DSN, connect_timeout=3, row_factory=dict_row) as conn:
+        with psycopg.connect(DSN, connect_timeout=3, row_factory=dict_row, autocommit=True) as conn:
+            conn.execute(READ_ONLY)
             yield conn
     except psycopg.OperationalError:
-        pytest.skip("compose Postgres not reachable on localhost:5433")
+        pytest.skip("eval database not reachable (TEST_DATABASE_URL)")
