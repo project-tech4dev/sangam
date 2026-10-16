@@ -63,7 +63,7 @@ relative_files = true
 
 [tool.coverage.report]
 # A ratchet: raise it when coverage grows, never lower it.
-fail_under = 0
+fail_under = 60
 skip_covered = true
 
 [build-system]
