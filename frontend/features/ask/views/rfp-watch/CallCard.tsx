@@ -2,6 +2,7 @@
 
 import { Bookmark, CalendarClock, ExternalLink, IndianRupee, MapPin, MessageSquare, X } from "lucide-react";
 import { dayMonthYear, formatInr } from "@/lib/format";
+import { safeHref } from "@/features/registry/profile/shared";
 import type { FeedCall } from "./api";
 
 export const SOON_DAYS = 30;
@@ -41,7 +42,8 @@ export function CallCard({
   const days = daysLeft(call.deadline);
   const closed = call.call_status !== "open" || (days !== null && days < 0);
   const saved = call.status === "saved";
-  const link = call.url ?? call.source_url;
+  // Extracted from a web page by a model, so only an http(s) link is rendered.
+  const link = safeHref(call.url) ?? safeHref(call.source_url);
 
   return (
     <article className="rfp-card" data-closed={closed} aria-label={call.title}>
