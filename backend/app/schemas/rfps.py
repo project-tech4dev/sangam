@@ -34,5 +34,32 @@ class RfpMatchOut(ReadModel):
 
 
 class RfpMatchUpdate(BaseModel):
-    status: Literal["flagged", "reviewed", "dismissed"]
+    status: Literal["flagged", "saved", "reviewed", "dismissed"]
     match_notes: str | None = None
+
+
+class FeedCall(ReadModel):
+    rfp_id: int
+    title: str
+    funder_id: int | None = None
+    funder_name: str | None = None
+    url: str | None = None
+    source_url: str | None = None
+    deadline: date | None = None
+    amount_min: float | None = None
+    amount_max: float | None = None
+    call_status: str = "open"
+    status: str = "flagged"
+    places: list[str] = []
+    themes: list[str] = []
+
+
+class Feed(ReadModel):
+    """can_act: may this caller save or dismiss (the org's members and admins, and staff, as RLS allows)."""
+
+    org_id: int
+    org_name: str
+    can_act: bool = False
+    domains: list[str] = []
+    last_pulled: datetime | None = None
+    items: list[FeedCall] = []

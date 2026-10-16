@@ -116,7 +116,13 @@ Plan: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md).
 - **No column of its own.** A call goes into `rfps`, `rfp_locations` and `rfp_tags`; a re-run reads a funder's
   page again from its newest call's `rfps.source_url`, so a page that held no call is searched afresh.
 - **Only a call with a future deadline is written.** Past and undated calls are reported, not stored.
-- **`rfp_matches.status` belongs to the NGO**; nothing the pull or matching writes may change it.
+- **A call reaches an org through a shared domain, in one SQL insert** (`repositories/rfps.py::flag_matches`):
+  both sides' tags roll up through `tags.parent_id` to a `domain`, and only orgs with members get rows. No score and
+  no match-v2: a call says little about place, size or eligibility that a person can't read faster on the card.
+- **Rows exist before anyone acts**, because `rfp_matches` RLS allows UPDATE only; Save and "Not for us" are an
+  update to `saved` / `dismissed`, open to the org's members and admins and staff.
+- **`rfp_matches.status` belongs to the NGO**; matching inserts with `ON CONFLICT DO NOTHING`, so a re-run never
+  changes it. A saved call stays in the feed after it closes.
 
 ## 6. Media & Signals
 

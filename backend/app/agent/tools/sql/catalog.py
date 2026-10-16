@@ -801,13 +801,13 @@ _TABLES: tuple[Table, ...] = (
             Column("org_id", "bigint", cites="org"),
             Column("match_score", "numeric"),
             Column("match_notes", "text"),
-            Column("status", "text", values=('flagged', 'reviewed', 'dismissed')),
+            Column("status", "text", values=('flagged', 'saved', 'reviewed', 'dismissed')),
             Column("matched_by", "text"),
             Column("matched_at", "timestamp with time zone"),
             Column("week_of", "date"),
         ),
         defects=(
-            "Rows are written only by RFP Watch matching. status is the org's own choice (dismissed means 'not for us'), never a judgement of fit; no row means the call was not matched, not that it does not fit.",
+            "Rows are written by make calls-pull and calls-match for orgs with members that share a domain with the call (matched_by 'rules:domain', no score). status is the org's own choice (saved, or dismissed for 'not for us'), never a judgement of fit; no row means the call was not matched, not that it does not fit.",
         ),
     ),
     Table(

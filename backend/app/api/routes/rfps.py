@@ -10,7 +10,7 @@ from app.core.security import get_current_user, require_user
 from app.db.pool import PoolDep
 from app.repositories import rfps as repo
 from app.schemas.common import Page
-from app.schemas.rfps import RfpMatchOut, RfpMatchUpdate, RfpOut
+from app.schemas.rfps import Feed, RfpMatchOut, RfpMatchUpdate, RfpOut
 
 router = APIRouter(prefix="/rfps", tags=["rfps"])
 
@@ -31,6 +31,16 @@ async def list_rfps(
     )
     return Page(items=[RfpOut.model_validate(r) for r in rows],
                 total=total, limit=page.limit, offset=page.offset)
+
+
+@router.get("/feed", response_model=Feed, summary="An org's open and saved calls")
+async def feed(org: str, pool: PoolDep, user_id: UUID = Depends(require_user)) -> Feed:
+    # Runs as the caller: another org's matches are filtered out by RLS, so its feed is empty.
+    row = await repo.feed(pool, org)
+    if row is None:
+        raise HTTPException(404, f"org {org} not found")
+    return Feed(org_id=row["id"], org_name=row["name"], can_act=row["can_act"], domains=row["domains"],
+                last_pulled=row["last_pulled"], items=row["items"])
 
 
 @router.get("/{rfp_id}", response_model=RfpOut, summary="Opportunity detail")
@@ -55,7 +65,7 @@ async def list_matches(
 
 
 @router.patch("/{rfp_id}/matches/{org_id}", response_model=RfpMatchOut,
-              summary="Review or dismiss a flagged match")
+              summary="Save, review or dismiss a flagged match")
 async def update_match(
     rfp_id: int,
     org_id: int,
