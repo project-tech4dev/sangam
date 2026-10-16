@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -43,3 +44,27 @@ class GraphEpisodeOut(BaseModel):
 class GraphClearOut(BaseModel):
     group_id: str | None
     nodes_deleted: int
+
+
+class GraphDocumentsIn(BaseModel):
+    bucket: Literal["org-vault", "source-archive", "staff-sources"] = "org-vault"
+    prefix: str = ""
+    limit: int = Field(default=5, ge=1, le=50)
+    group_id: str | None = Field(default=None, pattern=GROUP_PATTERN, description="defaults to the bucket name")
+
+
+class GraphDocumentOut(BaseModel):
+    key: str
+    status: Literal["added", "skipped", "failed"]
+    chunks: int
+    entities: int
+    facts: int
+    reason: str | None = None
+
+
+class GraphDocumentsOut(BaseModel):
+    bucket: str
+    prefix: str
+    group_id: str
+    found: int
+    files: list[GraphDocumentOut]
