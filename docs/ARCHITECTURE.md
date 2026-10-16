@@ -104,6 +104,20 @@ Generated detail (criteria, points, tiers, saved runs): [funder-match](../openwi
 - **A saved run is written by the people responsible for the org** — staff, or the org's admins and stewards — and no
   role may update or delete one.
 
+### RFP Watch
+
+Plan: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md).
+
+- **Supply is a fixed pipeline, not an agent** (`app/ingest/calls/`, `make calls-pull`): per funder, one search of
+  its own domain, a Haiku pick of one page, a Haiku extraction, and `writer.write_rfp`. Every page passes `check_url`
+  first, so robots.txt and the source registry decide, as in Import.
+- **The pinned list is read first and never skipped** (`calls/pinned.json`); a dead end there is a "Needs a look"
+  line, and its `note` records what a person found, so it is not rediscovered each run.
+- **No column of its own.** A call goes into `rfps`, `rfp_locations` and `rfp_tags`; a re-run reads a funder's
+  page again from its newest call's `rfps.source_url`, so a page that held no call is searched afresh.
+- **Only a call with a future deadline is written.** Past and undated calls are reported, not stored.
+- **`rfp_matches.status` belongs to the NGO**; nothing the pull or matching writes may change it.
+
 ## 6. Media & Signals
 
 Generated detail: [media-and-signals](../openwiki/architecture/media-and-signals.md).

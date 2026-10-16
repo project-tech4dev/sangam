@@ -1,0 +1,36 @@
+{
+  "_comment": "Funders whose calls page is always read, before any search. A reviewer named these as the few that publish calls. `note` records what a person found on the page, so a known dead end is not rediscovered each run.",
+  "sources": [
+    {
+      "slug": "sbi-foundation",
+      "url": "https://www.sbifoundation.in/",
+      "note": "A JavaScript app: the page sends no text until a browser runs it. Checked 2026-10-15."
+    },
+    {
+      "slug": "azim-premji-foundation",
+      "url": "https://azimpremjifoundation.org/call-for-applications-early-stage-csos/",
+      "note": "Answered 403 to automated requests on 2026-10-15."
+    },
+    {
+      "slug": "hcl-foundation",
+      "url": "https://www.hclfoundation.org/hcltech-grant",
+      "note": "robots.txt disallows every path to every bot (2026-10-15). HCLTech Grant is annual; Edition XII closed 18 Sep 2026."
+    },
+    {
+      "slug": "rainmatter-foundation",
+      "url": "https://rainmatter.org/",
+      "note": "No dated call: an initial enquiry form open all year (forms.rainmatter.org)."
+    },
+    {
+      "slug": "rohini-nilekani-philanthropies-foundation",
+      "url": "https://rohininilekaniphilanthropies.org/",
+      "note": "No apply page found on 2026-10-15."
+    },
+    {
+      "slug": "undp-india",
+      "url": "https://procurement-notices.undp.org/rss_feeds/IND.xml",
+      "feed": true,
+      "note": "robots.txt disallows every path to every bot (2026-10-15), and the items are mostly procurement, not grants."
+    }
+  ]
+}

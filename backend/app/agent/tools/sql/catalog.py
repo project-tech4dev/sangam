@@ -788,7 +788,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows) because rfps is empty.",
+            "Filled only with rfps, by make calls-pull and Import. Few funders run open calls, so no row means none was found, not that none exists.",
         ),
     ),
     Table(
@@ -807,7 +807,7 @@ _TABLES: tuple[Table, ...] = (
             Column("week_of", "date"),
         ),
         defects=(
-            "Table is empty (0 rows) because rfps is empty; no org has been matched to a call for proposals yet.",
+            "Rows are written only by RFP Watch matching. status is the org's own choice (dismissed means 'not for us'), never a judgement of fit; no row means the call was not matched, not that it does not fit.",
         ),
     ),
     Table(
@@ -824,7 +824,7 @@ _TABLES: tuple[Table, ...] = (
             Column("note", "text"),
         ),
         defects=(
-            "Table is empty (0 rows) because rfps is empty.",
+            "Filled only with rfps, by make calls-pull and Import. Few funders run open calls, so no row means none was found, not that none exists.",
         ),
     ),
     Table(
@@ -855,7 +855,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows): the RFP subsystem is built but no calls for proposals have been loaded. A zero result says nothing about whether such RFPs exist.",
+            "Filled by make calls-pull (a one-time pull of known funders' call pages) and by Import. Few Indian funders publish open calls, so few rows exist: zero rows means none was found, not that none exists. status 'open' with a past deadline means the pull has not run since.",
         ),
     ),
     Table(
