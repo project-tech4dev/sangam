@@ -23,6 +23,7 @@ from app.ingest.calls import extract, find
 from app.ingest.geography import resolve_location
 from app.ingest.records import RfpRecord
 from app.ingest.taxonomy import TAG_SLUGS
+from app.repositories import rfps
 
 logger = logging.getLogger(__name__)
 
@@ -231,4 +232,10 @@ async def run(pool, deps: Deps, slugs: list[str] | None) -> list[str]:
     looks = sum(1 for line in report if "NEEDS A LOOK" in line)
     report.append(f"-- {len(outcomes)} funders read, {written} open calls written, {closed} expired calls closed, "
                   f"{looks} need a look.")
+    report.append(match_line(await rfps.flag_matches(pool)))
     return report
+
+
+def match_line(m: dict) -> str:
+    return (f"-- {m['added']} new matches for {m['orgs']} orgs; {m['orgs_without_theme']} orgs with members "
+            "have no theme, so they see no calls.")
