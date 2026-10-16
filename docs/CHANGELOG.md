@@ -159,6 +159,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-14 · Signed-out cached reads are keyed per deploy, so a new deploy never renders the last one's API shapes (profile pages 500ed after #202).
 - 2026-10-16 · Dependabot: `next` 16.3.8 (RCE in `next/og`, image SSRF), CopilotKit 1.75.2 (last on AG-UI 0.0.x), `undici`/`katex` overrides, PyJWT 2.15.1. A `Dependency review` check fails any PR that adds a high or critical advisory.
 - 2026-10-16 · CI on every PR: ruff, unit and integration tests (pgvector, migrate, seed), coverage on Codecov (no drop over 1%, 70% of changed lines), and the frontend's lint, types and build.
+- 2026-10-16 · Claude reviews every PR against CLAUDE.md (Sonnet, inline comments, never pushes) and answers `@claude` from collaborators; weekly grouped Dependabot updates; a PR template.
 
 ## Tracing and evals
 

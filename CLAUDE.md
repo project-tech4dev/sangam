@@ -364,6 +364,10 @@ name). Which PR added each one, and what it did, is in `docs/CHANGELOG.md`; the 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
 private, loopback and metadata addresses on every redirect hop.
 
+**Every PR adds tests for the code it changes.** Unit tests for deterministic code (rules, parsers,
+SQL builders, routes, code-only safeguards), integration tests where SQL or RLS decides the answer. Not for
+model output, and no evals unless asked. `codecov/patch` fails a PR that covers under 70% of its changed lines.
+
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:
 
