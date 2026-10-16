@@ -8,6 +8,7 @@
 
 ## Checklist
 
+- [ ] Tests for the code this changes (unit; integration for SQL or RLS)
 - [ ] Changes a tool, table, route or flow → ran `make wiki-update`
 - [ ] Changes a rule or invariant → edited `docs/ARCHITECTURE.md`
 - [ ] Ships something → added a line to `docs/CHANGELOG.md`

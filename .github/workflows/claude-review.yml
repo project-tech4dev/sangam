@@ -47,6 +47,7 @@ jobs:
             - A table added to app/agent/tools/sql/catalog.py is a security decision: say so and check its RLS.
             - Provenance columns are populated on scraped or extracted tables.
             - Frontend: styles in classes, not style={{...}}; icons from lucide-react; nothing but routes under app/.
+            - New or changed deterministic code has tests (CLAUDE.md, "Every PR adds tests"); name what is untested.
             - Comments are one or two lines and say why (.claude/rules/comments.md).
             - A PR that changes a tool, table, route or flow updates openwiki via make wiki-update; a rule change
               edits docs/ARCHITECTURE.md; a shipped change adds a docs/CHANGELOG.md line.
