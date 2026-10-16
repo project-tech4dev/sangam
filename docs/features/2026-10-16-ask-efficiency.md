@@ -399,7 +399,8 @@ item (Evaluate) → Deploy, and back to Trace.
     There is one runner, so nothing is billed twice.
   - `make evals` sets `LANGFUSE_TRACING_ENVIRONMENT=eval`, so eval traces never mix with real traffic, and
     takes `K=<case>` for one case. The terminal summary prints each case's counts and the run's URL.
-  - The `blf-profile-and-fit` case, tagged `cost` (one run ≈ $0.90, so not `canary`), strict-xfail until M2.
+  - The `blf-profile-and-fit` case, tagged `cost` (one run ≈ $0.90, so not `canary`). No xfail marker: it
+    reproduces only on production-sized data (see below), where it fails before M2.
   - Seconds per case, scored and printed; `max_seconds` (BLF: 30) is reported as a note, never a failure.
 - **Tracking, from here on**: Langfuse holds every run (`ask-golden`, named `branch-sha`); each milestone PR carries
   an Evals section with the comparison link and a before/after table for the `cost` and `canary` cases; §1's
