@@ -90,6 +90,8 @@ ruff check .                        # line-length 110, target py312
 make evals                          # golden questions through the real agent (COSTS MONEY)
 make evals TAG=canary               # the cheap subset
 make evals TAG=import               # Import canaries, only by tag: one funder, one NGO, ~15 min (needs TAVILY_API_KEY)
+make evals TAG=cost                 # cases with call budgets (Better Life Foundation, ~$0.90 a run)
+make evals K=org-count              # one case, by pytest -k
 ```
 
 `asyncio_mode = "auto"` — async tests need no `@pytest.mark.asyncio`. **Unit tests never
@@ -108,6 +110,11 @@ evals` runs them on the host venv, because the image installs runtime dependenci
 has no pytest. A case with `expected_failure` is `xfail(strict=True)`: when the underlying
 data bug is fixed the case passes, pytest reports XPASS as a failure, and the marker gets
 deleted.
+
+With Langfuse keys set, the selected cases run **once**, as a dataset experiment on `ask-golden`
+(`tests/evals/experiment.py`), under environment `eval` and named `branch-sha`, so two runs compare
+side by side in Langfuse with their cost. `golden.jsonl` stays the source of truth; the dataset is a copy.
+A case's `max_calls` / `max_large_result_reads` fail it; its token counts are only reported.
 
 Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaults to the
 container path `/srv/db/migrations`.

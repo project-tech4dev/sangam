@@ -111,7 +111,7 @@ def message_text(message: Any) -> str:
     return ""
 
 
-async def run_agent(question: str, settings: Settings) -> AgentRun:
+async def run_agent(question: str, settings: Settings, *, timeout: float = CASE_TIMEOUT_SECONDS) -> AgentRun:
     """The answer, the SQL the agent actually ran, the citations it emitted and what it cost."""
     graph = build_agent(settings, InMemorySaver())
     # The staff dev user, so the agent reads what the gold SQL (run as the owner) reads.
@@ -124,7 +124,7 @@ async def run_agent(question: str, settings: Settings) -> AgentRun:
                 "recursion_limit": RECURSION_LIMIT,
             },
         ),
-        timeout=CASE_TIMEOUT_SECONDS,
+        timeout=timeout,
     )
 
     answer, sqls, cites = "", [], set()
