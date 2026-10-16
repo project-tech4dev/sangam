@@ -1,0 +1,35 @@
+# Weekly version updates, one grouped PR per ecosystem. Security updates come separately once
+# "Dependabot security updates" is on in Settings → Code security.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      frontend:
+        update-types: [minor, patch]
+    ignore:
+      # 1.76+ moves to AG-UI 1.0 and breaks route.ts, ScoutChat and useAgentChat; that migration is its own PR.
+      - dependency-name: "@copilotkit/*"
+        versions: [">=1.76.0"]
+      - dependency-name: "@ag-ui/*"
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      backend:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

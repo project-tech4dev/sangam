@@ -1,0 +1,10 @@
+# Paths where a mistake is a security or data-loss problem: an owner reviews every change.
+# With "Require review from Code Owners" on in branch protection, these block merge until approved.
+
+/db/migrations/                              @siddhant3030
+/db/init/                                    @siddhant3030
+/backend/app/agent/tools/sql/                @siddhant3030
+/backend/app/core/security.py                @siddhant3030
+/backend/app/core/egress.py                  @siddhant3030
+/backend/app/agent/harness.py                @siddhant3030
+/.github/                                    @siddhant3030

@@ -1,0 +1,59 @@
+# Claude reviews every PR against this repo's rules and leaves inline comments. It never pushes.
+# Runs on pull_request, never pull_request_target: a fork's PR gets no secrets, so it is skipped below.
+name: Claude review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@374f254f5efaf968abfe15d399fd90972e8138b9 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_sticky_comment: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request. Read CLAUDE.md and any nested CLAUDE.md for the files it touches first;
+            they are the rules. Report only real problems, most severe first, each with the file and line and a
+            concrete example of what goes wrong. No praise, no style nits a linter would catch, no summary of the diff.
+
+            Check in particular:
+            - Correctness bugs, missing error handling at boundaries, and security (auth, RLS, SSRF, injection).
+            - Agent tools never raise: every tool body returns "<tool> failed: {exc}" instead.
+            - Every database and graph row a tool returns carries a citation marker ([org:N], [funder:N], ...).
+            - Every fetch of a model-supplied URL goes through guarded_client (app/core/egress.py).
+            - Schema changes go in db/migrations/*.sql, never db/init/02_schema.sql.
+            - A table added to app/agent/tools/sql/catalog.py is a security decision: say so and check its RLS.
+            - Provenance columns are populated on scraped or extracted tables.
+            - Frontend: styles in classes, not style={{...}}; icons from lucide-react; nothing but routes under app/.
+            - Comments are one or two lines and say why (.claude/rules/comments.md).
+            - A PR that changes a tool, table, route or flow updates openwiki via make wiki-update; a rule change
+              edits docs/ARCHITECTURE.md; a shipped change adds a docs/CHANGELOG.md line.
+
+            Use inline comments for line-specific findings and one top-level comment for the rest.
+            If there is nothing worth raising, say "No issues found." in one line.
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 30
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"
