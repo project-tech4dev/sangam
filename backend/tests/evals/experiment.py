@@ -22,6 +22,7 @@ NUMERIC_SCORES = (
     "cache_read_tokens",
     "cache_creation_tokens",
     "large_result_reads",
+    "seconds",
 )
 
 Task = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]

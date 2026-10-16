@@ -80,15 +80,17 @@ def pytest_terminal_summary(terminalreporter, config):
     results, url = summary
     write = terminalreporter.write_line
     write("")
-    write(f"{'case':<34} {'pass':>4} {'tools':>5} {'model':>5} {'in tok':>8} {'cache rd':>8} {'out tok':>7}  calls")
+    write(f"{'case':<34} {'pass':>4} {'tools':>5} {'model':>5} {'in tok':>8} {'cache rd':>8} {'out tok':>7} {'secs':>6}  calls")
     for case_id, out in results.items():
         s = out.get("stats", {})
         calls = " ".join(f"{t}×{n}" for t, n in sorted(s.get("tool_calls", {}).items()))
         write(
             f"{case_id[:34]:<34} {'ok' if not out.get('failures') else 'FAIL':>4} {s.get('total_tool_calls', 0):>5} "
             f"{s.get('model_calls', 0):>5} {s.get('input_tokens', 0):>8} {s.get('cache_read_tokens', 0):>8} "
-            f"{s.get('output_tokens', 0):>7}  {calls}"
+            f"{s.get('output_tokens', 0):>7} {s.get('seconds', 0):>6}  {calls}"
         )
+        for warning in out.get("warnings", []):
+            write(f"{'':<34} note: {warning}")
     write(f"Langfuse run (cost per case, compare runs): {url}" if url else "Langfuse off: no run recorded")
 
 

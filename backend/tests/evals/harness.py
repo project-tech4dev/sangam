@@ -43,6 +43,7 @@ class RunStats:
     cache_read_tokens: int = 0
     cache_creation_tokens: int = 0
     large_result_reads: int = 0
+    seconds: float = 0.0
 
     @property
     def total_tool_calls(self) -> int:
@@ -88,6 +89,8 @@ class CaseResult:
     agent_sql: list[str] = field(default_factory=list)
     citations: set[str] = field(default_factory=set)
     failures: list[str] = field(default_factory=list)
+    # Reported, never failing: a slow run is a trend to watch, not a broken answer.
+    warnings: list[str] = field(default_factory=list)
     stats: RunStats = field(default_factory=RunStats)
 
     @property
@@ -198,6 +201,9 @@ def score(case: dict[str, Any], result: CaseResult, *, gold_rows, agent_rows) ->
     for tool, limit in case.get("max_calls", {}).items():
         if result.stats.tool_calls[tool] > limit:
             result.failures.append(f"called {tool} {result.stats.tool_calls[tool]} times; the budget is {limit}")
+
+    if (budget := case.get("max_seconds")) is not None and result.stats.seconds > budget:
+        result.warnings.append(f"took {result.stats.seconds}s; the target is {budget}s")
 
     limit = case.get("max_large_result_reads")
     if limit is not None and result.stats.large_result_reads > limit:
