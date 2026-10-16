@@ -113,8 +113,8 @@ Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaul
 container path `/srv/db/migrations`.
 
 **CI** (`.github/workflows/ci.yml`) runs all of the above on every PR, plus the integration tier against a
-fresh pgvector Postgres, and fails if combined coverage drops under `fail_under` in `backend/pyproject.toml`.
-Raise that number when coverage grows; never lower it.
+fresh pgvector Postgres, and uploads both coverage reports to Codecov. `codecov.yml` fails a PR that lowers total
+coverage by more than 1% or covers under 70% of the lines it changes.
 
 Frontend: `npm run lint` (ESLint, flat config in `frontend/eslint.config.mjs`) and
 `npm run build`. Run the build before pushing — type errors surface there and never in

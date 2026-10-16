@@ -35,5 +35,3 @@ skills-lock.json
 .coverage
 .coverage.*
 coverage.xml
-coverage.md
-diff.md
