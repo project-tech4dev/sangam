@@ -1,0 +1,172 @@
+# Checks every PR and every push to master. Deploys nothing: that stays deploy.yml, by hand.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run ruff check . --output-format=github
+
+  backend-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      COVERAGE_FILE: .coverage.unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run pytest -m "not integration" --cov --cov-report= -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: backend/.coverage.unit
+          include-hidden-files: true
+
+  backend-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: sangam
+          POSTGRES_PASSWORD: sangam
+          POSTGRES_DB: sangam
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sangam -d sangam"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://sangam:sangam@localhost:5433/sangam
+      TEST_DATABASE_URL: postgresql://sangam:sangam@localhost:5433/sangam
+      MIGRATIONS_DIR: ${{ github.workspace }}/db/migrations
+      COVERAGE_FILE: .coverage.integration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --frozen
+        working-directory: backend
+      # What the compose Postgres gets from /docker-entrypoint-initdb.d, then `make migrate` and `make seed`.
+      - name: Baseline, migrate, seed
+        run: |
+          for f in db/init/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"; done
+          uv run --project backend python -m app.db.migrate
+          uv run --project backend python -m seed.seed
+          uv run --project backend python -m seed.taxonomy_seed
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/backend
+      # -rs lists skips: a test that skips for "Postgres not reachable" here is a broken job, not a pass.
+      - run: uv run pytest -m integration --cov --cov-report= -q -rs
+        working-directory: backend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration
+          path: backend/.coverage.integration
+          include-hidden-files: true
+
+  coverage:
+    needs: [backend-unit, backend-integration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: backend
+          merge-multiple: true
+      - name: Combine and report
+        run: |
+          uv run coverage combine .coverage.unit .coverage.integration
+          uv run coverage xml -q -o coverage.xml
+          {
+            echo "## Backend coverage"
+            uv run coverage report --format=total --fail-under=0 | sed 's/^/**Total:** /; s/$/%/'
+            echo
+            echo "<details><summary>By file</summary>"
+            echo
+            uv run coverage report --format=markdown --fail-under=0
+            echo
+            echo "</details>"
+            echo
+          } > coverage.md
+      - name: Coverage of changed lines
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          uv run diff-cover coverage.xml --compare-branch="origin/$BASE_REF" --markdown-report diff.md
+          { echo "### Changed lines"; tail -n +2 diff.md; } >> coverage.md
+      - run: cat coverage.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        # A fork's token cannot comment; the step summary still has it.
+        continue-on-error: true
+        with:
+          header: coverage
+          path: backend/coverage.md
+      # The ratchet: fail_under in pyproject.toml. Last, so the report is posted either way.
+      - run: uv run coverage report > /dev/null
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build

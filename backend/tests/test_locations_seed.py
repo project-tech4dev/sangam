@@ -10,8 +10,9 @@ from psycopg.rows import dict_row
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))  # repo root, for `seed`
 
-from app.ingest.geography import _STATES, qualifiers, resolve_location
 from seed.locations_seed import read_rows, seed_locations
+
+from app.ingest.geography import _STATES, qualifiers, resolve_location
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
 NORTH_EAST = {"Arunachal Pradesh", "Assam", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Sikkim", "Tripura"}

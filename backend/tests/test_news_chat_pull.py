@@ -43,12 +43,12 @@ def test_one_list_says_what_runs():
 
 
 async def test_the_plan_for_a_news_pull_gives_searches_and_cost(monkeypatch):
-    from datetime import date
+    from datetime import UTC, datetime
 
     from app.ingest.news.feeds import Subject
 
     async def subjects(pool, **kw):
-        return [Subject("org", 1, "a", "Org A"), Subject("org", 2, "b", "Org B", searched_through=date.today())]
+        return [Subject("org", 1, "a", "Org A"), Subject("org", 2, "b", "Org B", searched_through=datetime.now(UTC).date())]
     monkeypatch.setattr("app.ingest.news.pipeline.plan_subjects", subjects)
     monkeypatch.setattr(pipeline_tools, "get_pool", lambda: None)
     line = await pipeline_tools._news_plan_line(None)

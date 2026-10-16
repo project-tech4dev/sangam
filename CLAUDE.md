@@ -112,6 +112,10 @@ deleted.
 Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaults to the
 container path `/srv/db/migrations`.
 
+**CI** (`.github/workflows/ci.yml`) runs all of the above on every PR, plus the integration tier against a
+fresh pgvector Postgres, and fails if combined coverage drops under `fail_under` in `backend/pyproject.toml`.
+Raise that number when coverage grows; never lower it.
+
 Frontend: `npm run lint` (ESLint, flat config in `frontend/eslint.config.mjs`) and
 `npm run build`. Run the build before pushing — type errors surface there and never in
 `next dev`.

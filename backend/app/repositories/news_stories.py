@@ -5,7 +5,7 @@ Runs as the caller: RLS decides which stories and entity links a reader sees (00
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
 from app.ingest.news.bars import level
@@ -184,7 +184,7 @@ async def _counts(pool, params: dict) -> dict[str, int]:
 
 async def list_stories(pool, f: Filters, *, cursor: str | None, limit: int, today: date | None = None) -> dict:
     """Ordered by match, then confidence, then date (spec section 5); counts for all three buckets."""
-    params = _params(f, today or date.today())
+    params = _params(f, today or datetime.now(UTC).date())
     rows, nxt = await _page(pool, _base(f.bucket) + _filters(f.bucket), params, ["m", "c", "pub", "row_id"], cursor, limit)
     # A bucket's own picker narrows only that bucket's count.
     counts = await _counts(pool, params)
@@ -194,7 +194,7 @@ async def list_stories(pool, f: Filters, *, cursor: str | None, limit: int, toda
 async def entity_news(pool, *, kind: Literal["org", "funder"], slug: str, cursor: str | None, limit: int) -> dict:
     """One organisation's or funder's stories, newest first, for its Registry profile."""
     f = Filters(bucket=kind, org=slug if kind == "org" else None, funder=slug if kind == "funder" else None)
-    params = _params(f, date.today())
+    params = _params(f, datetime.now(UTC).date())
     rows, nxt = await _page(pool, _base(kind, profile=True) + _filters(kind), params, ["pub", "row_id"], cursor, limit)
     return {"items": await _enrich(pool, rows), "next_cursor": nxt}
 
