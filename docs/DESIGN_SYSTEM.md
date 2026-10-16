@@ -30,6 +30,7 @@ is a copy of values.
 | `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link` |
 | `tokens/scout.css` | Sangam Scout's classes in `globals.css`, from "Import workspace" through "Import: the Review step", imported by `styles.css` after `base.css` |
 | `tokens/registry.css` | The Registry list's `.reg-*`, the CSO and funder profiles' `.profile-*` (hero, board tabs, SDG tiles, cards, tables) and the research brief's `.brief-*` classes in `globals.css`, plus the list-page classes (`.bucket-card`, `.filter-row`, `.filter`, `.search-box`, `.list-*`), `.pill-tabs` and `.btn-ondark`; imported by `styles.css` after `scout.css` |
+| `tokens/site.css` | The Nav's `.nav-links` and phone menu (`.nav-menu-button`, `.nav-menu`, `.nav-menu-link`) and Home's `.home-step*` classes in `globals.css`; imported by `styles.css` after `registry.css` |
 | `guidelines/*.html` | Nothing; they are the specimen pages to check the repo against |
 
 The design system also carries tokens the repo does not use yet (`--surface-*`, `--text-*`,

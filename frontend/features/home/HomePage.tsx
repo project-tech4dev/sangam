@@ -15,29 +15,22 @@ const STEPS = [
   {
     title: "You ask Sangam",
     body: "A question on funder fit, narrative strength, or proposal readiness.",
-    icon: <div className="size-3.5 rounded-[3px] bg-sage-700" />,
   },
   {
     title: "Reads the question",
     body: "Identifies who is asking and what kind of match is being requested.",
-    icon: <div className="size-4 rounded-full border-[3px] border-sage-700" />,
   },
   {
     title: "Pulls the material",
     body: "Retrieves the relevant funder mandates, NGO profiles, and media signal.",
-    icon: <div className="h-[11px] w-4 rounded-[2px] border-[3px] border-sage-700" />,
   },
   {
     title: "Scores against the rubric",
     body: "A shared rubric produces the fit score.",
-    icon: <div className="size-4 rotate-45 bg-sage-700" />,
   },
   {
     title: "Returns an answer",
     body: "A direct answer with sources, confidence, and the steps it took attached.",
-    icon: (
-      <div className="ml-[3px] size-0 border-y-8 border-l-12 border-y-transparent border-l-sage-700" />
-    ),
   },
 ] as const;
 
@@ -93,8 +86,8 @@ export function HomePage() {
           </h1>
           <p className="mb-8 max-w-[560px] text-xl leading-[1.55] text-foreground/78">
             A base of funders, NGOs and media signal, with an agent on top. Ask who fits a mandate, which
-            calls to chase, what a proposal still needs, or how an organisation is being covered. Every
-            answer shows its sources and the steps it took.
+            calls to chase, what a proposal still needs, or how an organisation is being covered to
+            provide these matches. Every answer shows its sources and the steps it took.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -117,29 +110,23 @@ export function HomePage() {
 
       <section className="mx-auto max-w-(--page-max) px-(--page-pad) pt-4 pb-[72px]">
         <SectionHeading className="mb-2">Understanding how the Sangam agent works</SectionHeading>
-        <p className="mb-10 max-w-[560px] text-sm text-foreground/70">
+        <p className="mb-4 max-w-[560px] text-sm text-foreground/70">
           Every answer is built from the base, not generated from general knowledge of the sector.
         </p>
-        <div className="grid gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
+        <ol className="home-steps">
           {STEPS.map((step, i) => (
-            <div
-              key={step.title}
-              className={cn(
-                "lg:border-r lg:px-6",
-                i === 0 && "lg:pl-0",
-                i === STEPS.length - 1 && "lg:border-r-0 lg:pr-0",
-              )}
-            >
-              <div className="text-2xl text-sand-700">{String(i + 1).padStart(2, "0")}</div>
-              <div className="mt-2.5 mb-5 h-px w-[34px] bg-border" />
-              <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-sage-100">
-                {step.icon}
+            <li key={step.title} className="home-step">
+              <div className="home-step-mark">
+                <span className="home-step-num">{String(i + 1).padStart(2, "0")}</span>
+                <span className="home-step-line" aria-hidden="true" />
               </div>
-              <h4 className="mb-2 text-base font-bold">{step.title}</h4>
-              <p className="text-sm text-foreground/68">{step.body}</p>
-            </div>
+              <div className="home-step-text">
+                <h3 className="home-step-title">{step.title}</h3>
+                <p className="home-step-body">{step.body}</p>
+              </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
 
       <section className="mx-auto max-w-(--page-max) px-(--page-pad) pt-[72px]">

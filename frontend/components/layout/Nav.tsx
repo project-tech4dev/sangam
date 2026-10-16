@@ -1,4 +1,9 @@
+"use client";
+
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { SignInButton } from "@/features/auth/sign-in-button";
 
 // One entry point per destination. Ask Sangam is public: signed out it previews,
@@ -12,6 +17,12 @@ const LINKS = [
 export type NavSection = "home" | (typeof LINKS)[number]["id"];
 
 export function Nav({ current }: { current: NavSection }) {
+  const pathname = usePathname();
+  // The phone menu is open on the page it was opened on, so following any link closes it.
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === pathname;
+  const setOpen = (next: boolean) => setOpenOn(next ? pathname : null);
+
   return (
     <nav
       className={
@@ -28,8 +39,7 @@ export function Nav({ current }: { current: NavSection }) {
         >
           sangam
         </Link>
-        {/* Fixed height, so on a phone the links scroll sideways rather than wrap. */}
-        <div className="flex min-w-0 items-center gap-3 overflow-x-auto whitespace-nowrap sm:gap-5">
+        <div className="nav-links">
           {LINKS.map((link) => (
             <Link
               key={link.id}
@@ -42,7 +52,32 @@ export function Nav({ current }: { current: NavSection }) {
           ))}
         </div>
         <SignInButton />
+        <button
+          type="button"
+          className="nav-menu-button"
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          aria-controls="nav-menu"
+          onClick={() => setOpen(!open)}
+        >
+          {open ? <X className="icon" /> : <Menu className="icon" />}
+        </button>
       </div>
+      {open && (
+        <div id="nav-menu" className="nav-menu">
+          {LINKS.map((link) => (
+            <Link
+              key={link.id}
+              href={link.href}
+              className="nav-menu-link"
+              aria-current={current === link.id ? "page" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      )}
     </nav>
   );
 }
