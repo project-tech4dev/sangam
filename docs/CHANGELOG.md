@@ -156,7 +156,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-12 · #179 · One backend call per registry profile page.
 - 2026-10-12 · #180 · Signed-out reads come from Next's data cache; a cron keeps one backend warm.
 - 2026-10-14 · Signed-out cached reads are keyed per deploy, so a new deploy never renders the last one's API shapes (profile pages 500ed after #202).
-- 2026-10-16 · Dependabot: `next` 16.3.8 (RCE in `next/og`, image SSRF), CopilotKit 1.75.2 (last on AG-UI 0.0.x), `undici`/`katex` overrides, PyJWT 2.15.1.
+- 2026-10-16 · Dependabot: `next` 16.3.8 (RCE in `next/og`, image SSRF), CopilotKit 1.75.2 (last on AG-UI 0.0.x), `undici`/`katex` overrides, PyJWT 2.15.1. A `Dependency review` check fails any PR that adds a high or critical advisory.
 
 ## Tracing and evals
 
