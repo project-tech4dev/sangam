@@ -82,11 +82,17 @@ def test_named_funders_carry_every_field(funders):
     assert "not judged:" in reply and "[funder:3]" in reply
 
 
-def test_unknown_criteria_are_counted_once_and_never_scored(funders):
+def test_a_named_funder_with_nothing_shared_counts_as_not_scored(funders):
     reply = _reply(funders({2: None, 4: 0.6}), shortlist=False)
-    assert "unknown across the 1 scored" not in reply  # a funder with nothing judged is not scored
-    assert "not scored" in reply
+    assert reply.splitlines()[1] == "scored 1: 1 medium · not scored 1"
+    # Its seven unknown criteria belong to no scored funder, so no unknown-across line.
+    assert "unknown across" not in reply
     assert "unknown unknown" not in reply
+
+
+def test_named_funders_none_shared(funders):
+    reply = _reply(funders({2: None}), shortlist=False)
+    assert reply.splitlines()[1] == "scored 0 · not scored 1"
 
 
 def test_not_scored_keeps_unknown_apart_from_nothing_shared(funders):

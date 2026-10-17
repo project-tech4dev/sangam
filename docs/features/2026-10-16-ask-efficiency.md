@@ -81,7 +81,7 @@ text-to-SQL [G].
 | # | Guidance | Ask today | Fix | In |
 |---|---|---|---|---|
 | 1 | Cap every response, page it, steer on truncation [W]; return only what the next step needs [D] | `compare_fit(org_id)` has no cap. It returns every scored funder at full detail as **one JSON line**, which got evicted and was unreadable | A compact shortlist, rendered as text with a line per fact, under a 15k-token budget. `funder_ids` keeps full detail, so it acts as `response_format` without adding a parameter | M2 |
-| 2 | Clearing breaks the cache, so use `clear_at_least` and `exclude_tools` [CE] | `ClearToolUsesEdit(trigger=40k, keep=5)` with no batching. It cleared on every call, the cache read stayed stuck at 7,338 tokens, and ~$0.66 of $0.87 went there | Raise the trigger, set `clear_at_least`, and `exclude_tools=("compare_fit",)`. Sangam Pitch shares the function | M2 |
+| 2 | Clearing breaks the cache, so use `clear_at_least` and `exclude_tools` [CE] | `ClearToolUsesEdit(trigger=40k, keep=5)` with no batching. It cleared on every call, the cache read stayed stuck at 7,338 tokens, and ~$0.66 of $0.87 went there | Raise the trigger, clear in 20k steps, and `exclude_tools=("compare_fit",)`. Sangam Pitch and Import share the function | M2 |
 | 3 | Preload a little, retrieve the rest on demand [C]; list the tables first [SQL] | No table list in the prompt, so the model guessed `org_themes`/`themes` and then called `db_list_tables` | Put a `{{TABLE_MAP}}` in `instructions.md`, built from `CATALOG` in `prompt.py` | M3 |
 | 4 | Poka-yoke: make mistakes hard to make [B] | A row is cited only if its id is in the SELECT. A locations query came back uncited and was re-run | The validator adds a `__cite__<alias>` id column, the same way `_plan_provenance` adds `__prov__` | M3 |
 | 5 | Return meaningful context [W] | `MAX_CELL_CHARS=200` cut `orgs.description`, which led to two `substring()` queries | For a one-row result, text cells go up to 2,000 characters | M3 |
@@ -159,7 +159,7 @@ Built by hand from `CLAUDE.md`'s Architecture section, `backend/app/agent/build.
  ┌─ middleware ───────────────────────────────────────────────────────────────────────────────┐
  │ Filesystem   unchanged ─ a safety net, no longer the normal path                           │
  │ sql_retry    also counts db_profile_column errors                                   (M4)   │
- │ ClearToolUses higher trigger · clear_at_least (one batch) · never compare_fit       (M2)   │
+ │ ClearToolUses higher trigger · clears in 20k steps · never compare_fit             (M2)   │
  │               ─▶ fires rarely, prefix stable, cache keeps climbing                         │
  │ answer_audit unchanged                                                                     │
  └────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -240,14 +240,25 @@ Raising the trigger and clearing in batches keeps the bound and keeps the prefix
 ### 4.2 Context clearing — `backend/app/agent/middleware.py`
 
 ```python
-TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 80_000   # was 40_000
-TOOL_RESULTS_CLEAR_AT_LEAST = 30_000        # clear in one batch, then not again for a while
-ClearToolUsesEdit(trigger=..., keep=TOOL_RESULTS_KEPT, clear_at_least=...,
-                  exclude_tools=("compare_fit",))
+TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 60_000   # was 40_000
+TOOL_RESULTS_CLEAR_STEP = 20_000
+SteppedClearToolUsesEdit(trigger=..., keep=TOOL_RESULTS_KEPT, exclude_tools=("compare_fit",))
 ```
 
-Values are set in M1 from the measured sizes, not guessed. `exclude_tools` is safe because a
-compact shortlist is bounded. Sangam Pitch shares the function and gets the same behaviour.
+The edit runs on a fresh copy before every model call. Past the trigger, `SteppedClearToolUsesEdit` reclaims
+`ceil((tokens − trigger) / step) × step` from the oldest end, so what is sent stays under 60k and the cleared
+set moves once per 20k of growth. A plain `clear_at_least=20_000` (M2's first cut) reclaimed the same 20k
+forever: 60 results of ~5k sent ~280k.
+
+| tokens in the turn | cleared | sent |
+|---|---|---|
+| 60k | nothing | 60k |
+| 65k | 20k | 45k |
+| 85k | 40k | 45k |
+| 150k | 100k | ~50k |
+
+`exclude_tools` is safe because a compact shortlist is bounded. Sangam Pitch and Import share the function
+and get the same behaviour.
 
 ### 4.3 Automatic citation id — `backend/app/agent/tools/sql/validator.py`, `render.py`
 
@@ -453,7 +464,7 @@ item (Evaluate) → Deploy, and back to Trace.
 - **Does a compact shortlist lose anything the write-up needs?** `funder-shortlist-brief` writes weak
   fits as "the score and its first `!` card line", which is exactly what is kept. If a user asks about
   one weak funder, the model calls `compare_fit(org_id, [that funder])` for the detail. Risk: low.
-- **Batch clearing can still bust the cache once per batch.** That is one cache rewrite per ~30k tokens
+- **Stepped clearing still busts the cache once per step.** That is one cache rewrite per ~20k tokens
   cleared, not one per call. Acceptable.
 - **The table map adds ~1k tokens to every Ask prompt.** It is cached after the first call; it removes
   one or two calls per cold question. Net saving.
