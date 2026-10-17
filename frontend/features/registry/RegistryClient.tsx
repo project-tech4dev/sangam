@@ -13,10 +13,25 @@ import {
 const PAGE = 20;
 const SUB = { all: "Everyone in the Registry", org: "Civil-society organisations", funder: "CSR, foundations, trusts" };
 
-function Row({ r }: { r: RegistryRow }) {
+const SHOW = 3;
+
+/* Each domain the row's themes reach, in the order the backend weighed them (most programmes first); Others last. */
+function domainsOf(r: RegistryRow): string[] {
+  const seen = [...new Set(r.themes.map((t) => t.domain).filter((d): d is string => !!d))];
+  return [...seen.filter((d) => d !== "Others"), ...seen.filter((d) => d === "Others")];
+}
+
+function More({ n }: { n: number }) {
+  return n > 0 ? <span className="reg-more">+{n} more</span> : null;
+}
+
+function Row({ r, f }: { r: RegistryRow; f: Filters }) {
   const name = displayName(r.name);
-  const themes = r.themes.slice(0, 3);
-  const lenses = r.lenses.slice(0, Math.max(1, 4 - themes.length));
+  const domains = domainsOf(r);
+  // With a Theme filter set, the row names the sub-themes that put it in the results.
+  const matched = f.theme === "all" ? [] : r.themes.filter((t) => t.domain === f.theme).map((t) => t.label);
+  const serves = f.population !== "all" && r.populations.includes(f.population)
+    ? [f.population, ...r.populations.filter((p) => p !== f.population)] : r.populations;
   return (
     <Link href={r.kind === "org" ? `/registry/${r.slug}` : `/registry/funders/${r.slug}`} className="reg-row">
       <span className="reg-mark" data-kind={r.kind} aria-hidden="true">{initialsOf(name)}</span>
@@ -26,13 +41,30 @@ function Row({ r }: { r: RegistryRow }) {
           <span className="muted reg-row-kind">{kindLine(r)}</span>
         </span>
         <span className="reg-row-tags">
-          {themes.length === 0 && lenses.length === 0 && <span className="reg-tag" data-tone="gap">Themes not tagged yet</span>}
-          {themes.map((t) => <span key={t.label} className="reg-tag" data-tone="theme">{t.label}</span>)}
-          {lenses.map((l) => <span key={l} className="reg-tag" data-tone="lens">{l}</span>)}
+          {domains.length === 0 && <span className="reg-tag" data-tone="gap">Themes not tagged yet</span>}
+          {domains.map((d) => (
+            <span key={d} className="reg-tag" data-tone="theme" data-active={d === f.theme || undefined}>{d}</span>
+          ))}
           {r.sdgs.map((g) => (
             <span key={g} className="reg-sdg" data-sdg={g} title={`SDG ${g}: ${SDG_NAME[g] ?? ""}`}>{g}</span>
           ))}
         </span>
+        {matched.length > 0 && (
+          <span className="reg-row-line">
+            <span className="reg-row-label">In {f.theme}:</span>
+            <span>{matched.slice(0, SHOW).join(" · ")}</span>
+            <More n={matched.length - SHOW} />
+          </span>
+        )}
+        {serves.length > 0 && (
+          <span className="reg-row-line">
+            <span className="reg-row-label">Serves</span>
+            {serves.slice(0, SHOW).map((p) => (
+              <span key={p} className="reg-tag" data-tone="population" data-active={p === f.population || undefined}>{p}</span>
+            ))}
+            <More n={serves.length - SHOW} />
+          </span>
+        )}
         <span className="muted reg-row-signal">{signal(r)}</span>
       </span>
     </Link>
@@ -52,12 +84,12 @@ export function RegistryClient({ rows, initialType }: { rows: RegistryRow[]; ini
 
   const options = useMemo(() => {
     const domains = present(rows.flatMap((r) => [...new Set(r.themes.map((t) => t.domain).filter((d): d is string => !!d))]));
-    const lenses = present(rows.flatMap((r) => r.lenses));
+    const populations = present(rows.flatMap((r) => r.populations));
     const sdgs = [...new Set(rows.flatMap((r) => r.sdgs))].sort((a, b) => Number(a) - Number(b));
     const states = new Set(rows.flatMap((r) => r.states));
     const types = present(rows.filter((r) => r.kind === "funder" && r.funder_type).map((r) => r.funder_type!));
     return {
-      domains, lenses, sdgs, types,
+      domains, populations, sdgs, types,
       ne: NORTH_EAST.filter((s) => states.has(s)),
       open: rows.some((r) => r.open_call),
       invites: rows.some((r) => r.intake_mode === "invitation_only"),
@@ -70,8 +102,8 @@ export function RegistryClient({ rows, initialType }: { rows: RegistryRow[]; ini
       options: [["all", "All themes"], ...options.domains.map((d): [string, string] => [d, d])],
     },
     {
-      key: "lens", label: "Who they serve", value: f.lens, defaultValue: "all", onChange: (v) => set({ lens: v }),
-      options: [["all", "Anyone served"], ...options.lenses.map((l): [string, string] => [l, l])],
+      key: "population", label: "Who they serve", value: f.population, defaultValue: "all", onChange: (v) => set({ population: v }),
+      options: [["all", "Anyone served"], ...options.populations.map((p): [string, string] => [p, p])],
     },
     {
       key: "sdg", label: "SDG", value: f.sdg, defaultValue: "all", onChange: (v) => set({ sdg: v }),
@@ -144,7 +176,7 @@ export function RegistryClient({ rows, initialType }: { rows: RegistryRow[]; ini
       </div>
 
       <div className="reg-list">
-        {visible.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} />)}
+        {visible.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} f={f} />)}
         {shown.length === 0 && <div className="muted reg-none">No entries match these filters.</div>}
         <ListMore shown={visible.length} total={shown.length} onMore={more} page={PAGE} />
         {shown.length > 0 && (

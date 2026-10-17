@@ -82,11 +82,12 @@ export const humanise = (value: string) => value.replace(/_/g, " ");
 
 export const num = (value: number) => Number(value).toLocaleString("en-IN");
 
-/* Themes read "Theme › Sub-theme"; populations and lenses are who the work is for. */
+/* Themes read "Theme › Sub-theme"; populations are who the work is for, lenses how it is done. */
 export function splitTags(tags: TagNote[]) {
   const themes = tags.filter((t) => t.kind === "theme" || t.kind === "sub_theme");
-  const who = tags.filter((t) => t.kind === "population" || t.kind === "lens");
-  return { themes, who };
+  const who = tags.filter((t) => t.kind === "population");
+  const lenses = tags.filter((t) => t.kind === "lens");
+  return { themes, who, lenses };
 }
 
 export const themeLabel = (t: TagNote) => (t.parent_label ? `${t.parent_label} › ${t.label}` : t.label);

@@ -79,7 +79,7 @@ GROUP BY 1
 
 
 def entity_tags(owner: str, table: str) -> str:
-    """Each tag of the entities in %(ids)s, with its parent's label and the domain at the top of its tree."""
+    """Each tag of the entities in %(ids)s: its parent's label, its domain, and how many of their programmes carry it."""
     return f"""
 WITH RECURSIVE up AS (
   SELECT id AS start, id, parent_id, label, kind FROM tags
@@ -88,7 +88,9 @@ WITH RECURSIVE up AS (
 ),
 root AS (SELECT start, label FROM up WHERE parent_id IS NULL AND kind = 'domain')
 SELECT x.{owner} AS id, tg.slug, tg.label, tg.kind, x.role, {public_text('x.note')} AS note,
-       par.label AS parent_label, root.label AS domain
+       par.label AS parent_label, root.label AS domain,
+       (SELECT count(*) FROM programs p JOIN program_tags pt ON pt.program_id = p.id
+        WHERE p.{owner} = x.{owner} AND pt.tag_id = x.tag_id) AS progs
 FROM {table} x
 JOIN tags tg ON tg.id = x.tag_id
 LEFT JOIN tags par ON par.id = tg.parent_id

@@ -260,7 +260,7 @@ export type BriefLink = { url: string; expires_in_seconds: number; slug: string;
 export type RegistryRow = {
   kind: "org" | "funder"; id: number; slug: string; name: string; funder_type: string | null;
   place: string | null; states: string[]; themes: { label: string; domain: string | null }[];
-  lenses: string[]; sdgs: string[]; csr1: boolean; has_12a_80g: boolean; fcra: boolean;
+  populations: string[]; sdgs: string[]; csr1: boolean; has_12a_80g: boolean; fcra: boolean;
   intake_mode: string | null; open_call: boolean; partners: number;
   csr_prescribed: number | null; csr_year: string | null;
   press: number; social: number; posts_since: string | null;

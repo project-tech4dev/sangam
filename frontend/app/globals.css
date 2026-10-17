@@ -444,8 +444,15 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
   padding: 3px 9px; border: 1px solid var(--color-neutral-300); color: var(--color-neutral-900); background: var(--color-bg);
 }
 .reg-tag[data-tone="theme"] { background: var(--color-accent-2-200); border-color: var(--color-accent-2-200); color: var(--color-accent-2-800); }
-.reg-tag[data-tone="lens"] { background: var(--color-accent-100); border-color: var(--color-accent-200); color: var(--color-accent-800); }
+.reg-tag[data-tone="population"] { background: var(--color-accent-100); border-color: var(--color-accent-200); color: var(--color-accent-800); }
 .reg-tag[data-tone="gap"] { font-style: italic; color: var(--color-neutral-700); background: var(--color-neutral-100); border-color: var(--color-neutral-200); }
+/* A selected filter's own tag on a row carries a darker edge. */
+.reg-tag[data-tone="theme"][data-active] { border-color: var(--color-accent-2-700); }
+.reg-tag[data-tone="population"][data-active] { border-color: var(--color-accent-750); }
+/* A labelled line under the domains: "In Health: …" and "Serves …", each cut at three with "+N more". */
+.reg-row-line { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: var(--fs-xs); min-width: 0; }
+.reg-row-label { font-weight: 600; color: var(--color-neutral-700); }
+.reg-more { font-size: var(--fs-xs); color: var(--color-neutral-700); white-space: nowrap; }
 .reg-sdg {
   width: 22px; height: 22px; border-radius: calc(var(--radius) - 6px); display: inline-flex; align-items: center;
   justify-content: center; color: #fff; font-size: var(--fs-xs); font-weight: 700; background: var(--color-neutral-600);

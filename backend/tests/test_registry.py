@@ -7,7 +7,7 @@ ROUTE = "app.api.routes.registry"
 ROWS = [
     {"kind": "org", "id": 4, "slug": "kabil", "name": "KABIL", "place": "Udalguri, Assam",
      "states": ["Assam", "Rajasthan"], "themes": [{"label": "Livelihood diversification", "domain": "Livelihoods"}],
-     "lenses": ["Women & girls"], "sdgs": ["1", "5"], "csr1": False, "has_12a_80g": True, "fcra": True,
+     "populations": ["Women"], "sdgs": ["1", "5"], "csr1": False, "has_12a_80g": True, "fcra": True,
      "press": 0, "social": 6, "posts_since": "2026-08-04", "search": "udalguri kabil india"},
     {"kind": "funder", "id": 29, "slug": "axis-bank-foundation", "name": "Axis Bank Foundation",
      "funder_type": "corporate_foundation", "states": ["Meghalaya"], "intake_mode": "invitation_only",
@@ -54,3 +54,18 @@ async def test_research_failure_leaves_the_list_up(client_for, monkeypatch):
         response = await client.get("/api/registry")
     assert response.status_code == 200
     assert all(r["research_runs"] == 0 for r in response.json()["rows"])
+
+
+def test_a_row_leads_with_the_tags_most_of_its_programmes_carry_and_leaves_lenses_out():
+    from app.repositories.registry import _themes
+
+    def tag(label, kind, progs, domain="Health"):
+        return {"label": label, "kind": kind, "progs": progs, "domain": domain}
+
+    themes, populations = _themes([
+        tag("Arts", "sub_theme", 0, "Others"), tag("Primary care", "sub_theme", 3),
+        tag("Children", "population", 1), tag("Women", "population", 4), tag("NRM", "sub_theme", 3, "Livelihoods"),
+        tag("Climate-smart", "lens", 9),
+    ])
+    assert [t["label"] for t in themes] == ["Primary care", "NRM", "Arts"]
+    assert populations == ["Women", "Children"]
