@@ -47,12 +47,12 @@ export function signal(r: RegistryRow): string {
 }
 
 export type Filters = {
-  kind: "all" | "org" | "funder"; theme: string; lens: string; sdg: string; where: string;
+  kind: "all" | "org" | "funder"; theme: string; population: string; sdg: string; where: string;
   reg: string; ftype: string; approach: string; q: string;
 };
 
 export const DEFAULTS: Omit<Filters, "kind"> = {
-  theme: "all", lens: "all", sdg: "all", where: "any", reg: "any", ftype: "all", approach: "any", q: "",
+  theme: "all", population: "all", sdg: "all", where: "any", reg: "any", ftype: "all", approach: "any", q: "",
 };
 
 function worksIn(r: RegistryRow, where: string): boolean {
@@ -65,7 +65,7 @@ function worksIn(r: RegistryRow, where: string): boolean {
 export function matches(r: RegistryRow, f: Filters): boolean {
   if (f.kind !== "all" && r.kind !== f.kind) return false;
   if (f.theme !== "all" && !r.themes.some((t) => t.domain === f.theme)) return false;
-  if (f.lens !== "all" && !r.populations.includes(f.lens)) return false;
+  if (f.population !== "all" && !r.populations.includes(f.population)) return false;
   if (f.sdg !== "all" && !r.sdgs.includes(f.sdg)) return false;
   if (!worksIn(r, f.where)) return false;
   if (f.kind === "org" && f.reg !== "any") {

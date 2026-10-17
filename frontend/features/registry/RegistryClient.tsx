@@ -30,7 +30,8 @@ function Row({ r, f }: { r: RegistryRow; f: Filters }) {
   const domains = domainsOf(r);
   // With a Theme filter set, the row names the sub-themes that put it in the results.
   const matched = f.theme === "all" ? [] : r.themes.filter((t) => t.domain === f.theme).map((t) => t.label);
-  const serves = f.lens !== "all" && r.populations.includes(f.lens) ? [f.lens, ...r.populations.filter((l) => l !== f.lens)] : r.populations;
+  const serves = f.population !== "all" && r.populations.includes(f.population)
+    ? [f.population, ...r.populations.filter((p) => p !== f.population)] : r.populations;
   return (
     <Link href={r.kind === "org" ? `/registry/${r.slug}` : `/registry/funders/${r.slug}`} className="reg-row">
       <span className="reg-mark" data-kind={r.kind} aria-hidden="true">{initialsOf(name)}</span>
@@ -58,8 +59,8 @@ function Row({ r, f }: { r: RegistryRow; f: Filters }) {
         {serves.length > 0 && (
           <span className="reg-row-line">
             <span className="reg-row-label">Serves</span>
-            {serves.slice(0, SHOW).map((l) => (
-              <span key={l} className="reg-tag" data-tone="lens" data-active={l === f.lens || undefined}>{l}</span>
+            {serves.slice(0, SHOW).map((p) => (
+              <span key={p} className="reg-tag" data-tone="population" data-active={p === f.population || undefined}>{p}</span>
             ))}
             <More n={serves.length - SHOW} />
           </span>
@@ -101,8 +102,8 @@ export function RegistryClient({ rows, initialType }: { rows: RegistryRow[]; ini
       options: [["all", "All themes"], ...options.domains.map((d): [string, string] => [d, d])],
     },
     {
-      key: "lens", label: "Who they serve", value: f.lens, defaultValue: "all", onChange: (v) => set({ lens: v }),
-      options: [["all", "Anyone served"], ...options.populations.map((l): [string, string] => [l, l])],
+      key: "population", label: "Who they serve", value: f.population, defaultValue: "all", onChange: (v) => set({ population: v }),
+      options: [["all", "Anyone served"], ...options.populations.map((p): [string, string] => [p, p])],
     },
     {
       key: "sdg", label: "SDG", value: f.sdg, defaultValue: "all", onChange: (v) => set({ sdg: v }),
