@@ -51,7 +51,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-08 · #125 · Reopening a past chat shows its messages from any browser (`/api/threads`, read from the checkpointer).
 - 2026-10-12 · #178 · Both agents are built on the first chat turn, not at boot (`load_agents()`).
 - 2026-10-13 · #191 · Ask's `fetch_url` reads a page without a length cap.
-- 2026-10-17 · (unmerged) · Ask efficiency M2: `compare_fit(org_id)` replies in text with the top 10 strong/medium fits in full and every other funder on one line (worst case ≈10k tokens, was one JSON line past the 20k eviction); tool-result clearing clears a fixed 20k from the oldest end past 60k and never `compare_fit`, so the cached prefix stays put. Ask, Sangam Pitch and Sangam Import share it.
+- 2026-10-17 · (unmerged) · Ask efficiency M2: `compare_fit(org_id)` replies in text with the top 10 strong/medium fits in full and every other funder on one line (worst case ≈10k tokens, was one JSON line past the 20k eviction); tool-result clearing, past 60k, clears the oldest results in 20k steps (what is sent stays under 60k, the cached prefix moves once per step) and never `compare_fit`. Header counts only scored funders. Ask, Sangam Pitch and Sangam Import share it.
 
 ## Knowledge graph
 

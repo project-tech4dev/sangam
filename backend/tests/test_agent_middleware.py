@@ -45,8 +45,22 @@ def _cache_breaks(edit: ClearToolUsesEdit, calls: int) -> int:
     return breaks
 
 
-def test_the_cleared_set_changes_at_most_once_as_the_turn_grows():
-    assert _cache_breaks(_edit(), 30) <= 1
+def _sent_tokens(calls: int) -> int:
+    edited = deepcopy(_conversation(calls))
+    _edit().apply(edited, count_tokens=count_tokens_approximately)
+    return count_tokens_approximately(edited)
+
+
+def test_the_cleared_set_moves_once_per_step_as_the_turn_grows():
+    # 30 results of ~5k is ~150k tokens: ~90k past the trigger, so at most five 20k steps.
+    over = count_tokens_approximately(_conversation(30)) - middleware.TOOL_RESULT_CLEAR_TRIGGER_TOKENS
+    assert _cache_breaks(_edit(), 30) <= -(-over // middleware.TOOL_RESULTS_CLEAR_STEP)
+
+
+def test_what_is_sent_stays_under_the_trigger_however_long_the_turn():
+    # A fixed clear_at_least cleared the same four results forever: 60 calls sent ~280k.
+    for calls in (13, 17, 30, 60):
+        assert _sent_tokens(calls) <= middleware.TOOL_RESULT_CLEAR_TRIGGER_TOKENS
 
 
 def test_the_old_setting_broke_the_cache_on_every_call_past_the_trigger():

@@ -69,16 +69,19 @@ def _full(n: int, entry: dict, *, summary: bool) -> list[str]:
 def render(result: dict, *, shortlist: bool) -> str:
     """compare()'s result as text, one fact per line, so an oversized reply still pages."""
     matches = result["matches"]
-    tiers = Counter(m["tier"] for m in matches)
+    # Named funders with nothing shared stay in matches with a null score; the header counts them as not scored.
+    scored = [m for m in matches if m["score"] is not None]
+    tiers = Counter(m["tier"] for m in scored)
     not_scored = result["not_scored"]
+    unscored = len(matches) - len(scored) + sum(len(v) for v in not_scored.values())
+    by_tier = " · ".join(f"{tiers[t]} {t}" for t in ("strong", "medium", "weak") if tiers[t])
     lines = [
         f"compare_fit · {result['org']} · rubric {result['rubric']} · {result['funders_checked']} funders checked",
-        f"scored {len(matches)}: " + " · ".join(f"{tiers[t]} {t}" for t in ("strong", "medium", "weak") if tiers[t])
-        + f" · not scored {sum(len(v) for v in not_scored.values())}",
+        f"scored {len(scored)}" + (f": {by_tier}" if by_tier else "") + f" · not scored {unscored}",
     ]
-    unknown = Counter(c["criterion"] for m in matches for c in m["criteria"] if c["status"] == "unknown")
+    unknown = Counter(c["criterion"] for m in scored for c in m["criteria"] if c["status"] == "unknown")
     if unknown:
-        lines.append(f"unknown across the {len(matches)} scored: "
+        lines.append(f"unknown across the {len(scored)} scored: "
                      + ", ".join(f"{label} {n}" for label, n in unknown.most_common()))
 
     full = [m for m in matches if not shortlist or m["tier"] in ("strong", "medium")][:FULL_DETAIL_MAX if shortlist else None]
