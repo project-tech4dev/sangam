@@ -21,7 +21,7 @@ class RegistryRow(ReadModel):
     place: str | None = None          # an org's leading district and state, "Udalguri, Assam"
     states: list[str] = Field(default_factory=list)
     themes: list[RegistryTheme] = Field(default_factory=list)
-    lenses: list[str] = Field(default_factory=list)
+    populations: list[str] = Field(default_factory=list)  # who the work is for; lenses show on the profile only
     sdgs: list[str] = Field(default_factory=list)
     csr1: bool = False                # org registrations on file (registered or provisional, current)
     has_12a_80g: bool = False

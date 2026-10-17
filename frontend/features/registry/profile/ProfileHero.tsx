@@ -12,7 +12,7 @@ export function ProfileHero({
   whoLabel: string; line: string[]; website: string | null;
   ask: { href: string; label: string }; brief: string | null;
 }) {
-  const { themes, who } = splitTags(tags);
+  const { themes, who, lenses } = splitTags(tags);
   const href = safeHref(website);
   return (
     <Hero
@@ -26,7 +26,7 @@ export function ProfileHero({
         </>
       }
     >
-      {(themes.length > 0 || who.length > 0 || sdgs.length > 0) && (
+      {(themes.length > 0 || who.length > 0 || lenses.length > 0 || sdgs.length > 0) && (
         <dl className="profile-hero-facets">
           {themes.length > 0 && (
             <>
@@ -41,6 +41,14 @@ export function ProfileHero({
               <dt className="profile-hero-label">{whoLabel}</dt>
               <dd className="profile-hero-pills">
                 {who.map((t) => <span key={t.slug} className="profile-lens">{t.label}</span>)}
+              </dd>
+            </>
+          )}
+          {lenses.length > 0 && (
+            <>
+              <dt className="profile-hero-label">Lenses</dt>
+              <dd className="profile-hero-pills">
+                {lenses.map((t) => <span key={t.slug} className="profile-lens">{t.label}</span>)}
               </dd>
             </>
           )}

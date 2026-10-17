@@ -112,9 +112,11 @@ def _places(rows: list[dict]) -> tuple[str | None, list[str], list[str]]:
 
 
 def _themes(tags: list[dict]) -> tuple[list[dict], list[str]]:
+    # Most programmes first, so a row leads with the work the entity does most; ties keep role, then label.
+    tags = sorted(tags, key=lambda t: -t["progs"])
     themes = [{"label": t["label"], "domain": t["domain"]} for t in tags if t["kind"] in ("theme", "sub_theme")]
-    lenses = [t["label"] for t in tags if t["kind"] in ("population", "lens")]
-    return themes, lenses
+    populations = [t["label"] for t in tags if t["kind"] == "population"]
+    return themes, populations
 
 
 _NO_STORIES = {"press": 0, "social": 0, "posts_since": None}
@@ -155,13 +157,13 @@ async def registry_rows(pool: Any, owner: Any) -> list[dict]:
         place, states, districts = _places(o_places[i])
         if not place and o["district"]:
             place = ", ".join(x for x in (o["district"].title(), o["state"]) if x)
-        themes, lenses = _themes(o_tags[i])
+        themes, populations = _themes(o_tags[i])
         types = set(o_ids[i][0]["types"]) if o_ids[i] else set()
         funded = o_funders[i][0] if o_funders[i] else {"n": 0, "names": ""}
         news = o_news[i][0] if o_news[i] else _NO_STORIES
         rows.append({
             "kind": "org", "id": i, "slug": o["slug"], "name": o["name"], "place": place, "states": states,
-            "themes": themes, "lenses": lenses, "sdgs": [s["code"] for s in o_sdgs[i]],
+            "themes": themes, "populations": populations, "sdgs": [s["code"] for s in o_sdgs[i]],
             "csr1": "csr1" in types, "has_12a_80g": {"12a", "80g"} <= types, "fcra": "fcra" in types,
             "partners": funded["n"], "press": news["press"], "social": news["social"], "posts_since": news["posts_since"],
             "search": _search(o["name"], *(o["aliases"] or []), *districts, *states,
@@ -170,13 +172,13 @@ async def registry_rows(pool: Any, owner: Any) -> list[dict]:
     for f in funders:
         i = f["id"]
         _, states, districts = _places(f_places[i])
-        themes, lenses = _themes(f_tags[i])
+        themes, populations = _themes(f_tags[i])
         partners = f_partners[i][0] if f_partners[i] else {"n": 0, "names": ""}
         csr = f_csr[i][0] if f_csr[i] else {"fiscal_year": None, "prescribed_csr": None}
         news = f_news[i][0] if f_news[i] else _NO_STORIES
         rows.append({
             "kind": "funder", "id": i, "slug": f["slug"], "name": f["name"], "funder_type": f["funder_type"],
-            "states": states, "themes": themes, "lenses": lenses, "sdgs": [s["code"] for s in f_sdgs[i]],
+            "states": states, "themes": themes, "populations": populations, "sdgs": [s["code"] for s in f_sdgs[i]],
             "intake_mode": f["intake_mode"], "open_call": bool(f_open[i]), "partners": partners["n"],
             "csr_prescribed": csr["prescribed_csr"], "csr_year": csr["fiscal_year"],
             "press": news["press"], "social": news["social"], "posts_since": news["posts_since"],

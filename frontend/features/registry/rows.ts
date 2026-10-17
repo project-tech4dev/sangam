@@ -65,7 +65,7 @@ function worksIn(r: RegistryRow, where: string): boolean {
 export function matches(r: RegistryRow, f: Filters): boolean {
   if (f.kind !== "all" && r.kind !== f.kind) return false;
   if (f.theme !== "all" && !r.themes.some((t) => t.domain === f.theme)) return false;
-  if (f.lens !== "all" && !r.lenses.includes(f.lens)) return false;
+  if (f.lens !== "all" && !r.populations.includes(f.lens)) return false;
   if (f.sdg !== "all" && !r.sdgs.includes(f.sdg)) return false;
   if (!worksIn(r, f.where)) return false;
   if (f.kind === "org" && f.reg !== "any") {

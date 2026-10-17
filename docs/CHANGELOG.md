@@ -125,6 +125,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-11 · #151 · One list pattern for list pages (`components/ui/ListPage.tsx`).
 - 2026-10-12 · #175 · Registry cards wrap long theme tags; styles move to `.reg-*` classes.
 - 2026-10-16 · #236 · Phone nav folds its links into a menu beside Sign in; Home's five steps become one numbered card; hero copy.
+- 2026-10-17 · #N · Registry rows show domains (most programmes first) and up to three populations served, with "+N more"; a Theme filter names the sub-themes it matched. Lenses move to their own line on the profile.
 
 ## Proposals
 
