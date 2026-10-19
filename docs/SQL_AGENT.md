@@ -400,10 +400,10 @@ Next: fix the column name and call db_query again.
 failure** (otherwise the model diffs against text that never ran), and **never surface
 `psycopg.OperationalError` text**, which can contain the DSN host and user.
 
-### 5b. Tool return shape — plain strings, and why not `content_and_artifact`
+### 5b. Tool return shape — the text is for the model; only the SQL is an artifact
 
-**The plan called for LangChain's two-channel tool return. Measured in M4: it cannot
-work over this transport.** The AG-UI wire `ToolMessage`
+**The plan called for LangChain's two-channel tool return. Measured in M4: an artifact
+never reaches the browser over this transport.** The AG-UI wire `ToolMessage`
 (`ag_ui.core.types.ToolMessage`) has fields `id / role / content / tool_call_id /
 subagent_run_id / error / encrypted_value / metadata` — no `artifact` — and
 `ag_ui_langgraph/agent.py:4510` constructs it from the first four. An artifact
