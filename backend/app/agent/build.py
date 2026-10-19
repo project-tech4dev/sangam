@@ -14,7 +14,14 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry_limiter, tool_errors
+from app.agent.middleware import (
+    CompareFitBudget,
+    answer_audit,
+    clear_old_tool_results,
+    model_call_cap,
+    sql_retry_limiter,
+    tool_errors,
+)
 from app.agent.models import resolve_model
 from app.agent.prompt import render_prompt
 from app.agent.tools.graph_tools import search_graph
@@ -26,6 +33,7 @@ from app.agent.tools.sql_tools import (
     db_query,
 )
 from app.core.config import Settings
+from app.ingest.middleware import cheap_summarizer, fallback
 from app.integrations.tracing import trace_config
 
 # The agent reaches the database ONE way: it discovers the schema, then writes a SELECT. There used to be
@@ -63,22 +71,28 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Replaces the preset's FilesystemMiddleware, which brings eight tools.
     # read_file and ls are what loading a skill needs; nothing that writes.
     backend = _backend()
+    strong = resolve_model(settings.model)
     middleware = [
         filesystem_tools(backend, keep=SKILL_READING_TOOLS),
         tool_errors(),
         sql_retry_limiter,
+        model_call_cap(settings.ask_model_call_limit),
+        CompareFitBudget(),
         clear_old_tool_results(),
+        # Import and Pitch already have both: the next tier when a call fails, and summaries on the cheap tier.
+        *fallback(settings.model, settings.research_model),
+        cheap_summarizer(strong, resolve_model(settings.utility_model), backend),
     ]
     if settings.sql_audit_model:
         # On by default (SQL_AUDIT_MODEL=off turns it off): one cheap extra model call per SQL turn.
         middleware.append(answer_audit(settings.sql_audit_model))
 
     agent = create_deep_agent(
-        model=resolve_model(settings.model),
+        model=strong,
         tools=TOOLS,
         backend=backend,
         skills=[SKILLS_ROUTE],
-        # sql_retry_limiter comes before the hooks that do work: it can jump to the
+        # sql_retry_limiter and the model-call cap come before the hooks that do work: both can jump to the
         # end of the graph. The filesystem only adds tools, so its place is free.
         middleware=middleware,
         system_prompt=render_prompt(settings),

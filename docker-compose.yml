@@ -68,6 +68,7 @@ services:
       # Hard stops per researcher; empty = the defaults in config.py.
       RESEARCH_PAGE_LIMIT: ${RESEARCH_PAGE_LIMIT:-}
       RESEARCH_MODEL_CALL_LIMIT: ${RESEARCH_MODEL_CALL_LIMIT:-}
+      ASK_MODEL_CALL_LIMIT: ${ASK_MODEL_CALL_LIMIT:-}
       # Supabase Storage. Unset = archiving skipped, uploads 503; everything
       # else runs. Forwarded here because a variable absent from this block
       # never reaches the container however it is set in .env — which is how
