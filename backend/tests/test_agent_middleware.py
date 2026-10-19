@@ -80,3 +80,26 @@ def test_past_the_trigger_old_results_are_cleared_but_compare_fit_never_is():
     assert "[cleared]" in contents
     # The latest results, which a follow-up refers back to, stay.
     assert all(c != "[cleared]" for c in contents[-middleware.TOOL_RESULTS_KEPT:])
+
+
+class TestEveryFailedSqlAttemptCounts:
+    def _failed(self, name: str, text: str, i: int) -> list:
+        return [AIMessage(content="", tool_calls=[{"name": name, "args": {}, "id": f"f{i}"}]),
+                ToolMessage(text, tool_call_id=f"f{i}", name=name)]
+
+    def test_a_wrong_column_in_db_profile_column_counts_like_one_in_db_query(self):
+        messages = [HumanMessage("which trusts work in Assam?"),
+                    *self._failed("db_query", "db_query rejected: unknown column", 1),
+                    *self._failed("db_profile_column", "db_profile_column rejected: orgs has no readable column", 2),
+                    *self._failed("db_profile_column", "db_profile_column failed: timeout", 3)]
+        assert middleware.count_failed_sql_attempts(messages) == 3
+
+    async def test_its_rejections_carry_its_own_prefix(self):
+        from app.agent.tools.sql_tools import db_profile_column
+
+        reply = await db_profile_column.ainvoke({"table": "orgs", "column": "no_such_column"})
+        assert reply.startswith("db_profile_column rejected:")
+
+    def test_a_profile_that_worked_never_counts(self):
+        messages = [HumanMessage("q"), *self._failed("db_profile_column", "orgs.legal_form — 3 most common", 1)]
+        assert middleware.count_failed_sql_attempts(messages) == 0

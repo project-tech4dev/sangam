@@ -158,7 +158,7 @@ browser ── Next.js ── /api/copilotkit (CopilotKit v2 runtime)
               └────── FastAPI ── LangGraph deep agent
                           │          tools: db_list_tables · db_describe_table
                           │                 db_profile_column · db_query
-                          │                 search_graph · fetch_url · compare_fit
+                          │                 search_graph · compare_fit
                           ▼
               Postgres + pgvector        Neo4j (optional)
 ```
@@ -241,9 +241,9 @@ once, under a lock, when `/agent` or `/ingest` is first posted to. Those two rou
 route that needs a graph calls `get_graph(app, "ask_graph" | "ingest_graph")`; a REST module that
 imports agent code at the top undoes this, so `routes/` imports it inside the function that uses it.
 
-**The agent has exactly seven tools, and there is ONE open path to the database.**
+**The agent has exactly six tools, and there is ONE open path to the database.**
 `app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
-`db_query`, `search_graph`, `fetch_url` and `compare_fit`. Nothing else, and no subagent, so there
+`db_query`, `search_graph` and `compare_fit`. Nothing else, and no subagent, so there
 is no `task` tool. `compare_fit` is the one exception to "the model writes its own SELECT": funder
 matching is a fixed checklist, so its queries are fixed too (`app/repositories/matching.py`, in a
 read-only transaction with the same `statement_timeout`).
@@ -283,7 +283,7 @@ two different mechanisms, and the difference matters: a `HarnessProfile` is regi
 **provider**, so it is global to every agent sharing a model — right for the subagent, wrong for
 tools, since both supervisors need `ls` to find a skill and no subagent may hold it. So
 `install()` disables the subagent globally, and `filesystem(backend, keep=...)` replaces the
-preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its seven plus
+preset's `FilesystemMiddleware` **per agent**. Ask Sangam ends at its six plus
 `read_file` and `ls`; a subagent keeps only `read_file`, which `FilesystemMiddleware` refuses to
 be built without. Nothing that writes survives on any of them. A third deep agent, the news verifier
 (`app/ingest/news/verify.py`, `RESEARCH_MODEL`), runs inside a news pull with `read_page`,
@@ -381,7 +381,8 @@ product depends on and that a new tool silently breaks:
 - *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
   `[activity:N]`, `[score:N]`, `[news:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces
-  uncitable answers. (`fetch_url` is the exception: live web text carries no marker.)
+  uncitable answers. Ask has no web tool: `fetch_url` was removed so a page it read could not steer
+  `db_query` rows out to a URL.
 
 Adding a tool: write the async function in `app/agent/tools/` with both conventions, register it
 in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asserts every

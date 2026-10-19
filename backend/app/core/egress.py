@@ -1,5 +1,5 @@
 """Outbound fetches never reach a private, loopback, link-local or internal address, before or after DNS.
-Shared by Import's research tools and Ask Sangam's fetch_url; checked on every redirect hop."""
+Shared by Import's research tools and the news pipeline; checked on every redirect hop."""
 
 from __future__ import annotations
 

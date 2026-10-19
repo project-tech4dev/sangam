@@ -18,17 +18,25 @@ from langchain.agents.middleware import (
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
 from app.agent.audit import CAVEAT_PREFIX, audit_turn
-from app.agent.tools.sql.errors import FAILED_PREFIX, REJECTED_PREFIX
+from app.agent.tools.sql.errors import (
+    FAILED_PREFIX,
+    PROFILE_FAILED_PREFIX,
+    PROFILE_REJECTED_PREFIX,
+    REJECTED_PREFIX,
+)
 from app.integrations.tracing import score_answer
 
 logger = logging.getLogger(__name__)
 
-# Failed db_query attempts allowed per user question. The system prompt is told the same number so the model
-# stops gracefully first; this is the deterministic backstop for when it does not.  Only db_query counts.
+# Failed SQL attempts allowed per user question. The system prompt is told the same number so the model
+# stops gracefully first; this is the deterministic backstop for when it does not.
 MAX_SQL_ATTEMPTS = 5
 
-COUNTED_TOOL = "db_query"
-_FAILURE_PREFIXES = (FAILED_PREFIX, REJECTED_PREFIX)
+# A wrong column in db_profile_column is the same failed attempt as in db_query, so both count.
+COUNTED = {
+    "db_query": (FAILED_PREFIX, REJECTED_PREFIX),
+    "db_profile_column": (PROFILE_FAILED_PREFIX, PROFILE_REJECTED_PREFIX),
+}
 
 # Bulky old result grids are dead weight once the model has read them, but the
 # most recent few are what a follow-up question refers back to.
@@ -47,16 +55,16 @@ _GIVE_UP = (
 
 
 def count_failed_sql_attempts(messages: list[BaseMessage]) -> int:
-    """Failed db_query calls since the user's most recent message."""
+    """Failed db_query and db_profile_column calls since the user's most recent message."""
     failures = 0
     for message in reversed(messages):
         if isinstance(message, HumanMessage):
             break
         if (
             isinstance(message, ToolMessage)
-            and message.name == COUNTED_TOOL
+            and message.name in COUNTED
             and isinstance(message.content, str)
-            and message.content.startswith(_FAILURE_PREFIXES)
+            and message.content.startswith(COUNTED[message.name])
         ):
             failures += 1
     return failures
