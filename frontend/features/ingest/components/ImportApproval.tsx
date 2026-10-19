@@ -35,6 +35,14 @@ type NewsPlan = {
 };
 
 const isNews = (plan: Plan) => plan.sources.includes("tavily_news");
+const isCalls = (plan: Plan) => plan.sources.includes("funder_calls");
+
+/** Who an open-calls pull reads, and what it costs per funder: the pull's own numbers, no plan endpoint. */
+function callsLine(funders: string): string {
+  const names = funders.split(",").map((n) => n.trim()).filter(Boolean);
+  const who = names.length ? `${names.length === 1 ? "1 funder" : `${names.length} funders`}: ${names.join(", ")}` : "Every funder in Sangam";
+  return `${who} · about 1 search and 2 small model calls per funder`;
+}
 
 /** The news pull's one plan line, from the same plan the pull will run. */
 function NewsLine({ funders, feeds }: { funders: string; feeds: string }) {
@@ -66,6 +74,27 @@ function Card({ plan, onDecide }: { plan: Plan; onDecide: (approve: boolean) => 
     setSent(true);
     onDecide(approve);
   };
+  if (isCalls(plan))
+    return (
+      <section className="import-pick" aria-label="Approve this open-calls pull">
+        <div className="import-head">
+          <span className="card-kicker">Sangam needs your answer</span>
+          <strong className="import-pick-title">Check open calls?</strong>
+          <span className="import-pick-text">{callsLine(plan.funders)}</span>
+          <span className="import-pick-text">
+            Reads each funder&apos;s own calls page, saves the open calls and adds them to RFP Watch.
+          </span>
+        </div>
+        <div className="import-pick-actions">
+          <button type="button" className="btn btn-primary" onClick={() => decide(true)} disabled={sent}>
+            Check the calls
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={() => decide(false)} disabled={sent}>
+            Don&apos;t check
+          </button>
+        </div>
+      </section>
+    );
   if (isNews(plan))
     return (
       <section className="import-pick" aria-label="Approve this news pull">

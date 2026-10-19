@@ -30,6 +30,6 @@ export function canUseScout(me: Me): boolean {
 
 /** Staff: every task. A steward: funders and the NGOs it supports. Anyone else: none. */
 export function tasksFor(access: ImportAccess): ImportTask[] {
-  if (access.staff) return ["funder", "ngo", "news"];
+  if (access.staff) return ["funder", "ngo", "news", "calls"];
   return access.stewardOf.length ? ["funder", "ngo"] : [];
 }
