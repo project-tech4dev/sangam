@@ -27,7 +27,7 @@ _NEW_FACT = re.compile(r"^facts\.(k\d+)$")
 _QUESTION = re.compile(r"^questions\.(q\d+)(\.status)?$")
 SET_BY_PERSON = ("proposed", "confirmed", "rejected")  # "corrected" comes only with the fact that replaces it
 _GATE = re.compile(r"^gates\.([a-z0-9]{1,16})$")
-_READER = re.compile(r"^readers\.(funder|\d+)$")
+_READER = re.compile(r"^readers\.(funder|public|\d+)$")
 READER_STATUS = ("running", "done", "failed")
 
 

@@ -70,6 +70,8 @@ export type Fact = {
   page?: number;
   said_by?: { id: string; name: string };
   document_id?: number;
+  /** "public" when public research found it, quoted from a page it read. */
+  found_by?: "public";
   /** The parts whose text cites it. */
   used_in?: string[];
 };

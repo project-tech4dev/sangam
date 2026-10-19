@@ -13,6 +13,7 @@ from app.proposals import reliability, rubric
 LIVE = ("proposed", "confirmed")  # corrected and rejected facts fill no gap and reach no text
 VALUE_TEXT = 500
 WEB_EVIDENCE = 20
+PUBLIC_SECTIONS = ("A2", "A3", "A4", "A14", "F1")  # context, problem, results, sustainability, fit
 _MARKER = re.compile(r"^\[(org|activity|score):\d+\]$")
 _DIGIT_COMMA = re.compile(r"(?<=\d),(?=\d)")
 _NUMBER = re.compile(r"\d+(?:\.\d+)?")
@@ -112,10 +113,30 @@ def problem(work: dict[str, Any], fact: dict[str, Any]) -> str | None:
     return None
 
 
+def off_page(fact: dict[str, Any], page: str | None) -> str | None:
+    """Why public research may not add this fact: it must quote, word for word, a page it read in this run."""
+    subject, url = fact.get("subject"), fact.get("source_url")
+    if fact.get("origin") != "web":
+        return f"{subject}: public research adds web facts only"
+    if fact.get("section") not in PUBLIC_SECTIONS:
+        return f"{subject}: public research fills {', '.join(PUBLIC_SECTIONS)} only"
+    if not str(fact.get("as_of") or "").strip():
+        return f"{subject}: give the year the figure is for"
+    if page is None:
+        return f"{subject}: {url} was not read in this run; read it with read_page before citing it"
+    quote = norm(fact.get("evidence"))
+    if quote not in norm(page):
+        return f"{subject}: the quote is not on {url} as read; copy the sentence exactly"
+    held = numbers(quote)
+    if any(not any(abs(n - h) < 0.005 for h in held) for n in numbers(fact.get("value"))):
+        return f"{subject}: every number in the value must be in the quote"
+    return None
+
+
 def make(fact: dict[str, Any], *, by: dict[str, Any] | None = None) -> dict[str, Any]:
     """The stored fact: proposed and coloured by its origin; only `by` (the person who said it) is trusted."""
     keep = ("kind", "subject", "value", "marker", "as_of", "section", "element", "evidence", "source_url",
-            "source_name", "page", "document_id", "from", "supersedes")
+            "source_name", "page", "document_id", "from", "supersedes", "found_by")
     out = {k: fact[k] for k in keep if fact.get(k) not in (None, "", [])}
     origin = fact["origin"]
     out.update(origin=origin, tier=reliability.tier(origin), status="proposed", used_in=[],

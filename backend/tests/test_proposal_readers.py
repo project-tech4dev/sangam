@@ -30,8 +30,103 @@ def proposal(work):
 def built():
     from app.proposals.agent import build_proposal_agent
 
-    build_proposal_agent(Settings(), InMemorySaver())
+    build_proposal_agent(Settings(tavily_api_key="test"), InMemorySaver())
     return readers.BUILT
+
+
+class TestPublicResearch:
+    def test_it_runs_only_its_tools(self, built):
+        assert set(built.public.nodes["tools"].bound.tools_by_name) == {
+            "search_public_sources", "read_page", "fetch_document", "read_document_pages", "add_facts", "read_file"}
+
+    def test_it_never_asks_or_writes(self, built):
+        assert not set(built.public.nodes["tools"].bound.tools_by_name) & {"ask_user", "task", "write_file", "execute"}
+
+    def test_without_a_search_key_it_is_not_built(self, built):
+        from app.proposals.agent import EVIDENCE_TOOLS, FUNDER_TOOLS, PUBLIC_TOOLS
+
+        try:
+            readers.build(Settings(tavily_api_key=""), EVIDENCE_TOOLS, FUNDER_TOOLS, PUBLIC_TOOLS)
+            assert readers.BUILT.public is None
+        finally:
+            readers.build(Settings(tavily_api_key="test"), EVIDENCE_TOOLS, FUNDER_TOOLS, PUBLIC_TOOLS)
+
+    def test_it_is_read_with_the_files_only_when_built(self):
+        assert readers.pending({"sources": [41]}, NOW) == ["41", "funder"]
+        assert readers.pending({"sources": [41]}, NOW, public=True) == ["41", "funder", "public"]
+
+    def test_try_again_retries_it_alone(self):
+        work = {"sources": [41], "readers": {"41": reader("done"), "funder": reader("done"), "public": reader("failed")}}
+        assert readers.pending(work, NOW, public=True) == ["public"]
+
+    def test_it_reads_the_web_and_no_file(self):
+        mine = readers.sources_for(proposal({"sources": [41]}), readers.PUBLIC)
+        assert run_sources.refusal(mine, "search_public_sources", {"query": "dropout Udalguri"}) is None
+        assert run_sources.refusal(mine, "read_vault_document", {"document_id": 41}).startswith("REFUSED")
+
+    def test_its_task_holds_no_figure_from_the_files(self):
+        held = fact_rules.make({"subject": "adolescents out of school", "value": "38%", "origin": "vault",
+                                "document_id": 41, "page": 3, "section": "A3"})
+        p = proposal({"sources": [41], "facts": {"k1": held}})
+        task = readers.public_task(p, ["Udalguri, Assam"], ["Education › School retention"], ["Girls' learning"], [])
+        assert "38%" not in task and "Udalguri, Assam" in task
+        assert task.count("SeSTA") == 1 and "Never search for SeSTA" in task
+
+    def test_no_place_on_record_searches_the_state(self):
+        assert "no place on record" in readers.public_task(proposal({}), [], [], [], [])
+
+    def test_only_sangam_pitch_marks_it(self):
+        with pytest.raises(rules.BadChange):
+            rules.apply({}, {"readers.public": reader("done")}, by=ADMIN)
+        assert rules.apply({}, {"readers.public": reader("done")}, by=ADMIN, via="agent").work[
+            "readers"]["public"]["status"] == "done"
+
+
+class TestPublicGuard:
+    @staticmethod
+    def call(name, args):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(tool_call={"name": name, "args": args, "id": "c1"})
+
+    async def run(self, name, args, reply="ok"):
+        from langchain_core.messages import ToolMessage
+
+        from app.proposals.middleware import PUBLIC_RUN, PublicGuard, PublicRun
+
+        state = PublicRun(avoid=("SeSTA",))
+        ran = []
+
+        async def handler(request):
+            ran.append(request)
+            return ToolMessage(reply, tool_call_id="c1", name=name)
+
+        token = PUBLIC_RUN.set(state)
+        try:
+            result = await PublicGuard().awrap_tool_call(self.call(name, args), handler)
+        finally:
+            PUBLIC_RUN.reset(token)
+        return result, ran, state
+
+    async def test_a_search_naming_the_org_is_refused(self):
+        result, ran, _ = await self.run("search_public_sources", {"query": "SeSTA dropout programme"})
+        assert result.content.startswith("REFUSED") and not ran
+
+    async def test_a_search_for_the_place_and_problem_runs(self):
+        _, ran, _ = await self.run("search_public_sources", {"query": "dropout Udalguri UDISE+"})
+        assert ran
+
+    async def test_a_word_inside_another_is_not_the_org(self):
+        _, ran, _ = await self.run("search_public_sources", {"query": "SeSTAR dropout"})
+        assert ran
+
+    async def test_each_page_read_is_kept_for_the_quote_check(self):
+        _, _, state = await self.run("read_page", {"url": "https://udiseplus.gov.in/udalguri"}, reply="19.8 per cent")
+        assert state.pages == {"https://udiseplus.gov.in/udalguri": "19.8 per cent"}
+
+    async def test_a_refused_page_is_not_kept(self):
+        _, _, state = await self.run("read_page", {"url": "https://x.org/a"}, reply="REFUSED: robots.txt")
+        assert state.pages == {}
 
 
 class TestEachReaderRunsOnlyItsTools:

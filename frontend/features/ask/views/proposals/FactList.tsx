@@ -15,6 +15,7 @@ const RECORD: Record<string, string> = {
 function standing(f: Fact): string {
   if (f.origin === "you_said") return `${f.said_by?.name ?? "Your team"} said this`;
   if (f.status === "confirmed") return "✓ Confirmed";
+  if (f.found_by === "public") return "! From public research, not checked";
   return {
     registry: "✓ From Sangam's record",
     vault: "✓ From your document",

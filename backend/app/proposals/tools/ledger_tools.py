@@ -21,6 +21,7 @@ from app.proposals import context, records, steps
 from app.proposals import facts as fact_rules
 from app.proposals import questions as question_rules
 from app.proposals import work as work_rules
+from app.proposals.middleware import PUBLIC_RUN, page_key
 from app.proposals.tools.proposal_tools import NO_PROPOSAL, require_edit
 from app.repositories import proposals as repo
 
@@ -100,6 +101,9 @@ async def add_facts(facts: list[FactIn]) -> str:
             reading = run_sources.CURRENT.get()
             if why is None and fact["origin"] == "vault" and reading and fact.get("document_id") not in reading.vault_docs:
                 why = f"{fact['subject']}: this reader may cite only the file it was given"
+            if (public := PUBLIC_RUN.get()) is not None:
+                why = why or fact_rules.off_page(fact, public.pages.get(page_key(fact.get("source_url"))))
+                fact["found_by"] = "public"
             if why:
                 out.append(f"REFUSED {why}")
                 continue

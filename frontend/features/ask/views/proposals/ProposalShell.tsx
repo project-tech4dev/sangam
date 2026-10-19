@@ -5,7 +5,7 @@ import { MessageCircle, Pencil, Upload, X } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
-import { advance, changedByLine, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork } from "./api";
+import { advance, changedByLine, type Fact, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork } from "./api";
 import { FactList } from "./FactList";
 import { FinishCard } from "./FinishCard";
 import { PartEditor, WriteCard } from "./WriteCard";
@@ -569,18 +569,19 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
   const started = Object.keys(readers).length > 0;
   const unread = work.sources.filter((d) => !readers[String(d)]);
   const running = Object.values(readers).find((r) => r.status === "running");
-  // The funder's reader cites public links, so its facts are the web ones.
-  const factsFrom = (key: string) =>
-    Object.values(work.facts ?? {}).filter((f) => (key === "funder" ? f.origin === "web" : String(f.document_id) === key)).length;
-  const rows = Object.entries(readers).filter(([key]) => key === "funder" || work.sources.includes(Number(key)));
+  // The funder's reader and public research both cite web links; found_by tells them apart.
+  const from = (f: Fact, key: string) =>
+    key === "public" ? f.found_by === "public" : key === "funder" ? f.origin === "web" && !f.found_by : String(f.document_id) === key;
+  const factsFrom = (key: string) => Object.values(work.facts ?? {}).filter((f) => from(f, key)).length;
+  const rows = Object.entries(readers).filter(([key]) => key === "funder" || key === "public" || work.sources.includes(Number(key)));
 
   return (
     <div className="card pr-block">
       <div className="card-title">Reading your files</div>
       {!started ? (
         <p className="muted">
-          When the files are ticked and the style is set, Sangam Pitch reads each file and what {proposal.funder.name} looks for, all
-          at once. Every figure it finds becomes a fact for you to check.
+          When the files are ticked and the style is set, Sangam Pitch reads each file and what {proposal.funder.name} looks for, and
+          searches public sources on the problem and the place, all at once. Every figure it finds becomes a fact for you to check.
         </p>
       ) : (
         <ul className="pr-reads" aria-label="Files read">
