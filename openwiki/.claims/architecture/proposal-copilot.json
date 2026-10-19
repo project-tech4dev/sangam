@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ba6b3d24e09a2ea0bdeb9f070aca7f60a9d6d60f60962f8e43868e0a53c6c5d1",
+  "pageVersion": "sha256:8753e3d6e107d7b88dd4d612b36c197078580737fc01011f0b51c77e4d452eb2",
   "claims": [
     {
       "id": "claim_322bbefc92744059b44bd6bb4a957a77",
@@ -418,29 +418,51 @@
     },
     {
       "id": "claim_c913f07c40374c8594787ce971015922",
-      "statement": "Per docs/CHANGELOG.md the copilot's milestones M2, M3a, M3b, M4, M5, M6, M7 (suggest_edit) and M8 (write in place) shipped, and the Not finished table has no copilot row; one row there for 2026-10-10-list-pages-proposals-media.md still says 'No proposals backend', which is stale. The plan's own Later list (freshness colours, flag_conflict, form limits, landscape reader) is not built, and the plan's StageGate, AskGate and ProposalSources middleware do not exist because those checks live inside the tools.",
+      "statement": "The copilot's shipped milestones (M2 to M8, including suggest_edit and write in place) are recorded in the changelog's Proposals section. The Not finished table has no copilot row, and its row for 2026-10-10-list-pages-proposals-media.md still says 'No proposals backend', which no longer matches the code. The plan's own Later list (freshness colours, flag_conflict, form limits, landscape reader) is not built, and the plan's StageGate, AskGate and ProposalSources middleware do not exist because those checks live inside the tools; ProposalContext is the only proposal middleware.",
       "evidence": [
         {
           "resource": "repo://backend/app/proposals/agent.py#L54-L61",
           "version": "repo-lines-v1:sha256:a3b4f811a2673e48519e4a046e52715014d76443db81490d2d936f8aa306870e:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmVjN2I5OWQ1NzY3NjhiOTczMWQ1NmZmODA3ZGNmODA3YjQyMzNkNWE3OTViMWZmYTQzZDA2MGM4YzlmZjcwOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGIzOWUxNmRjYjVhMDI4OWYxNDQwYmIwY2Y4ZDUyZGJlNTgxZDJhYjY3YjM2YjM0NDBlZGZmNGYxZGY4YWU1MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTEyYWIxOTk3ZTQ3MDg3NGU1NmJjZDZjODJkNTk5ODZlOGJlMzQ4MGFkZTQ4MzA0ZDEyYjMyMjg0MDczZmEwNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTQ5NDg1ZDRmZWQ3MWZhNGI5NGFjMjc1MmQzZmE3N2FmOGJkMTM5NGIzMWZhNDAzOTYxNjNiMmViMzMyOWEwNSJ9"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L128-L138",
-          "version": "repo-lines-v1:sha256:4815a2bf944742e01509bd62f066fa08c33ab82d80459e6b21f150fd3e89eb35:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2ZjRmZWE2NzFjNGQwNTI4MDU4MTI1NzlmN2Y1ZDgwZWFhOGZmZjZiMTliMzkzMGFhMjMwMzBlZGJkOWE2ZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkOWIyNjJmMGMxYzI3OTBkNTVkODdlMzg3Y2Q0YzkxODc2YzQxNDZmZjhlMDFhNjcyOWViZDMwYzQzYmI0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ2YTMwOGM1YmQ4ZTMyY2VjYjQ2NzcyN2M4OTQzOTNiZTY4N2NlZTgzMTllMWNhOWYwZDAyMTYzNDBlZGZlODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkMGVhMjg0MTU0MmRmZTI2OTNhOTVjYTMwNDg0YzEzOTI2ODI3ODkzNzc0NWQ0YWYyN2NlMGY4ZTQ3Yjc5ZGEifQ"
+          "resource": "repo://docs/CHANGELOG.md#L130-L142",
+          "version": "repo-lines-v1:sha256:52265146df07f1ccbd9a553a4eb9b1640d8e553bd6a35be615dc8a8a7676011d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2ZjRmZWE2NzFjNGQwNTI4MDU4MTI1NzlmN2Y1ZDgwZWFhOGZmZjZiMTliMzkzMGFhMjMwMzBlZGJkOWE2ZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2ZTYwYTI4ZDMyMTg3OTdlNjFkNGZlZTM1MmY2NzI5ZjhjNzk1YTA0NzcxYjk2YWU5MTJiYTdjMDkxMTkwNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkZWJkOGY3NzZiNjU4NDQyY2NiNGU2OWFiZWRjNzhkNzkzNjRlNDE1ZTQ3ODIzMDM2MzYxZmE1MTlhZDcyOTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkMGVhMjg0MTU0MmRmZTI2OTNhOTVjYTMwNDg0YzEzOTI2ODI3ODkzNzc0NWQ0YWYyN2NlMGY4ZTQ3Yjc5ZGEifQ"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L175-L188",
-          "version": "repo-lines-v1:sha256:d659bd2cf1638e34b7e5041893a34a62d90695fb8d81d2c85e948f54ed1553fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYTY0MDEyMGUyNzRkZWIwZTM2MDM3ODkzYjMzMjAzNzZkMThmNWJmMjM1NTE2ODc2MTAwN2VjMzNjZjQ1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzZjA3OGRiYjkxY2Q2MjZhZjdiMWFkYzkzNjcxNjQyZTZmMGZlYTBlY2Y5MmI3OTY0YWY0NDZlZWFmNWY1NWUifQ"
+          "resource": "repo://docs/CHANGELOG.md#L182-L191",
+          "version": "repo-lines-v1:sha256:0fcecef5c4c048e832d03e32bd344818d0b22bb220fcf086b7da8f4ab42a884f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiOGYyNGViNjgyMzJmMDVhMDlmZmM1MDk1MTg1MjNiMTkxNDc2OWZmZGVhY2FkZjRmOTljNDExZmU0MDZmNjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2MWQ3NzhiMjVmYjBlNzA2MGI5NmIxYmY3MzdlNjAwN2Y2MzJkYzhlOWMwNjJkODcyYjQ3NWIzM2JkMjRmYWIifQ"
         },
         {
           "resource": "repo://docs/features/2026-10-14-proposal-copilot.md#L735-L761",
           "version": "repo-lines-v1:sha256:c9565c668af64d064f12443b86296841bfb1dd33b9911d68cd66c8f86e1941c4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5MjVhYjk1NmE3YjJmYTFiYzQ4M2I3ODQwODY3NzUxN2QyOTk1MmJhY2U2Y2Q4MjcyNDUwMjk1ZDRkOTljZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxODlmNWI3YWU3NDE0YmQ2ZTdmMTQ1ZTJjMTUyZWYyNjJkMWI3MTMzZmI3Njg1Mzg0MjVjNzAzMzJmZGM5MjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwZWYwNzk3M2Q1MzEyNTIzMjY4Mzc2ZTMyYTIwMWM1YzRkNDhlNDQ3MTk3MTYzMDkxNGRjNzI4NzQyMGMwNTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_410de851d47444afa2e75e131d552006",
+      "statement": "Proposals are no longer kept in browser localStorage: the frontend retains only hadBrowserProposals(), which checks the legacy sangam.proposals.v1 key for drafts left in one browser, while the proposals table (created in 0009) is extended by migration 0048 with work and summary and is read and written by the backend.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/repositories/proposals.py#L92-L106",
+          "version": "repo-lines-v1:sha256:2e26f690c9213c4f8c81f483661bf4e68c5b7a3af1aca80cf7101045f8457b21:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjMjEzMGY2Yzg1NDU2NjEyZWFhYTFhZTNiNmE3ZjgxZDYyZGQ3NGNhN2E2OGNlYzk1NzA2ODFhNjJjM2E0MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiODVkMWNhN2Y3NDcxZDNiNGM1ZDg4NzI3MmUyZDlmYWYzNzM1NTQ3N2ZhMzg3NTNlZDA1OTBmNTkzMmNhYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3ZWY1MTgwMDU3NWVjOTIxNWEwNjlhNTY3YWE2NjZlYmY4MTBlNTlkMTlkOTQ4MDg0YzRhYWU2OTlhNjA0ZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiY2U5MjQ0Njg3MmRiYzBkNWJlNjcwNTFiMzVlZWI0NDc0MjNlMjlkNWJmZDg2NGQ2NTMwZTBmOTcxNWE4MTMifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0048_proposal_work.sql#L1-L5",
+          "version": "repo-lines-v1:sha256:d1ace02e6a648111e48a15325689b41e47fdc86c1f7b0043650ead77aadaf83d:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTliYzA0MDAyNDUzZTcyNGU4ZDdkYmJmYTMxM2MwN2FiODQwZmJlMzE2M2ViM2FkMTAyNWQ1NGEwNDRiZGU2ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGEzODRiNjgzMjUzMDNlZjkxZjI4YTI5ZGZhN2YxY2E1OWJmMzFkNjg0Y2U2MDY5YjUxNDdkZDljZDU1MGM1ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjQzM2YyYWE4NTg2ZTM2ZmI3OGZmNTMwMGNjNDJlMzA3N2Y4ZDkyYzg1MzBkN2NiZTY2NDFlNjQ4NjQ5NGZhYSJ9"
+        },
+        {
+          "resource": "repo://docs/CHANGELOG.md#L132-L134",
+          "version": "repo-lines-v1:sha256:694c2a4da76724ff08d50644c7a94beac4df2678973f5f72a7661357c7395cee:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmU3MDc4YWNjZDg1N2JlYzhiZGZiMDVkYjllMGFjNDgwM2ZiNDM1ZjY2M2Y4N2UxOTlkODYxNzc4ODczNDQ4YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmIzYzBkYWRlYmUwNWMxODQ0ZWVkYjMwZTYyNzI1NzA0NDljYjA3OTc2ZGY0NTA4ZGZjZjczZDliZTdiMjQ0OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjFhNWM0YWEwYWUwZGY2YTA4NDY3YjVkOTMzMmU5ZWM3MTM5ZGE2ZTI5MGQ4MmU4MGYyNzg1MWE4MDgzZmI2ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzMwN2VkYzM5ZjVhMGE1Y2RiODU3Y2RmZWU3NzRhOWYwMWY5YThlMDIwYTNkYmRjZjQ4NDNiY2FmM2I5ZDc5ZSJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/proposals/api.ts#L212-L220",
+          "version": "repo-lines-v1:sha256:3a342216d3aba233db1c47434cc0a568b072f7b525f9e1f905a7f1566d5c83fe:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDQ1MjVmNzg5Njk3ZDAzOTgxOTBkMTYxN2MzMzZjNjhkZTY4Nzg2ZTU1MDZkN2E1MGI5OTcwN2IwM2JlMDg5YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDVhMGQ4YzIyYjk1MjczMWE5NmU5ZTg5NzkxYjUwODEyYTM5Y2Y0ODJjM2RmYzczODI0YjdlNzkwYzM4NTk3OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-15T18:08:53.060Z"
+    "at": "2026-10-19T08:30:22.232Z"
   }
 }

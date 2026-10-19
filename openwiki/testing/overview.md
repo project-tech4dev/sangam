@@ -1,9 +1,15 @@
 ---
 type: testing guide
 title: Testing
-description: How the backend test suite is split into unit tests (no database), integration tests (compose Postgres on :5433) and evals (real model calls that cost money), how to run each tier, and which tests pin the system's security, tool-surface and proposal-copilot invariants.
-tags: [testing, pytest, integration-tests, evals, invariants, proposals, rls]
+description: How the backend test suite is split into unit tests (no database), integration tests (compose Postgres on :5433) and evals (real model calls that cost money), how to run each tier, how the CI workflow, dependency review and Codecov check every PR (CI never deploys), and which tests pin the system's security, tool-surface and proposal-copilot invariants.
+tags: [testing, pytest, integration-tests, evals, ci, github-actions, codecov, coverage, invariants, proposals, rls]
 sources:
+  - id: openwiki-source-164e2da859b5277df81c7d94
+    resource: repo://.github/workflows/ci.yml
+  - id: openwiki-source-cffc175ad16f1cf0f4a9e43f
+    resource: repo://.github/workflows/dependency-review.yml
+  - id: openwiki-source-6766b7a0c14857435d2077c9
+    resource: repo://.github/workflows/deploy.yml
   - id: openwiki-source-070c6307b3860e1806baf566
     resource: repo://backend/pyproject.toml
   - id: openwiki-source-539ff1e55b1e385204a4bb93
@@ -12,6 +18,8 @@ sources:
     resource: repo://backend/tests/evals/cases/import/canary.jsonl
   - id: openwiki-source-525d2a082ef8772e1fe91f69
     resource: repo://backend/tests/evals/conftest.py
+  - id: openwiki-source-ad5342182b8b95a0dc091458
+    resource: repo://backend/tests/evals/experiment.py
   - id: openwiki-source-9cd890b23995672427c6c8c4
     resource: repo://backend/tests/evals/harness.py
   - id: openwiki-source-28c0299addb344bf8508c6d2
@@ -20,6 +28,8 @@ sources:
     resource: repo://backend/tests/evals/test_agent_evals.py
   - id: openwiki-source-d5d06fda351e6cb412c401d8
     resource: repo://backend/tests/evals/test_import_evals.py
+  - id: openwiki-source-8ce79a18e6eab471015a75e0
+    resource: repo://backend/tests/evals/test_run_stats.py
   - id: openwiki-source-bc3c2ebc658cef90ceb7a159
     resource: repo://backend/tests/test_agent_rls.py
   - id: openwiki-source-0808792899dda5ae43456460
@@ -52,12 +62,14 @@ sources:
     resource: repo://backend/tests/test_sql_validator.py
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
+  - id: openwiki-source-5f7022cb75865b779a5792a0
+    resource: repo://codecov.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T08:30:22.232Z
 ---
 
 # Testing
@@ -69,6 +81,8 @@ All tests live in `backend/tests/` and run with pytest. They fall into three tie
 | Unit | nothing (no DB, no model, no network) | none | no | yes |
 | Integration | compose Postgres on `localhost:5433` | `integration` | no | yes, but skips if the DB is unreachable |
 | Evals | compose Postgres, a provider API key, `--run-evals` | `eval` | yes | no, always skipped without the flag |
+
+CI runs the first two tiers on every pull request (see [CI](#ci-and-coverage)); it never runs evals.
 
 ```mermaid
 flowchart TD
@@ -91,18 +105,48 @@ pytest                         # unit + integration (evals skip themselves)
 pytest tests/test_orgs.py      # one file
 pytest -k "score"              # one pattern
 pytest -m "not integration"    # skip everything needing Postgres on :5433
+pytest --cov                   # with coverage (pytest-cov is in the dev group)
 ruff check .                   # line-length 110, target py312
 ```
 
 From the repo root, evals go through `make`:
 
 ```bash
-make evals                     # golden questions through the real agent (COSTS MONEY, ~10c/case)
+make evals                     # every Ask case through the real agent (COSTS MONEY, ~10c/case; includes the ~$0.90 cost case)
 make evals TAG=canary          # the cheap subset
+make evals TAG=cost            # cases with call budgets (Better Life Foundation, ~$0.90 a run)
 make evals TAG=import          # Import canaries: one funder, one NGO, ~15 min, needs TAVILY_API_KEY
+make evals K=org-count         # one case, by pytest -k
 ```
 
-`make evals` sources `.env` quietly (it carries the provider key), `cd`s into `backend/`, sets `TEST_DATABASE_URL` to `postgresql://sangam:sangam@localhost:5433/sangam`, and runs `.venv/bin/python -m pytest tests/evals --run-evals [--eval-tag TAG] -q`. It runs on the **host venv**, not in a container, because the backend image installs runtime dependencies only and has no pytest. `make smoke` is a separate end-to-end check of the running stack (`SMOKE_SKIP_LLM=1` skips its one real agent call); it is not part of pytest.
+`make evals` sources `.env` quietly (it carries the provider key, and the recipe line is `@`-prefixed so it is not echoed into scrollback), `cd`s into `backend/`, sets `TEST_DATABASE_URL` (the compose Postgres on `localhost:5433` by default, the managed database when `ENV=staging`), and runs `.venv/bin/python -m pytest tests/evals --run-evals [--eval-tag TAG] [-k K] -q`. `TAG` maps to `--eval-tag` and `K` to `-k`. It also sets `LANGFUSE_TRACING_ENVIRONMENT=eval` and `LANGFUSE_RELEASE` to the short git SHA. It runs on the **host venv**, not in a container, because the backend image installs runtime dependencies only and has no pytest. `make smoke` is a separate end-to-end check of the running stack (`SMOKE_SKIP_LLM=1` skips its one real agent call); it is not part of pytest.
+
+## CI and coverage
+
+Three workflows live in `.github/workflows/`, and only one of them can deploy.
+
+- **`ci.yml`** runs on every pull request and every push to `master`. It has read-only `contents` permission, a concurrency group per ref with `cancel-in-progress`, and a timeout on each job. It **deploys nothing**.
+- **`dependency-review.yml`** runs on pull requests, uses `actions/dependency-review-action@v4` with `fail-on-severity: high` and comments in the PR only on failure. It checks only what the PR's lockfile changes add; already-open advisories stay in GitHub's Dependabot alerts.
+- **`deploy.yml`** is `workflow_dispatch` only (Actions → Deploy → Run workflow). Nothing deploys automatically: no push, merge or CI success triggers it. See [Deploy and Vendors](../operations/deploy-and-vendors.md).
+
+`ci.yml` has four jobs:
+
+| Job | What it runs |
+|---|---|
+| `backend-lint` | `uv sync --frozen`, then `ruff check . --output-format=github` |
+| `backend-unit` | `pytest -m "not integration" --cov --cov-report=xml -q`, then uploads `backend/coverage.xml` to Codecov with flag `backend-unit` |
+| `backend-integration` | a `pgvector/pgvector:pg17` service container published on `5433`; applies `db/init/*.sql` with `psql`, then `python -m app.db.migrate` (with `MIGRATIONS_DIR` set to the workspace's `db/migrations`), `seed.seed` and `seed.taxonomy_seed`, then `pytest -m integration --cov --cov-report=xml -q -rs`; uploads with flag `backend-integration` |
+| `frontend` | `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run build` on Node 22 |
+
+Details that matter when a job goes red:
+
+- The integration job runs with `-rs` so skips are listed: a test that skips with "Postgres not reachable" in CI means a broken job, not a pass. It deselects `test_migration_integrity.py::test_preserved_row_counts` and `::test_documents_sequence_advanced`, because those check a restore of the original dump (96 documents) that `make seed` never creates.
+- Codecov uploads use OIDC (`id-token: write`) rather than a stored token; fork PRs get no OIDC and fall back to tokenless upload.
+- Coverage is configured in `backend/pyproject.toml` (`[tool.coverage.run]`: `source = ["app"]`, `branch = true`, `relative_files = true`); `codecov.yml` maps the `app/` paths to `backend/app/`.
+- `codecov.yml` merges the two uploads into one report per commit and sets two status checks: **project** coverage must not fall more than 1% below the base commit (`target: auto`, `threshold: 1%`) and **patch** coverage (lines the PR adds or changes) must be at least 70%. Flags carry forward when a job did not upload.
+- The pytest-cov, ruff (pinned `ruff==0.16.8`) and ignore rules (`B008` for FastAPI `Depends()`, `RUF012`, `UP046`) are in `backend/pyproject.toml`. The design plan is `docs/features/2026-10-16-ci.md`; it was revised in review to use Codecov instead of a self-hosted coverage job, so its `coverage` job description no longer matches `ci.yml`.
+
+`ci.yml` cannot reach a model or a paid key, so evals are never part of it. Run them by hand.
 
 ## Tier 1: unit tests (no database)
 
@@ -132,7 +176,7 @@ Isolation is by rollback. The shared `db` fixture in `conftest.py` opens a non-a
 
 The marker is applied either per file with `pytestmark = pytest.mark.integration` (`test_rls.py`, `test_agent_rls.py`, `test_sql_integration.py`, `test_migration_integrity.py`, `test_import_undo.py`, `test_news_rls.py`, `test_news_store.py`, `test_news_stories_sql.py`, `test_profile_facts_sql.py`) or per test (`test_caller_pool.py`, `test_news_pipeline.py`, `test_storage.py`, `test_locations_seed.py`, `test_taxonomy_seed.py`, `test_vault.py` and a few import tests). Files with per-test marks mix DB-free and DB-backed cases, so check the decorator rather than assuming a whole file needs Postgres. Applying the marker consistently matters: `-m "not integration"` only excludes what is marked.
 
-The data under test must already be loaded: run `make up` (which migrates) and `make seed` first. `test_migration_integrity.py` asserts seeded facts, for example at least 96 `documents` rows (a floor, because the importer adds more), exactly 29 `graph_ingest_log` rows, stable seed-order ids (`kabil` = 9, `bdf` = 10, `axis-bank-foundation` = 1, `tata-trusts` = 4) and that the `documents` id sequence has advanced past the restored rows. It fails if migrations and seeds drifted apart. See [Data and Migrations](../architecture/data-and-migrations.md).
+The data under test must already be loaded: run `make up` (which migrates) and `make seed` first. CI builds the same state without Docker (baseline SQL, migrations, `seed.seed`, `seed.taxonomy_seed`) and lists skips with `-rs`; `test_locations_seed.py` and `test_taxonomy_seed.py` mix DB-free file checks (for example 36 states and 784 districts in the LGD files) with `integration`-marked seed tests that run in a rolled-back transaction. `test_migration_integrity.py` asserts seeded facts, for example at least 96 `documents` rows (a floor, because the importer adds more), exactly 29 `graph_ingest_log` rows, stable seed-order ids (`kabil` = 9, `bdf` = 10, `axis-bank-foundation` = 1, `tata-trusts` = 4) and that the `documents` id sequence has advanced past the restored rows. It fails if migrations and seeds drifted apart. See [Data and Migrations](../architecture/data-and-migrations.md).
 
 ## Tier 3: evals (real model calls)
 
@@ -141,11 +185,12 @@ The data under test must already be loaded: run `make up` (which migrates) and `
 - `--run-evals` and `--eval-tag` are registered with `pytest_addoption`. Without `--run-evals`, `pytest_collection_modifyitems` adds a skip marker to every test with the `eval` keyword.
 - The gate is a conftest flag rather than an `addopts -m "not eval"` filter on purpose: a command-line `-m` replaces the `-m` in addopts, so `pytest -m integration` would otherwise start billing model calls.
 - The `eval_settings` fixture skips when the API key for the configured provider (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_API_KEY`, chosen from the prefix of `Settings().model`) is not set.
-- The `slug_ids` and `db` fixtures skip when Postgres is unreachable; unlike tier 2 they are session-scoped and read live `orgs` and `funders` ids, so evals run against your real seeded data, not a rolled-back fixture.
+- The `slug_ids` and `db` fixtures skip when Postgres is unreachable; unlike tier 2 they are session-scoped and read live `orgs` and `funders` ids, so evals run against your real seeded data, not a rolled-back fixture. Both open **read-only** connections (`SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY`), because `ENV=staging` points evals at the managed database.
+- `pytest_terminal_summary` prints a per-case table (pass/fail, tool calls, model calls, tokens, seconds, tool-call breakdown) and the Langfuse run URL, or "Langfuse off" when no run was recorded.
 
 ### Ask evals (`test_agent_evals.py`)
 
-Cases come from `cases/golden.jsonl` (10 cases at the time of writing, 8 tagged `canary`). `load_cases(tag)` reads every `*.jsonl` directly under `cases/` and filters by `--eval-tag`. Each case runs `build_agent` with an `InMemorySaver`, a recursion limit of 60 and a 180-second wall-clock timeout (added after a hung model request blocked a suite for hours). The harness runs as the staff dev user (`agent_caller` is set to the `DEV_USER` identity) so the agent reads what the owner-run gold SQL reads. It extracts the SQL the agent actually executed from `db_query` tool messages (`executed: ...` lines) and the `[kind:id]` citation markers (kinds `org`, `funder`, `activity`, `grant`, `score`, `news`, `graph`) from the final answer, ignoring the audit's appended caveat message (`CAVEAT_PREFIX`), which is a second `AIMessage` and would otherwise be scored as the answer. A timeout fails the case with a message saying the model request hung or the agent looped.
+Cases come from `cases/golden.jsonl` (11 cases at the time of writing: 8 tagged `canary`, two `safety` refusals, and one `cost` case, Better Life Foundation). `load_cases(tag)` reads every `*.jsonl` directly under `cases/` and filters by `--eval-tag`. Only the cases pytest actually selected (`-k`, `--eval-tag`, a node id) are run, so a narrowed run bills only those. Each case runs `build_agent` with an `InMemorySaver`, a recursion limit of 60 and, by default, a 180-second wall-clock timeout (added after a hung model request blocked a suite for hours; a case may override it with `timeout_seconds`, as the cost case does with 600). Each case opens its own small read-only pool and installs it as `app.db.pool.pool`; cases run strictly one at a time (`MAX_CONCURRENCY = 1`) because the agent's tools share that module-level pool. The harness runs as the staff dev user (`agent_caller` is set to the `DEV_USER` identity) so the agent reads what the owner-run gold SQL reads. It extracts the SQL the agent actually executed from `db_query` tool messages (`executed: ...` lines) and the `[kind:id]` citation markers (kinds `org`, `funder`, `activity`, `grant`, `score`, `news`, `graph`) from the final answer, ignoring the audit's appended caveat message (`CAVEAT_PREFIX`), which is a second `AIMessage` and would otherwise be scored as the answer. A timeout fails the case with a message saying the model request hung or the agent looped.
 
 Scoring (`harness.score`) applies whatever gates a case declares:
 
@@ -153,8 +198,13 @@ Scoring (`harness.score`) applies whatever gates a case declares:
 - `expected_value`, `must_mention`, `must_not_mention`.
 - `required_citations` and `forbidden_citations`; slug-based markers are resolved to ids via `slug_ids`, and `kind:*` forbids any citation of that kind.
 - `must_decline`, matched against a deliberately narrow list of non-possession phrases so the check cannot pass on any sentence.
+- **Budgets**: `max_calls` (per tool) and `max_large_result_reads` (reads of `/large_tool_results`, meaning a tool reply did not fit) fail the case. `max_seconds` and token counts are only reported as warnings or scores, never failures.
 
 A case with `expected_failure` becomes `xfail(strict=True)`. When the underlying data bug is fixed the case passes, pytest reports XPASS as a failure, and the marker gets deleted, so the suite is never permanently red.
+
+### Langfuse experiments and run stats
+
+`run_stats` counts tool calls, model calls, input, output and cache tokens and large-result reads from the message list alone (a message without usage metadata is not a model call). With Langfuse keys set, `experiment.run_cases` runs the selected cases **once** as a dataset experiment on `ask-golden`, named `branch-sha` and filed under the `eval` environment, so two runs compare side by side with their cost and never mix with real traffic. `golden.jsonl` stays the source of truth; the dataset is a copy upserted by case id (`ask:<id>`). Each item gets a `passed` score plus numeric scores for the stats and a per-tool `calls.<tool>`, and the run gets a `pass_rate`. Without keys the same cases run as a plain loop, untraced. `tests/evals/test_run_stats.py` covers this counting, the budgets and the dataset sync on recorded messages and a fake Langfuse client: it carries no `eval` mark, needs no model or database, and runs in the normal unit suite.
 
 ### Import canaries (`test_import_evals.py`)
 

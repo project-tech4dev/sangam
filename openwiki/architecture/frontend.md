@@ -1,11 +1,11 @@
 ---
 type: architecture
 title: Frontend
-description: How the Next.js app in frontend/ is laid out, how it reaches the backend (server-component REST versus the CopilotKit/AG-UI chat proxy), how the Ask workspace (including the server-backed Proposals view), Import/Scout and registry profile screens work, and the auth, caching and design rules that govern it.
-tags: [frontend, nextjs, copilotkit, ag-ui, ask-workspace, proposals, scout, supabase-auth, design-system]
+description: How the Next.js app in frontend/ is laid out, how it reaches the backend (server-component REST versus the CopilotKit/AG-UI chat proxy), how the Ask workspace (sidebar, coming-soon gating, server-backed Proposals view), home page and navbar, Import/Scout and registry profile screens work, and the auth, caching and design rules that govern it.
+tags: [frontend, nextjs, copilotkit, ag-ui, ask-workspace, sidebar, coming-soon, home-page, proposals, scout, supabase-auth, design-system]
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T08:37:55.275Z
 sources:
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
@@ -29,26 +29,38 @@ sources:
     resource: repo://frontend/app/auth/callback/route.ts
   - id: openwiki-source-818e6dd74925cde5ad25313d
     resource: repo://frontend/app/funders/page.tsx
+  - id: openwiki-source-c9293c6315710ae53851f90d
+    resource: repo://frontend/app/globals.css
   - id: openwiki-source-d43949c7c2fe932f5db5271d
     resource: repo://frontend/app/methodology/page.tsx
   - id: openwiki-source-591105b8befabaaf027979cf
     resource: repo://frontend/app/orgs/page.tsx
+  - id: openwiki-source-8c042cb3c17efe62134801ac
+    resource: repo://frontend/app/page.tsx
   - id: openwiki-source-f0ebef983c08ce3e6f45dd10
     resource: repo://frontend/app/privacy/page.tsx
   - id: openwiki-source-518d61c9800d7c96d527a889
     resource: repo://frontend/app/registry/%5Bslug%5D/page.tsx
   - id: openwiki-source-b61250120b4e8e3e33bb1b9d
     resource: repo://frontend/app/registry/funders/%5Bslug%5D/page.tsx
+  - id: openwiki-source-f09d2c2b0811988ee19eac23
+    resource: repo://frontend/app/registry/page.tsx
   - id: openwiki-source-6e222c26c42e9986b4a6b4f1
     resource: repo://frontend/app/resources/page.tsx
   - id: openwiki-source-e3295956b00e36a38af8bd9a
     resource: repo://frontend/app/taxonomy/page.tsx
+  - id: openwiki-source-d6c6ed097e58eeed72eb07a9
+    resource: repo://frontend/components/layout/Nav.tsx
+  - id: openwiki-source-8a730a31d9601b8167c21bdf
+    resource: repo://frontend/components/layout/NavBar.tsx
   - id: openwiki-source-a4bca626c20b13a635ed5933
     resource: repo://frontend/components/ui/ListPage.tsx
   - id: openwiki-source-24408c4513e55a7d3b655c58
     resource: repo://frontend/features/ask/AskWorkspace.tsx
   - id: openwiki-source-8a14a7e8f9ace991ee819039
     resource: repo://frontend/features/ask/components/Sidebar.tsx
+  - id: openwiki-source-5f1c5aeea988fa7c1bfcd4ea
+    resource: repo://frontend/features/ask/lib/comingSoon.ts
   - id: openwiki-source-2e0a58168f5f8380d443d207
     resource: repo://frontend/features/ask/lib/pendingQuestion.ts
   - id: openwiki-source-a8f99e6160f3d28094133820
@@ -61,6 +73,8 @@ sources:
     resource: repo://frontend/features/ask/preview/AskPreview.tsx
   - id: openwiki-source-d3c30a0ff0d44141bb4d20ec
     resource: repo://frontend/features/ask/SignedInWorkspace.tsx
+  - id: openwiki-source-ac74206ec97198d6e21f0b05
+    resource: repo://frontend/features/ask/views/ComingSoonView.tsx
   - id: openwiki-source-14705a3866e29a5d7c9df8ee
     resource: repo://frontend/features/ask/views/funder-match/MatchCard.tsx
   - id: openwiki-source-46b81f1c20a0d436a481779f
@@ -81,12 +95,18 @@ sources:
     resource: repo://frontend/features/ask/views/proposals/WriteCard.tsx
   - id: openwiki-source-8f39f670b063502ade6e3399
     resource: repo://frontend/features/ask/views/ProposalsView.tsx
+  - id: openwiki-source-d9a884d0a22ed50f19bac516
+    resource: repo://frontend/features/ask/views/RfpWatchView.tsx
   - id: openwiki-source-54e0a4963b12532d9999108a
     resource: repo://frontend/features/ask/WorkspaceLoader.tsx
   - id: openwiki-source-ef35cee0ffde7a46037f224c
     resource: repo://frontend/features/auth/login-form.tsx
   - id: openwiki-source-af56efdb84ebc79c4f42a9bd
     resource: repo://frontend/features/auth/sign-in-button.tsx
+  - id: openwiki-source-2c6ca12873a9ca05783659cc
+    resource: repo://frontend/features/home/HeroSlides.tsx
+  - id: openwiki-source-c62f3e2bd1e15132ae4fb57e
+    resource: repo://frontend/features/home/HomePage.tsx
   - id: openwiki-source-0111aa0f484890cd4026750c
     resource: repo://frontend/features/ingest/components/SaveQuestions.tsx
   - id: openwiki-source-4f4832956948ce1575465560
@@ -109,6 +129,14 @@ sources:
     resource: repo://frontend/features/registry/profile/FunderProfileTabs.tsx
   - id: openwiki-source-f33c385003e437ae3c6fd25e
     resource: repo://frontend/features/registry/profile/OrgProfileTabs.tsx
+  - id: openwiki-source-c49d3da1b06f1064ddd24f6c
+    resource: repo://frontend/features/registry/profile/ProfileHero.tsx
+  - id: openwiki-source-32bf8f12cb315155d287b854
+    resource: repo://frontend/features/registry/profile/shared.tsx
+  - id: openwiki-source-8da633985292d1a6b9512b5d
+    resource: repo://frontend/features/registry/RegistryClient.tsx
+  - id: openwiki-source-02fc76822c208a99b1c0eb4f
+    resource: repo://frontend/features/registry/rows.ts
   - id: openwiki-source-29a6b6ddc50c3eb6e06ad5c0
     resource: repo://frontend/lib/AgentProviders.tsx
   - id: openwiki-source-060d794a25568b4384788e86
@@ -117,6 +145,8 @@ sources:
     resource: repo://frontend/lib/api/auth-headers.ts
   - id: openwiki-source-a7ad07fd0be7b9dc7a997ff0
     resource: repo://frontend/lib/api/client.ts
+  - id: openwiki-source-0e36de0775c7002217233ff1
+    resource: repo://frontend/lib/api/types.ts
   - id: openwiki-source-7eb95d6c297eb5602d7d1c77
     resource: repo://frontend/lib/devAuth.ts
   - id: openwiki-source-f92593a15af29a6fd1dcc83a
@@ -129,14 +159,14 @@ sources:
     resource: repo://frontend/proxy.ts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:37:55.275Z" }
 ---
 
 # Frontend
 
 The frontend is a Next.js 16 / React 19 app (`frontend/`, deployed as the Vercel project `sangam`, region `bom1`; see `frontend/vercel.json`). It has **two separate paths to the FastAPI backend**, and which one a screen uses decides how auth, caching and failure behave. Backend counterparts are described in [Ask Sangam](ask-sangam.md), [Sangam Import / Scout](sangam-import-scout.md), [Funder Match](funder-match.md), [Proposal Copilot](proposal-copilot.md) and [Auth, roles and RLS](auth-roles-rls.md); the end-to-end turns are in [Ask turn](../workflows/ask-turn.md), [Import turn](../workflows/import-turn.md) and [Proposal lifecycle](../workflows/proposal-lifecycle.md).
 
-> **The chat wire is still CopilotKit, despite the drop-CopilotKit plan.** `docs/features/2026-10-11-drop-copilotkit.md` plans to remove CopilotKit and have the browser speak AG-UI straight to the backend. `docs/CHANGELOG.md` ("Not finished") records that only M1 (restart policy) and M2 (slimmer events, later regressed by #178) shipped; **M3 (drop CopilotKit from the frontend) and M4 (backend package) have not started**. `package.json` still depends on `@copilotkit/react-core` and `@copilotkit/runtime`, `AgentProviders` still mounts `CopilotKitProvider`, and `app/api/copilotkit/[[...slug]]/route.ts` still exists. Everything below describes the current wire; the plan is summarised at the end.
+> **The chat wire is still CopilotKit, despite the drop-CopilotKit plan.** `docs/features/2026-10-11-drop-copilotkit.md` plans to remove CopilotKit and have the browser speak AG-UI straight to the backend. `docs/CHANGELOG.md` ("Not finished") records that only M1 (restart policy) and M2 (slimmer events, later regressed by #178) shipped; **M3 (drop CopilotKit from the frontend) and M4 (backend package) have not started**. `package.json` still depends on `@copilotkit/react-core` and `@copilotkit/runtime` (both `~1.75.2`, beside `@ag-ui/client` pinned at `0.0.59`), `AgentProviders` still mounts `CopilotKitProvider`, and `app/api/copilotkit/[[...slug]]/route.ts` still exists. Everything below describes the current wire; the plan is summarised at the end.
 
 ## Layout and ownership rules
 
@@ -144,12 +174,22 @@ The frontend is a Next.js 16 / React 19 app (`frontend/`, deployed as the Vercel
 |---|---|
 | `app/` | Routes only: pages, layouts, route handlers. Nothing that is not a route belongs here. |
 | `features/` | One folder per screen: `ask`, `auth`, `home`, `ingest`, `registry`, `resources`, `settings`, `taxonomy`, `terms`. |
-| `components/` | `ui/` display primitives (and the `ListPage.tsx` list pattern) and `layout/` site chrome (`NavBar`, `Footer`). |
+| `components/` | `ui/` display primitives (and the `ListPage.tsx` list pattern) and `layout/` site chrome (`Nav`, `NavBar`, `Footer`). |
 | `lib/` | `api/` (server REST client, types, auth headers), `supabase/`, `devAuth.ts`, `AgentProviders.tsx`, `useAgentChat.ts`, `format.ts`, `safe-next-path.ts`. |
 
 `docs/ARCHITECTURE.md` §9 states the rule: `app/` holds routes only and everything else goes in `features/`. Cross-folder imports use the `@/` alias. `frontend/CLAUDE.md` is only a pointer: to this page for facts, to `docs/ARCHITECTURE.md` §9 for rules and to `docs/DESIGN_SYSTEM.md` for any UI change.
 
-Routes: `/` (home), `/ask` (workspace when signed in, preview when not), `/import` (Scout), `/registry`, `/registry/[slug]` and its `/brief`, `/registry/funders/[slug]` and its `/brief`, `/resources/[tab]` (methodology, taxonomy), `/settings`, `/terms`, `/auth/*`, plus `/api/copilotkit/[[...slug]]`. Several legacy paths are bare redirects: `/funders` → `/registry?type=funder`, `/orgs` → `/registry?type=cso`, `/methodology` and `/resources` → `/resources/methodology`, `/taxonomy` → `/resources/taxonomy` (keeping its anchor), `/privacy` → `/terms#t-collect`. The root layout only renders `NavBar`, `<main>` and `Footer`; there is no global provider, so the agent provider is mounted per screen.
+Routes: `/` (home), `/ask` (workspace when signed in, preview when not), `/import` (Scout), `/registry`, `/registry/[slug]` and its `/brief`, `/registry/funders/[slug]` and its `/brief`, `/resources/[tab]` (methodology, taxonomy), `/settings`, `/terms`, `/auth/*`, plus `/api/copilotkit/[[...slug]]`. Several legacy paths are bare redirects: `/funders` → `/registry?type=funder`, `/orgs` → `/registry?type=cso`, `/methodology` and `/resources` → `/resources/methodology`, `/taxonomy` → `/resources/taxonomy` (keeping its anchor), `/privacy` → `/terms#t-collect`. The root layout (`app/layout.tsx`) loads Public Sans through `next/font` and only renders `NavBar`, `<main>` and `Footer`; there is no global provider, so the agent provider is mounted per screen.
+
+### Home page and navbar
+
+`/` (`app/page.tsx`) just renders `features/home/HomePage.tsx`, a static server component: a hero ("Where funders and NGOs actually meet") with "Ask Sangam" (`/ask`) and "Explore the Registry" (`/registry`) buttons beside `HeroSlides` (a client component that cross-fades between "For NGOs / For funders / For ecosystem players" every 8 s and pauses on hover), the five-step "how the agent works" list, "What feeds the base" source cards, partner logos (a partner without a logo file renders a dashed placeholder) and a "Stay updated" card. The page makes no backend call, and the newsletter card's Subscribe button is a plain `type="button"` with no submit handler, so it stores nothing. Its copy is marketing text, so it says "NGO" rather than "CSO".
+
+**The steps card.** The five steps ("You ask Sangam" through "Returns an answer") are a constant `STEPS` array rendered as one `<ol class="home-steps">` card, each `li.home-step` with a zero-padded number and a connector line (`.home-step-num`, `.home-step-line`). The layout is pure CSS in `globals.css`: below 900 px it is a single numbered vertical timeline; from 900 px up the same markup becomes five equal columns divided by hairlines, with the connector running horizontally from each number. There is no step state or script.
+
+`components/layout/Nav.tsx` is the sticky, translucent sage navbar. It has exactly three destinations, Registry, Ask Sangam and Resources (`/registry`, `/ask`, `/resources`), plus the `SignInButton`.
+
+**Phone menu.** Below 640 px the inline `.nav-links` are hidden and the bar reads wordmark, Sign in, then a 44 px menu button (`.nav-menu-button`, Lucide `Menu`/`X`, `aria-expanded`, `aria-controls="nav-menu"`). Opening it shows `.nav-menu` under the bar, a column of the same three `LINKS` with `aria-current` on the current section; from 640 px up the button and menu are hidden by CSS. `Nav` stores not a boolean but the pathname the menu was opened on (`openOn`), and the menu counts as open only while `openOn === pathname`, so any navigation closes it, and clicking a link also closes it explicitly. `/import` is deliberately absent: Scout is reached from the workspace sidebar's Tools section. `NavBar.tsx` picks the highlighted section by the first matching path prefix, so the legacy `/orgs`, `/funders`, `/methodology` and `/taxonomy` paths still highlight Registry or Resources, and any unmatched path (including `/`) counts as `home`.
 
 ## The two paths to the backend
 
@@ -188,9 +228,20 @@ Caption: server components call REST directly, chat goes through the Next proxy 
 
 `apiGet` makes signed-out reads cacheable: in production (`NODE_ENV === "production"`), when no `Authorization` header exists, it fetches with `next: { revalidate: 300 }`, so anonymous registry pages come from Next's data cache and survive a cold backend. That request carries an `x-sangam-build` header (the Vercel deployment id or commit SHA) so the cache key changes on every deploy and a new deploy never renders the previous one's API shapes. Signed-in requests, and all development requests, use `cache: "no-store"`. Pages that depend on the session (`/ask`, `/import`) set `dynamic = "force-dynamic"`. Client-side fetches are always `no-store`. A profile page makes one backend call (`/api/funders/{slug}/profile` or `/api/orgs/{slug}/profile`).
 
+## Registry list and rows
+
+`/registry` (`app/registry/page.tsx`) makes one server `apiGet` of `GET /api/registry` (`RegistryOut`, a list of `RegistryRow`) and hands every row to the client component `RegistryClient`, which filters and pages entirely in the browser: bucket cards (All / CSOs / Funders, seeded from `?type=`), a `FilterRow`, a `SearchBox` and `useShowMore` (20 per page), the shared list pattern. `features/registry/rows.ts` holds the presentation rules: `kindLine`, the one-line `signal`, the `Filters` type, and `matches`, which decides what each filter keeps (the Registrations filter applies only to CSOs; Funder type and How to approach only to funders; "Works in" can mean the eight North-East states).
+
+A row (`Row` in `RegistryClient.tsx`) was reworked to carry more of what the filters read:
+
+- **Domains first.** The tag line shows each theme domain the row reaches, in the backend's order (most programmes first), with "Others" forced last; a row with none shows an italic "Themes not tagged yet" gap tag. Domain tags and SDG chips share the line.
+- **Theme filter explains itself.** With a Theme set, an extra "In <domain>:" line lists the sub-themes that put the row in the results (first three, then "+N more"), and the matching domain tag gets `data-active`.
+- **Serves line.** Up to three population tags (`.reg-tag[data-tone="population"]`) with "+N more"; a filtered population is moved to the front and marked `data-active`.
+- Styling for these (`.reg-row-line`, `.reg-row-label`, `.reg-more`, the `data-active` edge) is the `tokens/registry-row.css` slice of `globals.css`.
+
 ## Registry profiles
 
-`/registry/[slug]` (CSO) and `/registry/funders/[slug]` (funder) are server components that fetch the single profile payload with `apiGet`, turn `NotFoundError` into `notFound()`, and `permanentRedirect` to the canonical slug when the profile was asked for by id. Each renders a shared `ProfileHero` (with an "Ask Sangam about…" link into `/ask?q=…` and a brief link when a brief exists) above a client tab component in `features/registry/profile/`: `OrgProfileTabs` (Overview, Programmes & places, Funding, News & social, Research & sources) or `FunderProfileTabs` (Mandate, Giving, Reach, News & social, Research & sources). Tab state is local `PillTabs` state, not the URL, and the tabs only receive slices of the already-loaded profile, so switching tabs makes no request.
+`/registry/[slug]` (CSO) and `/registry/funders/[slug]` (funder) are server components that fetch the single profile payload with `apiGet`, turn `NotFoundError` into `notFound()`, and `permanentRedirect` to the canonical slug when the profile was asked for by id. Each renders a shared `ProfileHero` (with an "Ask Sangam about…" link into `/ask?q=…` and a brief link when a brief exists). The hero draws the profile's tags as a facet list: `splitTags` (in `profile/shared.tsx`) separates themes (`theme` and `sub_theme` kinds, shown as "Theme › Sub-theme" in the tooltip), the population tags (labelled by `whoLabel`), and `lens` tags, and each group gets its own labelled line (Themes, who, **Lenses**, SDGs) rather than lenses being mixed into the population pills. It sits above a client tab component in `features/registry/profile/`: `OrgProfileTabs` (Overview, Programmes & places, Funding, News & social, Research & sources) or `FunderProfileTabs` (Mandate, Giving, Reach, News & social, Research & sources). Tab state is local `PillTabs` state, not the URL, and the tabs only receive slices of the already-loaded profile, so switching tabs makes no request.
 
 ## Ask workspace
 
@@ -198,7 +249,13 @@ Caption: server components call REST directly, chat goes through the Next proxy 
 
 `WorkspaceLoader` wraps `SignedInWorkspace` in `next/dynamic`, so the workspace and the CopilotKit runtime under it download only when rendered; `SignedInWorkspace` mounts `AgentProviders` around `AskWorkspace`.
 
-**Views are in-app state, not URLs.** `AskWorkspace` holds a `view` of type `WorkspaceView` (`ask`, `chats`, `funder-match`, `proposals`, `rfpwatch`, `vault`, `media`), plus `threadId`, the thread list and the latest turn. `ChatPane` is keyed by `threadId`, so picking or starting a chat remounts it. `rfpwatch` is a placeholder card with no data. The right-hand `EvidenceRail` shows the latest turn. The sidebar shows the proposal count from `useProposals()`, and a Funder Match card can jump into Proposals with a `{id}` or `{funderId}` target; a changing `key` remounts `ProposalsView` on that target.
+**Views are in-app state, not URLs.** `AskWorkspace` holds a `view` of type `WorkspaceView` (`ask`, `chats`, `funder-match`, `proposals`, `rfpwatch`, `vault`, `media`), plus `threadId`, the thread list and the latest turn. `ChatPane` is keyed by `threadId`, so picking or starting a chat remounts it. The right-hand `EvidenceRail` (hidden on narrow screens via `.evidence-rail-slot`) shows the latest turn. The sidebar shows the proposal count from `useProposals()`, and a Funder Match card can jump into Proposals with a `{id}` or `{funderId}` target; a changing `key` remounts `ProposalsView` on that target. Choosing "Proposals" in the sidebar opens it with no target.
+
+### Sidebar and "coming soon" views
+
+`features/ask/components/Sidebar.tsx` is the workspace rail. Expanded, it has a "+ New Chat" button and a scrolling area with three collapsible sections: **Recent Chats** (the first 5 threads, then "Show All N Chats →" which opens the `chats` view), **Use Cases** (Funder Match, Proposals, RFP Watch, Media & Signals) and **Context** (Doc Vault). Section open/closed state lives in the sidebar, not in each section, so the collapsed rail can reopen the sidebar already expanded at a chosen section. Collapsed (the default on viewports up to 768 px wide), it shows icon-only buttons (Lucide, styled by `.icon`). A **Tools** section pinned at the foot, with a link to `/import` ("Sangam Scout"), renders only when `canScout` is true; it is a real navigation, not an in-app view.
+
+A feature that has not shipped is gated by the single set in `features/ask/lib/comingSoon.ts` (`COMING_SOON`, typed on `WorkspaceView`). A name in the set gets a "Soon" tag in the sidebar instead of its count, and `AskWorkspace` renders `ComingSoonView` (a title plus a "Coming soon" card) in place of the real view; deleting the name turns the feature on. **Currently only `rfpwatch` is in the set.** `proposals` was gated on 2026-10-15 and removed on 2026-10-16 ("Proposals are on for everyone", `docs/CHANGELOG.md`), so Proposals is live for every signed-in user, while RFP Watch shows the card. The gate is read in four places for Proposals: the `AskWorkspace` view branch, the sidebar tag, the Funder Match "Proposal" status filter (hidden while gated) and `MatchCard` (a disabled "Start a proposal" button with a "Coming soon" tag instead of `ProposalAction`), so adding `proposals` back to the set switches all of them off together. RFP Watch is read in only two (the `AskWorkspace` branch and the sidebar tag). `RfpWatchView` is the not-yet-reachable placeholder that would replace the card ("No calls tracked yet"). The signed-out `AskPreview` is static copy and lists "RFP watch … Coming soon" by hand; it does not read `COMING_SOON`.
 
 **Threads.** Each chat has a client-generated UUID. The thread list comes from `GET /api/threads` (`fetchThreads`), with `localStorage` (`sangam_threads_v1`) kept only as a title fallback and to show a just-started chat before its first turn reaches the server. A reopened chat loads `GET /api/threads/{id}/messages`; a 404 means an empty chat.
 
@@ -248,8 +305,9 @@ Proposals are **server-backed**, shared by everyone in the organisation, and dra
 
 ## Design rules
 
-- The Claude Design project "Sangam Design System v2" is the system of record; a PR that changes `frontend/components/` or a screen the UI kit recreates updates it in the same PR. `docs/DESIGN_SYSTEM.md` maps design-system files to repo files and gives the manual sync procedure.
-- Tokens are CSS variables in `app/globals.css` with the same names as the design system; styles go in classes there rather than inline `style={{}}` (older code such as `AskWorkspace` and `RfpWatchView` still has inline styles).
+- The Claude Design project "Sangam Design System v2" (built 8 Oct 2026, replacing the first "Sangam Design System" project) is the system of record: a new token, size, colour or component look is agreed there first, and the repo never invents one the design system lacks. A PR that changes `frontend/components/` or a screen its UI kit recreates updates the design system in the same PR. `docs/DESIGN_SYSTEM.md` still states there is **no automatic sync**: `/design-sync` does not fit a repo with no compiled component package, so the sync is done by hand (repo → design system in the same PR, or design system → repo after a decision made there), and the doc gives the procedure and mapping tables. Writing to the project needs its owner's agreement.
+- **Tokens map one to one.** They are CSS variables in `app/globals.css` with the same names as the design system's token files, so a token change is a copy of values. `tokens/colors.css`, `typography.css` and `spacing.css` map to the `:root` ramps, `--fs-*`/`--font-*` and the radii/shadow/`--page-max`/`--page-pad`/`--nav-h` variables; `tokens/base.css` maps to the hand-written classes (`.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link`). Four more files cover feature styling, imported in this order after `base.css`: `scout.css` (Sangam Scout's classes), `registry.css` (the Registry list's `.reg-*`, the profile `.profile-*` and brief `.brief-*` classes, the list-page classes, `.pill-tabs`, `.btn-ondark`), `registry-row.css` (the Registry row's population chips, `.reg-row-line`, `.reg-row-label`, `.reg-more` and the `data-active` tag edge) and `site.css` (the Nav's `.nav-links` and phone menu, Home's `.home-step*`). The design system also carries tokens the repo does not use yet (`--surface-*`, `--space-*`, motion, …). The `@theme inline` block at the end of `globals.css` re-exposes the repo's tokens as Tailwind utilities and changes only when a token is added or removed. Components, by contrast, are translated rather than copied: the design system holds plain-JSX references, the repo uses TypeScript on Radix and Tailwind, so a component change means matching look and behaviour on both sides. `ProfileHero` is the repo counterpart of the design system's `HeroFacets`; `Home.jsx`, `Registry.jsx` and `Profile.jsx` in its UI kit correspond to `HomePage`/`HeroSlides`, `RegistryClient` and the profile pages.
+- Styles go in classes in `globals.css` rather than inline `style={{}}` (older code such as `AskWorkspace`, `RfpWatchView` and `AskPreview` still has inline styles). The workspace rail's classes (`.rail-*`, `.ask-sidebar`, `.soon-card`) live there too.
 - Corners: pill for buttons/chips/single-line inputs, 14 px (`--radius-surface`) for cards and dialogs, 8 px (`--radius-row`) for rows. Type sizes only 12/14/16/20/24/36 (`--fs-*`). Text must meet WCAG AA; terracotta text is `--color-accent-750`. Icons are Lucide, styled by `.icon` classes. One `--page-max` (1160 px) column.
 - Wording: "CSO" in data/registry UI, "NGO" in marketing copy, "vetted" not "hand-vetted".
 - Reuse an existing token or component before asking the design system for a new one. Verification for UI changes is `npm run lint`, `npm run build`, then `make smoke`; there are no frontend unit tests.

@@ -4,10 +4,16 @@ title: Sangam Import / Scout
 description: How the Import agent (Scout on screen) is built. A supervisor and four isolated subagents research funders and NGOs. Findings merge into one published brief per organisation, and promote() moves the brief into the catalog through fixed-SQL writers with undo and human-in-the-loop pauses.
 tags: [import, scout, ingest, deep-agent, brief, promote, writer, matcher, geography, undo, hitl, access]
 sources:
+  - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
+    resource: repo://backend/app/agent/build.py
   - id: openwiki-source-d995a482e69484b19d5a4a34
     resource: repo://backend/app/agent/harness.py
   - id: openwiki-source-813dbe9c3eeb378112388ccd
     resource: repo://backend/app/agent/middleware.py
+  - id: openwiki-source-d283e7d3b1dc789fadafd127
+    resource: repo://backend/app/agent/skills/funder-matching/SKILL.md
+  - id: openwiki-source-1f8b3caaa82d707d101e103d
+    resource: repo://backend/app/agent/tools/matching_tools.py
   - id: openwiki-source-ca736c25c2a1bb0e95531706
     resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-11c734346bddf773fd80ed0e
@@ -36,6 +42,8 @@ sources:
     resource: repo://backend/app/ingest/matcher.py
   - id: openwiki-source-7d480e75db10aae51a0f227b
     resource: repo://backend/app/ingest/middleware.py
+  - id: openwiki-source-d1c2c2d698ef77e881e1ff17
+    resource: repo://backend/app/ingest/news/verify.py
   - id: openwiki-source-ad46879e0b8b0bcc9e65aaee
     resource: repo://backend/app/ingest/office.py
   - id: openwiki-source-b16585eb308b018d24ffae26
@@ -60,6 +68,10 @@ sources:
     resource: repo://backend/app/ingest/vault.py
   - id: openwiki-source-92db74b572f27e7f2c656ed0
     resource: repo://backend/app/ingest/writer.py
+  - id: openwiki-source-0c2810df96342c5efec98a57
+    resource: repo://backend/app/proposals/agent.py
+  - id: openwiki-source-f298183777e9f6b64bb1b60f
+    resource: repo://backend/tests/test_agent_middleware.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
     resource: repo://backend/tests/test_harness.py
   - id: openwiki-source-5ff63cf3bcc0508701587aa2
@@ -70,10 +82,10 @@ sources:
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-a44fe58bbddbee96fe925ba2
     resource: repo://docs/INGEST.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:37:55.275Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T08:37:55.275Z
 ---
 
 # Sangam Import / Scout
@@ -115,8 +127,9 @@ Most of Import's middleware is in `app/ingest/middleware.py`. `StaffLastLock` an
 | `ChosenSources` | supervisor | Refuses every `task` launch until `choose_sources` has been answered, then publishes that answer to the subagent through the `run_sources.CURRENT` context variable. Unreadable state fails closed. |
 | `RunSources` | researcher, vault-reader, workbook-reader | Refuses any pulling tool outside what the person chose. A subagent running outside a `task` reads nothing. |
 | `SaveRefusal` | researcher, vault-reader | Turns a pydantic error on `save_research` or `save_vault_findings` into a short list of fixes. It also accepts a payload sent as a JSON string. |
-| `StaffLastLock` | researcher | Once `read_source_rows` has been requested, only an allowlist of tools stays open. The aim is that an injected instruction on a web page cannot carry a staff row out in a URL or query. |
-| `ReadingLimit` | researcher only | Caps page reads. Added only when `RESEARCH_PAGE_LIMIT` is set (it is not by default). The vault-reader and the catalog-writer have no reading limit. |
+| `StaffLastLock` | researcher | Once `read_source_rows` has been requested, including in the current turn, every tool outside the `OPEN_AFTER_STAFF` allowlist gets an error reply ("web tools are closed for this run: staff rows have been read. Save what you have."). The allowlist is `read_source_rows`, `save_research`, `read_document_pages`, `research_goals`, `funder_dossier` and `read_file`. An outbound tool added to the researcher later is therefore closed by default, and unreadable state fails closed. The aim is that an injected instruction on a web page cannot carry a staff row out in a URL or query. |
+| `ReadingLimit` | researcher only | Caps page reads. Added only when `RESEARCH_PAGE_LIMIT` is set (it is not by default). The vault-reader, the catalog-writer and the workbook-reader have no reading limit. The class is defined in `app/ingest/middleware.py`, and the separate news-verification agent (`app/ingest/news/verify.py`) reuses it with its own limit. That agent is not part of Import's graph. |
+| `clear_old_tool_results` | supervisor | Shared with Ask and Sangam Pitch (defined in `app/agent/middleware.py`). Past 60,000 tokens it replaces the oldest tool results with `[cleared]`, keeping the latest five. See below. |
 | `call_limit` | researcher, vault-reader, writer | Caps model calls. On the researcher and vault-reader it is added only when `RESEARCH_MODEL_CALL_LIMIT` is set (not by default). The writer always has a limit of 12 calls (`WRITER_MODEL_CALL_LIMIT`). The workbook-reader has neither limit. |
 | `EscalateAfterFailedSave` | researcher | After one malformed save, the rest of the run uses the strong model. Added only when the research model differs from `MODEL`. |
 | `fallback` | all | On a failed call, switches to the next tier's model. |
@@ -127,6 +140,19 @@ Most of Import's middleware is in `app/ingest/middleware.py`. `StaffLastLock` an
 | `run_plan` | supervisor | `TodoListMiddleware` with a short custom `write_todos` prompt. The plan survives summarisation. |
 
 The vault-reader's filesystem is built with eviction off (`evict=False`), for the same reason `DropFilesOnExit` exists.
+
+### Shared tool-result clearing
+
+The supervisor's stack includes `clear_old_tool_results()`, the same `ContextEditingMiddleware` factory Ask and Sangam Pitch use. It is not applied to any Import subagent. Its constants live in `app/agent/middleware.py`:
+
+- `TOOL_RESULT_CLEAR_TRIGGER_TOKENS` = 60,000: below this nothing is cleared.
+- `TOOL_RESULTS_KEPT` = 5: the most recent results always stay, because a follow-up refers back to them.
+- `TOOL_RESULTS_CLEAR_STEP` = 20,000: `SteppedClearToolUsesEdit` reclaims whole steps beyond the trigger. A fixed amount would clear the same few results forever, and the request would keep growing. With steps, what is sent stays under the trigger and the cleared set, and so the cached prompt prefix, moves only once per step.
+- `NEVER_CLEARED` = `compare_fit`: an Ask tool the Import supervisor does not have, so it matters here only through the shared edit.
+
+`test_agent_middleware.py` pins this behaviour: under the trigger nothing is cleared, sent tokens stay under the trigger however long the turn, cache breaks are bounded by the number of steps, and the latest results and `compare_fit` survive.
+
+The funder-matching, funder-comparison and funder-shortlist-brief skills and `matching_tools.py` belong to Ask's runtime, not Import's. The Import supervisor's own dry-run comparison is `compare_with_catalog`. See [Ask Sangam](ask-sangam.md) and [Funder Match](funder-match.md).
 
 ## Human-in-the-loop pauses
 

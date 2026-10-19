@@ -3,12 +3,11 @@ type: quickstart
 title: Quickstart
 description: First run of the Sangam stack, the make targets that matter (including the Wiki group that regenerates openwiki/), a repo map, the ground rules, and a task-to-page routing table that covers all three agents (Ask, Import/Scout, Proposal Copilot) plus the architecture, workflow, operations and testing pages.
 tags: [quickstart, onboarding, make, repo-map, routing, agents, proposals]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
 sources:
   - id: openwiki-source-5f5b95b3d6a215fa02ceb945
     resource: repo://.env.example
+  - id: openwiki-source-164e2da859b5277df81c7d94
+    resource: repo://.github/workflows/ci.yml
   - id: openwiki-source-6766b7a0c14857435d2077c9
     resource: repo://.github/workflows/deploy.yml
   - id: openwiki-source-8037e2358a2c4f9b2c722a11
@@ -29,26 +28,31 @@ sources:
     resource: repo://backend/app/repositories/proposals.py
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
+  - id: openwiki-source-5f7022cb75865b779a5792a0
+    resource: repo://codecov.yml
   - id: openwiki-source-3d121c1ca466c424ca2b4936
     resource: repo://db/migrations/0048_proposal_work.sql
   - id: openwiki-source-b79fbbd921df689b4bbdc82f
     resource: repo://docker-compose.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-19T08:30:22.232Z
 ---
 
 # Quickstart
 
 Sangam is grant intelligence for Indian civil-society organisations and funders. Three LangGraph agents share one database, and the repo has no others:
 
-| Agent | On screen | Route | What it does | Read |
+| Agent | On screen | Backend chat route | What it does | Read |
 |---|---|---|---|---|
 | **Ask** | Ask Sangam | `/agent` | Answers questions about the registry with cited, read-only SQL | [Ask Sangam](architecture/ask-sangam.md), [One Ask turn](workflows/ask-turn.md) |
 | **Import** | Scout (Sangam Import) | `/ingest` | Pulls new funder and NGO data in from public sources, with a human choosing the sources first | [Import / Scout](architecture/sangam-import-scout.md), [One Import turn](workflows/import-turn.md) |
 | **Proposal Copilot** | Sangam Pitch | `/proposal` | Works with an NGO's team on one grant proposal, step by step, inside rules the code checks | [Proposal Copilot](architecture/proposal-copilot.md), [One proposal, end to end](workflows/proposal-lifecycle.md) |
 
-Postgres is the system of record, and every fact an agent states carries a citation back to a row. The names differ on screen and in code: Scout keeps "ingest" and "Import" in routes and threads, and Sangam Pitch keeps "proposal".
+Postgres is the system of record, and every fact an agent states carries a citation back to a row. The names differ on screen and in code: Scout keeps "ingest" and "Import" in routes and threads (the backend posts to `/ingest`, the screen is `/import`), and Sangam Pitch keeps "proposal".
 
 This page covers the first run, the commands you will use, where things live, and which page to read next.
 
@@ -57,7 +61,7 @@ This page covers the first run, the commands you will use, where things live, an
 These four hold across the repo. Break one and something fails in a non-obvious way.
 
 1. **Migrations are not automatic.** `db/init/` is only the baseline for a new database. Every later change is a plain SQL file in `db/migrations/`, applied by `make migrate`. Locally, `make up` and `make seed` run it for you. Against a managed database you run `make migrate ENV=staging` yourself, after a backup. The backend refuses to boot against an unmigrated database (see ground rule 4).
-2. **Nothing deploys automatically.** Deploying is a manual run of the Deploy workflow (Actions, Deploy, Run workflow, `workflow_dispatch` only). A merge or push builds nothing, and Vercel's Git integration is disabled. `ENV=staging` does not deploy anything either. It points your local tooling, and with `make up ENV=staging` your local containers, at the shared managed database. See [Deploying by Hand](workflows/deploying-by-hand.md).
+2. **Nothing deploys automatically.** Deploying is a manual run of the Deploy workflow (Actions, Deploy, Run workflow, `workflow_dispatch` only). A merge or push builds nothing, and Vercel's Git integration is disabled. The separate CI workflow runs on every PR and push to `master`, but it only checks (lint, tests, frontend build) and deploys nothing. `ENV=staging` does not deploy anything either. It points your local tooling, and with `make up ENV=staging` your local containers, at the shared managed database. See [Deploying by Hand](workflows/deploying-by-hand.md).
 3. **Postgres is the system of record.** The Neo4j graph is derived from Postgres (`make graph-seed`) and can be wiped and rebuilt. Nothing should live only in the graph. If the two disagree, Postgres wins.
 4. **`catalog.py` is a security allowlist.** `backend/app/agent/tools/sql/catalog.py` lists the tables and columns Ask's model-written SQL may read. It allowlists 37 tables, and `KNOWN_EXCLUDED` names 22 more that are deliberately kept out (for example `proposals`, `users` and the checkpoint tables). A table missing from the catalog is invisible to Ask. At boot, `_verify_sql_catalog` in `core/lifespan.py` raises if the catalog and the database disagree, for example when a catalogued table is missing because migrations were not applied. A table that is merely undeclared is only logged, so it stays invisible until someone catalogues it or marks it excluded.
 
@@ -100,7 +104,7 @@ Ports are fixed in `docker-compose.yml`: frontend 3000, backend 8010 (published 
 | `make migrate` / `migrate-status` | Applies, or lists, `db/migrations/*.sql` | Works on any `ENV` |
 | `make smoke` | End-to-end check of backend, frontend and chat wire | Runs `scripts/smoke.sh` |
 | `make match [ORG=slug]` | Saves a Funder Match run for every org, or one | In code, no model, no cost. A proposal can only start from a saved run |
-| `make evals [TAG=canary]` | Golden questions through the real agent | **Costs money.** Runs on the host venv `backend/.venv` |
+| `make evals [TAG=… K=…]` | Golden questions through the real agent | **Costs money**: about 10 cents a case, except the `cost` cases (about $0.90 a run), which a run with no `TAG` includes. `TAG=canary` is the cheap subset, `TAG=import` the Import canaries (needs `TAVILY_API_KEY`), `K=<name>` one case. Runs on the host venv `backend/.venv`, so create it first |
 | `make news-pull ORG=… / FUNDER=…` | Pulls news through Tavily | Prints the plan first; `CONFIRM=1` runs for everyone |
 | `make graph-seed` | Builds the Neo4j graph from Postgres | Needs `OPENAI_API_KEY` |
 | `make psql` | Interactive shell against the database `ENV` selects | |
@@ -187,10 +191,12 @@ Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and op
 | Ship to Vercel | [Deploying by Hand](workflows/deploying-by-hand.md) |
 | Find an env var, or understand `ENV=local\|staging` | [Environments and Env Vars](operations/environments.md) |
 | Work on Vercel, Supabase pooler, Tavily, Langfuse or Aura specifics | [Vercel and Supabase Specifics](operations/deploy-and-vendors.md) |
-| Run or write tests, or learn what costs money | [Testing](testing/overview.md) |
+| Run or write tests, read the CI workflow or coverage rules, or learn what costs money | [Testing](testing/overview.md) |
 
 The folders are `architecture/` (how each subsystem is built), `workflows/` (end-to-end traces and step-by-step procedures), `operations/` (configuration and vendors) and `testing/`. Each folder also has an `index.md` that lists its pages: [Architecture index](architecture/index.md), [Workflows index](workflows/index.md), [Operations index](operations/index.md) and [Testing index](testing/index.md). The wiki-wide [index](index.md) sits above them.
 
 ## Testing at a glance
 
-Backend tests have three tiers. Unit tests never touch a database: they build a router-only app with a sentinel pool that raises on any use, so monkeypatch the `repositories/` function instead. Integration tests carry the `integration` mark and need the compose Postgres on 5433. Evals carry the `eval` mark, run only with `--run-evals`, and make real model calls (about 10 cents a case). The proposal rules are pure functions over a `work` dict, so their tests (`test_proposals_work.py`, `test_proposal_agent.py` and the `test_proposal_*` companions) need no database either. Before pushing frontend changes, run `npm run build`, because type errors surface there and never in `next dev`. See [Testing](testing/overview.md).
+Backend tests have three tiers. Unit tests never touch a database: they build a router-only app with a sentinel pool that raises on any use, so monkeypatch the `repositories/` function instead. Integration tests carry the `integration` mark and need the compose Postgres on 5433. Evals carry the `eval` mark, run only with `--run-evals` (a conftest flag, so `pytest -m integration` can never start billing model calls), and make real model calls (about 10 cents a case; the `cost` cases about $0.90). Locally, `cd backend && pytest -m "not integration"` is the quick loop and `ruff check .` the lint (line length 110).
+
+CI (`.github/workflows/ci.yml`) runs on every PR and push to `master` with four jobs: `ruff check`, the unit tier with coverage, the integration tier against a fresh pgvector Postgres (baseline, `migrate`, then the seeders, with two preserved-dump tests deselected), and the frontend (`npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run build`). The two coverage reports go to Codecov, and `codecov.yml` fails a PR that lowers total coverage by more than 1% or covers under 70% of the lines it changes. Evals are not in CI. The proposal rules are pure functions over a `work` dict, so their tests (`test_proposals_work.py`, `test_proposal_agent.py` and the `test_proposal_*` companions) need no database either. Before pushing frontend changes, run `npm run build`, because type errors surface there and never in `next dev`. See [Testing](testing/overview.md).

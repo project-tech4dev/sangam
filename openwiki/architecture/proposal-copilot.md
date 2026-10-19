@@ -3,9 +3,6 @@ type: architecture subsystem
 title: Proposal Copilot (Sangam Pitch)
 description: The third Sangam agent, on /proposal. Code owns the steps, exit checks, fact list, question rules, trace check, readiness, polish check and .docx versions, all stored in proposals.work (migration 0048). The model only proposes; code checks every write.
 tags: [proposals, proposal-copilot, sangam-pitch, agent, deepagents, work-jsonb, trace-check, human-in-the-loop, rls]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
 sources:
   - id: openwiki-source-e0103e1ba2cbec5a0f421c56
     resource: repo://backend/app/api/routes/proposals.py
@@ -67,14 +64,19 @@ sources:
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-fc71801b8203116cb828d7e9
     resource: repo://docs/features/2026-10-14-proposal-copilot.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+  - id: openwiki-source-a6acd51674a7bb40ec0a9785
+    resource: repo://frontend/features/ask/views/proposals/api.ts
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-19T08:30:22.232Z
 ---
 
 # Proposal Copilot (Sangam Pitch)
 
 Sangam Pitch helps an NGO's team write one grant proposal to one funder, starting from a saved [Funder Match](funder-match.md) result. It is the third deep agent in the backend, after [Ask Sangam](ask-sangam.md) and [Import/Scout](sangam-import-scout.md). On screen it is "Sangam Pitch". The route, thread ids and code keep the name "proposal", as Scout's keep "ingest".
 
-**Proposals are no longer browser-only.** A backend, a `/proposal` agent and a `proposals.work` column now exist. Everything the proposal screen and the agent edit lives in `proposals.work` (jsonb) and is recomputed into `proposals.summary`. The earlier `localStorage` store was replaced.
+**Proposals are no longer browser-only.** A backend, a `/proposal` agent and a `proposals.work` column now exist. Everything the proposal screen and the agent edit lives in `proposals.work` (jsonb) and is recomputed into `proposals.summary`. The earlier `localStorage` store (key `sangam.proposals.v1`, from the first proposals screens) was replaced. The frontend keeps only `hadBrowserProposals()` in `frontend/features/ask/views/proposals/api.ts`, which detects drafts left in one browser by that older version. The older `proposals` table from migration `0009` was extended by `0048` with `work` and `summary`, and the backend reads and writes it now. Shipping order and dates are in the [changelog's Proposals section](../../docs/CHANGELOG.md).
 
 The design rule is one sentence: **the agent proposes, code checks.** The model reads, drafts and asks. Code decides which step the proposal is in, what blocks leaving it, which facts are kept, when a question may be asked, whether a paragraph's numbers trace to a fact, whether smoothed wording changed a claim, and what the Word file contains. The code lives in `backend/app/proposals/`. Most modules there are pure functions over the `work` dict.
 
@@ -297,7 +299,9 @@ Agent tools never raise. Each catches its failures and returns an error string (
 
 ## Plan versus code status
 
-The plan is `docs/features/2026-10-14-proposal-copilot.md`. Its own status line ("Draft v3 … first version trimmed") is not a reliable guide. Per `docs/CHANGELOG.md`, M2, M3a, M3b, M4, M5, M6, M7 (`suggest_edit`) and M8 (writing in place) shipped. The CHANGELOG "Not finished" table has no row for the copilot, so none is declared partial. One row in that table is stale: for `2026-10-10-list-pages-proposals-media.md` it still says "No proposals backend". The plan's own §11 "Later" list is what is left, and it is unbuilt. It includes freshness in fact colours, more reasons to ask, `flag_conflict`, a changed-file check, a promise check in polish, the funder form's limits, and a web-searching landscape reader. Code differs from the plan in places. For example, there is no `StageGate`, `AskGate` or `ProposalSources` middleware: those checks live inside the tools and `ProposalContext` is the only proposal middleware. The plan's "three steps" are four stages in code. A `you_said` fact is stored only by `ask_user`.
+The plan is `docs/features/2026-10-14-proposal-copilot.md`. Its own status line ("Draft v3 … first version trimmed") is not a reliable guide. The shipped milestones (M2 to M8, including `suggest_edit` and writing in place) are listed in the [changelog's Proposals section](../../docs/CHANGELOG.md), which is the place to check for what has landed. Its "Not finished" table has no row for the copilot, so none is declared partial. One row there, for `2026-10-10-list-pages-proposals-media.md`, still says "No proposals backend", which no longer matches the code (migration `0048` and `backend/app/proposals/`).
+
+The plan's §11 "Later" list is what is left, and it is unbuilt. It includes freshness in fact colours, more reasons to ask, `flag_conflict`, a changed-file check, a promise check in polish, the funder form's limits, and a web-searching landscape reader. Code differs from the plan in places. For example, there is no `StageGate`, `AskGate` or `ProposalSources` middleware: those checks live inside the tools and `ProposalContext` is the only proposal middleware. The plan's "three steps" are four stages in code. A `you_said` fact is stored only by `ask_user`.
 
 ## Tests
 

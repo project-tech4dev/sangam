@@ -1,11 +1,15 @@
 ---
 type: operations reference
-title: Vercel and Supabase Specifics
-description: Vendor-specific operating facts for Sangam - the two Vercel projects, region and duration settings, the keep-warm cron, Supabase pooler/Auth/Storage, Tavily, Langfuse and Neo4j Aura - and what each does when it is unconfigured or down.
-tags: [operations, vercel, supabase, deployment, tavily, langfuse, neo4j, storage]
+title: Deploy and vendors
+description: Operating facts for Sangam's delivery and vendors - the CI workflow, Dependency review check, Codecov and Dependabot-driven bumps (none of which deploy), versus the hand-run Deploy workflow, plus the two Vercel projects, Supabase, Tavily, Langfuse and Neo4j Aura and what each does when unconfigured or down.
+tags: [operations, vercel, supabase, deployment, ci, codecov, dependabot, dependency-review, tavily, langfuse, neo4j, storage]
 sources:
   - id: openwiki-source-5f5b95b3d6a215fa02ceb945
     resource: repo://.env.example
+  - id: openwiki-source-164e2da859b5277df81c7d94
+    resource: repo://.github/workflows/ci.yml
+  - id: openwiki-source-cffc175ad16f1cf0f4a9e43f
+    resource: repo://.github/workflows/dependency-review.yml
   - id: openwiki-source-6766b7a0c14857435d2077c9
     resource: repo://.github/workflows/deploy.yml
   - id: openwiki-source-51c98ae9fd99799b3f67e069
@@ -40,23 +44,65 @@ sources:
     resource: repo://backend/vercel.json
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
+  - id: openwiki-source-5f7022cb75865b779a5792a0
+    resource: repo://codecov.yml
   - id: openwiki-source-e8e61d605125cac4d909755e
     resource: repo://docs/ARCHITECTURE.md
+  - id: openwiki-source-88fdf568b0f25b1d21f041da
+    resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-e2b923750735c644bf0f22f5
     resource: repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts
+  - id: openwiki-source-1047363cf615000e4c9bb694
+    resource: repo://frontend/package.json
   - id: openwiki-source-a0ebc66d448ae6aa5723800b
     resource: repo://frontend/vercel.json
   - id: openwiki-source-23775c3de52f3ab95a13cb8b
     resource: repo://README.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:37:55.275Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T08:37:55.275Z
 ---
 
-# Vercel and Supabase Specifics
+# Deploy and Vendors
 
-Docker is for local development only. A deployed Sangam is two Vercel projects plus managed services, and each vendor has a few non-obvious constraints. This page collects them. For environment variables and per-environment differences see [Environments](./environments.md); for the manual deploy procedure see [Deploying by Hand](../workflows/deploying-by-hand.md); for how the backend is assembled see [Platform](../architecture/platform.md).
+Docker is for local development only. A deployed Sangam is two Vercel projects plus managed services, and each vendor has a few non-obvious constraints. This page collects them, and separates the GitHub automation that only *checks* code (CI, Dependency review, Codecov, Dependabot bumps) from the one workflow that *deploys* it. For environment variables and per-environment differences see [Environments](./environments.md); for the manual deploy procedure see [Deploying by Hand](../workflows/deploying-by-hand.md); for how the backend is assembled see [Platform](../architecture/platform.md).
+
+## Checks versus deploys
+
+Nothing deploys automatically, and nothing that runs automatically deploys.
+
+| Workflow / service | Trigger | What it does | Deploys? |
+|---|---|---|---|
+| `ci.yml` (**CI**) | every pull request and every push to `master` | lint, tests, frontend build | No |
+| `dependency-review.yml` (**Dependency review**) | every pull request | fails a PR whose lockfile changes add a package with a high or critical advisory | No |
+| Codecov | uploads from the two backend CI test jobs | merges coverage and sets PR status checks | No |
+| `deploy.yml` (**Deploy**) | `workflow_dispatch` only (Actions → Deploy → Run workflow) | `vercel deploy --prod` per project | Yes, by hand |
+
+Migrations are not part of any of these: they are run by hand with `make migrate`.
+
+### CI
+
+`.github/workflows/ci.yml` opens with a comment that it deploys nothing. It has `contents: read` permission and a concurrency group `ci-<ref>` with `cancel-in-progress: true`, so a newer push to the same ref cancels the older run. Four jobs run in parallel:
+
+- **`backend-lint`**: `uv sync --frozen` on Python 3.12, then `ruff check . --output-format=github` (ruff is pinned to `0.16.8` in `backend/pyproject.toml`).
+- **`backend-unit`**: `pytest -m "not integration" --cov --cov-report=xml`, uploaded to Codecov with flag `backend-unit`.
+- **`backend-integration`**: runs against a `pgvector/pgvector:pg17` service container on port 5433. It applies `db/init/*.sql`, then `app.db.migrate`, `seed.seed` and `seed.taxonomy_seed` (what compose init plus `make migrate` and `make seed` give locally), then `pytest -m integration -rs`, uploaded with flag `backend-integration`. `-rs` lists skips because a test skipping for "Postgres not reachable" would mean a broken job, not a pass. Two tests in `tests/test_migration_integrity.py` (`test_preserved_row_counts`, `test_documents_sequence_advanced`) are deselected: they check a restore of the original dump, which the seeder never creates.
+- **`frontend`**: Node 22, `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run build`.
+
+Evals (the `eval` marker, which calls real models) are not run in CI. See [Testing overview](../testing/overview.md) for the tiers.
+
+### Dependency review
+
+`.github/workflows/dependency-review.yml` runs `actions/dependency-review-action@v4` on pull requests with `fail-on-severity: high` and `comment-summary-in-pr: on-failure`. It judges only what the PR's lockfile changes add; advisories already open stay in GitHub's Security → Dependabot alerts.
+
+### Codecov
+
+Both coverage uploads authenticate with GitHub OIDC (`id-token: write`, `use_oidc` is off for fork PRs, which fall back to a tokenless upload), so no Codecov token is stored. `codecov.yml` merges the two uploads into one report per commit (flags carry forward), and sets two statuses: **project** coverage may not fall more than 1% below the base commit (`target: auto`, `threshold: 1%`), and **patch** coverage (lines a PR adds or changes) must be at least 70%. A `fixes` rule maps `app/` to `backend/app/`, since `coverage.xml` paths are relative to `backend/`.
+
+### Dependabot-driven bumps
+
+`docs/CHANGELOG.md` records version bumps made in response to Dependabot alerts (2026-10-16): `next` 16.3.8, CopilotKit `~1.75.2`, `undici` and `katex` forced through npm `overrides` in `frontend/package.json`, and PyJWT 2.15.1. Those bumps land as ordinary pull requests, so they pass through CI and Dependency review like any other change, and are deployed only when someone runs Deploy. There is no `.github/dependabot.yml` in the repository (the plan in `docs/features/2026-10-16-ci.md` proposes one), so scheduling and grouping of Dependabot PRs is configured outside the repo, if at all. See [Platform](../architecture/platform.md) for the plan-versus-code discussion.
 
 ```mermaid
 flowchart LR

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8bf20d83b58b2b5311e01c6b4f6a5221ed2fdf5ca691ce8639a62c951a711063",
+  "pageVersion": "sha256:769fc2f14fd705ee4db0f05e04844bb8a94bc666ff0693b7f5dffc256845d5cf",
   "claims": [
     {
       "id": "claim_8d5cf8f2478345fc8f2c86fc0e3f5809",
@@ -188,15 +188,23 @@
     },
     {
       "id": "claim_c27a64e9e043426b8ddb622775487c49",
-      "statement": "The Ask tool compare_fit refuses before reading any data when the chat user may not run a match for the org. It loads via repositories/matching and returns ranked JSON of match-v2 results. With funder_ids omitted it lists only scored funders and puts the rest under not_scored, distinguishing a real non-fit (nothing in common recorded) from unknown (funder has no places or themes). Errors are returned as strings rather than raised, and it is registered as the one exception to db_query-only database access.",
+      "statement": "The Ask tool compare_fit refuses before reading any data when the chat user may not run a match for the org. Otherwise it loads via repositories/matching, compare() judges each funder, and render() returns plain text, one fact per line (header with tier counts and unknown-criteria counts, then funders), rather than JSON, so an evicted oversized reply still pages. With funder_ids omitted it is a shortlist: only scored funders are listed, the top strong/medium fits (up to FULL_DETAIL_MAX=10) in full without summary and the rest as one-liners, and unscored funders are split into 'nothing in common recorded' (a real non-fit) versus 'the funder has nothing recorded' (unknown, no places or themes). With funder_ids every named funder is in full with its summary. Errors are returned as 'compare_fit failed' strings rather than raised, and it is registered as the one exception to db_query-only database access.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/build.py#L21-L42",
-          "version": "repo-lines-v1:sha256:ad967e1949e837aae169d0f02d436c0b487e1aaca45476d8fbab4dd4a55bf543:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMzk0MjU1N2ViOTA3ZmIxYmYwMDNjYTYzZGNjYTdmNWY1MmIzMTdkZTU5MzIxYjczMDhhODU4Njk0ODE2ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkY2MzM2EwM2NkMGQzZWNkMDE5MDAzNDhhMzQ4YmM5ZGFlYWI5YzU3ZDBiMzAxOGY5ODhlM2E2ZjE2YWJkNmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxMmQ0MGM5YjMyZjY0NjUwN2M0ZWE1MTM0YzAxNTQ2MGI5NjE0NTU4MThhMzhmZGZlMDA0YmM3NGQxYmVmOWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5ZTUxNjc5NjFiNDc2Nzg0NTEwNWU5YzAwNTVjYjRmNGJhZjJkNGNjMDNmNGZhNjU2OWU3ZjE3NWYyOTcwMTMifQ"
+          "resource": "repo://backend/app/agent/build.py#L32-L43",
+          "version": "repo-lines-v1:sha256:1aa984444d07ef88c2afe40bc1ee3b24bdc657fadccfbb0bbf4686c77d125189:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyZDgxNDdjYjUxOTg4ZGQxNDg0ZjU2MTc1YjE5NDI2NzI1MTc5MWJhMjA0ZTdhYTVmZmIzMzYwOTJjMDk3ZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NDE2ZTA5Zjc4YmEzMTZjMDMyNTY4MjEzYjg1NWVlNzU2ZTQxNTY1ZDkxOGYwOTUxOWM4MWZkNjIwZjQwNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3N2FiY2ExY2Y5YzE1NWE2YTA5ZDQwZWFiY2NlZDEyZDFhYTE3YjY2ODFjMzg4YWMyNzVhMDNkZTc2YTVlNDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2YWI1MWI5YTU2NGRmOTk3ZjlmYzhhODkzYWNhZjg2MTRjMWFhNGNlZDgyODhiZmYxZjc3NDE0MWY2MDMyNDkifQ"
         },
         {
-          "resource": "repo://backend/app/agent/tools/matching_tools.py#L19-L93",
-          "version": "repo-lines-v1:sha256:233f7b9d798d3494527d24dae8451c219df939c0cd7b07937e23457bfd07cb12:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlZmQ0ZDAxMTZjMjMxODk1NjI4MTE1OTEyM2I4YmNmNDJkMDJjNDI3ODNlNWVjNmIzNTY2YzhlYzFhYzVkNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjYzk4YTZjYjA2NTNkM2E3ZTM1MDk0Njc4MjkwNTQ1YjZhNTMwMWI3ZmFmN2VjNDc4OGU0ZjZjNjU0M2VlMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2OTZkYzExYjhkODQ1MGNmNmUzZWU2MDVmY2FmMWU2ZmM2N2M3ZDllMWJmZWEwMGU4MWY1Yjk4MWQxMjc2OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/agent/skills/funder-matching/SKILL.md",
+          "version": "repo-file-v1:sha256:6d84300adf80e990eca5839262acfa4780a8131a1dd0aec96e86f440be1ab762"
+        },
+        {
+          "resource": "repo://backend/app/agent/tools/matching_tools.py#L38-L163",
+          "version": "repo-lines-v1:sha256:c8b52257f4c463bb2009fd7753fca902bc53e59e492a7f7ba86d9ffa0ed68333:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmYjI2NjBmNGI4MzAwZTczNDNhODg4ZTM3Y2Y5ZjMxNDQ0NTQ5MDM4Yjk4ZmUyYTYyNzFiNzEwZjlkY2Y5NzdhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJjY2M5OGE2Y2IwNjUzZDNhN2UzNTA5NDY3ODI5MDU0NWI2YTUzMDFiN2ZhZjdlYzQ3ODhlNGY2YzY1NDNlZTBjIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0ZmJkMDA5MzE0YmMyNzA4NDE2NzM0YTAyYWU1ZmYzOWExZTQ4YTA1MGJlOTFmNDNiMmZhYTkyMDAyYzYyYmZjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://backend/tests/test_compare_fit.py#L58-L102",
+          "version": "repo-lines-v1:sha256:28e1b955cbfc2eb10f815bef85c24cf8a531376b795751c73a797f92a706fa96:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1MGUwY2VhNTZhMTdiZDgzM2QwNDBiNmE3ZDc1NzlmZTdmMzJkNjI5YzgzOTMwMDExZDkwZmNlMWU4MGI4MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiYjNkODBhNjY0OTFmMDlhNDI5NTExOWQ0NTAxYzU0YzI3MDhiMDUwY2Q5MzY5NmU1MTQzN2IzNzc0ZWZiYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjYyZTZjNWNiZWVmMjcxMDZlMTU2OGE4MWU3MDVlODQ2MTYxOWZjNjM2NjYyMjA4NDA0MjVmNDBlYzY5MGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://backend/tests/test_funder_match_runs.py#L90-L110",
@@ -220,19 +228,23 @@
     },
     {
       "id": "claim_676c724e85e0499e823c7575b3c58dfa",
-      "statement": "The Funder Match UI (FunderMatchView and MatchCard) fetches the latest run from /api/funder-matches, ranks strong and medium matches while folding weak and not-scored ones into a disclosure shown only with no filter applied, lazy-loads per-match detail on first open, shows tier, score and delta against prev_score, and offers a Rerun (shown only when the list's may_run is true) that POSTs a run and reloads.",
+      "statement": "The Funder Match UI fetches the latest run from /api/funder-matches (FunderMatchView), ranks strong and medium matches while folding weak and not-scored ones into a disclosure shown only at the default view (no bucket, type, proposal filter or search), offers a Rerun (shown only when the list's may_run is true) that POSTs a run and reloads the list. Each MatchCard shows tier, score and a delta against prev_score (only when both exist and differ), and lazy-loads its per-match detail from /api/funder-matches/{id}/detail the first time 'Why this score' is opened.",
       "evidence": [
         {
           "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L20-L125",
-          "version": "repo-lines-v1:sha256:5699113b7ae41ceb587a173b149bfffa039b7d6df126f216c9d3f5b32ba97d1a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwNmVlNzk4ZWI0Y2Q5ZjQ0MTg1N2U3ZDMwYTc2N2YxOWNjNmM3Y2Q1Y2U2ZTdkOTg2YjZkNWRiMDM0YmE4NDlhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwNzIyMGRlMzY2YmRmZTY4ZWM0NWRiNGVlY2IwNjIzM2Y3ZmU5Y2NmZmEyYTI0YjljMWJlNzNkMWY3ZGI5MzgxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1NTFhZmYyZDQ2M2ZkZDdiMmJiNDkwODM1M2U2NWUxN2NjZmU3YjBmNWNkNTIwNGU1Yzc2MTU3YWZjYTA1ZjRhIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwOGEyNTk0OWYxZDc2ZTE0ZTY3OTg0MGFhODg3MTdhNDMxN2MxYWU2ZTExMGE0M2RkYWZhNTFmOTg2ODUzMWNlIn0"
+          "version": "repo-lines-v1:sha256:9c24d46193ae153922ab7e519c1c1f2362b041b758eeb9da83e1922b8274ba03:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ZmNmNDQxMjgyODk2NzY0MzM3M2ViMDM0YWE0ZThkNjAxZjM0MzkxYTUyNjQ2NWY0NGMwMGEyNTlmMzRjOGVjIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4NjhiMzczYjg2OWIzYTI5MjYzMTJlOGQ2YWZmODY3MGQwZWQwNDQxNTU3ZTUwMTRiMTRlNTQ0NDJiMWIyZjRkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjZmRmZDJkZjliYzgxY2MwMGNmMDg4NzhjNWE5NzNmY2ZkM2FhMjJjNGIyNTcxNzRmZDQ1MzNjZmQ1NzAwMzA3In0"
         },
         {
-          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L204-L225",
-          "version": "repo-lines-v1:sha256:836de64ca3a34e5eaedeb4a74e1647f7112252f4aba00de1393804a2439fb7c9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NTdlZDU5OTU2ODUyZjQwMjJkZDE1YzQwM2FkNWU5NTg0NDI4YjE3ODRkMjhmODRhYzBmNTZhYWQwMmRiY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ODNlODNhNjM2NzFlMjhjOTVmZmVmZjA2NTA3ODE3MzU1Mzk3OTBlNTU4MTU1YTk1ZGZiYzJlYjA0ZTQ2NTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5MWI1ZWJiZGJmZjk3NjA5NmU5OWNmZDQ3OTZjMjc2ZDAyOWJjZGZhMGRkNDJjMWEwZDdiODRjNzkyYzM3OTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQxZTEyMTM5MzIwNTJhMzYzNmMwMWQ1OGJjZDI4ZjczNjhkMTA0MjQwNzdlZmM2ODAyZjI2MjU4ODQ4ZmYzNjAifQ"
+          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L204-L230",
+          "version": "repo-lines-v1:sha256:7181738c3b37d5084ff87fb0c12fc574c63c571512f132fc5dbf3aae64f4cb13:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4ZWNhY2ZiZGEzZTVjYjcxNjRhYmJiMmMxOWU2OGM0YmVmMDkwMjMwMDkyZjEwZDFjYmY4ZDYzMTNlOTk0ZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ODNlODNhNjM2NzFlMjhjOTVmZmVmZjA2NTA3ODE3MzU1Mzk3OTBlNTU4MTU1YTk1ZGZiYzJlYjA0ZTQ2NTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxNDEwMjNlMWQ2ZjdjM2UxNDJiN2IzMTJlODIyYmM0MDY2MmQ2MDAwOTIyN2Q5ZDA1ZDM0YzNiNTA2ODE0MzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQxZTEyMTM5MzIwNTJhMzYzNmMwMWQ1OGJjZDI4ZjczNjhkMTA0MjQwNzdlZmM2ODAyZjI2MjU4ODQ4ZmYzNjAifQ"
         },
         {
-          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L87-L145",
-          "version": "repo-lines-v1:sha256:af2783b6d32d7b5fad180b459229cad71e3ad5d1e8c9c9e2237e4a8f20a381c9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkZDE5ZGUyNmYyZDM4ODJhZGU3NGE2ZDZhMDAyYzk0OGQ1NDgwNDg0MTg0ZDhiYjNkOTdjMjQyOTA3OGFlMTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiZmU4ZWJiMDFhNjllYzM2MjljZTRlZTA0ZjFhNTNmNWY0ZGM0NDdiZTgzODNmNWZkNjRkMzgwNjA1YjI5ZjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhZjIwODI5MTAzMWQyOTk4Y2U3MTZmNTk0NTc5NzI3ZDhjM2E4ZTk4OGIxMTFhYmMxZjQxYWMzNzQ5NWZkZDgifQ"
+          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L101-L202",
+          "version": "repo-lines-v1:sha256:e8751a98d7d3d13ccb409973693f302fcec9093b358774ca986679d9f9dc573a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjYzRjMGU0NDQ1NDdmY2RlNmNiZDY1N2U0Yjc3Zjg1ODA4NjczMTA4ZjcxYmUwYzMwMzA2NTk4MTEyYTA0MDEwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJjYTk1NDViMGNlMDVjMmQ5NzU4NDk3MTE1MzUyNWIzMDcyZjM2NGI4MGQ0ODY3ZTk5YzhhNDU5ZTcyNTEwYWE0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0NmIyM2VmMWNiYmE4ODIyMmMxZDczODE1MWFmOThiNjM5MmNhODc3MGU4ZjUxNTkxMjU3ZGFlOGM3YTFkNzZiIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI2NDg0Y2JkM2U2YmFlOTExZmE4ZWU0NGQ3N2M5MGI3Nzk4N2QzMzNhMzA4ZTZlODM2YTdmMWZkNzY4ZjEwN2JmIn0"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L22-L30",
+          "version": "repo-lines-v1:sha256:4b60f84f5d0f730ef6cae8681c83d3e46097f908d08e6e4aa0c1813a9abd88a5:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjU0MWY5ZDliZDUxNTVmZDJhZWI4N2M0OTdlYTUwYTBiNzg1NDFjYjdjNDE5ZDVlYmUyZTgyNDYyNzliZWVhYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWZkZDNiYWM0NzRkNDZmYjEzODcwNGVkMDIxY2JhM2ZmNThjYTk4NWVmZjZiMmQ5ZWIzYmNkNjU0ZDg0MjMxOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjMyNTIyMmNkODNiYWQ4ZDU0Y2Q4ZDFhNjA3OWEyMmJjZjlkZGQ2ZTM3MDIxOTdhMDZlOWQ4NGYxODMwZmExYyJ9"
         },
         {
           "resource": "repo://frontend/features/ask/views/funder-match/api.ts#L1-L10",
@@ -245,7 +257,7 @@
       "statement": "match-v2 (2026-10-11) changed only the theme criterion and the rubric version: theme now compares the taxonomy tree rather than Darpan sector tags, Others never counts as a shared area, and older saved runs keep their stored rubric_version.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L105-L105",
+          "resource": "repo://docs/CHANGELOG.md#L106-L106",
           "version": "repo-lines-v1:sha256:b019a839953c26531b6559ad273557ce1e2a73ffa2599b867db1649dc58cffa6:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWY0NDIxYTY4NjcwNDI5MmM4NjJkYWQxMDQwYTczNTI2ZTVkODQyZmNiNGE3NmQ2YTdjMDE2Nzc0ODYxNmIwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWQ0MzU3MjY3YTM5NDcyNjVkN2RiODJhNWIxYjg2MmVjYzcyNmZjMjBhNGE2Mjg1ZmRiN2U3ZjczMzIxOTZkMSJ9"
         },
         {
@@ -259,15 +271,15 @@
       "statement": "A proposal starts only from a match card: ProposalAction (shown with the Start button only when the list's may_run is true) posts {org, funder_id, title} via startProposal to POST /api/proposals, refreshes the shared proposals store, and navigates into the new proposal. Members who may not run only see View/count actions.",
       "evidence": [
         {
-          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L156-L161",
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L158-L163",
           "version": "repo-lines-v1:sha256:ed468f29e597846a0d6f4575702e0992b16e442f149d0fe3c13cd68dff26f71e:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzNjZWVhNDdkY2RhOGUzMGE2YTUwM2Q4MGI4MWIxNDBhN2U3MjExN2VmMjJiMTMxODFmNmFmNWM4OTQzMzNjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdiOGMxMDg1Zjk1YTFhZmFiZTVkMTUyYWQ1OGRiOWRjMjYzMzZjMTIxOGUyYjg0MGFlN2FkODI2YTBkNTc0OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzQzNjI3NDA2ZTExZmEwMjhjNTAyMDg0Y2Y4Y2IxN2ZhNWYzNjM5ZjhhNzY5NzYwZjNiMjRhZGI2YTg2ODg5ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzIyZGE3NjNmYjZmNTc2NDMyNWJiYTc4MTFmMGM3NGJlMGRiMjYxNDBlOTIxZjFhMzU2YzA3M2M1MWVjNGFhMCJ9"
         },
         {
-          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L90-L94",
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L92-L96",
           "version": "repo-lines-v1:sha256:3a5d15d3f6f25923b450b0fd5a936feaa21540c93534c9f878ce8ab345e4d3c8:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFiYjNjNmU4Y2JhYTM2N2E1NTg5YjM1MTBjYmRlOTE5ZGM2YTM5MDczNWY0Yjc5YmY4YTY1MjY2MzJlOTE4MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDAzODE1ODcwZjkwYzI3NjdjZjFhYThmYTE0YzhlY2ZhMDY5MWE5ZjFiYWRmYTkxNjVmZmE1NTJkNjQ3MzViNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDFhYWQ3MDYxZmM4YjZhNDE2NjU0Mzc0ZWYzY2Q1OWJkNzk0MTA3YzQ0NjkyZDQ1MzMxZTliNjI4NzA4Njg4OCJ9"
         },
         {
-          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L31-L85",
+          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L32-L86",
           "version": "repo-lines-v1:sha256:53edc253250c6d9631e965fe46675f54263cfbdced23ae91d6d125e0cad3edcb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1OTEzNzAyOTgyOWI4YmUyYTFkNWI3YTc4MTEwYzE2NTJlZTZhZjM2ZDU5ZDkzM2E5OTBjYjJjNjc0ZWM4NzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjYmM2MzMzZjUyNmQ4NmFiZGVmNDE1YTQ3YTliNTE3NmJhNzE4MTI3MjZiZGM1MjdmMDAxNGU2ZjJlMzQ2MDIifQ"
         },
         {
@@ -343,6 +355,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-15T18:08:53.060Z"
+    "at": "2026-10-19T08:30:22.232Z"
   }
 }
