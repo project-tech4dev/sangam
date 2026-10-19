@@ -53,6 +53,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-13 · #191 · Ask's `fetch_url` reads a page without a length cap.
 - 2026-10-17 · (unmerged) · Ask efficiency M2: `compare_fit(org_id)` replies in text with the top 10 strong/medium fits in full and every other funder on one line (worst case ≈10k tokens, was one JSON line past the 20k eviction); tool-result clearing, past 60k, clears the oldest results in 20k steps (what is sent stays under 60k, the cached prefix moves once per step) and never `compare_fit`. Header counts only scored funders. Ask, Sangam Pitch and Sangam Import share it.
 - 2026-10-19 · Ask efficiency M4: `fetch_url` removed, so Ask fetches no model-supplied URL (#247); `db_profile_column` errors carry their own prefix and count toward the 5-attempt limit; prompt rules that restated a tool's description shrink to a line.
+- 2026-10-19 · Ask's limits in code: a question stops after `ASK_MODEL_CALL_LIMIT` (25) model calls, `compare_fit` refuses a repeat of the same arguments and a fourth call, and Ask falls back to `RESEARCH_MODEL` and summarizes on `UTILITY_MODEL` as Import and Pitch do (#248, #249).
 
 ## Knowledge graph
 

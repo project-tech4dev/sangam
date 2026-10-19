@@ -119,6 +119,9 @@ class Settings(BaseSettings):
     # Each subagent gets its OWN budget of this many steps — the counter is per graph invocation, not
     # shared with the parent, so launching more researchers does not eat the supervisor's steps.
     recursion_limit: int = 200
+    # Model calls one Ask question may make before it stops and says so. Trace 5bfdbc85 made 21; the target
+    # is under 8. A cap, not a target: it ends a runaway turn long before recursion_limit does.
+    ask_model_call_limit: int = 25
 
     # How many organisations Sangam Import researches at once. It is not a ceiling on how many you can
     # ASK for: above this the agent works in waves until the list is done. Raise it and raise
@@ -144,7 +147,8 @@ class Settings(BaseSettings):
         "research_model",
         "utility_model",
         "sql_audit_model",
-        "max_parallel_research", "research_page_limit", "research_model_call_limit", "db_pool_max_size", mode="before"
+        "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
+        "db_pool_max_size", mode="before"
     )
     @classmethod
     def _blank_means_default(cls, v: object, info: ValidationInfo) -> object:
