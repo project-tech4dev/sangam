@@ -208,6 +208,27 @@ async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: 
     return "\n".join(f"{k}: {v}" for k, v in summary.items())
 
 
+async def _calls_pull(names: list[str] | None, *, others: list[str]) -> str:
+    """The open-calls pull (`make calls-pull`) for named funders, or every funder; the approval card was the check."""
+    from app.ingest.calls import pull
+
+    pool, lines = get_pool(), []
+    slugs = None
+    if names:
+        async with pool.connection() as conn:
+            rows = await (await conn.execute(
+                "SELECT slug, lower(name) AS name FROM funders WHERE lower(name) = ANY(%s) OR slug = ANY(%s)",
+                ([n.lower() for n in names], [n.lower() for n in names]))).fetchall()
+        known = {r["slug"] for r in rows} | {r["name"] for r in rows}
+        lines += [f"{n}: no funder in Sangam by this name; nothing read." for n in names if n.lower() not in known]
+        slugs = [r["slug"] for r in rows]
+        if not slugs:
+            return "\n".join(lines + ["run_import_now: none of those names is a funder in Sangam; nothing was read."])
+    lines += [f"{k}: not run, a calls pull runs alone; ask for it separately." for k in others]
+    lines += await pull.run(pool, pull.Deps.from_settings(get_settings()), slugs)
+    return "\n".join(lines)
+
+
 @tool
 async def run_import_now(
     goal: str, funders: str = "", years: str = "", sources: str = "", limit: int = 10, feeds: str = ""
@@ -229,6 +250,9 @@ async def run_import_now(
             organisations and funders and never creates a funder or an organisation.
             Name it: empty runs no news pull. A parked or held source is reported as
             refused, with the reason, rather than skipped silently.
+            "funder_calls" reads each named funder's own calls page (empty funders means every
+            funder) and writes the open calls for proposals it lists, closes expired ones and
+            matches them to NGOs for RFP Watch. It runs alone and never creates a funder.
         limit: items per source, for adapters; the news pull ignores it.
         feeds: comma-separated topic feeds for a news pull: "fcra" (FCRA actions and rules),
             "csr_trends" (CSR and funding), "ngo_north_east" (NGO cases in the North East).
@@ -249,6 +273,8 @@ async def run_import_now(
             caller = scope()
             return await _news_pull(names, feeds=chosen_feeds(feeds), goal=goal.strip(), started_by=caller.user_id,
                                     others=[k for k in keys if k != "tavily_news"])
+        if keys and "funder_calls" in keys:
+            return await _calls_pull(names, others=[k for k in keys if k != "funder_calls"])
         fys = [y.strip() for y in years.split(",") if y.strip()] or None
         summary = await run_import(
             keys, goal=goal.strip(), funders=names, years=fys,

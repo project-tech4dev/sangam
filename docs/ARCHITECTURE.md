@@ -106,7 +106,7 @@ Generated detail (criteria, points, tiers, saved runs): [funder-match](../openwi
 
 ### RFP Watch
 
-Plan: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md).
+Plans: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md), [2026-10-19-rfp-watch-scout](features/2026-10-19-rfp-watch-scout.md).
 
 - **Supply is a fixed pipeline, not an agent** (`app/ingest/calls/`, `make calls-pull`): per funder, one search of
   its own domain, a Haiku pick of one page, a Haiku extraction, and `writer.write_rfp`. Every page passes `check_url`
@@ -114,8 +114,12 @@ Plan: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md).
 - **The pinned list is read first and never skipped** (`calls/pinned.json`); a dead end there is a "Needs a look"
   line, and its `note` records what a person found, so it is not rediscovered each run.
 - **No column of its own.** A call goes into `rfps`, `rfp_locations` and `rfp_tags`; a re-run reads a funder's
-  page again from its newest call's `rfps.source_url`, so a page that held no call is searched afresh.
+  page again from the newest call *the pull* wrote (`extractor_version` = the calls prompt's), so a page that held
+  no call is searched afresh, and a call Scout's research wrote, which names a report, never becomes the calls page.
 - **Only a call with a future deadline is written.** Past and undated calls are reported, not stored.
+- **Scout starts the pull; it doesn't do it.** `run_import_now(sources="funder_calls")` is the news pull's shape: no
+  `choose_sources`, no researcher, one approval card naming the funders, then `calls.pull.run`'s report. No new tool,
+  subagent or interrupt, so Scout's tool set is unchanged. Staff only (`staff_only`). The CLI stays for staging.
 - **A call reaches an org through a shared domain, in one SQL insert** (`repositories/rfps.py::flag_matches`):
   both sides' tags roll up through `tags.parent_id` to a `domain`, and only orgs with members get rows. No score and
   no match-v2: a call says little about place, size or eligibility that a person can't read faster on the card.

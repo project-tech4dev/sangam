@@ -14,6 +14,8 @@ sources:
     resource: repo://backend/app/agent/build.py
   - id: openwiki-source-813dbe9c3eeb378112388ccd
     resource: repo://backend/app/agent/middleware.py
+  - id: openwiki-source-51c98ae9fd99799b3f67e069
+    resource: repo://backend/app/agent/tools/files.py
   - id: openwiki-source-1f8b3caaa82d707d101e103d
     resource: repo://backend/app/agent/tools/matching_tools.py
   - id: openwiki-source-959bf3d4c031baf336a996e1
@@ -40,8 +42,14 @@ sources:
     resource: repo://backend/app/db/checkpointer.py
   - id: openwiki-source-10e08c1deca7d7728d8240c4
     resource: repo://backend/app/db/pool.py
+  - id: openwiki-source-170bddac5f057a262a61a895
+    resource: repo://backend/app/ingest/access.py
   - id: openwiki-source-62958d5b14b0717233a7ec0b
     resource: repo://backend/app/ingest/agent.py
+  - id: openwiki-source-d6ae1b935f35d5f42105acc8
+    resource: repo://backend/app/ingest/calls/pull.py
+  - id: openwiki-source-7d480e75db10aae51a0f227b
+    resource: repo://backend/app/ingest/middleware.py
   - id: openwiki-source-d5862b7945cd467ce8723c8d
     resource: repo://backend/app/ingest/news/pipeline.py
   - id: openwiki-source-d1c2c2d698ef77e881e1ff17
@@ -64,10 +72,10 @@ sources:
     resource: repo://CLAUDE.md
   - id: openwiki-source-5f7022cb75865b779a5792a0
     resource: repo://codecov.yml
+  - id: openwiki-source-b79fbbd921df689b4bbdc82f
+    resource: repo://docker-compose.yml
   - id: openwiki-source-88fdf568b0f25b1d21f041da
     resource: repo://docs/CHANGELOG.md
-  - id: openwiki-source-347b4d4918c606dd60546748
-    resource: repo://docs/features/2026-10-09-model-tiers.md
   - id: openwiki-source-bdac7cc8453a568bc132cac3
     resource: repo://docs/features/2026-10-10-page-load-performance.md
   - id: openwiki-source-e89833baa00bd0952b217a13
@@ -78,10 +86,10 @@ sources:
     resource: repo://frontend/vercel.json
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:37:55.275Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:37:55.275Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Platform
@@ -114,7 +122,7 @@ The agents themselves are covered in [Ask Sangam](ask-sangam.md) and [Sangam Imp
 
 `backend/app/core/config.py` defines a pydantic-settings `Settings` class loaded from the environment and `.env` (unknown keys ignored). `get_settings()` is `lru_cache`d. It is the only place defaults are written.
 
-**Blank means default.** A `mode="before"` validator turns an empty or whitespace string into the field's declared default for the four model settings and for `max_parallel_research`, `research_page_limit`, `research_model_call_limit` and `db_pool_max_size`. docker-compose forwards `${VAR:-}` as `""`, and a hand-edited `.env` line with nothing after `=` does the same. Without the validator an int field would refuse to parse and the container would not boot. `DEV_AUTH=""` is likewise read as off.
+**Blank means default.** A `mode="before"` validator turns an empty or whitespace string into the field's declared default for the four model settings and for `max_parallel_research`, `research_page_limit`, `research_model_call_limit`, `ask_model_call_limit` and `db_pool_max_size`. docker-compose forwards `${VAR:-}` as `""`, and a hand-edited `.env` line with nothing after `=` does the same. Without the validator an int field would refuse to parse and the container would not boot. `DEV_AUTH=""` is likewise read as off.
 
 ### Model tiers
 
@@ -132,17 +140,17 @@ Details that matter when changing these:
 - Ask and the Import supervisor share `MODEL`. There is no separate Ask model, and the plan in `docs/features/2026-10-09-model-tiers.md` lists extended-thinking budgets as out of scope.
 - `SQL_AUDIT_MODEL=off` is normalised to an empty string, which disables the audit. It costs one extra model call per SQL turn, which is why it sits on the cheapest tier.
 - To run a tier on the main model, set it to the same spec as `MODEL`. The researcher's escalate-after-failed-save middleware is only added when `research_spec != settings.model`.
-- Subagents fall back down or up the tiers through `fallback(...)` middleware. For example the writer falls back from utility to research to strong.
+- Agents fall back across tiers through `fallback(primary, *candidates)` middleware, which adds one `ModelFallbackMiddleware` using the first candidate spec that differs from the primary, and nothing when all match. The writer and workbook-reader try research and then strong (so a utility spec equal to the research spec falls through to strong). The researcher and vault-reader fall back from research to `MODEL`. The Import supervisor falls back from strong to research, and Ask's agent also falls back from `MODEL` to `RESEARCH_MODEL`.
 - Deployed backends read their Vercel environment, and that beats the code defaults. Set or clear the four model variables on `sangam-backend` before deploying (see the [Deploy and vendors](../operations/deploy-and-vendors.md) page).
 
 ### Other settings that shape the platform
 
 - **Database.** `database_url` holds both app data and LangGraph checkpoints. `db_pool_max_size` defaults to 10, sized for a Supabase project with 60 connections minus reserved ones across several deployed instances. `db_gate_slots` is `max(2, pool - 3)`. Concurrency gates sit under the pool, because the checkpointer writes on every graph step through the same pool and a gate equal to the pool size would starve it.
-- **Agent limits.** `recursion_limit` is 200. Every middleware hook is its own graph node, so a single model-and-tool cycle costs several steps, and LangGraph's default of 25 is exceeded by a SQL turn. `max_parallel_research` is 8. `research_page_limit` and `research_model_call_limit` are optional hard stops.
+- **Agent limits.** `recursion_limit` is 200. Every middleware hook is its own graph node, so a single model-and-tool cycle costs several steps, and LangGraph's default of 25 is exceeded by a SQL turn. Each subagent gets its own budget of these steps. `ask_model_call_limit` (25, `ASK_MODEL_CALL_LIMIT`) caps the model calls one Ask question may make through `model_call_cap`, which ends a runaway turn long before `recursion_limit`. `max_parallel_research` is 8. `research_page_limit` and `research_model_call_limit` are optional hard stops.
 - **Feature switches derived from config.** `auth_enabled` is true when `supabase_url` is set; otherwise every request is the seeded dev user. `storage_enabled` needs both the Supabase URL and the service key. `graph_enabled` needs `neo4j_uri` and an OpenAI key. `langfuse_enabled` needs both Langfuse keys.
 - **SQL tool.** `sql_timeout_ms`, `sql_max_rows` and `sql_max_attempts` bound the text-to-SQL tool.
 - **News pipeline.** The `news_*` thresholds and costs live here, never in a screen. The verifier is off while `news_verify_max` is 0.
-- **Egress guard.** `core/egress.py` has `guarded_client()`. Every outbound request, including each redirect hop, is refused if the host is loopback, private, link-local, internal, or resolves to such an address. A check that cannot decide refuses. It is shared by Import's research tools and Ask's `fetch_url`.
+- **Egress guard.** `core/egress.py` has `guarded_client()`. Every outbound request, including each redirect hop, is refused if the host is loopback, private, link-local, internal, or resolves to such an address. A check that cannot decide refuses. The check also rejects non-http(s) URLs, `localhost`, single-label hosts, hosts that do not resolve, and numeric forms such as `2130706433` or `0x7f.1`. IPv6 addresses that embed an IPv4 one (mapped, 6to4, Teredo, NAT64) are judged by the inner address. Its callers are Import's `download_file` tool (`agent/tools/files.py`), the robots.txt and access checks in `ingest/access.py`, and the RFP call pull (`ingest/calls/pull.py`). Ask no longer fetches model-supplied URLs, because `fetch_url` was removed (M4, #247).
 
 ### MCP settings are dead
 
@@ -333,7 +341,9 @@ The `Makefile` is local tooling and deploys nothing. Bare `make` runs `help`, wh
 - **Blast radius.** The function is shared: Ask (`agent/build.py`), Sangam Import (`ingest/agent.py`) and the proposal agent (`proposals/agent.py`) all call it, so all three get the new trigger and stepping. The `compare_fit` exclusion does nothing in Import.
 - **Eval measurement (M1).** `tests/evals/harness.py` has `RunStats` (tool calls by name, model calls, tokens). Cases can carry `max_calls` and `max_large_result_reads`, and with Langfuse keys the selected cases run once as a dataset experiment on `ask-golden`, under environment `eval` (see `make evals` above).
 
-**Status.** The CHANGELOG lists both M1 (evals) and M2 (`compare_fit` text and stepped clearing) as `(unmerged)`, although the code for both is present in the tree. The plan's M3 to M5 have not landed: there is no `{{TABLE_MAP}}` in the prompt, no `__cite__` citation columns in the SQL validator, `fetch_url` is still one of Ask's tools, and the proposal agent has no prefill guard. Those planned changes (a table map in the prompt, automatic citation ids, one-row cell widening, caveats once per turn, moving the SQL echo to the tool artifact, removing `fetch_url`, a Pitch prefill guard) should be read as plans only. Expect the CHANGELOG and the plan's Draft v2 status line to disagree with each other until the PRs merge.
+- **In-code budgets.** `CompareFitBudget` refuses a repeated `compare_fit` (same org and funder ids this turn) and any call past `MAX_COMPARE_FIT_CALLS = 3`, and `model_call_cap(settings.ask_model_call_limit)` ends a turn at 25 model calls. Both are built into Ask's middleware in `agent/build.py`.
+
+**Status.** The CHANGELOG still lists M1 (evals) and M2 (`compare_fit` text and stepped clearing) as `(unmerged)`, although the code for both is present in the tree. M4 is merged and in the tree: `fetch_url` is gone, so Ask registers six tools, and `db_profile_column` errors count toward the five-attempt SQL limit. M3 and M5 have not landed: there is no `{{TABLE_MAP}}` in the prompt, no `__cite__` citation columns in the SQL validator, and the proposal agent has no prefill guard. Treat those planned changes (a table map in the prompt, automatic citation ids, one-row cell widening, caveats once per turn, moving the SQL echo to the tool artifact, a Pitch prefill guard) as plans only. The plan's Draft v2 status line does not say M4 shipped.
 
 ## Known regressions
 

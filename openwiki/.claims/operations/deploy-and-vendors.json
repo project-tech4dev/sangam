@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:42c2b6b75ae10561b802ba0dfe60c5119ec96df9e386eabf14ece4a988f96f30",
+  "pageVersion": "sha256:1b1a1579090145cc9b86b6c8e2c701679c6fd2436c0ede3a0fee3796f08ad142",
   "claims": [
     {
       "id": "claim_cbf4cc986efa451fb08f51996cdbb613",
@@ -35,7 +35,7 @@
           "version": "repo-lines-v1:sha256:7d8b3377d41ee80b7843c9ce9e847f53e44616c374f9e7e7290a583de41cb573:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Q4YjMzNzdkNDFlZTgwYjc4NDNjOWNlOWU4NDdmNTNlNDQ2MTZjMzc0ZjllN2U3MjkwYTU4M2RlNDFjYjU3MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Q4YjMzNzdkNDFlZTgwYjc4NDNjOWNlOWU4NDdmNTNlNDQ2MTZjMzc0ZjllN2U3MjkwYTU4M2RlNDFjYjU3MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmY5ZDU2YjdhNTg3ZTg0MjQ2NmFkMzM4NGYzNGI5MzQwNjQwMDk1ZmM1ZGM0MzI5ZDgzNGQ5ZjU4YmU1ZjQ3ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmE2ZGY5ZjM4MjczYWZmMjAxNTg1NjQ4MmZhZjI2MmRhZTgzYjQ1MDE1OTZmZGE0M2ZmMmYyZWU1MDVkNjY4NSJ9"
         },
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L163-L163",
+          "resource": "repo://docs/ARCHITECTURE.md#L190-L190",
           "version": "repo-lines-v1:sha256:c0bf7e30db76c33670beea24e44d23363f980168017b20c4ec6da52bb8d67d16:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBiZjdlMzBkYjc2YzMzNjcwYmVlYTI0ZTQ0ZDIzMzYzZjk4MDE2ODAxN2IyMGM0ZWM2ZGE1MmJiOGQ2N2QxNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBiZjdlMzBkYjc2YzMzNjcwYmVlYTI0ZTQ0ZDIzMzYzZjk4MDE2ODAxN2IyMGM0ZWM2ZGE1MmJiOGQ2N2QxNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDllNzdhOGQ2NTVhNGVjNzNkNjg2NDdhNjcyMDE4YWYzN2RjNTQwZGI4OGEwYWUzYjlkNzFhZmYwNDk3M2VmNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjU2M2JhNzkyNzMxNjQ2NjE1MjZhNGNjZjU1ZTk0YzA1OTI4NjZkYjU0NTdlY2UyM2VhNmI5ZDQ0MWVmNGIwYyJ9"
         },
         {
@@ -67,7 +67,7 @@
       "statement": "The deployed backend must connect to Supabase Postgres through the session pooler on port 5432: the direct host `db.<ref>.supabase.co` is IPv6-only and hangs from containers, and the transaction pooler (6543) breaks pg_restore. The backend pool also disables prepared statements (`prepare_threshold=0`).",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L567-L572",
+          "resource": "repo://CLAUDE.md#L569-L574",
           "version": "repo-lines-v1:sha256:e6fe376dbe657f6930b64e45283e59a751d9edfda64a214f7c71672eae4d4644:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzE4YWJmY2NhYjZhZmEzODFmMGM5NmQ0OTBkNGEwMGJhMDRmYTMxMjE5YjBhZmY0MGE3NmQ0NWJmYjFhYWRmYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQ5Mjg0Mzk5ZTFjZTM3NGZmODllYzM5NTcwZDExNDUwZTUxMjFiYjVkNjQ5MGQxYmVlMzE2MzFhNjRhZjZiMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTE3NzgxYjk0YTE0ZDVhODY3YjhlZTIyMWQ5OTljNzdhZGMyMmQwYWY0ZGMyMDNmM2NkODI3MWQzNmIyMzBiYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjc4MmNlMjg4ZmNlNmZjZjg0YjY2OTIzODkxOWZhNGJmZmEyYzI3ZjIzZmRjMDdmYWI3OWE3ZTg1YTRlY2UyMCJ9"
         },
         {
@@ -85,11 +85,11 @@
       "statement": "The backend's Postgres pool size (DB_POOL_MAX_SIZE, default 10) is sized against Supabase's 60-connection limit (3 reserved) across several instances, is shared by REST, agent tools and the checkpointer, and concurrency gates are set to max(2, pool-3).",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L132-L136",
+          "resource": "repo://backend/app/core/config.py#L135-L139",
           "version": "repo-lines-v1:sha256:4e90f84b7faeb827264afc9441625f207f8572ab6bfd4f45564cc7bb1fc2177c:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjE5YThkZDBhMDdhMjlmM2JkNjM4YzRhZWFlNDNjMmM2Y2NhMzYzNjc1OTY0OGY3MTJkOTIxOTkxMTA3YzViYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTJmNDZlMWFiZDYxNTIwOGViNDgyZDNiMmI5NWQ0MDk4MjgxNWJlYTIzNmMzODBlODI3MGNhZjA4NDdhMTk1NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODFmNWQyMmI0ODJlYWJjMmQ2MDlkYTk0NmMzZDFjNzE1NzBkOTJlOWVkZmY0OTBmYTg2YzAxMmQxODVjMjg1NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWY4OTk1M2FkNmRiNDRjYTFiMDAwNDJiMzlhMWI1YjhiYmViNzYxNTAzMTVhMzQzZmJmYjg1NmUyYTMzMjQ3ZSJ9"
         },
         {
-          "resource": "repo://backend/app/core/config.py#L166-L173",
+          "resource": "repo://backend/app/core/config.py#L170-L177",
           "version": "repo-lines-v1:sha256:352b7e07b6f02380978d18558c5a50c4d238635b0b6b92f6ced9bd75cef16b5d:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjNkMDBjZjI3MDk2NGQ0NGExM2RmYWM4NzUyYjA5ZmNjNDM1YjBmMTliMzE2YWJjZjgxYTdhYTY0YmIxMjJkNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmRiZTY2YWNhM2E3YzZkMWY3YzUyOGM0MzQ2MWUzZjRiMmFhZmExZmU3Zjg4MmE4ZWM3ZTY1NTU1ZThjODQ2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjBkMDliZDg1MTdhZmEzMjhlNzIwMTUzNTRlOTY0MzNhOGZkMTFlY2Q0N2NlZTAyMGVhNDM2YmExYjY4YzU2NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2I4Njk5YjEyYmRjOTk2YzM1ZGM2YzY0YTRjMDk0NWM2MjhlMmEwOTQ1ZjgzMzBkOTcyNjhkYjIxZGI3YTIwNCJ9"
         },
         {
@@ -129,7 +129,7 @@
           "version": "repo-lines-v1:sha256:39529ee838ea494d4418329e9132f355f6d77888e1580eee19979ebf50a0be00:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzk1MjllZTgzOGVhNDk0ZDQ0MTgzMjllOTEzMmYzNTVmNmQ3Nzg4OGUxNTgwZWVlMTk5NzllYmY1MGEwYmUwMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzk1MjllZTgzOGVhNDk0ZDQ0MTgzMjllOTEzMmYzNTVmNmQ3Nzg4OGUxNTgwZWVlMTk5NzllYmY1MGEwYmUwMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTg1MjRmMTg4MWNmZjZkOTJlNGNhYTMwOGI5OGE1MDJjOTg2ZTQ5ZDU4YWE2OTk2MWQ5NjY4MWEyZTJkYjU5MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTIzMGZlOGJjYjJmZTYwMzllZjllN2U0Y2Y5NWFkNjk4YTU3Mzc1NTIwMGM4MzU5N2U5YTVhMzcwNDllMWE3OSJ9"
         },
         {
-          "resource": "repo://backend/app/core/config.py#L198-L200",
+          "resource": "repo://backend/app/core/config.py#L202-L204",
           "version": "repo-lines-v1:sha256:cedb3b380bef2dc784ce7fc10efb4b5e98728543aef0c250c1faef9282c82e9a:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjNkMDBjZjI3MDk2NGQ0NGExM2RmYWM4NzUyYjA5ZmNjNDM1YjBmMTliMzE2YWJjZjgxYTdhYTY0YmIxMjJkNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTcwOTg3Mzk4ZGQ1MmY0OWQ5NDBlOWIzYWU2MWY3NWU3OWU0ZjQzMTM1NTU5NjJmZWNkYTY2MjI3ZTQ5NjFlZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDNmYWY5YWUxZTg5Zjk4MDk1MzI3NWQwZjg1N2Y5NzY3NjM1OWQyMGYxMmRmOGFhZWIxZWI4OTYyMTQ3YjRlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzk3MGRlYWQ1ZjRhNThkOGFkNjFkYzEwMzVkZWQ3ZDczMTBjYmRkYmZlOTI4YTAwZTVjMjBjZWU4ZmM1OTY1YyJ9"
         },
         {
@@ -176,19 +176,39 @@
     },
     {
       "id": "claim_a41c287bf1bd47fd85b190eb6b75a1f0",
-      "statement": "Outbound research/fetch HTTP goes through `guarded_client`, whose request hook checks every hop including redirects and refuses non-http(s) URLs, localhost, single-label hosts and any literal or DNS-resolved address that is not public (covering inet_aton forms, IPv4-mapped, 6to4, Teredo and NAT64); a check that cannot decide refuses.",
+      "statement": "`app/core/egress.py` provides `guarded_client`, an httpx client whose request hook runs `private_address_refusal` on every hop including redirects, refusing non-http(s) URLs, localhost, single-label hosts and any literal or DNS-resolved address that is not public (covering inet_aton forms, IPv4-mapped, 6to4, Teredo and NAT64); a check that cannot decide refuses. It is used directly by `download_file`, the robots.txt fetch and the grant-calls pull, while Import's `read_page` and `search_public_sources` go through `check_url`, which calls the same address check, and `web.py` itself only builds the Tavily search tool.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/tools/files.py#L13-L68",
-          "version": "repo-lines-v1:sha256:eef5762ed2afd44d6aca056841ce9bc3e7632e1098376e2e98c98941bc4b433b:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkMDMyZjc4NzU5NmQzMDczZTYwY2I5MTAwYzUyOGMxNGRiOGQ1MWNiMmZiYWVmYWQzNDkyMjMwZDg3ZDlhZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZThiNDYzYTU3OTlkNGZkOTRkZmUwNzA5NDllZWUwMWFmMzZiOGU1MjhiMmIzZDIzZWRkMjMyMWU3ODIxM2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4Y2U1Nzg4MmE2N2I0OGM2ZGFkOGI5YjVlZDk4NDEyZDVlMTM0NWFkYTM1NzBhZGY3YmY3M2IwZDI0YzMyM2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3MzAwYmFlZDVmNGYzZjMzZGE3N2RlY2I2ZTk3MTdiYTRiMjViNTdjYTkzMjUzNzRiMzkwOGQxYjkwYWQxODgifQ"
+          "resource": "repo://backend/app/agent/tools/files.py#L13-L94",
+          "version": "repo-lines-v1:sha256:1e76a11aec859a2823cc904583931682a93f577d12c4069b0be1284a2994bf8d:eyJzZWxlY3RlZExpbmVDb3VudCI6ODIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkMDMyZjc4NzU5NmQzMDczZTYwY2I5MTAwYzUyOGMxNGRiOGQ1MWNiMmZiYWVmYWQzNDkyMjMwZDg3ZDlhZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3OWJiYmRhOGY0YWQyM2I4ZWU3ZWU0MTQ4YTlkN2YwOTFiNDYyZjUzYTRmNjZiNzZmOWI4MzdkNDQzNGI4MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4Y2U1Nzg4MmE2N2I0OGM2ZGFkOGI5YjVlZDk4NDEyZDVlMTM0NWFkYTM1NzBhZGY3YmY3M2IwZDI0YzMyM2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkZmMxYmFmNzhlNTg3NzlhZTExNjllNTYwZWJkOWJjYzgzOTAxNzA3NDEzNTI2OWIxNjFmYTVjZjFkMTIyZWQifQ"
         },
         {
-          "resource": "repo://backend/app/agent/tools/web.py#L10-L32",
-          "version": "repo-lines-v1:sha256:efc11124c6b26c67237f5bddd4ef7b3c66f610034797f36975ad0db2549ea967:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkMDMyZjc4NzU5NmQzMDczZTYwY2I5MTAwYzUyOGMxNGRiOGQ1MWNiMmZiYWVmYWQzNDkyMjMwZDg3ZDlhZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmYzA3ZmIzYjljNzAwOTk2NWQxNDc3MjQ3ZDUxNmZkZTFlZDM2MTZjM2M0NTJiYTBkNTc1YTc2NmZkNzZlNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5MzhhN2U5NWU5NWU0MzBkMzZjMjI5ZDk3NjJjODQ1YzY2OTAwN2JhYTRhZTIyZTMzMmYxNTkwNWE5ZGI4MjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZTA0OTUyYzVhZDgwM2U5ZTZlOTM5M2E5MGVjMmYwMTJlYzJiMzYyMzdiMjI3MGExZjA4MzlkMjU0YzhmMWUifQ"
+          "resource": "repo://backend/app/agent/tools/web.py#L1-L10",
+          "version": "repo-lines-v1:sha256:b35cbf31863f1b084484822220d9bb0ad92f4862b21f4ce35089e1971047f3ed:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5YjdmODc3YTY4MzIzZTM3MjY3MDg2Mjc5OTI1YmMxZjhkMmMwNWFlYjNhMDI5NWQyMGZlYTg3OTBkNTMyZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlOTAwYTJjZTdhMGQzNjNkMDU1ZGM2N2Q1YTAwNzIzMTAxMTNhNTQ0MDI5MjE3NWFlYmJjMTc4ZjkxNmQ4MjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://backend/app/core/egress.py#L1-L90",
-          "version": "repo-lines-v1:sha256:c102ca0a27047b1f354bc9bc6cc22b2fce9b093d27af347ff900608242b759ab:eyJzZWxlY3RlZExpbmVDb3VudCI6OTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5ODA3MGMxZDQ1MWJhMGVjNDU2YWY0Yjg3MjkxNDhhM2U3YWY0NGJlZGQ0YWNkNWU0ZmFhZGQwYzVjMzAyNzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMWYwZDc5YjE1NjFlN2I3YjMxNzZmNWE4MTJhZTMzOGJjMDY2ZDNlNDU5ZmUwYWI2ZjVlMTRmZWVhN2UzZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "version": "repo-lines-v1:sha256:5e1ba051ef7c59e9aa8e7413beaf4a6934980edc125561743ff7613a9db0b29e:eyJzZWxlY3RlZExpbmVDb3VudCI6OTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5ODA3MGMxZDQ1MWJhMGVjNDU2YWY0Yjg3MjkxNDhhM2U3YWY0NGJlZGQ0YWNkNWU0ZmFhZGQwYzVjMzAyNzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMWYwZDc5YjE1NjFlN2I3YjMxNzZmNWE4MTJhZTMzOGJjMDY2ZDNlNDU5ZmUwYWI2ZjVlMTRmZWVhN2UzZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/access.py#L101-L108",
+          "version": "repo-lines-v1:sha256:6e30023a20502c56099c317ca05912ab730122f0b48f43539f65851f15ca8425:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGNhZGI3NDllMmY5ZDRlNjBiZWQwMjliZTVkZGU4OTQ2ODZlMmQ0YzI5ZTg5YjhjNDZhZTEwYzdlYjNjYzI1OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWU3Yzk1N2JjYjQ0ZmI2NzNjOThiMDA1MGE3NWQzODA4MmRiODFkOTE4ZGUzMTNhM2YwN2MxMjM1MzA2ZDdlYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjc3YjdjMjQ0YWZkM2M3ZmI0ZjQ5M2M5MGM4OTIyNTk1Y2Y1MzQ3OTUzNGEwYjY1OWVjNjRlZTFjYWI3N2Y5MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmY5ZDNjMWVmODM5MWI0NTI4MWI1Y2YxZjNmNWVhZjEyNjFjZmVhM2VmMzgwZjcwOTdmZmZiYTA3Mzg1YTBhNiJ9"
+        },
+        {
+          "resource": "repo://backend/app/ingest/access.py#L25-L42",
+          "version": "repo-lines-v1:sha256:376935a2aa3e8eed44491995118af598b70db0ed3d822aad333db3d71131db1b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2ZDI4NzdkNjUyMjMyZWViNjdmMDEyYzk1M2ZmYmI0ZjRmNzA1ZDRiOGQ0N2Y5N2ZlYTExYjk4ODZjYzg0NTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmNjExZjYwODBkMTQ3YzE2YmU2M2U4MmZiZDBjM2M0MzdhYzQzNjBkMjQ4MmRkMGI1NTYyZDMwYjYzMmQ0M2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5MGMzMzQ0MDNmNDNlOTU4ZGJhZDIyMTgxMDdhYTQ5M2RmMjE4MmE4Y2RhMDQwZDEwNDkwZTQ4ZTU2MzE4YzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjNzk5NmJhYzE2ZTg0NGUxY2M2OTI0ZjkwZjM1YmVjN2NhM2UzYTNjYzZlYmU3MzhlZTkxMWMxZjA2ZDBhZDkifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/calls/pull.py#L82-L96",
+          "version": "repo-lines-v1:sha256:7cdc3e71092b9618a75d07c468a9837f917ee56ae4fea08c81e0811c3300b4eb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMjQyNjkwOTFmODU3OWUxMDliODhkZTNkOTUzZmE3YTk1Y2E0NzcwYzZjYTczN2I0MDAwMTIwNTQ0YTNhZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxZWUwNjQ5ZDAzZTNmN2NhYmZkMzg1OGNiMmVjYTJhNWZjZmQ1ZGQzYmUwYzRlYzI2ZTc5MzBkMTEzMDEzNmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMxMWQ3YjQ3ODQ0NjA2YTI0OGYzOWE1Y2EwNzg4YTIzOTcyNmJhMzQ1ZTJlMWE1ZTUxYTBhYjllNWZmYjMyNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1MGNhNDZkNDJmNWRiYTgwZDJjMmZkZmZlMzQ4YTQxYWMxNWY0NjRmYjc2ZDEwZjI2NTFkNWMwMGQ5MzQ4YWMifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L124-L132",
+          "version": "repo-lines-v1:sha256:6b421223f1280a7c135829ee04ad2d238452ef58d08c4a0f026a797353b22d75:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTJjNjJhMzQwNzM1MTE2MDQ0NjJmNzIwODgzZjZmMzM1ZTVhZjQzOTM3ODJhMTdkNDUxNmE4OWY2MDE1Y2EwYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjQ5ZTk5Yjk3ZWU0ZWYxYmY3YWQ2OGRhYTU2ZTM4NWM2NTFmYTFkZWVjYzYyOTg4NWViNDhjYWQwNzBiMWU3MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWI1NTQ4OGM4NTczMjc4YzRjOGYzZDdiNmU2YjE1MjE3OTVlYmYwZmI2NzRmYTI1YjA4NTc0M2QzNGE3MTg4ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTgxYzE0OGFkNTQ0YzIzYjllYjJjYWY0NWQ2N2JlZWJhMmQ5NjA1YmQxMzZkOWVlMGFjODU5ZjYyOGZhYjFiYiJ9"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L50-L68",
+          "version": "repo-lines-v1:sha256:84557c6275052f11b9dbfbc3a3a83f1312c62ac01794bec0d6685d311e68f529:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGM3YWIxNGMzZmI4OGQ2YmUwZDU4ZjJhNTNhY2YxNjUxNTllNzhmZDIzOTJiYmU3MTEwNGJkZGVlMTk4YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMWYwZDc5YjE1NjFlN2I3YjMxNzZmNWE4MTJhZTMzOGJjMDY2ZDNlNDU5ZmUwYWI2ZjVlMTRmZWVhN2UzZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxZjg2ODhiMzgyMzJhMjlmY2Y3ZjdmZDYxMzc1YWFiYzU4MzY4NTcxNTg4YmI1YmNjNGU4MTM2Nzg1ZjAxNzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2NzIyNDc0ZmI5NTNlYmNlY2NlYjdjNjNkZjZkN2IwZGRmODAyOGMzYWMwOTJmODE0NDE3ZWNhMzQwYjkyNDgifQ"
         }
       ]
     },
@@ -263,7 +283,7 @@
           "version": "repo-lines-v1:sha256:d5fc7bc7332dc9bd916c67e1a39e404aa298a4e1859e7e9145595f3bf49dec94:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTkzZDBiZGIzNzgwMDdhMGI5YzNiNjIyNmNhN2Y3MTRjN2JmZGQwMjNiYjA4NDBiMzExOGMyNDA3NjViZDFjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWEwNTM1ZjM1NTljMWYyNDM1NmI0NjJiYWE4MzQ1MDU4MDUzNzc5ZDVlYzc3NWE2ODRiNzMxYmE1NzNhZTNlMCJ9"
         },
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L161-L161",
+          "resource": "repo://docs/ARCHITECTURE.md#L188-L188",
           "version": "repo-lines-v1:sha256:6356231698b572f2414f1c82a59bfd294960fe92484353b6cbd852129f5703e0:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM1NjIzMTY5OGI1NzJmMjQxNGYxYzgyYTU5YmZkMjk0OTYwZmU5MjQ4NDM1M2I2Y2JkODUyMTI5ZjU3MDNlMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM1NjIzMTY5OGI1NzJmMjQxNGYxYzgyYTU5YmZkMjk0OTYwZmU5MjQ4NDM1M2I2Y2JkODUyMTI5ZjU3MDNlMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTBmYjQ2NjJjY2Q5MTVkMjQyODQ3MjI5NmJkZGM1YTdiN2Q2ZmE4ZWFlODQxMmFmZGRiNTE0MmMxNDJhMTI1OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODA4MGFiYjZiZTRlZDllYjYxMjhiZDlmZjRhYWU4YjQ4Nzk1ODRlMDAzYTBhNjRkOTM0Yzg2ZGQyYmZmYTA4YSJ9"
         },
         {
@@ -329,7 +349,7 @@
           "version": "repo-lines-v1:sha256:fb4a48453318cce14e6cbaa794d30c9f1af57bc305b0eb039d5e91ad128b625e:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjllMGRkNDFkOTM3NjAxZmJiM2IwZWIyYzY0MWM3NmZjMWRmNThlMTIyMzQxNjVmZDM3MjQ0NjI2OWMxNGYxYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzUyNjI0N2VkZTAwNmU5YmRhYjljNjg1MDcyODQyNWQxYjQxNjZjYWY1Y2FjNTBjZjA5NTVjNDRkMjRjMWE4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTlhODE0ZWU4MWE5M2IxOTcxZjMxYzVhODliM2E5OWExZjY5ZDJjYTllNDU3ZGY5NTA0MGY4NzczMTQ2ZmQ0OCJ9"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L162-L163",
+          "resource": "repo://docs/CHANGELOG.md#L165-L166",
           "version": "repo-lines-v1:sha256:188be8b34d018ea87430e4ed521e0fc0e5189e9f0cdf595e2a93249dec40130f:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzBmNzc4ZTU2Y2RiODE4YzhmNzdkMjY5YmFiMDQwOGU2YmEyZmRjNWU1MmM0NDFjOTg2MjU0YzY2OWI1OTk4NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2Q1MmUxMGM4YmFjZmViOTM5ZjRkNzJlMWQ0NWZlN2M1NWZkNWFkMTAyNmU2YTE5ZmNjY2QyNTdmNWNjNGY0NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTQxYzIxNzY3YTFmZTEzNTRmYmRhZjVjZWM1MDYzMjhhMjA3NmI4N2JmZjc1ZmVjYWU4MmVlNTgxMzUyZWQwYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWE3MDQzYTQ1MjY0OTE4ZWY3N2M3OWRlMDdiMmQ2ZjYyYTY5YmFlMGI1ZDNjNTg5YWQwOTBiZmU5YTI5YmFjNiJ9"
         },
         {
@@ -355,6 +375,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-19T08:37:55.275Z"
+    "at": "2026-10-19T10:32:36.779Z"
   }
 }

@@ -68,8 +68,6 @@ sources:
     resource: repo://backend/app/ingest/vault.py
   - id: openwiki-source-92db74b572f27e7f2c656ed0
     resource: repo://backend/app/ingest/writer.py
-  - id: openwiki-source-0c2810df96342c5efec98a57
-    resource: repo://backend/app/proposals/agent.py
   - id: openwiki-source-f298183777e9f6b64bb1b60f
     resource: repo://backend/tests/test_agent_middleware.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
@@ -82,10 +80,10 @@ sources:
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-a44fe58bbddbee96fe925ba2
     resource: repo://docs/INGEST.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:37:55.275Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:37:55.275Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Sangam Import / Scout
@@ -110,9 +108,9 @@ One supervisor delegates to four subagents. Every subagent is `mode="isolated"` 
 
 Key design points:
 
-- **Tool lists are fixed and pinned by tests.** `test_ingest.py` checks that the instructions name every supervisor tool and that each subagent prompt names every tool its spec declares. It also checks that every `@tool` in `app/ingest/tools/` is registered somewhere, and that registered tools live only in that package. `test_harness.py` compiles the graph, asserts the four compiled subagents by name, and compares the real tool sets of the entity-researcher, the vault-reader and the catalog-writer to exact literals (the workbook-reader has no literal there). Separately, the check on the `task` tool's advertised list only asserts that `entity-researcher` and `catalog-writer` are present and `general-purpose` is absent. It does not check an exact set.
+- **Tool lists are fixed and pinned by tests.** `test_ingest.py` checks that the instructions name every supervisor tool and that each subagent prompt names every tool its spec declares. It also checks that every `@tool` in `app/ingest/tools/` is registered somewhere, and that registered tools live only in that package. `test_harness.py` compiles the graph, asserts the four compiled subagents by name, and compares the real tool sets of the entity-researcher, the vault-reader and the catalog-writer to exact literals (the workbook-reader has no literal there). Separately, `test_import_advertises_exactly_its_two_subagents` (despite its name) only asserts that `entity-researcher` and `catalog-writer` appear in the `task` tool's advertised list and `general-purpose` does not. It does not check an exact set; the exact four are asserted by `test_both_subagents_are_compiled_and_found`.
 - **Every subagent carries its own `filesystem(...)` middleware.** An isolated subagent builds its own middleware stack, so the parent's restricted filesystem never reaches it. Left to the library, each subagent would get all eight filesystem tools, including writes against a backend whose `/skills/` route is real disk. `app/agent/harness.py` therefore exposes only `read_file` on subagents. The supervisor also keeps `ls`, which is how it recovers a stale skill path. `install()` also disables deepagents' `general-purpose` subagent. That subagent would otherwise carry the supervisor's whole tool list, including `run_import_now` and `promote_research`.
-- **The supervisor writes almost nothing.** Its only writes are `record_registry_check` (a staff member's manual registry check) and `run_import_now` (the adapter bulk pull). `research_goals` is deliberately left to researchers, because it requires an `entity_kind` and refuses `unknown`.
+- **The supervisor writes almost nothing.** Its only writes are `record_registry_check` (a staff member's manual registry check) and `run_import_now` (the adapter bulk pull). `run_import_now` branches on `sources`: `tavily_news` runs a news pull for named Registry records or topic feeds and never creates a funder or organisation, `funder_calls` runs the open-calls pull for [RFP Watch](rfp-watch.md), and each of those runs alone (any other source named in the same call is refused out loud). Anything else goes through the generic adapter runner. `research_goals` is deliberately left to researchers, because it requires an `entity_kind` and refuses `unknown`.
 - **Prompts are markdown beside the code.** `instructions.md` is the supervisor prompt and `prompts/*.md` are the subagent prompts. The only substitution is `{{MAX_PARALLEL_RESEARCH}}`. It is rendered from the `Settings` the graph was built with, so raising the setting changes what the model is told, and a test pins this.
 - **Tools never raise.** Failures come back as strings (`REFUSED: …`, `… failed: <ExceptionType>`). Where a failure could quote a confidential cell or file, only the exception type is returned.
 
@@ -122,6 +120,7 @@ Most of Import's middleware is in `app/ingest/middleware.py`. `StaffLastLock` an
 
 | Middleware | On | What it does |
 |---|---|---|
+| `tool_errors` | supervisor and all four subagents | `ToolErrorMiddleware` backstop for the "tools never raise" convention: a tool that raises past its own try/except answers the model with `<tool> failed: <ExceptionType>` instead of ending the run. |
 | `CallerNote` | supervisor | Appends one line saying who the run works for and what they may do. Tools still enforce it. |
 | `TickedSources` | supervisor | Reads the sources the person ticked from AG-UI context, tells the model, and overwrites the arguments of its `choose_sources` call with them. |
 | `ChosenSources` | supervisor | Refuses every `task` launch until `choose_sources` has been answered, then publishes that answer to the subagent through the `run_sources.CURRENT` context variable. Unreadable state fails closed. |

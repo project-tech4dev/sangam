@@ -106,14 +106,15 @@ async def read_page(url: str, *, feed: bool = False) -> tuple[str | None, str | 
 
 
 async def _funders(pool, slugs: list[str] | None) -> list[dict]:
-    # The page a call was last read from, so a re-run reads it again instead of searching.
+    # The page this pull last read a call from; a call Scout's research wrote names a report, not a calls page.
     sql = ("SELECT f.id, f.slug, f.name, f.website, (SELECT r.source_url FROM rfps r WHERE r.funder_id = f.id "
-           "ORDER BY r.fetched_at DESC NULLS LAST LIMIT 1) AS calls_url "
+           "AND r.extractor_version = %(v)s ORDER BY r.fetched_at DESC NULLS LAST LIMIT 1) AS calls_url "
            "FROM funders f WHERE f.registry_status <> 'hidden'")
     async with pool.connection() as conn:
         if slugs:
-            return await (await conn.execute(sql + " AND f.slug = ANY(%s) ORDER BY f.name", (slugs,))).fetchall()
-        return await (await conn.execute(sql + " ORDER BY f.name")).fetchall()
+            return await (await conn.execute(sql + " AND f.slug = ANY(%(slugs)s) ORDER BY f.name",
+                                             {"v": extract.PROMPT_VERSION, "slugs": slugs})).fetchall()
+        return await (await conn.execute(sql + " ORDER BY f.name", {"v": extract.PROMPT_VERSION})).fetchall()
 
 
 async def _tag_ids(conn, call: extract.Call) -> list[int]:

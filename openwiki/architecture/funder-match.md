@@ -6,6 +6,8 @@ tags: [funder-match, match-v2, rubric, rls, compare_fit, saved-runs]
 sources:
   - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
     resource: repo://backend/app/agent/build.py
+  - id: openwiki-source-813dbe9c3eeb378112388ccd
+    resource: repo://backend/app/agent/middleware.py
   - id: openwiki-source-d283e7d3b1dc789fadafd127
     resource: repo://backend/app/agent/skills/funder-matching/SKILL.md
   - id: openwiki-source-1f8b3caaa82d707d101e103d
@@ -38,6 +40,8 @@ sources:
     resource: repo://backend/app/repositories/matching.py
   - id: openwiki-source-1157f5d2ae5aa2bccc1057d0
     resource: repo://backend/app/repositories/proposals.py
+  - id: openwiki-source-32973df7d69d78ccef1499ff
+    resource: repo://backend/tests/test_ask_budgets.py
   - id: openwiki-source-d642d26fca955a56c4af2c1a
     resource: repo://backend/tests/test_compare_fit.py
   - id: openwiki-source-51f4392f2fa38bb658665986
@@ -52,6 +56,8 @@ sources:
     resource: repo://docs/features/2026-10-11-funder-match-v2-themes.md
   - id: openwiki-source-24408c4513e55a7d3b655c58
     resource: repo://frontend/features/ask/AskWorkspace.tsx
+  - id: openwiki-source-5f1c5aeea988fa7c1bfcd4ea
+    resource: repo://frontend/features/ask/lib/comingSoon.ts
   - id: openwiki-source-6f60a62e50bf4cca50bd6002
     resource: repo://frontend/features/ask/views/funder-match/api.ts
   - id: openwiki-source-14705a3866e29a5d7c9df8ee
@@ -62,10 +68,10 @@ sources:
     resource: repo://frontend/features/ask/views/proposals/api.ts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:30:22.232Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Funder Match
@@ -182,7 +188,9 @@ See [Auth, roles and RLS](auth-roles-rls.md) for `app.my_org_ids()`, `app.is_sta
   - **Named funders (`funder_ids` given).** Every funder named is in full, with its summary, including a funder that scored nothing (null score, counted as not scored). An id that does not exist returns `compare_fit failed: no funder with id …`.
   - **Not scored.** Funders with no score are split in two lines: `nothing in common recorded` is a real non-fit (both sides have places or themes, none shared), while `the funder has nothing recorded` (`has_places_or_themes` false) is unknown, never a non-fit.
   - **Errors** (unknown org, missing funder, any exception) are returned as `compare_fit failed: …` strings, because a raise would abort the agent run.
-  - `build.py` registers it as the one exception to "all database access goes through `db_query`", because the checklist is fixed and so the queries are. The `funder-matching` skill (`agent/skills/funder-matching/SKILL.md`) tells the agent to resolve the organisation with one `db_query`, call `compare_fit(org_id)` once, call it again only as `compare_fit(org_id, [id])` for a one-line funder the user wants in detail, never judge funders itself after a refusal or failure, and then hand the single reply to the `funder-shortlist-brief` skill. When the user names the funders, `funder-comparison` is used instead. See [Ask Sangam](ask-sangam.md).
+  - `build.py` lists it in `TOOLS` beside the `db_*` tools and `search_graph`, and its comment calls it the one exception to "all database access goes through `db_query`", because the checklist is fixed and so the queries are.
+  - **Call budget.** `build_agent` also puts a `CompareFitBudget` middleware in the Ask stack (`agent/middleware.py`). In code, it refuses a `compare_fit` call with the same `(org_id, sorted funder_ids)` as an earlier one in the current turn ("refused a repeat: … Answer from that result"), and a call beyond `MAX_COMPARE_FIT_CALLS` (3) per question. The refusal comes back as an error `ToolMessage` and the tool does not run. A call with different `funder_ids` is a distinct call, so the whole-catalog call plus one detail call for named funders is allowed, and a new human message starts the count again (`test_ask_budgets.py`).
+  - The `funder-matching` skill (`agent/skills/funder-matching/SKILL.md`) tells the agent to resolve the organisation with one `db_query`, call `compare_fit(org_id)` once, call it again only as `compare_fit(org_id, [id])` for a one-line funder the user wants in detail, never judge funders itself after a refusal or failure, and then hand the single reply to the `funder-shortlist-brief` skill. When the user names the funders, `funder-comparison` is used instead. See [Ask Sangam](ask-sangam.md).
 - **REST** (`api/routes/funder_matches.py`, prefix `/funder-matches`):
   - `GET ?org=` returns the org's latest run, ranked, with tier counts and each funder's `prev_score` from the run before. It returns 404 when the org is unknown or unreadable, so a stranger cannot tell an unrun org from a hidden one.
   - `GET /{match_id}/detail` returns one match's full reasoning, and 404 when RLS hides it.
@@ -192,7 +200,7 @@ See [Auth, roles and RLS](auth-roles-rls.md) for `app.my_org_ids()`, `app.is_sta
   - **List (`FunderMatchView`).** It picks an organisation (the first one until another is chosen; one fixed name if the user has only one), fetches its latest saved run, and shows the run date, funders checked and earlier-run count, or "Not run yet". Strong and medium matches are the ranked buckets (`All fits`, `Strong`, `Medium`), and the rank number is the position in the full strong-plus-medium ranking, not in the filtered view. Weak and not-scored matches are folded into a "Weak or no fit" disclosure that shows only at the default view: bucket `all`, no funder-type or proposal filter, and no search text. Search reads the funder name, type and every card reason, and the funder-type and proposal-status filters narrow every bucket.
   - **Rerun.** A "Rerun match" (or "Run the first match") button is shown only when the list's `may_run` is true. It posts a run, shows a `Saved · N funders checked · X strong, Y medium` status, and bumps a counter that reloads the list. Without a saved run, a card explains who can run the first one.
   - **Card (`MatchCard`).** It shows rank, funder name and type, the score out of 100 with a tier-coloured bar, the tier tag (`Strong fit`, `Medium fit`, `Weak fit`, `Not scored`), and a `Delta` ("▲/▼ n since the last run") only when both the score and `prev_score` exist and differ. The saved card's reasons are listed with a check for `fit` and an alert for `gap`. A collapsed "Why this score" `<details>` lazy-loads the detail on first open only (a second open reuses it): summary, each criterion with note, cites and `points / max` or "unknown", the `not_judged` lines, "What would raise the score", and a footer naming the run date and rubric version. A failed detail load shows the error in place.
-  - **Proposal action.** The card's `ProposalAction` is described in the next section. If the `proposals` view were in `COMING_SOON`, the card would show a disabled "Start a proposal" with a "Coming soon" tag instead; today only `rfpwatch` is listed there.
+  - **Proposal action.** The card's `ProposalAction` is described in the next section. If the `proposals` view were in `COMING_SOON` (`frontend/features/ask/lib/comingSoon.ts`), the card would show a disabled "Start a proposal" with a "Coming soon" tag and the list would drop the proposal filter. The set is currently empty, so both are live.
 
   See [Frontend](frontend.md).
 

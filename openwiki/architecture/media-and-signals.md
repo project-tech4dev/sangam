@@ -74,10 +74,10 @@ sources:
     resource: repo://frontend/features/registry/profile/OrgProfileTabs.tsx
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:30:22.232Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Media & Signals
@@ -99,7 +99,7 @@ Related pages: [Sangam Import and Scout](sangam-import-scout.md) (the agent that
 Details that matter when calling these:
 
 - `run_import_now` takes `feeds`, a comma-separated list from `fcra`, `csr_trends` and `ngo_north_east`. With no names, only those feeds are pulled, so "FCRA news only" means `funders=""` and `feeds="fcra"`. With names, the feeds are pulled as well. An unknown feed key is refused by `chosen_feeds`, not dropped. The plan route returns HTTP 422 for it.
-- `years` and `limit` are ignored by the news pull. A news pull runs alone: other sources named in the same call get a `refused` run item.
+- `years` and `limit` are ignored by the news pull. A news pull runs alone: other sources named in the same call get a `refused` run item with the reason "a news pull runs alone". `run_import_now` checks for `tavily_news` first, then for `funder_calls` (the open-calls pull, which is not part of Media & Signals and likewise runs alone), and only then falls through to the catalog adapters.
 - No names and no feeds means "everyone": every non-hidden Registry record plus all three topic feeds. `make news-pull` prints the plan first and refuses an everyone-pull unless `CONFIRM=1`. It also refuses an `ORG` or `FUNDER` slug that matches nothing, so a typo cannot widen into everyone.
 - `gdelt` and `india_csr` are parked. Asking for one by name records a `refused` item carrying the reason from `runner.PARKED`. Their code is gone.
 
@@ -219,7 +219,7 @@ Row-level security makes each reader see only what the bars allow. Signed-out re
 
 `backend/app/agent/tools/sql/catalog.py` is the allowlist for Ask's `db_query`. It catalogues `news_stories`, `news_links`, `news_story_entities`, `news_story_locations` and `news_story_tags`, with `news_stories.id` and `story_id` columns citing `[news:N]`. `news_link_scores` and `news_watch` are in `KNOWN_EXCLUDED` as pipeline state, and so are `ingest_runs` and `ingest_run_items`. Verifier evidence in the score `jsonb` is therefore not reachable from Ask. `tests/test_sql_catalog.py` pins both sets.
 
-The `news-brief` skill (`backend/app/agent/skills/news-brief/SKILL.md`, loaded via rule 13 of `agent/instructions.md`) reads `news_story_entities` joined to `news_stories`. It uses only `visibility = 'public'`, `is_news` stories from the last 30 days by default. It reports zero results as "nothing in Sangam's pulls since <latest fetched_at>", never "no news". It may `fetch_url` a negative, FCRA or governance story's main link, at most twice, to name the primary source. It writes three to five lines, each ending in `[news:N]`. It states match and confidence as High, Medium or Low, never as numbers.
+The `news-brief` skill (`backend/app/agent/skills/news-brief/SKILL.md`, loaded via rule 13 of `agent/instructions.md`) reads `news_story_entities` joined to `news_stories`. It uses only `visibility = 'public'`, `is_news` stories from the last 30 days by default. It reports zero results as "Nothing on <name> in Sangam's news since <date>", where the date is the latest `news_links.fetched_at`, and never says "no news". For a story with a negative stance, or a topic of `fcra` or `governance`, it gives the story's main link (`news_links.url` where `id = main_link_id`) as it is beside the line, so the reader can check the article. Ask cannot read the page, so the skill never says what the article cites. It writes three to five lines, each ending in `[news:N]`. It states match and confidence as High, Medium or Low, never as numbers.
 
 ## REST routes
 
@@ -235,7 +235,7 @@ Background and hidden stories reach no list, not even staff's. A malformed curso
 
 - The Media & Signals view (`frontend/features/ask/views/media/MediaView.tsx` and `StoryCard.tsx`) shows the three buckets, filters, search and the last pull date. Staff can hide a wrong match from the card.
 - The Registry profile tab "News & social" shows only public stories. `OrgProfileTabs.tsx` and `FunderProfileTabs.tsx` (in `frontend/features/registry/profile/`) mount `NewsSocial.tsx` with `profile.news` and `profile.stories`. It splits stories into press and social by `channel`. Press items list the main link and "Also reported by" copies. Social posts are grouped by platform, with a six-month bar chart of posts per month. Headers use the SQL counts, not the length of the listed stories. The older `InTheNews.tsx` and `ProfileTabs.tsx` no longer exist.
-- The Scout approval card (`frontend/features/ingest/components/ImportApproval.tsx`) fetches the plan route and shows who is covered, the searches, any checks and the cost before the person approves the pull.
+- The Scout approval card (`frontend/features/ingest/components/ImportApproval.tsx`) is rendered through `useInterrupt` while the agent is paused on `run_import_now`. It has three variants chosen from the paused call's `sources`: a news card ("Pull the latest news?") when `tavily_news` is named, an open-calls card when `funder_calls` is named, and a generic "Write this import to the catalog?" card otherwise. Only the news card calls the plan route. Its `NewsLine` fetches `/api/ingest/news-runs/plan` with the paused call's `funders` and `feeds`, and shows who is covered (everyone, matched names, topic feeds, unmatched names), the searches, any checks and the cost. If that fetch fails it says so and notes that approving still runs the pull. The open-calls card computes its own line from the funder names, with no plan endpoint.
 
 ## Tests
 

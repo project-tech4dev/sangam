@@ -1,7 +1,7 @@
 ---
 type: quickstart
 title: Quickstart
-description: First run of the Sangam stack, the make targets that matter (including the Wiki group that regenerates openwiki/), a repo map, the ground rules, and a task-to-page routing table that covers all three agents (Ask, Import/Scout, Proposal Copilot) plus the architecture, workflow, operations and testing pages.
+description: First run of the Sangam stack, the make targets that matter (including calls-pull for RFP Watch and the Wiki group that regenerates openwiki/), a repo map, the ground rules, and a task-to-page routing table that covers all three agents (Ask, Import/Scout, Proposal Copilot), RFP Watch, and the architecture, workflow, operations and testing pages.
 tags: [quickstart, onboarding, make, repo-map, routing, agents, proposals]
 sources:
   - id: openwiki-source-5f5b95b3d6a215fa02ceb945
@@ -36,10 +36,10 @@ sources:
     resource: repo://docker-compose.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:30:22.232Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Quickstart
@@ -105,6 +105,8 @@ Ports are fixed in `docker-compose.yml`: frontend 3000, backend 8010 (published 
 | `make smoke` | End-to-end check of backend, frontend and chat wire | Runs `scripts/smoke.sh` |
 | `make match [ORG=slug]` | Saves a Funder Match run for every org, or one | In code, no model, no cost. A proposal can only start from a saved run |
 | `make evals [TAG=… K=…]` | Golden questions through the real agent | **Costs money**: about 10 cents a case, except the `cost` cases (about $0.90 a run), which a run with no `TAG` includes. `TAG=canary` is the cheap subset, `TAG=import` the Import canaries (needs `TAVILY_API_KEY`), `K=<name>` one case. Runs on the host venv `backend/.venv`, so create it first |
+| `make calls-pull FUNDER=<slug>` | Reads a funder's calls page (every funder with `CONFIRM=1`) and writes the open calls to RFP Watch | A fixed pull, no agent; the model only picks a page and extracts calls |
+| `make calls-match` | Matches every open call to the orgs whose members share its domain | In code, no model, no cost |
 | `make news-pull ORG=… / FUNDER=…` | Pulls news through Tavily | Prints the plan first; `CONFIRM=1` runs for everyone |
 | `make graph-seed` | Builds the Neo4j graph from Postgres | Needs `OPENAI_API_KEY` |
 | `make psql` | Interactive shell against the database `ENV` selects | |
@@ -169,7 +171,7 @@ docs/             longer human-written design docs
 
 Two structural rules: nothing that is not a route goes under `frontend/app/`, and no new module goes flat at the top of `backend/app/`. A REST resource is always a route, a repository and a schema file, plus one line in `api/router.py`.
 
-Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and opens the checkpointer at boot, and registers `/agent`, `/ingest` and `/proposal` as routes of our own. All three agents are built together by `load_agents`, once and under a lock, on the first post to any of those routes, or on the first REST route that calls `get_graph`. Each route declares who may post to it in `AGENT_ACCESS`, and a path with no entry fails at boot. Ask has exactly seven tools, and `compare_fit` is the only one whose SQL is fixed rather than model-written. Proposal Copilot has its own tool list and never writes SQL of its own: code in `backend/app/proposals/` owns the steps and checks, and `proposals.work` is only changed through one write path. See [Proposal Copilot](architecture/proposal-copilot.md).
+Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and opens the checkpointer at boot, and registers `/agent`, `/ingest` and `/proposal` as routes of our own. All three agents are built together by `load_agents`, once and under a lock, on the first post to any of those routes, or on the first REST route that calls `get_graph`. Each route declares who may post to it in `AGENT_ACCESS`, and a path with no entry fails at boot. Ask has exactly six tools (`db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query`, `search_graph` and `compare_fit`) plus the read-only `read_file` and `ls` that loading a skill needs, and `compare_fit` is the only one whose SQL is fixed rather than model-written. Proposal Copilot has nine tools of its own plus `read_file` and no SQL tool: code in `backend/app/proposals/` owns the steps and checks, the agent only proposes, and `proposals.work` is only changed through one write path (`work.apply` inside `repositories.proposals.save`, which locks the row). See [Proposal Copilot](architecture/proposal-copilot.md).
 
 ## Task routing
 
@@ -184,6 +186,7 @@ Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and op
 | Understand roles, RLS, or which database pool code uses | [Auth, Roles and RLS](architecture/auth-roles-rls.md) |
 | Change the fit rubric or saved match runs | [Funder Match](architecture/funder-match.md) |
 | Work on the news pipeline or story visibility | [Media & Signals](architecture/media-and-signals.md) |
+| Change how open calls are found, extracted, matched to orgs or shown in RFP Watch (`make calls-pull`, `/rfps`) | [RFP Watch](architecture/rfp-watch.md) |
 | Change a screen, the chat proxy or the API client | [Frontend](architecture/frontend.md) |
 | Trace a question through the whole system | [One Ask Turn, End to End](workflows/ask-turn.md) |
 | Trace an import from source choice to undo | [One Import Turn](workflows/import-turn.md) |
