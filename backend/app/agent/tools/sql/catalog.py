@@ -793,7 +793,7 @@ _TABLES: tuple[Table, ...] = (
     ),
     Table(
         name="rfp_matches",
-        description="Which orgs were flagged as a fit for an RFP. Join table with a score.",
+        description="Which orgs were flagged as a fit for an RFP, and what each org chose. Join table.",
         primary_key=('rfp_id', 'org_id'),
         foreign_keys=(ForeignKey("org_id", "orgs.id"), ForeignKey("rfp_id", "rfps.id")),
         columns=(
@@ -801,13 +801,13 @@ _TABLES: tuple[Table, ...] = (
             Column("org_id", "bigint", cites="org"),
             Column("match_score", "numeric"),
             Column("match_notes", "text"),
-            Column("status", "text", values=('flagged', 'reviewed', 'dismissed')),
+            Column("status", "text", values=('flagged', 'saved', 'reviewed', 'dismissed')),
             Column("matched_by", "text"),
             Column("matched_at", "timestamp with time zone"),
             Column("week_of", "date"),
         ),
         defects=(
-            "Rows are written only by RFP Watch matching. status is the org's own choice (dismissed means 'not for us'), never a judgement of fit; no row means the call was not matched, not that it does not fit.",
+            "Rows are written by make calls-pull and calls-match for orgs with members that share a domain with the call (matched_by 'rules:domain' until the org acts, then the user's id; match_score is empty). status is the org's own choice (saved, or dismissed for 'not for us'), never a judgement of fit; no row means the call was not matched, not that it does not fit.",
         ),
     ),
     Table(
