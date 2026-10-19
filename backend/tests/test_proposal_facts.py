@@ -181,7 +181,7 @@ class TestPublicResearchQuotesThePage:
         assert "fills" in fact_rules.off_page(public_fact(section="A10"), PAGE)
 
     async def test_add_facts_in_a_public_run_marks_what_it_keeps(self, monkeypatch):
-        from app.proposals.middleware import PUBLIC_RUN, PublicRun
+        from app.proposals.middleware import PUBLIC_RUN, PublicRun, page_key
 
         stored = {"work": work(stage=2)}
         p = context.Current(id=1, title="t", org_id=7, org_name="SeSTA", funder_id=3, funder_name="ABF",
@@ -202,7 +202,7 @@ class TestPublicResearchQuotesThePage:
         monkeypatch.setattr(ledger_tools, "get_pool", lambda: None)
         monkeypatch.setattr(repo, "save", save)
         monkeypatch.setattr(repo, "user_name", user_name)
-        token = PUBLIC_RUN.set(PublicRun(avoid=("SeSTA",), pages={URL: PAGE}))
+        token = PUBLIC_RUN.set(PublicRun(avoid=("SeSTA",), pages={page_key(URL): PAGE}))
         try:
             out = await ledger_tools.add_facts.ainvoke({"facts": [public_fact(), public_fact(value="21.8%")]})
         finally:

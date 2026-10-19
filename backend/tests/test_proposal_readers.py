@@ -89,12 +89,12 @@ class TestPublicGuard:
 
         return SimpleNamespace(tool_call={"name": name, "args": args, "id": "c1"})
 
-    async def run(self, name, args, reply="ok"):
+    async def run(self, name, args, reply="ok", files=None):
         from langchain_core.messages import ToolMessage
 
         from app.proposals.middleware import PUBLIC_RUN, PublicGuard, PublicRun
 
-        state = PublicRun(avoid=("SeSTA",))
+        state = PublicRun(avoid=("SeSTA",), files=files or {})
         ran = []
 
         async def handler(request):
@@ -122,7 +122,18 @@ class TestPublicGuard:
 
     async def test_each_page_read_is_kept_for_the_quote_check(self):
         _, _, state = await self.run("read_page", {"url": "https://udiseplus.gov.in/udalguri"}, reply="19.8 per cent")
-        assert state.pages == {"https://udiseplus.gov.in/udalguri": "19.8 per cent"}
+        assert state.pages == {"udiseplus.gov.in/udalguri": "19.8 per cent"}
+
+    def test_a_page_cited_with_www_or_a_slash_is_the_page_read(self):
+        from app.proposals.middleware import page_key
+
+        assert page_key("https://www.a.gov.in/report/") == page_key("http://a.gov.in/report")
+
+    async def test_a_pdf_read_by_its_unsanitised_name_is_kept_under_its_url(self):
+        files = {"NFHS_5_Assam.pdf": "rchiips.org/nfhs/assam.pdf"}
+        _, _, state = await self.run("read_document_pages", {"filename": "NFHS 5 Assam.pdf"}, reply="anaemia 65.9",
+                                     files=files)
+        assert state.pages == {"rchiips.org/nfhs/assam.pdf": "\nanaemia 65.9"}
 
     async def test_a_refused_page_is_not_kept(self):
         _, _, state = await self.run("read_page", {"url": "https://x.org/a"}, reply="REFUSED: robots.txt")

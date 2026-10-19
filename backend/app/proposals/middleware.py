@@ -14,6 +14,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 
 from app.ingest.access import canonical_url
 from app.ingest.middleware import _AgUiState
+from app.integrations.storage import _safe_name
 from app.proposals import context
 from app.proposals import facts as fact_rules
 
@@ -67,10 +68,12 @@ _SAVED = re.compile(r"^Saved (\S+) \(")
 
 
 def page_key(url: Any) -> str:
+    """One key for one page however it is cited: no scheme, no "www.", no trailing slash."""
     try:
-        return canonical_url(str(url or "").strip())
+        text = canonical_url(str(url or "").strip())
     except Exception:  # noqa: BLE001 - a malformed url is simply not a page that was read
-        return str(url or "").strip()
+        text = str(url or "").strip()
+    return re.sub(r"^https?://(www\.)?", "", text).rstrip("/").lower()
 
 
 class PublicGuard(AgentMiddleware):
@@ -93,7 +96,7 @@ class PublicGuard(AgentMiddleware):
                 run.pages[page_key(args.get("url"))] = text
             elif name == "fetch_document" and (m := _SAVED.match(text)):
                 run.files[m.group(1)] = page_key(args.get("url"))
-            elif name == "read_document_pages" and (url := run.files.get(str(args.get("filename") or ""))):
+            elif name == "read_document_pages" and (url := run.files.get(_safe_name(str(args.get("filename") or "")))):
                 run.pages[url] = run.pages.get(url, "") + "\n" + text
         return result
 

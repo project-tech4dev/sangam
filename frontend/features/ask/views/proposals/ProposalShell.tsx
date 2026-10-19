@@ -581,7 +581,7 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
       {!started ? (
         <p className="muted">
           When the files are ticked and the style is set, Sangam Pitch reads each file and what {proposal.funder.name} looks for, and
-          searches public sources on the problem and the place, all at once. Every figure it finds becomes a fact for you to check.
+          where it can, searches public sources on the problem and the place, all at once. Every figure it finds becomes a fact for you to check.
         </p>
       ) : (
         <ul className="pr-reads" aria-label="Files read">
