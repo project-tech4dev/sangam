@@ -14,7 +14,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from app.agent.audit import CAVEAT_PREFIX
 from app.agent.build import build_agent
 from app.core.config import Settings
-from app.core.security import DEV_USER, _db_identity
+from app.core.security import DEV_USER, _db_identity, chat_user_id
 from app.db.pool import agent_caller
 from tests.evals.sql_compare import answer_contains_value, gold_satisfied
 
@@ -119,6 +119,8 @@ async def run_agent(question: str, settings: Settings, *, timeout: float = CASE_
     graph = build_agent(settings, InMemorySaver())
     # The staff dev user, so the agent reads what the gold SQL (run as the owner) reads.
     agent_caller.set(_db_identity(DEV_USER))
+    # compare_fit refuses anyone who may not run a match, and an unset chat user is no one.
+    chat_user_id.set(DEV_USER.id)
     state = await asyncio.wait_for(
         graph.ainvoke(
             {"messages": [("user", question)]},

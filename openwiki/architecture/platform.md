@@ -1,11 +1,21 @@
 ---
 type: architecture overview
 title: Platform
-description: How the Sangam FastAPI backend is assembled and run. Covers the app factory and routers, Settings and the model tiers, the lifespan with lazy agent loading, Langfuse tracing, the Vercel deploy topology, the performance work behind it, and known regressions.
-tags: [platform, fastapi, settings, model-tiers, lifespan, langfuse, tracing, vercel, performance]
+description: How the Sangam FastAPI backend is assembled, checked and run. Covers the app factory and routers, Settings and the model tiers, the lifespan with lazy agent loading, Langfuse tracing, the Vercel deploy topology, CI and the Dependency review check, Codecov thresholds, Makefile targets, the performance work behind it (including Ask's tool-result clearing and compare_fit sizing), and known regressions.
+tags: [platform, fastapi, settings, model-tiers, lifespan, langfuse, tracing, vercel, performance, ci, codecov, makefile, middleware]
 sources:
+  - id: openwiki-source-164e2da859b5277df81c7d94
+    resource: repo://.github/workflows/ci.yml
+  - id: openwiki-source-cffc175ad16f1cf0f4a9e43f
+    resource: repo://.github/workflows/dependency-review.yml
+  - id: openwiki-source-6766b7a0c14857435d2077c9
+    resource: repo://.github/workflows/deploy.yml
   - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
     resource: repo://backend/app/agent/build.py
+  - id: openwiki-source-813dbe9c3eeb378112388ccd
+    resource: repo://backend/app/agent/middleware.py
+  - id: openwiki-source-1f8b3caaa82d707d101e103d
+    resource: repo://backend/app/agent/tools/matching_tools.py
   - id: openwiki-source-959bf3d4c031baf336a996e1
     resource: repo://backend/app/agent/tools/mcp.py
   - id: openwiki-source-aa9356f87b17ea5669cdcc72
@@ -40,22 +50,38 @@ sources:
     resource: repo://backend/app/integrations/tracing.py
   - id: openwiki-source-55002f5b1d39cf35fd6d60e2
     resource: repo://backend/app/main.py
+  - id: openwiki-source-0c2810df96342c5efec98a57
+    resource: repo://backend/app/proposals/agent.py
+  - id: openwiki-source-070c6307b3860e1806baf566
+    resource: repo://backend/pyproject.toml
+  - id: openwiki-source-9cd890b23995672427c6c8c4
+    resource: repo://backend/tests/evals/harness.py
   - id: openwiki-source-8aa878aa91baef3db9c28dbe
     resource: repo://backend/tests/test_tracing.py
   - id: openwiki-source-26b852c215c1dc4649cbde36
     resource: repo://backend/vercel.json
+  - id: openwiki-source-a2371d6362e5db4bc834ad03
+    resource: repo://CLAUDE.md
+  - id: openwiki-source-5f7022cb75865b779a5792a0
+    resource: repo://codecov.yml
   - id: openwiki-source-88fdf568b0f25b1d21f041da
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-347b4d4918c606dd60546748
     resource: repo://docs/features/2026-10-09-model-tiers.md
   - id: openwiki-source-bdac7cc8453a568bc132cac3
     resource: repo://docs/features/2026-10-10-page-load-performance.md
+  - id: openwiki-source-e89833baa00bd0952b217a13
+    resource: repo://docs/features/2026-10-16-ask-efficiency.md
+  - id: openwiki-source-487e1b070f16b33a7aa8a145
+    resource: repo://docs/features/2026-10-16-ci.md
   - id: openwiki-source-a0ebc66d448ae6aa5723800b
     resource: repo://frontend/vercel.json
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+  - id: openwiki-source-012f2c78e3b1446dfc35803f
+    resource: repo://Makefile
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:37:55.275Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T08:37:55.275Z
 ---
 
 # Platform
@@ -67,7 +93,8 @@ The platform is the cross-cutting backend layer that every feature runs on. It d
 - what happens at boot and shutdown;
 - when the three agents (Ask, Import, proposal) are constructed;
 - how runs are traced;
-- how the backend is deployed.
+- how the backend is deployed;
+- how every PR is checked (CI, coverage, dependency review), which is separate from deploying.
 
 The agents themselves are covered in [Ask Sangam](ask-sangam.md) and [Sangam Import](sangam-import-scout.md). Identity and row-level security are covered in [Auth, roles and RLS](auth-roles-rls.md). Vendor setup is in [Deploy and vendors](../operations/deploy-and-vendors.md), [Environments](../operations/environments.md) and [Deploying by hand](../workflows/deploying-by-hand.md).
 
@@ -248,10 +275,44 @@ The cost is a trade: the first request that needs an agent on a fresh instance p
 
 Two Vercel projects deploy from one repository: the frontend (`sangam`, root `frontend`) and the backend (`sangam-backend`, root `backend`, a FastAPI function). Postgres, Auth and Storage are Supabase in `ap-south-1`. Neo4j is optional.
 
-- **Both `vercel.json` files** set `git.deploymentEnabled: false` and `regions: ["bom1"]`. Nothing deploys on push. A deploy is run by hand from CI, as described in [Deploying by hand](../workflows/deploying-by-hand.md). `bom1` puts both functions next to the database in Mumbai.
+- **Both `vercel.json` files** set `git.deploymentEnabled: false` and `regions: ["bom1"]`. Nothing deploys on push. The only deploy is `.github/workflows/deploy.yml`, which has a `workflow_dispatch` trigger and is run by hand (see [Deploying by hand](../workflows/deploying-by-hand.md)). CI (below) runs on every PR but deploys nothing. `bom1` puts both functions next to the database in Mumbai.
 - **`backend/vercel.json`** also sets `functions."app/main.py".maxDuration` to 1800 seconds, which long Import and news runs depend on. It also defines a cron on `/health` every five minutes (`*/5 * * * *`). The cron keeps one instance warm and does nothing for several calls arriving at once.
 - **Function limit coupling.** The news verifier budget (`news_verify_seconds`, 600) is chosen so a pull still ends inside the 1,800 s function limit. The frontend's chat route must carry the same maximum duration.
 - **Local run.** docker-compose forwards the environment to the backend container, and a test guards that forwarding for the tracing and Supabase variables.
+
+## CI and PR checks
+
+Two workflows check every pull request. Neither deploys anything.
+
+**`.github/workflows/ci.yml`** runs on every `pull_request` and every push to `master`, with `contents: read`, a `concurrency` group per ref that cancels superseded runs, and a `timeout-minutes` cap on each job. It has four independent jobs:
+
+| Job | What it runs |
+|---|---|
+| `backend-lint` | `uv sync --frozen`, then `ruff check . --output-format=github` in `backend/` (Python 3.12). Only `ruff check`; the ruff formatter is not enforced. |
+| `backend-unit` | `pytest -m "not integration" --cov --cov-report=xml`, then uploads `backend/coverage.xml` to Codecov with the flag `backend-unit`. |
+| `backend-integration` | A `pgvector/pgvector:pg17` service container on port 5433 (the same image as docker-compose). It applies `db/init/*.sql` with `psql`, runs `python -m app.db.migrate` (with `MIGRATIONS_DIR` pointing at `db/migrations`), `seed.seed` and `seed.taxonomy_seed`, then `pytest -m integration --cov -rs`, and uploads with the flag `backend-integration`. |
+| `frontend` | Node 22, `npm ci`, `npm run lint`, `npx tsc --noEmit` and `npm run build`. |
+
+Details that matter when changing it:
+
+- **The integration job is meant to run, not skip.** `-rs` lists skips, because a test that skips for "Postgres not reachable" means a broken job. It deselects `test_preserved_row_counts` and `test_documents_sequence_advanced` in `tests/test_migration_integrity.py`, which check a restore of the original dump (96 documents) that `make seed` never creates.
+- **Coverage upload uses OIDC.** Both test jobs have `id-token: write` and pass `use_oidc` as true except on fork PRs, so no token is stored. A fork falls back to tokenless upload.
+- **Dependencies are locked.** Python jobs use `uv sync --frozen`, so a stale `uv.lock` fails the job. The dev group in `backend/pyproject.toml` pins `ruff==0.16.8` and adds `pytest-cov`.
+- **Ruff config.** `[tool.ruff]` uses line length 110 and `py312`. Lint ignores `B008` (FastAPI's `Depends()` idiom), `RUF012` (class-level constants) and `UP046` (PEP 695 needs 3.12, while `requires-python` is 3.11). Coverage is measured on `app` with branch coverage and relative file paths.
+
+**Codecov thresholds** live in `codecov.yml`. It merges the two uploads into one report per commit, with `carryforward: true` for each flag. The project status uses `target: auto` with a 1% threshold, so a PR fails if it lowers total coverage by more than 1% against the base commit. The patch status requires 70% of the lines a PR adds or changes. A `fixes` rule maps `app/` to `backend/app/` because `coverage.xml` paths are relative to `backend/`. The PR comment is condensed (header, diff, flags, files).
+
+**`.github/workflows/dependency-review.yml`** runs `actions/dependency-review-action@v4` on every PR with `fail-on-severity: high` and posts its summary as a PR comment only on failure. It fails a PR whose lockfile changes add a package with a high or critical advisory. It checks only what the PR changes, and already-open alerts stay in Security → Dependabot.
+
+**Plan versus code.** `docs/features/2026-10-16-ci.md` was revised in review. Its original design had a self-hosted `coverage` job with `diff-cover` and a `fail_under` ratchet. The shipped design uses Codecov instead, so there is no `coverage` job. The plan's second milestone (a Dependabot config, a Claude review workflow, a PR template and CODEOWNERS) has no matching files under `.github/`: only `ci.yml`, `dependency-review.yml` and `deploy.yml` exist. The plan also lists branch-protection rules and other GitHub settings as manual work, and a workflow file cannot show whether they are on. The CHANGELOG records only CI and the Dependency review check as shipped. The test tiers CI runs are described in [Testing overview](../testing/overview.md).
+
+### Makefile targets
+
+The `Makefile` is local tooling and deploys nothing. Bare `make` runs `help`, which is built from the `##` comments. `ENV=local|staging` picks the database for the DB-touching targets (staging points your machine at the managed database). `make up` starts Postgres, runs `migrate` and then builds the other containers. Other targets that matter here:
+
+- **`make evals`** runs the golden-question evals on the host venv through the real agent. It costs money. `TAG=canary|cost` selects a subset and `K=<case>` runs one case through pytest `-k`. It sets `LANGFUSE_TRACING_ENVIRONMENT=eval` and the release to the short git sha, so eval traces stay apart from real traffic. Evals are not part of CI.
+- **`make smoke`** is the end-to-end check of the running stack. It is not a CI step.
+- **`make wiki`, `wiki-update`, `wiki-fix` and `wiki-deploy`** drive OpenWiki (pinned to `openwiki@0.7.2`). `wiki-update` rewrites only pages whose evidence changed.
 
 ## Performance
 
@@ -262,6 +323,17 @@ Two Vercel projects deploy from one repository: the frontend (`sangam`, root `fr
 - **Fewer calls per page.** Profile pages use one aggregate endpoint each (`GET /api/orgs/{slug}/profile`, `GET /api/funders/{slug}/profile`, #179), because a page waits for its slowest call and each parallel call can land on a fresh cold instance. `GET /api/ingest/overview` does the same for the Import page.
 - **Caching.** Signed-out reads use Next's data cache (`revalidate: 300`) and signed-in reads stay `no-store`, because RLS decides what they see (#180). The `/health` cron is the keep-warm measure.
 - **Not done.** The 2–4 s dependency install remains because `graphiti-core` stays in the bundle (PR 2 was closed). Signed-in pages can still meet a cold start. Loading states and the JS trim are deferred. Check the "Not finished" table in [`docs/CHANGELOG.md`](../../docs/CHANGELOG.md) before assuming the plan doc matches the code.
+
+### Ask efficiency: shared middleware and `compare_fit` sizing
+
+`docs/features/2026-10-16-ask-efficiency.md` starts from one production trace of a "what does X do, where does it work, which funders fit it" question: $0.87, 141 s, 21 model calls and 26 tool calls. Its target is under $0.25, under 60 s and under 8 model calls and 8 tool calls. Two of the plan's causes are fixed in code that other agents share.
+
+- **`compare_fit(org_id)` fits in the conversation.** Before, it returned every scored funder at full detail as one JSON line. That went past deepagents' 20k-token tool-result limit, was moved to `/large_tool_results/` as a one-line file the model could not page, and led to repeated `compare_fit` calls. Now `agent/tools/matching_tools.py` renders text, one fact per line. Without `funder_ids` it is a shortlist: the top `FULL_DETAIL_MAX` (10) strong or medium funders in full, every other scored funder on one line (score, tier, first gap), then the funders not scored. The header counts only scored funders. With `funder_ids` every named funder is shown in full with its summary. Unknown criteria stay "unknown" and are never folded into weak. `matching.may_run` still refuses anyone who is not staff, a steward or an admin. Errors come back as `compare_fit failed:` strings, never raised.
+- **Tool-result clearing keeps the prompt cache stable.** `clear_old_tool_results()` in `agent/middleware.py` wraps `SteppedClearToolUsesEdit`. The trigger rose from 40k to `TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 60_000` and the last `TOOL_RESULTS_KEPT = 5` results stay. Past the trigger it reclaims `ceil((tokens − trigger) / step) × step` from the oldest end, with `TOOL_RESULTS_CLEAR_STEP = 20_000`. What is sent stays under about 60k, and the set of cleared results (and so the cached prefix) changes once per 20k of growth instead of on every call. A fixed `clear_at_least` would reclaim the same amount forever. Results of `compare_fit` are in `NEVER_CLEARED`, because clearing them made the model call it again.
+- **Blast radius.** The function is shared: Ask (`agent/build.py`), Sangam Import (`ingest/agent.py`) and the proposal agent (`proposals/agent.py`) all call it, so all three get the new trigger and stepping. The `compare_fit` exclusion does nothing in Import.
+- **Eval measurement (M1).** `tests/evals/harness.py` has `RunStats` (tool calls by name, model calls, tokens). Cases can carry `max_calls` and `max_large_result_reads`, and with Langfuse keys the selected cases run once as a dataset experiment on `ask-golden`, under environment `eval` (see `make evals` above).
+
+**Status.** The CHANGELOG lists both M1 (evals) and M2 (`compare_fit` text and stepped clearing) as `(unmerged)`, although the code for both is present in the tree. The plan's M3 to M5 have not landed: there is no `{{TABLE_MAP}}` in the prompt, no `__cite__` citation columns in the SQL validator, `fetch_url` is still one of Ask's tools, and the proposal agent has no prefill guard. Those planned changes (a table map in the prompt, automatic citation ids, one-row cell widening, caveats once per turn, moving the SQL echo to the tool artifact, removing `fetch_url`, a Pitch prefill guard) should be read as plans only. Expect the CHANGELOG and the plan's Draft v2 status line to disagree with each other until the PRs merge.
 
 ## Known regressions
 

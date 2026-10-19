@@ -175,9 +175,10 @@ smoke:  ## End-to-end check of backend, frontend and the chat wire
 # runtime dependencies from pyproject.toml, so it has no pytest. The recipe is
 # @-prefixed and sources .env quietly — it carries the provider API key, and an
 # echoed recipe line would put it in the terminal scrollback.
+# ENV=staging runs them against the managed database's rows, on read-only connections.
 evals:  ## Golden-question evals through the real agent (COSTS MONEY)
 	@set -a; [ -f .env ] && . ./.env; set +a; \
-	cd backend && TEST_DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
+	cd backend && TEST_DATABASE_URL="$(if $(filter staging,$(ENV)),$(DB_URL),postgresql://sangam:sangam@localhost:5433/sangam)" \
 	LANGFUSE_TRACING_ENVIRONMENT=eval LANGFUSE_RELEASE="$$(git rev-parse --short HEAD)" \
 	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) $(if $(K),-k $(K),) -q
 

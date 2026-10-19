@@ -46,6 +46,8 @@ sources:
     resource: repo://backend/app/ingest/tools/pipeline_tools.py
   - id: openwiki-source-a68ab3b1d774c1be72fdfbca
     resource: repo://backend/app/repositories/news_stories.py
+  - id: openwiki-source-7adeb3b803ca479b163219dc
+    resource: repo://backend/tests/test_news_chat_pull.py
   - id: openwiki-source-a37913aa398e1b2e6a5ec293
     resource: repo://backend/tests/test_news_parked.py
   - id: openwiki-source-4040a5014f2917c5f8402874
@@ -72,10 +74,10 @@ sources:
     resource: repo://frontend/features/registry/profile/OrgProfileTabs.tsx
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T08:30:22.232Z
 ---
 
 # Media & Signals
@@ -246,7 +248,9 @@ Background and hidden stories reach no list, not even staff's. A malformed curso
   - a failed story build is retried without reclassifying;
   - a story write is all or nothing.
 - `test_news_store.py`, `test_news_stories_sql.py` and `test_news_rls.py` cover stored scores, visibility recompute, keyset paging, "my area" and who can see which rows.
-- `test_news_runs_routes.py`, `test_news_chat_pull.py` and `test_news_run_cli.py` cover the plan route, Scout's tool and the CLI refusals.
+- `test_news_runs_routes.py` drives the plan route with `pipeline.select` and `plan_subjects` patched. It pins four behaviours: no names plans everyone (records counted apart from topic feeds), names are reported as matched or unmatched, names that match nothing plan nothing, and non-staff get 403. It also pins that the old form routes (`POST /ingest/news-runs` and `.../{id}/execute`) are gone (404 or 405). A pull can only start from Scout or the CLI.
+- `test_news_chat_pull.py` covers Scout's side. The goal and `started_by` reach `create_run` with `org_ids=None` for an everyone-pull, and another named source (such as `india_csr`) gets a `refused` item. It also pins that `runner.runnable_for` leaves `tavily_news` out unless it is named. The plan line names records, searches, cost and how many subjects go back 90 days.
+- `test_news_run_cli.py` covers the CLI refusals.
 - No test exercises `needs_check` or the verifier. The pipeline test's `_deps` leaves the verifier off by default.
 
 ## Operating notes

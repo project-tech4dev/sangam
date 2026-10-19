@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e6c56adcd7c8c80758c6df9bc326fb3d4eca40f60682b0d39bf6c047d3ad3dc3",
+  "pageVersion": "sha256:a05d0cd8c5cc689ed606502d8650a44285b4b5eebf13575b4f5c90fed9618e6c",
   "claims": [
     {
       "id": "claim_4cb3c62ff0f34116ae33de01c60bd2ef",
@@ -103,7 +103,7 @@
       "statement": "There are three human-in-the-loop pauses: choose_sources (approve/edit/reject, shown only when nothing was ticked before sending), run_import_now (approve/reject, the supervisor's bulk write), and every promote_research via SaveQuestions on the catalog-writer, which carries a preview of questions, planned rows and coverage and overwrites any decisions the model wrote so only a person's edit sets them.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/middleware.py#L151-L215",
+          "resource": "repo://backend/app/agent/middleware.py#L172-L236",
           "version": "repo-lines-v1:sha256:ee88ac559d62feef125bf480015a8aca14f2aa994c026b863d9770bbcc4573d0:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1MTk5ZjM4MWI1ZTgzZjliNGZiMzYxYmM0YzczZTYzZTJiZjIzMTM0MmUwZTkyYjhjNmExNmM3NjNiMTRmZWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMGIzNGZmY2NlYjk0MzM0ZWI3MGMzODk2N2Q1MzJkODc5OGU4YTYwMTBlZDQ3YzRmNzAxOTgyZDkzYjA4NjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1MWMzZTFlOWE0YWEzMGY2ZWQ3YjZiNWM4YzkzNWUxMDJkYzMxMzBlNTRmY2RhYmJhYjI0YTU4MzAxOGM0YzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -157,7 +157,7 @@
       "statement": "StaffLastLock closes every researcher tool outside a short allowlist once read_source_rows has been requested, so an injected instruction on a web page cannot carry a staff row out through a URL or query; unreadable state fails closed.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/middleware.py#L103-L148",
+          "resource": "repo://backend/app/agent/middleware.py#L124-L169",
           "version": "repo-lines-v1:sha256:536d0c2f2b1ab5c3464e139ec4e930dd25cf938450237db338467d707694cf41:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NTRhOTc0MjlkNDFiYjY1ZjQyMzc5MTJjNmEyMDgwMWZiMjI5MzUwZWVmMDc4NmNkZjRhZDBhYTJmN2U1ZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhYTgwMTg4ZmI5YzliNDRiOTI5ODY0MDFjMWM5YWU5MTdmNDliMGI0NDAzMzVkYTFlNWMwNTE0ODA3YWZhMWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkYjVhYTU3ZDE1OTMxYTY2OWI5MGE4YjY1ODQ3NDI2MzFlMjkyZGJiMGIzNzA5ZWRhMDIxYTZhNGU2ZTAwZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3NWMyMWEwYzhlNzZhNzQ1ODdlODM1MjIxMGFjMWY0YjdkYWI5YTUyNTE2Nzk0MGQzZThhMjAzN2Y1YjkyMDYifQ"
         },
         {
@@ -437,7 +437,7 @@
           "version": "repo-lines-v1:sha256:66ab1d7d590a26a0b13d05db51e64400c84ff230ef20b20d7f06cedf83206c00:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWUyZDNlOTQwOTc2NzRlNDNmMWY0NjFiNmU3ODVmYmNjZDQ0OTNkNjI2ZmU4OGJjZWQ1MzBiZTA4NjRmNDkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRmMjBmNTk3YTMxMTIzMThiM2M5MWY1NTkyNWMzMGRkZjQ3NTBlZDYwZGVkNjY4ZDFmYWUxZGFmNzYyYmY4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L163-L187",
+          "resource": "repo://docs/CHANGELOG.md#L171-L195",
           "version": "repo-lines-v1:sha256:e2d06c2ae92679bc46f284b65997a387c7542b3f2d208a32e92ee2595adcb9b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0OTBhMDcxMGU0MjExNDJiNzFmMzlkYzcwOGFkZDA0YWEzNThkNTdhNjFiMmQzZmE4ODkyNzhjMGU4YTkyNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE2NzU4M2I1ZWVhNDhlMTQ0N2VkZDhiOWQxNTg0ZmZlY2VkMzA0OTJjNWRlZTZiNjkxY2EzZDQ3ZmQ0NDVhNzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjNWExYWU4MDYxODU3OGJjNWVlZTU5NmQwYzdhNWNhMDI3OGM1NjBmNmNhMTE5NGI2ZTlkNjAzZWY4ZTc5NzIifQ"
         },
         {
@@ -495,10 +495,86 @@
           "version": "repo-lines-v1:sha256:b3077cb8c84c03e1ee67a8bae41266faafd9bc653f6e136351ef3963d4858f87:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzZmE4YzUyZjFmNDM3ZjM2ZDk2NzRlYjc5ZmRkMzZkZjMwYzM0NjJlMDdhY2UzM2Q4OWI1NTI3MDlmYTRmMmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlYTZlMTgzZjA2MzY5N2U3MjI5NGYzNjUyYzM3NjJiNWRmMjEzYmM4MTU0M2IzNzUzMzcwMDFkODU0MzgxMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0MzkyYjFhOWFkMWQ1NzI5NDUzODJlNzEwM2EzMWM0ODE0NThkYzZkNjVhZDQ3MjdhMDcxMjI2ZTRhMjBjMGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEyMzc1ODJhYWY5Njc0YWE4NTMyNzNkZjk2YTNjMGQwZTBkNzEwZDg0YjBlOTljMWNmNjE0MGViN2U5OTUzZDMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_d224bd1b86fc4c169c8384d631fc42c3",
+      "statement": "The Import supervisor's middleware stack includes the shared clear_old_tool_results() edit (also used by Ask and Sangam Pitch), which past 60,000 tokens clears the oldest tool results in 20,000-token steps, always keeps the latest five, and never clears compare_fit; it is not applied to Import's subagents.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/build.py#L71-L71",
+          "version": "repo-lines-v1:sha256:b21d5b77d8cec839a244f81832877cb47d49de6d1a9b78f8286eedf9bd125c4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjIxZDViNzdkOGNlYzgzOWEyNDRmODE4MzI4NzdjYjQ3ZDQ5ZGU2ZDFhOWI3OGY4Mjg2ZWVkZjliZDEyNWM0ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjIxZDViNzdkOGNlYzgzOWEyNDRmODE4MzI4NzdjYjQ3ZDQ5ZGU2ZDFhOWI3OGY4Mjg2ZWVkZjliZDEyNWM0ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTA0MzBlMDc1OGNmM2UzOTRjZGIwNWJjZDhlNmY3NjUwM2YxMmI2NWQ5ODdjYjhjZjVlYzI4YjU2NjQwOWY3ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGRiMmM4ZWE5OTYzYjM1ZDc0ZGJkNWE1MGQwZjExZjA4ZDZhOWMyMjkzMDBlY2NiM2EyY2I2ZDNhZTY1OWViOCJ9"
+        },
+        {
+          "resource": "repo://backend/app/agent/middleware.py#L32-L98",
+          "version": "repo-lines-v1:sha256:4fca1795f55413e82fe5b70fd42fbd88a57b7ff509af2322b737826537092cb5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmZGFhZDkwZmU0NDMxMDQzYTU3OGZlMjZlNGY1NmQ5ODU1ZTg5NWU0YzM2NjQzZWQwZDU3MmVjNmI4NGViOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0NGE1ZmZmZWRlM2FkZmFhYzE2YTg2ZDM2NTE3MmY5MDMxMTdjNTAyZmUwNjcwMzUyMmYwNzUzODNjMDViMzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdlMTNjMDUzODgzY2U0ZDQ5MzIwODdiM2M4NjFkNWM2M2ZlNDNmNzEzMDRkOGNkMjgzNWY0MjAwNzY4ZWMzNWUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L347-L356",
+          "version": "repo-lines-v1:sha256:ab1f5393d7ac9d15d86ef00ac1599eae8f7c42fb97a6e01e2354357b022aeefb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlYzdiOTlkNTc2NzY4Yjk3MzFkNTZmZjgwN2RjZjgwN2I0MjMzZDVhNzk1YjFmZmE0M2QwNjBjOGM5ZmY3MDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzllMTZkY2I1YTAyODlmMTQ0MGJiMGNmOGQ1MmRiZTU4MWQyYWI2N2IzNmIzNDQwZWRmZjRmMWRmOGFlNTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVlZDQ3NGUxNjQ3NWUxYTJkYTRjY2E2M2Q2MTcwMjc3YzNhNjk4ZGE3ZDNlNzc1NzYxMWIzMjhiNGRiYTMzZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc3ZTI5MzA1YmRiMzFkMjU2ZGFhOGU3ZWU5MTQyOTNkMmMxZDJlMWE5NmJmMmFiOGQ2MGRmODQxYTgwY2RjODMifQ"
+        },
+        {
+          "resource": "repo://backend/app/proposals/agent.py#L57-L57",
+          "version": "repo-lines-v1:sha256:2dc643534e0859771df2cff198ae0dde5fbc45d2f20dcf97500fa618208d456e:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmRjNjQzNTM0ZTA4NTk3NzFkZjJjZmYxOThhZTBkZGU1ZmJjNDVkMmYyMGRjZjk3NTAwZmE2MTgyMDhkNDU2ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmRjNjQzNTM0ZTA4NTk3NzFkZjJjZmYxOThhZTBkZGU1ZmJjNDVkMmYyMGRjZjk3NTAwZmE2MTgyMDhkNDU2ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODkyZTQ1Mzk3M2ZjYTA5ZDhkNTg2ODlhOTdlZGVhYmU3YzYzMTU3OGI0YzBmZThkYmQzMDE3NDNlOGFhNWYwNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjM1OWI4NjdlYWU0M2FkNzlkMDA0MzA0ZmQ3NDBmZmU2NGM3NmZhNTE3NWQyMDJkMDNjOTg2YmQwOTM5OTEzYyJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_agent_middleware.py#L54-L82",
+          "version": "repo-lines-v1:sha256:a8182ba21fc7f9e9698fa549f0fb86bbf8d6a6b5682bc8cf156165ac867be2c9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0MzU1ZmE1NjZjNTk5MjM3YzhlOTUwZTg5OTY0YTQ4ZDM5NTU3ZTQ3ZTJiYTYwODY0OTI3ZGZmNzdkMjMzMjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzYmJiMTA2Mzc4N2I2YzE1YzI5YjZmYzFkMzU5M2NlMzA1OWY2NzljMzE3MDBhNTA5ODg2YzFkN2QzMmM3MjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmMTM2NzRiNTBlZjQxYmU2NDAxMTRmZjBjMTk4OTIxMjUyODVkOGNhMTdkYTI2NTFjNTM0MGU4ZTNkY2FlMGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9704700ff1e542acbcae934cf876e008",
+      "statement": "StaffLastLock, once read_source_rows has been requested (including in the current turn), refuses every researcher tool outside the OPEN_AFTER_STAFF allowlist (read_source_rows, save_research, read_document_pages, research_goals, funder_dossier, read_file) with an error ToolMessage, and fails closed when state is unreadable.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/middleware.py#L124-L169",
+          "version": "repo-lines-v1:sha256:536d0c2f2b1ab5c3464e139ec4e930dd25cf938450237db338467d707694cf41:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NTRhOTc0MjlkNDFiYjY1ZjQyMzc5MTJjNmEyMDgwMWZiMjI5MzUwZWVmMDc4NmNkZjRhZDBhYTJmN2U1ZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhYTgwMTg4ZmI5YzliNDRiOTI5ODY0MDFjMWM5YWU5MTdmNDliMGI0NDAzMzVkYTFlNWMwNTE0ODA3YWZhMWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkYjVhYTU3ZDE1OTMxYTY2OWI5MGE4YjY1ODQ3NDI2MzFlMjkyZGJiMGIzNzA5ZWRhMDIxYTZhNGU2ZTAwZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3NWMyMWEwYzhlNzZhNzQ1ODdlODM1MjIxMGFjMWY0YjdkYWI5YTUyNTE2Nzk0MGQzZThhMjAzN2Y1YjkyMDYifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L295-L312",
+          "version": "repo-lines-v1:sha256:28a56eba7ed8b9881c83dc42d43dbf123d677dcd4ad9305ab772860760b182a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMmUxZmE1OWE2YTE4NGE1NjJkZDhhZGMxYmQ1MjZlOTNmNDYwNmJhNDUyYjVkYjMxYjQxY2RlMzFkNmY1MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkZmU4N2ExOTc2MTA3OTYxYmFlNzZlODExNzkwMWQ3YmUyNDM3NjhjMjk2YTQzODRmZjUwZmIyOTJlNTdjYzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyNmUwNTE0YThlMjliYmQ3ZjViNjRmY2YxODMwZjEyMWZkNGE1MTFmZDY4NTYzYmViZTgwZTI4ZWY1NDdhYzEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_eb7d98682e7f4318b1f16d627968bce2",
+      "statement": "ReadingLimit is defined in app/ingest/middleware.py and, within Import's graph, is attached only to the entity-researcher when RESEARCH_PAGE_LIMIT is set; the news-verification agent separately reuses it with its own limit and is not part of Import's graph.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/agent.py#L295-L340",
+          "version": "repo-lines-v1:sha256:bef98e0dcbc61de66315f85d5875af961cd2ecf2c6c4808649f92cb129cfaf95:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMmUxZmE1OWE2YTE4NGE1NjJkZDhhZGMxYmQ1MjZlOTNmNDYwNmJhNDUyYjVkYjMxYjQxY2RlMzFkNmY1MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkZmU4N2ExOTc2MTA3OTYxYmFlNzZlODExNzkwMWQ3YmUyNDM3NjhjMjk2YTQzODRmZjUwZmIyOTJlNTdjYzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliMDgzMzk3Y2Y1YTNhODY2YzRkMTM4MzFlMzRiMzM0NWY5N2Y1Yzg2N2Y0MGFmMTQyNWE2NDhhZDY4MTdhMjQifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/middleware.py#L68-L97",
+          "version": "repo-lines-v1:sha256:3b86c9169a21d94ff523a4c8a7a0398552e3983a1706efdadc25e7f9748cf702:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0MjA1NTNiZDBhYTZlNDlhNTY2ZGQwZTAwMjAxZTQyNTYwYzVjMTA5Mzk1YzQxNWRkZDk5OTY4MDBkMjhhZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2OTY1NzE1ZDBiMDMxZTRlZWFmOTE4MjBiZGZmNjFhNjRiMWQzMjhiMGJmMTI3NjkzZGJkMzEzNDM5ZTY1YjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhZmI0ZjYxY2MyMWQzOTIxNjdlM2ZkM2ZiMTVlOThiMWY3NjNmNGJkNjEzZGIxMzBhNDVhZjNkNGU0ZGY2MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzYmRiNTRmMDFhMWYzZThlZjc1YzhiZjNiYTcwM2M1NjBhYzhhOTYyMjA3YTQxZmFlZjlmOTI3YjYxMGNmMGIifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/news/verify.py#L30-L59",
+          "version": "repo-lines-v1:sha256:d2aa00e28a7ab0a3ce44c417011071a0d5a2d6833d92cd337596443351b84691:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmMTRjYmRlNWUyZmZhNGNjOTcxMzc1MTE3ZGIyNWE5MzFiNjM5YTRiZmNiZTBjYWI5NDBjYjM0MGMyMGUyZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0NzVlOTRhOTA0YWM0OWIzMTU0ZDQ2NzJhNjZlODYyOWI4NmRhYzc0ZTNlMjkzN2JlNjkyN2FlM2RhMTFjNTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwMTgwYTIyMmI0ZGE0YjcxZTFiNGY4MzBmYjA3N2NjOGNkYTU2N2Q3MjQwZjliYTRhZDc2MmI4ZGQ0MTNmY2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1YzkwNjIyYzQ2MzE1YTk3N2RkZTc5MDhkZjRlNDBmOWY4YWYxYjk4MDE0MmMzYjc2NWRjYTAxNDhhZDI4NTkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_93554aeb857d43a38575827e1d7541e3",
+      "statement": "The funder-matching, funder-comparison and funder-shortlist-brief skills and compare_fit (matching_tools.py) are part of Ask's agent runtime, registered in app/agent/build.py, not Import's; Import's supervisor has its own compare_with_catalog tool.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/build.py#L21-L42",
+          "version": "repo-lines-v1:sha256:ad967e1949e837aae169d0f02d436c0b487e1aaca45476d8fbab4dd4a55bf543:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMzk0MjU1N2ViOTA3ZmIxYmYwMDNjYTYzZGNjYTdmNWY1MmIzMTdkZTU5MzIxYjczMDhhODU4Njk0ODE2ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkY2MzM2EwM2NkMGQzZWNkMDE5MDAzNDhhMzQ4YmM5ZGFlYWI5YzU3ZDBiMzAxOGY5ODhlM2E2ZjE2YWJkNmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxMmQ0MGM5YjMyZjY0NjUwN2M0ZWE1MTM0YzAxNTQ2MGI5NjE0NTU4MThhMzhmZGZlMDA0YmM3NGQxYmVmOWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5ZTUxNjc5NjFiNDc2Nzg0NTEwNWU5YzAwNTVjYjRmNGJhZjJkNGNjMDNmNGZhNjU2OWU3ZjE3NWYyOTcwMTMifQ"
+        },
+        {
+          "resource": "repo://backend/app/agent/skills/funder-matching/SKILL.md",
+          "version": "repo-file-v1:sha256:6d84300adf80e990eca5839262acfa4780a8131a1dd0aec96e86f440be1ab762"
+        },
+        {
+          "resource": "repo://backend/app/agent/tools/matching_tools.py#L125-L163",
+          "version": "repo-lines-v1:sha256:d32c7b3450cbee0d941cd5552c28fdabbb92fcbd863b2e4f66f798168594a53d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczZDBiNmMzZjliZDAyZDdjODg2ZDY1OTI3ZmEwZjgyYzY3MTYwNGMwZTllMzYwOTAyYzdiODI0ZGI2ZmY2ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjYzk4YTZjYjA2NTNkM2E3ZTM1MDk0Njc4MjkwNTQ1YjZhNTMwMWI3ZmFmN2VjNDc4OGU0ZjZjNjU0M2VlMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkZmMxYmFmNzhlNTg3NzlhZTExNjllNTYwZWJkOWJjYzgzOTAxNzA3NDEzNTI2OWIxNjFmYTVjZjFkMTIyZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-15T18:08:53.060Z"
+    "at": "2026-10-19T08:37:55.275Z"
   }
 }

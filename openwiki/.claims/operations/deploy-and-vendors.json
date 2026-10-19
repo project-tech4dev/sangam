@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:48e5d21c4a593f497848d27bb45ce38053eadead49b2349c14bf8d08d88c2b20",
+  "pageVersion": "sha256:42c2b6b75ae10561b802ba0dfe60c5119ec96df9e386eabf14ece4a988f96f30",
   "claims": [
     {
       "id": "claim_cbf4cc986efa451fb08f51996cdbb613",
@@ -67,7 +67,7 @@
       "statement": "The deployed backend must connect to Supabase Postgres through the session pooler on port 5432: the direct host `db.<ref>.supabase.co` is IPv6-only and hangs from containers, and the transaction pooler (6543) breaks pg_restore. The backend pool also disables prepared statements (`prepare_threshold=0`).",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L556-L561",
+          "resource": "repo://CLAUDE.md#L567-L572",
           "version": "repo-lines-v1:sha256:e6fe376dbe657f6930b64e45283e59a751d9edfda64a214f7c71672eae4d4644:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzE4YWJmY2NhYjZhZmEzODFmMGM5NmQ0OTBkNGEwMGJhMDRmYTMxMjE5YjBhZmY0MGE3NmQ0NWJmYjFhYWRmYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQ5Mjg0Mzk5ZTFjZTM3NGZmODllYzM5NTcwZDExNDUwZTUxMjFiYjVkNjQ5MGQxYmVlMzE2MzFhNjRhZjZiMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTE3NzgxYjk0YTE0ZDVhODY3YjhlZTIyMWQ5OTljNzdhZGMyMmQwYWY0ZGMyMDNmM2NkODI3MWQzNmIyMzBiYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjc4MmNlMjg4ZmNlNmZjZjg0YjY2OTIzODkxOWZhNGJmZmEyYzI3ZjIzZmRjMDdmYWI3OWE3ZTg1YTRlY2UyMCJ9"
         },
         {
@@ -271,10 +271,90 @@
           "version": "repo-lines-v1:sha256:d5fc7bc7332dc9bd916c67e1a39e404aa298a4e1859e7e9145595f3bf49dec94:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDVmYzdiYzczMzJkYzliZDkxNmM2N2UxYTM5ZTQwNGFhMjk4YTRlMTg1OWU3ZTkxNDU1OTVmM2JmNDlkZWM5NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTkzZDBiZGIzNzgwMDdhMGI5YzNiNjIyNmNhN2Y3MTRjN2JmZGQwMjNiYjA4NDBiMzExOGMyNDA3NjViZDFjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmQyYjUwZTAzODcyZThkZWFhOGEyNzY3NjY2MWFmNjhmZDg5Y2MzOTRkMjg2ZmE3ZWJkMzBmOWZiMjFjMDkxYiJ9"
         }
       ]
+    },
+    {
+      "id": "claim_242f2db75ae6438c9936366752fba275",
+      "statement": "ci.yml runs on every pull request and every push to master, deploys nothing, uses a per-ref concurrency group that cancels in-progress runs, and has four jobs: backend-lint (ruff), backend-unit, backend-integration and frontend (npm ci, lint, tsc --noEmit, build).",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L1-L126",
+          "version": "repo-lines-v1:sha256:fb16049419edccdd58ee472e8d4955859fd147e3025060e868dfb29077470a78:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhYzU5NjQ3MGU3YjhjNzZkZmI5NDU0MGM2Njg3NmVjMWE2ZDdkNTQ1NzhjYWY0Yzc0NzM2ZjI3ZDRhODAyMjc1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmZmM0ZTU1ZWJhMGU3Mzg0MWM2OTQzZGE5MGRjNjY4MjY4NDEyMjIzYWEyMDVhZmQ3MDQxMTExYTkwMmU3NzFmIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_f39d936befd441c5b656e2df16ea67e0",
+      "statement": "The backend-integration CI job runs against a pgvector/pgvector:pg17 service on port 5433, applies db/init/*.sql, the migration runner and the seeders, runs pytest -m integration with skips listed, and deselects two migration-integrity tests that need a restore of the original dump.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L57-L108",
+          "version": "repo-lines-v1:sha256:fbb94939e4ef37c38acf177ddf6c7545e208685822cb87ddf3a10777a4321efe:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRhZTNkZTBiY2MwYTEzNDMzYmU3NGJlNDE3OGM4ZmUxNzM0MTQzODU2NDRlNzk0ODI0NmJmZjc0MzJhMDdmNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyY2RjZDI4ZjliNzgzNTE2MzBiMmFiMWE4ODUzODEyOGUyYTUwMTEzYThlZjliZjM4ZjA1MDcxMzkyNDY3YTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgwOTZhYjQxMDVlYzJlZDcxN2Q4NmNiZjJhZTY2MGU3Nzk2OTBhNGFmYmRmY2I4Y2MzZTExN2MzZmExNGMxZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyYTkyODkyNjdiMTc4Y2ViZjZiOWNmNjc5M2Y3ZWY3YWI5NmY3YmEyYTNjOGZhMzk1Njg2ODhkODY1N2VjZjUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_94376aea8c8546f38325bea390a4fb94",
+      "statement": "The Dependency review workflow runs actions/dependency-review-action@v4 on pull requests with fail-on-severity high and comments in the PR only on failure; it checks only what the PR's lockfile changes add, while already-open advisories stay in Dependabot alerts.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/dependency-review.yml",
+          "version": "repo-file-v1:sha256:4ee4e7a3566ce28deab90145df173bef7e6c2fa5c6b650c8f4dbdfb5ac6df7b2"
+        }
+      ]
+    },
+    {
+      "id": "claim_4df7d7468ec14f63a06b480ab116d7e7",
+      "statement": "Both backend CI test jobs upload coverage to Codecov with flags backend-unit and backend-integration using GitHub OIDC (tokenless fallback for fork PRs); codecov.yml merges them per commit with carryforward, requires project coverage not to fall more than 1% below the base and patch coverage of at least 70%, and maps app/ to backend/app/.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L48-L55",
+          "version": "repo-lines-v1:sha256:2cfdbf3045006948181be9308a058669d2a9e4abac24a7d210a90b99824a5e3a:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjIxMTA5OWE2MGZmNTk0NmUyZGJlN2JjYWFkMTk1MTRjNGJiZjEyMTdiNWI1NDJjYjYyNzZmMjU5MTQzMjQxMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTJjZGNkMjhmOWI3ODM1MTYzMGIyYWIxYTg4NTM4MTI4ZTJhNTAxMTNhOGVmOWJmMzhmMDUwNzEzOTI0NjdhNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWNkZTlmYjVlYWZlMjRkY2Q0YzczNjM5OWJlNTlhYjkxMTViOTkwYjE1N2E0ZDUwZTBkNGQ3ZmNkMTZiMzA2YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGEyZDVmMDgzZmY3ZTBiZmFkNGQ0ODBhMjdmMDkyMjVlOTZmM2U5OTY2Y2RlNGUzOTFmYWY1YWU2YjFhMDM1NiJ9"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L97-L108",
+          "version": "repo-lines-v1:sha256:17f1adad767471a7b1f9048be64ce252f6d39488b8228824efa2b287fd7b2b33:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3MDhhZDZmYjQyMmYyZmQzZmNkOTc0OTFkNTA3MjQ4OTBjZmVhZTBlZDk4ZDhjNWY3OWQ1ODM4MjY2MjBjMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyY2RjZDI4ZjliNzgzNTE2MzBiMmFiMWE4ODUzODEyOGUyYTUwMTEzYThlZjliZjM4ZjA1MDcxMzkyNDY3YTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3YjI4Zjc5NDY0OWUxNTYzZjU0YjcwNmIzMmQ0NGM0ZmIyN2M2NDlkMjVmMzVhYWZhN2FmYWI0MGRhZGEyYzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyYTkyODkyNjdiMTc4Y2ViZjZiOWNmNjc5M2Y3ZWY3YWI5NmY3YmEyYTNjOGZhMzk1Njg2ODhkODY1N2VjZjUifQ"
+        },
+        {
+          "resource": "repo://codecov.yml",
+          "version": "repo-file-v1:sha256:0e465e058cafd71d5d6fa97828502024e4a3e41d1da32b23b14f03dd887cf86c"
+        }
+      ]
+    },
+    {
+      "id": "claim_e2dec0adc76e4ca693b301833f28bdc5",
+      "statement": "Dependabot-driven version bumps (next 16.3.8, CopilotKit ~1.75.2, undici/katex npm overrides, PyJWT 2.15.1) are recorded in the changelog and package manifests, and there is no .github/dependabot.yml in the repository; such bumps reach production only through the hand-run Deploy workflow.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/deploy.yml#L1-L8",
+          "version": "repo-lines-v1:sha256:fb4a48453318cce14e6cbaa794d30c9f1af57bc305b0eb039d5e91ad128b625e:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjllMGRkNDFkOTM3NjAxZmJiM2IwZWIyYzY0MWM3NmZjMWRmNThlMTIyMzQxNjVmZDM3MjQ0NjI2OWMxNGYxYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzUyNjI0N2VkZTAwNmU5YmRhYjljNjg1MDcyODQyNWQxYjQxNjZjYWY1Y2FjNTBjZjA5NTVjNDRkMjRjMWE4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTlhODE0ZWU4MWE5M2IxOTcxZjMxYzVhODliM2E5OWExZjY5ZDJjYTllNDU3ZGY5NTA0MGY4NzczMTQ2ZmQ0OCJ9"
+        },
+        {
+          "resource": "repo://docs/CHANGELOG.md#L162-L163",
+          "version": "repo-lines-v1:sha256:188be8b34d018ea87430e4ed521e0fc0e5189e9f0cdf595e2a93249dec40130f:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzBmNzc4ZTU2Y2RiODE4YzhmNzdkMjY5YmFiMDQwOGU2YmEyZmRjNWU1MmM0NDFjOTg2MjU0YzY2OWI1OTk4NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2Q1MmUxMGM4YmFjZmViOTM5ZjRkNzJlMWQ0NWZlN2M1NWZkNWFkMTAyNmU2YTE5ZmNjY2QyNTdmNWNjNGY0NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTQxYzIxNzY3YTFmZTEzNTRmYmRhZjVjZWM1MDYzMjhhMjA3NmI4N2JmZjc1ZmVjYWU4MmVlNTgxMzUyZWQwYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWE3MDQzYTQ1MjY0OTE4ZWY3N2M3OWRlMDdiMmQ2ZjYyYTY5YmFlMGI1ZDNjNTg5YWQwOTBiZmU5YTI5YmFjNiJ9"
+        },
+        {
+          "resource": "repo://frontend/package.json#L11-L45",
+          "version": "repo-lines-v1:sha256:b21a1b49868743eb4600c03cad9825b99d8bbc4031e64bb5ec87e80d35f8c917:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhM2I0NjlkOWUwOTc1NzIyNDY2NjczNGM5ZWY3YjI1NGQ4ODUzNGY1ZDViYjcwOTg5NjA4MDVjNTUzZGMzMDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViYTQ1OTI1NjBiODhlMzg4MWJlNDMzMjdjYTNlODcxNDdhMWQyNDljMzkzMTI1ZTc5MjljY2I4ZGIzM2I4NWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e710ba1362d44c18a11427d0d5a2dbf3",
+      "statement": "Only deploy.yml deploys to Vercel and only via workflow_dispatch; CI, Dependency review and Codecov are checks only.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L1-L8",
+          "version": "repo-lines-v1:sha256:7528e16ef1269abeaaa0286cf0a438e35e0c66a5273500e9b44ddfd140982728:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWM1OTY0NzBlN2I4Yzc2ZGZiOTQ1NDBjNjY4NzZlYzFhNmQ3ZDU0NTc4Y2FmNGM3NDczNmYyN2Q0YTgwMjI3NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmYxZDcwZDcyYmFkMjMxZDQzYzU3NWFjZWY2OTQ2NTgwZTQzOWM4Nzk3OTRlZDJlYTFmNGE0MDM0MDI0NTE3MiJ9"
+        },
+        {
+          "resource": "repo://.github/workflows/deploy.yml#L1-L14",
+          "version": "repo-lines-v1:sha256:c9dad8258a3a101100b1b9b77eb295be8a7664b6ad2132ffed4269ab303947be:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5ZTBkZDQxZDkzNzYwMWZiYjNiMGViMmM2NDFjNzZmYzFkZjU4ZTEyMjM0MTY1ZmQzNzI0NDYyNjljMTRmMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyNTljNGVlODc2NmIzZmY0ODIyZjI4ODQ3MDY5ZjBjNDYzMWJhNjVjYjhlOTVlYzE0NTE5ODM5ZjA5N2JkN2EifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-15T18:08:53.060Z"
+    "at": "2026-10-19T08:37:55.275Z"
   }
 }

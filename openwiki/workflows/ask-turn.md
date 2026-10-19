@@ -10,6 +10,8 @@ sources:
     resource: repo://backend/app/agent/build.py
   - id: openwiki-source-813dbe9c3eeb378112388ccd
     resource: repo://backend/app/agent/middleware.py
+  - id: openwiki-source-1f8b3caaa82d707d101e103d
+    resource: repo://backend/app/agent/tools/matching_tools.py
   - id: openwiki-source-ecac68c83347b18f912f2a53
     resource: repo://backend/app/agent/tools/sql_tools.py
   - id: openwiki-source-7faba850789bc67a49b79a3f
@@ -34,14 +36,24 @@ sources:
     resource: repo://backend/app/db/checkpointer.py
   - id: openwiki-source-10e08c1deca7d7728d8240c4
     resource: repo://backend/app/db/pool.py
+  - id: openwiki-source-62958d5b14b0717233a7ec0b
+    resource: repo://backend/app/ingest/agent.py
   - id: openwiki-source-77f44179d2b1ede3192f7afe
     resource: repo://backend/app/integrations/tracing.py
+  - id: openwiki-source-0c2810df96342c5efec98a57
+    resource: repo://backend/app/proposals/agent.py
   - id: openwiki-source-72e1eb609e10b8cb867999de
     resource: repo://backend/app/repositories/threads.py
+  - id: openwiki-source-f298183777e9f6b64bb1b60f
+    resource: repo://backend/tests/test_agent_middleware.py
   - id: openwiki-source-40274805d4a1f0905120868d
     resource: repo://backend/tests/test_audit.py
   - id: openwiki-source-fe6e4c3f43ca6fccc586454c
     resource: repo://backend/tests/test_prompt.py
+  - id: openwiki-source-88fdf568b0f25b1d21f041da
+    resource: repo://docs/CHANGELOG.md
+  - id: openwiki-source-e89833baa00bd0952b217a13
+    resource: repo://docs/features/2026-10-16-ask-efficiency.md
   - id: openwiki-source-e2b923750735c644bf0f22f5
     resource: repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts
   - id: openwiki-source-dc12c9438de8bd128641b154
@@ -58,10 +70,10 @@ sources:
     resource: repo://frontend/lib/AgentProviders.tsx
   - id: openwiki-source-bd8e22234eeb56b120efd22c
     resource: repo://frontend/lib/useAgentChat.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T08:30:22.232Z
 ---
 
 # One Ask Turn, End to End
@@ -87,6 +99,7 @@ sequenceDiagram
     A->>G: clone agent, stream AG-UI events
     G->>D: load checkpoint for thread
     loop until the model answers or the budget ends
+        G->>G: before each model call, retry limiter and old-result clearing
         G->>S: db_list_tables, db_describe_table, db_profile_column
         G->>S: db_query
         S->>S: validate, then regenerate the SQL
@@ -139,8 +152,12 @@ Middleware wired in `build.py`, in order:
 
 1. a `FilesystemMiddleware` restricted to `read_file` and `ls` (skills only);
 2. `sql_retry_limiter`, a `before_model` hook that can jump to the end of the graph;
-3. `clear_old_tool_results`, which clears older tool output once context passes 40,000 tokens and keeps the 5 most recent results so follow-ups can refer back;
+3. `clear_old_tool_results`, a `ContextEditingMiddleware` holding one `SteppedClearToolUsesEdit`. It does nothing until the context passes 60,000 tokens (`TOOL_RESULT_CLEAR_TRIGGER_TOKENS`). Past that it clears the oldest tool results in whole 20,000-token steps (`TOOL_RESULTS_CLEAR_STEP`), always keeping the 5 most recent results (`TOOL_RESULTS_KEPT`) so follow-ups can refer back, and never clears `compare_fit` output (`NEVER_CLEARED`). The edit runs on a copy before each model call. What the model is sent therefore stays under the trigger however long the turn runs, and the cleared set, and so the cached prompt prefix, moves once per step instead of on every call. The earlier setting (trigger 40,000, no step) cleared a different result on every call past the trigger and broke the prompt cache each time. Sangam Pitch and Sangam Import call the same `clear_old_tool_results()`;
 4. `answer_audit`, appended only when `sql_audit_model` is non-empty.
+
+`sql_retry_limiter` sits before the hooks that do work because it can jump to the end of the graph. The filesystem middleware only adds tools, so its place is free. `tests/test_agent_middleware.py` pins the clearing behaviour: nothing is cleared below the trigger, the sent size stays under the trigger for turns of 13 to 60 calls, the cache-break count is bounded by the number of 20k steps, the 40,000/no-step setting breaks the cache on most calls, and `compare_fit` survives while the latest five results stay.
+
+`compare_fit(org_id)` is shaped to fit that budget: it replies in text, with the strongest strong or medium fits in full detail and every other funder on one line, so the reply stays under deepagents' 20,000-token tool-result eviction (see [Funder Match](../architecture/funder-match.md)). The design draft `docs/features/2026-10-16-ask-efficiency.md` also lists later milestones (an automatic citation id column, a table map in the prompt, removing `fetch_url` from Ask, counting `db_profile_column` errors in the limiter). The code does not contain these yet, so this page describes the current behaviour: `fetch_url` is still one of the seven tools and only `db_query` failures are counted.
 
 ## 5. The SQL layers
 

@@ -1,14 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:87349dc9d548824d47e2a1ec04dd3e6a09268e274ff322b1adc479ec08898cb9",
+  "pageVersion": "sha256:0f27dae56f160d646ecc40b9777bb978ce7994ab03b94d5ad2bfb8ad4d492ce0",
   "claims": [
     {
       "id": "claim_c4947d35c7ba4e6884cb28e5433237e6",
-      "statement": "The chat wire is still CopilotKit: the drop-CopilotKit plan's M3/M4 are not started, package.json still depends on @copilotkit/react-core and runtime, and app/api/copilotkit/[[...slug]]/route.ts still exists.",
+      "statement": "The chat wire is still CopilotKit: the drop-CopilotKit plan's M3/M4 are not started (CHANGELOG), package.json still depends on @copilotkit/react-core and @copilotkit/runtime (~1.75.2) alongside @ag-ui/client 0.0.59, AgentProviders still mounts CopilotKitProvider at /api/copilotkit, and app/api/copilotkit/[[...slug]]/route.ts still exists.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L179-L181",
-          "version": "repo-lines-v1:sha256:3af7ea03a4b79b95593d75738742c827900eba3131f00b7496fc946c9c5a8de4:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2E1MzEzZTQ5Njk0ZWM4MzRjNDdlOThhYjA0ODgyYjdlNjRkODY3OTUyOWUxMzVhMTJlNTM0MmY4MWYwZTZjYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDNlMTRjMTQ4MmM2MmQ3NThiMGM1N2FkNDI5N2NhZjJhMGYzOWIzMzg2NWRiMjAyMmNlYmFjYjRiZjQ3MDM1MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWYwMDNmMjEwYzJkNzY3ZTIyNTEzMTdhODViMjkzN2ZhYzBmNmM3OTZlNjUzZTU5NDczMTUzZGZjOTY1Zjc2MyJ9"
+          "resource": "repo://docs/CHANGELOG.md#L189-L189",
+          "version": "repo-lines-v1:sha256:ce918338140671c522aea2286534a41bd9c886bc48f49408f3f880f954b45251:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODAyNjZmYzM0ZTM1MDgxMjlkZDZmY2I0YjY5NTBiMWQ0MjM2NDA3MjFjMjM2MGJlZjU2YWJiMjRiMDI1MGNiNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWYwMDNmMjEwYzJkNzY3ZTIyNTEzMTdhODViMjkzN2ZhYzBmNmM3OTZlNjUzZTU5NDczMTUzZGZjOTY1Zjc2MyJ9"
+        },
+        {
+          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L1-L34",
+          "version": "repo-lines-v1:sha256:72d56e179b0754a6cc95a2429a94d6acd7fbf8311f1c0f07ad7c8080059c505a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4MjAwOTY0YTk3ODYzNTUyMmIyYWIwOTBjNjUwNjVkOGVmOGU4NWM0NzMwYmIyZWIwNDYwZDM0YzY3N2RkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlOTk5MTliNDhiNWVkMDUzYjBhYWQ3YjUxZGU5MmNmM2ZmODM1ODVlMDgzYzljMjJjOTZiNmM0MmIwYmVlMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://frontend/lib/AgentProviders.tsx#L1-L35",
@@ -16,7 +20,7 @@
         },
         {
           "resource": "repo://frontend/package.json#L11-L16",
-          "version": "repo-lines-v1:sha256:8a14422d7efc13d8b1b06e3652b813c6e89411508006d29e01cc92310e963fe1:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmEzYjQ2OWQ5ZTA5NzU3MjI0NjY2NzM0YzllZjdiMjU0ZDg4NTM0ZjVkNWJiNzA5ODk2MDgwNWM1NTNkYzMwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWI3MDhiYWZlMjg1YTc5NjI3NDI4NzA3ZGIwNzQ4Nzk3YzdiNzZmYTU0ZGQxYzgyOGIwODcyZmM2YmFmMTRlMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWJhNDU5MjU2MGI4OGUzODgxYmU0MzMyN2NhM2U4NzE0N2ExZDI0OWMzOTMxMjVlNzkyOWNjYjhkYjMzYjg1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2E1YWJkOTc0MTJhYTY4YWU1OTNjZTI0NWZiMWIzZmViMTY1YjQyNDdjOWNmNmZiMzdiOTJjOWE5YTE2NDQzYSJ9"
+          "version": "repo-lines-v1:sha256:952e72d14ac727cd4f4d5a7211c94501ab17c6901438e5e585b911d278bff88a:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmEzYjQ2OWQ5ZTA5NzU3MjI0NjY2NzM0YzllZjdiMjU0ZDg4NTM0ZjVkNWJiNzA5ODk2MDgwNWM1NTNkYzMwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWI3MDhiYWZlMjg1YTc5NjI3NDI4NzA3ZGIwNzQ4Nzk3YzdiNzZmYTU0ZGQxYzgyOGIwODcyZmM2YmFmMTRlMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWJhNDU5MjU2MGI4OGUzODgxYmU0MzMyN2NhM2U4NzE0N2ExZDI0OWMzOTMxMjVlNzkyOWNjYjhkYjMzYjg1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2E1YWJkOTc0MTJhYTY4YWU1OTNjZTI0NWZiMWIzZmViMTY1YjQyNDdjOWNmNmZiMzdiOTJjOWE5YTE2NDQzYSJ9"
         }
       ]
     },
@@ -57,11 +61,11 @@
       "statement": "AGENT_URL must end in /agent (used verbatim for Ask, suffix swapped for Import, stripped for REST) while NEXT_PUBLIC_API_URL has no suffix and is the browser-side REST base; docker compose sets AGENT_URL to the internal backend:8000/agent and NEXT_PUBLIC_API_URL to localhost:8010.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L195-L199",
+          "resource": "repo://CLAUDE.md#L206-L210",
           "version": "repo-lines-v1:sha256:e0f3b7068d04786ed6eb6c760693e61dea6694abaaa03e8326ba0271fdd5ca01:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODYwZWJiM2ZiY2JiMzk0YTNjZmVhZjYxM2U2MjNhMzVlNWEwZGY1MTNlMmZhZWRkYTY5MmRmOTkzMjEyOTcwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTRlZThjNjM3OTk3NTk0MDE0ZDNjMGEyZWZhZDE5MTQ4Yzg5OThjNDQ2OWE4NDcyODExZGExMTYwNDAwYmM3NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDRmZWRhYjZjN2U5ODU2ZGM0ZjcxNzMyOTEyZTA1ZWIyOGI0NzkzOTIzNjE5YzQzOWY5NTFmNWI1OGE5Y2MzOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjU2ZWJiMjRkNTg2NzNjOWYxM2JlZmI5OGQzMzEzYmNlYjkxNTEyNTgyMzlkNzhlY2E1OTM5OGZiZWQwZTI4NyJ9"
         },
         {
-          "resource": "repo://Makefile#L332-L332",
+          "resource": "repo://Makefile#L341-L341",
           "version": "repo-lines-v1:sha256:10edb845739bd8342fa78afb0adff30a556bc1c1d7d7c843ec0ef4eec31d6e3b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODgxOTFmZjUwOTZlYWFjMDcyNzBkZWU5YjIxODNhNTM4NGNhMTdhZTFiYzQ3NjAwNDc3NmNjNWM2YTJkMzcxNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
@@ -150,11 +154,11 @@
     },
     {
       "id": "claim_bf8d1e649e2b43a391acf7f614afa3df",
-      "statement": "The Ask workspace lazy-loads via next/dynamic so the CopilotKit runtime downloads only when rendered; AskWorkspace keeps its views (ask, chats, funder-match, proposals, rfpwatch, vault, media) as in-app state, remounts ProposalsView with a new key when Funder Match opens a proposal target, and keys ChatPane by threadId so switching chats remounts it.",
+      "statement": "The Ask workspace lazy-loads via next/dynamic so the CopilotKit runtime downloads only when rendered; AskWorkspace keeps its views (ask, chats, funder-match, proposals, rfpwatch, vault, media; the WorkspaceView type is declared in Sidebar.tsx) as in-app state, remounts ProposalsView with a new key when Funder Match opens a proposal target, and keys ChatPane by threadId so switching chats remounts it.",
       "evidence": [
         {
-          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L31-L172",
-          "version": "repo-lines-v1:sha256:62c03c51c8826c5781083b11cdfccf6921c9aaec9dc0f702f4928cdb796438f7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0MTg3NjVkOTJhYjAxNDM4NTU3ZDdlMTE2NzNmMWJiMDA2YzEwNzNkYjczM2JiNGM0MTRhMDIzYjZlNjc0NGRjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5NWVmMDFiYzA4ZGJjM2I2M2U0ZTc1ZWEzZDI2YTViOTQxODkxODc3ZTI3YWQ4OTEzMjljODQxMWQ3ZDhkYzRkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmZDQ2MTc1Y2YxMzg4M2JkMDVkMTI1MGJjMjJjM2VhZjgwNjE5MWExODNiOGU0YzcwNDM5ZTBmMTg5OGYwNjI5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MSwiZm9sbG93aW5nQ29udGV4dEhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIn0"
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L33-L189",
+          "version": "repo-lines-v1:sha256:9269d4e76604c4dc971dab3b5d98fb29388a140ed15b7f0e25519c5ceec60c3e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTU3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0MTg3NjVkOTJhYjAxNDM4NTU3ZDdlMTE2NzNmMWJiMDA2YzEwNzNkYjczM2JiNGM0MTRhMDIzYjZlNjc0NGRjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmZDQ2MTc1Y2YxMzg4M2JkMDVkMTI1MGJjMjJjM2VhZjgwNjE5MWExODNiOGU0YzcwNDM5ZTBmMTg5OGYwNjI5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         },
         {
           "resource": "repo://frontend/features/ask/SignedInWorkspace.tsx#L1-L18",
@@ -165,8 +169,8 @@
           "version": "repo-lines-v1:sha256:1fbb6c3adcffeffd974d64fcf9c8c03997ffd6091d10e791c2e08a4091d75857:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://frontend/features/ask/components/Sidebar.tsx#L18-L30",
-          "version": "repo-lines-v1:sha256:f52dc4cd90ba8fb6487937d03547dcb7396c1de8e74d73b270a4017becb0783c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhMmNlODA1NmNlMWVkNDliOWI1MDc3YTU5MTIwYTc1NTQ5MWY4ZjI4MTI5OWY1ZGFjMzRkNDAzYThhZTljMTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2MDFiMmMzZDUwMWIzZWU4OGU0MzQxNmZhOGEyYzRjNDE1NmQ3Y2RhYmM0YzljY2E5NDljNDA2ODM0ZjQ5MjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUwMmFlN2M0YTI1MmQ1NTgzNTg0OTc1ODAxZDg3NGRjMjkwZWM4NmQ4ZjM3OWIyMzU5YzUzNTJjZjFiNzA2NjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwZjZhMTFhZjFjMDgzZGMyZmRjM2YzNWU0Zjg3NGZiNmJhNjA4OTRhMmM2NDFjNWU0YmYxNmQxNDhmMGEwMjQifQ"
+          "resource": "repo://frontend/features/ask/components/Sidebar.tsx#L19-L19",
+          "version": "repo-lines-v1:sha256:fa2ce8056ce1ed49b9b5077a59120a755491f8f281299f5dac34d403a8ae9c11:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmEyY2U4MDU2Y2UxZWQ0OWI5YjUwNzdhNTkxMjBhNzU1NDkxZjhmMjgxMjk5ZjVkYWMzNGQ0MDNhOGFlOWMxMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmEyY2U4MDU2Y2UxZWQ0OWI5YjUwNzdhNTkxMjBhNzU1NDkxZjhmMjgxMjk5ZjVkYWMzNGQ0MDNhOGFlOWMxMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2Q5MjhkYjA2ZGIyNjRkOTYxNGM3NDBiZDIyYTQwODYyZDJmYmZlM2UyOTYwNDE0ZThhNThmNTc2YmU2OWZkNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWY0NzlhNGNhODA5ZmU0OTVjNGRhYTI1NDE3YjM1YzQ4ZjE1Y2Y1NGIwNDg2YTQxMDUyZjA2Y2IyNzRhMzdkMyJ9"
         }
       ]
     },
@@ -318,15 +322,23 @@
     },
     {
       "id": "claim_f6e466f679cc4517bd5be3115a10ec0f",
-      "statement": "The design system lives in the Claude Design project 'Sangam Design System v2' as system of record; UI PRs must update it in the same PR, tokens share CSS variable names with globals.css, and rules fix corner radii, type scale, AA contrast, Lucide icons and a single page-max column.",
+      "statement": "The design system lives in the Claude Design project 'Sangam Design System v2' (built 8 Oct 2026) as system of record; docs/DESIGN_SYSTEM.md still says there is no automatic sync, so it is synced by hand: the repo never invents a token the design system lacks, UI PRs that change frontend/components or UI-kit screens must update it in the same PR, tokens map one to one by CSS variable name to globals.css (with @theme inline re-exposing them to Tailwind), components are translated rather than copied, and rules fix corner radii, type scale, AA contrast, Lucide icons and a single page-max column.",
       "evidence": [
         {
-          "resource": "repo://docs/DESIGN_SYSTEM.md#L1-L35",
-          "version": "repo-lines-v1:sha256:2901d65c92b37290c56e98c3239cf7bc5ab0af17bf63ff3db26aaafcff7aa756:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZWE4NDQxMGM4ZWMxMGI2NGExYWQ2ZWJjMDQwMmNlMGJjMDk0ZmNhNDllZDYyMjYxNmFkMTNjMjMxMjA2M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkY2Y1OTVkMWQzZGE3YzE2NGY3NDczMTZkMTliNmVjYTc4YTQ2ZWNjZDM0NzY2ZmM3YWMzMzc4OWQxY2M3MzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwNDUwZDk0NjhjOGUwYmQ0OTFjYTQ5ZTZjMjRkZTNmNDA0ZThjNGUyMjRhZGM1YmFiZWQzZDM5YjZlNmFiM2UifQ"
+          "resource": "repo://docs/DESIGN_SYSTEM.md#L1-L40",
+          "version": "repo-lines-v1:sha256:88f7f6b2907f3798d55a1d3bc51806b1e0d4bad9e9ce89bc5ecff79ff04e59a0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZWE4NDQxMGM4ZWMxMGI2NGExYWQ2ZWJjMDQwMmNlMGJjMDk0ZmNhNDllZDYyMjYxNmFkMTNjMjMxMjA2M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3NzE0ZDk2ODliNDcxMTJiZmQ2NGNiODcyYjYxMTA2Nzk3ZDIwOWQ2MDdmMjEwYjZkN2JlYmE1NmZjZGI1MDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0ZGI1M2Y3OGU4YTA3YzgzZGEzYjE1NDQ2ZTg0ZWI5YzU4ODI0NzlmY2QwZTBhMTYyM2MyNzAzYWEzYjk1YWQifQ"
         },
         {
-          "resource": "repo://docs/DESIGN_SYSTEM.md#L106-L126",
+          "resource": "repo://docs/DESIGN_SYSTEM.md#L108-L128",
           "version": "repo-lines-v1:sha256:5ba4ccf8e52e300503c26f046cca37e966b3a64ab1f3537c2287c078afce95c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlOWIxOTIyYmY5ZWQxMjFlYjEwOGMyZWM4YjllYzQzODg4MGQ1ZGE5YTEzOTcwOWYwZDViOWE0Zjc1ZjI4ZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2ODE0NGNlM2IzM2Y2YWVmMWFkNDRmODc0ZjZjN2E0M2E5NzM5N2EwYTFmN2I5NzdjZDc1MjlkZTA0ZWEyZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkZmNmN2RiMWRhNTBjNjM3MWU2NmNhZjY2ODc1MzI2MmMzNTM4NDY1NzZlNjJiZDY4MWZhMjI2MDRlM2NiMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://docs/DESIGN_SYSTEM.md#L42-L44",
+          "version": "repo-lines-v1:sha256:af696c62b35d67953e490427ea07e9973eea857046da86e97165a46c8553d435:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjYzNzA5NGNlNTQ2NTllYjcyYTQwM2FjN2RiMzk3MWEwMzY2MzA4MTMzNmZhZmQwNWQ3ZjQyZGY3YmRmZTIwMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjZhYTBlZGE5ODZmMjZhNWE2NTMwNTJiMDM5NjdkMmQ3ZTYwM2QyNGEwYTBmZTZjZTg2NmUwODEzOWI0NDQzNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzJmMDRjYzlmODgzN2E4ZmExZGE0NjUyZTZjOTQzODc2NzAwNjk5M2Q0MjI4NTg5MTBlZDFlNzFiM2ZkYjVhZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjQ5MTgxMDc5NjM3NzFjY2FmZWMxYmYxMmIyYzBmZTI4NWJmN2U1NjM5ZGU5NTdlOGM2Y2ZmZWJlNDEyNGU1YiJ9"
+        },
+        {
+          "resource": "repo://docs/DESIGN_SYSTEM.md#L72-L77",
+          "version": "repo-lines-v1:sha256:8489a6882678ec6d73de6dba83c333c89308ad7ca9bafe994b4e590c403d8a66:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmJkNjM0YjBkYTZkMWIwOWUzZTUxZDk2YzZkMDdmYjk1ODE1MzViZDg5MDViZGViM2UwMmFjNDNiMjk0MzgwOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ4NDlhNjkwMzYwNzFmZGM3ZDFjZmMwNWUxN2FhM2NjZWI3NGNkOWEwYzg3MTEyZTM0NzBiOTdiMjZiOTY0ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmVhNWViNzQ4MGY4NzIwZjgxMjVjMzk2MTRkZDA5YTI2NmY1Njg0ODcwYTY0Mzc2YzdmMjE5ZTVhMDA5Yzk2NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGEwOTE0ZDJhNTBhZTg0ZjE5NDBlYzJjMmI5YzBkMzgwZTlhYmVmNzMyZGNkMDc1ZWEyNTU3NTY5NTRmNDZkMiJ9"
         }
       ]
     },
@@ -335,7 +347,7 @@
       "statement": "Frontend code is organised as routes-only app/ (everything else goes in features/), one features/ folder per screen, components/ui and components/layout, and lib/; list pages share the BucketCards/FilterRow/SearchBox/ListMore pattern in components/ui/ListPage.tsx, with useShowMore for client-side paging and useCursorList for server cursor paging, and new list pages must reuse it.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L407-L410",
+          "resource": "repo://CLAUDE.md#L418-L421",
           "version": "repo-lines-v1:sha256:da49d982fa4f6e65b3561a5dceddda7b12545f8220ffcdb3936f78ea7e67bf9f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTFjMDgwOTdlM2UyZTZkMGVkMTk3MDMxOGJjNTc0MDY1YWI3N2ExYmE2ODFjNjk2M2NmNzBkMTc2YWZkYzI1MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODhhNmEwMzg3MGU5OTEwMTg1NThhZmFhN2JhYzE0NjM1YTY3ZDZkZWJhMTY3OWEwYzc1ZjA2ZWE0NDhkZDgxMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FmMDE2YzMzYjliZGQxYWNkODc4N2Y2YTc3ZTdjNTExODhiMTg0ZjNiOTkyYzNlMDUxNzA2ODU3NjNjZmMwMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2QzYmI0ODhiOTcxNjAyYWQ3MjA5ZjFjN2U4ZmRlMjY1OGNhYTk2ODU4MTQ0N2MxOWRhMDE4ZDZkYzYyY2JkYyJ9"
         },
         {
@@ -371,11 +383,11 @@
       "statement": "A proposal is started from a Funder Match card by naming it and POSTing /api/proposals with the org slug and funder id; the card only offers Start when the match list's may_run is true, so members can only view existing proposals.",
       "evidence": [
         {
-          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L207-L207",
+          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L212-L212",
           "version": "repo-lines-v1:sha256:477f6cf21928cf24c595d5cfcd2ea25c07342f172409342140698ff7930f7fe5:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDc3ZjZjZjIxOTI4Y2YyNGM1OTVkNWNmY2QyZWEyNWMwNzM0MmYxNzI0MDkzNDIxNDA2OThmZjc5MzBmN2ZlNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDc3ZjZjZjIxOTI4Y2YyNGM1OTVkNWNmY2QyZWEyNWMwNzM0MmYxNzI0MDkzNDIxNDA2OThmZjc5MzBmN2ZlNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWUxYjMwM2MzNjUxMTY4N2IwM2M1YWUwYzMzZGJlN2U0MmM3ZDc0Yzg1NDEyMDAzYzYwNjZmNDg5MWZlMGI1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGZiMDE2N2Y4MjEyYTQxZmJiNjc2Yjc5MzUwNGNhYzYxMmRlMWVjMGU5YmQ5OWJkMGJjN2U5OGE3MTNmYzY4MiJ9"
         },
         {
-          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L35-L85",
+          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L36-L86",
           "version": "repo-lines-v1:sha256:1ebaf48c85cbf3457c36040590cfa98e559a886ce08586e4fa38d29e6eb12582:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4YjljZDE3OTZiOTk3NTdlNDkyMTc1Y2YxMjRjYzFmMGI0MmFkN2FmMmUyZDhiYTgwYzM2OTRlNjQ0ZjZlYWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkMGQ2NWI5NTkyYTI1MjkzMmRiODk3MDJjNzA4NjY3ZWU1MDNhOTcwNGNkMDk0ZWRmNWE5NWU1MTc2NDgyNTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjYmM2MzMzZjUyNmQ4NmFiZGVmNDE1YTQ3YTliNTE3NmJhNzE4MTI3MjZiZGM1MjdmMDAxNGU2ZjJlMzQ2MDIifQ"
         }
       ]
@@ -563,10 +575,198 @@
           "version": "repo-lines-v1:sha256:14c4fa038989a3fd65c0a6290c075a2022605e6cd30e2e12289cdb89b9de24ce:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTQ0MDQzZjIxNGU4NzcwODVjYzI3NWJiNDc4NjVjNWJjZmUwODlmZDdjMDY3YTVlY2I3YzBlNDVjNzcxZWJhNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjQwMzM3MWEyNzYxZjU5YzM4ZDQxZTA4YmY2OGI1MWY3YjM0NWI4MmNlZGQyM2FjZDUzNzdkNDY5MTc2ODM2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_94283b237bb64955b29c521090bcbc59",
+      "statement": "The Ask sidebar is a collapsible workspace rail: expanded it offers New Chat, Recent Chats (first 5 threads, 'Show All' opens the chats view), Use Cases (Funder Match, Proposals, RFP Watch, Media & Signals) and Context (Doc Vault), with section open state held in the Sidebar so the icon-only collapsed rail (default on viewports up to 768px) can reopen it at a section; a Tools section linking to /import (Sangam Scout) appears only when canScout is true.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L51-L63",
+          "version": "repo-lines-v1:sha256:df086caca225f7ba313023e4b558fe56521eeee683f8fd39312062f413d70927:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5NjZmYmZhODg5OThkYTc0NjU2YzUwMTk0OTU2YzI1ZjA4NDk0NTc2NjBjMDA5ZmU2M2QxZTlmYTlkYzkzMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkYzUyZjA4YjM5YjA4YjAxYzhkMzA4YmY4ODBiMGJlZjAyZmQxZGZjYzlkOWFhOTNhNGQxYjVmNGQ1OGI2Y2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyZjk5NTQwMDQ5OWUyMGU5MjVmZjc1MTE2NWQ0NmEwNDliYzg0NTYzZmQzZjBmZDI4ZDhhOWY5M2E4MmE4NWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZjNzdlYjE1ZmZhOWI0NjhjM2NiZmRhMjFkMDNkY2Q0ODRmMjQ2NWJhYzFjZjg1OTJiNjNhZDA2ZGE2NDVmZDcifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/components/Sidebar.tsx#L19-L208",
+          "version": "repo-lines-v1:sha256:3b86e13ef9aff9dd73dec5b38a0ae6caad018a51df9242a13b60ccb1d312155a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTkwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmYTJjZTgwNTZjZTFlZDQ5YjliNTA3N2E1OTEyMGE3NTU0OTFmOGYyODEyOTlmNWRhYzM0ZDQwM2E4YWU5YzExIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI3ZDkyOGRiMDZkYjI2NGQ5NjE0Yzc0MGJkMjJhNDA4NjJkMmZiZmUzZTI5NjA0MTRlOGE1OGY1NzZiZTY5ZmQ0IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_e6b17f799a1c42de9f3d73814c820975",
+      "statement": "Unshipped Ask features are gated by one set, COMING_SOON in features/ask/lib/comingSoon.ts, which currently contains only rfpwatch: a name in the set shows a 'Soon' tag in the sidebar and renders ComingSoonView in place of the real view, and for 'proposals' it also hides the Funder Match proposal filter and disables MatchCard's Start a proposal button; since proposals is not in the set, Proposals is live while RFP Watch shows the coming-soon card (RfpWatchView is an unreachable placeholder). The signed-out AskPreview hard-codes its own 'RFP watch ... Coming soon' text and does not read the set.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L164-L185",
+          "version": "repo-lines-v1:sha256:fe5c755ead75e952ab3786a832cddf12e1237b4a9fcf1d47ba52f09d530ddf37:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NTdlY2JkYWVhZWJmYmM4OGJhYTBhOGU5YzczNTEwMGE0YWNlNDY0OGEzNjdkYjVlMDIxNmZjMWZjNzdhMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMWRjZjE5MTUzZGU2OTI1YTY4NGI3MWVhMDQ0MDFhNjA5MDhkYWMzOTVhYjNhZDE2Y2Q0MjZmY2ZmNjgwNzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkYjg3NWVlMTVmODIyMDE4MDBlYmRjZGMxYjk3NTZjOWJjMDA1YTg5ZmE4ZGIzYTcyZjExNzg0NWVkY2Y1ZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1ZTI5MGNlMTQxNmUyNjkyY2U4OTkwMThiMWMxNTQxZTMxY2UyMmUwYzVmM2Q2NzRmMzlhNTNlMWJhODVmOWEifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/components/Sidebar.tsx#L138-L145",
+          "version": "repo-lines-v1:sha256:3f3713d75a7bfff4c84dcf0ef0a12112730a9fb63e33f6ca2c0a58a5b2a4b263:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWRlODk5YTM5OTI0ZDY3Y2VjNTRkODM0YmQ0MzE2NGQwYjJiNDg0MGIwNDIwZmJmMWZhNDY3NzhiYWQyMDE3YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTI4MTE1ZTllMzdiODUwNGUyZmE5MmIxMzhhNGU3OTE4ZjFjOGJhODE2MzQ1YjAyMzczMWFmM2RkODFkYWYwMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWRiM2U3Y2QwYzNhNjIzMDQ3NjY4MTYxZDEwNGU5OWQ4NjIwOWNhM2U3NzU0YTI1YjExOWE0OTA3ODc4MDQyNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDllY2JiODBmOWM0ZDRmZTA5MWZjYzZhZTM5MjI2N2Y1NTRmNzYxYzkwODM2ODlhMzFkODk1YTUzOTc0YTY5MCJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/components/Sidebar.tsx#L24-L29",
+          "version": "repo-lines-v1:sha256:4b41fc9bc5cfaaa36f6949814c095f36bb3c5529b6aa4d97572f12a9c526dc7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWE1ZTk0NzQxNjU4MzFlNTczMmY0Njc2ZTNkYTgwYmYwYzllNjVhMThjOWFjMWRmNDEyYjEwMzczZTBkMmUzYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAyZDJjMGQ2ZGM1ZTc0ZDkyZmExNGI5MWRiZWEyNjQwOTBiZWIzNWZkYjkxODhkOWIzNDExODFkY2U5ZjRjZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGE4MGFlMzc5OTg0NTUwZDU1MDQ0ZDg1M2E5MGM2NjRkODY3NDcxNWM0MzliNzU4NTNmYjIwNjhiM2E1ZjA4YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGEzNTk0OWQyMGY5ZTAwYTFmZGNmM2Q1ODQwNDRhZGUwY2U4OWI0OTI1MzVhMTkwMmI5NTY1NWZkMzI1ZWJmNSJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/lib/comingSoon.ts#L1-L4",
+          "version": "repo-lines-v1:sha256:a87013a055f6c308a7c516d6f467f69973b11ccd0189c05235f24ab245cf8942:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I5N2RkNzZmYTA2Y2JkMmY5MGFjNzY3NGE5OTNkMWE5YzY3ZmYwNzU3ODFmZTJlNDA5MDEyNjdlOTJmMTE4YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTM2ZDk4NTUyZjY3YmEzNzNmMjg1NTFmODYzMTY4YTdhYTYwZmI5MTdjNmQ1NTgyY2Y2ZGFlYTQ3OGZlOTRhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/preview/AskPreview.tsx#L20-L24",
+          "version": "repo-lines-v1:sha256:8c7e3b32ca085e05292468ccaeb0942c4249202a65f0405b663e50456cc41305:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWU2NjMwMDZmNjZhNWI5MTBmMGQ1NDg2ZTBiMGNhNjEwOGMxMzlhMmI1NTdkODg3YWFmYzNkYjE4YmQwMzViZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAyZDJjMGQ2ZGM1ZTc0ZDkyZmExNGI5MWRiZWEyNjQwOTBiZWIzNWZkYjkxODhkOWIzNDExODFkY2U5ZjRjZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGZjZDQ4OGVhMTRiNzRhYjYyN2RhMjU2ZDBiNGYwMGMyYzMzZmFmZWE5NzM4NmFlMzY2MWI2MTI1Yzc1ZWQ3ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjdhYjQ5YmE1YjQ2NGVhZmNkMDVkYTcwMzllZWFiMmViMjRlZDBlZGI4ODM2YzcwZTgwOWI5ZjhlNGZlNjEyYSJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/ComingSoonView.tsx#L1-L17",
+          "version": "repo-lines-v1:sha256:730bad18f9784b02c190c46b0dfd4bca89dabdca124b9cb8104d3f8324b13c43:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L186-L188",
+          "version": "repo-lines-v1:sha256:2dbfcf8aeba35c3a4574fba0862b810a5a0e07a0c497109d934e5e8f268611f7:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNiZjE4MjFkNDk3NjU5MWM4ZGYyZjgyMWU2OTk4NjA2ZDE5Zjk3ZWU5YWNjNjU0NjI3YzhiNzgyNGNjY2FmZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODcwZDI5MzQzYjEwZmRmMDU1ZjRlNjgwYTc5YWNkZDY4MTNlNzVjM2M5YzA5NzhjYTNjNTFhNzFkZDdlZDc4OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDljZjA4NzQ1NjI0YzQyYjgzNDlhMGI3YzkxMGQ5MjRjMTkwMTI2YWEwYjA0YmFmNzA1MDlhYWZlMWIxZTA0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjE1Mzg2MzAyZmI2OTRkNDE4ZGQwOTA4ZjAzNzQ0OTQ0Mzg3ZmI0Nzk1ZTNkZTliZmRlOWMzODJhZjliYjExMyJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/RfpWatchView.tsx#L1-L20",
+          "version": "repo-lines-v1:sha256:bb8f4355a51a0cc3ea515fa654af48f1f5aec5fe63cbe5e95e19c42ca8dd34d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L140-L149",
+          "version": "repo-lines-v1:sha256:b39437aca89bacb4942ca973a52ebf881fa6c8b834edb45967b1c154bb88384e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyYzQxNzVmZTUxNzUwZmE3NjE3MTc3NzY0ZDAzYzc2Y2VlMzA2NDEyN2UzYWFmMTc5ODQyNTk2MTkyOTU4ZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxMzAwNDg0N2UwNGQ4ODQxMmY5NGVhYjZiMDU2NDlkNjJiMDQyM2QwNDliYjRiMzI3YTgxNjMxNmQ2NDQzY2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE2ZTdiY2YxYWJhNzk0Mjk0ZDA3YjQ1ZTM1ZDhkNjg5ODU2NjdhYzJmODQxMzJmNjE1YmI5M2IyYmY3Njg3NmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxM2Q4MmMyZTFjNTQwM2RjNzA3YzBhNjhlOGZkMmUwODIxZDAwNmVlOTY4ZjEzMWIzYjFiZDlhMDAxNGMzNjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4d82bddb0eac47739b519073a4922a2c",
+      "statement": "The home page (/) is a static server component, HomePage, with no backend call: hero with Ask Sangam and Explore the Registry buttons beside the cross-fading HeroSlides client component, a five-step agent explainer, source cards, partner logos and a Stay updated card whose Subscribe button has no submit handler.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/page.tsx#L1-L5",
+          "version": "repo-lines-v1:sha256:3849e65825e96bbadba3711dfc6bf33099a5afec09c22c6431b7623aacbf020e:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODMyNDg2MWIzMjViMDQ3N2I3NGQ4OTU3NmIyNDU3ZGIxN2E2MDJkMjQxNDAwNjYxMzczZTYyNzA2MDBmOWI4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://frontend/features/home/HeroSlides.tsx#L37-L60",
+          "version": "repo-lines-v1:sha256:fd5b0a72572330fa7ec8e71a0fefcf3082a39ca5a84062500b6d3d06978981f2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlMGE5MmFlNGQyZDczOGMxZWNlNjA2NTY2OTM0YTVlNjcwMDI2OWM0ZTAzNGI5ZWRiY2UzZjIyMWVmZGQzODQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkMmMzZjQwZTQwMTI0Y2M1NzhlNjI3NDQ1NjM5MGRkZGQ0MWQ0YTNjNzZjM2EwY2NmNjM5NGI3ZTkyMWE3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJiZDMxZjEyZDEzNWI3ODhiNzNlMmUyNjA1OTlhMjkxZTNjOThmOTBkZTUyZTVlZWZhYTZlZWVlY2U0YjIxZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4NDBkYzhlYTIzNDljYjA4OGJiOTQwZTJmZWUzYjNhODk4YWVhYzgwNjJmN2NiNGIxM2EyZTY4Nzc4ZGYwODcifQ"
+        },
+        {
+          "resource": "repo://frontend/features/home/HomePage.tsx#L75-L193",
+          "version": "repo-lines-v1:sha256:3d57e9aead836def523897e2471199783ee363fe6c5d0650de17b27969776fca:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE5LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIxNjU5NTQzZjM5MTIyZTFkZjE1M2I2MGIzODcyZjA3ZTI3YzVkZjY0MDNiOTFiNzgwYmEzOThjM2FiYzI5NzE3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5NWVmMDFiYzA4ZGJjM2I2M2U0ZTc1ZWEzZDI2YTViOTQxODkxODc3ZTI3YWQ4OTEzMjljODQxMWQ3ZDhkYzRkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxYjNkMjg2YWNlYjQ1MDM0YzZkYjkzZmExMDc4YTkwNTA1ODMzOGVhYzk2OTQyMTU0MTQ2NTIwNjczODQwY2M4IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MSwiZm9sbG93aW5nQ29udGV4dEhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_176df21cc7e247419af5d152c76d2029",
+      "statement": "The navbar (components/layout/Nav.tsx) exposes only Registry, Ask Sangam and Resources plus SignInButton, with a phone menu that closes when the pathname changes; /import is not linked from it (Scout is reached from the workspace sidebar), and NavBar highlights the section by first matching path prefix, mapping legacy /orgs, /funders, /methodology and /taxonomy to Registry or Resources and everything else to home.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/components/layout/Nav.tsx#L9-L83",
+          "version": "repo-lines-v1:sha256:290480a0fdfd2da4ede57c303fbf6a1be987a7699c7f8108055b89d4c61d8813:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ODQ0NTA4ODExNDY2ZWY2YzVkMjAxNDdlZDdmMWQ4YTFmYTZmMTVkZjg3YTNhMWExMWIzMDlkN2FiOTM5YzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmZGUxNGU2MjQ1OGU2ZjZhMjFmMjc5NzgxYTQ5MTg0M2ZkYWM5MTk4ODk0NTYxNGRlMmJhNWQyN2U5NzcxZTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/components/layout/NavBar.tsx#L6-L21",
+          "version": "repo-lines-v1:sha256:c91155788cd30be16f9fed1186d6769abf5df10b2aa43377c0a115c7221cce35:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUzYzIyMWE3ZDYwYzE2MjVjOGVmOGQzMmVkZDQ3YWEwZTcyNWMxM2VlMTBjMWI0YmJjZTc5MTM5NjFkYjc5NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRhODM2NTAzMDE5N2M5ZWViNWJlMjI0YzQ2NGE0NTg2OWM3ZDQ2NDkwM2U4YzZiNDEwMzYwMWZmZGEzMjkxNTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2835902b0a3a48d4aeeaabb944fa7342",
+      "statement": "The design system's token files map to globals.css by name: colors, typography and spacing to the :root variables, base.css to the hand-written classes, and four feature files imported in order after base.css: scout.css (Scout), registry.css (Registry list, profile, brief and list-page classes), registry-row.css (Registry row population chips, .reg-row-line, .reg-row-label, .reg-more and the filtered tag edge) and site.css (Nav's .nav-links and phone menu, Home's .home-step*).",
+      "evidence": [
+        {
+          "resource": "repo://docs/DESIGN_SYSTEM.md#L22-L40",
+          "version": "repo-lines-v1:sha256:82e78c8dc28fb7cdb79efe080c1492704bcf862acd207b86799a78afacfdbc4b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1ZjYwN2YwODQ0MmVlYjZjMTU5Y2Y1MWQzMTkxYzhkZDJkOTM5NzVmNmRkZDUxOWZiNDc1YTNlYmU0M2E4NTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3NzE0ZDk2ODliNDcxMTJiZmQ2NGNiODcyYjYxMTA2Nzk3ZDIwOWQ2MDdmMjEwYjZkN2JlYmE1NmZjZGI1MDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRhZmNhYWQ0MDQwMGZiYzIyNWU0MjYwYzk2OTA5ZGNiYTU0NTZlYWRlYzc4NGZiNDllNDkxYjZmMThiYzQyNTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0ZGI1M2Y3OGU4YTA3YzgzZGEzYjE1NDQ2ZTg0ZWI5YzU4ODI0NzlmY2QwZTBhMTYyM2MyNzAzYWEzYjk1YWQifQ"
+        },
+        {
+          "resource": "repo://frontend/app/globals.css#L207-L257",
+          "version": "repo-lines-v1:sha256:c5f1057b912cda05f93e8af6e9fac3cdf0bcac8f9e121f32e804e4350273f775:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjZDhlZjMwNWQ5NmIwZTA4NzUxYTczOTUzOWM2NmNlOTMxZDRlOTYxYTNiMWNjZDU5NDAyNGZmOGU1MDJlZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1MThlNWQwZjcyNzk4MjcyZTkyMDQ5MjUwMjBlMWUyNzU5MGJkYjliNDgwNTcyMmE4ZDBmNDVjNjg4YzNjODkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhZWIzMjFiNjcwMmFmYmE2YTAxYzUxOGVkNjFmZmJkMzljODY1YThkZGU3NThlOGRhM2E2NmM0NTRiN2FjNWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1NzQwYWExMWI4YzEyYjUzY2E3ZGNkMDZmMmEwYWQzY2Y3MTk0ZGE5NjhjZDliMTE5N2JmZmMzZTQ2MzQzNzMifQ"
+        },
+        {
+          "resource": "repo://frontend/app/globals.css#L442-L451",
+          "version": "repo-lines-v1:sha256:0923058cdf3ddb07bb4ee52f52a2d3e77a33a7c208254da764a7f59931d9fd6f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkN2I1OWYyYTIxN2U0YzlhMTQ3NWE0YmQ0Nzg5OWI3NGQ3YmY2NDBlZjk2MzlhMmE3MDk4MWQzZWQxYjliODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NWIxMTUwOTgxNjgyNzE5M2EyMmMwNmNlNmI1ZWQ1MmEwYTYzZjI0MjlhNjZhNjA2MzM5YTkzYTRjYjNjZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkN2RmYWYzZjYxNzVmZTdmMDUwZGFiN2NmZGQxMjVjNGVjYTNiZmRkYmVjMTYxODYwOTc5YmQzZDhjN2JlNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiZGJlYmRhMjIxMDYxNjI5ODU5MzI0MjBkMTA0NWM0MDA3MjJiZDE1MzE4OGYxYzc0OTBkNmJmN2ZkZGYwMDEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_eb89e96163714fa0aebde71cc0ee5674",
+      "statement": "/registry makes one server apiGet of GET /api/registry and RegistryClient filters, searches and pages (20 at a time) entirely in the browser using rules in features/registry/rows.ts (kindLine, signal, matches), where the Registrations filter applies only to CSOs and Funder type / How to approach only to funders.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/registry/page.tsx#L1-L20",
+          "version": "repo-lines-v1:sha256:5e04105bd9a6eb965d8c14e0e88c22e0835a9462981d032c60120e1a5190eb87:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkNjU2YmE5MWJjYjM2OTIxMjgyYjE5MzQxMmJjZTczZGM0MmIyMTdhNGIyMTQyNzY0ZjFkODcwZDJjNzcxMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L74-L188",
+          "version": "repo-lines-v1:sha256:30154be83d51e28772223429845f21df94fc6054444491a76c037efd2f18e494:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0ZGE3NjA5YzljYTU4MjBlOGJlNjI0YjEyZTVkMjEwZmY4OWY3ZWM3NmFkM2JjMTliM2FiMWVkNmI3OTE2MDllIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwOTRmYzBjMTczZDFlYzNmYzUwMWQ3ZGZhOTI4NTUwMWM1MjdjZmI0NzEyNTgzZGEzY2MzNjE4MDU2NmI0YmUzIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://frontend/features/registry/rows.ts#L49-L83",
+          "version": "repo-lines-v1:sha256:e1b2d1e2ee755082215a686f7363650bfd5b1a06520d53bff815d8709ef0c663:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNzUwZmRjNjg5MGY5NmNhMjVkMDVmNmQ5MWUzMTU1ZjY4YzAxMjI3YjhjNzNiMWE1ZmQyNWYzNjIyZjZiZmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1YzFjNmM4Njk4ODM5MTdkYTc5N2M2NzNiMDAzNjViMTc5Y2YwZTRlMDkxNjUwYjhlNjUxOGY3ZjNlYWRmZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmYTIxMjY3NjI4NDVlYTlkNmYxMWM3MzJhZGY3ZDYwZDlhZGYyMjFiM2FmMDA1NDMzYzBhOGEzYjYzMGM3YzYifQ"
+        },
+        {
+          "resource": "repo://frontend/lib/api/types.ts#L259-L269",
+          "version": "repo-lines-v1:sha256:286d6899223cadc339995a94b22336fd0a814f096f898800a1ddcd46b9806ac0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExZGZiZTkyM2JiYWFkODRkOWU1ZDQ3ZmY4N2MwYmYxZDJlY2I2MWQ0MDllY2E5YzM1ZWFjZWNlYjlhY2VhN2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyNTFkMmRiZDVlOWI2M2NhZjgyZmM4OTQ3NGM3NDVjMjc2ZTNkZTUwMTRkMWU3NDlkZWQwZTc1MTM5ZTRmNGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3M2I4YjJhYzZlM2M1MTkxM2ZmZmRhZTc5YjIxYjQ0ZDNmNjcwOTU4MDYyMzFkNzcwMjliODA0ZTRiY2I1Y2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5c6b7d60de3f41c58a1e5e44217c26a1",
+      "statement": "A Registry row shows each theme domain its themes reach (backend order, Others last, an italic 'Themes not tagged yet' gap tag when none), SDG chips, an 'In <domain>:' line naming matching sub-themes when a Theme filter is set, and a 'Serves' line of up to three population tags with '+N more', moving a filtered population first and marking the filtered tag data-active.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/globals.css#L442-L451",
+          "version": "repo-lines-v1:sha256:0923058cdf3ddb07bb4ee52f52a2d3e77a33a7c208254da764a7f59931d9fd6f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkN2I1OWYyYTIxN2U0YzlhMTQ3NWE0YmQ0Nzg5OWI3NGQ3YmY2NDBlZjk2MzlhMmE3MDk4MWQzZWQxYjliODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NWIxMTUwOTgxNjgyNzE5M2EyMmMwNmNlNmI1ZWQ1MmEwYTYzZjI0MjlhNjZhNjA2MzM5YTkzYTRjYjNjZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkN2RmYWYzZjYxNzVmZTdmMDUwZGFiN2NmZGQxMjVjNGVjYTNiZmRkYmVjMTYxODYwOTc5YmQzZDhjN2JlNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiZGJlYmRhMjIxMDYxNjI5ODU5MzI0MjBkMTA0NWM0MDA3MjJiZDE1MzE4OGYxYzc0OTBkNmJmN2ZkZGYwMDEifQ"
+        },
+        {
+          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L16-L72",
+          "version": "repo-lines-v1:sha256:98a1c14dfe45591edbf634be47a1a4caff758483f965b8fd00b16850773dfc5f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5Yzk0OGE5ZDRiMTRmMjAzNjY1MzUzYzdiNTIyODNmMTgwYjhiZjU0ZmRiYTQ0ZmY3YjdkYTBiZGQ4M2E3ZWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhMDU5OWQ2YzU0ZGQ4NjFjYjBjYTliMTc4N2I4NjEwMTQxNGJiYTdlOGUwM2UwM2E4MmM4N2VmYzI2OGVjOGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkMDYzNzk4MGJiZGUxMzE4ZTU5NGEwMTY1OTAxMDFkNTI4MGJiYWIyOTg5NTJlYmE3Mjg3Mjc4Y2NjN2JlYTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d7e1d4735641419da7bd92c2473b7312",
+      "statement": "ProfileHero draws a profile's tags as a facet list, using splitTags to separate themes (theme and sub_theme kinds), population tags (labelled by whoLabel) and lens tags, each on its own labelled line (Themes, who, Lenses, SDGs) with the ask and research-brief calls to action.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/registry/profile/ProfileHero.tsx#L8-L90",
+          "version": "repo-lines-v1:sha256:403fbf8b83efa21d067329c1cff19dac1c3dedfeddd1260cb3843da442a62380:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYWMxOGI5OTZjZDg4NzAxZmQxNjI4MGM4NDAxMGUyN2Y3MWNmMDE5YTZkNGIyODUwZjZiNzc2OWYwOGQyMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY0YWRhOTUzNWY5MGEyN2Y2MjIzYjMyMjNiZmI2NmM0ZmMyNzBkNjZmMjE4NmExOTA0OGQwMjlkZTI5ZWUzNmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/registry/profile/shared.tsx#L85-L93",
+          "version": "repo-lines-v1:sha256:5725c513b971210b55bac845c0f966d90605ba9e5f9149866497fd537344c313:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzkwOGY0ZmVhZTRkM2IxYmJlY2I4YWE0NjBlM2I3NjhkOTE5MDJjMzZjNzBmYTMyYzA2OWRkOWRiOTgwZTUyZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjg1ZTNlMDNmYmQwMGQ4NmNmOTdhZWRkOWJkNWZiY2QwNTA0ZmMxNjA1MGZkODUwNGQ1MTQ3ZWZmNzg0NjNjMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTRkOTAzY2VlZDFkOGFmNDA5ZWZiODM3ZDc5N2Q2Y2M0ODI0MjU5YzI4YTliM2Y1Nzc1Mjg5NjZlNWNiZTk2MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTIwZTA0NGU4NTMwNTFmMjRkMjFkNzE4ODVjZjYzZmE5MDIxY2I5MzA5NjllOWJiODc2Yzc5MTdkODc5MjU1YSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_601e6a851ffb43969314531ce3bcc2ed",
+      "statement": "Home's five agent steps are a constant STEPS array rendered as one ol.home-steps card; pure CSS makes it a numbered vertical timeline below 900 px and five hairline-divided columns from 900 px up, with no step state.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/globals.css#L231-L257",
+          "version": "repo-lines-v1:sha256:89a89c3e99b245e21b968862b98275669eb559f1139b2a673357d1eefe9003bb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5YTQwNmVhYzAwODA5YjRhMzZkOTFhNThlNDk2MmMyNmVlYzIzY2FlNzdmOWVkOTc1NDkyMjdmNjRjNDA5ZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1MThlNWQwZjcyNzk4MjcyZTkyMDQ5MjUwMjBlMWUyNzU5MGJkYjliNDgwNTcyMmE4ZDBmNDVjNjg4YzNjODkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwNTIxMGE0MGQxMWNjMmFhOTJlYzhjMjZlMDhhMzgzMzAxMzI0MzZlYzFjOTYxNmU4ODkxYTc3OTNhMWNlMTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1NzQwYWExMWI4YzEyYjUzY2E3ZGNkMDZmMmEwYWQzY2Y3MTk0ZGE5NjhjZDliMTE5N2JmZmMzZTQ2MzQzNzMifQ"
+        },
+        {
+          "resource": "repo://frontend/features/home/HomePage.tsx#L111-L130",
+          "version": "repo-lines-v1:sha256:135efd90ba1b2ca90bf8ad78a6746b6019ed5dc56e256c9eebe9ff257a3c6489:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzNTJiODJmODdhYTM3MTg5YjZjNTI4ZWQ2YmVjMjA0ZGQzMDJjMjYzMWQ0YzA1YjRmOWZlNTRhMTNiYjkxMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1MGFlYzRmNTY3ZTRmMTJiNDg3OWIyNTZhMTA4YjA0NzkyZjJiM2ExYzllNjFlOTg3MTVjMjFlNDk3MWJmYzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkZjg4MzRhOTc1OGJmNDc2ODI3NWQxNjg0ZTRhNTcyZDRhNDU3ZjRiZGM0MzQyYjJkMDYyMjlmYzYyYjNkZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5NjcyMjJlZjQwM2RlYTMyYjY5NGIyZDU1ZjE4MzE0Zjk5OWNmMDM0ZDkzZmMyMmY1MzQ3ZmZhM2E0NGRkMjEifQ"
+        },
+        {
+          "resource": "repo://frontend/features/home/HomePage.tsx#L14-L35",
+          "version": "repo-lines-v1:sha256:b0def0a92d9c2e4e59bbf16ce869ed9b5c0528525fb1ad5e4c1c7b0f13c11b66:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNjhlOWNjZjVlODBmZWIzYzAwYTM2ZThhZGI1MzBjYWUzMjQ1MWFiOWEwYTJiODk2YjkwZDE1YmIxMDBmOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjZGM3NmQxMmU1MzA0ZDMwNzllZGI1Zjg5MDAwN2VhMDVmMjI2ZTRkOTNiNjk1Njg0NjBjYWZhZjgwMDc0NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiMTcxMGZlMGVmMmY3NGMwYjNiM2Q2YWM3OTE5ZWY4Njg1ODEyMzBmZTIzOGY5ODE1M2RiOGNkYzZjODg2NzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiYzgxOWI2NzllYmI2MTcwY2YwYmU0ZTI1NTkyMWY2ZTlmMzg1NWE1ZmEyNDY0NjE0YzhlNjg5NWE0ZjU5N2UifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7cb13ea782e84593a0f5f5103178b67a",
+      "statement": "Nav's phone menu: below 640 px the inline .nav-links hide and a 44 px menu button beside Sign in toggles a .nav-menu listing the same three links; Nav stores the pathname the menu was opened on (openOn) so it counts as open only on that pathname, and following a link also closes it; from 640 px up the button and menu are hidden by CSS.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/globals.css#L207-L229",
+          "version": "repo-lines-v1:sha256:690a4772e9dfa34804f705dc1db745f1307c2eff044f46d74cae19621487cf30:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjZDhlZjMwNWQ5NmIwZTA4NzUxYTczOTUzOWM2NmNlOTMxZDRlOTYxYTNiMWNjZDU5NDAyNGZmOGU1MDJlZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmZjAzNzFlNDY1MTU3YjFkMWY0NDdiMGUzMzY0ZjQ0MDYwYzJjOGE2NTUxM2Q2OTBmZjc2NmFiMWIxMjg0ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhZWIzMjFiNjcwMmFmYmE2YTAxYzUxOGVkNjFmZmJkMzljODY1YThkZGU3NThlOGRhM2E2NmM0NTRiN2FjNWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwOTlmOTBkNjI5ZjA5ZjMwMDNkMGQ5Y2UwYmE1NGQ0ODA4MThjN2NjNjlkZjBmYjk2MGMyOWIzMWU5YTNkNTMifQ"
+        },
+        {
+          "resource": "repo://frontend/components/layout/Nav.tsx#L19-L83",
+          "version": "repo-lines-v1:sha256:525b792c16ebe515f50a23977da0378b192f9bbc4724176d4b2ce86d42b4ad6d:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmZGY2ZWVjNzU5MTY2ZDU4ZWM1MDI5ZDQ5NzVjMTEzNjlkNTFjMTlkNTc2MDE5ZjE3YmU0ZDM4ZGQ1OTZmODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxZjc2MWM1OTIwZWUzOGE1OWY2ZTdiYTMxYTExNmJmMzAxZDdiNTViYTlkMWUxYmZiZTJiMmFlZWZhMzhjYzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-15T18:08:53.060Z"
+    "at": "2026-10-19T08:37:55.275Z"
   }
 }

@@ -18,6 +18,8 @@ sources:
     resource: repo://backend/app/agent/prompt.py
   - id: openwiki-source-d283e7d3b1dc789fadafd127
     resource: repo://backend/app/agent/skills/funder-matching/SKILL.md
+  - id: openwiki-source-62535afcf34b8cc957e9dd6b
+    resource: repo://backend/app/agent/skills/funder-shortlist-brief/SKILL.md
   - id: openwiki-source-712de428a387a07399345d95
     resource: repo://backend/app/agent/skills/news-brief/SKILL.md
   - id: openwiki-source-1f8b3caaa82d707d101e103d
@@ -44,10 +46,16 @@ sources:
     resource: repo://backend/app/core/security.py
   - id: openwiki-source-10e08c1deca7d7728d8240c4
     resource: repo://backend/app/db/pool.py
+  - id: openwiki-source-62958d5b14b0717233a7ec0b
+    resource: repo://backend/app/ingest/agent.py
   - id: openwiki-source-0c2810df96342c5efec98a57
     resource: repo://backend/app/proposals/agent.py
+  - id: openwiki-source-f298183777e9f6b64bb1b60f
+    resource: repo://backend/tests/test_agent_middleware.py
   - id: openwiki-source-bc3c2ebc658cef90ceb7a159
     resource: repo://backend/tests/test_agent_rls.py
+  - id: openwiki-source-d642d26fca955a56c4af2c1a
+    resource: repo://backend/tests/test_compare_fit.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
     resource: repo://backend/tests/test_harness.py
   - id: openwiki-source-fe6e4c3f43ca6fccc586454c
@@ -58,14 +66,18 @@ sources:
     resource: repo://CLAUDE.md
   - id: openwiki-source-e8e61d605125cac4d909755e
     resource: repo://docs/ARCHITECTURE.md
+  - id: openwiki-source-88fdf568b0f25b1d21f041da
+    resource: repo://docs/CHANGELOG.md
+  - id: openwiki-source-e89833baa00bd0952b217a13
+    resource: repo://docs/features/2026-10-16-ask-efficiency.md
   - id: openwiki-source-0261bb6aabbfdf1c40983663
     resource: repo://docs/SQL_AGENT.md
   - id: openwiki-source-2ace3232a14f5163db46085f
     resource: repo://frontend/features/ask/lib/toolLabels.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T08:30:22.232Z
 ---
 
 # Ask Sangam
@@ -96,12 +108,21 @@ Ask is one of three agents the backend serves. `AGENT_NAMES` in `app/core/lifesp
 | `db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query` | Discover the catalog, then run one model-written SELECT (`tools/sql_tools.py`). |
 | `search_graph` | Graphiti relationship search with `[graph:<uuid8>]` markers and validity dates. It returns a "not available, answer from the database tools" string when the graph is not configured. |
 | `fetch_url` | One live page through the egress-guarded client. It is uncapped and carries no citation marker. |
-| `compare_fit` | Funder Match in one call: fixed queries, rules in code, the match-v2 rubric. It reads through the shared pool directly (the owner pool, not the caller-scoped SQL path), so it refuses callers who may not run a match for the organisation itself, using `chat_user_id` and `matching.may_run`. |
+| `compare_fit` | Funder Match in one call: fixed queries, rules in code, the match-v2 rubric, replied as line-per-fact text (see "compare_fit's reply" below). It reads through the shared pool directly (the owner pool, not the caller-scoped SQL path), so it refuses callers who may not run a match for the organisation itself, using `chat_user_id` and `matching.may_run`. |
 | `read_file`, `ls` | Skill reading only, supplied by `harness.filesystem(keep=SKILL_READING_TOOLS)`. |
 
 The agent used to have hand-written lookup tools (`search_orgs`, `get_funder`, and others). They were removed, and `db_query` is now the only route to the database. `compare_fit` is the one deliberate exception, because matching is a fixed checklist and its queries are fixed too.
 
 **Tools never raise.** Each tool body is wrapped in `try/except` and returns an error string (`"db_list_tables failed: ..."`, `"compare_fit failed: ..."`, `"ERROR: ..."` from `fetch_url`). A raised tool exception would abort the whole run, whereas a string lets the model see the failure and adapt. The rejection prefixes `db_query rejected:` and `db_query failed:` (in `sql/errors.py`) are a wire format. The retry limiter matches on them.
+
+### compare_fit's reply
+
+`compare_fit` returns **text, one fact per line**, not JSON. An earlier version returned every scored funder at full detail as a single JSON line. For an organisation with 26 scored funders that reply passed deepagents' 20k-token eviction threshold, was moved to a file the model could not page, and led the model to call the tool again (the trace behind this is in `docs/features/2026-10-16-ask-efficiency.md`). `render()` in `matching_tools.py` now shapes the reply by mode:
+
+- **`compare_fit(org_id)` (shortlist).** A header names the rubric version and funders checked, then `scored N: <per-tier counts> · not scored N`, then an `unknown across the N scored:` line counting which criteria were unknown. The top strong and medium fits, up to `FULL_DETAIL_MAX = 10`, come in full (card lines, the seven criteria with points, status, note and cites, `not judged:` and `to raise the score:` lines, with no `summary:`). Every other scored funder is one line: its score, tier and first `!` gap line. The funders not scored come last, split into "nothing in common recorded" and "the funder has nothing recorded (unknown, not a poor fit)".
+- **`compare_fit(org_id, funder_ids)`.** Exactly those funders, each in full with a `summary:` line, in score order. A named funder with nothing shared stays in the list with a null score and counts as "not scored" in the header.
+
+`tests/test_compare_fit.py` pins the shape: a worst case with 37 funders stays under 60,000 characters (a 15k-token budget under the 20k eviction limit) and spans more than 50 lines so it pages cleanly if evicted; only ten funders get full detail; named funders carry every criterion and `summary:`; "unknown" is never folded into "weak".
 
 ### Taking back the preset (`harness.py`)
 
@@ -118,6 +139,7 @@ Four skills live in `app/agent/skills/`: `funder-matching`, `funder-comparison`,
 
 - The backend is a `CompositeBackend`. Everything is virtual `StateBackend`, except `/skills/`, which routes to a `FilesystemBackend(root_dir=SKILLS_DIR, virtual_mode=True)`. `virtual_mode` roots the route so `/skills/../../etc/passwd` cannot read the host. Ask has no write tool, so the real-disk route is read-only in practice.
 - `instructions.md` rule 13 maps intents to skills. Funders for an org use `funder-matching`, named funders use `funder-comparison`, a write-up uses `funder-shortlist-brief`, and an org's or funder's news uses `news-brief`.
+- The skills are written against `compare_fit`'s text reply. `funder-matching` documents the shortlist layout (header counts, the `unknown across` line, numbered full entries, `- ` one-liners, the two not-scored lists) and tells the model to call `compare_fit` again only as `compare_fit(org_id, [id])` for one one-line funder. `funder-shortlist-brief` writes strong and medium fits in the reply's order and weak ones as one line each, past the first ten as one line too. `funder-comparison` calls `compare_fit(org_id, funder_ids)` once for the named funders and lays them out one by one or as a table. All three tell the model to relay `compare_fit failed` and `compare_fit refused` and never judge fit from `db_query`.
 - Skills hold procedure only. The judging itself is `compare_fit`'s, in code (`app/matching/rules.py`), so none of the skills carries a matching rule. Constraints that must hold on every run stay in the prompt. See `docs/SKILLS.md` for the design rationale. That doc's header corrects its older body, which still lists three Ask skills.
 
 ## Middleware order
@@ -126,10 +148,12 @@ Four skills live in `app/agent/skills/`: `funder-matching`, `funder-comparison`,
 
 1. `filesystem(backend, keep=("read_file", "ls"))`. It only adds tools, so its position does not matter.
 2. `sql_retry_limiter`, a `before_model` hook with `can_jump_to=["end"]`. It counts `ToolMessage`s from `db_query` whose content starts with `db_query failed:` or `db_query rejected:` since the latest `HumanMessage`. At `MAX_SQL_ATTEMPTS = 5` it appends a fixed "couldn't get a working result, rephrase or tell me the table" `AIMessage` and jumps to the end. It sits before the hooks that do work for exactly this reason. Only `db_query` counts.
-3. `clear_old_tool_results()`, a `ContextEditingMiddleware` with `ClearToolUsesEdit`. Past 40,000 tokens it clears old tool output but keeps the latest five results, so follow-up questions can still refer back.
+3. `clear_old_tool_results()`, a `ContextEditingMiddleware` holding one `SteppedClearToolUsesEdit`. Past `TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 60_000` it clears old tool output but keeps the latest `TOOL_RESULTS_KEPT = 5` results, so follow-up questions can still refer back. It reclaims whole steps of `TOOL_RESULTS_CLEAR_STEP = 20_000` tokens (`ceil(over / step) * step`), so what is sent stays under the trigger and the cleared set, and with it the prompt-cache prefix, moves once per step rather than on every call. `compare_fit` is in `NEVER_CLEARED`: its reply is bounded and the write-up reads it, and clearing it made the model call it again. The earlier setting (trigger 40,000, no stepping) cleared a different oldest result on every call and broke the cache each time. Ask, Import and the proposal copilot all call this function, so they share the behaviour.
 4. `answer_audit(settings.sql_audit_model)`, appended only when that setting is non-empty.
 
-`app/agent/middleware.py` also defines `StaffLastLock` and `SaveQuestions`, but Ask does not use them. Only Import does (see [Sangam Import / Scout](sangam-import-scout.md)).
+`app/agent/middleware.py` also defines `StaffLastLock` and `SaveQuestions`, but Ask does not use them. Only Import does (see [Sangam Import / Scout](sangam-import-scout.md)); `ingest/agent.py` is the sole caller of `staff_last_lock()` and `save_questions()`.
+
+`tests/test_agent_middleware.py` pins the clearing: the cleared set changes at most once per 20k step as a turn grows, what is sent never exceeds the trigger however long the turn, nothing is cleared below the trigger, `compare_fit` output survives while the latest five results stay, and the old 40,000/no-step setting is shown to break the cache on most calls.
 
 The prompt says "After 5 failed attempts" and the middleware enforces 5. `test_retry_budget_in_the_prompt_matches_the_middleware` pins the two together.
 
@@ -173,7 +197,7 @@ Agent SQL runs **as the signed-in caller**, under row-level security. `ask_acces
 
 Two consequences follow for the model's answers. Counts and empty results cover only what this user can see, so the prompt (rule 10) says "none that you can see" rather than "none exist", and `db_query` and `db_profile_column` say so when they return zero rows. A user also needs `SELECT` on every catalogued column, or `SELECT *` fails with SQLSTATE 42501.
 
-Not everything in Ask runs as the caller. Tools that go to the shared pool directly, like `compare_fit`, still use the owner connection and must check access themselves through `chat_user_id` or `chat_scope`. See [Auth, roles and RLS](auth-roles-rls.md). Two docs lag the code: `docs/ARCHITECTURE.md` sections 3 and 8 still say Ask's SQL runs on the owner pool and that running it as the caller is the unmerged branch `fix/ask-sql-runs-as-caller`. Treat the executor and `docs/SQL_AGENT.md` (which marks the reader-role section superseded) as the truth. The stale `sql_reader_role` comment in `config.py` and the "superuser until the reader role lands" comment in `validator.py` describe the old design.
+Not everything in Ask runs as the caller. Tools that go to the shared pool directly, like `compare_fit`, still use the owner connection and must check access themselves through `chat_user_id` or `chat_scope`. `compare_fit` does so first, before any query: `matching.may_run(get_pool(), chat_user_id.get(), org_id)` must pass (Sangam staff, or a steward or admin of the organisation), otherwise it returns `compare_fit refused: ...` and builds no output. See [Auth, roles and RLS](auth-roles-rls.md). Two docs lag the code: `docs/ARCHITECTURE.md` sections 3 and 8 still say Ask's SQL runs on the owner pool and that running it as the caller is the unmerged branch `fix/ask-sql-runs-as-caller`, and the CHANGELOG "Not finished" row for `auth-plan.md` repeats that. Treat the executor and `docs/SQL_AGENT.md` (which marks the reader-role section superseded) as the truth. The stale `sql_reader_role` comment in `config.py` and the "superuser until the reader role lands" comment in `validator.py` describe the old design.
 
 **Adding a table to the catalog is still a security decision.** In practice this means the following:
 
@@ -189,7 +213,7 @@ Not everything in Ask runs as the caller. Tools that go to the shared pool direc
 - **Rules 6-11, SQL.** Discover before writing. Profile a text column before filtering on a literal. Project the id column, since `db_query` can only attach a marker if the row id is in the SELECT list. Read the error and fix the SQL, and stop after 5 failures. Zero rows is an answer, a CAVEAT from a table is repeated, and because every query runs as the caller and row security hides what they may not read, an empty result is reported as "none that you can see". A registration is an `org_identifiers` row with a status.
 - **Rules 12-16, matching.** `compare_fit` judges fit and the model never does. Call it once per question. Repeat its score, tier, points and cites exactly. "Not recorded" is never "poor fit", a `compare_fit refused` reply is relayed and the model stops, and the computed score is never merged with a stored `fit_scores` row.
 
-**Citation markers** are `[org:N]`, `[funder:N]`, `[activity:N]`, `[score:N]`, `[news:N]` and `[graph:<uuid8>]`. SQL kinds come from `Column.cites` through the validator's `CitationPlan`. `[graph:...]` is written literally by `search_graph`, and `compare_fit` embeds `[org:N]`, `[funder:N]` and per-criterion cites in its JSON. The frontend turns markers into chips (`features/ask/lib/citations.ts`). `test_prompt_documents_every_marker_the_tools_emit` fails if a tool can emit a kind the prompt never mentions, because the model will not repeat markers it was not told about. `test_tools_emit_the_markers_we_think_they_do` guards that test against passing vacuously.
+**Citation markers** are `[org:N]`, `[funder:N]`, `[activity:N]`, `[score:N]`, `[news:N]` and `[graph:<uuid8>]`. SQL kinds come from `Column.cites` through the validator's `CitationPlan`. `[graph:...]` is written literally by `search_graph`, and `compare_fit` embeds `[org:N]`, `[funder:N]` and per-criterion cites in the text reply that `render()` produces (see above), not in JSON. The frontend turns markers into chips (`features/ask/lib/citations.ts`). `test_prompt_documents_every_marker_the_tools_emit` fails if a tool can emit a kind the prompt never mentions, because the model will not repeat markers it was not told about. `test_tools_emit_the_markers_we_think_they_do` guards that test against passing vacuously.
 
 ## Adding an Ask tool
 
@@ -210,10 +234,20 @@ Because the tool set is pinned, also update the literal set in `test_ask_sangam_
 - A missing graph, a refused match and an unreachable page are all strings, never exceptions.
 - The audit can only add a caveat. It cannot block or alter the answer, and it does nothing when no SQL ran.
 
+## Unfinished plans
+
+The CHANGELOG "Not finished" table and the Ask section of the CHANGELOG record what has not shipped. For Ask:
+
+- **Ask efficiency plan** (`docs/features/2026-10-16-ask-efficiency.md`, Draft v2, branch `feat/ask-efficiency`). The CHANGELOG still marks it **unmerged**, with M1 (evals count tool calls, tokens and cost per case) and M2 (the compact `compare_fit` shortlist and stepped clearing described above) listed. The code in this checkout contains M2. The rest is **not in the code**: M3 (a `{{TABLE_MAP}}` in the prompt, automatic `__cite__` id columns, 2,000-character cells for one-row results, caveats once per turn, the executed SQL moved to a tool artifact) has no matching symbols, and `render.py` still caps every cell at `MAX_CELL_CHARS = 200`. M4 (remove `fetch_url` so Ask has six tools, count `db_profile_column` errors in the retry limiter, trim prompt rules that restate docstrings) is not done: `fetch_url` is still in `TOOLS`, `tests/test_harness.py` still pins seven, and the retry limiter still counts only `db_query`. M5 is a proposal-copilot guard. Until M4 lands, this page's "seven tools" is correct.
+- **Ask SQL as the caller.** The code runs it as the caller, but the CHANGELOG's `auth-plan.md` row and `docs/ARCHITECTURE.md` still describe it as the unmerged branch `fix/ask-sql-runs-as-caller`.
+- **Drop CopilotKit** (`2026-10-11-drop-copilotkit.md`). The CHANGELOG records that #178 removed `emit_raw_events=False`, so raw events stream again; M3 and M4 are not started. This touches the transport Ask streams over (see [Ask turn](../workflows/ask-turn.md)), not the agent.
+- Stale comment: `build.py` still says the answer audit is "Off unless configured", but the setting defaults to Haiku.
+
 ## Key tests
 
 | Test file | What it pins |
 |---|---|
+| `tests/test_compare_fit.py`, `tests/test_agent_middleware.py` | The `compare_fit` reply fits its budget, with ten full entries and one-liners for the rest; stepped, `compare_fit`-sparing tool-result clearing. |
 | `tests/test_harness.py` | The exact Ask tool set, no `task` tool and no writing filesystem tools. The harness profile disables the general-purpose subagent. The `Settings` audit switch. |
 | `tests/test_prompt.py` | Every registered tool and every emitted marker kind is named in the prompt. The retry budget matches the middleware. |
 | `tests/test_sql_catalog.py` | Withheld tables and columns, derived indexes, citation kinds, defect wording and the self-check. |

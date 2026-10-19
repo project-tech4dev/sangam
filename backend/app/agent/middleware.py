@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import math
+from dataclasses import dataclass, replace
 
 from langchain.agents.middleware import (
     AgentMiddleware,
@@ -29,8 +31,12 @@ _FAILURE_PREFIXES = (FAILED_PREFIX, REJECTED_PREFIX)
 
 # Bulky old result grids are dead weight once the model has read them, but the
 # most recent few are what a follow-up question refers back to.
-TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 40_000
+TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 60_000
 TOOL_RESULTS_KEPT = 5
+# Clearing grows in steps of this size, so the cleared set (and the cached prefix) moves once per step.
+TOOL_RESULTS_CLEAR_STEP = 20_000
+# compare_fit is bounded and is what the write-up reads; clearing it made the model call it again.
+NEVER_CLEARED = ("compare_fit",)
 
 _GIVE_UP = (
     "I tried a few ways to query this but couldn't get a working result. Could you "
@@ -65,13 +71,28 @@ def sql_retry_limiter(state, runtime):
     return {"messages": [AIMessage(content=_GIVE_UP)], "jump_to": "end"}
 
 
+@dataclass(slots=True)
+class SteppedClearToolUsesEdit(ClearToolUsesEdit):
+    """Past the trigger, reclaim whole steps: a fixed clear_at_least clears the same few results forever."""
+
+    step: int = TOOL_RESULTS_CLEAR_STEP
+
+    def apply(self, messages, *, count_tokens) -> None:
+        over = count_tokens(messages) - self.trigger
+        if over <= 0:
+            return
+        reclaim = math.ceil(over / self.step) * self.step
+        ClearToolUsesEdit.apply(replace(self, clear_at_least=reclaim), messages, count_tokens=count_tokens)
+
+
 def clear_old_tool_results() -> ContextEditingMiddleware:
     """Drop bulky old tool output from the request once context grows large."""
     return ContextEditingMiddleware(
         edits=[
-            ClearToolUsesEdit(
+            SteppedClearToolUsesEdit(
                 trigger=TOOL_RESULT_CLEAR_TRIGGER_TOKENS,
                 keep=TOOL_RESULTS_KEPT,
+                exclude_tools=NEVER_CLEARED,
             )
         ]
     )

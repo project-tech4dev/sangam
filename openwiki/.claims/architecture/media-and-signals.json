@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3aa900948006c5f4baf9a68252513628f856a8a61a1be127a0880efe2855a0a5",
+  "pageVersion": "sha256:7fcbb5e75b9bcaa15ea03f317740eba40b21f340293d0a573efe1844f56dabbb",
   "claims": [
     {
       "id": "claim_01345909426749c9a9ea637374f7feca",
@@ -56,7 +56,7 @@
         },
         {
           "resource": "repo://backend/app/ingest/news/pipeline.py#L225-L291",
-          "version": "repo-lines-v1:sha256:1e879a6c0df2e871663f19a4ff520e9e4971e1b18740a5af8f32c0ab13b6c18a:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkZGY3OTk2ZjY5ODRlZjkzM2I3MzZjYjY0ZDgzMWE4YWVhNmMwMzMzMTQxNzEwOWQzODUzMDIxMGRkZGE3MGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3ZmI5MWMyODljNWE3ODAxN2QzYjhkNGQ4M2MwNzI2YzNlM2I3MDJjN2IxMzMyZGZmNWVjOTllOWU1NWU5MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyNjQwYmM5NTIwNDBhNTJhODZjYjIyYTg2YzQzZWExMDU3MGQ1YTE1ODA5NzBmYjIwODkzMDA1NzE0OTM2ODgifQ"
+          "version": "repo-lines-v1:sha256:d59c15b0e27c3d4c77706bd5c1e9f2898c08da695a80cf247bd4d35336ef6812:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkZGY3OTk2ZjY5ODRlZjkzM2I3MzZjYjY0ZDgzMWE4YWVhNmMwMzMzMTQxNzEwOWQzODUzMDIxMGRkZGE3MGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3ZmI5MWMyODljNWE3ODAxN2QzYjhkNGQ4M2MwNzI2YzNlM2I3MDJjN2IxMzMyZGZmNWVjOTllOWU1NWU5MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyNjQwYmM5NTIwNDBhNTJhODZjYjIyYTg2YzQzZWExMDU3MGQ1YTE1ODA5NzBmYjIwODkzMDA1NzE0OTM2ODgifQ"
         },
         {
           "resource": "repo://backend/app/ingest/news/pipeline.py#L47-L58",
@@ -300,7 +300,7 @@
         },
         {
           "resource": "repo://backend/app/repositories/news_stories.py#L41-L217",
-          "version": "repo-lines-v1:sha256:1943becdb052e5d8bfba2a2a1ce49d34c6e376be17a32694673128f79cb8cb77:eyJzZWxlY3RlZExpbmVDb3VudCI6MTc3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJlMTEyMTkzODk1YjU3MTRmOTJjOWE2OTdiY2VlYjliODhlZjE0MDQ2ZDVkNGEwYWJhNzM2MzU1YjQyMjBiNzI5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI2N2RjZmFmNzg5NGQ1NTdkZDg4OGM2OTkyMDU2ZDRlNWU4YWMzM2EzYzVjOTVmMWI0NTg4MmQ4MWE2MTZjNmEyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+          "version": "repo-lines-v1:sha256:7eb6621ba343f3ae74cc040b6c0b4f6f6e145d5639ef3816f8c29ceeb4f69092:eyJzZWxlY3RlZExpbmVDb3VudCI6MTc3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJlMTEyMTkzODk1YjU3MTRmOTJjOWE2OTdiY2VlYjliODhlZjE0MDQ2ZDVkNGEwYWJhNzM2MzU1YjQyMjBiNzI5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI2N2RjZmFmNzg5NGQ1NTdkZDg4OGM2OTkyMDU2ZDRlNWU4YWMzM2EzYzVjOTVmMWI0NTg4MmQ4MWE2MTZjNmEyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         }
       ]
     },
@@ -348,7 +348,7 @@
         },
         {
           "resource": "repo://backend/tests/test_news_runs_routes.py",
-          "version": "repo-file-v1:sha256:63e3df83db32044214b72f43c742d4f77464cf2636d8b091041a86718c95c7cf"
+          "version": "repo-file-v1:sha256:653e58ac0bf544cc493e48e31bf646717256c0d0f5c23ac4140ea74674300c30"
         }
       ]
     },
@@ -369,10 +369,28 @@
           "version": "repo-file-v1:sha256:63e065d762e8a4afd25d31c73fa19cc6e4d09c104e52d1420273ef466563b3eb"
         }
       ]
+    },
+    {
+      "id": "claim_abadb915d4104fe7b847b04bd31e742d",
+      "statement": "The news-run form routes are removed: only the staff-only GET /ingest/news-runs/plan remains (non-staff get 403), so a news pull can be started only through Scout's run_import_now or the CLI. runner.runnable_for excludes tavily_news unless a source list names it, because a news pull costs money.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/runner.py#L159-L165",
+          "version": "repo-lines-v1:sha256:c4df0524a7297cbf05866d4c043313e416b2258a1bb8af3c4b6f40351504711a:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGU5ZjQ3ZjAyYjdjYmMyNjQ3YTk5NTc0ZTA3OWExMzFmZTMyZWNjNGIxMDM2OWYyNTNlYmUyMWY5YWM5NDZlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTVkZmZjNWFkOTIyOGFjNDQ1YzEwNWE0MzZkYjJhOGU0MzM3NjQwNzYxMTBkMGM2ZDI4Y2ExZTM4MzFkOWFiZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjliNjI2ODRlYzU4MmQyMGIxMWU5MGJkMTA0Y2ZlZjc1YjE3NzQ1MjJiMzFjNDI3NDI2OTEwODVmZmM3NDE3MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGUwM2U3NGE1MGMwMTk2YzBjOGQ5NDZlZmE2ZmJkMTQyYmFhOGE4NjdhY2I1NWU4YjM4MGNmYjM1ZmFlM2QxYyJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_news_chat_pull.py#L58-L62",
+          "version": "repo-lines-v1:sha256:eb2c6031eabd09b1a1978928fddef0f54f5bc274b8dd5829990bb1748c5069f4:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBkNDRjMWRmOWUzZjg1ZDYxZDM3YzhhNDI1Y2ZmNGU4ZjU3NzczMzQ1MjQ3MGE2Mjc3ZDUyM2YyNjU5YWQyNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmI1YjRhM2ViZjFjYWVjODlkMGExNDYyNTk2MTEwMjIxY2I4MTFmMjVhNjdjNzExZjMzM2M0MjdkYzQ3NDUzMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjFjYWMxMmYwOWQ1YjY1NzdiYTgwZmY1MGQyMmUyMTUxMjIzZDEwZDliZTlhY2QzYTFmNzUyYWZkOTI4NzIwNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_news_runs_routes.py#L64-L74",
+          "version": "repo-lines-v1:sha256:4d1e7521cbd28385675e537a1d7bea9e5d7d1aca6490a7c9af2a4fe3b315ff0b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1OWJmMTNjZjc1OTllOWNjMmI3NzZiZjc5ZDA0MDIxN2I4MjFiMDA5NzM5NGRlMDVlZGIwOTg2YWE0NGE0MjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1ZjQ3Y2M1Mjg4YzY0YjhmOTE1NmEyYzI0MGU0Yjc2YjdhZTIyNjI0YTE0NDk2ZWY1NmU2ZGI1ZDg5ZTc4YTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU4NDU4NzkyZmJmMDIzZWM0YTg3NDAxYmViMjAwMzA5OTEyNzc3OGZiZjA1MDJlNzM3YTg2NTdjMjRjODYwMTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-15T18:08:53.060Z"
+    "at": "2026-10-19T08:30:22.232Z"
   }
 }
