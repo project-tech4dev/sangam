@@ -8,18 +8,37 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.integrations import storage
+from app.integrations.graph_ontology import edge_allowed, entity_type, extraction_kwargs
+from app.repositories.graph_catalog import link_nodes, reconcile_closed, vocabulary
 
 TEXT_TYPES = (".md", ".txt", ".csv", ".json", ".html", ".htm")
 CHUNK_CHARS = 8_000  # Graphiti extracts per episode; a whole report in one prompt loses facts
 _in_flight: set[asyncio.Task] = set()  # asyncio holds tasks weakly; a shielded chunk must outlive a stop
 
 
-async def search(client, *, query: str, group_id: str | None, limit: int) -> list[dict]:
-    edges = await client.search(query=query, num_results=limit, group_ids=[group_id] if group_id else None)
-    return [{"uuid": e.uuid, "fact": e.fact, "valid_at": e.valid_at, "invalid_at": e.invalid_at} for e in edges]
+async def endpoints(client, uuids: list[str]) -> dict[str, dict]:
+    records, _, _ = await client.driver.execute_query(
+        "MATCH (n:Entity) WHERE n.uuid IN $uuids RETURN n.uuid AS uuid, n.name AS name, labels(n) AS labels, "
+        "n.sangam_id AS sangam_id", uuids=uuids)
+    return {r["uuid"]: {"name": r["name"], "type": entity_type(r["labels"]) or "Entity", "sangam_id": r["sangam_id"]}
+            for r in records}
 
 
-async def add_episode(client, *, text: str, name: str, source_description: str, group_id: str | None) -> dict:
+async def search(client, *, query: str, group_id: str | None, limit: int, types: list[str] | None = None) -> list[dict]:
+    """Facts matching the query; with types, only facts whose two ends are both one of those types."""
+    from graphiti_core.search.search_filters import SearchFilters
+
+    edges = await client.search(query=query, num_results=limit, group_ids=[group_id] if group_id else None,
+                                search_filter=SearchFilters(node_labels=types) if types else None)
+    ends = await endpoints(client, list({u for e in edges for u in (e.source_node_uuid, e.target_node_uuid)}))
+    return [{"uuid": e.uuid, "fact": e.fact, "name": e.name, "valid_at": e.valid_at, "invalid_at": e.invalid_at,
+             "source": ends.get(e.source_node_uuid), "target": ends.get(e.target_node_uuid)} for e in edges]
+
+
+async def extract(client, pool, *, name: str, text: str, source_description: str, group_id: str,
+                  vocab: dict[str, list[str]]) -> dict:
+    """add_episode under the ontology, then drop facts it does not allow and fold entities into the catalog."""
+    from graphiti_core.edges import EntityEdge
     from graphiti_core.nodes import EpisodeType
 
     result = await client.add_episode(
@@ -29,8 +48,36 @@ async def add_episode(client, *, text: str, name: str, source_description: str, 
         source_description=source_description,
         reference_time=datetime.now(UTC),
         group_id=group_id,
+        **extraction_kwargs(vocab),
     )
-    return {"entities": [n.name for n in result.nodes], "facts": [e.fact for e in result.edges]}
+    nodes = list({n.uuid: n for n in result.nodes}.values())  # Graphiti repeats a node or edge once per mention
+    edges = list({e.uuid: e for e in result.edges}.values())
+    labels = {n.uuid: n.labels for n in nodes}
+    missing = {u for e in edges for u in (e.source_node_uuid, e.target_node_uuid)} - labels.keys()
+    if missing:
+        records, _, _ = await client.driver.execute_query(
+            "MATCH (n:Entity) WHERE n.uuid IN $uuids RETURN n.uuid AS uuid, labels(n) AS labels", uuids=list(missing))
+        labels.update({r["uuid"]: r["labels"] for r in records})
+    kept, dropped = [], []
+    for e in edges:
+        allowed = edge_allowed(e.name, labels.get(e.source_node_uuid, []), labels.get(e.target_node_uuid, []))
+        (kept if allowed else dropped).append(e)
+    if dropped:
+        await EntityEdge.delete_by_uuids(client.driver, [e.uuid for e in dropped])
+    linked = await link_nodes(client, pool, nodes)
+    unmapped = await reconcile_closed(client, group_id=group_id, nodes=nodes, linked=linked)
+    return {
+        "entities": [{"name": n.name, "type": entity_type(n.labels) or "Entity", "sangam_id": linked.get(n.uuid)}
+                     for n in nodes],
+        "facts": [e.fact for e in kept],
+        "dropped_facts": [f"{e.name}: {e.fact}" for e in dropped],
+        "unmapped": unmapped,
+    }
+
+
+async def add_episode(client, pool, *, text: str, name: str, source_description: str, group_id: str) -> dict:
+    return await extract(client, pool, name=name, text=text, source_description=source_description,
+                         group_id=group_id, vocab=await vocabulary(pool))
 
 
 async def groups(client) -> list[dict]:
@@ -79,11 +126,11 @@ async def _episode_exists(client, name: str, group_id: str) -> bool:
     return records[0]["n"] > 0
 
 
-async def document_events(client, *, bucket: str, key: str, size: int | None, group_id: str):
+async def document_events(client, pool, *, bucket: str, key: str, size: int | None, group_id: str,
+                          vocab: dict[str, list[str]]):
     """One Storage file into the graph, a chunk per episode, yielding a progress event at each step."""
-    from graphiti_core.nodes import EpisodeType
-
-    result = {"key": key, "status": "added", "chunks": 0, "entities": 0, "facts": 0, "reason": None, "parts": []}
+    result = {"key": key, "status": "added", "chunks": 0, "entities": 0, "facts": 0, "dropped_facts": 0,
+              "reason": None, "parts": []}
     yield {"event": "downloading", "key": key, "bytes": size}
     data = await storage.download(bucket, key)
     if data is None:
@@ -103,29 +150,26 @@ async def document_events(client, *, bucket: str, key: str, size: int | None, gr
     for index, part in enumerate(parts, start=1):
         name = f"{bucket}/{key}#{index}"
         if await _episode_exists(client, name, group_id):
-            chunk = {"index": index, "chars": len(part), "status": "skipped", "entities": [], "facts": []}
+            chunk = {"index": index, "chars": len(part), "status": "skipped", "entities": [], "facts": [],
+                     "dropped_facts": [], "unmapped": []}
             result["parts"].append(chunk)
             yield {"event": "chunk_done", "key": key, "total": len(parts), "episode": name, "chunk": chunk}
             continue
         yield {"event": "chunk_start", "key": key, "index": index, "total": len(parts), "chars": len(part),
                "episode": name, "group_id": group_id, "preview": part[:200]}
         # Stopping cancels this generator; a chunk Graphiti has started still lands whole, never half-written.
-        task = asyncio.ensure_future(client.add_episode(
-            name=name,
-            episode_body=part,
-            source=EpisodeType.text,
+        task = asyncio.ensure_future(extract(
+            client, pool, name=name, text=part, group_id=group_id, vocab=vocab,
             source_description=f"supabase storage {bucket}/{key} (part {index} of {len(parts)})",
-            reference_time=datetime.now(UTC),
-            group_id=group_id,
         ))
         _in_flight.add(task)
         task.add_done_callback(_in_flight.discard)
-        episode = await asyncio.shield(task)
-        chunk = {"index": index, "chars": len(part), "status": "added",
-                 "entities": [n.name for n in episode.nodes], "facts": [e.fact for e in episode.edges]}
+        extracted = await asyncio.shield(task)
+        chunk = {"index": index, "chars": len(part), "status": "added", **extracted}
         result["chunks"] += 1
         result["entities"] += len(chunk["entities"])
         result["facts"] += len(chunk["facts"])
+        result["dropped_facts"] += len(chunk["dropped_facts"])
         result["parts"].append(chunk)
         yield {"event": "chunk_done", "key": key, "total": len(parts), "episode": name, "chunk": chunk}
     if result["chunks"] == 0:
@@ -133,27 +177,29 @@ async def document_events(client, *, bucket: str, key: str, size: int | None, gr
     yield {"event": "file_done", "file": result}
 
 
-async def documents_events(client, *, bucket: str, prefix: str, limit: int, group_id: str):
+async def documents_events(client, pool, *, bucket: str, prefix: str, limit: int, group_id: str):
     yield {"event": "listing", "bucket": bucket, "prefix": prefix}
     files = await storage.list_all(bucket, prefix)
     picked = files[:limit]
+    vocab = await vocabulary(pool)
     yield {"event": "listed", "bucket": bucket, "prefix": prefix, "group_id": group_id, "found": len(files),
            "reading": [f["key"] for f in picked]}
     for number, f in enumerate(picked, start=1):
         yield {"event": "file_start", "key": f["key"], "number": number, "total": len(picked)}
         try:
-            async for event in document_events(client, bucket=bucket, key=f["key"], size=f.get("size"),
-                                               group_id=group_id):
+            async for event in document_events(client, pool, bucket=bucket, key=f["key"], size=f.get("size"),
+                                               group_id=group_id, vocab=vocab):
                 yield event
         except Exception as exc:  # noqa: BLE001 - one bad file must not lose the rest of the batch
             yield {"event": "file_done", "file": {"key": f["key"], "status": "failed", "chunks": 0, "entities": 0,
-                                                  "facts": 0, "reason": f"{type(exc).__name__}: {exc}", "parts": []}}
+                                                  "facts": 0, "dropped_facts": 0,
+                                                  "reason": f"{type(exc).__name__}: {exc}", "parts": []}}
     yield {"event": "done"}
 
 
-async def add_documents(client, *, bucket: str, prefix: str, limit: int, group_id: str) -> dict:
+async def add_documents(client, pool, *, bucket: str, prefix: str, limit: int, group_id: str) -> dict:
     found, results = 0, []
-    async for event in documents_events(client, bucket=bucket, prefix=prefix, limit=limit, group_id=group_id):
+    async for event in documents_events(client, pool, bucket=bucket, prefix=prefix, limit=limit, group_id=group_id):
         if event["event"] == "listed":
             found = event["found"]
         elif event["event"] == "file_done":

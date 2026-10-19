@@ -8,10 +8,14 @@ from fastapi.responses import StreamingResponse
 
 from app.core.config import get_settings
 from app.core.security import get_current_user, require_staff, require_user
+from app.db.pool import PoolDep
 from app.integrations import graphiti
+from app.repositories import graph_catalog
 from app.repositories import graph_search as repo
 from app.schemas.graph_search import (
     GROUP_PATTERN,
+    GraphCatalogIn,
+    GraphCatalogOut,
     GraphClearOut,
     GraphDocumentsIn,
     GraphDocumentsOut,
@@ -53,7 +57,8 @@ async def search_graph(
     body: GraphSearchIn,
     client: GraphDep,
 ) -> GraphSearchOut:
-    facts = await repo.search(client, query=body.query, group_id=body.group_id, limit=body.limit)
+    facts = await repo.search(client, query=body.query, group_id=body.group_id, limit=body.limit,
+                              types=body.types)
     return GraphSearchOut(query=body.query, facts=facts)
 
 
@@ -62,8 +67,9 @@ async def search_graph(
 async def add_episode(
     body: GraphEpisodeIn,
     client: GraphDep,
+    pool: PoolDep,
 ) -> GraphEpisodeOut:
-    result = await repo.add_episode(client, text=body.text, name=body.name,
+    result = await repo.add_episode(client, pool, text=body.text, name=body.name,
                                     source_description=body.source_description, group_id=body.group_id)
     return GraphEpisodeOut(**result)
 
@@ -73,27 +79,34 @@ async def add_episode(
 async def add_documents(
     body: GraphDocumentsIn,
     client: GraphDep,
+    pool: PoolDep,
 ) -> GraphDocumentsOut:
     if not get_settings().storage_enabled:
         raise HTTPException(503, "Supabase Storage is not configured: set SUPABASE_URL and SUPABASE_SERVICE_KEY")
-    result = await repo.add_documents(client, bucket=body.bucket, prefix=body.prefix, limit=body.limit,
-                                      group_id=body.group_id or body.bucket)
+    result = await repo.add_documents(client, pool, bucket=body.bucket, prefix=body.prefix, limit=body.limit,
+                                      group_id=body.group_id)
     return GraphDocumentsOut(**result)
 
 
 @router.post("/documents/stream", dependencies=STAFF,
              summary="Same as /documents, streamed as one JSON progress event per line")
-async def stream_documents(body: GraphDocumentsIn, client: GraphDep) -> StreamingResponse:
+async def stream_documents(body: GraphDocumentsIn, client: GraphDep, pool: PoolDep) -> StreamingResponse:
     if not get_settings().storage_enabled:
         raise HTTPException(503, "Supabase Storage is not configured: set SUPABASE_URL and SUPABASE_SERVICE_KEY")
 
     async def lines():
-        events = repo.documents_events(client, bucket=body.bucket, prefix=body.prefix, limit=body.limit,
-                                       group_id=body.group_id or body.bucket)
+        events = repo.documents_events(client, pool, bucket=body.bucket, prefix=body.prefix, limit=body.limit,
+                                       group_id=body.group_id)
         async for event in events:
             yield json.dumps(event, default=str) + "\n"
 
     return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+
+@router.post("/catalog", dependencies=STAFF, response_model=GraphCatalogOut,
+             summary="Write Sangam's orgs, funders, places, programmes and themes into a group as typed nodes")
+async def sync_catalog(body: GraphCatalogIn, client: GraphDep, pool: PoolDep) -> GraphCatalogOut:
+    return GraphCatalogOut(**await graph_catalog.sync_catalog(client, pool, group_id=body.group_id))
 
 
 @router.get("/groups", dependencies=STAFF, response_model=list[GraphGroupOut],

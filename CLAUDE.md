@@ -52,6 +52,7 @@ make down / make logs
 make frontend-reinstall  # force a frontend npm ci; `make up` installs only on a dep change
 make seed                # load cohort data into Postgres
 make graph-seed          # build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
+make graph-catalog-seed  # write the catalog into the graph as typed nodes [GROUP=id] (no LLM extraction)
 make match [ORG=slug]    # save a Funder Match run for every org, or one (no model, no cost)
 make smoke               # end-to-end check of backend + frontend + chat wire
                          # SMOKE_SKIP_LLM=1 make smoke  → skips the one real agent call

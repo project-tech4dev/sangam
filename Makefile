@@ -1,4 +1,4 @@
-.PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed graph-catalog-seed match calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -130,6 +130,10 @@ taxonomy-seed:  ## Load just the taxonomy (make seed already does)
 # Build the Neo4j knowledge graph from Postgres (needs OPENAI_API_KEY in .env).
 graph-seed:  ## Build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
 	$(COMPOSE) run --rm --no-deps backend python -m seed.graph_seed
+
+# Sync the catalog into the graph as typed nodes with fixed uuids; no model call. GROUP=<id> picks the group.
+graph-catalog-seed:  ## Write orgs, funders, places and taxonomy into the graph as typed nodes
+	$(COMPOSE) run --rm --no-deps backend python -m seed.graph_catalog_seed $(GROUP)
 
 match:  ## Save a Funder Match run for every org, or ORG=<slug>
 	$(COMPOSE) run --rm --no-deps backend python -m app.matching.run $(if $(ORG),--org $(ORG))

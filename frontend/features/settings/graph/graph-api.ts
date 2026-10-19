@@ -3,20 +3,53 @@ import { authHeaders } from "@/lib/api/auth-headers";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 
 export const BUCKETS = ["org-vault", "source-archive", "staff-sources"] as const;
+export const ENTITY_TYPES = [
+  "Organization",
+  "Funder",
+  "GovernmentBody",
+  "Program",
+  "Scheme",
+  "Location",
+  "Theme",
+  "PopulationGroup",
+  "Person",
+] as const;
+export const DEFAULT_GROUP = "sangam";
 
 export type GraphStatus = { enabled: boolean; reason: string };
-export type EpisodeResult = { entities: string[]; facts: string[] };
-export type Fact = { uuid: string; fact: string; valid_at: string | null; invalid_at: string | null };
+export type GraphEntity = { name: string; type: string; sangam_id: string | null };
+export type EpisodeResult = { entities: GraphEntity[]; facts: string[]; dropped_facts: string[]; unmapped: string[] };
+export type Fact = {
+  uuid: string;
+  fact: string;
+  name: string;
+  valid_at: string | null;
+  invalid_at: string | null;
+  source: GraphEntity | null;
+  target: GraphEntity | null;
+};
 export type SearchResult = { query: string; facts: Fact[] };
 export type ClearResult = { group_id: string | null; nodes_deleted: number };
 export type GraphGroup = { group_id: string; nodes: number; episodes: number };
+export type CatalogResult = {
+  group_id: string;
+  nodes: number;
+  edges: number;
+  added_nodes: number;
+  added_edges: number;
+  removed_nodes: number;
+  removed_edges: number;
+  by_type: Record<string, number>;
+};
 
 export type ChunkResult = {
   index: number;
   chars: number;
   status: "added" | "skipped";
-  entities: string[];
+  entities: GraphEntity[];
   facts: string[];
+  dropped_facts: string[];
+  unmapped: string[];
 };
 
 export type DocumentResult = {
@@ -25,6 +58,7 @@ export type DocumentResult = {
   chunks: number;
   entities: number;
   facts: number;
+  dropped_facts: number;
   reason: string | null;
   parts: ChunkResult[];
 };
@@ -41,6 +75,8 @@ export type DocumentEvent =
   | { event: "chunk_done"; key: string; total: number; episode: string; chunk: ChunkResult }
   | { event: "file_done"; file: DocumentResult }
   | { event: "done" };
+
+export const groupBody = (groupId: string) => (groupId ? { group_id: groupId } : {});
 
 export async function graphRequest<T>(
   method: "GET" | "POST" | "DELETE",
