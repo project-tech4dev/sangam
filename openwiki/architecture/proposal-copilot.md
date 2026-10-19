@@ -4,6 +4,8 @@ title: Proposal Copilot (Sangam Pitch)
 description: The third Sangam agent, on /proposal. Code owns the steps, exit checks, fact list, question rules, trace check, readiness, polish check and .docx versions, all stored in proposals.work (migration 0048). The model only proposes; code checks every write.
 tags: [proposals, proposal-copilot, sangam-pitch, agent, deepagents, work-jsonb, trace-check, human-in-the-loop, rls]
 sources:
+  - id: openwiki-source-813dbe9c3eeb378112388ccd
+    resource: repo://backend/app/agent/middleware.py
   - id: openwiki-source-e0103e1ba2cbec5a0f421c56
     resource: repo://backend/app/api/routes/proposals.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
@@ -66,10 +68,10 @@ sources:
     resource: repo://docs/features/2026-10-14-proposal-copilot.md
   - id: openwiki-source-a6acd51674a7bb40ec0a9785
     resource: repo://frontend/features/ask/views/proposals/api.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:30:22.232Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Proposal Copilot (Sangam Pitch)
@@ -207,7 +209,7 @@ The reply resumes the run as a card pick or typed text. `questions.classify` sor
 
 `read_files` is the agent's only reading tool for step 2, and code does the rest (`readers.py`). Under the row lock, `_claim` finds what is pending: every ticked file and the funder's side that is not `done`. It marks them `running` in `work.readers`. If a non-stale reader is still running, the call is refused with who started it and when ("Busy"). This is the one lock in the feature, and it applies to reading only, never to chatting. Then `asyncio.gather` runs one reader per file plus one for the funder, bounded by `max_parallel_research`.
 
-- Each reader is a separate deep agent built once with the proposal agent (`research_model`, `checkpointer=False`). The evidence reader has `read_vault_document`, `read_brief` and `add_facts`. The funder reader has `read_brief`, `list_funder_documents`, `read_funder_document`, `read_template` and `add_facts`.
+- Each reader is a separate deep agent built once with the proposal agent (`research_model`, `checkpointer=False`, with `tool_errors` and `RunSources` middleware). The evidence reader has `read_vault_document`, `read_brief` and `add_facts`. The funder reader has `read_brief`, `list_funder_documents`, `read_funder_document`, `read_template` and `add_facts`.
 - Neither has a web tool and neither can ask the person anything. A file's reader can open only that file, through `RunSources` and `run_sources.CURRENT` set inside its own task. The funder's reader opens none of the org's files.
 - Each reader clears the inherited run config, so its steps do not stream into the person's chat.
 - Outcomes are written back per reader (`done` or `failed`, with a one-line reason). "Try again" re-reads only what failed. One file's failure never stops the others. A saved link with no stored file is marked failed with a reason.
@@ -279,12 +281,13 @@ It also lists **Worth checking**, which never blocks: a score of 1, a requiremen
 `build_proposal_agent` calls `create_deep_agent` with the strong model (`settings.model`), a state backend and the checkpointer. Tools are the nine in `TOOLS` (`read_proposal`, `advance_step`, `read_match`, `read_org_record`, `add_facts`, `ask_user`, `read_files`, `write_section`, `suggest_edit`) plus `read_file` from the harness filesystem. A test pins that set. Middleware, in order:
 
 1. harness `filesystem` (read-only floor);
-2. `clear_old_tool_results`;
-3. `fallback(model, research_model)`;
-4. `cheap_summarizer` (utility model);
-5. `ProposalContext`.
+2. `tool_errors` (backstop that answers the model when a tool raises);
+3. `clear_old_tool_results`;
+4. `fallback(model, research_model)`;
+5. `cheap_summarizer` (utility model);
+6. `ProposalContext`.
 
-There is no deepagents `task` subagent. The two readers are separate graphs launched by `readers.read`. The system prompt is `instructions.md`.
+There is no deepagents `task` subagent. The two readers are separate graphs, built by `readers.build` while the proposal agent is built, and launched by `readers.read`. Their middleware is `filesystem` (no eviction), `tool_errors`, `RunSources` and a `fallback` that prefers `research_model`. The system prompt is `instructions.md`.
 
 `ProposalContext` re-reads the proposal on each model call and puts two blocks into the system message:
 
@@ -295,7 +298,7 @@ The screen state arrives as client input through the AG-UI context ("What the pe
 
 ### Failure semantics
 
-Agent tools never raise. Each catches its failures and returns an error string (`REFUSED:`, `NOT YET:`, `<tool> failed: <ExceptionName>`), so the model reads the refusal and adjusts. The only exception passed through is LangGraph's `GraphBubbleUp` in `ask_user` and `suggest_edit`, which is the pause itself. Nothing is half-saved: `apply` validates every change before making any. A stopped turn loses only the section in progress, because each section saves on its own.
+Agent tools are written never to raise. Each catches its failures and returns an error string (`REFUSED:`, `NOT YET:`, `<tool> failed: <ExceptionName>`), so the model reads the refusal and adjusts. The `tool_errors` middleware is the backstop: a tool that still raises answers the model with `<tool> failed: <ExceptionName>` (the type only, since a raw message can carry SQL, paths or keys) instead of ending the run. The only exception passed through is LangGraph's `GraphBubbleUp` in `ask_user` and `suggest_edit`, which is the pause itself. Nothing is half-saved: `apply` validates every change before making any. A stopped turn loses only the section in progress, because each section saves on its own.
 
 ## Plan versus code status
 

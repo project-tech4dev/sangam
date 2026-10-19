@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d382cb99f40be80de9ab489a66b9dd276c95e404024773ff8f092e37e70c0016",
+  "pageVersion": "sha256:97cf51c38b5a6b30fce11063c46f6c1a28ff18f035f60ed3c954fe8fa8bdcd4f",
   "claims": [
     {
       "id": "claim_172d4b1e3ab847e88104efbcbd08097a",
@@ -75,7 +75,7 @@
       "statement": "readers.read is launched by code: under the proposal row lock it claims every ticked file and the funder side that is not yet done as running, refusing with Busy if a non-stale reader is running (stale after 30 minutes); readers then run in parallel with a semaphore, each limited to its own file, one failure never stops the others, and outcomes are written to work.readers via work.apply.",
       "evidence": [
         {
-          "resource": "repo://backend/app/proposals/readers.py#L87-L202",
+          "resource": "repo://backend/app/proposals/readers.py#L89-L204",
           "version": "repo-lines-v1:sha256:d7c36075d4d0394ddded7f2335c52f1e3fb8c714baf05949f58dd352ea6dce01:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwMTA1ZTlkNWEzYmE4NzA0YWY2MWU2MTQzZWM4YWQ2MTM2YTFkN2ZmNmRhNjQ4NmM3ZWFmMTA1NDFjNTk1MDM3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIxYmZiYTFiMjJkYWYyNWNhNjE2NmVhMDFlM2ZjNTRjZDYyOGY3MzQ5MmE3NmExOTcxMDgxYzY0Zjc2ODU3YTUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmOWVmYTI3Yzc0MDNhNjJiMDI2ZmU3OWQ4ZDIyZTAwNjM1OGNhZjcyZTgyZjRjZTk4YjlkZDM3YTE2OWNmOWJlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzOTFiZTk3YTZkYWZlYzA1ZDQ4ZTIyYmY2MGE0NDNiOTM3NzE3ZGU4NTNmN2EyMTQwZjM5OThjYTI2MGYxYWYxIn0"
         },
         {
@@ -316,15 +316,11 @@
     },
     {
       "id": "claim_b5cf5ef9ae4e4701940aebfa63069b46",
-      "statement": "Proposals availability is a front-end switch: COMING_SOON in features/ask/lib/comingSoon.ts now contains only \"rfpwatch\", so Proposals is enabled for everyone and RFP Watch stays Coming soon; the same set drives the sidebar item's soon flag, the main-area choice between ComingSoonView and ProposalsView, and RFP Watch's ComingSoonView.",
+      "statement": "Feature availability in the Ask workspace is a front-end switch: COMING_SOON in features/ask/lib/comingSoon.ts is currently an empty set, so both Proposals and RFP Watch are enabled; the same set drives the sidebar items' soon flags and the separate main-area choice between ComingSoonView and ProposalsView / RfpWatchView, so each feature can be switched off independently by adding its name back.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L143-L143",
-          "version": "repo-lines-v1:sha256:66e60a28d3218797e61d4fee352f6729f8c795a04771b96ae912ba7c09119061:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjZlNjBhMjhkMzIxODc5N2U2MWQ0ZmVlMzUyZjY3MjlmOGM3OTVhMDQ3NzFiOTZhZTkxMmJhN2MwOTExOTA2MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjZlNjBhMjhkMzIxODc5N2U2MWQ0ZmVlMzUyZjY3MjlmOGM3OTVhMDQ3NzFiOTZhZTkxMmJhN2MwOTExOTA2MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGFjMDBjODg2OTk4MTYwNWY5ZTIzODY4Mjc0NmEwNDhmYWEyMDc3NWRjODAwODQ3NGQ0NDZiZjM0NmYzYmMwZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmQwZWEyODQxNTQyZGZlMjY5M2E5NWNhMzA0ODRjMTM5MjY4Mjc4OTM3NzQ1ZDRhZjI3Y2UwZjhlNDdiNzlkYSJ9"
-        },
-        {
           "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L164-L185",
-          "version": "repo-lines-v1:sha256:fe5c755ead75e952ab3786a832cddf12e1237b4a9fcf1d47ba52f09d530ddf37:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NTdlY2JkYWVhZWJmYmM4OGJhYTBhOGU5YzczNTEwMGE0YWNlNDY0OGEzNjdkYjVlMDIxNmZjMWZjNzdhMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMWRjZjE5MTUzZGU2OTI1YTY4NGI3MWVhMDQ0MDFhNjA5MDhkYWMzOTVhYjNhZDE2Y2Q0MjZmY2ZmNjgwNzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkYjg3NWVlMTVmODIyMDE4MDBlYmRjZGMxYjk3NTZjOWJjMDA1YTg5ZmE4ZGIzYTcyZjExNzg0NWVkY2Y1ZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1ZTI5MGNlMTQxNmUyNjkyY2U4OTkwMThiMWMxNTQxZTMxY2UyMmUwYzVmM2Q2NzRmMzlhNTNlMWJhODVmOWEifQ"
+          "version": "repo-lines-v1:sha256:73e35e143e66d1ead3ce79bf0bf3a99e6a18c69aa7d7bd6d4c9b6255dd0819a9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NTdlY2JkYWVhZWJmYmM4OGJhYTBhOGU5YzczNTEwMGE0YWNlNDY0OGEzNjdkYjVlMDIxNmZjMWZjNzdhMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMWRjZjE5MTUzZGU2OTI1YTY4NGI3MWVhMDQ0MDFhNjA5MDhkYWMzOTVhYjNhZDE2Y2Q0MjZmY2ZmNjgwNzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkYjg3NWVlMTVmODIyMDE4MDBlYmRjZGMxYjk3NTZjOWJjMDA1YTg5ZmE4ZGIzYTcyZjExNzg0NWVkY2Y1ZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1ZTI5MGNlMTQxNmUyNjkyY2U4OTkwMThiMWMxNTQxZTMxY2UyMmUwYzVmM2Q2NzRmMzlhNTNlMWJhODVmOWEifQ"
         },
         {
           "resource": "repo://frontend/features/ask/components/Sidebar.tsx#L24-L29",
@@ -332,7 +328,7 @@
         },
         {
           "resource": "repo://frontend/features/ask/lib/comingSoon.ts#L1-L4",
-          "version": "repo-lines-v1:sha256:a87013a055f6c308a7c516d6f467f69973b11ccd0189c05235f24ab245cf8942:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I5N2RkNzZmYTA2Y2JkMmY5MGFjNzY3NGE5OTNkMWE5YzY3ZmYwNzU3ODFmZTJlNDA5MDEyNjdlOTJmMTE4YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTM2ZDk4NTUyZjY3YmEzNzNmMjg1NTFmODYzMTY4YTdhYTYwZmI5MTdjNmQ1NTgyY2Y2ZGFlYTQ3OGZlOTRhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+          "version": "repo-lines-v1:sha256:af83f2ef37547a045c630c8fbb05c754064eb5a7ab1ad880f9d394a9954fcfec:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I5N2RkNzZmYTA2Y2JkMmY5MGFjNzY3NGE5OTNkMWE5YzY3ZmYwNzU3ODFmZTJlNDA5MDEyNjdlOTJmMTE4YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDNkNDZjOTM5MzY4MGQ2NDk4NmZkZTdiNjBjOTBlOTliNzE3ZGJhYmJhMjQxNGFjMzM5MGYwOGNjYmRmZjYxYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
     },
@@ -363,7 +359,7 @@
           "version": "repo-lines-v1:sha256:07012d41567a6ffff06c690dce6eb5d9ce6e44522adcb8233593f0209577055f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiODVkMWNhN2Y3NDcxZDNiNGM1ZDg4NzI3MmUyZDlmYWYzNzM1NTQ3N2ZhMzg3NTNlZDA1OTBmNTkzMmNhYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZlZWNmMTljN2ZiN2FjNmZkMjRlN2ZlMDNiNjQ3YzY2MDk0OWY3YjZlNTVhZTk3YTM5N2VkNmQwOTQ4MzI4ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiY2U5MjQ0Njg3MmRiYzBkNWJlNjcwNTFiMzVlZWI0NDc0MjNlMjlkNWJmZDg2NGQ2NTMwZTBmOTcxNWE4MTMifQ"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L133-L135",
+          "resource": "repo://docs/CHANGELOG.md#L136-L138",
           "version": "repo-lines-v1:sha256:694c2a4da76724ff08d50644c7a94beac4df2678973f5f72a7661357c7395cee:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmU3MDc4YWNjZDg1N2JlYzhiZGZiMDVkYjllMGFjNDgwM2ZiNDM1ZjY2M2Y4N2UxOTlkODYxNzc4ODczNDQ4YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmIzYzBkYWRlYmUwNWMxODQ0ZWVkYjMwZTYyNzI1NzA0NDljYjA3OTc2ZGY0NTA4ZGZjZjczZDliZTdiMjQ0OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjFhNWM0YWEwYWUwZGY2YTA4NDY3YjVkOTMzMmU5ZWM3MTM5ZGE2ZTI5MGQ4MmU4MGYyNzg1MWE4MDgzZmI2ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzMwN2VkYzM5ZjVhMGE1Y2RiODU3Y2RmZWU3NzRhOWYwMWY5YThlMDIwYTNkYmRjZjQ4NDNiY2FmM2I5ZDc5ZSJ9"
         },
         {
@@ -371,10 +367,36 @@
           "version": "repo-lines-v1:sha256:3a342216d3aba233db1c47434cc0a568b072f7b525f9e1f905a7f1566d5c83fe:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDQ1MjVmNzg5Njk3ZDAzOTgxOTBkMTYxN2MzMzZjNjhkZTY4Nzg2ZTU1MDZkN2E1MGI5OTcwN2IwM2JlMDg5YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDVhMGQ4YzIyYjk1MjczMWE5NmU5ZTg5NzkxYjUwODEyYTM5Y2Y0ODJjM2RmYzczODI0YjdlNzkwYzM4NTk3OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_6907144d008c4ebe9bbf3cd930da659b",
+      "statement": "RFP Watch calls are not linked to proposals in code: a CallCard offers Save, Not for us, Ask about this call (opens a new Ask chat seeded with a question via newChat) and a link out, while RfpWatchView's onFunderMatch merely switches to Funder Match, where Start a proposal lives; the rfp-watch views and backend proposals package contain no reference to each other.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L106-L112",
+          "version": "repo-lines-v1:sha256:33d4f8ee225576a3d05b9e0782784388e58ba0099e58540072b23b9930b12ba9:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjI0NjE4MGFmZTNmNDk0MGQ1ZWM1YTU1YjM2OTUxOWQ4ZWZkNTA0YzFjYWEzMzkzZGZkMGIyMmUyZTY1ZmRlOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGYyY2ZlYjUwYzM1ZDI4ZmYxNzBlOTQ5MTA1NmYzMjE4ODAyZWJjODBkYzcyMzhhM2RjNDNlMGU3YWJmNjcyZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTYwZWU5ZWJiZmU1NTIwYjBlMDJmYTBhYzRiZjBmM2E5YjI3ZWFhNmI2ODhiZTQ2MjQyZTE0ODc3MzMzMjY0ZCJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L158-L185",
+          "version": "repo-lines-v1:sha256:ac4c7670048b1ec40fcb9923804a062a82f017ec37f1ddf6da8c03e872c77164:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzY2VlYTQ3ZGNkYThlMzBhNmE1MDNkODBiODFiMTQwYTdlNzIxMTdlZjIyYjEzMTgxZjZhZjVjODk0MzMzY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMWRjZjE5MTUzZGU2OTI1YTY4NGI3MWVhMDQ0MDFhNjA5MDhkYWMzOTVhYjNhZDE2Y2Q0MjZmY2ZmNjgwNzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0MzYyNzQwNmUxMWZhMDI4YzUwMjA4NGNmOGNiMTdmYTVmMzYzOWY4YTc2OTc2MGYzYjI0YWRiNmE4Njg4OWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1ZTI5MGNlMTQxNmUyNjkyY2U4OTkwMThiMWMxNTQxZTMxY2UyMmUwYzVmM2Q2NzRmMzlhNTNlMWJhODVmOWEifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/RfpWatchView.tsx#L184-L225",
+          "version": "repo-lines-v1:sha256:ada9e353a34739baa47342bb5d784660676075f506c1965defa3f9e5ca7b8518:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0ZDkyY2Q4ODNjZTRlOWFjNDFjMzFjMjkwMjBjMWIxNzFlOWJmNDQyNWM3NWJjNzY5MzYyMzEwNTk5MjZlMDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1NzVlZDQ3NmQ0NDg3MzcyODAwZjc4ZmY1YTk0OWRkMDNiYTAwN2JlMmQ2ZTg0ZjliYzZiNmMxOWQ4OGFkMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQxZTEyMTM5MzIwNTJhMzYzNmMwMWQ1OGJjZDI4ZjczNjhkMTA0MjQwNzdlZmM2ODAyZjI2MjU4ODQ4ZmYzNjAifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/RfpWatchView.tsx#L80-L83",
+          "version": "repo-lines-v1:sha256:c8697cf20fb30a68e840ee9cebc76f34aa5e7888b4bb22637dc6c7035358e2c9:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDgwM2Y2YjUzZjUyNzMwNDE2ZGUyNjJiMWI3OWQ2MDE3NmQ5ZjY0MjcwYzhjMWZjMmVjZDMyNTFjZjE2YmMwMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTdkODYzMmU1NGU5Mjk4YWJiOTU4NzI3ZTJkNTE0MDhhYmFmMTM2NjAzNTM3OTEwMTQwYWJmNjViMzBhYjYxMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWIyZTdkMzk3ODIxYTI5NmI5NDIzMWI0MDFlMmFjYmVkNzdkOWFmYzEyYmYzMDQ0MzkwYjhlMzVmODhhNzQyYSJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/rfp-watch/CallCard.tsx#L94-L125",
+          "version": "repo-lines-v1:sha256:805d32b39aca4faae3d258e853524e785d182ef9a7bf77a0b006073b0b4ad6e2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmNTI0YWI3ZDkzZjE2ZTg1YzgwYzg2OWU1NGI3MWMzNjlkNTVhNjliZjRmNmNiMzA5YTQwOWFjNmFiOWVmMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyZjNjZmQxMWRhNjE1MDE5N2FjZWVkMDg0MDZhYzY0YjA1MDM0MGRlN2JjMDQxMjRhNGNiN2VmYTY3MTM0MGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1YmI0NzIxMzcxNzExNjM1YzM3YzA0ZmVmYWUzMThjZWNkMDZhZjI2M2JjY2M0N2IxNmY5NzM3MDM2Yjk3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0ODRjYmQzZTZiYWU5MTFmYThlZTQ0ZDc3YzkwYjc3OTg3ZDMzM2EzMDhlNmU4MzZhN2YxZmQ3NjhmMTA3YmYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-19T08:37:55.275Z"
+    "at": "2026-10-19T10:32:36.779Z"
   }
 }

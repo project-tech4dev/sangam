@@ -1,7 +1,7 @@
 ---
 type: workflow
 title: One proposal, end to end
-description: Trace of one grant proposal in Sangam Pitch, now enabled for everyone (only RFP Watch is still Coming soon), from "Start a proposal" on a Funder Match card through the four steps, file readers, questions, section writing, the readiness review, checked language smoothing and the Word download with versions. It covers PATCH /work with section rev, per-editor chat threads, and what code refuses at each step.
+description: Trace of one grant proposal in Sangam Pitch, enabled for everyone alongside RFP Watch (the Coming soon set is empty), from "Start a proposal" on a Funder Match card through the four steps, file readers, questions, section writing, the readiness review, checked language smoothing and the Word download with versions. It covers PATCH /work with section rev, per-editor chat threads, and what code refuses at each step.
 tags: [proposals, proposal-copilot, workflow, gates, trace-check, polish, docx, versions, rev, optimistic-concurrency, readers]
 sources:
   - id: openwiki-source-e0103e1ba2cbec5a0f421c56
@@ -66,15 +66,19 @@ sources:
     resource: repo://frontend/features/ask/views/proposals/ProposalShell.tsx
   - id: openwiki-source-35350e0dc059500b267ff454
     resource: repo://frontend/features/ask/views/proposals/WriteCard.tsx
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:37:55.275Z" }
+  - id: openwiki-source-d32a39579c6a596157860696
+    resource: repo://frontend/features/ask/views/rfp-watch/CallCard.tsx
+  - id: openwiki-source-d9a884d0a22ed50f19bac516
+    resource: repo://frontend/features/ask/views/RfpWatchView.tsx
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:37:55.275Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # One proposal, end to end
 
-This page follows a single proposal in the order things happen. At each step it names what code refuses. The model never decides any of these: it proposes, and code checks. For the design behind that rule, see [Proposal Copilot](../architecture/proposal-copilot.md). For milestone status (what shipped and when), see the [changelog](../../docs/CHANGELOG.md) rather than this page. Proposals are enabled for everyone; only RFP Watch is still "Coming soon" (see [Availability](#availability-the-coming_soon-switch)).
+This page follows a single proposal in the order things happen. At each step it names what code refuses. The model never decides any of these: it proposes, and code checks. For the design behind that rule, see [Proposal Copilot](../architecture/proposal-copilot.md). For milestone status (what shipped and when), see the [changelog](../../docs/CHANGELOG.md) rather than this page. Proposals and RFP Watch are both switched on in the browser (see [Availability](#availability-the-coming_soon-switch)); how they relate is in [RFP Watch and proposals](#rfp-watch-and-proposals).
 
 Two writers share one record, `proposals.work` (jsonb):
 
@@ -99,22 +103,23 @@ The flow of the four steps and the buttons at the end. Moving back is a PATCH of
 
 ## Availability: the `COMING_SOON` switch
 
-Whether people can reach proposals at all is a front-end switch, not a backend one. `COMING_SOON` in [`frontend/features/ask/lib/comingSoon.ts`](../../frontend/features/ask/lib/comingSoon.ts) is a set of workspace views shown as "Coming soon". It now holds only `"rfpwatch"`. `"proposals"` has left it, so Proposals is on for everyone (see the 2026-10-16 entry in the [changelog](../../docs/CHANGELOG.md)). One set drives every place the feature appears:
+Whether people can reach proposals at all is a front-end switch, not a backend one. `COMING_SOON` in [`frontend/features/ask/lib/comingSoon.ts`](../../frontend/features/ask/lib/comingSoon.ts) is a set of workspace views shown as "Coming soon". It is currently **empty** (`new Set<WorkspaceView>([])`). `"proposals"` left it first (the 2026-10-16 changelog entry), and `"rfpwatch"` has since left it too, so both features are on for everyone. The changelog's note that RFP Watch "stays Coming soon" describes that earlier moment, not the current set. One set drives every place a feature appears:
 
-| Place | `"proposals"` in the set (off) | Not in the set (now) |
+| Place | Name in the set (off) | Not in the set (now) |
 |---|---|---|
-| Sidebar (`Sidebar.tsx`, "Use Cases" list) | "Proposals" item flagged `soon` | Normal "Proposals" item, with the count of the caller's proposals from `useProposals()` |
-| Main area (`AskWorkspace.tsx`) | `ComingSoonView` with a description | `ProposalsView`, remounted on a new `key` whenever Funder Match opens a specific proposal or a funder's list |
+| Sidebar (`Sidebar.tsx`, "Use Cases" list) | Item flagged `soon` | Normal "Proposals" and "RFP Watch" items; Proposals shows the count of the caller's proposals from `useProposals()` |
+| Main area, Proposals (`AskWorkspace.tsx`) | `ComingSoonView` with a description | `ProposalsView`, remounted on a new `key` whenever Funder Match opens a specific proposal or a funder's list |
+| Main area, RFP Watch (`AskWorkspace.tsx`) | `ComingSoonView` with a description | `RfpWatchView`, given the caller's orgs, `onAsk` (opens a new chat seeded with a question) and `onFunderMatch` (switches to the Funder Match view) |
 | Funder Match card (`MatchCard.tsx`) | A disabled "Start a proposal" button with a "Coming soon" tag | `ProposalAction`: Start a proposal, Continue or View proposal, "Start another", or "Proposals (n)" |
 | Funder Match filters (`FunderMatchView.tsx`) | No "Proposal" filter | A "Proposal" filter: any status, "Has a proposal", "No proposal yet" |
 
-RFP Watch stays in the set, so its sidebar item and view still show `ComingSoonView` and nothing else changes for it. To turn a feature off again, add its name back to the set; to turn one on, delete it.
+To turn a feature off again, add its name back to the set; to turn one on, delete it. Because the Proposals and RFP Watch branches in `AskWorkspace.tsx` each test the set separately, the two features can be switched independently.
 
 The switch hides screens only. The `/proposals` routes enforce their own access rules (see below), so the check for who may start or edit is still done by the server. Inside `ProposalAction`, the `mayStart` flag decides whether the person sees the start buttons or only "View proposal →", so a member who cannot start still sees proposals already begun for that funder.
 
 ## 0. Starting from a Funder Match card
 
-The button lives on the card in `frontend/features/ask/views/funder-match/MatchCard.tsx` (shown only when `"proposals"` is not in `COMING_SOON`). It first asks for a name (default "<funder> proposal") and then calls `startProposal` in `proposals/api.ts`, which sends `POST /api/proposals` with the org slug, the funder id and a name. The route (`create_proposal`) refuses in this order:
+The button lives on the card in `frontend/features/ask/views/funder-match/MatchCard.tsx` (a live button only while `"proposals"` is not in `COMING_SOON`, which is the current state). It first asks for a name (default "<funder> proposal") and then calls `startProposal` in `proposals/api.ts`, which sends `POST /api/proposals` with the org slug, the funder id and a name. The route (`create_proposal`) refuses in this order:
 
 | Condition | Response |
 |---|---|
@@ -132,6 +137,16 @@ If it passes, `new_work` builds the initial `work` document at `stage: 1`:
 A proposal is readable by the org's people and staff. It is writable by org admins, stewards and staff (`can_edit` in the repository's column list, mirrored by `CallerScope.can_edit_proposal`). See [Auth, roles and RLS](../architecture/auth-roles-rls.md).
 
 The seed list for this page named `start.ts` and `store.ts` under `views/proposals/`. Neither exists any more: the server holds the state. `api.ts` has a leftover `hadBrowserProposals()` check for the old browser-only store (`localStorage` key `sangam.proposals.v1`), from when proposals were kept in one browser only. Today proposals live in the `proposals` table (migration 0009), which the proposals routes and `repositories/proposals.py` read and write under a row lock; `localStorage` is no longer where they are stored. See [Data and migrations](../architecture/data-and-migrations.md).
+
+## RFP Watch and proposals
+
+RFP Watch (`RfpWatchView.tsx`, see [RFP Watch](../architecture/rfp-watch.md)) lists open calls for the caller's organisation in three buckets: For you, Closing soon (within `SOON_DAYS` = 30) and Saved. A proposal is **not** started from a call. There is no code path from a `CallCard` to `POST /api/proposals`, and the proposal's `work` holds no reference to an RFP call. The two features meet in the browser through navigation:
+
+- **"Ask about this call"** (`onAsk`) calls `newChat(question)` in `AskWorkspace`, which opens a fresh Ask chat seeded with "Help me decide whether <org> should apply to <funder>'s call …", with the due or closed date. It does not touch a proposal.
+- **"See funders who fit you"** and **"Try Funder Match"** (`onFunderMatch`) switch the view to Funder Match. That is where **Start a proposal** lives (see [step 0](#0-starting-from-a-funder-match-card)), and it needs a saved Funder Match run that includes the funder.
+- In the other direction, Funder Match's `nav.open` and `nav.list` call `openProposals`, which switches to the Proposals view and remounts it on a new key.
+
+Save and "Not for us" on a call use the RFP feed's own status (`setStatus`) and are available only when the feed's `can_act` is true. They do not change any proposal.
 
 ## 1. Step 1, "Can you apply?": the gates
 

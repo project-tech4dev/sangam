@@ -1,11 +1,8 @@
 ---
 type: architecture
 title: Frontend
-description: How the Next.js app in frontend/ is laid out, how it reaches the backend (server-component REST versus the CopilotKit/AG-UI chat proxy), how the Ask workspace (sidebar, coming-soon gating, server-backed Proposals view), home page and navbar, Import/Scout and registry profile screens work, and the auth, caching and design rules that govern it.
-tags: [frontend, nextjs, copilotkit, ag-ui, ask-workspace, sidebar, coming-soon, home-page, proposals, scout, supabase-auth, design-system]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-19T08:37:55.275Z
+description: How the Next.js app in frontend/ is laid out, how it reaches the backend (server-component REST versus the CopilotKit/AG-UI chat proxy), how the Ask workspace (sidebar, the now-empty coming-soon gate, Funder Match, RFP Watch and the server-backed Proposals view), home page and navbar, Import/Scout (role-gated tasks, approval cards) and registry screens work, and the auth, caching and design rules that govern it.
+tags: [frontend, nextjs, copilotkit, ag-ui, ask-workspace, sidebar, coming-soon, funder-match, rfp-watch, home-page, proposals, scout, supabase-auth, design-system]
 sources:
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
@@ -67,6 +64,8 @@ sources:
     resource: repo://frontend/features/ask/lib/rest.ts
   - id: openwiki-source-2b36bea836157065e381133d
     resource: repo://frontend/features/ask/lib/threads.ts
+  - id: openwiki-source-81e0c7a3ac82a15a5b95fb39
+    resource: repo://frontend/features/ask/lib/useOrgChoices.ts
   - id: openwiki-source-0253ddf7b06c66385c0ba7fd
     resource: repo://frontend/features/ask/lib/useSangamChat.ts
   - id: openwiki-source-1652ab6ec1c54478170100a8
@@ -75,6 +74,8 @@ sources:
     resource: repo://frontend/features/ask/SignedInWorkspace.tsx
   - id: openwiki-source-ac74206ec97198d6e21f0b05
     resource: repo://frontend/features/ask/views/ComingSoonView.tsx
+  - id: openwiki-source-6f60a62e50bf4cca50bd6002
+    resource: repo://frontend/features/ask/views/funder-match/api.ts
   - id: openwiki-source-14705a3866e29a5d7c9df8ee
     resource: repo://frontend/features/ask/views/funder-match/MatchCard.tsx
   - id: openwiki-source-46b81f1c20a0d436a481779f
@@ -95,6 +96,10 @@ sources:
     resource: repo://frontend/features/ask/views/proposals/WriteCard.tsx
   - id: openwiki-source-8f39f670b063502ade6e3399
     resource: repo://frontend/features/ask/views/ProposalsView.tsx
+  - id: openwiki-source-d9832bbe5d3063927e7f4e88
+    resource: repo://frontend/features/ask/views/rfp-watch/api.ts
+  - id: openwiki-source-d32a39579c6a596157860696
+    resource: repo://frontend/features/ask/views/rfp-watch/CallCard.tsx
   - id: openwiki-source-d9a884d0a22ed50f19bac516
     resource: repo://frontend/features/ask/views/RfpWatchView.tsx
   - id: openwiki-source-54e0a4963b12532d9999108a
@@ -107,8 +112,12 @@ sources:
     resource: repo://frontend/features/home/HeroSlides.tsx
   - id: openwiki-source-c62f3e2bd1e15132ae4fb57e
     resource: repo://frontend/features/home/HomePage.tsx
+  - id: openwiki-source-d6037beaa11ae38e613a17e5
+    resource: repo://frontend/features/ingest/components/ImportApproval.tsx
   - id: openwiki-source-0111aa0f484890cd4026750c
     resource: repo://frontend/features/ingest/components/SaveQuestions.tsx
+  - id: openwiki-source-25626eda4197b2017e477b62
+    resource: repo://frontend/features/ingest/components/ScoutRail.tsx
   - id: openwiki-source-4f4832956948ce1575465560
     resource: repo://frontend/features/ingest/components/SourcesCard.tsx
   - id: openwiki-source-5a0d0bafe2640dfe88c94e90
@@ -119,8 +128,12 @@ sources:
     resource: repo://frontend/features/ingest/ImportView.tsx
   - id: openwiki-source-43adf5265fe8e731c1f8b3a1
     resource: repo://frontend/features/ingest/lib/access.ts
+  - id: openwiki-source-90816ca6a54766af00a876ed
+    resource: repo://frontend/features/ingest/lib/composePrompt.ts
   - id: openwiki-source-92b7e5c09e58cf181eb30255
     resource: repo://frontend/features/ingest/lib/threads.ts
+  - id: openwiki-source-6bf6d354f51516d87dde1796
+    resource: repo://frontend/features/ingest/lib/toolLabels.ts
   - id: openwiki-source-99c6ce986942cb958dd244db
     resource: repo://frontend/features/ingest/lib/useRunPause.ts
   - id: openwiki-source-9e86dbac2cec46334e85282e
@@ -151,6 +164,8 @@ sources:
     resource: repo://frontend/lib/devAuth.ts
   - id: openwiki-source-f92593a15af29a6fd1dcc83a
     resource: repo://frontend/lib/supabase/middleware.ts
+  - id: openwiki-source-649393b68414683fbde5dbc8
+    resource: repo://frontend/lib/supabase/server.ts
   - id: openwiki-source-bd8e22234eeb56b120efd22c
     resource: repo://frontend/lib/useAgentChat.ts
   - id: openwiki-source-1047363cf615000e4c9bb694
@@ -159,7 +174,10 @@ sources:
     resource: repo://frontend/proxy.ts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:37:55.275Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Frontend
@@ -218,7 +236,7 @@ Caption: server components call REST directly, chat goes through the Next proxy 
 ## Auth and headers
 
 - **Session refresh and gating.** `proxy.ts` (the Next 16 replacement for middleware) runs `updateSession` from `lib/supabase/middleware.ts` on all paths except static assets and images. It creates a fresh Supabase server client per request, calls `getClaims()`, and redirects a signed-out visitor on `/import` (the only entry in `PROTECTED_PREFIXES`) to `/auth/login?next=…`. `/ask` is public by design.
-- **Missing Supabase keys.** If `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is absent (a bare local run), `updateSession` returns `NextResponse.next` at once and gates nothing, so the public pages and the `/ask` preview still render. Nobody can sign in: `/ask` treats a failed Supabase client as signed out (`isSignedIn()` catches the error and returns false), and the sign-in dialog (`features/auth/login-form.tsx`) says the Supabase keys are not set and hides the Google button.
+- **Missing Supabase keys.** If `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is absent (a bare local run), `updateSession` returns `NextResponse.next` at once: the proxy passes every request through and does not redirect, so it never fails on its own. Nobody can sign in, and the failure shows up downstream, consistently as "signed out": `/ask` treats a failed Supabase client as signed out (`isSignedIn()` catches the error and returns false) and renders the preview; `/import` is no longer guarded by the proxy, but its `apiGet("/api/me")` rejects (no Supabase server client can be built, or the backend refuses the anonymous call), the page's `.catch` turns that into `null`, and it redirects to `/ask`; and the sign-in dialog (`features/auth/login-form.tsx`) says the Supabase keys are not set and hides the Google button.
 - **Local dev login.** `DEV_LOGIN` in `lib/devAuth.ts` is true only when `NEXT_PUBLIC_SUPABASE_URL` is unset **and** `NEXT_PUBLIC_DEV_AUTH=1`. The navbar sign-in button then becomes a `<select>` of the seeded `admin`/`steward`/`member`/`stranger@local.test` users, which writes the `sangam-dev-as` cookie, and `/ask`, `serverAuthHeaders()`, `authHeaders()` and `AgentProviders` use `Bearer dev:<email>` instead of a Supabase token (no cookie means no header). A backend honours it only with `SUPABASE_URL` unset and `DEV_AUTH` on; see [Auth, roles and RLS](auth-roles-rls.md).
 - **Where the token goes.** Server REST uses `serverAuthHeaders()`; browser REST uses `authHeaders()`; chat uses the token held by `AgentProviders`, which reads the session once, follows `onAuthStateChange`, and passes `Authorization: Bearer <token>` as the `CopilotKitProvider` `headers`. The backend validates this one bearer token everywhere.
 - **Open-redirect guard.** `/auth/callback` exchanges the OAuth `code` for a session and uses `safeNextPath` so only same-origin paths are honoured.
@@ -237,6 +255,7 @@ A row (`Row` in `RegistryClient.tsx`) was reworked to carry more of what the fil
 - **Domains first.** The tag line shows each theme domain the row reaches, in the backend's order (most programmes first), with "Others" forced last; a row with none shows an italic "Themes not tagged yet" gap tag. Domain tags and SDG chips share the line.
 - **Theme filter explains itself.** With a Theme set, an extra "In <domain>:" line lists the sub-themes that put the row in the results (first three, then "+N more"), and the matching domain tag gets `data-active`.
 - **Serves line.** Up to three population tags (`.reg-tag[data-tone="population"]`) with "+N more"; a filtered population is moved to the front and marked `data-active`.
+- **Approach signals.** For funders, the one-line `signal` can read "open call now" and "invites partners" (from `RegistryRow.open_call` and `intake_mode === "invitation_only"`), and the "How to approach" filter (Open call now / Invites partners) is offered only when at least one loaded row has that property. The funder profile's Mandate tab lists `open_calls` from the single profile payload, or "No open call found".
 - Styling for these (`.reg-row-line`, `.reg-row-label`, `.reg-more`, the `data-active` edge) is the `tokens/registry-row.css` slice of `globals.css`.
 
 ## Registry profiles
@@ -249,13 +268,13 @@ A row (`Row` in `RegistryClient.tsx`) was reworked to carry more of what the fil
 
 `WorkspaceLoader` wraps `SignedInWorkspace` in `next/dynamic`, so the workspace and the CopilotKit runtime under it download only when rendered; `SignedInWorkspace` mounts `AgentProviders` around `AskWorkspace`.
 
-**Views are in-app state, not URLs.** `AskWorkspace` holds a `view` of type `WorkspaceView` (`ask`, `chats`, `funder-match`, `proposals`, `rfpwatch`, `vault`, `media`), plus `threadId`, the thread list and the latest turn. `ChatPane` is keyed by `threadId`, so picking or starting a chat remounts it. The right-hand `EvidenceRail` (hidden on narrow screens via `.evidence-rail-slot`) shows the latest turn. The sidebar shows the proposal count from `useProposals()`, and a Funder Match card can jump into Proposals with a `{id}` or `{funderId}` target; a changing `key` remounts `ProposalsView` on that target. Choosing "Proposals" in the sidebar opens it with no target.
+**Views are in-app state, not URLs.** `AskWorkspace` holds a `view` of type `WorkspaceView` (`ask`, `chats`, `funder-match`, `proposals`, `rfpwatch`, `vault`, `media`; the type is declared in `Sidebar.tsx`), plus `threadId`, the thread list and the latest turn. Each view is a plain conditional in the render, so switching views unmounts the previous one and its local state. `ChatPane` is keyed by `threadId`, so picking or starting a chat remounts it (picking a thread or starting a new chat also switches back to `ask`). The right-hand `EvidenceRail` (hidden on narrow screens via `.evidence-rail-slot`) shows the latest turn. The sidebar shows the proposal count from `useProposals()`, and a Funder Match card can jump into Proposals with a `{id}` or `{funderId}` target; a changing `key` remounts `ProposalsView` on that target. Choosing "Proposals" in the sidebar opens it with no target. RFP Watch gets two hooks back into the workspace: `onAsk` starts a fresh chat seeded with a question (`newChat(q)`), and `onFunderMatch` switches to the Funder Match view.
 
 ### Sidebar and "coming soon" views
 
 `features/ask/components/Sidebar.tsx` is the workspace rail. Expanded, it has a "+ New Chat" button and a scrolling area with three collapsible sections: **Recent Chats** (the first 5 threads, then "Show All N Chats →" which opens the `chats` view), **Use Cases** (Funder Match, Proposals, RFP Watch, Media & Signals) and **Context** (Doc Vault). Section open/closed state lives in the sidebar, not in each section, so the collapsed rail can reopen the sidebar already expanded at a chosen section. Collapsed (the default on viewports up to 768 px wide), it shows icon-only buttons (Lucide, styled by `.icon`). A **Tools** section pinned at the foot, with a link to `/import` ("Sangam Scout"), renders only when `canScout` is true; it is a real navigation, not an in-app view.
 
-A feature that has not shipped is gated by the single set in `features/ask/lib/comingSoon.ts` (`COMING_SOON`, typed on `WorkspaceView`). A name in the set gets a "Soon" tag in the sidebar instead of its count, and `AskWorkspace` renders `ComingSoonView` (a title plus a "Coming soon" card) in place of the real view; deleting the name turns the feature on. **Currently only `rfpwatch` is in the set.** `proposals` was gated on 2026-10-15 and removed on 2026-10-16 ("Proposals are on for everyone", `docs/CHANGELOG.md`), so Proposals is live for every signed-in user, while RFP Watch shows the card. The gate is read in four places for Proposals: the `AskWorkspace` view branch, the sidebar tag, the Funder Match "Proposal" status filter (hidden while gated) and `MatchCard` (a disabled "Start a proposal" button with a "Coming soon" tag instead of `ProposalAction`), so adding `proposals` back to the set switches all of them off together. RFP Watch is read in only two (the `AskWorkspace` branch and the sidebar tag). `RfpWatchView` is the not-yet-reachable placeholder that would replace the card ("No calls tracked yet"). The signed-out `AskPreview` is static copy and lists "RFP watch … Coming soon" by hand; it does not read `COMING_SOON`.
+A feature that has not shipped is gated by the single set in `features/ask/lib/comingSoon.ts` (`COMING_SOON`, typed on `WorkspaceView`). A name in the set gets a "Soon" tag in the sidebar instead of its count, and `AskWorkspace` renders `ComingSoonView` (a title plus a "Coming soon" card) in place of the real view; deleting the name turns the feature on. **The set is currently empty** (`new Set<WorkspaceView>([])`): the mechanism and its branches remain, but nothing is gated. `proposals` was gated on 2026-10-15 and removed on 2026-10-16 ("Proposals are on for everyone", `docs/CHANGELOG.md`); `rfpwatch` was the last entry, and the RFP Watch screen (#232) is now the live view, so every signed-in user gets real Proposals and RFP Watch. The gate is still read in four places for Proposals: the `AskWorkspace` view branch, the sidebar tag, the Funder Match "Proposal" status filter (hidden while gated) and `MatchCard` (a disabled "Start a proposal" button with a "Coming soon" tag instead of `ProposalAction`), so re-adding `proposals` to the set switches all of them off together. RFP Watch is read in only two (the `AskWorkspace` branch and the sidebar tag). The signed-out `AskPreview` is static copy and still lists "RFP watch … Coming soon" by hand in its `SIGNED_IN_EXTRAS`; it does not read `COMING_SOON`, so that preview line is now out of date relative to the workspace.
 
 **Threads.** Each chat has a client-generated UUID. The thread list comes from `GET /api/threads` (`fetchThreads`), with `localStorage` (`sangam_threads_v1`) kept only as a title fallback and to show a just-started chat before its first turn reaches the server. A reopened chat loads `GET /api/threads/{id}/messages`; a 404 means an empty chat.
 
@@ -266,9 +285,15 @@ A feature that has not shipped is gated by the single set in `features/ask/lib/c
 - History is loaded only after the agent is `isReady` and only if it has no messages, because messages set on the provisional agent are dropped. Composers are disabled until ready and history loaded.
 - `send` adds the user message locally and calls `copilotkit.runAgent`; `stop` calls `copilotkit.stopAgent`.
 
-### Funder Match, Vault, Media
+### Funder Match, RFP Watch, Vault, Media
 
-These views use client REST (`call()`), not the agent. Funder Match (`views/funder-match/api.ts`) lists matches, fetches a detail, and POSTs a saved run; the backend decides who may run it, and the list's `may_run` flag becomes `mayStart` on each card, so members only view proposals. Lists across the app use the pattern in `components/ui/ListPage.tsx`: `BucketCards`, one `FilterRow` of dropdowns, a `SearchBox`, and `ListMore` with `useShowMore` (client-side paging) or `useCursorList` (server keyset paging). `CLAUDE.md` and `docs/ARCHITECTURE.md` §9 require a new list page to reuse it rather than invent its own pills or stats.
+These views use client REST (`call()`), not the agent. Both Funder Match and RFP Watch pick an organisation through `useOrgChoices` (`features/ask/lib/useOrgChoices.ts`): `getMe()` is called once, staff choose from every organisation in the payload, everyone else from their memberships, and a signed-in person with no organisation sees an explanatory card instead of data. A selector shows only when there is more than one choice.
+
+**Funder Match** (`FunderMatchView`, `views/funder-match/api.ts`) calls `GET /api/funder-matches?org=` for the org's latest saved run, `GET /api/funder-matches/{id}/detail` when a card's "Why this score" disclosure opens, and `POST /api/funder-matches/runs?org=` to rerun it. The backend decides who may run it; the list's `may_run` flag shows the "Rerun match" / "Run the first match" button and becomes `mayStart` on each card, so members only view proposals. With no saved run the view shows a "No match saved yet" card. Matches in the `strong` and `medium` tiers are ranked as cards (buckets All fits / Strong "75 or more" / Medium "55–74", a funder-type filter, search over the funder name, type and reasons, plus the Proposal-status filter described above); `weak` and `not_scored` rows are folded into a "Weak or no fit" disclosure that only appears at the default filters. Each card shows the score bar, tier tag, the change since the last run, fit/gap reasons and `ProposalAction` (Start a proposal, Continue/View proposal, or "Proposals (N)" when a funder has several).
+
+**RFP Watch** (`RfpWatchView`, `views/rfp-watch/`) is the Ask view for open calls for proposals, matched by the backend to the chosen organisation's theme domains. It loads `GET /api/rfps/feed?org=` and changes a call's state with `PATCH /api/rfps/{rfp_id}/matches/{org_id}` (`flagged`, `saved` or `dismissed`). The feed carries `can_act`, so people who cannot act (only the org's members and admins and staff can) see a read-only note instead of Save / "Not for us". Buckets are For you (open calls), Closing soon (deadline within `SOON_DAYS` = 30 days) and Saved (kept even after the deadline), narrowed by search and a theme filter and sorted soonest deadline first. A dismissed call, or an unsaved closed one, is removed locally; saved ones stay. Empty states point to Funder Match ("Most CSR money is given without an open call"), and an organisation with no theme domains is told no call can be matched. `CallCard` shows days left (urgent at 14 days), amount band, places and matching themes, only renders an `http(s)` link from model-extracted URLs (`safeHref`), and "Ask about this call" calls `onAsk` with a prepared question, opening a new Ask chat. Calls arrive in the feed from Scout's open-calls pull (see [Import / Scout UI](#import--scout-ui) and [RFP Watch](rfp-watch.md)).
+
+Lists across the app use the pattern in `components/ui/ListPage.tsx`: `BucketCards`, one `FilterRow` of dropdowns, a `SearchBox`, and `ListMore` with `useShowMore` (client-side paging) or `useCursorList` (server keyset paging). `CLAUDE.md` and `docs/ARCHITECTURE.md` §9 require a new list page to reuse it rather than invent its own pills or stats.
 
 ### Proposals
 
@@ -293,13 +318,14 @@ Proposals are **server-backed**, shared by everyone in the organisation, and dra
 
 `/import` (`app/(agent)/import/page.tsx`) is `force-dynamic`, redirects people who may not use Scout to `/ask`, validates `?thread=` against `^import-[0-9a-f-]{36}$`, and renders `ImportLoader`, which lazy-loads `ImportPage` with `ssr: false` (it reads the screen width). `ImportPage` mounts `AgentProviders` and `ImportShell`, which owns the open thread id (`import-<uuid>`), mirrors it into `?thread=` with `history.replaceState`, lists past runs (`GET /api/ingest/threads`), and keeps a just-started thread listed until the server lists it (it re-fetches 3 s after the first send, since the server titles the thread when the run starts).
 
-`ImportView` loads the page's panels with **one** request, `GET /api/ingest/overview` (research done recently, sources, runs, queue, source proposals, access, vault files), because separate calls could each hit a cold backend instance. It derives `ImportAccess` from the overview's `me` and passes it to `ScoutChat`; until the overview answers the access is empty (`NO_ACCESS`), so no task cards are offered. `tasksFor(access)` then gives staff funder / NGO / news, stewards funder / NGO, anyone else none. Staff additionally see "Team tools" (source groups, run history, source proposals — unrelated to grant Proposals).
+`ImportView` loads the page's panels with **one** request, `GET /api/ingest/overview` (research done recently, sources, runs, queue, source proposals, access, vault files), because separate calls could each hit a cold backend instance. It derives `ImportAccess` (`{staff, stewardOf, orgs}`, built by `accessOf` in `lib/access.ts`) from the overview's `me` and passes it to `ScoutChat`; until the overview answers the access is empty (`NO_ACCESS`), so no task cards are offered. `lib/access.ts` is the one place the screen's role rules live, and it only shapes the screen (the backend refuses again): `canUseScout(me)` (staff, or a steward of any org) is the route and sidebar gate, and `tasksFor(access)` gives **staff four tasks (funder, NGO, news, calls), stewards funder / NGO, anyone else none**. `access.orgs` (every membership) drives the organisation selector in the source picker, which appears only with more than one organisation. Staff additionally see "Team tools" (source groups, run history, source proposals — unrelated to grant Proposals) and the `WaitingForYou` queue in the right rail.
 
 `ScoutChat` is the one component that holds the Import conversation:
 
-- **Start → Working → Review → Done.** Before the first turn it shows task cards (research a funder, check an NGO, latest news; filtered by `tasksFor(access)`) over the composer. After that, the step shown in `StepBar`/`ScoutRunPanel` is derived from `isRunning`, whether a review card is open, and counts reported by `DoneReport`. `WorkingBoard` renders researcher lanes from `boardOf(steps, …, laneOwners)`.
-- **Pause cards.** The backend pauses the run with an interrupt, and three components answer it via CopilotKit's `useInterrupt`: `SourcesCard` (`choose_sources`, or auto-answered from a `preset` chosen on the Start step), `SaveQuestions` (`promote_research`, rendering `ReviewCard`; it resolves with `{decisions, slug}` so several parallel writers paused at once can be addressed by slug), and `ImportApproval` (`run_import_now`, with a news-plan line from `/api/ingest/news-runs/plan`). They render with `renderInChat: false` into a single DOM node that `ScoutChat` portals into whichever layout is visible, because a run keeps only the listeners it started with. Each card mounts `PauseSignal`, which tells the parent a question is open.
-- **Stuck detection.** `useRunPause` subscribes to the agent for the interrupt custom event and `RunFinished` with outcome `interrupt`, recording the tool awaited. If the run is idle, no card reported itself open, and a pause is recorded, the composer disables itself with "waiting for you … but the card did not open. Start a new chat".
+- **Task cards and pulls.** Before the first turn it shows task cards (research a funder, check an NGO, get the latest news, check open calls; filtered by `tasksFor(access)`) over the composer. Picking a card only writes `leadIn(task)` into the draft (`lib/composePrompt.ts`). `news` and `calls` are *pulls* (`isPull`): fixed pulls that read no chosen sources, so no source picker is required before sending, whereas funder and NGO research blocks Send until something is ticked (`nothingChosen`) and shows the picker in the right `ScoutRail` (inline on narrow screens). After the first turn the rail instead shows "Reading from" and, for staff, the waiting queue.
+- **Start → Working → Review → Done.** Once a turn has started, the step shown in `ScoutRunPanel` is derived on the client: working while `isRunning` (stays on review once a review was answered, so the save does not rewind the bar), review while a review card is open or `DoneReport` reports organisations still pending, and done once something was saved or the run produced no organisations. A turn that researched organisations, or read a workbook, Doc Vault or ran `run_import_now`, gets a marker in the thread and the pinned panel. `WorkingBoard` renders researcher lanes from `boardOf(steps, …, laneOwners)`; refusals and failures are surfaced per turn by `failuresOf`.
+- **Pause cards.** The backend pauses the run with an interrupt, and three components answer it via CopilotKit's `useInterrupt`: `SourcesCard` (`choose_sources`, or auto-answered from a `preset` chosen on the Start step), `SaveQuestions` (`promote_research`, rendering `ReviewCard`; it resolves with `{decisions, slug}` so several parallel writers paused at once can be addressed by slug), and `ImportApproval` (`run_import_now`). `ImportApproval` renders one of three cards chosen from the pause's `sources` argument: an open-calls card when it contains `funder_calls` ("Check open calls?", with a line naming the funders and the per-funder cost, and a note that the calls are added to RFP Watch), a news card when it contains `tavily_news` (with a plan line fetched from `/api/ingest/news-runs/plan`), and otherwise the generic "Write this import to the catalog?" card. All resolve with `{decisions: [{type: approve|reject}]}`. `toolLabels.ts` mirrors this in the trace: a `run_import_now` step whose sources include `funder_calls` is labelled "Importing — Open calls · <funders>". They render with `renderInChat: false` into a single DOM node that `ScoutChat` portals into whichever layout is visible, because a run keeps only the listeners it started with. Each card mounts `PauseSignal`, which tells the parent a question is open.
+- **Stuck detection.** `useRunPause` subscribes to the agent for the interrupt custom event and `RunFinished` with outcome `interrupt`, recording the tool awaited (the record is cleared when a new run starts or fails). If the run is idle, no card reported itself open, and a pause is recorded, the composer disables itself with "waiting for you … but the card did not open. Start a new chat".
 - **Ticked sources.** Sources ticked before the first message are sent as AG-UI context via `useAgentContext` with the exact description `"Sources the person ticked for this Import run"`; the backend's `TickedSources` middleware matches that string, so changing it silently makes the supervisor re-ask.
 - **Mid-run questions.** While the run is going, a message is *not* sent to the agent: `askLive` POSTs `/api/ingest/threads/{id}/ask-live` with the question and the lane/tool state, and the backend answers from run state. If it classifies the text as an instruction, it is held and sent as the next message once the run has ended and no card is open (after a 300 ms settle).
 
@@ -307,7 +333,7 @@ Proposals are **server-backed**, shared by everyone in the organisation, and dra
 
 - The Claude Design project "Sangam Design System v2" (built 8 Oct 2026, replacing the first "Sangam Design System" project) is the system of record: a new token, size, colour or component look is agreed there first, and the repo never invents one the design system lacks. A PR that changes `frontend/components/` or a screen its UI kit recreates updates the design system in the same PR. `docs/DESIGN_SYSTEM.md` still states there is **no automatic sync**: `/design-sync` does not fit a repo with no compiled component package, so the sync is done by hand (repo → design system in the same PR, or design system → repo after a decision made there), and the doc gives the procedure and mapping tables. Writing to the project needs its owner's agreement.
 - **Tokens map one to one.** They are CSS variables in `app/globals.css` with the same names as the design system's token files, so a token change is a copy of values. `tokens/colors.css`, `typography.css` and `spacing.css` map to the `:root` ramps, `--fs-*`/`--font-*` and the radii/shadow/`--page-max`/`--page-pad`/`--nav-h` variables; `tokens/base.css` maps to the hand-written classes (`.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link`). Four more files cover feature styling, imported in this order after `base.css`: `scout.css` (Sangam Scout's classes), `registry.css` (the Registry list's `.reg-*`, the profile `.profile-*` and brief `.brief-*` classes, the list-page classes, `.pill-tabs`, `.btn-ondark`), `registry-row.css` (the Registry row's population chips, `.reg-row-line`, `.reg-row-label`, `.reg-more` and the `data-active` tag edge) and `site.css` (the Nav's `.nav-links` and phone menu, Home's `.home-step*`). The design system also carries tokens the repo does not use yet (`--surface-*`, `--space-*`, motion, …). The `@theme inline` block at the end of `globals.css` re-exposes the repo's tokens as Tailwind utilities and changes only when a token is added or removed. Components, by contrast, are translated rather than copied: the design system holds plain-JSX references, the repo uses TypeScript on Radix and Tailwind, so a component change means matching look and behaviour on both sides. `ProfileHero` is the repo counterpart of the design system's `HeroFacets`; `Home.jsx`, `Registry.jsx` and `Profile.jsx` in its UI kit correspond to `HomePage`/`HeroSlides`, `RegistryClient` and the profile pages.
-- Styles go in classes in `globals.css` rather than inline `style={{}}` (older code such as `AskWorkspace`, `RfpWatchView` and `AskPreview` still has inline styles). The workspace rail's classes (`.rail-*`, `.ask-sidebar`, `.soon-card`) live there too.
+- Styles go in classes in `globals.css` rather than inline `style={{}}` (older code such as `AskWorkspace` and `AskPreview` still has inline styles). The workspace rail's classes (`.rail-*`, `.ask-sidebar`, `.soon-card`) live there too.
 - Corners: pill for buttons/chips/single-line inputs, 14 px (`--radius-surface`) for cards and dialogs, 8 px (`--radius-row`) for rows. Type sizes only 12/14/16/20/24/36 (`--fs-*`). Text must meet WCAG AA; terracotta text is `--color-accent-750`. Icons are Lucide, styled by `.icon` classes. One `--page-max` (1160 px) column.
 - Wording: "CSO" in data/registry UI, "NGO" in marketing copy, "vetted" not "hand-vetted".
 - Reuse an existing token or component before asking the design system for a new one. Verification for UI changes is `npm run lint`, `npm run build`, then `make smoke`; there are no frontend unit tests.

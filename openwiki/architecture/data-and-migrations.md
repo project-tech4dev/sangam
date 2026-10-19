@@ -1,13 +1,17 @@
 ---
 type: architecture concept
 title: Data and Migrations
-description: How Sangam's Postgres schema is organised by table group (including server-side proposals and document links), why a baseline plus forward-only migrations (latest 0048) define it, how the SQL catalog drift check gates backend boot, where documents live in storage buckets, and how provenance columns keep the optional Neo4j graph rebuildable.
+description: How Sangam's Postgres schema is organised by table group (including RFP Watch's rfps tables, server-side proposals and document links), why a baseline plus forward-only migrations (latest 0049) define it, how the SQL catalog drift check gates backend boot, how shared public SQL fragments hide private sources, where documents live in storage buckets, and how provenance columns keep the optional Neo4j graph rebuildable.
 tags: [database, postgres, migrations, provenance, storage, neo4j, schema]
 sources:
   - id: openwiki-source-7faba850789bc67a49b79a3f
     resource: repo://backend/app/agent/tools/sql/catalog.py
   - id: openwiki-source-ca736c25c2a1bb0e95531706
     resource: repo://backend/app/api/routes/documents.py
+  - id: openwiki-source-e962a60de608d42004eac41b
+    resource: repo://backend/app/api/routes/registry.py
+  - id: openwiki-source-bb520e58d272c5fe6ee64d79
+    resource: repo://backend/app/api/routes/rfps.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
     resource: repo://backend/app/core/lifespan.py
   - id: openwiki-source-51ead927cc43f35e220ea627
@@ -20,6 +24,8 @@ sources:
     resource: repo://backend/app/db/replicate.py
   - id: openwiki-source-bb6ad31efddf76d28f69f61e
     resource: repo://backend/app/ingest/expectations.py
+  - id: openwiki-source-f5f9bed243c70c8c32486478
+    resource: repo://backend/app/ingest/source_guards.py
   - id: openwiki-source-465a2de3f088ab05c5629202
     resource: repo://backend/app/integrations/graphiti.py
   - id: openwiki-source-bbb88a9dc2dd928de209ddbb
@@ -28,6 +34,14 @@ sources:
     resource: repo://backend/app/repositories/documents.py
   - id: openwiki-source-1157f5d2ae5aa2bccc1057d0
     resource: repo://backend/app/repositories/proposals.py
+  - id: openwiki-source-e1e1f5d3920af8337551a6ac
+    resource: repo://backend/app/repositories/public_sql.py
+  - id: openwiki-source-75dfe6dd359f71f41900608d
+    resource: repo://backend/app/repositories/registry.py
+  - id: openwiki-source-7883f648138e78c1e5c84c85
+    resource: repo://backend/app/repositories/rfps.py
+  - id: openwiki-source-8b5590d38dd10784b7da1f6d
+    resource: repo://backend/app/schemas/rfps.py
   - id: openwiki-source-c19bf12e33dd13dd52164b8e
     resource: repo://backend/tests/test_migration_integrity.py
   - id: openwiki-source-b9b33576e920a6ec443c1309
@@ -38,8 +52,14 @@ sources:
     resource: repo://db/init/02_schema.sql
   - id: openwiki-source-5d936c732a0a021ab7221170
     resource: repo://db/migrations/0001_provenance.sql
+  - id: openwiki-source-3960d3e6bb146b4c53ddd9e9
+    resource: repo://db/migrations/0019_rfp_identity_and_funding_profile.sql
   - id: openwiki-source-dfac4787d4864ec73643d276
     resource: repo://db/migrations/0020_storage_buckets.sql
+  - id: openwiki-source-a63cf999b1937db913f804d5
+    resource: repo://db/migrations/0025_table_grants.sql
+  - id: openwiki-source-a51b4e8aa8968bfd9e155474
+    resource: repo://db/migrations/0027_rls.sql
   - id: openwiki-source-4f00b570b8820dd507c244db
     resource: repo://db/migrations/0031_funder_consolidation.sql
   - id: openwiki-source-8a68723db5e310243ef50c5d
@@ -60,6 +80,8 @@ sources:
     resource: repo://db/migrations/0047_document_links.sql
   - id: openwiki-source-3d121c1ca466c424ca2b4936
     resource: repo://db/migrations/0048_proposal_work.sql
+  - id: openwiki-source-d2d39b77b74bd31e2a50555d
+    resource: repo://db/migrations/0049_rfp_match_saved.sql
   - id: openwiki-source-82b4a7ca109f9768db60ccbf
     resource: repo://db/migrations/README.md
   - id: openwiki-source-093cd3e20819d97ab4faddda
@@ -74,17 +96,17 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-60b751726aee2d4aae078a12
     resource: repo://seed/graph_seed.py
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Data and Migrations
 
 Postgres is Sangam's system of record. Everything researched, imported, scored or saved ends up as rows there, and every other store is either derived from it (the Neo4j graph) or holds bytes that rows point at (Supabase Storage). This page covers the shape of the schema, how it changes, what stops the backend from booting against a mismatched schema, and how provenance ties facts back to sources.
 
-Related pages: [Auth, roles and RLS](auth-roles-rls.md) (the policies and grants those migrations create), [Proposal Copilot](proposal-copilot.md) (the feature that owns `proposals.work`), [Ask Sangam](ask-sangam.md) (the SQL tool whose catalog is checked at boot), [Sangam Import / Scout](sangam-import-scout.md) (the main writer of catalog rows and documents), and the how-to [Writing a migration](../workflows/writing-a-migration.md).
+Related pages: [Auth, roles and RLS](auth-roles-rls.md) (the policies and grants those migrations create), [RFP Watch](rfp-watch.md) (the feature that owns the `rfps` table group), [Proposal Copilot](proposal-copilot.md) (the feature that owns `proposals.work`), [Ask Sangam](ask-sangam.md) (the SQL tool whose catalog is checked at boot), [Sangam Import / Scout](sangam-import-scout.md) (the main writer of catalog rows and documents), and the how-to [Writing a migration](../workflows/writing-a-migration.md).
 
 ## Baseline plus forward-only migrations
 
@@ -115,7 +137,7 @@ Nothing applies migrations behind your back, with one local exception. `make up`
 
 ### Two files numbered `0044`
 
-The directory holds 49 `.sql` files (the latest is `0048_proposal_work.sql`) and **two are numbered `0044`**: `0044_news.sql` (the Media & Signals tables) and `0044_one_read_policy_and_fk_indexes.sql` (folds duplicate `users`/`org_members` read policies and adds three FK indexes). Both landed in parallel branches; staging had already applied `0044_news`, and because the runner keys on the full file name (not the number), both were kept rather than renumbered. Order between them is alphabetical (`0044_news` before `0044_one_read…`). Do not "fix" this by renaming either file, as that would make the runner treat the renamed file as new and re-run it. `0045_drop_news_mentions.sql`, `0046_import_columns.sql`, `0047_document_links.sql` and `0048_proposal_work.sql` follow.
+The directory holds 50 `.sql` files (the latest is `0049_rfp_match_saved.sql`) and **two are numbered `0044`**: `0044_news.sql` (the Media & Signals tables) and `0044_one_read_policy_and_fk_indexes.sql` (folds duplicate `users`/`org_members` read policies and adds three FK indexes). Both landed in parallel branches; staging had already applied `0044_news`, and because the runner keys on the full file name (not the number), both were kept rather than renumbered. Order between them is alphabetical (`0044_news` before `0044_one_read…`). Do not "fix" this by renaming either file, as that would make the runner treat the renamed file as new and re-run it. `0045_drop_news_mentions.sql`, `0046_import_columns.sql`, `0047_document_links.sql`, `0048_proposal_work.sql` and `0049_rfp_match_saved.sql` follow.
 
 ### Conventions worth knowing
 
@@ -157,7 +179,8 @@ Caption: a simplified slice of the entity relationships; every fact table also c
 | Taxonomy and geography | `tags` (every vocabulary by `kind`), `tag_links`, `locations` (LGD codes), `location_designations` |
 | Documents | `documents` (`doc_type` is free text, with reserved and proposal-related values described below), `chunks` (pgvector embeddings plus a generated `tsvector`), `document_links`, `extraction_log` |
 | Import | `entity_research`, `vault_research`, `ingest_runs`, `ingest_run_items`, `resolution_queue`, `ingest_source_proposals`, `promotions`, `catalog_writes` |
-| Scores and RFPs | `rubrics`, `rubric_criteria`, `fit_scores`, `fit_score_items`, `score_adjustments`, `rfps`, `rfp_*` link tables, `reference_figures` |
+| Scores | `rubrics`, `rubric_criteria`, `fit_scores`, `fit_score_items`, `score_adjustments`, `reference_figures` |
+| RFPs | `rfps` (a funder's call, with `status` open / closed / removed, `deadline`, amount range and provenance), `rfp_tags` and `rfp_locations` (link tables), and `rfp_matches` (one row per org and call; `status` is `flagged`, `saved`, `reviewed` or `dismissed`, widened to include `saved` by `0049`) |
 | Match | `funder_matches`, `funder_match_details` (saved runs, private to an org) |
 | Proposals | `proposals` (an org's proposal to one funder; `work` and `summary` jsonb added in `0048`); a funder's form is a `documents` row of type `proposal_template`, since `0031` dropped `proposal_templates` and `template_items` and re-pointed `proposals.template_id` at `documents` |
 | News | `news_stories`, `news_links`, `news_link_scores`, `news_story_entities`, `news_story_locations`, `news_story_tags`, `news_watch` (from `0044_news`; `news_mentions` was dropped in `0045`) |
@@ -166,6 +189,7 @@ Caption: a simplified slice of the entity relationships; every fact table also c
 
 A few notes on specific groups:
 
+- **RFPs and `rfp_matches` (`0049`).** The `rfps` tables belong to [RFP Watch](rfp-watch.md). `rfps` rows are written by `make calls-pull` and Import, never by a caller, and are unique on `(funder_id, title, deadline)` (`0019`). `rfp_matches` is org-private: `0027` gives it a read policy for the org's people and staff and an update policy for `app.my_writable_org_ids()` (members and admins, never stewards) or staff, and `0025` grants `authenticated` only `UPDATE`, no insert and no delete. `0049_rfp_match_saved.sql` is a one-statement migration: it drops `rfp_matches_status_check` and re-adds it with `saved` in the allowed set (the baseline allowed only `flagged`, `reviewed` and `dismissed`). It is the whole schema change behind the Save button, and needs no new policy or grant because the existing update policy already covers the column. Rows must exist before anyone acts, since callers can only update: `repositories/rfps.py` `flag_matches` inserts one row per org with members and per open, unexpired call sharing a domain, with `matched_by = 'rules:domain'` and `week_of`, using `ON CONFLICT DO NOTHING` so a re-run never overwrites an org's choice. `update_match` (behind `PATCH /api/rfps/{id}/matches/{org_id}`) then sets `status` and stamps `matched_by` with the user's id. The `RfpMatchUpdate` schema's `Literal["flagged", "saved", "reviewed", "dismissed"]` mirrors the CHECK constraint, so a new status needs both a migration and a schema edit (and the SQL catalog's `status` `values` for `rfp_matches`). The feed query shows an org its `saved` calls whatever became of the call, and its non-dismissed calls only while the call is open and not past its deadline (computed in `Asia/Kolkata`). Both `rfps` and `rfp_matches` are in the SQL catalog.
 - **Import bookkeeping.** `promotions` and `catalog_writes` (`0041`) are the undo log for saving Import research into the catalog. A trigger `app.log_catalog_write()` records old and new row JSON for a fixed list of catalog tables, but only while a save has set `sangam.promotion_id`; nothing else is logged. A newly added table that Import saves into must be given the same trigger, as `0047` does for `document_links`. See [Sangam Import / Scout](sangam-import-scout.md).
 - **`resolution_queue`.** Names that identifiers, exact match and trigram similarity could not resolve wait here for a reviewer; a new name is never auto-merged into a registry org without an identifier or exact match.
 - **Checkpoint tables** are not in any migration. `open_checkpointer` (`backend/app/db/checkpointer.py`) calls LangGraph's `AsyncPostgresSaver.setup()` on every boot, which issues idempotent DDL. They hold every user's serialized conversation history and are deliberately kept away from the SQL tool and from `app.db.replicate`.
@@ -218,6 +242,14 @@ Every table that holds a scraped or extracted fact carries the same provenance b
 - Tag and location link tables use `is_inferred`, `tagged_by`, `note` and validity dates to separate what a source states from what a person or model inferred.
 - Import fills provenance itself from a finding's evidence; researchers are never asked for it (`PROVENANCE` and `TIER` in `expectations.py`). The evidence tier (`source_type`, `evidence`) is paired by a CHECK constraint, and `aggregator` or `prior_research` sources may only be `claimed` (`0046`).
 - The SQL tools derive which catalogued tables expose citations from the presence of `source_url`/`source_name`/`fetched_at` (`PROVENANCE_COLUMNS`), so a table that follows the convention gets its sources surfaced without another edit.
+
+### Public read SQL and private sources
+
+Not every reader of these columns is the SQL tool. The public Registry list and profile pages share one set of SQL fragments in `backend/app/repositories/public_sql.py`, used by `registry.py`, `profile_facts.py`, `partner_groups.py` and `news_stories.py`, so the list and the profile say the same thing by construction.
+
+- **Private sources are hidden in SQL.** Staff datasets and the Doc Vault cite a synthetic URL on the reserved domain `sangam.invalid` (`PRIVATE_SOURCE_DOMAIN` in `backend/app/ingest/source_guards.py`). `public_sql.is_private_url` is the SQL twin of Python's `is_private_source`: it extracts the host with a regex and tests it against that domain or a subdomain. `public_url` and `public_name` return `NULL` for such a row (a sheet's title names the sheet), and `public_text` drops a note or quote whole if it mentions the domain. Every URL a public query selects goes through these. The SQL form is deliberately a little stricter than the Python check for a scheme-less `x.sangam.invalid`.
+- **Shared predicates.** `OPEN_CALL` (`status = 'open'` and no deadline or one not yet past, using `current_date`), `PUBLIC_STORY` (`visibility = 'public'` and `is_news`), `STORY_CHANNEL` (social versus press by source type) and `story_counts`, `entity_tags` and `entity_sdgs` keep the Registry's filters and counts consistent. The `Asia/Kolkata` date in the RFP feed is a separate computation in `repositories/rfps.py`.
+- **Caller pool versus owner pool.** `registry_rows(pool, owner)` reads orgs, funders, places, tags, programmes, partner counts, open calls, CSR years and story counts on the caller pool, so RLS and the `is_public`/`visibility` filters decide which entities appear. Two reads go through the owner pool so the list reads the same for every viewer: which registration types an org has on file (`ON_FILE`: current, registered or provisional, public or not) and `entity_research` counts (staff-only; `GET /api/registry` shows only a run count and latest date and treats a failure there as a hint to drop, not an error). The shared `IDENTIFIERS` query is likewise written for the owner pool: a non-public registration is listed as on file with its number and detail nulled and `number_withheld` set.
 
 ## Storage buckets
 

@@ -10,6 +10,8 @@ sources:
     resource: repo://.github/workflows/dependency-review.yml
   - id: openwiki-source-6766b7a0c14857435d2077c9
     resource: repo://.github/workflows/deploy.yml
+  - id: openwiki-source-813dbe9c3eeb378112388ccd
+    resource: repo://backend/app/agent/middleware.py
   - id: openwiki-source-070c6307b3860e1806baf566
     resource: repo://backend/pyproject.toml
   - id: openwiki-source-539ff1e55b1e385204a4bb93
@@ -26,12 +28,18 @@ sources:
     resource: repo://backend/tests/evals/import_harness.py
   - id: openwiki-source-edebaaa991aec01704e84f6a
     resource: repo://backend/tests/evals/test_agent_evals.py
+  - id: openwiki-source-e863856c857e426d63a2b3d8
+    resource: repo://backend/tests/evals/test_import_calls.py
   - id: openwiki-source-d5d06fda351e6cb412c401d8
     resource: repo://backend/tests/evals/test_import_evals.py
   - id: openwiki-source-8ce79a18e6eab471015a75e0
     resource: repo://backend/tests/evals/test_run_stats.py
+  - id: openwiki-source-f298183777e9f6b64bb1b60f
+    resource: repo://backend/tests/test_agent_middleware.py
   - id: openwiki-source-bc3c2ebc658cef90ceb7a159
     resource: repo://backend/tests/test_agent_rls.py
+  - id: openwiki-source-32973df7d69d78ccef1499ff
+    resource: repo://backend/tests/test_ask_budgets.py
   - id: openwiki-source-0808792899dda5ae43456460
     resource: repo://backend/tests/test_caller_pool.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
@@ -60,16 +68,18 @@ sources:
     resource: repo://backend/tests/test_sql_integration.py
   - id: openwiki-source-3e07dc90801342267034699a
     resource: repo://backend/tests/test_sql_validator.py
+  - id: openwiki-source-15fedc74dfcdfee2ad718523
+    resource: repo://backend/tests/test_tool_errors.py
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
   - id: openwiki-source-5f7022cb75865b779a5792a0
     resource: repo://codecov.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:30:22.232Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Testing
@@ -208,9 +218,21 @@ A case with `expected_failure` becomes `xfail(strict=True)`. When the underlying
 
 ### Import canaries (`test_import_evals.py`)
 
-`cases/import/canary.jsonl` holds one funder (Axis Bank Foundation) and one NGO (The Ant). They sit in a subdirectory, so `load_cases` for the Ask suite never sees them. The Import test only parametrises cases **when `--eval-tag` is given and matches**, so a bare `make evals` stays the cheap Ask suite and never starts a 15-minute import. Both cases carry the tags `import` and `canary`, so `TAG=canary` also selects them. They skip if no Tavily key is set. `TAG=import` selects only them.
+`cases/import/canary.jsonl` holds one funder (Axis Bank Foundation, `import-funder-axis`) and one NGO (The Ant, `import-ngo-the-ant`). They sit in a subdirectory, so `load_cases` for the Ask suite never sees them. The Import test only parametrises cases **when `--eval-tag` is given and matches**, so a bare `make evals` stays the cheap Ask suite and never starts a 15-minute import. Both cases carry the tags `import` and `canary`, so `TAG=canary` also selects them; `TAG=import` selects only them. A case skips when no Tavily key is available, either `TAVILY_API_KEY` in the environment or `tavily_api_key` in settings, because `search_public_sources` would have nothing to search.
 
-`import_harness.run_import` builds the Import agent as staff, runs it with a 900-second timeout, and answers the `choose_sources` human-in-the-loop pause with public web plus the library, asserting that no other pause occurs. The test then judges the saved `entity_research` row: correct `entity_kind`, non-empty findings, at least one expected concept, every gap having a `blocked` or `not_stated` reason with detail, tagged findings carrying a `tag_note`, and the researcher's `fact_count` matching the stored findings. See [Sangam Import and Scout](../architecture/sangam-import-scout.md).
+Each case line carries an `expect_kind` (`funder` or `org`), `expect_concepts_any` and a `max_calls` budget keyed by tool name, either bare (`task`) or qualified by agent (`entity-researcher.save_research`). Both canaries allow one `choose_sources`, no `run_import_now`, at most two `task` calls and at most three researcher `save_research` calls.
+
+`import_harness.run_import` sets the caller scope to staff, builds the Import agent with an `InMemorySaver`, and runs it under a 900-second timeout (`IMPORT_CASE_TIMEOUT_SECONDS`; an Ask case gets 180). It answers the `choose_sources` human-in-the-loop pause with public web plus the library (`SOURCES`), and raises if the run pauses on anything else or keeps pausing after three rounds, since another pause would mean a write the case never asked for. A `ToolCalls` callback counts every tool call, subagents included, under both `tool` and `agent.tool` (the agent comes from `lc_agent_name`, `supervisor` by default). The test uses its own pool (up to 6 connections) because researchers run in parallel and each reads and saves.
+
+The test then judges the saved `entity_research` row, found by entity name among rows researched since the case started. Failures are collected and reported together:
+
+- any tool called more often than `max_calls` allows (`call_failures`), because the path was wrong even if the row looks right;
+- wrong `entity_kind`, no findings, or none of the expected concepts;
+- a gap whose `reason` is not `blocked` or `not_stated`, or that has no detail;
+- a tagged `program`, `identity` or `org_identity` finding with themes, populations or lenses but no `tag_note`;
+- no researcher summary for the row's slug, or a summary `fact_count` that differs from the stored findings.
+
+A missing row, or a timeout, fails the case outright. `tests/evals/test_import_calls.py` is the DB-free, model-free companion: it runs a scripted supervisor and researcher (`GenericFakeChatModel` subclass) through `create_deep_agent` to prove a subagent's calls are counted under its own name, and checks that only a call over its budget fails (a `max_calls` of 0 forbids the tool, and a case with no `max_calls` never fails). It carries no `eval` mark and runs in the normal unit suite. See [Sangam Import and Scout](../architecture/sangam-import-scout.md).
 
 ## Invariants the tests pin
 
@@ -222,9 +244,17 @@ These tests exist so a library upgrade, a migration or a refactor cannot silentl
 
 - The harness profile is installed idempotently, resolves for the configured model, disables the general-purpose subagent, and does **not** decide tools (profiles are per provider and global, while Import needs `read_file` for skills and Ask must not have it, so the surface is per-agent middleware).
 - The replacement `FilesystemMiddleware` registers only `read_file`, or `read_file` plus `ls` when `SKILL_READING_TOOLS` is kept. Nothing that writes (`write_file`, `edit_file`, `delete`, `execute`) is in either set. `execute` is named in `FILESYSTEM_TOOLS` and excluded, because it is advertised as a sandbox shell on an agent that reads untrusted web pages.
-- **Ask Sangam** has no `task` tool (no subagents) and exactly these tools: `db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query`, `search_graph`, `fetch_url`, `compare_fit`, plus the skill readers `read_file` and `ls`. See [Ask Sangam](../architecture/ask-sangam.md).
+- **Ask Sangam** has no `task` tool (no subagents) and exactly these tools: `db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query`, `search_graph` and `compare_fit` (its six), plus the skill readers `read_file` and `ls`, eight in all (`test_ask_sangam_holds_its_six_tools_and_the_skill_readers`). There is no `fetch_url` tool. See [Ask Sangam](../architecture/ask-sangam.md).
 - Neither agent can have `write_file`, `edit_file`, `delete`, `execute`, `glob` or `grep`.
 - **Import** has four subagents (`entity-researcher`, `vault-reader`, `catalog-writer`, `workbook-reader`). The advertised-list test, `test_import_advertises_exactly_its_two_subagents`, is misnamed: it asserts only that `entity-researcher` and `catalog-writer` appear in the `task` description and that `general-purpose` does not. It does not check an exact set. It parses the advertised list instead of substring-searching, since deepagents boilerplate mentions `general-purpose` generically. The exact set of four is asserted separately, on the compiled subagents, in `test_both_subagents_are_compiled_and_found`.
+
+### Ask limits and tool-error backstop (unit, no database)
+
+Three DB-free files pin the code-level limits on the agents rather than their prompts:
+
+- **`test_agent_middleware.py`** pins `clear_old_tool_results` so clearing old tool output keeps the prompt prefix stable and the provider's prompt cache usable. Below `TOOL_RESULT_CLEAR_TRIGGER_TOKENS` nothing is cleared. Past it, the cleared set moves at most once per `TOOL_RESULTS_CLEAR_STEP` of growth, what is sent stays under the trigger however long the turn, the latest `TOOL_RESULTS_KEPT` results stay, and `compare_fit` results are never cleared. A test keeps the old fixed-setting configuration as a regression showing it broke the cache on nearly every call. It also checks `count_failed_sql_attempts`: failed `db_profile_column` calls count against the SQL retry budget like `db_query` ones, a successful profile never counts, and its rejections start `db_profile_column rejected:`.
+- **`test_ask_budgets.py`** pins `compare_fit_refusal` (repeating the same arguments is refused, a call with explicit `funder_ids` is a different call, a fourth call is refused with "3 calls", and a new human question resets the budget) and `model_call_cap` (the turn ends with the `_CAPPED` message at the cap). It builds the real Ask stack with a spy on `create_agent` to assert a `ModelFallbackMiddleware` on the `research_model`, summarisation on the `utility_model`, a `CompareFitBudget` in the stack, and the cap's exit edge reaching `__end__` or an `after_agent` hook so the audit still runs. When `MODEL` and `RESEARCH_MODEL` are the same, no fallback is added.
+- **`test_tool_errors.py`** pins `tool_errors()`: a tool that raises answers the model with an error `ToolMessage` naming the tool and exception type (`db_query failed: RuntimeError.`) and never the message text, so secrets do not leak; a `GraphInterrupt` still pauses. It spies on every compiled middleware stack and asserts exactly one `ToolErrorMiddleware` on Ask, on Import and each of its four subagents, and on the Pitch agent and its two readers.
 
 ### Subagent tool lists
 

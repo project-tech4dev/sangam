@@ -26,10 +26,10 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-41397cbbfbde65db108b394c
     resource: repo://scripts/db-url.sh
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Environments and Env Vars
@@ -121,6 +121,7 @@ Provider keys: `ANTHROPIC_API_KEY` is the one required key and must match `MODEL
 - `MAX_PARALLEL_RESEARCH` (default 8): organisations researched at once. It bounds a wave, not the list size; larger lists run in waves.
 - `DB_POOL_MAX_SIZE` (default 10): connections this process may open. Raise it together with `MAX_PARALLEL_RESEARCH`, because each researcher holds a pooled connection while its tools run. The ceiling is the database's (Supabase allows 60 connections, 3 reserved, shared by every deployed instance).
 - `RESEARCH_PAGE_LIMIT`, `RESEARCH_MODEL_CALL_LIMIT`: optional per-researcher hard stops. Blank means no limit.
+- `ASK_MODEL_CALL_LIMIT` (default 25): model calls one Ask question may make before it stops and says so. It is a cap on a runaway turn, applied through `model_call_cap` in `build_agent()`. Compose forwards it, and blank means 25.
 
 `Settings.db_gate_slots` is derived: `max(2, DB_POOL_MAX_SIZE - 3)`. The concurrency gates for SQL execution and ingest sit *under* the pool, because the LangGraph checkpointer writes on every graph step through the same pool and a gate equal to the pool size would starve it.
 
@@ -163,11 +164,11 @@ Neo4j in the compose file is **pinned**: the backend service sets `NEO4J_URI=bol
 The rule: **`config.py` is the only place defaults are written, and a blank value means "use the default".**
 
 - Compose forwards optional variables as `${NAME:-}`, so an unset variable reaches the container as an empty string, not as a missing variable. A hand-edited `.env` line with nothing after `=` does the same.
-- `Settings._blank_means_default` is a `mode="before"` validator on `model`, `research_model`, `utility_model`, `sql_audit_model`, `max_parallel_research`, `research_page_limit`, `research_model_call_limit` and `db_pool_max_size`. If the value is a blank string it returns the field's declared default. Without it, an empty integer made the container refuse to boot.
+- `Settings._blank_means_default` is a `mode="before"` validator on `model`, `research_model`, `utility_model`, `sql_audit_model`, `max_parallel_research`, `research_page_limit`, `research_model_call_limit`, `ask_model_call_limit` and `db_pool_max_size`. If the value is a blank string it returns the field's declared default. Without it, an empty integer made the container refuse to boot.
 - For `research_page_limit` and `research_model_call_limit` the declared default is `None`, so blank means no limit.
 - `dev_auth` has its own validator: an empty string means `False`.
 - Other string settings (for example `SUPABASE_URL`, `NEO4J_URI`) default to `""`, which is itself the "disabled" state, so blank and unset are equivalent there too.
-- `SQL_AUDIT_MODEL=off` is converted to the empty string after validation, which the audit treats as disabled. Note the order: a *blank* value gets the Haiku default (audit on); only the literal `off` turns it off.
+- `SQL_AUDIT_MODEL=off` is converted to the empty string after validation, and `build_agent()` only appends the `answer_audit` middleware when `settings.sql_audit_model` is truthy, so the audit is disabled. Note the order: a *blank* value gets the Haiku default (audit on); only the literal `off` turns it off.
 - `Settings` reads `.env` (`env_file=".env"`, `extra="ignore"`, so unknown keys are harmless) and `get_settings()` is `lru_cache`d, so values are fixed per process.
 
 Feature switches are derived properties, not separate flags: `auth_enabled` (`SUPABASE_URL`), `graph_enabled` (`NEO4J_URI` and `OPENAI_API_KEY`), `langfuse_enabled` (both Langfuse keys), `storage_enabled` (`SUPABASE_URL` and `SUPABASE_SERVICE_KEY`).

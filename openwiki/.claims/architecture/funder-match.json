@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:769fc2f14fd705ee4db0f05e04844bb8a94bc666ff0693b7f5dffc256845d5cf",
+  "pageVersion": "sha256:ba4a89088fb3c3139fda210110ec21d0ba04f51a9978bd375c0c3ce7ec60884f",
   "claims": [
     {
       "id": "claim_8d5cf8f2478345fc8f2c86fc0e3f5809",
@@ -188,11 +188,11 @@
     },
     {
       "id": "claim_c27a64e9e043426b8ddb622775487c49",
-      "statement": "The Ask tool compare_fit refuses before reading any data when the chat user may not run a match for the org. Otherwise it loads via repositories/matching, compare() judges each funder, and render() returns plain text, one fact per line (header with tier counts and unknown-criteria counts, then funders), rather than JSON, so an evicted oversized reply still pages. With funder_ids omitted it is a shortlist: only scored funders are listed, the top strong/medium fits (up to FULL_DETAIL_MAX=10) in full without summary and the rest as one-liners, and unscored funders are split into 'nothing in common recorded' (a real non-fit) versus 'the funder has nothing recorded' (unknown, no places or themes). With funder_ids every named funder is in full with its summary. Errors are returned as 'compare_fit failed' strings rather than raised, and it is registered as the one exception to db_query-only database access.",
+      "statement": "The Ask tool compare_fit refuses before reading any data when the chat user may not run a match for the org. Otherwise it loads via repositories/matching, compare() judges each funder, and render() returns plain text, one fact per line (header with tier counts and unknown-criteria counts, then funders), rather than JSON, so an evicted oversized reply still pages. With funder_ids omitted it is a shortlist: only scored funders are listed, the top strong/medium fits (up to FULL_DETAIL_MAX=10) in full without summary and the rest as one-liners, and unscored funders are split into 'nothing in common recorded' (a real non-fit) versus 'the funder has nothing recorded' (unknown, no places or themes). With funder_ids every named funder is in full with its summary. Errors are returned as 'compare_fit failed' strings rather than raised, and build.py lists it in TOOLS as the one commented exception to db_query-only database access.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/build.py#L32-L43",
-          "version": "repo-lines-v1:sha256:1aa984444d07ef88c2afe40bc1ee3b24bdc657fadccfbb0bbf4686c77d125189:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyZDgxNDdjYjUxOTg4ZGQxNDg0ZjU2MTc1YjE5NDI2NzI1MTc5MWJhMjA0ZTdhYTVmZmIzMzYwOTJjMDk3ZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NDE2ZTA5Zjc4YmEzMTZjMDMyNTY4MjEzYjg1NWVlNzU2ZTQxNTY1ZDkxOGYwOTUxOWM4MWZkNjIwZjQwNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3N2FiY2ExY2Y5YzE1NWE2YTA5ZDQwZWFiY2NlZDEyZDFhYTE3YjY2ODFjMzg4YWMyNzVhMDNkZTc2YTVlNDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2YWI1MWI5YTU2NGRmOTk3ZjlmYzhhODkzYWNhZjg2MTRjMWFhNGNlZDgyODhiZmYxZjc3NDE0MWY2MDMyNDkifQ"
+          "resource": "repo://backend/app/agent/build.py#L39-L49",
+          "version": "repo-lines-v1:sha256:35539f657ee730ffc4686f44c42258a7e1c7072ec88d04d30c66eca3f9294820:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyZDgxNDdjYjUxOTg4ZGQxNDg0ZjU2MTc1YjE5NDI2NzI1MTc5MWJhMjA0ZTdhYTVmZmIzMzYwOTJjMDk3ZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NDE2ZTA5Zjc4YmEzMTZjMDMyNTY4MjEzYjg1NWVlNzU2ZTQxNTY1ZDkxOGYwOTUxOWM4MWZkNjIwZjQwNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjNzM3NmI2YjU4ODViYWE3ODQ1ZTM3YmQ4MWJhMDg4MzE2MzE3NzYzN2NjNTU2MjVhMjk2NDQ0Mzk0YWY1ZTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2YWI1MWI5YTU2NGRmOTk3ZjlmYzhhODkzYWNhZjg2MTRjMWFhNGNlZDgyODhiZmYxZjc3NDE0MWY2MDMyNDkifQ"
         },
         {
           "resource": "repo://backend/app/agent/skills/funder-matching/SKILL.md",
@@ -257,7 +257,7 @@
       "statement": "match-v2 (2026-10-11) changed only the theme criterion and the rubric version: theme now compares the taxonomy tree rather than Darpan sector tags, Others never counts as a shared area, and older saved runs keep their stored rubric_version.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L106-L106",
+          "resource": "repo://docs/CHANGELOG.md#L109-L109",
           "version": "repo-lines-v1:sha256:b019a839953c26531b6559ad273557ce1e2a73ffa2599b867db1649dc58cffa6:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWY0NDIxYTY4NjcwNDI5MmM4NjJkYWQxMDQwYTczNTI2ZTVkODQyZmNiNGE3NmQ2YTdjMDE2Nzc0ODYxNmIwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWQ0MzU3MjY3YTM5NDcyNjVkN2RiODJhNWIxYjg2MmVjYzcyNmZjMjBhNGE2Mjg1ZmRiN2U3ZjczMzIxOTZkMSJ9"
         },
         {
@@ -351,10 +351,46 @@
           "version": "repo-lines-v1:sha256:2c352118923b3fc649925fef330b6279bd2c331e6cf59d935c9b37796d1ed325:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5YmMwNDAwMjQ1M2U3MjRlOGQ3ZGJiZmEzMTNjMDdhYjg0MGZiZTMxNjNlYjNhZDEwMjVkNTRhMDQ0YmRlNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyNzU2YjkxNGQ0MTQ2ZTEzYTg2MmZmMjJlMGZiYzNiMTk4M2RmZjMwOTAyYWMwNjQ0NTAzMmQ2Y2I0ZDlhNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkZmJhMWFhNmJjMDdjYzE2YzE5MTI1OWVhZjhjNTdhZmMzZjc2ODNjOGVjNzEzZmEwMTRiNWIyZDFjZTRlYzEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_5dacb8712d7343bead1193619e4aeec7",
+      "statement": "build_agent adds a CompareFitBudget middleware to the Ask stack that refuses, in code, a compare_fit call repeating the same org_id and sorted funder_ids earlier in the current turn, or any call beyond MAX_COMPARE_FIT_CALLS (3) per question, returning an error ToolMessage without running the tool; different funder_ids are a distinct call and a new human message resets the count.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/build.py#L75-L85",
+          "version": "repo-lines-v1:sha256:b4c66652f408e804cbab243264b795ac92958648630a51dbaf09c8ada9989f6a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5YTI3N2U1MGQ0NTJlMDIwYTgzOWU3YjgwY2ZkN2IzNGIwOGM0ODQ5ZmVlNTBlNmJlMjNkZWEzNjg2N2Q5Y2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZDI0NDU4MmI2ZmIwM2QyM2I4NDE1YWJlY2QzNDZiMGM5ZjQ2NmI2Zjc1MmIwNjgxODljZTdlOWEyZGMzNTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViMjRkYzUzNmNmZmFlOTE1NmVmZjM0NjFhMzRkMWI5OWQ2OTg1ZGQwMDI4ZTM2NWIzMWI3NGRhOWNiNmFmNDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjNTlhNWFiYjQxMGVlNTlhNTU5Zjc5NWRmMTU4OGFhYzYwNGFmNmYwMWRlOTY5MzBjZWRkZWJmYjQ3Zjc2ZGMifQ"
+        },
+        {
+          "resource": "repo://backend/app/agent/middleware.py#L111-L157",
+          "version": "repo-lines-v1:sha256:3447152201e8dd4d0b8346bb30ee455019d378910fdd833bfdff1a4b96fa72f0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwNWJiOTQ3NTQ2MjcwM2IwMmNkNzg2MDEzMmIzYTY1Y2YzNzc1NjkwMmIxNmQ3OWQyM2M0Y2Y3ZjMwMTY2MDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwMGM0NTU2YWNjMjNjZmRjZmQ2OWVlZDFjZmU2Y2YxMTJkOGQ5MGU3NmVkNGExMmU4YjIxYTc1Y2FmZTI4NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlkYmQ5YjZiZDM3ZTZkODJmMDU5NGNiNjQ5YWMyNDAyZmZjMjI4ODcyZWM3MDc4ZmZmOTNjYTY0MWFlN2MxY2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNhOTIxMGRhZjFiODQwOTFkNjkxZWRiNzI1MjM5NzBhMWNhYTIxYWUzNmY5ODk5M2U3MGY3NzY0MTQzN2RjYjgifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_ask_budgets.py#L15-L36",
+          "version": "repo-lines-v1:sha256:225a7ece5f1a319eb57c345b776b7b8a3d3babf7691e0d371a223494ab6b9920:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmMDM5ZGJkMDU5ZDU1NDYwZDk4MzhjN2NhNzI2ZTVjNTNiMjYyNWI2M2Y1NzY5ZDMyYzg4NDQwODg1YmNkZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyOTg4ZTRkNzU1NjFhZjkyNjg0OTJlZjQ5ODQ0ZTU2ZTg1NmEzNmU4ZTM4ZDAwZDRlNzIxNTRkZmExNGI4OTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5MTU5NzA2YTQxMmM2M2FiYWUyYWJlNDczMGFmYjAxYTkxODE4YzU0ODNjNmE2ODI5ZDA0MjgzZDg0NGRhY2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlY2FiMWE0NjZkNjU1Y2ViNDU2Mjk3NTI2ZjQ3MjY5ZDZlZjZiZTRlYjQzMGU1NzM5Nzc5ZGJjMjhlYzJlMmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dfa21a11400c47499a927a6ef6b74255",
+      "statement": "The COMING_SOON set in the Ask frontend is currently empty, so the Funder Match card's Start a proposal action and the proposal-status filter are live rather than disabled with a Coming soon tag.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/lib/comingSoon.ts",
+          "version": "repo-file-v1:sha256:af83f2ef37547a045c630c8fbb05c754064eb5a7ab1ad880f9d394a9954fcfec"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/FunderMatchView.tsx#L186-L201",
+          "version": "repo-lines-v1:sha256:f69cf2c47abc91f18fbab3a096e7133575f900e3b33e6413efa0ced737f7be00:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzYmYxODIxZDQ5NzY1OTFjOGRmMmY4MjFlNjk5ODYwNmQxOWY5N2VlOWFjYzY1NDYyN2M4Yjc4MjRjY2NhZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYjQ1MTQ3ZTk5YzllNjUyYmU4Zjc5YmMzZjc0NWZiODMwODMzOGEwNDE1YTNhMjk1Nzk4YjU5NDMwNjM5MmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5Y2YwODc0NTYyNGM0MmI4MzQ5YTBiN2M5MTBkOTI0YzE5MDEyNmFhMGIwNGJhZjcwNTA5YWFmZTFiMWUwNDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkNjE1NjA4NmEyNzlkOTExMzIyMmU3OWRiZjg4Njk3YmFmYTVmMGMwNjA3MjkwMjg3ZGY4MGY2ZTVmMjlkMGIifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/funder-match/MatchCard.tsx#L140-L142",
+          "version": "repo-lines-v1:sha256:4c64293de4b943497ebc41247743b7e203af0710b3f19474c1959f405a68bd6a:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzJjNDE3NWZlNTE3NTBmYTc2MTcxNzc3NjRkMDNjNzZjZWUzMDY0MTI3ZTNhYWYxNzk4NDI1OTYxOTI5NThmMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2NmZjAzNzIzZTA3YmYyYWU2N2UwMGJkMDNjZGQ5M2QxY2JhMjA1MDhmYTNiNTJhMDU5ZmQwMzdhOGNlZDVkMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTZlN2JjZjFhYmE3OTQyOTRkMDdiNDVlMzVkOGQ2ODk4NTY2N2FjMmY4NDEzMmY2MTViYjkzYjJiZjc2ODc2ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjdkYzMwODdiNWVjZmVjYmI4ODAzMjZiNTc0NGU2MWE4Mjc0ODg5NjM5ZGNiYjE5NWViOWNmOTdhMzJiNzBjMSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-19T08:30:22.232Z"
+    "at": "2026-10-19T10:32:36.779Z"
   }
 }

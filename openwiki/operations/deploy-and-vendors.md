@@ -28,8 +28,12 @@ sources:
     resource: repo://backend/app/core/security.py
   - id: openwiki-source-51ead927cc43f35e220ea627
     resource: repo://backend/app/db/checkpointer.py
+  - id: openwiki-source-170bddac5f057a262a61a895
+    resource: repo://backend/app/ingest/access.py
   - id: openwiki-source-8c4d96626089e75f0817872b
     resource: repo://backend/app/ingest/adapters/tavily_news.py
+  - id: openwiki-source-d6ae1b935f35d5f42105acc8
+    resource: repo://backend/app/ingest/calls/pull.py
   - id: openwiki-source-51e6adf4243b3601b40e5803
     resource: repo://backend/app/ingest/tools/research_tools.py
   - id: openwiki-source-465a2de3f088ab05c5629202
@@ -58,10 +62,10 @@ sources:
     resource: repo://frontend/vercel.json
   - id: openwiki-source-23775c3de52f3ab95a13cb8b
     resource: repo://README.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:37:55.275Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:37:55.275Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # Deploy and Vendors
@@ -192,13 +196,21 @@ Behaviour worth knowing:
 
 ## Outbound fetch guard (egress)
 
-Research tools and Ask's `fetch_url` use `guarded_client()` from `backend/app/core/egress.py`, an `httpx` client whose request hook runs on **every hop including redirects**. It refuses non-http(s) URLs, `localhost`, single-label hosts, and any literal or resolved address that is not globally routable. It handles inet_aton forms (`2130706433`, `0x7f.1`), IPv4-mapped, 6to4, Teredo and NAT64 addresses, and resolves DNS before deciding. A check that cannot decide refuses. This matters on Vercel because the function can otherwise be steered at internal endpoints. Refusals are final answers to the agent (`REFUSED: ...`), not obstacles to retry around.
+`backend/app/core/egress.py` holds the address check, `private_address_refusal`, and `guarded_client()`, an `httpx` client whose request hook runs that check on **every hop including redirects**. It refuses non-http(s) URLs, `localhost`, single-label hosts, and any literal or resolved address that is not globally routable. It handles inet_aton forms (`2130706433`, `0x7f.1`), IPv4-mapped, 6to4, Teredo and NAT64 addresses, and resolves DNS before deciding. A check that cannot decide refuses. This matters on Vercel because the function can otherwise be steered at internal endpoints.
+
+Where it is applied:
+
+- `guarded_client` is used directly by the `download_file` tool (`agent/tools/files.py`), the robots.txt fetch in `ingest/access.py`, and the grant-calls pull (`ingest/calls/pull.py`). A hop it refuses raises `EgressRefused`, whose `REFUSED: ...` reply is returned to the caller.
+- Import's `read_page` and `search_public_sources` do not use `guarded_client`. They call `check_url` (`ingest/access.py`), which runs `private_address_refusal` and then the source registry and robots.txt rules. `read_page`'s own client re-runs `check_url` on every redirect hop. Search results are labelled `READABLE` or `HELD` by the same check.
+- Ask Sangam has no web tool, so it has no outbound fetch path. `backend/app/agent/tools/web.py` is only a thin Tavily search factory (`make_web_search`) used by Import; it does no URL guarding itself.
+
+Refusals are final answers to the agent (`REFUSED: ...`), not obstacles to retry around.
 
 ## Tavily
 
 `TAVILY_API_KEY` is optional and used in two places:
 
-- Import's `search_public_sources` (via `langchain_tavily`). With no key it returns `SEARCH UNAVAILABLE` and tells the agent to ask the user for a URL. A failed search returns a text error rather than ending the run, and each result is labelled `READABLE` or `HELD` by the same egress/source-access check.
+- Import's `search_public_sources` (via `langchain_tavily`). With no key it returns `SEARCH UNAVAILABLE` and tells the agent to ask the user for a URL. A failed search returns a text error rather than ending the run, and each result is labelled `READABLE` or `HELD` by `check_url`, the same source-access check (see above). The Tavily client itself comes from `make_web_search` in `agent/tools/web.py`.
 - The Media & Signals collector (`adapters/tavily_news.py`) posts to `https://api.tavily.com/search` with `topic: news`, `search_depth: advanced`, up to 20 results, retrying three times 3 s apart. Total failure raises `SearchFailed` so the subject's watermark does not advance; Facebook URLs are dropped. Cost is budgeted per search (`news_search_cost_usd`). See [Media and Signals](../architecture/media-and-signals.md).
 
 ## Langfuse

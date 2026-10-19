@@ -38,6 +38,8 @@ sources:
     resource: repo://backend/app/db/pool.py
   - id: openwiki-source-62958d5b14b0717233a7ec0b
     resource: repo://backend/app/ingest/agent.py
+  - id: openwiki-source-7d480e75db10aae51a0f227b
+    resource: repo://backend/app/ingest/middleware.py
   - id: openwiki-source-77f44179d2b1ede3192f7afe
     resource: repo://backend/app/integrations/tracing.py
   - id: openwiki-source-0c2810df96342c5efec98a57
@@ -46,10 +48,14 @@ sources:
     resource: repo://backend/app/repositories/threads.py
   - id: openwiki-source-f298183777e9f6b64bb1b60f
     resource: repo://backend/tests/test_agent_middleware.py
+  - id: openwiki-source-32973df7d69d78ccef1499ff
+    resource: repo://backend/tests/test_ask_budgets.py
   - id: openwiki-source-40274805d4a1f0905120868d
     resource: repo://backend/tests/test_audit.py
   - id: openwiki-source-fe6e4c3f43ca6fccc586454c
     resource: repo://backend/tests/test_prompt.py
+  - id: openwiki-source-15fedc74dfcdfee2ad718523
+    resource: repo://backend/tests/test_tool_errors.py
   - id: openwiki-source-88fdf568b0f25b1d21f041da
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-e89833baa00bd0952b217a13
@@ -70,10 +76,10 @@ sources:
     resource: repo://frontend/lib/AgentProviders.tsx
   - id: openwiki-source-bd8e22234eeb56b120efd22c
     resource: repo://frontend/lib/useAgentChat.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T08:30:22.232Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T08:30:22.232Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # One Ask Turn, End to End
@@ -99,7 +105,7 @@ sequenceDiagram
     A->>G: clone agent, stream AG-UI events
     G->>D: load checkpoint for thread
     loop until the model answers or the budget ends
-        G->>G: before each model call, retry limiter and old-result clearing
+        G->>G: before each model call, retry limiter, call cap and old-result clearing
         G->>S: db_list_tables, db_describe_table, db_profile_column
         G->>S: db_query
         S->>S: validate, then regenerate the SQL
@@ -140,7 +146,7 @@ At boot the lifespan opens the shared psycopg pool, runs `_verify_sql_catalog` (
 
 ## 4. The agent loop
 
-`build_agent()` in `backend/app/agent/build.py` creates a deep agent with seven tools (`db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query`, `search_graph`, `fetch_url`, `compare_fit`) and the read-only `read_file` and `ls` skill readers. Its system prompt is `instructions.md`. Its checkpointer is the shared Postgres saver, and its graph config binds `recursion_limit` (default 200 graph steps, because each middleware hook is a node) and the Langfuse handler. Details of the tool list are in [Ask Sangam](../architecture/ask-sangam.md).
+`build_agent()` in `backend/app/agent/build.py` creates a deep agent with six tools (`db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query`, `search_graph`, `compare_fit`) and the read-only `read_file` and `ls` skill readers. `fetch_url` was removed from Ask, so Ask fetches no model-supplied URL. Its system prompt is `instructions.md`. Its checkpointer is the shared Postgres saver, and its graph config binds `recursion_limit` (default 200 graph steps, because each middleware hook is a node) and the Langfuse handler. Details of the tool list are in [Ask Sangam](../architecture/ask-sangam.md).
 
 `SessionScopedAGUIAgent.prepare_stream` (`backend/app/integrations/tracing.py`) adds Langfuse metadata to the run config (`langfuse_session_id` is the thread id, plus the user id and AG-UI run id). It also drops duplicate tool results when the browser re-sends them under its own ids.
 
@@ -148,16 +154,21 @@ The checkpointer (`AsyncPostgresSaver` on the same pool as REST and the tools) w
 
 The prompt drives a fixed rhythm: discover with `db_list_tables`, read columns with `db_describe_table`, check stored spellings with `db_profile_column` before filtering on text, then write one `db_query`. Zero rows are reported as an answer, not retried with looser filters. Funder fit goes through `compare_fit` instead of SQL.
 
-Middleware wired in `build.py`, in order:
+Middleware list that `build.py` passes to `create_deep_agent`, in order:
 
-1. a `FilesystemMiddleware` restricted to `read_file` and `ls` (skills only);
-2. `sql_retry_limiter`, a `before_model` hook that can jump to the end of the graph;
-3. `clear_old_tool_results`, a `ContextEditingMiddleware` holding one `SteppedClearToolUsesEdit`. It does nothing until the context passes 60,000 tokens (`TOOL_RESULT_CLEAR_TRIGGER_TOKENS`). Past that it clears the oldest tool results in whole 20,000-token steps (`TOOL_RESULTS_CLEAR_STEP`), always keeping the 5 most recent results (`TOOL_RESULTS_KEPT`) so follow-ups can refer back, and never clears `compare_fit` output (`NEVER_CLEARED`). The edit runs on a copy before each model call. What the model is sent therefore stays under the trigger however long the turn runs, and the cleared set, and so the cached prompt prefix, moves once per step instead of on every call. The earlier setting (trigger 40,000, no step) cleared a different result on every call past the trigger and broke the prompt cache each time. Sangam Pitch and Sangam Import call the same `clear_old_tool_results()`;
-4. `answer_audit`, appended only when `sql_audit_model` is non-empty.
+1. a filesystem middleware restricted to `read_file` and `ls` (skills only);
+2. `tool_errors()`, a `ToolErrorMiddleware` backstop: a tool that raises past its own `try/except` answers the model with `<tool> failed: <ExceptionType>. Try another way...` (the type only, because a raw message can carry SQL, paths or keys) instead of ending the run;
+3. `sql_retry_limiter`, a `before_model` hook that can jump to the end of the graph;
+4. `model_call_cap(settings.ask_model_call_limit)`, a second `before_model` hook that can jump to the end: after 25 model calls (default) for one question it appends a fixed "ask a narrower question" message. It ends a runaway turn long before `recursion_limit` does;
+5. `CompareFitBudget`, a tool-call wrapper that refuses, in code, a `compare_fit` with the same arguments as an earlier call this turn and any call past the third (`MAX_COMPARE_FIT_CALLS`). A call that adds `funder_ids` counts as different arguments. The refusal is an error `ToolMessage` telling the model to answer from the results it has;
+6. `clear_old_tool_results`, a `ContextEditingMiddleware` holding one `SteppedClearToolUsesEdit`. It does nothing until the context passes 60,000 tokens (`TOOL_RESULT_CLEAR_TRIGGER_TOKENS`). Past that it clears the oldest tool results in whole 20,000-token steps (`TOOL_RESULTS_CLEAR_STEP`), always keeping the 5 most recent results (`TOOL_RESULTS_KEPT`) so follow-ups can refer back, and never clears `compare_fit` output (`NEVER_CLEARED`). The edit runs on a copy before each model call. What the model is sent therefore stays under the trigger however long the turn runs, and the cleared set, and so the cached prompt prefix, moves once per step instead of on every call. The earlier setting (trigger 40,000, no step) cleared a different result on every call past the trigger and broke the prompt cache each time. Sangam Pitch and Sangam Import call the same `clear_old_tool_results()`;
+7. `fallback(settings.model, settings.research_model)`, a `ModelFallbackMiddleware` that tries `RESEARCH_MODEL` when a model call fails. It is omitted when both tiers are the same model;
+8. `cheap_summarizer`, which replaces the agent's own summarizer with one that has the same thresholds but writes the summary on `UTILITY_MODEL`;
+9. `answer_audit`, appended only when `sql_audit_model` is non-empty.
 
-`sql_retry_limiter` sits before the hooks that do work because it can jump to the end of the graph. The filesystem middleware only adds tools, so its place is free. `tests/test_agent_middleware.py` pins the clearing behaviour: nothing is cleared below the trigger, the sent size stays under the trigger for turns of 13 to 60 calls, the cache-break count is bounded by the number of 20k steps, the 40,000/no-step setting breaks the cache on most calls, and `compare_fit` survives while the latest five results stay.
+The two hooks that can jump to the end of the graph (`sql_retry_limiter` and the call cap) come before the hooks that do work. The filesystem middleware only adds tools, so its place is free. `tests/test_ask_budgets.py` pins the call cap, the `compare_fit` repeat and fourth-call refusals, the fallback and cheap summarizer in Ask's stack, and that the cap's "end" edge reaches `__end__` or an `after_agent` hook such as the audit. `tests/test_tool_errors.py` pins that Ask's stack holds exactly one `ToolErrorMiddleware`, and that a raising tool yields the exception type and never its message. `tests/test_agent_middleware.py` pins the clearing behaviour: nothing is cleared below the trigger, the sent size stays under the trigger for turns of 13 to 60 calls, the cache-break count is bounded by the number of 20k steps, the 40,000/no-step setting breaks the cache on most calls, and `compare_fit` survives while the latest five results stay.
 
-`compare_fit(org_id)` is shaped to fit that budget: it replies in text, with the strongest strong or medium fits in full detail and every other funder on one line, so the reply stays under deepagents' 20,000-token tool-result eviction (see [Funder Match](../architecture/funder-match.md)). The design draft `docs/features/2026-10-16-ask-efficiency.md` also lists later milestones (an automatic citation id column, a table map in the prompt, removing `fetch_url` from Ask, counting `db_profile_column` errors in the limiter). The code does not contain these yet, so this page describes the current behaviour: `fetch_url` is still one of the seven tools and only `db_query` failures are counted.
+`compare_fit(org_id)` is shaped to fit that budget: it replies in text, with up to 10 strong or medium fits in full detail (`FULL_DETAIL_MAX`) and every other funder on one line, so the reply stays under deepagents' 20,000-token tool-result eviction (see [Funder Match](../architecture/funder-match.md)). `compare_fit(org_id, funder_ids)` returns any of the one-line funders in full. The design draft `docs/features/2026-10-16-ask-efficiency.md` also lists milestone 3 items (an automatic citation id column, a table map in the prompt, caveats once per turn). The code does not contain these yet: a row is still cited only if the model projects the id column.
 
 ## 5. The SQL layers
 
@@ -176,19 +187,22 @@ The model sees a result shaped like this: a header (`N row(s). tables: ...`), op
 
 Rows come out prefixed with markers such as `[org:12]` or `[funder:3]`. A marker exists only if the model projected the table's id column, and `CITE_COLUMNS` covers primary keys and the foreign keys that point at them. The prompt requires every database fact to repeat its marker. Aggregates carry no marker, and a figure computed from cited rows is labelled as computed.
 
-In the browser, `useAgentChat` rebuilds `Turn` objects from the message stream. Each turn holds the question, trace steps (a tool call joined to its tool result by `toolCallId`, running until a result arrives) and the answer. The answer is every assistant message in the turn that has text and is not attributed to a subagent. `AnswerCard` runs `linkifyCitations`, which rewrites `[kind:id]` into `sangam://kind/id` links (skipping code spans), and renders each as a `CitationChip`. `CitationChip` resolves each target with `citationTarget` against an optional `RegistryIndex`. `org`, `funder` and `score` chips link to the Registry (an org or funder falls back to its raw id when the index lacks it), an `activity` chip links only when the index holds that partner line, and `grant` (retired), `news` and `graph` chips render unlinked. A `words` prop lets screens without codes, such as Sangam Pitch, show a name instead of the marker. The evidence rail's `sourcesFor` (`features/ask/lib/sources.ts`) parses the `sources:` block and the `executed:` line from `db_query` results, which is a backend contract pinned by `tests/test_sql_render.py`. It also adds `fetch_url` arguments and the entities named by markers.
+In the browser, `useAgentChat` rebuilds `Turn` objects from the message stream. Each turn holds the question, trace steps (a tool call joined to its tool result by `toolCallId`, running until a result arrives) and the answer. The answer is every assistant message in the turn that has text and is not attributed to a subagent. `AnswerCard` runs `linkifyCitations`, which rewrites `[kind:id]` into `sangam://kind/id` links (skipping code spans), and renders each as a `CitationChip`. `CitationChip` resolves each target with `citationTarget` against an optional `RegistryIndex`. `org`, `funder` and `score` chips link to the Registry (an org or funder falls back to its raw id when the index lacks it), an `activity` chip links only when the index holds that partner line, and `grant` (retired), `news` and `graph` chips render unlinked. A `words` prop lets screens without codes, such as Sangam Pitch, show a name instead of the marker. The evidence rail's `sourcesFor` (`features/ask/lib/sources.ts`) parses the `sources:` block and the `executed:` line from `db_query` results, which is a backend contract pinned by `tests/test_sql_render.py`. It also adds the entities named by markers, and it still has a `fetch_url` branch (a web source from the step's own argument) even though Ask no longer registers that tool.
 
 ## 6. Failure paths
 
 | Situation | What happens |
 |---|---|
 | **Validator rejection** (multi-statement, write, unknown table or column, disallowed function, and so on) | Nothing reaches Postgres. `db_query` returns `db_query rejected: <message>`, written for the model with hints (did-you-mean, columns of the table, next step). The model is expected to fix the SQL and call again. |
-| **Database error** | `explain_db_error` returns `db_query failed: Postgres <sqlstate> ...` with the executed SQL, a caret on syntax errors and a SQLSTATE-specific next step. A connection-level failure (no SQLSTATE) gets a deliberately generic message, because the driver text can contain the DSN, and tells the model not to retry. |
+| **Database error** | `explain_db_error` returns a multi-line `db_query failed: Postgres <sqlstate>.` message: the server's primary message, an optional `HINT:` line, an `executed: <sql>` line, the columns of the tables involved when that helps (unknown column, grouping or type errors) and a final SQLSTATE-specific `Next:` step, with a caret window on syntax errors. The whole message is cut at 1,500 characters. A connection-level failure (no SQLSTATE) gets the deliberately generic `db_query failed: the database is unreachable right now...` message, because the driver text can contain the DSN, and tells the model not to retry. A validator crash that is not a rejection returns `db_query rejected: the query could not be checked (...)`. |
 | **5 s timeout** | `statement_timeout` cancels the query (SQLSTATE `57014`). The reply says the query exceeded its time limit and suggests narrowing the WHERE clause, a smaller LIMIT or aggregating. It counts as a failed attempt. |
 | **50-row cap** | `sql_max_rows` defaults to 50 and the validator clamps it to a hard maximum of 200. A missing LIMIT is injected, an oversized one is clamped (both reported under `adjusted:`) and a smaller one is kept. The validator asks Postgres for one extra row to detect truncation. When truncated, the result says "Rows shown: N of N+ ... NOT a complete picture" and tells the model not to present the figures as totals. This is not a failure and does not count against the budget. |
-| **Five failed `db_query` calls** | `sql_retry_limiter` counts tool results starting with `db_query rejected:` or `db_query failed:` since the user's latest message. At 5 it appends a fixed AI message asking the user to rephrase or name a table, and jumps to the end of the graph. The prompt tells the model the same number first, so the limiter is the deterministic backstop. The counter is the constant `MAX_SQL_ATTEMPTS` in `middleware.py`, which `test_prompt.py` pins against the prompt. The `sql_max_attempts` setting in `config.py` is not read by this code. Only `db_query` is counted, so exploring with the discovery tools is free. |
+| **Five failed SQL calls** | `sql_retry_limiter` counts tool results since the user's latest message that start with `db_query rejected:`, `db_query failed:`, `db_profile_column rejected:` or `db_profile_column failed:` (the `COUNTED` map in `middleware.py`; a wrong column in a profile call is the same failed attempt). At 5 it appends a fixed AI message asking the user to rephrase or name a table, and jumps to the end of the graph. The prompt tells the model the same number first, so the limiter is the deterministic backstop. The counter is the constant `MAX_SQL_ATTEMPTS`, which `test_prompt.py` pins against the prompt. The `sql_max_attempts` setting in `config.py` is not read by this code. `db_list_tables` and `db_describe_table` are not counted, so exploring with them is free. |
+| **Model-call cap** | `model_call_cap` counts AI messages since the user's latest message. At `ask_model_call_limit` (default 25, `ASK_MODEL_CALL_LIMIT`) it appends a fixed message asking for a narrower question and jumps to the end, so the `answer_audit` hook still runs on the way out. |
+| **`compare_fit` repeats** | `CompareFitBudget` returns an error `ToolMessage` ("refused a repeat" or "3 calls is the most for one question") instead of running the tool. A new question starts the count again. |
 | **Recursion limit** | The turn is bounded by `recursion_limit` (200 graph steps), applied both on the graph and on the AG-UI agent config, because a config passed at invocation beats the one bound to the graph. |
-| **Tool exceptions** | Tools catch their own errors and return strings, so the model sees the failure and adapts instead of the run aborting. |
+| **Tool exceptions** | Tools catch their own errors and return strings, so the model sees the failure and adapts instead of the run aborting. `ToolErrorMiddleware` is the backstop for one that raises anyway; it returns only the exception type. A `GraphInterrupt` (a pause for a person) still passes through. |
+| **Model failure** | When a model call fails, `ModelFallbackMiddleware` retries on `RESEARCH_MODEL`, unless it is the same model as `MODEL`. |
 | **Client disconnect** | The Langfuse handler treats `asyncio.CancelledError` as control flow, ending the observation as "cancelled: client disconnected" rather than as an error. In the browser `stop()` calls `copilotkit.stopAgent`. |
 
 ## 7. The answer audit
@@ -213,6 +227,7 @@ When `sql_audit_model` is set (default `anthropic:claude-haiku-4-5`; the value `
 
 - Changing a citation kind: update the catalog's `cites`, the prompt rules, `CITE_RE` and `citationTarget` in `frontend/features/ask/lib/citations.ts`, and the chip handling in `AnswerCard`.
 - Changing the `sources:` or `executed:` line format: `render.py`, `sources.ts` and `test_sql_render.py` form one contract.
-- Changing `REJECTED_PREFIX` or `FAILED_PREFIX` (`sql/errors.py`): this silently breaks the retry limiter, which matches on them.
-- Tests that pin this flow: `test_sql_validator.py`, `test_sql_errors.py`, `test_sql_render.py`, `test_sql_integration.py`, `test_audit.py`, `test_tracing.py` (including the recursion limit, cancellation and masking), `test_access.py` (thread ownership, 401 and 404) and `test_prompt.py`.
+- Changing `REJECTED_PREFIX`, `FAILED_PREFIX` or their `PROFILE_` twins (`sql/errors.py`): this silently breaks the retry limiter, whose `COUNTED` map matches on them.
+- Adding a tool whose failures should spend the attempt budget: add its prefixes to `COUNTED` in `middleware.py`.
+- Tests that pin this flow: `test_sql_validator.py`, `test_sql_errors.py`, `test_sql_render.py`, `test_sql_integration.py`, `test_ask_budgets.py`, `test_tool_errors.py`, `test_agent_middleware.py`, `test_audit.py`, `test_tracing.py` (including the recursion limit, cancellation and masking), `test_access.py` (thread ownership, 401 and 404) and `test_prompt.py`.
 - The SQL path executes on the application's shared pool, which connects as the owner (a superuser locally). Each `db_query` transaction therefore switches to the caller's `anon` or `authenticated` role with `set_caller` (`SET LOCAL`, so it ends with the transaction and the connection returns to the pool as the owner, safe for the checkpointer). The guards are layered: the catalog allowlist, the validator, the read-only transaction and the caller's RLS. Because of RLS, an empty result means no rows this user may read, and the tool says so. The comment in `validator.py` still describes the connecting role as a superuser until a reader role lands, and `sql_reader_role` survives in `config.py` only as a comment, so the validator's function allowlist remains the guard against owner-level functions.

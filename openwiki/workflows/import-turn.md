@@ -14,8 +14,12 @@ sources:
     resource: repo://backend/app/ingest/agent.py
   - id: openwiki-source-7808196f4aecdc53b9018ae9
     resource: repo://backend/app/ingest/brief.py
+  - id: openwiki-source-23397c01122692b0ff662a58
+    resource: repo://backend/app/ingest/caller.py
   - id: openwiki-source-979b9329025accfea8018c8b
     resource: repo://backend/app/ingest/contract.py
+  - id: openwiki-source-d96fe024756d0266f03328b8
+    resource: repo://backend/app/ingest/instructions.md
   - id: openwiki-source-7d480e75db10aae51a0f227b
     resource: repo://backend/app/ingest/middleware.py
   - id: openwiki-source-ad46879e0b8b0bcc9e65aaee
@@ -42,25 +46,33 @@ sources:
     resource: repo://backend/tests/test_storage.py
   - id: openwiki-source-88fdf568b0f25b1d21f041da
     resource: repo://docs/CHANGELOG.md
+  - id: openwiki-source-d6037beaa11ae38e613a17e5
+    resource: repo://frontend/features/ingest/components/ImportApproval.tsx
   - id: openwiki-source-bf630aa6c5a52f454e55b12d
     resource: repo://frontend/features/ingest/components/ScreenReview.tsx
   - id: openwiki-source-bd46ad9eddc92ab8d716768e
     resource: repo://frontend/features/ingest/ImportView.tsx
+  - id: openwiki-source-43adf5265fe8e731c1f8b3a1
+    resource: repo://frontend/features/ingest/lib/access.ts
+  - id: openwiki-source-90816ca6a54766af00a876ed
+    resource: repo://frontend/features/ingest/lib/composePrompt.ts
   - id: openwiki-source-816413157b8843ac76fe4f8f
     resource: repo://frontend/features/ingest/lib/saveActions.ts
   - id: openwiki-source-f664951b6aca64864b5843f3
     resource: repo://frontend/features/ingest/lib/staffActions.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+  - id: openwiki-source-9e86dbac2cec46334e85282e
+    resource: repo://frontend/features/ingest/ScoutChat.tsx
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # One Import Turn: choose_sources to Undo
 
 Sangam Import (on screen: Scout) researches one funder or NGO per subagent, stores cited findings, merges them into a per-organisation **brief**, and only later moves the brief into catalog tables. This page follows one organisation through that path in order. It marks every place where the turn is refused or pauses for a person. For the agent roster, roles and RLS, see [Sangam Import / Scout](../architecture/sangam-import-scout.md), [Auth, roles and RLS](../architecture/auth-roles-rls.md) and [Frontend](../architecture/frontend.md). For the catalog tables that `promote()` writes, see [Data and migrations](../architecture/data-and-migrations.md).
 
-The central idea is that **research and catalog are two separate steps**, and the **brief is the record that sits between them**. `save_research` writes findings (`entity_research` row plus the brief). Only `save_to_catalog` writes catalog rows, and it reads the brief, not one research run (`brief.promotable`).
+The central idea is that **research and catalog are two separate steps**, and the **brief is the record that sits between them**. `save_research` writes findings (`entity_research` row plus the brief). Only `save_to_catalog` writes catalog rows, and it reads the brief, not one research run (`brief.promotable`). The news and open-calls pulls are a separate branch of `run_import_now` that skips this path; see [Side branch: the open-calls pull](#side-branch-the-open-calls-pull-funder_calls).
 
 ## The turn at a glance
 
@@ -117,7 +129,7 @@ Before any turn, `ImportView` loads its panels with a single `GET /api/ingest/ov
   
   Each returns `REFUSED:` with no artifact, so the choice stays unanswered. Staff paths are validated and registered as `documents` rows.
 - **Reject means web only.** `run_sources.chosen()` reads the latest `choose_sources` ToolMessage. An artifact gives that `Sources`. An error status (the person rejected the card) gives `WEB_ONLY`. No answer yet gives `None`. The answer exists only in the checkpoint's messages.
-- **Enforcement is two-sided.** `ChosenSources` on the supervisor refuses every `task` call until the choice is answered, failing closed on unreadable state. It also sets the `CURRENT` context variable around each subagent. `RunSources` on each subagent then refuses any pulling tool outside the choice:
+- **Enforcement is two-sided.** `ChosenSources` on the supervisor refuses every `task` call until the choice is answered, failing closed on unreadable state. It also sets the `CURRENT` context variable around each subagent. `RunSources` is in the middleware stack of the entity-researcher, workbook-reader and vault-reader (`build_ingest_agent`); the catalog-writer has none, because it holds no pulling tool. Each refuses any pulling tool outside the choice:
   - web tools when web is off;
   - library tools when library is off;
   - `read_source_rows` and `read_workbook` unless `documents=` is a subset of the picked spreadsheets;
@@ -171,7 +183,7 @@ Right after the upsert, `save_research` calls `brief.publish()`. It does not wai
 Saving happens two ways. Both call the same function, so the same guards and the same undo apply:
 
 - **Review screen:** `POST /api/ingest/research/{slug}/save`. `ScreenReview` posts the person's `decisions`, and `GET /api/ingest/research/{slug}/review` fills the card.
-- **Chat:** the `catalog-writer` subagent calls `promote_research`. `SaveQuestions` pauses every call with the planned rows, coverage line and the funder's open questions. Only the person's `edit` can set `decisions`, and anything the model writes there is dropped. An empty slug is still approved, but its questions are held, not asked.
+- **Chat:** the `catalog-writer` subagent (tools `promote_research` and `funder_dossier`, utility model, capped at `WRITER_MODEL_CALL_LIMIT` = 12 model calls) calls `promote_research`. `SaveQuestions` in its middleware pauses every call with the planned rows, coverage line and the funder's open questions. Only the person's `edit` can set `decisions`, and anything the model writes there is dropped. An empty slug is still approved, but its questions are held, not asked.
 
 `save_to_catalog(slug, caller, decisions)` does the following:
 
@@ -236,20 +248,33 @@ Every fact ends in exactly one state. `_unsettled` guarantees this: a fact no wr
 | Pause | Where | Condition |
 |---|---|---|
 | `choose_sources` card | `INTERRUPT_ON` | Only when nothing was ticked before sending |
-| `run_import_now` approval | `INTERRUPT_ON` | Bulk adapter writes; not part of the per-organisation research path |
+| `run_import_now` approval | `INTERRUPT_ON` | Every call, whatever `sources` holds: adapter writes, the news pull and the open-calls pull (`funder_calls`, with its own card). Not part of the per-organisation research path |
 | `promote_research` approval | `SaveQuestions` on the catalog-writer | Every call, carrying open questions |
 | Review card | `/import` screen | Saving straight from the screen with `POST .../save` |
 
 On the frontend, `useRunPause` records the tool a run stopped on from the interrupt event, and `StepBar` shows Start, Working, Review and Done.
 
+## Side branch: the open-calls pull (`funder_calls`)
+
+Not every Import turn researches an organisation. `run_import_now` is the supervisor's one bulk write, and besides the adapter import it has two fixed pulls: the news pull (`tavily_news`) and the open-calls pull (`funder_calls`) that feeds [RFP Watch](../architecture/rfp-watch.md). `run_import_now` is one of the supervisor's own `TOOLS` (the `pipeline_tools` adapter group), not a tool of any subagent, so the pull runs in the supervisor's turn without a `task` call. That is why `ChosenSources`, which guards only `task`, and the subagents' `RunSources` never see it. A pull skips the whole research path above: no `choose_sources`, no researcher, no `save_research`, no brief, no `promotions` row and so no undo. The instructions tell the supervisor to call `run_import_now(goal, funders=<names, or empty for every funder>, sources="funder_calls")` straight away when staff ask for open calls, RFPs or calls for proposals, to relay the totals and every "NEEDS A LOOK" line with its reason, and never to research a call by hand when the pull is what was asked (`instructions.md`, "The adapter path").
+
+1. **Start (frontend).** The staff-only "Check open calls" task card (`ScoutChat`, shown only when `access.ts` grants `calls`) fills the composer with `leadIn("calls")`. `isPull(task)` is true for `news` and `calls`, so `ScoutChat` and `ScoutRail` do not ask for sources first: a pull reads no chosen sources.
+2. **Pause.** `INTERRUPT_ON["run_import_now"]` allows approve and reject, with no `when` condition, so every `sources` value pauses. `ImportApproval` reads the paused call's `goal`, `funders`, `years`, `sources` and `feeds` (`pausedImport`) and `Card` picks a variant from `sources`, testing `funder_calls` first, then `tavily_news`, then the generic card.
+3. **The open-calls card.** It is titled "Check open calls?" and shows the funders named (or "Every funder in Sangam") with "about 1 search and 2 small model calls per funder". That line is built in the browser by `callsLine`; there is no plan endpoint for calls, unlike the news card, which calls `/api/ingest/news-runs/plan`. The buttons are "Check the calls" (approve) and "Don't check" (reject, nothing runs). Decisions are sent as `{ decisions: [{ type: "approve" | "reject" }] }`.
+4. **Run (backend).** After approval `run_import_now` refuses non-staff (`staff_only`) and an empty goal. It tests `tavily_news` first and `funder_calls` second, before falling through to the adapter import. `_calls_pull` resolves the named funders case-insensitively by name or slug. Unknown names become report lines, and if none resolve it returns "nothing was read". Other source keys in the same call are reported as "not run, a calls pull runs alone". It then returns the report lines from `calls.pull.run`, which the supervisor relays. The pull never creates a funder.
+5. **Failure.** The tool returns a `run_import_now failed: …` string rather than raising.
+
+Rejecting any `run_import_now` card writes nothing. The per-funder pipeline, the matching of calls to NGOs, and the staging gates belong to [RFP Watch](../architecture/rfp-watch.md); the news pull and its card are covered in [Media and signals](../architecture/media-and-signals.md).
+
 ## Unfinished and caveats
 
-Per the "Not finished" table in `docs/CHANGELOG.md`:
-
-- **Researcher contract M5.** Backfilling KABIL and Axis on staging is not done. M1 to M4 (#194 to #197: contract refusal, brief as the record, promotion reads the brief, cited sources become `documents`) have shipped.
-- **Programme themes, step 5.** `write_funder_tags_from_programs` (PR #172) is unmerged.
-- **Guided import.** The "review follow-ups" list from `2026-10-09-import-guided.md` is still open.
-- **Owner pool.** Ask's SQL and Import still run on the owner pool. Each Import tool therefore checks the caller scope itself, rather than relying on RLS. The fix branch is unmerged.
+- **Owner pool.** Import tools run on the owner pool, so RLS does not apply to them. `scope()` supplies the run's caller (nobody outside a chat request), and each gated tool checks it itself: `staff_only` on staff-only tools, `can_read_org` on Doc Vault tools, `can_research_org` in `save_research`, and `_may_save` on the save path. A new Import tool that reads or writes caller-specific data must make the same check.
+- **Plan status.** `docs/CHANGELOG.md` ("Not finished") lists what the plans still owe:
+  - researcher contract M5 (backfilling KABIL and Axis on staging) is not done, while M1 to M4 (#194 to #197) have shipped;
+  - programme themes step 5, `write_funder_tags_from_programs` (PR #172), is unmerged, and no backend code defines it;
+  - the "review follow-ups" of `2026-10-09-import-guided.md` are still open;
+  - RFP Watch M1 to M4 have shipped, with only the staging exit gates left;
+  - the fix that moves Ask's SQL off the owner pool is on an unmerged branch.
 - `docs/INGEST.md` predates the brief-as-record work. Where it disagrees with `docs/ARCHITECTURE.md` section 4, section 4 is right.
 
 ## Where to change things
