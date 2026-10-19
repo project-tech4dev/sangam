@@ -961,6 +961,9 @@ CITE_COLUMNS: Mapping[tuple[str, str], str] = MappingProxyType(
     {(name, c.name): c.cites for name, t in CATALOG.items() for c in t.columns if c.cites}
 )
 
+# One line per table, sorted: what db_list_tables prints and the prompt's {{TABLE_MAP}} holds.
+TABLE_MAP: str = "\n".join(f"  {name} — {t.description}" for name, t in sorted(CATALOG.items()))
+
 DEFECTS: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {name: t.defects for name, t in CATALOG.items() if t.defects}
 )

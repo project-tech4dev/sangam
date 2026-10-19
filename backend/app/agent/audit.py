@@ -54,6 +54,14 @@ class Audit:
     caveat: str | None = None
 
 
+def executed_sql(message: ToolMessage) -> list[str]:
+    """The SQL a db_query ran: its artifact, or the `executed:` line a failure and older results carry."""
+    artifact = message.artifact if isinstance(message.artifact, dict) else {}
+    if artifact.get("sql"):
+        return [artifact["sql"]]
+    return _EXECUTED.findall(message.content) if isinstance(message.content, str) else []
+
+
 def collect_turn(messages: list[BaseMessage]) -> tuple[str, list[str], str, str]:
     """(question, SQL that ran, last result block, final answer) for this turn."""
     question, sql, result, answer = "", [], "", ""
@@ -62,7 +70,7 @@ def collect_turn(messages: list[BaseMessage]) -> tuple[str, list[str], str, str]
             question, sql, result, answer = message.text, [], "", ""
         elif isinstance(message, ToolMessage) and isinstance(message.content, str):
             if message.name == "db_query":
-                sql.extend(_EXECUTED.findall(message.content))
+                sql.extend(executed_sql(message))
                 result = message.content
         elif isinstance(message, AIMessage) and not message.tool_calls:
             # .text, not .content: Claude answers in content blocks, which a str-only check skipped.

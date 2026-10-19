@@ -11,14 +11,13 @@ from typing import Any
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
-from app.agent.audit import CAVEAT_PREFIX
+from app.agent.audit import CAVEAT_PREFIX, executed_sql
 from app.agent.build import build_agent
 from app.core.config import Settings
 from app.core.security import DEV_USER, _db_identity, chat_user_id
-from app.db.pool import agent_caller
+from app.db.pool import agent_caller, caveats_given
 from tests.evals.sql_compare import answer_contains_value, gold_satisfied
 
-EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
 CITATION = re.compile(r"\[(org|funder|activity|grant|score|news|graph):([a-zA-Z0-9]+)\]")
 
 # Bounds a runaway case so one bad item cannot burn the whole budget.
@@ -119,6 +118,7 @@ async def run_agent(question: str, settings: Settings, *, timeout: float = CASE_
     graph = build_agent(settings, InMemorySaver())
     # The staff dev user, so the agent reads what the gold SQL (run as the owner) reads.
     agent_caller.set(_db_identity(DEV_USER))
+    caveats_given.set(set())
     # compare_fit refuses anyone who may not run a match, and an unset chat user is no one.
     chat_user_id.set(DEV_USER.id)
     state = await asyncio.wait_for(
@@ -136,7 +136,7 @@ async def run_agent(question: str, settings: Settings, *, timeout: float = CASE_
     for message in state["messages"]:
         if isinstance(message, ToolMessage) and isinstance(message.content, str):
             if message.name == "db_query":
-                sqls.extend(EXECUTED.findall(message.content))
+                sqls.extend(executed_sql(message))
         elif isinstance(message, AIMessage) and not message.tool_calls:
             text = message_text(message)
             # Skip the audit's appended caveat: it is a second AIMessage, so "the last one" would score the

@@ -62,3 +62,11 @@ def test_retry_budget_in_the_prompt_matches_the_middleware():
     from app.agent.middleware import MAX_SQL_ATTEMPTS
 
     assert f"After {MAX_SQL_ATTEMPTS} failed attempts" in SYSTEM_PROMPT
+
+
+def test_the_prompt_lists_every_table():
+    from app.agent.tools.sql.catalog import CATALOG
+
+    assert "{{" not in SYSTEM_PROMPT
+    missing = [name for name, t in CATALOG.items() if f"  {name} — {t.description}" not in SYSTEM_PROMPT]
+    assert not missing, f"tables missing from the prompt's table map: {missing}"

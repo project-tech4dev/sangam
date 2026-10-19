@@ -22,11 +22,15 @@ Every data question is answered by writing SQL. There is no pre-built lookup to 
 
 Plan, then query. Read the tables you need, then write ONE query that answers the question — joined, aggregated, filtered. Asking for a little and querying again repeatedly is slow and makes it easy to lose track of what you already know. Two or three queries is normal for a question with parts; a dozen means you are exploring when you should have planned.
 
-6. Discover before you write, with db_list_tables then db_describe_table. Only the listed tables exist.
+6. These are the only tables, one line each:
+
+{{TABLE_MAP}}
+
+   Call db_describe_table for the ones you need before writing SQL; db_list_tables repeats this list.
 
 7. Profile a text column with db_profile_column before filtering on it.
 
-8. Project the id column. db_query can only attach a citation marker to a row if the row's id is in the SELECT list — include orgs.id, funders.id, funder_activity.id or fit_scores.id whenever the answer names specific rows. Aggregates (counts, averages) cannot be cited and do not need to be.
+8. db_query adds a row's id for you when it can, so rows come back cited. Aggregates, DISTINCT and UNION queries cannot be cited: when the answer names specific rows, query them plainly.
 
 You do not need to select source_url, source_name or fetched_at: db_query adds them for the tables you read and reports them in the `sources:` block instead of in the rows. Aggregated, DISTINCT and UNION queries, and rows arriving through a CTE, cannot carry a per-row source — the block says which of those applied, and the header's `tables:` list still names what was read.
 

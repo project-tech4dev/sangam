@@ -13,6 +13,7 @@ from sqlglot.optimizer.qualify import qualify
 from sqlglot.optimizer.scope import build_scope
 
 from app.agent.tools.sql.catalog import (
+    CATALOG,
     CITE_COLUMNS,
     COLUMNS,
     PROVENANCE_COLUMNS,
@@ -38,6 +39,8 @@ DIALECT = "postgres"
 # Output names the validator appends for itself. Reserved rather than merely unlikely: a
 # projection aliased into this namespace would be read back as a source, so it is rejected.
 PROVENANCE_PREFIX = "__prov__"
+CITE_PREFIX = "__cite__"
+_RESERVED_PREFIXES = (PROVENANCE_PREFIX, CITE_PREFIX)
 
 # Statements that write or change state, wherever they appear in the tree — a DELETE inside a CTE is still a
 # DELETE. Verified present in sqlglot 27.x; note COPY/TRUNCATE/GRANT are their own node types, NOT.
@@ -181,6 +184,7 @@ def validate(
     # After deduping (the reserved prefix cannot collide with a renamed column) and before the
     # limit, which does not touch the projection list.
     provenance, provenance_skipped = _plan_provenance(qualified, aggregate=aggregate)
+    _add_cite_ids(qualified, aggregate=aggregate)
     limit = _apply_limit(qualified, max_rows, rewrites)
     citations = _plan_citations(qualified)
 
@@ -536,13 +540,58 @@ def _is_aggregate(qualified: exp.Query) -> bool:
 
 
 def _reject_reserved_aliases(qualified: exp.Query) -> None:
-    """`__prov__…` is the validator's own output namespace, not the model's."""
+    """`__prov__…` and `__cite__…` are the validator's own output namespace, not the model's."""
     for projection in qualified.expressions:
-        if projection.alias_or_name.startswith(PROVENANCE_PREFIX):
+        name = projection.alias_or_name
+        prefix = next((p for p in _RESERVED_PREFIXES if name.startswith(p)), None)
+        if prefix:
             _reject(
-                f"output names starting with {PROVENANCE_PREFIX!r} are reserved for the "
-                "source columns the tool adds for you. Alias that column something else — "
-                "sources are reported without being asked for."
+                f"output names starting with {prefix!r} are reserved for the source and id "
+                "columns the tool adds for you. Alias that column something else."
+            )
+
+
+def _cite_columns_of(table: str) -> list[str]:
+    """The table's own id if it cites, else each citing foreign key, one per kind."""
+    pk = CATALOG[table].primary_key
+    if len(pk) == 1 and (table, pk[0]) in CITE_COLUMNS:
+        return [pk[0]]
+    kinds: set[str] = set()
+    columns: list[str] = []
+    for column in CATALOG[table].columns:
+        kind = CITE_COLUMNS.get((table, column.name))
+        if kind and kind not in kinds:
+            kinds.add(kind)
+            columns.append(column.name)
+    return columns
+
+
+def _add_cite_ids(qualified: exp.Query, *, aggregate: bool) -> None:
+    """Project the id of each table read whose id is not selected, so its rows cite."""
+    if not isinstance(qualified, exp.Select) or aggregate or qualified.args.get("distinct"):
+        return
+    root_scope = build_scope(qualified)
+    if root_scope is None:
+        return
+    aliases = {
+        alias: source.name.lower()
+        for alias, source in root_scope.sources.items()
+        if isinstance(source, exp.Table) and source.name.lower() in CATALOG
+    }
+
+    # A join-only alias counts too: org_tags filtered to one org cites [org:N] beside each tag.
+    cited = set()
+    for projection in qualified.expressions:
+        inner = projection.this if isinstance(projection, exp.Alias) else projection
+        if isinstance(inner, exp.Column) and (aliases.get(inner.table), inner.name) in CITE_COLUMNS:
+            cited.add(inner.table)
+
+    for alias in sorted(aliases.keys() - cited):
+        for column in _cite_columns_of(aliases[alias]):
+            qualified.select(
+                exp.alias_(exp.column(column, table=alias, quoted=True), f"{CITE_PREFIX}{alias}__{column}", quoted=True),
+                append=True,
+                copy=False,
             )
 
 

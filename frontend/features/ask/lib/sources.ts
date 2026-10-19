@@ -35,11 +35,14 @@ function text(step: TraceStep): string {
   return typeof step.result === "string" ? step.result : "";
 }
 
-/** The SQL that ran — read from the RESULT, because the validator regenerates the
- *  statement before executing it, so the model's own string is not what hit the database. */
+/** The SQL behind a query. A failure and older chats echo what ran in the result; otherwise it is the
+ *  model's own SELECT, since the run's artifact (what the validator rewrote) never reaches the browser. */
 export function executedSql(step: TraceStep): string | null {
   if (step.tool !== "db_query") return null;
-  return text(step).match(/^executed: (.+)$/m)?.[1] ?? null;
+  const ran = text(step).match(/^executed: (.+)$/m)?.[1];
+  if (ran) return ran;
+  const sql = typeof step.args === "object" && step.args ? (step.args as Record<string, unknown>).sql : null;
+  return typeof sql === "string" && sql ? sql : null;
 }
 
 /** Why a query carried no per-row source: aggregated, DISTINCT, UNION or CTE-rooted. */

@@ -301,12 +301,53 @@ class TestCitations:
             "SELECT o.id, f.id FROM orgs o "
             "JOIN funder_activity a ON a.partner_org_id = o.id JOIN funders f ON f.id = a.funder_id"
         )
-        names = [p.output_column for p in result.citations]
+        names = [p.output_column for p in result.citations if not p.output_column.startswith("__cite__")]
         assert len(names) == len(set(names)) == 2
         assert any("called 'id'" in r for r in result.rewrites)
 
     def test_aggregate_has_no_row_citations(self):
         assert validate("SELECT count(*) FROM funder_activity").citations == ()
+
+
+class TestIdsAreAddedSoRowsCite:
+    @staticmethod
+    def cites(sql: str) -> list[tuple[str, str]]:
+        return [(p.output_column, p.kind) for p in validate(sql).citations]
+
+    def test_a_locations_query_cites_the_org_it_filtered_on(self):
+        # Trace 5bfdbc85 re-ran this query only to get [org:8].
+        assert self.cites(
+            "SELECT l.name, ol.role FROM org_locations ol JOIN locations l ON l.id = ol.location_id "
+            "WHERE ol.org_id = 8"
+        ) == [("__cite__ol__org_id", "org")]
+
+    def test_a_join_only_table_cites_too(self):
+        assert self.cites(
+            "SELECT t.label FROM org_tags ot JOIN tags t ON t.id = ot.tag_id WHERE ot.org_id = 8"
+        ) == [("__cite__ot__org_id", "org")]
+
+    def test_the_table_own_id_wins_over_its_foreign_keys(self):
+        assert self.cites("SELECT fa.kind FROM funder_activity fa") == [("__cite__fa__id", "activity")]
+
+    def test_a_table_without_a_citing_id_gets_one_column_per_kind(self):
+        assert self.cites("SELECT c.role FROM contacts c") == [
+            ("__cite__c__org_id", "org"), ("__cite__c__funder_id", "funder")
+        ]
+
+    def test_nothing_is_added_when_the_id_is_selected(self):
+        assert self.cites("SELECT o.id, o.name FROM orgs o") == [("id", "org")]
+
+    @pytest.mark.parametrize("sql", [
+        "SELECT count(*) FROM orgs",
+        "SELECT DISTINCT name FROM orgs",
+        "SELECT name FROM orgs UNION SELECT name FROM funders",
+        "WITH x AS (SELECT id, name FROM orgs) SELECT x.name FROM x",
+    ])
+    def test_rows_with_no_single_id_get_none(self, sql):
+        assert self.cites(sql) == []
+
+    def test_the_id_namespace_is_reserved(self):
+        assert "reserved" in reject("SELECT o.name AS __cite__x FROM orgs o")
 
 
 class TestRealQueriesStillParse:

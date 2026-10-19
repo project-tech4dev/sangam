@@ -5,7 +5,7 @@ from __future__ import annotations
 from langchain_core.tools import tool
 
 from app.agent.tools.sql import render
-from app.agent.tools.sql.catalog import CATALOG, COLUMNS, DEFECTS, TABLE_NAMES
+from app.agent.tools.sql.catalog import CATALOG, COLUMNS, DEFECTS, TABLE_MAP, TABLE_NAMES
 from app.agent.tools.sql.errors import (
     PROFILE_FAILED_PREFIX,
     PROFILE_REJECTED_PREFIX,
@@ -15,6 +15,7 @@ from app.agent.tools.sql.errors import (
 from app.agent.tools.sql.executor import PsycopgExecutor
 from app.agent.tools.sql.validator import SqlRejected, ValidatedQuery, validate
 from app.core.config import get_settings
+from app.db.pool import caveats_given
 
 MAX_PROFILE_VALUES = 20
 
@@ -25,23 +26,26 @@ def _executor() -> PsycopgExecutor:
 
 
 def _caveats_for(tables) -> str:
-    seen: list[str] = []
-    for table in tables:
-        seen.extend(DEFECTS.get(table, ()))
-    return render.render_caveats(seen)
+    """A table's caveats in full the first time this turn, then one line pointing back."""
+    given = caveats_given.get()
+    tables = [t for t in tables if t in DEFECTS]
+    repeat = [t for t in tables if given is not None and t in given]
+    if given is not None:
+        given.update(tables)
+    full = render.render_caveats([d for t in tables if t not in repeat for d in DEFECTS[t]])
+    return "\n".join(part for part in (full, render.render_repeat_caveats(repeat)) if part)
 
 
 @tool
 async def db_list_tables() -> str:
     """List every database table the SQL tools may read, with a one-line description.
 
-    Start here for any question about the data. Then db_describe_table for the
-    tables that look relevant, db_profile_column before filtering on a text
-    column, and db_query to run the SELECT.
+    Your instructions already carry this list; call it only to see it again. Then
+    db_describe_table for the tables that look relevant, db_profile_column before
+    filtering on a text column, and db_query to run the SELECT.
     """
     try:
-        lines = [f"{len(CATALOG)} tables are readable:"]
-        lines += [f"  {name} — {table.description}" for name, table in sorted(CATALOG.items())]
+        lines = [f"{len(CATALOG)} tables are readable:", TABLE_MAP]
         lines.append(
             "\nCall db_describe_table before writing SQL against a table, and "
             "db_profile_column before filtering on a text column."
@@ -149,15 +153,15 @@ async def db_profile_column(table: str, column: str) -> str:
         return f"{PROFILE_FAILED_PREFIX} {exc}"
 
 
-@tool
-async def db_query(sql: str, purpose: str) -> str:
+@tool(response_format="content_and_artifact")
+async def db_query(sql: str, purpose: str) -> tuple[str, dict | None]:
     """Run ONE read-only SELECT and return the rows.
 
     Args:
         sql: a single PostgreSQL SELECT (WITH, UNION, INTERSECT and EXCEPT are
-            allowed). No semicolons, no writes. Only the tables from
-            db_list_tables exist. Project the entity's id column (e.g. orgs.id)
-            so the rows can be cited.
+            allowed). No semicolons, no writes. Only the tables in your
+            instructions exist. Each table's id is added for you when you do not
+            select it, so plain rows come back cited.
         purpose: one short sentence on what you are trying to learn. Recorded on
             the trace; it does not change the query.
 
@@ -170,14 +174,14 @@ async def db_query(sql: str, purpose: str) -> str:
     try:
         query = validate(sql, max_rows=get_settings().sql_max_rows)
     except SqlRejected as exc:
-        return f"{REJECTED_PREFIX} {exc}"
+        return f"{REJECTED_PREFIX} {exc}", None
     except Exception as exc:  # noqa: BLE001 - error-as-string tool discipline
-        return f"{REJECTED_PREFIX} the query could not be checked ({exc})."
+        return f"{REJECTED_PREFIX} the query could not be checked ({exc}).", None
 
     try:
         rows = await _executor().run(query)
     except Exception as exc:  # noqa: BLE001 - error-as-string tool discipline
-        return explain_db_error(exc, executed_sql=query.sql, tables=query.tables)
+        return explain_db_error(exc, executed_sql=query.sql, tables=query.tables), {"sql": query.sql}
 
     truncated = len(rows) > query.limit
     shown = rows[: query.limit]
@@ -201,7 +205,5 @@ async def db_query(sql: str, purpose: str) -> str:
         shown, provenance=query.provenance, skipped=query.provenance_skipped
     )
     # Above the `columns:` line on purpose: tracing._redact_rows cuts everything below it, and
-    # a source is debugging material like the SQL, not a warehouse row.
-    return "\n".join(
-        [*header, f"executed: {query.sql}", *([sources] if sources else []), body]
-    )
+    # a source is debugging material, not a warehouse row. The SQL that ran is the artifact, not text.
+    return "\n".join([*header, *([sources] if sources else []), body]), {"sql": query.sql}
