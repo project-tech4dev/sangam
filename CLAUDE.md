@@ -376,7 +376,8 @@ product depends on and that a new tool silently breaks:
 
 - *Errors are return values.* A raised exception aborts the entire agent run; a returned
   error string lets the model see the failure and adapt. Every tool body in `app/agent/tools/` is
-  wrapped in `try/except` returning `f"<tool> failed: {exc}"`.
+  wrapped in `try/except` returning `f"<tool> failed: {exc}"`. `tool_errors()` (`ToolErrorMiddleware`, on every agent and
+  subagent) is the backstop for one that forgets: it returns the exception's type, never its message.
 - *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
   `[activity:N]`, `[score:N]`, `[news:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces

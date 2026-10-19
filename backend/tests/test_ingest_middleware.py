@@ -162,8 +162,9 @@ class TestTheRubricGradesTheResearcher:
         graphs = next(c.cell_contents for c in (task.func or task.coroutine).__closure__
                       if isinstance(c.cell_contents, dict) and "entity-researcher" in c.cell_contents)
         edges = {(e.source, e.target) for e in graphs["entity-researcher"].get_graph().edges}
-        # With no call limit set, nothing sits before the model.
-        assert ("ResearchRubric.after_agent", "model") in edges
+        # A jump to "model" lands on the first before_model hook (deepagents 0.7.2x: skill reload), else the model.
+        targets = {t for s, t in edges if s == "ResearchRubric.after_agent"} - {"__end__"}
+        assert targets and all(t == "model" or t.endswith(".before_model") for t in targets)
 
     def test_a_save_reaches_the_grader_as_a_digest(self):
         findings = [{"concept": "csr_year", "evidence": "x" * 5000}, {"concept": "rfp", "evidence": "y"}]
@@ -218,3 +219,12 @@ class TestSummariesAreWrittenByTheUtilityTier:
         for name in ("supervisor", "entity-researcher"):
             (summary,) = of(stacks[name], SummarizationMiddleware)
             assert summary.model.model == settings.utility_model.split(":", 1)[1], name
+
+
+class TestANoteGoesAfterTheSystemMessage:
+    def test_it_is_a_block_of_its_own(self):
+        from langchain_core.messages import SystemMessage
+
+        out = mw.append_to_system_message(SystemMessage("rules"), "note")
+        assert [b["text"] for b in out.content_blocks] == ["rules", "\n\nnote"]
+        assert mw.append_to_system_message(None, "note").content_blocks[0]["text"] == "note"

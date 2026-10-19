@@ -11,6 +11,7 @@ from langchain.agents.middleware import (
     ClearToolUsesEdit,
     ContextEditingMiddleware,
     HumanInTheLoopMiddleware,
+    ToolErrorMiddleware,
     after_agent,
     before_model,
 )
@@ -83,6 +84,18 @@ class SteppedClearToolUsesEdit(ClearToolUsesEdit):
             return
         reclaim = math.ceil(over / self.step) * self.step
         ClearToolUsesEdit.apply(replace(self, clear_at_least=reclaim), messages, count_tokens=count_tokens)
+
+
+def _tool_failed(exc: Exception, request) -> str:
+    name = request.tool_call.get("name") or "tool"
+    logger.warning("%s raised past its own try/except", name, exc_info=exc)
+    # The type only: a raw message can carry SQL, paths or keys.
+    return f"{name} failed: {type(exc).__name__}. Try another way, or tell the person what could not be done."
+
+
+def tool_errors() -> ToolErrorMiddleware:
+    """Backstop for the tools' try/except convention: a tool that raises answers the model instead of ending the run."""
+    return ToolErrorMiddleware(_tool_failed)
 
 
 def clear_old_tool_results() -> ContextEditingMiddleware:

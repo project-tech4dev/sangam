@@ -14,7 +14,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results, save_questions, staff_last_lock
+from app.agent.middleware import clear_old_tool_results, save_questions, staff_last_lock, tool_errors
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.middleware import (
@@ -297,6 +297,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict_at=RESEARCHER_EVICT_AT),
+            tool_errors(),
             # Inside the eviction, so a refused save stays short enough to read.
             SaveRefusal(),
             # Only what the person chose on the sources card; staff rows last.
@@ -316,6 +317,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": utility,
         "middleware": [
             filesystem_tools(backend),
+            tool_errors(),
             save_questions(),
             call_limit(WRITER_MODEL_CALL_LIMIT),
             *fallback(utility_spec, research_spec, settings.model),
@@ -324,13 +326,14 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     reader = {
         **WORKBOOK_READER,
         "model": utility,
-        "middleware": [filesystem_tools(backend), RunSources(), *fallback(utility_spec, research_spec, settings.model)],
+        "middleware": [filesystem_tools(backend), tool_errors(), RunSources(), *fallback(utility_spec, research_spec, settings.model)],
     }
     vault_reader = {
         **VAULT_READER,
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict=False),
+            tool_errors(),
             SaveRefusal(),
             RunSources(),
             DropFilesOnExit(),
@@ -346,6 +349,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         skills=[SKILLS_ROUTE],
         middleware=[
             filesystem_tools(backend, keep=SKILL_READING_TOOLS),
+            tool_errors(),
             clear_old_tool_results(),
             *fallback(settings.model, research_spec),
             cheap_summarizer(strong, utility, backend),
