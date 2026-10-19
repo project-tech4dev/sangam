@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import re
-from dataclasses import dataclass, field
+from collections import Counter
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from langchain_core.messages import AIMessage, ToolMessage
@@ -23,9 +24,62 @@ CITATION = re.compile(r"\[(org|funder|activity|grant|score|news|graph):([a-zA-Z0
 # Bounds a runaway case so one bad item cannot burn the whole budget.
 RECURSION_LIMIT = 60
 
+# deepagents writes an oversized tool result here; reading it back means the reply did not fit.
+LARGE_RESULTS_DIR = "/large_tool_results"
+
 # Wall-clock bound per case: a model request that never returns once blocked the
 # suite for 7 hours against 2 seconds of CPU.
 CASE_TIMEOUT_SECONDS = 180
+
+
+@dataclass
+class RunStats:
+    """What one run cost, counted from its messages; Langfuse prices the tokens."""
+
+    tool_calls: Counter = field(default_factory=Counter)
+    model_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
+    large_result_reads: int = 0
+    seconds: float = 0.0
+
+    @property
+    def total_tool_calls(self) -> int:
+        return sum(self.tool_calls.values())
+
+    def as_dict(self) -> dict[str, Any]:
+        return {**asdict(self), "tool_calls": dict(self.tool_calls), "total_tool_calls": self.total_tool_calls}
+
+
+def run_stats(messages: list[Any]) -> RunStats:
+    stats = RunStats()
+    for message in messages:
+        if not isinstance(message, AIMessage):
+            continue
+        usage = message.usage_metadata
+        if usage:
+            stats.model_calls += 1
+            stats.input_tokens += usage.get("input_tokens", 0)
+            stats.output_tokens += usage.get("output_tokens", 0)
+            details = usage.get("input_token_details") or {}
+            stats.cache_read_tokens += details.get("cache_read", 0) or 0
+            stats.cache_creation_tokens += details.get("cache_creation", 0) or 0
+        for call in message.tool_calls:
+            stats.tool_calls[call["name"]] += 1
+            path = str((call.get("args") or {}).get("file_path", ""))
+            if call["name"] == "read_file" and path.startswith(LARGE_RESULTS_DIR):
+                stats.large_result_reads += 1
+    return stats
+
+
+@dataclass
+class AgentRun:
+    answer: str
+    agent_sql: list[str]
+    citations: set[str]
+    stats: RunStats
 
 
 @dataclass
@@ -35,6 +89,9 @@ class CaseResult:
     agent_sql: list[str] = field(default_factory=list)
     citations: set[str] = field(default_factory=set)
     failures: list[str] = field(default_factory=list)
+    # Reported, never failing: a slow run is a trend to watch, not a broken answer.
+    warnings: list[str] = field(default_factory=list)
+    stats: RunStats = field(default_factory=RunStats)
 
     @property
     def passed(self) -> bool:
@@ -57,8 +114,8 @@ def message_text(message: Any) -> str:
     return ""
 
 
-async def run_agent(question: str, settings: Settings) -> tuple[str, list[str], set[str]]:
-    """(answer, SQL the agent actually ran, citation markers it emitted)."""
+async def run_agent(question: str, settings: Settings, *, timeout: float = CASE_TIMEOUT_SECONDS) -> AgentRun:
+    """The answer, the SQL the agent actually ran, the citations it emitted and what it cost."""
     graph = build_agent(settings, InMemorySaver())
     # The staff dev user, so the agent reads what the gold SQL (run as the owner) reads.
     agent_caller.set(_db_identity(DEV_USER))
@@ -70,7 +127,7 @@ async def run_agent(question: str, settings: Settings) -> tuple[str, list[str], 
                 "recursion_limit": RECURSION_LIMIT,
             },
         ),
-        timeout=CASE_TIMEOUT_SECONDS,
+        timeout=timeout,
     )
 
     answer, sqls, cites = "", [], set()
@@ -85,7 +142,7 @@ async def run_agent(question: str, settings: Settings) -> tuple[str, list[str], 
             if text.strip() and not text.startswith(CAVEAT_PREFIX):
                 answer = text
     cites = {f"{k}:{v}" for k, v in CITATION.findall(answer)}
-    return answer, sqls, cites
+    return AgentRun(answer, sqls, cites, run_stats(state["messages"]))
 
 
 def score(case: dict[str, Any], result: CaseResult, *, gold_rows, agent_rows) -> CaseResult:
@@ -139,6 +196,20 @@ def score(case: dict[str, Any], result: CaseResult, *, gold_rows, agent_rows) ->
 
     if case.get("must_decline") and not _declines(answer_lower):
         result.failures.append("answer does not decline; expected an explicit 'I don't have that'")
+
+    # Budgets that fail are the ones whose breach is a bug; token and total-call counts are only reported.
+    for tool, limit in case.get("max_calls", {}).items():
+        if result.stats.tool_calls[tool] > limit:
+            result.failures.append(f"called {tool} {result.stats.tool_calls[tool]} times; the budget is {limit}")
+
+    if (budget := case.get("max_seconds")) is not None and result.stats.seconds > budget:
+        result.warnings.append(f"took {result.stats.seconds}s; the target is {budget}s")
+
+    limit = case.get("max_large_result_reads")
+    if limit is not None and result.stats.large_result_reads > limit:
+        result.failures.append(
+            f"read {LARGE_RESULTS_DIR} {result.stats.large_result_reads} times: a tool reply did not fit"
+        )
 
     return result
 

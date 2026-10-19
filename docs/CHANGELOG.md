@@ -166,6 +166,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-09-23 · 5f51ee1, 60340f8 · Langfuse tracing (env-gated); `make smoke`.
 - 2026-09-27 · #53 · Conversation-scoped traces; each SQL statement a span under its tool call.
 - 2026-10-11 · #156 · Langfuse SDK v4: `sangam_ask` is the trace root, the `answer_audit` score, flush after each run.
+- 2026-10-16 · (unmerged) · Ask efficiency M1: evals count tool calls, model calls and tokens per case, fail on `max_calls` budgets, and run as a Langfuse dataset experiment (`ask-golden`, environment `eval`) so runs compare side by side; `make evals K=<case>`; the Better Life Foundation cost case.
 
 ## Docs
 

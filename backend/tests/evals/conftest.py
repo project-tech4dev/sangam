@@ -11,9 +11,12 @@ import pytest
 from psycopg.rows import dict_row
 
 from app.core.config import Settings
+from app.integrations.tracing import configure_langfuse
 
 CASES_DIR = pathlib.Path(__file__).parent / "cases"
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
+# Where the agent evals leave {case id: output} and the Langfuse run URL for the summary.
+SUMMARY_KEY = pytest.StashKey[tuple[dict, str | None]]()
 
 # Which env var must hold a key for a given model provider.
 PROVIDER_KEYS = {
@@ -64,7 +67,31 @@ def eval_settings() -> Settings:
     key = PROVIDER_KEYS.get(provider)
     if key and not os.environ.get(key):
         pytest.skip(f"{key} is not set, so {settings.model} cannot be called")
+    # Before any agent is built: the first Langfuse client wins, and one built later has no masking.
+    if settings.langfuse_enabled and not configure_langfuse(settings):
+        settings = settings.model_copy(update={"langfuse_public_key": "", "langfuse_secret_key": ""})
     return settings
+
+
+def pytest_terminal_summary(terminalreporter, config):
+    summary = config.stash.get(SUMMARY_KEY, None)
+    if not summary:
+        return
+    results, url = summary
+    write = terminalreporter.write_line
+    write("")
+    write(f"{'case':<34} {'pass':>4} {'tools':>5} {'model':>5} {'in tok':>8} {'cache rd':>8} {'out tok':>7} {'secs':>6}  calls")
+    for case_id, out in results.items():
+        s = out.get("stats", {})
+        calls = " ".join(f"{t}×{n}" for t, n in sorted(s.get("tool_calls", {}).items()))
+        write(
+            f"{case_id[:34]:<34} {'ok' if not out.get('failures') else 'FAIL':>4} {s.get('total_tool_calls', 0):>5} "
+            f"{s.get('model_calls', 0):>5} {s.get('input_tokens', 0):>8} {s.get('cache_read_tokens', 0):>8} "
+            f"{s.get('output_tokens', 0):>7} {s.get('seconds', 0):>6}  {calls}"
+        )
+        for warning in out.get("warnings", []):
+            write(f"{'':<34} note: {warning}")
+    write(f"Langfuse run (cost per case, compare runs): {url}" if url else "Langfuse off: no run recorded")
 
 
 @pytest.fixture(scope="session")
