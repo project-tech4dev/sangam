@@ -186,3 +186,59 @@ async def test_a_local_test_sign_in_is_refused_once_supabase_is_on(monkeypatch):
     with pytest.raises(HTTPException) as refused:
         await security.resolve_principal("Bearer dev:admin@local.test")
     assert refused.value.status_code == 401
+
+
+class TestARunWithNothingToAnswer:
+    """Trace e3c0493d: a run with no new message asked the model to continue its own reply, and got a 400."""
+
+    @staticmethod
+    def run(messages):
+        from langchain.agents import create_agent
+        from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+        from langchain_core.messages import AIMessage
+
+        from app.proposals.middleware import nothing_to_answer
+
+        model = GenericFakeChatModel(messages=iter([AIMessage("a new reply")]))
+        return create_agent(model, middleware=[nothing_to_answer]).invoke({"messages": messages})["messages"]
+
+    def test_it_ends_without_calling_the_model(self):
+        from langchain_core.messages import AIMessage, HumanMessage
+
+        history = [HumanMessage("Here's our 2024 budget."), AIMessage("Added. What is the target district?")]
+        assert [m.text for m in self.run(history)] == [m.text for m in history]
+
+    def test_a_new_message_is_answered(self):
+        from langchain_core.messages import AIMessage, HumanMessage
+
+        out = self.run([HumanMessage("hi"), AIMessage("hello"), HumanMessage("Dimapur")])
+        assert out[-1].text == "a new reply"
+
+    def test_a_pending_tool_call_is_not_an_answer(self):
+        from langchain_core.messages import AIMessage
+
+        from app.proposals.middleware import nothing_to_answer
+
+        call = AIMessage("", tool_calls=[{"name": "read_proposal", "args": {}, "id": "c1"}])
+        assert nothing_to_answer.before_model({"messages": [call]}, None) is None
+        assert nothing_to_answer.before_model({"messages": []}, None) == {"jump_to": "end"}
+
+
+def test_pitch_runs_the_guard(monkeypatch):
+    import deepagents.graph
+
+    from app.proposals.agent import build_proposal_agent
+    from app.proposals.middleware import ProposalContext, nothing_to_answer
+
+    stacks = []
+    real = deepagents.graph.create_agent
+
+    def spy(model, **kwargs):
+        stacks.append(kwargs["middleware"])
+        return real(model, **kwargs)
+
+    monkeypatch.setattr(deepagents.graph, "create_agent", spy)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    build_proposal_agent(Settings(_env_file=None), None)
+    (main,) = [s for s in stacks if any(isinstance(m, ProposalContext) for m in s)]
+    assert nothing_to_answer in main

@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from langchain.agents.middleware import AgentMiddleware, ModelRequest
+from langchain.agents.middleware import AgentMiddleware, ModelRequest, before_model
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.ingest.middleware import _AgUiState
 from app.proposals import context
@@ -46,3 +46,12 @@ class ProposalContext(AgentMiddleware):
                              isinstance(request.model, ChatAnthropic))
         return await handler(request.override(system_message=system,
                                               messages=with_screen(request.messages, context.on_screen(p, request.state))))
+
+
+@before_model(can_jump_to=["end"], name="NothingToAnswer")
+def nothing_to_answer(state: dict[str, Any], runtime: Any) -> dict[str, Any] | None:
+    """A run with no new message would ask the model to continue its own reply, which Claude refuses with a 400."""
+    messages = state["messages"]
+    if not messages or (isinstance(messages[-1], AIMessage) and not messages[-1].tool_calls):
+        return {"jump_to": "end"}
+    return None
