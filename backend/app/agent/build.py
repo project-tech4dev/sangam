@@ -14,7 +14,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry_limiter
+from app.agent.middleware import answer_audit, clear_old_tool_results, sql_retry_limiter, tool_errors
 from app.agent.models import resolve_model
 from app.agent.prompt import render_prompt
 from app.agent.tools.graph_tools import search_graph
@@ -67,6 +67,7 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     backend = _backend()
     middleware = [
         filesystem_tools(backend, keep=SKILL_READING_TOOLS),
+        tool_errors(),
         sql_retry_limiter,
         clear_old_tool_results(),
     ]

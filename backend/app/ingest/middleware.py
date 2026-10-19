@@ -9,7 +9,6 @@ from importlib.resources import files
 from typing import Any, NotRequired
 
 from deepagents.backends.protocol import BackendProtocol
-from deepagents.middleware._utils import append_to_system_message
 from deepagents.middleware.rubric import GraderResponse, RubricEvaluation, RubricMiddleware
 from deepagents.middleware.summarization import SummarizationMiddleware, compute_summarization_defaults
 from langchain.agents.middleware import (
@@ -23,7 +22,7 @@ from langchain.agents.middleware import (
 )
 from langchain.agents.middleware.types import hook_config
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, AnyMessage, ToolMessage
+from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMessage
 from pydantic import BaseModel, ValidationError
 
 from app.agent.models import resolve_model
@@ -57,6 +56,12 @@ PLAN_TOOL = ("Write or replace the run's plan: every todo, each pending, in_prog
 SUMMARY_INPUT_TOKENS = 150_000
 
 RUBRIC = (files("app.ingest") / "prompts" / "research_rubric.md").read_text(encoding="utf-8")
+
+
+def append_to_system_message(system: SystemMessage | None, text: str) -> SystemMessage:
+    """A text block after the system message's own; ours, since deepagents keeps its copy private."""
+    blocks: list[Any] = list(system.content_blocks) if system else []
+    return SystemMessage(content_blocks=[*blocks, {"type": "text", "text": f"\n\n{text}" if blocks else text}])
 
 
 def fallback(primary: str, *candidates: str) -> list[ModelFallbackMiddleware]:

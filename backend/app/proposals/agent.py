@@ -11,7 +11,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results
+from app.agent.middleware import clear_old_tool_results, tool_errors
 from app.agent.models import resolve_model
 from app.core.config import Settings
 from app.ingest.middleware import cheap_summarizer, fallback
@@ -54,6 +54,7 @@ def build_proposal_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         middleware=[
             # read_file only: the floor FilesystemMiddleware needs, over state that holds nothing of ours.
             filesystem_tools(backend),
+            tool_errors(),
             clear_old_tool_results(),
             *fallback(settings.model, settings.research_model),
             cheap_summarizer(strong, utility, backend),
