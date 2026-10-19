@@ -21,6 +21,7 @@ db/backups/
 .agents/
 .claude/skills/*
 !.claude/skills/openwiki/
+!.claude/skills/repo-maintenance/
 skills-lock.json
 
 # Vercel CLI link (contains projectId/orgId)
