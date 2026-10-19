@@ -36,12 +36,12 @@ def pytest_generate_tests(metafunc):
 
 def _best_match(db, statements, gold_rows, answer, result):
     """The agent result that satisfies the gold, or the last one for reporting."""
-    from tests.evals.sql_compare import gold_satisfied
+    from tests.evals.sql_compare import agent_values, gold_satisfied
 
     executed = []
     for sql in statements:
         try:
-            rows = [tuple(r.values()) for r in db.execute(sql).fetchall()]
+            rows = [agent_values(r) for r in db.execute(sql).fetchall()]
         except Exception as exc:  # noqa: BLE001 - a broken agent query is a finding
             result.failures.append(f"the agent's SQL does not re-run: {exc}")
             continue

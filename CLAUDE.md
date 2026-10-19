@@ -473,7 +473,7 @@ Summaries of long runs are written by `UTILITY_MODEL` at the same thresholds as 
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:
 above it the agent researches in waves until every organisation asked for is done.
 `app/ingest/instructions.md` carries a `{{MAX_PARALLEL_RESEARCH}}` placeholder —
-**the only substitution any agent prompt in this repo gets** (Media & Signals' classifier prompts, `app/ingest/news/prompts/`, take their subject and the Registry names the same way) — because a number frozen in prose made the
+one of two substitutions an agent prompt gets (the other is Ask's `{{TABLE_MAP}}`, the catalog's table list; Media & Signals' classifier prompts, `app/ingest/news/prompts/`, take their subject and the Registry names the same way) — because a number frozen in prose made the
 setting decorative. A SKILL.md is read raw from disk and never substituted, so no skill names a
 wave size. It is a plain `.replace()`, not `.format()`: the file is full of literal
 braces. The fan-out is bounded by connections, so `DB_POOL_MAX_SIZE` (default 10) moves with

@@ -6,7 +6,7 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from app.agent import audit as audit_mod
-from app.agent.audit import Audit, audit_turn, collect_turn
+from app.agent.audit import Audit, audit_turn, collect_turn, executed_sql
 
 MODEL = "anthropic:claude-haiku-4-5"
 
@@ -58,6 +58,16 @@ class TestWhatItReads:
         assert question == "And the lowest?"
         assert sql == []
         assert answer == "BDF, 41."
+
+
+class TestTheSqlThatRan:
+    def test_it_comes_from_the_artifact(self):
+        message = ToolMessage("1 row(s).", name="db_query", tool_call_id="1", artifact={"sql": "SELECT 2"})
+        assert executed_sql(message) == ["SELECT 2"]
+
+    def test_a_failure_or_an_older_result_carries_it_in_the_text(self):
+        assert executed_sql(ToolMessage("executed: SELECT 1", name="db_query", tool_call_id="1")) == ["SELECT 1"]
+        assert executed_sql(ToolMessage("db_query rejected: x", name="db_query", tool_call_id="1")) == []
 
 
 class TestWhenItRuns:

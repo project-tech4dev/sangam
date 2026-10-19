@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.agent.tools.sql.catalog import TABLE_MAP
 from app.core.config import Settings, get_settings
 
 # Beside this module, not relative to the working directory: `make dev-backend` runs from backend/ while the
@@ -18,8 +19,8 @@ if not _INSTRUCTIONS_MD.strip():
 
 
 def render_prompt(settings: Settings) -> str:
-    """The prompt as shipped: nothing in it depends on settings now that matching runs no waves."""
-    return _INSTRUCTIONS_MD
+    """The prompt with the catalog's table list in it; .replace, not .format, as the file is full of braces."""
+    return _INSTRUCTIONS_MD.replace("{{TABLE_MAP}}", TABLE_MAP)
 
 
 # For tests and tooling; build_agent renders from the Settings it was given.

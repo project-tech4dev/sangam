@@ -30,7 +30,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import get_settings
-from app.db.pool import OwnerPoolDep, agent_caller, get_pool
+from app.db.pool import OwnerPoolDep, agent_caller, caveats_given, get_pool
 from app.repositories import me as me_repo
 from app.repositories import threads
 from app.repositories import users as repo
@@ -323,6 +323,7 @@ async def ask_access(
     """chat_access, and Ask Sangam's SQL runs as this caller. Import keeps the owner: it writes the catalog."""
     await _own_thread(request, pool, principal)
     agent_caller.set(_db_identity(principal))
+    caveats_given.set(set())
 
 
 async def proposal_chat_access(

@@ -38,6 +38,8 @@ async def set_caller(conn: AsyncConnection, role: str, claims: str) -> None:
 
 # The (role, claims) an Ask Sangam run queries as, set per /agent request. Unset, its SQL runs as anon.
 agent_caller: ContextVar[tuple[str, str] | None] = ContextVar("agent_caller", default=None)
+# Tables whose caveats Ask's SQL tools have given in full this turn; a fresh set per /agent request. Unset, every result gives them.
+caveats_given: ContextVar[set[str] | None] = ContextVar("caveats_given", default=None)
 
 
 class CallerPool:

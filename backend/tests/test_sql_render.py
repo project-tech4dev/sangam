@@ -10,8 +10,10 @@ from app.agent.tools.sql.render import (
     MAX_OUTPUT_CHARS,
     MAX_SOURCES,
     NO_ROWS,
+    ONE_ROW_CELL_CHARS,
     render_caveats,
     render_cell,
+    render_repeat_caveats,
     render_rows,
     render_sources,
 )
@@ -55,7 +57,7 @@ class TestRows:
     def test_uncited_result_says_how_to_make_it_citable(self):
         out = render_rows([{"n": 4}])
         assert "no citation markers" in out.lower()
-        assert "orgs.id" in out
+        assert "query them plainly" in out
 
     def test_limit_truncation_is_stated_in_the_strongest_terms(self):
         rows = [{"id": i, "name": f"o{i}"} for i in range(50)]
@@ -155,3 +157,37 @@ class TestSources:
             provenance=(self.PROV[0],),
         )
         assert withprov == plain
+
+
+class TestOneRowReadsInFull:
+    def test_one_row_keeps_a_long_description(self):
+        out = render_rows([{"id": 8, "description": "x" * 1_500}], citations=[ORG])
+        assert "x" * 1_500 in out and "chars total" not in out
+
+    def test_one_row_is_still_capped(self):
+        out = render_rows([{"id": 8, "description": "x" * 5_000}], citations=[ORG])
+        assert f"({5_000} chars total)" in out and "x" * ONE_ROW_CELL_CHARS not in out
+
+    def test_many_rows_keep_the_short_cap(self):
+        out = render_rows([{"id": i, "description": "x" * 1_500} for i in (1, 2)], citations=[ORG])
+        assert out.count("x" * (MAX_CELL_CHARS - 1) + "…") == 2
+
+    def test_a_row_too_wide_for_twice_the_budget_falls_back(self):
+        row = {"id": 8, **{f"c{i}": "x" * 1_500 for i in range(10)}}
+        out = render_rows([row], citations=[ORG])
+        assert "x" * MAX_CELL_CHARS not in out and "[org:8]" in out
+
+
+class TestMarkers:
+    def test_the_same_marker_is_printed_once(self):
+        plans = [ORG, CitationPlan(output_column="__cite__ol__org_id", kind="org")]
+        out = render_rows([{"id": 8, "name": "BLF", "__cite__ol__org_id": 8}], citations=plans)
+        assert out.splitlines()[1] == "[org:8] BLF"
+
+
+class TestRepeatCaveats:
+    def test_the_short_form_keeps_the_access_warning(self):
+        line = render_repeat_caveats(["orgs", "funder_activity"])
+        assert line.startswith("caveats: orgs, funder_activity: as given earlier")
+        assert "not 'none exist'" in line
+        assert render_repeat_caveats([]) == ""

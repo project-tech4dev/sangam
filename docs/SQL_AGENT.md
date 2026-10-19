@@ -400,10 +400,10 @@ Next: fix the column name and call db_query again.
 failure** (otherwise the model diffs against text that never ran), and **never surface
 `psycopg.OperationalError` text**, which can contain the DSN host and user.
 
-### 5b. Tool return shape — plain strings, and why not `content_and_artifact`
+### 5b. Tool return shape — the text is for the model; only the SQL is an artifact
 
-**The plan called for LangChain's two-channel tool return. Measured in M4: it cannot
-work over this transport.** The AG-UI wire `ToolMessage`
+**The plan called for LangChain's two-channel tool return. Measured in M4: an artifact
+never reaches the browser over this transport.** The AG-UI wire `ToolMessage`
 (`ag_ui.core.types.ToolMessage`) has fields `id / role / content / tool_call_id /
 subagent_run_id / error / encrypted_value / metadata` — no `artifact` — and
 `ag_ui_langgraph/agent.py:4510` constructs it from the first four. An artifact
@@ -413,8 +413,11 @@ Dalgo can use the pattern because their transport is their own WebSocket consume
 which reads `ToolMessage.artifact` server-side before emitting its own event shape
 (`messages/artifacts.py`). Ours is AG-UI, which we do not control.
 
-So the tools return plain strings, and the string carries everything: markers,
-caveats, the executed SQL, and the rendered rows. The two budgets in `render.py`
+So the tools return the string the model reads: markers, caveats and the rendered rows.
+Since Ask efficiency M3, `db_query` does use `content_and_artifact` for one thing the model
+need not reread: the SQL that ran. The audit and the evals read it there; a failure still
+echoes it in the text, and the evidence rail, which never receives the artifact, shows the
+model's own SELECT (`executed:` in older chats). The two budgets in `render.py`
 matter more because of this — with no side channel, every byte the UI shows is a byte
 the model paid for.
 
@@ -466,18 +469,18 @@ fail-loud for deliverables** — applies: if the audit call fails, the turn cont
 through their `org_id` / `funder_id` **with no frontend change**. After `qualify`, every
 projection is a resolved `exp.Column`, so the output-column → kind map is exact.
 
-**We do not auto-inject the id column** — injecting `orgs.id` breaks any `GROUP BY`/`DISTINCT`
-query with a `42803` the model never wrote, which is exactly the non-convergent loop this
-design exists to avoid. Instead the result header says:
-`no citable id column projected — add orgs.id to the SELECT list so these rows can be cited.`
+**The id column is added for plain SELECTs only** (Ask efficiency M3). For each table alias with no
+citing column selected, `_add_cite_ids` appends its own id, or else one citing foreign key per kind,
+as `__cite__<alias>__<column>`: `org_locations` filtered to one org cites `[org:8]` without a second
+query. Grouped, `DISTINCT` and `UNION` queries are left alone: an injected id there breaks the
+`GROUP BY` with a `42803` the model never wrote.
 
 **Genuinely uncitable results — `count(*)`, anything grouped by `tags.label`, rows from
 `locations` or `rubrics` — get no marker, and the result says so in words:**
 
 ```
-No citable id column was projected, so these rows carry no citation markers. Add the
-table's id column (e.g. orgs.id) to the SELECT list if the answer needs to cite
-specific rows.
+These rows carry no citation markers: the query aggregates or combines rows, or reads
+no table with an id to cite. If the answer names specific rows, query them plainly.
 ```
 
 *The plan proposed a synthetic `[sql:<sha8>]` header marker here, mirroring `[graph:<uuid8>]`.
