@@ -18,7 +18,7 @@ from app.ingest.middleware import cheap_summarizer, fallback
 from app.ingest.tools.vault_tools import read_vault_document
 from app.integrations.tracing import trace_config
 from app.proposals import readers
-from app.proposals.middleware import ProposalContext
+from app.proposals.middleware import ProposalContext, nothing_to_answer
 from app.proposals.tools.ledger_tools import add_facts, ask_user
 from app.proposals.tools.proposal_tools import advance_step, read_proposal
 from app.proposals.tools.reading_tools import (
@@ -55,6 +55,7 @@ def build_proposal_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             # read_file only: the floor FilesystemMiddleware needs, over state that holds nothing of ours.
             filesystem_tools(backend),
             tool_errors(),
+            nothing_to_answer,
             clear_old_tool_results(),
             *fallback(settings.model, settings.research_model),
             cheap_summarizer(strong, utility, backend),
