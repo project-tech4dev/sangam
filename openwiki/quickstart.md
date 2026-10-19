@@ -32,14 +32,16 @@ sources:
     resource: repo://codecov.yml
   - id: openwiki-source-3d121c1ca466c424ca2b4936
     resource: repo://db/migrations/0048_proposal_work.sql
+  - id: openwiki-source-d2d39b77b74bd31e2a50555d
+    resource: repo://db/migrations/0049_rfp_match_saved.sql
   - id: openwiki-source-b79fbbd921df689b4bbdc82f
     resource: repo://docker-compose.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Quickstart
@@ -163,7 +165,7 @@ frontend/
   features/       one folder per screen (the Ask workspace holds the Funder Match and Proposals views)
   components/ lib/  UI primitives, API client, auth headers, chat wiring
 db/init/          baseline schema (runs once on a new database)
-db/migrations/    every change after the baseline (0048 added proposals.work)
+db/migrations/    every change after the baseline (0048 added proposals.work, 0049 let an org save an RFP Watch call)
 seed/             idempotent loaders and their vendored data
 scripts/          smoke.sh and the db-url resolver
 docs/             longer human-written design docs
@@ -171,7 +173,7 @@ docs/             longer human-written design docs
 
 Two structural rules: nothing that is not a route goes under `frontend/app/`, and no new module goes flat at the top of `backend/app/`. A REST resource is always a route, a repository and a schema file, plus one line in `api/router.py`.
 
-Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and opens the checkpointer at boot, and registers `/agent`, `/ingest` and `/proposal` as routes of our own. All three agents are built together by `load_agents`, once and under a lock, on the first post to any of those routes, or on the first REST route that calls `get_graph`. Each route declares who may post to it in `AGENT_ACCESS`, and a path with no entry fails at boot. Ask has exactly six tools (`db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query`, `search_graph` and `compare_fit`) plus the read-only `read_file` and `ls` that loading a skill needs, and `compare_fit` is the only one whose SQL is fixed rather than model-written. Proposal Copilot has nine tools of its own plus `read_file` and no SQL tool: code in `backend/app/proposals/` owns the steps and checks, the agent only proposes, and `proposals.work` is only changed through one write path (`work.apply` inside `repositories.proposals.save`, which locks the row). See [Proposal Copilot](architecture/proposal-copilot.md).
+Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and opens the checkpointer at boot, and registers `/agent`, `/ingest` and `/proposal` as routes of our own. All three agents are built together by `load_agents`, once and under a lock, on the first post to any of those routes, or on the first REST route that calls `get_graph`. Each route declares who may post to it in `AGENT_ACCESS`, and a path with no entry fails at boot. Ask has exactly six tools (`db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query`, `search_graph` and `compare_fit`) plus the read-only `read_file` and `ls` that loading a skill needs, and `compare_fit` is the only one whose SQL is fixed rather than model-written. Proposal Copilot has nine tools of its own plus `read_file` and no SQL tool: code in `backend/app/proposals/` owns the steps and checks, the agent only proposes, and `proposals.work` (migration 0048) is only changed through one write path, whether the change comes from REST or the agent: `work.apply` inside `repositories.proposals.save`, which locks the row with `SELECT ... FOR UPDATE`. See [Proposal Copilot](architecture/proposal-copilot.md) and [One proposal, end to end](workflows/proposal-lifecycle.md).
 
 ## Task routing
 
@@ -190,7 +192,7 @@ Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and op
 | Change a screen, the chat proxy or the API client | [Frontend](architecture/frontend.md) |
 | Trace a question through the whole system | [One Ask Turn, End to End](workflows/ask-turn.md) |
 | Trace an import from source choice to undo | [One Import Turn](workflows/import-turn.md) |
-| Add a schema change | [Writing and Applying a Migration](workflows/writing-a-migration.md) |
+| Add a schema change (the latest is `0049_rfp_match_saved.sql`) | [Writing and Applying a Migration](workflows/writing-a-migration.md) |
 | Ship to Vercel | [Deploying by Hand](workflows/deploying-by-hand.md) |
 | Find an env var, or understand `ENV=local\|staging` | [Environments and Env Vars](operations/environments.md) |
 | Work on Vercel, Supabase pooler, Tavily, Langfuse or Aura specifics | [Vercel and Supabase Specifics](operations/deploy-and-vendors.md) |

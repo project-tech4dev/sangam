@@ -12,6 +12,8 @@ sources:
     resource: repo://backend/app/proposals/assemble.py
   - id: openwiki-source-dbd39b3602ffcf90feb37f9d
     resource: repo://backend/app/proposals/context.py
+  - id: openwiki-source-96d1f87f42b838602f9dd12d
+    resource: repo://backend/app/proposals/facts.py
   - id: openwiki-source-36ac392450d467930fbb7994
     resource: repo://backend/app/proposals/gates.py
   - id: openwiki-source-62567457b7540571cd49a42f
@@ -70,10 +72,10 @@ sources:
     resource: repo://frontend/features/ask/views/rfp-watch/CallCard.tsx
   - id: openwiki-source-d9a884d0a22ed50f19bac516
     resource: repo://frontend/features/ask/views/RfpWatchView.tsx
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # One proposal, end to end
@@ -173,14 +175,15 @@ The button sends the fixed chat message "Write the first draft." (or "Read the f
 
 `readers.read` ([`readers.py`](../../backend/app/proposals/readers.py)) is launched by code, not by the model:
 
-- **Claim under the row lock.** `pending()` lists each ticked file and the funder's side that are not yet `done`, so "Try again" re-reads only what failed. If any reader is `running` and not stale, it raises `Busy` and the tool returns `REFUSED: <who> started reading the files N min ago…`. Two people pressing at once get one run and one refusal. A `running` reader older than 30 minutes (`steps.READING_STALE`) is treated as dead, because a run lasts at most 1800 s.
-- **One reader per file, in parallel**, bounded by `max_parallel_research`. A file's reader may open only that document, and the funder reader opens none of the org's files. Neither has a web tool. A reader's `add_facts` calls are checked against the file it was given.
-- **Failures are per file.** A ticked document that is only a saved web link (no stored file) fails with "upload the file to read it". A file the reader reports as `UNREADABLE:` or any exception marks that file `failed` with a one-line reason, and the others carry on.
-- Each outcome is written to `work.readers.<key>` through `work.apply` (`via="agent"`). Only the agent may set `readers.*`.
+- **Claim under the row lock.** `pending()` lists each ticked file, the funder's side and, when public research is built, the `public` reader, whenever they are not yet `done`. So "Try again" re-reads only what failed. If any reader is `running` and not stale, it raises `Busy` and the tool returns `REFUSED: <who> started reading the files N min ago…`. `_claim` marks every pending key `running` inside the same `repo.save` lock, so two people pressing at once get one run and one refusal. If nothing is pending, the tool says every ticked file has been read. A `running` reader older than 30 minutes (`steps.READING_STALE`) is treated as dead, because a run lasts at most 1800 s.
+- **One reader per key, in parallel**, bounded by a semaphore sized from `max_parallel_research` (default 8). Each reader gets its own `run_sources.Sources`, set inside its task: a file's reader may open only that document, the funder reader opens none of the org's files and has no web access, and only the `public` reader has web access. Readers run as separate agents with no checkpoint, so their steps do not stream into the person's chat. A reader's `add_facts` calls are checked against the file it was given.
+- **Public research** exists only when a search key (`tavily_api_key`) is configured. Without one, `BUILT.public` is `None` and `pending` never lists it. Its task is built from the registry's public rows and the match only (places, themes, programmes, SDGs, and the sections it may serve), never from a file or the fact list. A `PublicGuard` refuses any search naming the organisation, and records the text of every page it reads.
+- **Failures are per reader.** A ticked document that is only a saved web link (no stored file) fails with "upload the file to read it". A file the reader reports as `UNREADABLE:` or any exception marks that reader `failed` with a one-line reason, and the others carry on.
+- Each outcome is written to `work.readers.<key>` through `work.apply` (`via="agent"`). The key is a document id, `funder` or `public`. Only the agent may set `readers.*`.
 
-Facts that readers add pass `facts.problem` and, for registry facts, a re-check against the cited row (`records.check`). They arrive `proposed`, coloured by origin. Facts the person states are never added by `add_facts`. Only `ask_user` stores them (as `you_said`, already `confirmed`).
+Facts that readers add pass `facts.problem` and, for registry facts, a re-check against the cited row (`records.check`). They arrive `proposed`, coloured by origin. Facts the person states are never added by `add_facts`. Only `ask_user` stores them (as `you_said`, already `confirmed`). Facts added by public research get a stricter check (`facts.off_page`) and are stamped `found_by: "public"`: they must be `web` facts for sections A2, A3, A4, A14 or F1 only, must give the year they are for, and must quote word for word from a page read in that run, with every number of the value present in the quote.
 
-The screen polls the proposal every 5 s while any reader is `running`, so teammates see progress without sharing a chat.
+The screen polls the proposal every 5 s while any reader is `running` (and, for an editor at step 2 or later, while the chat is mid-turn, because readers are claimed mid-turn), so teammates see progress without sharing a chat. `Reading` in `ProposalShell.tsx` lists each file, the funder's side and public research with ✓ Read, Reading… or the failure reason and "Try again", counting facts per reader (`found_by` tells the funder's web facts from public research).
 
 `exit_check(2, work)` refuses to move on until a template or `skipped_template` is chosen, a style is set, readers have been started at least once ("press Write the first draft"), and none is still running. A `failed` reader does not block.
 
@@ -332,6 +335,7 @@ For how a chat turn is streamed in general, see [One Ask Turn](ask-turn.md). Imp
 | Someone else is reading the files | `read_files` returns `REFUSED` naming them; it finishes on its own |
 | A reader that died (over 30 minutes `running`) | Treated as stale: no longer blocks, and is read again next time |
 | A file the reader cannot read (scan, link) | That file is `failed` with a reason and "Try again"; others are unaffected |
+| Public research cites a page it did not read, a misquote, or searches for the org | The fact or search is refused; no web fact is kept without an exact quote |
 | Agent writes a part out of order | `NOT YET`; the on-screen part is exempt |
 | Agent text with an untraced number, place or name | `REFUSED`, nothing saved; fix, cite or make it a gap |
 | Person types an untraced claim | Saved, shown as "No source yet", and lands in Fix first |

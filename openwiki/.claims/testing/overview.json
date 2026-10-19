@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2096c46335839c932b6446587e49da1ec71ca7ee1e0a13565bb20fac639b6074",
+  "pageVersion": "sha256:d605b49a4d43044ba7ee56914d8e8b3e344b206fd20a1aedf86e9c35e83f3a3a",
   "claims": [
     {
       "id": "claim_544ac8ca894544f68a8354ec2736f9ce",
@@ -79,12 +79,12 @@
           "version": "repo-lines-v1:sha256:4d56142b2778d2258daa13500d6865dea8d61e6a126e803c8947477c0e1eb4a2:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzllOTBjZGE2NGUxY2I2ODZlMjEzNDYzZWUzY2IzMThmOTY2NTQ1OTBiM2MyODQzMWJkZTZiNjVmZWY2NWE5MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjNmODY2ODExMzJmNTEwZjgwZDJjYTU0OWE0MjllZGMzYzEzYTExODVkOGU4ZmI1MjI2N2E4YmFjMjAxNDRmMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTQzZWY1OTUwMjYzYmUyZGNiZmE2ZDdkZjYyOTU3MmRhYThjODdkMGFlZTJlNzBjNTlhMmU4YTg1ZTk3MjljMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzIzNzVmN2NkNWQxYzNhYjVjMWUyMTU3ZWI2MWE2NGEwNGU5NmJkMDVhODU1OGRiZjQxZGZlZTExMThiNzEwNyJ9"
         },
         {
-          "resource": "repo://backend/tests/evals/harness.py#L117-L216",
-          "version": "repo-lines-v1:sha256:399c4a52b9d4b2284c9fe3f289e2c5449c06ab1a5dbbb2e36cdb0f33da972803:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyZTllMjMxMGYxYzYxZjRjMWQ5MjkwZGUwZmNjZmYwYjY1ZDI5Njk2OWI3YzE1ZjM1MTIyNDU5NThjNzRhOTkwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmYTExYzA1NjdkMGE1ZjllOWIxMzVmNjVjZDI1MzcyZGZkNjI4Nzc1ZjdjMWVkMjUzZjhiYWQ0MmRkMmQ2NjY5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyZTRkNWE2NjE1ZjM3MzRkYzhiOTk5OTliNzRiNjgyMjJkMWVhODFlMDdhYTE1MTVlZTUzZDhiZTQxMTRiOGEyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1YTMyODZhN2IwZDllMjQ5MmQxNzFiMjQ3Mjk4MzJjNGFmNjg4NGQ2MmI5MjljMTBlZWE3ZmVlMDMwYTFlMGI3In0"
+          "resource": "repo://backend/tests/evals/harness.py#L116-L216",
+          "version": "repo-lines-v1:sha256:75ee2003c441f00cd1c700a5e0f5bf0cecd9397e1b17f3c10b6c0e5df8b81991:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyZTllMjMxMGYxYzYxZjRjMWQ5MjkwZGUwZmNjZmYwYjY1ZDI5Njk2OWI3YzE1ZjM1MTIyNDU5NThjNzRhOTkwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmYTExYzA1NjdkMGE1ZjllOWIxMzVmNjVjZDI1MzcyZGZkNjI4Nzc1ZjdjMWVkMjUzZjhiYWQ0MmRkMmQ2NjY5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyZTRkNWE2NjE1ZjM3MzRkYzhiOTk5OTliNzRiNjgyMjJkMWVhODFlMDdhYTE1MTVlZTUzZDhiZTQxMTRiOGEyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1YTMyODZhN2IwZDllMjQ5MmQxNzFiMjQ3Mjk4MzJjNGFmNjg4NGQ2MmI5MjljMTBlZWE3ZmVlMDMwYTFlMGI3In0"
         },
         {
-          "resource": "repo://backend/tests/evals/harness.py#L21-L33",
-          "version": "repo-lines-v1:sha256:bfdf2867206a76f76dcf02101538c50d40a637ca3af8a0ec61ad256643c7da3a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzYjZiMzlmMWMxODFiZjJhZDFjZDM3NzM4MDc5OTdiODE4YTA1Mzc4ZmNkZDk0MTIwNzhmMGRlM2RkYzBlMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyYzNkYzRmMWJmMTYzMTE4Y2RlNzc1OTJmYTU2ZDc0M2YxMzJiZmY1MzBkZmYxYmFmZTY0YjRlMWNlMTVkNDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQyYmJjMmM2OTUzMzlhYzUyMDM3YmI0NjBmOWZhOWYyODYyYTUzZjY5Mjk5ZWY5NzhiMjkyMzJlZmY2MjczNDYifQ"
+          "resource": "repo://backend/tests/evals/harness.py#L21-L31",
+          "version": "repo-lines-v1:sha256:7c4c7c7d3b3557102bdaafff484ea8dc7332323654728cb615cf86b2b90b6fb2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMjA1YjIxYTZiZWU4MmY4NTI5YjEwZmZlZDVkMDE3NjQ2MzllMjU1NTU4NGVhZjk2MWM0MTg1MDJhM2Y3ZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0YzdhOGEzM2IzOTQwNTFiZTY0Y2EwMjdmMTIwYTE2ZDAzY2VhM2EwODIwMDRlOTY5MDJhMDFjY2IwYzc5YzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkYTBjYjJhNjg4NTI5Zjg0MGMyMTdhM2M3YmU1Mzk0YmE1ZTA2NmIyOWMzNmVhOTVhNDAyZGM0NGE5ZTY2ZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZjMWYwMmZkN2VjMWQ0NjJjMGNiODE4Yjk0OGZmZTRmNzE1YjJjMmM0MzI2MzBjMjMyZGZlMzRkNDI3NDNmYTkifQ"
         },
         {
           "resource": "repo://backend/tests/evals/test_agent_evals.py#L21-L34",
@@ -297,7 +297,7 @@
           "version": "repo-lines-v1:sha256:7f050be3f2f7211f2804a2b06f1a8da5f84b0d8e04f0788c90a9ef6e3974a2b1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwZGY0NDYxNGJjNDUzMmIyOGY1NzJhMGEwNzY1MWNhODE1ZTFhZDg0ZWM2Nzg5NTIzZDUzMWIwNDdmMDhkNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzMThhMWJmYzZkOTBjM2MyYjEyNWNlY2U5NjkwNjNmMjNlMWUwMGQ2MmI0YTBmMzFhMzllNzI5YTA0NTdjYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiMmMwOWU0ZjdhZTRmNDRkNjU1OGNkYzUyNjFjNzMxOGFkMWNjYWUxNjk3ODhjNjRkY2I1MmFlMTQyNTNlMzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/tests/test_proposal_readers.py#L37-L107",
+          "resource": "repo://backend/tests/test_proposal_readers.py#L143-L213",
           "version": "repo-lines-v1:sha256:a20f623c13b4742d544a0d1c88dc57fa50a091968397495bc7b18675abd8f884:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzOTIwZTdkODhkYmNkOTIxODA2M2JjOWRjMjU3Y2JiNDIxOGJhMWIyNTI1NDg5NDJkN2M1ZDZjNDgwZDRkNjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkY2RjZGVkYjRhZTc2MGI3Mjk1Mzk2ODFlYThhOGM4YWZkOWQ2MDczOTk2YTU2YmZmMDA0NzM3YjNlZTVhNTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1MDIzYzgyMDljOTAwYWZhZjA0ZjFjOTYyODliNGE3ZWRlNDY2NjcyOGEyYjAzYzc5NTBjOGRhN2M1YWM1ODAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -379,7 +379,7 @@
           "version": "repo-lines-v1:sha256:d8185d8df1b04443d1c76b0fb8ca6af7df70f5162ba8628997eaac87c1862aa3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiOGI3NDhiZTU1MmYxNDZkMzQ5Y2ExNDM4OWU5NGE1NjhmMGEyYWRiNjJhMWRiMzJmOTMyOGVmNDcyOWUxZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhMTFjMDU2N2QwYTVmOWU5YjEzNWY2NWNkMjUzNzJkZmQ2Mjg3NzVmN2MxZWQyNTNmOGJhZDQyZGQyZDY2NjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwNjVjNjljNGFhMjVkMDFlM2UwMGQ4N2U5Yjg5YTg4ODZjY2U3M2U5ZjRlNzhiZmJhYTIwMWFlMjE5NDRkYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhMzI4NmE3YjBkOWUyNDkyZDE3MWIyNDcyOTgzMmM0YWY2ODg0ZDYyYjkyOWMxMGVlYTdmZWUwMzBhMWUwYjcifQ"
         },
         {
-          "resource": "repo://backend/tests/evals/harness.py#L35-L75",
+          "resource": "repo://backend/tests/evals/harness.py#L34-L74",
           "version": "repo-lines-v1:sha256:fbece0cd4564cba599dd0457c73bf341eefacb257ab97b2bdea6d5de814cb16f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2ZmJhZTBiOTFkNDRmYzBkNDlmNWRlNjkxZGE2ZmM0MzFmMjYwMTM0YmY3MzFlMGUyMWY3NjQ4MDk0MzM0Y2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ5YjZjOTQ0MzJjNTU5ODllZTgzOGM0YTEyYzAxNTdiYzdlZjFmYTQ0YmI0NDc2MTY5MGJhMWNlZGEwZmZhNWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyNzI4ZjQ4YmRkNGQ5ZjczZDEwZTNlOTZkYTNiMWI4ODg2ZmU3ZTZjODgxM2E2NjJjNjZmMzNiODU0ZTliOWEifQ"
         },
         {
@@ -439,10 +439,40 @@
           "version": "repo-lines-v1:sha256:6d37535a136cdca6d0e40fc6521654d78c9dc1c5abcf0bf1e7b7832dd7e99358:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxZGM3YmE0ZWRkYjUxNjRkODJkZjI3NGEwOWRkMTQzZWVkNzM3NTYzMGU2NWJhNmM0ZjQwNjg2MWE1YWUwZGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4M2UyYjgyN2NiYjg5OWJjMWY0NWUzMDFlZjQ0ZmM2OWMwYjlmZjJkMjdiMWE4ZmZjNDhiNjIwMTdlNzk0ZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmZWNmY2IyNTczYWMyY2M1YzJiNTdkZjYyNjAwYWQwODcxNDRhODE2ZWQ5MmYzODdmNTkwY2Q3OWQ4MGFlY2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_2d7d309182e64fa989be7bb4fda71b01",
+      "statement": "The eval harness runs the Ask agent as the staff dev user and also resets caveats_given and sets chat_user_id to the dev user, because compare_fit refuses an unset chat user as someone who may not run a match.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/evals/harness.py#L116-L133",
+          "version": "repo-lines-v1:sha256:f3b960b43242c14f2716da76b33d7884aed249e2832fdd0b13e48a2527894abb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOWUyMzEwZjFjNjFmNGMxZDkyOTBkZTBmY2NmZjBiNjVkMjk2OTY5YjdjMTVmMzUxMjI0NTk1OGM3NGE5OTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlNGQ1YTY2MTVmMzczNGRjOGI5OTk5OWI3NGI2ODIyMmQxZWE4MWUwN2FhMTUxNWVlNTNkOGJlNDExNGI4YTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjNmYxMmI2MjNmMjhjMTliMDZiMDliNWUzYTE4MTJhMWYyOGFiNmZlNDY1YzkxOWE3MmE5MzJhNDNkOGJjMWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_698c66be3a564c7bb7c1e73acf28cc60",
+      "statement": "test_audit.py pins the post-answer SQL audit: it audits only the current turn (a new human message resets it), reads SQL from the db_query artifact or the 'executed:' text line, makes no model call when disabled, when no SQL ran, or when no answer exists, accepts ok/warn verdicts (JSON wrapped in prose is read; warn without a caveat becomes ok), and fails open (returns None) on model errors, unresolvable models, unparseable replies or malformed JSON; an appended CAVEAT_PREFIX message is not mistaken for the answer.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_audit.py#L45-L145",
+          "version": "repo-lines-v1:sha256:21d7fef43a3d42041c34d459da13de32447b5dd7d1b34ec6db127d5828c5fb02:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjZWQ3YTAyNzNiZGFmOGFlYjExYjJkZTYzZGIzMzgwMjU5NDcxZDdmODViOTk3YzRjOGJlNDhlMWQ5NjNiYzIxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIzZjZjYjljYWY0NzNiMDhiMjBkZDAwM2E0ZGZlOTQ1Y2Y0NzkxYjQzYWFhMjQ5ZDI5NTk3MjU1MDBhMzkyZDk0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkMjEyMTFjMWM0MDE0ZWFiZjg5YTUzOWU2NDY3MTlhZTRiZDQxNGMxNTY0YjhhMWE3Y2RlZTc0NDc0NmQ0MThjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_2ae82b92ad574493bb70843925fbb390",
+      "statement": "test_proposal_agent.py pins the Pitch agent's nothing_to_answer guard: a run whose history ends on an assistant reply ends without calling the model, a new human message is answered, a pending tool call is not an answer, and the guard is in the Pitch agent's main middleware stack.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_proposal_agent.py#L191-L244",
+          "version": "repo-lines-v1:sha256:5637cb97a18e3c43917cb4d24b3e1209a47e1d82810cbe9a5ce4bb6a0a6f93ce:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMDBmNjRlODg4YmIyZDA0MjRiMzQxMzhkM2YxZmM1NmRlZjU5MDQ5MWNmNjljMGEzOThhNjNhOGY4ZWExMGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmYWJkNzg3YWIyNGY3NzQ5ZmFmY2EyZDFmZTJlOWMwMzA0MzRkZjc2Nzc1ZWI5ZDEwODk0ZmE0YjAzYTI3MGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM2OWEzOWNhZjNmNTI3OTQxNWM5MzJiNjlmODgwMjAyZjM0ZjBlNTgyNTk0YzA5N2VkNDNkZTA5NDVlY2RmNzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-19T10:32:36.779Z"
+    "at": "2026-10-19T19:22:00.060Z"
   }
 }

@@ -28,6 +28,8 @@ sources:
     resource: repo://backend/app/proposals/middleware.py
   - id: openwiki-source-d45acb47773eb330770d1521
     resource: repo://backend/app/proposals/polish.py
+  - id: openwiki-source-fb45fea185878079af17ae7b
+    resource: repo://backend/app/proposals/prompts/public_researcher.md
   - id: openwiki-source-695c4cf7fed827bcaabbdf8b
     resource: repo://backend/app/proposals/questions.py
   - id: openwiki-source-9888738c380786cc871715d9
@@ -60,6 +62,8 @@ sources:
     resource: repo://backend/app/repositories/proposals.py
   - id: openwiki-source-1a719932f8db409931d9e2ef
     resource: repo://backend/tests/test_proposal_agent.py
+  - id: openwiki-source-899c8be49aae16febe309b1e
+    resource: repo://backend/tests/test_proposal_readers.py
   - id: openwiki-source-3d121c1ca466c424ca2b4936
     resource: repo://db/migrations/0048_proposal_work.sql
   - id: openwiki-source-88fdf568b0f25b1d21f041da
@@ -68,10 +72,12 @@ sources:
     resource: repo://docs/features/2026-10-14-proposal-copilot.md
   - id: openwiki-source-a6acd51674a7bb40ec0a9785
     resource: repo://frontend/features/ask/views/proposals/api.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+  - id: openwiki-source-1f1f7b91c66f0df6fef8e2df
+    resource: repo://frontend/features/ask/views/proposals/FactList.tsx
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Proposal Copilot (Sangam Pitch)
@@ -89,13 +95,13 @@ For the user-facing sequence, see [Proposal lifecycle](../workflows/proposal-lif
 | Piece | Role |
 |---|---|
 | `backend/app/api/routes/proposals.py` | REST resource: list, create from a saved match, read, rename, `PATCH /work`, `POST /advance`, `POST /polish`, `POST /versions`, `GET /messages`. |
-| `backend/app/proposals/agent.py` | Builds the `/proposal` deep agent and the two reader agents. |
+| `backend/app/proposals/agent.py` | Builds the `/proposal` deep agent and the reader agents (file, funder and, with a search key, public research). |
 | `work.py` | The only way `proposals.work` changes (`apply`). |
 | `steps.py`, `gates.py`, `readiness.py`, `rubric.py` | Steps and exit checks, step 1's requirements, "Before you send it" summary, the `proposal-v2` section rubric. |
 | `facts.py`, `reliability.py`, `records.py`, `questions.py` | The fact list's rules, source colours, the registry re-check, the rules for asking. |
 | `trace.py`, `grade.py`, `review.py`, `polish.py`, `assemble.py` | Trace check, 0 to 2 score, correction propagation, checked smoothing, Word file. |
-| `readers.py`, `tools/*.py` | Parallel file readers, and the agent's tools. |
-| `context.py`, `middleware.py` | The two context blocks told to the model on every call. |
+| `readers.py`, `tools/*.py`, `prompts/*.md` | Parallel readers (files, funder, public research), the agent's tools and the readers' prompts. |
+| `context.py`, `middleware.py` | The two context blocks told to the model on every call, the `NothingToAnswer` guard, and public research's `PublicGuard`. |
 | `backend/app/repositories/proposals.py` | Row access and `save`, which locks the row. |
 
 ## Entry points and who may do what
@@ -194,6 +200,8 @@ Facts live in `work.facts` (ids `k1`, `k2`, …), cited in text as `⟦k7⟧`. T
 
 A fact with the same origin, source, subject and value returns the existing id, so a retried turn adds nothing. New facts arrive `proposed`; the person confirms them on screen. Ids are allocated inside the row lock.
 
+**Public research facts get a stricter check.** While the public research reader runs, `PUBLIC_RUN` is set and `add_facts` also calls `facts.off_page`. It accepts only `web` facts for sections A2, A3, A4, A14 and F1 (`PUBLIC_SECTIONS`), requires an `as_of` year, requires the cited link to be a page the reader read in this run, requires the quote to appear on that page (compared through `facts.norm`), and requires every number in the value to be in the quote. Accepted facts are stamped `found_by: "public"`, which the screen uses to label them "From public research, not checked" and to tell them from the funder reader's web facts. See [Readers](#readers).
+
 ## Questions: one at a time, by rule
 
 `ask_user` pauses the graph with a LangGraph `interrupt` of type `proposal_question`, and a card appears above the chat. `questions.may_ask` is the one gate:
@@ -207,14 +215,33 @@ The reply resumes the run as a card pick or typed text. `questions.classify` sor
 
 ## Readers
 
-`read_files` is the agent's only reading tool for step 2, and code does the rest (`readers.py`). Under the row lock, `_claim` finds what is pending: every ticked file and the funder's side that is not `done`. It marks them `running` in `work.readers`. If a non-stale reader is still running, the call is refused with who started it and when ("Busy"). This is the one lock in the feature, and it applies to reading only, never to chatting. Then `asyncio.gather` runs one reader per file plus one for the funder, bounded by `max_parallel_research`.
+`read_files` is the agent's only reading tool for step 2, and code does the rest (`readers.py`). Under the row lock, `_claim` finds what is pending: every ticked file, the funder's side, and public research when it was built, each unless already `done`. It marks them `running` in `work.readers` (keys are a document id, `funder` or `public`). If a non-stale reader is still running, the call is refused with who started it and when ("Busy"). This is the one lock in the feature, and it applies to reading only, never to chatting. Then `asyncio.gather` runs one reader per key, bounded by `max_parallel_research`.
 
-- Each reader is a separate deep agent built once with the proposal agent (`research_model`, `checkpointer=False`, with `tool_errors` and `RunSources` middleware). The evidence reader has `read_vault_document`, `read_brief` and `add_facts`. The funder reader has `read_brief`, `list_funder_documents`, `read_funder_document`, `read_template` and `add_facts`.
-- Neither has a web tool and neither can ask the person anything. A file's reader can open only that file, through `RunSources` and `run_sources.CURRENT` set inside its own task. The funder's reader opens none of the org's files.
+There are three kinds of reader. All are separate deep agents built once with the proposal agent by `readers.build` (`research_model`, `checkpointer=False`, with `tool_errors` and `RunSources` middleware, and a `fallback` that prefers `research_model`):
+
+| Reader | Tools | What it may open |
+|---|---|---|
+| File (evidence) | `read_vault_document`, `read_brief`, `add_facts` | Only the one ticked file it was given, through `RunSources` and `run_sources.CURRENT`, set inside its own task. |
+| Funder | `read_brief`, `list_funder_documents`, `read_funder_document`, `read_template`, `add_facts` | None of the org's files; the funder's archived public PDFs and the chosen form. |
+| Public research | `search_public_sources`, `read_page`, `fetch_document`, `read_document_pages`, `add_facts` | The web only (`Sources(web=True)`), never a file. |
+
+- Only public research reads the web, and no reader can ask the person anything. The file and funder readers carry no web tool.
 - Each reader clears the inherited run config, so its steps do not stream into the person's chat.
-- Outcomes are written back per reader (`done` or `failed`, with a one-line reason). "Try again" re-reads only what failed. One file's failure never stops the others. A saved link with no stored file is marked failed with a reason.
+- Outcomes are written back per reader (`done` or `failed`, with a one-line reason). "Try again" re-reads only what failed, public research included. One reader's failure never stops the others. A saved link with no stored file is marked failed with a reason, without running a reader.
 
 `read_brief` returns only public brief facts. A private source's words never leave the proposal they were read for.
+
+### Public research
+
+Public research (design in `docs/features/2026-10-20-pitch-public-research.md`) fills the gap that Context, Problem and Fit stayed `[Add: …]` without public evidence. Its guards are all in code:
+
+- **Off without a search key.** `BUILT.public` is created only when `settings.tavily_api_key` is set. Without it `pending` never lists `public` and nothing fails.
+- **Task from public data only.** `public_task` is built from the registry's public rows (places, themes, programmes, SDGs, capped at 8 each) and the sections public facts can serve. It never includes a file or the fact list, so private figures cannot reach a search. With no place on record it asks for state-level or India-wide searches.
+- **Never search for the org.** `PublicGuard` (in `middleware.py`) refuses a `search_public_sources` call whose query names the org on a word boundary, so a longer word containing the name is allowed.
+- **Quote must be on a page it read.** `PublicGuard` keeps the text of every `read_page` result (and of PDFs from `fetch_document` plus `read_document_pages`) in the run's `PublicRun.pages`, keyed by `page_key` (no scheme, `www.` or trailing slash). `add_facts` then applies `facts.off_page` against that text.
+- **Prompt.** `prompts/public_researcher.md` asks for the problem measured at district, state and India level, why this place, government schemes, SDGs and what worked elsewhere, and says to add a fact only when a page it read states it and never to draft proposal text.
+
+The public reader's results are amber web facts; the person confirms or drops them like any other. The changelog marks this change "unmerged", although the code is in the repository.
 
 ## Writing: trace check, then grade
 
@@ -282,12 +309,15 @@ It also lists **Worth checking**, which never blocks: a score of 1, a requiremen
 
 1. harness `filesystem` (read-only floor);
 2. `tool_errors` (backstop that answers the model when a tool raises);
-3. `clear_old_tool_results`;
-4. `fallback(model, research_model)`;
-5. `cheap_summarizer` (utility model);
-6. `ProposalContext`.
+3. `nothing_to_answer` (a `before_model` hook: when there is no new message, or the last message is an AI reply with no tool calls, the run jumps to the end instead of asking Claude to continue its own reply, which it refuses with a 400);
+4. `clear_old_tool_results`;
+5. `fallback(model, research_model)`;
+6. `cheap_summarizer` (utility model);
+7. `ProposalContext`.
 
-There is no deepagents `task` subagent. The two readers are separate graphs, built by `readers.build` while the proposal agent is built, and launched by `readers.read`. Their middleware is `filesystem` (no eviction), `tool_errors`, `RunSources` and a `fallback` that prefers `research_model`. The system prompt is `instructions.md`.
+`build_proposal_agent` also calls `readers.build(settings, EVIDENCE_TOOLS, FUNDER_TOOLS, PUBLIC_TOOLS)`, and the graph is traced as `sangam_proposal` with `settings.recursion_limit`.
+
+There is no deepagents `task` subagent. The readers are separate graphs, built by `readers.build` while the proposal agent is built, and launched by `readers.read`. Their middleware is `filesystem` (no eviction), `tool_errors`, `RunSources`, the public reader's `PublicGuard`, and a `fallback` that prefers `research_model`. The system prompt is `instructions.md`; each reader has its own file under `prompts/`.
 
 `ProposalContext` re-reads the proposal on each model call and puts two blocks into the system message:
 
@@ -298,13 +328,13 @@ The screen state arrives as client input through the AG-UI context ("What the pe
 
 ### Failure semantics
 
-Agent tools are written never to raise. Each catches its failures and returns an error string (`REFUSED:`, `NOT YET:`, `<tool> failed: <ExceptionName>`), so the model reads the refusal and adjusts. The `tool_errors` middleware is the backstop: a tool that still raises answers the model with `<tool> failed: <ExceptionName>` (the type only, since a raw message can carry SQL, paths or keys) instead of ending the run. The only exception passed through is LangGraph's `GraphBubbleUp` in `ask_user` and `suggest_edit`, which is the pause itself. Nothing is half-saved: `apply` validates every change before making any. A stopped turn loses only the section in progress, because each section saves on its own.
+Agent tools are written never to raise. Each catches its failures and returns an error string (`REFUSED:`, `NOT YET:`, `<tool> failed: <ExceptionName>`), so the model reads the refusal and adjusts. The `tool_errors` middleware, present on the agent and on every reader, is the backstop: a tool that still raises answers the model with `<tool> failed: <ExceptionName>` (the type only, since a raw message can carry SQL, paths or keys) instead of ending the run. The only exception passed through is LangGraph's `GraphBubbleUp` in `ask_user` and `suggest_edit`, which is the pause itself. Nothing is half-saved: `apply` validates every change before making any. A stopped turn loses only the section in progress, because each section saves on its own.
 
 ## Plan versus code status
 
 The plan is `docs/features/2026-10-14-proposal-copilot.md`. Its own status line ("Draft v3 … first version trimmed") is not a reliable guide. The shipped milestones (M2 to M8, including `suggest_edit` and writing in place) are listed in the [changelog's Proposals section](../../docs/CHANGELOG.md), which is the place to check for what has landed. Its "Not finished" table has no row for the copilot, so none is declared partial. One row there, for `2026-10-10-list-pages-proposals-media.md`, still says "No proposals backend", which no longer matches the code (migration `0048` and `backend/app/proposals/`).
 
-The plan's §11 "Later" list is what is left, and it is unbuilt. It includes freshness in fact colours, more reasons to ask, `flag_conflict`, a changed-file check, a promise check in polish, the funder form's limits, and a web-searching landscape reader. Code differs from the plan in places. For example, there is no `StageGate`, `AskGate` or `ProposalSources` middleware: those checks live inside the tools and `ProposalContext` is the only proposal middleware. The plan's "three steps" are four stages in code. A `you_said` fact is stored only by `ask_user`.
+The plan's §11 "Later" list is what is left, and it is unbuilt except for one item. It includes freshness in fact colours, more reasons to ask, `flag_conflict`, a changed-file check, a promise check in polish, and the funder form's limits. The web-searching landscape reader was replaced by public research (`docs/features/2026-10-20-pitch-public-research.md`), which exists in code but is marked "unmerged" in the changelog and has no row in the "Not finished" table. Code differs from the plan in places. For example, there is no `StageGate`, `AskGate` or `ProposalSources` middleware: those checks live inside the tools and `ProposalContext` is the only proposal middleware. The plan's "three steps" are four stages in code. A `you_said` fact is stored only by `ask_user`.
 
 ## Tests
 
@@ -313,7 +343,7 @@ Backend tests cover the code-only safeguards and run without model calls:
 - `tests/test_proposals_work.py`: allowed paths, atomic apply, `rev` conflicts, logging.
 - `tests/test_proposal_agent.py`: the own-chat access rules (member 403, stranger 404), `advance_step`, context blocks, and the nine-tools-plus-`read_file` set.
 - `tests/test_proposal_facts.py`: tiers, question rules, per-origin fact checks.
-- `tests/test_proposal_readers.py`: reader tools carry no web or ask tool, per-file source isolation, pending and Busy logic.
+- `tests/test_proposal_readers.py`: file and funder readers carry no web or ask tool, per-file source isolation, pending and Busy logic, and public research (exactly its five tools plus `read_file`, not built without a search key, task holds no file figures, `PublicGuard` org-name refusal and page keeping).
 - `tests/test_proposal_writing.py`: trace, order, scoring, typed parts.
 - `tests/test_proposal_review.py`, `test_proposal_suggest.py` and `test_proposal_finish.py`: review, suggestions, polish check.
 

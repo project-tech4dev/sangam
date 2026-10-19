@@ -86,10 +86,10 @@ sources:
     resource: repo://frontend/vercel.json
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Platform
@@ -114,7 +114,7 @@ The agents themselves are covered in [Ask Sangam](ask-sangam.md) and [Sangam Imp
 - **Middleware order.** `AuthMiddleware` is added first and `CORSMiddleware` second, so CORS wraps auth. Preflights are answered before auth runs, and auth's 401s still carry CORS headers. The allowed origins come from `Settings.origins` (comma-separated `allowed_origins`). `allowed_origin_regex` admits Vercel preview hostnames and is passed as `None` when blank, because an empty pattern would match every origin.
 - **Routes and error handling.** It mounts `api_router`, maps a Postgres `InsufficientPrivilege` error to `403 {"detail": "Not allowed"}`, and defines `GET /health`.
 
-`AuthMiddleware` is plain ASGI, not `BaseHTTPMiddleware`, because buffering would break chat streaming. It skips non-HTTP scopes and the open paths `/health`, `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json` (`_OPEN_PATHS` in `core/security.py`). For every other request it resolves the caller once, answers a bad token itself with a JSON 401/409, and stores the principal plus `db_role` (`anon` or `authenticated`) and `db_claims` on the request state. `get_caller_pool` turns those into a `CallerPool`, which `PoolDep` hands to routers. Each `connection()` opens a transaction and runs `set_config('role', ...)` and `request.jwt.claims` with `SET LOCAL` semantics, so RLS applies and the connection returns to the shared pool as the owner (see [Auth, roles and RLS](auth-roles-rls.md)). Identity code and agent tools take the owner pool (`OwnerPoolDep`, `get_pool()`), and Ask Sangam's SQL reads its caller from the `agent_caller` context variable.
+`AuthMiddleware` is plain ASGI, not `BaseHTTPMiddleware`, because buffering would break chat streaming. It skips non-HTTP scopes and the open paths `/health`, `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json` (`_OPEN_PATHS` in `core/security.py`). For every other request it resolves the caller once (`resolve_principal`: with `SUPABASE_URL` unset everyone is the seeded dev user; with it set, no header is anonymous, a Supabase token is verified against the project's JWKS, and `Bearer dev` works only when `DEV_AUTH` is on), answers a bad token itself with a JSON 401/409, and stores the principal plus `db_role` (`anon` or `authenticated`) and `db_claims` on the request state. `get_caller_pool` turns those into a `CallerPool` (anon with empty claims when the middleware did not run), which `PoolDep` hands to routers. Each `connection()` opens a transaction and runs `set_config('role', ...)` and `request.jwt.claims` with `SET LOCAL` semantics, so RLS applies, the settings end with the transaction even on error, and the connection returns to the shared pool as the owner (see [Auth, roles and RLS](auth-roles-rls.md)). Identity code and agent tools take the owner pool (`OwnerPoolDep`, `get_pool()`), and Ask Sangam's SQL reads its caller from the `agent_caller` context variable.
 
 `backend/app/api/router.py` is the single mount point. It builds one `APIRouter(prefix="/api")` and includes the per-resource routers: orgs, org_members, funders, profiles, registry, funder_matches, proposals, partner_lines, partner_groups, programs, rfps, contacts, scores, meta, news_stories, documents, ingest, news_runs, me and threads. `OPENAPI_TAGS` fixes the order resources appear in the docs. Routes outside `/api` are `/health` from the factory and the three AG-UI chat routes `/agent`, `/ingest` and `/proposal` (with their `{path}/health`) that the lifespan registers.
 
@@ -211,7 +211,7 @@ Caption: the first chat request on an instance builds all three agents under a l
 
 | Path | Dependencies | Effect |
 |---|---|---|
-| `/agent` | `ask_access` | Signed in; the thread is new or yours (someone else's is 404, staff included). Also sets `agent_caller` so Ask's SQL runs as this caller (`anon`/`authenticated`) rather than the owner. |
+| `/agent` | `ask_access` | Signed in; the thread is new or yours (someone else's is 404, staff included). Also sets `agent_caller` so Ask's SQL runs as this caller (`anon`/`authenticated`) rather than the owner, and starts a fresh `caveats_given` set for the turn. |
 | `/ingest` | `require_scout`, `chat_access` | Staff or a steward of an org (403 otherwise), then the same thread-ownership check. Import keeps the owner pool because it writes the catalog. |
 | `/proposal` | `proposal_chat_access` | The thread id must parse as a proposal chat belonging to the caller, on an org the caller can read (else 404); a reader who cannot edit the proposal gets 403. It claims the thread with `use_case="proposal"` and sets `chat_proposal` from the thread, never from the model. |
 

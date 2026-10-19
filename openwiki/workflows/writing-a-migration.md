@@ -6,10 +6,16 @@ tags: [migrations, database, rls, sql-catalog, workflow, staging]
 sources:
   - id: openwiki-source-7faba850789bc67a49b79a3f
     resource: repo://backend/app/agent/tools/sql/catalog.py
+  - id: openwiki-source-01e57798bc5bab328d91b9b3
+    resource: repo://backend/app/agent/tools/sql/executor.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
     resource: repo://backend/app/core/lifespan.py
+  - id: openwiki-source-b52886aad1fc413e4e030f22
+    resource: repo://backend/app/core/security.py
   - id: openwiki-source-48da13ff10650a1cb4ac7718
     resource: repo://backend/app/db/migrate.py
+  - id: openwiki-source-10e08c1deca7d7728d8240c4
+    resource: repo://backend/app/db/pool.py
   - id: openwiki-source-c19bf12e33dd13dd52164b8e
     resource: repo://backend/tests/test_migration_integrity.py
   - id: openwiki-source-5871ea1c2ab913bbd11be84f
@@ -22,6 +28,8 @@ sources:
     resource: repo://db/migrations/0047_document_links.sql
   - id: openwiki-source-3d121c1ca466c424ca2b4936
     resource: repo://db/migrations/0048_proposal_work.sql
+  - id: openwiki-source-d2d39b77b74bd31e2a50555d
+    resource: repo://db/migrations/0049_rfp_match_saved.sql
   - id: openwiki-source-82b4a7ca109f9768db60ccbf
     resource: repo://db/migrations/README.md
   - id: openwiki-source-093cd3e20819d97ab4faddda
@@ -30,10 +38,10 @@ sources:
     resource: repo://docker-compose.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Writing and Applying a Migration
@@ -49,7 +57,7 @@ Every schema change after the baseline is a new forward-only SQL file in `db/mig
 
 ## 1. Create the file
 
-Name it `NNNN_short_name.sql`, taking the next number after the highest in `db/migrations/` (currently `0048_proposal_work.sql`, so the next file is `0049_…`; re-list the directory before you pick, since another branch may have taken it). Order is plain filename order, because the runner sorts `*.sql` by name. The runner records the *full stem* as the version, so two files may share a prefix without a primary-key clash: `0044_news.sql` and `0044_one_read_policy_and_fk_indexes.sql` both exist. Still, pick the next free number rather than relying on that.
+Name it `NNNN_short_name.sql`, taking the next number after the highest in `db/migrations/` (currently `0049_rfp_match_saved.sql`, so the next file is `0050_…`; re-list the directory before you pick, since another branch may have taken it). Order is plain filename order, because the runner sorts `*.sql` by name. The runner records the *full stem* as the version, so two files may share a prefix without a primary-key clash: `0044_news.sql` and `0044_one_read_policy_and_fk_indexes.sql` both exist. Still, pick the next free number rather than relying on that.
 
 Conventions from the migrations README:
 
@@ -69,11 +77,23 @@ Two layers decide whether a role can read a table, and a new table must satisfy 
 
 `0048_proposal_work.sql` is the recent example for changing an *existing* table. It adds two `NOT NULL DEFAULT '{}'::jsonb` columns (`work`, `summary`) to `proposals`, so existing rows backfill without a rewrite step; it tightens who may write with `ALTER POLICY` on `proposals_insert`, `proposals_update` and `documents_insert` rather than dropping and recreating them; and it ends with a `DO $$` guard, repeating `0027`'s, that raises an exception if any table readable by `anon` or `authenticated` has no read policy. Because the whole file is one transaction, that guard aborts and rolls back the entire migration if a policy is missing. Note that `proposals` is in the catalog's `KNOWN_EXCLUDED` list, so adding columns to it needed no `catalog.py` change.
 
+`0049_rfp_match_saved.sql` is the smallest kind of change, and the latest: an RFP Watch org may now *save* a call, so it widens the `status` CHECK on `rfp_matches` to `('flagged', 'saved', 'reviewed', 'dismissed')`. A CHECK cannot be altered in place, so one `ALTER TABLE` drops `rfp_matches_status_check` and adds it back with the new list. It needed no grant or policy work because the table already has `GRANT UPDATE … TO authenticated` (0025) and the `rfp_matches_update` policy (0027), which the PATCH `/api/rfps/{id}/matches/{org_id}` route uses; the catalog's `status` column lists the same four values in `values=(…)`, so a value-list change like this is also a `catalog.py` edit.
+
 Choose the policy by the kind of table: public rows, a child that follows its org or funder, signed-in-only, or staff-only. The existing rules in `0027` are the patterns to copy.
+
+### Which connection will read it
+
+The migration runner and the shared pool connect as the database owner (a superuser), which bypasses RLS and grants. Whether your policy is ever exercised depends on how the code reads the table (`backend/app/db/pool.py`):
+
+- **`PoolDep` (routers) is a `CallerPool`.** Each connection is one transaction that first runs `set_config('role', …, true)` and `set_config('request.jwt.claims', …, true)`, so the rest of the transaction runs as `anon` or `authenticated` with the token's claims (`anon` and empty claims when the request has no user). Both settings are `SET LOCAL`, so they end with the transaction, and the connection returns to the pool as the owner. A route that reads or writes your new table therefore needs the grant *and* the policy, or it fails or returns no rows.
+- **`OwnerPoolDep` is the owner pool.** Identity code (who the caller is, `users` and `threads` rows) and a few staff or Import routes take it. It ignores RLS, so a missing policy will not show up there.
+- **Ask Sangam's SQL tool also runs as the caller.** `ask_access` sets the `agent_caller` context variable per `/agent` request, and the executor calls `set_caller` inside a read-only transaction; with no caller set it runs as `anon`. Import keeps the owner, since it writes the catalog.
+
+This is why the policy matters even for a table you only plan to read from the agent: catalogued rows are filtered by RLS and grants for whoever is asking.
 
 ## 3. Decide separately about the SQL catalog
 
-`backend/app/agent/tools/sql/catalog.py` is the allowlist of tables and columns the agent's SQL tool may read. **Adding a table or column there is a security decision, not a mechanical follow-up to the migration.** The agent tools run as the database owner, which bypasses RLS, so catalogued rows are visible to every caller; `catalog.py` documents this for `documents` and `is_public`. A new table:
+`backend/app/agent/tools/sql/catalog.py` is the allowlist of tables and columns the agent's SQL tool may read. **Adding a table or column there is a security decision, not a mechanical follow-up to the migration.** The tool queries as the caller, so grants and RLS apply, but the catalog also decides what the model is told exists and how it is cited. Tables holding private per-org data (`proposals`, `funder_matches`, `vault_research`) stay in `KNOWN_EXCLUDED` regardless. A new table:
 
 - stays invisible to the agent by default;
 - is only logged at INFO at boot as "not readable by the SQL tool and not declared as excluded" until someone either adds it to `_TABLES` or lists it in `KNOWN_EXCLUDED` (where private, per-org, chat-history and infrastructure tables live, each with a reason).
@@ -82,7 +102,7 @@ If you do add it, supply a `Table` with a one-line description, primary key, col
 
 ### Drift fails the boot
 
-`verify_against_db()` compares the catalog with `information_schema.columns` and with column privileges. In the backend lifespan (`app/core/lifespan.py`), any problem it returns makes `_verify_sql_catalog` log "SQL catalog drift" and raise `RuntimeError`, so the app does not start. It reports a problem when a catalogued table is missing, when a catalogued column is missing, or when a catalogued column cannot be read by a role: `authenticated` must be able to `SELECT` every catalogued column (the chat runs as the caller, so one denied column fails with 42501 for everyone), and `anon` may be shut out of a whole table but not out of part of one, because that breaks `SELECT *`. The check is otherwise one-directional:
+`verify_against_db()` compares the catalog with `information_schema.columns` and with column privileges. In the backend lifespan (`app/core/lifespan.py`), any problem it returns makes `_verify_sql_catalog` log "SQL catalog drift" and raise `RuntimeError`, so the app does not start. It reports a problem when a catalogued table is missing, when a catalogued column is missing, or when a catalogued column cannot be read by a role: `authenticated` must be able to `SELECT` every catalogued column (the chat runs as the caller, so one denied column fails with 42501 for everyone), and `anon` may be shut out of a whole table (as with `rfp_matches`) but not out of part of one, because that breaks `SELECT *`. The check is otherwise one-directional:
 
 | Situation | Effect |
 | --- | --- |
