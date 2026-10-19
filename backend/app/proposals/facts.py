@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 from app.proposals import reliability, rubric
 
@@ -113,6 +114,9 @@ def problem(work: dict[str, Any], fact: dict[str, Any]) -> str | None:
     return None
 
 
+_YEAR = re.compile(r"\b(19|20)\d{2}\b")
+
+
 def off_page(fact: dict[str, Any], page: str | None) -> str | None:
     """Why public research may not add this fact: it must quote, word for word, a page it read in this run."""
     subject, url = fact.get("subject"), fact.get("source_url")
@@ -120,8 +124,10 @@ def off_page(fact: dict[str, Any], page: str | None) -> str | None:
         return f"{subject}: public research adds web facts only"
     if fact.get("section") not in PUBLIC_SECTIONS:
         return f"{subject}: public research fills {', '.join(PUBLIC_SECTIONS)} only"
-    if not str(fact.get("as_of") or "").strip():
-        return f"{subject}: give the year the figure is for"
+    if not _YEAR.search(str(fact.get("as_of") or "")):
+        return f"{subject}: give the year the figure is for, such as 2011 or 2019-21"
+    if (urlparse(str(url or "")).hostname or "").endswith("wikipedia.org"):
+        return f"{subject}: Wikipedia is not a source; cite the dataset or report it draws on"
     if page is None:
         return f"{subject}: {url} was not read in this run; read it with read_page before citing it"
     quote = norm(fact.get("evidence"))

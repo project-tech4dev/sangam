@@ -200,7 +200,7 @@ async def read(p: context.Current) -> str:
     pool = get_pool()
     by = await repo.user_name(pool, p.scope.user_id)
     files, links = await _titles(p.org_id, p.work.get("sources") or [])
-    titles = {**files, FUNDER: f"what {p.funder_name} looks for", PUBLIC: "public research on the problem and place"}
+    titles = {**files, FUNDER: f"what {p.funder_name} looks for", PUBLIC: "Public research on the problem and place"}
     keys: list[str] = []
     try:
         await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by))

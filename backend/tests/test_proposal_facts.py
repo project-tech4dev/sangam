@@ -174,6 +174,17 @@ class TestPublicResearchQuotesThePage:
     def test_a_fact_without_its_year_is_refused(self):
         assert "year" in fact_rules.off_page(public_fact(as_of=""), PAGE)
 
+    @pytest.mark.parametrize("as_of", ["undated", "recent"])
+    def test_a_year_must_be_in_digits(self, as_of):
+        assert "year" in fact_rules.off_page(public_fact(as_of=as_of), PAGE)
+
+    def test_a_period_with_a_year_is_kept(self):
+        assert fact_rules.off_page(public_fact(as_of="2019-21"), PAGE) is None
+
+    def test_wikipedia_is_not_a_source(self):
+        cited = public_fact(source_url="https://en.wikipedia.org/wiki/Udalguri_district")
+        assert "Wikipedia" in fact_rules.off_page(cited, PAGE)
+
     def test_a_number_the_quote_does_not_hold_is_refused(self):
         assert "every number" in fact_rules.off_page(public_fact(value="21.8%"), PAGE)
 

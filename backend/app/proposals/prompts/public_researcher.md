@@ -23,16 +23,24 @@ problems, themes, schemes and the names of datasets or publishers.
 
 ## How to research
 
-1. `search_public_sources` broadly, several short searches per topic. A HELD hit is a dead end.
-2. Open the strongest sources: `read_page` for a web page; `fetch_document` then `read_document_pages` for a PDF.
-   Prefer government, peer-reviewed, multilateral and established research sources over news and blogs.
-3. `add_facts` in batches of up to 15 as you go. Each fact:
+1. Start with topic 1, and spend most of the run there. For each theme, pick two to four indicators that measure the
+   problem (for livelihoods: household income, women in self-help groups, MGNREGA days worked; for education: dropout,
+   learning levels) and search each one by dataset and district: "NFHS-5 Udalguri district fact sheet".
+2. `search_public_sources` broadly, several short searches per topic. A HELD hit is a dead end.
+3. Open the strongest sources: `read_page` for a web page; `fetch_document` then `read_document_pages` for a PDF.
+   Prefer government, peer-reviewed, multilateral and established research sources over news and blogs. When a
+   government site will not open, look for the same report elsewhere (data.gov.in, the state's own site, a PDF copy
+   on another official site) before moving on.
+4. Wikipedia is never a source: code refuses a fact citing it. Use it only to find the census table or report it
+   cites, then read that.
+5. `add_facts` in batches of up to 15 as you go. Each fact:
    - `origin` "web", `source_url` the exact link you read, `source_name` the publisher and title in words
      ("UDISE+ 2023-24, Ministry of Education");
    - `evidence` the sentence or table row copied exactly as the read printed it. Code finds it on that page and
      refuses a fact whose quote is not there, or whose link you did not read in this run;
    - `subject` names the indicator and the place ("secondary dropout rate, Udalguri district"); `value` as the
-     source gives it; `as_of` the year or period it is for (code refuses a fact without one);
+     source gives it; `as_of` the year or period it is for, in digits ("2011", "2019-21"); code refuses a fact
+     without one;
    - `section`: A3 for the problem and its causes, A2 for the place and its people, F1 for schemes, missions,
      district plans and SDGs, A14 for a scheme that could carry the work after the grant, A4 for what similar work
      achieved. `element` when the fact fills one of that section's strong elements, in its own words.

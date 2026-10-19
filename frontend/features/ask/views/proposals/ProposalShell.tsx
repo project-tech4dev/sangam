@@ -568,6 +568,8 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
   const readers = work.readers ?? {};
   const started = Object.keys(readers).length > 0;
   const unread = work.sources.filter((d) => !readers[String(d)]);
+  // A proposal read before public research existed has no row for it yet.
+  const noPublic = started && !readers.public;
   const running = Object.values(readers).find((r) => r.status === "running");
   // The funder's reader and public research both cite web links; found_by tells them apart.
   const from = (f: Fact, key: string) =>
@@ -587,7 +589,7 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
         <ul className="pr-reads" aria-label="Files read">
           {rows.map(([key, r]) => (
             <li key={key} className="pr-read" data-status={r.status}>
-              <span className="pr-read-title">{key === "funder" ? `What ${proposal.funder.name} looks for` : r.title}</span>
+              <span className="pr-read-title">{key === "funder" ? `What ${proposal.funder.name} looks for` : key === "public" ? "Public research on the problem and place" : r.title}</span>
               <span className="pr-read-state">
                 {READ_STATE[r.status]}
                 {r.status === "done" && ` · ${factsFrom(key)} ${factsFrom(key) === 1 ? "fact" : "facts"}`}
@@ -608,10 +610,10 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
           {running.by?.name ?? "A teammate"} started reading the files. This takes a few minutes; you can leave this page.
         </p>
       )}
-      {canEdit && !running && (!started || unread.length > 0) && (
+      {canEdit && !running && (!started || unread.length > 0 || noPublic) && (
         <div className="pr-next">
           <button className="btn btn-primary" type="button" disabled={!send} onClick={() => send?.(started ? READ_AGAIN : WRITE_FIRST_DRAFT)}>
-            {started ? "Read the new files" : "Write the first draft"}
+            {!started ? "Write the first draft" : unread.length > 0 ? "Read the new files" : "Search public sources"}
           </button>
           {!send && <span className="muted fm-meta">Wait for Sangam Pitch to finish its answer.</span>}
         </div>
