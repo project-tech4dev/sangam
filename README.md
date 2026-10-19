@@ -309,7 +309,7 @@ frontend over the **AG-UI protocol** and both streaming their tool calls live, s
 work rather than trusting a black box.
 
 **Ask Sangam has exactly six tools** — `db_list_tables`, `db_describe_table`,
-`db_profile_column`, `db_query`, `search_graph`, `fetch_url` — and that sentence is load-bearing.
+`db_profile_column`, `db_query`, `search_graph`, `compare_fit` — and that sentence is load-bearing.
 `create_deep_agent` adds eight filesystem tools of its own plus a general-purpose subagent
 carrying the whole tool list; `backend/app/agent/harness.py` removes both, and tests pin it.
 

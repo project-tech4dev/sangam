@@ -6,7 +6,12 @@ from langchain_core.tools import tool
 
 from app.agent.tools.sql import render
 from app.agent.tools.sql.catalog import CATALOG, COLUMNS, DEFECTS, TABLE_NAMES
-from app.agent.tools.sql.errors import REJECTED_PREFIX, explain_db_error
+from app.agent.tools.sql.errors import (
+    PROFILE_FAILED_PREFIX,
+    PROFILE_REJECTED_PREFIX,
+    REJECTED_PREFIX,
+    explain_db_error,
+)
 from app.agent.tools.sql.executor import PsycopgExecutor
 from app.agent.tools.sql.validator import SqlRejected, ValidatedQuery, validate
 from app.core.config import get_settings
@@ -111,12 +116,12 @@ async def db_profile_column(table: str, column: str) -> str:
         table, column = table.strip().lower(), column.strip().lower()
         if table not in TABLE_NAMES:
             return (
-                f"{REJECTED_PREFIX} unknown table {table!r}. Call db_list_tables for the "
+                f"{PROFILE_REJECTED_PREFIX} unknown table {table!r}. Call db_list_tables for the "
                 "readable ones."
             )
         if column not in COLUMNS[table]:
             return (
-                f"{REJECTED_PREFIX} {table} has no readable column {column!r}. "
+                f"{PROFILE_REJECTED_PREFIX} {table} has no readable column {column!r}. "
                 f"Columns of {table}: {', '.join(sorted(COLUMNS[table]))}."
             )
 
@@ -141,7 +146,7 @@ async def db_profile_column(table: str, column: str) -> str:
             lines.append(caveats)
         return "\n".join(lines)
     except Exception as exc:  # noqa: BLE001 - error-as-string tool discipline
-        return f"db_profile_column failed: {exc}"
+        return f"{PROFILE_FAILED_PREFIX} {exc}"
 
 
 @tool

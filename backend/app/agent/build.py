@@ -25,7 +25,6 @@ from app.agent.tools.sql_tools import (
     db_profile_column,
     db_query,
 )
-from app.agent.tools.web import fetch_url
 from app.core.config import Settings
 from app.integrations.tracing import trace_config
 
@@ -38,7 +37,6 @@ TOOLS = [
     db_profile_column,
     db_query,
     search_graph,
-    fetch_url,
     compare_fit,
 ]
 
@@ -72,7 +70,7 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         clear_old_tool_results(),
     ]
     if settings.sql_audit_model:
-        # Off unless configured: a real extra model call per SQL turn.
+        # On by default (SQL_AUDIT_MODEL=off turns it off): one cheap extra model call per SQL turn.
         middleware.append(answer_audit(settings.sql_audit_model))
 
     agent = create_deep_agent(
