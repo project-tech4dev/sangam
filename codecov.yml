@@ -25,7 +25,7 @@ component_management:
           target: auto      # the base commit's coverage: a PR may not lower it
           threshold: 1%
         - type: patch
-          target: 70%       # lines a PR adds or changes
+          target: 75%       # lines a PR adds or changes
     - component_id: frontend
       name: frontend
       paths: ["frontend/**"]
@@ -34,8 +34,8 @@ component_management:
           target: auto
           threshold: 1%
         - type: patch
-          target: 70%
-          informational: true   # most of the frontend has no tests yet
+          target: 75%
+          informational: true   # until the frontend can render a component under test
 
 comment:
   layout: "condensed_header, diff, flags, components, files"
