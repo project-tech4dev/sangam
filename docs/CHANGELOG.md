@@ -169,6 +169,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-16 · CI on every PR: ruff, unit and integration tests (pgvector, migrate, seed), coverage on Codecov (no drop over 1%, 70% of changed lines), and the frontend's lint, types and build.
 - 2026-10-19 · langchain 1.4.6, deepagents 0.7.28; `ToolErrorMiddleware` on every agent and subagent, so a tool that raises answers the model with its error type instead of ending the run (#252, #253).
 - 2026-10-21 · (unmerged) · Outbound fetches trust certifi plus `app/core/certs/intermediates.pem`, so censusindia.gov.in (which omits emSign SSL CA - G1) can be read; verification stays on, and a test fails a year before an intermediate expires.
+- 2026-10-21 · MIT license. The frontend gets Vitest and its own Codecov flag; backend and frontend coverage are gated and badged separately in the README.
 
 ## Tracing and evals
 
