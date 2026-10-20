@@ -369,7 +369,9 @@ name). Which PR added each one, and what it did, is in `docs/CHANGELOG.md`; the 
 `docs/ARCHITECTURE.md` §7. The design and the before/after are in `docs/DATA_PLATFORM.md`.
 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
-private, loopback and metadata addresses on every redirect hop.
+private, loopback and metadata addresses on every redirect hop. TLS is always verified,
+against certifi plus `app/core/certs/intermediates.pem`: a site that omits its intermediate gets that one certificate
+added there, never `verify=False`; an expired or mismatched certificate (nrlm.gov.in, rchiips.org) stays refused.
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:

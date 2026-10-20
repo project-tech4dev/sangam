@@ -7,12 +7,26 @@ import asyncio
 import ipaddress
 import re
 import socket
+import ssl
+from pathlib import Path
 from typing import Any
 
+import certifi
 import httpx
 
 _NUMERIC_HOST = re.compile(r"[0-9a-fA-Fx.]+")
 _NAT64 = ipaddress.ip_network("64:ff9b::/96")
+INTERMEDIATES = Path(__file__).parent / "certs" / "intermediates.pem"
+
+
+def trust() -> ssl.SSLContext:
+    """certifi's roots plus intermediates some government sites fail to send; verification stays on."""
+    context = ssl.create_default_context(cafile=certifi.where())
+    context.load_verify_locations(cafile=INTERMEDIATES)
+    return context
+
+
+TRUST = trust()
 
 
 def _literal_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
@@ -87,4 +101,4 @@ def guarded_client(**kwargs: Any) -> httpx.AsyncClient:
         if why:
             raise EgressRefused(f"REFUSED: {why}")
 
-    return httpx.AsyncClient(follow_redirects=True, event_hooks={"request": [guard]}, **kwargs)
+    return httpx.AsyncClient(follow_redirects=True, event_hooks={"request": [guard]}, verify=TRUST, **kwargs)
