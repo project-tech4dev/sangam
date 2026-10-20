@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:740a22d97bd0e3cd83fea642f0367155b81aebf506773b34c71d2a406d5db287",
+  "pageVersion": "sha256:bb8bbe3860f3713bf2a769b633b6c019c64fff4d32ba24dc74540b949403b201",
   "claims": [
     {
       "id": "claim_ad1457a859a34d0d88ee82f2b89ad7fe",
@@ -101,8 +101,8 @@
           "version": "repo-lines-v1:sha256:429504b30235fc11f1dc309d1c84dbc255611af690df328a7c56caabb2cff0fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZDBiNDI0ZjliNWU5ZWU2NGY2OWI5YmFmNTljZjk5MjAyOTVhYzkyMzliMWI0MjQxMTc0M2U5ZGJhNGQ5OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmY2M0NTc4NGY2ZWY5MWVmZmFmNzg2MDYwZWJlNzk2M2IzZDY1ZjU3N2RlZjUzZGM0NTM2OGEyNTM2MDljNDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3YjE4ZjA4MzhhODNhNzY2OWJiNTE4YTdkZjBiOTUyMTUwMjA4NjMwZWExNjI0NGU5OTI2N2UzNTE4OGFhOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0ODFhNTJkZDBhMzVjMzE3NjU5ZTNiNTdmNDI2YmQ4OTg0NzNkMDZlMmMwMGEzZjViNzA3YjA3ZTIwYTA1ZTIifQ"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L284-L326",
-          "version": "repo-lines-v1:sha256:4c8f410d475365baec2e8aeee57e6d0b4c1de4b6bfab7699edeea821d856ae2e:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZGQ5ODNiYjE5YTlhYWUzNDNlZWZmYTQ2YzNlMjA1MjM0Y2I5MGViMzI4MWNjY2M3ZjlkOTY4MmY5YWU5MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MDE0OWUwNjlhZDY3ZWNjZjQ3MzY0NmZmMWM3NTAwNTBkMzI5ZDExMDAxOGRjNTc2Njg3OGVhZmExZDYwN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzOTFlYTE4YjI3MjEwYzA2YzhjOTNlODRhNzYxZDU5ZWU5ZTBhODNmYmVmNzYwMjg3ZjU3YzI1MzczOWI2YjYifQ"
+          "resource": "repo://backend/app/core/security.py#L284-L327",
+          "version": "repo-lines-v1:sha256:da2944dd2a8a97cbf34ce03c99c0f613daaf354308c8e4d6ee9df480d3557a28:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZGQ5ODNiYjE5YTlhYWUzNDNlZWZmYTQ2YzNlMjA1MjM0Y2I5MGViMzI4MWNjY2M3ZjlkOTY4MmY5YWU5MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MDE0OWUwNjlhZDY3ZWNjZjQ3MzY0NmZmMWM3NTAwNTBkMzI5ZDExMDAxOGRjNTc2Njg3OGVhZmExZDYwN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzOTFlYTE4YjI3MjEwYzA2YzhjOTNlODRhNzYxZDU5ZWU5ZTBhODNmYmVmNzYwMjg3ZjU3YzI1MzczOWI2YjYifQ"
         },
         {
           "resource": "repo://backend/tests/test_access.py#L185-L198",
@@ -115,8 +115,8 @@
       "statement": "CallerPool wraps the shared owner-connected psycopg pool: each connection() opens a transaction and calls set_caller, which sets the Postgres role (anon or authenticated) and request.jwt.claims with transaction-local set_config, so the connection returns to the pool as the owner and the checkpointer and agent tools never inherit a caller. get_caller_pool falls back to anon without middleware state, and PoolDep is what routers take.",
       "evidence": [
         {
-          "resource": "repo://backend/app/db/pool.py#L31-L72",
-          "version": "repo-lines-v1:sha256:1d05473bb60970905d027f395c70676c2f9bb2068cd2c62532486e985830649d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiY2RjM2FjODdhNTU5ZTNjODI4NTczMTc2ZjUxODk3Y2VkNjAzZDZhZWI4MDdjMjI0YzcyOTA1NzVmMDNmMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTRlYjFmZGMwMjgxNTdjMmUxNGEwZmNiYThkNTE4Mzk4ZmQyMDMzZjdmYjAzZmViZGE0ODY4ODNmZWZhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1MmRmYTIxZDkwMTBhYzJhMTQwYTQ4NmZjZGUxZmQ1MjM1ZGZlMzRiZTc2YzlhNTNkZWU1ZjUzOTlkZWM2M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/db/pool.py#L31-L74",
+          "version": "repo-lines-v1:sha256:dbe083b58267130dea31dde43b0e60dc3aef01a2f8aa371c77af92679c95e493:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiY2RjM2FjODdhNTU5ZTNjODI4NTczMTc2ZjUxODk3Y2VkNjAzZDZhZWI4MDdjMjI0YzcyOTA1NzVmMDNmMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTRlYjFmZGMwMjgxNTdjMmUxNGEwZmNiYThkNTE4Mzk4ZmQyMDMzZjdmYjAzZmViZGE0ODY4ODNmZWZhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1MmRmYTIxZDkwMTBhYzJhMTQwYTQ4NmZjZGUxZmQ1MjM1ZGZlMzRiZTc2YzlhNTNkZWU1ZjUzOTlkZWM2M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://backend/tests/test_caller_pool.py#L79-L96",
@@ -143,7 +143,7 @@
       "statement": "The owner pool (OwnerPoolDep and get_pool()) bypasses grants and RLS and is used by identity code (resolve_principal, thread claiming, can_open_thread checks, request_scope), matching tools, all Import tools, the proposal agent's tools and context, Import's owner-side REST handlers, the matching run and the make match CLI, so those paths must check scope themselves.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/tools/matching_tools.py#L78-L86",
+          "resource": "repo://backend/app/agent/tools/matching_tools.py#L147-L155",
           "version": "repo-lines-v1:sha256:a954e750181a2a9a0afbcefd2a24c0125694a94d08f1a46ed58edfedf701a667:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmE3ZTUyOWFhNDA0MDI0Yjg3MTFmNjIzMmY1OWM4MGFkYmQxZjg3ODA2MmZjNDk3MjQ3ZTlhN2EzNDAxNzNlMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkwOWE1M2E2MThkMDI4ZTFkMzAwMGMwYTdhYmNlZWNiZTVmYjM3ZjRlNTExZWZlNDY2NDNmYWQ2ZTY2ODcyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2MyYzBlMTFmMjdhOTBkMjEzYzZlZjk2ODk0YzcxY2E3ZDg1OGRhN2NhMzgwM2Y2YzI0ZjAwOWQxOGY3M2ZiYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDYwZGU1OGM3YmVlZmYxNjZkYzkzMWY1MTBhZGY1ZmM2MjViYWEzZjgwYTg3NDY4ODgzMDJjMWZhZDU3YzJjZiJ9"
         },
         {
@@ -207,7 +207,7 @@
           "version": "repo-lines-v1:sha256:6ddcf6f22a261817733ee250de55508baa02f7b22aaff326ffad3fb29a9dcbbd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZGQ5ODNiYjE5YTlhYWUzNDNlZWZmYTQ2YzNlMjA1MjM0Y2I5MGViMzI4MWNjY2M3ZjlkOTY4MmY5YWU5MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNTBhMmRiZGM2YTEwNGI5OWNiNTdmZmQ0NjhlMjVmNjc2M2ZiN2ZiYjRiOTM2MmMyZmRmZWMzMDIwMGQ1MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MDE0OWUwNjlhZDY3ZWNjZjQ3MzY0NmZmMWM3NTAwNTBkMzI5ZDExMDAxOGRjNTc2Njg3OGVhZmExZDYwN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzZTk0MDgwMmQyZWU4YTk5ZDI0ZWFmMTkwNmY4NDQ0OGE3MjY1MDMxNTgxZTIyMTJkYTUyNjA3MTQ4MGNiNTMifQ"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L328-L355",
+          "resource": "repo://backend/app/core/security.py#L329-L356",
           "version": "repo-lines-v1:sha256:05e5e43aba5a33448d4d4da5171f8d1d732f6fb074dad7c34007994c0935e3d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYzAwNjM5ZTdjYmQ1MDVkZWRiYTYzZDE3ZWMzOGU1YWFmYzAzYzVjYzU1YTEwYmM4Y2Q4M2RlYzE0M2ExYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMmE1YWFjYjlhY2Y3YTliYTZkNDAxNmQyYTZlMmFjMDExMTVmYmI1ODc3YzYxM2QzZDBlY2Q2YzlmZWQxYmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkZjU3MDMwNGUyY2ZhZmY0YmE3MzQ4ZmJmY2IzY2NmZGQ4ZjcxZDU5ZDZlZmQ1NmY0OWU1MGI5NWUzZTRlNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -219,7 +219,7 @@
           "version": "repo-lines-v1:sha256:a273ea14e2d0de5f45f2c88e6466acdd324f73a7ab30d96e85d6840a131bd230:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTNlYTQ5N2JmYWM2YjZkZjcyN2UwNTBiNTU4YzFkNGE0NGZjNThjNjhhNzU1MWRjNzU0MzVlYzMzNTQ5MzYyZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0MzliMTZjNWU1NmI2ZTcwZGY0NmFjZTE5MDdmODE1MWY0YzYyNjMzOWZkMGVmMTU0YWNjOGQ5YzBmOWI2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmRiZjRlNGU5N2IyNmE1NWE2ZjVkZjkwZmUyYTg1ZWU5ZmQ3MDVkNDg0ZDQ5NjY2OGVjN2JkOTdlMmViNjI3NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzMyZmU0ODYwYjAzMTY1ZTZkMzMxM2E0NzJhYTZmZDhlYzQwOWIwNjg0ZDQ2N2QzZmJlOTU2ODgzODZlNTZjNSJ9"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L238-L239",
+          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L262-L263",
           "version": "repo-lines-v1:sha256:d88c38aaa76e3b2f0075d77f83bb09ede14f998b32b59f5100e9974842d1bc01:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzQ4ZjFiNzI2YmM0ODM0YTA5ODdiMzU4NGQ1MDdmZDI4OWNiZjk1Y2FjZWE2YjJmMDMyN2E1MTQyMmI4OTZlZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0MzliMTZjNWU1NmI2ZTcwZGY0NmFjZTE5MDdmODE1MWY0YzYyNjMzOWZkMGVmMTU0YWNjOGQ5YzBmOWI2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDc3YWJkYmZmOTA1YjIxYjFlOWQwNmZkZDhhMjcwYzI5MzYwMTY0ZGUxYzg0Yjg0NGEzOTA5ZjBiNTYxM2Q1NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjUyNmUxZTNiYTMzMDc3ZDJhZDJhOWM4NzlkMWJiMDgwODBlMjE3Y2M5MTdkZmUyZjM2MDNkNTlkNGExZWU4NiJ9"
         }
       ]
@@ -395,8 +395,8 @@
           "version": "repo-lines-v1:sha256:77f5e7018b3914e410ffd4573c7d40cc079e87e28e192ba8e6d2023c9a25f22d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNmNkOTM4NTIyZmVmOWM0ZDg5OTc3MDgzMmM2NzNiNjYxZmY1OGNmNDA5ZWUxYTdiOTFjZmM4MTdiYjc1ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxMTllMDYwYmY5ZmM4OTU0Yzg2MGFkYjhkN2FkODRhYjlkNmZiZTExNjdjZGVkMTM2MzhiN2Q0YTc2YWNjNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L320-L326",
-          "version": "repo-lines-v1:sha256:ab1107c4d283126c4e71fcae7a0c9be782105440ee5c1ea4badce239cb9c71c3:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGJmYmZlYmZmZDUwMTY2NDdlYWMwMjRkOGUxNzk2ZTRjMDA0MGRhYmZjOWJiM2ViZDZkNWQ4YjAwMzA0YmIwZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhhODYzY2YzMzhlNjliNzcwMzZlZGM3MDAwZDlmNjRhMGY5ZThiNTNkNDc4YjhmNDEyNTk0YzJjMWM5OTY3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTM5MWVhMThiMjcyMTBjMDZjOGM5M2U4NGE3NjFkNTllZTllMGE4M2ZiZWY3NjAyODdmNTdjMjUzNzM5YjZiNiJ9"
+          "resource": "repo://backend/app/core/security.py#L320-L327",
+          "version": "repo-lines-v1:sha256:47ec822c9022b1cd21dbf83549a3e0bab873a259071d145e1fad837b6b217ab8:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGJmYmZlYmZmZDUwMTY2NDdlYWMwMjRkOGUxNzk2ZTRjMDA0MGRhYmZjOWJiM2ViZDZkNWQ4YjAwMzA0YmIwZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhhODYzY2YzMzhlNjliNzcwMzZlZGM3MDAwZDlmNjRhMGY5ZThiNTNkNDc4YjhmNDEyNTk0YzJjMWM5OTY3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTM5MWVhMThiMjcyMTBjMDZjOGM5M2U4NGE3NjFkNTllZTllMGE4M2ZiZWY3NjAyODdmNTdjMjUzNzM5YjZiNiJ9"
         },
         {
           "resource": "repo://backend/app/db/pool.py#L39-L40",
@@ -427,7 +427,7 @@
       "statement": "proposal_chat_access gates the /proposal chat: the thread id must be proposal-<id>-<caller's user id> (otherwise 404), the proposal's org must be readable to the caller (else 404, so strangers learn nothing), a reader who cannot edit (a member) gets 403, and only then is the thread claimed with use_case 'proposal' and chat_user_id, chat_scope and chat_proposal set. Each person therefore has a private chat per proposal.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/security.py#L328-L355",
+          "resource": "repo://backend/app/core/security.py#L329-L356",
           "version": "repo-lines-v1:sha256:05e5e43aba5a33448d4d4da5171f8d1d732f6fb074dad7c34007994c0935e3d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYzAwNjM5ZTdjYmQ1MDVkZWRiYTYzZDE3ZWMzOGU1YWFmYzAzYzVjYzU1YTEwYmM4Y2Q4M2RlYzE0M2ExYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMmE1YWFjYjlhY2Y3YTliYTZkNDAxNmQyYTZlMmFjMDExMTVmYmI1ODc3YzYxM2QzZDBlY2Q2YzlmZWQxYmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkZjU3MDMwNGUyY2ZhZmY0YmE3MzQ4ZmJmY2IzY2NmZGQ4ZjcxZDU5ZDZlZmQ1NmY0OWU1MGI5NWUzZTRlNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -537,6 +537,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-15T18:08:53.060Z"
+    "at": "2026-10-19T19:22:00.060Z"
   }
 }

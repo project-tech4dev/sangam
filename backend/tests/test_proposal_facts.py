@@ -149,6 +149,88 @@ class TestAddFacts:
         assert list(stored["work"]["facts"]) == ["k1"]
 
 
+PAGE = ("UDISE+ 2023-24. The dropout rate at the secondary level in Udalguri district was 19.8 per cent, "
+        "against 15.1 per cent for Assam.")
+URL = "https://udiseplus.gov.in/udalguri"
+
+
+def public_fact(**kw):
+    return {"subject": "secondary dropout rate, Udalguri", "value": "19.8%", "origin": "web", "section": "A3",
+            "topic": "problem",
+            "as_of": "2023-24", "source_url": URL, "source_name": "UDISE+ 2023-24",
+            "evidence": "The dropout rate at the secondary level in Udalguri district was 19.8 per cent", **kw}
+
+
+class TestPublicResearchQuotesThePage:
+    def test_a_quote_on_the_page_it_read_is_kept(self):
+        assert fact_rules.off_page(public_fact(), PAGE) is None
+
+    def test_a_quote_not_on_the_page_is_refused(self):
+        made_up = public_fact(evidence="Udalguri has the highest dropout rate in Assam, at 19.8 per cent")
+        assert "not on" in fact_rules.off_page(made_up, PAGE)
+
+    def test_a_page_it_did_not_read_is_refused(self):
+        assert "was not read in this run" in fact_rules.off_page(public_fact(), None)
+
+    def test_a_fact_without_its_year_is_refused(self):
+        assert "year" in fact_rules.off_page(public_fact(as_of=""), PAGE)
+
+    @pytest.mark.parametrize("as_of", ["undated", "recent"])
+    def test_a_year_must_be_in_digits(self, as_of):
+        assert "year" in fact_rules.off_page(public_fact(as_of=as_of), PAGE)
+
+    def test_a_period_with_a_year_is_kept(self):
+        assert fact_rules.off_page(public_fact(as_of="2019-21"), PAGE) is None
+
+    @pytest.mark.parametrize("topic", ["", "news"])
+    def test_a_fact_needs_its_topic_for_the_card(self, topic):
+        assert "topic" in fact_rules.off_page(public_fact(topic=topic), PAGE)
+
+    def test_wikipedia_is_not_a_source(self):
+        cited = public_fact(source_url="https://en.wikipedia.org/wiki/Udalguri_district")
+        assert "Wikipedia" in fact_rules.off_page(cited, PAGE)
+
+    def test_a_number_the_quote_does_not_hold_is_refused(self):
+        assert "every number" in fact_rules.off_page(public_fact(value="21.8%"), PAGE)
+
+    def test_only_the_sections_public_evidence_serves(self):
+        assert "fills" in fact_rules.off_page(public_fact(section="A10"), PAGE)
+
+    async def test_add_facts_in_a_public_run_marks_what_it_keeps(self, monkeypatch):
+        from app.proposals.middleware import PUBLIC_RUN, PublicRun, page_key
+
+        stored = {"work": work(stage=2)}
+        p = context.Current(id=1, title="t", org_id=7, org_name="SeSTA", funder_id=3, funder_name="ABF",
+                            work=stored["work"], scope=CallerScope(UUID(int=5), False, {7: "admin"}), can_edit=True)
+
+        async def current():
+            return p
+
+        async def save(pool, proposal_id, change):
+            applied = change(stored["work"], "t")
+            stored["work"] = applied.work
+            return applied
+
+        async def user_name(pool, user_id):
+            return ADMIN
+
+        monkeypatch.setattr(context, "current", current)
+        monkeypatch.setattr(ledger_tools, "get_pool", lambda: None)
+        monkeypatch.setattr(repo, "save", save)
+        monkeypatch.setattr(repo, "user_name", user_name)
+        token = PUBLIC_RUN.set(PublicRun(avoid=("SeSTA",), pages={page_key(URL): PAGE}))
+        try:
+            out = await ledger_tools.add_facts.ainvoke({"facts": [public_fact(), public_fact(value="21.8%")]})
+        finally:
+            PUBLIC_RUN.reset(token)
+        assert "k1 added" in out and "REFUSED" in out
+        assert stored["work"]["facts"]["k1"]["found_by"] == "public"
+
+    def test_outside_public_research_a_web_fact_keeps_todays_rule(self):
+        assert fact_rules.problem(work(), public_fact(evidence="a sentence quoted from the brief")) is None
+        assert "found_by" not in fact_rules.make(public_fact())
+
+
 class TestOnlySangamPitchAddsFacts:
     def test_a_screen_save_cannot_add_a_fact(self):
         with pytest.raises(rules.BadChange):

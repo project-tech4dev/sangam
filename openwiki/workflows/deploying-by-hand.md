@@ -4,6 +4,10 @@ title: Deploying by Hand
 description: How to deploy Sangam, which only happens when someone runs the Deploy GitHub Actions workflow by hand. Covers what the workflow does and diffs, how to order a deploy with migrations, the 1800 s function limits, and the checks to run afterwards.
 tags: [deploy, vercel, github-actions, migrations, operations, workflow]
 sources:
+  - id: openwiki-source-5f5b95b3d6a215fa02ceb945
+    resource: repo://.env.example
+  - id: openwiki-source-164e2da859b5277df81c7d94
+    resource: repo://.github/workflows/ci.yml
   - id: openwiki-source-6766b7a0c14857435d2077c9
     resource: repo://.github/workflows/deploy.yml
   - id: openwiki-source-e136029ec7d24feaceb8ce72
@@ -14,6 +18,8 @@ sources:
     resource: repo://CLAUDE.md
   - id: openwiki-source-82b4a7ca109f9768db60ccbf
     resource: repo://db/migrations/README.md
+  - id: openwiki-source-0481f770819c385f3b507020
+    resource: repo://docker-compose.staging.yml
   - id: openwiki-source-e2b923750735c644bf0f22f5
     resource: repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts
   - id: openwiki-source-a0ebc66d448ae6aa5723800b
@@ -24,10 +30,10 @@ sources:
     resource: repo://README.md
   - id: openwiki-source-0908473e2445de9a37b6928f
     resource: repo://scripts/smoke.sh
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Deploying by Hand
@@ -49,6 +55,12 @@ For vendor-level facts (regions, Supabase, Storage) see [Vercel and Supabase Spe
 4. Watch both jobs finish, then run the [post-deploy checks](#post-deploy-checks).
 
 The workflow needs one secret, `VERCEL_TOKEN`. `VERCEL_ORG_ID` (the Vercel team) is hard-coded in the workflow's `env` block because it is an identifier, not a credential. Each job names its project with `--project` instead of an opaque project id. The workflow has `contents: read` permission only.
+
+### CI does not gate or trigger a deploy
+
+`.github/workflows/ci.yml` is a separate workflow that runs on every pull request and every push to `master`. Its header says it deploys nothing ("that stays deploy.yml, by hand"). It runs backend lint (`ruff`), backend unit tests (`pytest -m "not integration"`), backend integration tests against a `pgvector/pgvector:pg17` service, and the frontend lint, `tsc --noEmit` and `npm run build`. The integration job builds its database the way a local stack does: it applies `db/init/*.sql`, then `python -m app.db.migrate`, then the seeds.
+
+Nothing links CI to Deploy. `deploy.yml` does not wait for CI and does not check that it passed, so a dispatch on a red or unchecked ref deploys anyway. Before dispatching, look at the CI result for the commit you are shipping.
 
 ## What the workflow does
 
@@ -84,6 +96,8 @@ The workflow uses `concurrency: group: deploy-${{ github.ref }}` with `cancel-in
 ## Order with migrations
 
 **The workflow does not migrate.** Migrations are never applied by a deploy, a build or `make up` against a managed database. They are an explicit separate step: `make migrate ENV=staging` (see [Writing a Migration](./writing-a-migration.md)). `ENV=staging` here only points your local tooling at the managed database. It deploys nothing, and it is the same database the deployed app serves.
+
+`ENV=staging` selects the `docker-compose.staging.yml` overlay, which sets the backend container's `DATABASE_URL` from the `STAGING_DB_*` block in `.env` (host, port, user, password, name, `sslmode` defaulting to `require`), or from `STAGING_DATABASE_URL` if you set that instead. The overlay uses `:?` guards, so an empty block fails with a readable message rather than quietly connecting to localhost. The role needs `CREATE` on the `public` schema and the `vector` and `pg_trgm` extensions ([.env.example](../../.env.example)). Avoid `make up ENV=staging` as a deploy step: it runs your own containers against the shared data, and `make up` skips its automatic migrate for any ENV other than `local`.
 
 Run migrations **before** dispatching the deploy:
 

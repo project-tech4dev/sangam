@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d3b7c3d83bac0090a599bb42776f75f66802c695c97e7ba1386dd65df2593891",
+  "pageVersion": "sha256:be52200075a49bfa126574f4da18d92819c9c5f29e472a85ea1e80a0d134e748",
   "claims": [
     {
       "id": "claim_163b637ead7644f9b6ecbe76acd3baf7",
@@ -35,7 +35,7 @@
       "statement": "make migrate and make migrate-status run python -m app.db.migrate in a one-off backend container selected by ENV (local or staging); migrate-status passes --status and reports pending files without applying them. The runner reads db/migrations from the /srv/db mount.",
       "evidence": [
         {
-          "resource": "repo://Makefile#L147-L155",
+          "resource": "repo://Makefile#L153-L161",
           "version": "repo-lines-v1:sha256:7d98b676a011ce5ee36fdb1e41fb17658e7b5ba66678fb91daa97c87c398d1de:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmVjMDA5YzVlMmE2NWMwODM4NjA4ODU5NWUyMjJlNjkxMTIxYTM4OWQ3Y2Q3NDY3YTcyZjAwZDE5ZTRlMDE2MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTQxNGQ2MjNjYmNkYzM2OGE2NzkyOGViNjVmNTA2ZjdmOTNlZTlmMDIyNTU2Mjc5ZjBhNjY3NDA3ODc3MDQyZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTJhMDExM2Q3M2M1ZmFlZGE2Zjg4MDgwY2EyM2UwMWQ3YzcyNGJiNmQ1Y2JmZGM0MzM4Njk2YmJiMDJmNDk2MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjU1OWMyZDlkMTM4YTg0NDczZTdiZDcxZTQzZDAyNGViMTg0NGJjN2E3YWJkMGRlN2M0MTRmNzVkMTVlY2RjNSJ9"
         },
         {
@@ -43,7 +43,7 @@
           "version": "repo-lines-v1:sha256:d58825f4203ac9a5df564fca357a21cf8c985e1a8245fa0fac674264eb239964:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDU4ODI1ZjQyMDNhYzlhNWRmNTY0ZmNhMzU3YTIxY2Y4Yzk4NWUxYTgyNDVmYTBmYWM2NzQyNjRlYjIzOTk2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDU4ODI1ZjQyMDNhYzlhNWRmNTY0ZmNhMzU3YTIxY2Y4Yzk4NWUxYTgyNDVmYTBmYWM2NzQyNjRlYjIzOTk2NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODdmNDg5YmUyYWM2OGI0MjIxMDQ0YTBmYzdmYjJjMGVmODQ3ZDY5OTYxMzFjNjZjYmFjMGY0ZWMxOWViNTM0NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmVhOWEzMWQwODg4MDRjZWZjODFiM2M0ZTc4MGYzYzI3ZGEwY2JmYTZjYjE2YzIwMjRhNGRkZmVhN2ZiYWQ1NyJ9"
         },
         {
-          "resource": "repo://docker-compose.yml#L111-L111",
+          "resource": "repo://docker-compose.yml#L112-L112",
           "version": "repo-lines-v1:sha256:5310b4c498ee69e9346c37a5efa4653cc3f361e98dbe4a58b4acf71910db44c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMxMGI0YzQ5OGVlNjllOTM0NmMzN2E1ZWZhNDY1M2NjM2YzNjFlOThkYmU0YTU4YjRhY2Y3MTkxMGRiNDRjNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMxMGI0YzQ5OGVlNjllOTM0NmMzN2E1ZWZhNDY1M2NjM2YzNjFlOThkYmU0YTU4YjRhY2Y3MTkxMGRiNDRjNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODkzOGYxMzIwYzg0OWMzNTYyYzhiODkxMGJmMjk3NTczYjVjNjM0YmUyN2I4ODhjYjY3MWYzODk1NTI0MGFkYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWI3OTIxZmUzOWQzYzYwY2MxYjU0ZDFmMGYzYTA1MDYxNDE1NjE0ZWM5ODJhYTQyYTNjZDdiYjgxNjNhYWU0NiJ9"
         }
       ]
@@ -67,8 +67,8 @@
       "statement": "make db-backup, db-reset, db-clean and db-upgrade are local-only (guarded by require_local); for staging the Makefile directs users to make migrate ENV=staging and the provider's snapshots, so a staging backup is taken outside the Makefile.",
       "evidence": [
         {
-          "resource": "repo://Makefile#L269-L292",
-          "version": "repo-lines-v1:sha256:58af4b36062b2a2e4bc0e0d4603e337ca3c7c639aad62c882d2125b5e62cae6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyODFhYmRlNGJhMzk0YmJkZWI1MjE2NTE2Y2NiMTRkODc2MmYyYjg2MzkwNzQzZWVhZWJlYzBlYjJmMzg3MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5YzUwMzZlM2I4MWVlZTRmZWI0ZDg5MmUwN2VhMWMwNmZhNmZmY2QzMTQxM2RjY2I1MTJkYjJhMjYzZDBjM2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyN2Q3OTZiY2M4YzE2MjY5YTEyMTdlMGYwY2Y0MjQwZTgxNzJjNzkyMDE1YzkzODA1ZTRjMDBkMzE3MjcyZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiZjFjYmQ3MjhmNDVjODJlM2MzNGEwMjU1MWFiNDQxNWM1MjEzODFiZWU5ZTU0MzU4YmE5ZjNkZWU4NDg4YmYifQ"
+          "resource": "repo://Makefile#L284-L331",
+          "version": "repo-lines-v1:sha256:4d5e39dbb85883ddddb45e5500ce0653e82d6da468710c00f111f4ae31932b13:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyODFhYmRlNGJhMzk0YmJkZWI1MjE2NTE2Y2NiMTRkODc2MmYyYjg2MzkwNzQzZWVhZWJlYzBlYjJmMzg3MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyYWY0OTEyNGMwNzA1YTVkZGUxMWZjMTI3YjMwYTZjZjgxNzkyOTkxMTNiMjc2YTZkYTg3MzhkYjBmOTA1Y2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyN2Q3OTZiY2M4YzE2MjY5YTEyMTdlMGYwY2Y0MjQwZTgxNzJjNzkyMDE1YzkzODA1ZTRjMDBkMzE3MjcyZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2ZTMxMjY0MGUyOTM0Mzg3ODAwMTY1ZjM3MzJlNGVkNjMyNDJmMWZhMjU5YjM2YjM2M2E4Mzk4MTIzNWFiMmEifQ"
         },
         {
           "resource": "repo://Makefile#L52-L58",
@@ -115,7 +115,7 @@
       "statement": "Schema changes go only in a new db/migrations/*.sql file (db/init/02_schema.sql is the fresh-database baseline) together with the new table's RLS policies; reaching the Ask agent requires a line in backend/app/agent/tools/sql/catalog.py, which is a security decision; and the migration is recorded in docs/CHANGELOG.md followed by make wiki-update, with the rules themselves living in docs/ARCHITECTURE.md §7 and §8.",
       "evidence": [
         {
-          "resource": "repo://Makefile#L186-L187",
+          "resource": "repo://Makefile#L201-L202",
           "version": "repo-lines-v1:sha256:e1df074de2bc4985e5bc826f885c98f7e4f786675669ff958d7f4872131469e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWEyNDY1NDljNjRhNjA2OGY1NDAwNmYxOGUxYzBkODFjMTczNWE1ODg5ZGM0YjljN2M1ZjExZDZlMWU5YzI2MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDIzN2MwNDJiNmZmNmI1M2Q2ODMxNWYzNDM5MTAzMTMwMzY2YjcxMDg0ZGE0YjEwYjU0ZmNkZDYwNTU3MjU3NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmQ0ZmI5YTczZjI2NWMwOWI4ZmRmOWQ5NDExNTZmOTljYjY5OTBiNjE4OGQxZDM2YTYxYjIyNTk3NDZjODdkZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGM0NDcwMDk0YTE5NjllZDZkYzkwZmQyMjEyNTkyY2RmMjJiNzI3Y2M3YzNkYzk1MzkzYWM3MmNmOTU1NjQyOSJ9"
         },
         {
@@ -133,11 +133,11 @@
       "statement": "At backend boot, the lifespan's _verify_sql_catalog calls verify_against_db and raises RuntimeError if it reports any problem: a catalogued table or column absent from the database, or a catalogued column that authenticated cannot SELECT (or that anon can read only in part of a table). Extra live tables not in the catalog or KNOWN_EXCLUDED are only logged at INFO and extra columns are not checked, so a new table stays invisible to the agent until deliberately catalogued or excluded.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1002-L1042",
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1005-L1045",
           "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
         },
         {
-          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1075-L1121",
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1078-L1124",
           "version": "repo-lines-v1:sha256:ad0b56a446927d6382872a548a7246393d4e32eec72a605c1e506b1ae75d4cc2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3YTMyOGIzYmNmNTEyNWMxZmRkNzg5MDRiZTI4MTliNzI0MjRmYjE0MmM0MjE4OGE3NmQwY2I1YmVhMjNiMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MWI0ZjAzNDJmMDc3ZDhjZDA3Y2ZkMDJlYzAwNDBiZTkxYzkxYTc1NWM5NTM5NmUxNTQ3Y2Q2MzA5YmEzMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4N2IzMGM1YWM0NTA0YzdiNWRhMjEyZjYxN2JmNzA1MzAyYTIxYzhhOTNiZGU3YmRlYWJkYzc3ODI0ZTFmM2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -151,11 +151,11 @@
       "statement": "catalog.py runs _self_check() at import, rejecting catalogued tables with no columns or primary key and foreign keys referencing tables or columns missing from the catalog; KNOWN_EXCLUDED holds tables intentionally outside the catalog such as checkpoints, users, threads, proposals and schema_migrations.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1002-L1042",
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1005-L1045",
           "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
         },
         {
-          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1045-L1072",
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1048-L1075",
           "version": "repo-lines-v1:sha256:3b5d0d797e59297f9d753bfddeaae91fc9b4395298da8094346f247030c06981:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyMzliNTdiZDA2M2FjNDcxMDg1M2NiMmRjN2U1YTczYjJiZDA5YTQ2ZWI5NDBkOWNmZjFkZDc1ZGJmOWQ3ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MDAzZTMxOTA0ZmY1Y2ZlOWJjMjdlYzcwYTZhMDFhZGZlOWU0MWJiYjJlMWVhNDI3YmFjM2ZkMmJiNzgyOTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjYjllNWJjYjFjMjlmZWU0OTM1NjAyNWEyMGI0YmFmMGNjMWM0NDQ1ZjVhMTg0NjBmMzkxMjkyZjU3NWRkNTQifQ"
         }
       ]
@@ -186,10 +186,10 @@
     },
     {
       "id": "claim_fb350b17ad4144858ed5fe95a4a89e43",
-      "statement": "0048_proposal_work.sql is the latest migration (so the next is 0049): it adds NOT NULL DEFAULT '{}' jsonb columns work and summary to proposals, changes write access with ALTER POLICY on proposals_insert, proposals_update and documents_insert, and ends with a DO-block guard that raises, rolling back the transaction, if any table readable by anon or authenticated lacks a read policy. proposals is in KNOWN_EXCLUDED, so no catalog change was needed.",
+      "statement": "0048_proposal_work.sql is the worked example for changing an existing table: it adds NOT NULL DEFAULT '{}' jsonb columns work and summary to proposals, changes write access with ALTER POLICY on proposals_insert, proposals_update and documents_insert, and ends with a DO-block guard that raises, rolling back the transaction, if any table readable by anon or authenticated lacks a read policy. proposals is in KNOWN_EXCLUDED, so no catalog change was needed.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1023-L1025",
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1026-L1028",
           "version": "repo-lines-v1:sha256:91c220abcd87fbcc882a22ec81254920da286dba4d984d39be123bc83d2c673f:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmRmMjg4ZTc5ZWY1ZWNkMGUwMDA2MjQ1NWIyODJmZmE5ZDUwZGE2YWFlYWViMGJiZTJkNTY3MDMzMGUwYjYwYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmM3YTViN2QyOTdmZmYxNGQzOGUzZGQ2ZjUwODNmNWRkYmZkNTQ1Y2VlZmU3YThlMjgzNzBiOWY4YmM5NWI1YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDIzZTgwZmIzYWNhNmUxODg1ODQ0YmJjOThiMDk0ZjFlMGIyNDk5ZTE2ZDEwNDY0ODBiNmQzNDEwMWEwYjQ0YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWM5NGI0M2NlYzIwZWU3OTZkZDhhZjdmMzAxZjU3ZjIyZjdiOWI2Y2NiYTJkODAwODVjMTFiMDY0ODlmZTZjMCJ9"
         },
         {
@@ -203,7 +203,7 @@
       "statement": "make db-clean runs db/scripts/truncate_all.sql, which truncates every public table except schema_migrations and restores the local dev user, so the schema and migration ledger survive and migrations are not replayed; it is local-only.",
       "evidence": [
         {
-          "resource": "repo://Makefile#L269-L278",
+          "resource": "repo://Makefile#L284-L293",
           "version": "repo-lines-v1:sha256:2e26053c74c5c984dec78985e57c67acd80d3eb8904e802723e9b3959296a54d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyODFhYmRlNGJhMzk0YmJkZWI1MjE2NTE2Y2NiMTRkODc2MmYyYjg2MzkwNzQzZWVhZWJlYzBlYjJmMzg3MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhMDA5ZjE1NzBlOGYwNGQ2NzM1MjhiMTRiYzMxNjY3MjVjNjYyMTIzZGM5NzViMDRlZTBjMDYwZWUyODBkNzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyN2Q3OTZiY2M4YzE2MjY5YTEyMTdlMGYwY2Y0MjQwZTgxNzJjNzkyMDE1YzkzODA1ZTRjMDBkMzE3MjcyZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiNDBmNmQzNDkyOGY1NzNmOTEyYzIxZmFlNjBiYjA1OWYzMjNlOWNmODliZWY4MGVhNjA4MWYxYWYxYzlhN2EifQ"
         },
         {
@@ -211,10 +211,60 @@
           "version": "repo-lines-v1:sha256:f1861839e51f919fdc1d818671a3ed8e4f473f4ec40028197c4df2fa32c2f36b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0ZDBlOTg3NDIwNWZiMzZkYzNkYTAxNzI1MDZmOTJhMmQ5NmU3ZGE4MzI2NWVmMTA5MDY2OWQ3OGIxMzE3YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NjJkZjg1ODFiZmM2MjUwMTk5YTQ1NDhhMGZmYTUxZmYyZTE0NzJlMDBhZjk0ZWUwY2I2YTZmZWViN2ZjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_0c5055846d0548208456a35503bad69d",
+      "statement": "0049_rfp_match_saved.sql is the latest migration (so the next is 0050): it widens the rfp_matches status CHECK constraint to flagged, saved, reviewed, dismissed by dropping and re-adding rfp_matches_status_check in one ALTER TABLE. It needs no new grant or policy because rfp_matches already has UPDATE granted to authenticated (0025) and an update policy (0027), and the catalog's status column lists the same four values.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L794-L812",
+          "version": "repo-lines-v1:sha256:adcf2a4e343fd426dc92d1e4d3b39c643882123863597e50316f88ea1a34c1bd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1Yjk4NGExYzUwYTUxYmIzNzNmZDZkMGFhNGQxMzQ3ZThiZTE2NjA0MWIzYmY0ZDQzNDQ0YTk1MDA3ZWFhZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMmM0MTRiNTRjZjg2ZGZiNGY5MGRmZTdkN2JkYmZhNjY2YjdkZGRkMzJmMTI4NmYyMzBhNWI1MzI0MTgxOGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjZTFmOTQyMTk2ZDFmZDgyMzNiNDFjYWJjYjRhZDYwYzhkMDY0ZTY4NWZmMGFhYWIwOWQzOGI2OGU3OGMyMTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3OTBiYTQzMTdjNmJmNGRiNDhlNGEzOTk0OTQwYWUwNWMzMDBmMWUzY2YwZWY2MGNmYjkxNTZmODA1MjA2MjcifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0025_table_grants.sql#L67-L67",
+          "version": "repo-lines-v1:sha256:bd5dbd961d96760fcb0d96e350ed061e078e1a0db0d50c3c361bf2d02cb80a8f:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQ1ZGJkOTYxZDk2NzYwZmNiMGQ5NmUzNTBlZDA2MWUwNzhlMWEwZGIwZDUwYzNjMzYxYmYyZDAyY2I4MGE4ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQ1ZGJkOTYxZDk2NzYwZmNiMGQ5NmUzNTBlZDA2MWUwNzhlMWEwZGIwZDUwYzNjMzYxYmYyZDAyY2I4MGE4ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGNmOTIyMGM4MDlhZGQ5MzFiYjY2YzFiMWEzMGY1ZDU3NzIzZjYxNjY4ODY1MmJhYmMzMzYxY2FhYmZiMzFkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTY3N2YyNzQwOGQ0ZDcxY2MzZjM0MjU3M2I5NjYxMDg0NmRkNTFiYTI3Y2ZiOWJkNjNiNDZjMmFhODM2ODM4ZSJ9"
+        },
+        {
+          "resource": "repo://db/migrations/0027_rls.sql#L135-L135",
+          "version": "repo-lines-v1:sha256:9513942065b55ff25f3dd2d5af8768ca1b7ab4233cd0d2bcef35eb0a040035f7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTUxMzk0MjA2NWI1NWZmMjVmM2RkMmQ1YWY4NzY4Y2ExYjdhYjQyMzNjZDBkMmJjZWYzNWViMGEwNDAwMzVmNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTUxMzk0MjA2NWI1NWZmMjVmM2RkMmQ1YWY4NzY4Y2ExYjdhYjQyMzNjZDBkMmJjZWYzNWViMGEwNDAwMzVmNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2U2Zjk1NDE0ODRkNzFiY2U1Y2E1ZTFhNmJjMjVhM2Y2NmZiMDk1MWFjYTM2YzIyODBhY2I1NTY4YjdhZDZmZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjFkYjk1ZmYwNTNiOGE5NTI2ZWQ5M2IyYzBiZDViZWMwOTM5ODhlMzU0YjkzY2RjOWRlYWMyMjM2MjIzMmY1YyJ9"
+        },
+        {
+          "resource": "repo://db/migrations/0049_rfp_match_saved.sql#L1-L3",
+          "version": "repo-lines-v1:sha256:bb29918143071bd8bbfccfa2a62c9c82cad40d110e4babb899b99bc6de2e76f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjUwOGVlNjk5NjE1MGRhYmFlMTQ4MjRmZmY3Y2NhNjMwYTVmZGI5NjJmNmNkZWU2NzgwYmE5MjI0MzdkYjUwYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWMwNmU3NmY4YmQ1ODhmZTI4NzMyMmNjNzhlN2Q5YTkzMDFiM2ZkYTM2ZGNkY2E1NGY2ZDU4MDQ2NjkzZWU4OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b87a90477da7474aa49a19fb880d4140",
+      "statement": "Router code takes PoolDep, a CallerPool: each connection is one transaction that first sets the Postgres role (anon or authenticated, anon when unauthenticated) and request.jwt.claims with SET LOCAL, so RLS and grants apply to the route and the connection returns to the pool as the owner. OwnerPoolDep is the owner pool used by identity and staff/Import code, which bypasses RLS.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/db/pool.py#L25-L74",
+          "version": "repo-lines-v1:sha256:2d7351a7f07e6851b855a6743ec6ddba49a9481ae13d37cc0b2d08fbf0ba3da6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MGE0ZGMyMDAxNjI5NGVkMjIyOTQwNTFhYjZlZmE2ZTJjZGI2N2NiMTQyMDEzNGY0MjQ1OGUwOGJkN2I4MDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTRlYjFmZGMwMjgxNTdjMmUxNGEwZmNiYThkNTE4Mzk4ZmQyMDMzZjdmYjAzZmViZGE0ODY4ODNmZWZhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3ZTA4ODY4YzkxZjQ1ZTQ5ZmM4ZDI4M2Y1Y2IyMTRlNjM0ZWE3OTdlZDJiMTQxM2E1M2Y3NjAzY2I2NDg4ZDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c22ef9beb673411582590e83c59ec59f",
+      "statement": "Ask Sangam's SQL tool runs as the caller, not the owner: ask_access sets the agent_caller context variable from the principal per /agent request, and the SQL executor applies set_caller inside a read-only transaction, defaulting to anon when no caller is set; Import keeps the owner because it writes the catalog. So grants and RLS on a new table govern what catalogued queries return.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/tools/sql/executor.py#L45-L66",
+          "version": "repo-lines-v1:sha256:b122710b7e15fb5389e108970fa8668b6b9c9c4a5f970003e3c70ef9c374f8ed:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNmNkOTM4NTIyZmVmOWM0ZDg5OTc3MDgzMmM2NzNiNjYxZmY1OGNmNDA5ZWUxYTdiOTFjZmM4MTdiYjc1ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxMTllMDYwYmY5ZmM4OTU0Yzg2MGFkYjhkN2FkODRhYjlkNmZiZTExNjdjZGVkMTM2MzhiN2Q0YTc2YWNjNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZmE1NjFjM2I2MTEyNjEzNjg0YjVmYTJmZTkzYzdhMDljYjA3MmFjY2Q5M2Q4ZDZmODZmMDNjMGMzMzkxMmQifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/security.py#L320-L326",
+          "version": "repo-lines-v1:sha256:10e0275f3a74b5e78fdd4f3ab1f601f089c2e6981239f2c7353d7b1c4a22bea2:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGJmYmZlYmZmZDUwMTY2NDdlYWMwMjRkOGUxNzk2ZTRjMDA0MGRhYmZjOWJiM2ViZDZkNWQ4YjAwMzA0YmIwZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2EzMjFhYTFjODU3NWFhOWZmZmM4OTg4MGY5NWNlNjAxOWEyYWY4OTJjNjZiNTIyNTZhODVhMjBjM2JjYWI1ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhhODYzY2YzMzhlNjliNzcwMzZlZGM3MDAwZDlmNjRhMGY5ZThiNTNkNDc4YjhmNDEyNTk0YzJjMWM5OTY3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2VjY2M4ZGM5MzkwNTdhMTZmYWFlNGJkZWY3ZDc4YzU4N2FmYmM1ODU1NWFhZDAwODA3NDgwZDZmYzc0ODUxZSJ9"
+        },
+        {
+          "resource": "repo://backend/app/db/pool.py#L39-L40",
+          "version": "repo-lines-v1:sha256:9a89676cada8485ed47a9881568af63ad5e460a8fcf1bbaf45d24b69168fdc93:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzc4N2Q4YzkxZGRkZmZlZjc4NGNmMjQzYTc3ZWZiNzFhMmZlNDQxOTY4NzcxZjg4MTU2ZDIwYmQxZWU5ZjU1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTViMDA0NWVjZjc4YjY1YTU3YmY0NGExNzZmNjljNWNhMDdjM2FlZGEyODI2ODkwZmM4Y2EzYTE0MDliMjU0NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmI2YmEzMDVlZjhmODVhMDk4YTdjZDU3YWNkYThlOWVlNDkwNTJkZTc2NjVhYmY1Zjk0ZmI3ZjhmNmZlYmUwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzk1YjA0NmYwZjU4Y2Q2MjJkZjhhM2MxYzBjNGQwYzk3ODg1NGVmNjk4YzdmN2U2NjJmZTJiM2E0ZWVmYzU1OSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-15T18:08:53.060Z"
+    "at": "2026-10-19T19:22:00.060Z"
   }
 }

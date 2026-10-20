@@ -5,7 +5,7 @@ description: How Sangam authenticates callers (Supabase JWT or the dev user), ma
 tags: [auth, rls, roles, postgres, security, supabase, caller-pool, owner-pool, proposals]
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-15T18:08:53.060Z
+    at: 2026-10-19T19:22:00.060Z
 sources:
   - id: openwiki-source-1f8b3caaa82d707d101e103d
     resource: repo://backend/app/agent/tools/matching_tools.py
@@ -89,7 +89,7 @@ sources:
     resource: repo://frontend/lib/supabase/middleware.ts
   - id: openwiki-source-06ab5e05c59e3ddb17628f5f
     resource: repo://frontend/proxy.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-15T18:08:53.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 ---
 
 # Auth, Roles and RLS
@@ -154,7 +154,7 @@ Routes read the principal the middleware left, never re-checking the token.
 | `require_staff` | `require_principal`, then 403 `Staff only` when not staff |
 | `require_scout` | Built on `request_scope`: 403 unless the caller is staff or a steward of at least one org. It guards the whole `/ingest` REST router and the `/ingest` chat route. |
 | `chat_access` | Signed in, and the chat thread is new or yours. Someone else's thread is 404, staff included (see below). |
-| `ask_access` | `chat_access`, and additionally sets `agent_caller` so Ask Sangam's SQL runs as this caller |
+| `ask_access` | `chat_access`, and additionally sets `agent_caller` so Ask Sangam's SQL runs as this caller, and starts a fresh `caveats_given` set for the turn (which SQL tools use to give table caveats once per turn) |
 | `proposal_chat_access` | Your own chat about a proposal you may edit; see [Who can write proposals](#who-can-write-proposals) |
 
 `chat_access` runs `_own_thread`, which claims the thread through `threads.claim_thread` on the owner pool. If the thread belongs to someone else the answer is 404, **staff included**: a turn checkpoints rows read as that caller, which the owner's next turn would replay. It then sets two context variables for the run: `chat_user_id` and `chat_scope`. The tracing hook reads the first. Agent tools read the second.

@@ -165,12 +165,16 @@ async def read_template(start_page: int = 1, end_page: int | None = None) -> str
 
 
 @tool
-async def read_files() -> str:
-    """Read the files ticked in step 2, and what Sangam holds on the funder, into the fact list. Call it when the
-    person presses "Write the first draft" or asks to read the files again.
+async def read_files(public: bool = False) -> str:
+    """Read the files ticked in step 2 and what Sangam holds on the funder into the fact list. Call it when the
+    person presses "Write the first draft" or asks to read them again.
 
     One reader per file runs at once. Only files not read yet, or that failed, are read: calling it again after a
     failure retries just those. It takes a few minutes and returns what each reader found or why it failed.
+
+    Args:
+        public: True only when the person presses "Search public sources" or asks to search again: then it runs
+            public research on the problem and the place alone, and no file is read.
     """
     try:
         p = await context.current()
@@ -182,7 +186,7 @@ async def read_files() -> str:
             return f"REFUSED: {early}."
         from app.proposals import readers  # built with the agent, from this module's tools
 
-        return await readers.read(p)
+        return await readers.read(p, public)
     except Exception as exc:
         logger.exception("read_files failed")
         return f"read_files failed: {type(exc).__name__}"

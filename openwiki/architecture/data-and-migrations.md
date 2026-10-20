@@ -4,6 +4,8 @@ title: Data and Migrations
 description: How Sangam's Postgres schema is organised by table group (including RFP Watch's rfps tables, server-side proposals and document links), why a baseline plus forward-only migrations (latest 0049) define it, how the SQL catalog drift check gates backend boot, how shared public SQL fragments hide private sources, where documents live in storage buckets, and how provenance columns keep the optional Neo4j graph rebuildable.
 tags: [database, postgres, migrations, provenance, storage, neo4j, schema]
 sources:
+  - id: openwiki-source-ecac68c83347b18f912f2a53
+    resource: repo://backend/app/agent/tools/sql_tools.py
   - id: openwiki-source-7faba850789bc67a49b79a3f
     resource: repo://backend/app/agent/tools/sql/catalog.py
   - id: openwiki-source-ca736c25c2a1bb0e95531706
@@ -14,6 +16,8 @@ sources:
     resource: repo://backend/app/api/routes/rfps.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
     resource: repo://backend/app/core/lifespan.py
+  - id: openwiki-source-b52886aad1fc413e4e030f22
+    resource: repo://backend/app/core/security.py
   - id: openwiki-source-51ead927cc43f35e220ea627
     resource: repo://backend/app/db/checkpointer.py
   - id: openwiki-source-48da13ff10650a1cb4ac7718
@@ -22,14 +26,20 @@ sources:
     resource: repo://backend/app/db/pool.py
   - id: openwiki-source-1d8678f87564f9d42020ba27
     resource: repo://backend/app/db/replicate.py
+  - id: openwiki-source-005aaff315c996a45f8735d6
+    resource: repo://backend/app/ingest/calls/run.py
   - id: openwiki-source-bb6ad31efddf76d28f69f61e
     resource: repo://backend/app/ingest/expectations.py
+  - id: openwiki-source-9a78159bc32f1e4e6ca68b3f
+    resource: repo://backend/app/ingest/news/run.py
   - id: openwiki-source-f5f9bed243c70c8c32486478
     resource: repo://backend/app/ingest/source_guards.py
   - id: openwiki-source-465a2de3f088ab05c5629202
     resource: repo://backend/app/integrations/graphiti.py
   - id: openwiki-source-bbb88a9dc2dd928de209ddbb
     resource: repo://backend/app/integrations/storage.py
+  - id: openwiki-source-0fc683b5c9f0801e9edbf645
+    resource: repo://backend/app/matching/run.py
   - id: openwiki-source-697868bd3a418ce8115944eb
     resource: repo://backend/app/repositories/documents.py
   - id: openwiki-source-1157f5d2ae5aa2bccc1057d0
@@ -96,10 +106,10 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-60b751726aee2d4aae078a12
     resource: repo://seed/graph_seed.py
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Data and Migrations
@@ -200,11 +210,12 @@ A few notes on specific groups:
 
 ## Connection pools and the runtime view of the schema
 
-`make_pool` (`backend/app/db/checkpointer.py`) builds the single `AsyncConnectionPool` shared by REST, agent tools and the checkpointer; it is opened in the FastAPI lifespan, set as `app.db.pool.pool`, and sized by `DB_POOL_MAX_SIZE` (default 10). It connects as the owner with `autocommit=True`, `prepare_threshold=0` and dict rows. `backend/app/db/pool.py` exposes it in three ways:
+`make_pool` (`backend/app/db/checkpointer.py`) builds the single `AsyncConnectionPool` shared by REST, agent tools and the checkpointer; it is opened in the FastAPI lifespan, set as `app.db.pool.pool`, and sized by `DB_POOL_MAX_SIZE` (default 10). It connects as the owner with `min_size=1`, `autocommit=True`, `prepare_threshold=0` and dict rows. The standalone batch jobs (`app/ingest/calls/run.py`, `app/ingest/news/run.py`, `app/matching/run.py`) call `make_pool` themselves with a small explicit `max_size`, so they never touch the server's pool. `backend/app/db/pool.py` exposes the server's pool in three ways, plus a per-turn companion variable:
 
 - `get_pool()` / `OwnerPoolDep` return the raw owner pool. Only identity code (which decides who the caller is and writes `users` and `threads` rows no caller may write), Import, seeds and the proposal agent's `org_of`/`load` helpers take it; unit tests override `get_pool` to keep a real database.
 - `CallerPool` (`PoolDep`, built by `get_caller_pool` from the role and claims `AuthMiddleware` put on the request; anon without them) wraps the pool so each connection is one transaction that first runs `set_caller`, a `set_config(..., true)` (`SET LOCAL`) of the Postgres role and `request.jwt.claims`. Both end with the transaction, error included, so the connection returns to the pool as the owner. Routers and repositories such as `proposals.py` take this, so RLS applies without each route asking.
-- `agent_caller`, a `ContextVar` holding `(role, claims)` set per `/agent` request, is how Ask Sangam's SQL tools, which run outside any request, query as the caller; unset, their SQL runs as `anon`.
+- `agent_caller`, a `ContextVar` holding `(role, claims)` set per `/agent` request, is how Ask Sangam's SQL tools, which run outside any request, query as the caller; unset, their SQL runs as `anon`. `ask_access` (`backend/app/core/security.py`) sets it after the thread-ownership check; Import's agent keeps the owner pool because it writes the catalog.
+- `caveats_given`, a second `ContextVar` (a fresh `set()` per `/agent` request, also set by `ask_access`), records which tables' data caveats the SQL tools have already spelled out this turn, so `sql_tools._caveats_for` gives them in full once and then a one-line pointer. Unset, every result gives them in full.
 
 ## SQL catalog drift check at boot
 

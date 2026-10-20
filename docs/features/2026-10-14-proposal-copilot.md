@@ -274,7 +274,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 9. **Storage code F4** for "Earlier phase"; screens show section names, not codes.
 10. **Confirmed facts do not write back** to the org's record or brief in v1. Private (vault) facts never leave the proposal.
 11. **The funder side reads only what Sangam holds** (14 Oct review): the brief, archived documents linked to the funder,
-    `funder_activity` and the form. No web tools on any reader.
+    `funder_activity` and the form. No web tools on any reader except public research (20 Oct, `2026-10-20-pitch-public-research.md`).
 12. **Gates are answered, not uploaded.** "We'll have it before sending" stays an open item on "Before you send it".
 13. **No `choose_sources` interrupt.** Step 2's ticks are `work.sources`; `ask_user` is the one interrupt.
 14. **Five tabs** in step 3 (above); rubric codes and scoring unchanged.
@@ -284,7 +284,7 @@ Next allowed: ask one question about this part, or rewrite "What will change"
 18. **Tests for the code-only safeguards** (15 Oct): each milestone tests its own; no tests of model output and no evals. An exception to "no new tests in a PR" for this feature.
 19. **M3 is two PRs:** facts and asking (M3a), then the readers and step 2 (M3b).
 20. **No run lock** (changed 15 Oct). Two people may chat at once; clashing saves are refused by `work.apply`'s row lock and section `rev` (409).
-21. **Web facts come only from Import's briefs**; no proposal reader searches the web.
+21. **Web facts come from Import's briefs and from public research** (changed 20 Oct): only the public research reader searches the web, from the registry's public rows, and code finds each quote on a page it read.
 22. **A trimmed first version** (15 Oct): colour by source only, three reasons to ask, no meaning-clash tool, no changed-file check, a polish check on numbers, places and names only, the form's questions without its limits, no staff numbers. Each is in "Later".
 23. **The agent is called Sangam Pitch on screen** (15 Oct). The route, threads and code keep "proposal", as Scout's keep "ingest".
 
@@ -704,7 +704,7 @@ No tests for model output, and no evals. These existing tests must stay green:
 9. Correcting a fact updates or flags every section that used it. Ready requires every used fact to be confirmed or corrected.
 10. A polish that changes any number, place or name is refused.
 11. Each version is a .docx in the Doc Vault with a facts snapshot, and earlier versions stay.
-12. Doc Vault facts never appear in a brief, in `entity_research` or `vault_research`, or in the funder-file reader's context. No reader makes a web call; web facts come only from Import's briefs.
+12. Doc Vault facts never appear in a brief, in `entity_research` or `vault_research`, or in the funder-file reader's context. Only public research makes a web call; its task holds no Doc Vault fact and code refuses a search naming the org.
 13. Ask and Scout are unchanged: an Ask question and a Scout import still run in the browser, and Recent Chats is unchanged.
 14. No storage code or marker appears on screen; every source is in words.
 15. A gate answered "We'll have it before sending" shows as open on "Before you send it" until it is done.
@@ -758,4 +758,4 @@ Cut from the first version on 15 Oct (decision 22); each can be added without re
 - **The funder form's limits** (summary up to 2,000 characters) checked on each section.
 - **Staff numbers:** a saved query over `work.log`: days per step, refusals by reason, corrections by origin, idle proposals.
 
-- **"How others have done this"** (14 Oct): once The Idea is drafted, a goal card from A2–A4 drives a `landscape-reader`, the only reader with web search, that finds similar work in the region, India and the world, with links and the funder's closest past grants. Results are amber web facts the person marks "Useful" and confirms. It needs: Import's web tools imported, searches written from the goal card only, `add_facts` re-fetching the page to find the quote, and decision 11, criterion 12 and the M3b tool test edited to allow that one reader. One milestone after M3b; nothing in M1–M6 changes.
+- **Done as public research (20 Oct, `2026-10-20-pitch-public-research.md`).** ~~"How others have done this"~~ (14 Oct): once The Idea is drafted, a goal card from A2–A4 drives a `landscape-reader`, the only reader with web search, that finds similar work in the region, India and the world, with links and the funder's closest past grants. Results are amber web facts the person marks "Useful" and confirms. It needs: Import's web tools imported, searches written from the goal card only, `add_facts` re-fetching the page to find the quote, and decision 11, criterion 12 and the M3b tool test edited to allow that one reader. One milestone after M3b; nothing in M1–M6 changes.

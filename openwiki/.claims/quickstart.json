@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c3197fe8d94d2094e3d1df44177b5a8c91c4a75926a1b158f4df9e127d1b37e7",
+  "pageVersion": "sha256:c458d2043762c624b3a87d5d54eaf1724a56612e8758ec13a24ccd7c413e1b87",
   "claims": [
     {
       "id": "claim_80d2fb637e374fd1b2373e7269787859",
@@ -212,11 +212,11 @@
     },
     {
       "id": "claim_e71d61b1972a495ea2950cdfc37890b0",
-      "statement": "Proposal Copilot is the third deep agent: code in backend/app/proposals/ owns steps, gates, facts and checks, and the agent only proposes. Its state lives in proposals.work (migration 0048), and every write, from REST or agent, goes through work.apply inside repositories.proposals.save, which locks the row with SELECT ... FOR UPDATE. The agent has nine tools of its own plus read_file, and no SQL tool.",
+      "statement": "Proposal Copilot is the third deep agent: code in backend/app/proposals/ owns steps, gates, facts and checks, and the agent only proposes. Its state lives in proposals.work (migration 0048), and every write, from REST or agent, goes through work.apply inside repositories.proposals.save, which locks the row with SELECT ... FOR UPDATE. The agent has nine tools of its own (the TOOLS list) plus read_file from the filesystem middleware, and no SQL tool.",
       "evidence": [
         {
-          "resource": "repo://backend/app/proposals/agent.py#L34-L67",
-          "version": "repo-lines-v1:sha256:9113d2d3f03bd965ecb0c8992704d7d11580623d64739ce8954578f6b8064c5d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0YzMyNjQ1OGIyN2QxZDQzY2I2YjIzZjE0MTU1ZDJlZWIxYjU4MmYzMTMxM2FkODMyNTczN2FiNjQ0NjZlZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczODkwOTY2YWIxNmJhYWEzNWY3NmI1N2EwZDcwMGIyZjdhODkzMTRjNTAxYjk3NGIyNTZjYTgzZWE2M2EwYjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1MzM1ZTk2OTFkYjlmODQ4NTU0ZDBjMWRiMzNjOTVmYmU5YjJhMDIyZTZmNGMxZTI0OTVjOGJmNDBlMjY3ZjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/proposals/agent.py#L40-L73",
+          "version": "repo-lines-v1:sha256:a562afe7db39222b25606d54e68280a9b56b4017178041627fcf91c5258faea4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0YzMyNjQ1OGIyN2QxZDQzY2I2YjIzZjE0MTU1ZDJlZWIxYjU4MmYzMTMxM2FkODMyNTczN2FiNjQ0NjZlZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1MzM1ZTk2OTFkYjlmODQ4NTU0ZDBjMWRiMzNjOTVmYmU5YjJhMDIyZTZmNGMxZTI0OTVjOGJmNDBlMjY3ZjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwMDk2NzkxZDAyMGUyMjM4YmNmZWJkNGRjMzk1NWFlNTliN2NmY2FlZTU0ZjE3MWZmMjhiZDI3N2NhMTM0MDMifQ"
         },
         {
           "resource": "repo://backend/app/proposals/work.py#L220-L222",
@@ -237,7 +237,7 @@
       "statement": "proposal_chat_access gives each editor a private chat per proposal (thread id proposal-<id>-<user id>): another person's thread or an org the caller cannot read is 404, a member who may not edit gets 403, and it sets chat_user_id, chat_scope and chat_proposal so the model never names the proposal.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/security.py#L328-L355",
+          "resource": "repo://backend/app/core/security.py#L329-L356",
           "version": "repo-lines-v1:sha256:05e5e43aba5a33448d4d4da5171f8d1d732f6fb074dad7c34007994c0935e3d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYzAwNjM5ZTdjYmQ1MDVkZWRiYTYzZDE3ZWMzOGU1YWFmYzAzYzVjYzU1YTEwYmM4Y2Q4M2RlYzE0M2ExYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMmE1YWFjYjlhY2Y3YTliYTZkNDAxNmQyYTZlMmFjMDExMTVmYmI1ODc3YzYxM2QzZDBlY2Q2YzlmZWQxYmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkZjU3MDMwNGUyY2ZhZmY0YmE3MzQ4ZmJmY2IzY2NmZGQ4ZjcxZDU5ZDZlZmQ1NmY0OWU1MGI5NWUzZTRlNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
@@ -279,10 +279,20 @@
           "version": "repo-lines-v1:sha256:872026fad1de7d7c3ada730a6b51b6737fc63e2f2990db3b1f3c693261387579:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTNmZTE0M2ViZDdkZDY1Y2FiZTZiYThjODBjNDZjOGYwMWMzNDZhYjBmNGM3OTljZmRiYzgyODYyZTYxZjlkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjc1ZGQ5MTU2NTM1OGI0NmJjNzg0YWQ2M2ZjMDJiNGMyMWZiZDEwM2NlNDAzYmYyY2Y1N2FjYWMyYWU1MjUxMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjZiNDljN2VjNTdhOWFlOGEyYWQ3YTQ2OWM3OWZkZDBlZTc0MjM0NmQzMjRiZTkxZTczMDAxOTI0ZGFmNWNmMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzMwNzU4ZWU0YWRmNmExNzM4ZDJlYmFiMDhlZGM1MDBiMmY1MTRiYTE4Y2U3OGRiMmFiOGI4NWVjYzVlZjI3YyJ9"
         }
       ]
+    },
+    {
+      "id": "claim_1cd4b00359424c6888ee909fa28496fe",
+      "statement": "Migration 0049_rfp_match_saved.sql is the latest migration; it widens the rfp_matches status check to allow 'saved' alongside 'flagged', 'reviewed' and 'dismissed', so an org can save an RFP Watch call.",
+      "evidence": [
+        {
+          "resource": "repo://db/migrations/0049_rfp_match_saved.sql#L1-L3",
+          "version": "repo-lines-v1:sha256:bb29918143071bd8bbfccfa2a62c9c82cad40d110e4babb899b99bc6de2e76f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjUwOGVlNjk5NjE1MGRhYmFlMTQ4MjRmZmY3Y2NhNjMwYTVmZGI5NjJmNmNkZWU2NzgwYmE5MjI0MzdkYjUwYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWMwNmU3NmY4YmQ1ODhmZTI4NzMyMmNjNzhlN2Q5YTkzMDFiM2ZkYTM2ZGNkY2E1NGY2ZDU4MDQ2NjkzZWU4OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-19T10:32:36.779Z"
+    "at": "2026-10-19T19:22:00.060Z"
   }
 }

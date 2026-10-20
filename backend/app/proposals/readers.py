@@ -1,4 +1,4 @@
-"""The readers Sangam Pitch runs from step 2: one per ticked file, and one for the funder's side, in parallel.
+"""The readers Sangam Pitch runs from step 2: one per ticked file and one for the funder's side; public research apart.
 
 Code launches them, not the model: which files are pending, the one lock on reading, and each file's status in
 `work.readers` are decided here, so "Try again" re-reads only what failed.
@@ -28,12 +28,17 @@ from app.ingest import run_sources
 from app.ingest.middleware import RunSources, fallback
 from app.integrations.tracing import trace_config
 from app.proposals import context, steps
+from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
+from app.proposals.middleware import PUBLIC_RUN, PublicGuard, PublicRun
+from app.repositories import profile_facts
 from app.repositories import proposals as repo
 
 logger = logging.getLogger(__name__)
 
 FUNDER = "funder"  # work.readers' key for the funder's side; a file's key is its document id
+PUBLIC = "public"  # public research: the problem, the place, government and what worked elsewhere
+PLACES = 8
 UNREADABLE = "UNREADABLE:"  # a reader's last message starts with this when the file had nothing to read
 ERROR_TEXT = 160
 _PROMPTS = Path(__file__).parent / "prompts"
@@ -43,6 +48,7 @@ _PROMPTS = Path(__file__).parent / "prompts"
 class _Built:
     evidence: Any = None
     funder: Any = None
+    public: Any = None  # None without a search key: then public research is simply not run
     parallel: int = 1
     trace: dict[str, Any] | None = None
 
@@ -50,12 +56,13 @@ class _Built:
 BUILT = _Built()
 
 
-def build(settings: Settings, evidence_tools: list[Any], funder_tools: list[Any]) -> None:
-    """Both readers, built once with the proposal agent. Neither has a web tool, nor a checkpoint of its own."""
+def build(settings: Settings, evidence_tools: list[Any], funder_tools: list[Any],
+          public_tools: list[Any] | None = None) -> None:
+    """The readers, built once with the proposal agent, none with a checkpoint. Only public research reads the web."""
     backend = StateBackend()
     research = resolve_model(settings.research_model)
 
-    def reader(tools: list[Any], prompt: str) -> Any:
+    def reader(tools: list[Any], prompt: str, *guards: Any) -> Any:
         return create_deep_agent(
             model=research,
             tools=tools,
@@ -64,6 +71,7 @@ def build(settings: Settings, evidence_tools: list[Any], funder_tools: list[Any]
                 filesystem_tools(backend, evict=False),
                 tool_errors(),
                 RunSources(),
+                *guards,
                 *fallback(settings.research_model, settings.model),
             ],
             system_prompt=(_PROMPTS / prompt).read_text(encoding="utf-8"),
@@ -72,6 +80,8 @@ def build(settings: Settings, evidence_tools: list[Any], funder_tools: list[Any]
 
     BUILT.evidence = reader(evidence_tools, "evidence_reader.md")
     BUILT.funder = reader(funder_tools, "funder_file_reader.md")
+    BUILT.public = (reader(public_tools, "public_researcher.md", PublicGuard())
+                    if public_tools and settings.tavily_api_key else None)
     BUILT.parallel = max(1, settings.max_parallel_research)
     BUILT.trace = trace_config(settings, name="sangam_proposal_reader", tags=("proposal", "reader"))
 
@@ -86,22 +96,64 @@ class Busy(Exception):
         super().__init__(f"{who} started reading the files {minutes} min ago; wait until they are read")
 
 
-def pending(work: dict[str, Any], now: datetime | None = None) -> list[str]:
-    """The readers to run: every ticked file and the funder's side not yet read, or failed. Raises Busy."""
+def pending(work: dict[str, Any], now: datetime | None = None, *, public: bool = False) -> list[str]:
+    """The files and funder not yet done, or public research, which may run again. Each locks alone. Raises Busy."""
     now = now or datetime.now(UTC)
     held = work.get("readers") or {}
-    busy = [r for r in held.values() if r.get("status") == "running" and not steps.readers_stale(r, now)]
+    busy = [r for k, r in held.items() if (k == PUBLIC) == public
+            and r.get("status") == "running" and not steps.readers_stale(r, now)]
     if busy:
         raise Busy(busy[0], now)
+    if public:
+        return [PUBLIC]
     keys = [*(str(d) for d in work.get("sources") or []), FUNDER]
     return [k for k in keys if (held.get(k) or {}).get("status") != "done"]
 
 
 def sources_for(p: context.Current, key: str) -> run_sources.Sources:
-    """A file's reader may open that one file; the funder's reader, none of the org's."""
+    """A file's reader may open that one file; the funder's reader, none of the org's; public research, the web."""
+    if key == PUBLIC:
+        return run_sources.Sources(web=True)
     if key == FUNDER:
         return run_sources.Sources(web=False)
     return run_sources.Sources(web=False, vault_org=p.org_id, vault_docs=frozenset({int(key)}))
+
+
+def public_task(p: context.Current, places: list[str], themes: list[str], programmes: list[str],
+                sdgs: list[str]) -> str:
+    """Public research's task, from the registry's public rows and the match only: never a file or the fact list."""
+    where = "; ".join(places) or "no place on record: search at state level, or for India"
+    sections = [s for s in context.sections(p.work) if s.code in fact_rules.PUBLIC_SECTIONS]
+
+    def listed(items: list[str]) -> str:
+        return "; ".join(items) or "none on record"
+
+    return "\n".join([
+        f"Research the public evidence for a grant proposal to {p.funder_name}.",
+        f"Never search for {p.org_name}, the organisation writing it.",
+        "",
+        f"Where it works: {where}",
+        f"Its themes: {listed(themes)}",
+        f"Its programmes: {listed(programmes)}",
+        f"SDGs on record: {listed(sdgs)}",
+        "",
+        "The sections a fact can serve, each with what a strong answer holds:",
+        *(f"- {s.code} {s.label}: {'; '.join(s.strong)}" for s in sections),
+    ])
+
+
+async def _public_inputs(p: context.Current) -> tuple[list[str], list[str], list[str], list[str]]:
+    pool = get_pool()
+    org = await profile_facts.org_facts(pool, pool, str(p.org_id))
+    if org is None:
+        return [], [], [], []
+    places = [f"{pl.name}, {pl.state}" if pl.state and pl.state != pl.name else pl.name
+              for pl in org.places[:PLACES]]
+    if not places and (org.org.district or org.org.state):
+        places = [", ".join(v for v in (org.org.district, org.org.state) if v)]
+    themes = [f"{t.parent_label} › {t.label}" if t.parent_label else t.label for t in org.tags[:PLACES]]
+    return (places, themes, [prog.name for prog in org.programs[:PLACES]],
+            [f"{s.code} {s.label}" for s in org.sdgs])
 
 
 def _sections(p: context.Current) -> str:
@@ -146,15 +198,17 @@ async def _mark(proposal_id: int, changes: dict[str, dict[str, Any]], by: dict[s
     await repo.save(get_pool(), proposal_id, change)
 
 
-async def read(p: context.Current) -> str:
+async def read(p: context.Current, public: bool = False) -> str:
     """Run every pending reader at once and record each one's outcome; returns what happened, file by file."""
+    if public and BUILT.public is None:
+        return "Public research is not available: no search key is configured. Say so in one line."
     pool = get_pool()
     by = await repo.user_name(pool, p.scope.user_id)
     files, links = await _titles(p.org_id, p.work.get("sources") or [])
-    titles = {**files, FUNDER: f"what {p.funder_name} looks for"}
+    titles = {**files, FUNDER: f"what {p.funder_name} looks for", PUBLIC: "Public research on the problem and place"}
     keys: list[str] = []
     try:
-        await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by))
+        await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by, public))
     except Busy as busy:
         return f"REFUSED: {busy}."
     except _NothingToRead:
@@ -165,9 +219,10 @@ async def read(p: context.Current) -> str:
     return "\n".join(results)
 
 
-def _claim(work: dict, title: str, keys: list[str], titles: dict[str, str], by: dict[str, Any]) -> work_rules.Applied:
+def _claim(work: dict, title: str, keys: list[str], titles: dict[str, str], by: dict[str, Any],
+           public: bool = False) -> work_rules.Applied:
     """Inside the row lock: two people pressing at once get one run and one refusal."""
-    keys.extend(pending(work))
+    keys.extend(pending(work, public=public))
     if not keys:
         raise _NothingToRead
     at = datetime.now(UTC).isoformat()
@@ -184,22 +239,26 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
         failed = {"status": "failed", "at": datetime.now(UTC).isoformat(), "by": by, "title": title, "error": error}
         await _mark(p.id, {key: failed}, by, "could not read it")
         return f"{title}: could not read it ({error})."
-    graph = BUILT.funder if key == FUNDER else BUILT.evidence
+    graph = {FUNDER: BUILT.funder, PUBLIC: BUILT.public}.get(key, BUILT.evidence)
     async with gate:
         token = run_sources.CURRENT.set(sources_for(p, key))
+        run = PublicRun(avoid=(p.org_name,)) if key == PUBLIC else None
+        public = PUBLIC_RUN.set(run)
         # A run of its own: inheriting the chat's run would stream every reader's steps into the person's chat.
         var_child_runnable_config.set(None)
         try:
-            result = await graph.ainvoke({"messages": [HumanMessage(_task(p, key, title))]}, config=BUILT.trace)
+            task = public_task(p, *await _public_inputs(p)) if key == PUBLIC else _task(p, key, title)
+            result = await graph.ainvoke({"messages": [HumanMessage(task)]}, config=BUILT.trace)
             text = _last_text(result)
             error = _reason(text) if text.startswith(UNREADABLE) else None
         except Exception as exc:  # noqa: BLE001 - one file's failure never stops the others
             logger.warning("proposal reader %s failed (%s)", key, type(exc).__name__)
             text, error = "", "something went wrong while reading it"
         finally:
+            PUBLIC_RUN.reset(public)
             run_sources.CURRENT.reset(token)
     outcome = {"status": "failed" if error else "done", "at": datetime.now(UTC).isoformat(), "by": by, "title": title,
-               **({"error": error} if error else {})}
+               **({"error": error} if error else {}), **({"unopened": sorted(run.unopened)} if run else {})}
     await _mark(p.id, {key: outcome}, by, "could not read it" if error else "read it")
     return f"{title}: could not read it ({error})." if error else f"{title}: read.\n{text}"
 

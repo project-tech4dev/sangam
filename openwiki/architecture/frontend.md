@@ -54,6 +54,8 @@ sources:
     resource: repo://frontend/components/ui/ListPage.tsx
   - id: openwiki-source-24408c4513e55a7d3b655c58
     resource: repo://frontend/features/ask/AskWorkspace.tsx
+  - id: openwiki-source-da7573027af58da625bc555f
+    resource: repo://frontend/features/ask/components/EvidenceRail.tsx
   - id: openwiki-source-8a14a7e8f9ace991ee819039
     resource: repo://frontend/features/ask/components/Sidebar.tsx
   - id: openwiki-source-5f1c5aeea988fa7c1bfcd4ea
@@ -62,6 +64,8 @@ sources:
     resource: repo://frontend/features/ask/lib/pendingQuestion.ts
   - id: openwiki-source-a8f99e6160f3d28094133820
     resource: repo://frontend/features/ask/lib/rest.ts
+  - id: openwiki-source-a16dba5c681382ec4e6646a7
+    resource: repo://frontend/features/ask/lib/sources.ts
   - id: openwiki-source-2b36bea836157065e381133d
     resource: repo://frontend/features/ask/lib/threads.ts
   - id: openwiki-source-81e0c7a3ac82a15a5b95fb39
@@ -138,10 +142,16 @@ sources:
     resource: repo://frontend/features/ingest/lib/useRunPause.ts
   - id: openwiki-source-9e86dbac2cec46334e85282e
     resource: repo://frontend/features/ingest/ScoutChat.tsx
+  - id: openwiki-source-c73ad4b264a1c3cc0e9452bc
+    resource: repo://frontend/features/registry/profile/FunderGiving.tsx
   - id: openwiki-source-2df03770fc98883975cdb28c
     resource: repo://frontend/features/registry/profile/FunderProfileTabs.tsx
+  - id: openwiki-source-c8967bfdc2bc851a0af9cc52
+    resource: repo://frontend/features/registry/profile/OrgFunding.tsx
   - id: openwiki-source-f33c385003e437ae3c6fd25e
     resource: repo://frontend/features/registry/profile/OrgProfileTabs.tsx
+  - id: openwiki-source-8da8d5c4aecdd3dfea33d897
+    resource: repo://frontend/features/registry/profile/partnerGroups.ts
   - id: openwiki-source-c49d3da1b06f1064ddd24f6c
     resource: repo://frontend/features/registry/profile/ProfileHero.tsx
   - id: openwiki-source-32bf8f12cb315155d287b854
@@ -174,10 +184,10 @@ sources:
     resource: repo://frontend/proxy.ts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Frontend
@@ -244,7 +254,7 @@ Caption: server components call REST directly, chat goes through the Next proxy 
 
 ## Caching
 
-`apiGet` makes signed-out reads cacheable: in production (`NODE_ENV === "production"`), when no `Authorization` header exists, it fetches with `next: { revalidate: 300 }`, so anonymous registry pages come from Next's data cache and survive a cold backend. That request carries an `x-sangam-build` header (the Vercel deployment id or commit SHA) so the cache key changes on every deploy and a new deploy never renders the previous one's API shapes. Signed-in requests, and all development requests, use `cache: "no-store"`. Pages that depend on the session (`/ask`, `/import`) set `dynamic = "force-dynamic"`. Client-side fetches are always `no-store`. A profile page makes one backend call (`/api/funders/{slug}/profile` or `/api/orgs/{slug}/profile`).
+`apiGet` makes signed-out reads cacheable: in production (`NODE_ENV === "production"`), when no `Authorization` header exists, it fetches with `next: { revalidate: 300 }`, so anonymous registry pages come from Next's data cache and survive a cold backend. That request carries an `x-sangam-build` header (the Vercel deployment id or commit SHA) so the cache key changes on every deploy and a new deploy never renders the previous one's API shapes. Signed-in requests, and all development requests, use `cache: "no-store"`. Pages that depend on the session (`/ask`, `/import`) set `dynamic = "force-dynamic"`. Client-side fetches are always `no-store`. A profile page loads with one server-side backend call (`/api/funders/{slug}/profile` or `/api/orgs/{slug}/profile`); only the partner groups behind "show more" are fetched later from the browser (see [Registry profiles](#registry-profiles)).
 
 ## Registry list and rows
 
@@ -260,7 +270,7 @@ A row (`Row` in `RegistryClient.tsx`) was reworked to carry more of what the fil
 
 ## Registry profiles
 
-`/registry/[slug]` (CSO) and `/registry/funders/[slug]` (funder) are server components that fetch the single profile payload with `apiGet`, turn `NotFoundError` into `notFound()`, and `permanentRedirect` to the canonical slug when the profile was asked for by id. Each renders a shared `ProfileHero` (with an "Ask Sangam about…" link into `/ask?q=…` and a brief link when a brief exists). The hero draws the profile's tags as a facet list: `splitTags` (in `profile/shared.tsx`) separates themes (`theme` and `sub_theme` kinds, shown as "Theme › Sub-theme" in the tooltip), the population tags (labelled by `whoLabel`), and `lens` tags, and each group gets its own labelled line (Themes, who, **Lenses**, SDGs) rather than lenses being mixed into the population pills. It sits above a client tab component in `features/registry/profile/`: `OrgProfileTabs` (Overview, Programmes & places, Funding, News & social, Research & sources) or `FunderProfileTabs` (Mandate, Giving, Reach, News & social, Research & sources). Tab state is local `PillTabs` state, not the URL, and the tabs only receive slices of the already-loaded profile, so switching tabs makes no request.
+`/registry/[slug]` (CSO) and `/registry/funders/[slug]` (funder) are server components that fetch the single profile payload with `apiGet`, turn `NotFoundError` into `notFound()`, and `permanentRedirect` to the canonical slug when the profile was asked for by id. Each renders a shared `ProfileHero` (with an "Ask Sangam about…" link into `/ask?q=…` and a brief link when a brief exists). The hero draws the profile's tags as a facet list: `splitTags` (in `profile/shared.tsx`) separates themes (`theme` and `sub_theme` kinds, shown as "Theme › Sub-theme" in the tooltip), the population tags (labelled by `whoLabel`), and `lens` tags, and each group gets its own labelled line (Themes, who, **Lenses**, SDGs) rather than lenses being mixed into the population pills. It sits above a client tab component in `features/registry/profile/`: `OrgProfileTabs` (Overview, Programmes & places, Funding, News & social, Research & sources) or `FunderProfileTabs` (Mandate, Giving, Reach, News & social, Research & sources). Tab state is local `PillTabs` state, not the URL, and the tabs only receive slices of the already-loaded profile, so switching tabs makes no request. The one exception is the partner lists (an org's funders on the Funding tab, a funder's partners on the Giving tab): the profile carries only the first `PartnerGroupPage`, and `usePartnerGroups` (`profile/partnerGroups.ts`) fetches the next page from the browser with `authHeaders()` and the `next_cursor` (`/api/orgs/{slug}/funders?cursor=` or `/api/funders/{slug}/partners?cursor=`), appending groups and showing an error state if a page fails.
 
 ## Ask workspace
 
@@ -268,7 +278,7 @@ A row (`Row` in `RegistryClient.tsx`) was reworked to carry more of what the fil
 
 `WorkspaceLoader` wraps `SignedInWorkspace` in `next/dynamic`, so the workspace and the CopilotKit runtime under it download only when rendered; `SignedInWorkspace` mounts `AgentProviders` around `AskWorkspace`.
 
-**Views are in-app state, not URLs.** `AskWorkspace` holds a `view` of type `WorkspaceView` (`ask`, `chats`, `funder-match`, `proposals`, `rfpwatch`, `vault`, `media`; the type is declared in `Sidebar.tsx`), plus `threadId`, the thread list and the latest turn. Each view is a plain conditional in the render, so switching views unmounts the previous one and its local state. `ChatPane` is keyed by `threadId`, so picking or starting a chat remounts it (picking a thread or starting a new chat also switches back to `ask`). The right-hand `EvidenceRail` (hidden on narrow screens via `.evidence-rail-slot`) shows the latest turn. The sidebar shows the proposal count from `useProposals()`, and a Funder Match card can jump into Proposals with a `{id}` or `{funderId}` target; a changing `key` remounts `ProposalsView` on that target. Choosing "Proposals" in the sidebar opens it with no target. RFP Watch gets two hooks back into the workspace: `onAsk` starts a fresh chat seeded with a question (`newChat(q)`), and `onFunderMatch` switches to the Funder Match view.
+**Views are in-app state, not URLs.** `AskWorkspace` holds a `view` of type `WorkspaceView` (`ask`, `chats`, `funder-match`, `proposals`, `rfpwatch`, `vault`, `media`; the type is declared in `Sidebar.tsx`), plus `threadId`, the thread list and the latest turn. Each view is a plain conditional in the render, so switching views unmounts the previous one and its local state. `ChatPane` is keyed by `threadId`, so picking or starting a chat remounts it (picking a thread or starting a new chat also switches back to `ask`). The right-hand `EvidenceRail` (hidden on narrow screens via `.evidence-rail-slot`) shows the latest turn: the phases of work, the sources behind the answer, and the SQL each `db_query` ran. `lib/sources.ts` (`sourcesFor`) builds the source list from three grains and de-duplicates it by URL (or label when there is none): `fact` rows parsed from the `sources:` block that `db_query` appends to its result (a backend text contract), `web` entries from a `fetch_url` step's own `url` argument, and `entity` entries for the org, funder, activity or score that a citation marker in the answer points at, resolved through the `IndexPayload` (a score is labelled as Sangam's own rubric rather than a missing source). The rail shows at most `MAX_SOURCES` (10) and states the remainder as a count, and when a query carried no per-row source it says why and names the tables read. The sidebar shows the proposal count from `useProposals()`, and a Funder Match card can jump into Proposals with a `{id}` or `{funderId}` target; a changing `key` remounts `ProposalsView` on that target. Choosing "Proposals" in the sidebar opens it with no target. RFP Watch gets two hooks back into the workspace: `onAsk` starts a fresh chat seeded with a question (`newChat(q)`), and `onFunderMatch` switches to the Funder Match view.
 
 ### Sidebar and "coming soon" views
 
@@ -306,11 +316,11 @@ Proposals are **server-backed**, shared by everyone in the organisation, and dra
 **The shell and its steps.** `ProposalShell` loads one proposal with `GET /api/proposals/{id}` and renders a four-step stepper (`steps.ts`: *Can you apply?*, *Your documents and style*, *Write the proposal*, *Before you send it*). The server owns the step number (`work.stage`); the screen never advances itself. Every edit is a `PATCH /api/proposals/{id}/work` with dotted keys (`gates.<key>`, `sources`, `style`, `sections.<code>.text`, `facts.<k>.status`, …) and the response replaces `work` and `summary`. "Continue" calls `POST …/advance`; it is disabled while `summary.to_continue` is non-empty, and a 409 whose detail lists `missing` is shown as "To continue: …". Going back to an earlier step is allowed, forward only through Continue.
 
 - Step 1 (`GatesStep`): each funder requirement is answered Yes / We'll have it / No; a hard requirement answered No shows a stop line.
-- Step 2 (`SourcesStep`): the funder's form (uploaded to the Doc Vault, or "use Sangam's usual order"), the org's vault files to tick, and the writing style. The `Reading` card lists each file's reader (running / done / failed with "Try again"); "Write the first draft" and "Read the files again" are fixed messages sent to the proposal chat, which calls the reading tool.
+- Step 2 (`SourcesStep`): the funder's form (uploaded to the Doc Vault, or "use Sangam's usual order"), the org's vault files to tick, and the writing style. The `Reading` card lists each file's reader (running / done with a fact count / failed with "Try again", plus the funder's own reader and public research); "Write the first draft" and "Read the files again" (shown as "Read the new files" once some files are read) are fixed messages (`WRITE_FIRST_DRAFT`, `READ_AGAIN`) sent to the proposal chat, which calls the reading tool. They are disabled while no send function is available (the chat is not ready, a turn is running or a question is open), and a failed reader's retry is also disabled while another reader runs. Step 3's "Write <tab>" and step 4's "Rewrite those parts" are likewise fixed chat messages.
 - Step 3 (`SectionsStep`): the funder template's tabs and parts; each part is a text box with numbered `[1]` source marks that `PartEditor` maps back to fact keys (`⟦k7⟧`), autosaved about 1.5 s after typing together with the part's `rev`. A 409 means someone else (a teammate or Sangam Pitch) saved first: the box takes their text and the person's own is kept beneath it to copy from. Elsewhere in the shell a 409 shows "<name> changed this … Showing their version" and reloads the proposal. Facts for the part are in a disclosure (`FactList`); a "Write <tab>" button asks the agent to draft it.
 - Step 4 (`FinishStep`): *Fix first* and *Worth checking* lists, every fact the text uses with Confirm all, and `FinishCard`: "Smooth the language" (`POST …/polish`, refused with a 409 list of differences when a figure, place, name or gap changed) and "Download as a Word file" (`POST …/versions`, which saves the next version to the Doc Vault and opens a short-lived link from `/api/documents/{id}/file`). Sangam never sends anything to the funder.
 
-**Concurrency and roles.** `can_edit` from the server turns the whole screen read-only for members ("Ask your organisation's admin…") and hides the chat. While any reader is running, or the proposal is at step 2+ and the chat is not yet ready to send, the shell polls the proposal every 5 s so teammates see reading progress; `TellSangam` also reloads it when a chat turn ends, since a turn may have saved or moved the step.
+**Concurrency and roles.** `can_edit` from the server turns the whole screen read-only for members ("Ask your organisation's admin…") and hides the chat. While any reader is running, or an editor is at step 2+ and the chat is not yet ready to send (`send === null`, because readers are claimed and parts saved mid-turn), the shell polls the proposal every 5 s so teammates see reading progress; `TellSangam` also reloads it when a chat turn ends, since a turn may have saved or moved the step.
 
 **The proposal chat (`TellSangam`, "Sangam Pitch").** It floats beside the steps and uses `useAgentChat(proposal.thread_id, "sangam_proposal", "proposal-chat", …)`. The thread id is per user (`proposal-<id>-<user id>`), so each editor has a private chat; history comes from `GET /api/proposals/{id}/messages` (404 → empty). It sends the current screen (step, selected text, open part) as AG-UI context under the exact description `"What the person is looking at"`, which the backend's `ProposalContext` looks up, and it hides `⟦k…⟧` fact marks in answers. `QuestionCard` answers the agent's interrupts through `useInterrupt` (`renderInChat: false`) for `proposal_question` and `proposal_suggestion` payloads; a reply comes from the card's buttons ("Later" frees the question) or from the chat box. Step buttons can send fixed messages only while the chat is ready, no turn is running and no question is open.
 
