@@ -124,7 +124,8 @@ export function AskWorkspace({
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
         view={view}
-        onView={(v) => setUrlParams(viewParams(v))}
+        // The screen you are on stays as it is; only Proposals, inside one proposal, goes back to the list.
+        onView={(v) => (v !== view || proposal) && setUrlParams(viewParams(v))}
         threads={threads}
         activeThread={threadId}
         onPickThread={pickThread}
