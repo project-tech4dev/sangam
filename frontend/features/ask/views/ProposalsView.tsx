@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { ProposalList } from "./proposals/ProposalList";
 import { ProposalShell } from "./proposals/ProposalShell";
 import { hadBrowserProposals, useProposals } from "./proposals/api";
@@ -9,16 +9,20 @@ const noop = () => () => {};
 
 export type ProposalTarget = { id: number } | { funderId: number } | null;
 
-/* The proposals list, or one proposal; the workspace remounts this with a target from Funder Match. */
-export function ProposalsView({ target, onFunderMatch }: { target: ProposalTarget; onFunderMatch: () => void }) {
-  const [open, setOpen] = useState<number | null>(target && "id" in target ? target.id : null);
+/* The proposals list, or one proposal; both come from the address, so Back returns to the list. */
+export function ProposalsView({ open, funder, onOpen, onFunderMatch }: {
+  open: number | null;
+  funder: number | null;
+  onOpen: (id: number | null) => void;
+  onFunderMatch: () => void;
+}) {
   const rows = useProposals();
   const oldOnes = useSyncExternalStore(noop, hadBrowserProposals, () => false);
 
   return (
     <div className="view">
       {open !== null ? (
-        <ProposalShell id={open} onBack={() => setOpen(null)} />
+        <ProposalShell key={open} id={open} onBack={() => onOpen(null)} />
       ) : (
         <>
           <div className="pr-head">
@@ -32,9 +36,10 @@ export function ProposalsView({ target, onFunderMatch }: { target: ProposalTarge
             </p>
           )}
           <ProposalList
+            key={funder ?? "all"}
             rows={rows}
-            initialFunder={target && "funderId" in target ? target.funderId : null}
-            onOpen={setOpen}
+            initialFunder={funder}
+            onOpen={onOpen}
             onFunderMatch={onFunderMatch}
           />
         </>

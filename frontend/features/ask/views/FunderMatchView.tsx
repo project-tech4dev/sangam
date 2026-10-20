@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { BucketCards, FilterRow, SearchBox } from "@/components/ui";
 import type { MatchList, MatchRow } from "@/lib/api";
@@ -8,6 +9,7 @@ import { useOrgChoices } from "../lib/useOrgChoices";
 import { getMatches, runMatch } from "./funder-match/api";
 import { funderTypeGroup, funderTypeLabel } from "./funder-match/funderType";
 import { shortDate } from "@/lib/format";
+import { setUrlParams } from "@/lib/url";
 import { MatchCard, type ProposalNav } from "./funder-match/MatchCard";
 import { useProposals } from "./proposals/api";
 import { COMING_SOON } from "../lib/comingSoon";
@@ -20,7 +22,8 @@ const haystack = (m: MatchRow) =>
 
 /* Every funder ranked for one organisation from its latest saved run; staff, stewards and admins can rerun it. */
 export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: string; name: string }[]; nav: ProposalNav }) {
-  const [orgSlug, setOrgSlug] = useState("");
+  // In the address, so Back from a proposal opened here returns to the same organisation.
+  const orgSlug = useSearchParams().get("org") ?? "";
   const [list, setList] = useState<MatchList | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [bucket, setBucket] = useState<Bucket>("all");
@@ -54,7 +57,7 @@ export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: strin
     setType("all");
     setProposal("any");
     setQuery("");
-    setOrgSlug(slug);
+    setUrlParams({ org: slug }, "replace");
   }
 
   async function rerun() {

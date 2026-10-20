@@ -3,18 +3,13 @@ import { RegistryClient } from "@/features/registry/RegistryClient";
 
 export const metadata = { title: "Registry — Sangam" };
 
-export default async function RegistryPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ type?: string }>;
-}) {
-  const { type } = await searchParams;
+// Filters, including ?type=, are read in the browser from the address.
+export default async function RegistryPage() {
   const { rows } = await apiGet<RegistryOut>("/api/registry");
-  const initialType = type === "cso" ? "org" : type === "funder" ? "funder" : "all";
 
   return (
     <div className="page">
-      <RegistryClient rows={rows} initialType={initialType} />
+      <RegistryClient rows={rows} />
     </div>
   );
 }

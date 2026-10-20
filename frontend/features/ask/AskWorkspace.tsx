@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { idParam, setUrlParams } from "@/lib/url";
+import { useUrlThread } from "@/lib/useUrlThread";
 import type { RegistryIndex } from "./lib/citations";
 import { takePendingQuestion } from "./lib/pendingQuestion";
 import { fetchThreads, loadThreads, type ThreadMeta } from "./lib/threads";
 import type { Turn } from "./lib/useSangamChat";
 import { ChatPane } from "./components/ChatPane";
 import { EvidenceRail } from "./components/EvidenceRail";
-import { Sidebar, type WorkspaceView } from "./components/Sidebar";
+import { Sidebar } from "./components/Sidebar";
+import { viewFrom, viewParams } from "./lib/workspaceUrl";
 import { VaultView } from "./views/VaultView";
 import { MediaView } from "./views/media/MediaView";
 import { RfpWatchView } from "./views/RfpWatchView";
@@ -17,6 +21,8 @@ import { FunderMatchView } from "./views/FunderMatchView";
 import { type ProposalTarget, ProposalsView } from "./views/ProposalsView";
 import { useProposals } from "./views/proposals/api";
 import { ChatsView } from "./views/ChatsView";
+
+const newThreadId = () => crypto.randomUUID();
 
 type Sourced = { sourceUrl: string | null; sourceName: string | null; fetchedAt: string | null };
 
@@ -38,14 +44,15 @@ export function AskWorkspace({
   initialQuestion?: string | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [view, setView] = useState<WorkspaceView>("ask");
-  const [threadId, setThreadId] = useState(() => crypto.randomUUID());
-  // A chat picked from the list loads its saved messages; a new one has none.
-  const [resume, setResume] = useState(false);
+  const params = useSearchParams();
+  const view = viewFrom(params.get("view"));
+  const proposal = idParam(params.get("proposal"));
+  const proposalFunder = idParam(params.get("funder"));
+  const { threadId, resume, renew, markSent } = useUrlThread(newThreadId, { active: view === "ask" });
   const [threads, setThreads] = useState<ThreadMeta[]>([]);
-  const [latestTurn, setLatestTurn] = useState<Turn | null>(null);
-  const [seed, setSeed] = useState<string | null>(null);
-  const [proposalTarget, setProposalTarget] = useState<{ key: number; target: ProposalTarget }>({ key: 0, target: null });
+  // Both belong to one chat; Back to another must not show this one's evidence or prefill.
+  const [latest, setLatest] = useState<{ thread: string; turn: Turn | null }>({ thread: "", turn: null });
+  const [seed, setSeed] = useState<{ thread: string; text: string } | null>(null);
   const proposalCount = useProposals().length;
 
   useEffect(() => {
@@ -54,11 +61,10 @@ export function AskWorkspace({
     if (window.matchMedia("(max-width: 768px)").matches) setCollapsed(true);
     // A question asked on the signed-out preview, or passed in ?q=: prefill it in a
     // fresh chat, unsent. The preview's question wins; it is the one the user typed.
+    // ?q= is consumed here; dropping it means a reload does not prefill it again.
     const pending = takePendingQuestion() ?? initialQuestion;
-    if (pending) {
-      setThreadId(crypto.randomUUID());
-      setSeed(pending);
-    }
+    if (pending) setSeed({ thread: renew(), text: pending });
+    setUrlParams({ q: null, ...(pending ? { thread: null } : {}) }, "replace");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
   }, []);
 
@@ -72,13 +78,6 @@ export function AskWorkspace({
     [payload],
   );
 
-  // ?q= is consumed once on mount; drop it so a reload does not prefill it again.
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("q");
-    window.history.replaceState(null, "", url);
-  }, []);
-
   // The server's list once it answers; this browser's until then, or when it cannot.
   const refreshThreads = useCallback(() => {
     fetchThreads(threadId).then(setThreads, () => setThreads(loadThreads()));
@@ -89,26 +88,25 @@ export function AskWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
   }, []);
 
-  // A new key remounts Proposals on that proposal or that funder's list.
+  // Stable: ChatPane reports from an effect that lists it.
+  const onLatestTurn = useCallback((turn: Turn | null) => setLatest({ thread: threadId, turn }), [threadId]);
+
   function openProposals(target: ProposalTarget) {
-    setProposalTarget((t) => ({ key: t.key + 1, target }));
-    setView("proposals");
+    setUrlParams({
+      view: "proposals",
+      proposal: target && "id" in target ? String(target.id) : null,
+      funder: target && "funderId" in target ? String(target.funderId) : null,
+    });
   }
 
   function pickThread(id: string) {
-    setThreadId(id);
-    setResume(true);
-    setSeed(null);
-    setLatestTurn(null);
-    setView("ask");
+    setUrlParams({ ...viewParams("ask"), thread: id });
   }
 
   function newChat(seedText: string | null = null) {
-    setThreadId(crypto.randomUUID());
-    setResume(false);
-    setSeed(seedText);
-    setLatestTurn(null);
-    setView("ask");
+    const id = renew();
+    setSeed(seedText ? { thread: id, text: seedText } : null);
+    setUrlParams({ ...viewParams("ask"), thread: null });
   }
 
   return (
@@ -126,7 +124,7 @@ export function AskWorkspace({
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
         view={view}
-        onView={(v) => (v === "proposals" ? openProposals(null) : setView(v))}
+        onView={(v) => setUrlParams(viewParams(v))}
         threads={threads}
         activeThread={threadId}
         onPickThread={pickThread}
@@ -142,13 +140,16 @@ export function AskWorkspace({
               key={threadId}
               threadId={threadId}
               resume={resume}
-              seed={seed}
-              onFirstSend={refreshThreads}
+              seed={seed?.thread === threadId ? seed.text : null}
+              onFirstSend={() => {
+                if (!resume) markSent();
+                refreshThreads();
+              }}
               index={index}
-              onLatestTurn={setLatestTurn}
+              onLatestTurn={onLatestTurn}
             />
             <div className="evidence-rail-slot">
-              <EvidenceRail latest={latestTurn} stats={payload.stats} index={index} />
+              <EvidenceRail latest={latest.thread === threadId ? latest.turn : null} stats={payload.stats} index={index} />
             </div>
           </>
         )}
@@ -169,9 +170,10 @@ export function AskWorkspace({
         )}
         {view === "proposals" && !COMING_SOON.has("proposals") && (
           <ProposalsView
-            key={proposalTarget.key}
-            target={proposalTarget.target}
-            onFunderMatch={() => setView("funder-match")}
+            open={proposal}
+            funder={proposalFunder}
+            onOpen={(id) => setUrlParams({ proposal: id === null ? null : String(id) })}
+            onFunderMatch={() => setUrlParams(viewParams("funder-match"))}
           />
         )}
         {view === "rfpwatch" &&
@@ -181,7 +183,7 @@ export function AskWorkspace({
               body="Open calls and RFPs gathered every week, each shown with the organisations it plausibly fits."
             />
           ) : (
-            <RfpWatchView orgs={payload.orgs} onAsk={(q) => newChat(q)} onFunderMatch={() => setView("funder-match")} />
+            <RfpWatchView orgs={payload.orgs} onAsk={(q) => newChat(q)} onFunderMatch={() => setUrlParams(viewParams("funder-match"))} />
           ))}
       </div>
     </div>

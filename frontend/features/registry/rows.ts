@@ -2,6 +2,9 @@
 
 import type { RegistryRow } from "@/lib/api";
 import { dayMonth, formatInr, funderTypeLabel, MONTHS } from "@/lib/format";
+import type { Filters } from "./filtersUrl";
+
+export { DEFAULTS, type Filters } from "./filtersUrl";
 
 export const NORTH_EAST = [
   "Arunachal Pradesh", "Assam", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Sikkim", "Tripura",
@@ -45,15 +48,6 @@ export function signal(r: RegistryRow): string {
   const line = parts.join(" · ");
   return line.charAt(0).toUpperCase() + line.slice(1);
 }
-
-export type Filters = {
-  kind: "all" | "org" | "funder"; theme: string; population: string; sdg: string; where: string;
-  reg: string; ftype: string; approach: string; q: string;
-};
-
-export const DEFAULTS: Omit<Filters, "kind"> = {
-  theme: "all", population: "all", sdg: "all", where: "any", reg: "any", ftype: "all", approach: "any", q: "",
-};
 
 function worksIn(r: RegistryRow, where: string): boolean {
   if (where === "any") return true;

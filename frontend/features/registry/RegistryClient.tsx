@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { BucketCards, FilterRow, initialsOf, ListMore, SearchBox, useShowMore, type Filter } from "@/components/ui";
 import { displayName, funderTypeLabel } from "@/lib/format";
 import type { RegistryRow } from "@/lib/api";
+import { setUrlParams } from "@/lib/url";
+import { filterParams, filtersFrom } from "./filtersUrl";
 import { SDG_NAME } from "./sdg";
 import {
   DEFAULTS, kindLine, matches, NORTH_EAST, present, signal, type Filters,
@@ -71,9 +74,16 @@ function Row({ r, f }: { r: RegistryRow; f: Filters }) {
   );
 }
 
-export function RegistryClient({ rows, initialType }: { rows: RegistryRow[]; initialType: Filters["kind"] }) {
-  const [f, setF] = useState<Filters>({ kind: initialType, ...DEFAULTS });
-  const set = (patch: Partial<Filters>) => setF((prev) => ({ ...prev, ...patch }));
+export function RegistryClient({ rows }: { rows: RegistryRow[] }) {
+  const fromUrl = filtersFrom(useSearchParams());
+  // Typed text stays local so the caret never waits on the address; the address gets a copy.
+  const [q, setQ] = useState(fromUrl.q);
+  const f: Filters = { ...fromUrl, q };
+  // A replace: Back leaves the Registry, it does not undo each filter.
+  const set = (patch: Partial<Filters>) => {
+    if (patch.q !== undefined) setQ(patch.q);
+    setUrlParams(filterParams(patch), "replace");
+  };
 
   const counts = {
     all: rows.length,
