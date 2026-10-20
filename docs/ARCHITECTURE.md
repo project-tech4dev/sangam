@@ -164,7 +164,10 @@ Generated detail: [auth-roles-rls](../openwiki/architecture/auth-roles-rls.md).
 Generated detail (routes, features, workspace views): [frontend](../openwiki/architecture/frontend.md).
 
 - `app/` holds routes only; everything else goes in `features/`.
-- **Ask workspace views are in-app state, not URLs.**
+- **A screen Back should undo lives in the URL as a `pushState` entry**: Ask's `?view=`, `?thread=` and `?proposal=`,
+  Import's `?thread=`, a profile's `?tab=`. Filters (Registry, Funder Match's `?org=`) use `replaceState`, so Back leaves
+  the page rather than undoing each one. Native `history` calls, not `router.push`: `/ask` is `force-dynamic` and a
+  router navigation refetches it. An in-app back link names its parent URL; it never calls `history.back()`.
 - **Proposals live in `localStorage`** only, started from a Funder Match card; drafting and assembly are not built.
 - **Every list page uses `ListPage.tsx`'s pattern**, not its own pills or stats.
 - **The design system is the system of record**; a UI PR updates it (`docs/DESIGN_SYSTEM.md`). Styles in classes,

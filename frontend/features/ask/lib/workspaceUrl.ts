@@ -12,3 +12,8 @@ export function viewFrom(value: string | null): WorkspaceView {
 export function viewParams(view: WorkspaceView): Record<string, string | null> {
   return { view: view === "ask" ? null : view, proposal: null, funder: null, org: null };
 }
+
+/** An Ask chat id is a bare UUID; anything else in `?thread=` is ignored, not sent to the backend. */
+export function isAskThreadId(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
+}

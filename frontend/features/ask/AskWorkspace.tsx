@@ -11,7 +11,7 @@ import type { Turn } from "./lib/useSangamChat";
 import { ChatPane } from "./components/ChatPane";
 import { EvidenceRail } from "./components/EvidenceRail";
 import { Sidebar } from "./components/Sidebar";
-import { viewFrom, viewParams } from "./lib/workspaceUrl";
+import { isAskThreadId, viewFrom, viewParams } from "./lib/workspaceUrl";
 import { VaultView } from "./views/VaultView";
 import { MediaView } from "./views/media/MediaView";
 import { RfpWatchView } from "./views/RfpWatchView";
@@ -48,7 +48,7 @@ export function AskWorkspace({
   const view = viewFrom(params.get("view"));
   const proposal = idParam(params.get("proposal"));
   const proposalFunder = idParam(params.get("funder"));
-  const { threadId, resume, renew, markSent } = useUrlThread(newThreadId, { active: view === "ask" });
+  const { threadId, resume, renew, markSent } = useUrlThread(newThreadId, { valid: isAskThreadId, active: view === "ask" });
   const [threads, setThreads] = useState<ThreadMeta[]>([]);
   // Both belong to one chat; Back to another must not show this one's evidence or prefill.
   const [latest, setLatest] = useState<{ thread: string; turn: Turn | null }>({ thread: "", turn: null });

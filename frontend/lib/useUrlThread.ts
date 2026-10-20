@@ -8,10 +8,10 @@ import { setUrlParams } from "./url";
  * The open chat is `?thread=`; with none it is an unsent draft. A draft enters the address on its first
  * send, and once left it is a saved chat like any other, so Back to it loads its messages.
  */
-export function useUrlThread(newId: () => string, { valid = () => true, active = true }: {
-  valid?: (id: string) => boolean;
+export function useUrlThread(newId: () => string, { valid, active = true }: {
+  valid: (id: string) => boolean;
   active?: boolean;
-} = {}) {
+}) {
   const raw = useSearchParams().get("thread");
   const param = raw && valid(raw) ? raw : null;
   const [draft, setDraft] = useState(newId);

@@ -131,6 +131,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-12 · #175 · Registry cards wrap long theme tags; styles move to `.reg-*` classes.
 - 2026-10-16 · #236 · Phone nav folds its links into a menu beside Sign in; Home's five steps become one numbered card; hero copy.
 - 2026-10-17 · #242 · Registry rows show domains (most programmes first) and up to three populations served, with "+N more"; a Theme filter names the sub-themes it matched. Lenses move to their own line on the profile.
+- 2026-10-21 · #TBD · Back returns to the previous screen: Ask views, chats and proposals, Import threads and profile tabs are pushed URL entries; Registry filters and Funder Match's organisation are replaced into the URL. `npm test` (node:test, in CI) pins the URL round trips.
 
 ## Proposals
 

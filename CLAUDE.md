@@ -123,7 +123,8 @@ container path `/srv/db/migrations`.
 fresh pgvector Postgres, and uploads both coverage reports to Codecov. `codecov.yml` fails a PR that lowers total
 coverage by more than 1% or covers under 70% of the lines it changes.
 
-Frontend: `npm run lint` (ESLint, flat config in `frontend/eslint.config.mjs`) and
+Frontend: `npm run lint` (ESLint, flat config in `frontend/eslint.config.mjs`), `npm test`
+(`node --test` over `frontend/tests/*.test.ts`, pure modules only, no runner dependency) and
 `npm run build`. Run the build before pushing — type errors surface there and never in
 `next dev`.
 
