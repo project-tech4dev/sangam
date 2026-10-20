@@ -50,7 +50,7 @@ jobs:
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: backend/coverage.xml
-          flags: backend-unit
+          flags: backend,backend-unit
           disable_search: true
           use_oidc: ${{ !github.event.pull_request.head.repo.fork }}
 
@@ -103,7 +103,7 @@ jobs:
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: backend/coverage.xml
-          flags: backend-integration
+          flags: backend,backend-integration
           disable_search: true
           use_oidc: ${{ !github.event.pull_request.head.repo.fork }}
 
@@ -113,6 +113,9 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -123,5 +126,11 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npx tsc --noEmit
-      - run: npm test
+      - run: npm run coverage
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: frontend/coverage/lcov.info
+          flags: frontend
+          disable_search: true
+          use_oidc: ${{ !github.event.pull_request.head.repo.fork }}
       - run: npm run build

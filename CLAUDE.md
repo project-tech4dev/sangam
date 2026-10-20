@@ -120,12 +120,12 @@ Running the migration runner outside Docker needs `MIGRATIONS_DIR` — it defaul
 container path `/srv/db/migrations`.
 
 **CI** (`.github/workflows/ci.yml`) runs all of the above on every PR, plus the integration tier against a
-fresh pgvector Postgres, and uploads both coverage reports to Codecov. `codecov.yml` fails a PR that lowers total
-coverage by more than 1% or covers under 70% of the lines it changes.
+fresh pgvector Postgres and the frontend's Vitest suite, and uploads all three coverage reports to Codecov.
+`codecov.yml` gates `backend` and `frontend` separately: a PR fails if it lowers either one's coverage by more
+than 1%, or covers under 70% of the backend lines it changes (the frontend's 70% is informational for now).
 
-Frontend: `npm run lint` (ESLint, flat config in `frontend/eslint.config.mjs`), `npm test`
-(`node --test` over `frontend/tests/*.test.ts`, pure modules only, no runner dependency) and
-`npm run build`. Run the build before pushing — type errors surface there and never in
+Frontend: `npm run lint` (ESLint, flat config in `frontend/eslint.config.mjs`), `npm test` (Vitest;
+`npm run coverage` as CI runs it) and `npm run build`. Run the build before pushing — type errors surface there and never in
 `next dev`.
 
 ## Environment selection

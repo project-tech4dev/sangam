@@ -1,22 +1,42 @@
-# Codecov merges the backend-unit and backend-integration uploads into one report per commit.
+# Both backend uploads also carry the `backend` flag, which the README badge reads; the frontend has its own.
 coverage:
   status:
-    project:
-      default:
-        target: auto      # the base commit's coverage: a PR may not lower it
-        threshold: 1%
-    patch:
-      default:
-        target: 70%       # lines a PR adds or changes
+    project: off   # gated per component below, so the young frontend figure cannot sink the backend's
+    patch: off
 
-# coverage.xml paths are relative to backend/.
+# coverage.xml paths are relative to backend/, lcov.info paths to frontend/.
 fixes:
   - "app/::backend/app/"
+  - "lib/::frontend/lib/"
+  - "features/::frontend/features/"
+  - "components/::frontend/components/"
 
 flag_management:
   default_rules:
     carryforward: true
 
+component_management:
+  individual_components:
+    - component_id: backend
+      name: backend
+      paths: ["backend/**"]
+      statuses:
+        - type: project
+          target: auto      # the base commit's coverage: a PR may not lower it
+          threshold: 1%
+        - type: patch
+          target: 70%       # lines a PR adds or changes
+    - component_id: frontend
+      name: frontend
+      paths: ["frontend/**"]
+      statuses:
+        - type: project
+          target: auto
+          threshold: 1%
+        - type: patch
+          target: 70%
+          informational: true   # most of the frontend has no tests yet
+
 comment:
-  layout: "condensed_header, diff, flags, files"
+  layout: "condensed_header, diff, flags, components, files"
   require_changes: false
