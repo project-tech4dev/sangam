@@ -20,6 +20,7 @@ from langchain_core.tools import tool
 from app.agent.tools.files import _safe_name, downloads_dir, extract_pdf_text
 from app.agent.tools.web import make_web_search
 from app.core.config import get_settings
+from app.core.egress import TRUST
 from app.db.pool import get_pool
 from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
@@ -65,7 +66,7 @@ def _client(original: str, **kwargs: Any) -> httpx.AsyncClient:
         if refusal:
             raise _Stop(f"REFUSED: {original} led to {target}, which was not requested. {refusal}")
 
-    return httpx.AsyncClient(follow_redirects=True, event_hooks={"request": [guard]}, **kwargs)
+    return httpx.AsyncClient(follow_redirects=True, event_hooks={"request": [guard]}, verify=TRUST, **kwargs)
 
 
 def _compact_json(text: str) -> str:
