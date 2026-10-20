@@ -22,6 +22,8 @@ component_management:
       paths: ["backend/**"]
       statuses:
         - type: project
+          target: 75%       # the floor; the 1% drop rule below still applies above it
+        - type: project
           target: auto      # the base commit's coverage: a PR may not lower it
           threshold: 1%
         - type: patch

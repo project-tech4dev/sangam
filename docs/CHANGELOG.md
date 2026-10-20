@@ -22,6 +22,7 @@ in the PR that ships a change, under its subsystem.
 - 2026-10-01 · #68 · Supabase auth variables read from the root `.env`.
 - 2026-10-02 · #78 · `make help` is the default goal; `make seed` runs `migrate` first; README rewritten.
 - 2026-10-21 · (unmerged) · Codecov's patch gate rises from 70% to 75% on both sides (the frontend's stays informational); the plan to reach 75% overall is `docs/features/2026-10-21-coverage-75.md`.
+- 2026-10-21 · (unmerged) · Backend tests for Import's write path, tools and pipelines, Pitch, tracing, storage, egress and the migration runner take backend coverage from 60% to 94%; the backend's project target is now 75%.
 
 ## Data model and migrations
 
