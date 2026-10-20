@@ -21,6 +21,7 @@ in the PR that ships a change, under its subsystem.
 - 2026-10-01 · #63, #69 · The frontend container reinstalls npm deps when the manifests change, not on a flag.
 - 2026-10-01 · #68 · Supabase auth variables read from the root `.env`.
 - 2026-10-02 · #78 · `make help` is the default goal; `make seed` runs `migrate` first; README rewritten.
+- 2026-10-21 · (unmerged) · Codecov's patch gate rises from 70% to 75% on both sides (the frontend's stays informational); the plan to reach 75% overall is `docs/features/2026-10-21-coverage-75.md`.
 
 ## Data model and migrations
 

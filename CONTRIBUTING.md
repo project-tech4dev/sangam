@@ -171,7 +171,7 @@ npm run build                   # next build; type errors surface here, never in
 
 CI runs all of it on every PR, plus the integration tier against a fresh pgvector Postgres, and uploads
 coverage to Codecov, where backend and frontend are gated separately: neither may drop by more than 1%,
-and 70% of the backend lines a PR changes must be covered.
+and 75% of the backend lines a PR changes must be covered.
 
 ## Repository layout
 
