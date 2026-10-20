@@ -16,6 +16,9 @@
 
 </div>
 
+<img src="docs/assets/readme/ask.jpg" alt="Ask Sangam answering which organisations work in Assam: a table where each row carries an [org:N] citation, the steps it took, and the sources behind the rows" width="100%">
+
+
 ## Why Sangam
 
 Finding the right funder is slow, manual research: who gives in this state, to this cause, at this size,
@@ -42,6 +45,19 @@ Two rules shape the whole system:
 | **Sangam Scout** | For staff and stewards: researches an organisation or a whole list from public sources, Sangam's library and your Doc Vault, and saves cited findings once a person approves |
 | **Media & Signals** | News about the organisations and funders in the registry, classified and shown on their profiles |
 | **RFP Watch** | Open calls for proposals from funders' own pages, matched to your organisation's themes |
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/assets/readme/registry.jpg" alt="A funder profile in the Registry: themes, who it funds, SDGs, and a source link beside each field"></td>
+    <td width="33%"><img src="docs/assets/readme/funder-match.jpg" alt="Funder Match ranking four funders for one organisation, each with a score out of 100 and the reasons"></td>
+    <td width="33%"><img src="docs/assets/readme/scout.jpg" alt="Sangam Scout reporting on a funder it researched: facts saved, sources read, and open calls checked"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Registry</b>: every field has its source</td>
+    <td align="center"><b>Funder Match</b>: a score, and why</td>
+    <td align="center"><b>Sangam Scout</b>: research you approve</td>
+  </tr>
+</table>
 
 ## How it works
 
