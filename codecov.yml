@@ -1,7 +1,7 @@
 # Both backend uploads also carry the `backend` flag, which the README badge reads; the frontend has its own.
 coverage:
   status:
-    project: off   # gated per component below, so the young frontend figure cannot sink the backend's
+    project: off   # gated per component below, so one side's figure cannot sink the other's
     patch: off
 
 # coverage.xml paths are relative to backend/, lcov.info paths to frontend/.
@@ -34,11 +34,13 @@ component_management:
       paths: ["frontend/**"]
       statuses:
         - type: project
+          name_prefix: floor-
+          target: 75%
+        - type: project
           target: auto
           threshold: 1%
         - type: patch
           target: 75%
-          informational: true   # until the frontend can render a component under test
 
 comment:
   layout: "condensed_header, diff, flags, components, files"
