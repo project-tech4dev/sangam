@@ -171,6 +171,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-21 · (unmerged) · Outbound fetches trust certifi plus `app/core/certs/intermediates.pem`, so censusindia.gov.in (which omits emSign SSL CA - G1) can be read; verification stays on, and a test fails a year before an intermediate expires.
 - 2026-10-21 · MIT license. The frontend gets Vitest and its own Codecov flag; backend and frontend coverage are gated and badged separately in the README.
 - 2026-10-21 · The README is rewritten for newcomers (127 lines from 449: features, how it works, quickstart); setup and conventions move to `CONTRIBUTING.md`, beside `SECURITY.md`, a code of conduct and issue and PR templates.
+- 2026-10-21 · README screenshots in `docs/assets/readme/`: Ask with citations as the hero, then Registry, Funder Match and Scout.
 
 ## Tracing and evals
 
