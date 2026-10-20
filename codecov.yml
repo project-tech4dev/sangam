@@ -34,6 +34,7 @@ component_management:
       paths: ["frontend/**"]
       statuses:
         - type: project
+          name_prefix: floor-
           target: 75%
         - type: project
           target: auto
