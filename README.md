@@ -1,5 +1,9 @@
 # Sangam
 
+[![CI](https://github.com/project-tech4dev/sangam/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/project-tech4dev/sangam/actions/workflows/ci.yml)
+[![Backend coverage](https://img.shields.io/codecov/c/github/project-tech4dev/sangam/master?flag=backend&label=backend%20coverage&style=flat-square&logo=codecov)](https://app.codecov.io/gh/project-tech4dev/sangam/flags?branch=master)
+[![Frontend coverage](https://img.shields.io/codecov/c/github/project-tech4dev/sangam/master?flag=frontend&label=frontend%20coverage&style=flat-square&logo=codecov)](https://app.codecov.io/gh/project-tech4dev/sangam/flags?branch=master)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
@@ -257,8 +261,15 @@ Frontend:
 ```bash
 cd frontend
 npm run lint             # eslint
+npm test                 # vitest
+npm run coverage         # vitest with v8 coverage, as CI runs it
 npm run build            # next build
 ```
+
+CI uploads both sides to Codecov, flagged `backend` and `frontend`: each has its own badge above
+and its own check. The frontend's coverage counts every file under `lib/`,
+`features/` and `components/`, tested or not, so it starts low; its patch check is informational
+until it has caught up.
 
 **Run `npm run build` before pushing.** Type errors surface there and never in `next dev`.
 
@@ -432,5 +443,6 @@ Two traps worth knowing before touching this:
 Pre-release and under active development. The schema moves, and the backend has **no
 authentication** — see the auth note above before exposing it.
 
-There is no `LICENSE` file yet, so default copyright applies and the code is not open source.
-Resolve that before sharing the repository outside the organisation.
+## License
+
+[MIT](LICENSE) © 2026 Project Tech4Dev.
