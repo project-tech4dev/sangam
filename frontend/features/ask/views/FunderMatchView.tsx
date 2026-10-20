@@ -23,7 +23,7 @@ const haystack = (m: MatchRow) =>
 /* Every funder ranked for one organisation from its latest saved run; staff, stewards and admins can rerun it. */
 export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: string; name: string }[]; nav: ProposalNav }) {
   // In the address, so Back from a proposal opened here returns to the same organisation.
-  const orgSlug = useSearchParams().get("org") ?? "";
+  const orgParam = useSearchParams().get("org") ?? "";
   const [list, setList] = useState<MatchList | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [bucket, setBucket] = useState<Bucket>("all");
@@ -36,7 +36,8 @@ export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: strin
 
   const { me, choices, problem: meProblem } = useOrgChoices(orgs);
 
-  // The first organisation until one is picked.
+  // The first organisation until one is picked; a slug from the address counts only if it is one of yours.
+  const orgSlug = choices.some((c) => c.slug === orgParam) ? orgParam : "";
   const active = orgSlug || choices[0]?.slug || "";
 
   useEffect(() => {
