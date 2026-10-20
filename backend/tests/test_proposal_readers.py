@@ -51,13 +51,32 @@ class TestPublicResearch:
         finally:
             readers.build(Settings(tavily_api_key="test"), EVIDENCE_TOOLS, FUNDER_TOOLS, PUBLIC_TOOLS)
 
-    def test_it_is_read_with_the_files_only_when_built(self):
+    def test_its_own_button_runs_it_alone(self):
         assert readers.pending({"sources": [41]}, NOW) == ["41", "funder"]
-        assert readers.pending({"sources": [41]}, NOW, public=True) == ["41", "funder", "public"]
+        assert readers.pending({"sources": [41]}, NOW, public=True) == ["public"]
 
-    def test_try_again_retries_it_alone(self):
-        work = {"sources": [41], "readers": {"41": reader("done"), "funder": reader("done"), "public": reader("failed")}}
+    def test_it_may_search_again_once_done(self):
+        work = {"sources": [41], "readers": {"41": reader("done"), "funder": reader("done"), "public": reader("done")}}
         assert readers.pending(work, NOW, public=True) == ["public"]
+        assert readers.pending(work, NOW) == []
+
+    def test_a_public_search_running_does_not_hold_up_the_files(self):
+        work = {"sources": [41], "readers": {"public": reader("running", minutes_ago=2)}}
+        assert readers.pending(work, NOW) == ["41", "funder"]
+        with pytest.raises(readers.Busy):
+            readers.pending(work, NOW, public=True)
+
+    def test_reading_the_files_does_not_hold_up_a_search(self):
+        work = {"sources": [41], "readers": {"41": reader("running", minutes_ago=2)}}
+        assert readers.pending(work, NOW, public=True) == ["public"]
+
+    async def test_without_a_search_key_its_button_says_so(self, built):
+        held = readers.BUILT.public
+        readers.BUILT.public = None
+        try:
+            assert (await readers.read(proposal({}), public=True)).startswith("Public research is not available")
+        finally:
+            readers.BUILT.public = held
 
     def test_it_reads_the_web_and_no_file(self):
         mine = readers.sources_for(proposal({"sources": [41]}), readers.PUBLIC)
@@ -135,9 +154,14 @@ class TestPublicGuard:
                                      files=files)
         assert state.pages == {"rchiips.org/nfhs/assam.pdf": "\nanaemia 65.9"}
 
-    async def test_a_refused_page_is_not_kept(self):
+    async def test_a_refused_page_is_not_kept_and_its_host_is_shown(self):
         _, _, state = await self.run("read_page", {"url": "https://x.org/a"}, reply="REFUSED: robots.txt")
-        assert state.pages == {}
+        assert state.pages == {} and state.unopened == {"x.org"}
+
+    async def test_a_pdf_that_failed_to_download_is_shown(self):
+        _, _, state = await self.run("fetch_document", {"url": "https://rchiips.org/a.pdf"},
+                                     reply="ERROR: download of https://rchiips.org/a.pdf failed (ConnectError)")
+        assert state.unopened == {"rchiips.org"}
 
 
 class TestEachReaderRunsOnlyItsTools:
@@ -208,6 +232,14 @@ class TestLeavingStep2:
     def test_not_while_they_are_being_read(self):
         work = {**STEP2, "readers": {"41": {**reader("running"), "at": datetime.now(UTC).isoformat()}}}
         assert steps.exit_check(2, work) == ["wait until the files are read"]
+
+    def test_a_public_search_alone_does_not_read_the_files(self):
+        assert steps.exit_check(2, {**STEP2, "readers": {"public": reader("done")}}) == ["press Write the first draft"]
+
+    def test_a_public_search_still_running_does_not_hold_it_up(self):
+        work = {**STEP2, "readers": {"funder": reader("done"),
+                                     "public": {**reader("running"), "at": datetime.now(UTC).isoformat()}}}
+        assert steps.exit_check(2, work) == []
 
     def test_a_failed_file_does_not_hold_it_up(self):
         assert steps.exit_check(2, {**STEP2, "readers": {"41": reader("failed"), "funder": reader("done")}}) == []

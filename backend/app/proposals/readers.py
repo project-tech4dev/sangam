@@ -1,4 +1,4 @@
-"""The readers Sangam Pitch runs from step 2: one per ticked file, one for the funder's side, and public research.
+"""The readers Sangam Pitch runs from step 2: one per ticked file and one for the funder's side; public research apart.
 
 Code launches them, not the model: which files are pending, the one lock on reading, and each file's status in
 `work.readers` are decided here, so "Try again" re-reads only what failed.
@@ -97,13 +97,16 @@ class Busy(Exception):
 
 
 def pending(work: dict[str, Any], now: datetime | None = None, *, public: bool = False) -> list[str]:
-    """The readers to run: every ticked file, the funder's side and public research not yet done. Raises Busy."""
+    """The files and funder not yet done, or public research, which may run again. Each locks alone. Raises Busy."""
     now = now or datetime.now(UTC)
     held = work.get("readers") or {}
-    busy = [r for r in held.values() if r.get("status") == "running" and not steps.readers_stale(r, now)]
+    busy = [r for k, r in held.items() if (k == PUBLIC) == public
+            and r.get("status") == "running" and not steps.readers_stale(r, now)]
     if busy:
         raise Busy(busy[0], now)
-    keys = [*(str(d) for d in work.get("sources") or []), FUNDER, *([PUBLIC] if public else [])]
+    if public:
+        return [PUBLIC]
+    keys = [*(str(d) for d in work.get("sources") or []), FUNDER]
     return [k for k in keys if (held.get(k) or {}).get("status") != "done"]
 
 
@@ -195,15 +198,17 @@ async def _mark(proposal_id: int, changes: dict[str, dict[str, Any]], by: dict[s
     await repo.save(get_pool(), proposal_id, change)
 
 
-async def read(p: context.Current) -> str:
+async def read(p: context.Current, public: bool = False) -> str:
     """Run every pending reader at once and record each one's outcome; returns what happened, file by file."""
+    if public and BUILT.public is None:
+        return "Public research is not available: no search key is configured. Say so in one line."
     pool = get_pool()
     by = await repo.user_name(pool, p.scope.user_id)
     files, links = await _titles(p.org_id, p.work.get("sources") or [])
     titles = {**files, FUNDER: f"what {p.funder_name} looks for", PUBLIC: "Public research on the problem and place"}
     keys: list[str] = []
     try:
-        await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by))
+        await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by, public))
     except Busy as busy:
         return f"REFUSED: {busy}."
     except _NothingToRead:
@@ -214,9 +219,10 @@ async def read(p: context.Current) -> str:
     return "\n".join(results)
 
 
-def _claim(work: dict, title: str, keys: list[str], titles: dict[str, str], by: dict[str, Any]) -> work_rules.Applied:
+def _claim(work: dict, title: str, keys: list[str], titles: dict[str, str], by: dict[str, Any],
+           public: bool = False) -> work_rules.Applied:
     """Inside the row lock: two people pressing at once get one run and one refusal."""
-    keys.extend(pending(work, public=BUILT.public is not None))
+    keys.extend(pending(work, public=public))
     if not keys:
         raise _NothingToRead
     at = datetime.now(UTC).isoformat()
@@ -236,7 +242,8 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
     graph = {FUNDER: BUILT.funder, PUBLIC: BUILT.public}.get(key, BUILT.evidence)
     async with gate:
         token = run_sources.CURRENT.set(sources_for(p, key))
-        public = PUBLIC_RUN.set(PublicRun(avoid=(p.org_name,)) if key == PUBLIC else None)
+        run = PublicRun(avoid=(p.org_name,)) if key == PUBLIC else None
+        public = PUBLIC_RUN.set(run)
         # A run of its own: inheriting the chat's run would stream every reader's steps into the person's chat.
         var_child_runnable_config.set(None)
         try:
@@ -251,7 +258,7 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
             PUBLIC_RUN.reset(public)
             run_sources.CURRENT.reset(token)
     outcome = {"status": "failed" if error else "done", "at": datetime.now(UTC).isoformat(), "by": by, "title": title,
-               **({"error": error} if error else {})}
+               **({"error": error} if error else {}), **({"unopened": sorted(run.unopened)} if run else {})}
     await _mark(p.id, {key: outcome}, by, "could not read it" if error else "read it")
     return f"{title}: could not read it ({error})." if error else f"{title}: read.\n{text}"
 

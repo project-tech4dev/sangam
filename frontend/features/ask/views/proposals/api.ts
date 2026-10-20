@@ -54,7 +54,7 @@ export type Part = {
 /** A saved Word file in the org's Doc Vault. */
 export type Version = { n: number; title: string; document_id: number; at: string; by: { id: string; name: string } };
 
-export type Reader = { status: "running" | "done" | "failed"; at: string; by?: { id: string; name: string }; title: string; error?: string };
+export type Reader = { status: "running" | "done" | "failed"; at: string; by?: { id: string; name: string }; title: string; error?: string; unopened?: string[] };
 
 /** One fact in the proposal's list; the screen shows its standing and source in words, never its id or marker. */
 export type Fact = {
@@ -72,6 +72,7 @@ export type Fact = {
   document_id?: number;
   /** "public" when public research found it, quoted from a page it read. */
   found_by?: "public";
+  topic?: "problem" | "place" | "government" | "sdg" | "elsewhere";
   /** The parts whose text cites it. */
   used_in?: string[];
 };

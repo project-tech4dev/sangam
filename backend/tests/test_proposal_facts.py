@@ -156,6 +156,7 @@ URL = "https://udiseplus.gov.in/udalguri"
 
 def public_fact(**kw):
     return {"subject": "secondary dropout rate, Udalguri", "value": "19.8%", "origin": "web", "section": "A3",
+            "topic": "problem",
             "as_of": "2023-24", "source_url": URL, "source_name": "UDISE+ 2023-24",
             "evidence": "The dropout rate at the secondary level in Udalguri district was 19.8 per cent", **kw}
 
@@ -180,6 +181,10 @@ class TestPublicResearchQuotesThePage:
 
     def test_a_period_with_a_year_is_kept(self):
         assert fact_rules.off_page(public_fact(as_of="2019-21"), PAGE) is None
+
+    @pytest.mark.parametrize("topic", ["", "news"])
+    def test_a_fact_needs_its_topic_for_the_card(self, topic):
+        assert "topic" in fact_rules.off_page(public_fact(topic=topic), PAGE)
 
     def test_wikipedia_is_not_a_source(self):
         cited = public_fact(source_url="https://en.wikipedia.org/wiki/Udalguri_district")

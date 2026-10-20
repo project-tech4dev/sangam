@@ -43,7 +43,9 @@ problems, themes, schemes and the names of datasets or publishers.
      without one;
    - `section`: A3 for the problem and its causes, A2 for the place and its people, F1 for schemes, missions,
      district plans and SDGs, A14 for a scheme that could carry the work after the grant, A4 for what similar work
-     achieved. `element` when the fact fills one of that section's strong elements, in its own words.
+     achieved. `element` when the fact fills one of that section's strong elements, in its own words;
+   - `topic`, which of the five it answers: `problem`, `place`, `government`, `sdg` or `elsewhere`. The person sees
+     your facts grouped by it, and code refuses a fact without one.
 
 Add a fact only when a page you read states it. Never round, convert or work out a figure; never fill a level you did
 not find. Never draft proposal text.

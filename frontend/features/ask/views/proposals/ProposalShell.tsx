@@ -18,6 +18,7 @@ type Send = ((text: string) => void) | null;
 // Fixed messages the step's buttons send to Sangam Pitch, which calls read_files on either.
 const WRITE_FIRST_DRAFT = "Write the first draft.";
 const READ_AGAIN = "Read the files again.";
+const SEARCH_PUBLIC = "Search public sources.";
 const POLL_MS = 5000;
 
 /* One proposal: the header, the four steps and the step on screen; every change is saved on the server as it is made. */
@@ -375,6 +376,8 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
         )}
       </div>
 
+      <PublicResearch proposal={proposal} save={save} send={send} />
+
       <Reading proposal={proposal} send={send} />
 
       <div className="card pr-block">
@@ -566,30 +569,27 @@ const READ_STATE: Record<Reader["status"], string> = { done: "✓ Read", running
 function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
   const { work, can_edit: canEdit } = proposal;
   const readers = work.readers ?? {};
-  const started = Object.keys(readers).length > 0;
+  const started = Object.keys(readers).some((key) => key !== "public");
   const unread = work.sources.filter((d) => !readers[String(d)]);
-  // A proposal read before public research existed has no row for it yet.
-  const noPublic = started && !readers.public;
-  const running = Object.values(readers).find((r) => r.status === "running");
-  // The funder's reader and public research both cite web links; found_by tells them apart.
-  const from = (f: Fact, key: string) =>
-    key === "public" ? f.found_by === "public" : key === "funder" ? f.origin === "web" && !f.found_by : String(f.document_id) === key;
+  const running = Object.entries(readers).find(([key, r]) => key !== "public" && r.status === "running")?.[1];
+  // The funder's reader cites web links too; public research's facts carry found_by.
+  const from = (f: Fact, key: string) => (key === "funder" ? f.origin === "web" && !f.found_by : String(f.document_id) === key);
   const factsFrom = (key: string) => Object.values(work.facts ?? {}).filter((f) => from(f, key)).length;
-  const rows = Object.entries(readers).filter(([key]) => key === "funder" || key === "public" || work.sources.includes(Number(key)));
+  const rows = Object.entries(readers).filter(([key]) => key === "funder" || work.sources.includes(Number(key)));
 
   return (
     <div className="card pr-block">
       <div className="card-title">Reading your files</div>
       {!started ? (
         <p className="muted">
-          When the files are ticked and the style is set, Sangam Pitch reads each file and what {proposal.funder.name} looks for, and
-          where it can, searches public sources on the problem and the place, all at once. Every figure it finds becomes a fact for you to check.
+          When the files are ticked and the style is set, Sangam Pitch reads each file and what {proposal.funder.name} looks for, all
+          at once. Every figure it finds becomes a fact for you to check.
         </p>
       ) : (
         <ul className="pr-reads" aria-label="Files read">
           {rows.map(([key, r]) => (
             <li key={key} className="pr-read" data-status={r.status}>
-              <span className="pr-read-title">{key === "funder" ? `What ${proposal.funder.name} looks for` : key === "public" ? "Public research on the problem and place" : r.title}</span>
+              <span className="pr-read-title">{key === "funder" ? `What ${proposal.funder.name} looks for` : r.title}</span>
               <span className="pr-read-state">
                 {READ_STATE[r.status]}
                 {r.status === "done" && ` · ${factsFrom(key)} ${factsFrom(key) === 1 ? "fact" : "facts"}`}
@@ -610,10 +610,76 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
           {running.by?.name ?? "A teammate"} started reading the files. This takes a few minutes; you can leave this page.
         </p>
       )}
-      {canEdit && !running && (!started || unread.length > 0 || noPublic) && (
+      {canEdit && !running && (!started || unread.length > 0) && (
         <div className="pr-next">
           <button className="btn btn-primary" type="button" disabled={!send} onClick={() => send?.(started ? READ_AGAIN : WRITE_FIRST_DRAFT)}>
-            {!started ? "Write the first draft" : unread.length > 0 ? "Read the new files" : "Search public sources"}
+            {started ? "Read the new files" : "Write the first draft"}
+          </button>
+          {!send && <span className="muted fm-meta">Wait for Sangam Pitch to finish its answer.</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Topic = NonNullable<Fact["topic"]>;
+
+const TOPICS: [Topic, string][] = [
+  ["problem", "The problem, measured"],
+  ["place", "Why this place"],
+  ["government", "What government does"],
+  ["sdg", "SDGs"],
+  ["elsewhere", "What worked elsewhere"],
+];
+const BY_SECTION: Record<string, Topic> = { A3: "problem", A2: "place", A4: "elsewhere", A14: "government" };
+
+// A fact saved before facts carried a topic falls back to its section.
+function topicOf(f: Fact): Topic {
+  if (f.topic) return f.topic;
+  if (f.section === "F1") return f.subject.trim().toUpperCase().startsWith("SDG") ? "sdg" : "government";
+  return BY_SECTION[f.section ?? ""] ?? "problem";
+}
+
+/** Public research: its own button, its status, and its facts by topic, each kept or dropped here. */
+function PublicResearch({ proposal, save, send }: { proposal: Proposal; save: Save; send: Send }) {
+  const { work, can_edit: canEdit } = proposal;
+  const run = work.readers?.public;
+  const found = Object.values(work.facts ?? {}).filter((f) => f.found_by === "public" && (f.status === "proposed" || f.status === "confirmed"));
+  const count = (t: Topic) => found.filter((f) => topicOf(f) === t).length;
+
+  return (
+    <div className="card pr-block">
+      <div className="card-title">Public research</div>
+      <p className="muted">
+        Sangam Pitch searches government and research sources for the problem in the places you work, the schemes on it, the SDGs it serves and
+        what worked elsewhere. It never searches for your organisation and never uses your files. Keep or drop each fact it finds.
+      </p>
+      {run?.status === "running" && (
+        <p className="muted fm-meta">{run.by?.name ?? "A teammate"} started the search. This takes a few minutes; you can leave this page.</p>
+      )}
+      {run?.status === "failed" && <p className="muted fm-meta">! The search did not finish{run.error ? `: ${run.error}` : ""}.</p>}
+      {run?.status === "done" && (
+        <p className="muted fm-meta">
+          Searched {shortDate(run.at)} · {found.length} {found.length === 1 ? "fact" : "facts"}
+        </p>
+      )}
+      {run && run.status !== "running" && (
+        <>
+          {TOPICS.map(([t, label]) => (
+            <details key={t} className="fm-weak" open={count(t) > 0 && count(t) <= 3}>
+              <summary>
+                {label} · {count(t) || "none found"}
+              </summary>
+              {count(t) > 0 && <FactList proposal={proposal} part="public" save={save} only={(f) => f.found_by === "public" && topicOf(f) === t} />}
+            </details>
+          ))}
+          {(run.unopened?.length ?? 0) > 0 && <p className="muted fm-meta">Couldn&apos;t open: {run.unopened?.join(", ")}</p>}
+        </>
+      )}
+      {canEdit && run?.status !== "running" && (
+        <div className="pr-next">
+          <button className={run ? "btn btn-ghost" : "btn btn-primary"} type="button" disabled={!send} onClick={() => send?.(SEARCH_PUBLIC)}>
+            {run ? "Search again" : "Search public sources"}
           </button>
           {!send && <span className="muted fm-meta">Wait for Sangam Pitch to finish its answer.</span>}
         </div>

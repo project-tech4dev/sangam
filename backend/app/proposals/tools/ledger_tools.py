@@ -48,6 +48,7 @@ class FactIn(BaseModel):
     evidence: str = Field("", description="vault: the quoted text with its [vault:N#…] marker; web: the quoted text.")
     source_url: str = Field("", description="vault or web: the URL the value came from.")
     source_name: str = Field("", description="The source in words: 'Annual report 2024-25'.")
+    topic: str = Field("", description="public research only: problem, place, government, sdg or elsewhere.")
     page: int | None = Field(None, description="vault: the page.")
     document_id: int | None = Field(None, description="vault: the file's document id.")
     derived_from: list[str] = Field(default_factory=list, description="derived: the fact ids it is worked out from.")

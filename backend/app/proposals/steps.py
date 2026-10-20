@@ -26,7 +26,8 @@ def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
             missing.append("add the funder's form, or choose Sangam's usual order")
         if not (work.get("style") or "").strip():
             missing.append("set the writing style")
-        readers = work.get("readers") or {}
+        # A public search alone does not read the files.
+        readers = {k: r for k, r in (work.get("readers") or {}).items() if k != "public"}
         if not readers:
             missing.append("press Write the first draft")
         elif any(r.get("status") == "running" and not readers_stale(r) for r in readers.values()):

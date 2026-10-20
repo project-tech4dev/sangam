@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, before_model
 from langchain_anthropic import ChatAnthropic
@@ -60,6 +61,7 @@ class PublicRun:
 
     avoid: tuple[str, ...]
     pages: dict[str, str] = field(default_factory=dict)
+    unopened: set[str] = field(default_factory=set)  # hosts a read was refused or failed on, shown on screen
     files: dict[str, str] = field(default_factory=dict)  # a fetched PDF's name → the url it came from
 
 
@@ -92,7 +94,10 @@ class PublicGuard(AgentMiddleware):
         result = await handler(request)
         if run is not None and isinstance(result, ToolMessage) and isinstance(result.content, str):
             text = result.content
-            if name == "read_page" and not text.startswith(("REFUSED", "ERROR")):
+            if name in ("read_page", "fetch_document") and text.startswith(("REFUSED", "ERROR", f"{name} failed")):
+                if host := urlparse(str(args.get("url") or "")).hostname:
+                    run.unopened.add(host)
+            elif name == "read_page":
                 run.pages[page_key(args.get("url"))] = text
             elif name == "fetch_document" and (m := _SAVED.match(text)):
                 run.files[m.group(1)] = page_key(args.get("url"))

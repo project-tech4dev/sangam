@@ -31,11 +31,11 @@ export function source(f: Fact): string | null {
 }
 
 /** The facts for one part, or every fact the text uses: each with its standing and source in words, and the person's say. */
-export function FactList({ proposal, part, save }: { proposal: Proposal; part: string | "used"; save: Save }) {
+export function FactList({ proposal, part, save, only }: { proposal: Proposal; part: string | "used"; save: Save; only?: (f: Fact) => boolean }) {
   const canEdit = proposal.can_edit;
   const used = part === "used";
   const labels = Object.fromEntries(proposal.sections.map((s) => [s.code, s.label]));
-  const all = Object.entries(proposal.work.facts ?? {}).filter(([, f]) => (used ? f.used_in?.length : f.section === part));
+  const all = Object.entries(proposal.work.facts ?? {}).filter(([, f]) => (only ? only(f) : used ? f.used_in?.length : f.section === part));
   const live = all.filter(([, f]) => f.status === "proposed" || f.status === "confirmed");
   const setAside = all.length - live.length;
   const [fixing, setFixing] = useState<{ key: string; value: string } | null>(null);

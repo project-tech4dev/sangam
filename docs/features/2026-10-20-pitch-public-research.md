@@ -108,3 +108,40 @@ Nothing new: no endpoint, no table, no migration, no panel, no approval step.
 - **A quote check that is too strict** can refuse figures from tables (NFHS, UDISE+). The local run shows how often.
 - **No district on record:** the reader searches at state level, and the gap is visible in the fact list.
 - **Cost:** one Tavily and Sonnet run per "Write the first draft"; "Try again" reruns only what failed.
+
+## Revision, 2026-10-20: its own card in step 2
+
+The first version hid public research as one row under "Reading your files", and its facts surfaced only in
+step 3, scattered across parts. In the browser test nobody could tell what it searched or where its facts went.
+
+**The rule:** public research is its own card in step 2, with its own button, and the person keeps or drops each
+fact there.
+**Example:** Priya opens step 2 for KABIL → Azim Premji Foundation and presses "Search public sources". The card
+fills in by topic: "The problem, measured · 2", "What government does · 3", "What worked elsewhere · none found",
+and "Couldn't open: censusindia.gov.in, rchiips.org". She drops the rainfall figure and keeps the 3ie finding;
+in step 3 only the kept and unchecked facts appear.
+**Why it matters:** the person decides how public evidence is used before any writing starts.
+
+```
+ step 2
+   ┌ Documents Sangam may read ┐   ┌ Public research  NEW CARD ─────────────┐   ┌ Reading your files ┐
+   │ tick files                │   │ what it searches, never the org's name │   │ files + funder     │
+   └───────────────────────────┘   │ [Search public sources]                │   │ (no public row)    │
+                                   │ The problem · Why this place · What    │   └────────────────────┘
+                                   │ government does · SDGs · What worked   │
+                                   │   each fact: Yes, it's right / Don't   │
+                                   │ Couldn't open: hosts it was refused    │
+                                   └────────────────────────────────────────┘
+   "Write the first draft"  → read_files()            files + funder only
+   "Search public sources"  → read_files(public=True) public research only, its own lock
+```
+
+- **Button and lock:** `read_files(public=True)` runs only public research, and may run again ("Search again"); its
+  lock is separate from the file readers', so one does not block the other.
+- **Topics:** a public fact carries `topic`: problem, place, government, sdg or elsewhere. `off_page` refuses one
+  without it; older facts fall back to their section.
+- **Couldn't open:** `PublicGuard` records each host whose `read_page` or `fetch_document` was refused or failed,
+  and the reader's outcome stores them as `unopened`. Code records this, not the model.
+- **Leaving step 2:** still needs the files read ("Write the first draft"); a public search alone does not count.
+- **Screen:** `FactList` takes a filter so the card reuses its rows and buttons; the card reuses `card`,
+  `pr-reads` and existing `<details>` styles. No new endpoint, table or token.
