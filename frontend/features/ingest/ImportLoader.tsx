@@ -8,6 +8,6 @@ const ImportPage = dynamic(() => import("./ImportPage").then((m) => m.ImportPage
   loading: () => <div className="muted import-loading">Opening Scout…</div>,
 });
 
-export function ImportLoader({ initialThread }: { initialThread: string | null }) {
-  return <ImportPage initialThread={initialThread} />;
+export function ImportLoader() {
+  return <ImportPage />;
 }

@@ -15,8 +15,9 @@ import {
 } from "lucide-react";
 import type { ThreadMeta } from "../lib/threads";
 import { COMING_SOON } from "../lib/comingSoon";
+import type { WorkspaceView } from "../lib/workspaceUrl";
 
-export type WorkspaceView = "ask" | "chats" | "funder-match" | "proposals" | "rfpwatch" | "vault" | "media";
+export type { WorkspaceView };
 
 type Item = { id: WorkspaceView; label: string; soon?: boolean; count?: number };
 type SectionId = "recent" | "usecases" | "context" | "tools";

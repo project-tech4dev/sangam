@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { PillTabs } from "@/components/ui";
+import { useUrlTab } from "@/lib/useUrlTab";
 import type { OrgProfile } from "@/lib/api";
 import { NewsSocial } from "./NewsSocial";
 import { OrgFunding } from "./OrgFunding";
@@ -16,9 +16,10 @@ const TABS = [
   { id: "news", label: "News & social" },
   { id: "research", label: "Research & sources" },
 ];
+const TAB_IDS = TABS.map((t) => t.id);
 
 export function OrgProfileTabs({ profile, name, briefHref }: { profile: OrgProfile; name: string; briefHref: string | null }) {
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useUrlTab(TAB_IDS);
   return (
     <div className="profile-tabs">
       <PillTabs tabs={TABS} active={tab} onPick={setTab} variant="board" label="Profile sections" />

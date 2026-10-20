@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { PillTabs } from "@/components/ui";
+import { useUrlTab } from "@/lib/useUrlTab";
 import type { FunderProfile } from "@/lib/api";
 import { FunderGiving } from "./FunderGiving";
 import { FunderMandate } from "./FunderMandate";
@@ -16,9 +16,10 @@ const TABS = [
   { id: "news", label: "News & social" },
   { id: "research", label: "Research & sources" },
 ];
+const TAB_IDS = TABS.map((t) => t.id);
 
 export function FunderProfileTabs({ profile, briefHref }: { profile: FunderProfile; briefHref: string | null }) {
-  const [tab, setTab] = useState("mandate");
+  const [tab, setTab] = useUrlTab(TAB_IDS);
   const { funder } = profile;
   return (
     <div className="profile-tabs">
