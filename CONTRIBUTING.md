@@ -256,3 +256,14 @@ run in `bom1`, beside the database. Two traps:
 | `Module not found` after a `package.json` change | the install stamp is stale | `make frontend-reinstall` |
 | A staging connection hangs | the direct host is IPv6-only | use the session pooler on 5432 |
 | Type errors only on deploy | `next dev` does not typecheck | `npm run build` before pushing |
+
+## Terms you will meet in the code
+
+| Term | Meaning |
+|---|---|
+| **Deep agent** | A `deepagents` preset over LangGraph: planning middleware and subagents around a tool-calling loop. Not an alternative to LangGraph |
+| **Harness** | `app/agent/harness.py`, which strips the filesystem tools and general-purpose subagent `deepagents` adds, so each agent runs only its declared tools |
+| **Skill** | A `SKILL.md` procedure an agent reads only when a request needs it; only its name and description sit in the prompt |
+| **Model tier** | Which model a piece of work runs on: `MODEL`, `RESEARCH_MODEL` or `UTILITY_MODEL` |
+| **AG-UI** | The protocol that streams agent events (tool calls, tokens) from the backend to the chat over SSE |
+| **match-v2** | Funder Match's rubric (`app/matching/rubric.py`); an unknown criterion is left out of the score, not counted as zero |
