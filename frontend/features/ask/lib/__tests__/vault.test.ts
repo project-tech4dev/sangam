@@ -1,0 +1,75 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/api/auth-headers", () => ({ authHeaders: async () => ({ Authorization: "Bearer t" }) }));
+
+import { API } from "@/features/ask/lib/rest";
+import { listVault, uploadToVault } from "@/features/ask/lib/vault";
+
+const fetchMock = vi.fn();
+const reply = (status: number, body: unknown = {}) =>
+  fetchMock.mockResolvedValueOnce({ ok: status < 400, status, json: async () => body });
+const file = new File(["%PDF"], "accounts.pdf", { type: "application/pdf" });
+
+beforeEach(() => vi.stubGlobal("fetch", fetchMock));
+afterEach(() => {
+  fetchMock.mockReset();
+  vi.unstubAllGlobals();
+});
+
+describe("uploadToVault", () => {
+  it("asks for a signed URL, PUTs the file there, then records it", async () => {
+    reply(200, { upload_url: "https://storage/signed", storage_path: "kabil/accounts.pdf" });
+    reply(200);
+    reply(201, { id: 9, title: "accounts.pdf" });
+    await expect(uploadToVault("kabil", file)).resolves.toEqual({ id: 9, title: "accounts.pdf" });
+    const [ask, put, confirm] = fetchMock.mock.calls;
+    expect(ask![0]).toBe(`${API}/api/documents/uploads`);
+    expect(JSON.parse(ask![1].body)).toEqual({ org: "kabil", filename: "accounts.pdf" });
+    expect(put![0]).toBe("https://storage/signed");
+    expect(put![1]).toMatchObject({ method: "PUT", headers: { "Content-Type": "application/pdf" }, body: file });
+    expect(put![1].headers.Authorization).toBeUndefined();
+    expect(confirm![0]).toBe(`${API}/api/documents`);
+    expect(JSON.parse(confirm![1].body)).toEqual({ org: "kabil", storage_path: "kabil/accounts.pdf", title: "accounts.pdf" });
+  });
+
+  it("sends an untyped file as octet-stream", async () => {
+    reply(200, { upload_url: "u", storage_path: "p" });
+    reply(200);
+    reply(200, {});
+    await uploadToVault("kabil", new File(["x"], "notes"));
+    expect(fetchMock.mock.calls[1]![1].headers["Content-Type"]).toBe("application/octet-stream");
+  });
+
+  it.each([
+    [503, "Document storage is not configured on this deployment."],
+    [403, "You do not have upload access to this organisation."],
+    [500, "Could not start the upload (500)."],
+  ])("explains a %i on the first step", async (status, message) => {
+    reply(status);
+    await expect(uploadToVault("kabil", file)).rejects.toThrow(message);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("stops when storage refuses the file or the backend does not record it", async () => {
+    reply(200, { upload_url: "u", storage_path: "p" });
+    reply(400);
+    await expect(uploadToVault("kabil", file)).rejects.toThrow("The file did not reach storage (400).");
+    reply(200, { upload_url: "u", storage_path: "p" });
+    reply(200);
+    reply(500);
+    await expect(uploadToVault("kabil", file)).rejects.toThrow("Uploaded, but not recorded (500).");
+  });
+});
+
+describe("listVault", () => {
+  it("returns the items for the encoded org", async () => {
+    reply(200, { items: [{ id: 1 }] });
+    await expect(listVault("a&b")).resolves.toEqual([{ id: 1 }]);
+    expect(fetchMock.mock.calls[0]![0]).toBe(`${API}/api/documents?org=a%26b&limit=100`);
+  });
+
+  it("throws on failure", async () => {
+    reply(500);
+    await expect(listVault("kabil")).rejects.toThrow("Could not load the Doc Vault (500).");
+  });
+});

@@ -122,11 +122,11 @@ container path `/srv/db/migrations`.
 **CI** (`.github/workflows/ci.yml`) runs all of the above on every PR, plus the integration tier against a
 fresh pgvector Postgres and the frontend's Vitest suite, and uploads all three coverage reports to Codecov.
 `codecov.yml` gates `backend` and `frontend` separately: a PR fails if it lowers either one's coverage by more
-than 1%, or covers under 75% of the backend lines it changes (the frontend's 75% is informational for now).
-The project target rises to 75% on each side once tests reach it: `docs/features/2026-10-21-coverage-75.md`.
+than 1%, falls under 75% overall, or covers under 75% of the lines it changes, on either side.
 
 Frontend: `npm run lint` (ESLint, flat config in `frontend/eslint.config.mjs`), `npm test` (Vitest;
-`npm run coverage` as CI runs it) and `npm run build`. Run the build before pushing — type errors surface there and never in
+`npm run coverage` as CI runs it) and `npm run build`. `*.test.ts` run in node; `*.test.tsx` run in jsdom with
+`frontend/tests/setup.ts` (jest-dom, mocked `next/navigation` and `next/link`), so a test that renders needs `.tsx`. Run the build before pushing — type errors surface there and never in
 `next dev`.
 
 ## Environment selection

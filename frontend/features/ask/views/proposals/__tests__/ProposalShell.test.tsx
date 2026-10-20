@@ -1,0 +1,399 @@
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useEffect } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/features/ask/lib/rest";
+import type { Proposal, Work } from "@/features/ask/views/proposals/api";
+import { proposal } from "./fixtures";
+
+const call = vi.fn();
+vi.mock("@/features/ask/lib/rest", async (original) => ({
+  ...(await original<typeof import("@/features/ask/lib/rest")>()),
+  call: (...a: unknown[]) => call(...a),
+}));
+const vault = vi.hoisted(() => ({ list: vi.fn(), upload: vi.fn() }));
+vi.mock("@/features/ask/lib/vault", () => ({
+  listVault: (...a: unknown[]) => vault.list(...a),
+  uploadToVault: (...a: unknown[]) => vault.upload(...a),
+}));
+// The chat is tested on its own; here it only hands the step its send function.
+const chat = vi.hoisted(() => ({ send: vi.fn(), ready: true }));
+vi.mock("@/features/ask/views/proposals/TellSangam", () => ({
+  TellSangam: ({ onSend, screen: s }: { onSend: (fn: ((t: string) => void) | null) => void; screen: { step: string; part?: string } }) => {
+    useEffect(() => onSend(chat.ready ? chat.send : null), [onSend]);
+    return <div data-testid="chat">{`${s.step}|${s.part ?? ""}`}</div>;
+  },
+}));
+
+import { ProposalShell } from "@/features/ask/views/proposals/ProposalShell";
+
+let server: Proposal;
+const conflict = (detail: unknown) => new ApiError("conflict", 409, { detail });
+
+function serve(p: Proposal, overrides: Record<string, () => unknown> = {}) {
+  server = p;
+  call.mockImplementation(async (path: string, method = "GET", payload?: { set?: Record<string, unknown> }) => {
+    const key = `${method} ${path}`;
+    if (overrides[key]) return overrides[key]();
+    if (key === "GET /api/proposals/3") return server;
+    if (key === "GET /api/proposals") return [];
+    if (key === "PATCH /api/proposals/3/work") {
+      const work = { ...server.work, ...(payload?.set?.stage ? { stage: payload.set.stage as number } : {}) };
+      return { summary: server.summary, work };
+    }
+    if (key === "PATCH /api/proposals/3" || key === "POST /api/proposals/3/advance") {
+      return { summary: server.summary, work: { ...server.work, stage: key.startsWith("POST") ? server.work.stage + 1 : server.work.stage } };
+    }
+    throw new Error(`unexpected ${key}`);
+  });
+}
+
+const workCalls = () => call.mock.calls.filter(([p, m]) => p === "/api/proposals/3/work" && m === "PATCH").map(([, , body]) => body);
+
+function wide(matches: boolean) {
+  window.matchMedia = vi.fn(() => ({ matches }) as MediaQueryList);
+}
+
+beforeEach(() => {
+  wide(true);
+  chat.ready = true;
+  vault.list.mockResolvedValue([]);
+});
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.useRealTimers();
+});
+
+const renderShell = (onBack = vi.fn()) => render(<ProposalShell id={3} onBack={onBack} />);
+
+describe("ProposalShell", () => {
+  it("shows loading, then a proposal that cannot be opened", async () => {
+    call.mockRejectedValue(new Error("404"));
+    const onBack = vi.fn();
+    renderShell(onBack);
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(await screen.findByText("This proposal could not be opened.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "← All proposals" }));
+    expect(onBack).toHaveBeenCalled();
+  });
+
+  it("asks each gate in step 1 and saves the answer", async () => {
+    serve(proposal({ gates: { csr1: "no" } }, { summary: { ...proposal().summary, to_continue: ["Answer every question"] } }));
+    renderShell();
+    expect(await screen.findByRole("heading", { name: "Axis proposal" })).toBeInTheDocument();
+    expect(screen.getByText(/To Axis · fit 80 \/ 100 · started/)).toBeInTheDocument();
+    expect(screen.getByText("Axis cannot fund without this. Get it before you write.")).toBeInTheDocument();
+    const gate = screen.getByRole("radiogroup", { name: "Do you have it? CSR-1 registration" });
+    expect(within(gate).getByRole("radio", { name: "No" })).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(within(gate).getByRole("radio", { name: "Yes, we have it" }));
+    expect(workCalls()).toEqual([{ set: { "gates.csr1": "yes" }, rev: {} }]);
+    expect(screen.getByRole("button", { name: "Continue to your documents and style →" })).toBeDisabled();
+    expect(screen.getByText("To continue: Answer every question.")).toBeInTheDocument();
+    expect(screen.getByTestId("chat")).toHaveTextContent("Can you apply?|");
+  });
+
+  it("moves to the next step, or says what is still missing", async () => {
+    serve(proposal(), {
+      "POST /api/proposals/3/advance": () => {
+        throw conflict({ missing: ["CSR-1 answer"] });
+      },
+    });
+    renderShell();
+    await userEvent.click(await screen.findByRole("button", { name: /Continue to/ }));
+    expect(await screen.findByText("To continue: CSR-1 answer.")).toBeInTheDocument();
+  });
+
+  it("advances to step 2", async () => {
+    serve(proposal());
+    renderShell();
+    await userEvent.click(await screen.findByRole("button", { name: /Continue to/ }));
+    expect(await screen.findByText("Documents Sangam may read")).toBeInTheDocument();
+    expect(call).toHaveBeenCalledWith("/api/proposals/3/advance", "POST");
+  });
+
+  it("reloads with a notice when a teammate changed it, and shows any other failure", async () => {
+    let n = 0;
+    serve(proposal(), {
+      "PATCH /api/proposals/3/work": () => {
+        n += 1;
+        throw n === 1 ? conflict({ changed_by: { by: { id: "u2", name: "Ravi" }, at: new Date().toISOString() } }) : new Error("Server down");
+      },
+    });
+    renderShell();
+    const gate = await screen.findByRole("radiogroup");
+    await userEvent.click(within(gate).getByRole("radio", { name: "No" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Ravi changed this just now. Showing their version.");
+    expect(call.mock.calls.filter(([p, m]) => p === "/api/proposals/3" && m === undefined).length).toBe(2);
+    await userEvent.click(within(gate).getByRole("radio", { name: "No" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Server down");
+  });
+
+  it("renames the proposal, and cancels a rename", async () => {
+    serve(proposal());
+    renderShell();
+    await userEvent.click(await screen.findByRole("button", { name: "Rename" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Rename" }));
+    const name = screen.getByRole("textbox", { name: "Proposal name" });
+    await userEvent.clear(name);
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    await userEvent.type(name, "Axis 2027{Enter}");
+    expect(call).toHaveBeenCalledWith("/api/proposals/3", "PATCH", { title: "Axis 2027" });
+    expect(await screen.findByRole("heading", { name: "Axis 2027" })).toBeInTheDocument();
+  });
+
+  it("is read-only for someone who cannot edit", async () => {
+    serve(proposal({ gates: { csr1: "yes" } }, { can_edit: false }));
+    renderShell();
+    expect(await screen.findByText(/You can read this proposal/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Rename" })).toBeNull();
+    expect(screen.queryByTestId("chat")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Continue to/ })).toBeNull();
+    expect(screen.getByRole("radio", { name: "No" })).toBeDisabled();
+  });
+
+  it("keeps the chat behind its button on a narrow screen", async () => {
+    wide(false);
+    serve(proposal());
+    renderShell();
+    await userEvent.click(await screen.findByRole("button", { name: "Sangam Pitch" }));
+    expect(screen.queryByRole("button", { name: "Sangam Pitch" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Close chat" }));
+    expect(screen.getByRole("button", { name: "Sangam Pitch" })).toBeInTheDocument();
+  });
+
+  it("goes back to an earlier step", async () => {
+    serve(proposal({ stage: 2 }));
+    renderShell();
+    const steps = await screen.findByRole("list", { name: "Steps" });
+    expect(within(steps).getByRole("button", { name: /Your documents and style/ })).toBeDisabled();
+    await userEvent.click(within(steps).getByRole("button", { name: /Can you apply/ }));
+    expect(workCalls()).toContainEqual({ set: { stage: 1 }, rev: {} });
+  });
+});
+
+describe("step 2: documents and style", () => {
+  const docs = [
+    { id: 11, title: "Annual report", doc_type: "annual_report", source_name: null, source_url: null, fetched_at: null, has_file: true },
+    { id: 12, title: null, doc_type: null, source_name: null, source_url: null, fetched_at: null, has_file: false },
+  ];
+
+  it("ticks files, skips the form and saves the style", async () => {
+    vault.list.mockResolvedValue(docs);
+    serve(proposal({ stage: 2 }));
+    renderShell();
+    const report = await screen.findByRole("checkbox", { name: /Annual report/ });
+    expect(vault.list).toHaveBeenCalledWith("kabil");
+    expect(screen.getByText("annual report")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /Untitled file/ })).toBeDisabled();
+    await userEvent.click(report);
+    expect(workCalls()).toContainEqual({ set: { sources: [11] }, rev: {} });
+    await userEvent.click(screen.getByRole("button", { name: "Use Sangam's usual order" }));
+    expect(workCalls()).toContainEqual({ set: { skipped_template: true }, rev: {} });
+    const style = screen.getByRole("textbox", { name: "Writing style" });
+    await userEvent.type(style, " please");
+    await userEvent.tab();
+    expect(workCalls()).toContainEqual({ set: { style: "Plain and short please" }, rev: {} });
+    expect(screen.getByRole("region", { name: "What happens next" })).toBeInTheDocument();
+  });
+
+  it("unticks a file and undoes a skipped form", async () => {
+    vault.list.mockResolvedValue(docs);
+    serve(proposal({ stage: 2, sources: [11], skipped_template: true }));
+    renderShell();
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Annual report/ }));
+    expect(workCalls()).toContainEqual({ set: { sources: [] }, rev: {} });
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(workCalls()).toContainEqual({ set: { skipped_template: false }, rev: {} });
+  });
+
+  it("uploads the funder's form and a source file", async () => {
+    vault.upload.mockResolvedValueOnce({ ...docs[0], id: 21, title: "form.pdf" }).mockResolvedValueOnce({ ...docs[0], id: 22, title: "budget.xlsx" });
+    serve(proposal({ stage: 2 }));
+    const { container } = renderShell();
+    await screen.findByText("No files from KABIL yet.");
+    const [form, file] = container.querySelectorAll<HTMLInputElement>("input[type=file]");
+    await userEvent.upload(form, new File(["x"], "form.pdf"));
+    await waitFor(() =>
+      expect(workCalls()).toContainEqual({ set: { template: { document_id: 21, url: null, from: "upload", read_at: null }, skipped_template: false }, rev: {} }),
+    );
+    await userEvent.upload(file, new File(["x"], "budget.xlsx"));
+    await waitFor(() => expect(workCalls()).toContainEqual({ set: { sources: [22] }, rev: {} }));
+    expect(screen.getByRole("checkbox", { name: /budget.xlsx/ })).toBeInTheDocument();
+  });
+
+  it("shows a failed upload and a failed vault load", async () => {
+    vault.list.mockRejectedValue(new Error("Vault closed"));
+    vault.upload.mockRejectedValue(new Error("Too big"));
+    serve(proposal({ stage: 2 }));
+    const { container } = renderShell();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Vault closed");
+    await userEvent.upload(container.querySelector<HTMLInputElement>("input[type=file]")!, new File(["x"], "f.pdf"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too big");
+  });
+
+  it("names a form Sangam already has", async () => {
+    serve(proposal({ stage: 2, template: { document_id: 5, url: "https://axis.example/form", from: "sangam", read_at: "2026-09-01T00:00:00Z" } }));
+    renderShell();
+    expect(await screen.findByText(/Sangam already has it · from/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "open" })).toHaveAttribute("href", "https://axis.example/form");
+  });
+
+  it("asks Sangam Pitch to write the first draft and to search public sources", async () => {
+    serve(proposal({ stage: 2 }));
+    renderShell();
+    await userEvent.click(await screen.findByRole("button", { name: "Write the first draft" }));
+    expect(chat.send).toHaveBeenCalledWith("Write the first draft.");
+    await userEvent.click(screen.getByRole("button", { name: "Search public sources" }));
+    expect(chat.send).toHaveBeenCalledWith("Search public sources.");
+  });
+
+  it("waits for the chat before the buttons work", async () => {
+    chat.ready = false;
+    serve(proposal({ stage: 2 }));
+    renderShell();
+    expect(await screen.findByRole("button", { name: "Write the first draft" })).toBeDisabled();
+    expect(screen.getAllByText("Wait for Sangam Pitch to finish its answer.")).toHaveLength(2);
+  });
+
+  it("shows each file being read, failed reads and files ticked since", async () => {
+    const work: Partial<Work> = {
+      stage: 2,
+      sources: [11, 12, 13],
+      readers: {
+        funder: { status: "done", at: "2026-10-01T00:00:00Z", title: "Axis" },
+        "11": { status: "done", at: "2026-10-01T00:00:00Z", title: "Annual report" },
+        "12": { status: "failed", at: "2026-10-01T00:00:00Z", title: "Scan", error: "scanned image" },
+      },
+      facts: {
+        k1: { subject: "Reach", value: "500", origin: "vault", tier: "green", status: "proposed", document_id: 11 },
+        k2: { subject: "Focus", value: "Girls", origin: "web", tier: "amber", status: "proposed" },
+      },
+    };
+    serve(proposal(work));
+    renderShell();
+    const reads = await screen.findByRole("list", { name: "Files read" });
+    expect(within(reads).getByText("What Axis looks for")).toBeInTheDocument();
+    expect(within(reads).getAllByText("✓ Read · 1 fact")).toHaveLength(2);
+    expect(within(reads).getByText("! Couldn't read: scanned image")).toBeInTheDocument();
+    expect(within(reads).getByText("1 file ticked since, not read yet.")).toBeInTheDocument();
+    await userEvent.click(within(reads).getByRole("button", { name: "Try again" }));
+    expect(chat.send).toHaveBeenCalledWith("Read the files again.");
+    await userEvent.click(screen.getByRole("button", { name: "Read the new files" }));
+    expect(chat.send).toHaveBeenCalledTimes(2);
+  });
+
+  it("follows a teammate's reading by polling the proposal", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    serve(proposal({ stage: 2, sources: [11], readers: { "11": { status: "running", at: "x", title: "Annual report", by: { id: "u2", name: "Ravi" } } } }));
+    renderShell();
+    expect(await screen.findByText(/Ravi started reading the files/)).toBeInTheDocument();
+    const loads = () => call.mock.calls.filter(([p, m]) => p === "/api/proposals/3" && m === undefined).length;
+    const before = loads();
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(loads()).toBe(before + 1);
+  });
+
+  it("groups public research by topic, with its status", async () => {
+    const fact = (subject: string, over: object) => ({ subject, value: "v", origin: "web", tier: "amber", status: "proposed", found_by: "public", ...over });
+    const work = {
+      stage: 2,
+      readers: { public: { status: "done", at: "2026-10-05T00:00:00Z", title: "Public", unopened: ["slow.gov.in"] } },
+      facts: {
+        k1: fact("Stunting rate", { topic: "problem" }),
+        k2: fact("SDG 4", { section: "F1" }),
+        k3: fact("Samagra Shiksha", { section: "F1" }),
+        k4: fact("Assam literacy", { section: "A2" }),
+        k5: fact("Dropped", { status: "rejected", topic: "problem" }),
+      },
+    } as Partial<Work>;
+    serve(proposal(work));
+    renderShell();
+    expect(await screen.findByText(/Searched .* · 4 facts/)).toBeInTheDocument();
+    expect(screen.getByText("The problem, measured · 1")).toBeInTheDocument();
+    expect(screen.getByText("SDGs · 1")).toBeInTheDocument();
+    expect(screen.getByText("What government does · 1")).toBeInTheDocument();
+    expect(screen.getByText("Why this place · 1")).toBeInTheDocument();
+    expect(screen.getByText("What worked elsewhere · none found")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't open: slow.gov.in")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Search again" })).toBeInTheDocument();
+  });
+
+  it("says when public research is running or failed", async () => {
+    serve(proposal({ stage: 2, readers: { public: { status: "running", at: "x", title: "Public" } } }));
+    const { unmount } = renderShell();
+    expect(await screen.findByText(/A teammate started the search/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Search/ })).toBeNull();
+    unmount();
+    serve(proposal({ stage: 2, readers: { public: { status: "failed", at: "x", title: "Public", error: "timeout" } } }));
+    renderShell();
+    expect(await screen.findByText("! The search did not finish: timeout.")).toBeInTheDocument();
+  });
+});
+
+describe("step 3: writing", () => {
+  const sections = {
+    A1: { text: "Reach is 500 ⟦k1⟧. [Add: dropout rate]", score: 1, rev: 2, missing: ["place"] },
+    A2: { text: "Assam", done: true, score: 2 },
+    B1: { text: "Budget text" },
+  };
+  const facts = { k1: { subject: "Reach", value: "500", origin: "vault", tier: "green", status: "proposed", section: "A1", source_name: "Annual report", page: 4 } } as Work["facts"];
+
+  it("opens the first part, scores the tabs and tells Sangam Pitch the part", async () => {
+    serve(proposal({ stage: 3, sections, facts }));
+    renderShell();
+    expect(await screen.findByRole("tab", { name: /Need\s*3\/4/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tab", { name: /Unused/ })).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("chat")).toHaveTextContent("Write the proposal|A1"));
+    const parts = screen.getByRole("navigation", { name: "Parts" });
+    expect(within(parts).getByLabelText("Scored 1 of 2")).toBeInTheDocument();
+    expect(within(parts).getByLabelText("Done")).toBeInTheDocument();
+    expect(screen.getByText(/Cites 1 source · 1 gap to add · 1 of 3 parts done/)).toBeInTheDocument();
+    expect(screen.getByText("Facts for this part (1)")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Write Need again" }));
+    expect(chat.send).toHaveBeenCalledWith("Write Need.");
+    await userEvent.click(within(parts).getByRole("button", { name: /Place/ }));
+    await waitFor(() => expect(screen.getByTestId("chat")).toHaveTextContent("Write the proposal|A2"));
+    await userEvent.click(screen.getByRole("tab", { name: /Money/ }));
+    expect(await screen.findByRole("tab", { name: /Money/ })).toHaveAttribute("aria-selected", "true");
+    expect(within(screen.getByRole("navigation", { name: "Parts" })).getByLabelText("Written, not checked")).toBeInTheDocument();
+  });
+
+  it("shows a reader the draft or that it is not written", async () => {
+    serve(proposal({ stage: 3, sections: { A1: sections.A1 }, facts }, { can_edit: false }));
+    renderShell();
+    expect(await screen.findByRole("list", { name: "Sources" })).toHaveTextContent("Reach: 500 · Annual report, page 4");
+    expect(screen.queryByRole("button", { name: /Write Need/ })).toBeNull();
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Parts" })).getByRole("button", { name: /Place/ }));
+    expect(screen.getByText("Not written yet.")).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Parts" })).getByLabelText("Not written")).toBeInTheDocument();
+  });
+});
+
+describe("step 4: before you send it", () => {
+  it("lists what to fix, rewrites changed parts and confirms every fact", async () => {
+    const used = (subject: string) => ({ subject, value: "v", origin: "vault", tier: "green", status: "proposed", used_in: ["A1"] });
+    serve(
+      proposal(
+        { stage: 4, sections: { A1: { text: "x", needs_rewrite: true } }, facts: { k1: used("Reach"), k2: used("Girls") } as Work["facts"] },
+        { summary: { ...proposal().summary, fix_first: ["Fill 2 gaps"], worth_checking: [] } },
+      ),
+    );
+    renderShell();
+    expect(await screen.findByText("Fill 2 gaps")).toBeInTheDocument();
+    expect(screen.getByText("Nothing else to check.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Rewrite that part" }));
+    expect(chat.send).toHaveBeenCalledWith("Rewrite Problem: a fact it uses changed.");
+    await userEvent.click(screen.getByRole("button", { name: "Confirm all 2" }));
+    expect(workCalls()).toContainEqual({ set: { "facts.k1.status": "confirmed", "facts.k2.status": "confirmed" }, rev: {} });
+    expect(screen.queryByRole("button", { name: /Continue to/ })).toBeNull();
+  });
+
+  it("says when nothing stops it", async () => {
+    serve(proposal({ stage: 4 }, { summary: { ...proposal().summary, ready: true, worth_checking: ["Check the budget"] } }));
+    renderShell();
+    expect(await screen.findByText(/Nothing stops this proposal/)).toBeInTheDocument();
+    expect(screen.getByText("Nothing to fix.")).toBeInTheDocument();
+    expect(screen.getByText("Check the budget")).toBeInTheDocument();
+  });
+});

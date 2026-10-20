@@ -134,6 +134,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-16 · #236 · Phone nav folds its links into a menu beside Sign in; Home's five steps become one numbered card; hero copy.
 - 2026-10-17 · #242 · Registry rows show domains (most programmes first) and up to three populations served, with "+N more"; a Theme filter names the sub-themes it matched. Lenses move to their own line on the profile.
 - 2026-10-21 · #273 · Back returns to the previous screen: Ask views, chats and proposals, Import threads and profile tabs are pushed URL entries; Registry filters and Funder Match's organisation are replaced into the URL. Vitest cases in `lib/__tests__/back-navigation.test.ts` pin the URL round trips.
+- 2026-10-21 · (unmerged) · Component tests: jsdom and Testing Library under Vitest (`*.test.tsx`, `tests/setup.ts`), and tests for every screen take frontend coverage from 1% to 97%; the frontend's patch gate now blocks and its project target is 75%.
 
 ## Proposals
 
