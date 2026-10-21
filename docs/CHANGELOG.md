@@ -177,6 +177,12 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-21 · The README is rewritten for newcomers (127 lines from 449: features, how it works, quickstart); setup and conventions move to `CONTRIBUTING.md`, beside `SECURITY.md`, a code of conduct and issue and PR templates.
 - 2026-10-21 · README screenshots in `docs/assets/readme/`: Ask with citations as the hero, then Registry, Funder Match and Scout.
 - 2026-10-21 · — · Funder Match, RFP Watch and Media & Signals open with one call, not two in a row: the `/ask` page hands its `/api/me` to `useOrgChoices`. `?org=` is optional on `/api/funder-matches` and `/api/rfps/feed` (the caller's first organisation by name), and the Funder Match list reads in one transaction (`repo.read_latest`).
+- 2026-10-21 · #285 · The pool's limits are written down:
+  - wait, connect and REST statement timeouts;
+  - a checked checkout;
+  - counts on `/health`;
+  - checkpointer DDL moved from every cold start to `make migrate`;
+  - one who-may-do-what table in ARCHITECTURE §8.
 
 ## Tracing and evals
 

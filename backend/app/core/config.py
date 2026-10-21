@@ -137,6 +137,11 @@ class Settings(BaseSettings):
     # roughly four of them plus the dashboard. The checkpointer writes on every graph step and shares
     # this pool, which is why the concurrency gates below sit under it rather than at it.
     db_pool_max_size: int = 10
+    # Seconds a request waits for a free connection, and for a new one to open, before it fails.
+    db_pool_timeout_s: float = 10
+    db_connect_timeout_s: int = 5
+    # Per statement, for every REST query run as the caller. Ask's executor and the matching reader set lower ones.
+    db_statement_timeout_ms: int = 15000
     allowed_origins: str = "http://localhost:3000"
     # Vercel gives every preview deployment a fresh hostname, so an exact-match list cannot cover them. Set
     # a regex to admit them, e.g. ^https://sangam-[a-z0-9-]+\.vercel\.app$ Anchor it: an unanchored pattern.
@@ -148,7 +153,8 @@ class Settings(BaseSettings):
         "utility_model",
         "sql_audit_model",
         "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
-        "db_pool_max_size", mode="before"
+        "db_pool_max_size", "db_pool_timeout_s", "db_connect_timeout_s", "db_statement_timeout_ms",
+        mode="before",
     )
     @classmethod
     def _blank_means_default(cls, v: object, info: ValidationInfo) -> object:

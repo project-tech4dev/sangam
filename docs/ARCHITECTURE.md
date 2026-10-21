@@ -159,6 +159,42 @@ Generated detail: [auth-roles-rls](../openwiki/architecture/auth-roles-rls.md).
 - **RLS is on for every table** (`0027`); a new table needs its policies in the same migration.
 - Not built yet: Phase 2 of `features-plans/access/auth-plan.md` (email-domain matching, join requests).
 
+### Who may do what
+
+One row per action. A ✓ means the request succeeds for that caller in their own organisation. A member, admin or
+steward never reaches another org's private rows. **Gate** is what refuses everyone else, route first, then RLS.
+`tests/test_permission_table.py` fails when a route uses a gate this table does not name, or has no gate and is not
+listed as open.
+
+| action | anon | member | admin | steward | staff | gate |
+|---|---|---|---|---|---|---|
+| read the Registry, profiles, funders, programs, RFPs, news on a profile | ✓ public | ✓ | ✓ | ✓ | ✓ all | none (`get_current_user`) + RLS `*_read`: `is_public` or `app.my_org_ids()` |
+| read `/me` | ✓ empty | ✓ | ✓ | ✓ | ✓ | none |
+| read an org's private rows (contacts, documents, proposals) | — | ✓ | ✓ | ✓ | ✓ | RLS `app.my_org_ids()` |
+| read Funder Match | — | ✓ | ✓ | ✓ | ✓ | `require_principal` + RLS `funder_matches_read` |
+| read RFP Watch | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `rfp_matches_read` |
+| read Media & Signals | — | listed | listed | listed | ✓ all | `require_principal` + RLS `news_stories_auth` |
+| read your own chat history | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `threads_read` |
+| save a Funder Match run | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `app.my_match_org_ids()` (`0042`) |
+| start or edit a proposal | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `app.my_match_org_ids()` (`0048`) |
+| chat with Sangam Pitch | — | 403 | ✓ own | ✓ own | ✓ own | `proposal_chat_access`, then `CallerScope.can_edit_proposal` |
+| upload to the Doc Vault | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `documents_insert` (`0048`) |
+| add or edit a contact | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |
+| save or dismiss an RFP match | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |
+| adjust a fit score | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |
+| add, change or remove org members | — | — | ✓ | — | ✓ | `require_user` + the `app.*` member functions (`0028`) |
+| chat with Ask Sangam | — | ✓ own | ✓ own | ✓ own | ✓ own | `ask_access`; its SQL runs as the caller |
+| use Scout: chat, research, save research | — | — | — | ✓ | ✓ | `require_scout`, plus `chat_access` on `/ingest`; tools check `chat_scope` |
+| Import pipeline: sources, runs, queue, workbooks, undo, delete research | — | — | — | — | ✓ | `require_scout` + `require_staff` |
+| hide a news story, plan a news run | — | — | — | — | ✓ | `require_staff` |
+
+Someone else's chat is 404 to post in, staff included; staff read it over REST.
+
+**Known inconsistency:** the three writes on `app.my_writable_org_ids()` (`0024`: member and admin) exclude stewards,
+and the two on `app.my_match_org_ids()` (`0042`: admin and steward) exclude members. Example: Ravi, a steward, can
+save a Funder Match run and write the proposal, but cannot save the RFP he found for the same org. This is recorded,
+not fixed: changing it is a migration and a product decision.
+
 ## 9. Frontend
 
 Generated detail (routes, features, workspace views): [frontend](../openwiki/architecture/frontend.md).
@@ -194,6 +230,16 @@ Generated detail: [deploy-and-vendors](../openwiki/operations/deploy-and-vendors
 - **Known regression:** #178 dropped `emit_raw_events=False` from both agents (`core/lifespan.py`). Raw events stream
   again: one answer was 1.69 MB with them, 107 KB without.
 - Tracing settings that look optional are load-bearing (CLAUDE.md, "Tracing config").
+- **The pool's limits are written down** (`db/checkpointer.py::make_pool`, settings in `core/config.py`):
+  - A request waits `DB_POOL_TIMEOUT_S` (10 s) for a connection, then fails.
+  - A new connection gets `DB_CONNECT_TIMEOUT_S` (5 s).
+  - Every checkout is checked, because a thawed Vercel instance can hold sockets the pooler closed.
+  - Every REST statement stops after `DB_STATEMENT_TIMEOUT_MS` (15 s). Ask's executor sets a lower one.
+  - `/health` shows the pool's counts.
+- **The checkpointer's tables are migrated by `make migrate`, never at boot.**
+  - Boot only checks the version and refuses to start when it lags.
+  - Before this, `saver.setup()` ran DDL on every cold start, 3,771 times.
+  - Concurrent cold starts after a langgraph upgrade would have raced each other on its version table.
 
 ## 12. Knowledge graph
 
