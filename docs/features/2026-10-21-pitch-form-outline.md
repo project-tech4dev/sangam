@@ -324,14 +324,14 @@ Unit tests never touch a database. Readers are tested with a fake model, as `tes
 | Area | Test file | Cases |
 |---|---|---|
 | `form.check` | `tests/test_proposal_form.py` (new) | drops an unknown anchor; caps lengths; refuses an outline with no prose heading; codes T1…Tn in order; a heading with no label folds into the previous one |
-| `anchors` / `parts` | same | **no form gives exactly today's 17 parts** (the regression pin); Redington's outline gives 9 prose parts in order; T5 covers A4+A5 and its strong list is both combined; an `only_if` heading is dropped with no earlier phase; a form-only heading becomes an anchor |
+| `anchors` / `parts` | same | **no form gives exactly today's 17 parts** (the regression pin); a Redington-shaped fixture gives its prose headings as parts, in the form's order; T5 covers A4+A5 and its strong list is both combined; an `only_if` heading is dropped with no earlier phase; a form-only heading becomes an anchor |
 | Translations | `test_proposal_review.py`, `test_cov_proposals_pure.py` | step 3 exit with no part covering A2 (no check); the Summary part waits; `DEPENDS_ON` inside one part is ignored; must-score-2 by coverage; Word order follows the form |
 | Facts and questions | `test_cov_proposals_tools_proposal.py` | an A3 fact is accepted with a form (it was refused under the old `section_of`); `read_proposal(T4)` lists A3's facts; `may_ask` with T5 on screen allows an A4 question and refuses an A13 one |
 | Limit | `test_proposal_writing.py` | 1,501 characters refused, 1,500 saved; ⟦k⟧ marks not counted; words counted for a `words` limit; `suggest_edit` over the limit refused; polish over the limit falls back |
 | Form reader | `test_cov_proposals_readers.py` | a PDF goes in as a file block (**the M1 spike**); Word goes in as text; `filled` adds to sources and sets style only when default; a failure marks the row failed with *Try again*; a run re-reads only a form not `done` |
 | PATCH | `test_cov_proposals_route.py` | `include`/`label`/`done`/`confirmed` accepted; refused once a part has text; `confirmed` refused while reading |
 | Frontend | `__tests__/ProposalShell.test.tsx` | the outline card renders kinds and limits; the confirm button PATCHes; the limit counter; the "You fill" ticks |
-| Eval (costs money) | `tests/evals/cases/golden.jsonl`, `TAG=pitch-form` | the three sample files' **outlines only**, graded by code: Redington has 9 prose headings with 5 to 4 mapped to A4/A5, SGP skips Annex 4, SeSTA comes back `filled`. The files stay outside the repo; the case reads a path from `PITCH_FORM_SAMPLES`. |
+| Eval (costs money) | `tests/evals/cases/golden.jsonl`, `TAG=pitch-form` | the three sample files' **outlines only**, graded by code: Redington: Executive summary ≤ 2,000 chars covers A1, heading 5 covers A4 and A5, Q12 is `only_if: earlier_phase`, SGP skips Annex 4, SeSTA comes back `filled`. The files stay outside the repo; the case reads a path from `PITCH_FORM_SAMPLES`. |
 
 **Zero means unrecorded:** a form with no limit on a heading means *no limit stated*, not a limit of zero. `Limit` is
 `None`, never `0`.
