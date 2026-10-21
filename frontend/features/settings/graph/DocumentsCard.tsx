@@ -3,8 +3,8 @@
 import { ChevronDown, CircleStop, FileText, LoaderCircle, Upload } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { selectClass } from "../members-api";
-import { BUCKETS, graphStream, type ChunkResult, type DocumentEvent } from "./graph-api";
-import { Card, ErrorText, FactList, Field, GROUP_HINT, inputClass, Pills } from "./graph-ui";
+import { BUCKETS, DEFAULT_GROUP, graphStream, groupBody, type ChunkResult, type DocumentEvent } from "./graph-api";
+import { Card, ErrorText, ExtractionResult, Field, GROUP_HINT, inputClass } from "./graph-ui";
 
 type FileState = {
   key: string;
@@ -40,7 +40,7 @@ function describe(event: DocumentEvent): string {
     case "chunk_done":
       return event.chunk.status === "skipped"
         ? `Chunk ${event.chunk.index}/${event.total} already in the graph, skipped`
-        : `Chunk ${event.chunk.index}/${event.total}: ${event.chunk.entities.length} entities, ${event.chunk.facts.length} facts`;
+        : `Chunk ${event.chunk.index}/${event.total}: ${event.chunk.entities.length} entities, ${event.chunk.facts.length} facts kept, ${event.chunk.dropped_facts.length} dropped`;
     case "file_done":
       return `${event.file.key}: ${event.file.status}${event.file.reason ? ` (${event.file.reason})` : ""}`;
     case "done":
@@ -149,16 +149,7 @@ function FileRow({ file }: { file: FileState }) {
                 </span>
               </p>
               {part.status === "added" && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold text-neutral-600">Entities ({part.entities.length})</h4>
-                    <Pills items={part.entities} />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold text-neutral-600">Facts ({part.facts.length})</h4>
-                    <FactList facts={part.facts} />
-                  </div>
-                </div>
+                <ExtractionResult entities={part.entities} facts={part.facts} dropped={part.dropped_facts} unmapped={part.unmapped} small />
               )}
             </li>
           ))}
@@ -202,7 +193,7 @@ export function DocumentsCard() {
     setListed(null);
     setFiles([]);
     setLog([]);
-    const body = { bucket, prefix, limit, group_id: groupId || null };
+    const body = { bucket, prefix, limit, ...groupBody(groupId) };
     const failure = await graphStream(
       "/documents/stream",
       body,
@@ -231,7 +222,7 @@ export function DocumentsCard() {
   return (
     <Card
       title="Add documents"
-      note="Reads files from a Supabase Storage bucket, splits each into 8,000-character chunks and adds every chunk as an episode. Chunks already in the graph are skipped."
+      note="Reads files from a Supabase Storage bucket, splits each into 8,000-character chunks and adds every chunk as an episode. Only organisations, funders, places, programmes, themes and their leaders are kept, and only the relationships between them the ontology allows. Chunks already in the graph are skipped."
     >
       <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
         <Field label="Bucket">
@@ -256,9 +247,10 @@ export function DocumentsCard() {
             onChange={(e) => setLimit(Number(e.target.value))}
           />
         </Field>
-        <Field label="Group (defaults to bucket)">
+        <Field label="Group">
           <input
             className={inputClass}
+            placeholder={DEFAULT_GROUP}
             pattern="[a-zA-Z0-9_\-]+"
             title={GROUP_HINT}
             value={groupId}
@@ -294,7 +286,8 @@ export function DocumentsCard() {
                 <span className="text-neutral-600">
                   {finished}/{files.length} files · {added.length} chunks added · {skipped} skipped ·{" "}
                   {added.reduce((n, p) => n + p.entities.length, 0)} entities ·{" "}
-                  {added.reduce((n, p) => n + p.facts.length, 0)} facts
+                  {added.reduce((n, p) => n + p.facts.length, 0)} facts kept ·{" "}
+                  {added.reduce((n, p) => n + p.dropped_facts.length, 0)} dropped
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
