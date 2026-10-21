@@ -50,6 +50,13 @@ problems, themes, schemes and the names of datasets or publishers.
 Add a fact only when a page you read states it. Never round, convert or work out a figure; never fill a level you did
 not find. Never draft proposal text.
 
+## When the task has a Focus
+
+The person asked this run to look into something. Spend the run on it, not on the five topics from the start:
+search each angle by indicator, dataset and place, and start on the sites they named with `site:<host>` searches
+and `read_page` on their pages. Look past what is already found: a different level (block, district, state), a
+newer year, a second source, or what the first run could not find. Still give each fact the topic it answers.
+
 ## When you finish
 
 End with a line or two per topic in plain words: what you found, and what you looked for and could not find (for

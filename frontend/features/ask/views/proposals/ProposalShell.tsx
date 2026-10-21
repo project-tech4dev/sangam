@@ -5,7 +5,7 @@ import { MessageCircle, Pencil, Upload, X } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
-import { advance, changedByLine, type Fact, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section } from "./api";
+import { advance, changedByLine, type Fact, researchAngles, type ResearchAsk, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section } from "./api";
 import { FactList, source } from "./FactList";
 import { FinishCard } from "./FinishCard";
 import { PartEditor, WriteCard } from "./WriteCard";
@@ -19,6 +19,8 @@ type Send = ((text: string) => void) | null;
 const WRITE_FIRST_DRAFT = "Write the first draft.";
 const READ_AGAIN = "Read the files again.";
 const SEARCH_PUBLIC = "Search public sources.";
+const DEEPER_NEEDS = ["A2", "A3"]; // Context and Problem; the Summary waits for the plan, so it is read but not needed
+const ANGLES = 8; // as many as one deeper run takes
 const WRITE_SUMMARY = "Write the Summary.";
 const POLL_MS = 5000;
 
@@ -663,6 +665,119 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
   );
 }
 
+/** Research deeper from the case: the angles a model reads from it, edited by the person before any search. */
+function DeeperResearch({ proposal, send }: { proposal: Proposal; send: Send }) {
+  const [angles, setAngles] = useState<string[] | null>(null);
+  const [dropped, setDropped] = useState<string[]>([]);
+  const [adding, setAdding] = useState("");
+  const [state, setState] = useState<"idle" | "reading" | "failed">("idle");
+  const held = proposal.work.sections ?? {};
+  const waiting = proposal.sections.filter((s) => DEEPER_NEEDS.includes(s.code) && !held[s.code]?.done);
+
+  if (waiting.length > 0) {
+    return <p className="muted fm-meta">To research deeper from your case, mark {waiting.map((s) => s.label).join(" and ")} done.</p>;
+  }
+
+  async function read() {
+    setState("reading");
+    try {
+      const found = await researchAngles(proposal.id);
+      setAngles(found.angles);
+      setDropped(found.dropped);
+      setState("idle");
+    } catch {
+      setState("failed");
+    }
+  }
+
+  function add() {
+    const angle = adding.trim();
+    if (angle && angles && !angles.includes(angle)) setAngles([...angles, angle]);
+    setAdding("");
+  }
+
+  if (angles === null) {
+    return (
+      <div className="pr-next">
+        <button className="btn" type="button" disabled={!send || state === "reading"} onClick={() => void read()}>
+          {state === "reading" ? "Reading your case…" : "Research deeper from your case"}
+        </button>
+        {state === "failed" && <span className="muted fm-meta">Sangam couldn&apos;t read your case just now. Try again.</span>}
+      </div>
+    );
+  }
+  return (
+    <div className="pr-deeper">
+      <p className="muted">Sangam Pitch will look into these. Remove any you don&apos;t want or add your own: only these words are searched, never your text.</p>
+      <ul className="pr-chips" aria-label="What to look into">
+        {angles.map((a) => (
+          <li key={a}>
+            {a}
+            <button type="button" aria-label={`Remove ${a}`} onClick={() => setAngles(angles.filter((x) => x !== a))}>
+              <X className="icon icon-sm" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {dropped.length > 0 && <p className="muted fm-meta">Left out, since they name your organisation or a person: {dropped.join("; ")}.</p>}
+      <form
+        className="pr-deeper-add"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add();
+        }}
+      >
+        <input className="input" value={adding} onChange={(e) => setAdding(e.target.value)} aria-label="Add something to look into" placeholder="For example: MGNREGA days worked, Udalguri" />
+        <button className="btn btn-ghost" type="submit" disabled={!adding.trim() || angles.length >= ANGLES}>
+          Add
+        </button>
+      </form>
+      <div className="pr-next">
+        <button
+          className="btn btn-primary"
+          type="button"
+          disabled={!send || angles.length === 0}
+          onClick={() => {
+            send?.(`Research deeper: ${angles.join("; ")}.`);
+            setAngles(null);
+          }}
+        >
+          Search these
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={() => setAngles(null)}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** What the person asked secondary research for, newest first, and what each run added. */
+function ResearchAsks({ asks }: { asks?: Record<string, ResearchAsk> }) {
+  const listed = Object.values(asks ?? {})
+    .filter((a) => a.kind !== "plan")
+    .sort((a, b) => b.at.localeCompare(a.at));
+  if (listed.length === 0) return null;
+  return (
+    <ul className="pr-asks" aria-label="What you asked for">
+      {listed.map((a) => (
+        <li key={a.at}>
+          <span>{a.ask || a.focus.join("; ") || "More research"}</span>
+          <span className="muted fm-meta">
+            {[
+              a.sites.join(", "),
+              a.status === "running" ? "searching…" : a.status === "failed" ? "did not finish" : `${a.added ?? 0} added`,
+              shortDate(a.at),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 type Topic = NonNullable<Fact["topic"]>;
 
 const TOPICS: [Topic, string][] = [
@@ -707,6 +822,7 @@ function SecondaryResearch({ proposal, save, send }: { proposal: Proposal; save:
           Searched {shortDate(run.at)} · {sources} {sources === 1 ? "source" : "sources"}
         </p>
       )}
+      <ResearchAsks asks={work.research_asks} />
       {run && run.status !== "running" && (
         <>
           {TOPICS.map(([t, label]) => (
@@ -729,6 +845,10 @@ function SecondaryResearch({ proposal, save, send }: { proposal: Proposal; save:
           </button>
           {!send && <span className="muted fm-meta">Wait for Sangam Pitch to finish its answer.</span>}
         </div>
+      )}
+      {canEdit && run?.status !== "running" && <DeeperResearch proposal={proposal} send={send} />}
+      {canEdit && run?.status === "done" && (
+        <p className="muted fm-meta">Want more? Tell Sangam Pitch what to dig into or where to look, such as “look at nrlm.gov.in for SHG credit linkage”.</p>
       )}
     </div>
   );

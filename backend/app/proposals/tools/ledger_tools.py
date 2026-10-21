@@ -105,6 +105,8 @@ async def add_facts(facts: list[FactIn]) -> str:
             if (public := PUBLIC_RUN.get()) is not None:
                 why = why or fact_rules.off_page(fact, public.pages.get(page_key(fact.get("source_url"))))
                 fact["found_by"] = "public"
+                if public.ask:
+                    fact["ask"] = public.ask
             if why:
                 out.append(f"REFUSED {why}")
                 continue

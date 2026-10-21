@@ -180,6 +180,38 @@ class TestRead:
         assert seen == [(["k1"], "utility")]
         assert store["work"]["readers"]["public"]["summaries"] == {"problem": "Dropout is 19.8% ⟦k1⟧."}
 
+    async def test_a_run_for_an_ask_carries_its_focus_and_records_what_it_added(self, run, monkeypatch):
+        store, setup = run
+        public = {"subject": "dropout, Udalguri", "value": "19.8%", "found_by": "public", "status": "proposed"}
+        own = {"subject": "girls enrolled", "value": "412", "origin": "vault", "status": "confirmed"}
+        graphs = setup({"facts": {"k1": public, "k2": own}, "research_asks": {"a1": {"kind": "chat"}}},
+                       public="Found 1 more.")
+
+        async def load(pool, proposal_id):
+            facts = {**store["work"]["facts"], "k3": {**public, "subject": "dropout, Mazbat", "ask": "a2"}}
+            return {"work": {**store["work"], "facts": facts}}
+
+        async def summarise(work, model):
+            return {}
+
+        async def facts(pool, owner, org_id):
+            return None
+
+        monkeypatch.setattr(repo, "load", load)
+        monkeypatch.setattr(readers.research, "summarise", summarise)
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        ask = {"kind": "chat", "ask": "SHG credit", "focus": ["SHG credit linkage, Assam"], "sites": ["nrlm.gov.in"],
+               "sections": []}
+        p = proposal(store["work"])
+        await readers.read(p, public=True, ask=ask)
+        task, _, run_ = graphs.public.asked[0]
+        assert run_.ask == "a2"
+        assert "The person asked: SHG credit" in task and "Look into: SHG credit linkage, Assam" in task
+        assert "Start on these sites: nrlm.gov.in" in task and "- dropout, Udalguri: 19.8%" in task
+        assert "girls enrolled" not in task
+        recorded = store["work"]["research_asks"]["a2"]
+        assert recorded["status"] == "done" and recorded["added"] == 1 and recorded["focus"] == ask["focus"]
+
     async def test_a_failed_summary_still_marks_the_search_done(self, run, monkeypatch):
         store, setup = run
         setup({}, public="Found nothing.")

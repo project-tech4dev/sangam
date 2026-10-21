@@ -2,6 +2,8 @@
 
 from datetime import UTC, datetime
 
+import pytest
+
 from app.proposals import questions, research, rubric, steps
 
 NOW = datetime(2026, 10, 21, tzinfo=UTC).isoformat()
@@ -121,3 +123,66 @@ class TestSummarise:
     async def test_no_facts_no_call(self):
         model = Model({})
         assert await research.summarise({}, model) == {} and model.asked == []
+
+
+class TestAsks:
+    ASK = {"kind": "chat", "ask": "SHG credit", "focus": ["SHG credit linkage"], "sites": [], "sections": [],
+           "status": "running", "at": NOW}
+
+    def test_an_ask_is_checked_before_it_is_kept(self):
+        assert research.bad_ask(self.ASK) is None
+        assert "kind" in research.bad_ask({**self.ASK, "kind": "other"})
+        assert "running" in research.bad_ask({**self.ASK, "status": "queued"})
+        assert "500" in research.bad_ask({**self.ASK, "ask": "x" * 501})
+        assert "lists" in research.bad_ask({**self.ASK, "focus": ["x"] * 9})
+
+    def test_only_sangam_pitch_records_an_ask(self):
+        from app.proposals import work as rules
+
+        by = {"id": "u", "name": "Ravi"}
+        with pytest.raises(rules.BadChange, match="asked for in the chat"):
+            rules.apply({"stage": 3}, {"research_asks.a1": self.ASK}, by=by)
+        assert rules.apply({"stage": 3}, {"research_asks.a1": self.ASK}, by=by, via="agent").work[
+            "research_asks"]["a1"]["ask"] == "SHG credit"
+        assert research.next_ask_id({"research_asks": {"a1": {}, "a7": {}}}) == "a8"
+
+    def test_an_angle_naming_the_org_or_a_partner_is_left_out(self):
+        kept, dropped = research.focus(["  SHG credit   linkage, Assam ", "KABIL federations", "", "Seva Mandir work"],
+                                       {"kabil", "seva mandir"})
+        assert kept == ["SHG credit linkage, Assam"] and dropped == ["KABIL federations", "Seva Mandir work"]
+
+    def test_a_site_is_kept_as_its_host(self):
+        assert research.sites(["https://NRLM.gov.in/outer/x?y", "nrlm.gov.in", "rchiips.org", "not a site", ""]) == \
+            ["nrlm.gov.in", "rchiips.org"]
+
+    def test_only_public_facts_still_in_use_are_named_as_found(self):
+        assert research.already_found({"facts": FACTS}) == [
+            "secondary dropout, Udalguri: 19.8%", "secondary dropout, Assam: 15.1%", "Aspirational District: Udalguri is one"]
+
+
+class TestDeeper:
+    CASE = {"sections": {"A1": {"text": "KABIL works in Mazbat ⟦k1⟧."},
+                         "A2": {"text": "Mazbat Block, Udalguri ⟦k2⟧. [Add: population by group]", "done": True},
+                         "A3": {"text": "", "done": False}}}
+
+    def test_it_waits_for_context_and_problem_but_not_the_summary(self):
+        assert research.not_ready(self.CASE) == ["mark Problem and baseline done"]
+        assert research.not_ready({"sections": {"A2": {"done": True}, "A3": {"done": True}}}) == []
+
+    def test_the_case_is_read_without_its_fact_ids(self):
+        text = research.case_text(self.CASE)
+        assert text == ("## Summary\nKABIL works in Mazbat.\n\n"
+                        "## Context and target area\nMazbat Block, Udalguri. [Add: population by group]")
+
+    async def test_angles_naming_the_org_are_dropped(self):
+        class Angles:
+            def with_structured_output(self, schema):
+                class Bound:
+                    async def ainvoke(self, messages):
+                        Bound.asked = messages[1].content
+                        return schema(angles=["population by social group, Udalguri", "KABIL members"])
+
+                return Bound()
+
+        kept, dropped = await research.angles(self.CASE, Angles(), {"kabil"})
+        assert kept == ["population by social group, Udalguri"] and dropped == ["KABIL members"]

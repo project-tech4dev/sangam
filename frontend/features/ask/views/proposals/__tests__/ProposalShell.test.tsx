@@ -464,6 +464,61 @@ describe("step 3: make a case", () => {
     expect(within(sdg).getByRole("button", { name: "Don't use" })).toBeInTheDocument();
   });
 
+  it("lists what the person asked for, newest first, and how to ask for more", async () => {
+    const ask = { focus: [], sites: [], sections: [], by: { id: "u", name: "Ravi" } };
+    serve(
+      onCase({
+        readers: { public: { status: "done", at: "2026-10-05T00:00:00Z", title: "Public" } },
+        research_asks: {
+          a1: { ...ask, kind: "chat", ask: "dig into SHG credit", sites: ["nrlm.gov.in"], status: "done", at: "2026-10-05T00:00:00Z", added: 4 },
+          a2: { ...ask, kind: "deeper", ask: "", focus: ["MGNREGA days, Assam"], status: "running", at: "2026-10-06T00:00:00Z" },
+          a3: { ...ask, kind: "chat", ask: "failed one", status: "failed", at: "2026-10-04T00:00:00Z" },
+          a4: { ...ask, kind: "plan", ask: "unit costs", status: "done", at: "2026-10-07T00:00:00Z" },
+        },
+      }),
+    );
+    renderShell();
+    const asks = within(await screen.findByRole("list", { name: "What you asked for" })).getAllByRole("listitem");
+    expect(asks.map((li) => li.textContent)).toEqual([
+      expect.stringMatching(/^MGNREGA days, Assamsearching… · /),
+      expect.stringMatching(/^dig into SHG creditnrlm\.gov\.in · 4 added · /),
+      expect.stringMatching(/^failed onedid not finish · /),
+    ]);
+    expect(screen.getByText(/Want more\? Tell Sangam Pitch what to dig into/)).toBeInTheDocument();
+  });
+
+  it("researches deeper from the case once it is done, with angles the person edits first", async () => {
+    const caseDone = { A2: { text: "Udalguri", done: true }, A3: { text: "Low income", done: true } };
+    const withProblem = { sections: [...caseSections, { ...caseSections[1], code: "A3", label: "Problem and baseline" }] };
+    serve(onCase({ sections: { A2: { text: "Udalguri", done: true } } }, withProblem));
+    const { unmount } = renderShell();
+    expect(await screen.findByText("To research deeper from your case, mark Problem and baseline done.")).toBeInTheDocument();
+    unmount();
+    let n = 0;
+    serve(onCase({ sections: caseDone }, withProblem), {
+      "GET /api/proposals/3/research/angles": () => {
+        n += 1;
+        if (n === 1) throw new Error("down");
+        return { angles: ["MGNREGA days, Udalguri", "SHG credit, Assam"], dropped: ["KABIL members"] };
+      },
+    });
+    renderShell();
+    await userEvent.click(await screen.findByRole("button", { name: "Research deeper from your case" }));
+    expect(await screen.findByText("Sangam couldn't read your case just now. Try again.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Research deeper from your case" }));
+    const chips = await screen.findByRole("list", { name: "What to look into" });
+    expect(screen.getByText("Left out, since they name your organisation or a person: KABIL members.")).toBeInTheDocument();
+    await userEvent.click(within(chips).getByRole("button", { name: "Remove SHG credit, Assam" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Add something to look into" }), "Women in SHGs, Assam{Enter}");
+    expect(within(chips).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["MGNREGA days, Udalguri", "Women in SHGs, Assam"]);
+    await userEvent.click(screen.getByRole("button", { name: "Search these" }));
+    expect(chat.send).toHaveBeenCalledWith("Research deeper: MGNREGA days, Udalguri; Women in SHGs, Assam.");
+    expect(screen.queryByRole("list", { name: "What to look into" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Research deeper from your case" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("list", { name: "What to look into" })).toBeNull();
+  });
+
   it("says when secondary research is running or failed", async () => {
     serve(onCase({ readers: { public: { status: "running", at: "x", title: "Public" } } }));
     const { unmount } = renderShell();

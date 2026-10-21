@@ -37,6 +37,7 @@ export type Work = {
   questions?: Record<string, { section: string; subject: string; status: "open" | "parked" | "answered" | "closed"; asked_of: { id: string; name: string } | null }>;
   /** Keyed by document id, plus "funder" for what the funder looks for. */
   readers?: Record<string, Reader>;
+  research_asks?: Record<string, ResearchAsk>;
   /** The smoothed wording, kept only when code found every figure, place, name and gap unchanged. */
   polished?: { parts: Record<string, string>; revs: Record<string, number>; at: string; by: { id: string; name: string } };
   versions?: Version[];
@@ -67,6 +68,19 @@ export type Reader = {
   summaries?: Partial<Record<NonNullable<Fact["topic"]>, string>>;
 };
 
+/** What a person asked one secondary research run to look into, from chat or a button. */
+export type ResearchAsk = {
+  kind: "deeper" | "chat" | "plan";
+  ask: string;
+  focus: string[];
+  sites: string[];
+  sections: string[];
+  status: "running" | "done" | "failed";
+  at: string;
+  by?: { id: string; name: string };
+  added?: number;
+};
+
 /** One fact in the proposal's list; the screen shows its standing and source in words, never its id or marker. */
 export type Fact = {
   subject: string;
@@ -79,6 +93,8 @@ export type Fact = {
   marker?: string;
   source_name?: string;
   source_url?: string;
+  /** The research ask that found it, when one did. */
+  ask?: string;
   page?: number;
   said_by?: { id: string; name: string };
   document_id?: number;
@@ -180,6 +196,9 @@ export async function advance(id: number, to?: number) {
   void reloadProposals();
   return saved;
 }
+
+/** What research would look into from the case, for the person to edit before searching. */
+export const researchAngles = (id: number) => call<{ angles: string[]; dropped: string[] }>(`/api/proposals/${id}/research/angles`);
 
 export async function polishProposal(id: number) {
   return call<Saved>(`/api/proposals/${id}/polish`, "POST");

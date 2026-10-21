@@ -267,3 +267,22 @@ class TestReadFiles:
 
         monkeypatch.setattr(readers, "read", read)
         assert await rt.read_files.ainvoke({"public": True}) == "read 1 public=True"
+
+    async def test_a_steered_search_sends_angles_and_sites_but_never_the_org(self, opened, monkeypatch):
+        from app.proposals import readers
+
+        p = proposal({"stage": 3})
+        opened(p)
+        seen = []
+
+        async def read(got, public, ask=None):
+            seen.append(ask)
+            return "read"
+
+        monkeypatch.setattr(readers, "read", read)
+        out = await rt.read_files.ainvoke({"public": True, "ask": "dig into  SHG credit",
+                                           "focus": ["SHG credit linkage, Assam", f"{p.org_name} SHGs"],
+                                           "sites": ["https://nrlm.gov.in/outer/x", "not a site"]})
+        assert seen == [{"kind": "chat", "ask": "dig into SHG credit", "focus": ["SHG credit linkage, Assam"],
+                         "sites": ["nrlm.gov.in"], "sections": []}]
+        assert out.startswith(f"Left out of the search, since it names the organisation or a person: {p.org_name} SHGs")

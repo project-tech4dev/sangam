@@ -1021,6 +1021,14 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .pr-sources { margin: 0; padding-left: 18px; font-size: var(--fs-xs); color: var(--color-neutral-700); display: flex; flex-direction: column; gap: 2px; }
 .pr-research { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
 .pr-research-text { margin: 0; line-height: 1.6; }
+.pr-deeper { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px dashed var(--color-divider); border-radius: var(--radius-row); }
+.pr-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.pr-chips li { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); background: var(--color-accent-2-100); color: var(--color-accent-2-800); border-radius: var(--radius-pill); padding: 2px 4px 2px 10px; }
+.pr-chips button { display: inline-flex; background: none; border: 0; padding: 2px; color: inherit; cursor: pointer; }
+.pr-deeper-add { display: flex; gap: 8px; }
+.pr-deeper-add .input { flex: 1; min-width: 0; }
+.pr-asks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pr-asks li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 8px 12px; border-left: 2px solid var(--color-divider); }
 .pr-edit { display: flex; flex-direction: column; gap: 8px; }
 textarea.pr-edit-box { min-height: 180px; field-sizing: content; font-size: var(--fs-md); line-height: 1.6; }
 .pr-covers { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }

@@ -122,7 +122,7 @@ def sources_for(p: context.Current, key: str) -> run_sources.Sources:
 
 
 def public_task(p: context.Current, places: list[str], themes: list[str], programmes: list[str],
-                sdgs: list[str]) -> str:
+                sdgs: list[str], ask: dict[str, Any] | None = None) -> str:
     """Public research's task, from the registry's public rows and the match only: never a file or the fact list."""
     where = "; ".join(places) or "no place on record: search at state level, or for India"
     sections = [s for s in context.sections(p.work) if s.code in fact_rules.PUBLIC_SECTIONS]
@@ -141,7 +141,21 @@ def public_task(p: context.Current, places: list[str], themes: list[str], progra
         "",
         "The sections a fact can serve, each with what a strong answer holds:",
         *(f"- {s.code} {s.label}: {'; '.join(s.strong)}" for s in sections),
+        *(_focus_block(ask, research.already_found(p.work)) if ask else []),
     ])
+
+
+def _focus_block(ask: dict[str, Any], found: list[str]) -> list[str]:
+    """What the person asked this run to look into: angles and sites, never their own sentences."""
+    return [
+        "",
+        "## Focus of this run",
+        *([f"The person asked: {ask['ask']}"] if ask.get("ask") else []),
+        *([f"Look into: {'; '.join(ask['focus'])}"] if ask.get("focus") else []),
+        *([f"Start on these sites: {'; '.join(ask['sites'])}"] if ask.get("sites") else []),
+        *(["", "Already found (look past these, do not add them again):", *(f"- {f}" for f in found)]
+          if found else []),
+    ]
 
 
 async def _public_inputs(p: context.Current) -> tuple[list[str], list[str], list[str], list[str]]:
@@ -194,13 +208,13 @@ async def _titles(org_id: int, ids: list[int]) -> tuple[dict[str, str], set[str]
 
 async def _mark(proposal_id: int, changes: dict[str, dict[str, Any]], by: dict[str, Any], reason: str) -> None:
     def change(work: dict, title: str) -> work_rules.Applied:
-        return work_rules.apply(work, {f"readers.{k}": v for k, v in changes.items()}, by=by, via="agent",
+        return work_rules.apply(work, changes, by=by, via="agent",
                                 reason=reason, title=title)
 
     await repo.save(get_pool(), proposal_id, change)
 
 
-async def read(p: context.Current, public: bool = False) -> str:
+async def read(p: context.Current, public: bool = False, ask: dict[str, Any] | None = None) -> str:
     """Run every pending reader at once and record each one's outcome; returns what happened, file by file."""
     if public and BUILT.public is None:
         return "Public research is not available: no search key is configured. Say so in one line."
@@ -209,47 +223,56 @@ async def read(p: context.Current, public: bool = False) -> str:
     files, links = await _titles(p.org_id, p.work.get("sources") or [])
     titles = {**files, FUNDER: f"what {p.funder_name} looks for", PUBLIC: "Public research on the problem and place"}
     keys: list[str] = []
+    asked: list[str] = []  # the research ask's id, allocated inside the row lock
     try:
-        await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by, public))
+        await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by, public,
+                                                                ask if public else None, asked))
     except Busy as busy:
         return f"REFUSED: {busy}."
     except _NothingToRead:
         return "Every ticked file has been read. Tick another file in step 2 to read more."
 
     gate = asyncio.Semaphore(BUILT.parallel)
-    results = await asyncio.gather(*(_one(p, k, titles.get(k, "a file"), gate, by, k in links) for k in keys))
+    ask_id = asked[0] if asked else None
+    results = await asyncio.gather(*(_one(p, k, titles.get(k, "a file"), gate, by, k in links,
+                                          (ask_id, ask) if k == PUBLIC and ask_id else None) for k in keys))
     return "\n".join(results)
 
 
 def _claim(work: dict, title: str, keys: list[str], titles: dict[str, str], by: dict[str, Any],
-           public: bool = False) -> work_rules.Applied:
+           public: bool = False, ask: dict[str, Any] | None = None, asked: list[str] | None = None,
+           ) -> work_rules.Applied:
     """Inside the row lock: two people pressing at once get one run and one refusal."""
     keys.extend(pending(work, public=public))
     if not keys:
         raise _NothingToRead
     at = datetime.now(UTC).isoformat()
-    running = {f"readers.{k}": {"status": "running", "at": at, "by": by, "title": titles.get(k, "a file")}
-               for k in keys}
+    running: dict[str, Any] = {f"readers.{k}": {"status": "running", "at": at, "by": by, "title": titles.get(k, "a file")}
+                               for k in keys}
+    if ask is not None and asked is not None:
+        asked.append(research.next_ask_id(work))
+        running[f"research_asks.{asked[0]}"] = {**ask, "status": "running", "at": at, "by": by}
     return work_rules.apply(work, running, by=by, via="agent", reason="reading the files", title=title)
 
 
 async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore, by: dict[str, Any],
-               link: bool = False) -> str:
+               link: bool = False, ask: tuple[str, dict[str, Any]] | None = None) -> str:
     """One reader, with its own sources: the contextvar is set inside the task, so no two readers share one."""
     if link:
         error = "it is a link to a web page, not a stored file; upload the file to read it"
         failed = {"status": "failed", "at": datetime.now(UTC).isoformat(), "by": by, "title": title, "error": error}
-        await _mark(p.id, {key: failed}, by, "could not read it")
+        await _mark(p.id, {f"readers.{key}": failed}, by, "could not read it")
         return f"{title}: could not read it ({error})."
     graph = {FUNDER: BUILT.funder, PUBLIC: BUILT.public}.get(key, BUILT.evidence)
     async with gate:
         token = run_sources.CURRENT.set(sources_for(p, key))
-        run = PublicRun(avoid=(p.org_name,)) if key == PUBLIC else None
+        run = PublicRun(avoid=(p.org_name,), ask=ask[0] if ask else None) if key == PUBLIC else None
         public = PUBLIC_RUN.set(run)
         # A run of its own: inheriting the chat's run would stream every reader's steps into the person's chat.
         var_child_runnable_config.set(None)
         try:
-            task = public_task(p, *await _public_inputs(p)) if key == PUBLIC else _task(p, key, title)
+            task = (public_task(p, *await _public_inputs(p), ask=ask[1] if ask else None) if key == PUBLIC
+                    else _task(p, key, title))
             result = await graph.ainvoke({"messages": [HumanMessage(task)]}, config=BUILT.trace)
             text = _last_text(result)
             error = _reason(text) if text.startswith(UNREADABLE) else None
@@ -261,20 +284,28 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
             run_sources.CURRENT.reset(token)
     outcome = {"status": "failed" if error else "done", "at": datetime.now(UTC).isoformat(), "by": by, "title": title,
                **({"error": error} if error else {}), **({"unopened": sorted(run.unopened)} if run else {})}
+    marks: dict[str, dict[str, Any]] = {f"readers.{key}": outcome}
+    added = 0
     if run is not None and not error:
-        outcome["summaries"] = await _summaries(p.id)
-    await _mark(p.id, {key: outcome}, by, "could not read it" if error else "read it")
+        outcome["summaries"], added = await _summaries(p.id, run.ask)
+    if ask is not None:
+        marks[f"research_asks.{ask[0]}"] = {**ask[1], "status": outcome["status"], "at": outcome["at"], "by": by,
+                                            **({} if error else {"added": added})}
+    await _mark(p.id, marks, by, "could not read it" if error else "read it")
     return f"{title}: could not read it ({error})." if error else f"{title}: read.\n{text}"
 
 
-async def _summaries(proposal_id: int) -> dict[str, str]:
-    """Read after the run, so the paragraphs cover every fact it added; a failure leaves the facts unsummarised."""
+async def _summaries(proposal_id: int, ask_id: str | None = None) -> tuple[dict[str, str], int]:
+    """Read after the run, so the paragraphs cover every fact it added, and how many it added for the ask;
+    a failure leaves the facts unsummarised."""
     try:
         row = await repo.load(get_pool(), proposal_id)
-        return await research.summarise((row or {}).get("work") or {}, BUILT.summary) if row else {}
+        work = (row or {}).get("work") or {}
+        added = sum(1 for f in (work.get("facts") or {}).values() if ask_id and f.get("ask") == ask_id)
+        return (await research.summarise(work, BUILT.summary) if row else {}), added
     except Exception as exc:  # noqa: BLE001 - the search itself succeeded
         logger.warning("secondary research summaries failed (%s)", type(exc).__name__)
-        return {}
+        return {}, 0
 
 
 class _NothingToRead(Exception):

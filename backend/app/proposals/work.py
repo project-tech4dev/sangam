@@ -14,7 +14,7 @@ from typing import Any
 
 from app.proposals import facts as fact_rules
 from app.proposals import questions as question_rules
-from app.proposals import readiness, reliability, review, rubric, steps, trace
+from app.proposals import readiness, reliability, research, review, rubric, steps, trace
 
 STAGES = tuple(steps.STAGES)
 FACT_STATUS = ("proposed", "confirmed", "corrected", "rejected")
@@ -29,6 +29,7 @@ SET_BY_PERSON = ("proposed", "confirmed", "rejected")  # "corrected" comes only 
 _GATE = re.compile(r"^gates\.([a-z0-9]{1,16})$")
 _READER = re.compile(r"^readers\.(funder|public|\d+)$")
 READER_STATUS = ("running", "done", "failed")
+_ASK = re.compile(r"^research_asks\.(a\d+)$")
 
 
 class BadChange(ValueError):
@@ -129,6 +130,11 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
             raise BadChange("files are read by Sangam Pitch")
         if not (isinstance(value, dict) and value.get("status") in READER_STATUS and value.get("at")):
             raise BadChange("a reader has a status and a time")
+    elif _ASK.match(path):
+        if via != "agent":
+            raise BadChange("research is asked for in the chat")
+        if why := research.bad_ask(value):
+            raise BadChange(why)
     elif path == "polished":
         if via != "polish" or not (isinstance(value, dict) and isinstance(value.get("parts"), dict)):
             raise BadChange("the smoothed wording is saved only once code has checked it")

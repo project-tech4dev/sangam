@@ -63,6 +63,7 @@ class PublicRun:
     pages: dict[str, str] = field(default_factory=dict)
     unopened: set[str] = field(default_factory=set)  # hosts a read was refused or failed on, shown on screen
     files: dict[str, str] = field(default_factory=dict)  # a fetched PDF's name → the url it came from
+    ask: str | None = None  # the research ask this run answers; its facts carry the id
 
 
 PUBLIC_RUN: ContextVar[PublicRun | None] = ContextVar("proposal_public_run", default=None)

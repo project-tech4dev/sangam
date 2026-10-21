@@ -506,3 +506,41 @@ async def test_messages_are_read_from_the_proposal_graph(api, held, monkeypatch)
     async with api as c:
         r = await c.get("/api/proposals/11/messages")
     assert r.status_code == 200 and seen == {"graph": "proposal_graph"}
+
+
+@pytest.fixture
+def angler(monkeypatch):
+    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: object())
+
+    def use(result):
+        async def angles(work, model, avoid):
+            if isinstance(result, Exception):
+                raise result
+            use.avoid = avoid
+            return result
+
+        monkeypatch.setattr(route.research, "angles", angles)
+
+    return use
+
+
+async def test_research_angles_wait_for_the_case_then_come_back_to_edit(api, held, angler):
+    angler((["MGNREGA days worked, Dewas"], ["Jan Sahas wells"]))
+    async with api as c:
+        early = await c.get("/api/proposals/11/research/angles")
+        held["row"]["work"]["sections"] = {"A2": {"text": "Dewas", "done": True}, "A3": {"text": "Dry", "done": True}}
+        ready = await c.get("/api/proposals/11/research/angles")
+    assert early.status_code == 409
+    assert early.json()["detail"]["missing"] == ["mark Context and target area done", "mark Problem and baseline done"]
+    assert ready.json() == {"angles": ["MGNREGA days worked, Dewas"], "dropped": ["Jan Sahas wells"]}
+    assert {"jan sahas", "tata trusts"} <= angler.avoid
+
+
+async def test_research_angles_502_when_the_model_fails_and_403_for_a_reader(api, held, angler):
+    angler(RuntimeError("down"))
+    held["row"]["work"]["sections"] = {"A2": {"done": True}, "A3": {"done": True}}
+    async with api as c:
+        failed = await c.get("/api/proposals/11/research/angles")
+        held["row"]["can_edit"] = False
+        refused = await c.get("/api/proposals/11/research/angles")
+    assert failed.status_code == 502 and refused.status_code == 403

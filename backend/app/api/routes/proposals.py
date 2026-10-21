@@ -11,7 +11,7 @@ from app.core.config import get_settings
 from app.core.security import CurrentUser, require_principal
 from app.db.pool import OwnerPoolDep, PoolDep
 from app.integrations import storage
-from app.proposals import assemble, fill, form, gates, readiness, records, rubric, steps
+from app.proposals import assemble, fill, form, gates, readiness, records, research, rubric, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.repositories import documents as documents_repo
@@ -23,6 +23,7 @@ from app.schemas.proposals import (
     ProposalCreateIn,
     ProposalItem,
     ProposalOut,
+    ResearchAnglesOut,
     SavedOut,
     TitleIn,
     VersionIn,
@@ -234,6 +235,22 @@ async def polish_language(proposal_id: int, pool: PoolDep, principal: Principal)
                 "revs": {s.code: held[s.code].get("rev", 0) for s, _ in written},
                 "at": datetime.now(UTC).isoformat(), "by": await repo.me(pool)}
     return await _save(pool, proposal_id, changes={"polished": polished}, via="polish")
+
+
+@router.get("/{proposal_id}/research/angles", response_model=ResearchAnglesOut,
+            summary="What research would look into from the case, for the person to edit before searching")
+async def research_angles(proposal_id: int, pool: PoolDep, principal: Principal) -> ResearchAnglesOut:
+    from app.agent.models import resolve_model  # the model stack loads only when it is used
+
+    row = await _editable(pool, proposal_id)
+    if missing := research.not_ready(row["work"]):
+        raise HTTPException(409, {"message": "Not yet.", "missing": missing})
+    try:
+        kept, dropped = await research.angles(row["work"], resolve_model(get_settings().utility_model), _names(row))
+    except Exception as exc:
+        logger.warning("research angles for proposal %s failed (%s)", proposal_id, type(exc).__name__)
+        raise HTTPException(502, "Sangam couldn't read your case just now. Try again.") from exc
+    return ResearchAnglesOut(angles=kept, dropped=dropped)
 
 
 @router.post("/{proposal_id}/versions", response_model=SavedOut, status_code=201,

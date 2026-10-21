@@ -80,6 +80,11 @@ class VersionIn(BaseModel):
     shape: Literal["sangam", "form"] = Field("sangam", description="sangam: Sangam's parts; form: the funder's form")
 
 
+class ResearchAnglesOut(BaseModel):
+    angles: list[str] = Field(description="What research would look into, a few words each, for the person to edit.")
+    dropped: list[str] = Field(default_factory=list, description="Angles left out for naming the org, a partner or a person.")
+
+
 class SavedOut(BaseModel):
     summary: dict[str, Any]
     work: dict[str, Any]

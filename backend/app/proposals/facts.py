@@ -145,7 +145,7 @@ def off_page(fact: dict[str, Any], page: str | None) -> str | None:
 def make(fact: dict[str, Any], *, by: dict[str, Any] | None = None) -> dict[str, Any]:
     """The stored fact: proposed and coloured by its origin; only `by` (the person who said it) is trusted."""
     keep = ("kind", "subject", "value", "marker", "as_of", "section", "element", "evidence", "source_url", "topic",
-            "source_name", "page", "document_id", "from", "supersedes", "found_by")
+            "source_name", "page", "document_id", "from", "supersedes", "found_by", "ask")
     out = {k: fact[k] for k in keep if fact.get(k) not in (None, "", [])}
     origin = fact["origin"]
     out.update(origin=origin, tier=reliability.tier(origin), status="proposed", used_in=[],
