@@ -1,18 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4ced087cb833d04cb90eb174ee42154c97fab8b90bfd2285c43d8ce8115cbbb1",
+  "pageVersion": "sha256:be52200075a49bfa126574f4da18d92819c9c5f29e472a85ea1e80a0d134e748",
   "claims": [
     {
       "id": "claim_163b637ead7644f9b6ecbe76acd3baf7",
-      "statement": "The migration runner sorts db/migrations/*.sql by filename, records the full file stem plus a SHA-256 checksum prefix in schema_migrations, and runs each pending file in its own transaction together with its ledger insert; on any error it rolls back that file, reports it, and stops without attempting later files (and without running the checkpointer step).",
+      "statement": "The migration runner sorts db/migrations/*.sql by filename, records the full file stem plus a SHA-256 checksum prefix in schema_migrations, and runs each pending file in its own transaction together with its ledger insert; on any error it rolls back that file, reports it, and stops without attempting later files.",
       "evidence": [
         {
-          "resource": "repo://backend/app/db/migrate.py#L29-L31",
-          "version": "repo-lines-v1:sha256:eaeec043a3c547665e444fdd38a1134dff9573b36a8a59bd995ae304d8f6b77c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDM1OTM0YmQ4NGEwMDdjMzBhN2FmOTlkM2YxY2MxNWUzMTdiNGJjMTRmNWE2YmU5NGVmYWQ2MGUzZTE1YmNlMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTFhZjY3MTU0NWFkZjZlYzY3NjM3MzkzM2I2NDA5ZDJmODliN2NjZWU1N2JkZTliOTU0ZjRhM2IzNTA5MzdmMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2Y0ZDY1NTU3YWNmZWNjMzc0NzRlYTI4YzY0ODJmMWY0ODg5ZDljNjI4YWVhNzdjODJjMGY1ZDY3NDM3NjQ2YyJ9"
-        },
-        {
-          "resource": "repo://backend/app/db/migrate.py#L51-L120",
-          "version": "repo-lines-v1:sha256:307fc786f2af29b1c74db59994bf41b66f8e45394309f112b0a344afdcc32f47:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiMzk3OTMzYTI0YTgwMWVlOTIzMzI3YmQ2OWEwMTA0OWMwNzc5MTUwMjFjZjJlYzM5ZGRhNGY4MWFhODM3ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhMTY4MDljMDc1ZGIzMDllMDliYmM5YWI3ZWZlZTY5ZWZiNWY0MTliZDRkODkzMGQwMzgwNjYwMmRkMDJmZDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhYmE4NzhhOWNlZTdhNDAxZTIzYTNiMmFhZDlkYTMxNmIyNTM0ZmJkMTg1ZjIxNmE0ZWMwMGU0MDIwNjQxZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNDEzNDBjYzIzOWExNTljZTliNjAyMmU5ZjYzMjI4MzJlMmVhZDc2Y2FlOWU0NzU0ZDIxMGViOGZiNmQ1ZTgifQ"
+          "resource": "repo://backend/app/db/migrate.py#L29-L95",
+          "version": "repo-lines-v1:sha256:219c152db7b361a41d3b5969759122bb0c23cab2820e5106bec7bcea8260cd0e:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzNTkzNGJkODRhMDA3YzMwYTdhZjk5ZDNmMWNjMTVlMzE3YjRiYzE0ZjVhNmJlOTRlZmFkNjBlM2UxNWJjZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhMTY4MDljMDc1ZGIzMDllMDliYmM5YWI3ZWZlZTY5ZWZiNWY0MTliZDRkODkzMGQwMzgwNjYwMmRkMDJmZDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxYWY2NzE1NDVhZGY2ZWM2NzYzNzM5MzNiNjQwOWQyZjg5YjdjY2VlNTdiZGU5Yjk1NGY0YTNiMzUwOTM3ZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNDEzNDBjYzIzOWExNTljZTliNjAyMmU5ZjYzMjI4MzJlMmVhZDc2Y2FlOWU0NzU0ZDIxMGViOGZiNmQ1ZTgifQ"
         },
         {
           "resource": "repo://db/migrations/README.md#L13-L25",
@@ -25,7 +21,7 @@
       "statement": "If an already-applied migration file's checksum differs from the recorded one, the runner prints a DRIFT warning and skips it rather than failing; the convention is never to edit applied files and to write a new migration instead.",
       "evidence": [
         {
-          "resource": "repo://backend/app/db/migrate.py#L82-L93",
+          "resource": "repo://backend/app/db/migrate.py#L57-L68",
           "version": "repo-lines-v1:sha256:73e6e12dc8cc6b667488d5cfdfebb41c303072196b9b715d52d7f9c6642f3159:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxNjdkY2FmZDRlNWI2YTc1ZTQ0NWViNTVhNjgwYjFmNWI4MmVkMjYzODBiMTAyMGM2MmMyZGNiYWIzMjIzOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwODdjZDBlMzI4ZGMxMjM1MTU1MTg4NGJlNGJlNjU5YmI4NDllOGViZDkyMGMwZmZlZGE2MzU1MWJkZmE4MDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiODUzNzY1MzRjYmNkNTNhMjdiYjkzYWI4YmYzOWZmNTBiYTUzOGE5YTczZjc4YWFiMjAzODU3NmExMTA4MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmZjUwMTFkYWFlNWFlOTQ0NmEzMWJiNTcwMTI2M2UzMjY4ZGEyMmYxZGNmZTIzOTk3MzliZWExYmRmODNhOGUifQ"
         },
         {
@@ -47,7 +43,7 @@
           "version": "repo-lines-v1:sha256:d58825f4203ac9a5df564fca357a21cf8c985e1a8245fa0fac674264eb239964:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDU4ODI1ZjQyMDNhYzlhNWRmNTY0ZmNhMzU3YTIxY2Y4Yzk4NWUxYTgyNDVmYTBmYWM2NzQyNjRlYjIzOTk2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDU4ODI1ZjQyMDNhYzlhNWRmNTY0ZmNhMzU3YTIxY2Y4Yzk4NWUxYTgyNDVmYTBmYWM2NzQyNjRlYjIzOTk2NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODdmNDg5YmUyYWM2OGI0MjIxMDQ0YTBmYzdmYjJjMGVmODQ3ZDY5OTYxMzFjNjZjYmFjMGY0ZWMxOWViNTM0NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmVhOWEzMWQwODg4MDRjZWZjODFiM2M0ZTc4MGYzYzI3ZGEwY2JmYTZjYjE2YzIwMjRhNGRkZmVhN2ZiYWQ1NyJ9"
         },
         {
-          "resource": "repo://docker-compose.yml#L115-L115",
+          "resource": "repo://docker-compose.yml#L112-L112",
           "version": "repo-lines-v1:sha256:5310b4c498ee69e9346c37a5efa4653cc3f361e98dbe4a58b4acf71910db44c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMxMGI0YzQ5OGVlNjllOTM0NmMzN2E1ZWZhNDY1M2NjM2YzNjFlOThkYmU0YTU4YjRhY2Y3MTkxMGRiNDRjNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMxMGI0YzQ5OGVlNjllOTM0NmMzN2E1ZWZhNDY1M2NjM2YzNjFlOThkYmU0YTU4YjRhY2Y3MTkxMGRiNDRjNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODkzOGYxMzIwYzg0OWMzNTYyYzhiODkxMGJmMjk3NTczYjVjNjM0YmUyN2I4ODhjYjY3MWYzODk1NTI0MGFkYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWI3OTIxZmUzOWQzYzYwY2MxYjU0ZDFmMGYzYTA1MDYxNDE1NjE0ZWM5ODJhYTQyYTNjZDdiYjgxNjNhYWU0NiJ9"
         }
       ]
@@ -218,7 +214,7 @@
     },
     {
       "id": "claim_0c5055846d0548208456a35503bad69d",
-      "statement": "0049_rfp_match_saved.sql widens the rfp_matches status CHECK constraint to flagged, saved, reviewed, dismissed by dropping and re-adding rfp_matches_status_check in one ALTER TABLE. It needs no new grant or policy because rfp_matches already has UPDATE granted to authenticated (0025) and an update policy (0027), and the catalog's status column lists the same four values.",
+      "statement": "0049_rfp_match_saved.sql is the latest migration (so the next is 0050): it widens the rfp_matches status CHECK constraint to flagged, saved, reviewed, dismissed by dropping and re-adding rfp_matches_status_check in one ALTER TABLE. It needs no new grant or policy because rfp_matches already has UPDATE granted to authenticated (0025) and an update policy (0027), and the catalog's status column lists the same four values.",
       "evidence": [
         {
           "resource": "repo://backend/app/agent/tools/sql/catalog.py#L794-L812",
@@ -240,15 +236,11 @@
     },
     {
       "id": "claim_b87a90477da7474aa49a19fb880d4140",
-      "statement": "Router code takes PoolDep, a CallerPool: each connection is one transaction that first sets the Postgres role (anon or authenticated, anon when unauthenticated), request.jwt.claims and a statement_timeout (default db_statement_timeout_ms) with SET LOCAL in one round trip, so RLS and grants apply to the route and the connection returns to the pool as the owner. OwnerPoolDep is the plain shared owner pool, used by identity code and by staff/Import and other routes, and it bypasses RLS.",
+      "statement": "Router code takes PoolDep, a CallerPool: each connection is one transaction that first sets the Postgres role (anon or authenticated, anon when unauthenticated) and request.jwt.claims with SET LOCAL, so RLS and grants apply to the route and the connection returns to the pool as the owner. OwnerPoolDep is the owner pool used by identity and staff/Import code, which bypasses RLS.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L144-L144",
-          "version": "repo-lines-v1:sha256:d4dffda7bbaad217f3b68e6821217089c534ddac147d0bc70e3bd5f312d1c211:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDRkZmZkYTdiYmFhZDIxN2YzYjY4ZTY4MjEyMTcwODljNTM0ZGRhYzE0N2QwYmM3MGUzYmQ1ZjMxMmQxYzIxMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDRkZmZkYTdiYmFhZDIxN2YzYjY4ZTY4MjEyMTcwODljNTM0ZGRhYzE0N2QwYmM3MGUzYmQ1ZjMxMmQxYzIxMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTczZmIwMzA4MDM2ZDE0N2NmMTVjZTVlMGM0ZWNiZTJiY2UwMmM0YjA3NDk1MmIyYzc5MDM0YmUwYTFkNTFhZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWY4OTk1M2FkNmRiNDRjYTFiMDAwNDJiMzlhMWI1YjhiYmViNzYxNTAzMTVhMzQzZmJmYjg1NmUyYTMzMjQ3ZSJ9"
-        },
-        {
-          "resource": "repo://backend/app/db/pool.py#L27-L80",
-          "version": "repo-lines-v1:sha256:b89d8925b1a1695516f0cd75fd89e9c974de42230f864516ea3d01603812f2f3:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MGE0ZGMyMDAxNjI5NGVkMjIyOTQwNTFhYjZlZmE2ZTJjZGI2N2NiMTQyMDEzNGY0MjQ1OGUwOGJkN2I4MDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTRlYjFmZGMwMjgxNTdjMmUxNGEwZmNiYThkNTE4Mzk4ZmQyMDMzZjdmYjAzZmViZGE0ODY4ODNmZWZhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3ZTA4ODY4YzkxZjQ1ZTQ5ZmM4ZDI4M2Y1Y2IyMTRlNjM0ZWE3OTdlZDJiMTQxM2E1M2Y3NjAzY2I2NDg4ZDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/db/pool.py#L25-L74",
+          "version": "repo-lines-v1:sha256:2d7351a7f07e6851b855a6743ec6ddba49a9481ae13d37cc0b2d08fbf0ba3da6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MGE0ZGMyMDAxNjI5NGVkMjIyOTQwNTFhYjZlZmE2ZTJjZGI2N2NiMTQyMDEzNGY0MjQ1OGUwOGJkN2I4MDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTRlYjFmZGMwMjgxNTdjMmUxNGEwZmNiYThkNTE4Mzk4ZmQyMDMzZjdmYjAzZmViZGE0ODY4ODNmZWZhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3ZTA4ODY4YzkxZjQ1ZTQ5ZmM4ZDI4M2Y1Y2IyMTRlNjM0ZWE3OTdlZDJiMTQxM2E1M2Y3NjAzY2I2NDg4ZDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -265,52 +257,14 @@
           "version": "repo-lines-v1:sha256:10e0275f3a74b5e78fdd4f3ab1f601f089c2e6981239f2c7353d7b1c4a22bea2:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGJmYmZlYmZmZDUwMTY2NDdlYWMwMjRkOGUxNzk2ZTRjMDA0MGRhYmZjOWJiM2ViZDZkNWQ4YjAwMzA0YmIwZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2EzMjFhYTFjODU3NWFhOWZmZmM4OTg4MGY5NWNlNjAxOWEyYWY4OTJjNjZiNTIyNTZhODVhMjBjM2JjYWI1ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhhODYzY2YzMzhlNjliNzcwMzZlZGM3MDAwZDlmNjRhMGY5ZThiNTNkNDc4YjhmNDEyNTk0YzJjMWM5OTY3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2VjY2M4ZGM5MzkwNTdhMTZmYWFlNGJkZWY3ZDc4YzU4N2FmYmM1ODU1NWFhZDAwODA3NDgwZDZmYzc0ODUxZSJ9"
         },
         {
-          "resource": "repo://backend/app/db/pool.py#L44-L45",
+          "resource": "repo://backend/app/db/pool.py#L39-L40",
           "version": "repo-lines-v1:sha256:9a89676cada8485ed47a9881568af63ad5e460a8fcf1bbaf45d24b69168fdc93:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzc4N2Q4YzkxZGRkZmZlZjc4NGNmMjQzYTc3ZWZiNzFhMmZlNDQxOTY4NzcxZjg4MTU2ZDIwYmQxZWU5ZjU1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTViMDA0NWVjZjc4YjY1YTU3YmY0NGExNzZmNjljNWNhMDdjM2FlZGEyODI2ODkwZmM4Y2EzYTE0MDliMjU0NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmI2YmEzMDVlZjhmODVhMDk4YTdjZDU3YWNkYThlOWVlNDkwNTJkZTc2NjVhYmY1Zjk0ZmI3ZjhmNmZlYmUwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzk1YjA0NmYwZjU4Y2Q2MjJkZjhhM2MxYzBjNGQwYzk3ODg1NGVmNjk4YzdmN2U2NjJmZTJiM2E0ZWVmYzU1OSJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_4e171da5238e492c8a59a15a38ea51b5",
-      "statement": "0050_proposal_stage_shift.sql is the latest migration (so the next file is 0051) and is a data-only UPDATE with no DDL: it increments work.stage, and summary.stage when present, for proposals at stage 3 or later, so it is only correct because the runner applies each recorded file once.",
-      "evidence": [
-        {
-          "resource": "repo://db/migrations/0050_proposal_stage_shift.sql#L1-L8",
-          "version": "repo-lines-v1:sha256:b26f4e3e0498d6a11af0cd1666ee6cb7f04a6cc0cfd6aab9fea38f9e01bee2be:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzNmZWMwNTJiN2FkZWFiYzVhY2Q5NzRlOTQ4NjVkYmVlNmIyMGZiZDZjMTFhNjY1M2I4OGE3ZTdjNmNlZGFkNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2U2OTczY2Q5MzE5NTdiNDdhOGFmMTdlZWIwNzVkMGI1YTU1MzRmOGVkY2U2MTJiNjNlOWYyMWQ3M2EyNWQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
-        }
-      ]
-    },
-    {
-      "id": "claim_fac1cda6b321459fa8284dc0c9f4d15c",
-      "statement": "After the SQL files succeed, migrate.py's main() also migrates LangGraph's checkpointer tables (PostgresSaver.setup, or a read-only version report with --status). It is in the runner rather than at boot so langgraph upgrades migrate deliberately; the backend's open_checkpointer does no DDL and raises RuntimeError telling the operator to run make migrate if the database is not at CHECKPOINT_VERSION.",
-      "evidence": [
-        {
-          "resource": "repo://backend/app/core/lifespan.py#L194-L194",
-          "version": "repo-lines-v1:sha256:f5b16cc0e65b5600df192acf1920f9c1d95eeb3782108bb596d8838437c74934:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjViMTZjYzBlNjViNTYwMGRmMTkyYWNmMTkyMGY5YzFkOTVlZWIzNzgyMTA4YmI1OTZkODgzODQzN2M3NDkzNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjViMTZjYzBlNjViNTYwMGRmMTkyYWNmMTkyMGY5YzFkOTVlZWIzNzgyMTA4YmI1OTZkODgzODQzN2M3NDkzNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjdkMjYzMWI3MDRmYjYyODc5MGFhZTJhMWJjZWJmMzg4MGUxZGE3NWJjMWJmZDJhMmY3YjYwMzlkNDQzNzI4NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGM4NDZiMmMxN2M4YjE1NTk2MWIyMzA5MjExMjAyNmYyZjZlNTI5N2E4MzQwOGY5OWI1ZTkzMDM2YzI0ZTIzOSJ9"
-        },
-        {
-          "resource": "repo://backend/app/db/checkpointer.py#L42-L63",
-          "version": "repo-lines-v1:sha256:45e644a00efcbbfe7de7f5bdc81175fc30b24fe609ea5afc9b6424aa756b0068:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1YjUwMmVjM2E2NWVmMTk5ZTM5NDFlZTVhZTgxOGQyYmNmMjViZWQ0NjA2NTJmOGEzOTNlMGVhNTk2N2NlMDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyZTIxMGRhMWMyZmVmZGU3NmYwN2NhNTJjOGRjZjI4YWMwYzFjNDhjNWU0NGFmYjdiOWZlODIwYmFmODU2M2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
-        },
-        {
-          "resource": "repo://backend/app/db/migrate.py#L33-L55",
-          "version": "repo-lines-v1:sha256:0be148fd3c8ebba2aaffdb8651739435c853422ab295d25a78febc6d75e59b35:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzMWJkNDJmZDE1N2U2OGRjN2Q5MzY2ZjRmOThlYzMyY2RjM2QwM2Y0M2Q3NDY0ZDY3ZDc1Y2Q1ZDYxMGI3NGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1MjU0YjZjY2MxNjU1MmZmMWNhMjBkY2FkNmM0ZGQ0OTVmYjU3YTkzMDZkZGM5MmQ1MGEyMTc1NWQ2NjI5MDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkZjU4MWFmYWY2ZmFhYjcxM2ZlODZjY2Y0NDFhYzYzMGIzM2JjOTU3MjhmMTcxNjA3NDFmMGVhNjA4MzEzMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIzOTFkOGIyZDBiOTNlYjQ3ZWU0N2MxNmU2MGEyNGY5YzgyNDQ4YzI1NmQ4Mjk5NzgxZGNlODJjODM4NmQ2NTUifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_c63cc89099d34c04924b70a6544aa3e5",
-      "statement": "backend/tests/test_cov_db_migrate.py tests the runner with a fake connection (apply order, drift, --status, a failing file stopping the run before the checkpointer step, missing DATABASE_URL or directory) and an integration test in a throwaway Postgres schema that runs it twice.",
-      "evidence": [
-        {
-          "resource": "repo://backend/tests/test_cov_db_migrate.py#L54-L181",
-          "version": "repo-lines-v1:sha256:b13ce1d52179bfc9390905942feccddd1fa2c64639713a19db859e3356a8038f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyM2YzNjZiOWJkOWE4ZDBmMzQwYTJiYzBiZTFlMjJlZWEyMDU2OGRkNzhhNDUyODFiNzIxYjMwZjIyZDA4N2YwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ZGEzMTA2ZmZjMzgyMTkzOGMyOTk3NmUwMDFmYTdkMWE1ZWE4ZjIzY2M5ZTgwMzM5NTJlYjQ3M2RhOTNlMGQxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNWEyN2UwZmUwMGY5ZTBkZjFmMjI4NTRhZmJmNWNjYThhOWNlNDBhMGZjOWY5OWEwMThhM2VkOTFhN2JiNzE3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-21T19:40:05.698Z"
+    "at": "2026-10-19T19:22:00.060Z"
   }
 }

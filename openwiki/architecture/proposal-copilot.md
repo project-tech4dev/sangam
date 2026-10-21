@@ -1,7 +1,7 @@
 ---
 type: architecture subsystem
 title: Proposal Copilot (Sangam Pitch)
-description: The third Sangam agent, on /proposal. Code owns the five steps, exit checks, fact list, question rules, trace check, readiness, public (secondary) research, polish check and .docx versions, all stored in proposals.work (migration 0048; 0050 inserted the "Make a case" step). The model only proposes; code checks every write.
+description: The third Sangam agent, on /proposal. Code owns the steps, exit checks, fact list, question rules, trace check, readiness, polish check and .docx versions, all stored in proposals.work (migration 0048). The model only proposes; code checks every write.
 tags: [proposals, proposal-copilot, sangam-pitch, agent, deepagents, work-jsonb, trace-check, human-in-the-loop, rls]
 sources:
   - id: openwiki-source-813dbe9c3eeb378112388ccd
@@ -40,8 +40,6 @@ sources:
     resource: repo://backend/app/proposals/records.py
   - id: openwiki-source-a8dd7f0809ad7a47ee620457
     resource: repo://backend/app/proposals/reliability.py
-  - id: openwiki-source-24ce930a55c54bd2a8400396
-    resource: repo://backend/app/proposals/research.py
   - id: openwiki-source-77ef2f5e8f9473e8f11227ff
     resource: repo://backend/app/proposals/review.py
   - id: openwiki-source-b59d42c79745bd3af5662730
@@ -62,18 +60,12 @@ sources:
     resource: repo://backend/app/proposals/work.py
   - id: openwiki-source-1157f5d2ae5aa2bccc1057d0
     resource: repo://backend/app/repositories/proposals.py
-  - id: openwiki-source-ee5692cacb99d7f9e3a3c180
-    resource: repo://backend/tests/test_cov_proposals_route.py
   - id: openwiki-source-1a719932f8db409931d9e2ef
     resource: repo://backend/tests/test_proposal_agent.py
   - id: openwiki-source-899c8be49aae16febe309b1e
     resource: repo://backend/tests/test_proposal_readers.py
-  - id: openwiki-source-deddc1ed8635a63cb09eb2a3
-    resource: repo://backend/tests/test_proposal_research.py
   - id: openwiki-source-3d121c1ca466c424ca2b4936
     resource: repo://db/migrations/0048_proposal_work.sql
-  - id: openwiki-source-2e81fea55b6132d8610d3e6a
-    resource: repo://db/migrations/0050_proposal_stage_shift.sql
   - id: openwiki-source-88fdf568b0f25b1d21f041da
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-fc71801b8203116cb828d7e9
@@ -82,10 +74,10 @@ sources:
     resource: repo://frontend/features/ask/views/proposals/api.ts
   - id: openwiki-source-1f1f7b91c66f0df6fef8e2df
     resource: repo://frontend/features/ask/views/proposals/FactList.tsx
-generated: { by: "openwiki/0.7.2", at: "2026-10-21T20:01:37.700Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-21T20:01:37.700Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Proposal Copilot (Sangam Pitch)
@@ -102,11 +94,10 @@ For the user-facing sequence, see [Proposal lifecycle](../workflows/proposal-lif
 
 | Piece | Role |
 |---|---|
-| `backend/app/api/routes/proposals.py` | REST resource: list, create from a saved match, read, rename, `PATCH /work`, `POST /advance` (optional `?to=N`), `POST /polish`, `GET /research/angles`, `DELETE /research`, `POST /versions`, `GET /messages`. |
+| `backend/app/api/routes/proposals.py` | REST resource: list, create from a saved match, read, rename, `PATCH /work`, `POST /advance`, `POST /polish`, `POST /versions`, `GET /messages`. |
 | `backend/app/proposals/agent.py` | Builds the `/proposal` deep agent and the reader agents (file, funder and, with a search key, public research). |
 | `work.py` | The only way `proposals.work` changes (`apply`). |
-| `steps.py`, `gates.py`, `readiness.py`, `rubric.py` | The five steps and their exit checks, step 1's requirements, "Before you send it" summary, the `proposal-v2` section rubric and its tabs. |
-| `research.py` | Secondary research's checked paragraph per topic, the person's research asks, the "Research deeper" search angles and `reset`, which works out what deleting secondary research removes. |
+| `steps.py`, `gates.py`, `readiness.py`, `rubric.py` | Steps and exit checks, step 1's requirements, "Before you send it" summary, the `proposal-v2` section rubric. |
 | `facts.py`, `reliability.py`, `records.py`, `questions.py` | The fact list's rules, source colours, the registry re-check, the rules for asking. |
 | `trace.py`, `grade.py`, `review.py`, `polish.py`, `assemble.py` | Trace check, 0 to 2 score, correction propagation, checked smoothing, Word file. |
 | `readers.py`, `tools/*.py`, `prompts/*.md` | Parallel readers (files, funder, public research), the agent's tools and the readers' prompts. |
@@ -139,7 +130,7 @@ Migration 0048 also opens `documents_insert` to any role in the org (and staff) 
 
 `work` is jsonb, `NOT NULL DEFAULT '{}'`, beside a `summary` jsonb. `create_proposal` builds the first `work` from the saved Funder Match run: stage 1, requirements, `earlier_phase`, the match id and score, the funder's newest `proposal_template` document if Sangam holds one, the default writing style, and empty `gates`, `sections`, `facts`, `questions`, `log` and `versions`. A proposal needs a saved match run: starting one without it is a 409. Starting is for the org's admins and stewards (403 otherwise). The list endpoint never reads `work`, only `summary`.
 
-Main keys: `stage`, `requirements`, `gates`, `template`, `skipped_template`, `sources` (ticked document ids), `style`, `sections.<code>` (`text`, `rev`, `done`, `score`, `missing`, `untraced`, `needs_rewrite`), `facts.<kN>`, `questions.<qN>`, `readers` (keys: a document id, `funder`, `public`; the public entry also keeps its `brief`, per-topic `summaries` and the hosts it could not open), `research_asks.<aN>` (what a person asked public research to look into), `polished`, `versions`, `log`.
+Main keys: `stage`, `requirements`, `gates`, `template`, `skipped_template`, `sources` (ticked document ids), `style`, `sections.<code>` (`text`, `rev`, `done`, `score`, `missing`, `untraced`, `needs_rewrite`), `facts.<kN>`, `questions.<qN>`, `readers`, `polished`, `versions`, `log`.
 
 ### One write path
 
@@ -147,19 +138,18 @@ Main keys: `stage`, `requirements`, `gates`, `template`, `skipped_template`, `so
 
 1. Checks every change first and then applies them all, so nothing is half-applied. Allowed paths are a fixed set of regexes. Anything else is `BadChange` (400).
 2. Requires a section change to carry the section's `rev`. A stale `rev` raises `StaleSection` (409), which names who changed the part last.
-3. Increments each touched section's `rev` (including a part that `review.follow` rewrote, which has no `rev` of the person's to check), and logs each change to `work.log` as `{at, by, via, run_id, path, from, to, facts, reason}`. `via` is `rest`, `agent`, `polish`, `version` or `reset`. Long logged values are cut at 200 characters; the section keeps its whole text.
+3. Increments each touched section's `rev`, and logs each change to `work.log` as `{at, by, via, run_id, path, from, to, facts, reason}`. `via` is `rest`, `agent`, `polish` or `version`.
 4. Recomputes the part's `untraced` list when its text changes.
 
 `via` also gates who may set a path:
 
 | Path | Who may set it |
 |---|---|
-| `stage` | Forward only through `POST /advance` (default the next step, or `?to=N`) or `advance_step`, and a forward move is refused when any step on the way has something missing (`steps.blocking`). `PATCH` only goes back. |
-| `sections.X.score`, `needs_rewrite`, `facts.kN.used_in`, new `facts.kN`, `questions.*`, `readers.*`, `research_asks.*` | Only `via="agent"`. |
+| `stage` | Forward only through `POST /advance` or `advance_step`. `PATCH` only goes back. |
+| `sections.X.score`, `needs_rewrite`, `facts.kN.used_in`, new `facts.kN`, `questions.*`, `readers.*` | Only `via="agent"`. |
 | `sections.X.missing` and `untraced` | Never from outside; derived by code. |
 | `polished` | Only the polish route, `via="polish"`. |
 | `versions` | Only the version route, `via="version"`, and only if the list grows by exactly one entry numbered `len(list)`. |
-| `facts.kN` set to `null`, `readers.public`, `research_asks` set to `null` | Only `via="reset"`, used by `DELETE /research`. It may remove only facts whose `found_by` is `public`. It is the one change that removes keys rather than setting them. |
 | `facts.kN.status` | A person may set `proposed`, `confirmed` or `rejected`. `corrected` appears only with the fact that replaces it. |
 | `facts.kN.correct` | A person's correction. `apply` expands it into a new `you_said` fact with `supersedes` and marks the old one `corrected`. |
 
@@ -167,33 +157,30 @@ REST typing is more lenient than the agent. A person's own edit to a part's text
 
 ## Steps and exit checks
 
-The proposal has five stages in `work.stage`. The names are `steps.STAGES`, which mirror the frontend's `steps.ts`. Migration `0050_proposal_stage_shift.sql` inserted "Make a case" as step 3 and added one to the stored `stage` (in `work` and in the list's `summary`) of every proposal that was at step 3 or later; before it there were four stages and "Write the proposal" was step 3. Rubric tabs follow the split: the `case` tab (Summary, Context and target area, Problem and baseline) belongs to step 3, and the other four tabs (plan, people, money, funder) to step 4 (`rubric.stage_of`).
+The proposal has four stages in `work.stage`. The names are `steps.STAGES`, which mirror the frontend's `steps.ts`.
 
 ```mermaid
 flowchart TD
     S1["1 Can you apply?"] -->|"every requirement answered and no hard No"| S2["2 Your documents and style"]
-    S2 -->|"form chosen or skipped, style set, files read"| S3["3 Make a case"]
-    S3 -->|"Context and Problem have text"| S4["4 Make a plan"]
-    S4 -->|"always allowed"| S5["5 Before you send it"]
-    S5 --> POLISH["Smooth the language"]
-    S5 --> DOCX["Download as Word file, saves a version"]
+    S2 -->|"form chosen or skipped, style set, files read"| S3["3 Write the proposal"]
+    S3 -->|"always allowed"| S4["4 Before you send it"]
+    S4 --> POLISH["Smooth the language"]
+    S4 --> DOCX["Download as Word file, saves a version"]
     S2 -.->|"PATCH stage goes back only"| S1
     S3 -.-> S2
     S4 -.-> S3
-    S5 -.-> S4
 ```
 
-Caption: the five stages, what code requires to leave each, and the two finishing actions on the last stage; dotted arrows are the back moves `PATCH` allows.
+Caption: the four stages, what code requires to leave each, and the two finishing actions on the last stage; dotted arrows are the back moves `PATCH` allows.
 
-`steps.exit_check(stage, work)` returns what is missing, in words; empty means the step can be left. `steps.blocking(work, to)` runs it for every step passed on the way to `to`, so a click on a later step is allowed only when everything before it can be left, and `readiness.summary` reports the result as `furthest`. REST `POST /advance[?to=N]` and the agent's `advance_step` (always one step) both check inside the row lock. REST answers 409 `{message, missing}`. The tool returns `NOT YET: to leave this step, …`.
+`steps.exit_check(stage, work)` returns what is missing, in words; empty means the step can be left. REST `POST /advance` and the agent's `advance_step` both call it inside the row lock. REST answers 409 `{message, missing}`. The tool returns `NOT YET: to leave this step, …`.
 
 - **Step 1:** every requirement has an answer (`yes`, `will_have`, `no`), and no hard requirement is `no`.
-- **Step 2:** a funder form chosen or "Sangam's usual order" chosen, a non-empty style, and "Write the first draft" pressed (a reader other than `public` is recorded in `work.readers`). A public search alone does not satisfy this. No such reader may still be running, unless it started more than 30 minutes ago, which counts as dead. A failed file does not hold up step 3.
-- **Step 3, Make a case:** Context and target area (A2) and Problem and baseline (A3) both have text (`steps.CASE_FIRST`). The Summary waits for the plan.
-- **Step 4, Make a plan:** always leavable. The summary's Fix first list is where readiness is judged.
-- **Step 5:** the last step.
+- **Step 2:** a funder form chosen or "Sangam's usual order" chosen, a non-empty style, and "Write the first draft" pressed (`work.readers` is non-empty). No reader may still be running, unless it started more than 30 minutes ago, which counts as dead. A failed file does not hold up step 3.
+- **Step 3:** always leavable. The summary's Fix first list is where readiness is judged.
+- **Step 4:** the last step.
 
-Writing tools also refuse early: `steps.too_early` allows `add_facts` and `read_files` from step 2, and `ask_user`, `write_section` and `suggest_edit` from step 3. Sections are written in dependency order (`rubric.DEPENDS_ON`: A2 and A3 before A4, A4 before A5 and A6, A5 before A15, every other section before the Summary A1). `steps.may_write` waives this for the part the person has open on screen, except the Summary, which always waits for every other part.
+Writing tools also refuse early: `steps.too_early` allows `add_facts` and `read_files` from step 2, and `ask_user`, `write_section` and `suggest_edit` from step 3. Sections are written in dependency order (`rubric.DEPENDS_ON`: A2 and A3 before A4, A4 before A5 and A6, A5 before A15, every other section before the Summary A1). `steps.may_write` waives this for the part the person has open on screen.
 
 ## Step 1: requirements from the match
 
@@ -213,13 +200,13 @@ Facts live in `work.facts` (ids `k1`, `k2`, …), cited in text as `⟦k7⟧`. T
 
 A fact with the same origin, source, subject and value returns the existing id, so a retried turn adds nothing. New facts arrive `proposed`; the person confirms them on screen. Ids are allocated inside the row lock.
 
-**Public research facts get a stricter check.** While the public research reader runs, `PUBLIC_RUN` is set and `add_facts` also calls `facts.off_page`. It accepts only `web` facts for sections A2, A3, A4, A14 and F1 (`PUBLIC_SECTIONS`), requires a `topic` (problem, place, government, sdg or elsewhere), requires an `as_of` year, refuses Wikipedia as a source, requires the cited link to be a page the reader read in this run, requires the quote to appear on that page (compared through `facts.norm`), and requires every number in the value to be in the quote. Accepted facts are stamped `found_by: "public"` (and the run's research-ask id as `ask`, when it answers one), which the screen uses to label them "From secondary research, not checked" and to tell them from the funder reader's web facts. See [Readers](#readers).
+**Public research facts get a stricter check.** While the public research reader runs, `PUBLIC_RUN` is set and `add_facts` also calls `facts.off_page`. It accepts only `web` facts for sections A2, A3, A4, A14 and F1 (`PUBLIC_SECTIONS`), requires an `as_of` year, requires the cited link to be a page the reader read in this run, requires the quote to appear on that page (compared through `facts.norm`), and requires every number in the value to be in the quote. Accepted facts are stamped `found_by: "public"`, which the screen uses to label them "From public research, not checked" and to tell them from the funder reader's web facts. See [Readers](#readers).
 
 ## Questions: one at a time, by rule
 
 `ask_user` pauses the graph with a LangGraph `interrupt` of type `proposal_question`, and a card appears above the chat. `questions.may_ask` is the one gate:
 
-- Not before step 3. On steps 3 and 4 only about the part the person has open on screen; step 5 has no such limit.
+- Not before step 3. On step 3 only about the part the person has open on screen.
 - One open question per person. A gap already open with a teammate is refused.
 - Its reason must be warranted by the fact list. **missing**: the section has that strong element and no live fact fills it. **disagree**: two live facts about the same kind, subject and period, from equally strong sources, with different values. **org_call**: only the organisation can decide it (programme, amount or gate).
 - A question lives in `work.questions` with `asked_of`, because each chat is private and the answer belongs to the shared proposal.
@@ -228,12 +215,7 @@ The reply resumes the run as a card pick or typed text. `questions.classify` sor
 
 ## Readers
 
-`read_files` is the agent's only reading tool for step 2 and for research, and code does the rest (`readers.py`). Under the row lock, `_claim` asks `readers.pending` what to run. There are two groups, each with its own lock:
-
-- **Files group** (`read_files()`, the "Write the first draft" button): every ticked file and the funder's side, each unless already `done`.
-- **Public group** (`read_files(public=True, …)`, the "Search public sources" or "Research deeper" button): public research alone, which may run again even when `done`.
-
-`_claim` marks the keys `running` in `work.readers` (keys are a document id, `funder` or `public`). If a non-stale reader of the same group is still running, the call is refused with who started it and when ("Busy"). A running public search does not hold up the files, and reading the files does not hold up a search. This is the one lock in the feature, and it applies to reading only, never to chatting. Then `asyncio.gather` runs one reader per key, bounded by `max_parallel_research`.
+`read_files` is the agent's only reading tool for step 2, and code does the rest (`readers.py`). Under the row lock, `_claim` finds what is pending: every ticked file, the funder's side, and public research when it was built, each unless already `done`. It marks them `running` in `work.readers` (keys are a document id, `funder` or `public`). If a non-stale reader is still running, the call is refused with who started it and when ("Busy"). This is the one lock in the feature, and it applies to reading only, never to chatting. Then `asyncio.gather` runs one reader per key, bounded by `max_parallel_research`.
 
 There are three kinds of reader. All are separate deep agents built once with the proposal agent by `readers.build` (`research_model`, `checkpointer=False`, with `tool_errors` and `RunSources` middleware, and a `fallback` that prefers `research_model`):
 
@@ -251,24 +233,15 @@ There are three kinds of reader. All are separate deep agents built once with th
 
 ### Public research
 
-Public research (design in `docs/features/2026-10-20-pitch-public-research.md`; shown on screen as "Secondary research") fills the gap that Context, Problem and Fit stayed `[Add: …]` without public evidence. The plan first ran it beside the file readers on "Write the first draft"; the code now runs it on its own button, so it is the `public` reader of its own group (see above), and its card moved from step 2 into step 3, Make a case. Its guards are all in code:
+Public research (design in `docs/features/2026-10-20-pitch-public-research.md`) fills the gap that Context, Problem and Fit stayed `[Add: …]` without public evidence. Its guards are all in code:
 
-- **Off without a search key.** `BUILT.public` is created only when `settings.tavily_api_key` is set. Without it `read_files(public=True)` answers that research is unavailable, and nothing fails.
+- **Off without a search key.** `BUILT.public` is created only when `settings.tavily_api_key` is set. Without it `pending` never lists `public` and nothing fails.
 - **Task from public data only.** `public_task` is built from the registry's public rows (places, themes, programmes, SDGs, capped at 8 each) and the sections public facts can serve. It never includes a file or the fact list, so private figures cannot reach a search. With no place on record it asks for state-level or India-wide searches.
-- **Never search for the org.** `PublicGuard` (in `middleware.py`) refuses a `search_public_sources` call whose query names the org on a word boundary, so a longer word containing the name is allowed. Angles the person adds in a research ask are filtered the same way (`research.focus` drops any naming the org, a partner or a person).
-- **Quote must be on a page it read.** `PublicGuard` keeps the text of every `read_page` result (and of PDFs from `fetch_document` plus `read_document_pages`) in the run's `PublicRun.pages`, keyed by `page_key` (no scheme, `www.` or trailing slash); hosts that refused or failed are kept in `PublicRun.unopened` and shown on screen. `add_facts` then applies `facts.off_page` against that text.
-- **Prompt.** `prompts/public_researcher.md` asks for problem magnitude at region, state, India and global level, why this place, government schemes, SDGs and impact evidence (studies that measured what changed), says to add a fact only when a page it read states it and to give each fact a topic, and ends the run with a brief. It never drafts proposal text.
+- **Never search for the org.** `PublicGuard` (in `middleware.py`) refuses a `search_public_sources` call whose query names the org on a word boundary, so a longer word containing the name is allowed.
+- **Quote must be on a page it read.** `PublicGuard` keeps the text of every `read_page` result (and of PDFs from `fetch_document` plus `read_document_pages`) in the run's `PublicRun.pages`, keyed by `page_key` (no scheme, `www.` or trailing slash). `add_facts` then applies `facts.off_page` against that text.
+- **Prompt.** `prompts/public_researcher.md` asks for the problem measured at district, state and India level, why this place, government schemes, SDGs and what worked elsewhere, and says to add a fact only when a page it read states it and never to draft proposal text.
 
-### Asks, summaries and the brief
-
-- **Research asks.** With an ask, focus angles, named sites or `deeper=True`, `read_files` records a `work.research_asks.<aN>` entry (`kind` is `deeper`, `chat` or `plan`; `research.bad_ask` validates it, and only the agent writes it). The run's task gets a "Focus of this run" block and what is already found, never the person's own text or files, and each fact it adds carries the ask's id.
-- **Angles from the case.** `GET /research/angles` needs Context and Problem marked done (`research.not_ready`, else 409; the Summary is read when written but never required), has the utility model turn the case text (A1 to A3, citations removed, `research.case_text`) into up to eight search angles, every `[Add: …]` gap first (the prompt asks for it), and drops angles naming the org, funder, a partner or a person (`_names`). A model failure is a 502. The person edits the list, and "Search these" runs a deeper ask.
-- **One paragraph per topic.** After a successful run, `research.summarise` has a utility-model call write a short paragraph for each of the five topics from that topic's live public facts. It is kept only when it cites that topic's facts and every claim traces (`research.checked`); a topic that fails is left without one. Paragraphs are stored in `readers.public.summaries`.
-- **The brief.** The run's last message (up to 20,000 characters) is kept as `readers.public.brief` and shown as Markdown on the card.
-
-- **Deleting it.** `DELETE /proposals/{id}/research` (editors only) runs `research.reset` under the row lock and applies it with `via="reset"`. It removes `readers.public` (brief, summaries, unopened hosts), `research_asks` and every `found_by: "public"` fact that no part's text cites, no other fact derives from (`from`) and no correction replaced (`supersedes`). Those facts are deleted, not set aside, so a fresh search can find them again. It answers 409 while a public search is running, and 409 "There is no secondary research to delete." when `reset` finds nothing to change.
-
-The public reader's results are amber web facts; the person confirms or drops them like any other, one Use this / Don't use for a whole topic.
+The public reader's results are amber web facts; the person confirms or drops them like any other. The changelog marks this change "unmerged", although the code is in the repository.
 
 ## Writing: trace check, then grade
 
@@ -311,7 +284,7 @@ Sections A6, A15 and F1 (`MUST_SCORE_2`) are told to be rewritten once if they s
 
 ## Review, readiness and corrections
 
-A correction or "Don't use it" goes through `review.follow` inside `apply`. A sentence citing the corrected fact gets the new value if the old value appears word for word and the fix adds no untraced claim. Otherwise the part is marked `needs_rewrite`. Only a later `write_section` that fully traces, or a person's own edit that changes the part's text (`work._after_typing`), clears the flag. A sentence that cannot be fixed also leaves the corrected fact in the part's `used_in`. Facts derived from the changed fact (`from`) go back to `proposed` if they were confirmed, so the person checks them again.
+A correction or "Don't use it" goes through `review.follow` inside `apply`. A sentence citing the corrected fact gets the new value if the old value appears word for word and the fix adds no untraced claim. Otherwise the part is marked `needs_rewrite`, and only a later `write_section` that fully traces clears the flag. Facts derived from the changed fact go back to `proposed`, so the person checks them again.
 
 `readiness.summary(work)` is recomputed on every save. It lists **Fix first**, which stops `ready`:
 
@@ -323,7 +296,7 @@ A correction or "Don't use it" goes through `review.follow` inside `apply`. A se
 - a used fact still `proposed`;
 - an unsettled disagreement.
 
-It also lists **Worth checking**, which never blocks: a score of 1, a requirement answered "will have it before sending", a gap still to fill, and a parked question. The summary also carries `to_continue` (what `steps.exit_check` says is missing on the open step) and `furthest` (the last step the person can click to). `work.conflicts` is initialised empty and counted by readiness, but no code in `backend/app` currently writes to it.
+It also lists **Worth checking**, which never blocks: a score of 1, a requirement answered "will have it before sending", a gap still to fill, and a parked question. `work.conflicts` is initialised empty and counted by readiness, but no code in `backend/app` currently writes to it.
 
 ## Polish and versions
 
@@ -359,13 +332,9 @@ Agent tools are written never to raise. Each catches its failures and returns an
 
 ## Plan versus code status
 
-The plan is `docs/features/2026-10-14-proposal-copilot.md`. Its own status line ("Draft v3 … first version trimmed") is not a reliable guide, so check the [changelog's Proposals section](../../docs/CHANGELOG.md) for what has landed.
+The plan is `docs/features/2026-10-14-proposal-copilot.md`. Its own status line ("Draft v3 … first version trimmed") is not a reliable guide. The shipped milestones (M2 to M8, including `suggest_edit` and writing in place) are listed in the [changelog's Proposals section](../../docs/CHANGELOG.md), which is the place to check for what has landed. Its "Not finished" table has no row for the copilot, so none is declared partial. One row there, for `2026-10-10-list-pages-proposals-media.md`, still says "No proposals backend", which no longer matches the code (migration `0048` and `backend/app/proposals/`).
 
-**What the changelog records.** Milestones M2 to M8 (agent, facts and asking, readers, writing with trace check, review, finish, `suggest_edit`, write in place) are listed as shipped. Later entries are all marked "(unmerged)" although their code is in the repository: public research, the Make a case step (with migration `0050`), forward clicks on the step bar, research asks from the chat, "Research deeper" angles, the research brief, and deleting secondary research (`DELETE /research`). Treat the "unmerged" label as the changelog's, not the code's: it has not been updated, and no part of it is marked unfinished.
-
-**What the "Not finished" table says.** It has no row for the copilot or for public research, so neither is declared partial. One row there, for `2026-10-10-list-pages-proposals-media.md`, still says "No proposals backend" and lists proposal drafting and assemble/polish/`.docx` as left, which no longer matches the code (migration `0048`, `backend/app/proposals/`).
-
-**Unfinished against the plan.** The plan's §11 "Later" list is mostly unbuilt: freshness and corroboration in fact colours, more reasons to ask (stale, weak support), recomputing derived figures after a correction, a changed-file check, a promise check in polish, `flag_conflict` (nothing in `backend/app` defines it, and nothing writes `work.conflicts`), the funder form's limits, and staff numbers. Two of its items were delivered another way: editing a part by hand shipped as M8's write in place, and the web-searching landscape reader was replaced by public research. Code also differs from the plan elsewhere: there is no `StageGate`, `AskGate` or `ProposalSources` middleware, because those checks live inside the tools; the proposal-specific agent middleware are `ProposalContext` and the small `nothing_to_answer` hook (`PublicGuard` belongs to the public reader only); and the plan's "three steps" are five stages in code. A `you_said` fact is stored only by `ask_user`.
+The plan's §11 "Later" list is what is left, and it is unbuilt except for one item. It includes freshness in fact colours, more reasons to ask, `flag_conflict`, a changed-file check, a promise check in polish, and the funder form's limits. The web-searching landscape reader was replaced by public research (`docs/features/2026-10-20-pitch-public-research.md`), which exists in code but is marked "unmerged" in the changelog and has no row in the "Not finished" table. Code differs from the plan in places. For example, there is no `StageGate`, `AskGate` or `ProposalSources` middleware: those checks live inside the tools and `ProposalContext` is the only proposal middleware. The plan's "three steps" are four stages in code. A `you_said` fact is stored only by `ask_user`.
 
 ## Tests
 
@@ -375,8 +344,6 @@ Backend tests cover the code-only safeguards and run without model calls:
 - `tests/test_proposal_agent.py`: the own-chat access rules (member 403, stranger 404), `advance_step`, context blocks, and the nine-tools-plus-`read_file` set.
 - `tests/test_proposal_facts.py`: tiers, question rules, per-origin fact checks.
 - `tests/test_proposal_readers.py`: file and funder readers carry no web or ask tool, per-file source isolation, pending and Busy logic, and public research (exactly its five tools plus `read_file`, not built without a search key, task holds no file figures, `PublicGuard` org-name refusal and page keeping).
-- `tests/test_proposal_research.py`: the five steps and their exit checks (`furthest`, `blocking`), questions on steps 3 and 4, topic fallback, checked per-topic paragraphs, research asks, focus angles and sites, `research.reset` and the rule that only `via="reset"` may remove public facts, and the angles' readiness check and case text.
-- `tests/test_cov_proposals_route.py`: the route's research endpoints (angles 409 until the case is done, 502 on a model failure, 403 for a reader; `DELETE /research` keeps cited facts, logs `via: "reset"`, and refuses while a search runs). `tests/test_cov_proposals_readers.py` covers the reader runs: marking, failures, the brief's length, per-topic paragraphs and an ask's recorded facts.
 - `tests/test_proposal_writing.py`: trace, order, scoring, typed parts.
 - `tests/test_proposal_review.py`, `test_proposal_suggest.py` and `test_proposal_finish.py`: review, suggestions, polish check.
 

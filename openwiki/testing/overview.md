@@ -1,8 +1,8 @@
 ---
 type: testing guide
 title: Testing
-description: How the backend test suite is split into unit tests (no database), integration tests (compose Postgres on :5433) and evals (real model calls that cost money), how the frontend Vitest suite runs, how the CI workflow, dependency review and per-component Codecov 75% gates check every PR (CI never deploys), the test_cov_* coverage push, and which tests pin the system's security, tool-surface and proposal-copilot invariants.
-tags: [testing, pytest, vitest, frontend, integration-tests, evals, sql-compare, ci, github-actions, codecov, coverage, invariants, proposals, rls]
+description: How the backend test suite is split into unit tests (no database), integration tests (compose Postgres on :5433) and evals (real model calls that cost money), how to run each tier, how the CI workflow, dependency review and Codecov check every PR (CI never deploys), and which tests pin the system's security, tool-surface and proposal-copilot invariants.
+tags: [testing, pytest, integration-tests, evals, ci, github-actions, codecov, coverage, invariants, proposals, rls]
 sources:
   - id: openwiki-source-164e2da859b5277df81c7d94
     resource: repo://.github/workflows/ci.yml
@@ -16,8 +16,6 @@ sources:
     resource: repo://backend/pyproject.toml
   - id: openwiki-source-539ff1e55b1e385204a4bb93
     resource: repo://backend/tests/conftest.py
-  - id: openwiki-source-f02e0c938485b68ec56ef289
-    resource: repo://backend/tests/cov_ingest_fakes.py
   - id: openwiki-source-39f5427f53dfb7fd20ac77cf
     resource: repo://backend/tests/evals/cases/import/canary.jsonl
   - id: openwiki-source-525d2a082ef8772e1fe91f69
@@ -28,8 +26,6 @@ sources:
     resource: repo://backend/tests/evals/harness.py
   - id: openwiki-source-28c0299addb344bf8508c6d2
     resource: repo://backend/tests/evals/import_harness.py
-  - id: openwiki-source-78f442ef4d6533894276f5c3
-    resource: repo://backend/tests/evals/sql_compare.py
   - id: openwiki-source-edebaaa991aec01704e84f6a
     resource: repo://backend/tests/evals/test_agent_evals.py
   - id: openwiki-source-e863856c857e426d63a2b3d8
@@ -38,8 +34,6 @@ sources:
     resource: repo://backend/tests/evals/test_import_evals.py
   - id: openwiki-source-8ce79a18e6eab471015a75e0
     resource: repo://backend/tests/evals/test_run_stats.py
-  - id: openwiki-source-4938b2b765d15256cece6bc9
-    resource: repo://backend/tests/evals/test_sql_compare.py
   - id: openwiki-source-f298183777e9f6b64bb1b60f
     resource: repo://backend/tests/test_agent_middleware.py
   - id: openwiki-source-bc3c2ebc658cef90ceb7a159
@@ -50,14 +44,6 @@ sources:
     resource: repo://backend/tests/test_audit.py
   - id: openwiki-source-0808792899dda5ae43456460
     resource: repo://backend/tests/test_caller_pool.py
-  - id: openwiki-source-bea84748782ab0bf06fe9192
-    resource: repo://backend/tests/test_cov_core_egress.py
-  - id: openwiki-source-e5554658094627ddf1bb9942
-    resource: repo://backend/tests/test_cov_db_migrate.py
-  - id: openwiki-source-61df798cf075d4a6db550265
-    resource: repo://backend/tests/test_cov_promote.py
-  - id: openwiki-source-166fab4e004d0e4e6c342010
-    resource: repo://backend/tests/test_cov_writer.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
     resource: repo://backend/tests/test_harness.py
   - id: openwiki-source-1f8a01f7f723a9c4852239b4
@@ -90,23 +76,17 @@ sources:
     resource: repo://CLAUDE.md
   - id: openwiki-source-5f7022cb75865b779a5792a0
     resource: repo://codecov.yml
-  - id: openwiki-source-46e3a6139ce071cd8d5f3b62
-    resource: repo://docs/features/2026-10-21-coverage-75.md
-  - id: openwiki-source-aa45754762425e69546840b0
-    resource: repo://frontend/tests/setup.ts
-  - id: openwiki-source-1d581b0a43d33a40ea0876c7
-    resource: repo://frontend/vitest.config.mts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-21T19:40:05.698Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Testing
 
-Backend tests live in `backend/tests/` and run with pytest; frontend tests are Vitest files colocated with the code (see [Frontend Vitest suite](#frontend-vitest-suite)). The backend falls into three tiers that differ in what they need and what they cost. Pytest is configured in `backend/pyproject.toml` with `asyncio_mode = "auto"`, so async tests need no decorator, and with two registered markers, `integration` and `eval`.
+All tests live in `backend/tests/` and run with pytest. They fall into three tiers that differ in what they need and what they cost. Pytest is configured in `backend/pyproject.toml` with `asyncio_mode = "auto"`, so async tests need no decorator, and with two registered markers, `integration` and `eval`.
 
 | Tier | Needs | Marker | Costs money | Runs by default |
 |---|---|---|---|---|
@@ -114,7 +94,7 @@ Backend tests live in `backend/tests/` and run with pytest; frontend tests are V
 | Integration | compose Postgres on `localhost:5433` | `integration` | no | yes, but skips if the DB is unreachable |
 | Evals | compose Postgres, a provider API key, `--run-evals` | `eval` | yes | no, always skipped without the flag |
 
-CI runs the first two tiers, plus the frontend Vitest suite, on every pull request (see [CI](#ci-and-coverage)); it never runs evals.
+CI runs the first two tiers on every pull request (see [CI](#ci-and-coverage)); it never runs evals.
 
 ```mermaid
 flowchart TD
@@ -139,16 +119,6 @@ pytest -k "score"              # one pattern
 pytest -m "not integration"    # skip everything needing Postgres on :5433
 pytest --cov                   # with coverage (pytest-cov is in the dev group)
 ruff check .                   # line-length 110, target py312
-```
-
-From `frontend/`:
-
-```bash
-npm test                       # vitest run (both projects)
-npm run coverage               # vitest run --coverage; what CI runs (v8 provider, writes coverage/lcov.info)
-npm run lint                   # ESLint
-npx tsc --noEmit               # type check
-npm run build                  # type errors surface here and never in `next dev`
 ```
 
 From the repo root, evals go through `make`:
@@ -178,47 +148,17 @@ Three workflows live in `.github/workflows/`, and only one of them can deploy.
 | `backend-lint` | `uv sync --frozen`, then `ruff check . --output-format=github` |
 | `backend-unit` | `pytest -m "not integration" --cov --cov-report=xml -q`, then uploads `backend/coverage.xml` to Codecov with flag `backend-unit` |
 | `backend-integration` | a `pgvector/pgvector:pg17` service container published on `5433`; applies `db/init/*.sql` with `psql`, then `python -m app.db.migrate` (with `MIGRATIONS_DIR` set to the workspace's `db/migrations`), `seed.seed` and `seed.taxonomy_seed`, then `pytest -m integration --cov --cov-report=xml -q -rs`; uploads with flag `backend-integration` |
-| `frontend` | on Node 22: `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run coverage` (the Vitest suite with v8 coverage), an upload of `frontend/coverage/lcov.info` to Codecov with flag `frontend`, then `npm run build` |
+| `frontend` | `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run build` on Node 22 |
 
 Details that matter when a job goes red:
 
 - The integration job runs with `-rs` so skips are listed: a test that skips with "Postgres not reachable" in CI means a broken job, not a pass. It deselects `test_migration_integrity.py::test_preserved_row_counts` and `::test_documents_sequence_advanced`, because those check a restore of the original dump (96 documents) that `make seed` never creates.
-- Three jobs (`backend-unit`, `backend-integration`, `frontend`) upload to Codecov with OIDC (`id-token: write`, `use_oidc` is on unless the PR comes from a fork) rather than a stored token; fork PRs get no OIDC and fall back to tokenless upload. The flags are `backend,backend-unit`, `backend,backend-integration` and `frontend`; the shared `backend` flag is what the README badge reads.
-- Backend coverage is configured in `backend/pyproject.toml` (`[tool.coverage.run]`: `source = ["app"]`, `branch = true`, `relative_files = true`), so the unit and integration `coverage.xml` files are relative to `backend/`. Frontend coverage is configured in `frontend/vitest.config.mts` and its `lcov.info` paths are relative to `frontend/`. `codecov.yml` rewrites both (`app/` to `backend/app/`, and `lib/`, `features/`, `components/` to their `frontend/` paths) so files line up with the repository.
-- `codecov.yml` merges the uploads into one report per commit and turns the global `project` and `patch` statuses **off**; the gates are per **component** (`backend` for `backend/**`, `frontend` for `frontend/**`) so one side's figure cannot sink the other's. Each component has three statuses: a `floor-` project check that coverage stays at or above 75%, a project check against the base commit (`target: auto`, `threshold: 1%`, so a PR may not lower coverage by more than 1%) and a patch check that at least 75% of the lines the PR adds or changes are covered. Flags carry forward when a job did not upload. The PR comment shows diff, flags, components and files.
+- Codecov uploads use OIDC (`id-token: write`) rather than a stored token; fork PRs get no OIDC and fall back to tokenless upload.
+- Coverage is configured in `backend/pyproject.toml` (`[tool.coverage.run]`: `source = ["app"]`, `branch = true`, `relative_files = true`); `codecov.yml` maps the `app/` paths to `backend/app/`.
+- `codecov.yml` merges the two uploads into one report per commit and sets two status checks: **project** coverage must not fall more than 1% below the base commit (`target: auto`, `threshold: 1%`) and **patch** coverage (lines the PR adds or changes) must be at least 70%. Flags carry forward when a job did not upload.
 - The pytest-cov, ruff (pinned `ruff==0.16.8`) and ignore rules (`B008` for FastAPI `Depends()`, `RUF012`, `UP046`) are in `backend/pyproject.toml`. The design plan is `docs/features/2026-10-16-ci.md`; it was revised in review to use Codecov instead of a self-hosted coverage job, so its `coverage` job description no longer matches `ci.yml`.
 
 `ci.yml` cannot reach a model or a paid key, so evals are never part of it. Run them by hand.
-
-### The 75% coverage push
-
-`docs/features/2026-10-21-coverage-75.md` records why the gates are 75%. Measured before the work, the backend merged unit+integration figure was about 60% (the gap was almost all Sangam Import: `promote.py`, `writer.py`, `staff_sources.py`, `news/pipeline.py`, `ingest/tools/*`, `calls/pull.py`) and the frontend was about 1%, because it had no DOM environment. The plan shipped as stacked PRs (a bar-raising PR, backend tests, frontend tests) and its results are recorded as backend 60% to 94% and frontend 1% to 97%. The patch gate is 75% on both sides, and the project target is 75% once each side got there.
-
-Rules the plan held throughout, which still apply when adding tests:
-
-- **No `omit` or `exclude` to lift the figure.** Every source file counts; the Vitest config likewise includes every file under `lib/`, `features/` and `components/` whether tested or not.
-- **Integration tests build their own rows** in the rolled-back `db` fixture. CI's Postgres is fresh (baseline, migrations, `seed.seed`, `seed.taxonomy_seed`), so a test leaning on seeded or locally-imported rows fails there. The plan names three that already did locally, for example districts counting 952 locally against 784 on a fresh seed.
-- **Unit tests monkeypatch `repositories/` functions, never the pool**, and assert that agent tools return `"<tool> failed: ..."` rather than raise.
-
-The bulk of the backend push is the `backend/tests/test_cov_*.py` files, named by the area they cover, with a one-line docstring saying what is faked. They fall in two groups:
-
-- **Unit (no database, fakes only)**: the Ask and Import middleware hooks driven directly with hand-built state (`test_cov_agent_middleware.py`, `test_cov_ingest_middleware.py`), SQL discovery tools against a fake executor (`test_cov_agent_sql_tools.py`), `search_graph` with a fake Graphiti client, `download_file` and `read_pdf` over a fake HTTP transport, the egress guard refusing private, loopback and metadata hosts with a fake resolver (`test_cov_core_egress.py`), lifespan boot wiring (`test_cov_core_lifespan.py`), the migration runner and `replicate` over fake connections, Storage and tracing clients against `httpx.MockTransport` or a fake Langfuse SDK, Import's research, catalog, pipeline and library/vault tools, news, calls and staff-workbook pipelines, and the proposals routes, tools, readers and context. Import tool tests share `backend/tests/cov_ingest_fakes.py`: `ScriptConn` and `ScriptPool` answer each query from the first rule whose substring it contains (the last answer repeats), record every statement, and `BrokenPool` proves a tool returns its failure instead of raising when the database is down.
-- **Integration (real Postgres, rolled back)**: `test_cov_promote.py`, `test_cov_promote_org.py`, `test_cov_promote_extra.py`, `test_cov_writer.py`, `test_cov_matcher.py`, `test_cov_matching_repo.py`, `test_cov_repositories.py` and `test_cov_reshelve_undo.py` carry a file-level `integration` mark, plus one marked test in `test_cov_db_migrate.py`. They exercise the hand-written SQL the unit tier cannot reach: for example `promote()` end to end (findings in, catalog rows out, every hold and merge reported, with archiving faked because CI has no Supabase) and the writers' gate and tier-ranked org rows.
-
-## Frontend Vitest suite
-
-`frontend/vitest.config.mts` defines two Vitest **projects** that share one `@` alias to the frontend root:
-
-| Project | Matches | Environment | Setup |
-|---|---|---|---|
-| `unit` | `**/*.test.ts` | node | none |
-| `dom` | `**/*.test.tsx` | jsdom | `tests/setup.ts` |
-
-So a test that renders a component must be a `.tsx` file; pure modules (`lib/`, `features/*/lib/` such as citations, toolLabels, board, sourcePick, filtersUrl) are `.test.ts` in node. Tests live in colocated `__tests__/` directories, over seventy files covering `lib/` (API client, auth, Supabase client, URL hooks, safe next-path), the `components/ui` primitives and `NavBar`, and the feature areas (Ask workspace and views, Funder Match, Proposals, Media, Import cards and board, Registry lists and profiles, Settings and members, Taxonomy, auth, home, terms).
-
-`tests/setup.ts` (dom project only) loads `@testing-library/jest-dom/vitest` and installs the shared Next mocks. A mutable `navigation` object backs mocked `useRouter`, `usePathname`, `useSearchParams` and `useParams` (plus `redirect` and `notFound`), so a test sets `navigation.pathname` or `navigation.search` before rendering and asserts `navigation.router.push`. `next/link` becomes a plain `<a>`. jsdom has no `IntersectionObserver`, so a no-op class is assigned (not stubbed, so `vi.unstubAllGlobals()` cannot remove it); a test that needs observer callbacks replaces it. After each test it runs Testing Library `cleanup()`, resets the path and query, and resets the router mocks, so state never leaks between tests.
-
-Coverage uses the v8 provider with `text-summary` and `lcov` reporters, including every `ts`/`tsx` file under `lib/`, `features/` and `components/` and excluding tests, `__tests__` directories and `.d.ts` files. CI runs it as `npm run coverage`; the `frontend` component's 75% gates apply to it (see [CI and coverage](#ci-and-coverage)). The plan also lists Supabase client and CopilotKit hooks as shared mocks; those are mocked in the tests that need them rather than in `setup.ts`.
 
 ## Tier 1: unit tests (no database)
 
@@ -238,8 +178,7 @@ The Sangam Pitch agent's safeguards are pinned by a family of unit tests, none m
 
 - **`test_proposals_work.py`** pins `work.apply`, the one way a proposal changes. Paths outside the allowed shapes (`summary`, `log`, `work`, unknown gates, unknown sections or fact ids, `stage` jumps, `sources`, a blank `title`) raise `BadChange`. A batch is atomic: if one change of several is refused, nothing is applied or logged. A section change must carry the `rev` it was read at, and a stale one raises `StaleSection` naming the current text and who changed it. A section's `rev` goes up once per save, and different sections do not clash. Every change is logged with who, `via`, `run_id`, path, `from`, `to`, facts and reason, with long values cut in the log but kept whole in the section. A step goes back by patch and forward only with `advance=True`, one step at a time. The summary is recomputed from the new work.
 - **`test_proposal_agent.py`** covers `proposal_chat_access` through a small app built with `make_app`: admins and stewards run their own chat on a proposal, a member gets 403, a stranger gets 404 (so existence is not leaked), a thread that is not `proposal-<id>-<user id>` for that proposal is 404, and two editors get two chats that neither can open. It also checks that `advance_step` refuses a reader before `repo.save` is reached and otherwise names what is missing (`NOT YET: ...`), and what the model is told: the stable context block is deterministic and holds no written text, the live block carries the screen and the reader's read-only status, teammates' changes appear but not the caller's own, and only Anthropic gets the `cache_control` breakpoint. `test_the_agent_has_its_nine_tools_and_read_file_only` builds the real agent with an `InMemorySaver` and asserts the tools node holds exactly `add_facts`, `advance_step`, `ask_user`, `read_file`, `read_files`, `read_match`, `read_org_record`, `read_proposal`, `suggest_edit` and `write_section` (its name says nine and the list has ten because `read_file` is counted apart). It also covers the `nothing_to_answer` guard (a run whose history ends on an assistant reply ends without calling the model, a new human message is answered, a pending tool call is not treated as an answer, and an empty history jumps to the end), and `test_pitch_runs_the_guard` spies on `create_agent` to assert the guard sits in the Pitch agent's main middleware stack. The file ends with a security check that a local `dev:` test sign-in is refused with 401 once Supabase is configured.
-- **`test_proposal_readers.py`** pins the readers' code-only safeguards. There are three kinds: one reader per ticked org file (tools `read_vault_document`, `read_brief`, `add_facts`, `read_file`), a funder reader (`read_brief`, `list_funder_documents`, `read_funder_document`, `read_template`, `add_facts`, `read_file`) and a **public research** reader (`search_public_sources`, `read_page`, `fetch_document`, `read_document_pages`, `add_facts`, `read_file`). The file readers and funder reader get no web tool, `ask_user`, `task`, `write_file` or `execute`, and the public reader is not built at all without a Tavily key (its button then says public research is unavailable). Each file reader may open only its own document (another ticked file is `REFUSED`) and the funder reader opens none of the org's files. `readers.pending` decides what a press reads: every ticked file plus the funder at first, only what failed on a retry, a second press while one is running raises `Busy` ("Admin started reading the files 2 min ago"), and a reader stuck past 31 minutes counts as stale and is read again (the limit is 30). The public search runs alone from its own button, neither blocks the other, its task text carries no figure from the org's files and says never to search for the org's name, and `PublicGuard` refuses a search naming the org (whole word only, so `SeSTAR` passes), keeps each page it read (keyed so `www.` and a trailing slash match) for the quote check, and records hosts that did not open. Only `via="agent"` may write `readers.*` marks (`BadChange` otherwise), and step 2's exit check requires the files to be read, waits while they are running, ignores a public search alone, and lets a failed file or a still-running public search through.
-- **Companion files** cover the rule modules: `test_proposal_facts.py` (source colours, when `ask_user` may ask, fact checks per origin and de-duplication), `test_proposal_writing.py` (trace check per paragraph, section order, grade-to-score mapping, `missing` and `untraced` never set from outside), `test_proposal_suggest.py` (the passage must appear exactly once; untraced wording is refused before the person sees it; `KEPT`, `SAVED` and `FEEDBACK` outcomes; a teammate's newer save refuses "use"), `test_proposal_finish.py` (the polish check refuses any changed figure, year, place, name or gap, and `polished` and `versions` are writable only by their own routes) and `test_proposal_review.py` (how a corrected or set-aside fact propagates to the parts citing it and what stops `ready`). The `test_cov_proposals_*` files add coverage-push tests over the context block, pure assembly and gates, the `/api/proposals` routes against a faked in-memory repository, `readers.read` with fake reader graphs, and each tool's refusals (`add_facts`, `ask_user`, `write_section`, `read_proposal`, `advance_step`, the reading tools).
+- **Companion files** cover the rule modules: `test_proposal_facts.py` (source colours, when `ask_user` may ask, fact checks per origin and de-duplication), `test_proposal_writing.py` (trace check per paragraph, section order, grade-to-score mapping, `missing` and `untraced` never set from outside), `test_proposal_suggest.py` (the passage must appear exactly once; untraced wording is refused before the person sees it; `KEPT`, `SAVED` and `FEEDBACK` outcomes; a teammate's newer save refuses "use"), `test_proposal_finish.py` (the polish check refuses any changed figure, year, place, name or gap, and `polished` and `versions` are writable only by their own routes), `test_proposal_readers.py` (reader tool sets, one file per reader, the busy lock and the 30-minute stale limit, step 2's exit check) and `test_proposal_review.py` (how a corrected or set-aside fact propagates to the parts citing it and what stops `ready`).
 
 ## Tier 2: integration tests (database)
 
@@ -249,7 +188,7 @@ Isolation is by rollback. The shared `db` fixture in `conftest.py` opens a non-a
 
 The marker is applied either per file with `pytestmark = pytest.mark.integration` (`test_rls.py`, `test_agent_rls.py`, `test_sql_integration.py`, `test_migration_integrity.py`, `test_import_undo.py`, `test_news_rls.py`, `test_news_store.py`, `test_news_stories_sql.py`, `test_profile_facts_sql.py`) or per test (`test_caller_pool.py`, `test_news_pipeline.py`, `test_storage.py`, `test_locations_seed.py`, `test_taxonomy_seed.py`, `test_vault.py` and a few import tests). Files with per-test marks mix DB-free and DB-backed cases, so check the decorator rather than assuming a whole file needs Postgres. Applying the marker consistently matters: `-m "not integration"` only excludes what is marked.
 
-Newer integration tests (the `test_cov_*` files) create their own rows inside that rolled-back transaction instead of leaning on seed data, which is what keeps them green on CI's fresh database. Some older ones still read seeded rows, so the data under test must already be loaded: run `make up` (which migrates) and `make seed` first. CI builds the same state without Docker (baseline SQL, migrations, `seed.seed`, `seed.taxonomy_seed`) and lists skips with `-rs`; `test_locations_seed.py` and `test_taxonomy_seed.py` mix DB-free file checks (for example 36 states and 784 districts in the LGD files) with `integration`-marked seed tests that run in a rolled-back transaction. `test_migration_integrity.py` asserts seeded facts, for example at least 96 `documents` rows (a floor, because the importer adds more), exactly 29 `graph_ingest_log` rows, stable seed-order ids (`kabil` = 9, `bdf` = 10, `axis-bank-foundation` = 1, `tata-trusts` = 4) and that the `documents` id sequence has advanced past the restored rows. It fails if migrations and seeds drifted apart. See [Data and Migrations](../architecture/data-and-migrations.md).
+The data under test must already be loaded: run `make up` (which migrates) and `make seed` first. CI builds the same state without Docker (baseline SQL, migrations, `seed.seed`, `seed.taxonomy_seed`) and lists skips with `-rs`; `test_locations_seed.py` and `test_taxonomy_seed.py` mix DB-free file checks (for example 36 states and 784 districts in the LGD files) with `integration`-marked seed tests that run in a rolled-back transaction. `test_migration_integrity.py` asserts seeded facts, for example at least 96 `documents` rows (a floor, because the importer adds more), exactly 29 `graph_ingest_log` rows, stable seed-order ids (`kabil` = 9, `bdf` = 10, `axis-bank-foundation` = 1, `tata-trusts` = 4) and that the `documents` id sequence has advanced past the restored rows. It fails if migrations and seeds drifted apart. See [Data and Migrations](../architecture/data-and-migrations.md).
 
 ## Tier 3: evals (real model calls)
 
@@ -267,24 +206,13 @@ Cases come from `cases/golden.jsonl` (11 cases at the time of writing: 8 tagged 
 
 Scoring (`harness.score`) applies whatever gates a case declares:
 
-- **gold SQL**: the case's `gold_sql` is run against the database and compared with the agent's results by `sql_compare.gold_satisfied`. Every query the agent ran is tried, not only the last, since agents work in steps. If the agent ran no query, the answer must contain the gold values. The comparison lives in `tests/evals/sql_compare.py` and is described below.
+- **gold SQL**: the case's `gold_sql` is run against the database and compared with the agent's results by `sql_compare.gold_satisfied`. Every query the agent ran is tried, not only the last, since agents work in steps. If the agent ran no query, the answer must contain the gold values. `sql_compare` normalises numbers (700, 700.0 and `Decimal('700')` agree), matches labels loosely, and is itself covered by the DB-free `test_sql_compare.py`.
 - `expected_value`, `must_mention`, `must_not_mention`.
 - `required_citations` and `forbidden_citations`; slug-based markers are resolved to ids via `slug_ids`, and `kind:*` forbids any citation of that kind.
 - `must_decline`, matched against a deliberately narrow list of non-possession phrases so the check cannot pass on any sentence.
 - **Budgets**: `max_calls` (per tool) and `max_large_result_reads` (reads of `/large_tool_results`, meaning a tool reply did not fit) fail the case. `max_seconds` and token counts are only reported as warnings or scores, never failures.
 
 A case with `expected_failure` becomes `xfail(strict=True)`. When the underlying data bug is fixed the case passes, pytest reports XPASS as a failure, and the marker gets deleted, so the suite is never permanently red.
-
-### The gold-SQL comparator (`sql_compare.py`)
-
-`gold_satisfied(gold_rows, agent_rows, answer)` decides whether the agent's result answers what the gold SQL answers. It is pure Python, so `tests/evals/test_sql_compare.py` tests it with no model and no database and it runs in the normal unit suite. Its rules:
-
-- **Cells**: numbers are normalised to floats (700, 700.0, `Decimal('700')` and `'700'` agree, with a relative tolerance of 1e-6), strings compare case-insensitively, and `None` equals only `None`. A label may match by substring when the shorter side has at least three characters, so gold `assam` matches an agent's `Assam (state)` but `a` does not match everything.
-- **Scalar gold** (one row, one column): the value must appear in the agent's result (or equal its row count, for "7 states" answered by seven rows) **and** be stated in the narrated answer, since the answer is what carries the claim to the user.
-- **Single-row gold** (a `LIMIT 1` top or bottom question): the gold row's cells need only appear within some agent row, because agents often show the whole ranking and narrate the winner, and the gold row's text labels must appear in the answer.
-- **Multi-row gold**: some selection of the agent's columns (permutations, only when the agent's rows are at most `MAX_PROJECTION_WIDTH` = 6 wide) must equal the gold rows as an order-insensitive multiset. Extra columns are fine because agents enrich; extra or missing **rows** fail, since over-retrieval is the failure this guards against.
-- **Label-tolerant fallback**: if the agent invented its own category labels ("Oct-Dec 2025" for gold "Q3"), the comparison falls back to the numeric cells, provided they are unambiguous and the gold labels still appear in the answer.
-- `agent_values` strips the source and id columns (`PROVENANCE_PREFIX`, `CITE_PREFIX`) the validator adds to the agent's own SQL before the re-run rows are compared.
 
 ### Langfuse experiments and run stats
 
@@ -374,8 +302,7 @@ Schema changes are protected by three separate checks: the catalog-drift tests a
 
 - Unit-test a router with `client_for(router)` and monkeypatch its repository function. If code under test touches the pool, the sentinel will fail it.
 - Proposal rules belong in pure-function unit tests over a `work` dict (`work.apply`, `trace.check`, `steps.exit_check`); a new agent tool also needs adding to the pinned tool list in `test_proposal_agent.py`, and a new editing rule must be mirrored in `test_rls.py`.
-- A DB-backed test must carry `pytest.mark.integration`, skip on `OperationalError`, roll back, and build the rows it asserts on rather than depend on seed data. Patches are gated at 75% covered lines per component, so new code needs tests in the same PR; do not add `omit` or `exclude` to move the figure.
-- A frontend test that renders a component must be `.test.tsx` (jsdom, shared Next mocks); a pure module gets `.test.ts` (node). Set `navigation.pathname` or `navigation.search` from `tests/setup.ts` rather than mocking `next/navigation` again.
+- A DB-backed test must carry `pytest.mark.integration`, skip on `OperationalError`, and roll back.
 - Adding a table needs a catalog entry or a `KNOWN_EXCLUDED` entry, or `test_every_live_table_is_either_catalogued_or_knowingly_excluded` fails. Adding an agent tool needs it named in the prompt and in the pinned tool-set tests.
 - Adding an eval case means a line in `cases/golden.jsonl` (or `cases/import/`) with an `id`, optional `tags`, and the gates described above. Keep `canary` for cheap, stable cases.
 - Running the migration runner outside Docker needs `MIGRATIONS_DIR` (it defaults to the container path `/srv/db/migrations`). Environment selection for databases is covered in [Environments](../operations/environments.md).

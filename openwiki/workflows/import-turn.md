@@ -10,10 +10,6 @@ sources:
     resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-11c734346bddf773fd80ed0e
     resource: repo://backend/app/api/routes/ingest.py
-  - id: openwiki-source-933c62fa2383d76225c96eb5
-    resource: repo://backend/app/core/egress.py
-  - id: openwiki-source-170bddac5f057a262a61a895
-    resource: repo://backend/app/ingest/access.py
   - id: openwiki-source-62958d5b14b0717233a7ec0b
     resource: repo://backend/app/ingest/agent.py
   - id: openwiki-source-7808196f4aecdc53b9018ae9
@@ -66,10 +62,10 @@ sources:
     resource: repo://frontend/features/ingest/lib/staffActions.ts
   - id: openwiki-source-9e86dbac2cec46334e85282e
     resource: repo://frontend/features/ingest/ScoutChat.tsx
-generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-21T19:40:05.698Z
+    at: 2026-10-19T10:32:36.779Z
 ---
 
 # One Import Turn: choose_sources to Undo
@@ -146,9 +142,8 @@ Before any turn, `ImportView` loads its panels with a single `GET /api/ingest/ov
 The supervisor plans (`write_todos`), reads `funder_dossier` to see what the catalog already holds, and launches one isolated `entity-researcher` per organisation, in waves bounded by `MAX_PARALLEL_RESEARCH`. If vault files were chosen, a `vault-reader` runs first. If workbooks were picked, a `workbook-reader` returns the names so that one researcher per name can follow. See [Sangam Import / Scout](../architecture/sangam-import-scout.md) for the roster. The research-specific mechanics are:
 
 - The researcher's tools are `research_goals`, `funder_dossier`, library, workbook-row, web and PDF readers, and `save_research` (`RESEARCHER_TOOLS`). It has no catalog-write tool.
-- Every web read passes `check_url` before the fetch (`read_page` and `fetch_document` call it on the URL as httpx will send it, `canonical_url`). `check_url` refuses non-http(s) URLs, URLs with a user name or password, and private or internal addresses (`core/egress.py`, before and after DNS), then applies the source registry and `robots.txt`. It never raises: a URL it cannot check is not read.
-- The tools' `_client` runs the same check again on every redirect hop, before that hop is requested (an httpx request hook). A read that starts on a path-scoped source must stay on that source's allowed paths, or the redirect is refused. The client verifies TLS with `egress.TRUST` (certifi roots plus bundled intermediates). A `REFUSED:` reply, including one that names a redirect, is final. `search_public_sources` marks hits `READABLE` or `HELD`, and a held hit is a dead end.
-- `read_page` and `fetch_document` archive what they read to the `source-archive` bucket, and a storage failure does not stop the read. Later, `promote()` turns each cited source into a `documents` row from that archive.
+- Every web read passes `check_url` (source registry plus robots) before the fetch and again on every redirect (`_client` hook). A `REFUSED:` there is final. `search_public_sources` marks hits `READABLE` or `HELD`, and a held hit is a dead end.
+- `read_page` and `fetch_document` archive what they read to the `source-archive` bucket. Later, `promote()` turns each cited source into a `documents` row from that archive.
 - The researcher's middleware stack adds `SaveRefusal`, `RunSources`, the staff-last lock (`StaffLastLock`), an optional `ReadingLimit` (researcher only) and model-call limit, model fallback, an escalation to the strong model after a malformed save, and a rubric grader that allows one revision. Page and call limits are unset by default.
 
 ### Doc Vault files and Word/Excel text

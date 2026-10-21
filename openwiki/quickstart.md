@@ -34,16 +34,14 @@ sources:
     resource: repo://db/migrations/0048_proposal_work.sql
   - id: openwiki-source-d2d39b77b74bd31e2a50555d
     resource: repo://db/migrations/0049_rfp_match_saved.sql
-  - id: openwiki-source-2e81fea55b6132d8610d3e6a
-    resource: repo://db/migrations/0050_proposal_stage_shift.sql
   - id: openwiki-source-b79fbbd921df689b4bbdc82f
     resource: repo://docker-compose.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-21T20:01:37.700Z
+    at: 2026-10-19T19:22:00.060Z
 ---
 
 # Quickstart
@@ -71,7 +69,7 @@ These four hold across the repo. Break one and something fails in a non-obvious 
 
 ## First run
 
-You need Docker Desktop and an `ANTHROPIC_API_KEY`. To sign in you also need a Supabase project. Without `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, the frontend does not fail: `lib/supabase/middleware.ts` passes requests through, and sign-in cannot work (the sign-in dialog says the Supabase keys are not set). The public pages and the `/ask` preview still render, but the full Ask workspace (which also holds Funder Match and Proposals) and Import are out of reach. Reaching them needs a sign-in method too, such as the Google provider enabled in Supabase.
+You need Docker Desktop and an `ANTHROPIC_API_KEY`. To sign in you also need a Supabase project. Without `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, the frontend does not fail: `lib/supabase/middleware.ts` passes every request through and gates nothing, so the public pages and the `/ask` preview still render. But nobody can sign in (the sign-in dialog says the Supabase keys are not set), so the full Ask workspace (which also holds Funder Match and Proposals) and Import are out of reach. Reaching them needs a sign-in method too, such as the Google provider enabled in Supabase.
 
 ```bash
 cp .env.example .env     # set ANTHROPIC_API_KEY and the two NEXT_PUBLIC_SUPABASE_* values
@@ -167,7 +165,7 @@ frontend/
   features/       one folder per screen (the Ask workspace holds the Funder Match and Proposals views)
   components/ lib/  UI primitives, API client, auth headers, chat wiring
 db/init/          baseline schema (runs once on a new database)
-db/migrations/    every change after the baseline (0048 added proposals.work, 0049 let an org save an RFP Watch call, 0050 shifted stored proposal steps up one for the new "Make a case" step)
+db/migrations/    every change after the baseline (0048 added proposals.work, 0049 let an org save an RFP Watch call)
 seed/             idempotent loaders and their vendored data
 scripts/          smoke.sh and the db-url resolver
 docs/             longer human-written design docs
@@ -194,7 +192,7 @@ Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and op
 | Change a screen, the chat proxy or the API client | [Frontend](architecture/frontend.md) |
 | Trace a question through the whole system | [One Ask Turn, End to End](workflows/ask-turn.md) |
 | Trace an import from source choice to undo | [One Import Turn](workflows/import-turn.md) |
-| Add a schema change (the latest is `0050_proposal_stage_shift.sql`, a data migration) | [Writing and Applying a Migration](workflows/writing-a-migration.md) |
+| Add a schema change (the latest is `0049_rfp_match_saved.sql`) | [Writing and Applying a Migration](workflows/writing-a-migration.md) |
 | Ship to Vercel | [Deploying by Hand](workflows/deploying-by-hand.md) |
 | Find an env var, or understand `ENV=local\|staging` | [Environments and Env Vars](operations/environments.md) |
 | Work on Vercel, Supabase pooler, Tavily, Langfuse or Aura specifics | [Vercel and Supabase Specifics](operations/deploy-and-vendors.md) |
@@ -206,4 +204,4 @@ The folders are `architecture/` (how each subsystem is built), `workflows/` (end
 
 Backend tests have three tiers. Unit tests never touch a database: they build a router-only app with a sentinel pool that raises on any use, so monkeypatch the `repositories/` function instead. Integration tests carry the `integration` mark and need the compose Postgres on 5433. Evals carry the `eval` mark, run only with `--run-evals` (a conftest flag, so `pytest -m integration` can never start billing model calls), and make real model calls (about 10 cents a case; the `cost` cases about $0.90). Locally, `cd backend && pytest -m "not integration"` is the quick loop and `ruff check .` the lint (line length 110).
 
-CI (`.github/workflows/ci.yml`) runs on every PR and push to `master` with four jobs: `ruff check`, the unit tier with coverage, the integration tier against a fresh pgvector Postgres (baseline, `migrate`, then the seeders, with two preserved-dump tests deselected), and the frontend (`npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run coverage` for the Vitest suite, then `npm run build`). All three coverage reports (backend unit, backend integration, frontend) go to Codecov, authenticated by GitHub OIDC. `codecov.yml` switches the global project and patch statuses off and gates `backend` and `frontend` separately. Each side gets three checks: a `floor-` check that coverage stays at 75% or more, a check that a PR does not lower coverage by more than 1% against the base commit, and a patch check that at least 75% of the lines the PR adds or changes are covered. Evals are not in CI. The proposal rules are pure functions over a `work` dict, so their tests (`test_proposals_work.py`, `test_proposal_agent.py` and the `test_proposal_*` companions) need no database either. Before pushing frontend changes, run `npm run build`, because type errors surface there and never in `next dev`. See [Testing](testing/overview.md).
+CI (`.github/workflows/ci.yml`) runs on every PR and push to `master` with four jobs: `ruff check`, the unit tier with coverage, the integration tier against a fresh pgvector Postgres (baseline, `migrate`, then the seeders, with two preserved-dump tests deselected), and the frontend (`npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run build`). The two coverage reports go to Codecov, and `codecov.yml` fails a PR that lowers total coverage by more than 1% or covers under 70% of the lines it changes. Evals are not in CI. The proposal rules are pure functions over a `work` dict, so their tests (`test_proposals_work.py`, `test_proposal_agent.py` and the `test_proposal_*` companions) need no database either. Before pushing frontend changes, run `npm run build`, because type errors surface there and never in `next dev`. See [Testing](testing/overview.md).

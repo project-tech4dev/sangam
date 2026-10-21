@@ -5,7 +5,7 @@ description: How Sangam authenticates callers (Supabase JWT or the dev user), ma
 tags: [auth, rls, roles, postgres, security, supabase, caller-pool, owner-pool, proposals]
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-21T19:40:05.698Z
+    at: 2026-10-19T19:22:00.060Z
 sources:
   - id: openwiki-source-1f8b3caaa82d707d101e103d
     resource: repo://backend/app/agent/tools/matching_tools.py
@@ -27,8 +27,6 @@ sources:
     resource: repo://backend/app/core/lifespan.py
   - id: openwiki-source-b52886aad1fc413e4e030f22
     resource: repo://backend/app/core/security.py
-  - id: openwiki-source-51ead927cc43f35e220ea627
-    resource: repo://backend/app/db/checkpointer.py
   - id: openwiki-source-10e08c1deca7d7728d8240c4
     resource: repo://backend/app/db/pool.py
   - id: openwiki-source-23397c01122692b0ff662a58
@@ -53,10 +51,6 @@ sources:
     resource: repo://backend/tests/test_access.py
   - id: openwiki-source-0808792899dda5ae43456460
     resource: repo://backend/tests/test_caller_pool.py
-  - id: openwiki-source-3b72455cc5448f365dd202c9
-    resource: repo://backend/tests/test_permission_table.py
-  - id: openwiki-source-f44878a3e6212fc5978caacf
-    resource: repo://backend/tests/test_pool_limits.py
   - id: openwiki-source-1a719932f8db409931d9e2ef
     resource: repo://backend/tests/test_proposal_agent.py
   - id: openwiki-source-e3d5b96924a7ab50f4e2652f
@@ -83,8 +77,6 @@ sources:
     resource: repo://db/migrations/0042_funder_matches.sql
   - id: openwiki-source-3d121c1ca466c424ca2b4936
     resource: repo://db/migrations/0048_proposal_work.sql
-  - id: openwiki-source-e8e61d605125cac4d909755e
-    resource: repo://docs/ARCHITECTURE.md
   - id: openwiki-source-2835a53622addef44a80818d
     resource: repo://features-plans/access/auth-plan.md
   - id: openwiki-source-060d794a25568b4384788e86
@@ -97,7 +89,7 @@ sources:
     resource: repo://frontend/lib/supabase/middleware.ts
   - id: openwiki-source-06ab5e05c59e3ddb17628f5f
     resource: repo://frontend/proxy.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
 ---
 
 # Auth, Roles and RLS
@@ -185,20 +177,9 @@ flowchart TD
 
 Caption: REST queries and Ask Sangam's SQL run as the caller and are filtered by Postgres. Everything else on the owner side must check scope itself.
 
-There is one underlying `AsyncConnectionPool`, opened in the app lifespan and also assigned to `db_pool.pool`. It connects with whatever role `DATABASE_URL` names; the code and its comments call that role the owner and rely on it ignoring grants and RLS (the local compose database uses a superuser). The pool runs with `autocommit=True` and is shared by REST, the LangGraph checkpointer and the agent tools.
+There is one underlying `AsyncConnectionPool`, opened in the app lifespan and also assigned to `db_pool.pool`. It connects with whatever role `DATABASE_URL` names; the code and its comments call that role the owner and rely on it ignoring grants and RLS (the local compose database uses a superuser). The pool runs with `autocommit=True` and is shared by REST, the LangGraph checkpointer and the agent tools. The access paths over it are:
 
-`make_pool` (`backend/app/db/checkpointer.py`) states the pool's limits, and the CLI pools built by `make match` and similar commands get the same ones:
-
-- `timeout=db_pool_timeout_s` (default 10 s): how long a request waits for a free connection before the pool gives up.
-- `connect_timeout=db_connect_timeout_s` (default 5 s), passed in the connection kwargs.
-- `check=AsyncConnectionPool.check_connection` on every checkout and `max_idle=300`, so a thawed serverless instance does not hand out a socket the pooler already closed. The cost is one round trip per checkout.
-- `max_size` defaults to `db_pool_max_size` (10).
-
-The lifespan verifies instead of creating the checkpointer schema: `open_checkpointer` raises at boot, telling the operator to run `make migrate`, when `checkpoint_migrations` is missing or its `max(v)` differs from `CHECKPOINT_VERSION`. No DDL runs on a cold start, so concurrent instances cannot race. `/health` is an open path and adds a `pool` block of counts only (`pool_max`, `pool_size`, `pool_available`, `requests_waiting`, `requests_errors`, `connections_errors`), or no block before the lifespan has opened the pool.
-
-The access paths over the pool are:
-
-**`CallerPool` (via `PoolDep`).** This is what every router takes. Each `connection()` opens a transaction and first runs one statement that sets `role`, `request.jwt.claims` and `statement_timeout` with `set_config(…, true)`. All three are transaction-local (`SET LOCAL` semantics), so they end with the transaction even on error. The timeout is `db_statement_timeout_ms` (default 15000), so a runaway REST query is cancelled rather than holding a connection. The connection returns to the pool as the owner, so the checkpointer and tools sharing the pool never inherit a caller. The plain `set_caller` helper sets only role and claims, because Ask's executor calls it after its own lower timeout and it must not raise that back to REST's. `db_role` and `db_claims` come from `_db_identity`:
+**`CallerPool` (via `PoolDep`).** This is what every router takes. Each `connection()` opens a transaction and first runs `set_config('role', …, true)` and `set_config('request.jwt.claims', …, true)` through `set_caller`. These are transaction-local (`SET LOCAL` semantics), so they end with the transaction even on error. The connection returns to the pool as the owner, so the checkpointer and tools sharing the pool never inherit a caller. `db_role` and `db_claims` come from `_db_identity`:
 
 - anonymous gives role `anon` and empty claims
 - signed in gives role `authenticated` and claims `{"sub": <auth_user_id>, "role": "authenticated", "email": …}`
@@ -331,9 +312,6 @@ Ask Sangam running as the caller (plan step 8) is now built via `ask_access`, `a
 - `backend/tests/test_access.py` covers the route and chat gates with the principal and thread claims faked: signed-out saving is 401, Import routes need staff or steward (`require_scout`), a new thread is claimed and the run knows who asked, `chat_scope` carries the caller's org roles, `ask_access` sets `agent_caller` to `authenticated` while `chat_access` leaves it unset, someone else's thread is 404 even for staff, and `CallerScope` predicates for member, steward, staff and nobody.
 - `backend/tests/test_proposal_agent.py` covers `proposal_chat_access`: admin and steward may run their own chat (the run learns the proposal id), a member gets 403, a stranger 404, malformed or other-proposal thread ids 404, and two editors get separate chats that neither can open from the other. It also checks that proposal tools refuse a reader before touching the database.
 - `backend/tests/test_caller_pool.py` covers `_db_identity` and `get_caller_pool` (unit). The `InsufficientPrivilege` to 403 mapping is also unit-tested. The integration tests prove a `CallerPool` connection runs as `anon` and cannot read `proposals`, that the connection returns as the owner with no claims, and that the access functions recognise the dev user.
-- `backend/tests/test_pool_limits.py` checks `make_pool`'s timeouts, `check` and `max_idle`; that `CallerPool` sends role, claims and `statement_timeout` in one statement (defaulting to the setting) while plain `set_caller` leaves the timeout alone; that boot refuses a checkpointer schema `make migrate` has not set and runs no DDL when it matches; and `/health`'s pool counts, which omit the DSN. An integration test shows a `CallerPool` query past a lowered timeout is cancelled and the timeout does not stick to the connection.
-- `backend/tests/test_permission_table.py` ties the code to the "Who may do what" table in `docs/ARCHITECTURE.md`. It walks every route's dependencies and `AGENT_ACCESS`, and fails if a gate (`require_user`, `require_principal`, `require_staff`, `require_scout`, `chat_access`, `ask_access`, `proposal_chat_access`, `get_current_user`) is not named in the table, or if a route has no gate and is not in its deliberate open list (`/health`, `/me` and the two news routes). The table's columns must be anon, member, admin, steward, staff and gate.
-- `backend/tests/test_first_org.py` (integration) sets the caller on one connection and checks that Funder Match and RFP Watch, given no org, read the caller's first organisation by name, as a steward of two orgs sees it. A signed-in caller with no membership finds nothing.
 - `backend/tests/test_rls.py` is an integration suite against the compose Postgres on `localhost:5433`, in one rolled-back transaction. It builds orgs A and B, a hidden org, one person per role and private rows. It then asserts per-role visibility for contacts, documents, chunks, proposals, hidden orgs, threads and Import tables. For proposals it checks that members of other orgs and signed-out callers see nothing, that only admins, stewards and staff can insert or update (members are refused), and that every role in the org uploads to its Doc Vault. It also tests steward read-only behaviour elsewhere, member-write isolation, the org-member management functions, the last-admin rule, and match-run saving.
 
 For running these suites, see [Testing overview](../testing/overview.md). For how migrations are applied, see [Data and Migrations](./data-and-migrations.md).
@@ -344,6 +322,4 @@ For running these suites, see [Testing overview](../testing/overview.md). For ho
 - A new table needs a decision in `0025`'s lists, which fails the migration otherwise, and a read policy, which `0027`'s check requires for any table either role can read. Migrations such as 0041, 0042 and 0048 enable RLS and add or alter policies for their own tables.
 - Changing who may edit a proposal means changing three things together: the RLS policy, `CallerScope.can_edit_proposal`, and the SQL `can_edit` expression in the proposals repository. `proposal_chat_access` and `require_edit` follow from them.
 - A new agent or Import tool that touches private data on the owner pool must check `scope()` (or `chat_scope`) itself. A new agent route needs an entry in `AGENT_ACCESS`.
-- A new gate dependency or an open route must also be reflected in the "Who may do what" table in `docs/ARCHITECTURE.md`, or `test_permission_table.py` fails.
-- Do not raise `statement_timeout` inside a caller connection: Ask's executor and matching set a lower value after the pool's, and `set_caller` deliberately leaves the timeout alone.
 - Never set `DEV_AUTH` in a deployed environment.

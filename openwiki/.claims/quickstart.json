@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6e010599701be878af49133c3e5fe6565b601f2d146ebb9106210efd3eb52d3e",
+  "pageVersion": "sha256:c458d2043762c624b3a87d5d54eaf1724a56612e8758ec13a24ccd7c413e1b87",
   "claims": [
     {
       "id": "claim_80d2fb637e374fd1b2373e7269787859",
@@ -63,7 +63,7 @@
       "statement": "Postgres is the system of record; the Neo4j graph is derived from it by `make graph-seed` (which needs OPENAI_API_KEY) and is rebuildable, so nothing should live only in the graph.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L198-L206",
+          "resource": "repo://CLAUDE.md#L196-L204",
           "version": "repo-lines-v1:sha256:e06c241d2d084cfd392fa8c0efbf3a66a0c9179ea6969ce7b649deed2b92c0c1:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTVmMjI2Y2Q4MWQxZGNhMzc3ZDRmNDQ4ZjMyMWIzODQzNWNmOTg1MzQyYzI5ZDZmNGEzZjIzM2VmYzNkNGU1NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmEwZjIxMDI3MGM1MzVhYjk4ZmE4MjAwMGQ0N2U5NTIwYWU0MDAxMGIwZDMzNDRmMGUzZjg4MmU4YTc3NmI1MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjRlNTlkZWYzNTc2NWI5OTJhZTM4MmY4YzI3ZDE1ODVjOGJmZmQ3ODFjODk4Y2ExNzBhNDliNzg3NTFlMzY2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDIwYzA4MDU2ZDVjMjE3MTM3Y2FjN2Y4MDZlNDUzYmExZWFkZWRjOTM0YTA2ZjE3Y2E3ZTFmM2I4YzA1MDZiYSJ9"
         },
         {
@@ -81,8 +81,8 @@
           "version": "repo-lines-v1:sha256:a0448e9aec098d75c81ca35c9ed8da5404d86015895ff4aa83d1f7467014e6d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjY3NDQ5ZjVhNDI4YTk1NDcxZjkzYjMzYWMxZTRiM2Y1OWFhZGQ3MzUwNjFhYjUxYWViZDgyODdiZTdkNmI0MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjhmYTBkY2YzOWJiOThmMmFlNzBlMmY4ODNkMjhkNmQ5NjFiYTYzZGUyZDEyNGU0OWFiZjU4ZTgwYjIzMDRkZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGQ4NWJhZWRiOGM2MTUyOTdiMjIzMTUyOTkwMzEzYjZjNDAyOThiNjUwNDI2NmVjNzQzNTAwZDdlNWMzNDU1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTg3YThlMDk3YmI5NjNkNjgxYmZiZDZiMmQxMGQ0NmNkMzEwYTRjNzgzMjE0NDMxZTNmMThmNGI4NGY1YmI1MiJ9"
         },
         {
-          "resource": "repo://docker-compose.yml#L1-L161",
-          "version": "repo-lines-v1:sha256:5bd8d42b0fdc45337f12233631947e8a76981039b9439dd861a13c0dd924f3f6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmYTczZmNjZGM5OWVhODM1OTY3YzdkZWU3ZWZiZWQxZjNjYTg3MjYwZDkyOTMxODUwZmRkNjZkYThjYjEyZjFkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5MTA0NDEzYjUzYTcxNTA1YmZlYzVjNjcwMTVkOTc0N2Y3YTQxNzhkMzUyY2Y1M2ZmN2ZiZDcyMDkzNDUyNDI3IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+          "resource": "repo://docker-compose.yml#L1-L158",
+          "version": "repo-lines-v1:sha256:d02188217f3b6ec046e6c8b1a5b92bd1930435e5e76af78810c237a3ef4d33c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTU4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmYTczZmNjZGM5OWVhODM1OTY3YzdkZWU3ZWZiZWQxZjNjYTg3MjYwZDkyOTMxODUwZmRkNjZkYThjYjEyZjFkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5MTA0NDEzYjUzYTcxNTA1YmZlYzVjNjcwMTVkOTc0N2Y3YTQxNzhkMzUyY2Y1M2ZmN2ZiZDcyMDkzNDUyNDI3IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         }
       ]
     },
@@ -91,7 +91,7 @@
       "statement": "Agents are built lazily: lifespan opens the pool, verifies the SQL catalog, opens the checkpointer and registers the /agent, /ingest and /proposal routes at boot (each guarded by an AGENT_ACCESS entry), while load_agents builds all three agents together once under a lock on the first post to any of those routes (or the first REST route calling get_graph); Ask has exactly six tools (db_list_tables, db_describe_table, db_profile_column, db_query, search_graph, compare_fit) plus read_file and ls, with compare_fit the only one using fixed rather than model-written SQL.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L246-L251",
+          "resource": "repo://CLAUDE.md#L244-L249",
           "version": "repo-lines-v1:sha256:089b2c22324bca39dac4d59b26692abc71f3e8f0ad798cc0587a764b20707197:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmM2NjhhN2I2YzEwM2Y5OWJjNzZkNTZiNzBmMzIwZGFlNDA5ODFhZmEzNzNhNGM1M2M4NmJhZGIyNWM3M2Y0ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2UxMGRmMzg1N2I1NGYwOWI4NDlhNzQwN2Y3ZjNlZDI1MjRiYjc1MzMxZGUxYTdkZmE1MmI4YTBmN2I0NTJkYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWQ3NzY5MDI4MDYxYzVjYmQ1YzZlOWVlNjI1ZjY3YzFjZjRlZWZmNjY1ZDI1MWNjZTZlZmYxMmJlZTlkZWNkNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTQ4NGM5MjVkODg0YjcxYmRhYjgwYzhhODg5MDE2NzUwYzFiZGUxMDE1MmZkMDExYjNiNTVlYzNhOTU3YjExZCJ9"
         },
         {
@@ -145,7 +145,7 @@
       "statement": "The ENV variable (local default, staging) selects the database for DB-touching make targets and is honoured by up, down, logs, seed, migrate, psql, client-docs and remote targets but not by the local-only db-clean/db-reset/db-backup/db-upgrade group; STAGING_DB_* are local-tooling variables, as the backend reads DATABASE_URL.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L132-L152",
+          "resource": "repo://CLAUDE.md#L130-L150",
           "version": "repo-lines-v1:sha256:6e5e16fe7189be98109c9902d02eb0e1f6f45c52e5b84f0e3ebc4f14ee8cb3c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0N2Q5NGU0NzNkYzQ4MWJiMTVlZWQ0MTU3NjA3NDVlZDQ0MmQwYzA3MjI2YzU3M2FhNmRlODdmZmMzZjdjMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhZjY1MzZmNzBmNjcyZDFkNGU0YTdkMmI2ODMyZTY0NWE5NjU1NTAzYjAwZWIwMThiZjRiZjI2YzdmZGY4NGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1M2NiNDY1YTZhNzg0M2FhNzA1ZjBmMTMxNDFlODAwNGYzYmM5NDFiMjM5YjcyN2E4NTE1MTYzZTdlOTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3YTc1Nzk5NzNmYjA2ZGRhM2Y3MGMyMjM4YzQyMWExZTAwZGYxNjIxMGRlMzI2N2RiYWE4MmQ0YWU2ZjYyZGEifQ"
         },
         {
@@ -197,7 +197,7 @@
       "statement": "The backend runs three agents, each on its own AG-UI route registered in lifespan: Ask on /agent, Import (Scout) on /ingest and Proposal Copilot (Sangam Pitch) on /proposal. AGENT_ACCESS declares who may post to each (ask_access; require_scout plus chat_access; proposal_chat_access), and a path with no entry fails at boot.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L353-L359",
+          "resource": "repo://CLAUDE.md#L351-L357",
           "version": "repo-lines-v1:sha256:bd211dd764acf0cfdc4ee774ccce77167a409e1e41b93cc1d5b0a488b6353a63:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzg2YzJhODFiMzAzNWNjN2Y0YzEwODFjZTIyNzYxNzhmMTE5MDFhZDI0NWExMTY1MzU4MjM2YWJiNjNlODU5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDJiNGY4ZWEwZTc3OGUxYTE3ZTUxMDUzOTM0NWIwMDk0MGZkZGNmMWNjZTlhNThhYzA0M2QwZjc2YjE2ZmJjYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2QxYjU1ZmU2MTU4MWM0MjY0ZTQ2NmI4MTM4MWQ0ZTFmMDNkOTAyYmRlZmE3M2RiNmVhNDRiYzc5MDc3Y2Q0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTdmYzQ1Mjg3ZjcwYmI1NWNkNTA0ZjUxYWE1ODIxOGVhNTBjNzkwZGU4NmFjNGEzZmE3MDlhN2QzODg3YmZmZCJ9"
         },
         {
@@ -219,7 +219,7 @@
           "version": "repo-lines-v1:sha256:a562afe7db39222b25606d54e68280a9b56b4017178041627fcf91c5258faea4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0YzMyNjQ1OGIyN2QxZDQzY2I2YjIzZjE0MTU1ZDJlZWIxYjU4MmYzMTMxM2FkODMyNTczN2FiNjQ0NjZlZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1MzM1ZTk2OTFkYjlmODQ4NTU0ZDBjMWRiMzNjOTVmYmU5YjJhMDIyZTZmNGMxZTI0OTVjOGJmNDBlMjY3ZjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwMDk2NzkxZDAyMGUyMjM4YmNmZWJkNGRjMzk1NWFlNTliN2NmY2FlZTU0ZjE3MWZmMjhiZDI3N2NhMTM0MDMifQ"
         },
         {
-          "resource": "repo://backend/app/proposals/work.py#L242-L244",
+          "resource": "repo://backend/app/proposals/work.py#L220-L222",
           "version": "repo-lines-v1:sha256:da38304c7b516f313136f666ee08497dd27ba0ccfd557d86cc6a08d71be78c3c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWE3ZjhiYzRlMjg3MTVlOTliMTVlYmJhZWRlNTViYWVmNjdjMDYyMWEwNWM1ZmY0Njk3ZjQ1ZjY3YjIyNmY1YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmY1ODAwNjZlMzU4ZGRhYzE1OTQyYzk1YjAwZGY2OTdhNjUxYWRkYWMxMDY1ZDQ2MDRmZDkzYmRhOTMwODRkMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWE2NzM4MGMyNjBiMzcxOWVhZmM0YWFhNjNkMTkwNzM3Mzk2ODhiMmNhZjgwYmQ3ZjBmYWFmYmNkMmJlZDYzZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDVkMGJhZGU2NThlYzZjMmE4NjVjMmU4YWJhMWIzNDU2ZjgwY2NhMTFmYzYwZDcwZGU4ZjAyMWFmY2QxZmM5NSJ9"
         },
         {
@@ -254,19 +254,19 @@
     },
     {
       "id": "claim_fed1f585903e405c8a71beded9a3967c",
-      "statement": "CI (.github/workflows/ci.yml) runs on every PR and push to master and deploys nothing: jobs are ruff lint, unit tests with coverage (-m \"not integration\"), integration tests against a fresh pgvector Postgres after baseline, migrate and seed (two preserved-dump tests deselected), and the frontend lint, tsc, Vitest coverage and build. All three coverage reports (backend unit, backend integration, frontend) are uploaded to Codecov via OIDC. codecov.yml turns the global project and patch statuses off and gates the backend and frontend components separately, each with a 75% floor check, a project check that may not drop more than 1% below the base commit, and a 75% patch check on added or changed lines. Evals are not run in CI.",
+      "statement": "CI (.github/workflows/ci.yml) runs on every PR and push to master and deploys nothing: jobs are ruff lint, unit tests with coverage (-m \"not integration\"), integration tests against a fresh pgvector Postgres after baseline, migrate and seed (two preserved-dump tests deselected), and the frontend lint, tsc and build. Coverage goes to Codecov, where codecov.yml fails a PR that lowers project coverage by more than 1% or covers under 70% of changed lines. Evals are not run in CI.",
       "evidence": [
         {
-          "resource": "repo://.github/workflows/ci.yml#L1-L136",
-          "version": "repo-lines-v1:sha256:cabbff1ecbdfb45004dddc1b46c838f8a4de9a6c6b0b0635760e796b9b1ac657:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhYzU5NjQ3MGU3YjhjNzZkZmI5NDU0MGM2Njg3NmVjMWE2ZDdkNTQ1NzhjYWY0Yzc0NzM2ZjI3ZDRhODAyMjc1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmZmM0ZTU1ZWJhMGU3Mzg0MWM2OTQzZGE5MGRjNjY4MjY4NDEyMjIzYWEyMDVhZmQ3MDQxMTExYTkwMmU3NzFmIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+          "resource": "repo://.github/workflows/ci.yml#L1-L126",
+          "version": "repo-lines-v1:sha256:fb16049419edccdd58ee472e8d4955859fd147e3025060e868dfb29077470a78:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhYzU5NjQ3MGU3YjhjNzZkZmI5NDU0MGM2Njg3NmVjMWE2ZDdkNTQ1NzhjYWY0Yzc0NzM2ZjI3ZDRhODAyMjc1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmZmM0ZTU1ZWJhMGU3Mzg0MWM2OTQzZGE5MGRjNjY4MjY4NDEyMjIzYWEyMDVhZmQ3MDQxMTExYTkwMmU3NzFmIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         },
         {
-          "resource": "repo://CLAUDE.md#L122-L125",
-          "version": "repo-lines-v1:sha256:14d91ec27320420bce192b727dd4469244cbcf8e0ad59a235e431302bee79c52:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWI4Y2E4MGI4NTU2OTMyNjQ5ZmJkNjg3MWM5YWU3NjM0ZGRmMmNkMjEzMTI1ZmUzNzUyYzQ1Y2ZjNzJhYzAwMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTYwNmVjODFhYzdhYzJlZTg2M2NjZjQ0NDU4M2UzNGRmMWExNDg5YzQ4NTQwZDFhZDVhODkzZGRlYTYxMTYyMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2RiMzM5NDUxZjAzZjZiMDQ4OWI0MTkwZTFlODMyNjY4ZmQyZDc5Y2JlN2VkMzkyYTQwMzI5OGExMjcwMTc0NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDRiYzJmNDdlZDM2ODlhMTRmMzlmNzk1ODlmOTEzMmJkMDlkODc0NDQzNTRiNDM0MjJjYzU5YTJjNzczMTM4OCJ9"
+          "resource": "repo://CLAUDE.md#L122-L128",
+          "version": "repo-lines-v1:sha256:165bd31ac5de52d4c3fd378274179eae2a3f3217584c0c9a45f56455bd1efd79:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWI4Y2E4MGI4NTU2OTMyNjQ5ZmJkNjg3MWM5YWU3NjM0ZGRmMmNkMjEzMTI1ZmUzNzUyYzQ1Y2ZjNzJhYzAwMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2E5NDg5MTZkMTFkODNiMTUxMWQzNTE2MTZjZDFhZjYyNGM4MTRkMmU3MTE1YjQ1Y2Q5M2JlMjVhOGRmNmE4YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2RiMzM5NDUxZjAzZjZiMDQ4OWI0MTkwZTFlODMyNjY4ZmQyZDc5Y2JlN2VkMzkyYTQwMzI5OGExMjcwMTc0NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDQ0MWU5OWE4MDRkMzgwMWQyMDQzMGFlMjlmMjY3MTcwZGQ4NTAwNDc5ZjY4YzdjMjIxNDM2YWJlZmMxNTYwMyJ9"
         },
         {
-          "resource": "repo://codecov.yml#L1-L47",
-          "version": "repo-lines-v1:sha256:2e13b22feb64216a0f4a9d1a7fa0b6f0c06117cfa517546379742a91210a5910:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlMGZiMjMwYzM1MDExMjgwOWU0YWM0ZTgxMjMxNGVlMzdiZDkxMzM2YWFhN2FjODE1OTE3YWE4YzIyZDE3N2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxMzllYWE3ZDVmNWJiZmE3Nzk4YzIxNDM1YTJlZmZhZmRjYWIzNzJmYzIwNGQ1ODZlNDU2NmY3YzVhZjQ1MDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://codecov.yml#L1-L10",
+          "version": "repo-lines-v1:sha256:9195355c6293dcbfa790da09f7417e78f5b31792ee0d8ddafd2fcb0c058573b4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0ODFiNWRjNzc0YmU5NzY2MjJlYTZhYjk5ZTQxMWQ0MmQ0YjNiNTY0N2NlOGUyOTIzMGZiNDE5ZGNmNTFlN2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5MjEzMDViZTE2OTdjNDg3ZTY3NzU3ZTYwYzc5ZmE4NTQ0OTk0NGQwNjUyNjY3NzFjZTdhMTYzYjRiYjM0NWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjY2UwNmJjNzg1MzEwMGViNzZkZDcyZWU5ZTVmMTMyOWY0ZjEwODg0YWE5ODg2ODZkYmJjYjI3MmNmMjMxZDIifQ"
         }
       ]
     },
@@ -282,21 +282,17 @@
     },
     {
       "id": "claim_1cd4b00359424c6888ee909fa28496fe",
-      "statement": "Migration 0049_rfp_match_saved.sql widens the rfp_matches status check to allow 'saved' alongside 'flagged', 'reviewed' and 'dismissed', so an org can save an RFP Watch call; the latest migration is 0050_proposal_stage_shift.sql, a data migration that adds one to the stored proposals.work stage (and the summary stage) for stages 3 and above, because 'Make a case' became the new step 3.",
+      "statement": "Migration 0049_rfp_match_saved.sql is the latest migration; it widens the rfp_matches status check to allow 'saved' alongside 'flagged', 'reviewed' and 'dismissed', so an org can save an RFP Watch call.",
       "evidence": [
         {
           "resource": "repo://db/migrations/0049_rfp_match_saved.sql#L1-L3",
           "version": "repo-lines-v1:sha256:bb29918143071bd8bbfccfa2a62c9c82cad40d110e4babb899b99bc6de2e76f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjUwOGVlNjk5NjE1MGRhYmFlMTQ4MjRmZmY3Y2NhNjMwYTVmZGI5NjJmNmNkZWU2NzgwYmE5MjI0MzdkYjUwYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWMwNmU3NmY4YmQ1ODhmZTI4NzMyMmNjNzhlN2Q5YTkzMDFiM2ZkYTM2ZGNkY2E1NGY2ZDU4MDQ2NjkzZWU4OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
-        },
-        {
-          "resource": "repo://db/migrations/0050_proposal_stage_shift.sql#L1-L8",
-          "version": "repo-lines-v1:sha256:b26f4e3e0498d6a11af0cd1666ee6cb7f04a6cc0cfd6aab9fea38f9e01bee2be:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzNmZWMwNTJiN2FkZWFiYzVhY2Q5NzRlOTQ4NjVkYmVlNmIyMGZiZDZjMTFhNjY1M2I4OGE3ZTdjNmNlZGFkNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2U2OTczY2Q5MzE5NTdiNDdhOGFmMTdlZWIwNzVkMGI1YTU1MzRmOGVkY2U2MTJiNjNlOWYyMWQ3M2EyNWQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-21T20:01:37.700Z"
+    "at": "2026-10-19T19:22:00.060Z"
   }
 }
