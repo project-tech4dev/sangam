@@ -34,6 +34,8 @@ sources:
     resource: repo://backend/app/schemas/rfps.py
   - id: openwiki-source-e863856c857e426d63a2b3d8
     resource: repo://backend/tests/evals/test_import_calls.py
+  - id: openwiki-source-7bddfb21b7b68785fcb8051a
+    resource: repo://backend/tests/test_cov_routes_members_rfps.py
   - id: openwiki-source-03cd5f1c2ac1a4db6357df24
     resource: repo://backend/tests/test_rfps.py
   - id: openwiki-source-ae9507c4a442eab54c70e7da
@@ -50,6 +52,8 @@ sources:
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-7a4e3a48f46b667a9f4beaec
     resource: repo://docs/features/2026-10-19-rfp-watch-scout.md
+  - id: openwiki-source-24408c4513e55a7d3b655c58
+    resource: repo://frontend/features/ask/AskWorkspace.tsx
   - id: openwiki-source-d9832bbe5d3063927e7f4e88
     resource: repo://frontend/features/ask/views/rfp-watch/api.ts
   - id: openwiki-source-d32a39579c6a596157860696
@@ -66,10 +70,10 @@ sources:
     resource: repo://frontend/features/ingest/ScoutChat.tsx
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-21T19:40:05.698Z
 ---
 
 # RFP Watch (open calls)
@@ -171,23 +175,24 @@ Access is row-level security from `0027_rls.sql`: `rfp_matches` rows are readabl
 | Route | Notes |
 |---|---|
 | `GET /rfps` | Paged list with `status`, `deadline_before` and `tag` filters, ordered by deadline (nulls last). Any signed-in user. |
-| `GET /rfps/feed?org=<slug>` | The screen's read; declared before `/{rfp_id}` so `feed` is not parsed as an id. Requires a user and runs as the caller, so RLS hides another org's matches and the feed comes back empty. Unknown org gives 404. |
+| `GET /rfps/feed?org=<slug>` | The screen's read; declared before `/{rfp_id}` so `feed` is not parsed as an id. Requires a user and runs as the caller, so RLS hides another org's matches and the feed comes back empty. `org` is optional: without it the repository picks the caller's first organisation by name (`FIRST_ORG`, shared with Funder Match). An unknown slug gives 404 (`org <slug> not found`), and a caller with no organisation and no slug gets 404 ("You are not a member of an organisation"). |
 | `GET /rfps/{id}`, `GET /rfps/{id}/matches` | Detail, and the orgs flagged for a call (404 when the call does not exist). |
 | `PATCH /rfps/{id}/matches/{org_id}` | Body `status` in `flagged`, `saved`, `reviewed`, `dismissed` (anything else is 422) and optional `match_notes`. Stores the caller's user id as `matched_by`. 404 when no visible row matches the pair, which includes rows RLS does not let the caller update. |
 
-`Feed` carries `org_id`, `org_name`, `can_act` (may this caller save or dismiss: the org's members and admins, and staff), the org's `domains`, `last_pulled` (newest `fetched_at` among `calls-` rows) and `items`. An item is included when it is **saved, whatever became of the call**, or when it is not dismissed and the call is open with a deadline of today or later. Items are ordered by deadline, and each carries its places and the themes shared with the org, rendered like "Livelihoods · Skilling for jobs" (a bare domain only when no theme under it is tagged).
+`Feed` carries `org_id`, `org_slug`, `org_name`, `can_act` (may this caller save or dismiss: the org's members and admins, and staff), the org's `domains`, `last_pulled` (newest `fetched_at` among all `calls-%` rows, not per org) and `items`. An item (`FeedCall`) is included when it is **saved, whatever became of the call**, or when it is not dismissed and the call is open with a deadline of today or later. Items are ordered by deadline (nulls last), and each carries `url`, `source_url`, the rupee band, `call_status` (the call's own fate) next to `status` (the org's match status), its places and the themes shared with the org, rendered like "Livelihoods · Skilling for jobs" (a bare domain only when no theme under it is tagged).
 
-The only route test, `backend/tests/test_rfps.py`, covers the PATCH happy path, an unknown pair (404) and an invalid status (422), with the repository stubbed. The pull, matching and feed have no focused tests. `backend/tests/evals/test_import_calls.py`, despite its name, is not about this pipeline: it checks the Import eval harness's tool-call budgets (subagent calls counted under their own name, `max_calls` failures such as a `run_import_now` budget of 0) on a scripted run with no model or database.
+Route tests stub the repository. `backend/tests/test_rfps.py` covers the PATCH happy path, an unknown pair (404) and an invalid status (422). `backend/tests/test_cov_routes_members_rfps.py` covers the list filters being passed through, the feed for a known org, an unknown org (404) and no `org` at all, and the detail and matches routes' 404s. The SQL itself (the pull, `flag_matches` and the feed query) has no focused test. `backend/tests/evals/test_import_calls.py`, despite its name, is not about this pipeline: it checks the Import eval harness's tool-call budgets (subagent calls counted under their own name, `max_calls` failures such as a `run_import_now` budget of 0) on a scripted run with no model or database.
 
 ## The screen (`RfpWatchView`)
 
 `frontend/features/ask/views/RfpWatchView.tsx` is mounted by `AskWorkspace` (see [Frontend](frontend.md) and [Ask Sangam](ask-sangam.md)). It follows these rules:
 
-- **Data:** `getFeed` calls `/api/rfps/feed?org=` once per selected organisation (`useOrgChoices` supplies the picker); bucketing, search and the theme filter run client-side.
+- **Data:** `getFeed` calls `/api/rfps/feed?org=<slug>` once per selected organisation (the screen always sends a slug; the optional-`org` fallback is for other callers). `useOrgChoices` supplies the picker, and `AskWorkspace` passes the page's already-loaded `/api/me` as `me`, so the feed is requested straight away instead of after a second call. Bucketing, search and the theme filter run client-side.
+- **Header and picker:** the subtitle names the org's domains and "Last checked" from `last_pulled`. One choice is shown as fixed text; several get a select labelled for staff ("all") or for a steward of several. A signed-in user with no organisation sees a card saying RFP Watch works for an organisation.
 - **Buckets:** *For you* (open calls), *Closing soon* (within `SOON_DAYS = 30`) and *Saved*. In `CallCard`, a deadline of 14 days or fewer is flagged urgent.
-- **Card:** funder, title, days left, rupee band, places, shared themes and a "Read the call" link, shown only for `http(s)` URLs (`safeHref`) because the URLs were extracted by a model. Actions are Save/unsave (`saved` ↔ `flagged`), **Not for us** (`dismissed`, labelled "Remove" on a saved closed call) and **Ask about this call**, which starts a new chat. When `can_act` is false the card shows a read-only line.
+- **Card:** funder, title, days left, rupee band, places, shared themes and a "Read the call" link, shown only for `http(s)` URLs (`safeHref`) because the URLs were extracted by a model. The link uses the call's `url` and falls back to `source_url`. Actions are Save/unsave (`saved` ↔ `flagged`), **Not for us** (`dismissed`, labelled "Remove" on a saved closed call) and **Ask about this call**, which starts a new chat. When `can_act` is false the card shows a read-only line.
 - **Empty states:** an org with no domains is told it has no theme, so nothing can match; an org with no open calls is pointed to Funder Match, since most CSR money moves without an open call.
-- A dismissed call, or an unsaved one that has closed, is dropped from the local list the way the server would drop it; failures show an inline error.
+- A dismissed call, or an unsaved one that has closed, is dropped from the local list the way the server would drop it; failures show an inline error. `frontend/features/ask/views/__tests__/RfpWatchView.test.tsx` covers the buckets, save and dismiss, the read-only case, the empty states and the org picker.
 
 ## Running it
 

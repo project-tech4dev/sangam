@@ -77,6 +77,10 @@ async def _editable(pool: PoolDep, proposal_id: int) -> dict:
     return row
 
 
+class _Refused(Exception):
+    """Inside the row lock: the change cannot be made as things stand, a 409."""
+
+
 class _NotYet(Exception):
     def __init__(self, missing: list[str]):
         self.missing = missing
@@ -251,6 +255,31 @@ async def research_angles(proposal_id: int, pool: PoolDep, principal: Principal)
         logger.warning("research angles for proposal %s failed (%s)", proposal_id, type(exc).__name__)
         raise HTTPException(502, "Sangam couldn't read your case just now. Try again.") from exc
     return ResearchAnglesOut(angles=kept, dropped=dropped)
+
+
+@router.delete("/{proposal_id}/research", response_model=SavedOut,
+               summary="Delete secondary research: its brief, summaries, asks and the public facts no part cites")
+async def delete_research(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
+    await _editable(pool, proposal_id)
+    by = await repo.me(pool)
+
+    def change(work: dict, title: str) -> work_rules.Applied:
+        if ((work.get("readers") or {}).get("public") or {}).get("status") == "running":
+            raise _Refused("A search is running. Try when it's done.")
+        if not (changes := research.reset(work)):
+            raise _Refused("There is no secondary research to delete.")
+        return work_rules.apply(work, changes, by=by, via=work_rules.RESET, reason="deleting secondary research",
+                                title=title)
+
+    try:
+        applied = await repo.save(pool, proposal_id, change)
+    except _Refused as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except work_rules.BadChange as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if applied is None:
+        raise HTTPException(403, READ_ONLY)
+    return SavedOut(summary=applied.summary, work=applied.work)
 
 
 @router.post("/{proposal_id}/versions", response_model=SavedOut, status_code=201,

@@ -131,6 +131,17 @@ Plans: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md), [2026-10-19-rfp
   filter all narrow that one feed in the browser, and the buttons show only when `can_act` says RLS would allow them.
   "Ask about this call" fills a new chat's composer and sends nothing.
 
+### Proposals: secondary research
+
+- **Two readers, two rules.** The facts a proposal's parts cite come from the public researcher (a deep agent whose
+  every page passes `check_url`, so robots.txt and the source registry decide, and whose facts code traces). The brief
+  on the Secondary research card comes from one call with Anthropic's own web search and fetch
+  (`app/proposals/brief.py`), outside `check_url`: it only cites links, never reaches the proposal text, and
+  Anthropic's fetcher follows robots.txt itself. Chosen 2026-10-22 because the guarded reader could not open the
+  sources a good brief needs (NFHS, the Census, NITI, journals).
+- **The brief's task never names the organisation.** Server-side search cannot be filtered by `PublicGuard`, so the
+  name, the org's files and the fact list are never given to it.
+
 ## 6. Media & Signals
 
 Generated detail: [media-and-signals](../openwiki/architecture/media-and-signals.md).

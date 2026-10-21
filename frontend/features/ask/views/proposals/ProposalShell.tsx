@@ -5,9 +5,10 @@ import { MessageCircle, Pencil, Upload, X } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
-import { advance, changedByLine, type Fact, researchAngles, type ResearchAsk, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section } from "./api";
+import { advance, changedByLine, deleteResearch, type Fact, researchAngles, type ResearchAsk, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section } from "./api";
 import { FactList, source } from "./FactList";
 import { FinishCard } from "./FinishCard";
+import { ResearchBrief } from "./ResearchBrief";
 import { PartEditor, WriteCard } from "./WriteCard";
 import { ANSWERS, CASE_STEP, PLAN_STEP, STEPS } from "./steps";
 import { TellSangam } from "./TellSangam";
@@ -520,7 +521,7 @@ function SectionsStep({
         Cites {cited === 1 ? "1 source" : `${cited} sources`} · {gaps === 1 ? "1 gap" : `${gaps} gaps`} to add · {proposal.summary.done} of{" "}
         {proposal.summary.total} parts done
       </p>
-      {step === CASE_STEP && <SecondaryResearch proposal={proposal} save={save} send={send} />}
+      {step === CASE_STEP && <SecondaryResearch proposal={proposal} save={save} send={send} onSaved={onSaved} />}
     </div>
   );
 }
@@ -800,8 +801,21 @@ const CITE = /⟦(k\d+)⟧/g;
 const isLive = (f: Fact) => f.status === "proposed" || f.status === "confirmed";
 
 /** Secondary research: its own button, its status, and per topic one summary with numbered sources, used or dropped whole. */
-function SecondaryResearch({ proposal, save, send }: { proposal: Proposal; save: Save; send: Send }) {
+function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Proposal; save: Save; send: Send; onSaved: (saved: Saved) => void }) {
   const { work, can_edit: canEdit } = proposal;
+  const [confirming, setConfirming] = useState<"fresh" | "delete" | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function clear(thenSearch: boolean) {
+    setDeleteError(null);
+    try {
+      onSaved(await deleteResearch(proposal.id));
+      setConfirming(null);
+      if (thenSearch) send?.(SEARCH_PUBLIC);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Not deleted. Try again.");
+    }
+  }
   const run = work.readers?.public;
   const found = Object.entries(work.facts ?? {}).filter(([, f]) => f.found_by === "public");
   const sources = found.filter(([, f]) => isLive(f)).length;
@@ -810,8 +824,8 @@ function SecondaryResearch({ proposal, save, send }: { proposal: Proposal; save:
     <div className="card pr-block">
       <div className="card-title">Secondary research</div>
       <p className="muted">
-        Sangam Pitch searches government and research sources for the problem in the places you work, the schemes on it, the SDGs it serves and
-        what worked elsewhere. It never searches for your organisation and never uses your files. Use or drop each topic&apos;s summary.
+        Sangam Pitch searches the web for how big the problem is where you work and for studies of what worked, and writes you a brief: up to
+        ten sources on each, nearest first. It never searches for your organisation and never uses your files.
       </p>
       {run?.status === "running" && (
         <p className="muted fm-meta">{run.by?.name ?? "A teammate"} started the search. This takes a few minutes; you can leave this page.</p>
@@ -822,9 +836,51 @@ function SecondaryResearch({ proposal, save, send }: { proposal: Proposal; save:
           Searched {shortDate(run.at)} · {sources} {sources === 1 ? "source" : "sources"}
         </p>
       )}
-      <ResearchAsks asks={work.research_asks} />
+      {run?.status !== "running" && run?.brief && <ResearchBrief text={run.brief} />}
+      {canEdit && run?.status !== "running" && (
+        <div className="pr-next">
+          <button className={run ? "btn btn-ghost" : "btn btn-primary"} type="button" disabled={!send} onClick={() => send?.(SEARCH_PUBLIC)}>
+            {run ? "Search again" : "Search public sources"}
+          </button>
+          {run && (
+            <>
+              <button className="btn btn-ghost" type="button" disabled={!send} onClick={() => setConfirming("fresh")}>
+                Start fresh
+              </button>
+              <button className="btn btn-ghost" type="button" onClick={() => setConfirming("delete")}>
+                Delete research
+              </button>
+            </>
+          )}
+          {!send && <span className="muted fm-meta">Wait for Sangam Pitch to finish its answer.</span>}
+        </div>
+      )}
+      {canEdit && confirming && run?.status !== "running" && (
+        <div className="pr-next" role="group" aria-label="Confirm deleting secondary research">
+          <span className="muted fm-meta">
+            {confirming === "fresh" ? "This deletes the brief, the topic summaries and the facts research found, then searches again." : "This deletes the brief, the topic summaries and the facts research found."}{" "}
+            Facts a part already cites are kept.
+          </span>
+          <button className="btn btn-primary" type="button" disabled={confirming === "fresh" && !send} onClick={() => void clear(confirming === "fresh")}>
+            {confirming === "fresh" ? "Delete and search" : "Delete"}
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={() => setConfirming(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {deleteError && <p className="muted fm-meta">! {deleteError}</p>}
+      {canEdit && run?.status !== "running" && <DeeperResearch proposal={proposal} send={send} />}
+      {canEdit && run?.status === "done" && (
+        <p className="muted fm-meta">Want more? Tell Sangam Pitch what to dig into or where to look, such as “look at nrlm.gov.in for SHG credit linkage”.</p>
+      )}
       {run && run.status !== "running" && (
-        <>
+        // The facts are what the parts cite; the brief is what the person reads, so the facts wait behind it.
+        <details className="fm-weak" open={!run.brief}>
+          <summary>
+            Facts behind this brief ({sources}): use or drop them for your parts
+          </summary>
+          <ResearchAsks asks={work.research_asks} />
           {TOPICS.map(([t, label]) => (
             <ResearchTopic
               key={t}
@@ -836,19 +892,7 @@ function SecondaryResearch({ proposal, save, send }: { proposal: Proposal; save:
             />
           ))}
           {(run.unopened?.length ?? 0) > 0 && <p className="muted fm-meta">Couldn&apos;t open: {run.unopened?.join(", ")}</p>}
-        </>
-      )}
-      {canEdit && run?.status !== "running" && (
-        <div className="pr-next">
-          <button className={run ? "btn btn-ghost" : "btn btn-primary"} type="button" disabled={!send} onClick={() => send?.(SEARCH_PUBLIC)}>
-            {run ? "Search again" : "Search public sources"}
-          </button>
-          {!send && <span className="muted fm-meta">Wait for Sangam Pitch to finish its answer.</span>}
-        </div>
-      )}
-      {canEdit && run?.status !== "running" && <DeeperResearch proposal={proposal} send={send} />}
-      {canEdit && run?.status === "done" && (
-        <p className="muted fm-meta">Want more? Tell Sangam Pitch what to dig into or where to look, such as “look at nrlm.gov.in for SHG credit linkage”.</p>
+        </details>
       )}
     </div>
   );

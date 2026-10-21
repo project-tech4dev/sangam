@@ -26,14 +26,12 @@ sources:
     resource: repo://frontend/vercel.json
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-  - id: openwiki-source-23775c3de52f3ab95a13cb8b
-    resource: repo://README.md
   - id: openwiki-source-0908473e2445de9a37b6928f
     resource: repo://scripts/smoke.sh
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T19:22:00.060Z
+    at: 2026-10-21T19:40:05.698Z
 ---
 
 # Deploying by Hand
@@ -58,9 +56,9 @@ The workflow needs one secret, `VERCEL_TOKEN`. `VERCEL_ORG_ID` (the Vercel team)
 
 ### CI does not gate or trigger a deploy
 
-`.github/workflows/ci.yml` is a separate workflow that runs on every pull request and every push to `master`. Its header says it deploys nothing ("that stays deploy.yml, by hand"). It runs backend lint (`ruff`), backend unit tests (`pytest -m "not integration"`), backend integration tests against a `pgvector/pgvector:pg17` service, and the frontend lint, `tsc --noEmit` and `npm run build`. The integration job builds its database the way a local stack does: it applies `db/init/*.sql`, then `python -m app.db.migrate`, then the seeds.
+`.github/workflows/ci.yml` is a separate workflow that runs on every pull request and every push to `master`. Its header says it deploys nothing ("that stays deploy.yml, by hand"). It runs four jobs: backend lint (`ruff check`), backend unit tests (`pytest -m "not integration"` with coverage), backend integration tests against a `pgvector/pgvector:pg17` service, and the frontend (`npm run lint`, `tsc --noEmit`, `npm run coverage`, then `npm run build`). The integration job builds its database the way a local stack does: it applies `db/init/*.sql`, then `python -m app.db.migrate`, then the seeds, and it deselects two migration-integrity tests that need a restore of the original dump. The test jobs upload coverage to Codecov over OIDC. A newer push to the same ref cancels the earlier CI run (`cancel-in-progress: true`), the opposite of Deploy's queueing.
 
-Nothing links CI to Deploy. `deploy.yml` does not wait for CI and does not check that it passed, so a dispatch on a red or unchecked ref deploys anyway. Before dispatching, look at the CI result for the commit you are shipping.
+Nothing links CI to Deploy. `deploy.yml` does not wait for CI and does not check that it passed, so a dispatch on a red or unchecked ref deploys anyway. Before dispatching, look at the CI result for the commit you are shipping (the CI badge in the [README](../../README.md) shows the state of `master`).
 
 ## What the workflow does
 

@@ -27,7 +27,7 @@ from app.db.pool import get_pool
 from app.ingest import run_sources
 from app.ingest.middleware import RunSources, fallback
 from app.integrations.tracing import trace_config
-from app.proposals import context, research, steps
+from app.proposals import brief, context, research, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.proposals.middleware import PUBLIC_RUN, PublicGuard, PublicRun
@@ -50,6 +50,7 @@ class _Built:
     funder: Any = None
     public: Any = None  # None without a search key: then public research is simply not run
     summary: Any = None  # writes secondary research's paragraph per topic
+    brief: Any = None  # writes secondary research's brief, with Anthropic's own web search and fetch
     parallel: int = 1
     trace: dict[str, Any] | None = None
 
@@ -84,6 +85,10 @@ def build(settings: Settings, evidence_tools: list[Any], funder_tools: list[Any]
     BUILT.public = (reader(public_tools, "public_researcher.md", PublicGuard())
                     if public_tools and settings.tavily_api_key else None)
     BUILT.summary = resolve_model(settings.utility_model)
+    try:
+        BUILT.brief = brief.bind(research)
+    except Exception as exc:  # noqa: BLE001 - a model without server-side search writes no brief
+        logger.warning(f"[build] no research brief: {settings.research_model} cannot search ({type(exc).__name__})")
     BUILT.parallel = max(1, settings.max_parallel_research)
     BUILT.trace = trace_config(settings, name="sangam_proposal_reader", tags=("proposal", "reader"))
 
@@ -143,6 +148,33 @@ def public_task(p: context.Current, places: list[str], themes: list[str], progra
         *(f"- {s.code} {s.label}: {'; '.join(s.strong)}" for s in sections),
         *(_focus_block(ask, research.already_found(p.work)) if ask else []),
     ])
+
+
+def brief_task(p: context.Current, places: list[str], themes: list[str], programmes: list[str],
+               sdgs: list[str], ask: dict[str, Any] | None = None) -> str:
+    """The brief's task: places, themes, programmes and SDGs. Never the organisation's name, its files or the facts:
+    the brief searches on Anthropic's side, where no guard sees the query."""
+    org = fact_rules.norm(p.org_name)
+
+    def listed(items: list[str]) -> str:
+        return "; ".join(i for i in items if org not in fact_rules.norm(i)) or "none on record"
+
+    focus = (ask or {}).get("focus") or []
+    sites = (ask or {}).get("sites") or []
+    return "\n".join([
+        f"Secondary research for a grant proposal to {p.funder_name}.",
+        "",
+        f"Where the work happens: {listed(places) if places else 'no place on record: work at state level, or for India'}",
+        f"Themes: {listed(themes)}",
+        f"Programmes: {listed(programmes)}",
+        f"SDGs on record: {listed(sdgs)}",
+        *([f"Look especially into: {'; '.join(focus)}"] if focus else []),
+        *([f"Start on these sites: {'; '.join(sites)}"] if sites else []),
+    ])
+
+
+async def _no_brief() -> None:
+    return None
 
 
 def _focus_block(ask: dict[str, Any], found: list[str]) -> list[str]:
@@ -270,10 +302,16 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
         public = PUBLIC_RUN.set(run)
         # A run of its own: inheriting the chat's run would stream every reader's steps into the person's chat.
         var_child_runnable_config.set(None)
+        written: str | None | BaseException = None
         try:
-            task = (public_task(p, *await _public_inputs(p), ask=ask[1] if ask else None) if key == PUBLIC
-                    else _task(p, key, title))
-            result = await graph.ainvoke({"messages": [HumanMessage(task)]}, config=BUILT.trace)
+            inputs = await _public_inputs(p) if key == PUBLIC else None
+            focus = ask[1] if ask else None
+            task = public_task(p, *inputs, ask=focus) if inputs is not None else _task(p, key, title)
+            writing = brief.write(brief_task(p, *inputs, ask=focus), BUILT.brief) if inputs is not None else _no_brief()
+            result, written = await asyncio.gather(graph.ainvoke({"messages": [HumanMessage(task)]}, config=BUILT.trace),
+                                                   writing, return_exceptions=True)
+            if isinstance(result, BaseException):
+                raise result
             text = _last_text(result)
             error = _reason(text) if text.startswith(UNREADABLE) else None
         except Exception as exc:  # noqa: BLE001 - one file's failure never stops the others
@@ -288,11 +326,16 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
     added = 0
     if run is not None and not error:
         outcome["summaries"], added = await _summaries(p.id, run.ask)
+        if isinstance(written, str):
+            outcome["brief"] = written
     if ask is not None:
         marks[f"research_asks.{ask[0]}"] = {**ask[1], "status": outcome["status"], "at": outcome["at"], "by": by,
                                             **({} if error else {"added": added})}
     await _mark(p.id, marks, by, "could not read it" if error else "read it")
-    return f"{title}: could not read it ({error})." if error else f"{title}: read.\n{text}"
+    if error:
+        return f"{title}: could not read it ({error})."
+    shown = f"\n\nThe brief now on the Secondary research card:\n{outcome['brief']}" if outcome.get("brief") else ""
+    return f"{title}: read.\n{text}{shown}"
 
 
 async def _summaries(proposal_id: int, ask_id: str | None = None) -> tuple[dict[str, str], int]:

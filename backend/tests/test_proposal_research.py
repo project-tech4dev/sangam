@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import pytest
 
 from app.proposals import questions, research, rubric, steps
+from app.proposals import work as work_rules
 
 NOW = datetime(2026, 10, 21, tzinfo=UTC).isoformat()
 
@@ -158,6 +159,29 @@ class TestAsks:
     def test_only_public_facts_still_in_use_are_named_as_found(self):
         assert research.already_found({"facts": FACTS}) == [
             "secondary dropout, Udalguri: 19.8%", "secondary dropout, Assam: 15.1%", "Aspirational District: Udalguri is one"]
+
+
+class TestReset:
+    PUB = {"found_by": "public", "status": "proposed"}
+
+    def test_it_removes_public_facts_nothing_relies_on(self):
+        work = {"facts": {"k1": self.PUB, "k2": self.PUB, "k3": self.PUB, "k4": {**self.PUB, "found_by": None},
+                          "k5": {"from": ["k2"]}, "k6": {"supersedes": "k3"}, "k7": self.PUB},
+                "sections": {"A2": {"text": "Udalguri ⟦k1⟧."}, "A3": None},
+                "readers": {"public": {"status": "done"}}, "research_asks": {"a1": {}}}
+        assert research.reset(work) == {"facts.k7": None, "readers.public": None, "research_asks": None}
+
+    def test_nothing_to_reset(self):
+        assert research.reset({"facts": {"k1": {"found_by": None}}, "readers": {"funder": {}}}) == {}
+
+    def test_only_reset_may_remove_and_only_public_facts(self):
+        work = {"facts": {"k1": self.PUB, "k2": {"found_by": None}}}
+        out = work_rules.apply(work, {"facts.k1": None}, by={"id": "u"}, via=work_rules.RESET)
+        assert "k1" not in out.work["facts"]
+        with pytest.raises(work_rules.BadChange):
+            work_rules.apply(work, {"facts.k2": None}, by={"id": "u"}, via=work_rules.RESET)
+        with pytest.raises(work_rules.BadChange):
+            work_rules.apply(work, {"research_asks": None}, by={"id": "u"}, via="rest")
 
 
 class TestDeeper:

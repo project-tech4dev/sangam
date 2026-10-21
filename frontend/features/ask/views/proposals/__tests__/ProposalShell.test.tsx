@@ -411,6 +411,66 @@ describe("step 3: make a case", () => {
     expect(screen.queryByText(/Written after your plan/)).toBeNull();
   });
 
+  it("shows the researcher's brief on the card, with its tables and links but never raw HTML", async () => {
+    const brief = [
+      "**A. Problem magnitude**",
+      "",
+      "| # | Level | Source | Why it matters |",
+      "|---|---|---|---|",
+      "| 1 | State | [NFHS-5 Assam](https://rchiips.org/nfhs) | 84% of households are rural |",
+      "",
+      "<script>alert(1)</script>",
+      "",
+      "[bad](javascript:alert(1))",
+    ].join("\n");
+    serve(onCase({ readers: { public: { status: "done", at: "2026-10-05T00:00:00Z", title: "Public", brief } } } as Partial<Work>));
+    renderShell();
+    const card = await screen.findByLabelText("Research brief");
+    expect(within(card).getByRole("table")).toBeInTheDocument();
+    expect(within(card).getByRole("link", { name: "NFHS-5 Assam" })).toHaveAttribute("href", "https://rchiips.org/nfhs");
+    expect(within(card).getByText("bad").closest("a")?.getAttribute("href") ?? "").not.toMatch(/javascript/);
+    expect(card.querySelector("script")).toBeNull();
+    const facts = screen.getByText(/Facts behind this brief/).closest("details")!;
+    expect(facts.open).toBe(false);
+    expect(facts.contains(card)).toBe(false);
+  });
+
+  it("opens the facts when an older search left no brief", async () => {
+    serve(onCase({ readers: { public: { status: "done", at: "2026-10-05T00:00:00Z", title: "Public" } } } as Partial<Work>));
+    renderShell();
+    expect((await screen.findByText(/Facts behind this brief/)).closest("details")!.open).toBe(true);
+    expect(screen.queryByLabelText("Research brief")).toBeNull();
+  });
+
+  it("starts fresh or deletes research only after the person confirms", async () => {
+    const done = { status: "done", at: "2026-10-05T00:00:00Z", title: "Public", brief: "Old brief" };
+    const p = onCase({ readers: { public: done } } as Partial<Work>);
+    const cleared = { summary: p.summary, work: { ...p.work, readers: {} } };
+    serve(p, { "DELETE /api/proposals/3/research": () => cleared });
+    renderShell();
+    await userEvent.click(await screen.findByRole("button", { name: "Delete research" }));
+    const confirm = screen.getByRole("group", { name: "Confirm deleting secondary research" });
+    expect(call).not.toHaveBeenCalledWith("/api/proposals/3/research", "DELETE");
+    await userEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("group", { name: "Confirm deleting secondary research" })).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Start fresh" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete and search" }));
+    expect(call).toHaveBeenCalledWith("/api/proposals/3/research", "DELETE");
+    expect(chat.send).toHaveBeenCalledWith("Search public sources.");
+    expect(screen.queryByLabelText("Research brief")).toBeNull();
+  });
+
+  it("says why research could not be deleted, and does not search", async () => {
+    const p = onCase({ readers: { public: { status: "done", at: "2026-10-05T00:00:00Z", title: "Public" } } } as Partial<Work>);
+    serve(p, { "DELETE /api/proposals/3/research": () => { throw new Error("A search is running. Try when it's done."); } });
+    renderShell();
+    await userEvent.click(await screen.findByRole("button", { name: "Start fresh" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete and search" }));
+    expect(await screen.findByText("! A search is running. Try when it's done.")).toBeInTheDocument();
+    expect(chat.send).not.toHaveBeenCalled();
+  });
+
   it("summarises each topic with numbered sources, used or dropped as a whole", async () => {
     const work = {
       readers: {

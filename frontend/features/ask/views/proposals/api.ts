@@ -66,6 +66,8 @@ export type Reader = {
   unopened?: string[];
   /** Secondary research only: one paragraph per topic, citing its facts as ⟦kN⟧. */
   summaries?: Partial<Record<NonNullable<Fact["topic"]>, string>>;
+  /** Secondary research only: the researcher's brief, in Markdown (problem magnitude, impact evidence, caveats). */
+  brief?: string;
 };
 
 /** What a person asked one secondary research run to look into, from chat or a button. */
@@ -196,6 +198,9 @@ export async function advance(id: number, to?: number) {
   void reloadProposals();
   return saved;
 }
+
+/** Deletes secondary research: its brief, summaries, asks, and the public facts no part's text cites. */
+export const deleteResearch = (id: number) => call<Saved>(`/api/proposals/${id}/research`, "DELETE");
 
 /** What research would look into from the case, for the person to edit before searching. */
 export const researchAngles = (id: number) => call<{ angles: string[]; dropped: string[] }>(`/api/proposals/${id}/research/angles`);

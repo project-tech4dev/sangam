@@ -18,6 +18,8 @@ sources:
     resource: repo://backend/app/agent/tools/web.py
   - id: openwiki-source-ca736c25c2a1bb0e95531706
     resource: repo://backend/app/api/routes/documents.py
+  - id: openwiki-source-7f553ad78903f3c0ba31ef82
+    resource: repo://backend/app/core/certs/intermediates.pem
   - id: openwiki-source-6dcfc1451bcbf8009d0484a9
     resource: repo://backend/app/core/config.py
   - id: openwiki-source-933c62fa2383d76225c96eb5
@@ -44,12 +46,16 @@ sources:
     resource: repo://backend/app/integrations/tracing.py
   - id: openwiki-source-55002f5b1d39cf35fd6d60e2
     resource: repo://backend/app/main.py
+  - id: openwiki-source-8515286617ae84b7b71f0cb9
+    resource: repo://backend/tests/test_egress_trust.py
   - id: openwiki-source-26b852c215c1dc4649cbde36
     resource: repo://backend/vercel.json
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
   - id: openwiki-source-5f7022cb75865b779a5792a0
     resource: repo://codecov.yml
+  - id: openwiki-source-f317ee207e1653d2033c81a4
+    resource: repo://CONTRIBUTING.md
   - id: openwiki-source-e8e61d605125cac4d909755e
     resource: repo://docs/ARCHITECTURE.md
   - id: openwiki-source-88fdf568b0f25b1d21f041da
@@ -60,12 +66,10 @@ sources:
     resource: repo://frontend/package.json
   - id: openwiki-source-a0ebc66d448ae6aa5723800b
     resource: repo://frontend/vercel.json
-  - id: openwiki-source-23775c3de52f3ab95a13cb8b
-    resource: repo://README.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-21T19:40:05.698Z
 ---
 
 # Deploy and Vendors
@@ -90,9 +94,9 @@ Migrations are not part of any of these: they are run by hand with `make migrate
 `.github/workflows/ci.yml` opens with a comment that it deploys nothing. It has `contents: read` permission and a concurrency group `ci-<ref>` with `cancel-in-progress: true`, so a newer push to the same ref cancels the older run. Four jobs run in parallel:
 
 - **`backend-lint`**: `uv sync --frozen` on Python 3.12, then `ruff check . --output-format=github` (ruff is pinned to `0.16.8` in `backend/pyproject.toml`).
-- **`backend-unit`**: `pytest -m "not integration" --cov --cov-report=xml`, uploaded to Codecov with flag `backend-unit`.
-- **`backend-integration`**: runs against a `pgvector/pgvector:pg17` service container on port 5433. It applies `db/init/*.sql`, then `app.db.migrate`, `seed.seed` and `seed.taxonomy_seed` (what compose init plus `make migrate` and `make seed` give locally), then `pytest -m integration -rs`, uploaded with flag `backend-integration`. `-rs` lists skips because a test skipping for "Postgres not reachable" would mean a broken job, not a pass. Two tests in `tests/test_migration_integrity.py` (`test_preserved_row_counts`, `test_documents_sequence_advanced`) are deselected: they check a restore of the original dump, which the seeder never creates.
-- **`frontend`**: Node 22, `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run build`.
+- **`backend-unit`**: `pytest -m "not integration" --cov --cov-report=xml`, uploaded to Codecov with flags `backend` and `backend-unit`.
+- **`backend-integration`**: runs against a `pgvector/pgvector:pg17` service container on port 5433. It applies `db/init/*.sql`, then `app.db.migrate`, `seed.seed` and `seed.taxonomy_seed` (what compose init plus `make migrate` and `make seed` give locally), then `pytest -m integration -rs`, uploaded with flags `backend` and `backend-integration`. `-rs` lists skips because a test skipping for "Postgres not reachable" would mean a broken job, not a pass. Two tests in `tests/test_migration_integrity.py` (`test_preserved_row_counts`, `test_documents_sequence_advanced`) are deselected: they check a restore of the original dump, which the seeder never creates.
+- **`frontend`**: Node 22, `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run coverage` (`vitest run --coverage`, uploaded to Codecov from `frontend/coverage/lcov.info` with flag `frontend`), then `npm run build`.
 
 Evals (the `eval` marker, which calls real models) are not run in CI. See [Testing overview](../testing/overview.md) for the tiers.
 
@@ -102,11 +106,11 @@ Evals (the `eval` marker, which calls real models) are not run in CI. See [Testi
 
 ### Codecov
 
-Both coverage uploads authenticate with GitHub OIDC (`id-token: write`, `use_oidc` is off for fork PRs, which fall back to a tokenless upload), so no Codecov token is stored. `codecov.yml` merges the two uploads into one report per commit (flags carry forward), and sets two statuses: **project** coverage may not fall more than 1% below the base commit (`target: auto`, `threshold: 1%`), and **patch** coverage (lines a PR adds or changes) must be at least 70%. A `fixes` rule maps `app/` to `backend/app/`, since `coverage.xml` paths are relative to `backend/`.
+All three coverage uploads (backend unit, backend integration, frontend) authenticate with GitHub OIDC (`id-token: write`; `use_oidc` is off for fork PRs, which fall back to a tokenless upload), so no Codecov token is stored. Both backend uploads also carry a shared `backend` flag, which the README badge reads; the frontend has its own flag. `codecov.yml` merges uploads into one report per commit (flags carry forward). The global project and patch statuses are switched off and gating is per component, so one side's figure cannot sink the other's. The `backend` (`backend/**`) and `frontend` (`frontend/**`) components each get three checks: a `floor-` project check at 75%, a project check that may not fall more than 1% below the base commit (`target: auto`, `threshold: 1%`), and a patch check (lines a PR adds or changes) of at least 75%. `fixes` rules map `app/` to `backend/app/` and `lib/`, `features/`, `components/` to their `frontend/` paths, since report paths are relative to `backend/` or `frontend/`.
 
 ### Dependabot-driven bumps
 
-`docs/CHANGELOG.md` records version bumps made in response to Dependabot alerts (2026-10-16): `next` 16.3.8, CopilotKit `~1.75.2`, `undici` and `katex` forced through npm `overrides` in `frontend/package.json`, and PyJWT 2.15.1. Those bumps land as ordinary pull requests, so they pass through CI and Dependency review like any other change, and are deployed only when someone runs Deploy. There is no `.github/dependabot.yml` in the repository (the plan in `docs/features/2026-10-16-ci.md` proposes one), so scheduling and grouping of Dependabot PRs is configured outside the repo, if at all. See [Platform](../architecture/platform.md) for the plan-versus-code discussion.
+`docs/CHANGELOG.md` records version bumps made in response to Dependabot alerts (2026-10-16): `next` 16.3.8 (`frontend/package.json` now declares `^16.3.8`), CopilotKit `~1.75.2`, `undici` and `katex` forced through npm `overrides` in `frontend/package.json`, and PyJWT 2.15.1 (the backend manifest only floors it at `>=2.9`). Those bumps land as ordinary pull requests, so they pass through CI and Dependency review like any other change, and are deployed only when someone runs Deploy. There is no `.github/dependabot.yml` in the repository (the plan in `docs/features/2026-10-16-ci.md` proposes one), so scheduling and grouping of Dependabot PRs is configured outside the repo, if at all. See [Platform](../architecture/platform.md) for the plan-versus-code discussion.
 
 ```mermaid
 flowchart LR
@@ -152,7 +156,7 @@ If the CopilotKit proxy is ever removed (see [Frontend](../architecture/frontend
 
 ### Keep-warm cron
 
-`backend/vercel.json` defines a cron that calls `GET /health` every five minutes (`*/5 * * * *`). `/health` returns `{"status": "ok"}` and is one of the open paths that skip authentication. A request to a cold instance runs the lifespan (opens the Postgres pool, verifies the SQL catalog, opens the checkpointer and optional graph), so the cron keeps roughly one instance warm. It does nothing for concurrent bursts, which still start new instances. Agents themselves are built lazily on the first request that needs one, so a REST cold start does not pay for the agent stack.
+`backend/vercel.json` defines a cron that calls `GET /health` every five minutes (`*/5 * * * *`). `/health` returns `{"status": "ok"}` plus, once the pool exists, a `pool` object of counts only (`pool_max`, `pool_size`, `pool_available`, `requests_waiting`, `requests_errors`, `connections_errors`), so you can see whether requests are queuing for a connection. It is one of the open paths that skip authentication. A request to a cold instance runs the lifespan (opens the Postgres pool, verifies the SQL catalog, opens the checkpointer and optional graph), so the cron keeps roughly one instance warm. It does nothing for concurrent bursts, which still start new instances. Agents themselves are built lazily on the first request that needs one, so a REST cold start does not pay for the agent stack.
 
 ## Supabase
 
@@ -161,10 +165,14 @@ One Supabase project supplies Postgres, Storage and Auth, in ap-south-1 (Mumbai)
 ### Postgres: use the session pooler on port 5432
 
 - **Do not use the direct host.** `db.<ref>.supabase.co` resolves to IPv6 only, which Docker containers cannot reach, so connections hang rather than fail. The pooler has IPv4.
-- **Use session mode (5432), not the transaction pooler (6543).** The transaction pooler breaks `pg_restore`. The backend's pool is also built with `prepare_threshold=0`, `autocommit=True`, so it does not depend on server-side prepared statements.
+- **Use session mode (5432), not the transaction pooler (6543).** The transaction pooler breaks `pg_restore`. The backend's pool is also built with `prepare_threshold=0`, `autocommit=True`, so it does not depend on server-side prepared statements. The constraint is written down in `CLAUDE.md` and `CONTRIBUTING.md`.
 - The `STAGING_DB_*` block in `.env` is what `make migrate|seed|psql ENV=staging` uses to reach this database; use `sslmode=require` and percent-encode special characters in a URL password.
 - The database holds application data **and** LangGraph checkpoints, so the role needs `CREATE` on `public`, and the `vector` and `pg_trgm` extensions must be available.
-- **Connection budget.** The project allows 60 connections with 3 reserved. One process opens at most `DB_POOL_MAX_SIZE` (default 10), shared by REST, agent tools and the checkpointer; ten leaves room for about four backend instances plus the dashboard. Concurrency gates derive from it (`max(2, pool - 3)`), and raising `MAX_PARALLEL_RESEARCH` means raising the pool with it. See [Data and Migrations](../architecture/data-and-migrations.md).
+- **Connection budget.** The project allows 60 connections with 3 reserved. One process opens at most `DB_POOL_MAX_SIZE` (default 10), shared by REST, agent tools and the checkpointer; ten leaves room for about four backend instances plus the dashboard. Concurrency gates derive from it (`max(2, pool - 3)`) because the checkpointer writes on every graph step through the same pool, and a gate equal to the pool size would starve it; raising `MAX_PARALLEL_RESEARCH` means raising the pool with it. A request waits `db_pool_timeout_s` (10 s) for a free connection and a new connection gets `db_connect_timeout_s` (5 s) before failing. See [Data and Migrations](../architecture/data-and-migrations.md).
+
+### LangGraph checkpointer
+
+`backend/app/db/checkpointer.py` is where `make_pool` builds that one pool (`min_size=1`, `max_idle=300`, and a `check_connection` probe on every checkout because a thawed Vercel instance may hold sockets the pooler already closed). `open_checkpointer` wraps it in LangGraph's `AsyncPostgresSaver` but runs **no DDL**: concurrent cold starts would race. Instead it reads `checkpoint_migrations` and compares with `CHECKPOINT_VERSION` (the last migration the installed langgraph expects). If the tables are missing or at another version it raises `RuntimeError("... run make migrate")`, so a deployed backend refuses to start against a database that `make migrate` has not brought up to date. Run migrations by hand before or alongside a deploy, and again after any langgraph upgrade.
 
 ### Auth
 
@@ -197,6 +205,8 @@ Behaviour worth knowing:
 ## Outbound fetch guard (egress)
 
 `backend/app/core/egress.py` holds the address check, `private_address_refusal`, and `guarded_client()`, an `httpx` client whose request hook runs that check on **every hop including redirects**. It refuses non-http(s) URLs, `localhost`, single-label hosts, and any literal or resolved address that is not globally routable. It handles inet_aton forms (`2130706433`, `0x7f.1`), IPv4-mapped, 6to4, Teredo and NAT64 addresses, and resolves DNS before deciding. A check that cannot decide refuses. This matters on Vercel because the function can otherwise be steered at internal endpoints.
+
+The same module owns outbound TLS trust. `TRUST` is an SSL context built from certifi's roots plus the extra intermediates in `backend/app/core/certs/intermediates.pem` (currently emSign SSL CA - G1, which `censusindia.gov.in` fails to send). Verification stays on (`CERT_REQUIRED`, hostname checking). `guarded_client` and Import's research reader client both use `TRUST`. `backend/tests/test_egress_trust.py` pins that each bundled certificate is an in-date intermediate, not a root, whose root is already in certifi, and that both clients use `TRUST`.
 
 Where it is applied:
 

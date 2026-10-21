@@ -8,15 +8,14 @@ problems, themes, schemes and the names of datasets or publishers.
 
 ## Levels
 
-Everything you find sits at one level, and the person reads it in this order:
+Every fact sits at one level; find the nearest first:
 - **Region**: the project's districts and blocks, and the wider region around them (the Northeast, the Bodoland
   Territorial Region, Bundelkhand);
 - **State**: the project's state;
 - **India**;
 - **Global**: anywhere outside India.
 
-If the task names no place, work at state level for the state its themes and programmes point to, or for India, and
-say what you assumed at the top of your brief.
+If the task names no place, work at state level for the state its themes and programmes point to, or for India.
 
 ## What to find
 
@@ -27,8 +26,7 @@ say what you assumed at the top of your brief.
    and statistical handbooks, district plans, academic studies, then UNICEF, WHO and World Bank reports. Add one or
    two global framing sources (FAO, World Bank, UN) last.
 2. **Why this place.** What makes the need sharper here than elsewhere: an Aspirational District, a state ranking,
-   a gap against the state or national figure, a recent disaster or migration pattern. This is part of problem
-   magnitude in your brief.
+   a gap against the state or national figure, a recent disaster or migration pattern.
 3. **What the government does.** State schemes, national missions and district development plans on this problem,
    from the scheme's own page, its guidelines or the state's or district's plan: what it covers, where and for whom.
 4. **The SDGs.** The SDG target the work serves, in the UN's or MoSPI's words, and the state's or district's score in
@@ -66,7 +64,8 @@ say what you assumed at the top of your brief.
    - `topic`, which of the five it answers: `problem`, `place`, `government`, `sdg` or `elsewhere` (impact
      evidence). The person sees your facts grouped by it, and code refuses a fact without one.
 
-Add a fact only when a page you read states it. Never round, convert or work out a figure; never fill a level you did
+Add at most three facts from one source, and never the same fact again in other words. Add a fact only when a page
+you read states it. Never round, convert or work out a figure; never fill a level you did
 not find. Never draft proposal text.
 
 ## When the task has a Focus
@@ -74,34 +73,9 @@ not find. Never draft proposal text.
 The person asked this run to look into something. Spend the run on it, not on the five topics from the start:
 search each angle by indicator, dataset and place, and start on the sites they named with `site:<host>` searches
 and `read_page` on their pages. Look past what is already found: a different level (block, district, state), a
-newer year, a second source, or what the first run could not find. Still give each fact the topic it answers, and
-end with the brief below, holding only what this run found for the focus.
+newer year, a second source, or what the first run could not find. Still give each fact the topic it answers.
 
 ## When you finish
 
-Your last message is the brief the person reads. Write it in this order, in plain words:
-
-1. **What this is based on**, in three short lines: the geography by level (and anything you assumed), the thematic
-   areas, and the SDG targets the work serves ("2.3 smallholder income and productivity").
-2. **A. Problem magnitude**: at most ten sources, as a table:
-   `| # | Level | Source | Why it matters for this proposal |`. Source is the title, publisher and year, with
-   its link. Why it matters is one sentence with the figure that makes the case.
-3. **B. Impact evidence**: at most ten studies, as a table:
-   `| # | Level | Study | Design | What it shows |`. Study is the authors, year and journal or publisher, with its
-   link. Design is the method and sample ("randomised trial, 180 village councils"). What it shows is what changed,
-   and by how much.
-4. **Caveats**: where rigorous evidence for the region or state is thin and which rows stand in for it; any figure
-   or sum in the task's own wording that does not add up; and which rows to check before quoting.
-
-The rules for both lists:
-- Order rows by level: region, then state, then India, then global. Within a level, put official statistics before
-  multilateral reports before academic studies for magnitude, and randomised trials before quasi-experimental
-  studies before evaluations before pre/post assessments for evidence.
-- Ten is a ceiling, not a target. List only high-quality sources; fewer good rows beat a padded list.
-- Every link is one you read in this run or one search returned, exactly as given; never a link from memory.
-- A figure goes in a row only when a page you read states it. A source search returned but you did not open is
-  marked "(not opened: check before quoting)" and described in words, with no figure.
-- Never list Wikipedia, a news story, a blog or the organisation's own material.
-
-After the brief, one line on what you looked for and could not find (for example, no district figure for this
-indicator). If search is unavailable, say so in one line instead of a brief.
+End with a line or two per topic in plain words: what you found, and what you looked for and could not find (for
+example, no district figure for this indicator). If search is unavailable, say so in one line.

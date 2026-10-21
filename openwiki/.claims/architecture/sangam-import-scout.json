@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:db6cfd6ae52aa9d31173caa58ac84b1bff537e35c2cf8686c47e8dfe99b65c4a",
+  "pageVersion": "sha256:2f7ac1bf6020b410e06b45c6939a790abad96fa1be6e5df003725eafcde10b1e",
   "claims": [
     {
       "id": "claim_4cb3c62ff0f34116ae33de01c60bd2ef",
@@ -75,7 +75,7 @@
           "version": "repo-lines-v1:sha256:b46fc87adca941fd1372d28f548ccf473764629cd2d1e725abdc621471883a71:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhYzFkYjhmZjE5N2E5ZjM0NzkyYmY2ODQzYWI5MTZjMmZlODAyMGU2Nzc3OGQ4MDgzYzY2MjM4NGUzNzA5MWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4ZDYxN2FmNzlmM2Q0ZDc2NzhkMWI2ODkzYmMxZTg4YmM3YWViN2I2OTAzMjNmNGQ1YTEwODgzZmJjMTQ4NGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzYjgwOWYwYjQ3OGQ3NThhY2Q3MGE1MjFjMDY3ZTNjZGY4NmYzZmVjNjdjYTNiYjM3ZTA0NmJmOGYwYjFmMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L419-L424",
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L420-L425",
           "version": "repo-lines-v1:sha256:5435692095517b984f718b8b4c025ac2418bef40442ebf3886b2e27273076853:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmNjZGVmNWRlYjY2ZGQ4YTZhOTE4MWQ1Y2Y0NmFkM2U5MmUzNWE4ZDVlMWI3NThiNGI0Y2EwMDhkZTUxYzI2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNThiZDAxM2RkMzRlZjQ4ZWE2NTlkNWM5N2IxZDA3YzNlYjNhNjEzMmRjMDdjZjdkMzBjMjdmN2FlYjAyNDdmOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWUyMjRlZTNiMThkZGFhYTJkYjQ2ZTU5MDFhN2Y2MTQ0ZGVmZmE3OThiZDcwOGQ5ODkxZTRhN2IwNzIwZDViNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWRmYzFiYWY3OGU1ODc3OWFlMTE2OWU1NjBlYmQ5YmNjODM5MDE3MDc0MTM1MjY5YjE2MWZhNWNmMWQxMjJlZCJ9"
         },
         {
@@ -201,7 +201,7 @@
           "version": "repo-lines-v1:sha256:0c06c42bddac35bf85698a4993f7d1a28ee98cf52d84b237f3e2333bd2cd705e:eyJzZWxlY3RlZExpbmVDb3VudCI6OTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0NmRkM2Q0ZDU3YzBmOTU4ODU1N2QyMjk3YjY4ZGYyMzhjYTkyMWYzZDE4NDc4MmFmMzU1ZTk2NGQxMTc4YzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyYWIwOTBiY2QxNjIwZmE2MmVhZWUxNTdhNzRmY2E2MzVhYTI5ZTEyY2JmZmQ2MThiNTc5MmQ4N2JjMDNhM2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3M2YwNmFiMjMyZmM5OTYxNWFmNDFjYTc1MGNmNjlhNTdhMDgwZjQzMDliOTBjOTIwODRjM2Q3ODU0ZTAxYmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwMzE1YjVmYjZiNDEyYWM3ODYwNWQ3NDk1NDA4ZmU3NDdlMjg1M2I0NzAzZjllMDcyZGM0NTc5MDhhYTBiN2UifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L284-L424",
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L285-L425",
           "version": "repo-lines-v1:sha256:4fa029e39cc0c022d93d11a373bc2b7997babda7a04b549b29c4cd1bc28e7e25:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIxMzRlNTlkN2VhZGNhOGE5MjlhMjVmYTYwYmI1NGZmNmI4YWZiMGZhZDk0MDk5Y2QxYzg4OThkY2Q1YmU5NjhjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI1OGJkMDEzZGQzNGVmNDhlYTY1OWQ1Yzk3YjFkMDdjM2ViM2E2MTMyZGMwN2NmN2QzMGMyN2Y3YWViMDI0N2Y5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJjMTU4ZDE3NzIxZmEzZWZhODViZTJiNTQ0ZGI0M2NkNDhkMTFkZTRjMjQzNThlY2M4MDM5MGU4OTM4ZDZkOGJlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1ZGZjMWJhZjc4ZTU4Nzc5YWUxMTY5ZTU2MGViZDliY2M4MzkwMTcwNzQxMzUyNjliMTYxZmE1Y2YxZDEyMmVkIn0"
         }
       ]
@@ -233,7 +233,7 @@
           "version": "repo-lines-v1:sha256:52e00b008535ae98fae763beb329a2082472f1e34f2f72386fb7255db23c46d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyYWUxYzA4NGYwYTkwOTgzYzA3ZmFkYzY0MDBlNzkzNGQ0YzA1NTQ4YTRiNWY4OGU1NTMxNjdmNjM5NjI0MmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0ZmFiZmMxYjc3YTJjYzg4NzEzNTcxODgyYTMxYTI3OTkwMzJmNjNkN2ZkY2UzYWQ5ZmVkYWY4OWQ5YWYyOTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkZWY4NWZkZTFlOGUwMjg4OWQ1MWFlMGMwOTBhY2I5NGQ0YTBjM2EzNzM2N2ZjNzBmMDZjYzM5MzBjZmY4NTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L383-L392",
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L384-L393",
           "version": "repo-lines-v1:sha256:df68677f1cfe9c9744ca4c59331879f96a125baac3608e1e9c11e340c4d1cd76:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExYmIyMzdlZDkyOWU0OWMzYmJmZDhjMTUwYmRlNzliMWY1NjgzM2NkNTUxYzg3ODkwMDNjYzUzMDAxMmNlYTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmMzcxNGExNTRkNjFkZGMzZTliMjMzOWRmOTAwZDY4NGUyN2MzNjc5YWMxYzdmYmQxYTc2Y2EyMmE5NjUzOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0NjBiOGU2OTQ0MzllZWJlYTc5MjgzNzZkNWVjZTZlZGUyNDcyYTU1ZWIzOTE4OTNlMmQ2YzE2YTVlY2UxNTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4MzcxYTUxMTMzMjkwNTc0MzVlNWZkOTE3ODNjOGE3MzY4MzFkY2Q5MWUwZGRkZjkxM2U0MWQ0N2VjOTE1ZGMifQ"
         }
       ]
@@ -390,19 +390,15 @@
     },
     {
       "id": "claim_9b126fdf4221408fbfe36db2edb615c2",
-      "statement": "Outbound reads pass access.check_url (never raising): http(s) scheme only, no embedded credentials, private/loopback/link-local/metadata address refusal before and after DNS, the source registry's access rule (held sources are dead ends), and robots.txt where an unreadable file is not permission for an unclassified host; robots.txt is fetched via guarded_client, page and document downloads run check_url on every redirect hop through a request hook, and unclassified readable hosts are recorded in ingest_source_proposals best-effort.",
+      "statement": "Outbound research reads pass access.check_url (never raising; an uncheckable URL is not read): http(s) scheme only, no embedded credentials, egress.private_address_refusal (localhost, single-label and unresolvable hosts refused; every literal or resolved address must be public, including inet_aton forms and IPv4 embedded in mapped/6to4/Teredo/NAT64 IPv6), the source registry's access rule (held sources are dead ends; path-scoped sources use their own path rule), and robots.txt, where an unreadable file (fetch failure or 5xx) is not permission for an unclassified host or a path-scoped source, 4xx means no restrictions, and a host a person classified keeps that decision. robots.txt is fetched via egress.guarded_client; unclassified readable hosts are recorded in ingest_source_proposals best-effort.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/egress.py#L47-L90",
-          "version": "repo-lines-v1:sha256:b97233b267002f787cffbf465af9d1b50ab713b40ce8ecf06baf381c3b8bb182:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmNzA5ZGRkZmMyN2RkMTk3MjU1Yzg5MjcyNDhhYzRiMzk3MjE0ZjRkZDRmYjRjN2ZkOGQ1Zjg2Zjk5NmNhNjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMWYwZDc5YjE1NjFlN2I3YjMxNzZmNWE4MTJhZTMzOGJjMDY2ZDNlNDU5ZmUwYWI2ZjVlMTRmZWVhN2UzZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzODVkZDJlZDg5OGU3Mzg1MmNkYjJkYmZkODlhMjc0NjZlYjU0ZmM3ZTg2YWRjNjg5NDY3YTM3OGM5MzFlN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/core/egress.py#L32-L104",
+          "version": "repo-lines-v1:sha256:9de19a101c75021b3e484cb99e3f1475ed11dd473ed2c795c0f199e8f79586dc:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhNzRiOGQyMTE2Yjg5ZmUwMDE3NGQ5ZTFhZGI1NTkyOGZmY2U1MzkyNGI2ZmY4MWQ5YjhkZDJjMjYxMmEzY2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMGJlODFiNWEyNzU2N2NiYmQyN2FiZDM4YjU2OTk0MmRhNWMxMzU2OTJkZDExOGExZjI0MzQ0MTg0MGM0MjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3YTJmNDcyYzcyMjk1YWFkZGQ4N2RhNmY2YjlkMTI5NDQ2M2YzNzBhMjg4MTZkZjg4NjIxY2RhOTU3NDU1NjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://backend/app/ingest/access.py#L25-L142",
           "version": "repo-lines-v1:sha256:ae52d53e41ea62bafba113d240d854bb44762c2cbc72c514411f5507eb0d3267:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI5NmQyODc3ZDY1MjIzMmVlYjY3ZjAxMmM5NTNmZmJiNGY0ZjcwNWQ0YjhkNDdmOTdmZWExMWI5ODg2Y2M4NDU5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhZTJhMjIxNjdiOTMzODFkODJjYTE2NjhmZDMxMzdmZDllMDcwYmM0ZGMzNDdkOTJhYjUxZDUzOWQ2ODIzYjY0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlOTBjMzM0NDAzZjQzZTk1OGRiYWQyMjE4MTA3YWE0OTNkZjIxODJhOGNkYTA0MGQxMDQ5MGU0OGU1NjMxOGM4IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1MmE4OWYxNjgzYzQwYWU2ZWUyMTBhYTk3NzY5YjUwZDM4NzE5MDZlZmM0NGNlNmJkOTk4MTI5Yzg2NWZiNGM3In0"
-        },
-        {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L50-L68",
-          "version": "repo-lines-v1:sha256:84557c6275052f11b9dbfbc3a3a83f1312c62ac01794bec0d6685d311e68f529:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGM3YWIxNGMzZmI4OGQ2YmUwZDU4ZjJhNTNhY2YxNjUxNTllNzhmZDIzOTJiYmU3MTEwNGJkZGVlMTk4YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMWYwZDc5YjE1NjFlN2I3YjMxNzZmNWE4MTJhZTMzOGJjMDY2ZDNlNDU5ZmUwYWI2ZjVlMTRmZWVhN2UzZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxZjg2ODhiMzgyMzJhMjlmY2Y3ZjdmZDYxMzc1YWFiYzU4MzY4NTcxNTg4YmI1YmNjNGU4MTM2Nzg1ZjAxNzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2NzIyNDc0ZmI5NTNlYmNlY2NlYjdjNjNkZjZkN2IwZGRmODAyOGMzYWMwOTJmODE0NDE3ZWNhMzQwYjkyNDgifQ"
         }
       ]
     },
@@ -437,7 +433,7 @@
           "version": "repo-lines-v1:sha256:66ab1d7d590a26a0b13d05db51e64400c84ff230ef20b20d7f06cedf83206c00:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWUyZDNlOTQwOTc2NzRlNDNmMWY0NjFiNmU3ODVmYmNjZDQ0OTNkNjI2ZmU4OGJjZWQ1MzBiZTA4NjRmNDkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRmMjBmNTk3YTMxMTIzMThiM2M5MWY1NTkyNWMzMGRkZjQ3NTBlZDYwZGVkNjY4ZDFmYWUxZGFmNzYyYmY4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L174-L208",
+          "resource": "repo://docs/CHANGELOG.md#L198-L232",
           "version": "repo-lines-v1:sha256:266693d18362ba0d043888f5406f0c71f4e74c1fa5b04b1c912505205891f9ca:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkNDYxNWIxNGI1Mzk4YTM0OWU3NjJjNWY4YTNlZDM3ODRlYjRhNzNhMWE1YmY2OTNlMjQ4ZTE0N2JjNGIxNWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0OTBhMDcxMGU0MjExNDJiNzFmMzlkYzcwOGFkZDA0YWEzNThkNTdhNjFiMmQzZmE4ODkyNzhjMGU4YTkyNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE2NzU4M2I1ZWVhNDhlMTQ0N2VkZDhiOWQxNTg0ZmZlY2VkMzA0OTJjNWRlZTZiNjkxY2EzZDQ3ZmQ0NDVhNzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjNWExYWU4MDYxODU3OGJjNWVlZTU5NmQwYzdhNWNhMDI3OGM1NjBmNmNhMTE5NGI2ZTlkNjAzZWY4ZTc5NzIifQ"
         },
         {
@@ -613,10 +609,32 @@
           "version": "repo-lines-v1:sha256:d4d0cb5bc56863438eba9d160fac23c0d3cef09b57c82219ebf05b9de076541c:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjg2ZjhjMmQxMzJkNWVkMmI4M2E1MzUwYWU0OTFiZTNjNTA2MjJmOWQ4OTc3NWE4MTM1NTExNmRhNTg3ODJhMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTY5MmI3YzI5YzJjMmY1NGExYTA3ZDU0ODEwZDU3ZmFkNGExMThmM2FkZDdhMDZjOTNmYWQzYWI1YjlkZmI2MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWU3Y2YzOGUzYjRlOTNmNTA5YjY3OTU2MDZiMGU1MDY0ZjgxMWZlMDA5ZjJjYmJiNjE0ZTJlMzlhNDNiOTU0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTRkNDM2YTYwNzA1NjkwMmJkOWI1Mzk4NWZlZWJmODFjMmRiZDQyY2NjNzk4NTA1YzBkYmVmODk3ODAxMjIwOCJ9"
         }
       ]
+    },
+    {
+      "id": "claim_c8281e071fd74a9d8b149366d6585639",
+      "statement": "read_page and fetch_document use research_tools._client, whose request hook runs check_url on every redirect hop before it is requested (skipping the exact URL already checked) and refuses a redirect that leaves the allowed paths of a path-scoped starting source, returning a final REFUSED reply; both this client and egress.guarded_client verify TLS with the shared TRUST context (certifi roots plus bundled intermediates), which tests pin to stay verifying.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/egress.py#L17-L30",
+          "version": "repo-lines-v1:sha256:0759adf9bd8aab459ee28bffae74cdf2496f90cf2ba4208d54c9dfb4e46cf351:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4N2RiMGNkNDViNWY2NTM0NTA4ODBmZWIwNGZmODhiMTI1NTRlNzYxYTI4NDk3NzVlZGZkN2NiZjMzOWQ3ZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjNGNhZTc3ODM4NjA5ZjUwODdkZTQ1Mjg3NWFhOGE5ODVhMDNkNjYxMWIyNjEzZjVhNTVlYWNkM2JmOTg1NjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxNTBiNTY2ZmEyMDkwNTc5NzExMDI1MDAwM2QxOWE0NmYyODJhNWY0OTIyMjhjODE5ODBjMTc1YTA3ZjVkYWQifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/egress.py#L88-L104",
+          "version": "repo-lines-v1:sha256:ad8de6c87489f511bee5ee1a611fe22e1b15b5deb97e8b51988c616ab40e02c0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY0ODg2NGI5MzE3YzIyNDI5YjcxZTQyNjllOWYzN2Y5OWNjODUxZjZjN2Q2NTAwNzFkY2U3ZDZkNzI4N2Y5YTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMGJlODFiNWEyNzU2N2NiYmQyN2FiZDM4YjU2OTk0MmRhNWMxMzU2OTJkZDExOGExZjI0MzQ0MTg0MGM0MjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxNWI4MTdmODZhMTM2YzM4NTFmY2M2NDc4YTYzZTQ3ZDJjYmU2ZjYyMGYwN2FlNmM5YmE2MGU1MWUwMDQzYjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L43-L69",
+          "version": "repo-lines-v1:sha256:c50dd71e6157d3bf4a03c9b7e5de575d053c3a445a660041f57ff9ec9f9a46f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3OThjNmQyM2JjNjg0YWI5YWUxZGZlNDMyNDgzNGYxMTAwOTQ4ZmFlZTk4NjU3MTRlODE0MDJhZDQ0YTNjMjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMGJlODFiNWEyNzU2N2NiYmQyN2FiZDM4YjU2OTk0MmRhNWMxMzU2OTJkZDExOGExZjI0MzQ0MTg0MGM0MjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiYzJlZGM4MmZlOTQxYjBjODIxZDlhNjljZjc5YjgzYWRhMGYxM2ZmMTNjMzM0Njk4NTVlMmRmZmFkMmNkMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2NzIyNDc0ZmI5NTNlYmNlY2NlYjdjNjNkZjZkN2IwZGRmODAyOGMzYWMwOTJmODE0NDE3ZWNhMzQwYjkyNDgifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_egress_trust.py#L16-L44",
+          "version": "repo-lines-v1:sha256:1b5eca7df5a814683ea87419771b2fca1a9328fb99ac488ee0f697ee2f2ca013:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwY2Y4NmYwN2NjMDBjNzg2NDNjNTFlMTRhMGU3OTUxMmM2ZGUyNTJiODk3YjYzYjhhYzAyMWNlMzdhZDE1ZWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwZmJhZDgxMzNkZGJkZThjMzM4MDhiNjcxM2E0MzI4ZDc5NDhkYjhkNzA5ZDkyYTljNzhlYTEyZjdmNzcwNTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5YzRhMDAzNzNlYWU1ZWQ3MzFmODk1MDM3NTA1NDg5ZjcxNzRiYzQzYmQxYmVmYzNiMGQ0ZjI4MjQzYzI5ZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-19T10:32:36.779Z"
+    "at": "2026-10-21T19:40:05.698Z"
   }
 }

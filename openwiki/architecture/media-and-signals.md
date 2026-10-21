@@ -28,6 +28,8 @@ sources:
     resource: repo://backend/app/ingest/news/feeds.py
   - id: openwiki-source-8998bbd38ed305155d1b1b17
     resource: repo://backend/app/ingest/news/group.py
+  - id: openwiki-source-209015589a66e53919c14fe3
+    resource: repo://backend/app/ingest/news/links.py
   - id: openwiki-source-d5862b7945cd467ce8723c8d
     resource: repo://backend/app/ingest/news/pipeline.py
   - id: openwiki-source-9533b8ffae428e3c1df1236d
@@ -46,6 +48,8 @@ sources:
     resource: repo://backend/app/ingest/tools/pipeline_tools.py
   - id: openwiki-source-a68ab3b1d774c1be72fdfbca
     resource: repo://backend/app/repositories/news_stories.py
+  - id: openwiki-source-2617d71183ccb6fed2858704
+    resource: repo://backend/tests/test_cov_pipeline_news.py
   - id: openwiki-source-7adeb3b803ca479b163219dc
     resource: repo://backend/tests/test_news_chat_pull.py
   - id: openwiki-source-a37913aa398e1b2e6a5ec293
@@ -74,10 +78,10 @@ sources:
     resource: repo://frontend/features/registry/profile/OrgProfileTabs.tsx
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-21T19:40:05.698Z
 ---
 
 # Media & Signals
@@ -152,7 +156,7 @@ A subject whose search fails is added to a `failed` set. `SearchFailed` after re
 
 Cost and time are capped. `news_max_classify` (2000 per run) refuses the overflow as `refused` items and holds those subjects' watermarks. Classifications run `news_parallel_classify` at a time. Each verdict is stored as soon as it lands, so a killed run keeps what it paid for. A topic item that names Registry records (`registry_named`) is also scored for those records.
 
-The date of a link comes from its post ID (LinkedIn, Instagram, X), then the publisher's date, then the date in the text (`_date`).
+The date of a link comes from its post ID (LinkedIn, Instagram, X), then the publisher's date, then the date in the text (`_date`). A publisher date is ignored on social URLs and when it cannot be parsed. `links.py` holds these URL helpers: outlet and `source_type`, the profile-page filter, post-ID dates and the weak-title test.
 
 ### Optional verifier
 
@@ -171,7 +175,7 @@ The check has its own budget:
 - Over budget, out of time, a timeout, an exception or no structured answer all keep the first read. Each is logged as a `news_verify` run item with status `refused`.
 - Otherwise the item is `matched`, or `updated` if the match moved by more than 0.15. An updated item records the old and new values of `on_target`, `match`, `confidence` and `stance`.
 
-`verify.build_verifier` makes a deep agent with `create_deep_agent`. It uses the research model and a prompt from `prompts/verify.md`. Its tools are `read_page` and `search_public_sources`, plus `read_file` as the filesystem floor. It has no subagents, no checkpointer and no write tools. `ReadingLimit` allows `news_verify_page_limit` (3) page reads, and `call_limit` allows `news_verify_call_limit` (8) model calls. The agent returns a slim `Check`: `on_target`, `match`, `confidence`, `stance`, an `evidence` line of at most 200 characters, and `evidence_url`. This is merged onto the first read with `verified=True`.
+`verify.build_verifier` makes a deep agent with `create_deep_agent`. It uses the research model and a prompt from `prompts/verify.md`. Its tools are `read_page` and `search_public_sources`, plus the filesystem floor (`read_file`) that the harness adds. It has no subagents, no checkpointer and no write tools. `ReadingLimit` allows `news_verify_page_limit` (3) page reads, and `call_limit` allows `news_verify_call_limit` (8) model calls. The agent returns a slim `Check`: `on_target`, `match`, `confidence`, `stance`, an `evidence` line of at most 200 characters, and `evidence_url`. This is merged onto the first read with `verified=True`.
 
 The key safety rule is in `verify()`. A check that raises the match or confidence, or flips `on_target` to true, is applied only if `read_page` actually returned text for the page named in `evidence_url`. Otherwise the first read's values stay and the evidence is annotated "raise not applied: no page read". A page cannot talk its way to a higher score unread. Because the verdict is the schema-validated `EntityVerdict` for one pair, injected page text can at most move one score, and the bars are applied afterwards in code.
 
@@ -233,8 +237,12 @@ Background and hidden stories reach no list, not even staff's. A malformed curso
 
 ## UI surfaces
 
-- The Media & Signals view (`frontend/features/ask/views/media/MediaView.tsx` and `StoryCard.tsx`) shows the three buckets, filters, search and the last pull date. Staff can hide a wrong match from the card.
-- The Registry profile tab "News & social" shows only public stories. `OrgProfileTabs.tsx` and `FunderProfileTabs.tsx` (in `frontend/features/registry/profile/`) mount `NewsSocial.tsx` with `profile.news` and `profile.stories`. It splits stories into press and social by `channel`. Press items list the main link and "Also reported by" copies. Social posts are grouped by platform, with a six-month bar chart of posts per month. Headers use the SQL counts, not the length of the listed stories. The older `InTheNews.tsx` and `ProfileTabs.tsx` no longer exist.
+- The Media & Signals view (`frontend/features/ask/views/media/MediaView.tsx` and `StoryCard.tsx`) shows three bucket cards (`org` "My organisations", `funder` "Funders", `general` "General"), filters, search and the last pull date. It builds one `/api/news/stories` query from the state and pages it with `useCursorList` at 10 per page. Details:
+  - `area` is sent on every bucket, so the General card counts the same area its list shows. It defaults to `all` for staff or a user with no organisation, and to `mine` otherwise. The Area and Topic pickers appear only on General. The Organisation and Funder pickers appear only when there is more than one choice. The Funder choices are the funders seen so far in the scrolled list.
+  - Sentiment, Source and When (default last 30 days) apply to every bucket. Counts at 501 or more show as "500+".
+  - A non-staff user with no linked organisation sees an explanatory card in place of the `org` list, and no request is made.
+  - Staff get an `onHide` handler on each card. It posts to `/api/news/stories/{id}/hide` with `org_id` or `funder_id` and drops the row from the list.
+- The Registry profile tab "News & social" shows only public stories. `OrgProfileTabs.tsx` (Overview, Programmes & places, Funding, News & social, Research & sources) and `FunderProfileTabs.tsx` (Mandate, Giving, Reach, News & social, Research & sources) in `frontend/features/registry/profile/` each keep the active tab in the URL through `useUrlTab`. Both mount `NewsSocial.tsx` with `profile.news` as `stories`, `profile.stories` as `counts` and the record name. It splits stories into press and social by `channel`. Press items list the main link and "Also reported by" copies. Social posts are grouped by platform, with a six-month bar chart of posts per month. Headers use the SQL counts, not the length of the listed stories. The older `InTheNews.tsx` and `ProfileTabs.tsx` no longer exist.
 - The Scout approval card (`frontend/features/ingest/components/ImportApproval.tsx`) is rendered through `useInterrupt` while the agent is paused on `run_import_now`. It has three variants chosen from the paused call's `sources`: a news card ("Pull the latest news?") when `tavily_news` is named, an open-calls card when `funder_calls` is named, and a generic "Write this import to the catalog?" card otherwise. Only the news card calls the plan route. Its `NewsLine` fetches `/api/ingest/news-runs/plan` with the paused call's `funders` and `feeds`, and shows who is covered (everyone, matched names, topic feeds, unmatched names), the searches, any checks and the cost. If that fetch fails it says so and notes that approving still runs the pull. The open-calls card computes its own line from the funder names, with no plan endpoint.
 
 ## Tests
@@ -251,7 +259,18 @@ Background and hidden stories reach no list, not even staff's. A malformed curso
 - `test_news_runs_routes.py` drives the plan route with `pipeline.select` and `plan_subjects` patched. It pins four behaviours: no names plans everyone (records counted apart from topic feeds), names are reported as matched or unmatched, names that match nothing plan nothing, and non-staff get 403. It also pins that the old form routes (`POST /ingest/news-runs` and `.../{id}/execute`) are gone (404 or 405). A pull can only start from Scout or the CLI.
 - `test_news_chat_pull.py` covers Scout's side. The goal and `started_by` reach `create_run` with `org_ids=None` for an everyone-pull, and another named source (such as `india_csr`) gets a `refused` item. It also pins that `runner.runnable_for` leaves `tavily_news` out unless it is named. The plan line names records, searches, cost and how many subjects go back 90 days.
 - `test_news_run_cli.py` covers the CLI refusals.
-- No test exercises `needs_check` or the verifier. The pipeline test's `_deps` leaves the verifier off by default.
+- `backend/tests/test_cov_pipeline_news.py` is a fake-pool unit suite for `pipeline.py`, `verify.py` and `run.py`, with no Postgres. It covers:
+  - run creation, parsing, claim and summary handling;
+  - a full pull, and every-search-failed ending the run `failed`;
+  - the classification cap and a failed scope holding the watermark;
+  - the verifier gate `_Checks.settle`: no verifier or no borderline match keeps the first read, over-cap, out-of-time, errored or verdictless checks are logged `refused`, and a moved match is logged `updated` or `matched` with old and new values;
+  - `build_verifier` being read-only (two tools, `Check` as response format);
+  - the no-page-read rule in `verify` (a raise is dropped and annotated, a raise backed by a read page is applied) and `_read` needing a successful read of that URL;
+  - story grouping against stored stories, and a failed story being recorded while others continue;
+  - `Deps.from_settings` building the verifier only when `news_verify_max` is above zero;
+  - `_hit_date` ignoring unparsable publisher dates and any publisher date on a social URL;
+  - the CLI paths: `--visibility`, an everyone-pull refused without `CONFIRM=1`, and a chosen org.
+- The integration pipeline test's `_deps` leaves the verifier off by default, so the verifier's behaviour against a real database is not exercised.
 
 ## Operating notes
 

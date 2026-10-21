@@ -12,6 +12,10 @@ sources:
     resource: repo://backend/app/core/config.py
   - id: openwiki-source-b52886aad1fc413e4e030f22
     resource: repo://backend/app/core/security.py
+  - id: openwiki-source-51ead927cc43f35e220ea627
+    resource: repo://backend/app/db/checkpointer.py
+  - id: openwiki-source-10e08c1deca7d7728d8240c4
+    resource: repo://backend/app/db/pool.py
   - id: openwiki-source-77f44179d2b1ede3192f7afe
     resource: repo://backend/app/integrations/tracing.py
   - id: openwiki-source-55002f5b1d39cf35fd6d60e2
@@ -26,10 +30,10 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-41397cbbfbde65db108b394c
     resource: repo://scripts/db-url.sh
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-21T19:40:05.698Z
 ---
 
 # Environments and Env Vars
@@ -120,6 +124,7 @@ Provider keys: `ANTHROPIC_API_KEY` is the one required key and must match `MODEL
 
 - `MAX_PARALLEL_RESEARCH` (default 8): organisations researched at once. It bounds a wave, not the list size; larger lists run in waves.
 - `DB_POOL_MAX_SIZE` (default 10): connections this process may open. Raise it together with `MAX_PARALLEL_RESEARCH`, because each researcher holds a pooled connection while its tools run. The ceiling is the database's (Supabase allows 60 connections, 3 reserved, shared by every deployed instance).
+- `DB_POOL_TIMEOUT_S` (default 10), `DB_CONNECT_TIMEOUT_S` (default 5), `DB_STATEMENT_TIMEOUT_MS` (default 15000): seconds a request waits for a free pooled connection, seconds to open a new one, and the per-statement timeout for REST queries run as the caller (Ask's executor and the matching reader set lower ones). All three are forwarded by compose, and blank means the default.
 - `RESEARCH_PAGE_LIMIT`, `RESEARCH_MODEL_CALL_LIMIT`: optional per-researcher hard stops. Blank means no limit.
 - `ASK_MODEL_CALL_LIMIT` (default 25): model calls one Ask question may make before it stops and says so. It is a cap on a runaway turn, applied through `model_call_cap` in `build_agent()`. Compose forwards it, and blank means 25.
 
@@ -143,7 +148,7 @@ Provider keys: `ANTHROPIC_API_KEY` is the one required key and must match `MODEL
 
 `SUPABASE_SERVICE_KEY` is the service-role key and bypasses row-level security, so it stays server-side: never `NEXT_PUBLIC_`, never sent to the browser. The browser receives short-lived signed URLs minted by the backend.
 
-Langfuse specifics: `LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, the client falls back to `VERCEL_ENV`, and the release falls back to `VERCEL_GIT_COMMIT_SHA`. The SDK validates credentials at start and `LANGFUSE_MASK_TOOL_RESULTS` redacts query results from the `db_query` span only (a reduction, not a guarantee). LangSmith reads its variables straight from the process environment; no code wires them, which is why they must be forwarded through compose.
+Langfuse specifics: `.env.example` notes that the SDK reads both `LANGFUSE_BASE_URL` and `LANGFUSE_HOST`, with `BASE_URL` winning and `HOST` the older alias. The backend's own code only references `LANGFUSE_HOST`, and compose forwards only `LANGFUSE_HOST`, so inside Docker use `LANGFUSE_HOST`. `LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, the client falls back to `VERCEL_ENV`, and the release falls back to `VERCEL_GIT_COMMIT_SHA`. The SDK validates credentials at start and `LANGFUSE_MASK_TOOL_RESULTS` redacts query results from the `db_query` span only (a reduction, not a guarantee). LangSmith reads its variables straight from the process environment; no code wires them, which is why they must be forwarded through compose.
 
 Neo4j in the compose file is **pinned**: the backend service sets `NEO4J_URI=bolt://neo4j:7687` and the bundled credentials itself, and `EMBEDDING_DIM=768`. Changing the `NEO4J_*` lines in `.env` does not affect the local Docker backend; they matter for deployed hosts (Neo4j Aura).
 
@@ -164,7 +169,7 @@ Neo4j in the compose file is **pinned**: the backend service sets `NEO4J_URI=bol
 The rule: **`config.py` is the only place defaults are written, and a blank value means "use the default".**
 
 - Compose forwards optional variables as `${NAME:-}`, so an unset variable reaches the container as an empty string, not as a missing variable. A hand-edited `.env` line with nothing after `=` does the same.
-- `Settings._blank_means_default` is a `mode="before"` validator on `model`, `research_model`, `utility_model`, `sql_audit_model`, `max_parallel_research`, `research_page_limit`, `research_model_call_limit`, `ask_model_call_limit` and `db_pool_max_size`. If the value is a blank string it returns the field's declared default. Without it, an empty integer made the container refuse to boot.
+- `Settings._blank_means_default` is a `mode="before"` validator on `model`, `research_model`, `utility_model`, `sql_audit_model`, `max_parallel_research`, `research_page_limit`, `research_model_call_limit`, `ask_model_call_limit`, `db_pool_max_size`, `db_pool_timeout_s`, `db_connect_timeout_s` and `db_statement_timeout_ms`. If the value is a blank string it returns the field's declared default. Without it, an empty integer made the container refuse to boot.
 - For `research_page_limit` and `research_model_call_limit` the declared default is `None`, so blank means no limit.
 - `dev_auth` has its own validator: an empty string means `False`.
 - Other string settings (for example `SUPABASE_URL`, `NEO4J_URI`) default to `""`, which is itself the "disabled" state, so blank and unset are equivalent there too.

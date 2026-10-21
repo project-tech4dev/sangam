@@ -78,10 +78,10 @@ sources:
     resource: repo://docs/SQL_AGENT.md
   - id: openwiki-source-2ace3232a14f5163db46085f
     resource: repo://frontend/features/ask/lib/toolLabels.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T19:22:00.060Z
+    at: 2026-10-21T19:40:05.698Z
 ---
 
 # Ask Sangam
@@ -211,6 +211,8 @@ Caveats are given in full once per request. `_caveats_for` in `sql_tools.py` tra
 Agent SQL runs **as the signed-in caller**, under row-level security. `ask_access`, the dependency on the `/agent` route (`app/core/security.py`), claims the thread and then sets `agent_caller` to the caller's `(role, claims)`. The executor applies it with `set_caller` inside the read-only transaction (see layer 3). RLS therefore hides other organisations' private documents, staff-only `funder_activity` lines and similar rows, and the server refuses `checkpoints` outright. Without a caller the query runs as `anon`. `/ingest` keeps the owner, because Import writes the catalog. The catalog and validator remain the first guard, and RLS is the second one underneath them. `tests/test_agent_rls.py` pins it against a real database: a member of org A reads its own private document but not org B's, a user with no organisation reads no private row, no caller means `anon`, and the connection goes back to the pool as the owner.
 
 Two consequences follow for the model's answers. Counts and empty results cover only what this user can see, so the prompt (rule 10) says "none that you can see" rather than "none exist", and `db_query` and `db_profile_column` say so when they return zero rows. A user also needs `SELECT` on every catalogued column, or `SELECT *` fails with SQLSTATE 42501.
+
+`app/db/pool.py` holds both halves of this. `set_caller(conn, role, claims)` is the shared primitive: one `SELECT set_config('role', ...), set_config('request.jwt.claims', ...)` with `is_local=true`, so it ends with the transaction. REST routers take `PoolDep`, a `CallerPool` that opens a transaction and applies the request's role and claims (plus the REST statement timeout) before handing out the connection, while `OwnerPoolDep` is the raw owner pool for identity code only. Ask's SQL tools run outside any request, so they cannot use `PoolDep` and read the caller from the `agent_caller` context variable instead. The REST timeout is kept out of `set_caller` on purpose: the executor applies `set_caller` after its own lower timeout, and the REST value would raise it.
 
 Not everything in Ask runs as the caller. Tools that go to the shared pool directly, like `compare_fit`, still use the owner connection and must check access themselves through `chat_user_id` or `chat_scope`. `compare_fit` does so first, before any query: `matching.may_run(get_pool(), chat_user_id.get(), org_id)` must pass (Sangam staff, or a steward or admin of the organisation), otherwise it returns `compare_fit refused: ...` and builds no output. See [Auth, roles and RLS](auth-roles-rls.md). Two docs lag the code: `docs/ARCHITECTURE.md` sections 3 and 8 still say Ask's SQL runs on the owner pool and that running it as the caller is the unmerged branch `fix/ask-sql-runs-as-caller`, and the CHANGELOG "Not finished" row for `auth-plan.md` repeats that. Treat the executor and `docs/SQL_AGENT.md` (which marks the reader-role section superseded) as the truth. The stale `sql_reader_role` comment in `config.py` and the "superuser until the reader role lands" comment in `validator.py` describe the old design.
 

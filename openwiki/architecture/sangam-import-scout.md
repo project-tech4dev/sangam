@@ -70,6 +70,8 @@ sources:
     resource: repo://backend/app/ingest/writer.py
   - id: openwiki-source-f298183777e9f6b64bb1b60f
     resource: repo://backend/tests/test_agent_middleware.py
+  - id: openwiki-source-8515286617ae84b7b71f0cb9
+    resource: repo://backend/tests/test_egress_trust.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
     resource: repo://backend/tests/test_harness.py
   - id: openwiki-source-5ff63cf3bcc0508701587aa2
@@ -80,10 +82,10 @@ sources:
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-a44fe58bbddbee96fe925ba2
     resource: repo://docs/INGEST.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-10-21T19:40:05.698Z
 ---
 
 # Sangam Import / Scout
@@ -127,7 +129,7 @@ Most of Import's middleware is in `app/ingest/middleware.py`. `StaffLastLock` an
 | `RunSources` | researcher, vault-reader, workbook-reader | Refuses any pulling tool outside what the person chose. A subagent running outside a `task` reads nothing. |
 | `SaveRefusal` | researcher, vault-reader | Turns a pydantic error on `save_research` or `save_vault_findings` into a short list of fixes. It also accepts a payload sent as a JSON string. |
 | `StaffLastLock` | researcher | Once `read_source_rows` has been requested, including in the current turn, every tool outside the `OPEN_AFTER_STAFF` allowlist gets an error reply ("web tools are closed for this run: staff rows have been read. Save what you have."). The allowlist is `read_source_rows`, `save_research`, `read_document_pages`, `research_goals`, `funder_dossier` and `read_file`. An outbound tool added to the researcher later is therefore closed by default, and unreadable state fails closed. The aim is that an injected instruction on a web page cannot carry a staff row out in a URL or query. |
-| `ReadingLimit` | researcher only | Caps page reads. Added only when `RESEARCH_PAGE_LIMIT` is set (it is not by default). The vault-reader, the catalog-writer and the workbook-reader have no reading limit. The class is defined in `app/ingest/middleware.py`, and the separate news-verification agent (`app/ingest/news/verify.py`) reuses it with its own limit. That agent is not part of Import's graph. |
+| `ReadingLimit` | researcher only | Caps page reads (`read_page`, `fetch_document` and `read_document_pages`, counted from the run's own messages). Added only when `RESEARCH_PAGE_LIMIT` is set (it is not by default). The vault-reader, the catalog-writer and the workbook-reader have no reading limit. The class is defined in `app/ingest/middleware.py`, and the separate news-verification agent (`app/ingest/news/verify.py`) reuses it with its own limit. That agent is not part of Import's graph. |
 | `clear_old_tool_results` | supervisor | Shared with Ask and Sangam Pitch (defined in `app/agent/middleware.py`). Past 60,000 tokens it replaces the oldest tool results with `[cleared]`, keeping the latest five. See below. |
 | `call_limit` | researcher, vault-reader, writer | Caps model calls. On the researcher and vault-reader it is added only when `RESEARCH_MODEL_CALL_LIMIT` is set (not by default). The writer always has a limit of 12 calls (`WRITER_MODEL_CALL_LIMIT`). The workbook-reader has neither limit. |
 | `EscalateAfterFailedSave` | researcher | After one malformed save, the rest of the run uses the strong model. Added only when the research model differs from `MODEL`. |
@@ -328,14 +330,14 @@ Import is for Sangam staff and for stewards of an organisation. Within that grou
   - `can_save_funder` needs a signed-in user.
 - **Private findings are stripped for non-staff.** Staff-spreadsheet and vault findings are removed from research rows by `without_private` and are never rendered into the brief, which replaces the summary with a fixed private note when a run read private sources. `save_to_catalog` and the review, coverage and save routes read rows through the same caller-scoped filter, and a vault finding is visible only to a caller who can read that organisation.
 - **Staff spreadsheets and Doc Vault.** Staff picks are refused for non-staff in `choose_sources`. Vault picks must belong to an organisation the caller can read and must exist in that organisation's vault. `RunSources` further limits reads to the picked ids.
-- **Egress.** `access.check_url` runs before every research read and is never raising. In order:
+- **Egress.** Two layers. `app/core/egress.py` is the shared network guard (also used by the news pipeline, the open-calls pull and the Ask file tools). `app/ingest/access.py` adds the importer's own policy on top. `access.check_url` runs before every research read and never raises: a URL that cannot be checked is not read. In order:
   1. http(s) scheme only.
   2. No URL credentials.
-  3. `private_address_refusal`, which blocks private, loopback, link-local and metadata addresses before and after DNS.
-  4. The source registry's access rule. A held source is a dead end, and the message tells the agent not to look for another route.
-  5. `robots.txt`. An unreadable file is not permission for an unclassified host, while a host a person has already classified keeps that decision. A 5xx response counts as unreadable, and a 4xx response as no restrictions.
-  
-  `robots.txt` itself is fetched with `guarded_client`. The page and document downloads use a client whose request hook runs `check_url` on every redirect hop before it is followed. Hosts that are readable but unclassified are recorded in `ingest_source_proposals`, best-effort. Newly read pages and documents are archived to the `source-archive` bucket.
+  3. `private_address_refusal` (in `egress.py`), which refuses `localhost`, single-label hosts, hosts that do not resolve, and any address that is not public, both for a literal host and for every address the name resolves to. Literal hosts include `inet_aton` forms such as `2130706433` or `127.1`. IPv6 addresses that embed IPv4 (mapped, 6to4, Teredo, NAT64) are judged by the embedded address. A check that cannot decide refuses.
+  4. The source registry's access rule (`rule_for_url`). A held source is a dead end, and the message tells the agent not to look for another route. A path-scoped source (for example Give.do's `/discover/` pages) is checked by its own path rule instead.
+  5. `robots.txt`. An unreadable file is not permission for an unclassified host, while a host a person has already classified keeps that decision, unless the source is path-scoped, which is then not read. A 5xx response or a failed fetch counts as unreadable, and a 4xx response as no restrictions.
+
+  `robots.txt` itself is fetched with `guarded_client`, which runs `private_address_refusal` on every request and redirect hop and raises `EgressRefused`. `read_page` and `fetch_document` use the module's own `_client` in `research_tools.py` instead. Its request hook runs `check_url` on every redirect hop before the hop is requested (except the exact URL the caller already checked), and a read that began on a path-scoped source may not follow a redirect off that source's allowed paths. A refused hop returns a final `REFUSED: … led to …` reply. Both clients verify TLS with the shared `TRUST` context: certifi's roots plus a bundled set of intermediates that some government sites fail to send. `test_egress_trust.py` pins that verification stays on, the extras are in-date intermediates whose roots are already trusted, and both clients use `TRUST`. Hosts that are readable but unclassified are recorded in `ingest_source_proposals`, best-effort (a 200 ms lock timeout, failures only logged). Newly read pages and documents are archived to the `source-archive` bucket.
 - **Routes.** Behind the Scout gate, `overview`, `research` list, review, coverage and save use `request_scope` and are scoped to the caller. A non-staff list sees only what the caller saved plus research on NGOs they steward, with private summaries replaced and `promotion_id` and `saved_by` blanked. `overview` returns the whole Import page in one request and gives non-staff empty sources, runs, queue and proposals. The source registry (`/sources`, `/proposals`), runs, queue, workbooks list, undo and research delete are `require_staff`. Only staff receive a `promotion_id` from a save. A refused save is HTTP 403.
 
 ## Office text extraction

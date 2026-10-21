@@ -544,3 +544,34 @@ async def test_research_angles_502_when_the_model_fails_and_403_for_a_reader(api
         held["row"]["can_edit"] = False
         refused = await c.get("/api/proposals/11/research/angles")
     assert failed.status_code == 502 and refused.status_code == 403
+
+
+def _researched(**reader):
+    pub = {"origin": "web", "found_by": "public", "status": "proposed", "subject": "dropout", "value": "19.8%"}
+    return {"readers": {"public": {"status": "done", "at": "2026-10-22", "title": "Public", "brief": "A brief",
+                                   **reader}},
+            "research_asks": {"a1": {"kind": "chat", "status": "done"}},
+            "facts": {"k1": pub, "k2": {**pub, "subject": "stunting"}, "k3": {**pub, "origin": "vault", "found_by": None}},
+            "sections": {"A3": {"text": "Dropout is 19.8% ⟦k1⟧.", "rev": 1}}}
+
+
+async def test_deleting_research_keeps_what_the_text_cites_and_the_files_facts(api, held):
+    held["row"]["work"].update(_researched())
+    async with api as c:
+        out = await c.delete("/api/proposals/11/research")
+        again = await c.delete("/api/proposals/11/research")
+    work = held["row"]["work"]
+    assert out.status_code == 200 and sorted(work["facts"]) == ["k1", "k3"]
+    assert "public" not in work["readers"] and "research_asks" not in work
+    assert work["log"][-1]["via"] == "reset" and work["log"][-1]["reason"] == "deleting secondary research"
+    assert again.status_code == 409 and again.json()["detail"] == "There is no secondary research to delete."
+
+
+async def test_deleting_research_waits_for_a_running_search_and_refuses_a_reader(api, held):
+    held["row"]["work"].update(_researched(status="running"))
+    async with api as c:
+        running = await c.delete("/api/proposals/11/research")
+        held["row"]["can_edit"] = False
+        refused = await c.delete("/api/proposals/11/research")
+    assert running.status_code == 409 and "running" in running.json()["detail"]
+    assert refused.status_code == 403 and sorted(held["row"]["work"]["facts"]) == ["k1", "k2", "k3"]

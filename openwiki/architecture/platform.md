@@ -1,7 +1,7 @@
 ---
 type: architecture overview
 title: Platform
-description: How the Sangam FastAPI backend is assembled, checked and run. Covers the app factory and routers, Settings and the model tiers, the lifespan with lazy agent loading, Langfuse tracing, the Vercel deploy topology, CI and the Dependency review check, Codecov thresholds, Makefile targets, the performance work behind it (including Ask's tool-result clearing and compare_fit sizing), and known regressions.
+description: How the Sangam FastAPI backend is assembled, checked and run. Covers the app factory and routers, Settings and the model tiers, the shared DB pool and verify-only checkpointer, the egress guard, the lifespan with lazy agent loading, Langfuse tracing, the Vercel deploy topology, CI and the Dependency review check, Codecov thresholds, Makefile targets, the performance work behind it (including Ask's tool-result clearing and compare_fit sizing), and known regressions.
 tags: [platform, fastapi, settings, model-tiers, lifespan, langfuse, tracing, vercel, performance, ci, codecov, makefile, middleware]
 sources:
   - id: openwiki-source-164e2da859b5277df81c7d94
@@ -40,6 +40,8 @@ sources:
     resource: repo://backend/app/core/security.py
   - id: openwiki-source-51ead927cc43f35e220ea627
     resource: repo://backend/app/db/checkpointer.py
+  - id: openwiki-source-48da13ff10650a1cb4ac7718
+    resource: repo://backend/app/db/migrate.py
   - id: openwiki-source-10e08c1deca7d7728d8240c4
     resource: repo://backend/app/db/pool.py
   - id: openwiki-source-170bddac5f057a262a61a895
@@ -86,10 +88,10 @@ sources:
     resource: repo://frontend/vercel.json
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-10-21T19:40:05.698Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T19:22:00.060Z
+    at: 2026-10-21T19:40:05.698Z
 ---
 
 # Platform
@@ -112,9 +114,9 @@ The agents themselves are covered in [Ask Sangam](ask-sangam.md) and [Sangam Imp
 
 - **Logging and docs.** It configures logging and creates `FastAPI(title="Sangam API")` with the lifespan from `build_lifespan(settings)` and the `OPENAPI_TAGS` ordering. FastAPI's own OpenTelemetry tracing is disabled with `telemetry={"tracing": False}`. Langfuse drops HTTP spans, but as parents they would leave each agent run without a trace root.
 - **Middleware order.** `AuthMiddleware` is added first and `CORSMiddleware` second, so CORS wraps auth. Preflights are answered before auth runs, and auth's 401s still carry CORS headers. The allowed origins come from `Settings.origins` (comma-separated `allowed_origins`). `allowed_origin_regex` admits Vercel preview hostnames and is passed as `None` when blank, because an empty pattern would match every origin.
-- **Routes and error handling.** It mounts `api_router`, maps a Postgres `InsufficientPrivilege` error to `403 {"detail": "Not allowed"}`, and defines `GET /health`.
+- **Routes and error handling.** It mounts `api_router`, maps a Postgres `InsufficientPrivilege` error to `403 {"detail": "Not allowed"}` (a request runs as `anon` or `authenticated`, so an ungranted table is a refusal, not a crash), and defines `GET /health`. `/health` returns `{"status": "ok"}` plus, once the pool is open, a `pool` block of counts only (`pool_max`, `pool_size`, `pool_available`, `requests_waiting`, `requests_errors`, `connections_errors`), so anyone can see whether requests are queuing for a connection. Docker's healthcheck and the Vercel keep-warm cron both hit it.
 
-`AuthMiddleware` is plain ASGI, not `BaseHTTPMiddleware`, because buffering would break chat streaming. It skips non-HTTP scopes and the open paths `/health`, `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json` (`_OPEN_PATHS` in `core/security.py`). For every other request it resolves the caller once (`resolve_principal`: with `SUPABASE_URL` unset everyone is the seeded dev user; with it set, no header is anonymous, a Supabase token is verified against the project's JWKS, and `Bearer dev` works only when `DEV_AUTH` is on), answers a bad token itself with a JSON 401/409, and stores the principal plus `db_role` (`anon` or `authenticated`) and `db_claims` on the request state. `get_caller_pool` turns those into a `CallerPool` (anon with empty claims when the middleware did not run), which `PoolDep` hands to routers. Each `connection()` opens a transaction and runs `set_config('role', ...)` and `request.jwt.claims` with `SET LOCAL` semantics, so RLS applies, the settings end with the transaction even on error, and the connection returns to the shared pool as the owner (see [Auth, roles and RLS](auth-roles-rls.md)). Identity code and agent tools take the owner pool (`OwnerPoolDep`, `get_pool()`), and Ask Sangam's SQL reads its caller from the `agent_caller` context variable.
+`AuthMiddleware` is plain ASGI, not `BaseHTTPMiddleware`, because buffering would break chat streaming. It skips non-HTTP scopes and the open paths `/health`, `/docs`, `/docs/oauth2-redirect`, `/redoc` and `/openapi.json` (`_OPEN_PATHS` in `core/security.py`). For every other request it resolves the caller once (`resolve_principal`: with `SUPABASE_URL` unset everyone is the seeded dev user; with it set, no header is anonymous, a Supabase token is verified against the project's JWKS, and `Bearer dev` works only when `DEV_AUTH` is on), answers a bad token itself with a JSON 401/409, and stores the principal plus `db_role` (`anon` or `authenticated`) and `db_claims` on the request state. `get_caller_pool` turns those into a `CallerPool` (anon with empty claims when the middleware did not run), which `PoolDep` hands to routers. Each `connection()` opens a transaction and, in one round trip, sets the role, `request.jwt.claims` and `statement_timeout` (`db_statement_timeout_ms`, 15 s) with `SET LOCAL` semantics (`set_config(..., true)`). So RLS applies, the settings end with the transaction even on error, and the connection goes back to the shared pool without the caller's role, which is why the checkpointer and agent tools sharing that pool never inherit one (see [Auth, roles and RLS](auth-roles-rls.md)). The pool itself connects as whatever role `DATABASE_URL` names. The code calls it "the owner" and does not show which database role that is when deployed. `set_caller` (role and claims only, no timeout) is what Ask's SQL executor calls after setting its own lower timeout. Identity code and agent tools take the owner pool (`OwnerPoolDep`, `get_pool()`), and Ask Sangam's SQL reads its caller from the `agent_caller` context variable.
 
 `backend/app/api/router.py` is the single mount point. It builds one `APIRouter(prefix="/api")` and includes the per-resource routers: orgs, org_members, funders, profiles, registry, funder_matches, proposals, partner_lines, partner_groups, programs, rfps, contacts, scores, meta, news_stories, documents, ingest, news_runs, me and threads. `OPENAPI_TAGS` fixes the order resources appear in the docs. Routes outside `/api` are `/health` from the factory and the three AG-UI chat routes `/agent`, `/ingest` and `/proposal` (with their `{path}/health`) that the lifespan registers.
 
@@ -122,7 +124,7 @@ The agents themselves are covered in [Ask Sangam](ask-sangam.md) and [Sangam Imp
 
 `backend/app/core/config.py` defines a pydantic-settings `Settings` class loaded from the environment and `.env` (unknown keys ignored). `get_settings()` is `lru_cache`d. It is the only place defaults are written.
 
-**Blank means default.** A `mode="before"` validator turns an empty or whitespace string into the field's declared default for the four model settings and for `max_parallel_research`, `research_page_limit`, `research_model_call_limit`, `ask_model_call_limit` and `db_pool_max_size`. docker-compose forwards `${VAR:-}` as `""`, and a hand-edited `.env` line with nothing after `=` does the same. Without the validator an int field would refuse to parse and the container would not boot. `DEV_AUTH=""` is likewise read as off.
+**Blank means default.** A `mode="before"` validator turns an empty or whitespace string into the field's declared default for the four model settings and for `max_parallel_research`, `research_page_limit`, `research_model_call_limit`, `ask_model_call_limit`, `db_pool_max_size`, `db_pool_timeout_s`, `db_connect_timeout_s` and `db_statement_timeout_ms`. docker-compose forwards `${VAR:-}` as `""` (it lists every one of these variables), and a hand-edited `.env` line with nothing after `=` does the same. Without the validator an int field would refuse to parse and the container would not boot. `DEV_AUTH=""` is likewise read as off.
 
 ### Model tiers
 
@@ -145,12 +147,13 @@ Details that matter when changing these:
 
 ### Other settings that shape the platform
 
-- **Database.** `database_url` holds both app data and LangGraph checkpoints. `db_pool_max_size` defaults to 10, sized for a Supabase project with 60 connections minus reserved ones across several deployed instances. `db_gate_slots` is `max(2, pool - 3)`. Concurrency gates sit under the pool, because the checkpointer writes on every graph step through the same pool and a gate equal to the pool size would starve it.
+- **Database.** `database_url` holds both app data and LangGraph checkpoints. `db_pool_max_size` defaults to 10, sized for a Supabase project with 60 connections minus reserved ones across several deployed instances. `db_gate_slots` is `max(2, pool - 3)`. Concurrency gates sit under the pool, because the checkpointer writes on every graph step through the same pool and a gate equal to the pool size would starve it. Raise `max_parallel_research` and `db_pool_max_size` together, since each researcher holds a pooled connection while its tools run.
+- **Pool behaviour.** `make_pool` in `db/checkpointer.py` builds the one pool that REST, agent tools and the checkpointer share: `min_size=1`, `max_size=db_pool_max_size`, `open=False`, `max_idle=300`, and `autocommit`, `prepare_threshold=0` and dict rows on every connection. `db_pool_timeout_s` (10 s) is how long a request waits for a free connection before failing instead of hanging, and `db_connect_timeout_s` (5 s) bounds opening a new one. The pool runs `check_connection` on checkout, because a thawed Vercel instance may hold sockets the pooler closed and one round trip beats a failed request. `db_statement_timeout_ms` (15 s) applies per statement to every REST query run as the caller. Ask's executor and the matching reader set lower ones.
 - **Agent limits.** `recursion_limit` is 200. Every middleware hook is its own graph node, so a single model-and-tool cycle costs several steps, and LangGraph's default of 25 is exceeded by a SQL turn. Each subagent gets its own budget of these steps. `ask_model_call_limit` (25, `ASK_MODEL_CALL_LIMIT`) caps the model calls one Ask question may make through `model_call_cap`, which ends a runaway turn long before `recursion_limit`. `max_parallel_research` is 8. `research_page_limit` and `research_model_call_limit` are optional hard stops.
 - **Feature switches derived from config.** `auth_enabled` is true when `supabase_url` is set; otherwise every request is the seeded dev user. `storage_enabled` needs both the Supabase URL and the service key. `graph_enabled` needs `neo4j_uri` and an OpenAI key. `langfuse_enabled` needs both Langfuse keys.
 - **SQL tool.** `sql_timeout_ms`, `sql_max_rows` and `sql_max_attempts` bound the text-to-SQL tool.
 - **News pipeline.** The `news_*` thresholds and costs live here, never in a screen. The verifier is off while `news_verify_max` is 0.
-- **Egress guard.** `core/egress.py` has `guarded_client()`. Every outbound request, including each redirect hop, is refused if the host is loopback, private, link-local, internal, or resolves to such an address. A check that cannot decide refuses. The check also rejects non-http(s) URLs, `localhost`, single-label hosts, hosts that do not resolve, and numeric forms such as `2130706433` or `0x7f.1`. IPv6 addresses that embed an IPv4 one (mapped, 6to4, Teredo, NAT64) are judged by the inner address. Its callers are Import's `download_file` tool (`agent/tools/files.py`), the robots.txt and access checks in `ingest/access.py`, and the RFP call pull (`ingest/calls/pull.py`). Ask no longer fetches model-supplied URLs, because `fetch_url` was removed (M4, #247).
+- **Egress guard.** `core/egress.py` has `guarded_client()`, an `httpx.AsyncClient` that follows redirects and runs `private_address_refusal` in a request hook, so every outbound request, including each redirect hop, is refused (as `EgressRefused` with a `REFUSED:` reply) if the host is loopback, private, link-local, internal, or resolves to such an address. A check that cannot decide refuses. Its TLS context (`TRUST`) is certifi's roots plus a bundled `certs/intermediates.pem` for government sites that fail to send their intermediates; verification stays on. The check also rejects non-http(s) URLs, `localhost`, single-label hosts, hosts that do not resolve, and numeric forms such as `2130706433` or `0x7f.1`. IPv6 addresses that embed an IPv4 one (mapped, 6to4, Teredo, NAT64) are judged by the inner address. Its callers are Import's `download_file` tool (`agent/tools/files.py`), the robots.txt and access checks in `ingest/access.py`, and the RFP call pull (`ingest/calls/pull.py`). Ask no longer fetches model-supplied URLs, because `fetch_url` was removed (M4, #247).
 
 ### MCP settings are dead
 
@@ -162,10 +165,10 @@ Details that matter when changing these:
 
 **Boot, in order** (inside one `AsyncExitStack`, so shutdown unwinds in reverse):
 
-1. Create the shared psycopg pool (`make_pool`: min 1, `autocommit`, `prepare_threshold=0`, dict rows), open it, and publish it as `app.db.pool.pool` for REST endpoints and agent tools.
+1. Create the shared psycopg pool (`make_pool`, see Pool behaviour above), open it, and publish it as `app.db.pool.pool` for REST endpoints and agent tools. `get_pool()` raises `RuntimeError` if it is read before the lifespan has started.
 2. Run `_verify_sql_catalog`. If the SQL tool's catalog disagrees with the database, it logs each `SQL catalog drift:` problem and raises `RuntimeError`, so **the app refuses to boot on catalog drift**. Tables that exist but are in neither the catalog nor `KNOWN_EXCLUDED` are only logged at info level. They stay invisible to the agent until someone decides.
 3. Open the Graphiti graph, which logs and does nothing when the graph is not configured.
-4. Open the Postgres checkpointer (`AsyncPostgresSaver.setup()`, idempotent DDL).
+4. Open the Postgres checkpointer with `open_checkpointer(pool)`. It runs **no DDL**, because concurrent cold starts would race. It reads `max(v)` from `checkpoint_migrations` and compares it with `CHECKPOINT_VERSION` (the last entry in `AsyncPostgresSaver.MIGRATIONS`). If the tables are missing or the version differs, boot fails with `RuntimeError("... run make migrate")`. The checkpointer schema is applied by `python -m app.db.migrate` (`make migrate`, and the CI integration job), which also reports it in `--status`. So a langgraph upgrade needs a migrate before the new code boots.
 5. Set `app.state.settings`, `checkpointer`, `agents = None` and an `agents_lock`, then register a route for every path in `AGENT_NAMES`: `/agent`, `/ingest` and `/proposal`.
 6. Log boot timings: process age from `/proc`, connect plus catalog time, total boot, the model, the research concurrency, the pool size and the gate.
 
@@ -297,18 +300,24 @@ Two workflows check every pull request. Neither deploys anything.
 | Job | What it runs |
 |---|---|
 | `backend-lint` | `uv sync --frozen`, then `ruff check . --output-format=github` in `backend/` (Python 3.12). Only `ruff check`; the ruff formatter is not enforced. |
-| `backend-unit` | `pytest -m "not integration" --cov --cov-report=xml`, then uploads `backend/coverage.xml` to Codecov with the flag `backend-unit`. |
-| `backend-integration` | A `pgvector/pgvector:pg17` service container on port 5433 (the same image as docker-compose). It applies `db/init/*.sql` with `psql`, runs `python -m app.db.migrate` (with `MIGRATIONS_DIR` pointing at `db/migrations`), `seed.seed` and `seed.taxonomy_seed`, then `pytest -m integration --cov -rs`, and uploads with the flag `backend-integration`. |
-| `frontend` | Node 22, `npm ci`, `npm run lint`, `npx tsc --noEmit` and `npm run build`. |
+| `backend-unit` | `pytest -m "not integration" --cov --cov-report=xml`, then uploads `backend/coverage.xml` to Codecov with the flags `backend,backend-unit`. |
+| `backend-integration` | A `pgvector/pgvector:pg17` service container on port 5433 (the same image as docker-compose). It applies `db/init/*.sql` with `psql`, runs `python -m app.db.migrate` (with `MIGRATIONS_DIR` pointing at `db/migrations`), `seed.seed` and `seed.taxonomy_seed`, then `pytest -m integration --cov -rs`, and uploads with the flags `backend,backend-integration`. |
+| `frontend` | Node 22, `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run coverage` (the Vitest suite), an upload of `frontend/coverage/lcov.info` with the flag `frontend`, then `npm run build`. |
 
 Details that matter when changing it:
 
 - **The integration job is meant to run, not skip.** `-rs` lists skips, because a test that skips for "Postgres not reachable" means a broken job. It deselects `test_preserved_row_counts` and `test_documents_sequence_advanced` in `tests/test_migration_integrity.py`, which check a restore of the original dump (96 documents) that `make seed` never creates.
-- **Coverage upload uses OIDC.** Both test jobs have `id-token: write` and pass `use_oidc` as true except on fork PRs, so no token is stored. A fork falls back to tokenless upload.
+- **Coverage upload uses OIDC.** The three uploading jobs (backend unit, backend integration, frontend) have `id-token: write` and pass `use_oidc` as true except on fork PRs, so no token is stored. A fork falls back to tokenless upload. Each upload sets `disable_search: true` and names its one file.
 - **Dependencies are locked.** Python jobs use `uv sync --frozen`, so a stale `uv.lock` fails the job. The dev group in `backend/pyproject.toml` pins `ruff==0.16.8` and adds `pytest-cov`.
 - **Ruff config.** `[tool.ruff]` uses line length 110 and `py312`. Lint ignores `B008` (FastAPI's `Depends()` idiom), `RUF012` (class-level constants) and `UP046` (PEP 695 needs 3.12, while `requires-python` is 3.11). Coverage is measured on `app` with branch coverage and relative file paths.
 
-**Codecov thresholds** live in `codecov.yml`. It merges the two uploads into one report per commit, with `carryforward: true` for each flag. The project status uses `target: auto` with a 1% threshold, so a PR fails if it lowers total coverage by more than 1% against the base commit. The patch status requires 70% of the lines a PR adds or changes. A `fixes` rule maps `app/` to `backend/app/` because `coverage.xml` paths are relative to `backend/`. The PR comment is condensed (header, diff, flags, files).
+**Codecov thresholds** live in `codecov.yml`. The global `project` and `patch` statuses are switched off, and the gates are set per component instead (`backend` for `backend/**`, `frontend` for `frontend/**`), so one side's figure cannot sink the other's. Each component has three statuses:
+
+- a `floor-` project check at 75% overall;
+- a project check with `target: auto` and a 1% threshold, so a PR fails if it lowers that component's coverage by more than 1% against the base commit;
+- a patch check requiring 75% of the lines the PR adds or changes.
+
+The three uploads are merged into one report per commit, with `carryforward: true` for every flag. `fixes` rules map `app/` to `backend/app/` (and `lib/`, `features/` and `components/` to their `frontend/` paths), because `coverage.xml` paths are relative to `backend/` and `lcov.info` paths to `frontend/`. The PR comment is condensed (header, diff, flags, components, files). `CLAUDE.md` states the same gates.
 
 **`.github/workflows/dependency-review.yml`** runs `actions/dependency-review-action@v4` on every PR with `fail-on-severity: high` and posts its summary as a PR comment only on failure. It fails a PR whose lockfile changes add a package with a high or critical advisory. It checks only what the PR changes, and already-open alerts stay in Security → Dependabot.
 

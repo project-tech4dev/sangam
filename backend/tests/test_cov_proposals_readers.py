@@ -155,6 +155,31 @@ class TestRead:
         assert graphs.evidence.asked == [] and list(store["work"]["readers"]) == ["public"]
         assert store["work"]["readers"]["public"]["unopened"] == []
         assert store["work"]["readers"]["public"]["summaries"] == {}
+        assert "brief" not in store["work"]["readers"]["public"]  # no brief model in this setup
+
+    async def test_the_brief_is_written_beside_the_search_without_the_org(self, run, monkeypatch):
+        store, setup = run
+        setup({}, public="Found 1 public fact.")
+        asked = []
+
+        async def write(task, model):
+            asked.append((task, model))
+            return "**A. Problem magnitude**"
+
+        async def facts(pool, owner, org_id):
+            return NS(org=NS(district="Udalguri", state="Assam"), places=[], programs=[NS(name="SeSTA wells")],
+                      tags=[NS(parent_label=None, label="Livelihoods")], sdgs=[NS(code="1", label="No poverty")])
+
+        monkeypatch.setattr(readers.BUILT, "brief", "web model")
+        monkeypatch.setattr(readers.brief, "write", write)
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        out = await readers.read(proposal({}), public=True)
+        task, model = asked[0]
+        assert model == "web model" and "Where the work happens: Udalguri, Assam" in task
+        assert "Themes: Livelihoods" in task and "SDGs on record: 1 No poverty" in task
+        assert "sesta" not in task.lower() and "Programmes: none on record" in task
+        assert store["work"]["readers"]["public"]["brief"] == "**A. Problem magnitude**"
+        assert out.endswith("The brief now on the Secondary research card:\n**A. Problem magnitude**")
 
     async def test_public_research_ends_with_a_paragraph_per_topic(self, run, monkeypatch):
         store, setup = run

@@ -129,6 +129,22 @@ def already_found(work: dict[str, Any]) -> list[str]:
             if f.get("found_by") == "public" and fact_rules.is_live(f)][:FOUND_LISTED]
 
 
+def reset(work: dict[str, Any]) -> dict[str, Any]:
+    """Deleting secondary research: its run and asks, and every public fact no part's text cites, another fact
+    derives from, or a correction replaced. They go, not just set aside, so a fresh search can find them again."""
+    facts = work.get("facts") or {}
+    texts = " ".join((s or {}).get("text") or "" for s in (work.get("sections") or {}).values())
+    kept = (set(trace.cited(texts)) | {k for f in facts.values() for k in (f.get("from") or [])}
+            | {f["supersedes"] for f in facts.values() if f.get("supersedes")})
+    changes: dict[str, Any] = {f"facts.{k}": None for k, f in facts.items()
+                               if f.get("found_by") == "public" and k not in kept}
+    if (work.get("readers") or {}).get("public") is not None:
+        changes["readers.public"] = None
+    if work.get("research_asks"):
+        changes["research_asks"] = None
+    return changes
+
+
 DEEPER_FROM = ("A1", "A2", "A3")  # the case: what "Research deeper" reads
 DEEPER_NEEDS = ("A2", "A3")  # marked done first; the Summary waits for the plan, so it is read but not needed
 _CITE = re.compile(r"\s*⟦k\d+⟧")

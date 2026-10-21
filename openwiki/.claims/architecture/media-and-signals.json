@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:490b12e616905f564b845e353d352e63db2236141a71ccf7d2db25e5a2a3ebc7",
+  "pageVersion": "sha256:7bb8447bae53d8cbe6c050e926fdff7d3c2ecc70c6542cfbd5a122b588d40d27",
   "claims": [
     {
       "id": "claim_01345909426749c9a9ea637374f7feca",
@@ -259,7 +259,7 @@
       "statement": "Ask's SQL catalog exposes news_stories, news_links, news_story_entities, news_story_locations and news_story_tags (news ids cite [news:N]) while news_link_scores, news_watch, ingest_runs and ingest_run_items are in KNOWN_EXCLUDED, so verifier evidence and watermarks are not queryable from Ask.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1002-L1042",
+          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L1005-L1045",
           "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
         },
         {
@@ -277,7 +277,7 @@
       "statement": "The Ask news-brief skill, loaded via rule 13 of the agent instructions, reads public, is_news stories from news_story_entities joined to news_stories (30 days default), reports zero results as 'Nothing on <name> in Sangam's news since <date>' using max(fetched_at) from news_links, gives the story's main link as-is (it cannot read the page, so it never says what the article cites) for negative-stance or fcra/governance stories, and writes three to five lines with [news:N] citations and High/Medium/Low levels.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/instructions.md#L45-L45",
+          "resource": "repo://backend/app/agent/instructions.md#L49-L49",
           "version": "repo-lines-v1:sha256:19be444e9bd0fa09f0339122da52e1a06fc2347b11acbb81697a71c21c5b6bd8:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTliZTQ0NGU5YmQwZmEwOWYwMzM5MTIyZGE1MmUxYTA2ZmMyMzQ3YjExYWNiYjgxNjk3YTcxYzIxYzViNmJkOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTliZTQ0NGU5YmQwZmEwOWYwMzM5MTIyZGE1MmUxYTA2ZmMyMzQ3YjExYWNiYjgxNjk3YTcxYzIxYzViNmJkOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjgzYzcyYTZmYjVjMTMzNDQwNmQxNWE3MzQxNzA3NzU0YWFmMDg3NTQ2NjMxNWM4YWJlNWZlNmZkODE1YjBkNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjFlZWM5YmJiNWZlZGVlYTBmOWQ1MmNkZDJhNDZmYjM0ZjQ1ZWY0YjM4ZDhiZmYxODRmODhjNjRkNjYxMmMxMSJ9"
         },
         {
@@ -310,34 +310,42 @@
     },
     {
       "id": "claim_7f261744ea944203ad64670f004e40c4",
-      "statement": "UI surfaces: the Media & Signals view (MediaView/StoryCard) with org, funder and general buckets and a staff hide action; the Registry profile 'News & social' tab, where OrgProfileTabs and FunderProfileTabs mount NewsSocial with profile.news and SQL-derived press/social counts; and the Scout ImportApproval card, rendered via useInterrupt while run_import_now is paused, which has news, open-calls and generic variants, and only the news variant fetches /api/ingest/news-runs/plan (names and feeds) to show coverage, searches, checks and cost before approval, degrading to a notice if the fetch fails.",
+      "statement": "UI surfaces: MediaView shows org, funder and general bucket cards over one cursor-paged /api/news/stories query (10 per page), always sends area (default all for staff or users with no organisation, else mine), shows Area/Topic pickers only on General, shows a notice instead of the org list for non-staff users with no linked organisation, and gives staff a hide action posting org_id or funder_id to /api/news/stories/{id}/hide. OrgProfileTabs and FunderProfileTabs each keep five URL-backed tabs and mount NewsSocial under 'News & social' with profile.news and the SQL-derived profile.stories press/social counts. The Scout ImportApproval card, rendered via useInterrupt while run_import_now is paused, has news, open-calls and generic variants, and only the news variant fetches /api/ingest/news-runs/plan (names and feeds) to show coverage, searches, checks and cost before approval, degrading to a notice if the fetch fails.",
       "evidence": [
         {
-          "resource": "repo://frontend/features/ask/views/media/MediaView.tsx#L16-L120",
-          "version": "repo-lines-v1:sha256:ec3dff054ff467b4c4a9ba0c25bb12d7be63cd005be3be59d88a8905259bdc61:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI4ZDg0NTk0YTc0ZTIxNGIyMGNlZDA4ZWYyN2E5ZjM0NTc0ODMzNmVkOGExODE4MzJhMDNhNzVhODIxNThkZmM1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIyM2FiOWIyZWIzYzg3NWJkN2NhOGJjY2JhM2RmYjBkMzBlMGMyNzIxYjA1YzRlNDdkYjQwYmM5MTY0MzlhOTg4IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyMjFmY2E5MDUyZmIxZGIxYmU4ODExMDU2M2I2OWRhZmNlYWIwN2M2MWIwYzIxYzEyNTUzMTM0MWM1MmE2NzRkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI0M2UzOTFhMWRkYWUzMDU1MDNiNTJiZTA2ZWNiYzI0ZjYxMjQ0ZDdiZmNkZmM0MDUwMzgxNzIyZWJmM2MwOTMwIn0"
+          "resource": "repo://frontend/features/ask/views/media/MediaView.tsx#L16-L157",
+          "version": "repo-lines-v1:sha256:d5e96bb3d4d34137369d54a96e4f4331474370792e7a2d24302d94b405d93c75:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI5YTZlN2EwMjQwMTk0MjhmOGQxODYxNGFjODRmMTg4YzNiNmI1NzdmYWMzNDY1MTc0ZWMzYzFhZDY0ZTQ5NmJlIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyMjFmY2E5MDUyZmIxZGIxYmU4ODExMDU2M2I2OWRhZmNlYWIwN2M2MWIwYzIxYzEyNTUzMTM0MWM1MmE2NzRkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         },
         {
           "resource": "repo://frontend/features/ingest/components/ImportApproval.tsx#L37-L161",
           "version": "repo-lines-v1:sha256:db525c59b9f25fe38d1778144ac14ca3a91008aaf1ed7a8ccc8d90931cc4522c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI1YzMyNGEyNmE5M2UwZWFhYTU3OTEyM2I0YzkwMjQ5NmMwNTQxMTA1MzA1M2U5ZWM2NjU2OTQxMTcwNDVhZjkxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkZmY3ZmRiNmU5Y2MzOTIyODg5ZTQwMjhlNTcxYTAxZjllMmYzZjI2YTkyN2RkZWRhMDA1Nzk0ZDI2MDJkNTVhIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         },
         {
-          "resource": "repo://frontend/features/registry/profile/FunderProfileTabs.tsx#L16-L39",
-          "version": "repo-lines-v1:sha256:00e6ca7d0c0db880db0998787db45cf1844244c96f9e0bbc569b5bac9643652e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMWM5MzczMmUyOTVmOWY1MzUxYjM3MDVjZTM1OGU4ODg3MjZkZGYzYzIwOGE5Yjk2ZDcwZDI5ZDI3MjJlMGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2ZmYzNDg5YjI5ODUwMTA0MmI5N2MyNTU4MzAxNWZjMzI5MzMyZjMzYmFkMmQ0MzhhOTY3ZDUwMTllZWI5YjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1NzIyZmYyYTQxM2I1Yjk2N2MxYTI4MmQ4YjUzNDZhM2Y1NDZjYmZlMDRlYThlZDI3OGMxZmNhY2MzMzJhNWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkYzI4NjRmMzIzYjhlMzRkZWRjNDI0MjRiNTFhNjFkZDlkYmM4NDY0YjljN2Q2ZmRlYjkzZjRiZTJhMmQyNDQifQ"
+          "resource": "repo://frontend/features/registry/profile/FunderProfileTabs.tsx#L12-L46",
+          "version": "repo-lines-v1:sha256:29f1d3225d3889b913ab1b0d21bf37eff388378ac98a64edbcb937664c9a9e90:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3OGViZmE3OTAwYzllODAwMjJiNmU2MjcyYjM2OWI4M2UwMGQxNDk5YzNhYzdjNjFiNjg1N2Q3ZjNhNDlmZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NjQ2YzVmYjU1ZGJjZWUwNzM1NGIzMjFjOGRiZTUwNjJiMDQ4ZTQ4ZmMwOWQ4ODJlYWVmZjQwYmQ2Y2YwOTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://frontend/features/registry/profile/NewsSocial.tsx#L28-L134",
           "version": "repo-lines-v1:sha256:19873dfe2b7e65ac52799c38906e2a204e55354a46cb072f713af72b68acc764:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2N2Q5NDkzZTliNjBjM2M4ODQ5YTU3OTk5NmE0NDFjNDdhNzNmNjM1NWM5ZTBhYWJiZjdiNzY1Y2FjMzgzMGQ3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhZDYzZjkwM2VkMWM1NzYyNzE2MWMwYzU3NmZlN2FjYmZmNzc2YzUyYWIyYmU2NjMzMDFmZWYyZmViOTc2YzgwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         },
         {
-          "resource": "repo://frontend/features/registry/profile/OrgProfileTabs.tsx#L12-L28",
-          "version": "repo-lines-v1:sha256:8efc6b30eb9c6171ca5eaa783218a25f01ccc62c499bc5d4e650df9f1be20b33:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3OGViZmE3OTAwYzllODAwMjJiNmU2MjcyYjM2OWI4M2UwMGQxNDk5YzNhYzdjNjFiNjg1N2Q3ZjNhNDlmZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2YWFiOTU0MTUwNTNkYmRiNTNlNTcxYzk2MjFlZWFjMDQ3MWZhZTNmMWFlMGU5YjRjM2VhMjkyMDdlMGYzYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5NmY4NGQxNzk0NTlkYTY0NGY3MzAwMWRlOTVmYWU2OWQyYzVlNWIyNjBjYjM4ZGZmN2QzODdkODBiMzQ0N2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkYzI4NjRmMzIzYjhlMzRkZWRjNDI0MjRiNTFhNjFkZDlkYmM4NDY0YjljN2Q2ZmRlYjkzZjRiZTJhMmQyNDQifQ"
+          "resource": "repo://frontend/features/registry/profile/OrgProfileTabs.tsx#L12-L35",
+          "version": "repo-lines-v1:sha256:f21b261a235890a35b0d4334f7de2d3e91de8b2910ec54d4da15d891f2abe141:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3OGViZmE3OTAwYzllODAwMjJiNmU2MjcyYjM2OWI4M2UwMGQxNDk5YzNhYzdjNjFiNjg1N2Q3ZjNhNDlmZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5NmY4NGQxNzk0NTlkYTY0NGY3MzAwMWRlOTVmYWU2OWQyYzVlNWIyNjBjYjM4ZGZmN2QzODdkODBiMzQ0N2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
       "id": "claim_11ad1c9618b64e82aa3bb5716e73f433",
-      "statement": "Test coverage focuses on run mechanics in test_news_pipeline.py (integration: repeat pulls, watermarks, double execute, stale claims, caps, story atomicity), with store, SQL, RLS, route, Scout-tool and CLI tests alongside; no test exercises needs_check or the verifier, and the pipeline test's Deps leave the verifier off.",
+      "statement": "Test coverage: test_news_pipeline.py is the Postgres integration test of run mechanics (repeat pulls, watermarks, double execute, stale claims, caps, story atomicity), with store, SQL, RLS, route, Scout-tool and CLI tests alongside. test_cov_pipeline_news.py is a fake-pool unit suite that also exercises the verifier gate (_Checks.settle refusal and updated/matched logging), the read-only build_verifier, the no-page-read rule in verify, and Deps.from_settings building the verifier only when news_verify_max > 0. The integration test's Deps leave the verifier off, so the verifier is not exercised against a real database.",
       "evidence": [
+        {
+          "resource": "repo://backend/tests/test_cov_pipeline_news.py#L349-L527",
+          "version": "repo-lines-v1:sha256:30cb4abd4a100c0062325dc55b63a2a118634a0316a6af075697cee70d05fd72:eyJzZWxlY3RlZExpbmVDb3VudCI6MTc5LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0MDUzMjVmNzQxMjI2ZmJmYjVkMzc5MTRmYWFlNDYzZjU4ODgzNjljOWQ5OWNhZjFjMGFmMWE2OThlNmRlOTE3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI3ZjQ3Y2QyOTIyOGYyY2JjYTZmZTYwOTk1YzdmZGRhZTJkMTZmMGNmZWFjN2FkOTMzN2Q5NGU1YmYwNTEzNjExIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI2YzQ2ZTkwNWYwYmVhZWViMjczZmJmMTE3MjA4MDgxMzJjMGZjNzQwMDIzMTMyMDdkYzUxY2IzNTE3ZmQ2MTY3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmOGIyNWQzODRiMjk3ZmNkMDNjZTU0MGI3NTU0ODAyMmQwYTcyZWU0NjU4ZDE4NjM3OTEwMTU4OGI2YWM2NTViIn0"
+        },
+        {
+          "resource": "repo://backend/tests/test_cov_pipeline_news.py#L440-L450",
+          "version": "repo-lines-v1:sha256:744053a1bcaec0865a235a3cbf46ceda0bd323a537ba2281782c5efd27c41956:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNThlZmEyM2E5MmE2OGNlODQyMmU1NzFlYTM4ZTA1ZTM4MTczNTRlMjk3MDk5OWMzOTYxODg2Y2E0NmIwYjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwNjZmMDlmYzA1MjYwMWZmOTRkYzQ5OTcyOGQ4YmJiZTEwNmUyMzQ2MzFkZDNmMWZhMmM3YTZjY2E4YTU5ZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzOWY4NDkzM2IwNWQ4NmM0YTQzMGE1ZjdkNzQ3ZmY3ZWE1OWNjZGFlNmYwZjAzNmRmMmQxMjVkMjI5YTc0N2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEyYTgzZTVkZmQ4YmRiOWVlOGJjZDM0ZjQ1NjRlMzUzYjViMWI5OTgyNGNkZTRkYzQ5NjE2MmM4NzI1YjU2ZTAifQ"
+        },
         {
           "resource": "repo://backend/tests/test_news_pipeline.py#L87-L135",
           "version": "repo-lines-v1:sha256:661f0eeca79df49fbdfa3327a29c79fb4325150e5f0c80dd7c2b08ec850bfef7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4MTE4NjM1OWJlZGE1MGY2ZjJlMTIyZmEyNWFiOWQ1YTFiZDY2YTQxYjExMTY4ZmYyODM2NWQxMWI4YjExMTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0OGI1MDEzYjFmZTMyYzg1ZWZkNzQzYTc4NDhjNzc5NDgxZjI1YzFjNzYwYjJkMzM1YTM5ZTllOGI3OWY1MjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwMTYxYzk2YmQwNWQ1NTZiMzZhMmQ2NmE5Yjg4YTdkYTViMzIzMDE1ZDIxYzJiZTVmZjBjOWUzZDMzMjEzYjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE2ZGNhMGU3NDE0NjIzODFkY2MxMjAyZDY5YjNjNTZiODlhYWFmODgxOTU5NTVhMWEzYmU4YWE5MzNlOWM0NDcifQ"
@@ -391,10 +399,28 @@
           "version": "repo-lines-v1:sha256:4d1e7521cbd28385675e537a1d7bea9e5d7d1aca6490a7c9af2a4fe3b315ff0b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1OWJmMTNjZjc1OTllOWNjMmI3NzZiZjc5ZDA0MDIxN2I4MjFiMDA5NzM5NGRlMDVlZGIwOTg2YWE0NGE0MjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1ZjQ3Y2M1Mjg4YzY0YjhmOTE1NmEyYzI0MGU0Yjc2YjdhZTIyNjI0YTE0NDk2ZWY1NmU2ZGI1ZDg5ZTc4YTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU4NDU4NzkyZmJmMDIzZWM0YTg3NDAxYmViMjAwMzA5OTEyNzc3OGZiZjA1MDJlNzM3YTg2NTdjMjRjODYwMTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_95b41cad833f4b3c8dc0923c2797f9aa",
+      "statement": "A link's date comes from its post ID (LinkedIn, Instagram, X), then the publisher's date, then the date in the text; a publisher date is ignored on social URLs or when unparsable. Links dated before the stale floor are skipped before classification.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ingest/news/links.py#L94-L107",
+          "version": "repo-lines-v1:sha256:3bf8ee7d3654b99734f3910859ae5c1d8c3b7ff4a54972da748202aa728a2b66:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlOTI0ODdlNzc2NDc5MmEyZDIxYzJjYWQ5YjkyMWM1ZmZkNTY2Y2U1MWQ2NjJhM2I0MDk0MzQ0ODliODkxZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmMGZmOTkzM2FlNTJhN2U0MzhhYjUyODliMDEwZmFiZjNmMzA1NDJjMjg5NmVkNTY0ODVjZWRmMDcyYjdmMDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE3NWJjOTYwOGViM2RjMWRkYTEzOWU3YWQxNTE0OTFmZmI4ZDc1MmYxZDFmZWZkNzhkMTg2YzZmMjg5ZjIwZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmZjJkNjgwMjMyZTNiN2RiYjViZTVhNzViNzg5Y2YwZWE2ZTUwZjdjMTgxMGJkMDZiM2IxODZmYzJlODYyNDIifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/news/pipeline.py#L324-L359",
+          "version": "repo-lines-v1:sha256:e45125a7e8a10bf6d84ba7ab3c7ed25f37ba62edfcc6f24236de618e497b720f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyMWQ5ODBjN2Y3NzE5NTQ0MzRlM2Q1OGNhYzMzN2UxYzZhNzA5MmZjYjc1NDVhY2NlYmE0M2Y0NjM4NjZhZGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyNTIyYzJjMWZkMjc5ZjljZWM0ZDdjNTVhYTk4YzQ4NzUyN2I3M2NmMTQ3NjFiYmY3YmM5NDFlYjc2YzhlYzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiNDY4YWQwYWJkNWRmODYyMGJiOTRiZGZmZTg1ZjQyMTEwZWNkYThhZjc2NGE0ZDVjM2JhMDZiYWE1Zjc3M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNzg1ODA4OWE0ZWQyMTQ3OTNhNGIyMmU1MTIzOTUzMzRjYmU5MTVhY2JmYzEyY2MwMTMwOTYwMGEzOTJjYjgifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_cov_pipeline_news.py#L459-L463",
+          "version": "repo-lines-v1:sha256:d00213ba9379a3e33f79b3ce31cd2f78835f5b65b827709cc4291974969c29e6:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTAwZGVjNDFhODQ5NDkwMjRlN2ExODkxMmM3YTUyNWUzOWQ2ZWQzZThmY2ZiY2EzNjJmZDE5OTc1OWRlZDhiNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMxNWNjZGU3NmRlY2Y1YTZmYjE0ZGQxYjcyOTRmZDMyMTYwZjkwOTBkN2NlZmY2NjY0ZWJjMDgzYzczYmZhOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDY2MzdmYjBhNDg0NWEyNGYwYWIyNzNkZGQ4Yzg5MDQxZmI2ZDIwOThhNzU3Y2MyZmFlOWU1OWIxNTUyMWVlOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmM2ZWI4YzhjM2U5NGM3ZDExYTkzYjk0ZDkzNjU0NGM2OWYyMWU4M2I4NGNkNmJhMjgyMzA5NzZkMjNhNjlhNiJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-19T10:32:36.779Z"
+    "at": "2026-10-21T19:40:05.698Z"
   }
 }
