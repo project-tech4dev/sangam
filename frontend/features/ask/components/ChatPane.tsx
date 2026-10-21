@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Mic, Paperclip } from "lucide-react";
 import type { RegistryIndex } from "../lib/citations";
 import { saveThread, titleFrom } from "../lib/threads";
 import { useSangamChat } from "../lib/useSangamChat";
@@ -75,6 +76,13 @@ export function ChatPane({
       <div className="composer-row">
         <span className="muted-2 composer-hint">{isReady ? "⌘↵ to send" : isLoadingHistory && agentReady ? "Loading this chat…" : "Connecting to the agent…"}</span>
         <div className="composer-actions">
+          {/* Stubs: attaching a file and asking by voice are not built yet. */}
+          <button type="button" className="btn btn-icon composer-stub" aria-disabled="true" title="Attach a file (coming soon)" aria-label="Attach a file (coming soon)">
+            <Paperclip className="icon icon-sm" aria-hidden />
+          </button>
+          <button type="button" className="btn btn-icon composer-stub" aria-disabled="true" title="Ask by voice (coming soon)" aria-label="Ask by voice (coming soon)">
+            <Mic className="icon icon-sm" aria-hidden />
+          </button>
           <button className="btn btn-primary" onClick={() => submit()} disabled={!isReady || isRunning || !draft.trim()}>
             {isRunning ? "Working…" : "Ask Sangam"}
           </button>
