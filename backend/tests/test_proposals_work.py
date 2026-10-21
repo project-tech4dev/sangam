@@ -38,6 +38,8 @@ def _work(**extra):
     ("stage", 2),
     ("sources", ["41"]),
     ("title", "  "),
+    ("template.outline", {"headings": []}),
+    ("template", {"document_id": 40, "outline": {"headings": []}}),
 ])
 def test_a_path_outside_the_allowed_shapes_is_refused(path, value):
     with pytest.raises(rules.BadChange):
@@ -108,3 +110,9 @@ def test_the_summary_is_recomputed_from_the_new_work():
     applied = rules.apply(_work(), {"gates.12a": "yes", "gates.csr1": "no"}, by=RAVI)
     assert applied.summary["gates_answered"] == 2
     assert "CSR Form 1: the funder needs it" in applied.summary["fix_first"]
+
+
+def test_only_saving_a_version_keeps_the_forms_outline():
+    applied = rules.apply(_work(template={"document_id": 40}), {"template.outline": {"headings": []}},
+                          by=RAVI, via="version")
+    assert applied.work["template"] == {"document_id": 40, "outline": {"headings": []}}

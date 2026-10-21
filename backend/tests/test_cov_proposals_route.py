@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.api.routes import proposals as route
-from app.proposals import grade, polish
+from app.proposals import fill, form, grade, polish
 from app.repositories import documents as documents_repo
 from app.repositories import funder_matches
 from app.repositories import proposals as repo
@@ -281,8 +281,8 @@ def test_names_are_the_org_the_funder_and_live_name_facts():
     assert "old partner" not in names
 
 
-def _written():
-    return _work(stage=3, sections={"A3": {"text": "Wells in Dewas run dry for 120 days.", "rev": 2}})
+def _written(**extra):
+    return _work(stage=3, sections={"A3": {"text": "Wells in Dewas run dry for 120 days.", "rev": 2}}, **extra)
 
 
 @pytest.fixture
@@ -369,6 +369,103 @@ async def test_a_version_needs_storage_text_and_a_reachable_bucket(api, held, va
     assert empty.status_code == 409
     assert unreachable.status_code == 502
     assert off.status_code == 503
+
+
+TEMPLATE = {"document_id": 40, "read_at": NOW.isoformat()}
+HEADINGS = [
+    {"code": "T1", "number": "4", "label": "Problem Statement", "ask": "The problem", "kind": "prose",
+     "limit": {"n": 3000, "unit": "chars"}, "uses": ["A3"], "only_if": None},
+    {"code": "T2", "number": None, "label": "PAN Card Number", "ask": "", "kind": "field", "limit": None,
+     "uses": [], "only_if": None},
+]
+
+
+@pytest.fixture
+def former(monkeypatch, vault):
+    """The form reader and filler faked: counts reads, answers as told."""
+    seen = {"reads": 0, "answers": {}, "fail": None}
+    monkeypatch.setattr(route, "get_settings", lambda: SimpleNamespace(
+        storage_enabled=True, model="m", research_model="r"))
+    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: spec)
+
+    async def read(pool, template, org_id, sections, model):
+        seen["reads"] += 1
+        seen["read_model"] = model
+        if seen["fail"]:
+            raise seen["fail"]
+        return {"document_id": template["document_id"], "title": "RF template", "headings": HEADINGS,
+                "pages_cut": False, "read_at": NOW.isoformat()}
+
+    async def fill_in(headings, written, style, model):
+        seen["fill_model"] = model
+        return seen["answers"]
+
+    monkeypatch.setattr(form, "read", read)
+    monkeypatch.setattr(fill, "fill", fill_in)
+    return seen
+
+
+async def test_a_version_in_the_funders_form_carries_its_headings_and_a_report(api, held, vault, former):
+    held["row"]["work"] = _written(template=TEMPLATE)
+    former["answers"] = {"T1": "Wells in Dewas run dry for 120 days."}
+    async with api as c:
+        r = await c.post("/api/proposals/11/versions", json={"shape": "form"})
+    assert r.status_code == 201
+    work = r.json()["work"]
+    entry = work["versions"][-1]
+    assert entry["title"] == "Version 1, in Tata Trusts's form" and entry["shape"] == "form"
+    assert entry["report"] == {"answered": ["4. Problem Statement"], "cut": {}, "as_written": [], "add": [],
+                               "you_fill": ["PAN Card Number"]}
+    assert vault["draft"]["title"] == "Water for Dewas, version 1, in Tata Trusts's form"
+    assert vault["draft"]["content_md"] == ("## 4. Problem Statement\n\nWells in Dewas run dry for 120 days.\n\n"
+                                            "## PAN Card Number\n\n[You fill: PAN Card Number]")
+    assert work["template"]["outline"]["headings"] == HEADINGS
+    assert former["read_model"] == "r" and former["fill_model"] == "m"
+
+
+async def test_the_form_is_read_once_and_read_again_when_another_is_chosen(api, held, vault, former):
+    held["row"]["work"] = _written(template=TEMPLATE)
+    async with api as c:
+        await c.post("/api/proposals/11/versions", json={"shape": "form"})
+        second = await c.post("/api/proposals/11/versions", json={"shape": "form"})
+        held["row"]["work"]["template"]["document_id"] = 41
+        third = await c.post("/api/proposals/11/versions", json={"shape": "form"})
+    assert second.status_code == 201 and third.status_code == 201
+    assert former["reads"] == 2
+    assert third.json()["work"]["template"]["outline"]["document_id"] == 41
+
+
+async def test_a_failed_fill_still_saves_the_parts_as_written(api, held, vault, former):
+    held["row"]["work"] = _written(template=TEMPLATE)
+    async with api as c:
+        r = await c.post("/api/proposals/11/versions", json={"shape": "form"})
+    assert r.status_code == 201
+    assert r.json()["work"]["versions"][-1]["report"]["as_written"] == ["4. Problem Statement"]
+
+
+@pytest.mark.parametrize("work, fail, status", [
+    ({}, None, 409),
+    ({"template": TEMPLATE, "skipped_template": True}, None, 409),
+    ({"template": TEMPLATE}, form.Unreadable("The funder's form must be a PDF or Word file."), 422),
+    ({"template": TEMPLATE}, RuntimeError("overloaded"), 502),
+])
+async def test_a_version_in_the_form_needs_a_form_sangam_can_read(api, held, vault, former, work, fail, status):
+    held["row"]["work"] = _written(**work)
+    former["fail"] = fail
+    async with api as c:
+        r = await c.post("/api/proposals/11/versions", json={"shape": "form"})
+    assert r.status_code == status
+    assert held["row"]["work"]["versions"] == [] and "data" not in vault
+    if status == 422:
+        assert r.json()["detail"] == "The funder's form must be a PDF or Word file."
+
+
+async def test_a_reader_cannot_save_a_version_in_the_form(api, held, vault, former):
+    held["row"]["work"] = _written(template=TEMPLATE)
+    held["row"]["can_edit"] = False
+    async with api as c:
+        r = await c.post("/api/proposals/11/versions", json={"shape": "form"})
+    assert r.status_code == 403 and former["reads"] == 0
 
 
 async def test_messages_are_empty_before_the_first_question(api, held, monkeypatch):

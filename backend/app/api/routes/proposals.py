@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
@@ -10,7 +11,7 @@ from app.core.config import get_settings
 from app.core.security import CurrentUser, require_principal
 from app.db.pool import OwnerPoolDep, PoolDep
 from app.integrations import storage
-from app.proposals import assemble, gates, readiness, records, rubric, steps
+from app.proposals import assemble, fill, form, gates, readiness, records, rubric, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.repositories import documents as documents_repo
@@ -24,9 +25,12 @@ from app.schemas.proposals import (
     ProposalOut,
     SavedOut,
     TitleIn,
+    VersionIn,
     WorkPatchIn,
 )
 from app.schemas.threads import ThreadMessagesOut
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/proposals", tags=["proposals"])
 Principal = Annotated[CurrentUser, Depends(require_principal)]
@@ -229,7 +233,7 @@ async def polish_language(proposal_id: int, pool: PoolDep, principal: Principal)
 
 @router.post("/{proposal_id}/versions", response_model=SavedOut, status_code=201,
              summary="Save the proposal as a Word file in the org's Doc Vault, as its next version")
-async def save_version(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
+async def save_version(proposal_id: int, pool: PoolDep, principal: Principal, body: VersionIn | None = None) -> SavedOut:
     row = await _editable(pool, proposal_id)
     if not get_settings().storage_enabled:
         raise HTTPException(503, "Saving Word files is not set up on this deployment.")
@@ -239,18 +243,59 @@ async def save_version(proposal_id: int, pool: PoolDep, principal: Principal) ->
         raise HTTPException(409, "Nothing is written yet.")
     n = len(work.get("versions") or []) + 1
     now = datetime.now(UTC)
-    data = assemble.docx(row["title"], f"For {row['funder']['name']} from {row['org']['name']} · version {n} · "
-                                       f"{now:%d %B %Y}", written)
+    funder = row["funder"]["name"]
+    byline = f"For {funder} from {row['org']['name']} · version {n} · {now:%d %B %Y}"
+    changes: dict[str, Any] = {}
+    entry: dict[str, Any] = {"title": f"Version {n}"}
+    named = f"version {n}"
+    if body is not None and body.shape == "form":
+        outline, filled = await _fill_form(pool, proposal_id, row, written)
+        if outline is not (work.get("template") or {}).get("outline"):
+            changes["template.outline"] = outline
+        headed = [(fill.title(f.heading), f.text) for f in filled]
+        data = assemble.form_docx(row["title"], f"{byline} · in {funder}'s form", headed)
+        named = f"version {n}, in {funder}'s form"
+        entry = {"title": f"V{named[1:]}", "shape": "form", "report": fill.report(filled)}
+    else:
+        headed = [(s.label, text) for s, text in written]
+        data = assemble.docx(row["title"], byline, written)
     key = f"{row['org']['id']}/proposals/{proposal_id}/v{n}.docx"
     if await storage.upload(storage.ORG_VAULT, key, data, assemble.DOCX_TYPE) is None:
         raise HTTPException(502, "Could not reach document storage. Try again.")
     document_id = await repo.insert_draft(
-        pool, org_id=row["org"]["id"], title=f"{row['title']}, version {n}",
+        pool, org_id=row["org"]["id"], title=f"{row['title']}, {named}",
         storage_path=storage.qualify(storage.ORG_VAULT, key), content_hash=storage.content_hash(data),
-        content_md="\n\n".join(f"## {s.label}\n\n{text}" for s, text in written), uploaded_by=principal.id)
-    entry = {"n": n, "title": f"Version {n}", "document_id": document_id, "at": now.isoformat(),
-             "by": await repo.me(pool), "facts_snapshot": assemble.snapshot(work)}
-    return await _save(pool, proposal_id, changes={"versions": [*(work.get("versions") or []), entry]}, via="version")
+        content_md="\n\n".join(f"## {heading}\n\n{text}" for heading, text in headed), uploaded_by=principal.id)
+    entry = {"n": n, **entry, "document_id": document_id, "at": now.isoformat(), "by": await repo.me(pool),
+             "facts_snapshot": assemble.snapshot(work)}
+    changes["versions"] = [*(work.get("versions") or []), entry]
+    return await _save(pool, proposal_id, changes=changes, via="version")
+
+
+async def _fill_form(pool: PoolDep, proposal_id: int, row: dict, written: list) -> tuple[dict, list[fill.Filled]]:
+    """The funder's form, read once and kept, with every heading filled from the written parts or marked."""
+    from app.agent.models import resolve_model  # the model stack loads only when it is used
+
+    work, settings = row["work"], get_settings()
+    template = work.get("template")
+    if not template or work.get("skipped_template"):
+        raise HTTPException(409, "No funder's form was uploaded in step 2.")
+    outline = template.get("outline")
+    if not outline or outline.get("document_id") != template.get("document_id"):
+        try:
+            outline = await form.read(pool, template, row["org"]["id"], rubric.sections_for(
+                bool(work.get("earlier_phase")), template), resolve_model(settings.research_model))
+        except form.Unreadable as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except Exception as exc:
+            logger.warning("reading the form of proposal %s failed (%s)", proposal_id, type(exc).__name__)
+            raise HTTPException(502, "Sangam couldn't read the funder's form just now. Try again.") from exc
+    parts = {s.code: text for s, text in written}
+    style = work.get("style") or rubric.default_style(row["org"]["name"])
+    answers = await fill.fill(outline["headings"], parts, style, resolve_model(settings.model))
+    filled = fill.resolve(outline["headings"], parts, answers, earlier_phase=bool(work.get("earlier_phase")),
+                          districts=await records.districts(pool), names=_names(row))
+    return outline, filled
 
 
 @router.get("/{proposal_id}/messages", response_model=ThreadMessagesOut, summary="Your own chat about this proposal")

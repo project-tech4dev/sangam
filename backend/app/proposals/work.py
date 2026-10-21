@@ -67,6 +67,8 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
     elif path == "template":
         if value is not None and not (isinstance(value, dict) and isinstance(value.get("document_id"), int)):
             raise BadChange("template is null or an object with a document_id")
+        if value and "outline" in value:
+            raise BadChange("the funder's form is read by Sangam when it fills it in")
     elif path == "skipped_template":
         if not isinstance(value, bool):
             raise BadChange("skipped_template is true or false")
@@ -128,6 +130,9 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
     elif path == "polished":
         if via != "polish" or not (isinstance(value, dict) and isinstance(value.get("parts"), dict)):
             raise BadChange("the smoothed wording is saved only once code has checked it")
+    elif path == "template.outline":
+        if via != "version" or not (isinstance(value, dict) and isinstance(value.get("headings"), list)):
+            raise BadChange("the funder's form is read by Sangam when it fills it in")
     elif path == "versions":
         held = work.get("versions") or []
         if via != "version" or not isinstance(value, list):

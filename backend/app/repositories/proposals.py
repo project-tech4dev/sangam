@@ -70,6 +70,16 @@ async def funder_form(pool: Any, funder_id: int) -> dict | None:
         )).fetchone()
 
 
+async def form_file(pool: Any, document_id: int, org_id: int) -> dict | None:
+    """The form chosen in step 2: this org's own upload, or a public document Sangam archived."""
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            """SELECT id, title, storage_path FROM documents
+               WHERE id = %s AND storage_path IS NOT NULL AND (is_public OR org_id = %s)""",
+            (document_id, org_id),
+        )).fetchone()
+
+
 async def me(pool: Any) -> dict:
     """The caller as a log entry names them."""
     async with pool.connection() as conn:

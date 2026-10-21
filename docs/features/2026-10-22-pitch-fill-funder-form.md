@@ -52,7 +52,7 @@ and `save_version`, `assemble.py`, `polish.py`, `FinishCard.tsx`). No table chan
 | `api/routes/proposals.py` `save_version` | 1 | takes `shape: "form"` | in scope | no new route, §4.4 |
 | `schemas/proposals.py` | 1 | request body and the version's `report` | in scope | — |
 | `frontend/.../FinishCard.tsx`, `api.ts` | 2 | a second download button and the report | in scope | design system sync, §4.5 |
-| Sangam Pitch prompt, `instructions.md` | 2 | rule 10 names the new button | in scope | one line |
+| Sangam Pitch prompt, `instructions.md` | 2 | the step 4–5 rule names the new button (rule 9 on master) | in scope, M2 | one line |
 | Steps 1–4, readers, facts, `write_section`, questions | — | untouched | unaffected | G1 |
 | `rubric.sections_for`'s `template.questions` | — | dead code: nothing saves `questions` | unaffected | §8 #5 |
 | Ask Sangam, Import, Funder Match | — | no proposal code | unaffected | — |
@@ -194,7 +194,7 @@ class Outline(BaseModel):
   card can say what happened. Its title reads "Version 3, in Redington's form".
 - **Errors:** a failed outline read returns 502 "Sangam couldn't read the funder's form just now. Try again." A failed fill
   call drops every prose heading to its fallback rather than failing.
-- `instructions.md` rule 10 gains one line: "When the funder's form was uploaded, a third button, *Download in the funder's
+- `instructions.md`'s rule on the finish buttons (rule 9 on master) gains one line, with the button in M2: "When the funder's form was uploaded, a third button, *Download in the funder's
   form*, fills it from the written parts; point to it, never fill it in chat."
 
 ### 4.5 Screen: `FinishCard.tsx`, `api.ts`, `globals.css`
@@ -279,7 +279,7 @@ One PR each, stacked. Each stops for review before the next.
   - [ ] `fill.py` and `prompts/form_fill.md`.
   - [ ] `assemble.form_docx`.
   - [ ] `save_version` body, `schemas/proposals.py`.
-  - [ ] `instructions.md` rule 10.
+  - [ ] `work.apply` refuses an outline from anyone but `save_version`.
 - **Acceptance:** `pytest tests/test_proposal_form.py tests/test_proposal_finish.py tests/test_cov_proposals_route.py` and
   `ruff check .`. By hand: the three sample files each give a Word file from a written proposal on staging.
 
@@ -289,7 +289,7 @@ One PR each, stacked. Each stops for review before the next.
 - **Touches:** frontend, design system, one reader prompt line.
 - **Key tasks:**
   - [ ] `api.ts`.
-  - [ ] `FinishCard.tsx`.
+  - [ ] `FinishCard.tsx`, and the `instructions.md` line naming its button.
   - [ ] Step 2 sentence; `looks_like_form` in `readers._one` and `evidence_reader.md`; the *Use it as the funder's form* button.
   - [ ] Classes in `globals.css`.
   - [ ] `ui_kits/sangam-web/` Pitch page.
