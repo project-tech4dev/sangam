@@ -11,6 +11,7 @@ from app.proposals import rubric, trace
 DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 _MARK = re.compile(r"[ \t]*⟦k\d+⟧")
 _BULLET = re.compile(r"^\s*[-•*]\s+")
+_LEFT = re.compile(r"(\[(?:Add|You fill):[^\]]*\])")  # what the person still has to write, highlighted
 
 
 def plain(text: str | None) -> str:
@@ -45,14 +46,23 @@ def snapshot(work: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 def docx(title: str, byline: str, written: list[tuple[rubric.Section, str]]) -> bytes:
     """Title, who it is for and when, a heading per part, and every [Add: …] gap highlighted."""
+    return _document(title, byline, [(section.label, text) for section, text in written])
+
+
+def form_docx(title: str, byline: str, filled: list[tuple[str, str]]) -> bytes:
+    """The funder's form filled in: its own numbered headings, with what is left marked [Add: …] or [You fill: …]."""
+    return _document(title, byline, filled)
+
+
+def _document(title: str, byline: str, headed: list[tuple[str, str]]) -> bytes:
     from docx import Document
     from docx.enum.text import WD_COLOR_INDEX
 
     doc = Document()
     doc.add_heading(title, level=0)
     doc.add_paragraph().add_run(byline).italic = True
-    for section, text in written:
-        doc.add_heading(section.label, level=1)
+    for heading, text in headed:
+        doc.add_heading(heading, level=1)
         for para in trace.paragraphs(text):
             for line in para.splitlines():
                 if not line.strip():
@@ -60,7 +70,7 @@ def docx(title: str, byline: str, written: list[tuple[rubric.Section, str]]) -> 
                 bullet = bool(_BULLET.match(line))
                 out = doc.add_paragraph(style="List Bullet" if bullet else None)
                 line = _BULLET.sub("", line) if bullet else line.strip()
-                for i, piece in enumerate(re.split(r"(\[Add:[^\]]*\])", line)):
+                for i, piece in enumerate(_LEFT.split(line)):
                     if piece:
                         run = out.add_run(piece)
                         if i % 2:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -72,6 +72,10 @@ class TitleIn(BaseModel):
 class WorkPatchIn(BaseModel):
     set: dict[str, Any] = Field(description='paths to new values, e.g. {"gates.csr1": "will_have"}')
     rev: dict[str, int] = Field(default_factory=dict, description="each changed section's rev, as it was read")
+
+
+class VersionIn(BaseModel):
+    shape: Literal["sangam", "form"] = Field("sangam", description="sangam: Sangam's parts; form: the funder's form")
 
 
 class SavedOut(BaseModel):
