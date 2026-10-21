@@ -3,6 +3,7 @@ import { apiGet } from "@/lib/api";
 import { titleCase } from "@/lib/format";
 import type {
   FunderListItem,
+  MeOut,
   OrgListItem,
   PageOf,
   PartnerLineRow,
@@ -10,7 +11,7 @@ import type {
 } from "@/lib/api";
 import type { IndexPayload } from "@/features/ask/AskWorkspace";
 import { AskPreview } from "@/features/ask/preview/AskPreview";
-import { canUseScout, type Me } from "@/features/ingest/lib/access";
+import { canUseScout } from "@/features/ingest/lib/access";
 import { WorkspaceLoader } from "@/features/ask/WorkspaceLoader";
 import { cookies } from "next/headers";
 import { DEV_COOKIE, DEV_LOGIN } from "@/lib/devAuth";
@@ -47,7 +48,7 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
     apiGet<PageOf<ScoreRow>>("/api/scores?limit=100").then((p) => p.items),
     apiGet<PageOf<PartnerLineRow>>("/api/partner-lines?limit=100").then((p) => p.items),
     apiGet<Record<string, number>>("/api/meta/stats"),
-    apiGet<Me>("/api/me").catch(() => null),
+    apiGet<MeOut>("/api/me").catch(() => null),
   ]);
 
   const funderSlugById = new Map(funders.map((f) => [f.id, f.slug]));
@@ -89,6 +90,7 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
     })),
     stats,
     canScout: me ? canUseScout(me) : false,
+    me,
   };
 
   // The workspace fills the viewport below the sticky navbar; the footer sits below the fold.

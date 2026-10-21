@@ -73,7 +73,7 @@ describe("AskPreview", () => {
 });
 
 describe("workspace loading", () => {
-  const payload = { orgs: [], funders: [], scores: [], activities: [], stats: {}, canScout: false } as IndexPayload;
+  const payload = { orgs: [], funders: [], scores: [], activities: [], stats: {}, canScout: false, me: null } as IndexPayload;
 
   it("wraps the workspace in the agent providers", () => {
     render(<SignedInWorkspace payload={payload} initialQuestion="Hi" />);

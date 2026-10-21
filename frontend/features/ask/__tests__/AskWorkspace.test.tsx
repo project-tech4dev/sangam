@@ -17,8 +17,10 @@ vi.mock("@/features/ask/views/proposals/api", () => ({ useProposals: () => [{ id
 
 // Each screen is tested on its own; here a stub shows which one is up and exposes its callbacks.
 type Props = Record<string, unknown>;
+const seen: Record<string, Props> = {};
 const stub = (name: string, act?: (p: Props) => ReactNode) =>
   function Stub(p: Props) {
+    seen[name] = p;
     return (
       <section aria-label={name}>
         {name}
@@ -91,6 +93,7 @@ const payload: IndexPayload = {
   activities: [],
   stats: { orgs: 1 },
   canScout: false,
+  me: null,
 };
 const at = (query: string) => (navigation.search = new URLSearchParams(query));
 
@@ -158,6 +161,16 @@ describe("AskWorkspace", () => {
     setUrlParams.mockClear();
     await userEvent.click(screen.getByRole("button", { name: "Doc Vault" }));
     expect(setUrlParams).not.toHaveBeenCalled();
+  });
+
+  it("hands the page's /api/me to each screen that picks an organisation", () => {
+    const me = { id: "u", email: null, is_staff: false, is_anonymous: false, memberships: [] };
+    for (const [view, name] of [["funder-match", "FunderMatchView"], ["rfpwatch", "RfpWatchView"], ["media", "MediaView"]]) {
+      at(`view=${view}`);
+      const { unmount } = render(<AskWorkspace payload={{ ...payload, me }} />);
+      expect(seen[name].me).toBe(me);
+      unmount();
+    }
   });
 
   it("shows Media & Signals and All Chats, and opens a picked chat", async () => {

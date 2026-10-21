@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BucketCards, FilterRow, SearchBox } from "@/components/ui";
 import { dayMonthYear } from "@/lib/format";
+import type { MeOut } from "@/lib/api";
 import { useOrgChoices } from "../lib/useOrgChoices";
 import { CallCard, SOON_DAYS, daysLeft } from "./rfp-watch/CallCard";
 import { type Feed, type FeedCall, getFeed, setStatus } from "./rfp-watch/api";
@@ -23,10 +24,12 @@ export function RfpWatchView({
   orgs,
   onAsk,
   onFunderMatch,
+  me: seed = null,
 }: {
   orgs: { id: number; slug: string; name: string }[];
   onAsk: (question: string) => void;
   onFunderMatch: () => void;
+  me?: MeOut | null;
 }) {
   const [orgSlug, setOrgSlug] = useState("");
   const [feed, setFeed] = useState<Feed | null>(null);
@@ -36,7 +39,7 @@ export function RfpWatchView({
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
 
-  const { me, choices, problem: meProblem } = useOrgChoices(orgs);
+  const { me, choices, problem: meProblem } = useOrgChoices(orgs, seed);
   const active = orgSlug || choices[0]?.slug || "";
 
   useEffect(() => {

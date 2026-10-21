@@ -119,22 +119,19 @@ def _row(id_, score, prev=None):
             "funder_slug": f"f{id_}", "funder_name": f"F{id_}", "funder_type": None}
 
 
-async def _get(monkeypatch, found, run=None, rows=()):
-    async def find_org(pool, slug):
-        return found
+async def _get(monkeypatch, found, run=None, rows=(), path="/api/funder-matches?org=kabil"):
+    asked = []
 
-    async def latest_run(pool, org_id):
-        return run
+    async def read_latest(pool, org):
+        asked.append(org)
+        return found, run, list(rows)
 
-    async def list_matches(pool, run_id, prev_run_id):
-        return list(rows)
-
-    monkeypatch.setattr(repo, "find_org", find_org)
-    monkeypatch.setattr(repo, "latest_run", latest_run)
-    monkeypatch.setattr(repo, "list_matches", list_matches)
+    monkeypatch.setattr(repo, "read_latest", read_latest)
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=make_app(funder_matches.router)),
                                  base_url="http://test") as client:
-        return await client.get("/api/funder-matches?org=kabil")
+        res = await client.get(path)
+    res.asked = asked
+    return res
 
 
 class TestListRoute:
@@ -152,3 +149,9 @@ class TestListRoute:
     async def test_an_org_the_caller_cannot_read_is_not_found(self, monkeypatch):
         assert (await _get(monkeypatch, None)).status_code == 404
         assert (await _get(monkeypatch, {**KABIL, "may_read": False})).status_code == 404
+
+    async def test_without_an_org_the_repository_picks_the_callers_own(self, monkeypatch):
+        res = await _get(monkeypatch, KABIL, RUN, [_row(7, 80)], path="/api/funder-matches")
+        assert res.status_code == 200 and res.asked == [None] and res.json()["org"]["slug"] == "kabil"
+        none = await _get(monkeypatch, None, path="/api/funder-matches")
+        assert none.status_code == 404 and none.json()["detail"] == "You are not a member of an organisation"

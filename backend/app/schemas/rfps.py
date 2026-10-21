@@ -58,6 +58,7 @@ class Feed(ReadModel):
     """can_act: may this caller save or dismiss (the org's members and admins, and staff, as RLS allows)."""
 
     org_id: int
+    org_slug: str
     org_name: str
     can_act: bool = False
     domains: list[str] = []

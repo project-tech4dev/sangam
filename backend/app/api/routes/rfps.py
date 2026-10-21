@@ -34,13 +34,14 @@ async def list_rfps(
 
 
 @router.get("/feed", response_model=Feed, summary="An org's open and saved calls")
-async def feed(org: str, pool: PoolDep, user_id: UUID = Depends(require_user)) -> Feed:
+async def feed(pool: PoolDep, user_id: UUID = Depends(require_user), org: str | None = None) -> Feed:
+    """Without `org`, the caller's first organisation by name."""
     # Runs as the caller: another org's matches are filtered out by RLS, so its feed is empty.
     row = await repo.feed(pool, org)
     if row is None:
-        raise HTTPException(404, f"org {org} not found")
-    return Feed(org_id=row["id"], org_name=row["name"], can_act=row["can_act"], domains=row["domains"],
-                last_pulled=row["last_pulled"], items=row["items"])
+        raise HTTPException(404, f"org {org} not found" if org else "You are not a member of an organisation")
+    return Feed(org_id=row["id"], org_slug=row["slug"], org_name=row["name"], can_act=row["can_act"],
+                domains=row["domains"], last_pulled=row["last_pulled"], items=row["items"])
 
 
 @router.get("/{rfp_id}", response_model=RfpOut, summary="Opportunity detail")
