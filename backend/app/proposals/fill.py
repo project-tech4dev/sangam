@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 PROMPT = (Path(__file__).parent / "prompts" / "form_fill.md").read_text(encoding="utf-8")
 UNITS = {"chars": "characters", "words": "words", "pages": "pages"}
 How = Literal["answered", "as_written", "too_long", "no_part", "you_fill"]
+_GAP = re.compile(r"\[Add:[^\]]*\]")
 
 
 class Answer(BaseModel):
@@ -58,14 +60,14 @@ def sources(heading: dict[str, Any], written: dict[str, str]) -> str:
 
 def check(source: str, answer: str, limit: dict[str, Any] | None, *, districts: set[str] = frozenset(),
           names: set[str] = frozenset()) -> tuple[list[str], list[str]]:
-    """(why the answer is refused, what it cut). A cut is allowed; a new figure, place or name is not. Pure."""
+    """(why the answer is refused, the figures, places and names it cut). A cut is allowed; an addition is not. Pure."""
     was = dict(trace.extract(source, districts=districts, names=names))
     now = dict(trace.extract(answer, districts=districts, names=names))
     added = [shown for k, shown in now.items() if k not in was and not k.startswith("gap ")]
     refused = [f"added {', '.join(added)}"] if added else []
     if too := over(limit, answer):
         refused.append(too)
-    return refused, [shown for k, shown in was.items() if k not in now]
+    return refused, [shown for k, shown in was.items() if k not in now and not k.startswith("gap ")]
 
 
 async def fill(headings: list[dict[str, Any]], written: dict[str, str], style: str, model: Any) -> dict[str, str]:
@@ -105,7 +107,9 @@ def resolve(headings: list[dict[str, Any]], written: dict[str, str], answers: di
         if answer := answers.get(h["code"]):
             refused, cut = check(source, answer, h["limit"], districts=districts, names=names)
             if not refused:
-                out.append(Filled(h, answer, "answered", tuple(cut)))
+                # An answer that is only [Add: …] marks says the parts don't answer this heading.
+                gaps_only = not _GAP.sub("", answer).strip()
+                out.append(Filled(h, answer, "no_part") if gaps_only else Filled(h, answer, "answered", tuple(cut)))
                 continue
         if not (too := over(h["limit"], source)):
             out.append(Filled(h, source, "as_written"))

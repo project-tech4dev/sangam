@@ -80,6 +80,10 @@ class TestTheFillCheck:
                                 STRATEGY["limit"])
         assert refused == ["added 2500"]
 
+    def test_a_dropped_gap_is_not_reported_as_cut(self):
+        _, cut = fill.check("Run 54 trainings. [Add: the trainers' names]", "Run 54 trainings.", None)
+        assert cut == []
+
     def test_a_new_gap_is_not_a_claim(self):
         refused, _ = fill.check("Run 54 trainings.", "Run 54 trainings. [Add: the trainers' names]", None)
         assert refused == []
@@ -105,6 +109,11 @@ class TestEveryHeadingComesOut:
         out = self.resolve(outline(), {"T1": "SeSTA will work with 2,400 women.", "T5": "Raise incomes of 2,400 women."})
         assert out["T5"].how == "answered" and out["T5"].text == "Raise incomes of 2,400 women."
         assert out["T5"].cut == ("54", "22")
+
+    def test_an_answer_that_is_only_a_gap_counts_as_nothing_for_the_heading(self):
+        out = self.resolve(outline(), {"T5": "[Add: literacy rate for Goalpara, with source]"})
+        assert out["T5"].how == "no_part" and out["T5"].cut == ()
+        assert out["T5"].text == "[Add: literacy rate for Goalpara, with source]"
 
     def test_a_refused_answer_falls_back_to_the_parts_when_they_fit(self):
         roomy = {**STRATEGY, "limit": {"n": 500, "unit": "chars"}}

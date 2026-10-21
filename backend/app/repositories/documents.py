@@ -77,7 +77,8 @@ async def insert_upload(
     VALUES (%(org_id)s, %(title)s, %(doc_type)s, 'vault upload', %(storage_path)s,
             %(content_hash)s, %(content_md)s, %(uploaded_by)s, now(),
             false, 'received')
-    RETURNING id, org_id, funder_id, title, doc_type, source_name, source_url, fetched_at
+    RETURNING id, org_id, funder_id, title, doc_type, source_name, source_url, fetched_at,
+              storage_path <> '' AS has_file
     """
     async with pool.connection() as conn:
         row = await (await conn.execute(sql, {
