@@ -15,7 +15,7 @@ const RECORD: Record<string, string> = {
 function standing(f: Fact): string {
   if (f.origin === "you_said") return `${f.said_by?.name ?? "Your team"} said this`;
   if (f.status === "confirmed") return "✓ Confirmed";
-  if (f.found_by === "public") return "! From public research, not checked";
+  if (f.found_by === "public") return "! From secondary research, not checked";
   return {
     registry: "✓ From Sangam's record",
     vault: "✓ From your document",
@@ -43,7 +43,7 @@ export function FactList({ proposal, part, save, only }: { proposal: Proposal; p
   if (live.length === 0)
     return (
       <p className="muted pr-facts-empty">
-        {used ? "No part cites a fact yet. Write the proposal in step 3 first." : "No facts for this part yet. Ask Sangam Pitch what it holds."}
+        {used ? "No part cites a fact yet. Make the case and the plan in steps 3 and 4 first." : "No facts for this part yet. Ask Sangam Pitch what it holds."}
       </p>
     );
 

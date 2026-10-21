@@ -15,7 +15,7 @@ LIVE = ("proposed", "confirmed")  # corrected and rejected facts fill no gap and
 VALUE_TEXT = 500
 WEB_EVIDENCE = 20
 PUBLIC_SECTIONS = ("A2", "A3", "A4", "A14", "F1")  # context, problem, results, sustainability, fit
-PUBLIC_TOPICS = ("problem", "place", "government", "sdg", "elsewhere")  # the step-2 card's groups, in order
+PUBLIC_TOPICS = ("problem", "place", "government", "sdg", "elsewhere")  # the Secondary research card's topics, in order
 _MARKER = re.compile(r"^\[(org|activity|score):\d+\]$")
 _DIGIT_COMMA = re.compile(r"(?<=\d),(?=\d)")
 _NUMBER = re.compile(r"\d+(?:\.\d+)?")
@@ -145,7 +145,7 @@ def off_page(fact: dict[str, Any], page: str | None) -> str | None:
 def make(fact: dict[str, Any], *, by: dict[str, Any] | None = None) -> dict[str, Any]:
     """The stored fact: proposed and coloured by its origin; only `by` (the person who said it) is trusted."""
     keep = ("kind", "subject", "value", "marker", "as_of", "section", "element", "evidence", "source_url", "topic",
-            "source_name", "page", "document_id", "from", "supersedes", "found_by")
+            "source_name", "page", "document_id", "from", "supersedes", "found_by", "ask")
     out = {k: fact[k] for k in keep if fact.get(k) not in (None, "", [])}
     origin = fact["origin"]
     out.update(origin=origin, tier=reliability.tier(origin), status="proposed", used_in=[],

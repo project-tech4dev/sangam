@@ -14,9 +14,9 @@ from typing import Any
 
 from app.proposals import facts as fact_rules
 from app.proposals import questions as question_rules
-from app.proposals import readiness, reliability, review, rubric, trace
+from app.proposals import readiness, reliability, research, review, rubric, steps, trace
 
-STAGES = (1, 2, 3, 4)  # 4 is "Before you send it"
+STAGES = tuple(steps.STAGES)
 FACT_STATUS = ("proposed", "confirmed", "corrected", "rejected")
 LOG_TEXT = 200  # a logged value longer than this is cut; the section itself keeps it all
 TEXT_LIMIT = 12000
@@ -29,6 +29,8 @@ SET_BY_PERSON = ("proposed", "confirmed", "rejected")  # "corrected" comes only 
 _GATE = re.compile(r"^gates\.([a-z0-9]{1,16})$")
 _READER = re.compile(r"^readers\.(funder|public|\d+)$")
 READER_STATUS = ("running", "done", "failed")
+RESET = "reset"  # deleting secondary research: the one change that removes keys rather than setting them
+_ASK = re.compile(r"^research_asks\.(a\d+)$")
 
 
 class BadChange(ValueError):
@@ -62,8 +64,10 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
             raise BadChange("an answer is yes, will_have, no or null")
     elif path == "stage":
         current = work.get("stage", 1)
-        if value not in STAGES or (value != current + 1 if advance else value > current):
+        if value not in STAGES or (value <= current if advance else value > current):
             raise BadChange("a step is moved forward by POST /advance; PATCH only goes back")
+        if advance and (missing := steps.blocking(work, value)):
+            raise BadChange(f"to go on, {'; '.join(missing)}")
     elif path == "template":
         if value is not None and not (isinstance(value, dict) and isinstance(value.get("document_id"), int)):
             raise BadChange("template is null or an object with a document_id")
@@ -105,6 +109,9 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
                 raise BadChange("that fact was already replaced or set aside")
             if not isinstance(value, str) or not value.strip() or len(value) > fact_rules.VALUE_TEXT:
                 raise BadChange(f"a corrected value is 1 to {fact_rules.VALUE_TEXT} characters")
+    elif (m := _NEW_FACT.match(path)) and via == RESET:
+        if value is not None or ((work.get("facts") or {}).get(m.group(1)) or {}).get("found_by") != "public":
+            raise BadChange("deleting secondary research removes only its own facts")
     elif m := _NEW_FACT.match(path):
         if via != "agent":
             raise BadChange("facts are added by Sangam Pitch, which checks their source first")
@@ -122,11 +129,19 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
         elif not (isinstance(value, dict) and value.get("reason") in question_rules.REASONS
                   and value.get("status") in question_rules.STATUSES):
             raise BadChange("a question has a reason and a status")
+    elif path in ("readers.public", "research_asks") and via == RESET:
+        if value is not None:
+            raise BadChange("deleting secondary research clears its run and asks")
     elif _READER.match(path):
         if via != "agent":
             raise BadChange("files are read by Sangam Pitch")
         if not (isinstance(value, dict) and value.get("status") in READER_STATUS and value.get("at")):
             raise BadChange("a reader has a status and a time")
+    elif _ASK.match(path):
+        if via != "agent":
+            raise BadChange("research is asked for in the chat")
+        if why := research.bad_ask(value):
+            raise BadChange(why)
     elif path == "polished":
         if via != "polish" or not (isinstance(value, dict) and isinstance(value.get("parts"), dict)):
             raise BadChange("the smoothed wording is saved only once code has checked it")
@@ -159,6 +174,13 @@ def _set(work: dict[str, Any], path: str, value: Any) -> None:
     for key in parents:
         node = node.setdefault(key, {})
     node[last] = value
+
+
+def _unset(work: dict[str, Any], path: str) -> None:
+    *parents, last = path.split(".")
+    node = _get(work, ".".join(parents)) if parents else work
+    if isinstance(node, dict):
+        node.pop(last, None)
 
 
 def _short(value: Any) -> Any:
@@ -262,7 +284,7 @@ def apply(work: dict[str, Any], changes: dict[str, Any], rev: dict[str, int] | N
         if path == "title":
             new_title = value.strip()
         else:
-            _set(out, path, value)
+            _unset(out, path) if via == RESET and value is None else _set(out, path, value)
         log.append({"at": at, "by": by, "via": via, "run_id": run_id, "path": path,
                     "from": _short(before), "to": _short(new_title if path == "title" else value),
                     "facts": facts or [], "reason": reason})

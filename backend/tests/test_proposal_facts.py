@@ -196,7 +196,8 @@ class TestPublicResearchQuotesThePage:
     def test_only_the_sections_public_evidence_serves(self):
         assert "fills" in fact_rules.off_page(public_fact(section="A10"), PAGE)
 
-    async def test_add_facts_in_a_public_run_marks_what_it_keeps(self, monkeypatch):
+    @pytest.mark.parametrize("ask", [None, "a2"])
+    async def test_add_facts_in_a_public_run_marks_what_it_keeps(self, monkeypatch, ask):
         from app.proposals.middleware import PUBLIC_RUN, PublicRun, page_key
 
         stored = {"work": work(stage=2)}
@@ -218,13 +219,14 @@ class TestPublicResearchQuotesThePage:
         monkeypatch.setattr(ledger_tools, "get_pool", lambda: None)
         monkeypatch.setattr(repo, "save", save)
         monkeypatch.setattr(repo, "user_name", user_name)
-        token = PUBLIC_RUN.set(PublicRun(avoid=("SeSTA",), pages={page_key(URL): PAGE}))
+        token = PUBLIC_RUN.set(PublicRun(avoid=("SeSTA",), pages={page_key(URL): PAGE}, ask=ask))
         try:
             out = await ledger_tools.add_facts.ainvoke({"facts": [public_fact(), public_fact(value="21.8%")]})
         finally:
             PUBLIC_RUN.reset(token)
         assert "k1 added" in out and "REFUSED" in out
         assert stored["work"]["facts"]["k1"]["found_by"] == "public"
+        assert stored["work"]["facts"]["k1"].get("ask") == ask
 
     def test_outside_public_research_a_web_fact_keeps_todays_rule(self):
         assert fact_rules.problem(work(), public_fact(evidence="a sentence quoted from the brief")) is None

@@ -10,15 +10,21 @@ from typing import Any, Literal
 
 RUBRIC_VERSION = "proposal-v2"
 
-Tab = Literal["case", "people", "money", "funder"]
+Tab = Literal["case", "plan", "people", "money", "funder"]
 
-# Step 3's four tabs, in screen order, as the prototype names them.
+# Every tab, in screen order: "case" is step 3, Make a case; the rest are step 4's tabs, Make a plan.
 TABS: list[tuple[Tab, str]] = [
-    ("case", "The case and the plan"),
+    ("case", "The case"),
+    ("plan", "Objectives and plan"),
     ("people", "People"),
     ("money", "Durability and money"),
     ("funder", "This funder"),
 ]
+CASE_STAGE, PLAN_STAGE = 3, 4
+
+
+def stage_of(tab: str) -> int:
+    return CASE_STAGE if tab == "case" else PLAN_STAGE
 
 MUST_SCORE_2 = ("A6", "A15", "F1")
 
@@ -34,7 +40,7 @@ class Section:
 
     def out(self) -> dict[str, Any]:
         return {**asdict(self), "strong": list(self.strong), "must_score_2": self.code in MUST_SCORE_2,
-                "last": self.code == "A1"}
+                "last": self.code == "A1", "step": stage_of(self.tab)}
 
 
 def _s(code: str, label: str, question: str, tab: Tab, strong: list[str], weak: str) -> Section:
@@ -52,16 +58,16 @@ CORE: list[Section] = [
     _s("A3", "Problem and baseline", "Is the problem real, local and measured?", "case",
        ["The specific problem at the site", "Current figures with source and year", "The causes the project will act on"],
        "Broad claims about poverty or climate with no local data"),
-    _s("A4", "Objectives and results", "What will be different at the end, and by how much?", "case",
+    _s("A4", "Objectives and results", "What will be different at the end, and by how much?", "plan",
        ["Objectives stated as changes", "Results as numbers with units", "Each result linked to an objective"],
        "Objectives written as activities; results with no numbers"),
-    _s("A5", "Activities and workplan", "Can this team deliver this sequence in this time?", "case",
+    _s("A5", "Activities and workplan", "Can this team deliver this sequence in this time?", "plan",
        ["Activities grouped under results", "An owner, target and timing for each", "Reviews and reports scheduled"],
        "Activities listed with no timing, owner or target"),
-    _s("A6", "Indicators and M&E", "How will we know it worked?", "case",
+    _s("A6", "Indicators and M&E", "How will we know it worked?", "plan",
        ["Indicators for each result", "Baseline, target, source and frequency", "A named owner",
         "Mid-term and final reviews"], "Indicators that only count activities"),
-    _s("A7", "Learning and knowledge sharing", "What will others learn from this?", "case",
+    _s("A7", "Learning and knowledge sharing", "What will others learn from this?", "plan",
        ["Named knowledge products", "Who each is for", "How each will be shared"], "One line promising a report"),
     _s("A8", "Community participation", "Did the community shape this, and will they steer it?", "people",
        ["Consultations held, with dates and numbers", "Community roles in delivery and monitoring",

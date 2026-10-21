@@ -41,7 +41,7 @@ describe("FactList", () => {
     expect(within(list).getByText("Asha said this")).toBeInTheDocument();
     expect(within(list).getByText("✓ Confirmed")).toBeInTheDocument();
     expect(within(list).getByText(/Sangam's record of your organisation/)).toBeInTheDocument();
-    expect(within(list).getByText("! From public research, not checked")).toBeInTheDocument();
+    expect(within(list).getByText("! From secondary research, not checked")).toBeInTheDocument();
     expect(within(list).getByText("! Worked out by Sangam, not checked")).toBeInTheDocument();
     expect(within(list).getByText("1 fact set aside or replaced.")).toBeInTheDocument();
     const first = within(list).getByText("Reach").closest("li")!;

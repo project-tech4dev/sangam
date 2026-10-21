@@ -68,7 +68,7 @@ async def read_proposal(part: str = "") -> str:
     """Read this chat's proposal: the whole outline, or one part of it in full.
 
     Leave `part` empty for the outline: the step, the requirements and answers, the form, the documents
-    Sangam may read, the style, and each section's state. Pass a tab (case, people, money, funder)
+    Sangam may read, the style, and each section's state. Pass a tab (case, plan, people, money, funder)
     for its sections in full with their facts, a section's code (for example A3) for that section,
     "facts" for every fact in use with the id write_section cites, or one of requirements, form, documents, style.
 
@@ -110,7 +110,7 @@ async def read_proposal(part: str = "") -> str:
         if part in ("", "style"):
             out.append(f"Writing style: {(work.get('style') or '').strip() or 'not set'}")
         if part == "":
-            out.insert(0, f"Step {stage} of 4: {steps.STAGES.get(stage, '')}")
+            out.insert(0, f"Step {stage} of {steps.LAST}: {steps.STAGES.get(stage, '')}")
             for key, label in rubric.TABS:
                 out.append(f"## {label} ({key})")
                 out += ["\n".join(_section(s, saved.get(s.code) or {}, False)) for s in all_sections if s.tab == key]
@@ -150,7 +150,7 @@ async def advance_step() -> str:
         if applied is None:
             return NO_PROPOSAL
         stage = applied.work["stage"]
-        return f"Moved to step {stage} of 4: {steps.STAGES[stage]}."
+        return f"Moved to step {stage} of {steps.LAST}: {steps.STAGES[stage]}."
     except Exception as exc:
         logger.exception("advance_step failed")
         return f"advance_step failed: {type(exc).__name__}"

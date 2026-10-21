@@ -5,11 +5,12 @@ import { MessageCircle, Pencil, Upload, X } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
-import { advance, changedByLine, type Fact, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork } from "./api";
-import { FactList } from "./FactList";
+import { advance, changedByLine, deleteResearch, type Fact, researchAngles, type ResearchAsk, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section, startResearch } from "./api";
+import { FactList, source } from "./FactList";
 import { FinishCard } from "./FinishCard";
+import { ResearchBrief } from "./ResearchBrief";
 import { PartEditor, WriteCard } from "./WriteCard";
-import { ANSWERS, STEPS } from "./steps";
+import { ANSWERS, CASE_STEP, PLAN_STEP, STEPS } from "./steps";
 import { TellSangam } from "./TellSangam";
 
 type Save = (set: Record<string, unknown>) => Promise<void>;
@@ -18,10 +19,12 @@ type Send = ((text: string) => void) | null;
 // Fixed messages the step's buttons send to Sangam Pitch, which calls read_files on either.
 const WRITE_FIRST_DRAFT = "Write the first draft.";
 const READ_AGAIN = "Read the files again.";
-const SEARCH_PUBLIC = "Search public sources.";
+const DEEPER_NEEDS = ["A2", "A3"]; // Context and Problem; the Summary waits for the plan, so it is read but not needed
+const ANGLES = 8; // as many as one deeper run takes
+const WRITE_SUMMARY = "Write the Summary.";
 const POLL_MS = 5000;
 
-/* One proposal: the header, the four steps and the step on screen; every change is saved on the server as it is made. */
+/* One proposal: the header, the five steps and the step on screen; every change is saved on the server as it is made. */
 export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }) {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [failed, setFailed] = useState(false);
@@ -83,6 +86,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
 
   const { work, summary, can_edit: canEdit } = proposal;
   const toContinue = summary.to_continue ?? [];
+  const furthest = summary.furthest ?? work.stage;
   const save: Save = (set) => run(() => saveWork(id, set));
   // A step's button talks to Sangam Pitch, so the chat opens to show the reply.
   const ask: Send = send ? (text) => { setChatOpen(true); send(text); } : null;
@@ -135,8 +139,8 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
               <li key={label} className="pr-step" data-current={work.stage === i + 1}>
                 <button
                   type="button"
-                  disabled={!canEdit || i + 1 >= work.stage}
-                  onClick={() => save({ stage: i + 1 })}
+                  disabled={!canEdit || i + 1 === work.stage || i + 1 > furthest}
+                  onClick={() => (i + 1 < work.stage ? save({ stage: i + 1 }) : run(() => advance(id, i + 1)))}
                   aria-current={work.stage === i + 1 ? "step" : undefined}
                 >
                   <span className="pr-step-num">{i + 1}</span>
@@ -156,8 +160,10 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
           <div onMouseUp={() => setSelection(window.getSelection()?.toString().trim() ?? "")}>
             {work.stage === 1 && <GatesStep proposal={proposal} save={save} />}
             {work.stage === 2 && <SourcesStep proposal={proposal} save={save} send={ask} />}
-            {work.stage === 3 && <SectionsStep proposal={proposal} part={part} onPart={setPart} save={save} send={ask} onSaved={onSaved} />}
-            {work.stage === 4 && <FinishStep proposal={proposal} save={save} send={ask} onSaved={onSaved} />}
+            {(work.stage === CASE_STEP || work.stage === PLAN_STEP) && (
+              <SectionsStep key={work.stage} step={work.stage} proposal={proposal} part={part} onPart={setPart} save={save} send={ask} onSaved={onSaved} />
+            )}
+            {work.stage === STEPS.length && <FinishStep proposal={proposal} save={save} send={ask} onSaved={onSaved} />}
           </div>
           {work.stage === 2 && <WhatHappensNext funder={proposal.funder.name} />}
 
@@ -194,7 +200,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
             </button>
             <TellSangam
               proposal={proposal}
-              screen={{ step: STEPS[work.stage - 1], selection, ...(work.stage === 3 && part ? { part } : {}) }}
+              screen={{ step: STEPS[work.stage - 1], selection, ...((work.stage === CASE_STEP || work.stage === PLAN_STEP) && part ? { part } : {}) }}
               onTurnEnd={load}
               onSend={onSend}
               open={chatOpen}
@@ -376,8 +382,6 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
         )}
       </div>
 
-      <PublicResearch proposal={proposal} save={save} send={send} />
-
       <Reading proposal={proposal} send={send} />
 
       <div className="card pr-block">
@@ -396,7 +400,16 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
   );
 }
 
+const INTRO: Record<number, string> = {
+  [CASE_STEP]:
+    "Make the case for the work: where it happens and the problem, measured. Secondary research adds public evidence on both. The Summary is written last, once the plan is done.",
+  [PLAN_STEP]:
+    "Press Write on a tab and Sangam Pitch drafts its parts from the facts, each figure with its source. Where no fact supports a part, it leaves a gap and asks you, one question at a time.",
+};
+
+/** Step 3 or 4: that step's tabs and parts, one part open; step 3 adds Secondary research. */
 function SectionsStep({
+  step,
   proposal,
   part,
   onPart,
@@ -404,6 +417,7 @@ function SectionsStep({
   send,
   onSaved,
 }: {
+  step: number;
   proposal: Proposal;
   part: string | null;
   onPart: (code: string | null) => void;
@@ -411,13 +425,19 @@ function SectionsStep({
   send: Send;
   onSaved: (saved: Saved) => void;
 }) {
-  const { sections, work, can_edit: canEdit } = proposal;
+  const { work, can_edit: canEdit } = proposal;
   const saved = work.sections;
-  const tabs = proposal.tabs.filter((t) => sections.some((s) => s.tab === t.key));
-  const open = sections.find((s) => s.code === part) ?? sections.find((s) => s.tab === tabs[0]?.key) ?? null;
+  const sections = proposal.sections.filter((s) => s.step === step);
+  const tabs = proposal.tabs.filter((t) => t.step === step && sections.some((s) => s.tab === t.key));
+  // The Summary sums up the plan, so it waits for every other part, whichever step they are on.
+  const waiting = proposal.sections.filter((s) => !s.last && !saved[s.code]?.text?.trim()).length;
+  const isLocked = (s: Section) => s.last && waiting > 0 && !saved[s.code]?.text?.trim();
+  // A tab opens on its first part that can be written now.
+  const firstOf = (key?: string) => sections.find((s) => s.tab === key && !isLocked(s)) ?? sections.find((s) => s.tab === key);
+  const open = sections.find((s) => s.code === part) ?? firstOf(tabs[0]?.key) ?? null;
   // One part is always open, and Sangam Pitch is told which.
   useEffect(() => {
-    if (!part && open) onPart(open.code);
+    if (open && part !== open.code) onPart(open.code);
   }, [part, open, onPart]);
   if (!open) return null;
 
@@ -429,12 +449,13 @@ function SectionsStep({
   const cited = new Set(Object.values(saved).flatMap((s) => [...(s.text ?? "").matchAll(/⟦(k\d+)⟧/g)].map((m) => m[1]))).size;
   const gaps = Object.values(saved).reduce((n, s) => n + ((s.text ?? "").match(/\[Add:/g)?.length ?? 0), 0);
   const facts = Object.values(work.facts ?? {}).filter((f) => f.section === open.code && (f.status === "proposed" || f.status === "confirmed")).length;
+  const locked = isLocked(open);
+  const title = tab.label.replace(/^The /, "the ");
 
   return (
     <div className="pr-pane">
       <p className="muted">
-        Press Write on a tab and Sangam Pitch drafts its parts from the facts, each figure with its source. Where no fact
-        supports a part, it leaves a gap and asks you, one question at a time.
+        {INTRO[step]}
         {canEdit && " You can also write in any part yourself."}
       </p>
       <div className="pr-tabs" role="tablist" aria-label="Proposal sections">
@@ -445,7 +466,7 @@ function SectionsStep({
             type="button"
             role="tab"
             aria-selected={t.key === tab.key}
-            onClick={() => onPart(sections.find((s) => s.tab === t.key)!.code)}
+            onClick={() => onPart(firstOf(t.key)!.code)}
           >
             {t.label}
             <span className="pr-tab-score">
@@ -456,8 +477,13 @@ function SectionsStep({
       </div>
       {canEdit && (
         <div className="pr-tab-actions">
-          <button className="btn" type="button" disabled={!send} onClick={() => send?.(`Write ${tab.label}.`)}>
-            {written === 0 ? `Write ${tab.label}` : `Write ${tab.label} again`}
+          {open.last && waiting === 0 && !saved[open.code]?.text?.trim() && (
+            <button className="btn btn-primary" type="button" disabled={!send} onClick={() => send?.(WRITE_SUMMARY)}>
+              Write the Summary
+            </button>
+          )}
+          <button className="btn" type="button" disabled={!send} onClick={() => send?.(`Write ${title}.`)}>
+            {written === 0 ? `Write ${title}` : `Write ${title} again`}
           </button>
         </div>
       )}
@@ -471,7 +497,9 @@ function SectionsStep({
           ))}
         </nav>
         <div className="card pr-editor">
-          {canEdit ? (
+          {locked ? (
+            <SummaryWaits section={open} waiting={waiting} />
+          ) : canEdit ? (
             <PartEditor key={open.code} proposal={proposal} section={open} next={next} onNext={() => onPart(next?.code ?? null)} onSaved={onSaved} send={send} />
           ) : (
             <>
@@ -491,6 +519,21 @@ function SectionsStep({
       <p className="muted fm-meta">
         Cites {cited === 1 ? "1 source" : `${cited} sources`} · {gaps === 1 ? "1 gap" : `${gaps} gaps`} to add · {proposal.summary.done} of{" "}
         {proposal.summary.total} parts done
+      </p>
+      {step === CASE_STEP && <SecondaryResearch proposal={proposal} save={save} send={send} onSaved={onSaved} />}
+    </div>
+  );
+}
+
+/** The Summary before the plan is written: locked, with how much is still empty. */
+function SummaryWaits({ section, waiting }: { section: Section; waiting: number }) {
+  return (
+    <div>
+      <div className="card-title">{section.label}</div>
+      <p className="muted pr-part-question">{section.question}</p>
+      <p>
+        Written after your plan. Sangam Pitch writes it once every other part is written: {waiting} {waiting === 1 ? "part is" : "parts are"} still
+        empty.
       </p>
     </div>
   );
@@ -622,6 +665,119 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
   );
 }
 
+/** Research deeper from the case: the angles a model reads from it, edited by the person before any search. */
+function DeeperResearch({ proposal, send }: { proposal: Proposal; send: Send }) {
+  const [angles, setAngles] = useState<string[] | null>(null);
+  const [dropped, setDropped] = useState<string[]>([]);
+  const [adding, setAdding] = useState("");
+  const [state, setState] = useState<"idle" | "reading" | "failed">("idle");
+  const held = proposal.work.sections ?? {};
+  const waiting = proposal.sections.filter((s) => DEEPER_NEEDS.includes(s.code) && !held[s.code]?.done);
+
+  if (waiting.length > 0) {
+    return <p className="muted fm-meta">To research deeper from your case, mark {waiting.map((s) => s.label).join(" and ")} done.</p>;
+  }
+
+  async function read() {
+    setState("reading");
+    try {
+      const found = await researchAngles(proposal.id);
+      setAngles(found.angles);
+      setDropped(found.dropped);
+      setState("idle");
+    } catch {
+      setState("failed");
+    }
+  }
+
+  function add() {
+    const angle = adding.trim();
+    if (angle && angles && !angles.includes(angle)) setAngles([...angles, angle]);
+    setAdding("");
+  }
+
+  if (angles === null) {
+    return (
+      <div className="pr-next">
+        <button className="btn" type="button" disabled={!send || state === "reading"} onClick={() => void read()}>
+          {state === "reading" ? "Reading your case…" : "Research deeper from your case"}
+        </button>
+        {state === "failed" && <span className="muted fm-meta">Sangam couldn&apos;t read your case just now. Try again.</span>}
+      </div>
+    );
+  }
+  return (
+    <div className="pr-deeper">
+      <p className="muted">Sangam Pitch will look into these. Remove any you don&apos;t want or add your own: only these words are searched, never your text.</p>
+      <ul className="pr-chips" aria-label="What to look into">
+        {angles.map((a) => (
+          <li key={a}>
+            {a}
+            <button type="button" aria-label={`Remove ${a}`} onClick={() => setAngles(angles.filter((x) => x !== a))}>
+              <X className="icon icon-sm" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {dropped.length > 0 && <p className="muted fm-meta">Left out, since they name your organisation or a person: {dropped.join("; ")}.</p>}
+      <form
+        className="pr-deeper-add"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add();
+        }}
+      >
+        <input className="input" value={adding} onChange={(e) => setAdding(e.target.value)} aria-label="Add something to look into" placeholder="For example: MGNREGA days worked, Udalguri" />
+        <button className="btn btn-ghost" type="submit" disabled={!adding.trim() || angles.length >= ANGLES}>
+          Add
+        </button>
+      </form>
+      <div className="pr-next">
+        <button
+          className="btn btn-primary"
+          type="button"
+          disabled={!send || angles.length === 0}
+          onClick={() => {
+            send?.(`Research deeper: ${angles.join("; ")}.`);
+            setAngles(null);
+          }}
+        >
+          Search these
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={() => setAngles(null)}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** What the person asked secondary research for, newest first, and what each run added. */
+function ResearchAsks({ asks }: { asks?: Record<string, ResearchAsk> }) {
+  const listed = Object.values(asks ?? {})
+    .filter((a) => a.kind !== "plan")
+    .sort((a, b) => b.at.localeCompare(a.at));
+  if (listed.length === 0) return null;
+  return (
+    <ul className="pr-asks" aria-label="What you asked for">
+      {listed.map((a) => (
+        <li key={a.at}>
+          <span>{a.ask || a.focus.join("; ") || "More research"}</span>
+          <span className="muted fm-meta">
+            {[
+              a.sites.join(", "),
+              a.status === "running" ? "searching…" : a.status === "failed" ? "did not finish" : `${a.added ?? 0} added`,
+              shortDate(a.at),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 type Topic = NonNullable<Fact["topic"]>;
 
 const TOPICS: [Topic, string][] = [
@@ -640,19 +796,42 @@ function topicOf(f: Fact): Topic {
   return BY_SECTION[f.section ?? ""] ?? "problem";
 }
 
-/** Public research: its own button, its status, and its facts by topic, each kept or dropped here. */
-function PublicResearch({ proposal, save, send }: { proposal: Proposal; save: Save; send: Send }) {
+const isLive = (f: Fact) => f.status === "proposed" || f.status === "confirmed";
+
+/** Secondary research: its own buttons, its status, the brief, and the facts behind it by topic, used or dropped whole. */
+function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Proposal; save: Save; send: Send; onSaved: (saved: Saved) => void }) {
   const { work, can_edit: canEdit } = proposal;
+  const [confirming, setConfirming] = useState<"fresh" | "delete" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+
+  // The buttons start the search themselves: through the chat, Sangam Pitch could decline to retry, and a
+  // search outlasting the chat's stream left no reply.
+  async function act(calls: (() => Promise<Saved>)[], failed: string) {
+    setError(null);
+    setStarting(true);
+    try {
+      for (const call of calls) onSaved(await call());
+      setConfirming(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : failed);
+    } finally {
+      setStarting(false);
+    }
+  }
+  const search = () => act([() => startResearch(proposal.id)], "The search did not start. Try again.");
+  const clear = (thenSearch: boolean) =>
+    act([() => deleteResearch(proposal.id), ...(thenSearch ? [() => startResearch(proposal.id)] : [])], "Not deleted. Try again.");
   const run = work.readers?.public;
-  const found = Object.values(work.facts ?? {}).filter((f) => f.found_by === "public" && (f.status === "proposed" || f.status === "confirmed"));
-  const count = (t: Topic) => found.filter((f) => topicOf(f) === t).length;
+  const found = Object.entries(work.facts ?? {}).filter(([, f]) => f.found_by === "public");
+  const sources = found.filter(([, f]) => isLive(f)).length;
 
   return (
     <div className="card pr-block">
-      <div className="card-title">Public research</div>
+      <div className="card-title">Secondary research</div>
       <p className="muted">
-        Sangam Pitch searches government and research sources for the problem in the places you work, the schemes on it, the SDGs it serves and
-        what worked elsewhere. It never searches for your organisation and never uses your files. Keep or drop each fact it finds.
+        Sangam Pitch searches the web for how big the problem is where you work and for studies of what worked, and writes you a brief: up to
+        ten sources on each, nearest first. It never searches for your organisation and never uses your files.
       </p>
       {run?.status === "running" && (
         <p className="muted fm-meta">{run.by?.name ?? "A teammate"} started the search. This takes a few minutes; you can leave this page.</p>
@@ -660,31 +839,140 @@ function PublicResearch({ proposal, save, send }: { proposal: Proposal; save: Sa
       {run?.status === "failed" && <p className="muted fm-meta">! The search did not finish{run.error ? `: ${run.error}` : ""}.</p>}
       {run?.status === "done" && (
         <p className="muted fm-meta">
-          Searched {shortDate(run.at)} · {found.length} {found.length === 1 ? "fact" : "facts"}
+          Searched {shortDate(run.at)} · {sources} {sources === 1 ? "source" : "sources"}
         </p>
       )}
-      {run && run.status !== "running" && (
-        <>
-          {TOPICS.map(([t, label]) => (
-            <details key={t} className="fm-weak" open={count(t) > 0 && count(t) <= 3}>
-              <summary>
-                {label} · {count(t) || "none found"}
-              </summary>
-              {count(t) > 0 && <FactList proposal={proposal} part="public" save={save} only={(f) => f.found_by === "public" && topicOf(f) === t} />}
-            </details>
-          ))}
-          {(run.unopened?.length ?? 0) > 0 && <p className="muted fm-meta">Couldn&apos;t open: {run.unopened?.join(", ")}</p>}
-        </>
-      )}
+      {run?.status !== "running" && run?.brief && <ResearchBrief text={run.brief} />}
       {canEdit && run?.status !== "running" && (
         <div className="pr-next">
-          <button className={run ? "btn btn-ghost" : "btn btn-primary"} type="button" disabled={!send} onClick={() => send?.(SEARCH_PUBLIC)}>
+          <button className={run ? "btn btn-ghost" : "btn btn-primary"} type="button" disabled={starting} onClick={() => void search()}>
             {run ? "Search again" : "Search public sources"}
           </button>
-          {!send && <span className="muted fm-meta">Wait for Sangam Pitch to finish its answer.</span>}
+          {run && (
+            <>
+              <button className="btn btn-ghost" type="button" onClick={() => setConfirming("fresh")}>
+                Start fresh
+              </button>
+              <button className="btn btn-ghost" type="button" onClick={() => setConfirming("delete")}>
+                Delete research
+              </button>
+            </>
+          )}
         </div>
       )}
+      {canEdit && confirming && run?.status !== "running" && (
+        <div className="pr-next" role="group" aria-label="Confirm deleting secondary research">
+          <span className="muted fm-meta">
+            {confirming === "fresh" ? "This deletes the brief and the facts research found, then searches again." : "This deletes the brief and the facts research found."}{" "}
+            Facts a part already cites are kept.
+          </span>
+          <button className="btn btn-primary" type="button" disabled={starting} onClick={() => void clear(confirming === "fresh")}>
+            {confirming === "fresh" ? "Delete and search" : "Delete"}
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={() => setConfirming(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {error && <p className="muted fm-meta">! {error}</p>}
+      {canEdit && run?.status !== "running" && <DeeperResearch proposal={proposal} send={send} />}
+      {canEdit && run?.status === "done" && (
+        <p className="muted fm-meta">Want more? Tell Sangam Pitch what to dig into or where to look, such as “look at nrlm.gov.in for SHG credit linkage”.</p>
+      )}
+      {run && run.status !== "running" && (
+        // The facts are what the parts cite; the brief is what the person reads, so the facts wait behind it.
+        <details className="fm-weak" open={!run.brief}>
+          <summary>
+            Facts behind this brief ({sources}): use or drop them for your parts
+          </summary>
+          <ResearchAsks asks={work.research_asks} />
+          {TOPICS.map(([t, label]) => (
+            <ResearchTopic
+              key={t}
+              label={label}
+              facts={found.filter(([, f]) => topicOf(f) === t)}
+              canEdit={canEdit}
+              save={save}
+            />
+          ))}
+          {(run.unopened?.length ?? 0) > 0 && <p className="muted fm-meta">Couldn&apos;t open: {run.unopened?.join(", ")}</p>}
+        </details>
+      )}
     </div>
+  );
+}
+
+/** One topic: its facts with their sources, and one Use or Don't use for all of them. */
+function ResearchTopic({
+  label,
+  facts,
+  canEdit,
+  save,
+}: {
+  label: string;
+  facts: [string, Fact][];
+  canEdit: boolean;
+  save: Save;
+}) {
+  const live = facts.filter(([, f]) => isLive(f));
+  const dropped = facts.filter(([, f]) => f.status === "rejected");
+  if (live.length === 0)
+    return (
+      <details className="fm-weak">
+        <summary>
+          {label} · {dropped.length > 0 ? "not used" : "none found"}
+        </summary>
+        {canEdit && dropped.length > 0 && (
+          <div className="pr-fact-actions">
+            <button className="btn btn-ghost" type="button" onClick={() => save(Object.fromEntries(dropped.map(([k]) => [`facts.${k}.status`, "proposed"])))}>
+              Use it after all
+            </button>
+          </div>
+        )}
+      </details>
+    );
+
+  const using = live.every(([, f]) => f.status === "confirmed");
+  const setAll = (status: Fact["status"]) => save(Object.fromEntries(live.map(([k]) => [`facts.${k}.status`, status])));
+
+  return (
+    <details className="fm-weak" open>
+      <summary>
+        {label} · {live.length} {live.length === 1 ? "source" : "sources"}
+        {using && " · ✓ using it"}
+      </summary>
+      <div className="pr-research">
+        <ol className="pr-sources" aria-label={`Sources for ${label}`}>
+          {live.map(([k, f]) => {
+            const name = source(f) ?? "A public source";
+            return (
+              <li key={k}>
+                {f.source_url && /^https?:\/\//i.test(f.source_url) ? (
+                  <a href={f.source_url} target="_blank" rel="noreferrer">
+                    {name}
+                  </a>
+                ) : (
+                  name
+                )}
+                {` · ${f.subject}: ${f.value}${f.as_of ? ` (${f.as_of})` : ""}`}
+              </li>
+            );
+          })}
+        </ol>
+        {canEdit && (
+          <div className="pr-fact-actions">
+            {!using && (
+              <button className="btn btn-ghost" type="button" onClick={() => setAll("confirmed")}>
+                Use this
+              </button>
+            )}
+            <button className="btn btn-ghost" type="button" onClick={() => setAll("rejected")}>
+              Don&apos;t use
+            </button>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -695,7 +983,7 @@ function WhatHappensNext({ funder }: { funder: string }) {
       <ol className="pr-explain">
         <li>Sangam Pitch reads every ticked file at the same time, and what Sangam holds on {funder}.</li>
         <li>Each figure, place and finding becomes a fact, with the file and page it came from.</li>
-        <li>In step 3 you check the facts part by part, and it asks you about what no file says.</li>
+        <li>In steps 3 and 4 you make the case and the plan part by part, and it asks you about what no file says.</li>
       </ol>
       <p className="muted pr-chat-note">A file it cannot read, such as a scanned image, is listed with a Try again button. The rest carry on.</p>
     </section>

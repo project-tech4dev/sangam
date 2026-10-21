@@ -58,7 +58,7 @@ def follow(work: dict[str, Any], changes: dict[str, Any], districts: set[str] = 
     held = {**(work.get("facts") or {}),
             **{p.split(".")[1]: v for p, v in changes.items() if re.fullmatch(r"facts\.k\d+", p)}}
     replaced = {f["supersedes"]: p.split(".")[1] for p, f in changes.items()
-                if re.fullmatch(r"facts\.k\d+", p) and f.get("supersedes")}
+                if re.fullmatch(r"facts\.k\d+", p) and f and f.get("supersedes")}
     gone = [p.split(".")[1] for p, v in changes.items()
             if p.endswith(".status") and p.startswith("facts.") and v in ("corrected", "rejected")]
     if not gone:

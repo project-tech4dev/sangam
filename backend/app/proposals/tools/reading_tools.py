@@ -15,7 +15,8 @@ from app.ingest.source_guards import is_private_source
 from app.ingest.tools.library_tools import _pdf
 from app.ingest.vault import MAX_BYTES
 from app.integrations import storage
-from app.proposals import context, steps
+from app.proposals import context, research, steps
+from app.proposals import facts as fact_rules
 from app.proposals.tools.proposal_tools import NO_PROPOSAL, require_edit
 
 logger = logging.getLogger(__name__)
@@ -165,7 +166,8 @@ async def read_template(start_page: int = 1, end_page: int | None = None) -> str
 
 
 @tool
-async def read_files(public: bool = False) -> str:
+async def read_files(public: bool = False, ask: str = "", focus: list[str] | None = None,
+                     sites: list[str] | None = None, deeper: bool = False) -> str:
     """Read the files ticked in step 2 and what Sangam holds on the funder into the fact list. Call it when the
     person presses "Write the first draft" or asks to read them again.
 
@@ -173,8 +175,13 @@ async def read_files(public: bool = False) -> str:
     failure retries just those. It takes a few minutes and returns what each reader found or why it failed.
 
     Args:
-        public: True only when the person presses "Search public sources" or asks to search again: then it runs
-            public research on the problem and the place alone, and no file is read.
+        public: True only when the person asks to search public sources or to search again, or asks for
+            more or deeper research: then it runs public research alone, and no file is read.
+        ask: public only: what the person asked this run to find, in their words, short.
+        focus: public only: the themes, indicators, schemes or places to look into, a few words each. Never the
+            organisation, a partner or a person: those are dropped.
+        sites: public only: web sites the person named to start on, such as nrlm.gov.in.
+        deeper: public only: True when the person pressed "Research deeper" in step 3.
     """
     try:
         p = await context.current()
@@ -186,7 +193,15 @@ async def read_files(public: bool = False) -> str:
             return f"REFUSED: {early}."
         from app.proposals import readers  # built with the agent, from this module's tools
 
-        return await readers.read(p, public)
+        if not public or not (ask.strip() or focus or sites or deeper):
+            return await readers.read(p, public)
+        avoid = {fact_rules.norm(n) for n in (p.org_name, *fact_rules.partner_names(p.work, p.org_name, p.funder_name))}
+        kept, dropped = research.focus(focus or [], avoid)
+        record = {"kind": "deeper" if deeper else "chat", "ask": " ".join(ask.split())[:research.ASK_TEXT],
+                  "focus": kept, "sites": research.sites(sites or []), "sections": []}
+        said = await readers.read(p, public, ask=record)
+        return (f"Left out of the search, since it names the organisation or a person: {'; '.join(dropped)}.\n{said}"
+                if dropped else said)
     except Exception as exc:
         logger.exception("read_files failed")
         return f"read_files failed: {type(exc).__name__}"

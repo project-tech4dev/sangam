@@ -1,5 +1,6 @@
 """readers.read end to end with fake reader graphs: the claim under the lock, each outcome, and the public task."""
 
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace as NS
@@ -154,6 +155,100 @@ class TestRead:
         assert sources.web and public.avoid == ("SeSTA",)
         assert graphs.evidence.asked == [] and list(store["work"]["readers"]) == ["public"]
         assert store["work"]["readers"]["public"]["unopened"] == []
+        assert "summaries" not in store["work"]["readers"]["public"]
+        assert "brief" not in store["work"]["readers"]["public"]  # no brief model in this setup
+
+    async def test_the_brief_is_written_beside_the_search_without_the_org(self, run, monkeypatch):
+        store, setup = run
+        setup({}, public="Found 1 public fact.")
+        asked = []
+
+        async def write(task, model):
+            asked.append((task, model))
+            return "**A. Problem magnitude**"
+
+        async def facts(pool, owner, org_id):
+            return NS(org=NS(district="Udalguri", state="Assam"), places=[], programs=[NS(name="SeSTA wells")],
+                      tags=[NS(parent_label=None, label="Livelihoods")], sdgs=[NS(code="1", label="No poverty")])
+
+        monkeypatch.setattr(readers.BUILT, "brief", ("web model",))
+        monkeypatch.setattr(readers.brief, "write", write)
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        out = await readers.read(proposal({}), public=True)
+        task, model = asked[0]
+        assert model == ("web model",) and "Where the work happens: Udalguri, Assam" in task
+        assert "Themes: Livelihoods" in task and "SDGs on record: 1 No poverty" in task
+        assert "sesta" not in task.lower() and "Programmes: none on record" in task
+        assert store["work"]["readers"]["public"]["brief"] == "**A. Problem magnitude**"
+        assert out.endswith("The brief now on the Secondary research card:\n**A. Problem magnitude**")
+
+    async def test_a_run_for_an_ask_carries_its_focus_and_records_what_it_added(self, run, monkeypatch):
+        store, setup = run
+        public = {"subject": "dropout, Udalguri", "value": "19.8%", "found_by": "public", "status": "proposed"}
+        own = {"subject": "girls enrolled", "value": "412", "origin": "vault", "status": "confirmed"}
+        graphs = setup({"facts": {"k1": public, "k2": own}, "research_asks": {"a1": {"kind": "chat"}}},
+                       public="Found 1 more.")
+
+        async def load(pool, proposal_id):
+            facts = {**store["work"]["facts"], "k3": {**public, "subject": "dropout, Mazbat", "ask": "a2"}}
+            return {"work": {**store["work"], "facts": facts}}
+
+        async def facts(pool, owner, org_id):
+            return None
+
+        monkeypatch.setattr(repo, "load", load)
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        ask = {"kind": "chat", "ask": "SHG credit", "focus": ["SHG credit linkage, Assam"], "sites": ["nrlm.gov.in"],
+               "sections": []}
+        p = proposal(store["work"])
+        await readers.read(p, public=True, ask=ask)
+        task, _, run_ = graphs.public.asked[0]
+        assert run_.ask == "a2"
+        assert "The person asked: SHG credit" in task and "Look into: SHG credit linkage, Assam" in task
+        assert "Start on these sites: nrlm.gov.in" in task and "- dropout, Udalguri: 19.8%" in task
+        assert "girls enrolled" not in task
+        recorded = store["work"]["research_asks"]["a2"]
+        assert recorded["status"] == "done" and recorded["added"] == 1 and recorded["focus"] == ask["focus"]
+
+    async def test_a_failed_count_of_what_an_ask_added_still_marks_it_done(self, run, monkeypatch):
+        store, setup = run
+        setup({}, public="Found nothing.")
+
+        async def load(pool, proposal_id):
+            raise RuntimeError("db down")
+
+        async def facts(pool, owner, org_id):
+            return None
+
+        monkeypatch.setattr(repo, "load", load)
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        ask = {"kind": "chat", "ask": "SHG credit", "focus": [], "sites": [], "sections": []}
+        await readers.read(proposal({}), public=True, ask=ask)
+        assert store["work"]["readers"]["public"]["status"] == "done"
+        assert store["work"]["research_asks"]["a1"] | {"status": "done", "added": 0} == store["work"]["research_asks"]["a1"]
+
+    async def test_the_cards_search_is_marked_running_then_finishes_in_the_background(self, run, monkeypatch):
+        store, setup = run
+        setup({}, public="Found 1 public fact.")
+
+        async def facts(pool, owner, org_id):
+            return None
+
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        await readers.search(proposal({}))
+        assert store["work"]["readers"]["public"]["status"] == "running"
+        await asyncio.gather(*readers._SEARCHES)
+        assert store["work"]["readers"]["public"]["status"] == "done" and not readers._SEARCHES
+
+    async def test_the_cards_search_without_a_key_or_while_running(self, run):
+        _, setup = run
+        setup({})
+        with pytest.raises(LookupError):
+            await readers.search(proposal({}))
+        busy = {"status": "running", "at": datetime.now(UTC).isoformat(), "by": {"name": "Ravi"}}
+        setup({"readers": {"public": busy}}, public="x")
+        with pytest.raises(readers.Busy):
+            await readers.search(proposal({}))
 
 
 class TestPublicInputs:

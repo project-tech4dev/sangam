@@ -4,14 +4,22 @@ import logging
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.api.routes.threads import saved_messages
 from app.core.config import get_settings
-from app.core.security import CurrentUser, require_principal
+from app.core.lifespan import get_graph
+from app.core.security import (
+    CurrentUser,
+    caller_scope,
+    chat_proposal,
+    chat_scope,
+    chat_user_id,
+    require_principal,
+)
 from app.db.pool import OwnerPoolDep, PoolDep
 from app.integrations import storage
-from app.proposals import assemble, fill, form, gates, readiness, records, rubric, steps
+from app.proposals import assemble, context, fill, form, gates, readiness, records, research, rubric, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.repositories import documents as documents_repo
@@ -23,6 +31,7 @@ from app.schemas.proposals import (
     ProposalCreateIn,
     ProposalItem,
     ProposalOut,
+    ResearchAnglesOut,
     SavedOut,
     TitleIn,
     VersionIn,
@@ -76,12 +85,16 @@ async def _editable(pool: PoolDep, proposal_id: int) -> dict:
     return row
 
 
+class _Refused(Exception):
+    """Inside the row lock: the change cannot be made as things stand, a 409."""
+
+
 class _NotYet(Exception):
     def __init__(self, missing: list[str]):
         self.missing = missing
 
 
-async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **kwargs: Any) -> SavedOut:
+async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, to: int | None = None, **kwargs: Any) -> SavedOut:
     """Every write: refused for a reader, checked and logged by work.apply under the row lock."""
     row = await _editable(pool, proposal_id)
     by = await repo.me(pool)
@@ -99,9 +112,12 @@ async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **k
     def change(work: dict, title: str) -> work_rules.Applied:
         if advancing:
             stage = work.get("stage", 1)
-            if missing := steps.exit_check(stage, work):
+            target = to or stage + 1
+            if target <= stage:
+                raise work_rules.BadChange("a step is moved back by PATCH /work")
+            if missing := steps.blocking(work, target):
                 raise _NotYet(missing)
-            kwargs.update(changes={"stage": stage + 1}, advance=True)
+            kwargs.update(changes={"stage": target}, advance=True)
         return work_rules.apply(work, by=by, title=title, districts=districts, names=names, graded=graded,
                                 **kwargs)
 
@@ -176,7 +192,7 @@ async def get_proposal(proposal_id: int, pool: PoolDep, principal: Principal) ->
     row = await _readable(pool, proposal_id)
     work = row["work"]
     sections = rubric.sections_for(bool(work.get("earlier_phase")), work.get("template"))
-    tabs = [{"key": k, "label": label} for k, label in rubric.TABS]
+    tabs = [{"key": k, "label": label, "step": rubric.stage_of(k)} for k, label in rubric.TABS]
     # Recomputed, so a proposal saved before a summary field existed still shows it.
     return ProposalOut.model_validate({**row, "thread_id": repo.chat_thread(proposal_id, principal.id),
                                        "summary": readiness.summary(work),
@@ -193,9 +209,11 @@ async def patch_work(proposal_id: int, body: WorkPatchIn, pool: PoolDep, princip
     return await _save(pool, proposal_id, changes=body.set, rev=body.rev)
 
 
-@router.post("/{proposal_id}/advance", response_model=SavedOut, summary="Move to the next step, if nothing is missing")
-async def advance(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
-    return await _save(pool, proposal_id, advancing=True)
+@router.post("/{proposal_id}/advance", response_model=SavedOut,
+             summary="Move forward to step `to` (default the next), if no step on the way has anything missing")
+async def advance(proposal_id: int, pool: PoolDep, principal: Principal,
+                  to: int | None = Query(None, ge=1, le=steps.LAST)) -> SavedOut:
+    return await _save(pool, proposal_id, advancing=True, to=to)
 
 
 def _names(row: dict) -> set[str]:
@@ -229,6 +247,76 @@ async def polish_language(proposal_id: int, pool: PoolDep, principal: Principal)
                 "revs": {s.code: held[s.code].get("rev", 0) for s, _ in written},
                 "at": datetime.now(UTC).isoformat(), "by": await repo.me(pool)}
     return await _save(pool, proposal_id, changes={"polished": polished}, via="polish")
+
+
+@router.get("/{proposal_id}/research/angles", response_model=ResearchAnglesOut,
+            summary="What research would look into from the case, for the person to edit before searching")
+async def research_angles(proposal_id: int, pool: PoolDep, principal: Principal) -> ResearchAnglesOut:
+    from app.agent.models import resolve_model  # the model stack loads only when it is used
+
+    row = await _editable(pool, proposal_id)
+    if missing := research.not_ready(row["work"]):
+        raise HTTPException(409, {"message": "Not yet.", "missing": missing})
+    try:
+        kept, dropped = await research.angles(row["work"], resolve_model(get_settings().utility_model), _names(row))
+    except Exception as exc:
+        logger.warning("research angles for proposal %s failed (%s)", proposal_id, type(exc).__name__)
+        raise HTTPException(502, "Sangam couldn't read your case just now. Try again.") from exc
+    return ResearchAnglesOut(angles=kept, dropped=dropped)
+
+
+@router.post("/{proposal_id}/research", response_model=SavedOut, status_code=202,
+             summary="Start secondary research: the brief and the public facts, run in the background")
+async def start_research(proposal_id: int, request: Request, pool: PoolDep, owner: OwnerPoolDep,
+                         principal: Principal) -> SavedOut:
+    row = await _editable(pool, proposal_id)
+    if early := steps.too_early("read_files", int(row["work"].get("stage") or 1)):
+        raise HTTPException(409, early)
+    from app.proposals import readers
+
+    # The readers are built with the agents, on first use: after a restart no chat may have built them yet.
+    await get_graph(request.app, "proposal_graph")
+
+    # The readers' tools find the proposal and the caller the way a chat turn sets them; the task copies them.
+    chat_user_id.set(principal.id)
+    chat_scope.set(await caller_scope(owner, principal))
+    chat_proposal.set(proposal_id)
+    p = await context.current()
+    if p is None:
+        raise HTTPException(404, f"proposal {proposal_id} not found")
+    try:
+        await readers.search(p)
+    except readers.Busy as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    saved = await repo.get(pool, proposal_id)
+    return SavedOut(summary=readiness.summary(saved["work"]), work=saved["work"])
+
+
+@router.delete("/{proposal_id}/research", response_model=SavedOut,
+               summary="Delete secondary research: its brief, asks and the public facts no part cites")
+async def delete_research(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
+    await _editable(pool, proposal_id)
+    by = await repo.me(pool)
+
+    def change(work: dict, title: str) -> work_rules.Applied:
+        if ((work.get("readers") or {}).get("public") or {}).get("status") == "running":
+            raise _Refused("A search is running. Try when it's done.")
+        if not (changes := research.reset(work)):
+            raise _Refused("There is no secondary research to delete.")
+        return work_rules.apply(work, changes, by=by, via=work_rules.RESET, reason="deleting secondary research",
+                                title=title)
+
+    try:
+        applied = await repo.save(pool, proposal_id, change)
+    except _Refused as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except work_rules.BadChange as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if applied is None:
+        raise HTTPException(403, READ_ONLY)
+    return SavedOut(summary=applied.summary, work=applied.work)
 
 
 @router.post("/{proposal_id}/versions", response_model=SavedOut, status_code=201,

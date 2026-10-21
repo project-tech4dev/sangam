@@ -41,11 +41,13 @@ class ProposalSection(ReadModel):
     weak: str
     must_score_2: bool = False
     last: bool = Field(False, description="written last, from the finished parts")
+    step: int = Field(4, description="the step it is written on: 3, Make a case, or 4, Make a plan")
 
 
 class ProposalTab(ReadModel):
     key: str
     label: str
+    step: int = 4
 
 
 class ProposalOut(ProposalItem):
@@ -76,6 +78,11 @@ class WorkPatchIn(BaseModel):
 
 class VersionIn(BaseModel):
     shape: Literal["sangam", "form"] = Field("sangam", description="sangam: Sangam's parts; form: the funder's form")
+
+
+class ResearchAnglesOut(BaseModel):
+    angles: list[str] = Field(description="What research would look into, a few words each, for the person to edit.")
+    dropped: list[str] = Field(default_factory=list, description="Angles left out for naming the org, a partner or a person.")
 
 
 class SavedOut(BaseModel):

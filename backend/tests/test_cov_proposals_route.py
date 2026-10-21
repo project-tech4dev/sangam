@@ -166,7 +166,8 @@ async def test_get_returns_the_work_sections_tabs_and_the_callers_own_thread(api
     body = r.json()
     assert r.status_code == 200
     assert body["thread_id"].startswith("proposal-11-")
-    assert [t["key"] for t in body["tabs"]] == ["case", "people", "money", "funder"]
+    assert [t["key"] for t in body["tabs"]] == ["case", "plan", "people", "money", "funder"]
+    assert [t["step"] for t in body["tabs"]] == [3, 4, 4, 4, 4]
     assert {s["code"] for s in body["sections"]} >= {"A1", "F1"}
     assert body["summary"]["gates_total"] == 1
     assert missing.status_code == 404
@@ -230,6 +231,17 @@ async def test_advance_says_what_is_missing_then_moves_on(api, held):
     assert early.json()["detail"]["missing"] == ["answer 12A registration"]
     assert moved.status_code == 200 and moved.json()["work"]["stage"] == 2
 
+
+
+async def test_advance_jumps_ahead_only_when_every_step_on_the_way_is_done(api, held):
+    async with api as c:
+        back = await c.post("/api/proposals/11/advance?to=1")
+        await c.patch("/api/proposals/11/work", json={"set": {"gates.12a": "yes"}})
+        jump = await c.post("/api/proposals/11/advance?to=3")
+        summary = (await c.get("/api/proposals/11")).json()["summary"]
+    assert back.status_code == 400
+    assert jump.status_code == 409 and "set the writing style" in jump.json()["detail"]["missing"]
+    assert summary["furthest"] == 2
 
 @pytest.fixture
 def grader(monkeypatch):
@@ -494,3 +506,124 @@ async def test_messages_are_read_from_the_proposal_graph(api, held, monkeypatch)
     async with api as c:
         r = await c.get("/api/proposals/11/messages")
     assert r.status_code == 200 and seen == {"graph": "proposal_graph"}
+
+
+@pytest.fixture
+def angler(monkeypatch):
+    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: object())
+
+    def use(result):
+        async def angles(work, model, avoid):
+            if isinstance(result, Exception):
+                raise result
+            use.avoid = avoid
+            return result
+
+        monkeypatch.setattr(route.research, "angles", angles)
+
+    return use
+
+
+async def test_research_angles_wait_for_the_case_then_come_back_to_edit(api, held, angler):
+    angler((["MGNREGA days worked, Dewas"], ["Jan Sahas wells"]))
+    async with api as c:
+        early = await c.get("/api/proposals/11/research/angles")
+        held["row"]["work"]["sections"] = {"A2": {"text": "Dewas", "done": True}, "A3": {"text": "Dry", "done": True}}
+        ready = await c.get("/api/proposals/11/research/angles")
+    assert early.status_code == 409
+    assert early.json()["detail"]["missing"] == ["mark Context and target area done", "mark Problem and baseline done"]
+    assert ready.json() == {"angles": ["MGNREGA days worked, Dewas"], "dropped": ["Jan Sahas wells"]}
+    assert {"jan sahas", "tata trusts"} <= angler.avoid
+
+
+async def test_research_angles_502_when_the_model_fails_and_403_for_a_reader(api, held, angler):
+    angler(RuntimeError("down"))
+    held["row"]["work"]["sections"] = {"A2": {"done": True}, "A3": {"done": True}}
+    async with api as c:
+        failed = await c.get("/api/proposals/11/research/angles")
+        held["row"]["can_edit"] = False
+        refused = await c.get("/api/proposals/11/research/angles")
+    assert failed.status_code == 502 and refused.status_code == 403
+
+
+def _researched(**reader):
+    pub = {"origin": "web", "found_by": "public", "status": "proposed", "subject": "dropout", "value": "19.8%"}
+    return {"readers": {"public": {"status": "done", "at": "2026-10-22", "title": "Public", "brief": "A brief",
+                                   **reader}},
+            "research_asks": {"a1": {"kind": "chat", "status": "done"}},
+            "facts": {"k1": pub, "k2": {**pub, "subject": "stunting"}, "k3": {**pub, "origin": "vault", "found_by": None}},
+            "sections": {"A3": {"text": "Dropout is 19.8% ⟦k1⟧.", "rev": 1}}}
+
+
+async def test_deleting_research_keeps_what_the_text_cites_and_the_files_facts(api, held):
+    held["row"]["work"].update(_researched())
+    async with api as c:
+        out = await c.delete("/api/proposals/11/research")
+        again = await c.delete("/api/proposals/11/research")
+    work = held["row"]["work"]
+    assert out.status_code == 200 and sorted(work["facts"]) == ["k1", "k3"]
+    assert "public" not in work["readers"] and "research_asks" not in work
+    assert work["log"][-1]["via"] == "reset" and work["log"][-1]["reason"] == "deleting secondary research"
+    assert again.status_code == 409 and again.json()["detail"] == "There is no secondary research to delete."
+
+
+async def test_deleting_research_waits_for_a_running_search_and_refuses_a_reader(api, held):
+    held["row"]["work"].update(_researched(status="running"))
+    async with api as c:
+        running = await c.delete("/api/proposals/11/research")
+        held["row"]["can_edit"] = False
+        refused = await c.delete("/api/proposals/11/research")
+    assert running.status_code == 409 and "running" in running.json()["detail"]
+    assert refused.status_code == 403 and sorted(held["row"]["work"]["facts"]) == ["k1", "k2", "k3"]
+
+
+@pytest.fixture
+def searched(monkeypatch):
+    """The card's search: who and what the readers were handed, or the refusal readers.search raises."""
+    from app.proposals import readers
+
+    seen = {"raise": None, "p": []}
+
+    async def scope(pool, principal):
+        return "scope"
+
+    async def current():
+        return SimpleNamespace(id=route.chat_proposal.get(), scope=route.chat_scope.get())
+
+    async def search(p):
+        if seen["raise"]:
+            raise seen["raise"]
+        seen["p"].append(p)
+
+    monkeypatch.setattr(route, "caller_scope", scope)
+    monkeypatch.setattr(route.context, "current", current)
+    async def graph(app, name):
+        seen["built"] = name
+
+    monkeypatch.setattr(readers, "search", search)
+    monkeypatch.setattr(route, "get_graph", graph)
+    return seen
+
+
+async def test_the_cards_search_starts_without_the_chat(api, held, searched):
+    held["row"]["work"]["stage"] = 3
+    async with api as c:
+        out = await c.post("/api/proposals/11/research")
+    assert out.status_code == 202 and out.json()["work"]["stage"] == 3
+    assert [(p.id, p.scope) for p in searched["p"]] == [(11, "scope")] and searched["built"] == "proposal_graph"
+
+
+async def test_the_cards_search_is_refused_early_while_running_without_a_key_or_for_a_reader(api, held, searched):
+    from app.proposals import readers
+
+    async with api as c:
+        early = await c.post("/api/proposals/11/research")
+        held["row"]["work"]["stage"] = 3
+        searched["raise"] = readers.Busy({"at": NOW.isoformat(), "by": RAVI}, NOW)
+        running = await c.post("/api/proposals/11/research")
+        searched["raise"] = LookupError("Public research is not available.")
+        keyless = await c.post("/api/proposals/11/research")
+        held["row"]["can_edit"] = False
+        refused = await c.post("/api/proposals/11/research")
+    assert early.status_code == 409 and running.status_code == 409 and "Ravi" in running.json()["detail"]
+    assert keyless.status_code == 503 and refused.status_code == 403 and searched["p"] == []
