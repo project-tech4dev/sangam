@@ -1123,8 +1123,8 @@ textarea.composer-input { border: none; padding: 4px; min-height: 48px; font-siz
 .composer-row { display: flex; align-items: center; gap: 10px; }
 .composer-hint { font-size: var(--fs-xs); }
 .composer-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-/* Attach and voice: shown, not built yet. */
-.composer-stub { display: grid; place-items: center; padding: 0; cursor: not-allowed; }
+/* Attach and voice: hidden until built. */
+.composer-stub { display: none; place-items: center; padding: 0; cursor: not-allowed; }
 
 /* --- Import workspace ---------------------------------------------------------- */
 /* /import: past imports on the left, the open one beside them. Fills the viewport below the navbar. */
