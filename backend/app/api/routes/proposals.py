@@ -253,8 +253,8 @@ async def save_version(proposal_id: int, pool: PoolDep, principal: Principal, bo
         if outline is not (work.get("template") or {}).get("outline"):
             changes["template.outline"] = outline
         headed = [(fill.title(f.heading), f.text) for f in filled]
-        data = assemble.form_docx(row["title"], f"{byline} · in {funder}'s form", headed)
-        named = f"version {n}, in {funder}'s form"
+        data = assemble.form_docx(row["title"], f"{byline} · in the {funder} form", headed)
+        named = f"version {n}, in the {funder} form"
         entry = {"title": f"V{named[1:]}", "shape": "form", "report": fill.report(filled)}
     else:
         headed = [(s.label, text) for s, text in written]

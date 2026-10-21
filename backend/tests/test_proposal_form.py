@@ -156,3 +156,101 @@ def test_the_word_file_carries_the_forms_headings_and_marks_what_is_left():
     assert [p.text for p in doc.paragraphs if p.style.name == "Heading 1"] == ["5. Proposed strategy", "PAN"]
     marked = [r.text for p in doc.paragraphs for r in p.runs if r.font.highlight_color]
     assert marked == ["[Add: the trainers]", "[You fill: PAN Card Number]"]
+
+
+class FakeModel:
+    """Answers a structured call with what it was given, and keeps the messages."""
+
+    def __init__(self, result):
+        self.result, self.calls = result, []
+
+    def with_structured_output(self, schema):
+        return self
+
+    async def ainvoke(self, messages):
+        self.calls.append(messages)
+        if isinstance(self.result, Exception):
+            raise self.result
+        return self.result
+
+
+def _pdf(pages):
+    from pypdf import PdfWriter
+
+    writer = PdfWriter()
+    for _ in range(pages):
+        writer.add_blank_page(width=72, height=72)
+    buffer = io.BytesIO()
+    writer.write(buffer)
+    return buffer.getvalue()
+
+
+@pytest.fixture
+def stored(monkeypatch):
+    held = {"doc": {"id": 40, "title": "RF Proposal Template.PDF", "storage_path": "sangam-library/forms/rf.pdf"},
+            "data": _pdf(2)}
+
+    async def form_file(pool, document_id, org_id):
+        held["asked"] = (document_id, org_id)
+        return held["doc"]
+
+    async def download(bucket, key, max_bytes):
+        return held["data"]
+
+    monkeypatch.setattr(form.repo, "form_file", form_file)
+    monkeypatch.setattr(form.storage, "split", lambda path: tuple(path.split("/", 1)) if path else None)
+    monkeypatch.setattr(form.storage, "download", download)
+    return held
+
+
+class TestReadingTheForm:
+    async def test_the_outline_names_sangams_parts_and_keeps_the_forms_title(self, stored):
+        from app.proposals import rubric
+
+        model = FakeModel(form.Outline(headings=[heading(number="4", label="Problem Statement", uses=["A3"])]))
+        sections = rubric.sections_for(False)
+        out = await form.read(None, {"document_id": 40}, 7, sections, model)
+        assert stored["asked"] == (40, 7)
+        assert out["title"] == "RF Proposal Template" and out["document_id"] == 40 and out["pages_cut"] is False
+        assert out["headings"][0]["uses"] == ["A3"]
+        system = model.calls[0][0].content
+        assert "{{PARTS}}" not in system and f"- A3 {sections[[s.code for s in sections].index('A3')].label}:" in system
+
+    async def test_only_the_first_hundred_pages_are_sent(self, stored):
+        stored["data"] = _pdf(form.MAX_PAGES + 1)
+        model = FakeModel(form.Outline(headings=[heading(label="Problem")]))
+        out = await form.read(None, {"document_id": 40}, 7, [], model)
+        from pypdf import PdfReader
+
+        sent = base64.b64decode(model.calls[0][1].content[-1]["base64"])
+        assert out["pages_cut"] is True and len(PdfReader(io.BytesIO(sent)).pages) == form.MAX_PAGES
+
+    @pytest.mark.parametrize("doc, data, outline, said", [
+        (None, b"", [], "no copy"),
+        ({"title": "rf.pdf", "storage_path": "sangam-library/rf.pdf"}, None, [], "could not be downloaded"),
+        ({"title": "rf.pdf", "storage_path": "sangam-library/rf.pdf"}, _pdf(1), [heading(label="PAN", kind="field")],
+         "no questions to answer in writing"),
+    ])
+    async def test_a_form_sangam_cannot_use_says_why(self, stored, doc, data, outline, said):
+        stored.update(doc=doc, data=data)
+        with pytest.raises(form.Unreadable, match=said):
+            await form.read(None, {"document_id": 40}, 7, [], FakeModel(form.Outline(headings=outline)))
+
+
+class TestTheFillCall:
+    async def test_each_heading_goes_with_its_ask_limit_and_text(self):
+        model = FakeModel(fill.Answers(answers=[fill.Answer(code=" T5 ", text=" Raise incomes. "),
+                                                fill.Answer(code="T1", text="  ")]))
+        unwritten = {**STRATEGY, "code": "T8", "uses": ["A13"]}
+        out = await fill.fill([STRATEGY, unwritten], WRITTEN, "Plain words.", model)
+        assert out == {"T5": "Raise incomes."}
+        ask = model.calls[0][1].content
+        assert ask.startswith("The style:\nPlain words.")
+        assert '<heading code="T5" title="5. Proposed strategy" limit="90 characters">' in ask
+        assert "<asks>How the problem will be addressed</asks>" in ask and "Run 54 trainings" in ask
+        assert 'code="T8"' not in ask
+
+    async def test_no_call_when_nothing_is_written_and_nothing_back_when_it_fails(self):
+        idle = FakeModel(fill.Answers(answers=[]))
+        assert await fill.fill([{**STRATEGY, "uses": []}], WRITTEN, "", idle) == {} and idle.calls == []
+        assert await fill.fill([STRATEGY], WRITTEN, "", FakeModel(RuntimeError("overloaded"))) == {}

@@ -413,10 +413,10 @@ async def test_a_version_in_the_funders_form_carries_its_headings_and_a_report(a
     assert r.status_code == 201
     work = r.json()["work"]
     entry = work["versions"][-1]
-    assert entry["title"] == "Version 1, in Tata Trusts's form" and entry["shape"] == "form"
+    assert entry["title"] == "Version 1, in the Tata Trusts form" and entry["shape"] == "form"
     assert entry["report"] == {"answered": ["4. Problem Statement"], "cut": {}, "as_written": [], "add": [],
                                "you_fill": ["PAN Card Number"]}
-    assert vault["draft"]["title"] == "Water for Dewas, version 1, in Tata Trusts's form"
+    assert vault["draft"]["title"] == "Water for Dewas, version 1, in the Tata Trusts form"
     assert vault["draft"]["content_md"] == ("## 4. Problem Statement\n\nWells in Dewas run dry for 120 days.\n\n"
                                             "## PAN Card Number\n\n[You fill: PAN Card Number]")
     assert work["template"]["outline"]["headings"] == HEADINGS
