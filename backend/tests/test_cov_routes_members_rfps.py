@@ -104,17 +104,19 @@ async def test_list_rfps_without_a_deadline(client_for, monkeypatch):
 
 async def test_feed_found_and_missing(client_for, monkeypatch):
     async def feed(pool, org):
-        if org != "kabil":
+        if org not in ("kabil", None):
             return None
-        return {"id": 9, "name": "KABIL", "can_act": True, "domains": ["water"], "last_pulled": None,
+        return {"id": 9, "slug": "kabil", "name": "KABIL", "can_act": True, "domains": ["water"], "last_pulled": None,
                 "items": [{"rfp_id": 3, "title": "Water call", "places": ["Assam"]}]}
 
     monkeypatch.setattr(rfps_api.repo, "feed", feed)
     async with client_for(rfps_api.router) as client:
         ok = await client.get("/api/rfps/feed", params={"org": "kabil"})
         missing = await client.get("/api/rfps/feed", params={"org": "nobody"})
+        own = await client.get("/api/rfps/feed")
     assert ok.status_code == 200 and ok.json()["items"][0]["places"] == ["Assam"] and ok.json()["can_act"]
     assert missing.status_code == 404
+    assert own.status_code == 200 and own.json()["org_slug"] == "kabil"
 
 
 async def test_get_rfp_and_its_matches(client_for, monkeypatch):

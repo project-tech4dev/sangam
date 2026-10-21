@@ -68,6 +68,14 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 describe("FunderMatchView", () => {
+  it("asks for the matches straight away when the page already knows who is signed in", async () => {
+    route(list());
+    render(<FunderMatchView orgs={ORGS} nav={nav} me={staff} />);
+    expect(call).toHaveBeenCalledWith("/api/funder-matches?org=kabil");
+    expect(await screen.findByRole("article", { name: "Axis" })).toBeInTheDocument();
+    expect(getMe).not.toHaveBeenCalled();
+  });
+
   it("ranks the strong and medium funders and folds the rest", async () => {
     route(list());
     render(<FunderMatchView orgs={ORGS} nav={nav} />);

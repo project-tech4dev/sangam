@@ -4,6 +4,8 @@ from collections import defaultdict
 
 from psycopg_pool import AsyncConnectionPool
 
+from app.repositories.funder_matches import FIRST_ORG
+
 BASE = """
 SELECT r.*, f.name AS funder_name, COUNT(*) OVER () AS total
 FROM rfps r
@@ -102,16 +104,18 @@ async def flag_matches(pool: AsyncConnectionPool) -> dict:
     return {"added": len(added), "orgs": len({r["org_id"] for r in added}), "orgs_without_theme": blind["n"]}
 
 
-async def feed(pool: AsyncConnectionPool, org_slug: str) -> dict | None:
-    """One org's calls, as the caller: open ones not dismissed, and saved ones whatever became of the call."""
+async def feed(pool: AsyncConnectionPool, org_slug: str | None) -> dict | None:
+    """One org's calls, as the caller: open ones not dismissed, and saved ones whatever became of the call.
+    Without a slug, the caller's first organisation by name."""
     async with pool.connection() as conn:
         org = await (await conn.execute(DOMAINS + """
-            SELECT o.id, o.name,
+            SELECT o.id, o.slug, o.name,
                    (o.id IN (SELECT app.my_writable_org_ids())) OR (SELECT app.is_staff()) AS can_act,
                    ARRAY(SELECT d.label FROM org_dom od JOIN tags d ON d.id = od.domain_id
                          WHERE od.org_id = o.id ORDER BY d.label) AS domains,
                    (SELECT max(fetched_at) FROM rfps WHERE extractor_version LIKE 'calls-%%') AS last_pulled
-            FROM orgs o WHERE o.slug = %s""", (org_slug,))).fetchone()
+            FROM orgs o WHERE o.slug = %(v)s OR (%(v)s::text IS NULL AND o.id = """ + FIRST_ORG + ")",
+            {"v": org_slug})).fetchone()
         if org is None:
             return None
         rows = await (await conn.execute(DOMAINS + """

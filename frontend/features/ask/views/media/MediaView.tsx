@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { BucketCards, FilterRow, ListMore, SearchBox, useCursorList, type Filter } from "@/components/ui";
-import type { Story, StoryEntity, StoryPage } from "@/lib/api";
+import type { MeOut, Story, StoryEntity, StoryPage } from "@/lib/api";
 import { shortDate } from "@/lib/format";
 import { call } from "../../lib/rest";
 import { useOrgChoices } from "../../lib/useOrgChoices";
@@ -13,8 +13,8 @@ const COUNT_CAP = 501;
 const shown = (n: number | undefined) => (n === undefined ? "–" : n >= COUNT_CAP ? "500+" : n);
 
 /* News about the caller's organisations, every watched funder, and the sector: three buckets, one list. */
-export function MediaView({ orgs }: { orgs: { slug: string; name: string }[] }) {
-  const { me, choices, problem } = useOrgChoices(orgs);
+export function MediaView({ orgs, me: seed = null }: { orgs: { slug: string; name: string }[]; me?: MeOut | null }) {
+  const { me, choices, problem } = useOrgChoices(orgs, seed);
   const [bucket, setBucket] = useState<BucketKey>("org");
   const [entity, setEntity] = useState("all");
   const [area, setArea] = useState<string | null>(null);

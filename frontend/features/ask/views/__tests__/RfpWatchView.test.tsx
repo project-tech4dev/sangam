@@ -69,6 +69,14 @@ beforeEach(() => getMe.mockResolvedValue(staff));
 afterEach(() => vi.clearAllMocks());
 
 describe("RfpWatchView", () => {
+  it("asks for the feed straight away when the page already knows who is signed in", async () => {
+    route(feed());
+    render(<RfpWatchView {...props} me={staff} />);
+    expect(call).toHaveBeenCalledWith("/api/rfps/feed?org=kabil");
+    expect(await screen.findByRole("article", { name: "School libraries" })).toBeInTheDocument();
+    expect(getMe).not.toHaveBeenCalled();
+  });
+
   it("lists open calls in the organisation's theme, with their deadlines and amounts", async () => {
     route(feed());
     render(<RfpWatchView {...props} />);

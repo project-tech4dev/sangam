@@ -38,6 +38,13 @@ beforeEach(() => getMe.mockResolvedValue(staff));
 afterEach(() => vi.clearAllMocks());
 
 describe("MediaView", () => {
+  it("asks for the stories without a second /api/me when the page already knows who is signed in", async () => {
+    call.mockResolvedValue(page([story(1, "KABIL wins award")]));
+    render(<MediaView orgs={ORGS} me={staff} />);
+    expect(await screen.findByText("KABIL wins award")).toBeInTheDocument();
+    expect(getMe).not.toHaveBeenCalled();
+  });
+
   it("lists the organisations' stories with the bucket counts", async () => {
     call.mockResolvedValue(page([story(1, "KABIL wins award")]));
     render(<MediaView orgs={ORGS} />);

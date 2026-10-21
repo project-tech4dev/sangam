@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import type { MeOut } from "@/lib/api";
 import { idParam, setUrlParams } from "@/lib/url";
 import { useUrlThread } from "@/lib/useUrlThread";
 import type { RegistryIndex } from "./lib/citations";
@@ -34,6 +35,8 @@ export type IndexPayload = {
   stats: Record<string, number>;
   /** Staff or a steward: the sidebar offers Sangam Scout. */
   canScout: boolean;
+  /** The page's /api/me, so a screen need not ask again; null when that call failed. */
+  me: MeOut | null;
 };
 
 export function AskWorkspace({
@@ -155,11 +158,12 @@ export function AskWorkspace({
           </>
         )}
         {view === "vault" && <VaultView orgs={payload.orgs} />}
-        {view === "media" && <MediaView orgs={payload.orgs} />}
+        {view === "media" && <MediaView orgs={payload.orgs} me={payload.me} />}
         {view === "chats" && <ChatsView threads={threads} onPick={pickThread} />}
         {view === "funder-match" && (
           <FunderMatchView
             orgs={payload.orgs}
+            me={payload.me}
             nav={{ open: (id) => openProposals({ id }), list: (funderId) => openProposals({ funderId }) }}
           />
         )}
@@ -184,7 +188,7 @@ export function AskWorkspace({
               body="Open calls and RFPs gathered every week, each shown with the organisations it plausibly fits."
             />
           ) : (
-            <RfpWatchView orgs={payload.orgs} onAsk={(q) => newChat(q)} onFunderMatch={() => setUrlParams(viewParams("funder-match"))} />
+            <RfpWatchView orgs={payload.orgs} me={payload.me} onAsk={(q) => newChat(q)} onFunderMatch={() => setUrlParams(viewParams("funder-match"))} />
           ))}
       </div>
     </div>

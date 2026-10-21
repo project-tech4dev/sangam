@@ -29,6 +29,13 @@ describe("useOrgChoices", () => {
     await waitFor(() => expect(result.current.choices).toEqual([{ slug: "x", name: "X" }]));
   });
 
+  it("uses the page's answer and never asks /api/me again", () => {
+    const seed = { id: "u", email: null, is_staff: false, is_anonymous: false, memberships: [{ org_slug: "x", org_name: "X", org_id: 2, role: "admin" }] };
+    const { result } = renderHook(() => useOrgChoices(orgs, seed));
+    expect(result.current.choices).toEqual([{ slug: "x", name: "X" }]);
+    expect(getMe).not.toHaveBeenCalled();
+  });
+
   it("reports a failed lookup", async () => {
     getMe.mockRejectedValue(new Error("401"));
     const { result } = renderHook(() => useOrgChoices(orgs));
