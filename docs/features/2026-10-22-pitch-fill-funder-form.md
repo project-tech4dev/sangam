@@ -210,6 +210,28 @@ class Outline(BaseModel):
   updated in the same PR**: the Pitch page in `ui_kits/sangam-web/`, per `docs/DESIGN_SYSTEM.md`. Icons from Lucide
   (`FileText`).
 
+### 4.6 Step 2: say what the form is for, and catch one uploaded in the wrong place
+
+> **The rule:** step 2 tells the truth about the form: it shapes the download, not the writing.
+> **Example:** after Asha uploads Redington's form, the card says *"You uploaded it. Sangam writes its usual parts, and in
+> the last step you can download them filled into this form."* Today it says *"The proposal follows its order and limits"*
+> (`ProposalShell.tsx`, the funder's form card), which was never true and is not the plan.
+> **Why it matters:** a person who believes the parts follow the form will look for "5. Proposed strategy" in step 4.
+
+> **The rule:** a funder's form uploaded under "Documents Sangam may read" is caught, and the person can move it in one click.
+> **Example:** Asha uploads Redington's PDF with *Upload a file*. The evidence reader finds only questions, no answers, and
+> its row reads *"Redington Proposal Template looks like the funder's form, not one of SeSTA's documents."* with a button,
+> **Use it as the funder's form**, which sets `template` to that file and unticks it from `sources`, in one PATCH.
+> **Why it matters:** otherwise the form is read for facts it doesn't hold, and the step-5 button never appears.
+
+- `prompts/evidence_reader.md`: when the file is a blank form (headings and questions with no answers), add nothing and end with
+  `UNREADABLE: FORM — <title> looks like the funder's form`.
+- `readers._one`: a reason starting `FORM` sets `looks_like_form: true` on the reader's row, beside `error`. The screen keys on
+  that flag, never on the wording.
+- `ProposalShell.tsx` `Reading`: a failed row with `looks_like_form` shows the button; it PATCHes
+  `{template: {document_id, url: null, from: "upload", read_at: null}, skipped_template: false, sources: sources − id}`,
+  all paths `work.py` already allows. Only shown when `can_edit` and no form is set yet.
+
 ---
 
 ## 5. Security review
@@ -262,11 +284,13 @@ One PR each, stacked. Each stops for review before the next.
   `ruff check .`. By hand: the three sample files each give a Word file from a written proposal on staging.
 
 #### Milestone 2: The button and the report
-- **Deliverable:** step 5 has *Download in {funder}'s form*, the report, and the version label; the design system is synced.
-- **Touches:** frontend, design system.
+- **Deliverable:** step 5 has *Download in {funder}'s form*, the report, and the version label. Step 2 says what the form is
+  for and catches one uploaded in the wrong place (§4.6). The design system is synced.
+- **Touches:** frontend, design system, one reader prompt line.
 - **Key tasks:**
   - [ ] `api.ts`.
   - [ ] `FinishCard.tsx`.
+  - [ ] Step 2 sentence; `looks_like_form` in `readers._one` and `evidence_reader.md`; the *Use it as the funder's form* button.
   - [ ] Classes in `globals.css`.
   - [ ] `ui_kits/sangam-web/` Pitch page.
 - **Acceptance:** `npm run lint && npm test && npm run build`. In Chrome as a steward, as a reader-only member, and at phone
@@ -295,4 +319,4 @@ One PR each, stacked. Each stops for review before the next.
 | 5 | **Dead code:** `rubric.sections_for` adds `template.questions` as parts, but nothing saves `questions`. | Left alone here. A one-line cleanup PR can remove it. |
 | 6 | **The PDF file block may not get through `init_chat_model`.** | M1's first task is that test. The fallback is pypdf text, which loses image-only pages (SeSTA's sections 1–11). |
 | 7 | **Redington Q3's 19 short fields** each have their own limit. Filling all 19 from Context and target area may leave many as `[Add]`. | Acceptable: they're separate headings in the form, and each one Sangam can't fit is marked. |
-| 8 | **Uncommitted proposal work in the main checkout** (`feat/proposal-make-case`) touches `routes/proposals.py` and the step-5 screen. | M1 starts after it lands, and rebases on it. |
+| 8 | **Proposal work not yet on master** (`feat/proposal-make-case`: two local commits plus uncommitted edits) touches `routes/proposals.py`, `schemas/proposals.py` and `ProposalShell.tsx`. | Checked 22 Oct: it doesn't touch `save_version`, `assemble.py` or the new files. M1 is built on master and rebased onto it when it lands; the overlap is imports and a neighbouring route. M2 touches `ProposalShell.tsx` too, so M2 waits for it. |
