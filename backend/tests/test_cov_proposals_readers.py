@@ -155,7 +155,7 @@ class TestRead:
         assert sources.web and public.avoid == ("SeSTA",)
         assert graphs.evidence.asked == [] and list(store["work"]["readers"]) == ["public"]
         assert store["work"]["readers"]["public"]["unopened"] == []
-        assert store["work"]["readers"]["public"]["summaries"] == {}
+        assert "summaries" not in store["work"]["readers"]["public"]
         assert "brief" not in store["work"]["readers"]["public"]  # no brief model in this setup
 
     async def test_the_brief_is_written_beside_the_search_without_the_org(self, run, monkeypatch):
@@ -182,30 +182,6 @@ class TestRead:
         assert store["work"]["readers"]["public"]["brief"] == "**A. Problem magnitude**"
         assert out.endswith("The brief now on the Secondary research card:\n**A. Problem magnitude**")
 
-    async def test_public_research_ends_with_a_paragraph_per_topic(self, run, monkeypatch):
-        store, setup = run
-        setup({"facts": {"k1": {"subject": "dropout", "value": "19.8%", "topic": "problem", "found_by": "public",
-                                "status": "proposed"}}}, public="Found 1 public fact.")
-        seen = []
-
-        async def load(pool, proposal_id):
-            return {"work": store["work"]}
-
-        async def summarise(work, model):
-            seen.append((list(work["facts"]), model))
-            return {"problem": "Dropout is 19.8% ⟦k1⟧."}
-
-        async def facts(pool, owner, org_id):
-            return None
-
-        monkeypatch.setattr(readers.BUILT, "summary", "utility")
-        monkeypatch.setattr(repo, "load", load)
-        monkeypatch.setattr(readers.research, "summarise", summarise)
-        monkeypatch.setattr(profile_facts, "org_facts", facts)
-        await readers.read(proposal({}), public=True)
-        assert seen == [(["k1"], "utility")]
-        assert store["work"]["readers"]["public"]["summaries"] == {"problem": "Dropout is 19.8% ⟦k1⟧."}
-
     async def test_a_run_for_an_ask_carries_its_focus_and_records_what_it_added(self, run, monkeypatch):
         store, setup = run
         public = {"subject": "dropout, Udalguri", "value": "19.8%", "found_by": "public", "status": "proposed"}
@@ -217,14 +193,10 @@ class TestRead:
             facts = {**store["work"]["facts"], "k3": {**public, "subject": "dropout, Mazbat", "ask": "a2"}}
             return {"work": {**store["work"], "facts": facts}}
 
-        async def summarise(work, model):
-            return {}
-
         async def facts(pool, owner, org_id):
             return None
 
         monkeypatch.setattr(repo, "load", load)
-        monkeypatch.setattr(readers.research, "summarise", summarise)
         monkeypatch.setattr(profile_facts, "org_facts", facts)
         ask = {"kind": "chat", "ask": "SHG credit", "focus": ["SHG credit linkage, Assam"], "sites": ["nrlm.gov.in"],
                "sections": []}
@@ -238,7 +210,7 @@ class TestRead:
         recorded = store["work"]["research_asks"]["a2"]
         assert recorded["status"] == "done" and recorded["added"] == 1 and recorded["focus"] == ask["focus"]
 
-    async def test_a_failed_summary_still_marks_the_search_done(self, run, monkeypatch):
+    async def test_a_failed_count_of_what_an_ask_added_still_marks_it_done(self, run, monkeypatch):
         store, setup = run
         setup({}, public="Found nothing.")
 
@@ -250,10 +222,10 @@ class TestRead:
 
         monkeypatch.setattr(repo, "load", load)
         monkeypatch.setattr(profile_facts, "org_facts", facts)
-        await readers.read(proposal({}), public=True)
+        ask = {"kind": "chat", "ask": "SHG credit", "focus": [], "sites": [], "sections": []}
+        await readers.read(proposal({}), public=True, ask=ask)
         assert store["work"]["readers"]["public"]["status"] == "done"
-        assert store["work"]["readers"]["public"]["summaries"] == {}
-
+        assert store["work"]["research_asks"]["a1"] | {"status": "done", "added": 0} == store["work"]["research_asks"]["a1"]
 
     async def test_the_cards_search_is_marked_running_then_finishes_in_the_background(self, run, monkeypatch):
         store, setup = run

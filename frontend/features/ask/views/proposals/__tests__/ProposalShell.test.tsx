@@ -474,7 +474,7 @@ describe("step 3: make a case", () => {
     expect(call).not.toHaveBeenCalledWith("/api/proposals/3/research", "POST");
   });
 
-  it("summarises each topic with numbered sources, used or dropped as a whole", async () => {
+  it("lists each topic's facts with their sources, used or dropped as a whole", async () => {
     const work = {
       readers: {
         public: {
@@ -482,7 +482,6 @@ describe("step 3: make a case", () => {
           at: "2026-10-05T00:00:00Z",
           title: "Public",
           unopened: ["slow.gov.in"],
-          summaries: { problem: "Dropout is 19.8% ⟦k2⟧ against 15.1% ⟦k1⟧ ⟦k9⟧." },
         },
       },
       facts: {
@@ -497,13 +496,11 @@ describe("step 3: make a case", () => {
     renderShell();
     expect(await screen.findByText(/Searched .* · 4 sources/)).toBeInTheDocument();
     expect(screen.getByText("The problem, measured · 3 sources")).toBeInTheDocument();
-    expect(screen.getByText("Dropout is 19.8% [1] against 15.1% [2].")).toBeInTheDocument();
     const list = screen.getByRole("list", { name: "Sources for The problem, measured" });
     const items = within(list).getAllByRole("listitem").map((li) => li.textContent);
-    expect(items).toEqual(["UDISE+ district · Udalguri dropout: 19.8%", "UDISE+ · Assam dropout: 15.1% (2023-24)", "A public source · Stunting: 30%"]);
+    expect(items).toEqual(["UDISE+ · Assam dropout: 15.1% (2023-24)", "UDISE+ district · Udalguri dropout: 19.8%", "A public source · Stunting: 30%"]);
     expect(within(list).getByRole("link", { name: "UDISE+" })).toHaveAttribute("href", "https://udiseplus.gov.in/r");
     expect(screen.getByText("SDGs · 1 source")).toBeInTheDocument();
-    expect(screen.getAllByText("No summary for this topic yet. Search again to write one.")).toHaveLength(1);
     expect(screen.getByText("Why this place · not used")).toBeInTheDocument();
     expect(screen.getByText("What worked elsewhere · none found")).toBeInTheDocument();
     expect(screen.getByText("Couldn't open: slow.gov.in")).toBeInTheDocument();

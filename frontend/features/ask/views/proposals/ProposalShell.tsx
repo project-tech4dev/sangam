@@ -796,10 +796,9 @@ function topicOf(f: Fact): Topic {
   return BY_SECTION[f.section ?? ""] ?? "problem";
 }
 
-const CITE = /⟦(k\d+)⟧/g;
 const isLive = (f: Fact) => f.status === "proposed" || f.status === "confirmed";
 
-/** Secondary research: its own button, its status, and per topic one summary with numbered sources, used or dropped whole. */
+/** Secondary research: its own buttons, its status, the brief, and the facts behind it by topic, used or dropped whole. */
 function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Proposal; save: Save; send: Send; onSaved: (saved: Saved) => void }) {
   const { work, can_edit: canEdit } = proposal;
   const [confirming, setConfirming] = useState<"fresh" | "delete" | null>(null);
@@ -864,7 +863,7 @@ function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Propos
       {canEdit && confirming && run?.status !== "running" && (
         <div className="pr-next" role="group" aria-label="Confirm deleting secondary research">
           <span className="muted fm-meta">
-            {confirming === "fresh" ? "This deletes the brief, the topic summaries and the facts research found, then searches again." : "This deletes the brief, the topic summaries and the facts research found."}{" "}
+            {confirming === "fresh" ? "This deletes the brief and the facts research found, then searches again." : "This deletes the brief and the facts research found."}{" "}
             Facts a part already cites are kept.
           </span>
           <button className="btn btn-primary" type="button" disabled={starting} onClick={() => void clear(confirming === "fresh")}>
@@ -891,7 +890,6 @@ function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Propos
             <ResearchTopic
               key={t}
               label={label}
-              summary={run.summaries?.[t]}
               facts={found.filter(([, f]) => topicOf(f) === t)}
               canEdit={canEdit}
               save={save}
@@ -904,16 +902,14 @@ function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Propos
   );
 }
 
-/** One topic: its summary with [1]…[n] in place of fact ids, the numbered sources below, and one Use or Don't use. */
+/** One topic: its facts with their sources, and one Use or Don't use for all of them. */
 function ResearchTopic({
   label,
-  summary,
   facts,
   canEdit,
   save,
 }: {
   label: string;
-  summary?: string;
   facts: [string, Fact][];
   canEdit: boolean;
   save: Save;
@@ -936,27 +932,18 @@ function ResearchTopic({
       </details>
     );
 
-  const ids = new Set(live.map(([k]) => k));
-  // Numbered by first citation in the summary; facts it does not cite follow.
-  const cited = [...new Set([...(summary ?? "").matchAll(CITE)].map((m) => m[1]))].filter((k) => ids.has(k));
-  const order = [...cited, ...live.map(([k]) => k).filter((k) => !cited.includes(k))];
-  const n = new Map(order.map((k, i) => [k, i + 1]));
-  const byKey = Object.fromEntries(live);
-  const text = summary?.replace(/\s*⟦(k\d+)⟧/g, (_, k: string) => (n.has(k) ? ` [${n.get(k)}]` : "")).trim();
   const using = live.every(([, f]) => f.status === "confirmed");
   const setAll = (status: Fact["status"]) => save(Object.fromEntries(live.map(([k]) => [`facts.${k}.status`, status])));
 
   return (
     <details className="fm-weak" open>
       <summary>
-        {label} · {order.length} {order.length === 1 ? "source" : "sources"}
+        {label} · {live.length} {live.length === 1 ? "source" : "sources"}
         {using && " · ✓ using it"}
       </summary>
       <div className="pr-research">
-        {text ? <p className="pr-research-text">{text}</p> : <p className="muted">No summary for this topic yet. Search again to write one.</p>}
         <ol className="pr-sources" aria-label={`Sources for ${label}`}>
-          {order.map((k) => {
-            const f = byKey[k];
+          {live.map(([k, f]) => {
             const name = source(f) ?? "A public source";
             return (
               <li key={k}>

@@ -50,7 +50,6 @@ class _Built:
     evidence: Any = None
     funder: Any = None
     public: Any = None  # None without a search key: then public research is simply not run
-    summary: Any = None  # writes secondary research's paragraph per topic
     brief: Any = None  # writes secondary research's brief, with Anthropic's own web search and fetch
     parallel: int = 1
     trace: dict[str, Any] | None = None
@@ -85,7 +84,6 @@ def build(settings: Settings, evidence_tools: list[Any], funder_tools: list[Any]
     BUILT.funder = reader(funder_tools, "funder_file_reader.md")
     BUILT.public = (reader(public_tools, "public_researcher.md", PublicGuard())
                     if public_tools and settings.tavily_api_key else None)
-    BUILT.summary = resolve_model(settings.utility_model)
     try:
         BUILT.brief = brief.bind(research)
     except Exception as exc:  # noqa: BLE001 - a model without server-side search writes no brief
@@ -348,7 +346,7 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
     marks: dict[str, dict[str, Any]] = {f"readers.{key}": outcome}
     added = 0
     if run is not None and not error:
-        outcome["summaries"], added = await _summaries(p.id, run.ask)
+        added = await _added(p.id, ask[0]) if ask else 0
         if isinstance(written, str):
             outcome["brief"] = written
     if ask is not None:
@@ -361,17 +359,14 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
     return f"{title}: read.\n{text}{shown}"
 
 
-async def _summaries(proposal_id: int, ask_id: str | None = None) -> tuple[dict[str, str], int]:
-    """Read after the run, so the paragraphs cover every fact it added, and how many it added for the ask;
-    a failure leaves the facts unsummarised."""
+async def _added(proposal_id: int, ask_id: str) -> int:
+    """How many facts the run added for its ask, read after it; a failure counts none."""
     try:
         row = await repo.load(get_pool(), proposal_id)
-        work = (row or {}).get("work") or {}
-        added = sum(1 for f in (work.get("facts") or {}).values() if ask_id and f.get("ask") == ask_id)
-        return (await research.summarise(work, BUILT.summary) if row else {}), added
     except Exception as exc:  # noqa: BLE001 - the search itself succeeded
-        logger.warning("secondary research summaries failed (%s)", type(exc).__name__)
-        return {}, 0
+        logger.warning(f"[_added] counting the ask's facts failed ({type(exc).__name__})")
+        return 0
+    return sum(1 for f in (((row or {}).get("work") or {}).get("facts") or {}).values() if f.get("ask") == ask_id)
 
 
 class _NothingToRead(Exception):

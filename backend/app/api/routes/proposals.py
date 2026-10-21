@@ -295,7 +295,7 @@ async def start_research(proposal_id: int, request: Request, pool: PoolDep, owne
 
 
 @router.delete("/{proposal_id}/research", response_model=SavedOut,
-               summary="Delete secondary research: its brief, summaries, asks and the public facts no part cites")
+               summary="Delete secondary research: its brief, asks and the public facts no part cites")
 async def delete_research(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
     await _editable(pool, proposal_id)
     by = await repo.me(pool)

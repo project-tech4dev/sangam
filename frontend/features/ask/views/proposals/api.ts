@@ -65,7 +65,6 @@ export type Reader = {
   error?: string;
   unopened?: string[];
   /** Secondary research only: one paragraph per topic, citing its facts as ⟦kN⟧. */
-  summaries?: Partial<Record<NonNullable<Fact["topic"]>, string>>;
   /** Secondary research only: the researcher's brief, in Markdown (problem magnitude, impact evidence, caveats). */
   brief?: string;
 };
@@ -199,7 +198,7 @@ export async function advance(id: number, to?: number) {
   return saved;
 }
 
-/** Deletes secondary research: its brief, summaries, asks, and the public facts no part's text cites. */
+/** Deletes secondary research: its brief, asks, and the public facts no part's text cites. */
 export const startResearch = (id: number) => call<Saved>(`/api/proposals/${id}/research`, "POST");
 export const deleteResearch = (id: number) => call<Saved>(`/api/proposals/${id}/research`, "DELETE");
 
