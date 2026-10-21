@@ -11,6 +11,8 @@ from fastapi import Depends, Request
 from psycopg import AsyncConnection
 from psycopg_pool import AsyncConnectionPool
 
+from app.core.config import get_settings
+
 # Set once by the lifespan. Agent tools read it through get_pool() because they
 # run outside any request; routers should take PoolDep instead.
 pool: AsyncConnectionPool | None = None
@@ -29,6 +31,9 @@ OwnerPoolDep = Annotated[AsyncConnectionPool, Depends(get_pool)]
 
 
 _SET_CALLER = "SELECT set_config('role', %s, true), set_config('request.jwt.claims', %s, true)"
+# REST's caller plus its statement timeout, in the same round trip. Not in set_caller: Ask's executor calls
+# that after setting its own, lower timeout, and this would raise it.
+_SET_REST_CALLER = _SET_CALLER + ", set_config('statement_timeout', %s, true)"
 
 
 async def set_caller(conn: AsyncConnection, role: str, claims: str) -> None:
@@ -51,15 +56,16 @@ class CallerPool:
     and the agent tools, which share it, never inherit a caller.
     """
 
-    def __init__(self, pool: AsyncConnectionPool, *, role: str, claims: str):
+    def __init__(self, pool: AsyncConnectionPool, *, role: str, claims: str, timeout_ms: int | None = None):
         self._pool = pool
         self._role = role
         self._claims = claims
+        self._timeout_ms = timeout_ms if timeout_ms is not None else get_settings().db_statement_timeout_ms
 
     @asynccontextmanager
     async def connection(self) -> AsyncIterator[AsyncConnection]:
         async with self._pool.connection() as conn, conn.transaction():
-            await set_caller(conn, self._role, self._claims)
+            await conn.execute(_SET_REST_CALLER, (self._role, self._claims, str(self._timeout_ms)))
             yield conn
 
 

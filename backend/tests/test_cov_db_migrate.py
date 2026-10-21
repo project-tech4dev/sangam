@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
+from types import SimpleNamespace
 from urllib.parse import quote
 
 import psycopg
 import pytest
+from langgraph.checkpoint.postgres import PostgresSaver
 
 from app.db import migrate
+from app.db.checkpointer import CHECKPOINT_VERSION
 
 
 class FakeConn:
@@ -58,6 +61,8 @@ def run(tmp_path, monkeypatch, capsys):
     def _run(conn: FakeConn, *argv: str) -> tuple[int, str, str]:
         monkeypatch.setattr(migrate.sys, "argv", ["migrate", *argv])
         monkeypatch.setattr(migrate.psycopg, "connect", lambda url, autocommit: conn)
+        monkeypatch.setattr(migrate, "migrate_checkpointer", lambda url, status_only: conn.ran.append(
+            f"checkpointer status={status_only}"))
         code = migrate.main()
         out = capsys.readouterr()
         return code, out.out, out.err
@@ -68,21 +73,21 @@ def run(tmp_path, monkeypatch, capsys):
 def test_pending_files_are_applied_in_order(run):
     conn = FakeConn({})
     code, out, _ = run(conn)
-    assert code == 0 and conn.ran == ["CREATE TABLE a ();", "CREATE TABLE b (); BOOM"]
+    assert code == 0 and conn.ran == ["CREATE TABLE a ();", "CREATE TABLE b (); BOOM", "checkpointer status=False"]
     assert set(conn.applied) == {"0001_a", "0002_b"} and "2 migration(s) applied" in out
 
 
 def test_nothing_pending_and_drift_is_reported(run):
     conn = FakeConn({"0001_a": migrate._checksum("CREATE TABLE a ();"), "0002_b": "stale"})
     code, out, _ = run(conn)
-    assert code == 0 and conn.ran == []
+    assert code == 0 and conn.ran == ["checkpointer status=False"]
     assert "= 0001_a (applied earlier)" in out and "0002_b — DRIFT" in out and "up to date" in out
 
 
 def test_status_lists_pending_without_running(run):
     conn = FakeConn({"0001_a": migrate._checksum("CREATE TABLE a ();")})
     code, out, _ = run(conn, "--status")
-    assert code == 0 and conn.ran == [] and "+ 0002_b (pending)" in out and "1 migration(s) pending" in out
+    assert code == 0 and conn.ran == ["checkpointer status=True"] and "+ 0002_b (pending)" in out and "1 migration(s) pending" in out
     assert "= 0001_a (applied )" in out
 
 
@@ -91,6 +96,46 @@ def test_a_failing_file_stops_the_run(run):
     code, _, err = run(conn)
     assert code == 1 and "0002_b" not in conn.applied and "0001_a" in conn.applied
     assert "x 0002_b FAILED" in err and "no further migrations" in err
+    assert "checkpointer status=False" not in conn.ran
+
+
+class FakeSaver:
+    """PostgresSaver.from_conn_string's context manager, holding the checkpoint version it reports."""
+
+    def __init__(self, at: int | None):
+        self.at, self.set_up = at, False
+        saver = self
+
+        class Conn:
+            def execute(self, sql):
+                table = "checkpoint_migrations" if saver.at is not None else None
+                return SimpleNamespace(fetchone=lambda: {"t": table, "v": saver.at})
+
+        self.conn = Conn()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def setup(self):
+        self.set_up = True
+
+
+@pytest.mark.parametrize(("at", "shown"), [(None, "v- of"), (2, "v2 of"), (CHECKPOINT_VERSION, "up to date")])
+def test_checkpointer_status_reads_without_migrating(monkeypatch, capsys, at, shown):
+    saver = FakeSaver(at)
+    monkeypatch.setattr(PostgresSaver, "from_conn_string", lambda url: saver)
+    migrate.migrate_checkpointer("postgresql://fake", status_only=True)
+    assert not saver.set_up and shown in capsys.readouterr().out
+
+
+def test_checkpointer_migrates_after_the_sql_files(monkeypatch, capsys):
+    saver = FakeSaver(None)
+    monkeypatch.setattr(PostgresSaver, "from_conn_string", lambda url: saver)
+    migrate.migrate_checkpointer("postgresql://fake", status_only=False)
+    assert saver.set_up and f"checkpointer at v{CHECKPOINT_VERSION}" in capsys.readouterr().out
 
 
 def test_no_database_url(monkeypatch, capsys):
@@ -130,5 +175,7 @@ def test_the_runner_against_postgres_in_a_throwaway_schema(tmp_path, monkeypatch
             rows = admin.execute(f"SELECT version FROM {SCHEMA}.schema_migrations ORDER BY 1").fetchall()
             assert [r[0] for r in rows] == ["0001_t", "0002_u"]
             assert admin.execute(f"SELECT count(*) FROM {SCHEMA}.t").fetchone()[0] == 1
+            at = admin.execute(f"SELECT max(v) FROM {SCHEMA}.checkpoint_migrations").fetchone()[0]
+            assert at == CHECKPOINT_VERSION
         finally:
             admin.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")

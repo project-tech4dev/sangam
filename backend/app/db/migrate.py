@@ -30,7 +30,32 @@ def _checksum(sql: str) -> str:
     return hashlib.sha256(sql.encode()).hexdigest()[:16]
 
 
+def migrate_checkpointer(url: str, *, status_only: bool) -> None:
+    """LangGraph's own tables, after ours. Here, not at boot, so a langgraph upgrade migrates once, on purpose."""
+    from langgraph.checkpoint.postgres import PostgresSaver
+
+    from app.db.checkpointer import CHECKPOINT_VERSION
+
+    with PostgresSaver.from_conn_string(url) as saver:
+        if status_only:
+            conn = saver.conn
+            exists = conn.execute("SELECT to_regclass('checkpoint_migrations') AS t").fetchone()["t"]
+            at = conn.execute("SELECT max(v) AS v FROM checkpoint_migrations").fetchone()["v"] if exists else None
+            state = "up to date" if at == CHECKPOINT_VERSION else "pending"
+            say(f"  checkpointer v{at if at is not None else '-'} of v{CHECKPOINT_VERSION} ({state})")
+            return
+        saver.setup()
+        say(f"  checkpointer at v{CHECKPOINT_VERSION}")
+
+
 def main() -> int:
+    code = _apply_sql()
+    if code == 0:
+        migrate_checkpointer(os.environ["DATABASE_URL"], status_only="--status" in sys.argv)
+    return code
+
+
+def _apply_sql() -> int:
     url = os.environ.get("DATABASE_URL", "")
     if not url:
         print("DATABASE_URL is not set", file=sys.stderr)

@@ -1,6 +1,6 @@
 # Auth and pool cleanup
 
-Draft v1, 2026-10-21. Stacked on #284 (`perf/workspace-one-call`). The live document on this subject. It replaces the
+2026-10-21. Both milestones ship together in #285, as asked in review. Stacked on #284 (`perf/workspace-one-call`). The live document on this subject. It replaces the
 cold-start "known gaps" in `2026-10-10-page-load-performance.md` for the database side only. Bundle size stays there.
 
 ## 1. Goal
