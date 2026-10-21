@@ -30,3 +30,7 @@ End with three or four lines in plain words: what the file is, how many facts yo
 that a funder would ask about. If the file had no text you could read (a scanned image, an empty or locked file),
 add nothing and make your last message start with `UNREADABLE:` and the reason in a few words, for example
 `UNREADABLE: it is a scanned image with no text`. The person reads that reason on screen: name the file by its title, never by an id or number.
+
+If the file is a blank grant form (headings and questions for the applicant, with no answers under them), it is the
+funder's form uploaded in the wrong place: add nothing and make your last message start with
+`UNREADABLE: FORM — <the file's title> looks like the funder's form, not one of <the organisation>'s documents`.

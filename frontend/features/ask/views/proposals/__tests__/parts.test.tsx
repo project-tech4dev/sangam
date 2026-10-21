@@ -292,6 +292,49 @@ describe("FinishCard", () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
   });
 
+  it("fills the funder's form only when one was chosen, downloads it and reports each heading", async () => {
+    stubLocation();
+    const report = {
+      answered: ["4. Problem Statement"],
+      cut: { "5. Proposed strategy": ["54", "Goalpara"] },
+      as_written: ["6. Outcomes"],
+      add: ["7. Innovation"],
+      you_fill: ["PAN Card Number", "Table 3: Budget"],
+    };
+    const filled = { ...version, n: 2, title: "Version 2, in the Axis form", document_id: 78, shape: "form" as const, report };
+    let saved = { summary: proposal().summary, work: proposal().work };
+    call.mockImplementation(async (path: string, _method: string, body?: unknown) => {
+      if (path === "/api/proposals/3/versions") {
+        expect(body).toEqual({ shape: "form" });
+        return saved;
+      }
+      if (path === "/api/documents/78/file") return { url: "https://files.example/v2.docx" };
+      return [];
+    });
+    expect(render(<FinishCard proposal={proposal({ sections: written })} onSaved={vi.fn()} />).queryByRole("button", { name: /form/ })).toBeNull();
+    const template = { document_id: 5, url: null, from: "upload" as const, read_at: null };
+    saved = { summary: proposal().summary, work: { ...proposal().work, template, versions: [version, filled] } };
+    const onSaved = vi.fn();
+    const { rerender } = render(<FinishCard proposal={proposal({ sections: written, template })} onSaved={onSaved} />);
+    await userEvent.click(screen.getByRole("button", { name: "Download in the Axis form" }));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://files.example/v2.docx"));
+    rerender(<FinishCard proposal={proposal({ sections: written, template, versions: [version, filled] })} onSaved={onSaved} />);
+    const lines = within(screen.getByLabelText("What went into the form"));
+    expect(lines.getByText("Answered from your parts: 1 heading")).toBeInTheDocument();
+    expect(lines.getByText("Cut to fit: 1 heading")).toBeInTheDocument();
+    expect(lines.getByText("5. Proposed strategy: 54, Goalpara")).toBeInTheDocument();
+    expect(lines.getByText("Put in as written: 6. Outcomes")).toBeInTheDocument();
+    expect(lines.getByText("Sangam had nothing for: 7. Innovation, marked [Add]")).toBeInTheDocument();
+    expect(lines.getByText("Left for you: 2 headings, marked [You fill] in the file")).toBeInTheDocument();
+    expect(screen.getByText("Version 2, in the Axis form")).toBeInTheDocument();
+  });
+
+  it("has no form button when Sangam's usual order was chosen", () => {
+    const template = { document_id: 5, url: null, from: "upload" as const, read_at: null };
+    render(<FinishCard proposal={proposal({ sections: written, template, skipped_template: true })} onSaved={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /form/ })).toBeNull();
+  });
+
   it("says when the smoothed wording is out of date", () => {
     const polished = { parts: {}, revs: { A1: 2, A2: 0 }, at: "2026-10-09T00:00:00Z", by: { id: "u", name: "Asha" } };
     render(<FinishCard proposal={proposal({ sections: written, polished })} onSaved={vi.fn()} />);

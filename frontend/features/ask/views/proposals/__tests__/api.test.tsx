@@ -57,6 +57,7 @@ describe("proposal calls", () => {
     await api.advance(5);
     await api.polishProposal(5);
     await api.saveVersion(5);
+    await api.saveVersion(5, "form");
     await expect(api.versionLink(11)).resolves.toBe("https://f");
     const writes = call.mock.calls.filter(([path, method]) => !isList(path, method));
     expect(writes).toEqual([
@@ -68,10 +69,11 @@ describe("proposal calls", () => {
       ["/api/proposals/5/advance", "POST"],
       ["/api/proposals/5/polish", "POST"],
       ["/api/proposals/5/versions", "POST"],
+      ["/api/proposals/5/versions", "POST", { shape: "form" }],
       ["/api/documents/11/file"],
     ]);
-    // start, save twice, rename, advance and version each reload the list; polish does not.
-    expect(call.mock.calls.filter(([path, method]) => isList(path, method))).toHaveLength(6);
+    // start, save twice, rename, advance and both versions each reload the list; polish does not.
+    expect(call.mock.calls.filter(([path, method]) => isList(path, method))).toHaveLength(7);
   });
 
   it("reads the chat, and treats a missing one as empty", async () => {

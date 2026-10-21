@@ -41,6 +41,7 @@ FUNDER = "funder"  # work.readers' key for the funder's side; a file's key is it
 PUBLIC = "public"  # public research: the problem, the place, government and what worked elsewhere
 PLACES = 8
 UNREADABLE = "UNREADABLE:"  # a reader's last message starts with this when the file had nothing to read
+FORM = "FORM"  # ...followed by this when the file is a blank funder's form, which step 2 offers to use as one
 ERROR_TEXT = 160
 _PROMPTS = Path(__file__).parent / "prompts"
 
@@ -335,14 +336,18 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
                 raise result
             text = _last_text(result)
             error = _reason(text) if text.startswith(UNREADABLE) else None
+            is_form = key.isdigit() and error is not None and error.startswith(FORM)
+            if is_form:
+                error = error.removeprefix(FORM).lstrip(" —–-:")
         except Exception as exc:  # noqa: BLE001 - one file's failure never stops the others
             logger.warning("proposal reader %s failed (%s)", key, type(exc).__name__)
-            text, error = "", "something went wrong while reading it"
+            text, error, is_form = "", "something went wrong while reading it", False
         finally:
             PUBLIC_RUN.reset(public)
             run_sources.CURRENT.reset(token)
     outcome = {"status": "failed" if error else "done", "at": datetime.now(UTC).isoformat(), "by": by, "title": title,
-               **({"error": error} if error else {}), **({"unopened": sorted(run.unopened)} if run else {})}
+               **({"error": error} if error else {}), **({"looks_like_form": True} if is_form else {}),
+               **({"unopened": sorted(run.unopened)} if run else {})}
     marks: dict[str, dict[str, Any]] = {f"readers.{key}": outcome}
     added = 0
     if run is not None and not error:

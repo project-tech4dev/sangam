@@ -1,30 +1,36 @@
 "use client";
 
 import { useState } from "react";
+import { FileText } from "lucide-react";
 import { shortDate } from "@/lib/format";
-import { differencesFrom, polishProposal, type Proposal, type Saved, saveVersion, versionLink } from "./api";
+import { differencesFrom, type FormReport, polishProposal, type Proposal, type Saved, saveVersion, versionLink } from "./api";
 
-/** Step 4's last card: smooth the language under code's check, save it as a Word file in the Doc Vault, open any version. */
+const headings = (n: number) => (n === 1 ? "1 heading" : `${n} headings`);
+
+/** Step 5's last card: smooth the language under code's check, save a Word file in Sangam's order or the funder's form, open any version. */
 export function FinishCard({ proposal, onSaved }: { proposal: Proposal; onSaved: (saved: Saved) => void }) {
   const { work, can_edit: canEdit, summary } = proposal;
-  const [busy, setBusy] = useState<"polish" | "save" | null>(null);
+  const [busy, setBusy] = useState<"polish" | "save" | "form" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [differences, setDifferences] = useState<string[]>([]);
   const versions = [...(work.versions ?? [])].reverse();
+  const funder = proposal.funder.name;
+  const hasForm = Boolean(work.template) && !work.skipped_template;
+  const report = versions[0]?.shape === "form" ? versions[0].report : undefined;
   const written = proposal.sections.filter((s) => work.sections[s.code]?.text);
   const polished = work.polished;
   // A part changed after smoothing goes out as written, so the banner names how many.
   const changedSince = polished ? written.filter((s) => polished.revs[s.code] !== (work.sections[s.code]?.rev ?? 0)).length : 0;
 
-  async function act(kind: "polish" | "save") {
+  async function act(kind: "polish" | "save" | "form") {
     setBusy(kind);
     setProblem(null);
     setDifferences([]);
     try {
-      const saved = await (kind === "polish" ? polishProposal(proposal.id) : saveVersion(proposal.id));
+      const saved = await (kind === "polish" ? polishProposal(proposal.id) : saveVersion(proposal.id, kind === "form" ? "form" : "sangam"));
       onSaved(saved);
       const latest = saved.work.versions?.at(-1);
-      if (kind === "save" && latest) window.location.assign(await versionLink(latest.document_id));
+      if (kind !== "polish" && latest) window.location.assign(await versionLink(latest.document_id));
     } catch (error) {
       const refused = differencesFrom(error);
       if (refused?.length) setDifferences(refused);
@@ -58,10 +64,22 @@ export function FinishCard({ proposal, onSaved }: { proposal: Proposal; onSaved:
                 (changedSince ? ` ${changedSince === 1 ? "1 part has" : `${changedSince} parts have`} changed since and will go out as written; smooth it again to include ${changedSince === 1 ? "it" : "them"}.` : "")
               : "Smoothing the language makes the parts read as one document. Sangam then checks that no figure, place, name or gap changed, and keeps nothing if one did."}
           </p>
+          {hasForm && (
+            <p className="muted">
+              The {funder} form puts the written parts under its own headings. Sangam may shorten a part to fit a limit but never adds
+              to it; what it has nothing for is marked [Add], and fields, tables and annexes [You fill].
+            </p>
+          )}
           <div className="pr-next">
             <button className="btn btn-primary" type="button" disabled={busy !== null} onClick={() => void act("save")}>
               {busy === "save" ? "Saving…" : "Download as a Word file"}
             </button>
+            {hasForm && (
+              <button className="btn" type="button" disabled={busy !== null} onClick={() => void act("form")}>
+                <FileText className="icon icon-sm" />
+                {busy === "form" ? `Filling in the ${funder} form… about a minute` : `Download in the ${funder} form`}
+              </button>
+            )}
             <button className="btn" type="button" disabled={busy !== null} onClick={() => void act("polish")}>
               {busy === "polish" ? "Smoothing… about a minute" : polished ? "Smooth the language again" : "Smooth the language"}
             </button>
@@ -83,6 +101,7 @@ export function FinishCard({ proposal, onSaved }: { proposal: Proposal; onSaved:
           {problem}
         </p>
       )}
+      {report && <Report report={report} />}
       {versions.length ? (
         <ul className="pr-reads" aria-label="Saved versions">
           {versions.map((v) => (
@@ -99,6 +118,33 @@ export function FinishCard({ proposal, onSaved }: { proposal: Proposal; onSaved:
         </ul>
       ) : (
         <p className="muted">{written.length ? "No version saved yet. Each download is kept in your Doc Vault as the next version." : "Nothing is written yet."}</p>
+      )}
+    </div>
+  );
+}
+
+/** What went under the form's headings in the newest version, one line each, by the form's own numbers. */
+function Report({ report }: { report: FormReport }) {
+  const cut = Object.entries(report.cut);
+  return (
+    <div className="pr-report" aria-label="What went into the form">
+      <p className="pr-report-row">Answered from your parts: {headings(report.answered.length)}</p>
+      {cut.length > 0 && (
+        <details className="pr-report-row">
+          <summary>Cut to fit: {headings(cut.length)}</summary>
+          <ul className="pr-bars">
+            {cut.map(([heading, gone]) => (
+              <li key={heading}>
+                {heading}: {gone.join(", ")}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {report.as_written.length > 0 && <p className="pr-report-row">Put in as written: {report.as_written.join("; ")}</p>}
+      {report.add.length > 0 && <p className="pr-report-row">Sangam had nothing for: {report.add.join("; ")}, marked [Add]</p>}
+      {report.you_fill.length > 0 && (
+        <p className="pr-report-row">Left for you: {headings(report.you_fill.length)}, marked [You fill] in the file</p>
       )}
     </div>
   );

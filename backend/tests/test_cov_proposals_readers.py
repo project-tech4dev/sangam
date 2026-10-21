@@ -104,6 +104,17 @@ class TestRead:
         assert store["work"]["readers"]["41"] | {"status": "failed", "error": "It is a scan"} == \
             store["work"]["readers"]["41"]
 
+    async def test_a_funders_form_in_the_wrong_place_is_flagged_for_step_two(self, run):
+        store, setup = run
+        setup({"sources": [41]}, evidence="UNREADABLE: FORM — RF template looks like the funder's form, not one of "
+                                          "SeSTA's documents.\nNothing added.",
+              rows=[{"id": 41, "title": "RF template", "link": False}])
+        await readers.read(proposal({"sources": [41]}))
+        held = store["work"]["readers"]["41"]
+        assert held["status"] == "failed" and held["looks_like_form"] is True
+        assert held["error"] == "RF template looks like the funder's form, not one of SeSTA's documents"
+        assert "looks_like_form" not in store["work"]["readers"]["funder"]
+
     async def test_a_reader_that_raises_does_not_stop_the_others(self, run):
         store, setup = run
         setup({"sources": [41]}, evidence=RuntimeError("boom"), rows=[{"id": 41, "title": "W", "link": False}])
