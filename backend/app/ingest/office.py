@@ -30,6 +30,13 @@ def docx_paragraphs(data: bytes) -> list[str]:
     return out
 
 
+def docx_range(data: bytes, start: int = 1, end: int | None = None) -> tuple[str, int]:
+    """(paragraphs start..end, each led by [para N]; how many the file has), so a Word file pages like a PDF."""
+    paras = docx_paragraphs(data)
+    last = min(end or len(paras), len(paras))
+    return "\n".join(f"[para {n}] {paras[n - 1]}" for n in range(max(start, 1), last + 1)), len(paras)
+
+
 def xlsx_markdown(data: bytes) -> str:
     """Every sheet as a heading and its first rows, cells joined by `|`."""
     from openpyxl import load_workbook

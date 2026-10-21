@@ -212,10 +212,23 @@ class TestFunderDocuments:
             return "page text"
 
         monkeypatch.setattr(storage, "download", download)
-        monkeypatch.setattr(rt, "_pdf", pdf)
+        monkeypatch.setattr(rt, "_archived", pdf)
         out = await rt.read_funder_document.ainvoke({"document_id": 12, "start_page": 3, "end_page": 4})
         assert out == "page text"
         assert seen == {"where": (storage.SOURCE_ARCHIVE, "a/b.pdf"), "pages": (12, b"%PDF", 3, 4)}
+
+    async def test_a_word_file_is_read_by_paragraph(self, opened, monkeypatch):
+        from tests.test_cov_pipeline_vault_office_docs import docx_bytes
+
+        opened(proposal(), [("FROM documents", [{"id": 12, "title": "Call", "source_url": "u",
+                                                 "storage_path": f"{storage.SOURCE_ARCHIVE}/a/call.docx"}])])
+
+        async def download(bucket, key, max_bytes):
+            return docx_bytes(["Who may apply", "Registered NGOs with 12A"])
+
+        monkeypatch.setattr(storage, "download", download)
+        out = await rt.read_funder_document.ainvoke({"document_id": 12})
+        assert "2 paragraphs." in out and out.endswith("[para 1] Who may apply\n[para 2] Registered NGOs with 12A")
 
 
 class TestReadTemplate:

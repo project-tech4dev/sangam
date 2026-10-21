@@ -16,6 +16,7 @@ from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, running_a
 from tests.test_import_roles import MEMBER, STAFF
 
 URL = "https://example.org/csr"
+DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 SUMMARY = "Example Foundation funds sports and water projects in Assam."
 REAL_CLIENT = research_tools._client
 
@@ -141,6 +142,10 @@ class TestReadPage:
         out = await research_tools.read_page.ainvoke({"url": URL})
         assert "is a PDF (8 bytes). Use fetch_document" in out
 
+    async def test_a_word_file_points_at_fetch_document(self, monkeypatch):
+        web(monkeypatch, lambda r: httpx.Response(200, content=b"PK", headers={"content-type": DOCX}))
+        assert "is a Word file (2 bytes). Use fetch_document" in await research_tools.read_page.ainvoke({"url": URL})
+
     async def test_an_empty_page(self, monkeypatch):
         web(monkeypatch, lambda r: httpx.Response(200, text="   ", headers={"content-type": "text/plain"}))
         assert (await research_tools.read_page.ainvoke({"url": URL})).startswith("No readable text")
@@ -204,6 +209,12 @@ class TestFetchDocument:
         assert (downloads / "ar.pdf").read_bytes() == b"%PDF-1.4 body"
         assert offline.uploads[0][3] == "application/pdf"
 
+    async def test_a_word_file_without_its_extension_gets_one(self, monkeypatch, downloads, offline):
+        web(monkeypatch, lambda r: httpx.Response(200, content=b"PK body", headers={"content-type": DOCX}))
+        out = await research_tools.fetch_document.ainvoke({"url": "https://example.org/download/form"})
+        assert out == "Saved form.docx (7 bytes). Read it with read_document_pages('form.docx')."
+        assert (downloads / "form.docx").read_bytes() == b"PK body" and not (downloads / "form").exists()
+
     async def test_a_refused_url(self, monkeypatch):
         async def refuse(url):
             return "held"
@@ -251,6 +262,20 @@ class TestReadDocumentPages:
         monkeypatch.setattr(research_tools, "extract_pdf_text", bad)
         out = research_tools.read_document_pages.invoke({"filename": "ar.pdf"})
         assert out == "ERROR: ar.pdf could not be read as a PDF (ValueError: EOF marker not found)."
+
+    def test_a_word_file_is_read_by_paragraph(self, downloads):
+        from tests.test_cov_pipeline_vault_office_docs import docx_bytes
+
+        (downloads / "form.docx").write_bytes(docx_bytes(["1. Problem statement", "2. Budget"]))
+        out = research_tools.read_document_pages.invoke({"filename": "form.docx", "start_page": 2})
+        assert out == "[form.docx: 2 paragraphs]\n\n[para 2] 2. Budget"
+        assert research_tools.read_document_pages.invoke(
+            {"filename": "form.docx", "start_page": 5}) == "form.docx has no text in that range."
+
+    def test_a_damaged_word_file(self, downloads):
+        (downloads / "bad.docx").write_bytes(b"not a zip")
+        out = research_tools.read_document_pages.invoke({"filename": "bad.docx"})
+        assert out.startswith("ERROR: bad.docx could not be read as a Word file (")
 
     def test_a_scanned_range(self, monkeypatch):
         monkeypatch.setattr(research_tools, "extract_pdf_text", lambda p, s, e: ("", 7))
