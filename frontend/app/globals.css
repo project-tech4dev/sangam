@@ -1019,6 +1019,8 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .pr-cite { color: var(--color-accent-2-700); font-weight: 600; cursor: help; padding-left: 1px; }
 .pr-gap { padding: 0 4px; border-radius: var(--radius-row); background: var(--color-accent-100); color: var(--color-accent-750); }
 .pr-sources { margin: 0; padding-left: 18px; font-size: var(--fs-xs); color: var(--color-neutral-700); display: flex; flex-direction: column; gap: 2px; }
+.pr-research { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
+.pr-research-text { margin: 0; line-height: 1.6; }
 .pr-edit { display: flex; flex-direction: column; gap: 8px; }
 textarea.pr-edit-box { min-height: 180px; field-sizing: content; font-size: var(--fs-md); line-height: 1.6; }
 .pr-covers { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1036,7 +1038,7 @@ textarea.pr-edit-box { min-height: 180px; field-sizing: content; font-size: var(
 .pr-tab { display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; border: none; background: none; padding: 10px 14px; margin-bottom: -1px; border-bottom: 2px solid transparent; font: inherit; font-weight: 600; color: var(--color-neutral-600); cursor: pointer; }
 .pr-tab:hover { color: var(--color-neutral-900); }
 .pr-tab[aria-selected="true"] { color: var(--color-accent-2-900); border-bottom-color: var(--color-accent-2-700); }
-.pr-tab-actions { display: flex; justify-content: flex-end; }
+.pr-tab-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .pr-tab-score { font-size: var(--fs-xs); color: var(--color-neutral-600); background: var(--color-neutral-100); border-radius: var(--radius-pill); padding: 0 8px; font-variant-numeric: tabular-nums; }
 .pr-body { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; align-items: start; }
 .pr-parts { display: flex; flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--color-divider); border-radius: var(--radius-surface); position: sticky; top: 0; }

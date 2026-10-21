@@ -77,7 +77,7 @@ def stable(p: Current) -> str:
     return "\n".join([
         "## This proposal",
         f"\"{p.title}\": {p.org_name} [org:{p.org_id}] asking {p.funder_name} [funder:{p.funder_id}].",
-        f"Step {stage} of 4: {steps.STAGES.get(stage, '')}.",
+        f"Step {stage} of {steps.LAST}: {steps.STAGES.get(stage, '')}.",
         "What the funder requires, and the answers so far:", *requirements(p.work),
         f"Form: {form(p.work)}.",
         "Sections:", *states,

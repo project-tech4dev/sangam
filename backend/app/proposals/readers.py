@@ -27,7 +27,7 @@ from app.db.pool import get_pool
 from app.ingest import run_sources
 from app.ingest.middleware import RunSources, fallback
 from app.integrations.tracing import trace_config
-from app.proposals import context, steps
+from app.proposals import context, research, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.proposals.middleware import PUBLIC_RUN, PublicGuard, PublicRun
@@ -49,6 +49,7 @@ class _Built:
     evidence: Any = None
     funder: Any = None
     public: Any = None  # None without a search key: then public research is simply not run
+    summary: Any = None  # writes secondary research's paragraph per topic
     parallel: int = 1
     trace: dict[str, Any] | None = None
 
@@ -82,6 +83,7 @@ def build(settings: Settings, evidence_tools: list[Any], funder_tools: list[Any]
     BUILT.funder = reader(funder_tools, "funder_file_reader.md")
     BUILT.public = (reader(public_tools, "public_researcher.md", PublicGuard())
                     if public_tools and settings.tavily_api_key else None)
+    BUILT.summary = resolve_model(settings.utility_model)
     BUILT.parallel = max(1, settings.max_parallel_research)
     BUILT.trace = trace_config(settings, name="sangam_proposal_reader", tags=("proposal", "reader"))
 
@@ -259,8 +261,20 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
             run_sources.CURRENT.reset(token)
     outcome = {"status": "failed" if error else "done", "at": datetime.now(UTC).isoformat(), "by": by, "title": title,
                **({"error": error} if error else {}), **({"unopened": sorted(run.unopened)} if run else {})}
+    if run is not None and not error:
+        outcome["summaries"] = await _summaries(p.id)
     await _mark(p.id, {key: outcome}, by, "could not read it" if error else "read it")
     return f"{title}: could not read it ({error})." if error else f"{title}: read.\n{text}"
+
+
+async def _summaries(proposal_id: int) -> dict[str, str]:
+    """Read after the run, so the paragraphs cover every fact it added; a failure leaves the facts unsummarised."""
+    try:
+        row = await repo.load(get_pool(), proposal_id)
+        return await research.summarise((row or {}).get("work") or {}, BUILT.summary) if row else {}
+    except Exception as exc:  # noqa: BLE001 - the search itself succeeded
+        logger.warning("secondary research summaries failed (%s)", type(exc).__name__)
+        return {}
 
 
 class _NothingToRead(Exception):

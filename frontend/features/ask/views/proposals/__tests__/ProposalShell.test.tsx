@@ -170,6 +170,18 @@ describe("ProposalShell", () => {
     await userEvent.click(within(steps).getByRole("button", { name: /Can you apply/ }));
     expect(workCalls()).toContainEqual({ set: { stage: 1 }, rev: {} });
   });
+
+  it("jumps ahead to any step the steps before it allow", async () => {
+    serve(proposal({ stage: 2 }, { summary: { ...proposal().summary, furthest: 4 } }), {
+      "POST /api/proposals/3/advance?to=4": () => ({ summary: server.summary, work: { ...server.work, stage: 4 } }),
+    });
+    renderShell();
+    const steps = await screen.findByRole("list", { name: "Steps" });
+    expect(within(steps).getByRole("button", { name: /Before you send it/ })).toBeDisabled();
+    await userEvent.click(within(steps).getByRole("button", { name: /Make a plan/ }));
+    expect(call).toHaveBeenCalledWith("/api/proposals/3/advance?to=4", "POST");
+    expect(within(steps).getByRole("button", { name: /Make a plan/ })).toHaveAttribute("aria-current", "step");
+  });
 });
 
 describe("step 2: documents and style", () => {
@@ -239,13 +251,12 @@ describe("step 2: documents and style", () => {
     expect(screen.getByRole("link", { name: "open" })).toHaveAttribute("href", "https://axis.example/form");
   });
 
-  it("asks Sangam Pitch to write the first draft and to search public sources", async () => {
+  it("asks Sangam Pitch to write the first draft; secondary research waits for step 3", async () => {
     serve(proposal({ stage: 2 }));
     renderShell();
     await userEvent.click(await screen.findByRole("button", { name: "Write the first draft" }));
     expect(chat.send).toHaveBeenCalledWith("Write the first draft.");
-    await userEvent.click(screen.getByRole("button", { name: "Search public sources" }));
-    expect(chat.send).toHaveBeenCalledWith("Search public sources.");
+    expect(screen.queryByRole("button", { name: "Search public sources" })).toBeNull();
   });
 
   it("waits for the chat before the buttons work", async () => {
@@ -253,7 +264,7 @@ describe("step 2: documents and style", () => {
     serve(proposal({ stage: 2 }));
     renderShell();
     expect(await screen.findByRole("button", { name: "Write the first draft" })).toBeDisabled();
-    expect(screen.getAllByText("Wait for Sangam Pitch to finish its answer.")).toHaveLength(2);
+    expect(screen.getAllByText("Wait for Sangam Pitch to finish its answer.")).toHaveLength(1);
   });
 
   it("shows each file being read, failed reads and files ticked since", async () => {
@@ -293,45 +304,9 @@ describe("step 2: documents and style", () => {
     await act(() => vi.advanceTimersByTimeAsync(5000));
     expect(loads()).toBe(before + 1);
   });
-
-  it("groups public research by topic, with its status", async () => {
-    const fact = (subject: string, over: object) => ({ subject, value: "v", origin: "web", tier: "amber", status: "proposed", found_by: "public", ...over });
-    const work = {
-      stage: 2,
-      readers: { public: { status: "done", at: "2026-10-05T00:00:00Z", title: "Public", unopened: ["slow.gov.in"] } },
-      facts: {
-        k1: fact("Stunting rate", { topic: "problem" }),
-        k2: fact("SDG 4", { section: "F1" }),
-        k3: fact("Samagra Shiksha", { section: "F1" }),
-        k4: fact("Assam literacy", { section: "A2" }),
-        k5: fact("Dropped", { status: "rejected", topic: "problem" }),
-      },
-    } as Partial<Work>;
-    serve(proposal(work));
-    renderShell();
-    expect(await screen.findByText(/Searched .* · 4 facts/)).toBeInTheDocument();
-    expect(screen.getByText("The problem, measured · 1")).toBeInTheDocument();
-    expect(screen.getByText("SDGs · 1")).toBeInTheDocument();
-    expect(screen.getByText("What government does · 1")).toBeInTheDocument();
-    expect(screen.getByText("Why this place · 1")).toBeInTheDocument();
-    expect(screen.getByText("What worked elsewhere · none found")).toBeInTheDocument();
-    expect(screen.getByText("Couldn't open: slow.gov.in")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Search again" })).toBeInTheDocument();
-  });
-
-  it("says when public research is running or failed", async () => {
-    serve(proposal({ stage: 2, readers: { public: { status: "running", at: "x", title: "Public" } } }));
-    const { unmount } = renderShell();
-    expect(await screen.findByText(/A teammate started the search/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Search/ })).toBeNull();
-    unmount();
-    serve(proposal({ stage: 2, readers: { public: { status: "failed", at: "x", title: "Public", error: "timeout" } } }));
-    renderShell();
-    expect(await screen.findByText("! The search did not finish: timeout.")).toBeInTheDocument();
-  });
 });
 
-describe("step 3: writing", () => {
+describe("step 4: make a plan", () => {
   const sections = {
     A1: { text: "Reach is 500 ⟦k1⟧. [Add: dropout rate]", score: 1, rev: 2, missing: ["place"] },
     A2: { text: "Assam", done: true, score: 2 },
@@ -340,11 +315,11 @@ describe("step 3: writing", () => {
   const facts = { k1: { subject: "Reach", value: "500", origin: "vault", tier: "green", status: "proposed", section: "A1", source_name: "Annual report", page: 4 } } as Work["facts"];
 
   it("opens the first part, scores the tabs and tells Sangam Pitch the part", async () => {
-    serve(proposal({ stage: 3, sections, facts }));
+    serve(proposal({ stage: 4, sections, facts }));
     renderShell();
     expect(await screen.findByRole("tab", { name: /Need\s*3\/4/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByRole("tab", { name: /Unused/ })).toBeNull();
-    await waitFor(() => expect(screen.getByTestId("chat")).toHaveTextContent("Write the proposal|A1"));
+    await waitFor(() => expect(screen.getByTestId("chat")).toHaveTextContent("Make a plan|A1"));
     const parts = screen.getByRole("navigation", { name: "Parts" });
     expect(within(parts).getByLabelText("Scored 1 of 2")).toBeInTheDocument();
     expect(within(parts).getByLabelText("Done")).toBeInTheDocument();
@@ -353,14 +328,14 @@ describe("step 3: writing", () => {
     await userEvent.click(screen.getByRole("button", { name: "Write Need again" }));
     expect(chat.send).toHaveBeenCalledWith("Write Need.");
     await userEvent.click(within(parts).getByRole("button", { name: /Place/ }));
-    await waitFor(() => expect(screen.getByTestId("chat")).toHaveTextContent("Write the proposal|A2"));
+    await waitFor(() => expect(screen.getByTestId("chat")).toHaveTextContent("Make a plan|A2"));
     await userEvent.click(screen.getByRole("tab", { name: /Money/ }));
     expect(await screen.findByRole("tab", { name: /Money/ })).toHaveAttribute("aria-selected", "true");
     expect(within(screen.getByRole("navigation", { name: "Parts" })).getByLabelText("Written, not checked")).toBeInTheDocument();
   });
 
   it("shows a reader the draft or that it is not written", async () => {
-    serve(proposal({ stage: 3, sections: { A1: sections.A1 }, facts }, { can_edit: false }));
+    serve(proposal({ stage: 4, sections: { A1: sections.A1 }, facts }, { can_edit: false }));
     renderShell();
     expect(await screen.findByRole("list", { name: "Sources" })).toHaveTextContent("Reach: 500 · Annual report, page 4");
     expect(screen.queryByRole("button", { name: /Write Need/ })).toBeNull();
@@ -370,12 +345,12 @@ describe("step 3: writing", () => {
   });
 });
 
-describe("step 4: before you send it", () => {
+describe("step 5: before you send it", () => {
   it("lists what to fix, rewrites changed parts and confirms every fact", async () => {
     const used = (subject: string) => ({ subject, value: "v", origin: "vault", tier: "green", status: "proposed", used_in: ["A1"] });
     serve(
       proposal(
-        { stage: 4, sections: { A1: { text: "x", needs_rewrite: true } }, facts: { k1: used("Reach"), k2: used("Girls") } as Work["facts"] },
+        { stage: 5, sections: { A1: { text: "x", needs_rewrite: true } }, facts: { k1: used("Reach"), k2: used("Girls") } as Work["facts"] },
         { summary: { ...proposal().summary, fix_first: ["Fill 2 gaps"], worth_checking: [] } },
       ),
     );
@@ -390,10 +365,113 @@ describe("step 4: before you send it", () => {
   });
 
   it("says when nothing stops it", async () => {
-    serve(proposal({ stage: 4 }, { summary: { ...proposal().summary, ready: true, worth_checking: ["Check the budget"] } }));
+    serve(proposal({ stage: 5 }, { summary: { ...proposal().summary, ready: true, worth_checking: ["Check the budget"] } }));
     renderShell();
     expect(await screen.findByText(/Nothing stops this proposal/)).toBeInTheDocument();
     expect(screen.getByText("Nothing to fix.")).toBeInTheDocument();
     expect(screen.getByText("Check the budget")).toBeInTheDocument();
+  });
+});
+
+describe("step 3: make a case", () => {
+  // The case's own parts: the Summary, written last, and the place.
+  const caseSections: Proposal["sections"] = [
+    { code: "A1", label: "Summary", question: "Two sentences?", tab: "case", strong: [], weak: "", must_score_2: false, last: true, step: 3 },
+    { code: "A2", label: "Context and target area", question: "Where?", tab: "case", strong: [], weak: "", must_score_2: false, last: false, step: 3 },
+    { code: "A4", label: "Objectives and results", question: "What changes?", tab: "plan", strong: [], weak: "", must_score_2: false, last: false, step: 4 },
+  ];
+  const caseTabs = [
+    { key: "case", label: "The case", step: 3 },
+    { key: "plan", label: "Objectives and plan", step: 4 },
+  ];
+  const onCase = (work: Partial<Work>, over: Partial<Proposal> = {}) =>
+    proposal({ stage: 3, ...work }, { sections: caseSections, tabs: caseTabs, ...over });
+  const fact = (subject: string, over: object) => ({ subject, value: "v", origin: "web", tier: "amber", status: "proposed", found_by: "public", ...over });
+
+  it("shows only the case's parts, and the Summary waits for the plan", async () => {
+    serve(onCase({ sections: { A2: { text: "Udalguri" } } }));
+    renderShell();
+    expect(await screen.findByRole("tab", { name: /The case\s*0\/4/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tab", { name: /Objectives and plan/ })).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("chat")).toHaveTextContent("Make a case|A2"));
+    expect(screen.queryByText(/Written after your plan/)).toBeNull();
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Parts" })).getByRole("button", { name: /Summary/ }));
+    expect(screen.getByText(/Written after your plan.*1 part is still/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("chat")).toHaveTextContent("Make a case|A1"));
+    expect(screen.queryByRole("button", { name: "Write the Summary" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Write the case again" }));
+    expect(chat.send).toHaveBeenCalledWith("Write the case.");
+  });
+
+  it("offers to write the Summary once every other part is written", async () => {
+    serve(onCase({ sections: { A2: { text: "Udalguri" }, A4: { text: "Fewer dropouts" } } }));
+    renderShell();
+    await userEvent.click(await screen.findByRole("button", { name: "Write the Summary" }));
+    expect(chat.send).toHaveBeenCalledWith("Write the Summary.");
+    expect(screen.queryByText(/Written after your plan/)).toBeNull();
+  });
+
+  it("summarises each topic with numbered sources, used or dropped as a whole", async () => {
+    const work = {
+      readers: {
+        public: {
+          status: "done",
+          at: "2026-10-05T00:00:00Z",
+          title: "Public",
+          unopened: ["slow.gov.in"],
+          summaries: { problem: "Dropout is 19.8% ⟦k2⟧ against 15.1% ⟦k1⟧ ⟦k9⟧." },
+        },
+      },
+      facts: {
+        k1: fact("Assam dropout", { topic: "problem", value: "15.1%", source_name: "UDISE+", source_url: "https://udiseplus.gov.in/r", as_of: "2023-24" }),
+        k2: fact("Udalguri dropout", { topic: "problem", value: "19.8%", source_name: "UDISE+ district" }),
+        k3: fact("Stunting", { topic: "problem", value: "30%" }),
+        k4: fact("SDG 4", { section: "F1" }),
+        k5: fact("Dropped", { status: "rejected", topic: "place" }),
+      },
+    } as Partial<Work>;
+    serve(onCase(work));
+    renderShell();
+    expect(await screen.findByText(/Searched .* · 4 sources/)).toBeInTheDocument();
+    expect(screen.getByText("The problem, measured · 3 sources")).toBeInTheDocument();
+    expect(screen.getByText("Dropout is 19.8% [1] against 15.1% [2].")).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Sources for The problem, measured" });
+    const items = within(list).getAllByRole("listitem").map((li) => li.textContent);
+    expect(items).toEqual(["UDISE+ district · Udalguri dropout: 19.8%", "UDISE+ · Assam dropout: 15.1% (2023-24)", "A public source · Stunting: 30%"]);
+    expect(within(list).getByRole("link", { name: "UDISE+" })).toHaveAttribute("href", "https://udiseplus.gov.in/r");
+    expect(screen.getByText("SDGs · 1 source")).toBeInTheDocument();
+    expect(screen.getAllByText("No summary for this topic yet. Search again to write one.")).toHaveLength(1);
+    expect(screen.getByText("Why this place · not used")).toBeInTheDocument();
+    expect(screen.getByText("What worked elsewhere · none found")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't open: slow.gov.in")).toBeInTheDocument();
+
+    const problem = screen.getByText("The problem, measured · 3 sources").closest("details")!;
+    await userEvent.click(within(problem).getByRole("button", { name: "Use this" }));
+    expect(workCalls()).toContainEqual({ set: { "facts.k1.status": "confirmed", "facts.k2.status": "confirmed", "facts.k3.status": "confirmed" }, rev: {} });
+    await userEvent.click(within(problem).getByRole("button", { name: "Don't use" }));
+    expect(workCalls()).toContainEqual({ set: { "facts.k1.status": "rejected", "facts.k2.status": "rejected", "facts.k3.status": "rejected" }, rev: {} });
+    await userEvent.click(screen.getByRole("button", { name: "Use it after all" }));
+    expect(workCalls()).toContainEqual({ set: { "facts.k5.status": "proposed" }, rev: {} });
+    await userEvent.click(screen.getByRole("button", { name: "Search again" }));
+    expect(chat.send).toHaveBeenCalledWith("Search public sources.");
+  });
+
+  it("marks a topic in use and keeps only Don't use", async () => {
+    serve(onCase({ readers: { public: { status: "done", at: "2026-10-05T00:00:00Z", title: "Public" } }, facts: { k1: fact("SDG 4", { topic: "sdg", status: "confirmed" }) } as Work["facts"] }));
+    renderShell();
+    const sdg = (await screen.findByText("SDGs · 1 source · ✓ using it")).closest("details")!;
+    expect(within(sdg).queryByRole("button", { name: "Use this" })).toBeNull();
+    expect(within(sdg).getByRole("button", { name: "Don't use" })).toBeInTheDocument();
+  });
+
+  it("says when secondary research is running or failed", async () => {
+    serve(onCase({ readers: { public: { status: "running", at: "x", title: "Public" } } }));
+    const { unmount } = renderShell();
+    expect(await screen.findByText(/A teammate started the search/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Search/ })).toBeNull();
+    unmount();
+    serve(onCase({ readers: { public: { status: "failed", at: "x", title: "Public", error: "timeout" } } }));
+    renderShell();
+    expect(await screen.findByText("! The search did not finish: timeout.")).toBeInTheDocument();
   });
 });

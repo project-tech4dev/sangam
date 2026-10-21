@@ -154,6 +154,47 @@ class TestRead:
         assert sources.web and public.avoid == ("SeSTA",)
         assert graphs.evidence.asked == [] and list(store["work"]["readers"]) == ["public"]
         assert store["work"]["readers"]["public"]["unopened"] == []
+        assert store["work"]["readers"]["public"]["summaries"] == {}
+
+    async def test_public_research_ends_with_a_paragraph_per_topic(self, run, monkeypatch):
+        store, setup = run
+        setup({"facts": {"k1": {"subject": "dropout", "value": "19.8%", "topic": "problem", "found_by": "public",
+                                "status": "proposed"}}}, public="Found 1 public fact.")
+        seen = []
+
+        async def load(pool, proposal_id):
+            return {"work": store["work"]}
+
+        async def summarise(work, model):
+            seen.append((list(work["facts"]), model))
+            return {"problem": "Dropout is 19.8% ⟦k1⟧."}
+
+        async def facts(pool, owner, org_id):
+            return None
+
+        monkeypatch.setattr(readers.BUILT, "summary", "utility")
+        monkeypatch.setattr(repo, "load", load)
+        monkeypatch.setattr(readers.research, "summarise", summarise)
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        await readers.read(proposal({}), public=True)
+        assert seen == [(["k1"], "utility")]
+        assert store["work"]["readers"]["public"]["summaries"] == {"problem": "Dropout is 19.8% ⟦k1⟧."}
+
+    async def test_a_failed_summary_still_marks_the_search_done(self, run, monkeypatch):
+        store, setup = run
+        setup({}, public="Found nothing.")
+
+        async def load(pool, proposal_id):
+            raise RuntimeError("db down")
+
+        async def facts(pool, owner, org_id):
+            return None
+
+        monkeypatch.setattr(repo, "load", load)
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        await readers.read(proposal({}), public=True)
+        assert store["work"]["readers"]["public"]["status"] == "done"
+        assert store["work"]["readers"]["public"]["summaries"] == {}
 
 
 class TestPublicInputs:

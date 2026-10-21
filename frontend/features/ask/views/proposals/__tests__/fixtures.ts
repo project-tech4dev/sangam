@@ -27,14 +27,14 @@ export function proposal(work: Partial<Work> = {}, over: Partial<Proposal> = {})
       ...work,
     },
     sections: [
-      { code: "A1", label: "Problem", question: "What problem?", tab: "need", strong: ["data", "place"], weak: "vague", must_score_2: true, last: false },
-      { code: "A2", label: "Place", question: "Where?", tab: "need", strong: [], weak: "thin", must_score_2: false, last: false },
-      { code: "B1", label: "Budget", question: "How much?", tab: "money", strong: [], weak: "none", must_score_2: false, last: true },
+      { code: "A1", label: "Problem", question: "What problem?", tab: "need", strong: ["data", "place"], weak: "vague", must_score_2: true, last: false, step: 4 },
+      { code: "A2", label: "Place", question: "Where?", tab: "need", strong: [], weak: "thin", must_score_2: false, last: false, step: 4 },
+      { code: "B1", label: "Budget", question: "How much?", tab: "money", strong: [], weak: "none", must_score_2: false, last: true, step: 4 },
     ],
     tabs: [
-      { key: "need", label: "Need" },
-      { key: "money", label: "Money" },
-      { key: "unused", label: "Unused" },
+      { key: "need", label: "Need", step: 4 },
+      { key: "money", label: "Money", step: 4 },
+      { key: "unused", label: "Unused", step: 4 },
     ],
     ...over,
   };

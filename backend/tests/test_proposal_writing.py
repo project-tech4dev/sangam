@@ -68,6 +68,9 @@ class TestTheOrder:
         written = {s.code: {"text": "x"} for s in rubric.CORE if s.code not in ("A1", "A14")}
         assert "Sustainability and exit [A14]" in steps.may_write({"sections": written}, "A1", None)
 
+    def test_the_summary_waits_even_when_it_is_on_screen(self):
+        assert "Context and target area [A2]" in steps.may_write({}, "A1", "A1")
+
 
 class TestScoring:
     def test_none_missing_scores_two_one_scores_one_more_scores_zero(self):

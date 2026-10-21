@@ -103,7 +103,10 @@ def test_a_step_goes_back_by_patch_and_forward_only_by_advance():
     assert rules.apply(later, {"stage": 1}, by=RAVI).work["stage"] == 1
     with pytest.raises(rules.BadChange):
         rules.apply(_work(stage=1), {"stage": 3}, by=RAVI, advance=True)
-    assert rules.apply(_work(stage=1), {"stage": 2}, by=RAVI, advance=True).work["stage"] == 2
+    answered = {"12a": "yes", "csr1": "yes"}
+    assert rules.apply(_work(gates=answered), {"stage": 2}, by=RAVI, advance=True).work["stage"] == 2
+    with pytest.raises(rules.BadChange, match="to go on"):
+        rules.apply(_work(stage=2), {"stage": 4}, by=RAVI, advance=True)
 
 
 def test_the_summary_is_recomputed_from_the_new_work():

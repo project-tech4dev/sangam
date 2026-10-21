@@ -8,7 +8,10 @@ from typing import Any
 from app.proposals import readiness, rubric
 
 # The screen's names for work.stage, as frontend/features/ask/views/proposals/steps.ts writes them.
-STAGES = {1: "Can you apply?", 2: "Your documents and style", 3: "Write the proposal", 4: "Before you send it"}
+STAGES = {1: "Can you apply?", 2: "Your documents and style", 3: "Make a case", 4: "Make a plan",
+          5: "Before you send it"}
+LAST = max(STAGES)
+CASE_FIRST = ("A2", "A3")  # the place and the problem; the Summary waits for the plan
 
 
 def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
@@ -34,8 +37,25 @@ def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
             missing.append("wait until the files are read")
         return missing
     if stage == 3:
+        saved = work.get("sections") or {}
+        labels = {s.code: s.label for s in rubric.CORE}
+        return [f"write {labels[c]}" for c in CASE_FIRST if not ((saved.get(c) or {}).get("text") or "").strip()]
+    if stage == 4:
         return []
     return ["this is the last step"]
+
+
+def blocking(work: dict[str, Any], to: int) -> list[str]:
+    """What stops a jump from the open step to `to`: every step passed on the way must be leavable."""
+    return next((m for s in range(int(work.get("stage") or 1), to) if (m := exit_check(s, work))), [])
+
+
+def furthest(work: dict[str, Any]) -> int:
+    """The last step the person can click to from here."""
+    stage = int(work.get("stage") or 1)
+    while stage < LAST and not exit_check(stage, work):
+        stage += 1
+    return stage
 
 
 # The step each writing tool may first be used on; the tools check, not the prompt.
@@ -58,8 +78,9 @@ def too_early(tool: str, stage: int) -> str | None:
 
 
 def may_write(work: dict[str, Any], code: str, on_screen: str | None) -> str | None:
-    """Sections are written in DEPENDS_ON order, unless the person has this one open: then it is their pick."""
-    if code == on_screen:
+    """Sections are written in DEPENDS_ON order, unless the person has this one open: then it is their pick.
+    The Summary is the exception: it sums up the plan, so it always waits for every other part."""
+    if code == on_screen and code != "A1":
         return None
     codes = [s.code for s in rubric.sections_for(bool(work.get("earlier_phase")), work.get("template"))]
     saved = work.get("sections") or {}

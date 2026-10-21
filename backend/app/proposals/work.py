@@ -14,9 +14,9 @@ from typing import Any
 
 from app.proposals import facts as fact_rules
 from app.proposals import questions as question_rules
-from app.proposals import readiness, reliability, review, rubric, trace
+from app.proposals import readiness, reliability, review, rubric, steps, trace
 
-STAGES = (1, 2, 3, 4)  # 4 is "Before you send it"
+STAGES = tuple(steps.STAGES)
 FACT_STATUS = ("proposed", "confirmed", "corrected", "rejected")
 LOG_TEXT = 200  # a logged value longer than this is cut; the section itself keeps it all
 TEXT_LIMIT = 12000
@@ -62,8 +62,10 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
             raise BadChange("an answer is yes, will_have, no or null")
     elif path == "stage":
         current = work.get("stage", 1)
-        if value not in STAGES or (value != current + 1 if advance else value > current):
+        if value not in STAGES or (value <= current if advance else value > current):
             raise BadChange("a step is moved forward by POST /advance; PATCH only goes back")
+        if advance and (missing := steps.blocking(work, value)):
+            raise BadChange(f"to go on, {'; '.join(missing)}")
     elif path == "template":
         if value is not None and not (isinstance(value, dict) and isinstance(value.get("document_id"), int)):
             raise BadChange("template is null or an object with a document_id")

@@ -93,4 +93,5 @@ def summary(work: dict[str, Any]) -> dict[str, Any]:
         "worth_checking": worth_checking,
         "ready": not fix_first,
         "to_continue": steps.exit_check(work.get("stage", 1), work),
+        "furthest": steps.furthest(work),
     }

@@ -19,6 +19,8 @@ export type Summary = {
   ready: boolean;
   /** What stops the open step being left, in words; empty when Next is allowed. */
   to_continue?: string[];
+  /** The last step a click can jump to: every step before it can be left. */
+  furthest?: number;
 };
 
 export type Work = {
@@ -54,7 +56,16 @@ export type Part = {
 /** A saved Word file in the org's Doc Vault. */
 export type Version = { n: number; title: string; document_id: number; at: string; by: { id: string; name: string } };
 
-export type Reader = { status: "running" | "done" | "failed"; at: string; by?: { id: string; name: string }; title: string; error?: string; unopened?: string[] };
+export type Reader = {
+  status: "running" | "done" | "failed";
+  at: string;
+  by?: { id: string; name: string };
+  title: string;
+  error?: string;
+  unopened?: string[];
+  /** Secondary research only: one paragraph per topic, citing its facts as ⟦kN⟧. */
+  summaries?: Partial<Record<NonNullable<Fact["topic"]>, string>>;
+};
 
 /** One fact in the proposal's list; the screen shows its standing and source in words, never its id or marker. */
 export type Fact = {
@@ -67,10 +78,11 @@ export type Fact = {
   as_of?: string;
   marker?: string;
   source_name?: string;
+  source_url?: string;
   page?: number;
   said_by?: { id: string; name: string };
   document_id?: number;
-  /** "public" when public research found it, quoted from a page it read. */
+  /** "public" when secondary research found it, quoted from a page it read. */
   found_by?: "public";
   topic?: "problem" | "place" | "government" | "sdg" | "elsewhere";
   /** The parts whose text cites it. */
@@ -99,8 +111,10 @@ export type Section = {
   must_score_2: boolean;
   /** Written last, from the finished parts. */
   last: boolean;
+  /** 3, Make a case, or 4, Make a plan. */
+  step: number;
 };
-export type Tab = { key: string; label: string };
+export type Tab = { key: string; label: string; step: number };
 export type Proposal = ProposalItem & { /** The caller's own chat; teammates each have theirs. */ thread_id: string; work: Work; sections: Section[]; tabs: Tab[] };
 export type Saved = { summary: Summary; work: Work };
 export type ChangedBy = { by: { id: string; name: string }; at: string } | null;
@@ -161,8 +175,8 @@ export async function rename(id: number, title: string) {
   return saved;
 }
 
-export async function advance(id: number) {
-  const saved = await call<Saved>(`/api/proposals/${id}/advance`, "POST");
+export async function advance(id: number, to?: number) {
+  const saved = await call<Saved>(`/api/proposals/${id}/advance${to ? `?to=${to}` : ""}`, "POST");
   void reloadProposals();
   return saved;
 }

@@ -80,7 +80,7 @@ def may_ask(work: dict[str, Any], q: dict[str, Any], *, me: str, on_screen: str 
     stage = int(work.get("stage") or 1)
     if stage < 3:
         return "questions start at step 3, when the proposal is being written", None
-    if stage == 3 and q.get("section") != on_screen:
+    if stage in (3, 4) and q.get("section") != on_screen:
         return "ask only about the part the person has open on screen", None
     held = work.get("questions") or {}
     same = next((k for k, x in held.items() if gap(x) == gap(q) and x.get("status") in ("open", "parked")), None)

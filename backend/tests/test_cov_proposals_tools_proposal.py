@@ -78,7 +78,7 @@ class TestReadProposal:
     async def test_the_outline_has_every_part(self, opened):
         pool = opened(proposal(), [{"id": 41, "title": "Annual report", "doc_type": "report", "as_of": "2024"}])
         out = await pt.read_proposal.ainvoke({})
-        assert out.startswith("Step 3 of 4: Write the proposal")
+        assert out.startswith("Step 3 of 5: Make a case")
         assert "- 12A registration (the funder needs it): yes" in out
         assert "Form: Sangam's usual order" in out
         assert "Documents Sangam may read: document 41 · Annual report · report · 2024" in out
@@ -166,7 +166,7 @@ class TestAdvanceStep:
 
     async def test_moves_on_when_nothing_is_missing(self, saving):
         saving(work())
-        assert await pt.advance_step.ainvoke({}) == "Moved to step 4 of 4: Before you send it."
+        assert await pt.advance_step.ainvoke({}) == "Moved to step 4 of 5: Make a plan."
 
     async def test_says_what_is_missing(self, saving):
         saving(work(stage=1, gates={}))

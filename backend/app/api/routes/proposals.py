@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.api.routes.threads import saved_messages
 from app.core.config import get_settings
@@ -81,7 +81,7 @@ class _NotYet(Exception):
         self.missing = missing
 
 
-async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **kwargs: Any) -> SavedOut:
+async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, to: int | None = None, **kwargs: Any) -> SavedOut:
     """Every write: refused for a reader, checked and logged by work.apply under the row lock."""
     row = await _editable(pool, proposal_id)
     by = await repo.me(pool)
@@ -99,9 +99,12 @@ async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, **k
     def change(work: dict, title: str) -> work_rules.Applied:
         if advancing:
             stage = work.get("stage", 1)
-            if missing := steps.exit_check(stage, work):
+            target = to or stage + 1
+            if target <= stage:
+                raise work_rules.BadChange("a step is moved back by PATCH /work")
+            if missing := steps.blocking(work, target):
                 raise _NotYet(missing)
-            kwargs.update(changes={"stage": stage + 1}, advance=True)
+            kwargs.update(changes={"stage": target}, advance=True)
         return work_rules.apply(work, by=by, title=title, districts=districts, names=names, graded=graded,
                                 **kwargs)
 
@@ -176,7 +179,7 @@ async def get_proposal(proposal_id: int, pool: PoolDep, principal: Principal) ->
     row = await _readable(pool, proposal_id)
     work = row["work"]
     sections = rubric.sections_for(bool(work.get("earlier_phase")), work.get("template"))
-    tabs = [{"key": k, "label": label} for k, label in rubric.TABS]
+    tabs = [{"key": k, "label": label, "step": rubric.stage_of(k)} for k, label in rubric.TABS]
     # Recomputed, so a proposal saved before a summary field existed still shows it.
     return ProposalOut.model_validate({**row, "thread_id": repo.chat_thread(proposal_id, principal.id),
                                        "summary": readiness.summary(work),
@@ -193,9 +196,11 @@ async def patch_work(proposal_id: int, body: WorkPatchIn, pool: PoolDep, princip
     return await _save(pool, proposal_id, changes=body.set, rev=body.rev)
 
 
-@router.post("/{proposal_id}/advance", response_model=SavedOut, summary="Move to the next step, if nothing is missing")
-async def advance(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
-    return await _save(pool, proposal_id, advancing=True)
+@router.post("/{proposal_id}/advance", response_model=SavedOut,
+             summary="Move forward to step `to` (default the next), if no step on the way has anything missing")
+async def advance(proposal_id: int, pool: PoolDep, principal: Principal,
+                  to: int | None = Query(None, ge=1, le=steps.LAST)) -> SavedOut:
+    return await _save(pool, proposal_id, advancing=True, to=to)
 
 
 def _names(row: dict) -> set[str]:

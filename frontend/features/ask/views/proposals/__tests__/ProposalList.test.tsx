@@ -36,7 +36,7 @@ describe("ProposalList", () => {
   it("lists each proposal with its step and parts, and opens one", async () => {
     const onOpen = vi.fn();
     render(<ProposalList rows={rows} initialFunder={null} onOpen={onOpen} onFunderMatch={vi.fn()} />);
-    expect(screen.getByText(/To Axis · KABIL · Step 2 of 4, your documents and style · 1 of 6 parts done · fit 80 \/ 100/)).toBeInTheDocument();
+    expect(screen.getByText(/To Axis · KABIL · Step 2 of 5, your documents and style · 1 of 6 parts done · fit 80 \/ 100/)).toBeInTheDocument();
     expect(screen.getByText("2 of 2 proposals · newest first")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Tata health/ }));
     expect(onOpen).toHaveBeenCalledWith(2);

@@ -144,7 +144,7 @@ def test_each_readers_outcome():
 
 
 def test_the_live_block_lists_rewrites_files_fixes_and_a_long_selection():
-    work = {"stage": 3, "sections": {"A3": {"text": "x", "needs_rewrite": True}},
+    work = {"stage": 4, "sections": {"A3": {"text": "x", "needs_rewrite": True}},
             "readers": {"41": {"status": "done", "title": "Workplan"}},
             "requirements": [{"key": "12a", "label": "12A", "hard": True}], "gates": {"12a": "no"}}
     state = {"ag-ui": {"context": [{"description": context.SCREEN,
@@ -159,7 +159,7 @@ def test_the_live_block_lists_rewrites_files_fixes_and_a_long_selection():
 
 
 def test_a_reader_is_told_they_can_only_read():
-    p = context.Current(**{**vars(current({"stage": 4})), "can_edit": False})
+    p = context.Current(**{**vars(current({"stage": 5})), "can_edit": False})
     block = context.live(p, {})
     assert "The person can only read this proposal." in block
     assert "To leave this step: this is the last step." in block

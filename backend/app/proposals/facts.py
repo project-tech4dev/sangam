@@ -15,7 +15,7 @@ LIVE = ("proposed", "confirmed")  # corrected and rejected facts fill no gap and
 VALUE_TEXT = 500
 WEB_EVIDENCE = 20
 PUBLIC_SECTIONS = ("A2", "A3", "A4", "A14", "F1")  # context, problem, results, sustainability, fit
-PUBLIC_TOPICS = ("problem", "place", "government", "sdg", "elsewhere")  # the step-2 card's groups, in order
+PUBLIC_TOPICS = ("problem", "place", "government", "sdg", "elsewhere")  # the Secondary research card's topics, in order
 _MARKER = re.compile(r"^\[(org|activity|score):\d+\]$")
 _DIGIT_COMMA = re.compile(r"(?<=\d),(?=\d)")
 _NUMBER = re.compile(r"\d+(?:\.\d+)?")

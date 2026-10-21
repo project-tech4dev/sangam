@@ -38,6 +38,7 @@ in the PR that ships a change, under its subsystem.
 - 2026-10-13 · #196 · `0046`: columns for Import's researched identity, place and partner-tier facts; `programs.kind` gains `'component'`.
 - 2026-10-13 · #197 · `0047`: `document_links` — which owner, programme and year each document backs, with the pages cited.
 - 2026-10-16 · #231 · `0049`: `rfp_matches.status` may be `saved` (RFP Watch). Numbered after `0048_proposal_work`.
+- 2026-10-21 · (unmerged) · `0050`: proposals at step 3 or later move up one step, in `work` and `summary`, for Make a case.
 
 Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · `0021` #89 · `0022` #74 ·
 `0023`–`0029` #92/#97 · `0030` #98 · `0032` #105 · `0035` #127 · `0036`–`0037` #100 · `0038` #130 ·
@@ -152,6 +153,8 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-19 · Ask efficiency M5: a Sangam Pitch run with no new message ends without a model call (`nothing_to_answer`), instead of asking Claude to continue its own reply and failing with a 400.
 - 2026-10-20 · (unmerged) · Sangam Pitch public research: its own card in step 2 and its own button, "Search public sources", runs a reader with web search, from the registry's public rows only, for the problem at district, state and India level, why this place, government schemes and plans, SDGs and what worked elsewhere; each fact's quote must be on a page it read in that run, and it never searches for the org. Its facts are kept or dropped in that card, grouped by topic, beside the sites it could not open. Off without `TAVILY_API_KEY`.
 - 2026-10-22 · (unmerged) · Sangam Pitch fill-the-form M1, backend only: `POST /versions {shape: "form"}` reads the funder's form from step 2 once (`proposals/form.py`, a PDF sent to the model as a document), fills its prose headings from the written parts in one call (`proposals/fill.py`), and saves a Word file in the form's headings with a report. Code refuses an answer that adds a figure, place or name and falls back to the parts as written or an [Add: …] mark; fields, tables and annexes are [You fill: …]. The button is M2.
+- 2026-10-21 · (unmerged) · Make a case: a new step 3 between "Your documents and style" and the writing, holding the Summary (locked, "Written after your plan", until every other part has text), Context and target area, Problem and baseline, and Secondary research (public research renamed and moved out of step 2). It is left once Context and Problem are written. Each research topic shows one paragraph a utility-model call writes from that topic's facts, kept only when every claim traces to a fact it cites, with its sources numbered [1]…[n] below and one Use this / Don't use for the whole topic. "Write the proposal" becomes step 4, Make a plan, whose first tab is "Objectives and plan" (A4–A7). `0050` moves existing proposals at step 3 or later up one step.
+- 2026-10-21 · (unmerged) · The step bar goes forward too: a step can be clicked when every step before it can be left (`summary.furthest`, `POST /advance?to=N`); `work.apply` refuses any jump a step on the way would block.
 
 ## Media & Signals
 

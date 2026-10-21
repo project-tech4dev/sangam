@@ -166,7 +166,8 @@ async def test_get_returns_the_work_sections_tabs_and_the_callers_own_thread(api
     body = r.json()
     assert r.status_code == 200
     assert body["thread_id"].startswith("proposal-11-")
-    assert [t["key"] for t in body["tabs"]] == ["case", "people", "money", "funder"]
+    assert [t["key"] for t in body["tabs"]] == ["case", "plan", "people", "money", "funder"]
+    assert [t["step"] for t in body["tabs"]] == [3, 4, 4, 4, 4]
     assert {s["code"] for s in body["sections"]} >= {"A1", "F1"}
     assert body["summary"]["gates_total"] == 1
     assert missing.status_code == 404
@@ -230,6 +231,17 @@ async def test_advance_says_what_is_missing_then_moves_on(api, held):
     assert early.json()["detail"]["missing"] == ["answer 12A registration"]
     assert moved.status_code == 200 and moved.json()["work"]["stage"] == 2
 
+
+
+async def test_advance_jumps_ahead_only_when_every_step_on_the_way_is_done(api, held):
+    async with api as c:
+        back = await c.post("/api/proposals/11/advance?to=1")
+        await c.patch("/api/proposals/11/work", json={"set": {"gates.12a": "yes"}})
+        jump = await c.post("/api/proposals/11/advance?to=3")
+        summary = (await c.get("/api/proposals/11")).json()["summary"]
+    assert back.status_code == 400
+    assert jump.status_code == 409 and "set the writing style" in jump.json()["detail"]["missing"]
+    assert summary["furthest"] == 2
 
 @pytest.fixture
 def grader(monkeypatch):
