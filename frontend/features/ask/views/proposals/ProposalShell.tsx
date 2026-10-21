@@ -5,7 +5,7 @@ import { MessageCircle, Pencil, Upload, X } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
-import { advance, changedByLine, deleteResearch, type Fact, researchAngles, type ResearchAsk, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section } from "./api";
+import { advance, changedByLine, deleteResearch, type Fact, researchAngles, type ResearchAsk, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section, startResearch } from "./api";
 import { FactList, source } from "./FactList";
 import { FinishCard } from "./FinishCard";
 import { ResearchBrief } from "./ResearchBrief";
@@ -19,7 +19,6 @@ type Send = ((text: string) => void) | null;
 // Fixed messages the step's buttons send to Sangam Pitch, which calls read_files on either.
 const WRITE_FIRST_DRAFT = "Write the first draft.";
 const READ_AGAIN = "Read the files again.";
-const SEARCH_PUBLIC = "Search public sources.";
 const DEEPER_NEEDS = ["A2", "A3"]; // Context and Problem; the Summary waits for the plan, so it is read but not needed
 const ANGLES = 8; // as many as one deeper run takes
 const WRITE_SUMMARY = "Write the Summary.";
@@ -804,18 +803,26 @@ const isLive = (f: Fact) => f.status === "proposed" || f.status === "confirmed";
 function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Proposal; save: Save; send: Send; onSaved: (saved: Saved) => void }) {
   const { work, can_edit: canEdit } = proposal;
   const [confirming, setConfirming] = useState<"fresh" | "delete" | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
 
-  async function clear(thenSearch: boolean) {
-    setDeleteError(null);
+  // The buttons start the search themselves: through the chat, Sangam Pitch could decline to retry, and a
+  // search outlasting the chat's stream left no reply.
+  async function act(calls: (() => Promise<Saved>)[], failed: string) {
+    setError(null);
+    setStarting(true);
     try {
-      onSaved(await deleteResearch(proposal.id));
+      for (const call of calls) onSaved(await call());
       setConfirming(null);
-      if (thenSearch) send?.(SEARCH_PUBLIC);
-    } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : "Not deleted. Try again.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : failed);
+    } finally {
+      setStarting(false);
     }
   }
+  const search = () => act([() => startResearch(proposal.id)], "The search did not start. Try again.");
+  const clear = (thenSearch: boolean) =>
+    act([() => deleteResearch(proposal.id), ...(thenSearch ? [() => startResearch(proposal.id)] : [])], "Not deleted. Try again.");
   const run = work.readers?.public;
   const found = Object.entries(work.facts ?? {}).filter(([, f]) => f.found_by === "public");
   const sources = found.filter(([, f]) => isLive(f)).length;
@@ -839,12 +846,12 @@ function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Propos
       {run?.status !== "running" && run?.brief && <ResearchBrief text={run.brief} />}
       {canEdit && run?.status !== "running" && (
         <div className="pr-next">
-          <button className={run ? "btn btn-ghost" : "btn btn-primary"} type="button" disabled={!send} onClick={() => send?.(SEARCH_PUBLIC)}>
+          <button className={run ? "btn btn-ghost" : "btn btn-primary"} type="button" disabled={starting} onClick={() => void search()}>
             {run ? "Search again" : "Search public sources"}
           </button>
           {run && (
             <>
-              <button className="btn btn-ghost" type="button" disabled={!send} onClick={() => setConfirming("fresh")}>
+              <button className="btn btn-ghost" type="button" onClick={() => setConfirming("fresh")}>
                 Start fresh
               </button>
               <button className="btn btn-ghost" type="button" onClick={() => setConfirming("delete")}>
@@ -852,7 +859,6 @@ function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Propos
               </button>
             </>
           )}
-          {!send && <span className="muted fm-meta">Wait for Sangam Pitch to finish its answer.</span>}
         </div>
       )}
       {canEdit && confirming && run?.status !== "running" && (
@@ -861,7 +867,7 @@ function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Propos
             {confirming === "fresh" ? "This deletes the brief, the topic summaries and the facts research found, then searches again." : "This deletes the brief, the topic summaries and the facts research found."}{" "}
             Facts a part already cites are kept.
           </span>
-          <button className="btn btn-primary" type="button" disabled={confirming === "fresh" && !send} onClick={() => void clear(confirming === "fresh")}>
+          <button className="btn btn-primary" type="button" disabled={starting} onClick={() => void clear(confirming === "fresh")}>
             {confirming === "fresh" ? "Delete and search" : "Delete"}
           </button>
           <button className="btn btn-ghost" type="button" onClick={() => setConfirming(null)}>
@@ -869,7 +875,7 @@ function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Propos
           </button>
         </div>
       )}
-      {deleteError && <p className="muted fm-meta">! {deleteError}</p>}
+      {error && <p className="muted fm-meta">! {error}</p>}
       {canEdit && run?.status !== "running" && <DeeperResearch proposal={proposal} send={send} />}
       {canEdit && run?.status === "done" && (
         <p className="muted fm-meta">Want more? Tell Sangam Pitch what to dig into or where to look, such as “look at nrlm.gov.in for SHG credit linkage”.</p>

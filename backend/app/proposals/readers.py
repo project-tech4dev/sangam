@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from collections.abc import Coroutine
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -250,25 +251,47 @@ async def read(p: context.Current, public: bool = False, ask: dict[str, Any] | N
     """Run every pending reader at once and record each one's outcome; returns what happened, file by file."""
     if public and BUILT.public is None:
         return "Public research is not available: no search key is configured. Say so in one line."
+    try:
+        run = await _claimed(p, public, ask)
+    except Busy as busy:
+        return f"REFUSED: {busy}."
+    except _NothingToRead:
+        return "Every ticked file has been read. Tick another file in step 2 to read more."
+    return await run
+
+
+async def search(p: context.Current) -> None:
+    """The card's button: public research claimed now and run past the request, so neither the chat's choice
+    to retry nor its stream ending can stop it. Raises Busy, or LookupError without a search key."""
+    if BUILT.public is None:
+        raise LookupError("Public research is not available: no search key is configured.")
+    task = asyncio.create_task(await _claimed(p, True, None))
+    _SEARCHES.add(task)  # held, or the loop may collect a task nothing else refers to
+    task.add_done_callback(_SEARCHES.discard)
+
+
+_SEARCHES: set[asyncio.Task[str]] = set()
+
+
+async def _claimed(p: context.Current, public: bool, ask: dict[str, Any] | None) -> Coroutine[Any, Any, str]:
+    """Mark the pending readers running under the row lock, and return the run that reads them."""
     pool = get_pool()
     by = await repo.user_name(pool, p.scope.user_id)
     files, links = await _titles(p.org_id, p.work.get("sources") or [])
     titles = {**files, FUNDER: f"what {p.funder_name} looks for", PUBLIC: "Public research on the problem and place"}
     keys: list[str] = []
     asked: list[str] = []  # the research ask's id, allocated inside the row lock
-    try:
-        await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by, public,
-                                                                ask if public else None, asked))
-    except Busy as busy:
-        return f"REFUSED: {busy}."
-    except _NothingToRead:
-        return "Every ticked file has been read. Tick another file in step 2 to read more."
-
+    await repo.save(pool, p.id, lambda work, title: _claim(work, title, keys, titles, by, public,
+                                                            ask if public else None, asked))
     gate = asyncio.Semaphore(BUILT.parallel)
     ask_id = asked[0] if asked else None
-    results = await asyncio.gather(*(_one(p, k, titles.get(k, "a file"), gate, by, k in links,
-                                          (ask_id, ask) if k == PUBLIC and ask_id else None) for k in keys))
-    return "\n".join(results)
+
+    async def run() -> str:
+        results = await asyncio.gather(*(_one(p, k, titles.get(k, "a file"), gate, by, k in links,
+                                              (ask_id, ask) if k == PUBLIC and ask_id else None) for k in keys))
+        return "\n".join(results)
+
+    return run()
 
 
 def _claim(work: dict, title: str, keys: list[str], titles: dict[str, str], by: dict[str, Any],

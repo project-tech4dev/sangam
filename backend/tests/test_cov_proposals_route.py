@@ -575,3 +575,55 @@ async def test_deleting_research_waits_for_a_running_search_and_refuses_a_reader
         refused = await c.delete("/api/proposals/11/research")
     assert running.status_code == 409 and "running" in running.json()["detail"]
     assert refused.status_code == 403 and sorted(held["row"]["work"]["facts"]) == ["k1", "k2", "k3"]
+
+
+@pytest.fixture
+def searched(monkeypatch):
+    """The card's search: who and what the readers were handed, or the refusal readers.search raises."""
+    from app.proposals import readers
+
+    seen = {"raise": None, "p": []}
+
+    async def scope(pool, principal):
+        return "scope"
+
+    async def current():
+        return SimpleNamespace(id=route.chat_proposal.get(), scope=route.chat_scope.get())
+
+    async def search(p):
+        if seen["raise"]:
+            raise seen["raise"]
+        seen["p"].append(p)
+
+    monkeypatch.setattr(route, "caller_scope", scope)
+    monkeypatch.setattr(route.context, "current", current)
+    async def graph(app, name):
+        seen["built"] = name
+
+    monkeypatch.setattr(readers, "search", search)
+    monkeypatch.setattr(route, "get_graph", graph)
+    return seen
+
+
+async def test_the_cards_search_starts_without_the_chat(api, held, searched):
+    held["row"]["work"]["stage"] = 3
+    async with api as c:
+        out = await c.post("/api/proposals/11/research")
+    assert out.status_code == 202 and out.json()["work"]["stage"] == 3
+    assert [(p.id, p.scope) for p in searched["p"]] == [(11, "scope")] and searched["built"] == "proposal_graph"
+
+
+async def test_the_cards_search_is_refused_early_while_running_without_a_key_or_for_a_reader(api, held, searched):
+    from app.proposals import readers
+
+    async with api as c:
+        early = await c.post("/api/proposals/11/research")
+        held["row"]["work"]["stage"] = 3
+        searched["raise"] = readers.Busy({"at": NOW.isoformat(), "by": RAVI}, NOW)
+        running = await c.post("/api/proposals/11/research")
+        searched["raise"] = LookupError("Public research is not available.")
+        keyless = await c.post("/api/proposals/11/research")
+        held["row"]["can_edit"] = False
+        refused = await c.post("/api/proposals/11/research")
+    assert early.status_code == 409 and running.status_code == 409 and "Ravi" in running.json()["detail"]
+    assert keyless.status_code == 503 and refused.status_code == 403 and searched["p"] == []

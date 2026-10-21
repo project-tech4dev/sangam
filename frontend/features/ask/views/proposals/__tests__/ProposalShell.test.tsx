@@ -446,7 +446,8 @@ describe("step 3: make a case", () => {
     const done = { status: "done", at: "2026-10-05T00:00:00Z", title: "Public", brief: "Old brief" };
     const p = onCase({ readers: { public: done } } as Partial<Work>);
     const cleared = { summary: p.summary, work: { ...p.work, readers: {} } };
-    serve(p, { "DELETE /api/proposals/3/research": () => cleared });
+    const searching = { summary: p.summary, work: { ...p.work, readers: { public: { status: "running", at: "2026-10-05T00:00:00Z", title: "Public" } } } };
+    serve(p, { "DELETE /api/proposals/3/research": () => cleared, "POST /api/proposals/3/research": () => searching });
     renderShell();
     await userEvent.click(await screen.findByRole("button", { name: "Delete research" }));
     const confirm = screen.getByRole("group", { name: "Confirm deleting secondary research" });
@@ -457,7 +458,9 @@ describe("step 3: make a case", () => {
     await userEvent.click(screen.getByRole("button", { name: "Start fresh" }));
     await userEvent.click(screen.getByRole("button", { name: "Delete and search" }));
     expect(call).toHaveBeenCalledWith("/api/proposals/3/research", "DELETE");
-    expect(chat.send).toHaveBeenCalledWith("Search public sources.");
+    expect(call).toHaveBeenCalledWith("/api/proposals/3/research", "POST");
+    expect(chat.send).not.toHaveBeenCalled();
+    expect(await screen.findByText(/started the search/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Research brief")).toBeNull();
   });
 
@@ -468,7 +471,7 @@ describe("step 3: make a case", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Start fresh" }));
     await userEvent.click(screen.getByRole("button", { name: "Delete and search" }));
     expect(await screen.findByText("! A search is running. Try when it's done.")).toBeInTheDocument();
-    expect(chat.send).not.toHaveBeenCalled();
+    expect(call).not.toHaveBeenCalledWith("/api/proposals/3/research", "POST");
   });
 
   it("summarises each topic with numbered sources, used or dropped as a whole", async () => {
@@ -490,7 +493,7 @@ describe("step 3: make a case", () => {
         k5: fact("Dropped", { status: "rejected", topic: "place" }),
       },
     } as Partial<Work>;
-    serve(onCase(work));
+    serve(onCase(work), { "POST /api/proposals/3/research": () => ({ summary: onCase(work).summary, work: onCase(work).work }) });
     renderShell();
     expect(await screen.findByText(/Searched .* · 4 sources/)).toBeInTheDocument();
     expect(screen.getByText("The problem, measured · 3 sources")).toBeInTheDocument();
@@ -513,7 +516,8 @@ describe("step 3: make a case", () => {
     await userEvent.click(screen.getByRole("button", { name: "Use it after all" }));
     expect(workCalls()).toContainEqual({ set: { "facts.k5.status": "proposed" }, rev: {} });
     await userEvent.click(screen.getByRole("button", { name: "Search again" }));
-    expect(chat.send).toHaveBeenCalledWith("Search public sources.");
+    expect(call).toHaveBeenCalledWith("/api/proposals/3/research", "POST");
+    expect(chat.send).not.toHaveBeenCalled();
   });
 
   it("marks a topic in use and keeps only Don't use", async () => {

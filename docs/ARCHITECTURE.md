@@ -141,6 +141,10 @@ Plans: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md), [2026-10-19-rfp
   sources a good brief needs (NFHS, the Census, NITI, journals).
 - **The brief's task never names the organisation.** Server-side search cannot be filtered by `PublicGuard`, so the
   name, the org's files and the fact list are never given to it.
+- **The card's buttons start the search, not the chat.** `POST /api/proposals/{id}/research` claims the run under
+  the row lock and runs it in the background (`readers.search`). Through the chat, Sangam Pitch could decline to
+  retry after interrupted runs, and a search outlasting the chat's stream (about five minutes) left no reply.
+  Asking Pitch in words still runs it through `read_files`.
 
 ## 6. Media & Signals
 

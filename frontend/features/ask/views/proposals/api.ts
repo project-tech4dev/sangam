@@ -200,6 +200,7 @@ export async function advance(id: number, to?: number) {
 }
 
 /** Deletes secondary research: its brief, summaries, asks, and the public facts no part's text cites. */
+export const startResearch = (id: number) => call<Saved>(`/api/proposals/${id}/research`, "POST");
 export const deleteResearch = (id: number) => call<Saved>(`/api/proposals/${id}/research`, "DELETE");
 
 /** What research would look into from the case, for the person to edit before searching. */

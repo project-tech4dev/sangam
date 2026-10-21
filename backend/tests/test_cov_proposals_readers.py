@@ -1,5 +1,6 @@
 """readers.read end to end with fake reader graphs: the claim under the lock, each outcome, and the public task."""
 
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace as NS
@@ -170,12 +171,12 @@ class TestRead:
             return NS(org=NS(district="Udalguri", state="Assam"), places=[], programs=[NS(name="SeSTA wells")],
                       tags=[NS(parent_label=None, label="Livelihoods")], sdgs=[NS(code="1", label="No poverty")])
 
-        monkeypatch.setattr(readers.BUILT, "brief", "web model")
+        monkeypatch.setattr(readers.BUILT, "brief", ("web model",))
         monkeypatch.setattr(readers.brief, "write", write)
         monkeypatch.setattr(profile_facts, "org_facts", facts)
         out = await readers.read(proposal({}), public=True)
         task, model = asked[0]
-        assert model == "web model" and "Where the work happens: Udalguri, Assam" in task
+        assert model == ("web model",) and "Where the work happens: Udalguri, Assam" in task
         assert "Themes: Livelihoods" in task and "SDGs on record: 1 No poverty" in task
         assert "sesta" not in task.lower() and "Programmes: none on record" in task
         assert store["work"]["readers"]["public"]["brief"] == "**A. Problem magnitude**"
@@ -252,6 +253,30 @@ class TestRead:
         await readers.read(proposal({}), public=True)
         assert store["work"]["readers"]["public"]["status"] == "done"
         assert store["work"]["readers"]["public"]["summaries"] == {}
+
+
+    async def test_the_cards_search_is_marked_running_then_finishes_in_the_background(self, run, monkeypatch):
+        store, setup = run
+        setup({}, public="Found 1 public fact.")
+
+        async def facts(pool, owner, org_id):
+            return None
+
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        await readers.search(proposal({}))
+        assert store["work"]["readers"]["public"]["status"] == "running"
+        await asyncio.gather(*readers._SEARCHES)
+        assert store["work"]["readers"]["public"]["status"] == "done" and not readers._SEARCHES
+
+    async def test_the_cards_search_without_a_key_or_while_running(self, run):
+        _, setup = run
+        setup({})
+        with pytest.raises(LookupError):
+            await readers.search(proposal({}))
+        busy = {"status": "running", "at": datetime.now(UTC).isoformat(), "by": {"name": "Ravi"}}
+        setup({"readers": {"public": busy}}, public="x")
+        with pytest.raises(readers.Busy):
+            await readers.search(proposal({}))
 
 
 class TestPublicInputs:

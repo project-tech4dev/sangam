@@ -11,12 +11,13 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from langchain_core.exceptions import ContextOverflowError
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
 logger = logging.getLogger(__name__)
 
 PROMPT = (Path(__file__).parent / "prompts" / "research_brief.md").read_text(encoding="utf-8")
-SEARCHES, FETCHES = 20, 8
+SEARCHES, FETCHES = 15, 5  # each step re-reads every result so far: 20 searches neared the 1M-token context
 FETCHED = 15000  # tokens kept of one fetched page: a whole NFHS report would overflow the context
 TURNS = 4  # a long search pauses the turn, or the model calls a tool it doesn't have; resumed this many times at most
 NO_TOOL = "There is no such tool. Open pages with web_fetch, or write the brief now."
@@ -27,8 +28,9 @@ TOOLS = [
 ]
 
 
-def bind(model: Any) -> Any:
-    return model.bind_tools(TOOLS)
+def bind(model: Any) -> tuple[Any, ...]:
+    """With fetch, then search alone: a fetched PDF can come back whole (seen: 8 MB), past FETCHED and the context."""
+    return model.bind_tools(TOOLS), model.bind_tools(TOOLS[:1])
 
 
 def _after_tools(message: BaseMessage, kept: str) -> str:
@@ -46,25 +48,30 @@ def _after_tools(message: BaseMessage, kept: str) -> str:
     return kept
 
 
-async def write(task: str, model: Any) -> str | None:
-    """The brief in Markdown, or None when the call failed or wrote nothing; never raises."""
-    if model is None:
-        return None
+async def write(task: str, models: tuple[Any, ...] | None) -> str | None:
+    """The brief in Markdown, or None when the call failed or wrote nothing; never raises. A brief that overflows
+    the context is written again by the next model, without fetch."""
+    for model in models or ():
+        try:
+            return await _write(task, model)
+        except ContextOverflowError:
+            logger.warning("[write] research brief overflowed the context; writing it again without fetch")
+        except Exception as exc:  # noqa: BLE001 - a failed brief never fails the search
+            logger.warning(f"[write] research brief failed ({type(exc).__name__})")
+            return None
+    return None
+
+
+async def _write(task: str, model: Any) -> str | None:
     messages: list[BaseMessage] = [SystemMessage(PROMPT), HumanMessage(task)]
     text = ""
-    try:
-        for _ in range(TURNS):
-            reply: AIMessage = await model.ainvoke(messages)
-            text = _after_tools(reply, text)
-            stop = (reply.response_metadata or {}).get("stop_reason")
-            if stop not in ("pause_turn", "tool_use"):
-                break
-            messages.append(reply)
-            # Only server tools are bound, so a client tool call names one that doesn't exist (seen: "fetch").
-            messages += [
-                ToolMessage(NO_TOOL, tool_call_id=call["id"], status="error") for call in reply.tool_calls
-            ]
-    except Exception as exc:  # noqa: BLE001 - a failed brief never fails the search
-        logger.warning(f"[write] research brief failed ({type(exc).__name__})")
-        return None
+    for _ in range(TURNS):
+        reply: AIMessage = await model.ainvoke(messages)
+        text = _after_tools(reply, text)
+        stop = (reply.response_metadata or {}).get("stop_reason")
+        if stop not in ("pause_turn", "tool_use"):
+            break
+        messages.append(reply)
+        # Only server tools are bound, so a client tool call names one that doesn't exist (seen: "fetch").
+        messages += [ToolMessage(NO_TOOL, tool_call_id=call["id"], status="error") for call in reply.tool_calls]
     return text.strip()[:TEXT] or None

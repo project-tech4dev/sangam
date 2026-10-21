@@ -8,10 +8,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.api.routes.threads import saved_messages
 from app.core.config import get_settings
-from app.core.security import CurrentUser, require_principal
+from app.core.lifespan import get_graph
+from app.core.security import (
+    CurrentUser,
+    caller_scope,
+    chat_proposal,
+    chat_scope,
+    chat_user_id,
+    require_principal,
+)
 from app.db.pool import OwnerPoolDep, PoolDep
 from app.integrations import storage
-from app.proposals import assemble, fill, form, gates, readiness, records, research, rubric, steps
+from app.proposals import assemble, context, fill, form, gates, readiness, records, research, rubric, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.repositories import documents as documents_repo
@@ -255,6 +263,35 @@ async def research_angles(proposal_id: int, pool: PoolDep, principal: Principal)
         logger.warning("research angles for proposal %s failed (%s)", proposal_id, type(exc).__name__)
         raise HTTPException(502, "Sangam couldn't read your case just now. Try again.") from exc
     return ResearchAnglesOut(angles=kept, dropped=dropped)
+
+
+@router.post("/{proposal_id}/research", response_model=SavedOut, status_code=202,
+             summary="Start secondary research: the brief and the public facts, run in the background")
+async def start_research(proposal_id: int, request: Request, pool: PoolDep, owner: OwnerPoolDep,
+                         principal: Principal) -> SavedOut:
+    row = await _editable(pool, proposal_id)
+    if early := steps.too_early("read_files", int(row["work"].get("stage") or 1)):
+        raise HTTPException(409, early)
+    from app.proposals import readers
+
+    # The readers are built with the agents, on first use: after a restart no chat may have built them yet.
+    await get_graph(request.app, "proposal_graph")
+
+    # The readers' tools find the proposal and the caller the way a chat turn sets them; the task copies them.
+    chat_user_id.set(principal.id)
+    chat_scope.set(await caller_scope(owner, principal))
+    chat_proposal.set(proposal_id)
+    p = await context.current()
+    if p is None:
+        raise HTTPException(404, f"proposal {proposal_id} not found")
+    try:
+        await readers.search(p)
+    except readers.Busy as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    saved = await repo.get(pool, proposal_id)
+    return SavedOut(summary=readiness.summary(saved["work"]), work=saved["work"])
 
 
 @router.delete("/{proposal_id}/research", response_model=SavedOut,

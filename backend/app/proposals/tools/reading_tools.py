@@ -175,7 +175,7 @@ async def read_files(public: bool = False, ask: str = "", focus: list[str] | Non
     failure retries just those. It takes a few minutes and returns what each reader found or why it failed.
 
     Args:
-        public: True only when the person presses "Search public sources", asks to search again, or asks for
+        public: True only when the person asks to search public sources or to search again, or asks for
             more or deeper research: then it runs public research alone, and no file is read.
         ask: public only: what the person asked this run to find, in their words, short.
         focus: public only: the themes, indicators, schemes or places to look into, a few words each. Never the
