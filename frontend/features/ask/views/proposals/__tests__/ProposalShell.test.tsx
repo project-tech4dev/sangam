@@ -50,12 +50,7 @@ function serve(p: Proposal, overrides: Record<string, () => unknown> = {}) {
 
 const workCalls = () => call.mock.calls.filter(([p, m]) => p === "/api/proposals/3/work" && m === "PATCH").map(([, , body]) => body);
 
-function wide(matches: boolean) {
-  window.matchMedia = vi.fn(() => ({ matches }) as MediaQueryList);
-}
-
 beforeEach(() => {
-  wide(true);
   chat.ready = true;
   vault.list.mockResolvedValue([]);
 });
@@ -152,8 +147,7 @@ describe("ProposalShell", () => {
     expect(screen.getByRole("radio", { name: "No" })).toBeDisabled();
   });
 
-  it("keeps the chat behind its button on a narrow screen", async () => {
-    wide(false);
+  it("keeps the chat behind its button until it is opened", async () => {
     serve(proposal());
     renderShell();
     await userEvent.click(await screen.findByRole("button", { name: "Sangam Pitch" }));

@@ -35,8 +35,8 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   const [part, setPart] = useState<string | null>(null);
   const [send, setSend] = useState<Send>(null);
   const onSend = useCallback((fn: Send) => setSend(() => fn), []);
-  // The chat floats over the page: open from the start on a wide screen, behind its button on a phone.
-  const [chatOpen, setChatOpen] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches);
+  // The chat floats over the page, closed behind its button until someone wants to talk to it.
+  const [chatOpen, setChatOpen] = useState(false);
 
   const load = useCallback(() => getProposal(id).then(setProposal, () => setFailed(true)), [id]);
   useEffect(() => {
