@@ -276,6 +276,31 @@ describe("step 2: documents and style", () => {
     expect(screen.queryByRole("checkbox", { name: /RF template/ })).toBeNull();
   });
 
+  it("names the uploaded form and says when Sangam Pitch reads it", async () => {
+    vault.list.mockResolvedValue([...docs, { ...docs[0], id: 5, title: "RF template.pdf" }]);
+    serve(proposal({ stage: 2, template: { document_id: 5, url: null, from: "upload", read_at: null } }));
+    renderShell();
+    expect(await screen.findByText("RF template.pdf")).toBeInTheDocument();
+    expect(screen.getByText(/✓ Uploaded/)).toHaveTextContent("Sangam Pitch reads the form then.");
+  });
+
+  it("counts the questions once the form is read", async () => {
+    const outline = { document_id: 5, read_at: "2026-10-01T00:00:00Z", headings: [{ kind: "prose" }, { kind: "field" }, { kind: "prose" }] };
+    serve(proposal({ stage: 2, template: { document_id: 5, url: null, from: "upload", read_at: null, outline } }));
+    renderShell();
+    expect(await screen.findByText(/✓ Uploaded/)).toHaveTextContent(/Read .*: 2 questions to answer in writing\./);
+  });
+
+  it("refuses a funder's form that is not a PDF or Word file, before uploading", async () => {
+    serve(proposal({ stage: 2 }));
+    const { container } = renderShell();
+    await screen.findByText("No files from KABIL yet.");
+    const form = container.querySelector<HTMLInputElement>("input[type=file]")!;
+    await userEvent.setup({ applyAccept: false }).upload(form, new File(["x"], "form.xlsx"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The funder's form must be a PDF or Word file.");
+    expect(vault.upload).not.toHaveBeenCalled();
+  });
+
   it("does not offer a second form once one is chosen", async () => {
     const form = { status: "failed" as const, at: "x", title: "RF template", error: "looks like a form", looks_like_form: true };
     serve(proposal({ stage: 2, sources: [12], readers: { "12": form }, template: { document_id: 5, url: null, from: "upload", read_at: null } }));

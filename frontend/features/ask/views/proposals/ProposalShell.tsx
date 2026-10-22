@@ -261,6 +261,9 @@ function GatesStep({ proposal, save }: { proposal: Proposal; save: Save }) {
   );
 }
 
+// What `form.read` on the backend can open.
+const FORM_FILE = /\.(pdf|docx)$/i;
+
 function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save; send: Send }) {
   const { work, can_edit: canEdit } = proposal;
   const org = proposal.org.slug;
@@ -275,6 +278,10 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
 
   async function upload(file: File | undefined, asForm: boolean) {
     if (!file) return;
+    if (asForm && !FORM_FILE.test(file.name)) {
+      setProblem("The funder's form must be a PDF or Word file.");
+      return;
+    }
     setBusy(file.name);
     setProblem(null);
     try {
@@ -295,6 +302,9 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
   // The chosen form shapes the download; it is not a file to read, unless it was ticked before it was chosen.
   const form = work.template?.document_id;
   const readable = docs?.filter((d) => d.id !== form || work.sources.includes(d.id)) ?? null;
+  const formTitle = docs?.find((d) => d.id === form)?.title;
+  const outline = work.template?.outline?.document_id === form ? work.template?.outline : undefined;
+  const questions = outline?.headings.filter((h) => h.kind === "prose").length ?? 0;
 
   const tick = (docId: number, on: boolean) =>
     save({ sources: on ? [...work.sources, docId] : work.sources.filter((d) => d !== docId) });
@@ -310,7 +320,12 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
         <div className="card-title">The funder&apos;s form</div>
         {work.template ? (
           <p>
-            {work.template.from === "upload" ? "You uploaded it" : "Sangam already has it"}
+            {work.template.from === "upload" ? "✓ Uploaded" : "Sangam already has it"}
+            {formTitle && (
+              <>
+                : <strong>{formTitle}</strong>
+              </>
+            )}
             {work.template.read_at && ` · from ${shortDate(work.template.read_at)}`}
             {work.template.url && /^https?:\/\//i.test(work.template.url) && (
               <>
@@ -320,7 +335,10 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
                 </a>
               </>
             )}
-            . Sangam writes its usual parts, and in the last step you can download them filled into this form.
+            . Sangam writes its usual parts, and in the last step you can download them filled into this form.{" "}
+            {outline
+              ? `Read ${shortDate(outline.read_at)}: ${questions} ${questions === 1 ? "question" : "questions"} to answer in writing.`
+              : "Sangam Pitch reads the form then."}
           </p>
         ) : work.skipped_template ? (
           <p>
@@ -339,7 +357,7 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
                 <label className="btn pr-file">
                   <Upload className="icon icon-sm" />
                   {busy ? `Uploading ${busy}…` : "Upload the funder's form"}
-                  <input type="file" disabled={Boolean(busy)} onChange={(e) => upload(e.target.files?.[0], true)} />
+                  <input type="file" accept=".pdf,.docx" disabled={Boolean(busy)} onChange={(e) => upload(e.target.files?.[0], true)} />
                 </label>
                 <button className="btn btn-ghost" type="button" onClick={() => save({ skipped_template: true })}>
                   Use Sangam&apos;s usual order
