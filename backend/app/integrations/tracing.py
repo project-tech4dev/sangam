@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import re
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from textwrap import dedent
 from typing import Any
 
@@ -382,10 +382,26 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
 
     async def run(self, input: RunAgentInput):
         try:
-            async for event in super().run(input):
-                yield event
+            with self._propagate(input):
+                async for event in super().run(input):
+                    yield event
         finally:
             await asyncio.to_thread(flush_traces)
+
+    def _propagate(self, input: RunAgentInput) -> AbstractContextManager:
+        """Puts the caller on every span of the run: v4 dashboards read user and tags per observation."""
+        try:
+            from langfuse import propagate_attributes
+
+            user, tags, _ = caller_trace(chat_scope.get(), chat_user_id.get())
+            meta = (getattr(self.graph, "config", None) or {}).get("metadata") or {}
+            return propagate_attributes(
+                user_id=user, session_id=input.thread_id, trace_name=meta.get("langfuse_trace_name"),
+                tags=[*meta.get("langfuse_tags", ()), *tags],
+            )
+        except Exception:  # telemetry must never take the app down
+            logger.debug("Langfuse attributes not propagated", exc_info=True)
+            return nullcontext()
 
     @staticmethod
     def _collect_interrupts(tasks) -> list:
