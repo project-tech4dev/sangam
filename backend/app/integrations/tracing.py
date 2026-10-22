@@ -17,7 +17,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
 
 from app.core.config import Settings
-from app.core.security import DEV_USER_ID, chat_user_id
+from app.core.security import DEV_USER_ID, CallerScope, chat_proposal, chat_scope, chat_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -350,6 +350,17 @@ def trace_config(
         return base
 
 
+def caller_trace(scope: CallerScope | None, user_id: Any) -> tuple[str, list[str], dict[str, Any]]:
+    """Who asked, for Langfuse: the email as its user, and their orgs as tags to filter by."""
+    if scope is None:
+        return str(user_id or DEV_USER_ID), [], {}
+    tags = ["role:staff"] if scope.is_staff else []
+    tags += sorted({f"role:{role}" for role in scope.org_roles.values()})
+    tags += sorted(f"org:{scope.org_names.get(org, org)}" for org in scope.org_roles)
+    metadata = {"sangam_user_id": str(scope.user_id), "org_roles": {str(o): r for o, r in scope.org_roles.items()}}
+    return scope.email or str(scope.user_id or DEV_USER_ID), tags, metadata
+
+
 class SessionScopedAGUIAgent(LangGraphAGUIAgent):
     """AG-UI agent that tags each run with the conversation it belongs to."""
 
@@ -397,12 +408,18 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
         agent_state: dict[str, Any],
         config: RunnableConfig,
     ):
+        user, tags, caller = caller_trace(chat_scope.get(), chat_user_id.get())
+        if (proposal_id := chat_proposal.get()) is not None:
+            caller["proposal_id"] = proposal_id
         config = {
             **config,
+            # LangChain unions these, and Langfuse adds them to the graph's own langfuse_tags.
+            "tags": [*(config.get("tags") or []), *tags],
             "metadata": {
                 **(config.get("metadata") or {}),
+                **caller,
                 "langfuse_session_id": input.thread_id,
-                "langfuse_user_id": str(chat_user_id.get() or DEV_USER_ID),
+                "langfuse_user_id": user,
                 # Request context, per Langfuse's metadata guidance: lets a
                 # trace be tied back to the AG-UI run that produced it.
                 "agui_run_id": input.run_id,

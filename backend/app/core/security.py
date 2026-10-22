@@ -232,6 +232,7 @@ class CallerScope:
     # org_id -> admin | member | steward (org_members).
     org_roles: Mapping[int, str] = field(default_factory=dict)
     org_names: Mapping[int, str] = field(default_factory=dict)
+    email: str | None = None
 
     @property
     def steward_of(self) -> list[int]:
@@ -262,10 +263,10 @@ chat_proposal: ContextVar[int | None] = ContextVar("chat_proposal", default=None
 async def caller_scope(pool, principal: CurrentUser) -> CallerScope:
     if principal.id is None or principal.is_staff:
         # Staff pass every check, so their memberships are not needed.
-        return CallerScope(user_id=principal.id, is_staff=principal.is_staff)
+        return CallerScope(user_id=principal.id, is_staff=principal.is_staff, email=principal.email)
     rows = await me_repo.list_memberships(pool, principal.id)
     return CallerScope(principal.id, principal.is_staff, {r["org_id"]: r["role"] for r in rows},
-                       {r["org_id"]: r["org_name"] for r in rows})
+                       {r["org_id"]: r["org_name"] for r in rows}, email=principal.email)
 
 
 def _thread_title(run: RunAgentInput) -> str | None:

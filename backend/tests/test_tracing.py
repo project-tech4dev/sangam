@@ -6,13 +6,14 @@ import re
 import sys
 import types
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 from ag_ui.core.types import RunAgentInput
 
 from app.core.config import Settings
-from app.core.security import DEV_USER_ID
-from app.integrations.tracing import TRACE_NAME, SessionScopedAGUIAgent, trace_config
+from app.core.security import DEV_USER_ID, CallerScope, chat_proposal, chat_scope
+from app.integrations.tracing import TRACE_NAME, SessionScopedAGUIAgent, caller_trace, trace_config
 
 ENABLED = {"langfuse_public_key": "pk", "langfuse_secret_key": "sk"}
 
@@ -125,6 +126,60 @@ async def test_graph_and_request_metadata_both_survive():
     assert seen["name"] == TRACE_NAME  # not "LangGraph"
     assert seen["metadata"]["langfuse_tags"] == ["sangam"]
     assert seen["metadata"]["langfuse_session_id"] == "thread-42"
+
+
+STEWARD = CallerScope(
+    user_id=UUID("3f2a0000-0000-0000-0000-000000000001"), is_staff=False,
+    org_roles={412: "steward", 7: "member"}, org_names={412: "SeSTA", 7: "FFRH"}, email="asha@sesta.org",
+)
+
+
+def test_a_trace_names_the_caller_by_email_and_tags_their_orgs():
+    user, tags, metadata = caller_trace(STEWARD, STEWARD.user_id)
+    assert user == "asha@sesta.org"
+    assert tags == ["role:member", "role:steward", "org:FFRH", "org:SeSTA"]
+    assert metadata == {"sangam_user_id": str(STEWARD.user_id), "org_roles": {"412": "steward", "7": "member"}}
+
+
+def test_staff_are_tagged_as_staff_and_no_scope_falls_back_to_the_user_id():
+    staff = CallerScope(user_id=DEV_USER_ID, is_staff=True, email="dev@sangam.local")
+    assert caller_trace(staff, DEV_USER_ID)[:2] == ("dev@sangam.local", ["role:staff"])
+    assert caller_trace(None, None) == (str(DEV_USER_ID), [], {})
+
+
+async def test_the_caller_reaches_the_root_run_beside_the_graph_tags(monkeypatch):
+    """Request tags must add to the graph's langfuse_tags, not replace them: Langfuse unions the two."""
+    from langchain_core.callbacks import AsyncCallbackHandler
+    from langchain_core.runnables import RunnableLambda
+
+    seen: dict = {}
+
+    class Spy(AsyncCallbackHandler):
+        async def on_chain_start(self, serialized, inputs, **kwargs):
+            seen.setdefault("tags", kwargs.get("tags"))
+            seen.setdefault("metadata", kwargs.get("metadata") or {})
+
+    graph = RunnableLambda(lambda x: x).with_config(
+        {"callbacks": [Spy()], "metadata": {"langfuse_tags": ["sangam", "proposal"]}}
+    )
+
+    async def fake_super(self, *, input, agent_state, config):
+        await graph.ainvoke({}, config=config)
+
+    monkeypatch.setattr("app.integrations.tracing.LangGraphAGUIAgent.prepare_stream", fake_super, raising=True)
+    tokens = chat_scope.set(STEWARD), chat_proposal.set(55)
+    try:
+        await SessionScopedAGUIAgent.__new__(SessionScopedAGUIAgent).prepare_stream(
+            input=RunAgentInput(thread_id="proposal-55-x", run_id="run-1", messages=[]), agent_state={}, config={},
+        )
+    finally:
+        chat_scope.reset(tokens[0])
+        chat_proposal.reset(tokens[1])
+
+    assert "org:SeSTA" in seen["tags"] and "role:steward" in seen["tags"]
+    assert seen["metadata"]["langfuse_tags"] == ["sangam", "proposal"]
+    assert seen["metadata"]["langfuse_user_id"] == "asha@sesta.org"
+    assert seen["metadata"]["proposal_id"] == 55
 
 
 class _FakeCursor:

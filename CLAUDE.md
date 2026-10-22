@@ -534,6 +534,9 @@ settings are load-bearing in ways the Langfuse docs do not advertise:
   `thread_id` entirely**. `SessionScopedAGUIAgent` overrides `prepare_stream` — the one hook
   that sees both the per-request `RunAgentInput` and the graph's config — to map one onto
   the other. Without it a six-turn conversation is six unrelated traces.
+  The same hook names the caller: `langfuse_user_id` is their email, and their organisations and roles go
+  in LangChain `tags` (`org:<name>`, `role:<role>`), which Langfuse unions with the graph's `langfuse_tags`;
+  a request-level `langfuse_tags` would replace them.
 
 `LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, it falls back to
 `VERCEL_ENV`, and `release` to `VERCEL_GIT_COMMIT_SHA`.
