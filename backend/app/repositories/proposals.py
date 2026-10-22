@@ -4,7 +4,9 @@ stewards, staff). Every change to `work` goes through `save`, which locks the ro
 
 from __future__ import annotations
 
+import asyncio
 import re
+import weakref
 from collections.abc import Callable
 from typing import Any
 
@@ -99,8 +101,18 @@ async def create(pool: Any, *, org_id: int, funder_id: int, title: str, work: di
         )).fetchone())["id"]
 
 
+_SAVING: weakref.WeakValueDictionary[int, asyncio.Lock] = weakref.WeakValueDictionary()
+
+
 async def save(pool: Any, proposal_id: int, change: Callable[[dict, str], Applied]) -> Applied | None:
     """Lock the row, apply `change` to its work, write it back. None when the caller may not write it."""
+    # Queue here first: ten researchers waiting on FOR UPDATE held all ten pooled connections and stalled the app.
+    lock = _SAVING.setdefault(proposal_id, asyncio.Lock())
+    async with lock:
+        return await _save(pool, proposal_id, change)
+
+
+async def _save(pool: Any, proposal_id: int, change: Callable[[dict, str], Applied]) -> Applied | None:
     # One transaction: the pool autocommits, which would release FOR UPDATE before the write.
     async with pool.connection() as conn, conn.transaction():
         row = await (await conn.execute(

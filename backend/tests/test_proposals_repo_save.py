@@ -1,5 +1,6 @@
 """repo.save: the row lock and the write share one transaction, so parallel readers never drop each other's facts."""
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from app.proposals.work import Applied
@@ -64,3 +65,38 @@ async def test_a_missing_row_writes_nothing():
     pool.conn = Empty()
     assert await repo.save(pool, 6, lambda w, t: None) is None
     assert pool.conn.seen == [("SELECT", True)]
+
+
+
+class Counting(Pool):
+    """Counts connections held at once."""
+
+    def __init__(self):
+        super().__init__()
+        self.held = self.most = 0
+
+    @asynccontextmanager
+    async def connection(self):
+        self.held += 1
+        self.most = max(self.most, self.held)
+        await asyncio.sleep(0.01)
+        try:
+            yield self.conn
+        finally:
+            self.held -= 1
+
+
+def keep(work, title):
+    return Applied(work=work, summary={}, title=None)
+
+
+async def test_saves_to_one_proposal_queue_without_holding_a_connection():
+    pool = Counting()
+    await asyncio.gather(*(repo.save(pool, 6, keep) for _ in range(10)))
+    assert pool.most == 1 and len(pool.conn.seen) == 20
+
+
+async def test_two_proposals_save_side_by_side():
+    pool = Counting()
+    await asyncio.gather(repo.save(pool, 6, keep), repo.save(pool, 7, keep))
+    assert pool.most == 2
