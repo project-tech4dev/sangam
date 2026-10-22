@@ -132,7 +132,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
         {!canEdit && <p className="pr-readonly">You can read this proposal. Ask your organisation&apos;s admin to make changes.</p>}
       </div>
 
-      <div className="pr-wrap" data-chat={canEdit && chatOpen}>
+      <div className="pr-wrap">
         <div className="pr-main">
           <ol className="pr-steps" aria-label="Steps">
             {STEPS.map((label, i) => (
