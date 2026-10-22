@@ -34,6 +34,16 @@ Read `docs/DESIGN_SYSTEM.md` first; it has the mapping tables and the step-by-st
 
 - No render check runs (the converter's `package-validate` only applies to its own layout).
   Verification is opening the project, then the cards you touched and
-  `ui_kits/sangam-web/index.html`.
+  `ui_kits/sangam-web/index.html`, or rendering the kit locally (below) before uploading.
+- **Render the kit locally with Playwright** (done 22 Oct 2026): fetch `index.html`, `styles.css`, `tokens/*`
+  and the kit's `.jsx` into one folder, serve it, and open `index.html` with `window.SANGAM_START_ROUTE`
+  (`home`, `ask`, `import`) and `window.SANGAM_START_USER` set by an init script. `get_file` stops at
+  256 KiB, which cuts `_ds_bundle.js` short: keep its component modules (they end at `Hero.jsx`'s), close
+  it with `Object.assign(__ds_ns, __ds_scope); })();`, and take `data.js` / `importData.js` from their
+  modules inside it. The woff2 files can come from Google Fonts for a local check.
+- **Subagents have no DesignSync.** One that recreates a screen writes local files only; fetch what it
+  needs and upload its work yourself.
+- **The app's workspace is behind Supabase sign-in**, so a headless check of `localhost:3000/ask` sees
+  the signed-out preview. Compare the kit with the app's CSS rules instead.
 - Off-scale values that remain on purpose: `EntityMark` sizes its initials at `size × 0.34`;
   `tweaks-panel.jsx` is a Claude Design scaffold with its own literal sizes.
