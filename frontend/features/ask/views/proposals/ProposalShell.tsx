@@ -292,6 +292,10 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
     }
   }
 
+  // The chosen form shapes the download; it is not a file to read, unless it was ticked before it was chosen.
+  const form = work.template?.document_id;
+  const readable = docs?.filter((d) => d.id !== form || work.sources.includes(d.id)) ?? null;
+
   const tick = (docId: number, on: boolean) =>
     save({ sources: on ? [...work.sources, docId] : work.sources.filter((d) => d !== docId) });
 
@@ -349,13 +353,13 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
       <div className="card pr-block">
         <div className="card-title">Documents Sangam may read</div>
         <p className="muted">Tick the files that help: impact reports, evaluations, annual reports, workplans, budgets.</p>
-        {!docs ? (
+        {!readable ? (
           <div className="muted">Loading…</div>
-        ) : docs.length === 0 ? (
+        ) : readable.length === 0 ? (
           <div className="muted">No files from {proposal.org.name} yet.</div>
         ) : (
           <div className="pr-docs">
-            {docs.map((d) => (
+            {readable.map((d) => (
               <label key={d.id} className="pr-tick">
                 <input
                   type="checkbox"

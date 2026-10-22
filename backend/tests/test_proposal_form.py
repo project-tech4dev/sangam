@@ -24,8 +24,9 @@ class TestTheOutline:
     def test_codes_follow_the_forms_order_and_unknown_parts_are_dropped(self):
         out = form.check(form.Outline(headings=[
             heading(number="1.", label="Executive Summary", uses=["A1"], limit=form.Limit(n=2000, unit="chars")),
-            heading(number="5", label="Proposed strategy", uses=["A4", "A5", "A4", "Z9"]),
+            heading(number="5", label="Proposed strategy", uses=["A4", "A5", "A4", "Z9"], group=" Part B "),
         ]), CODES)
+        assert out[0]["group"] is None and out[1]["group"] == "Part B"
         assert [(h["code"], h["number"], h["uses"]) for h in out] == [("T1", "1", ["A1"]), ("T2", "5", ["A4", "A5"])]
         assert out[0]["limit"] == {"n": 2000, "unit": "chars"} and out[1]["limit"] is None
 
@@ -134,6 +135,12 @@ class TestEveryHeadingComesOut:
         assert out["T5"].text == "[Add: How the problem will be addressed (the form allows 90 characters)]"
         assert "5. Proposed strategy refused: added 9999" in caplog.text
 
+    def test_an_answer_just_over_the_limit_loses_its_last_sentences(self):
+        out = self.resolve(outline(), {"T5": "Run 54 trainings in 22 villages. SeSTA will work with 2,400 women. "
+                                             "[Add: the trainers' names]"})
+        assert out["T5"].how == "answered" and out["T5"].text == "Run 54 trainings in 22 villages. SeSTA will work with 2,400 women."
+        assert fill.fit("One long sentence with no end that runs on and on", {"n": 5, "unit": "chars"}) is None
+
     def test_no_answer_is_a_mark_and_never_the_parts_pasted(self):
         out = self.resolve(outline(NAME), {})
         assert out["T1"].text == "[Add: How the problem will be addressed]"
@@ -154,6 +161,19 @@ class TestEveryHeadingComesOut:
                               earlier_phase=False, about=ABOUT)
         assert fill.report(filled) == {"answered": ["1. Executive Summary", "Organization Name"],
                                        "add": ["5. Proposed strategy"], "you_fill": ["PAN Card Number"]}
+
+
+def test_the_file_shows_each_limit_and_a_groups_title_once_over_its_fields():
+    first, last = ({**NAME, "code": c, "label": label, "group": "Head of Organization"}
+                   for c, label in (("T3", "First Name"), ("T4", "Last Name")))
+    filled = [fill.Filled(STRATEGY, "Raise incomes.", "answered"), fill.Filled(first, "[You fill: First Name]", "you_fill"),
+              fill.Filled(last, "[You fill: Last Name]", "you_fill"), fill.Filled(NAME, "SeSTA", "answered")]
+    assert fill.outline(filled) == [("5. Proposed strategy (max 90 characters)", "Raise incomes.", 1),
+                                    ("Head of Organization", "", 1), ("First Name", "[You fill: First Name]", 2),
+                                    ("Last Name", "[You fill: Last Name]", 2), ("Organization Name", "SeSTA", 1)]
+    doc = Document(io.BytesIO(assemble.form_docx("T", "B", fill.outline(filled))))
+    assert [(p.text, p.style.name) for p in doc.paragraphs if p.style.name.startswith("Heading")][1:3] == [
+        ("Head of Organization", "Heading 1"), ("First Name", "Heading 2")]
 
 
 def test_the_word_file_carries_the_forms_headings_and_marks_what_is_left():

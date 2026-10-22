@@ -13,6 +13,7 @@ Return every heading in the form's order, each with:
   - skip: what is not answered at all: instructions, general requirements, terms and conditions, a cover page, a list of indicators to choose from.
 - limit: the length the form allows for that heading, as {n, unit} with unit chars, words or pages ("max 2000 characters" is {2000, chars}). null when it states none; never 0.
 - uses: the codes of Sangam's parts below that answer it, every one that does. "Proposed strategy: activities, outputs, beneficiaries, partners" uses A4 and A5. "Executive summary" uses A1. A heading no part answers ("Innovation") uses []. Only prose uses parts.
+- group: the title of the block a heading sits in, when the form groups fields under one ("Personal Information of Head of Organization" for its First Name, Last Name and Email Id); otherwise null. A block's title is never a heading of its own.
 - only_if: "earlier_phase" when only an applicant in a second phase answers it ("Phase II applicants only"); otherwise null.
 
 A heading with lettered sub-questions that each want their own short answer, such as "a) Population of the geography (max 50 characters)", lists each sub-question as its own heading, numbered "3(a)". Sub-points that are guidance for one answer stay in that heading's ask.

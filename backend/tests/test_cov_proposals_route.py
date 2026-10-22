@@ -428,7 +428,7 @@ async def test_a_version_in_the_funders_form_carries_its_headings_and_a_report(a
     assert entry["title"] == "Version 1, in the Tata Trusts form" and entry["shape"] == "form"
     assert entry["report"] == {"answered": ["4. Problem Statement"], "add": [], "you_fill": ["PAN Card Number"]}
     assert vault["draft"]["title"] == "Water for Dewas, version 1, in the Tata Trusts form"
-    assert vault["draft"]["content_md"] == ("## 4. Problem Statement\n\nWells in Dewas run dry for 120 days.\n\n"
+    assert vault["draft"]["content_md"] == ("## 4. Problem Statement (max 3,000 characters)\n\nWells in Dewas run dry for 120 days.\n\n"
                                             "## PAN Card Number\n\n[You fill: PAN Card Number]")
     assert work["template"]["outline"]["headings"] == HEADINGS
     assert former["read_model"] == "r" and former["fill_model"] == "m"

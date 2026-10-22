@@ -268,6 +268,14 @@ describe("step 2: documents and style", () => {
     );
   });
 
+  it("leaves the chosen form out of the files to read", async () => {
+    vault.list.mockResolvedValue([...docs, { ...docs[0], id: 5, title: "RF template" }]);
+    serve(proposal({ stage: 2, template: { document_id: 5, url: null, from: "upload", read_at: null } }));
+    renderShell();
+    expect(await screen.findByRole("checkbox", { name: /Annual report/ })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /RF template/ })).toBeNull();
+  });
+
   it("does not offer a second form once one is chosen", async () => {
     const form = { status: "failed" as const, at: "x", title: "RF template", error: "looks like a form", looks_like_form: true };
     serve(proposal({ stage: 2, sources: [12], readers: { "12": form }, template: { document_id: 5, url: null, from: "upload", read_at: null } }));

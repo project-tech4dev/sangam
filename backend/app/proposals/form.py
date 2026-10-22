@@ -42,6 +42,8 @@ class Heading(BaseModel):
                     "attach: a document to attach or sign. skip: instructions, terms, covers.")
     limit: Limit | None = Field(None, description="The length the form allows, or null when it states none.")
     uses: list[str] = Field(default_factory=list, description="Codes of Sangam's parts that answer it; [] if none.")
+    group: str | None = Field(None, description='The titled block a field sits in, such as "Personal Information of '
+                                               'Head of Organization"; null when the form has none.')
     only_if: Literal["earlier_phase"] | None = Field(
         None, description='"earlier_phase" when only a second-phase applicant answers it.')
 
@@ -67,7 +69,7 @@ def check(outline: Outline, codes: set[str]) -> list[dict[str, Any]]:
                     "label": label, "ask": _clean(h.ask, ASK), "kind": h.kind,
                     "limit": h.limit.model_dump() if h.limit else None,
                     "uses": [c for c in dict.fromkeys(h.uses) if c in codes] if h.kind == "prose" else [],
-                    "only_if": h.only_if})
+                    "only_if": h.only_if, "group": _clean(h.group, LABEL) or None})
     return out
 
 

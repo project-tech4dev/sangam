@@ -19,6 +19,7 @@ PROMPT = (Path(__file__).parent / "prompts" / "form_fill.md").read_text(encoding
 UNITS = {"chars": "characters", "words": "words", "pages": "pages"}
 How = Literal["answered", "add", "you_fill"]
 _GAP = re.compile(r"\[Add:[^\]]*\]")
+_SENTENCE = re.compile(r"(?<=[.!?\]])\s+")
 _YOU = re.compile(r"\[You fill:[^\]]*\]")
 
 
@@ -40,6 +41,25 @@ class Filled:
 
 def title(heading: dict[str, Any]) -> str:
     return f"{heading['number']}. {heading['label']}" if heading.get("number") else heading["label"]
+
+
+def shown(heading: dict[str, Any]) -> str:
+    """The heading as the file shows it: with the form's limit, so the person sees it while editing."""
+    limit = heading.get("limit")
+    return f"{title(heading)} (max {limit['n']:,} {UNITS[limit['unit']]})" if limit else title(heading)
+
+
+def outline(filled: list[Filled]) -> list[tuple[str, str, int]]:
+    """(heading, text, level) for the Word file: a group's title once, over the fields in it."""
+    out: list[tuple[str, str, int]] = []
+    last = None
+    for f in filled:
+        group = f.heading.get("group")
+        if group and group != last:
+            out.append((group, "", 1))
+        last = group
+        out.append((shown(f.heading), f.text, 2 if group else 1))
+    return out
 
 
 def size(limit: dict[str, Any], text: str) -> int:
@@ -70,6 +90,16 @@ def check(source: str, answer: str, limit: dict[str, Any] | None, *, districts: 
     if too := over(limit, answer):
         refused.append(f"ran to {too}")
     return refused
+
+
+def fit(answer: str, limit: dict[str, Any]) -> str | None:
+    """The answer cut to the limit by dropping whole sentences from the end; a cut never adds a claim. Pure."""
+    sentences = _SENTENCE.split(answer.strip())
+    while len(sentences) > 1:
+        sentences.pop()
+        if not over(limit, text := " ".join(sentences).strip()):
+            return text
+    return None
 
 
 def asked(heading: dict[str, Any]) -> bool:
@@ -119,6 +149,8 @@ def resolve(headings: list[dict[str, Any]], written: dict[str, str], answers: di
         if not answer:
             out.append(_mark(h))
             continue
+        if over(h["limit"], answer) and not check(source, answer, None, districts=districts, names=names):
+            answer = fit(answer, h["limit"]) or answer
         if refused := check(source, answer, h["limit"], districts=districts, names=names):
             logger.info("form heading %s refused: %s", title(h), "; ".join(refused))
             out.append(_mark(h))
