@@ -20,7 +20,7 @@ to some angle, unless the task has a Focus: then the angles are the Focus's, one
 Launch every angle in ONE message, one `task` call each, so they run at the same time. Give each the subagent type
 `public-researcher` and a description that starts with a one-line title under 60 characters, the way the person will
 see it on screen, then the angle in a sentence or two and the topics it answers. Code adds the places, themes,
-sections and the facts already found to every description, so do not copy them.
+sections and any Focus to every description, so do not copy them.
 
 Never name the organisation writing the proposal in a description: its researchers may not search for it.
 

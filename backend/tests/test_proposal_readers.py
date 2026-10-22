@@ -34,17 +34,24 @@ def built():
     return readers.BUILT
 
 
+def subagents(built) -> dict:
+    task = built.public.nodes["tools"].bound.tools_by_name["task"]
+    return next(c.cell_contents for c in (task.func or task.coroutine).__closure__
+                if isinstance(c.cell_contents, dict) and readers.RESEARCHER in c.cell_contents)
+
+
 def researcher_tools(built) -> set[str]:
     """The compiled public-researcher's tools: an isolated subagent builds its own, so the parent's node can't show them."""
-    task = built.public.nodes["tools"].bound.tools_by_name["task"]
-    graphs = next(c.cell_contents for c in (task.func or task.coroutine).__closure__
-                  if isinstance(c.cell_contents, dict) and readers.RESEARCHER in c.cell_contents)
-    return set(graphs[readers.RESEARCHER].nodes["tools"].bound.tools_by_name)
+    return set(subagents(built)[readers.RESEARCHER].nodes["tools"].bound.tools_by_name)
 
 
 class TestPublicResearch:
     def test_the_supervisor_only_launches_researchers(self, built):
         assert set(built.public.nodes["tools"].bound.tools_by_name) == {"task", "read_file"}
+
+    def test_its_one_subagent_is_the_researcher(self, built):
+        # No general-purpose subagent: deepagents builds that one with every filesystem tool.
+        assert set(subagents(built)) == {readers.RESEARCHER}
 
     def test_a_researcher_runs_only_its_tools(self, built):
         assert researcher_tools(built) == {
