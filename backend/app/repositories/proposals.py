@@ -101,7 +101,8 @@ async def create(pool: Any, *, org_id: int, funder_id: int, title: str, work: di
 
 async def save(pool: Any, proposal_id: int, change: Callable[[dict, str], Applied]) -> Applied | None:
     """Lock the row, apply `change` to its work, write it back. None when the caller may not write it."""
-    async with pool.connection() as conn:
+    # One transaction: the pool autocommits, which would release FOR UPDATE before the write.
+    async with pool.connection() as conn, conn.transaction():
         row = await (await conn.execute(
             "SELECT work, title FROM proposals WHERE id = %s FOR UPDATE", (proposal_id,)
         )).fetchone()

@@ -145,6 +145,12 @@ Plans: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md), [2026-10-19-rfp
   the row lock and runs it in the background (`readers.search`). Through the chat, Sangam Pitch could decline to
   retry after interrupted runs, and a search outlasting the chat's stream (about five minutes) left no reply.
   Asking Pitch in words still runs it through `read_files`.
+- **A supervisor splits public research; no number caps it.** `readers.BUILT.public` is a deep agent with only
+  `task`: it picks the angles that fit the proposal and launches one `public-researcher` per angle, all at once
+  (`prompts/public_supervisor.md`). Each researcher is isolated, so it carries its own `RunSources` and `PublicGuard`;
+  `ResearchProgress` adds the run's task to every angle and writes each one's line to `readers.public.slices`. All
+  share one `PublicRun` (contextvars copy into each parallel task), so a page one read is quotable by any. Chosen
+  2026-10-22 over a fixed split in code: the split depends on the proposal and the person's focus.
 
 ## 6. Media & Signals
 

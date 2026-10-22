@@ -88,6 +88,8 @@ export type Reader = {
   /** Secondary research only: one paragraph per topic, citing its facts as ⟦kN⟧. */
   /** Secondary research only: the researcher's brief, in Markdown (problem magnitude, impact evidence, caveats). */
   brief?: string;
+  /** Secondary research only: one line per researcher the supervisor launched. */
+  slices?: { label: string; status: Reader["status"] }[];
 };
 
 /** What a person asked one secondary research run to look into, from chat or a button. */

@@ -68,6 +68,13 @@ Add at most three facts from one source, and never the same fact again in other 
 you read states it. Never round, convert or work out a figure; never fill a level you did
 not find. Never draft proposal text.
 
+## When the task names your angle
+
+A lead researcher split this run, and your task starts with your angle and the topics it answers. Spend the run on
+that angle, at every level; the other angles are being researched at the same time, so leave their topics alone
+unless a page you are reading states one of their facts outright. The rest of the task (places, themes, sections,
+Focus, facts already found) is the whole run's.
+
 ## When the task has a Focus
 
 The person asked this run to look into something. Spend the run on it, not on the five topics from the start:
@@ -77,5 +84,5 @@ newer year, a second source, or what the first run could not find. Still give ea
 
 ## When you finish
 
-End with a line or two per topic in plain words: what you found, and what you looked for and could not find (for
+End with a line or two per topic you worked on, in plain words and at most ten lines: what you found, and what you looked for and could not find (for
 example, no district figure for this indicator). If search is unavailable, say so in one line.

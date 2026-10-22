@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/features/ask/lib/rest";
-import type { Proposal, Work } from "@/features/ask/views/proposals/api";
+import type { Fact, Proposal, Reader, Work } from "@/features/ask/views/proposals/api";
 import { proposal } from "./fixtures";
 
 const call = vi.fn();
@@ -636,6 +636,24 @@ describe("step 3: make a case", () => {
     await userEvent.click(screen.getByRole("button", { name: "Research deeper from your case" }));
     await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("list", { name: "What to look into" })).toBeNull();
+  });
+
+  it("lists each researcher while the search runs, and the sources so far", async () => {
+    const slices: Reader["slices"] = [
+      { label: "Dropout in Kiphire and Tuensang", status: "done" },
+      { label: "State schemes on schooling", status: "running" },
+      { label: "What worked in the Northeast", status: "failed" },
+    ];
+    const fact: Fact = { subject: "Dropout", value: "19.8%", origin: "web", tier: "amber", status: "proposed", found_by: "public", section: "A3", topic: "problem" };
+    serve(onCase({ readers: { public: { status: "running", at: "x", title: "Public", slices } }, facts: { k1: fact } }));
+    renderShell();
+    const list = await screen.findByRole("list", { name: "Researchers" });
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "Dropout in Kiphire and Tuensang✓ Done",
+      "State schemes on schoolingSearching…",
+      "What worked in the Northeast! Didn't finish",
+    ]);
+    expect(screen.getByText(/1 source so far\./)).toBeInTheDocument();
   });
 
   it("says when secondary research is running or failed", async () => {

@@ -116,14 +116,14 @@ with `asyncio.gather(*(check_url(r.get("url", "")) for r in shown))`, then build
 `SecondaryResearch` shows, while running:
 
 ```
-Searching… started 1 min ago
-  ✓ Dropout and learning in Kiphire and Tuensang · 9 sources
+Admin started the search. … 9 sources so far.
+  ✓ Dropout and learning in Kiphire and Tuensang
   ⋯ State and central schemes on secondary schooling
   ⋯ What worked: community schools in the Northeast
 ```
 
-Counts come from the facts the 5 s poll already fetches. Styles as classes in `globals.css` from existing tokens; the
-design system is updated in the same PR (`docs/DESIGN_SYSTEM.md`).
+Facts carry no researcher, so the count is the run's total so far, from the facts the 5 s poll already fetches.
+The lines reuse step 2's `.pr-reads`/`.pr-read` classes: no new class or token.
 
 ## 5. Security review
 
@@ -144,7 +144,7 @@ Unit, no database:
 - M2: `ResearchProgress` marks a slice running then done; marks it failed when the subagent
   raises; a failed write never fails the call.
 - M2: two parallel fake researchers share one `PublicRun` (a page read by one is in `run.pages` for the other).
-- `ProposalShell.test.tsx`: a running search lists each slice with its count; a run without `slices` (an old row)
+- `ProposalShell.test.tsx`: a running search lists each slice and the sources so far; a run without `slices` (an old row)
   shows today's line.
 
 Eval (costs money): one `TAG=pitch` case runs the search on a fixed proposal and records wall time, cost and sources
@@ -161,9 +161,9 @@ per topic.
 
 #### Milestone 2: a supervisor launches researchers, and the card shows them
 - **Deliverable**: a search runs researchers at once, as many as the supervisor chooses, each shown on the card.
-- **Touches**: backend, prompt, frontend, design system
+- **Touches**: backend, prompt, frontend
 - **Key tasks**: [ ] supervisor + `public-researcher` in `build` [ ] `ResearchProgress` [ ] two prompts
-  [ ] `slices` on the card [ ] tests
+  [ ] `slices` on the card [ ] `repo.save` in one transaction [ ] tests
 - **Acceptance criteria**: `pytest -m "not integration"`, `npm test`, `npm run build`; on the **local** stack the fact
   list is done in under 180 s with no topic emptier than today, at no more than $0.81.
 

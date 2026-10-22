@@ -34,13 +34,24 @@ def built():
     return readers.BUILT
 
 
+def researcher_tools(built) -> set[str]:
+    """The compiled public-researcher's tools: an isolated subagent builds its own, so the parent's node can't show them."""
+    task = built.public.nodes["tools"].bound.tools_by_name["task"]
+    graphs = next(c.cell_contents for c in (task.func or task.coroutine).__closure__
+                  if isinstance(c.cell_contents, dict) and readers.RESEARCHER in c.cell_contents)
+    return set(graphs[readers.RESEARCHER].nodes["tools"].bound.tools_by_name)
+
+
 class TestPublicResearch:
-    def test_it_runs_only_its_tools(self, built):
-        assert set(built.public.nodes["tools"].bound.tools_by_name) == {
+    def test_the_supervisor_only_launches_researchers(self, built):
+        assert set(built.public.nodes["tools"].bound.tools_by_name) == {"task", "read_file"}
+
+    def test_a_researcher_runs_only_its_tools(self, built):
+        assert researcher_tools(built) == {
             "search_public_sources", "read_page", "fetch_document", "read_document_pages", "add_facts", "read_file"}
 
-    def test_it_never_asks_or_writes(self, built):
-        assert not set(built.public.nodes["tools"].bound.tools_by_name) & {"ask_user", "task", "write_file", "execute"}
+    def test_a_researcher_never_asks_writes_or_launches(self, built):
+        assert not researcher_tools(built) & {"ask_user", "task", "write_file", "edit_file", "execute"}
 
     def test_without_a_search_key_it_is_not_built(self, built):
         from app.proposals.agent import EVIDENCE_TOOLS, FUNDER_TOOLS, PUBLIC_TOOLS

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
@@ -19,6 +20,8 @@ from app.integrations.storage import _safe_name
 from app.proposals import context
 from app.proposals import facts as fact_rules
 
+logger = logging.getLogger(__name__)
+LABEL = 80  # a researcher's line on the card: the first line of its task, cut here
 
 def with_blocks(system: SystemMessage | None, stable: str, live: str, cache: bool) -> SystemMessage:
     """The stable block ends on a cache breakpoint (Anthropic only); the live block after it changes freely."""
@@ -64,6 +67,9 @@ class PublicRun:
     unopened: set[str] = field(default_factory=set)  # hosts a read was refused or failed on, shown on screen
     files: dict[str, str] = field(default_factory=dict)  # a fetched PDF's name → the url it came from
     ask: str | None = None  # the research ask this run answers; its facts carry the id
+    task: str = ""  # the whole run's task, added to every researcher's angle
+    slices: list[dict[str, str]] = field(default_factory=list)  # each researcher's line on the card
+    report: Callable[[], Awaitable[None]] | None = None  # writes `slices` to the proposal
 
 
 PUBLIC_RUN: ContextVar[PublicRun | None] = ContextVar("proposal_public_run", default=None)
@@ -105,6 +111,41 @@ class PublicGuard(AgentMiddleware):
             elif name == "read_document_pages" and (url := run.files.get(_safe_name(str(args.get("filename") or "")))):
                 run.pages[url] = run.pages.get(url, "") + "\n" + text
         return result
+
+
+class ResearchProgress(AgentMiddleware):
+    """On the public supervisor: hands each researcher the run's task, and puts its line on the card."""
+
+    async def awrap_tool_call(self, request: Any, handler: Callable[[Any], Awaitable[Any]]) -> Any:
+        run = PUBLIC_RUN.get()
+        call = request.tool_call
+        if run is None or call.get("name") != "task":
+            return await handler(request)
+        args = call.get("args") or {}
+        angle = str(args.get("description") or "").strip()
+        line = {"label": (angle.splitlines() or ["Research"])[0].strip("# ")[:LABEL], "status": "running"}
+        run.slices.append(line)
+        await _report(run)
+        try:
+            result = await handler(request.override(
+                tool_call={**call, "args": {**args, "description": f"{angle}\n\n{run.task}".strip()}}))
+        except Exception:
+            line["status"] = "failed"
+            await _report(run)
+            raise
+        line["status"] = "failed" if isinstance(result, ToolMessage) and result.status == "error" else "done"
+        await _report(run)
+        return result
+
+
+async def _report(run: PublicRun) -> None:
+    """The card's lines are progress only: a failed write never fails the research."""
+    if run.report is None:
+        return
+    try:
+        await run.report()
+    except Exception as exc:  # noqa: BLE001 - progress only
+        logger.warning(f"[_report] research progress not written ({type(exc).__name__})")
 
 
 @before_model(can_jump_to=["end"], name="NothingToAnswer")

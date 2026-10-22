@@ -629,6 +629,7 @@ const Lines = ({ lines }: { lines: string[] }) => (
 );
 
 const READ_STATE: Record<Reader["status"], string> = { done: "✓ Read", running: "Reading…", failed: "! Couldn't read" };
+const RESEARCH_STATE: Record<Reader["status"], string> = { done: "✓ Done", running: "Searching…", failed: "! Didn't finish" };
 
 /** "Write the first draft", then each file's reader as it runs: read, reading, or what went wrong and "Try again". */
 function Reading({ proposal, save, send }: { proposal: Proposal; save: Save; send: Send }) {
@@ -868,7 +869,20 @@ function SecondaryResearch({ proposal, save, send, onSaved }: { proposal: Propos
         ten sources on each, nearest first. It never searches for your organisation and never uses your files.
       </p>
       {run?.status === "running" && (
-        <p className="muted fm-meta">{run.by?.name ?? "A teammate"} started the search. This takes a few minutes; you can leave this page.</p>
+        <p className="muted fm-meta">
+          {run.by?.name ?? "A teammate"} started the search. This takes a few minutes; you can leave this page.
+          {sources > 0 && ` ${sources} ${sources === 1 ? "source" : "sources"} so far.`}
+        </p>
+      )}
+      {run?.status === "running" && (run.slices?.length ?? 0) > 0 && (
+        <ul className="pr-reads" aria-label="Researchers">
+          {run.slices?.map((s, i) => (
+            <li key={i} className="pr-read" data-status={s.status}>
+              <span className="pr-read-title">{s.label}</span>
+              <span className="pr-read-state">{RESEARCH_STATE[s.status]}</span>
+            </li>
+          ))}
+        </ul>
       )}
       {run?.status === "failed" && <p className="muted fm-meta">! The search did not finish{run.error ? `: ${run.error}` : ""}.</p>}
       {run?.status === "done" && (
