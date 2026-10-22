@@ -197,7 +197,7 @@ describe("step 2: documents and style", () => {
     const report = await screen.findByRole("checkbox", { name: /Annual report/ });
     expect(vault.list).toHaveBeenCalledWith("kabil");
     expect(screen.getByText("annual report")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: /Untitled file/ })).toBeDisabled();
+    expect(screen.queryByRole("checkbox", { name: /Untitled file/ })).not.toBeInTheDocument();
     await userEvent.click(report);
     expect(workCalls()).toContainEqual({ set: { sources: [11] }, rev: {} });
     await userEvent.click(screen.getByRole("button", { name: "Use Sangam's usual order" }));
@@ -217,6 +217,14 @@ describe("step 2: documents and style", () => {
     expect(workCalls()).toContainEqual({ set: { sources: [] }, rev: {} });
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(workCalls()).toContainEqual({ set: { skipped_template: false }, rev: {} });
+  });
+
+  it("keeps a ticked link in the list so it can be unticked", async () => {
+    vault.list.mockResolvedValue(docs);
+    serve(proposal({ stage: 2, sources: [12] }));
+    renderShell();
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Untitled file/ }));
+    expect(workCalls()).toContainEqual({ set: { sources: [] }, rev: {} });
   });
 
   it("uploads the funder's form and a source file", async () => {

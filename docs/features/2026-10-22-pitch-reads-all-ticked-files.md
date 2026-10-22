@@ -23,9 +23,8 @@ change it reads the page 24k characters at a time, saves facts like "1,240 house
           ▼                             ▼                              ▼
    your Doc Vault upload         Import-saved public copy         link only, no copy
    org-vault/…pdf|docx|xlsx      source-archive/…md|pdf|docx      (just a URL)
-   vault.read  (as today)        _archived  [NEW .md/.txt →       [NEW, M2] code fetches the URL
-                                   numbered lines, 24k a window]    once, saves it to source-archive,
-                                                                    then it reads like the middle box
+   vault.read  (as today)        _archived  [NEW .md/.txt →       [NEW] not listed in step 2:
+                                   numbered lines, 24k a window]    nothing stored to read
           │                             │                              │
           └──── facts: origin "vault" ──┴── facts: origin "web", cited to the page's real link ──┘
                                         ▼
@@ -87,7 +86,7 @@ consistency (production has none today).
                                                 ├─► file reader #41 (vault PDF — unchanged path)
                                                 └─► funder reader (unchanged)
                               facts ──► proposals.work.facts (database), never the chat
- [NEW] link-only doc: code fetches source_url once (check_url + guarded client), archives it, then a reader reads it
+ [NEW] link-only doc: hidden in step 2; Pitch reads only what Sangam holds and never fetches
 ```
 
 - **The chat never sees a file.** `read_files` runs the readers in code (`proposals/readers.py:_one`); each reader is
@@ -122,40 +121,22 @@ consistency (production has none today).
    `origin "web"`, `source_url` the link the read printed, quoting the sentence (`facts.py:96` already validates
    this, as the funder reader uses it).
 4. **`clear_old_tool_results()`** in `readers.build.reader()` middleware (evidence and funder readers).
-5. `readers._titles` keeps the link detection (`storage_path` empty) for M2; label stays "a file".
+5. Step 2 hides a row with no stored copy (`has_file === false`); one ticked earlier stays, to untick.
+   `readers._titles` keeps its "upload the file instead" for it.
 
 Tests (unit, no DB): `_archived` on a `.md` gives `[line N]` windows and the cut notice; `read_org_file` routes vault
 vs public and refuses another org's document (monkeypatched repository); `RunSources` refuses `read_org_file` on a
 non-ticked id; the existing "every tool named in its prompt" and subagent tool-list tests updated.
 Exit gate: SATRA's docs 205/206/208 and 204 read with facts on the local stack (below).
 
-## M2 — PR 2 (stacked): fetch a link-only file once, then read it
+## M2 — dropped
 
-1. In `readers._one`, replace the link short-circuit (`if link: … "upload the file"`). Code (not the model) fetches
-   the row's `source_url`, choosing by content type:
-   - a page through `research_tools._read_page`, which archives `.md` and handles JSON and plain text;
-   - a PDF or Word file through `_fetch_document`.
-   Both already run `check_url` (registry + robots) and `guarded_client`. Then
-   `storage.archived_key(SOURCE_ARCHIVE, url)` → `UPDATE documents SET storage_path, content_hash, fetched_at
-   WHERE id = %s AND storage_path IS NULL`, and the reader reads it as in M1.
-   - The reader still gets no web tool, and the org's own known URLs are fetched; no search is made.
-   - `check_url` (`ingest/access.py:25`) and `_client` don't read `run_sources.CURRENT`, so a direct call from code
-     works under the reader's `Sources(web=False)`; it is a code path, not a tool call.
-   - **New write path:** Pitch updates `documents` on the owner pool, gated by `require_edit` in `read_files`. That's
-     the same posture as Import's writes. The UPDATE also sets `extractor_version` (a provenance column).
-2. Refused, an HTTP error or no text gives a failed row with one short reason ("the site refused it: HTTP 403").
-   "Try again" retries it as today.
-
-Tests: link doc → fetch stubbed → row updated → reader runs; a refusal from `check_url` → failed with reason, no
-update; an already-archived row is not fetched again.
-Exit gate: doc 207 (GuideStar JSON) and a satra.ngo annual report PDF read locally. Storage is global: this local
-run uploads the archived copies to the shared `source-archive` bucket, as every local Import run does already; the
-Postgres rows stay local.
+Fetching link-only files once by code (#304) was built and closed: Pitch only reads what Sangam already holds.
 
 ## Docs
 
-ARCHITECTURE.md (Pitch section): readers open vault files and the org's public archived files; links are fetched
-once by code. CHANGELOG line per PR. `make wiki-update`. Plan committed as `docs/features/2026-10-22-pitch-reads-all-ticked-files.md`
+ARCHITECTURE.md (Pitch section): readers open vault files and the org's public archived files; Pitch never
+fetches. CHANGELOG line. `make wiki-update`. Plan committed as `docs/features/2026-10-22-pitch-reads-all-ticked-files.md`
 on the feature branch before code.
 
 ## Verification

@@ -26,7 +26,9 @@ from app.integrations import storage
 logger = logging.getLogger(__name__)
 
 _PAGE = re.compile(r"^--- page (\d+) ---$", re.MULTILINE)
-READABLE = (".pdf", ".docx")  # what an archived copy can be read as
+_LINE = re.compile(r"^\[line (\d+)\]", re.MULTILINE)
+TEXT = (".md", ".txt")  # a page Import archived as text
+READABLE = (".pdf", ".docx", *TEXT)  # what an archived copy can be read as
 
 
 async def _owners(conn: Any, name: str) -> tuple[int | None, int | None]:
@@ -71,10 +73,13 @@ async def list_library_documents(name: str) -> str:
 
 
 def _archived(doc: dict[str, Any], data: bytes, start_page: int, end_page: int | None) -> str:
-    """An archived PDF by pages, or a Word file by paragraphs, headed by what a finding cites."""
-    word = doc["storage_path"].lower().endswith(".docx")
+    """An archived PDF by pages, a Word file by paragraphs, or a text page by lines, headed by what a finding cites."""
+    path = doc["storage_path"].lower()
+    word, plain = path.endswith(".docx"), path.endswith(TEXT)
     if word:
         unit, (text, total) = "paragraph", office.docx_range(data, start_page, end_page)
+    elif plain:
+        unit, (text, total) = "line", office.text_range(data, start_page, end_page)
     else:
         with tempfile.NamedTemporaryFile(suffix=".pdf") as handle:
             handle.write(data)
@@ -83,12 +88,16 @@ def _archived(doc: dict[str, Any], data: bytes, start_page: int, end_page: int |
     head = [f"## document {doc['id']} · {doc['title'] or 'untitled'}",
             f"A finding from it: source_url {doc['source_url']}. Quote the sentence; say which {unit}."]
     if not text.strip():
-        return "\n".join([*head, f"{total} {unit}s and no text in that range" + ("." if word else ": most likely scanned.")])
+        scanned = ": most likely scanned." if unit == "page" else "."
+        return "\n".join([*head, f"{total} {unit}s and no text in that range{scanned}"])
     text = _PAGE.sub(lambda m: f"[page {m.group(1)}]", text)
     if len(text) > MAX_CHARS:
-        text = text[:text.rfind("\n", 0, MAX_CHARS)] + (
-            f"\n… cut at {MAX_CHARS} characters of {total} {unit}s. Call again with a later start_page.")
-    note = " start_page counts paragraphs in a Word file." if word else ""
+        text = text[:text.rfind("\n", 0, MAX_CHARS)]
+        shown = _LINE.findall(text)
+        again = f"start_page={int(shown[-1]) + 1}" if plain and shown else "a later start_page"
+        text += f"\n… cut at {MAX_CHARS} characters of {total} {unit}s. Call again with {again}."
+    note = {"paragraph": " start_page counts paragraphs in a Word file.",
+            "line": " start_page counts lines in a text page."}.get(unit, "")
     return "\n".join([*head, f"{total} {unit}s.{note}", "", text])
 
 

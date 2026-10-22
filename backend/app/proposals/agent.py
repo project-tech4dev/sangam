@@ -21,7 +21,6 @@ from app.ingest.tools.research_tools import (
     read_page,
     search_public_sources,
 )
-from app.ingest.tools.vault_tools import read_vault_document
 from app.integrations.tracing import trace_config
 from app.proposals import readers
 from app.proposals.middleware import ProposalContext, nothing_to_answer
@@ -32,6 +31,7 @@ from app.proposals.tools.reading_tools import (
     read_brief,
     read_files,
     read_funder_document,
+    read_org_file,
     read_template,
 )
 from app.proposals.tools.record_tools import read_match, read_org_record
@@ -39,7 +39,7 @@ from app.proposals.tools.writing_tools import suggest_edit, write_section
 
 TOOLS = [read_proposal, advance_step, read_match, read_org_record, add_facts, ask_user, read_files, write_section, suggest_edit]
 # The readers read_files runs: none asks the person anything, and only public research reads the web.
-EVIDENCE_TOOLS = [read_vault_document, read_brief, add_facts]
+EVIDENCE_TOOLS = [read_org_file, read_brief, add_facts]
 FUNDER_TOOLS = [read_brief, list_funder_documents, read_funder_document, read_template, add_facts]
 PUBLIC_TOOLS = [search_public_sources, read_page, fetch_document, read_document_pages, add_facts]
 
