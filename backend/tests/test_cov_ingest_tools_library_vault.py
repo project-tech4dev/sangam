@@ -94,6 +94,27 @@ class TestReadLibrary:
         out = await library_tools.read_library_document.ainvoke({"document_id": 5, "start_page": 4})
         assert out.endswith("1 paragraphs and no text in that range.")
 
+    async def test_a_saved_page_is_read_by_line(self, monkeypatch):
+        self.pool(monkeypatch, {**self.DOC, "storage_path": "source-archive/a/acme.org-csr.md"})
+        self.stored(monkeypatch, b"# CSR\n\nGrants up to Rs 50 lakh\n")
+        out = await library_tools.read_library_document.ainvoke({"document_id": 5, "start_page": 2})
+        assert "say which line." in out and "3 lines. start_page counts lines in a text page." in out
+        assert out.endswith("[line 3] Grants up to Rs 50 lakh")
+
+    async def test_a_long_page_is_cut_with_the_line_to_carry_on_from(self, monkeypatch):
+        self.pool(monkeypatch, {**self.DOC, "storage_path": "source-archive/a/dossier.md"})
+        self.stored(monkeypatch, ("a line of the dossier\n" * 3000).encode())
+        out = await library_tools.read_library_document.ainvoke({"document_id": 5})
+        last = int(out.splitlines()[-2].split("]")[0].removeprefix("[line "))
+        assert out.endswith(f"of 3000 lines. Call again with start_page={last + 1}.")
+        assert len(out) < library_tools.MAX_CHARS + 500
+
+    async def test_a_page_range_with_nothing_in_it(self, monkeypatch):
+        self.pool(monkeypatch, {**self.DOC, "storage_path": "source-archive/a/b.txt"})
+        self.stored(monkeypatch, b"one\n")
+        out = await library_tools.read_library_document.ainvoke({"document_id": 5, "start_page": 4})
+        assert out.endswith("1 lines and no text in that range.")
+
     async def test_a_failed_download(self, monkeypatch):
         self.pool(monkeypatch, self.DOC)
         self.stored(monkeypatch, None)

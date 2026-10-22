@@ -1,10 +1,11 @@
-"""Text from Word and Excel files, for an upload's content_md and the vault reader. Pure: bytes in, text out."""
+"""Text from Word, Excel and text files, for an upload's content_md and the readers. Pure: bytes in, text out."""
 
 from __future__ import annotations
 
 import io
 
 SHEET_ROWS = 200  # an upload's text keeps this many rows a sheet; the vault reader pages the rest
+LINE_MAX = 2_000  # a text file's line longer than this is split, so one minified line cannot fill a read
 
 
 def docx_paragraphs(data: bytes) -> list[str]:
@@ -35,6 +36,28 @@ def docx_range(data: bytes, start: int = 1, end: int | None = None) -> tuple[str
     paras = docx_paragraphs(data)
     last = min(end or len(paras), len(paras))
     return "\n".join(f"[para {n}] {paras[n - 1]}" for n in range(max(start, 1), last + 1)), len(paras)
+
+
+def text_lines(data: bytes) -> list[str]:
+    """A markdown or text file's lines, a very long one split at a space, so every line fits one read."""
+    lines: list[str] = []
+    for raw in data.decode("utf-8", errors="replace").splitlines():
+        line = raw.rstrip()
+        while len(line) > LINE_MAX:
+            cut = line.rfind(" ", 0, LINE_MAX)
+            cut = cut if cut > 0 else LINE_MAX
+            lines.append(line[:cut])
+            line = line[cut:].lstrip()
+        lines.append(line)
+    return lines
+
+
+def text_range(data: bytes, start: int = 1, end: int | None = None) -> tuple[str, int]:
+    """(lines start..end, each led by [line N], blank ones skipped; how many the file has), paged like a PDF."""
+    lines = text_lines(data)
+    last = min(end or len(lines), len(lines))
+    return "\n".join(f"[line {n}] {lines[n - 1]}" for n in range(max(start, 1), last + 1)
+                     if lines[n - 1].strip()), len(lines)
 
 
 def xlsx_markdown(data: bytes) -> str:

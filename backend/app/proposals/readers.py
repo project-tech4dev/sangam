@@ -21,7 +21,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables.config import var_child_runnable_config
 
 from app.agent.harness import filesystem as filesystem_tools
-from app.agent.middleware import tool_errors
+from app.agent.middleware import clear_old_tool_results, tool_errors
 from app.agent.models import resolve_model
 from app.core.config import Settings
 from app.db.pool import get_pool
@@ -74,6 +74,8 @@ def build(settings: Settings, evidence_tools: list[Any], funder_tools: list[Any]
             middleware=[
                 filesystem_tools(backend, evict=False),
                 tool_errors(),
+                # A long file is read window by window and its facts saved as it goes, so old windows can go.
+                clear_old_tool_results(),
                 RunSources(),
                 *guards,
                 *fallback(settings.research_model, settings.model),

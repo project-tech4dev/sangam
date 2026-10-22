@@ -1,4 +1,4 @@
-"""Reading for a proposal: the supervisor's read_files, and the tools its two readers use. No tool here reads the web."""
+"""Reading for a proposal: the supervisor's read_files, and the tools its readers use. No tool here reads the web."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from app.proposals.tools.proposal_tools import NO_PROPOSAL, require_edit
 logger = logging.getLogger(__name__)
 
 BRIEF_FACTS = 80  # a long brief is cut; the reader is told so
+READABLE_PATH = r"\.(" + "|".join(ext.lstrip(".") for ext in READABLE) + ")$"
 
 
 async def _slug(conn: Any, side: str, entity_id: int) -> str | None:
@@ -105,8 +106,8 @@ async def list_funder_documents() -> str:
         async with get_pool().connection() as conn:
             rows = await (await conn.execute(
                 "SELECT id, title, doc_type, as_of FROM documents WHERE funder_id = %s AND is_public "
-                "AND storage_path LIKE %s AND (lower(storage_path) LIKE '%%.pdf' OR lower(storage_path) LIKE '%%.docx') ORDER BY as_of DESC NULLS LAST, id DESC",
-                (p.funder_id, f"{storage.SOURCE_ARCHIVE}/%"),
+                "AND storage_path LIKE %s AND lower(storage_path) ~ %s ORDER BY as_of DESC NULLS LAST, id DESC",
+                (p.funder_id, f"{storage.SOURCE_ARCHIVE}/%", READABLE_PATH),
             )).fetchall()
         if not rows:
             return f"Sangam has archived no documents for {p.funder_name}."
@@ -116,6 +117,34 @@ async def list_funder_documents() -> str:
     except Exception as exc:  # noqa: BLE001 - a tool returns its failure
         logger.warning("list_funder_documents failed (%s)", type(exc).__name__)
         return f"list_funder_documents failed: {type(exc).__name__}"
+
+
+@tool
+async def read_org_file(document_id: int, start_page: int = 1, end_page: int | None = None, sheet: str = "",
+                        start_row: int = 1) -> str:
+    """Read the one file in your task, a range at a time: pages in a PDF, paragraphs in a Word file, lines in a
+    web page Sangam saved as text. An .xlsx workbook without `sheet` lists its sheets; with `sheet` it reads rows.
+    The read's header says what a fact from it cites: the organisation's own upload, or a public page and its link.
+
+    Args:
+        document_id: the id in your task.
+        start_page: the first page, paragraph or line, from 1.
+        end_page: the last one; omit to read on until the output is cut.
+        sheet: a workbook's sheet name.
+        start_row: a workbook's first row to read.
+    """
+    try:
+        p = await context.current()
+        if p is None:
+            return NO_PROPOSAL
+        doc = await vault.document(get_pool(), document_id)
+        if doc is not None and doc["org_id"] == p.org_id:
+            return await vault.read(doc, start_page=start_page, end_page=end_page, sheet=sheet, start_row=start_row)
+        text = await _public_file(document_id, "AND org_id = %s", (p.org_id,), start_page, end_page)
+        return text or f"Document {document_id} has no copy Sangam can read for {p.org_name}."
+    except Exception as exc:  # noqa: BLE001 - a tool returns its failure
+        logger.warning("read_org_file failed for %s (%s)", document_id, type(exc).__name__)
+        return f"read_org_file failed: {type(exc).__name__}"
 
 
 @tool

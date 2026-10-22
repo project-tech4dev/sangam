@@ -38,7 +38,7 @@ describe("humanizeTool", () => {
     expect(d("compare_fit", { org_id: 3 })).toBe("org 3 · every funder");
     expect(d("compare_fit", { org_id: 3, funder_ids: [4, 5] })).toBe("org 3 · funders 4, 5");
     for (const tool of ["ls", "advance_step", "write_section", "suggest_edit", "list_funder_documents", "read_funder_document",
-      "read_template", "read_vault_document", "read_match", "read_org_record"]) {
+      "read_template", "read_org_file", "read_match", "read_org_record"]) {
       expect(humanizeTool(tool).label, tool).not.toBe(tool);
       expect(typeof d(tool)).toBe("string");
     }
