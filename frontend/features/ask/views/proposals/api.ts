@@ -28,7 +28,14 @@ export type Work = {
   requirements: Requirement[];
   gates: Record<string, Answer | null>;
   earlier_phase: boolean;
-  template: { document_id: number; url: string | null; from: "sangam" | "upload"; read_at: string | null } | null;
+  template: {
+    document_id: number;
+    url: string | null;
+    from: "sangam" | "upload";
+    read_at: string | null;
+    /** Kept once the form is read to fill it in the last step. */
+    outline?: { document_id: number; read_at: string; headings: { kind: string }[] };
+  } | null;
   skipped_template: boolean;
   sources: number[];
   style: string;

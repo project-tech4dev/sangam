@@ -108,6 +108,24 @@ class TestRecordingAnUpload:
         assert captured["storage_path"] == "org-vault/3/abc-accounts.pdf"
         assert len(captured["content_hash"]) == 64, "hashed from the bytes we read back, not claimed"
 
+    async def test_drops_nul_bytes_from_the_extracted_text(self, client_for, monkeypatch, storage_on):
+        """Postgres text refuses 0x00; a PDF whose text carries one was a 500 the browser saw as "Failed to fetch"."""
+        member(monkeypatch, 3)
+        monkeypatch.setattr(f"{ROUTE}.storage.stat", lambda b, k: _async({"name": "x"}))
+        monkeypatch.setattr(f"{ROUTE}.storage.download", lambda b, k, max_bytes=0: _async(b"%PDF-"))
+        monkeypatch.setattr(f"{ROUTE}._extract", lambda data, key: ("Sec\x00tion 1", "h" * 64))
+        captured = {}
+
+        async def fake_insert(pool, **kwargs):
+            captured.update(kwargs)
+            return ROW
+
+        monkeypatch.setattr(f"{ROUTE}.repo.insert_upload", fake_insert)
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents", json=self.confirm())
+        assert response.status_code == 201
+        assert captured["content_md"] == "Section 1"
+
     async def test_refuses_a_key_in_another_orgs_folder(self, client_for, monkeypatch, storage_on):
         """The signed URL was minted for org 3; a row must not claim org 9's file."""
         member(monkeypatch, 3)
