@@ -196,6 +196,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
   - counts on `/health`;
   - checkpointer DDL moved from every cold start to `make migrate`;
   - one who-may-do-what table in ARCHITECTURE §8.
+- 2026-10-22 · `search_public_sources` checks its hits at once, not in turn (a Pitch search took 10–34 s against Tavily's 2–7 s); Pitch and Import both use it.
 
 ## Tracing and evals
 

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import UUID
@@ -101,6 +103,19 @@ class TestSearch:
         assert seen == [10]
         assert "[READABLE] OK\n  https://ok.org/a" in out and "[HELD] (no title)" in out
         assert "why held: held.org forbids it" in out
+
+    async def test_hits_are_checked_at_once_and_keep_their_order(self, search, monkeypatch):
+        search({"results": [{"url": f"https://site{i}.org", "title": f"T{i}"} for i in range(10)]})
+
+        async def check(url):
+            await asyncio.sleep(0.2 if url.endswith("0.org") else 0.1)  # the first finishes last
+            return "held" if url.endswith("3.org") else None
+        monkeypatch.setattr(research_tools, "check_url", check)
+        started = time.monotonic()
+        out = await research_tools.search_public_sources.ainvoke({"query": "x", "max_results": 10})
+        assert time.monotonic() - started < 0.6  # in turn it would be 1.1 s
+        assert [line for line in out.splitlines() if line.startswith("[")] == [
+            f"[{'HELD' if i == 3 else 'READABLE'}] T{i}" for i in range(10)]
 
     async def test_a_check_that_raises_is_returned(self, search, monkeypatch):
         search({"results": [{"url": "https://ok.org/a"}]})

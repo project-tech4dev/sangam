@@ -9,6 +9,7 @@ rows.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -125,9 +126,11 @@ async def search_public_sources(query: str, max_results: int = 6) -> str:
         if not results:
             return f"No results for {query!r}. Try the funder's own domain, or different wording."
         lines = [f"{len(results)} results for {query!r}:"]
-        for r in results[:max_results]:
+        shown = results[:max_results]
+        # At once: each check is DNS and robots.txt, and in turn ten of them took ~30 s against Tavily's ~3 s.
+        refusals = await asyncio.gather(*(check_url(r.get("url", "")) for r in shown))
+        for r, refusal in zip(shown, refusals, strict=True):
             url = r.get("url", "")
-            refusal = await check_url(url)
             mark = "READABLE" if refusal is None else "HELD"
             lines.append(f"\n[{mark}] {r.get('title', '(no title)')}\n  {url}")
             if refusal:
