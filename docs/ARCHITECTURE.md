@@ -138,6 +138,11 @@ Plans: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md), [2026-10-19-rfp
   uploads. So the file reader's one tool, `read_org_file`, opens both: a vault file through `vault.read`, cited
   `[vault:<id>#…]`, and a public copy through `_archived`, whose facts are web facts citing the page's own link.
   `RunSources` still lets a reader open only the one document it was given.
+- **A ticked link is fetched once, by code, before its reader runs** (`proposals/links.py`). It goes through
+  `_read_page` / `_fetch_document`, so `check_url` (the source registry, robots.txt) and `guarded_client` decide as
+  they do for Import. The copy goes to `source-archive/` and the `documents` row is pointed at it (only while
+  `storage_path` is empty), so the next proposal reads the copy. The reader itself still has no web tool. A refusal is
+  the row's one-line reason ("Sangam may not read that site"), and "Try again" asks again.
 - **A reader sees a file one window at a time, and forgets old windows.** Every read is cut at `MAX_CHARS` and names
   where to carry on (a text page by `[line N]`); the reader saves facts as it goes, and `clear_old_tool_results`
   drops all but the last five windows past 60k tokens. The chat never holds a file: only each reader's closing note

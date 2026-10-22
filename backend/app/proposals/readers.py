@@ -28,7 +28,7 @@ from app.db.pool import get_pool
 from app.ingest import run_sources
 from app.ingest.middleware import RunSources, fallback
 from app.integrations.tracing import trace_config
-from app.proposals import brief, context, research, steps
+from app.proposals import brief, context, links, research, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
 from app.proposals.middleware import PUBLIC_RUN, PublicGuard, PublicRun, ResearchProgress
@@ -252,16 +252,17 @@ def _last_text(result: dict[str, Any]) -> str:
     return message.text.strip() if message is not None else ""
 
 
-async def _titles(org_id: int, ids: list[int]) -> tuple[dict[str, str], set[str]]:
-    """The org's own files' titles, and which are only a saved link; another org's file stays unnamed."""
+async def _titles(org_id: int, ids: list[int]) -> tuple[dict[str, str], dict[str, str]]:
+    """The org's own files' titles, and the link of each that is only a saved link; another org's file stays unnamed."""
     if not ids:
-        return {}, set()
+        return {}, {}
     async with get_pool().connection() as conn:
         rows = await (await conn.execute(
-            "SELECT id, title, COALESCE(storage_path, '') = '' AS link FROM documents"
+            "SELECT id, title, source_url, COALESCE(storage_path, '') = '' AS link FROM documents"
             " WHERE id = ANY(%s) AND org_id = %s", (ids, org_id)
         )).fetchall()
-    return {str(r["id"]): r["title"] or "Untitled file" for r in rows}, {str(r["id"]) for r in rows if r["link"]}
+    return ({str(r["id"]): r["title"] or "Untitled file" for r in rows},
+            {str(r["id"]): r["source_url"] or "" for r in rows if r["link"]})
 
 
 async def _mark(proposal_id: int, changes: dict[str, dict[str, Any]], by: dict[str, Any], reason: str) -> None:
@@ -302,7 +303,7 @@ async def _claimed(p: context.Current, public: bool, ask: dict[str, Any] | None)
     """Mark the pending readers running under the row lock, and return the run that reads them."""
     pool = get_pool()
     by = await repo.user_name(pool, p.scope.user_id)
-    files, links = await _titles(p.org_id, p.work.get("sources") or [])
+    files, linked = await _titles(p.org_id, p.work.get("sources") or [])
     titles = {**files, FUNDER: f"what {p.funder_name} looks for", PUBLIC: "Public research on the problem and place"}
     keys: list[str] = []
     asked: list[str] = []  # the research ask's id, allocated inside the row lock
@@ -312,7 +313,7 @@ async def _claimed(p: context.Current, public: bool, ask: dict[str, Any] | None)
     ask_id = asked[0] if asked else None
 
     async def run() -> str:
-        results = await asyncio.gather(*(_one(p, k, titles.get(k, "a file"), gate, by, k in links,
+        results = await asyncio.gather(*(_one(p, k, titles.get(k, "a file"), gate, by, linked.get(k),
                                               (ask_id, ask) if k == PUBLIC and ask_id else None) for k in keys))
         return "\n".join(results)
 
@@ -336,10 +337,10 @@ def _claim(work: dict, title: str, keys: list[str], titles: dict[str, str], by: 
 
 
 async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore, by: dict[str, Any],
-               link: bool = False, ask: tuple[str, dict[str, Any]] | None = None) -> str:
-    """One reader, with its own sources: the contextvar is set inside the task, so no two readers share one."""
-    if link:
-        error = "it is a link to a web page, not a stored file; upload the file to read it"
+               link: str | None = None, ask: tuple[str, dict[str, Any]] | None = None) -> str:
+    """One reader, with its own sources: the contextvar is set inside the task, so no two readers share one.
+    A file that is only a link is fetched and saved first; its reader then reads the copy."""
+    if link is not None and (error := await links.archive(int(key), link)):
         failed = {"status": "failed", "at": datetime.now(UTC).isoformat(), "by": by, "title": title, "error": error}
         await _mark(p.id, {f"readers.{key}": failed}, by, "could not read it")
         return f"{title}: could not read it ({error})."

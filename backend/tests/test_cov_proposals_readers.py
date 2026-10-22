@@ -122,13 +122,43 @@ class TestRead:
         assert "W: could not read it (something went wrong while reading it)." in out
         assert store["work"]["readers"]["funder"]["status"] == "done"
 
-    async def test_a_saved_link_is_not_read(self, run):
+    async def test_a_saved_link_is_fetched_then_read(self, run, monkeypatch):
         store, setup = run
-        graphs = setup({"sources": [41]}, rows=[{"id": 41, "title": "Site", "link": True}])
+        graphs = setup({"sources": [41]}, rows=[{"id": 41, "title": "Site", "source_url": "https://a.org", "link": True}])
+        fetched = []
+
+        async def archive(document_id, url):
+            fetched.append((document_id, url))
+
+        monkeypatch.setattr(readers.links, "archive", archive)
         out = await readers.read(proposal({"sources": [41]}))
-        assert out.startswith("Site: could not read it (it is a link to a web page")
+        assert fetched == [(41, "https://a.org")] and out.startswith("Site: read.")
+        assert graphs.evidence.asked[0][1].vault_docs == frozenset({41})
+        assert store["work"]["readers"]["41"]["status"] == "done"
+
+    async def test_a_link_that_cannot_be_fetched_is_not_read(self, run, monkeypatch):
+        store, setup = run
+        graphs = setup({"sources": [41]}, rows=[{"id": 41, "title": "Site", "source_url": "https://a.org", "link": True}])
+
+        async def archive(document_id, url):
+            return "the site refused it: HTTP 403"
+
+        monkeypatch.setattr(readers.links, "archive", archive)
+        out = await readers.read(proposal({"sources": [41]}))
+        assert out.startswith("Site: could not read it (the site refused it: HTTP 403).")
         assert graphs.evidence.asked == []
-        assert store["work"]["readers"]["41"]["status"] == "failed"
+        assert store["work"]["readers"]["41"] | {"status": "failed", "error": "the site refused it: HTTP 403"} == \
+            store["work"]["readers"]["41"]
+
+    async def test_a_stored_file_is_not_fetched(self, run, monkeypatch):
+        _, setup = run
+        setup({"sources": [41]}, rows=[{"id": 41, "title": "W", "source_url": "https://a.org", "link": False}])
+
+        async def archive(document_id, url):
+            raise AssertionError("a stored file is never fetched")
+
+        monkeypatch.setattr(readers.links, "archive", archive)
+        assert (await readers.read(proposal({"sources": [41]}))).startswith("W: read.")
 
     async def test_nothing_left_to_read(self, run):
         _, setup = run
@@ -320,4 +350,4 @@ async def test_no_ticked_files_needs_no_query(monkeypatch):
         raise AssertionError("no query for no files")
 
     monkeypatch.setattr(readers, "get_pool", never)
-    assert await readers._titles(7, []) == ({}, set())
+    assert await readers._titles(7, []) == ({}, {})

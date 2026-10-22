@@ -381,13 +381,17 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
               <label key={d.id} className="pr-tick">
                 <input
                   type="checkbox"
-                  disabled={!canEdit || (d.has_file === false && !work.sources.includes(d.id))}
+                  disabled={!canEdit || (d.has_file === false && !d.source_url && !work.sources.includes(d.id))}
                   checked={work.sources.includes(d.id)}
                   onChange={(e) => tick(d.id, e.target.checked)}
                 />
                 {d.title ?? "Untitled file"}
                 {d.has_file === false ? (
-                  <span className="muted fm-meta">a link to a web page, so Sangam cannot read it; upload the file instead</span>
+                  <span className="muted fm-meta">
+                    {d.source_url
+                      ? "a web page: Sangam saves a copy when it reads it"
+                      : "nothing stored to read; upload the file instead"}
+                  </span>
                 ) : (
                   d.doc_type && <span className="muted fm-meta">{d.doc_type.replaceAll("_", " ")}</span>
                 )}

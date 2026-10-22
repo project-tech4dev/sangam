@@ -188,6 +188,7 @@ describe("step 2: documents and style", () => {
   const docs = [
     { id: 11, title: "Annual report", doc_type: "annual_report", source_name: null, source_url: null, fetched_at: null, has_file: true },
     { id: 12, title: null, doc_type: null, source_name: null, source_url: null, fetched_at: null, has_file: false },
+    { id: 13, title: "Give.do profile", doc_type: "web_page", source_name: null, source_url: "https://give.do/discover/17C4", fetched_at: null, has_file: false },
   ];
 
   it("ticks files, skips the form and saves the style", async () => {
@@ -198,6 +199,9 @@ describe("step 2: documents and style", () => {
     expect(vault.list).toHaveBeenCalledWith("kabil");
     expect(screen.getByText("annual report")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /Untitled file/ })).toBeDisabled();
+    expect(screen.getByText("nothing stored to read; upload the file instead")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /Give.do profile/ })).toBeEnabled();
+    expect(screen.getByText("a web page: Sangam saves a copy when it reads it")).toBeInTheDocument();
     await userEvent.click(report);
     expect(workCalls()).toContainEqual({ set: { sources: [11] }, rev: {} });
     await userEvent.click(screen.getByRole("button", { name: "Use Sangam's usual order" }));
