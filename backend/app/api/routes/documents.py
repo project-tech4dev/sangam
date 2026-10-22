@@ -109,6 +109,8 @@ async def confirm_upload(
     # it told us about them would be a claim rather than a measurement.
     data = await storage.download(bucket, key, max_bytes=EXTRACT_LIMIT_BYTES)
     content_md, content_hash = _extract(data, key)
+    if content_md:
+        content_md = content_md.replace("\x00", "") or None  # some PDFs' text carries NULs, which Postgres refuses
 
     row = await repo.insert_upload(
         pool, org_id=org_id, uploaded_by=user_id, title=body.title, doc_type=body.doc_type,
