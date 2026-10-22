@@ -54,7 +54,10 @@ describe("HomePage", () => {
     expect(screen.getByText("05")).toBeInTheDocument();
     expect(screen.getByText("NGO profiles")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Project Tech4Dev" })).toHaveAttribute("src", "/partners/tech4dev.png");
-    expect(screen.getByText("Bridgespan logo")).toBeInTheDocument();
+    for (const [name, src] of [["NoDe", "node"], ["SeSTA", "sesta"], ["FFRH", "ffrh"]]) {
+      expect(screen.getByRole("img", { name })).toHaveAttribute("src", `/partners/${src}.png`);
+    }
+    expect(screen.queryByText(/Bridgespan/)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
   });
 });
