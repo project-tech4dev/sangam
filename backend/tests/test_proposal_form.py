@@ -139,6 +139,11 @@ class TestEveryHeadingComesOut:
         assert out["T5"].how == "answered" and out["T5"].text == "Run 54 trainings in 22 villages. SeSTA will work with 2,400 women."
         assert fill.fit("One long sentence with no end that runs on and on", {"n": 5, "unit": "chars"}) is None
 
+    def test_a_single_sentence_is_cut_at_a_semicolon_but_never_at_a_comma(self):
+        limit = {"n": 40, "unit": "chars"}
+        assert fill.fit("Rainfed farming; 36.65% of 139,647 ha is irrigated", limit) == "Rainfed farming."
+        assert fill.fit("89% of land holders are small, marginal or landless farmers", limit) is None
+
     def test_no_answer_is_a_mark_and_never_the_parts_pasted(self):
         out = self.resolve(outline(NAME), {})
         assert out["T1"].text == "[Add: How the problem will be addressed]"

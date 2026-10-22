@@ -19,7 +19,7 @@ PROMPT = (Path(__file__).parent / "prompts" / "form_fill.md").read_text(encoding
 UNITS = {"chars": "characters", "words": "words", "pages": "pages"}
 How = Literal["answered", "add", "you_fill"]
 _GAP = re.compile(r"\[Add:[^\]]*\]")
-_SENTENCE = re.compile(r"(?<=[.!?\]])\s+")
+_CUT = re.compile(r"[.!?\];](?=\s)")  # where a cut leaves whole clauses
 _YOU = re.compile(r"\[You fill:[^\]]*\]")
 
 
@@ -93,11 +93,11 @@ def check(source: str, answer: str, limit: dict[str, Any] | None, *, districts: 
 
 
 def fit(answer: str, limit: dict[str, Any]) -> str | None:
-    """The answer cut to the limit by dropping whole sentences from the end; a cut never adds a claim. Pure."""
-    sentences = _SENTENCE.split(answer.strip())
-    while len(sentences) > 1:
-        sentences.pop()
-        if not over(limit, text := " ".join(sentences).strip()):
+    """The answer cut to the limit at the last sentence end or ";" that fits; never at a comma, which splits a list. Pure."""
+    answer = answer.strip()
+    for end in reversed([m.end() for m in _CUT.finditer(answer)]):
+        text = answer[:end].rstrip(";").rstrip() + ("." if answer[end - 1] == ";" else "")
+        if not over(limit, text):
             return text
     return None
 
