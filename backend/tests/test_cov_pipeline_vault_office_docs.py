@@ -59,6 +59,22 @@ class TestOffice:
 DOC = {"id": 12, "title": "Annual report", "doc_type": "annual_report", "storage_path": "org-vault/3/ar.pdf"}
 
 
+class TestTextLines:
+    def test_a_long_line_is_split_at_a_space(self):
+        lines = office.text_lines(("word " * 1000).encode())
+        assert len(lines) == 3 and all(len(line) <= office.LINE_MAX for line in lines)
+
+    def test_a_line_with_no_space_is_split_hard(self):
+        assert [len(line) for line in office.text_lines(b"x" * 4500)] == [2000, 2000, 500]
+
+    def test_a_range_numbers_lines_and_skips_blank_ones(self):
+        text, total = office.text_range(b"one\n\nthree\nfour", 2, 3)
+        assert (text, total) == ("[line 3] three", 4)
+
+    def test_bad_bytes_do_not_raise(self):
+        assert office.text_range(b"caf\xe9", 1)[0] == "[line 1] caf\ufffd"
+
+
 class TestVaultUrls:
     def test_url_round_trip(self):
         assert vault.document_id(vault.url(12)) == 12
@@ -123,7 +139,7 @@ class TestVaultRead:
 
     async def test_refusals(self, download):
         assert "no file on record" in await vault.read({**DOC, "storage_path": None})
-        assert "is not a PDF, Word" in await vault.read({**DOC, "storage_path": "org-vault/3/x.txt"})
+        assert "is not a PDF, Word" in await vault.read({**DOC, "storage_path": "org-vault/3/x.png"})
         assert "could not be downloaded" in await vault.read(DOC)
 
     async def test_pdf_pages_are_marked_and_cut(self, download, monkeypatch):
@@ -133,6 +149,14 @@ class TestVaultRead:
         out = await vault.read(DOC)
         assert "[vault:12#p1]" in out and "2 pages. Cite a fact" in out
         assert out.endswith("Call again with a later start_page.") and len(out) < vault.MAX_CHARS + 500
+
+    async def test_a_text_file_is_read_by_line_and_cut_where_it_says(self, download):
+        download["data"] = ("Households: 1,240\n\n" + "a long line of the dossier\n" * 2000).encode()
+        out = await vault.read({**DOC, "storage_path": "org-vault/3/notes.md"})
+        assert "2002 lines (start_page counts lines" in out and "[vault:12#line1] Households: 1,240" in out
+        assert "#line2]" not in out and len(out) < vault.MAX_CHARS + 500
+        cut = out.splitlines()[-1]
+        assert cut.startswith("… cut at line ") and cut.endswith(f"start_page={int(cut.split()[4]) + 1}.")
 
     async def test_a_scanned_pdf_says_so(self, download, monkeypatch):
         download["data"] = b"%PDF"

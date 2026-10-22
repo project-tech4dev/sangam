@@ -175,7 +175,7 @@ class TestFunderDocuments:
         assert out.splitlines() == ["2 document(s) Sangam archived for ABF:",
                                     "  document 9 · Annual report · annual_report · 2024-25",
                                     "  document 8 · untitled · document · undated"]
-        assert pool.seen[0][1] == (3, f"{storage.SOURCE_ARCHIVE}/%")
+        assert pool.seen[0][1] == (3, f"{storage.SOURCE_ARCHIVE}/%", r"\.(pdf|docx|md|txt)$")
 
     async def test_a_document_not_the_funders_is_refused(self, opened):
         pool = opened(proposal())
@@ -229,6 +229,63 @@ class TestFunderDocuments:
         monkeypatch.setattr(storage, "download", download)
         out = await rt.read_funder_document.ainvoke({"document_id": 12})
         assert "2 paragraphs." in out and out.endswith("[para 1] Who may apply\n[para 2] Registered NGOs with 12A")
+
+
+class TestReadOrgFile:
+    PAGE = {"id": 206, "title": "SATRA annual reports summary", "source_url": "https://raw.githubusercontent.com/x/a.md",
+            "storage_path": f"{storage.SOURCE_ARCHIVE}/orgs/satra/a.md"}
+
+    def no_vault(self, monkeypatch, row=None):
+        async def document(pool, doc_id):
+            return row
+        monkeypatch.setattr(vault, "document", document)
+
+    async def test_the_orgs_upload_is_read_from_the_vault(self, opened, monkeypatch):
+        opened(proposal())
+        self.no_vault(monkeypatch, {"id": 41, "org_id": 7, "storage_path": "org-vault/7/report.pdf"})
+
+        async def read(doc, start_page, end_page, sheet, start_row):
+            return f"vault {doc['id']} {start_page}-{end_page} {sheet!r} {start_row}"
+
+        monkeypatch.setattr(vault, "read", read)
+        out = await rt.read_org_file.ainvoke({"document_id": 41, "start_page": 3, "sheet": "Grants"})
+        assert out == "vault 41 3-None 'Grants' 1"
+
+    async def test_a_saved_public_page_is_read_by_line_and_cites_its_link(self, opened, monkeypatch):
+        pool = opened(proposal(), [("FROM documents", [self.PAGE])])
+        self.no_vault(monkeypatch)
+
+        async def download(bucket, key, max_bytes):
+            assert (bucket, key) == (storage.SOURCE_ARCHIVE, "orgs/satra/a.md")
+            return b"# SATRA\n\nSATRA works with 1,240 households in Jhalawar.\n"
+
+        monkeypatch.setattr(storage, "download", download)
+        out = await rt.read_org_file.ainvoke({"document_id": 206})
+        assert "source_url https://raw.githubusercontent.com/x/a.md" in out and "say which line." in out
+        assert out.endswith("[line 1] # SATRA\n[line 3] SATRA works with 1,240 households in Jhalawar.")
+        assert pool.seen[0][1] == (206, f"{storage.SOURCE_ARCHIVE}/%", 7)
+
+    async def test_another_orgs_upload_is_not_read(self, opened, monkeypatch):
+        pool = opened(proposal())
+        self.no_vault(monkeypatch, {"id": 41, "org_id": 99, "storage_path": "org-vault/99/report.pdf"})
+        out = await rt.read_org_file.ainvoke({"document_id": 41})
+        assert out == "Document 41 has no copy Sangam can read for SeSTA."
+        assert pool.seen[0][1] == (41, f"{storage.SOURCE_ARCHIVE}/%", 7)
+
+    async def test_without_a_proposal(self, monkeypatch):
+        async def current():
+            return None
+        monkeypatch.setattr(context, "current", current)
+        assert await rt.read_org_file.ainvoke({"document_id": 1}) == rt.NO_PROPOSAL
+
+    async def test_a_failure_is_returned_by_type(self, opened, monkeypatch):
+        opened(proposal())
+
+        async def document(pool, doc_id):
+            raise ValueError("boom")
+
+        monkeypatch.setattr(vault, "document", document)
+        assert await rt.read_org_file.ainvoke({"document_id": 1}) == "read_org_file failed: ValueError"
 
 
 class TestReadTemplate:

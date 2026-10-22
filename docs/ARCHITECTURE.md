@@ -131,6 +131,21 @@ Plans: [2026-10-15-rfp-watch](features/2026-10-15-rfp-watch.md), [2026-10-19-rfp
   filter all narrow that one feed in the browser, and the buttons show only when `can_act` says RLS would allow them.
   "Ask about this call" fills a new chat's composer and sends nothing.
 
+### Proposals: file readers
+
+- **A ticked file is either the org's upload or a public page Sangam saved about it.** Step 2 lists every `documents`
+  row linked to the org, and most are Import's archives (`source-archive/`, `.md` pages and PDFs), not Doc Vault
+  uploads. So the file reader's one tool, `read_org_file`, opens both: a vault file through `vault.read`, cited
+  `[vault:<id>#…]`, and a public copy through `_archived`, whose facts are web facts citing the page's own link.
+  `RunSources` still lets a reader open only the one document it was given.
+- **A reader sees a file one window at a time, and forgets old windows.** Every read is cut at `MAX_CHARS` and names
+  where to carry on (a text page by `[line N]`); the reader saves facts as it goes, and `clear_old_tool_results`
+  drops all but the last five windows past 60k tokens. The chat never holds a file: only each reader's closing note
+  reaches it.
+- **Pitch reads, it never fetches.** A `documents` row with no stored copy (a bare link) has nothing to read, so step 2
+  does not list it, and Pitch neither pulls the web for it nor writes `documents`. A reader given one ticked earlier
+  says "upload the file instead".
+
 ### Proposals: secondary research
 
 - **Two readers, two rules.** The facts a proposal's parts cite come from the public researcher (a deep agent whose

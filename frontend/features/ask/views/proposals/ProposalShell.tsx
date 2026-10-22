@@ -35,8 +35,8 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   const [part, setPart] = useState<string | null>(null);
   const [send, setSend] = useState<Send>(null);
   const onSend = useCallback((fn: Send) => setSend(() => fn), []);
-  // The chat floats over the page: open from the start on a wide screen, behind its button on a phone.
-  const [chatOpen, setChatOpen] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches);
+  // The chat floats over the page, closed behind its button until someone wants to talk to it.
+  const [chatOpen, setChatOpen] = useState(false);
 
   const load = useCallback(() => getProposal(id).then(setProposal, () => setFailed(true)), [id]);
   useEffect(() => {
@@ -132,7 +132,7 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
         {!canEdit && <p className="pr-readonly">You can read this proposal. Ask your organisation&apos;s admin to make changes.</p>}
       </div>
 
-      <div className="pr-wrap" data-chat={canEdit && chatOpen}>
+      <div className="pr-wrap">
         <div className="pr-main">
           <ol className="pr-steps" aria-label="Steps">
             {STEPS.map((label, i) => (
@@ -301,7 +301,8 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
 
   // The chosen form shapes the download; it is not a file to read, unless it was ticked before it was chosen.
   const form = work.template?.document_id;
-  const readable = docs?.filter((d) => d.id !== form || work.sources.includes(d.id)) ?? null;
+  // A link with no saved copy has nothing to read, so it is not offered; a ticked one stays to be unticked.
+  const readable = docs?.filter((d) => work.sources.includes(d.id) || (d.id !== form && d.has_file !== false)) ?? null;
   const formTitle = docs?.find((d) => d.id === form)?.title;
   const outline = work.template?.outline?.document_id === form ? work.template?.outline : undefined;
   const questions = outline?.headings.filter((h) => h.kind === "prose").length ?? 0;
@@ -381,7 +382,7 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
               <label key={d.id} className="pr-tick">
                 <input
                   type="checkbox"
-                  disabled={!canEdit || (d.has_file === false && !work.sources.includes(d.id))}
+                  disabled={!canEdit}
                   checked={work.sources.includes(d.id)}
                   onChange={(e) => tick(d.id, e.target.checked)}
                 />

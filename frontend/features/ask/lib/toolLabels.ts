@@ -38,7 +38,7 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
   list_funder_documents: { label: "Listing the funder's documents", detail: () => "" },
   read_funder_document: { label: "Reading a funder document", detail: () => "" },
   read_template: { label: "Reading the funder's form", detail: () => "" },
-  read_vault_document: { label: "Reading one of your files", detail: () => "" },
+  read_org_file: { label: "Reading one of the ticked files", detail: () => "" },
   read_match: { label: "Reading the Funder Match", detail: () => "" },
   read_org_record: { label: "Reading the organisation's record", detail: () => "" },
   compare_fit: {

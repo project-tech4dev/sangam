@@ -1666,7 +1666,6 @@ body:has(.import-shell) > footer { display: none; }
 .pr-chat-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .pr-chat-panel[hidden] { display: none; }
 /* On a wide screen the page makes room for the open window, so it covers no button. */
-@media (min-width: 1100px) { .pr-wrap[data-chat="true"] { padding-right: 404px; } }
 .pr-chat-panel > .card { box-shadow: var(--shadow-md); }
 .pr-chat-close { position: absolute; top: 10px; right: 10px; z-index: 1; }
 .pr-chat-bubble { box-shadow: var(--shadow-md); }

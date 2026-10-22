@@ -99,7 +99,7 @@ class TestPublicResearch:
     def test_it_reads_the_web_and_no_file(self):
         mine = readers.sources_for(proposal({"sources": [41]}), readers.PUBLIC)
         assert run_sources.refusal(mine, "search_public_sources", {"query": "dropout Udalguri"}) is None
-        assert run_sources.refusal(mine, "read_vault_document", {"document_id": 41}).startswith("REFUSED")
+        assert run_sources.refusal(mine, "read_org_file", {"document_id": 41}).startswith("REFUSED")
 
     def test_its_task_holds_no_figure_from_the_files(self):
         held = fact_rules.make({"subject": "adolescents out of school", "value": "38%", "origin": "vault",
@@ -185,7 +185,7 @@ class TestPublicGuard:
 class TestEachReaderRunsOnlyItsTools:
     def test_the_file_reader(self, built):
         assert set(built.evidence.nodes["tools"].bound.tools_by_name) == {
-            "read_vault_document", "read_brief", "add_facts", "read_file"}
+            "read_org_file", "read_brief", "add_facts", "read_file"}
 
     def test_the_funder_reader(self, built):
         assert set(built.funder.nodes["tools"].bound.tools_by_name) == {
@@ -197,15 +197,30 @@ class TestEachReaderRunsOnlyItsTools:
         assert not tools & (run_sources.WEB_TOOLS | {"ask_user", "task", "write_file", "execute"})
 
 
+def test_each_reader_clears_old_windows(monkeypatch):
+    from app.proposals.agent import build_proposal_agent
+
+    made = []
+    real = readers.clear_old_tool_results
+
+    def spy():
+        made.append(real())
+        return made[-1]
+
+    monkeypatch.setattr(readers, "clear_old_tool_results", spy)
+    build_proposal_agent(Settings(tavily_api_key="test"), InMemorySaver())
+    assert len(made) == 2  # the file reader and the funder reader
+
+
 class TestEachFileReaderOpensOnlyItsFile:
     def test_another_ticked_file_is_refused(self):
         mine = readers.sources_for(proposal({"sources": [41, 42]}), "41")
-        assert run_sources.refusal(mine, "read_vault_document", {"document_id": 42}).startswith("REFUSED")
-        assert run_sources.refusal(mine, "read_vault_document", {"document_id": 41}) is None
+        assert run_sources.refusal(mine, "read_org_file", {"document_id": 42}).startswith("REFUSED")
+        assert run_sources.refusal(mine, "read_org_file", {"document_id": 41}) is None
 
     def test_the_funder_reader_opens_none_of_the_orgs_files(self):
         funder = readers.sources_for(proposal({"sources": [41]}), readers.FUNDER)
-        assert run_sources.refusal(funder, "read_vault_document", {"document_id": 41}).startswith("REFUSED")
+        assert run_sources.refusal(funder, "read_org_file", {"document_id": 41}).startswith("REFUSED")
 
 
 class TestWhatIsRead:
