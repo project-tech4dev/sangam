@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import sys
 import types
+from contextlib import nullcontext
 from pathlib import Path
 from uuid import UUID
 
@@ -613,3 +614,91 @@ class TestParallelPauses:
         assert key_resume('{"decisions": [1]}', [a, b]) == {"ib": {"decisions": [1]}}
         assert key_resume({"decisions": [1], "slug": "a"}, []) == {"decisions": [1]}
         assert key_resume({"ia": {"decisions": [1]}}, [a, b]) == {"ia": {"decisions": [1]}}
+
+
+async def test_every_span_of_a_run_carries_the_caller(monkeypatch):
+    """Langfuse v4 reads user and tags per observation, so cost per org needs them on each generation."""
+    from contextlib import contextmanager
+
+    import langfuse
+    from langchain_core.runnables import RunnableLambda
+
+    seen: dict = {}
+
+    @contextmanager
+    def fake_propagate(**kwargs):
+        seen.update(kwargs, inside=True)
+        yield
+        seen["inside"] = False
+
+    async def fake_run(self, input):
+        yield seen.get("inside")
+
+    monkeypatch.setattr(langfuse, "propagate_attributes", fake_propagate)
+    monkeypatch.setattr("app.integrations.tracing.LangGraphAGUIAgent.run", fake_run)
+    monkeypatch.setattr("app.integrations.tracing.flush_traces", lambda: None)
+    agent = SessionScopedAGUIAgent.__new__(SessionScopedAGUIAgent)
+    agent.graph = RunnableLambda(lambda x: x).with_config(
+        metadata={"langfuse_trace_name": "sangam_ask", "langfuse_tags": ["sangam", "ask"]}
+    )
+    token = chat_scope.set(STEWARD)
+    try:
+        events = [e async for e in agent.run(RunAgentInput(thread_id="thread-42", run_id="run-1", messages=[]))]
+    finally:
+        chat_scope.reset(token)
+
+    assert events == [True]  # the graph streamed inside the context
+    assert seen["inside"] is False
+    assert seen["user_id"] == "asha@sesta.org"
+    assert seen["session_id"] == "thread-42"
+    assert seen["trace_name"] == "sangam_ask"
+    assert seen["version"] == "FFRH + SeSTA"
+    assert seen["tags"] == ["sangam", "ask", "role:member", "role:steward", "org:FFRH", "org:SeSTA"]
+
+
+async def test_a_run_still_streams_when_attributes_cannot_be_propagated(monkeypatch):
+    import langfuse
+
+    def broken(**kwargs):
+        raise ValueError("bad attribute")
+
+    async def fake_run(self, input):
+        yield "event"
+
+    monkeypatch.setattr(langfuse, "propagate_attributes", broken)
+    monkeypatch.setattr("app.integrations.tracing.LangGraphAGUIAgent.run", fake_run)
+    monkeypatch.setattr("app.integrations.tracing.flush_traces", lambda: None)
+    agent = SessionScopedAGUIAgent.__new__(SessionScopedAGUIAgent)
+    agent.graph = object()
+
+    events = [e async for e in agent.run(RunAgentInput(thread_id="t", run_id="r", messages=[]))]
+    assert events == ["event"]
+
+
+def test_a_reader_run_is_named_and_tagged_from_its_own_trace_config(monkeypatch):
+    """Pitch's readers run outside a chat turn, so they pass their trace config straight in."""
+    import langfuse
+
+    from app.integrations.tracing import propagate_caller
+
+    seen: dict = {}
+    monkeypatch.setattr(langfuse, "propagate_attributes", lambda **kw: seen.update(kw) or nullcontext())
+    config = trace_config(Settings(**ENABLED), name="sangam_proposal_reader", tags=("proposal", "reader"))
+    token = chat_scope.set(STEWARD)
+    try:
+        with propagate_caller(config):
+            pass
+    finally:
+        chat_scope.reset(token)
+    assert seen["trace_name"] == "sangam_proposal_reader"
+    assert seen["session_id"] is None
+    assert seen["tags"][:3] == ["sangam", "proposal", "reader"] and "org:SeSTA" in seen["tags"]
+
+
+def test_the_org_label_is_one_groupable_name_for_the_callers_organisations():
+    from app.integrations.tracing import org_label
+
+    assert org_label(STEWARD) == "FFRH + SeSTA"
+    assert org_label(CallerScope(user_id=DEV_USER_ID, is_staff=True)) == "Sangam staff"
+    assert org_label(CallerScope(user_id=DEV_USER_ID, is_staff=False)) == "No organisation"
+    assert org_label(None) is None

@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import re
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from textwrap import dedent
 from typing import Any
 
@@ -361,6 +361,32 @@ def caller_trace(scope: CallerScope | None, user_id: Any) -> tuple[str, list[str
     return scope.email or str(scope.user_id or DEV_USER_ID), tags, metadata
 
 
+def org_label(scope: CallerScope | None) -> str | None:
+    """One groupable name for the caller's organisations; Langfuse can group by version but not by a tag."""
+    if scope is None:
+        return None
+    if names := sorted(str(scope.org_names.get(org, org)) for org in scope.org_roles):
+        return " + ".join(names)
+    return "Sangam staff" if scope.is_staff else "No organisation"
+
+
+def propagate_caller(config: dict[str, Any] | None, session_id: str | None = None) -> AbstractContextManager:
+    """Puts the caller on every span inside: v4 dashboards read user and tags per observation, not per trace."""
+    try:
+        from langfuse import propagate_attributes
+
+        scope = chat_scope.get()
+        user, tags, _ = caller_trace(scope, chat_user_id.get())
+        meta = (config or {}).get("metadata") or {}
+        return propagate_attributes(
+            user_id=user, session_id=session_id, trace_name=meta.get("langfuse_trace_name"), version=org_label(scope),
+            tags=[*meta.get("langfuse_tags", ()), *tags],
+        )
+    except Exception:  # telemetry must never take the app down
+        logger.debug("Langfuse attributes not propagated", exc_info=True)
+        return nullcontext()
+
+
 class SessionScopedAGUIAgent(LangGraphAGUIAgent):
     """AG-UI agent that tags each run with the conversation it belongs to."""
 
@@ -382,10 +408,12 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
 
     async def run(self, input: RunAgentInput):
         try:
-            async for event in super().run(input):
-                yield event
+            with propagate_caller(getattr(self.graph, "config", None), input.thread_id):
+                async for event in super().run(input):
+                    yield event
         finally:
             await asyncio.to_thread(flush_traces)
+
 
     @staticmethod
     def _collect_interrupts(tasks) -> list:
