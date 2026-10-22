@@ -386,9 +386,9 @@ async def test_a_version_needs_storage_text_and_a_reachable_bucket(api, held, va
 TEMPLATE = {"document_id": 40, "read_at": NOW.isoformat()}
 HEADINGS = [
     {"code": "T1", "number": "4", "label": "Problem Statement", "ask": "The problem", "kind": "prose",
-     "limit": {"n": 3000, "unit": "chars"}, "uses": ["A3"], "only_if": None},
+     "limit": {"n": 3000, "unit": "chars"}, "only_if": None},
     {"code": "T2", "number": None, "label": "PAN Card Number", "ask": "", "kind": "field", "limit": None,
-     "uses": [], "only_if": None},
+     "only_if": None},
 ]
 
 
@@ -400,7 +400,7 @@ def former(monkeypatch, vault):
         storage_enabled=True, model="m", research_model="r"))
     monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: spec)
 
-    async def read(pool, template, org_id, sections, model):
+    async def read(pool, template, org_id, model):
         seen["reads"] += 1
         seen["read_model"] = model
         if seen["fail"]:

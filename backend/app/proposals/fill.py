@@ -114,8 +114,8 @@ async def fill(headings: list[dict[str, Any]], written: dict[str, str], style: s
     if not text or not todo:
         return {}
     ask = (f"The style:\n{style}\n\n<text>\n{text}\n</text>\n\n" + "\n".join(
-        f'<heading code="{h["code"]}" kind="{h["kind"]}" title="{title(h)}" limit="{_limit(h["limit"])}"'
-        f' parts="{" ".join(h.get("uses") or [])}">{h["ask"]}</heading>' for h in todo))
+        f'<heading code="{h["code"]}" kind="{h["kind"]}" title="{title(h)}" limit="{_limit(h["limit"])}">'
+        f'{h["ask"]}</heading>' for h in todo))
     try:
         out = await model.with_structured_output(Answers).ainvoke([SystemMessage(PROMPT), HumanMessage(ask)])
     except Exception:

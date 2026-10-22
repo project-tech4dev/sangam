@@ -373,8 +373,7 @@ async def _fill_form(pool: PoolDep, proposal_id: int, row: dict, written: list) 
     outline = template.get("outline")
     if not outline or outline.get("document_id") != template.get("document_id"):
         try:
-            outline = await form.read(pool, template, row["org"]["id"], rubric.sections_for(
-                bool(work.get("earlier_phase")), template), resolve_model(settings.research_model))
+            outline = await form.read(pool, template, row["org"]["id"], resolve_model(settings.research_model))
         except form.Unreadable as exc:
             raise HTTPException(422, str(exc)) from exc
         except Exception as exc:

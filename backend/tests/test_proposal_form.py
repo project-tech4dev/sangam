@@ -12,34 +12,32 @@ from langchain_core.messages import HumanMessage
 
 from app.proposals import assemble, fill, form
 
-CODES = {"A1", "A2", "A3", "A4", "A5", "A15"}
-
 
 def heading(**kw):
-    base = {"number": None, "label": "Heading", "ask": "", "kind": "prose", "limit": None, "uses": [], "only_if": None}
+    base = {"number": None, "label": "Heading", "ask": "", "kind": "prose", "limit": None, "only_if": None}
     return form.Heading(**{**base, **kw})
 
 
 class TestTheOutline:
-    def test_codes_follow_the_forms_order_and_unknown_parts_are_dropped(self):
+    def test_codes_follow_the_forms_order_and_keep_its_numbers_and_groups(self):
         out = form.check(form.Outline(headings=[
-            heading(number="1.", label="Executive Summary", uses=["A1"], limit=form.Limit(n=2000, unit="chars")),
-            heading(number="5", label="Proposed strategy", uses=["A4", "A5", "A4", "Z9"], group=" Part B "),
-        ]), CODES)
+            heading(number="1.", label="Executive Summary", limit=form.Limit(n=2000, unit="chars")),
+            heading(number="5", label="Proposed strategy", group=" Part B "),
+        ]))
         assert out[0]["group"] is None and out[1]["group"] == "Part B"
-        assert [(h["code"], h["number"], h["uses"]) for h in out] == [("T1", "1", ["A1"]), ("T2", "5", ["A4", "A5"])]
+        assert [(h["code"], h["number"]) for h in out] == [("T1", "1"), ("T2", "5")]
         assert out[0]["limit"] == {"n": 2000, "unit": "chars"} and out[1]["limit"] is None
 
-    def test_only_prose_draws_on_parts_and_a_label_less_heading_joins_the_one_before(self):
+    def test_a_label_less_heading_joins_the_one_before(self):
         out = form.check(form.Outline(headings=[
-            heading(label="Financial", ask="Outline the funding", kind="table", uses=["A15"]),
+            heading(label="Financial", ask="Outline the funding", kind="table"),
             heading(label="  ", ask="per stage of the project"),
-        ]), CODES)
-        assert len(out) == 1 and out[0]["uses"] == []
+        ]))
+        assert len(out) == 1
         assert out[0]["ask"] == "Outline the funding per stage of the project"
 
     def test_long_text_is_capped_and_brackets_cannot_close_a_mark(self):
-        out = form.check(form.Outline(headings=[heading(label="x" * 500, ask="say [this] " * 300)]), CODES)
+        out = form.check(form.Outline(headings=[heading(label="x" * 500, ask="say [this] " * 300)]))
         assert len(out[0]["label"]) == form.LABEL and len(out[0]["ask"]) <= form.ASK
         assert "[" not in out[0]["ask"] and "]" not in out[0]["ask"]
 
@@ -67,7 +65,7 @@ class TestTheOutline:
 WRITTEN = {"A4": "Raise incomes of 2,400 women farmers in Goalpara.", "A5": "Run 54 trainings in 22 villages.",
            "A1": "SeSTA will work with 2,400 women."}
 STRATEGY = {"code": "T5", "number": "5", "label": "Proposed strategy", "ask": "How the problem will be addressed",
-            "kind": "prose", "limit": {"n": 90, "unit": "chars"}, "uses": ["A4", "A5"], "only_if": None}
+            "kind": "prose", "limit": {"n": 90, "unit": "chars"}, "only_if": None}
 
 
 ABOUT = "Organisation name: SeSTA\nCountry: India"
@@ -101,12 +99,12 @@ class TestTheFillCheck:
 
 
 NAME = {**STRATEGY, "code": "T2", "number": None, "label": "Organization Name", "ask": "", "kind": "field",
-        "limit": None, "uses": []}
+        "limit": None}
 PAN = {**NAME, "code": "T9", "label": "PAN Card Number"}
 
 
 def outline(*extra):
-    return [{**STRATEGY, "limit": None, "code": "T1", "number": "1", "label": "Executive Summary", "uses": ["A1"]},
+    return [{**STRATEGY, "limit": None, "code": "T1", "number": "1", "label": "Executive Summary"},
             STRATEGY, *extra]
 
 
@@ -152,7 +150,7 @@ class TestEveryHeadingComesOut:
 
     def test_skipped_headings_and_a_second_phase_question_on_a_first_phase_are_left_out(self):
         terms = {**STRATEGY, "code": "T10", "kind": "skip"}
-        phase2 = {**STRATEGY, "code": "T11", "only_if": "earlier_phase", "uses": []}
+        phase2 = {**STRATEGY, "code": "T11", "only_if": "earlier_phase"}
         assert self.resolve([terms, phase2], {}) == {}
         assert set(self.resolve([terms, phase2], {}, earlier_phase=True)) == {"T11"}
 
@@ -231,22 +229,18 @@ def stored(monkeypatch):
 
 
 class TestReadingTheForm:
-    async def test_the_outline_names_sangams_parts_and_keeps_the_forms_title(self, stored):
-        from app.proposals import rubric
-
-        model = FakeModel(form.Outline(headings=[heading(number="4", label="Problem Statement", uses=["A3"])]))
-        sections = rubric.sections_for(False)
-        out = await form.read(None, {"document_id": 40}, 7, sections, model)
+    async def test_the_outline_keeps_the_forms_title_and_the_reader_sees_only_the_form(self, stored):
+        model = FakeModel(form.Outline(headings=[heading(number="4", label="Problem Statement")]))
+        out = await form.read(None, {"document_id": 40}, 7, model)
         assert stored["asked"] == (40, 7)
         assert out["title"] == "RF Proposal Template" and out["document_id"] == 40 and out["pages_cut"] is False
-        assert out["headings"][0]["uses"] == ["A3"]
-        system = model.calls[0][0].content
-        assert "{{PARTS}}" not in system and f"- A3 {sections[[s.code for s in sections].index('A3')].label}:" in system
+        assert out["headings"][0]["label"] == "Problem Statement" and "uses" not in out["headings"][0]
+        assert model.calls[0][0].content == form.PROMPT and "{{" not in form.PROMPT
 
     async def test_only_the_first_hundred_pages_are_sent(self, stored):
         stored["data"] = _pdf(form.MAX_PAGES + 1)
         model = FakeModel(form.Outline(headings=[heading(label="Problem")]))
-        out = await form.read(None, {"document_id": 40}, 7, [], model)
+        out = await form.read(None, {"document_id": 40}, 7, model)
         from pypdf import PdfReader
 
         sent = base64.b64decode(model.calls[0][1].content[-1]["base64"])
@@ -261,7 +255,7 @@ class TestReadingTheForm:
     async def test_a_form_sangam_cannot_use_says_why(self, stored, doc, data, outline, said):
         stored.update(doc=doc, data=data)
         with pytest.raises(form.Unreadable, match=said):
-            await form.read(None, {"document_id": 40}, 7, [], FakeModel(form.Outline(headings=outline)))
+            await form.read(None, {"document_id": 40}, 7, FakeModel(form.Outline(headings=outline)))
 
 
 class TestTheFillCall:
@@ -274,7 +268,7 @@ class TestTheFillCall:
         ask = model.calls[0][1].content
         assert ask.startswith("The style:\nPlain words.\n\n<text>\nOrganisation name: SeSTA")
         assert "[A5]\nRun 54 trainings in 22 villages." in ask
-        assert ('<heading code="T5" kind="prose" title="5. Proposed strategy" limit="90 characters" parts="A4 A5">'
+        assert ('<heading code="T5" kind="prose" title="5. Proposed strategy" limit="90 characters">'
                 "How the problem will be addressed</heading>") in ask
         assert 'code="T2" kind="field"' in ask and 'code="T10"' not in ask
 
