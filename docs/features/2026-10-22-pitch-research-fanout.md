@@ -54,7 +54,7 @@ Built by hand from `CLAUDE.md` and grep; there is no domain map.
      │
      └─ public supervisor  ◀── NEW, deep agent, RESEARCH_MODEL, tools: task only
           │  reads the task (places, themes, programmes, sections, focus)
-          │  decides the angles: 2 to 5, e.g.
+          │  decides the angles, as many as fit, e.g.
           │    "dropout and learning, Kiphire/Tuensang vs Nagaland vs India"
           │    "Nagaland and central schemes on secondary schooling"
           │    "what worked: community schools in the Northeast"
@@ -70,10 +70,10 @@ Built by hand from `CLAUDE.md` and grep; there is no domain map.
 Shared by all, unchanged: one `RunSources` (web only), one `PublicRun` (names never searched, pages read, hosts
 refused), `PublicGuard` on every researcher, `add_facts`' quote check.
 
-> **The rule:** the supervisor decides how many researchers and on what; code caps it.
+> **The rule:** the supervisor decides how many researchers and on what; code sets no number.
 > **Example:** a proposal in two districts with one theme gets 2 researchers; a focused "Look deeper" asking for SHG
-> credit linkage, jhum cycles and NRLM coverage gets 3, one per angle; nothing ever gets more than 5.
-> **Why it matters:** the split depends on the proposal, which code cannot see; the cap keeps Tavily and cost bounded.
+> credit linkage, jhum cycles and NRLM coverage gets 3, one per angle.
+> **Why it matters:** the split depends on the proposal, which code cannot see.
 
 **Key trade-off: a supervisor model, not a split in code.** It costs one model turn before the first search and one
 after the last (~10–20 s, ~$0.05). In exchange the split fits the proposal and the person's focus, which a fixed
@@ -99,16 +99,14 @@ with `asyncio.gather(*(check_url(r.get("url", "")) for r in shown))`, then build
   RunSources(), PublicGuard(), *fallback(...)]}`. An isolated subagent inherits nothing, so it carries its own guards,
   as `ingest/agent.py` does.
 - `_one`: unchanged apart from the graph it invokes; `public_task` is unchanged and goes to the supervisor.
-- `MAX_RESEARCHERS = 5`, enforced by `ResearchProgress` (below), not by the prompt alone.
 
 **M2 — `backend/app/proposals/middleware.py`**: `ResearchProgress(AgentMiddleware)`, on the supervisor:
-- `awrap_tool_call` for `task`: refuses the sixth and later in a run ("five researchers are already running"); writes
-  `readers.public.slices[i] = {label: description[:80], status: "running"}` before, `"done"`/`"failed"` after.
+- `awrap_tool_call` for `task`: writes `readers.public.slices[i] = {label: description[:80], status: "running"}` before, `"done"`/`"failed"` after.
 - Writes go through `repo.save` + `work.apply` on `readers.public` whole (the only path `_READER` accepts), inside
   the row lock fixed on `fix/pitch-read-imported`.
 
 **M2 — prompts**
-- New `proposals/prompts/public_supervisor.md` (~30 lines): split the five topics into 2–5 angles that fit this
+- New `proposals/prompts/public_supervisor.md` (~30 lines): split the five topics into angles that fit this
   proposal; launch them all in one message; never search or read yourself; end with one line per topic: found, or
   what is missing.
 - `public_researcher.md`: one section, "Your task names one angle. Find facts for it at every level; other angles are
@@ -143,7 +141,7 @@ Unit, no database:
 - M1: a fake `check_url` that sleeps 0.2 s; ten hits finish in under 0.5 s and keep their order and HELD reasons.
 - M2: the compiled supervisor has exactly `task` (+ the harness floor); the compiled `public-researcher` has exactly
   `PUBLIC_TOOLS` + `read_file`, with `PublicGuard` and `RunSources` in its middleware.
-- M2: `ResearchProgress` refuses the sixth `task`; marks a slice running then done; marks it failed when the subagent
+- M2: `ResearchProgress` marks a slice running then done; marks it failed when the subagent
   raises; a failed write never fails the call.
 - M2: two parallel fake researchers share one `PublicRun` (a page read by one is in `run.pages` for the other).
 - `ProposalShell.test.tsx`: a running search lists each slice with its count; a run without `slices` (an old row)
@@ -162,7 +160,7 @@ per topic.
   Langfuse is under 8 s and a full run is measured again. **If it is under ~4 min, decide then whether M2 is worth it.**
 
 #### Milestone 2: a supervisor launches researchers, and the card shows them
-- **Deliverable**: a search runs 2–5 researchers at once, chosen by the supervisor, each shown on the card.
+- **Deliverable**: a search runs researchers at once, as many as the supervisor chooses, each shown on the card.
 - **Touches**: backend, prompt, frontend, design system
 - **Key tasks**: [ ] supervisor + `public-researcher` in `build` [ ] `ResearchProgress` [ ] two prompts
   [ ] `slices` on the card [ ] tests
@@ -175,7 +173,7 @@ per topic.
   supervisor writes the brief from its researchers' findings (drops `brief.py`'s second web search and its context
   overflow), or the card shows the facts done while the brief finishes. Decide after M2 is measured.
 - **Tavily is on the free plan**: 1,000 credits a month, 100 requests a minute. A run is ~18 credits; 20 at once is
-  ~360. M2 makes bursts sharper. Moving to pay-as-you-go ($0.008 a credit) needs no code.
+  ~360. M2 makes bursts sharper, and with no cap a run's credits depend on how many angles the supervisor picks. Moving to pay-as-you-go ($0.008 a credit) needs no code.
 - **Production has never run a search.** `start_research` answers 202 and researches in `asyncio.create_task`; on
   Vercel a function may freeze after answering. Prove it with one run after the next Deploy, independent of this plan.
 - **Duplicates across researchers.** Two angles may cite one NFHS fact sheet; `facts.same_as` drops identical facts,
