@@ -652,6 +652,7 @@ async def test_every_span_of_a_run_carries_the_caller(monkeypatch):
     assert seen["user_id"] == "asha@sesta.org"
     assert seen["session_id"] == "thread-42"
     assert seen["trace_name"] == "sangam_ask"
+    assert seen["version"] == "FFRH + SeSTA"
     assert seen["tags"] == ["sangam", "ask", "role:member", "role:steward", "org:FFRH", "org:SeSTA"]
 
 
@@ -692,3 +693,12 @@ def test_a_reader_run_is_named_and_tagged_from_its_own_trace_config(monkeypatch)
     assert seen["trace_name"] == "sangam_proposal_reader"
     assert seen["session_id"] is None
     assert seen["tags"][:3] == ["sangam", "proposal", "reader"] and "org:SeSTA" in seen["tags"]
+
+
+def test_the_org_label_is_one_groupable_name_for_the_callers_organisations():
+    from app.integrations.tracing import org_label
+
+    assert org_label(STEWARD) == "FFRH + SeSTA"
+    assert org_label(CallerScope(user_id=DEV_USER_ID, is_staff=True)) == "Sangam staff"
+    assert org_label(CallerScope(user_id=DEV_USER_ID, is_staff=False)) == "No organisation"
+    assert org_label(None) is None

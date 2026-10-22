@@ -538,7 +538,8 @@ settings are load-bearing in ways the Langfuse docs do not advertise:
   in LangChain `tags` (`org:<name>`, `role:<role>`), which Langfuse unions with the graph's `langfuse_tags`;
   a request-level `langfuse_tags` would replace them.
   That reaches only the root run; `run` also wraps it in `propagate_attributes` so every generation carries
-  the user and tags too, which v4 dashboards need to sum cost per user or organisation.
+  the user and tags too, which v4 dashboards need to sum cost per user or organisation. The caller's
+  organisations also go in `version` (`org_label`): Langfuse groups a chart by version but not by one tag.
 
 `LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, it falls back to
 `VERCEL_ENV`, and `release` to `VERCEL_GIT_COMMIT_SHA`.

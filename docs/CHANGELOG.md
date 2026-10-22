@@ -206,7 +206,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-11 · #156 · Langfuse SDK v4: `sangam_ask` is the trace root, the `answer_audit` score, flush after each run.
 - 2026-10-16 · (unmerged) · Ask efficiency M1: evals count tool calls, model calls and tokens per case, fail on `max_calls` budgets, and run as a Langfuse dataset experiment (`ask-golden`, environment `eval`) so runs compare side by side; `make evals K=<case>`; the Better Life Foundation cost case.
 - 2026-10-22 · (unmerged) · Chat traces name the caller: Langfuse's user is their email, and tags carry `org:<name>` and `role:<role>` for each organisation they belong to (`role:staff` for staff); Pitch traces add `proposal_id`.
-- 2026-10-22 · (unmerged) · Every span of a chat run, not just its root, carries the caller, session, tags and trace name (`propagate_attributes`), Pitch's file readers included, so Langfuse v4 dashboards can sum cost per user and per organisation.
+- 2026-10-22 · (unmerged) · Every span of a chat run, not just its root, carries the caller, session, tags and trace name (`propagate_attributes`), Pitch's file readers included, so Langfuse v4 dashboards can sum cost per user and per organisation; the caller's organisations also go in the trace `version` (`FFRH + SeSTA`, `Sangam staff`), the one field Langfuse can group a chart by.
 - 2026-10-19 · Import evals count every tool call, subagents' under their own name (`entity-researcher.save_research`), and the two canaries fail on `max_calls`: one sources card, no bulk import, at most two `task`s and three saves (#250).
 
 ## Docs
