@@ -69,24 +69,27 @@ STRATEGY = {"code": "T5", "number": "5", "label": "Proposed strategy", "ask": "H
             "kind": "prose", "limit": {"n": 90, "unit": "chars"}, "uses": ["A4", "A5"], "only_if": None}
 
 
+ABOUT = "Organisation name: SeSTA\nCountry: India"
+ALL = fill.everything(WRITTEN, ABOUT)
+
+
 class TestTheFillCheck:
-    def test_a_cut_is_allowed_and_reported(self):
-        refused, cut = fill.check(fill.sources(STRATEGY, WRITTEN), "Raise incomes of 2,400 women in 22 villages.",
-                                  STRATEGY["limit"], districts={"goalpara"})
-        assert refused == [] and cut == ["54", "Goalpara"]
+    def test_the_text_is_every_part_by_code_after_what_sangam_knows(self):
+        assert ALL.startswith("Organisation name: SeSTA\nCountry: India\n\n[A4]\nRaise incomes")
+        assert "[A1]\nSeSTA will work with 2,400 women." in ALL
+        assert fill.everything({"A2": ""}) == ""
+
+    def test_a_cut_or_a_figure_from_another_part_is_allowed(self):
+        assert fill.check(ALL, "Run 54 trainings for 2,400 women.", STRATEGY["limit"], districts={"goalpara"}) == []
 
     def test_an_added_or_changed_figure_is_refused(self):
-        refused, _ = fill.check(fill.sources(STRATEGY, WRITTEN), "Raise incomes of 2,500 women farmers.",
-                                STRATEGY["limit"])
-        assert refused == ["added 2500"]
+        assert fill.check(ALL, "Raise incomes of 2,500 women farmers.", STRATEGY["limit"]) == ["added 2500"]
 
-    def test_a_dropped_gap_is_not_reported_as_cut(self):
-        _, cut = fill.check("Run 54 trainings. [Add: the trainers' names]", "Run 54 trainings.", None)
-        assert cut == []
+    def test_an_answer_over_the_limit_is_refused(self):
+        assert fill.check(ALL, "Raise incomes. " * 7, STRATEGY["limit"]) == ["ran to 104 characters; the form allows 90"]
 
     def test_a_new_gap_is_not_a_claim(self):
-        refused, _ = fill.check("Run 54 trainings.", "Run 54 trainings. [Add: the trainers' names]", None)
-        assert refused == []
+        assert fill.check("Run 54 trainings.", "Run 54 trainings. [Add: the trainers' names]", None) == []
 
     def test_the_limit_counts_plain_characters_or_words(self):
         assert fill.over({"n": 10, "unit": "chars"}, "1234567890 ⟦k1⟧") is None
@@ -96,6 +99,11 @@ class TestTheFillCheck:
         assert fill.over(None, "x" * 9000) is None
 
 
+NAME = {**STRATEGY, "code": "T2", "number": None, "label": "Organization Name", "ask": "", "kind": "field",
+        "limit": None, "uses": []}
+PAN = {**NAME, "code": "T9", "label": "PAN Card Number"}
+
+
 def outline(*extra):
     return [{**STRATEGY, "limit": None, "code": "T1", "number": "1", "label": "Executive Summary", "uses": ["A1"]},
             STRATEGY, *extra]
@@ -103,44 +111,37 @@ def outline(*extra):
 
 class TestEveryHeadingComesOut:
     def resolve(self, headings, answers, earlier_phase=False):
-        return {f.heading["code"]: f for f in fill.resolve(headings, WRITTEN, answers, earlier_phase=earlier_phase)}
+        filled = fill.resolve(headings, WRITTEN, answers, earlier_phase=earlier_phase, about=ABOUT)
+        return {f.heading["code"]: f for f in filled}
 
-    def test_a_checked_answer_is_used(self):
-        out = self.resolve(outline(), {"T1": "SeSTA will work with 2,400 women.", "T5": "Raise incomes of 2,400 women."})
-        assert out["T5"].how == "answered" and out["T5"].text == "Raise incomes of 2,400 women."
-        assert out["T5"].cut == ("54", "22")
+    def test_a_checked_answer_is_used_even_from_a_part_the_heading_was_not_matched_to(self):
+        out = self.resolve(outline(), {"T5": "SeSTA will work with 2,400 women in 22 villages."})
+        assert out["T5"].how == "answered" and out["T5"].text == "SeSTA will work with 2,400 women in 22 villages."
 
-    def test_an_answer_that_is_only_a_gap_counts_as_nothing_for_the_heading(self):
-        out = self.resolve(outline(), {"T5": "[Add: literacy rate for Goalpara, with source]"})
-        assert out["T5"].how == "no_part" and out["T5"].cut == ()
-        assert out["T5"].text == "[Add: literacy rate for Goalpara, with source]"
-
-    def test_a_refused_answer_falls_back_to_the_parts_when_they_fit(self):
-        roomy = {**STRATEGY, "limit": {"n": 500, "unit": "chars"}}
-        out = self.resolve([roomy], {"T5": "Raise incomes of 9,999 women."})
-        assert out["T5"].how == "as_written" and out["T5"].text == fill.sources(roomy, WRITTEN)
-
-    def test_a_refused_answer_that_cannot_fit_becomes_a_gap(self):
-        tight = {**STRATEGY, "limit": {"n": 60, "unit": "chars"}}
-        out = self.resolve([tight], {"T5": "Raise incomes of 9,999 women."})
-        assert out["T5"].how == "too_long"
-        assert out["T5"].text == "[Add: Proposed strategy: Sangam's text runs to 83 characters; the form allows 60]"
-
-    def test_no_answer_and_parts_too_long_is_a_gap_too(self):
-        tight = {**STRATEGY, "limit": {"n": 20, "unit": "chars"}}
-        assert self.resolve([tight], {})["T5"].how == "too_long"
-
-    def test_a_heading_with_no_written_part_asks_in_the_forms_words(self):
-        innovation = {**STRATEGY, "code": "T7", "label": "Innovation", "ask": "Describe innovative aspects", "uses": []}
-        unwritten = {**STRATEGY, "code": "T8", "label": "Risks", "ask": "", "uses": ["A13"]}
-        out = self.resolve([innovation, unwritten], {"T7": "We are very innovative."})
-        assert out["T7"].text == "[Add: Describe innovative aspects]" and out["T7"].how == "no_part"
-        assert out["T8"].text == "[Add: Risks]"
-
-    def test_fields_tables_and_annexes_are_left_for_the_person(self):
-        pan = {**STRATEGY, "code": "T9", "label": "PAN Card Number", "ask": "", "kind": "field", "uses": []}
-        out = self.resolve([pan], {})
+    def test_a_field_sangam_knows_is_filled_and_one_it_does_not_is_left(self):
+        out = self.resolve([NAME, PAN], {"T2": "SeSTA", "T9": "[You fill: what the form asks]"})
+        assert out["T2"].how == "answered" and out["T2"].text == "SeSTA"
         assert out["T9"].how == "you_fill" and out["T9"].text == "[You fill: PAN Card Number]"
+
+    def test_an_answer_that_is_only_gaps_is_still_to_add(self):
+        out = self.resolve(outline(), {"T5": "[Add: the indicator] [Add: the baseline].\n\n[Add: the products]."})
+        assert out["T5"].how == "add" and out["T5"].text.startswith("[Add: the indicator]")
+
+    def test_a_refused_answer_becomes_a_plain_mark_with_the_limit_and_is_logged(self, caplog):
+        with caplog.at_level("INFO", logger="app.proposals.fill"):
+            out = self.resolve(outline(), {"T5": "Raise incomes of 9,999 women."})
+        assert out["T5"].how == "add"
+        assert out["T5"].text == "[Add: How the problem will be addressed (the form allows 90 characters)]"
+        assert "5. Proposed strategy refused: added 9999" in caplog.text
+
+    def test_no_answer_is_a_mark_and_never_the_parts_pasted(self):
+        out = self.resolve(outline(NAME), {})
+        assert out["T1"].text == "[Add: How the problem will be addressed]"
+        assert out["T2"].text == "[You fill: Organization Name]" and out["T2"].how == "you_fill"
+
+    def test_tables_and_annexes_are_left_for_the_person_whatever_the_model_says(self):
+        table = {**PAN, "code": "T10", "label": "Budget", "kind": "table"}
+        assert self.resolve([table], {"T10": "SeSTA"})["T10"].text == "[You fill: Budget]"
 
     def test_skipped_headings_and_a_second_phase_question_on_a_first_phase_are_left_out(self):
         terms = {**STRATEGY, "code": "T10", "kind": "skip"}
@@ -149,13 +150,10 @@ class TestEveryHeadingComesOut:
         assert set(self.resolve([terms, phase2], {}, earlier_phase=True)) == {"T11"}
 
     def test_the_report_names_headings_by_the_forms_numbers(self):
-        pan = {**STRATEGY, "code": "T9", "number": None, "label": "PAN", "kind": "field", "uses": []}
-        filled = fill.resolve(outline(pan), WRITTEN, {"T1": "SeSTA will work with 2,400 women.",
-                                                      "T5": "Raise incomes of 2,400 women."},
-                               earlier_phase=False)
-        assert fill.report(filled) == {"answered": ["1. Executive Summary", "5. Proposed strategy"],
-                                       "cut": {"5. Proposed strategy": ["54", "22"]},
-                                       "as_written": [], "add": [], "you_fill": ["PAN"]}
+        filled = fill.resolve(outline(NAME, PAN), WRITTEN, {"T1": "SeSTA will work with 2,400 women.", "T2": "SeSTA"},
+                              earlier_phase=False, about=ABOUT)
+        assert fill.report(filled) == {"answered": ["1. Executive Summary", "Organization Name"],
+                                       "add": ["5. Proposed strategy"], "you_fill": ["PAN Card Number"]}
 
 
 def test_the_word_file_carries_the_forms_headings_and_marks_what_is_left():
@@ -247,19 +245,20 @@ class TestReadingTheForm:
 
 
 class TestTheFillCall:
-    async def test_each_heading_goes_with_its_ask_limit_and_text(self):
+    async def test_one_call_carries_all_the_text_and_every_heading_to_answer(self):
         model = FakeModel(fill.Answers(answers=[fill.Answer(code=" T5 ", text=" Raise incomes. "),
                                                 fill.Answer(code="T1", text="  ")]))
-        unwritten = {**STRATEGY, "code": "T8", "uses": ["A13"]}
-        out = await fill.fill([STRATEGY, unwritten], WRITTEN, "Plain words.", model)
-        assert out == {"T5": "Raise incomes."}
+        out = await fill.fill([STRATEGY, NAME, {**PAN, "code": "T10", "kind": "table"}], WRITTEN, "Plain words.",
+                              model, ABOUT)
+        assert out == {"T5": "Raise incomes."} and len(model.calls) == 1
         ask = model.calls[0][1].content
-        assert ask.startswith("The style:\nPlain words.")
-        assert '<heading code="T5" title="5. Proposed strategy" limit="90 characters">' in ask
-        assert "<asks>How the problem will be addressed</asks>" in ask and "Run 54 trainings" in ask
-        assert 'code="T8"' not in ask
+        assert ask.startswith("The style:\nPlain words.\n\n<text>\nOrganisation name: SeSTA")
+        assert "[A5]\nRun 54 trainings in 22 villages." in ask
+        assert ('<heading code="T5" kind="prose" title="5. Proposed strategy" limit="90 characters" parts="A4 A5">'
+                "How the problem will be addressed</heading>") in ask
+        assert 'code="T2" kind="field"' in ask and 'code="T10"' not in ask
 
     async def test_no_call_when_nothing_is_written_and_nothing_back_when_it_fails(self):
         idle = FakeModel(fill.Answers(answers=[]))
-        assert await fill.fill([{**STRATEGY, "uses": []}], WRITTEN, "", idle) == {} and idle.calls == []
+        assert await fill.fill([STRATEGY], {}, "", idle) == {} and idle.calls == []
         assert await fill.fill([STRATEGY], WRITTEN, "", FakeModel(RuntimeError("overloaded"))) == {}

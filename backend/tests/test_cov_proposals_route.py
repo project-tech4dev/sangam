@@ -408,8 +408,8 @@ def former(monkeypatch, vault):
         return {"document_id": template["document_id"], "title": "RF template", "headings": HEADINGS,
                 "pages_cut": False, "read_at": NOW.isoformat()}
 
-    async def fill_in(headings, written, style, model):
-        seen["fill_model"] = model
+    async def fill_in(headings, written, style, model, about=""):
+        seen["fill_model"], seen["about"] = model, about
         return seen["answers"]
 
     monkeypatch.setattr(form, "read", read)
@@ -426,13 +426,13 @@ async def test_a_version_in_the_funders_form_carries_its_headings_and_a_report(a
     work = r.json()["work"]
     entry = work["versions"][-1]
     assert entry["title"] == "Version 1, in the Tata Trusts form" and entry["shape"] == "form"
-    assert entry["report"] == {"answered": ["4. Problem Statement"], "cut": {}, "as_written": [], "add": [],
-                               "you_fill": ["PAN Card Number"]}
+    assert entry["report"] == {"answered": ["4. Problem Statement"], "add": [], "you_fill": ["PAN Card Number"]}
     assert vault["draft"]["title"] == "Water for Dewas, version 1, in the Tata Trusts form"
     assert vault["draft"]["content_md"] == ("## 4. Problem Statement\n\nWells in Dewas run dry for 120 days.\n\n"
                                             "## PAN Card Number\n\n[You fill: PAN Card Number]")
     assert work["template"]["outline"]["headings"] == HEADINGS
     assert former["read_model"] == "r" and former["fill_model"] == "m"
+    assert former["about"].startswith("Organisation name: ")
 
 
 async def test_the_form_is_read_once_and_read_again_when_another_is_chosen(api, held, vault, former):
@@ -447,12 +447,12 @@ async def test_the_form_is_read_once_and_read_again_when_another_is_chosen(api, 
     assert third.json()["work"]["template"]["outline"]["document_id"] == 41
 
 
-async def test_a_failed_fill_still_saves_the_parts_as_written(api, held, vault, former):
+async def test_a_failed_fill_still_saves_the_form_with_every_heading_marked(api, held, vault, former):
     held["row"]["work"] = _written(template=TEMPLATE)
     async with api as c:
         r = await c.post("/api/proposals/11/versions", json={"shape": "form"})
     assert r.status_code == 201
-    assert r.json()["work"]["versions"][-1]["report"]["as_written"] == ["4. Problem Statement"]
+    assert r.json()["work"]["versions"][-1]["report"]["add"] == ["4. Problem Statement"]
 
 
 @pytest.mark.parametrize("work, fail, status", [

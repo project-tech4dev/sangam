@@ -320,13 +320,24 @@ describe("FinishCard", () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith("https://files.example/v2.docx"));
     rerender(<FinishCard proposal={proposal({ sections: written, template, versions: [version, filled] })} onSaved={onSaved} />);
     const lines = within(screen.getByLabelText("What went into the form"));
-    expect(lines.getByText("Answered from your parts: 1 heading")).toBeInTheDocument();
+    expect(lines.getByText("Answered by Sangam: 1 heading")).toBeInTheDocument();
     expect(lines.getByText("Cut to fit: 1 heading")).toBeInTheDocument();
     expect(lines.getByText("5. Proposed strategy: 54, Goalpara")).toBeInTheDocument();
     expect(lines.getByText("Put in as written: 6. Outcomes")).toBeInTheDocument();
-    expect(lines.getByText("Sangam had nothing for: 7. Innovation, marked [Add]")).toBeInTheDocument();
+    expect(lines.getByText("Still to add: 7. Innovation, marked [Add]")).toBeInTheDocument();
     expect(lines.getByText("Left for you: 2 headings, marked [You fill] in the file")).toBeInTheDocument();
     expect(screen.getByText("Version 2, in the Axis form")).toBeInTheDocument();
+  });
+
+  it("reports a version filled in one call, which has no cuts or parts put in as written", () => {
+    const template = { document_id: 5, url: null, from: "upload" as const, read_at: null };
+    const report = { answered: ["Organization Name"], add: ["5. Proposed strategy"], you_fill: [] };
+    const filled = { ...version, n: 2, title: "Version 2, in the Axis form", document_id: 78, shape: "form" as const, report };
+    render(<FinishCard proposal={proposal({ sections: written, template, versions: [version, filled] })} onSaved={vi.fn()} />);
+    const lines = within(screen.getByLabelText("What went into the form"));
+    expect(lines.getByText("Answered by Sangam: 1 heading")).toBeInTheDocument();
+    expect(lines.getByText("Still to add: 5. Proposed strategy, marked [Add]")).toBeInTheDocument();
+    expect(lines.queryByText(/Cut to fit|as written|Left for you/)).toBeNull();
   });
 
   it("has no form button when Sangam's usual order was chosen", () => {

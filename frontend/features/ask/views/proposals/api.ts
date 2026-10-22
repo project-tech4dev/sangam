@@ -66,7 +66,8 @@ export type Version = {
 };
 
 /** What happened under each of the form's headings, named by the form's own numbers. */
-export type FormReport = { answered: string[]; cut: Record<string, string[]>; as_written: string[]; add: string[]; you_fill: string[] };
+// `cut` and `as_written` come only from versions saved before the form was filled in one call over every part.
+export type FormReport = { answered: string[]; add: string[]; you_fill: string[]; cut?: Record<string, string[]>; as_written?: string[] };
 
 export type Reader = {
   status: "running" | "done" | "failed";

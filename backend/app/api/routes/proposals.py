@@ -380,9 +380,10 @@ async def _fill_form(pool: PoolDep, proposal_id: int, row: dict, written: list) 
             raise HTTPException(502, "Sangam couldn't read the funder's form just now. Try again.") from exc
     parts = {s.code: text for s, text in written}
     style = work.get("style") or rubric.default_style(row["org"]["name"])
-    answers = await fill.fill(outline["headings"], parts, style, resolve_model(settings.model))
+    about = f"Organisation name: {row['org']['name']}\nCountry: India"
+    answers = await fill.fill(outline["headings"], parts, style, resolve_model(settings.model), about)
     filled = fill.resolve(outline["headings"], parts, answers, earlier_phase=bool(work.get("earlier_phase")),
-                          districts=await records.districts(pool), names=_names(row))
+                          about=about, districts=await records.districts(pool), names=_names(row))
     return outline, filled
 
 

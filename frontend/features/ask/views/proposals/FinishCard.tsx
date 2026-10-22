@@ -125,10 +125,10 @@ export function FinishCard({ proposal, onSaved }: { proposal: Proposal; onSaved:
 
 /** What went under the form's headings in the newest version, one line each, by the form's own numbers. */
 function Report({ report }: { report: FormReport }) {
-  const cut = Object.entries(report.cut);
+  const cut = Object.entries(report.cut ?? {});
   return (
     <div className="pr-report" aria-label="What went into the form">
-      <p className="pr-report-row">Answered from your parts: {headings(report.answered.length)}</p>
+      <p className="pr-report-row">Answered by Sangam: {headings(report.answered.length)}</p>
       {cut.length > 0 && (
         <details className="pr-report-row">
           <summary>Cut to fit: {headings(cut.length)}</summary>
@@ -141,8 +141,8 @@ function Report({ report }: { report: FormReport }) {
           </ul>
         </details>
       )}
-      {report.as_written.length > 0 && <p className="pr-report-row">Put in as written: {report.as_written.join("; ")}</p>}
-      {report.add.length > 0 && <p className="pr-report-row">Sangam had nothing for: {report.add.join("; ")}, marked [Add]</p>}
+      {report.as_written?.length ? <p className="pr-report-row">Put in as written: {report.as_written.join("; ")}</p> : null}
+      {report.add.length > 0 && <p className="pr-report-row">Still to add: {report.add.join("; ")}, marked [Add]</p>}
       {report.you_fill.length > 0 && (
         <p className="pr-report-row">Left for you: {headings(report.you_fill.length)}, marked [You fill] in the file</p>
       )}
