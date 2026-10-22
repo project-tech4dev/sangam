@@ -1009,6 +1009,9 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .pr-read-title { font-weight: 600; }
 .pr-read-state { color: var(--color-neutral-700); font-size: var(--fs-xs); }
 .pr-read[data-status="failed"] .pr-read-state { color: var(--color-bad); }
+.pr-report { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: var(--radius-row); background: var(--color-neutral-100); font-size: var(--fs-sm); }
+.pr-report-row { margin: 0; }
+.pr-report summary { cursor: pointer; }
 .pr-explain { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-sm); }
 .pr-group-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-start; justify-content: space-between; }
 .pr-draft { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--radius-row); background: var(--color-neutral-100); }

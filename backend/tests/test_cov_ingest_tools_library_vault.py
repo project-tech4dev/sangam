@@ -77,6 +77,23 @@ class TestReadLibrary:
         self.pool(monkeypatch, {**self.DOC, "storage_path": "source-archive/a/b.html"})
         assert "no archived copy" in await library_tools.read_library_document.ainvoke({"document_id": 5})
 
+    async def test_a_word_file_is_read_by_paragraph(self, monkeypatch):
+        from tests.test_cov_pipeline_vault_office_docs import docx_bytes
+
+        self.pool(monkeypatch, {**self.DOC, "storage_path": "source-archive/a/call.docx"})
+        self.stored(monkeypatch, docx_bytes(["Call for proposals", "Grants up to Rs 50 lakh"]))
+        out = await library_tools.read_library_document.ainvoke({"document_id": 5, "start_page": 2})
+        assert "say which paragraph." in out and "2 paragraphs. start_page counts paragraphs" in out
+        assert out.endswith("[para 2] Grants up to Rs 50 lakh")
+
+    async def test_a_word_range_with_nothing_in_it(self, monkeypatch):
+        from tests.test_cov_pipeline_vault_office_docs import docx_bytes
+
+        self.pool(monkeypatch, {**self.DOC, "storage_path": "source-archive/a/call.docx"})
+        self.stored(monkeypatch, docx_bytes(["One"]))
+        out = await library_tools.read_library_document.ainvoke({"document_id": 5, "start_page": 4})
+        assert out.endswith("1 paragraphs and no text in that range.")
+
     async def test_a_failed_download(self, monkeypatch):
         self.pool(monkeypatch, self.DOC)
         self.stored(monkeypatch, None)

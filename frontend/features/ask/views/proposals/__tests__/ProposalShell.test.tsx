@@ -249,6 +249,39 @@ describe("step 2: documents and style", () => {
     renderShell();
     expect(await screen.findByText(/Sangam already has it · from/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "open" })).toHaveAttribute("href", "https://axis.example/form");
+    expect(screen.getByText(/in the last step you can download them filled into this form\./)).toBeInTheDocument();
+  });
+
+  it("offers a funder's form found among the documents as the form, in one change", async () => {
+    const form = { status: "failed" as const, at: "x", title: "RF template", error: "RF template looks like the funder's form", looks_like_form: true };
+    serve(proposal({ stage: 2, sources: [11, 12], readers: { "12": form } }));
+    renderShell();
+    const reads = await screen.findByRole("list", { name: "Files read" });
+    expect(within(reads).getByText("Not read: RF template looks like the funder's form")).toBeInTheDocument();
+    expect(within(reads).queryByRole("button", { name: "Try again" })).toBeNull();
+    await userEvent.click(within(reads).getByRole("button", { name: "Use it as the funder's form" }));
+    await waitFor(() =>
+      expect(workCalls()).toContainEqual({
+        set: { template: { document_id: 12, url: null, from: "upload", read_at: null }, skipped_template: false, sources: [11] },
+        rev: {},
+      }),
+    );
+  });
+
+  it("leaves the chosen form out of the files to read", async () => {
+    vault.list.mockResolvedValue([...docs, { ...docs[0], id: 5, title: "RF template" }]);
+    serve(proposal({ stage: 2, template: { document_id: 5, url: null, from: "upload", read_at: null } }));
+    renderShell();
+    expect(await screen.findByRole("checkbox", { name: /Annual report/ })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /RF template/ })).toBeNull();
+  });
+
+  it("does not offer a second form once one is chosen", async () => {
+    const form = { status: "failed" as const, at: "x", title: "RF template", error: "looks like a form", looks_like_form: true };
+    serve(proposal({ stage: 2, sources: [12], readers: { "12": form }, template: { document_id: 5, url: null, from: "upload", read_at: null } }));
+    renderShell();
+    const reads = await screen.findByRole("list", { name: "Files read" });
+    expect(within(reads).queryByRole("button", { name: "Use it as the funder's form" })).toBeNull();
   });
 
   it("asks Sangam Pitch to write the first draft; secondary research waits for step 3", async () => {

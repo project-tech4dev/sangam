@@ -45,6 +45,11 @@ class TestOffice:
         data = docx_bytes(["Intro", "  ", "After"], table=[["A", "B", "C"], ["", "", ""], ["1", "2", "3"]])
         assert office.docx_paragraphs(data) == ["Intro", "After", "A\nB | C", "1 | 2 | 3"]  # a merged cell once
 
+    def test_docx_range_numbers_paragraphs_like_pages(self):
+        data = docx_bytes(["Intro", "Budget", "After"], table=[["Item", "Cost", "x"], ["Books", "500", "y"]])
+        assert office.docx_range(data, 2, 4) == ("[para 2] Budget\n[para 3] After\n[para 4] Item\nCost | x", 5)
+        assert office.docx_range(data, 9) == ("", 5)
+
     def test_xlsx_markdown_caps_rows(self, monkeypatch):
         monkeypatch.setattr(office, "SHEET_ROWS", 2)
         data = xlsx_bytes([["a", None], [None, None], ["b", 2], ["c", 3]], title="Grants")

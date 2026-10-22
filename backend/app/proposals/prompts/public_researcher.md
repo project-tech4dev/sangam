@@ -44,7 +44,7 @@ If the task names no place, work at state level for the state its themes and pro
    worked; for education: dropout, learning levels) and search each one by dataset and level: "NFHS-5 Udalguri
    district fact sheet", "Assam women self-help group income impact evaluation".
 2. `search_public_sources` broadly, several short searches per indicator and level. A HELD hit cannot be read.
-3. Open the strongest sources: `read_page` for a web page; `fetch_document` then `read_document_pages` for a PDF.
+3. Open the strongest sources: `read_page` for a web page; `fetch_document` then `read_document_pages` for a PDF or Word file.
    For a journal article that will not open, look for the same study as a working paper, a 3ie or J-PAL summary, or
    a PDF on the author's or evaluator's site. When a government site will not open, look for the same report
    elsewhere (data.gov.in, the state's own site, a PDF copy on another official site) before moving on.

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -40,6 +40,7 @@ from app.schemas.proposals import (
 from app.schemas.threads import ThreadMessagesOut
 
 logger = logging.getLogger(__name__)
+IST = timezone(timedelta(hours=5, minutes=30))  # a byline date is the date in India, where the proposal is sent from
 
 router = APIRouter(prefix="/proposals", tags=["proposals"])
 Principal = Annotated[CurrentUser, Depends(require_principal)]
@@ -332,7 +333,7 @@ async def save_version(proposal_id: int, pool: PoolDep, principal: Principal, bo
     n = len(work.get("versions") or []) + 1
     now = datetime.now(UTC)
     funder = row["funder"]["name"]
-    byline = f"For {funder} from {row['org']['name']} · version {n} · {now:%d %B %Y}"
+    byline = f"For {funder} from {row['org']['name']} · version {n} · {now.astimezone(IST):%d %B %Y}"
     changes: dict[str, Any] = {}
     entry: dict[str, Any] = {"title": f"Version {n}"}
     named = f"version {n}"
@@ -340,8 +341,9 @@ async def save_version(proposal_id: int, pool: PoolDep, principal: Principal, bo
         outline, filled = await _fill_form(pool, proposal_id, row, written)
         if outline is not (work.get("template") or {}).get("outline"):
             changes["template.outline"] = outline
-        headed = [(fill.title(f.heading), f.text) for f in filled]
-        data = assemble.form_docx(row["title"], f"{byline} · in the {funder} form", headed)
+        laid = fill.outline(filled)
+        headed = [(heading, text) for heading, text, _ in laid]
+        data = assemble.form_docx(row["title"], f"{byline} · in the {funder} form", laid)
         named = f"version {n}, in the {funder} form"
         entry = {"title": f"V{named[1:]}", "shape": "form", "report": fill.report(filled)}
     else:
@@ -371,8 +373,7 @@ async def _fill_form(pool: PoolDep, proposal_id: int, row: dict, written: list) 
     outline = template.get("outline")
     if not outline or outline.get("document_id") != template.get("document_id"):
         try:
-            outline = await form.read(pool, template, row["org"]["id"], rubric.sections_for(
-                bool(work.get("earlier_phase")), template), resolve_model(settings.research_model))
+            outline = await form.read(pool, template, row["org"]["id"], resolve_model(settings.research_model))
         except form.Unreadable as exc:
             raise HTTPException(422, str(exc)) from exc
         except Exception as exc:
@@ -380,9 +381,10 @@ async def _fill_form(pool: PoolDep, proposal_id: int, row: dict, written: list) 
             raise HTTPException(502, "Sangam couldn't read the funder's form just now. Try again.") from exc
     parts = {s.code: text for s, text in written}
     style = work.get("style") or rubric.default_style(row["org"]["name"])
-    answers = await fill.fill(outline["headings"], parts, style, resolve_model(settings.model))
+    about = f"Organisation name: {row['org']['name']}\nCountry: India"
+    answers = await fill.fill(outline["headings"], parts, style, resolve_model(settings.model), about)
     filled = fill.resolve(outline["headings"], parts, answers, earlier_phase=bool(work.get("earlier_phase")),
-                          districts=await records.districts(pool), names=_names(row))
+                          about=about, districts=await records.districts(pool), names=_names(row))
     return outline, filled
 
 

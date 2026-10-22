@@ -12,7 +12,7 @@ from app.db.pool import get_pool
 from app.ingest import vault
 from app.ingest.brief import headline, record
 from app.ingest.source_guards import is_private_source
-from app.ingest.tools.library_tools import _pdf
+from app.ingest.tools.library_tools import READABLE, _archived
 from app.ingest.vault import MAX_BYTES
 from app.integrations import storage
 from app.proposals import context, research, steps
@@ -78,7 +78,7 @@ async def read_brief(side: str = "funder") -> str:
         return f"read_brief failed: {type(exc).__name__}"
 
 
-async def _public_pdf(document_id: int, where: str, args: tuple[Any, ...], start_page: int,
+async def _public_file(document_id: int, where: str, args: tuple[Any, ...], start_page: int,
                       end_page: int | None) -> str | None:
     async with get_pool().connection() as conn:
         doc = await (await conn.execute(
@@ -86,13 +86,13 @@ async def _public_pdf(document_id: int, where: str, args: tuple[Any, ...], start
             f"AND storage_path LIKE %s {where}",
             (document_id, f"{storage.SOURCE_ARCHIVE}/%", *args),
         )).fetchone()
-    if doc is None or not doc["storage_path"].lower().endswith(".pdf"):
+    if doc is None or not doc["storage_path"].lower().endswith(READABLE):
         return None
     parts = storage.split(doc["storage_path"])
     data = await storage.download(*parts, max_bytes=MAX_BYTES) if parts else None
     if data is None:
         return f"Document {document_id} could not be downloaded."
-    return await asyncio.to_thread(_pdf, dict(doc), data, start_page, end_page)
+    return await asyncio.to_thread(_archived, dict(doc), data, start_page, end_page)
 
 
 @tool
@@ -105,7 +105,7 @@ async def list_funder_documents() -> str:
         async with get_pool().connection() as conn:
             rows = await (await conn.execute(
                 "SELECT id, title, doc_type, as_of FROM documents WHERE funder_id = %s AND is_public "
-                "AND storage_path LIKE %s AND lower(storage_path) LIKE '%%.pdf' ORDER BY as_of DESC NULLS LAST, id DESC",
+                "AND storage_path LIKE %s AND (lower(storage_path) LIKE '%%.pdf' OR lower(storage_path) LIKE '%%.docx') ORDER BY as_of DESC NULLS LAST, id DESC",
                 (p.funder_id, f"{storage.SOURCE_ARCHIVE}/%"),
             )).fetchall()
         if not rows:
@@ -132,7 +132,7 @@ async def read_funder_document(document_id: int, start_page: int = 1, end_page: 
         p = await context.current()
         if p is None:
             return NO_PROPOSAL
-        text = await _public_pdf(document_id, "AND funder_id = %s", (p.funder_id,), start_page, end_page)
+        text = await _public_file(document_id, "AND funder_id = %s", (p.funder_id,), start_page, end_page)
         return text or f"Document {document_id} is not one of {p.funder_name}'s archived documents."
     except Exception as exc:  # noqa: BLE001 - a tool returns its failure
         logger.warning("read_funder_document failed for %s (%s)", document_id, type(exc).__name__)
@@ -158,7 +158,7 @@ async def read_template(start_page: int = 1, end_page: int | None = None) -> str
         doc = await vault.document(pool, doc_id)
         if doc is not None and doc["org_id"] == p.org_id:
             return await vault.read(doc, start_page=start_page, end_page=end_page)
-        text = await _public_pdf(doc_id, "", (), start_page, end_page)
+        text = await _public_file(doc_id, "", (), start_page, end_page)
         return text or "The funder's form has no copy Sangam can read."
     except Exception as exc:  # noqa: BLE001 - a tool returns its failure
         logger.warning("read_template failed (%s)", type(exc).__name__)

@@ -292,6 +292,10 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
     }
   }
 
+  // The chosen form shapes the download; it is not a file to read, unless it was ticked before it was chosen.
+  const form = work.template?.document_id;
+  const readable = docs?.filter((d) => d.id !== form || work.sources.includes(d.id)) ?? null;
+
   const tick = (docId: number, on: boolean) =>
     save({ sources: on ? [...work.sources, docId] : work.sources.filter((d) => d !== docId) });
 
@@ -316,7 +320,7 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
                 </a>
               </>
             )}
-            . The proposal follows its order and limits.
+            . Sangam writes its usual parts, and in the last step you can download them filled into this form.
           </p>
         ) : work.skipped_template ? (
           <p>
@@ -349,13 +353,13 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
       <div className="card pr-block">
         <div className="card-title">Documents Sangam may read</div>
         <p className="muted">Tick the files that help: impact reports, evaluations, annual reports, workplans, budgets.</p>
-        {!docs ? (
+        {!readable ? (
           <div className="muted">Loading…</div>
-        ) : docs.length === 0 ? (
+        ) : readable.length === 0 ? (
           <div className="muted">No files from {proposal.org.name} yet.</div>
         ) : (
           <div className="pr-docs">
-            {docs.map((d) => (
+            {readable.map((d) => (
               <label key={d.id} className="pr-tick">
                 <input
                   type="checkbox"
@@ -382,7 +386,7 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
         )}
       </div>
 
-      <Reading proposal={proposal} send={send} />
+      <Reading proposal={proposal} save={save} send={send} />
 
       <div className="card pr-block">
         <div className="card-title">Writing style</div>
@@ -609,7 +613,7 @@ const Lines = ({ lines }: { lines: string[] }) => (
 const READ_STATE: Record<Reader["status"], string> = { done: "✓ Read", running: "Reading…", failed: "! Couldn't read" };
 
 /** "Write the first draft", then each file's reader as it runs: read, reading, or what went wrong and "Try again". */
-function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
+function Reading({ proposal, save, send }: { proposal: Proposal; save: Save; send: Send }) {
   const { work, can_edit: canEdit } = proposal;
   const readers = work.readers ?? {};
   const started = Object.keys(readers).some((key) => key !== "public");
@@ -619,6 +623,13 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
   const from = (f: Fact, key: string) => (key === "funder" ? f.origin === "web" && !f.found_by : String(f.document_id) === key);
   const factsFrom = (key: string) => Object.values(work.facts ?? {}).filter((f) => from(f, key)).length;
   const rows = Object.entries(readers).filter(([key]) => key === "funder" || work.sources.includes(Number(key)));
+  // One change: the file becomes the form and leaves the documents to read.
+  const takeAsForm = (docId: number) =>
+    save({
+      template: { document_id: docId, url: null, from: "upload", read_at: null },
+      skipped_template: false,
+      sources: work.sources.filter((d) => d !== docId),
+    });
 
   return (
     <div className="card pr-block">
@@ -634,13 +645,18 @@ function Reading({ proposal, send }: { proposal: Proposal; send: Send }) {
             <li key={key} className="pr-read" data-status={r.status}>
               <span className="pr-read-title">{key === "funder" ? `What ${proposal.funder.name} looks for` : r.title}</span>
               <span className="pr-read-state">
-                {READ_STATE[r.status]}
+                {r.looks_like_form ? "Not read" : READ_STATE[r.status]}
                 {r.status === "done" && ` · ${factsFrom(key)} ${factsFrom(key) === 1 ? "fact" : "facts"}`}
                 {r.status === "failed" && r.error && `: ${r.error}`}
               </span>
-              {r.status === "failed" && canEdit && (
+              {r.status === "failed" && canEdit && !r.looks_like_form && (
                 <button className="btn btn-ghost" type="button" disabled={!send || Boolean(running)} onClick={() => send?.(READ_AGAIN)}>
                   Try again
+                </button>
+              )}
+              {r.status === "failed" && canEdit && r.looks_like_form && !work.template && (
+                <button className="btn btn-ghost" type="button" onClick={() => void takeAsForm(Number(key))}>
+                  Use it as the funder&apos;s form
                 </button>
               )}
             </li>

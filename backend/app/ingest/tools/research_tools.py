@@ -22,6 +22,7 @@ from app.agent.tools.web import make_web_search
 from app.core.config import get_settings
 from app.core.egress import TRUST
 from app.db.pool import get_pool
+from app.ingest import office
 from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish, rows_for
@@ -36,6 +37,7 @@ from app.integrations import storage
 logger = logging.getLogger(__name__)
 
 MAX_DOWNLOAD_MB = 60
+WORD = "wordprocessingml"  # in a .docx's content type
 PAGE_HEADERS = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,*/*",
                 "Accept-Encoding": "gzip, deflate"}
 
@@ -173,9 +175,9 @@ async def _read_page(url: str) -> str:
         return f"ERROR: fetching {url} failed ({type(exc).__name__}: {exc})."
 
     content_type = response.headers.get("content-type", "").lower()
-    if "pdf" in content_type or url.lower().endswith(".pdf"):
+    if kind := _document_kind(content_type, url):
         return (
-            f"{url} is a PDF ({len(response.content):,} bytes). Use fetch_document to save it, "
+            f"{url} is a {kind} ({len(response.content):,} bytes). Use fetch_document to save it, "
             f"then read_document_pages to read it."
         )
     # trafilatura finds nothing in JSON (GuideStar's search, GitHub listings) or raw markdown (a dossier).
@@ -195,6 +197,15 @@ async def _read_page(url: str) -> str:
     return source_banner(str(response.url)) + text
 
 
+def _document_kind(content_type: str, url: str) -> str | None:
+    path = url.lower().split("?")[0]
+    if "pdf" in content_type or path.endswith(".pdf"):
+        return "PDF"
+    if WORD in content_type or path.endswith(".docx"):
+        return "Word file"
+    return None
+
+
 def page_name(url: str) -> str:
     """A readable file name for an archived page: axisbankfoundation.org-what-we-do.md."""
     rest = url.split("://", 1)[-1].split("?")[0].split("#")[0].strip("/")
@@ -205,7 +216,7 @@ def page_name(url: str) -> str:
 
 @tool
 async def fetch_document(url: str, filename: str | None = None) -> str:
-    """Download a PDF or other document, if Sangam is allowed to read it.
+    """Download a PDF, Word file or other document, if Sangam is allowed to read it.
 
     CSR impact reports, BRSR filings and annual reports are PDFs — this is how
     the figures in them are reached. Saves the file and returns its name; read it
@@ -241,6 +252,10 @@ async def _fetch_document(url: str, filename: str | None) -> str:
                         return f"ERROR: {url} is larger than the {MAX_DOWNLOAD_MB} MB limit."
                     fh.write(chunk)
             content_type = response.headers.get("content-type", "application/octet-stream")
+        # A Word file served from a link without its extension is still paged by paragraph.
+        if WORD in content_type.lower() and not name.lower().endswith(".docx"):
+            destination = destination.rename(destination.with_name(f"{name}.docx"))
+            name = destination.name
     except _Stop as stop:
         return stop.reply
     except httpx.HTTPError as exc:
@@ -260,9 +275,9 @@ async def _fetch_document(url: str, filename: str | None) -> str:
 
 @tool
 def read_document_pages(filename: str, start_page: int = 1, end_page: int | None = None) -> str:
-    """Read text from a downloaded PDF, a page range at a time.
+    """Read text from a downloaded PDF, a page range at a time, or a Word (.docx) file by paragraphs.
 
-    Pages are 1-indexed; omit end_page to read to the end. A long result is saved
+    Pages are 1-indexed, and in a Word file start_page and end_page count paragraphs; omit end_page to read to the end. A long result is saved
     to a file you page through with read_file. A scanned PDF has
     no text layer and returns nothing: say so rather than guessing at its contents.
     """
@@ -270,6 +285,12 @@ def read_document_pages(filename: str, start_page: int = 1, end_page: int | None
     if not destination.exists():
         available = ", ".join(sorted(p.name for p in downloads_dir().iterdir())) or "(none)"
         return f"ERROR: {filename} is not in the downloads folder. Available: {available}"
+    if destination.suffix.lower() == ".docx":
+        try:
+            text, total = office.docx_range(destination.read_bytes(), start_page, end_page)
+        except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
+            return f"ERROR: {filename} could not be read as a Word file ({type(exc).__name__}: {exc})."
+        return f"[{filename}: {total} paragraphs]\n\n{text}" if text.strip() else f"{filename} has no text in that range."
     try:
         text, total_pages = extract_pdf_text(destination, start_page, end_page)
     except Exception as exc:  # noqa: BLE001 - pypdf raises many types on malformed files

@@ -54,8 +54,20 @@ export type Part = {
   untraced?: string[];
 };
 
-/** A saved Word file in the org's Doc Vault. */
-export type Version = { n: number; title: string; document_id: number; at: string; by: { id: string; name: string } };
+/** A saved Word file in the org's Doc Vault; "form" is filled into the funder's own headings. */
+export type Version = {
+  n: number;
+  title: string;
+  document_id: number;
+  at: string;
+  by: { id: string; name: string };
+  shape?: "sangam" | "form";
+  report?: FormReport;
+};
+
+/** What happened under each of the form's headings, named by the form's own numbers. */
+// `cut` and `as_written` come only from versions saved before the form was filled in one call over every part.
+export type FormReport = { answered: string[]; add: string[]; you_fill: string[]; cut?: Record<string, string[]>; as_written?: string[] };
 
 export type Reader = {
   status: "running" | "done" | "failed";
@@ -63,6 +75,8 @@ export type Reader = {
   by?: { id: string; name: string };
   title: string;
   error?: string;
+  /** The file is a blank funder's form, uploaded among the documents to read. */
+  looks_like_form?: boolean;
   unopened?: string[];
   /** Secondary research only: one paragraph per topic, citing its facts as ⟦kN⟧. */
   /** Secondary research only: the researcher's brief, in Markdown (problem magnitude, impact evidence, caveats). */
@@ -209,8 +223,9 @@ export async function polishProposal(id: number) {
   return call<Saved>(`/api/proposals/${id}/polish`, "POST");
 }
 
-export async function saveVersion(id: number) {
-  const saved = await call<Saved>(`/api/proposals/${id}/versions`, "POST");
+export async function saveVersion(id: number, shape: "sangam" | "form" = "sangam") {
+  const path = `/api/proposals/${id}/versions`;
+  const saved = await (shape === "form" ? call<Saved>(path, "POST", { shape }) : call<Saved>(path, "POST"));
   void reloadProposals();
   return saved;
 }

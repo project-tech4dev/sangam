@@ -49,20 +49,20 @@ def docx(title: str, byline: str, written: list[tuple[rubric.Section, str]]) -> 
     return _document(title, byline, [(section.label, text) for section, text in written])
 
 
-def form_docx(title: str, byline: str, filled: list[tuple[str, str]]) -> bytes:
+def form_docx(title: str, byline: str, filled: list[tuple[str, str, int]]) -> bytes:
     """The funder's form filled in: its own numbered headings, with what is left marked [Add: …] or [You fill: …]."""
     return _document(title, byline, filled)
 
 
-def _document(title: str, byline: str, headed: list[tuple[str, str]]) -> bytes:
+def _document(title: str, byline: str, headed: list[tuple[str, str]] | list[tuple[str, str, int]]) -> bytes:
     from docx import Document
     from docx.enum.text import WD_COLOR_INDEX
 
     doc = Document()
     doc.add_heading(title, level=0)
     doc.add_paragraph().add_run(byline).italic = True
-    for heading, text in headed:
-        doc.add_heading(heading, level=1)
+    for heading, text, *level in headed:
+        doc.add_heading(heading, level=level[0] if level else 1)
         for para in trace.paragraphs(text):
             for line in para.splitlines():
                 if not line.strip():
