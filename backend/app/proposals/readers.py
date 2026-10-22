@@ -27,7 +27,7 @@ from app.core.config import Settings
 from app.db.pool import get_pool
 from app.ingest import run_sources
 from app.ingest.middleware import RunSources, fallback
-from app.integrations.tracing import trace_config
+from app.integrations.tracing import propagate_caller, trace_config
 from app.proposals import brief, context, research, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
@@ -357,8 +357,9 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
                 run.task = task
                 run.report = lambda: _progress(p.id, run, by)
             writing = brief.write(brief_task(p, *inputs, ask=focus), BUILT.brief) if inputs is not None else _no_brief()
-            result, written = await asyncio.gather(graph.ainvoke({"messages": [HumanMessage(task)]}, config=BUILT.trace),
-                                                   writing, return_exceptions=True)
+            with propagate_caller(BUILT.trace):
+                result, written = await asyncio.gather(graph.ainvoke({"messages": [HumanMessage(task)]}, config=BUILT.trace),
+                                                       writing, return_exceptions=True)
             if isinstance(result, BaseException):
                 raise result
             text = _last_text(result)

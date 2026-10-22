@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import sys
 import types
+from contextlib import nullcontext
 from pathlib import Path
 from uuid import UUID
 
@@ -671,3 +672,23 @@ async def test_a_run_still_streams_when_attributes_cannot_be_propagated(monkeypa
 
     events = [e async for e in agent.run(RunAgentInput(thread_id="t", run_id="r", messages=[]))]
     assert events == ["event"]
+
+
+def test_a_reader_run_is_named_and_tagged_from_its_own_trace_config(monkeypatch):
+    """Pitch's readers run outside a chat turn, so they pass their trace config straight in."""
+    import langfuse
+
+    from app.integrations.tracing import propagate_caller
+
+    seen: dict = {}
+    monkeypatch.setattr(langfuse, "propagate_attributes", lambda **kw: seen.update(kw) or nullcontext())
+    config = trace_config(Settings(**ENABLED), name="sangam_proposal_reader", tags=("proposal", "reader"))
+    token = chat_scope.set(STEWARD)
+    try:
+        with propagate_caller(config):
+            pass
+    finally:
+        chat_scope.reset(token)
+    assert seen["trace_name"] == "sangam_proposal_reader"
+    assert seen["session_id"] is None
+    assert seen["tags"][:3] == ["sangam", "proposal", "reader"] and "org:SeSTA" in seen["tags"]

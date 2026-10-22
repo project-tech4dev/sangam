@@ -8,6 +8,7 @@ import types
 from types import SimpleNamespace
 
 import pytest
+from ag_ui.core.types import RunAgentInput
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from app.core.config import Settings
@@ -314,9 +315,10 @@ async def test_run_flushes_even_when_the_stream_fails(monkeypatch):
     monkeypatch.setattr(LangGraphAGUIAgent, "run", stream)
     monkeypatch.setattr(tracing, "flush_traces", lambda: flushed.append(1))
     agent = object.__new__(tracing.SessionScopedAGUIAgent)
+    agent.graph = object()
     seen = []
     with pytest.raises(RuntimeError):
-        async for event in agent.run(None):
+        async for event in agent.run(RunAgentInput(thread_id="t", run_id="r", messages=[])):
             seen.append(event)
     assert seen == ["e1"] and flushed == [1]
 

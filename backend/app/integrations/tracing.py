@@ -361,6 +361,22 @@ def caller_trace(scope: CallerScope | None, user_id: Any) -> tuple[str, list[str
     return scope.email or str(scope.user_id or DEV_USER_ID), tags, metadata
 
 
+def propagate_caller(config: dict[str, Any] | None, session_id: str | None = None) -> AbstractContextManager:
+    """Puts the caller on every span inside: v4 dashboards read user and tags per observation, not per trace."""
+    try:
+        from langfuse import propagate_attributes
+
+        user, tags, _ = caller_trace(chat_scope.get(), chat_user_id.get())
+        meta = (config or {}).get("metadata") or {}
+        return propagate_attributes(
+            user_id=user, session_id=session_id, trace_name=meta.get("langfuse_trace_name"),
+            tags=[*meta.get("langfuse_tags", ()), *tags],
+        )
+    except Exception:  # telemetry must never take the app down
+        logger.debug("Langfuse attributes not propagated", exc_info=True)
+        return nullcontext()
+
+
 class SessionScopedAGUIAgent(LangGraphAGUIAgent):
     """AG-UI agent that tags each run with the conversation it belongs to."""
 
@@ -382,26 +398,12 @@ class SessionScopedAGUIAgent(LangGraphAGUIAgent):
 
     async def run(self, input: RunAgentInput):
         try:
-            with self._propagate(input):
+            with propagate_caller(getattr(self.graph, "config", None), input.thread_id):
                 async for event in super().run(input):
                     yield event
         finally:
             await asyncio.to_thread(flush_traces)
 
-    def _propagate(self, input: RunAgentInput) -> AbstractContextManager:
-        """Puts the caller on every span of the run: v4 dashboards read user and tags per observation."""
-        try:
-            from langfuse import propagate_attributes
-
-            user, tags, _ = caller_trace(chat_scope.get(), chat_user_id.get())
-            meta = (getattr(self.graph, "config", None) or {}).get("metadata") or {}
-            return propagate_attributes(
-                user_id=user, session_id=input.thread_id, trace_name=meta.get("langfuse_trace_name"),
-                tags=[*meta.get("langfuse_tags", ()), *tags],
-            )
-        except Exception:  # telemetry must never take the app down
-            logger.debug("Langfuse attributes not propagated", exc_info=True)
-            return nullcontext()
 
     @staticmethod
     def _collect_interrupts(tasks) -> list:
