@@ -76,7 +76,7 @@ describe("DoneReport", () => {
     expect(screen.getByRole("region", { name: "Done" })).toBeInTheDocument();
     expect(screen.getByText("+2 facts")).toBeInTheDocument();
     expect(screen.getByLabelText("Profile 50% complete before, 100% after")).toBeInTheDocument();
-    expect(onCounts).toHaveBeenLastCalledWith({ pending: 0, saved: 1 });
+    await waitFor(() => expect(onCounts).toHaveBeenLastCalledWith({ pending: 0, saved: 1 }));
 
     await userEvent.click(screen.getByRole("button", { name: /KABIL/ }));
     expect(screen.getByRole("list", { name: "By topic" })).toBeInTheDocument();
@@ -105,7 +105,7 @@ describe("DoneReport", () => {
     expect(screen.getByRole("region", { name: "Review" })).toBeInTheDocument();
     expect(screen.getByText("Found answers on 1 of 2 topics")).toBeInTheDocument();
     expect(screen.getByText("Not reviewed")).toBeInTheDocument();
-    expect(onCounts).toHaveBeenLastCalledWith({ pending: 1, saved: 0 });
+    await waitFor(() => expect(onCounts).toHaveBeenLastCalledWith({ pending: 1, saved: 0 }));
 
     // Only names queued since the run began.
     expect(screen.getByText("2 names need a person")).toBeInTheDocument();
@@ -152,7 +152,7 @@ describe("DoneReport", () => {
     expect(screen.getByText(/Nothing from this run was saved/)).toBeInTheDocument();
     expect(screen.getByText("Not saved")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Review again" })).toBeInTheDocument();
-    expect(onCounts).toHaveBeenLastCalledWith({ pending: 0, saved: 0 });
+    await waitFor(() => expect(onCounts).toHaveBeenLastCalledWith({ pending: 0, saved: 0 }));
   });
 
   it("says when the answers could not load, and averages several saved profiles", async () => {
