@@ -31,7 +31,7 @@ from app.integrations.tracing import trace_config
 from app.proposals import brief, context, research, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as work_rules
-from app.proposals.middleware import PUBLIC_RUN, PublicGuard, PublicRun
+from app.proposals.middleware import PUBLIC_RUN, PublicGuard, PublicRun, ResearchProgress
 from app.repositories import profile_facts
 from app.repositories import proposals as repo
 
@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 FUNDER = "funder"  # work.readers' key for the funder's side; a file's key is its document id
 PUBLIC = "public"  # public research: the problem, the place, government and what worked elsewhere
 PLACES = 8
+RESEARCHER = "public-researcher"  # the supervisor's one subagent; it launches as many as the proposal needs
 UNREADABLE = "UNREADABLE:"  # a reader's last message starts with this when the file had nothing to read
 FORM = "FORM"  # ...followed by this when the file is a blank funder's form, which step 2 offers to use as one
 ERROR_TEXT = 160
@@ -81,10 +82,33 @@ def build(settings: Settings, evidence_tools: list[Any], funder_tools: list[Any]
             checkpointer=False,
         ).with_config({"recursion_limit": settings.recursion_limit})
 
+    def supervisor(tools: list[Any]) -> Any:
+        """Public research: a supervisor that only splits the work, and researchers it runs at the same time."""
+        researcher = {
+            "name": RESEARCHER,
+            "description": "Researches ONE angle of the public evidence and adds its facts. Launch one per angle, "
+                           "all in one message.",
+            "mode": "isolated",  # inherits nothing, so it carries every guard itself
+            "model": research,
+            "tools": tools,
+            "middleware": [filesystem_tools(backend, evict=False), tool_errors(), RunSources(), PublicGuard(),
+                           *fallback(settings.research_model, settings.model)],
+            "system_prompt": (_PROMPTS / "public_researcher.md").read_text(encoding="utf-8"),
+        }
+        return create_deep_agent(
+            model=research,
+            tools=[],
+            subagents=[researcher],
+            backend=backend,
+            middleware=[filesystem_tools(backend, evict=False), tool_errors(), ResearchProgress(),
+                        *fallback(settings.research_model, settings.model)],
+            system_prompt=(_PROMPTS / "public_supervisor.md").read_text(encoding="utf-8"),
+            checkpointer=False,
+        ).with_config({"recursion_limit": settings.recursion_limit})
+
     BUILT.evidence = reader(evidence_tools, "evidence_reader.md")
     BUILT.funder = reader(funder_tools, "funder_file_reader.md")
-    BUILT.public = (reader(public_tools, "public_researcher.md", PublicGuard())
-                    if public_tools and settings.tavily_api_key else None)
+    BUILT.public = supervisor(public_tools) if public_tools and settings.tavily_api_key else None
     try:
         BUILT.brief = brief.bind(research)
     except Exception as exc:  # noqa: BLE001 - a model without server-side search writes no brief
@@ -329,6 +353,9 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
             inputs = await _public_inputs(p) if key == PUBLIC else None
             focus = ask[1] if ask else None
             task = public_task(p, *inputs, ask=focus) if inputs is not None else _task(p, key, title)
+            if run is not None:
+                run.task = task
+                run.report = lambda: _progress(p.id, run, by)
             writing = brief.write(brief_task(p, *inputs, ask=focus), BUILT.brief) if inputs is not None else _no_brief()
             result, written = await asyncio.gather(graph.ainvoke({"messages": [HumanMessage(task)]}, config=BUILT.trace),
                                                    writing, return_exceptions=True)
@@ -347,7 +374,8 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
             run_sources.CURRENT.reset(token)
     outcome = {"status": "failed" if error else "done", "at": datetime.now(UTC).isoformat(), "by": by, "title": title,
                **({"error": error} if error else {}), **({"looks_like_form": True} if is_form else {}),
-               **({"unopened": sorted(run.unopened)} if run else {})}
+               **({"unopened": sorted(run.unopened)} if run else {}),
+               **({"slices": run.slices} if run and run.slices else {})}
     marks: dict[str, dict[str, Any]] = {f"readers.{key}": outcome}
     added = 0
     if run is not None and not error:
@@ -362,6 +390,25 @@ async def _one(p: context.Current, key: str, title: str, gate: asyncio.Semaphore
         return f"{title}: could not read it ({error})."
     shown = f"\n\nThe brief now on the Secondary research card:\n{outcome['brief']}" if outcome.get("brief") else ""
     return f"{title}: read.\n{text}{shown}"
+
+
+async def _progress(proposal_id: int, run: PublicRun, by: dict[str, Any]) -> None:
+    """Each researcher's line on the card, written onto the running mark; a finished or deleted run is left alone."""
+    def change(work: dict, title: str) -> work_rules.Applied:
+        held = (work.get("readers") or {}).get(PUBLIC) or {}
+        if held.get("status") != "running":
+            raise _NotRunning
+        return work_rules.apply(work, {f"readers.{PUBLIC}": {**held, "slices": [dict(s) for s in run.slices]}},
+                                by=by, via="agent", reason="researching", title=title)
+
+    try:
+        await repo.save(get_pool(), proposal_id, change)
+    except _NotRunning:
+        pass
+
+
+class _NotRunning(Exception):
+    pass
 
 
 async def _added(proposal_id: int, ask_id: str) -> int:

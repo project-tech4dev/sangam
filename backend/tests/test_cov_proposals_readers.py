@@ -163,11 +163,34 @@ class TestRead:
         task, sources, public = graphs.public.asked[0]
         assert "Where it works: Udalguri, Assam" in task and "Its themes: Water › Wells; Health" in task
         assert "Its programmes: Wells" in task and "SDGs on record: 6 Clean water" in task
-        assert sources.web and public.avoid == ("SeSTA",)
+        assert sources.web and public.avoid == ("SeSTA",) and public.task == task
         assert graphs.evidence.asked == [] and list(store["work"]["readers"]) == ["public"]
         assert store["work"]["readers"]["public"]["unopened"] == []
+        assert "slices" not in store["work"]["readers"]["public"]  # no researcher launched in this fake
         assert "summaries" not in store["work"]["readers"]["public"]
         assert "brief" not in store["work"]["readers"]["public"]  # no brief model in this setup
+
+    async def test_each_researchers_line_is_on_the_card_while_running_and_after(self, run, monkeypatch):
+        store, setup = run
+        graphs = setup({}, public="Found 2 public facts.")
+        during = []
+
+        async def ainvoke(state, config=None):
+            held = PUBLIC_RUN.get()
+            held.slices.append({"label": "Dropout in Udalguri", "status": "done"})
+            await held.report()
+            during.append(store["work"]["readers"]["public"])
+            return {"messages": [AIMessage("Found 2 public facts.")]}
+
+        async def facts(pool, owner, org_id):
+            return None
+        monkeypatch.setattr(graphs.public, "ainvoke", ainvoke)
+        monkeypatch.setattr(profile_facts, "org_facts", facts)
+        await readers.read(proposal({}), public=True)
+        line = [{"label": "Dropout in Udalguri", "status": "done"}]
+        assert during[0]["status"] == "running" and during[0]["slices"] == line
+        assert store["work"]["readers"]["public"]["status"] == "done"
+        assert store["work"]["readers"]["public"]["slices"] == line
 
     async def test_the_brief_is_written_beside_the_search_without_the_org(self, run, monkeypatch):
         store, setup = run
