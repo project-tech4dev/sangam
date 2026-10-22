@@ -58,11 +58,12 @@ const SOURCES = [
 ] as const;
 
 // A partner without a logo file yet renders as a labelled placeholder, as in the prototype.
-const PARTNERS: { name: string; logo?: string }[] = [
-  { name: "Node" },
-  { name: "FFRH" },
-  { name: "Project Tech4Dev", logo: "/partners/tech4dev.png" },
-  { name: "Bridgespan" },
+// width and height are the file's own pixels, so next/image keeps each logo's aspect ratio.
+const PARTNERS: { name: string; logo?: string; width?: number; height?: number }[] = [
+  { name: "NoDe", logo: "/partners/node.png", width: 600, height: 213 },
+  { name: "SeSTA", logo: "/partners/sesta.png", width: 150, height: 40 },
+  { name: "FFRH", logo: "/partners/ffrh.png", width: 273, height: 291 },
+  { name: "Project Tech4Dev", logo: "/partners/tech4dev.png", width: 197, height: 61 },
 ];
 
 // The prototype's .card: surface fill, no border or shadow, tight padding.
@@ -143,16 +144,16 @@ export function HomePage() {
       </section>
 
       <section className="mx-auto max-w-(--page-max) px-(--page-pad) pt-[72px]">
-        <SectionHeading className="mb-8">Partners and supporters</SectionHeading>
-        <div className="flex flex-wrap gap-14">
+        <SectionHeading className="mb-8 text-center">Partners and supporters</SectionHeading>
+        <div className="flex flex-wrap items-center justify-center gap-14">
           {PARTNERS.map((partner) =>
             partner.logo ? (
               <Image
                 key={partner.name}
                 src={partner.logo}
                 alt={partner.name}
-                width={197}
-                height={61}
+                width={partner.width}
+                height={partner.height}
                 className="h-12 w-[140px] object-contain"
               />
             ) : (
