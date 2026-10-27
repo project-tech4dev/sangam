@@ -109,7 +109,7 @@ describe("VaultView", () => {
   const doc = { id: 1, title: "Annual report", doc_type: "annual_report", source_name: "Upload", source_url: null, fetched_at: "2026-10-01" };
 
   it("lists the first organisation's documents and switches organisation", async () => {
-    const fetchMock = vi.fn(async () => ({ json: async () => ({ items: [doc, { ...doc, id: 2, title: null, doc_type: null, source_name: null, fetched_at: null }] }) }));
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ items: [doc, { ...doc, id: 2, title: null, doc_type: null, source_name: null, fetched_at: null }] }) }));
     vi.stubGlobal("fetch", fetchMock);
     render(<VaultView orgs={ORGS} />);
     expect(screen.getByText("Loading…")).toBeInTheDocument();
@@ -128,8 +128,7 @@ describe("VaultView", () => {
     expect(await screen.findByText("No documents linked yet")).toBeInTheDocument();
   });
 
-  // Bug: the load never checks res.ok, so a 403's {detail} body sets docs to undefined and the render throws.
-  it.fails("shows the empty state when the server refuses the list", async () => {
+  it("shows the empty state when the server refuses the list", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 403, json: async () => ({ detail: "Forbidden" }) })));
     vi.spyOn(console, "error").mockImplementation(() => {});
     render(
@@ -141,7 +140,7 @@ describe("VaultView", () => {
   });
 
   it("uploads a file and reloads, or shows why it failed", async () => {
-    const fetchMock = vi.fn(async () => ({ json: async () => ({ items: [] }) }));
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ items: [] }) }));
     vi.stubGlobal("fetch", fetchMock);
     const { container } = render(<VaultView orgs={ORGS} />);
     await screen.findByText("No documents linked yet");

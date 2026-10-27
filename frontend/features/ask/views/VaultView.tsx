@@ -18,8 +18,8 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
     setDocs(null);
     authHeaders()
       .then((headers) => fetch(`${API}/api/documents?org=${orgSlug}&limit=100`, { headers }))
-      .then((res) => res.json())
-      .then((page) => setDocs(page.items))
+      .then((res) => (res.ok ? res.json() : { items: [] }))
+      .then((page) => setDocs(page.items ?? []))
       .catch(() => setDocs([]));
   }, [orgSlug, reload]);
 
