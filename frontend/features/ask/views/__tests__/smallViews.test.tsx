@@ -21,7 +21,7 @@ vi.mock("@/features/ask/views/proposals/ProposalShell", () => ({
 import { ChatsView } from "@/features/ask/views/ChatsView";
 import { ComingSoonView } from "@/features/ask/views/ComingSoonView";
 import { ProposalsView } from "@/features/ask/views/ProposalsView";
-import { VaultView } from "@/features/ask/views/VaultView";
+import { VaultView, docName } from "@/features/ask/views/VaultView";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -126,6 +126,22 @@ describe("VaultView", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({}) })));
     render(<VaultView orgs={ORGS} />);
     expect(await screen.findByText("No documents linked yet")).toBeInTheDocument();
+  });
+
+  it("names a document by its title, else its source label, else its website", () => {
+    const base = { ...doc, title: null, source_name: null, source_url: null };
+    expect(docName({ ...base, title: "Annual report", source_name: "Upload" })).toBe("Annual report");
+    expect(docName({ ...base, source_name: "Give.do NGO profile - Kabil" })).toBe("Give.do NGO profile - Kabil");
+    expect(docName({ ...base, source_url: "https://www.give.do/ngo/kabil" })).toBe("give.do");
+    expect(docName(base)).toBe("Untitled document");
+  });
+
+  it("shows a cited source by its label, not as untitled", async () => {
+    const cited = { ...doc, title: null, doc_type: "web_page", source_name: "Give.do NGO profile - Kabil" };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ items: [cited] }) })));
+    render(<VaultView orgs={ORGS} />);
+    expect(await screen.findByText("Give.do NGO profile - Kabil")).toHaveClass("vault-name");
+    expect(screen.queryByText("Untitled document")).toBeNull();
   });
 
   it("uploads a file and reloads, or shows why it failed", async () => {
