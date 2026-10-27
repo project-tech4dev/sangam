@@ -57,7 +57,6 @@ def test_headline(finding, expected):
     assert brief.headline(finding) == expected
 
 
-@pytest.mark.xfail(strict=True, reason="_join drops falsy bits, so the `is not None` guard cannot keep a 0 value")
 def test_metric_value_zero_is_printed():
     f = {"concept": "metric", "name": "Girls enrolled", "value": 0, "unit": "girls"}
     assert brief.headline(f) == "Girls enrolled · 0 · girls"

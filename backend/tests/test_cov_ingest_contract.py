@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.ingest.contract import _numbers, quoted_only, unanswered
 from app.ingest.expectations import concepts_for
 from app.ingest.research_records import YEARLY, EntityResearch
@@ -96,7 +94,6 @@ class TestQuotedOnly:
         r = research(findings=[spend(evidence="In 2023 across 5 districts, Rs 6.74 crore was spent (2023-24).")])
         assert quoted_only(r) == []
 
-    @pytest.mark.xfail(strict=True, reason="_NUMBER takes the comma after '2023,' so the year check misses it")
     def test_a_year_before_a_comma_is_still_a_year(self):
         r = research(findings=[spend(evidence="In 2023, across 5 districts, Rs 6.74 crore was spent.")])
         assert quoted_only(r) == []

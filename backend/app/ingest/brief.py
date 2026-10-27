@@ -114,7 +114,7 @@ def headline(f: dict[str, Any]) -> str:
         return _join(f.get("recipient_name"), f.get("title"), _money(f.get("amount")),
                      f.get("status"))
     if concept == "metric":
-        value = _join(f.get("value") if f.get("value") is not None else None, f.get("unit"))
+        value = _join(str(f["value"]) if f.get("value") is not None else None, f.get("unit"))
         return _join(f.get("name"), value,
                      f"target {f['target']}" if f.get("target") is not None else None,
                      f.get("stage"), f.get("period"), _place(f))

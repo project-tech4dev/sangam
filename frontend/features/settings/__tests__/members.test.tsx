@@ -87,8 +87,7 @@ describe("StaffMembersCard", () => {
     expect(await screen.findByText("Could not reach Sangam. Try again.")).toBeInTheDocument();
   });
 
-  // Bug: a slow answer for the first organisation lands after the second was picked and is shown as its members.
-  it.fails("never shows one organisation's members under another after a quick switch", async () => {
+  it("never shows one organisation's members under another after a quick switch", async () => {
     const answers: ((v: { members: OrgMember[] }) => void)[] = [];
     request.mockImplementation(() => new Promise((r) => answers.push(r)));
     render(<StaffMembersCard orgs={orgs} meId="staff" />);

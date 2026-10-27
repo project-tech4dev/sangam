@@ -315,8 +315,6 @@ class TestExecuteRun:
         assert statuses == ["failed", "refused"]
         assert "advance_watch" not in [c[0] for c in store.calls]
 
-    @pytest.mark.xfail(strict=True, reason="one failed scope puts the subject in `failed`, so a one-subject run "
-                       "reads as 'every search failed' and drops the other scope's hits unclassified")
     async def test_one_failed_scope_still_classifies_the_other(self, faked):
         async def search(client, *, query, scope, **kw):
             if scope != "open_web":

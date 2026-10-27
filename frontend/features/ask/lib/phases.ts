@@ -42,8 +42,7 @@ function noteFor(tool: string, steps: TraceStep[]): string {
   const last = steps[steps.length - 1]!;
   switch (tool) {
     case "db_describe_table":
-      return [...new Set(steps.flatMap((s) => arg(s.args, "tables").split(",")))]
-        .map((t) => t.trim())
+      return [...new Set(steps.flatMap((s) => arg(s.args, "tables").split(",").map((t) => t.trim())))]
         .filter(Boolean)
         .join(", ");
     case "db_profile_column":
