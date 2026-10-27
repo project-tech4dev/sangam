@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Component, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api/auth-headers", () => ({ authHeaders: async () => ({ Authorization: "Bearer t" }) }));
@@ -23,17 +22,6 @@ import { ChatsView } from "@/features/ask/views/ChatsView";
 import { ComingSoonView } from "@/features/ask/views/ComingSoonView";
 import { ProposalsView } from "@/features/ask/views/ProposalsView";
 import { VaultView } from "@/features/ask/views/VaultView";
-
-// Keeps a render crash inside the test instead of an unhandled error.
-class Boundary extends Component<{ children: ReactNode }, { crashed: boolean }> {
-  state = { crashed: false };
-  static getDerivedStateFromError() {
-    return { crashed: true };
-  }
-  render() {
-    return this.state.crashed ? <p>crashed</p> : this.props.children;
-  }
-}
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -130,12 +118,7 @@ describe("VaultView", () => {
 
   it("shows the empty state when the server refuses the list", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 403, json: async () => ({ detail: "Forbidden" }) })));
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    render(
-      <Boundary>
-        <VaultView orgs={ORGS} />
-      </Boundary>,
-    );
+    render(<VaultView orgs={ORGS} />);
     expect(await screen.findByText("No documents linked yet")).toBeInTheDocument();
   });
 
