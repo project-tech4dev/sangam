@@ -60,6 +60,7 @@ from app.ingest.writer import (
     Gate,
     Owner,
     cin_holder,
+    cited_title,
     ensure_document,
     org_alias_holders,
     set_registered_location,
@@ -529,7 +530,8 @@ async def _write_documents(
     for f in findings:
         url = f.get("source_url")
         if f.get("concept") and url and url not in by_url and not _private(url):
-            by_url[url], _ = await document(url, None, f.get("source_name"), None, None)
+            by_url[url], _ = await document(url, cited_title(url, f.get("source_name")), f.get("source_name"),
+                                            None, None)
     by_url.update(await _staff_datasets(conn, findings))
     by_url.update(await vault.document_rows(conn, findings))
     return by_url

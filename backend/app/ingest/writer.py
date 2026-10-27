@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from contextvars import ContextVar
 from types import MappingProxyType
 from typing import Any, NamedTuple
+from urllib.parse import unquote, urlsplit
 
 from psycopg import sql
 
@@ -248,6 +249,23 @@ GATE: ContextVar[Gate | None] = ContextVar("import_gate", default=None)
 
 
 UNTYPED = frozenset({"web_page", "other", None})
+# Labels a researcher gives a source that say nothing about the page itself.
+VAGUE_SOURCE_NAMES = frozenset({"", "research", "indiacsr"})
+
+
+def cited_title(url: str, source_name: str | None) -> str:
+    """A name for a URL cited with no document finding: the researcher's label, else `<host> — <last segment>`."""
+    label = (source_name or "").strip()
+    if label.lower() not in VAGUE_SOURCE_NAMES:
+        return label
+    parts = urlsplit(url)
+    if not parts.hostname:
+        return url
+    host = parts.hostname.removeprefix("www.")
+    # The Hindu's .../article123.ece is an id; the segment before it is the headline.
+    segments = [s for s in unquote(parts.path).split("/") if s and not re.fullmatch(r"article\d+\.ece", s)]
+    last = re.sub(r"[-_]+", " ", segments[-1].rsplit(".", 1)[0]).strip() if segments else ""
+    return f"{host} — {last[:1].upper()}{last[1:]}" if last else host
 
 
 async def ensure_document(
@@ -281,6 +299,8 @@ async def ensure_document(
                 (("storage_path", storage_path), ("content_hash", content_hash))
                 if v and not row[c]}
         # A source first seen only as a cited URL takes the type and title a document finding states.
+        if not row["title"] and getattr(rec, "title", None):
+            fill["title"] = rec.title
         if row["doc_type"] in UNTYPED and doc_type not in UNTYPED:
             fill |= {"doc_type": doc_type, "title": getattr(rec, "title", None) or row["title"]}
         if not fill:

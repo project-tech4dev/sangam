@@ -147,6 +147,18 @@ async def test_ensure_document_types_and_fills_a_row_first_seen_as_a_url(db):
         "matched"
 
 
+async def test_ensure_document_names_an_untitled_row_it_matches(db):
+    url = f"https://zz-doc-{tag()}.example.org/about"
+    owner = Owner.funder(await funder(db, f"Zz Doc Ltd {tag()}"))
+    first, _ = await writer.ensure_document(db, rec(source_url=url, title=None), owner=owner, doc_type="web_page")
+    again, status = await writer.ensure_document(db, rec(source_url=url, title="About us"), owner=owner,
+                                                 doc_type="web_page")
+    assert (again, status) == (first, "updated")
+    assert (await one(db, "SELECT title FROM documents WHERE id = %s", first))["title"] == "About us"
+    assert (await writer.ensure_document(db, rec(source_url=url, title="Other"), owner=owner,
+                                         doc_type="web_page"))[1] == "matched"
+
+
 async def test_activity_lines_the_tables_checks_would_refuse_are_held_first(db):
     fid = await funder(db, f"Zz Check Ltd {tag()}")
     spend = rec(activity_kind="spend", fiscal_year="FY2023-24", designation=None, project_name="P",

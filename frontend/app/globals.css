@@ -836,6 +836,16 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .view-title { font-size: var(--fs-lg); }
 .view-measure { max-width: 760px; }
 .soon-card { align-items: flex-start; }
+.vault-upload { cursor: pointer; }
+.vault-upload[data-busy="true"] { cursor: wait; }
+.vault-upload[data-off="true"] { opacity: 0.5; }
+.vault-orgs { display: flex; gap: 8px; flex-wrap: wrap; }
+.vault-list { gap: 0; padding: 0; }
+.vault-row { display: flex; gap: 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--color-divider); }
+.vault-type { font-size: var(--fs-xs); font-weight: 700; background: var(--color-neutral-200); border-radius: var(--radius-sm); padding: 3px 7px; color: var(--color-neutral-700); }
+.vault-text { flex: 1; min-width: 0; }
+.vault-name { font-size: var(--fs-sm); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vault-meta { font-size: var(--fs-xs); }
 
 /* --- List pages: bucket cards, one row of dropdowns, search, a list that grows ---- */
 .bucket-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Tag } from "@/components/ui";
 import { authHeaders } from "@/lib/api/auth-headers";
 import { API } from "../lib/rest";
+import { hostOf } from "../lib/sources";
 import { type Doc, uploadToVault } from "../lib/vault";
 
 export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: string }[] }) {
@@ -40,15 +41,15 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
   }
 
   return (
-    <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 220 }}>
+    <div className="view">
+      <div className="fm-head">
+        <div className="fm-head-text">
           <div className="eyebrow">Doc vault</div>
-          <h2 style={{ fontSize: "var(--fs-lg)" }}>Documents in the base, per organisation</h2>
+          <h2 className="view-title">Documents in the base, per organisation</h2>
         </div>
-        <label className="pill" style={{ cursor: busy ? "wait" : "pointer", opacity: orgSlug ? 1 : 0.5 }}>
+        <label className="pill vault-upload" data-busy={busy} data-off={!orgSlug}>
           {busy ? "Uploading…" : "Upload a document"}
-          <input type="file" onChange={onPick} disabled={busy || !orgSlug} style={{ display: "none" }} />
+          <input type="file" onChange={onPick} disabled={busy || !orgSlug} hidden />
         </label>
       </div>
       {problem ? (
@@ -57,7 +58,7 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
           <div className="card-body">{problem}</div>
         </div>
       ) : null}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="vault-orgs">
         {orgs.map((org) => (
           <button key={org.id} className="pill" data-active={orgSlug === org.slug} onClick={() => setOrgSlug(org.slug)}>
             {org.name}
@@ -75,22 +76,13 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
           </div>
         </div>
       ) : (
-        <div className="card" style={{ gap: 0, padding: 0 }}>
+        <div className="card vault-list">
           {docs.map((doc) => (
-            <div
-              key={doc.id}
-              style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 18px", borderBottom: "1px solid var(--color-divider)" }}
-            >
-              <span
-                style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "var(--color-neutral-200)", borderRadius: 6, padding: "3px 7px", color: "var(--color-neutral-700)" }}
-              >
-                {(doc.doc_type ?? "DOC").slice(0, 12).toUpperCase()}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {doc.title ?? "Untitled document"}
-                </div>
-                <div className="muted-2" style={{ fontSize: "var(--fs-xs)" }}>
+            <div key={doc.id} className="vault-row">
+              <span className="vault-type">{(doc.doc_type ?? "DOC").slice(0, 12).toUpperCase()}</span>
+              <div className="vault-text">
+                <div className="vault-name">{docName(doc)}</div>
+                <div className="muted-2 vault-meta">
                   {doc.source_name ?? "unknown source"}
                   {doc.fetched_at ? ` · ${new Date(doc.fetched_at).toLocaleDateString("en-IN")}` : ""}
                 </div>
@@ -102,4 +94,8 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
       )}
     </div>
   );
+}
+
+export function docName(doc: Doc): string {
+  return doc.title || doc.source_name || (doc.source_url ? hostOf(doc.source_url) : "") || "Untitled document";
 }
