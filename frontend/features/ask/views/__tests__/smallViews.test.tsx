@@ -139,6 +139,12 @@ describe("VaultView", () => {
     expect(await screen.findByText("No documents linked yet")).toBeInTheDocument();
   });
 
+  it("shows the empty state when a page comes back without items", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({}) })));
+    render(<VaultView orgs={ORGS} />);
+    expect(await screen.findByText("No documents linked yet")).toBeInTheDocument();
+  });
+
   it("uploads a file and reloads, or shows why it failed", async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ items: [] }) }));
     vi.stubGlobal("fetch", fetchMock);
