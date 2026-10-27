@@ -137,6 +137,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-21 · #273 · Back returns to the previous screen: Ask views, chats and proposals, Import threads and profile tabs are pushed URL entries; Registry filters and Funder Match's organisation are replaced into the URL. Vitest cases in `lib/__tests__/back-navigation.test.ts` pin the URL round trips.
 - 2026-10-21 · (unmerged) · Component tests: jsdom and Testing Library under Vitest (`*.test.tsx`, `tests/setup.ts`), and tests for every screen take frontend coverage from 1% to 97%; the frontend's patch gate now blocks and its project target is 75%.
 - 2026-10-22 · #311 · Design system catch-up: the UI kit recreates Funder Match, Proposals (Sangam Pitch), RFP Watch and Scout's open-calls pull; a new `tokens/workspace.css` holds the workspace screens' classes; the list-page classes live once, in `base.css`; partner logos and hidden composer stubs synced. The mapping in `docs/DESIGN_SYSTEM.md` and the sync notes follow.
+- 2026-10-27 · #343 · Doc Vault shows "No documents linked yet" when the server refuses the list (401/403), instead of crashing on `docs.length` (#282).
 
 ## Proposals
 

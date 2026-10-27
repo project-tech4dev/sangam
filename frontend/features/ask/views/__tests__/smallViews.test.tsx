@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Component, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api/auth-headers", () => ({ authHeaders: async () => ({ Authorization: "Bearer t" }) }));
@@ -23,17 +22,6 @@ import { ChatsView } from "@/features/ask/views/ChatsView";
 import { ComingSoonView } from "@/features/ask/views/ComingSoonView";
 import { ProposalsView } from "@/features/ask/views/ProposalsView";
 import { VaultView } from "@/features/ask/views/VaultView";
-
-// Keeps a render crash inside the test instead of an unhandled error.
-class Boundary extends Component<{ children: ReactNode }, { crashed: boolean }> {
-  state = { crashed: false };
-  static getDerivedStateFromError() {
-    return { crashed: true };
-  }
-  render() {
-    return this.state.crashed ? <p>crashed</p> : this.props.children;
-  }
-}
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -109,7 +97,7 @@ describe("VaultView", () => {
   const doc = { id: 1, title: "Annual report", doc_type: "annual_report", source_name: "Upload", source_url: null, fetched_at: "2026-10-01" };
 
   it("lists the first organisation's documents and switches organisation", async () => {
-    const fetchMock = vi.fn(async () => ({ json: async () => ({ items: [doc, { ...doc, id: 2, title: null, doc_type: null, source_name: null, fetched_at: null }] }) }));
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ items: [doc, { ...doc, id: 2, title: null, doc_type: null, source_name: null, fetched_at: null }] }) }));
     vi.stubGlobal("fetch", fetchMock);
     render(<VaultView orgs={ORGS} />);
     expect(screen.getByText("Loading…")).toBeInTheDocument();
@@ -128,20 +116,20 @@ describe("VaultView", () => {
     expect(await screen.findByText("No documents linked yet")).toBeInTheDocument();
   });
 
-  // Bug: the load never checks res.ok, so a 403's {detail} body sets docs to undefined and the render throws.
-  it.fails("shows the empty state when the server refuses the list", async () => {
+  it("shows the empty state when the server refuses the list", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 403, json: async () => ({ detail: "Forbidden" }) })));
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    render(
-      <Boundary>
-        <VaultView orgs={ORGS} />
-      </Boundary>,
-    );
+    render(<VaultView orgs={ORGS} />);
+    expect(await screen.findByText("No documents linked yet")).toBeInTheDocument();
+  });
+
+  it("shows the empty state when a page comes back without items", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({}) })));
+    render(<VaultView orgs={ORGS} />);
     expect(await screen.findByText("No documents linked yet")).toBeInTheDocument();
   });
 
   it("uploads a file and reloads, or shows why it failed", async () => {
-    const fetchMock = vi.fn(async () => ({ json: async () => ({ items: [] }) }));
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ items: [] }) }));
     vi.stubGlobal("fetch", fetchMock);
     const { container } = render(<VaultView orgs={ORGS} />);
     await screen.findByText("No documents linked yet");
