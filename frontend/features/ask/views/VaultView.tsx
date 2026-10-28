@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CircleCheck, X } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { authHeaders } from "@/lib/api/auth-headers";
@@ -29,6 +30,12 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
       .then((page) => setDocs(page.items ?? []))
       .catch(() => setDocs([]));
   }, [orgSlug, reload]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   async function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -82,8 +89,12 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
         </div>
       ) : null}
       {notice ? (
-        <div className="card" role="status">
-          <div className="card-body">{notice}</div>
+        <div className="vault-toast" role="status" aria-live="polite">
+          <CircleCheck className="icon" />
+          <span>{notice}</span>
+          <button type="button" className="vault-toast-close" onClick={() => setNotice(null)} aria-label="Dismiss">
+            <X className="icon icon-sm" />
+          </button>
         </div>
       ) : null}
       <div className="vault-orgs">

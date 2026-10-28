@@ -176,6 +176,8 @@ describe("VaultView", () => {
       await waitFor(() => expect(screen.queryByText("Stray test.pdf")).not.toBeInTheDocument());
       expect(screen.getByRole("status")).toHaveTextContent("Document deleted successfully.");
       expect(screen.getByText("Annual report")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
     it("keeps the row and says why when the delete is refused", async () => {
