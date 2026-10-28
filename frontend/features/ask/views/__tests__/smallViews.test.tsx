@@ -153,20 +153,22 @@ describe("VaultView", () => {
 
     it("does nothing when the confirmation is cancelled", async () => {
       listed();
-      vi.spyOn(window, "confirm").mockReturnValue(false);
       render(<VaultView orgs={ORGS} isStaff />);
       await userEvent.click(await screen.findByRole("button", { name: "Delete Stray test.pdf" }));
+      expect(screen.getByRole("dialog")).toHaveTextContent("Stray test.pdf");
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(deleteFromVault).not.toHaveBeenCalled();
       expect(screen.getByText("Stray test.pdf")).toBeInTheDocument();
     });
 
     it("removes the row only once the backend confirms", async () => {
       listed();
-      vi.spyOn(window, "confirm").mockReturnValue(true);
       let finish!: () => void;
       deleteFromVault.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)));
       render(<VaultView orgs={ORGS} isStaff />);
       await userEvent.click(await screen.findByRole("button", { name: "Delete Stray test.pdf" }));
+      await userEvent.click(screen.getByRole("button", { name: "Delete" }));
       expect(deleteFromVault).toHaveBeenCalledWith(5);
       expect(screen.getByText("Stray test.pdf")).toBeInTheDocument();
       expect(screen.getByText("Deleting…")).toBeInTheDocument();
@@ -178,10 +180,10 @@ describe("VaultView", () => {
 
     it("keeps the row and says why when the delete is refused", async () => {
       listed();
-      vi.spyOn(window, "confirm").mockReturnValue(true);
       deleteFromVault.mockRejectedValue(new Error("This document is still being used and cannot be deleted."));
       render(<VaultView orgs={ORGS} isStaff />);
       await userEvent.click(await screen.findByRole("button", { name: "Delete Stray test.pdf" }));
+      await userEvent.click(screen.getByRole("button", { name: "Delete" }));
       const alert = await screen.findByRole("alert");
       expect(alert).toHaveTextContent("Delete failed");
       expect(alert).toHaveTextContent("This document is still being used and cannot be deleted.");

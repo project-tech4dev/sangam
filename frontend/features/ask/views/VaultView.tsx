@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Tag } from "@/components/ui";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { authHeaders } from "@/lib/api/auth-headers";
 import { API } from "../lib/rest";
 import { hostOf } from "../lib/sources";
@@ -14,6 +15,7 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
   const [docs, setDocs] = useState<Doc[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [pending, setPending] = useState<Doc | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
@@ -46,13 +48,12 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
   }
 
   async function onDelete(doc: Doc) {
-    if (!window.confirm(`Delete "${docName(doc)}"? The file and its record are removed for good.`)) return;
+    setPending(null);
     setDeleting(doc.id);
     setProblem(null);
     setNotice(null);
     try {
       await deleteFromVault(doc.id);
-  
       setDocs((current) => current?.filter((d) => d.id !== doc.id) ?? current);
       setNotice("Document deleted successfully.");
     } catch (error) {
@@ -119,7 +120,7 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
                 <button
                   type="button"
                   className="btn btn-ghost"
-                  onClick={() => void onDelete(doc)}
+                  onClick={() => setPending(doc)}
                   disabled={deleting !== null}
                   aria-label={`Delete ${docName(doc)}`}
                 >
@@ -130,6 +131,22 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
           ))}
         </div>
       )}
+      <Dialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <DialogContent>
+          <DialogTitle>Delete this document?</DialogTitle>
+          <DialogDescription>
+            &ldquo;{pending ? docName(pending) : ""}&rdquo; and its file are removed for good. This cannot be undone.
+          </DialogDescription>
+          <DialogFooter>
+            <DialogClose asChild>
+              <button type="button" className="btn btn-ghost">Cancel</button>
+            </DialogClose>
+            <button type="button" className="btn btn-primary" onClick={() => pending && void onDelete(pending)}>
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
