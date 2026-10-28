@@ -179,7 +179,7 @@ class RowNotRemoved(Exception):
     """The file is gone but the row could not be deleted; deleting again finishes it."""
 
 
-# Rows that ON DELETE CASCADE would take with the document.
+
 _CASCADING_SQL = """
 SELECT EXISTS (SELECT 1 FROM chunks WHERE document_id = %(id)s)
     OR EXISTS (SELECT 1 FROM extraction_log WHERE document_id = %(id)s)
@@ -199,8 +199,7 @@ async def delete_vault_upload(
         async with pool.connection() as conn, conn.transaction():
             row = await (await conn.execute(
                 """SELECT storage_path FROM documents
-                   WHERE id = %(id)s AND doc_type = 'vault_upload' AND NOT is_public AND org_id IS NOT NULL
-                   FOR UPDATE""",
+                   WHERE id = %(id)s AND doc_type = 'vault_upload' AND NOT is_public AND org_id IS NOT NULL""",
                 {"id": document_id},
             )).fetchone()
             if row is None:
@@ -210,7 +209,9 @@ async def delete_vault_upload(
             if row["storage_path"] and not await remove_file(row["storage_path"]):
                 raise FileNotRemoved(document_id)
             file_removed = True
-            await conn.execute("DELETE FROM documents WHERE id = %(id)s", {"id": document_id})
+            deleted = await conn.execute("DELETE FROM documents WHERE id = %(id)s", {"id": document_id})
+            if deleted.rowcount != 1:
+                raise RowNotRemoved(document_id)
     except Exception as exc:
         if not file_removed:
             raise

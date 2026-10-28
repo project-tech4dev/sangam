@@ -401,3 +401,36 @@ class TestDeleteVaultUpload:
         doc_id = await self.upload(db, org, doc_type="annual_report")
         assert await self.delete(db, doc_id) == (False, [])
         assert await self.exists(db, doc_id)
+
+
+class _RlsRefuses:
+    """A caller's connection where RLS lets the row be read but deletes none of it."""
+
+    def connection(self):
+        class _Cursor:
+            rowcount = 0
+
+            async def fetchone(self):
+                return {"storage_path": "org-vault/3/abc-accounts.pdf", "used": False}
+
+        class _Conn:
+            async def execute(self, sql, params=None):
+                return _Cursor()
+
+            @asynccontextmanager
+            async def transaction(self):
+                yield
+
+        @asynccontextmanager
+        async def held():
+            yield _Conn()
+
+        return held()
+
+
+async def test_a_delete_rls_quietly_refuses_is_reported_not_counted_as_done():
+    async def remove_file(path):
+        return True
+
+    with pytest.raises(repo.RowNotRemoved):
+        await repo.delete_vault_upload(_RlsRefuses(), document_id=7, remove_file=remove_file)

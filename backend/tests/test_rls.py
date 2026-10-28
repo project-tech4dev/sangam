@@ -146,6 +146,35 @@ def test_every_role_in_the_org_uploads_to_its_doc_vault(db, name, allowed):
             conn.execute(sql, (world["a"],))
 
 
+def _deletes(conn, who, doc_type="vault_upload", *, public=False, org=True, world) -> int:
+    """How many rows this caller's DELETE of one fresh document removes. RLS refuses with 0, not an error."""
+    with conn.transaction(force_rollback=True):
+        doc = conn.execute("INSERT INTO documents (org_id, title, doc_type, is_public) VALUES (%s, 'd', %s, %s) "
+                           "RETURNING id", (world["a"] if org else None, doc_type, public)).fetchone()["id"]
+        _as(conn, who)
+        return conn.execute("DELETE FROM documents WHERE id = %s", (doc,)).rowcount
+
+
+@pytest.mark.parametrize("name, expected", [("staff", 1), ("admin_a", 0), ("member_a", 0), ("steward_a", 0),
+                                            ("member_b", 0), ("nobody", 0)])
+def test_only_staff_delete_a_vault_upload(db, name, expected):
+    conn, world = db
+    assert _deletes(conn, world["people"][name], world=world) == expected
+
+
+@pytest.mark.parametrize("doc_type, public, org", [("annual_report", False, True), ("proposal_draft", False, True),
+                                                   ("vault_upload", True, True), ("source_dataset", False, False)])
+def test_staff_delete_nothing_but_a_private_org_vault_upload(db, doc_type, public, org):
+    conn, world = db
+    assert _deletes(conn, world["people"]["staff"], doc_type, public=public, org=org, world=world) == 0
+
+
+def test_signed_out_cannot_delete_a_document(db):
+    conn, world = db
+    with pytest.raises(InsufficientPrivilege):
+        _deletes(conn, None, world=world)
+
+
 def test_signed_out_cannot_use_an_org_private_table_at_all(db):
     conn, _ = db
     with pytest.raises(InsufficientPrivilege), conn.transaction(force_rollback=True):

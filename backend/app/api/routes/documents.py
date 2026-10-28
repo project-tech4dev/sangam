@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import PageParams
 from app.core.config import get_settings
 from app.core.security import get_current_user, require_staff, require_user
-from app.db.pool import OwnerPoolDep, PoolDep
+from app.db.pool import PoolDep
 from app.integrations import storage
 from app.repositories import documents as repo
 from app.schemas.common import Page
@@ -186,7 +186,7 @@ async def _remove_vault_file(storage_path: str) -> bool:
 
 @router.delete("/{document_id}", status_code=204, summary="Delete a Doc Vault upload and its file (staff)",
                dependencies=[Depends(require_staff)])
-async def delete_document(document_id: int, pool: OwnerPoolDep) -> None:
+async def delete_document(document_id: int, pool: PoolDep) -> None:
     _require_storage()
     try:
         deleted = await repo.delete_vault_upload(pool, document_id=document_id, remove_file=_remove_vault_file)
