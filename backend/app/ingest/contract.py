@@ -11,7 +11,8 @@ from app.ingest.research_records import YEARLY, EntityResearch
 # Identity fields every complete save answers; a note or a timestamp is not a field of its own.
 _IDENTITY = {"identity", "org_identity"}
 _NOT_ASKED = {"as_of", "tag_note", "staff_count_note"}
-_NUMBER = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?")
+# A comma counts only between digits, so "In 2023, across" reads the year alone.
+_NUMBER = re.compile(r"(?<![\w.])\d(?:\d|,(?=\d))*(?:\.\d+)?")
 _FISCAL = re.compile(r"\d{4}\s*[-–]\s*\d{2,4}")
 _SHOWN = 15
 

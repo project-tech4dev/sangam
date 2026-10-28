@@ -41,8 +41,7 @@ describe("phasesFor", () => {
     expect(phases.map((p) => p.note)).toEqual(["Tata", "https://x.org"]);
   });
 
-  // Dedupes before trimming, so "funders" after "orgs, funders" is listed twice.
-  it.fails("lists a table read twice only once", () => {
+  it("lists a table read twice only once", () => {
     const [phase] = phasesFor(turn([
       step("db_describe_table", { tables: "orgs, funders" }),
       step("db_describe_table", { tables: "funders" }),

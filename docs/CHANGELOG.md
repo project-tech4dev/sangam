@@ -139,6 +139,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-22 · #311 · Design system catch-up: the UI kit recreates Funder Match, Proposals (Sangam Pitch), RFP Watch and Scout's open-calls pull; a new `tokens/workspace.css` holds the workspace screens' classes; the list-page classes live once, in `base.css`; partner logos and hidden composer stubs synced. The mapping in `docs/DESIGN_SYSTEM.md` and the sync notes follow.
 - 2026-10-27 · #343 · Doc Vault shows "No documents linked yet" when the server refuses the list (401/403), instead of crashing on `docs.length` (#282).
 - 2026-10-27 · #344 · Doc Vault names a document by its title, else its source label, else its website, so cited-only sources no longer read "Untitled document"; Import now writes a title for a URL a fact cites with no document finding (`cited_title`), and fills an untitled row it matches again. VaultView's styles move to `.vault-*` classes (#290).
+- 2026-10-27 · #346 · Five bugs pinned by `it.fails`/`xfail(strict)` tests fixed and their markers removed (#345): a metric of 0 prints in the Import brief; a year before a comma is not a missed number; a news run with one working scope classifies its hits; Ask's step label lists a table once; the staff members picker drops a slow answer for an organisation no longer picked.
 
 ## Proposals
 
