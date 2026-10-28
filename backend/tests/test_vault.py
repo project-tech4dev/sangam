@@ -387,11 +387,26 @@ class TestDeleteVaultUpload:
         assert touched == [], "a refused delete deletes nothing"
         assert await self.exists(db, doc_id)
 
-    async def test_a_row_the_database_refuses_after_the_file_went_is_reported(self, db, org, caplog):
-        """Until the dependency check covers every reference, a proposal's FK is only found at the row's DELETE."""
+    async def test_a_proposals_draft_is_refused_before_the_file_goes(self, db, org):
         doc_id = await self.upload(db, org)
         await db.execute(
             "INSERT INTO proposals (org_id, title, draft_document_id) VALUES (%s, 't', %s)", (org, doc_id))
+        touched = []
+
+        async def remove_file(path):
+            touched.append(path)
+            return True
+
+        with pytest.raises(repo.DocumentInUse):
+            await repo.delete_vault_upload(_PoolOf(db), document_id=doc_id, remove_file=remove_file)
+        assert touched == [], "the draft keeps its file"
+        assert await self.exists(db, doc_id)
+
+    async def test_a_row_the_database_refuses_after_the_file_went_is_reported(self, db, org, caplog):
+        """Until the dependency check covers every reference, a proposal's budget is only found at the row's DELETE."""
+        doc_id = await self.upload(db, org)
+        await db.execute(
+            "INSERT INTO proposals (org_id, title, budget_document_id) VALUES (%s, 't', %s)", (org, doc_id))
         with pytest.raises(repo.RowNotRemoved):
             await self.delete(db, doc_id)
         assert await self.exists(db, doc_id), "the row stays for a later delete to finish"

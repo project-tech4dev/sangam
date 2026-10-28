@@ -183,7 +183,8 @@ class RowNotRemoved(Exception):
 _CASCADING_SQL = """
 SELECT EXISTS (SELECT 1 FROM chunks WHERE document_id = %(id)s)
     OR EXISTS (SELECT 1 FROM extraction_log WHERE document_id = %(id)s)
-    OR EXISTS (SELECT 1 FROM document_links WHERE document_id = %(id)s) AS used
+    OR EXISTS (SELECT 1 FROM document_links WHERE document_id = %(id)s)
+    OR EXISTS (SELECT 1 FROM proposals WHERE draft_document_id = %(id)s) AS used
 """
 
 
