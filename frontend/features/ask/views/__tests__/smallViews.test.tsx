@@ -4,7 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api/auth-headers", () => ({ authHeaders: async () => ({ Authorization: "Bearer t" }) }));
 const uploadToVault = vi.fn();
-vi.mock("@/features/ask/lib/vault", () => ({ uploadToVault: (...a: unknown[]) => uploadToVault(...a) }));
+const deleteFromVault = vi.fn();
+vi.mock("@/features/ask/lib/vault", () => ({
+  uploadToVault: (...a: unknown[]) => uploadToVault(...a),
+  deleteFromVault: (...a: unknown[]) => deleteFromVault(...a),
+}));
 const proposals = vi.hoisted(() => ({ rows: [] as unknown[], old: false }));
 vi.mock("@/features/ask/views/proposals/api", () => ({
   useProposals: () => proposals.rows,
@@ -126,6 +130,63 @@ describe("VaultView", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({}) })));
     render(<VaultView orgs={ORGS} />);
     expect(await screen.findByText("No documents linked yet")).toBeInTheDocument();
+  });
+
+  describe("deleting an upload", () => {
+    const upload = { ...doc, id: 5, title: "Stray test.pdf", doc_type: "vault_upload" };
+    const listed = () =>
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ items: [doc, upload] }) })));
+
+    it("offers Delete to staff on uploads only", async () => {
+      listed();
+      render(<VaultView orgs={ORGS} isStaff />);
+      expect(await screen.findByRole("button", { name: "Delete Stray test.pdf" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Delete Annual report" })).not.toBeInTheDocument();
+    });
+
+    it("offers nothing to anyone else", async () => {
+      listed();
+      render(<VaultView orgs={ORGS} />);
+      await screen.findByText("Stray test.pdf");
+      expect(screen.queryByRole("button", { name: /^Delete/ })).not.toBeInTheDocument();
+    });
+
+    it("does nothing when the confirmation is cancelled", async () => {
+      listed();
+      vi.spyOn(window, "confirm").mockReturnValue(false);
+      render(<VaultView orgs={ORGS} isStaff />);
+      await userEvent.click(await screen.findByRole("button", { name: "Delete Stray test.pdf" }));
+      expect(deleteFromVault).not.toHaveBeenCalled();
+      expect(screen.getByText("Stray test.pdf")).toBeInTheDocument();
+    });
+
+    it("removes the row only once the backend confirms", async () => {
+      listed();
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      let finish!: () => void;
+      deleteFromVault.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)));
+      render(<VaultView orgs={ORGS} isStaff />);
+      await userEvent.click(await screen.findByRole("button", { name: "Delete Stray test.pdf" }));
+      expect(deleteFromVault).toHaveBeenCalledWith(5);
+      expect(screen.getByText("Stray test.pdf")).toBeInTheDocument();
+      expect(screen.getByText("Deleting…")).toBeInTheDocument();
+      finish();
+      await waitFor(() => expect(screen.queryByText("Stray test.pdf")).not.toBeInTheDocument());
+      expect(screen.getByRole("status")).toHaveTextContent("Document deleted successfully.");
+      expect(screen.getByText("Annual report")).toBeInTheDocument();
+    });
+
+    it("keeps the row and says why when the delete is refused", async () => {
+      listed();
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      deleteFromVault.mockRejectedValue(new Error("This document is still being used and cannot be deleted."));
+      render(<VaultView orgs={ORGS} isStaff />);
+      await userEvent.click(await screen.findByRole("button", { name: "Delete Stray test.pdf" }));
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("Delete failed");
+      expect(alert).toHaveTextContent("This document is still being used and cannot be deleted.");
+      expect(screen.getByText("Stray test.pdf")).toBeInTheDocument();
+    });
   });
 
   it("names a document by its title, else its source label, else its website", () => {

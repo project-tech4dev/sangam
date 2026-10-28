@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/api/auth-headers", () => ({ authHeaders: async () => ({ Authorization: "Bearer t" }) }));
 
 import { API } from "@/features/ask/lib/rest";
-import { listVault, uploadToVault } from "@/features/ask/lib/vault";
+import { deleteFromVault, listVault, uploadToVault } from "@/features/ask/lib/vault";
 
 const fetchMock = vi.fn();
 const reply = (status: number, body: unknown = {}) =>
@@ -71,5 +71,24 @@ describe("listVault", () => {
   it("throws on failure", async () => {
     reply(500);
     await expect(listVault("kabil")).rejects.toThrow("Could not load the Doc Vault (500).");
+  });
+});
+
+describe("deleteFromVault", () => {
+  it("sends a DELETE for the document with the caller's token", async () => {
+    reply(204);
+    await expect(deleteFromVault(7)).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(`${API}/api/documents/7`, { method: "DELETE", headers: { Authorization: "Bearer t" } });
+  });
+
+  it.each([
+    [403, "You do not have permission to delete this document."],
+    [404, "This document is not a Doc Vault upload, or it is already gone."],
+    [409, "This document is still being used and cannot be deleted."],
+    [500, "The document could not be deleted. Please try again."],
+    [502, "The document could not be deleted. Please try again."],
+  ])("explains a %i", async (status, message) => {
+    reply(status);
+    await expect(deleteFromVault(7)).rejects.toThrow(message);
   });
 });

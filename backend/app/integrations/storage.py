@@ -241,6 +241,20 @@ async def move(bucket: str, source: str, destination: str) -> bool:
     return True
 
 
+async def remove(bucket: str, keys: list[str]) -> bool:
+    """Delete objects. True once Storage accepts it (a key already gone counts); False on any failure."""
+    if _disabled():
+        return False
+    try:
+        async with _client() as client:
+            response = await client.request("DELETE", f"/object/{bucket}", json={"prefixes": keys})
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        logger.warning("removing %s from %s failed (%s: %s)", keys, bucket, type(exc).__name__, exc)
+        return False
+    return True
+
+
 def _is_duplicate(response: httpx.Response) -> bool:
     """Whether a rejected upload was rejected for already being there.
 

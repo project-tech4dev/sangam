@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import logging
+from collections.abc import Awaitable, Callable
+
 from psycopg_pool import AsyncConnectionPool
+
+logger = logging.getLogger(__name__)
 
 
 async def list_documents(pool: AsyncConnectionPool, *, limit: int, offset: int,
@@ -160,3 +165,56 @@ async def org_document_ids(pool: AsyncConnectionPool, org_id: int, ids: list[int
         rows = await (await conn.execute(
             "SELECT id FROM documents WHERE id = ANY(%s) AND org_id = %s", (ids, org_id))).fetchall()
     return {r["id"] for r in rows}
+
+
+class DocumentInUse(Exception):
+    """Something still references the document, so deleting it would break or silently take that too."""
+
+
+class FileNotRemoved(Exception):
+    """Storage did not delete the file, so the row was kept."""
+
+
+class RowNotRemoved(Exception):
+    """The file is gone but the row could not be deleted; deleting again finishes it."""
+
+
+# Rows that ON DELETE CASCADE would take with the document.
+_CASCADING_SQL = """
+SELECT EXISTS (SELECT 1 FROM chunks WHERE document_id = %(id)s)
+    OR EXISTS (SELECT 1 FROM extraction_log WHERE document_id = %(id)s)
+    OR EXISTS (SELECT 1 FROM document_links WHERE document_id = %(id)s) AS used
+"""
+
+
+async def delete_vault_upload(
+    pool: AsyncConnectionPool, *, document_id: int, remove_file: Callable[[str], Awaitable[bool]],
+) -> bool:
+    """Delete a vault upload's file, then its row. False when there is no such vault upload.
+
+    File first: a row left behind can be deleted again, a file with no row is never found.
+    """
+    file_removed = False
+    try:
+        async with pool.connection() as conn, conn.transaction():
+            row = await (await conn.execute(
+                """SELECT storage_path FROM documents
+                   WHERE id = %(id)s AND doc_type = 'vault_upload' AND NOT is_public AND org_id IS NOT NULL
+                   FOR UPDATE""",
+                {"id": document_id},
+            )).fetchone()
+            if row is None:
+                return False
+            if (await (await conn.execute(_CASCADING_SQL, {"id": document_id})).fetchone())["used"]:
+                raise DocumentInUse(document_id)
+            if row["storage_path"] and not await remove_file(row["storage_path"]):
+                raise FileNotRemoved(document_id)
+            file_removed = True
+            await conn.execute("DELETE FROM documents WHERE id = %(id)s", {"id": document_id})
+    except Exception as exc:
+        if not file_removed:
+            raise
+        logger.error("document %s: file %s removed but the row was not (%s: %s)",
+                     document_id, row["storage_path"], type(exc).__name__, exc)
+        raise RowNotRemoved(document_id) from exc
+    return True

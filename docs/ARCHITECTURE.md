@@ -215,6 +215,7 @@ listed as open.
 | start or edit a proposal | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `app.my_match_org_ids()` (`0048`) |
 | chat with Sangam Pitch | — | 403 | ✓ own | ✓ own | ✓ own | `proposal_chat_access`, then `CallerScope.can_edit_proposal` |
 | upload to the Doc Vault | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `documents_insert` (`0048`) |
+| delete a Doc Vault upload and its file | — | — | — | — | ✓ | `require_staff`; owner pool (no RLS DELETE policy) |
 | add or edit a contact | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |
 | save or dismiss an RFP match | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |
 | adjust a fit score | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |

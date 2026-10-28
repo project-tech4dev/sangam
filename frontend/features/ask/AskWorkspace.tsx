@@ -157,7 +157,7 @@ export function AskWorkspace({
             </div>
           </>
         )}
-        {view === "vault" && <VaultView orgs={payload.orgs} />}
+        {view === "vault" && <VaultView orgs={payload.orgs} isStaff={payload.me?.is_staff ?? false} />}
         {view === "media" && <MediaView orgs={payload.orgs} me={payload.me} />}
         {view === "chats" && <ChatsView threads={threads} onPick={pickThread} />}
         {view === "funder-match" && (

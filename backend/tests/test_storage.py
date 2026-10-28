@@ -239,6 +239,29 @@ class TestSignedUrl:
         assert await storage.signed_url("b", "k") is None
 
 
+class TestRemove:
+    async def test_deletes_the_keys_from_the_bucket(self, enabled, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json=[{"name": "3/a.pdf"}]))
+        assert await storage.remove("org-vault", ["3/a.pdf"]) is True
+        assert seen[0].method == "DELETE"
+        assert seen[0].url.path == "/storage/v1/object/org-vault"
+        assert json.loads(seen[0].content) == {"prefixes": ["3/a.pdf"]}
+
+    async def test_a_key_already_gone_counts_as_removed(self, enabled, monkeypatch):
+        """Storage answers 200 with an empty list; deleting a vault upload again depends on this being True."""
+        transport(monkeypatch, lambda r: httpx.Response(200, json=[]))
+        assert await storage.remove("org-vault", ["3/a.pdf"]) is True
+
+    async def test_a_failure_is_False_not_an_exception(self, enabled, monkeypatch):
+        transport(monkeypatch, lambda r: httpx.Response(500, text="boom"))
+        assert await storage.remove("org-vault", ["3/a.pdf"]) is False
+
+    async def test_does_nothing_when_disabled(self, off, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200))
+        assert await storage.remove("org-vault", ["3/a.pdf"]) is False
+        assert seen == []
+
+
 # --- the documents row, against a real Postgres ----------------------------
 
 @pytest.mark.integration

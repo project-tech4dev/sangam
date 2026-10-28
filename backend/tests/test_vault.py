@@ -10,11 +10,14 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from uuid import UUID
 
+import httpx
 import pytest
 
 from app.api.routes import documents as documents_api
 from app.core.config import Settings
+from app.core.security import CurrentUser, get_principal
 from app.repositories import documents as repo
+from tests.conftest import TEST_USER, make_app
 
 ROUTE = "app.api.routes.documents"
 ROW = {
@@ -195,6 +198,73 @@ async def _async(value):
     return value
 
 
+class TestDeletingAnUpload:
+    def deleter(self, monkeypatch, outcome):
+        removed: list[tuple[str, list[str]]] = []
+
+        async def fake_remove(bucket, keys):
+            removed.append((bucket, keys))
+            return True
+
+        async def fake_delete(pool, *, document_id, remove_file):
+            if isinstance(outcome, Exception):
+                raise outcome
+            if outcome:
+                assert await remove_file("org-vault/3/abc-accounts.pdf")
+            return outcome
+
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", fake_remove)
+        monkeypatch.setattr(f"{ROUTE}.repo.delete_vault_upload", fake_delete)
+        return removed
+
+    async def test_staff_delete_the_row_and_the_file(self, client_for, monkeypatch, storage_on):
+        removed = self.deleter(monkeypatch, True)
+        async with client_for(documents_api.router) as client:
+            response = await client.delete("/api/documents/7")
+        assert response.status_code == 204
+        assert removed == [("org-vault", ["3/abc-accounts.pdf"])]
+
+    async def test_non_staff_are_refused(self, monkeypatch, storage_on):
+        self.deleter(monkeypatch, True)
+        app = make_app(documents_api.router)
+        app.dependency_overrides[get_principal] = lambda: CurrentUser(id=TEST_USER, is_staff=False)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.delete("/api/documents/7")
+        assert response.status_code == 403
+
+    async def test_a_referenced_document_is_a_409(self, client_for, monkeypatch, storage_on):
+        self.deleter(monkeypatch, repo.DocumentInUse(7))
+        async with client_for(documents_api.router) as client:
+            response = await client.delete("/api/documents/7")
+        assert response.status_code == 409
+
+    async def test_a_file_storage_would_not_delete_is_a_502(self, client_for, monkeypatch, storage_on):
+        self.deleter(monkeypatch, repo.FileNotRemoved(7))
+        async with client_for(documents_api.router) as client:
+            response = await client.delete("/api/documents/7")
+        assert response.status_code == 502
+
+    async def test_a_row_left_after_its_file_went_is_a_500(self, client_for, monkeypatch, storage_on):
+        self.deleter(monkeypatch, repo.RowNotRemoved(7))
+        async with client_for(documents_api.router) as client:
+            response = await client.delete("/api/documents/7")
+        assert response.status_code == 500
+        assert "delete it again" in response.json()["detail"]
+
+    async def test_anything_but_a_vault_upload_is_a_404(self, client_for, monkeypatch, storage_on):
+        self.deleter(monkeypatch, False)
+        async with client_for(documents_api.router) as client:
+            response = await client.delete("/api/documents/7")
+        assert response.status_code == 404
+
+    async def test_a_path_outside_the_vault_is_never_removed(self, monkeypatch):
+        called = []
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: called.append(b) or _async(True))
+        assert await documents_api._remove_vault_file("source-archive/ab/r.pdf") is False
+        assert await documents_api._remove_vault_file("org-vault/../x") is False
+        assert called == []
+
+
 # --- the membership SQL, against a real Postgres ---------------------------
 # The unit tests above monkeypatch org_id_for_member, so the predicate that
 # actually decides who may upload is only proved here.
@@ -266,3 +336,68 @@ class TestWhoMayTouchAnOrgsVault:
 
     async def test_an_org_that_does_not_exist_is_None(self, db, org):
         assert await self.member(db, MEMBER, write=True, org="no-such-org") is None
+
+
+@pytest.mark.integration
+class TestDeleteVaultUpload:
+    async def upload(self, db, org, **over):
+        values = {"doc_type": "vault_upload", "is_public": False, **over}
+        row = await (await db.execute(
+            """INSERT INTO documents (org_id, title, doc_type, storage_path, is_public, status)
+               VALUES (%s, 'accounts', %s, %s, %s, 'received') RETURNING id""",
+            (org, values["doc_type"], f"org-vault/{org}/abc-accounts.pdf", values["is_public"]),
+        )).fetchone()
+        return row["id"]
+
+    async def exists(self, db, doc_id):
+        return (await (await db.execute("SELECT 1 FROM documents WHERE id = %s", (doc_id,))).fetchone()) is not None
+
+    async def delete(self, db, doc_id, *, removed=True):
+        calls = []
+
+        async def remove_file(path):
+            calls.append(path)
+            return removed
+
+        result = await repo.delete_vault_upload(_PoolOf(db), document_id=doc_id, remove_file=remove_file)
+        return result, calls
+
+    async def test_the_row_and_the_file_go_together(self, db, org):
+        doc_id = await self.upload(db, org)
+        assert await self.delete(db, doc_id) == (True, [f"org-vault/{org}/abc-accounts.pdf"])
+        assert not await self.exists(db, doc_id)
+
+    async def test_the_row_stays_when_the_file_does_not_go(self, db, org):
+        doc_id = await self.upload(db, org)
+        with pytest.raises(repo.FileNotRemoved):
+            await self.delete(db, doc_id, removed=False)
+        assert await self.exists(db, doc_id)
+
+    async def test_a_document_with_chunks_is_refused_before_the_file_goes(self, db, org):
+        doc_id = await self.upload(db, org)
+        await db.execute("INSERT INTO chunks (document_id, chunk_index, content) VALUES (%s, 0, 'x')", (doc_id,))
+        touched = []
+
+        async def remove_file(path):
+            touched.append(path)
+            return True
+
+        with pytest.raises(repo.DocumentInUse):
+            await repo.delete_vault_upload(_PoolOf(db), document_id=doc_id, remove_file=remove_file)
+        assert touched == [], "a refused delete deletes nothing"
+        assert await self.exists(db, doc_id)
+
+    async def test_a_row_the_database_refuses_after_the_file_went_is_reported(self, db, org, caplog):
+        """Until the dependency check covers every reference, a proposal's FK is only found at the row's DELETE."""
+        doc_id = await self.upload(db, org)
+        await db.execute(
+            "INSERT INTO proposals (org_id, title, draft_document_id) VALUES (%s, 't', %s)", (org, doc_id))
+        with pytest.raises(repo.RowNotRemoved):
+            await self.delete(db, doc_id)
+        assert await self.exists(db, doc_id), "the row stays for a later delete to finish"
+        assert f"org-vault/{org}/abc-accounts.pdf" in caplog.text, "the log names the file that is gone"
+
+    async def test_only_a_private_vault_upload_is_deleted(self, db, org):
+        doc_id = await self.upload(db, org, doc_type="annual_report")
+        assert await self.delete(db, doc_id) == (False, [])
+        assert await self.exists(db, doc_id)
