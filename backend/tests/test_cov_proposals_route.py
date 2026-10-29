@@ -627,3 +627,55 @@ async def test_the_cards_search_is_refused_early_while_running_without_a_key_or_
         refused = await c.post("/api/proposals/11/research")
     assert early.status_code == 409 and running.status_code == 409 and "Ravi" in running.json()["detail"]
     assert keyless.status_code == 503 and refused.status_code == 403 and searched["p"] == []
+
+
+@pytest.fixture
+def deletes(monkeypatch, held):
+    """repo.delete faked: records its folder and hands the route's file remover two draft paths."""
+    calls = {"folder": None, "removed": None, "result": True}
+
+    async def delete(pool, pid, *, folder, remove_files):
+        calls["folder"] = folder
+        if calls["result"] == "files":
+            raise repo.FileNotRemoved(pid)
+        if calls["result"]:
+            calls["removed"] = await remove_files([f"{folder}v1.docx", f"{folder}v2.docx"])
+        return calls["result"]
+
+    async def remove(bucket, keys):
+        calls["keys"] = (bucket, keys)
+        return True
+
+    monkeypatch.setattr(repo, "delete", delete)
+    monkeypatch.setattr(route.storage, "remove", remove)
+    return calls
+
+
+async def test_deleting_a_proposal_removes_only_its_own_folders_drafts(api, deletes):
+    async with api as c:
+        out = await c.delete("/api/proposals/11")
+    assert out.status_code == 204
+    assert deletes["folder"] == "org-vault/7/proposals/11/"
+    assert deletes["keys"] == ("org-vault", ["7/proposals/11/v1.docx", "7/proposals/11/v2.docx"])
+
+
+async def test_deleting_a_proposal_is_refused_to_a_reader_and_kept_when_files_stay(api, held, deletes):
+    async with api as c:
+        deletes["result"] = "files"
+        kept = await c.delete("/api/proposals/11")
+        deletes["result"] = False
+        gone = await c.delete("/api/proposals/11")
+        held["row"]["can_edit"] = False
+        refused = await c.delete("/api/proposals/11")
+        missing = await c.delete("/api/proposals/12")
+    assert kept.status_code == 502 and "kept" in kept.json()["detail"]
+    assert gone.status_code == 404 and refused.status_code == 403 and missing.status_code == 404
+
+
+async def test_a_draft_path_outside_the_vault_is_never_removed(monkeypatch):
+    async def remove(bucket, keys):
+        raise AssertionError("must not reach storage")
+
+    monkeypatch.setattr(route.storage, "remove", remove)
+    assert await route._remove_drafts(["source-archive/7/proposals/11/v1.docx"]) is False
+    assert await route._remove_drafts(["org-vault/7/proposals/../12/v1.docx"]) is False

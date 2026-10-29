@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { MessageCircle, Pencil, Upload, X } from "lucide-react";
+import { MessageCircle, Pencil, Trash2, Upload, X } from "lucide-react";
 import { Tag } from "@/components/ui";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { shortDate } from "@/lib/format";
 import { type Doc, listVault, uploadToVault } from "../../lib/vault";
-import { advance, changedByLine, deleteResearch, type Fact, researchAngles, type ResearchAsk, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section, startResearch } from "./api";
+import { advance, changedByLine, deleteProposal, deleteResearch, type Fact, researchAngles, type ResearchAsk, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section, startResearch } from "./api";
 import { FactList, source } from "./FactList";
 import { FinishCard } from "./FinishCard";
 import { ResearchBrief } from "./ResearchBrief";
@@ -31,6 +32,8 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
   const [notice, setNotice] = useState<string | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [selection, setSelection] = useState("");
   const [part, setPart] = useState<string | null>(null);
   const [send, setSend] = useState<Send>(null);
@@ -100,6 +103,20 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
     void run(() => rename(id, title), { title });
   }
 
+  async function confirmDelete() {
+    setDeleting(true);
+    setNotice(null);
+    try {
+      await deleteProposal(id);
+      onBack();
+    } catch (error) {
+      setConfirming(false);
+      setNotice(error instanceof Error ? error.message : "The proposal could not be deleted. Try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
       {back}
@@ -111,6 +128,11 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
             {canEdit && (
               <button className="btn btn-ghost" type="button" onClick={() => setRenaming(proposal.title)} aria-label="Rename">
                 <Pencil className="icon icon-sm" />
+              </button>
+            )}
+            {canEdit && (
+              <button className="btn btn-ghost" type="button" onClick={() => setConfirming(true)} aria-label="Delete proposal">
+                <Trash2 className="icon icon-sm" />
               </button>
             )}
           </div>
@@ -131,6 +153,23 @@ export function ProposalShell({ id, onBack }: { id: number; onBack: () => void }
         </span>
         {!canEdit && <p className="pr-readonly">You can read this proposal. Ask your organisation&apos;s admin to make changes.</p>}
       </div>
+      <Dialog open={confirming} onOpenChange={(open) => !deleting && setConfirming(open)}>
+        <DialogContent>
+          <DialogTitle>Delete this proposal?</DialogTitle>
+          <DialogDescription>
+            &ldquo;{proposal.title}&rdquo; and its saved Word versions are removed for good. The files it read from the
+            Doc Vault stay. This cannot be undone.
+          </DialogDescription>
+          <DialogFooter>
+            <DialogClose asChild>
+              <button type="button" className="btn btn-ghost" disabled={deleting}>Cancel</button>
+            </DialogClose>
+            <button type="button" className="btn btn-primary" onClick={() => void confirmDelete()} disabled={deleting}>
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="pr-wrap">
         <div className="pr-main">

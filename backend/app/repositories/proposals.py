@@ -5,11 +5,13 @@ stewards, staff). Every change to `work` goes through `save`, which locks the ro
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 import weakref
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 
+from psycopg import errors
 from psycopg.types.json import Jsonb
 
 from app.proposals.work import Applied
@@ -22,6 +24,8 @@ _COLUMNS = """
   (p.org_id IN (SELECT app.my_match_org_ids()) OR app.is_staff()) AS can_edit
 """
 _FROM = "FROM proposals p JOIN orgs o ON o.id = p.org_id JOIN funders f ON f.id = p.funder_id"
+
+logger = logging.getLogger(__name__)
 
 
 async def list_proposals(pool: Any, *, org_id: int | None, funder_id: int | None) -> list[dict]:
@@ -140,6 +144,46 @@ async def insert_draft(pool: Any, *, org_id: int, title: str, storage_path: str,
                RETURNING id""",
             (org_id, title, storage_path, content_hash, content_md, uploaded_by),
         )).fetchone())["id"]
+
+
+class FileNotRemoved(Exception):
+    """Storage did not delete a saved version's file, so the proposal and its rows were kept."""
+
+
+async def delete(pool: Any, proposal_id: int, *, folder: str,
+                 remove_files: Callable[[list[str]], Awaitable[bool]]) -> bool:
+    """Delete a proposal and its saved versions, rows then files, in one transaction. False when RLS refuses.
+
+    Only a proposal_draft stored under `folder`, this proposal's own, goes; one another row still uses stays.
+    """
+    async with pool.connection() as conn, conn.transaction():
+        row = await (await conn.execute(
+            "DELETE FROM proposals WHERE id = %s RETURNING org_id, draft_document_id, work", (proposal_id,),
+        )).fetchone()
+        if row is None:
+            return False
+        ids = {v["document_id"] for v in (row["work"] or {}).get("versions") or [] if v.get("document_id")}
+        if row["draft_document_id"]:
+            ids.add(row["draft_document_id"])
+        drafts = await (await conn.execute(
+            """SELECT id, storage_path FROM documents
+               WHERE id = ANY(%s) AND org_id = %s AND doc_type = 'proposal_draft' AND NOT is_public
+                 AND starts_with(storage_path, %s)""",
+            (sorted(ids), row["org_id"], folder),
+        )).fetchall()
+        paths = []
+        for draft in drafts:
+            try:
+                async with conn.transaction():
+                    gone = await conn.execute("DELETE FROM documents WHERE id = %s", (draft["id"],))
+            except errors.ForeignKeyViolation:
+                logger.info("proposal %s: keeping draft %s, another row still uses it", proposal_id, draft["id"])
+                continue
+            if gone.rowcount == 1:
+                paths.append(draft["storage_path"])
+        if paths and not await remove_files(paths):
+            raise FileNotRemoved(proposal_id)
+    return True
 
 
 # The agent's side, on the owner pool: chat access and require_edit decide who gets here, not RLS.

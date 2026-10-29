@@ -162,7 +162,7 @@ def test_only_staff_delete_a_vault_upload(db, name, expected):
     assert _deletes(conn, world["people"][name], world=world) == expected
 
 
-@pytest.mark.parametrize("doc_type, public, org", [("annual_report", False, True), ("proposal_draft", False, True),
+@pytest.mark.parametrize("doc_type, public, org", [("annual_report", False, True), ("proposal_draft", True, True),
                                                    ("vault_upload", True, True), ("source_dataset", False, False)])
 def test_staff_delete_nothing_but_a_private_org_vault_upload(db, doc_type, public, org):
     conn, world = db
