@@ -91,4 +91,22 @@ describe("deleteFromVault", () => {
     reply(status);
     await expect(deleteFromVault(7)).rejects.toThrow(message);
   });
+
+  it.each([
+    [500, "the file for document 8 was deleted but its row was not; delete it again to finish"],
+    [502, "could not delete the file for document 8; the row is kept"],
+  ])("shows the server's own reason for a %i", async (status, detail) => {
+    reply(status, { detail });
+    await expect(deleteFromVault(8)).rejects.toThrow(detail);
+  });
+
+  it("keeps the friendly text for a 409 even when the server sends a detail", async () => {
+    reply(409, { detail: "document 8 is still referenced; unlink it first" });
+    await expect(deleteFromVault(8)).rejects.toThrow("This document is still being used and cannot be deleted.");
+  });
+
+  it("falls back to the generic text when the body is not JSON", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 500, json: async () => { throw new SyntaxError("not JSON"); } });
+    await expect(deleteFromVault(8)).rejects.toThrow("The document could not be deleted. Please try again.");
+  });
 });

@@ -176,10 +176,13 @@ async def document_file(
     return FileLinkOut(url=url, expires_in_seconds=storage.SIGNED_URL_TTL_SECONDS)
 
 
-async def _remove_vault_file(storage_path: str) -> bool:
+async def _remove_vault_file(storage_path: str, org_id: int) -> bool:
     parts = storage.split(storage_path)
     if parts is None or parts[0] != storage.ORG_VAULT:
         logger.warning("not removing %s: not a vault key", storage_path)
+        return False
+    if parts[1].partition("/")[0] != str(org_id):
+        logger.warning("not removing %s: not in organisation %s's folder", storage_path, org_id)
         return False
     return await storage.remove(parts[0], [parts[1]])
 

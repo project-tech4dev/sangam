@@ -27,7 +27,7 @@ is a copy of values.
 | `tokens/colors.css` | `:root` colour ramps, semantic aliases and the shadcn variables in `frontend/app/globals.css` |
 | `tokens/typography.css` | `--fs-*`, `--font-*` in `globals.css`; the font itself is loaded by `next/font` in `frontend/app/layout.tsx` |
 | `tokens/spacing.css` | `--radius`, `--radius-pill/surface/row`, `--shadow-*`, `--page-max`, `--page-pad`, `--nav-h` in `globals.css` |
-| `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link`, plus the list-page classes every list page shares (`.bucket-card`, `.filter-row`, `.filter`, `.search-box`, `.list-*`) |
+| `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.toast`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link`, plus the list-page classes every list page shares (`.bucket-card`, `.filter-row`, `.filter`, `.search-box`, `.list-*`) |
 | `tokens/scout.css` | Sangam Scout's classes in `globals.css`, from "Import workspace" through "Import: the Review step", imported by `styles.css` after `base.css` |
 | `tokens/registry.css` | The Registry list's `.reg-*`, the CSO and funder profiles' `.profile-*` (hero, board tabs, SDG tiles, cards, tables) and the research brief's `.brief-*` classes in `globals.css`, plus `.pill-tabs` and `.btn-ondark`; imported by `styles.css` after `scout.css` |
 | `tokens/registry-row.css` | The Registry row's population chips (`.reg-tag[data-tone="population"]`), `.reg-row-line`, `.reg-row-label`, `.reg-more` and the filtered tag's edge (`.reg-tag[data-active]`) in `globals.css`; imported by `styles.css` after `registry.css` |
@@ -51,7 +51,7 @@ and Tailwind. A component change means making both look and behave the same.
 | `components/core/Avatar` | `frontend/components/ui/avatar.tsx` |
 | `components/forms/{Input, Checkbox}` | `frontend/components/ui/{input,checkbox}.tsx` and `.input` |
 | `components/forms/{SegmentedControl, Pill, PillTabs}` | `.seg`, `.pill`, `frontend/components/ui/PillTabs.tsx` |
-| `components/surfaces/{Card, CardBody, Hero, Dialog}` | `frontend/components/ui/{card,Hero,dialog}.tsx` and `.card`, `.dialog`; `HeroFacets` = `features/registry/profile/ProfileHero.tsx` |
+| `components/surfaces/{Card, CardBody, Hero, Dialog, Toast}` | `frontend/components/ui/{card,Hero,dialog,Toast}.tsx` and `.card`, `.dialog`, `.toast`; `HeroFacets` = `features/registry/profile/ProfileHero.tsx` |
 | `components/surfaces/DropdownMenu` | `frontend/components/ui/dropdown-menu.tsx` |
 | `components/layout/{Nav, Footer}` | `frontend/components/layout/{Nav,NavBar,Footer}.tsx` |
 | `components/layout/UserMenu` | `frontend/features/auth/sign-in-button.tsx` (`UserMenu`) |

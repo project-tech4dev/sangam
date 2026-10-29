@@ -3,3 +3,4 @@ export * from "./primitives";
 export * from "./Hero";
 export * from "./PillTabs";
 export * from "./ListPage";
+export * from "./Toast";
