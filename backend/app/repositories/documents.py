@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 
+from psycopg.errors import ForeignKeyViolation
 from psycopg_pool import AsyncConnectionPool
 
 logger = logging.getLogger(__name__)
@@ -191,9 +192,10 @@ SELECT EXISTS (SELECT 1 FROM chunks WHERE document_id = %(id)s)
 async def delete_vault_upload(
     pool: AsyncConnectionPool, *, document_id: int, remove_file: Callable[[str, int], Awaitable[bool]],
 ) -> bool:
-    """Delete a vault upload's file, then its row. False when there is no such vault upload.
+    """Delete a vault upload's row, then its file, in one transaction. False when there is no such vault upload.
 
-    File first: a row left behind can be deleted again, a file with no row is never found.
+    The row's DELETE runs first so every foreign key is checked before the file goes; it commits only after the
+    file is gone, and a failed file delete rolls the row back.
     """
     file_removed = False
     try:
@@ -207,12 +209,15 @@ async def delete_vault_upload(
                 return False
             if (await (await conn.execute(_CASCADING_SQL, {"id": document_id})).fetchone())["used"]:
                 raise DocumentInUse(document_id)
+            try:
+                deleted = await conn.execute("DELETE FROM documents WHERE id = %(id)s", {"id": document_id})
+            except ForeignKeyViolation as exc:
+                raise DocumentInUse(document_id) from exc
+            if deleted.rowcount != 1:
+                return False
             if row["storage_path"] and not await remove_file(row["storage_path"], row["org_id"]):
                 raise FileNotRemoved(document_id)
             file_removed = True
-            deleted = await conn.execute("DELETE FROM documents WHERE id = %(id)s", {"id": document_id})
-            if deleted.rowcount != 1:
-                raise RowNotRemoved(document_id)
     except Exception as exc:
         if not file_removed:
             raise
