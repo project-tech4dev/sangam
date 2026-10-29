@@ -189,7 +189,7 @@ SELECT EXISTS (SELECT 1 FROM chunks WHERE document_id = %(id)s)
 
 
 async def delete_vault_upload(
-    pool: AsyncConnectionPool, *, document_id: int, remove_file: Callable[[str], Awaitable[bool]],
+    pool: AsyncConnectionPool, *, document_id: int, remove_file: Callable[[str, int], Awaitable[bool]],
 ) -> bool:
     """Delete a vault upload's file, then its row. False when there is no such vault upload.
 
@@ -199,7 +199,7 @@ async def delete_vault_upload(
     try:
         async with pool.connection() as conn, conn.transaction():
             row = await (await conn.execute(
-                """SELECT storage_path FROM documents
+                """SELECT storage_path, org_id FROM documents
                    WHERE id = %(id)s AND doc_type = 'vault_upload' AND NOT is_public AND org_id IS NOT NULL""",
                 {"id": document_id},
             )).fetchone()
@@ -207,7 +207,7 @@ async def delete_vault_upload(
                 return False
             if (await (await conn.execute(_CASCADING_SQL, {"id": document_id})).fetchone())["used"]:
                 raise DocumentInUse(document_id)
-            if row["storage_path"] and not await remove_file(row["storage_path"]):
+            if row["storage_path"] and not await remove_file(row["storage_path"], row["org_id"]):
                 raise FileNotRemoved(document_id)
             file_removed = True
             deleted = await conn.execute("DELETE FROM documents WHERE id = %(id)s", {"id": document_id})

@@ -210,7 +210,7 @@ class TestDeletingAnUpload:
             if isinstance(outcome, Exception):
                 raise outcome
             if outcome:
-                assert await remove_file("org-vault/3/abc-accounts.pdf")
+                assert await remove_file("org-vault/3/abc-accounts.pdf", 3)
             return outcome
 
         monkeypatch.setattr(f"{ROUTE}.storage.remove", fake_remove)
@@ -260,9 +260,19 @@ class TestDeletingAnUpload:
     async def test_a_path_outside_the_vault_is_never_removed(self, monkeypatch):
         called = []
         monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: called.append(b) or _async(True))
-        assert await documents_api._remove_vault_file("source-archive/ab/r.pdf") is False
-        assert await documents_api._remove_vault_file("org-vault/../x") is False
+        assert await documents_api._remove_vault_file("source-archive/ab/r.pdf", 3) is False
+        assert await documents_api._remove_vault_file("org-vault/../x", 3) is False
         assert called == []
+
+    async def test_a_file_in_another_organisations_folder_is_never_removed(self, monkeypatch):
+        """#329: a row can point into someone else's folder; deleting it must not take their file."""
+        called = []
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: called.append(k) or _async(True))
+        assert await documents_api._remove_vault_file("org-vault/5/abc-theirs.pdf", 3) is False
+        assert await documents_api._remove_vault_file("org-vault/33/abc-theirs.pdf", 3) is False
+        assert called == []
+        assert await documents_api._remove_vault_file("org-vault/3/abc-ours.pdf", 3) is True
+        assert called == [["3/abc-ours.pdf"]]
 
 
 # --- the membership SQL, against a real Postgres ---------------------------
@@ -355,7 +365,7 @@ class TestDeleteVaultUpload:
     async def delete(self, db, doc_id, *, removed=True):
         calls = []
 
-        async def remove_file(path):
+        async def remove_file(path, org_id):
             calls.append(path)
             return removed
 
@@ -378,7 +388,7 @@ class TestDeleteVaultUpload:
         await db.execute("INSERT INTO chunks (document_id, chunk_index, content) VALUES (%s, 0, 'x')", (doc_id,))
         touched = []
 
-        async def remove_file(path):
+        async def remove_file(path, org_id):
             touched.append(path)
             return True
 
@@ -393,7 +403,7 @@ class TestDeleteVaultUpload:
             "INSERT INTO proposals (org_id, title, draft_document_id) VALUES (%s, 't', %s)", (org, doc_id))
         touched = []
 
-        async def remove_file(path):
+        async def remove_file(path, org_id):
             touched.append(path)
             return True
 
@@ -417,6 +427,28 @@ class TestDeleteVaultUpload:
         assert await self.delete(db, doc_id) == (False, [])
         assert await self.exists(db, doc_id)
 
+    async def test_a_row_pointing_into_another_organisations_folder_leaves_that_file_alone(
+        self, db, org, monkeypatch
+    ):
+        """#329, end to end: the route's own remover refuses, nothing reaches storage, the row is kept."""
+        row = await (await db.execute(
+            """INSERT INTO documents (org_id, title, doc_type, storage_path, is_public, status)
+               VALUES (%s, 'theirs', 'vault_upload', %s, false, 'received') RETURNING id""",
+            (org, f"org-vault/{org + 1000}/abc-theirs.pdf"),
+        )).fetchone()
+        removed = []
+
+        async def remove(bucket, keys):
+            removed.append(keys)
+            return True
+
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", remove)
+        with pytest.raises(repo.FileNotRemoved):
+            await repo.delete_vault_upload(_PoolOf(db), document_id=row["id"],
+                                           remove_file=documents_api._remove_vault_file)
+        assert removed == []
+        assert await self.exists(db, row["id"])
+
 
 class _RlsRefuses:
     """A caller's connection where RLS lets the row be read but deletes none of it."""
@@ -426,7 +458,7 @@ class _RlsRefuses:
             rowcount = 0
 
             async def fetchone(self):
-                return {"storage_path": "org-vault/3/abc-accounts.pdf", "used": False}
+                return {"storage_path": "org-vault/3/abc-accounts.pdf", "org_id": 3, "used": False}
 
         class _Conn:
             async def execute(self, sql, params=None):
@@ -444,7 +476,7 @@ class _RlsRefuses:
 
 
 async def test_a_delete_rls_quietly_refuses_is_reported_not_counted_as_done():
-    async def remove_file(path):
+    async def remove_file(path, org_id):
         return True
 
     with pytest.raises(repo.RowNotRemoved):
