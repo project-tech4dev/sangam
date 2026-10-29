@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleCheck, X } from "lucide-react";
-import { Tag } from "@/components/ui";
+import { Tag, Toast } from "@/components/ui";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { authHeaders } from "@/lib/api/auth-headers";
 import { API } from "../lib/rest";
@@ -30,12 +29,6 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
       .then((page) => setDocs(page.items ?? []))
       .catch(() => setDocs([]));
   }, [orgSlug, reload]);
-
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(null), 4000);
-    return () => clearTimeout(timer);
-  }, [notice]);
 
   async function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -88,15 +81,7 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
           <div className="card-body">{problem.body}</div>
         </div>
       ) : null}
-      {notice ? (
-        <div className="vault-toast" role="status" aria-live="polite">
-          <CircleCheck className="icon" />
-          <span>{notice}</span>
-          <button type="button" className="vault-toast-close" onClick={() => setNotice(null)} aria-label="Dismiss">
-            <X className="icon icon-sm" />
-          </button>
-        </div>
-      ) : null}
+      {notice ? <Toast onDismiss={() => setNotice(null)}>{notice}</Toast> : null}
       <div className="vault-orgs">
         {orgs.map((org) => (
           <button key={org.id} className="pill" data-active={orgSlug === org.slug} onClick={() => setOrgSlug(org.slug)}>
