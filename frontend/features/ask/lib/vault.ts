@@ -51,7 +51,10 @@ const DELETE_REFUSED: Record<number, string> = {
 export async function deleteFromVault(id: number): Promise<void> {
   const res = await fetch(`${API}/api/documents/${id}`, { method: "DELETE", headers: await authHeaders() });
   if (res.ok) return;
-  throw new Error(DELETE_REFUSED[res.status] ?? "The document could not be deleted. Please try again.");
+  const friendly = DELETE_REFUSED[res.status];
+  if (friendly) throw new Error(friendly);
+  const detail = await res.json().then((body) => body?.detail, () => null);
+  throw new Error(typeof detail === "string" && detail ? detail : "The document could not be deleted. Please try again.");
 }
 
 export async function listVault(org: string): Promise<Doc[]> {
