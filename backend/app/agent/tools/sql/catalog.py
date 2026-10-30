@@ -1012,6 +1012,8 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         # Import's save log: who saved what, and each catalog row's before and after, for undo.
         "promotions",
         "catalog_writes",
+        # Every deleted document row, private uploads included, kept for a staff restore.
+        "deleted_documents",
         # Serialized conversation history — every user's full chat, in this same
         # database. The single most sensitive thing here.
         "checkpoints",
