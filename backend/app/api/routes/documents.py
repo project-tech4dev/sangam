@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import PageParams
 from app.core.config import get_settings
-from app.core.security import get_current_user, require_user
+from app.core.security import get_current_user, require_staff, require_user
 from app.db.pool import PoolDep
 from app.integrations import storage
 from app.repositories import documents as repo
@@ -174,3 +174,31 @@ async def document_file(
     if url is None:
         raise HTTPException(502, "could not reach document storage")
     return FileLinkOut(url=url, expires_in_seconds=storage.SIGNED_URL_TTL_SECONDS)
+
+
+async def _remove_vault_file(storage_path: str, org_id: int) -> bool:
+    parts = storage.split(storage_path)
+    if parts is None or parts[0] != storage.ORG_VAULT:
+        logger.warning("not removing %s: not a vault key", storage_path)
+        return False
+    if parts[1].partition("/")[0] != str(org_id):
+        logger.warning("not removing %s: not in organisation %s's folder", storage_path, org_id)
+        return False
+    return await storage.remove(parts[0], [parts[1]])
+
+
+@router.delete("/{document_id}", status_code=204, summary="Delete a Doc Vault upload and its file (staff)",
+               dependencies=[Depends(require_staff)])
+async def delete_document(document_id: int, pool: PoolDep) -> None:
+    _require_storage()
+    try:
+        deleted = await repo.delete_vault_upload(pool, document_id=document_id, remove_file=_remove_vault_file)
+    except repo.DocumentInUse:
+        raise HTTPException(409, f"document {document_id} is still referenced; unlink it first") from None
+    except repo.FileNotRemoved:
+        raise HTTPException(502, f"could not delete the file for document {document_id}; the row is kept") from None
+    except repo.RowNotRemoved:
+        raise HTTPException(500, f"the file for document {document_id} was deleted but its row was not; "
+                                 "delete it again to finish") from None
+    if not deleted:
+        raise HTTPException(404, f"no Doc Vault upload {document_id}")

@@ -1,17 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Tag } from "@/components/ui";
+import { Tag, Toast } from "@/components/ui";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { authHeaders } from "@/lib/api/auth-headers";
 import { API } from "../lib/rest";
 import { hostOf } from "../lib/sources";
-import { type Doc, uploadToVault } from "../lib/vault";
+import { type Doc, deleteFromVault, uploadToVault } from "../lib/vault";
 
-export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: string }[] }) {
+type Problem = { title: string; body: string };
+
+export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug: string; name: string }[]; isStaff?: boolean }) {
   const [orgSlug, setOrgSlug] = useState(orgs[0]?.slug ?? "");
   const [docs, setDocs] = useState<Doc[] | null>(null);
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [pending, setPending] = useState<Doc | null>(null);
+  const [problem, setProblem] = useState<Problem | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -30,13 +36,30 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
     if (!file || !orgSlug) return;
     setBusy(true);
     setProblem(null);
+    setNotice(null);
     try {
       await uploadToVault(orgSlug, file);
       setReload((n) => n + 1);
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : "Upload failed.");
+      setProblem({ title: "Upload failed", body: error instanceof Error ? error.message : "Upload failed." });
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onDelete(doc: Doc) {
+    setPending(null);
+    setDeleting(doc.id);
+    setProblem(null);
+    setNotice(null);
+    try {
+      await deleteFromVault(doc.id);
+      setDocs((current) => current?.filter((d) => d.id !== doc.id) ?? current);
+      setNotice("Document deleted successfully.");
+    } catch (error) {
+      setProblem({ title: "Delete failed", body: error instanceof Error ? error.message : "The document could not be deleted. Please try again." });
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -54,10 +77,11 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
       </div>
       {problem ? (
         <div className="card" role="alert">
-          <div className="card-title">Upload failed</div>
-          <div className="card-body">{problem}</div>
+          <div className="card-title">{problem.title}</div>
+          <div className="card-body">{problem.body}</div>
         </div>
       ) : null}
+      {notice ? <Toast onDismiss={() => setNotice(null)}>{notice}</Toast> : null}
       <div className="vault-orgs">
         {orgs.map((org) => (
           <button key={org.id} className="pill" data-active={orgSlug === org.slug} onClick={() => setOrgSlug(org.slug)}>
@@ -88,10 +112,37 @@ export function VaultView({ orgs }: { orgs: { id: number; slug: string; name: st
                 </div>
               </div>
               <Tag tone="accent-2">In base</Tag>
+              {isStaff && doc.doc_type === "vault_upload" ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setPending(doc)}
+                  disabled={deleting !== null}
+                  aria-label={`Delete ${docName(doc)}`}
+                >
+                  {deleting === doc.id ? "Deleting…" : "Delete"}
+                </button>
+              ) : null}
             </div>
           ))}
         </div>
       )}
+      <Dialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <DialogContent>
+          <DialogTitle>Delete this document?</DialogTitle>
+          <DialogDescription>
+            &ldquo;{pending ? docName(pending) : ""}&rdquo; and its file are removed for good. This cannot be undone.
+          </DialogDescription>
+          <DialogFooter>
+            <DialogClose asChild>
+              <button type="button" className="btn btn-ghost">Cancel</button>
+            </DialogClose>
+            <button type="button" className="btn btn-primary" onClick={() => pending && void onDelete(pending)}>
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -847,6 +847,21 @@ textarea.input { resize: vertical; min-height: 64px; border-radius: var(--radius
 .vault-name { font-size: var(--fs-sm); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vault-meta { font-size: var(--fs-xs); }
 
+.toast {
+  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 90;
+  display: flex; align-items: center; gap: 10px; max-width: calc(100% - 48px);
+  background: var(--color-accent-2-700); color: #fff; font-size: var(--fs-sm); font-weight: 600;
+  border-radius: var(--radius-pill); padding: 10px 10px 10px 18px; box-shadow: var(--shadow-md);
+  animation: toast-in 200ms ease-out;
+}
+.toast-close {
+  display: inline-flex; background: transparent; border: 0; color: inherit; cursor: pointer;
+  border-radius: var(--radius-pill); padding: 4px; opacity: 0.8;
+}
+.toast-close:hover, .toast-close:focus-visible { opacity: 1; background: var(--color-accent-2-800); }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+
 /* --- List pages: bucket cards, one row of dropdowns, search, a list that grows ---- */
 .bucket-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 .bucket-card { background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-surface); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; text-align: left; color: var(--color-text); font-family: var(--font-body); cursor: pointer; }

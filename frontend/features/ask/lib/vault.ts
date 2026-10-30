@@ -42,6 +42,21 @@ export async function uploadToVault(org: string, file: File): Promise<Doc> {
   return confirm.json();
 }
 
+const DELETE_REFUSED: Record<number, string> = {
+  403: "You do not have permission to delete this document.",
+  404: "This document is not a Doc Vault upload, or it is already gone.",
+  409: "This document is still being used and cannot be deleted.",
+};
+
+export async function deleteFromVault(id: number): Promise<void> {
+  const res = await fetch(`${API}/api/documents/${id}`, { method: "DELETE", headers: await authHeaders() });
+  if (res.ok) return;
+  const friendly = DELETE_REFUSED[res.status];
+  if (friendly) throw new Error(friendly);
+  const detail = await res.json().then((body) => body?.detail, () => null);
+  throw new Error(typeof detail === "string" && detail ? detail : "The document could not be deleted. Please try again.");
+}
+
 export async function listVault(org: string): Promise<Doc[]> {
   const res = await fetch(`${API}/api/documents?org=${encodeURIComponent(org)}&limit=100`, { headers: await authHeaders() });
   if (!res.ok) throw new Error(`Could not load the Doc Vault (${res.status}).`);
