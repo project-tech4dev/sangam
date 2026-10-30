@@ -333,7 +333,7 @@ async def _remove_drafts(paths: list[str]) -> bool:
             logger.warning("not removing %s: not a vault key", path)
             return False
         keys.append(parts[1])
-    return await storage.remove(storage.ORG_VAULT, keys)
+    return await storage.trash(storage.ORG_VAULT, keys)
 
 
 @router.delete("/{proposal_id}", status_code=204, summary="Delete a proposal and its saved Word versions")
