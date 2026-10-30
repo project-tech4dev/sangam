@@ -317,6 +317,8 @@ def _is_duplicate(response: httpx.Response) -> bool:
         body = response.json()
     except ValueError:
         return response.status_code == 409
+    if not isinstance(body, dict):
+        return response.status_code == 409
     return (
         str(body.get("statusCode")) == "409"
         or body.get("error") == "Duplicate"
