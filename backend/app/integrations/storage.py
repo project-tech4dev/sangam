@@ -272,8 +272,12 @@ async def trash(bucket: str, keys: list[str]) -> bool:
     try:
         async with _client() as client:
             for key in keys:
-                response = await client.post(
-                    "/object/move", json={"bucketId": bucket, "sourceKey": key, "destinationKey": trash_key(key)})
+                body = {"bucketId": bucket, "sourceKey": key, "destinationKey": trash_key(key)}
+                response = await client.post("/object/move", json=body)
+                if _is_duplicate(response):
+                    (await client.request("DELETE", f"/object/{bucket}", json={"prefixes": [trash_key(key)]})
+                     ).raise_for_status()
+                    response = await client.post("/object/move", json=body)
                 if _is_missing(response):
                     continue
                 response.raise_for_status()
@@ -293,6 +297,8 @@ def _is_missing(response: httpx.Response) -> bool:
     try:
         body = response.json()
     except ValueError:
+        return response.status_code == 404
+    if not isinstance(body, dict):
         return response.status_code == 404
     return str(body.get("statusCode")) == "404" or body.get("error") in ("not_found", "NoSuchKey")
 
