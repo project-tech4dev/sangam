@@ -213,6 +213,7 @@ listed as open.
 | read your own chat history | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `threads_read` |
 | save a Funder Match run | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `app.my_match_org_ids()` (`0042`) |
 | start or edit a proposal | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `app.my_match_org_ids()` (`0048`) |
+| delete a proposal and its saved Word versions | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `proposals_delete`, `documents_delete_draft` (`0052`); only drafts under `<org>/proposals/<id>/` |
 | chat with Sangam Pitch | — | 403 | ✓ own | ✓ own | ✓ own | `proposal_chat_access`, then `CallerScope.can_edit_proposal` |
 | upload to the Doc Vault | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `documents_insert` (`0048`) |
 | delete a Doc Vault upload and its file | — | — | — | — | ✓ | `require_staff` + RLS `documents_delete` (`0051`) |

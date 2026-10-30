@@ -137,11 +137,41 @@ describe("ProposalShell", () => {
     expect(await screen.findByRole("heading", { name: "Axis 2027" })).toBeInTheDocument();
   });
 
+  it("deletes the proposal after the dialog confirms, and goes back to the list", async () => {
+    serve(proposal(), { "DELETE /api/proposals/3": () => null });
+    const onBack = vi.fn();
+    renderShell(onBack);
+    await userEvent.click(await screen.findByRole("button", { name: "Delete proposal" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(call).not.toHaveBeenCalledWith("/api/proposals/3", "DELETE");
+    await userEvent.click(screen.getByRole("button", { name: "Delete proposal" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("saved Word versions");
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(call).toHaveBeenCalledWith("/api/proposals/3", "DELETE");
+    await waitFor(() => expect(onBack).toHaveBeenCalled());
+  });
+
+  it("stays on the proposal and says why when the delete is refused", async () => {
+    serve(proposal(), {
+      "DELETE /api/proposals/3": () => {
+        throw new ApiError("Could not delete the proposal's Word files, so it was kept. Try again.", 502, null);
+      },
+    });
+    const onBack = vi.fn();
+    renderShell(onBack);
+    await userEvent.click(await screen.findByRole("button", { name: "Delete proposal" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(await screen.findByText(/so it was kept/)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onBack).not.toHaveBeenCalled();
+  });
+
   it("is read-only for someone who cannot edit", async () => {
     serve(proposal({ gates: { csr1: "yes" } }, { can_edit: false }));
     renderShell();
     expect(await screen.findByText(/You can read this proposal/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rename" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete proposal" })).toBeNull();
     expect(screen.queryByTestId("chat")).toBeNull();
     expect(screen.queryByRole("button", { name: /Continue to/ })).toBeNull();
     expect(screen.getByRole("radio", { name: "No" })).toBeDisabled();

@@ -320,6 +320,34 @@ async def delete_research(proposal_id: int, pool: PoolDep, principal: Principal)
     return SavedOut(summary=applied.summary, work=applied.work)
 
 
+def _drafts_folder(org_id: int, proposal_id: int) -> str:
+    """Where a proposal's saved versions live in the org's vault; the slash keeps proposal 1 off 11's files."""
+    return f"{org_id}/proposals/{proposal_id}/"
+
+
+async def _remove_drafts(paths: list[str]) -> bool:
+    keys = []
+    for path in paths:
+        parts = storage.split(path)
+        if parts is None or parts[0] != storage.ORG_VAULT:
+            logger.warning("not removing %s: not a vault key", path)
+            return False
+        keys.append(parts[1])
+    return await storage.remove(storage.ORG_VAULT, keys)
+
+
+@router.delete("/{proposal_id}", status_code=204, summary="Delete a proposal and its saved Word versions")
+async def delete_proposal(proposal_id: int, pool: PoolDep, principal: Principal) -> None:
+    row = await _editable(pool, proposal_id)
+    folder = storage.qualify(storage.ORG_VAULT, _drafts_folder(row["org"]["id"], proposal_id))
+    try:
+        deleted = await repo.delete(pool, proposal_id, folder=folder, remove_files=_remove_drafts)
+    except repo.FileNotRemoved:
+        raise HTTPException(502, "Could not delete the proposal's Word files, so it was kept. Try again.") from None
+    if not deleted:
+        raise HTTPException(404, f"proposal {proposal_id} not found")
+
+
 @router.post("/{proposal_id}/versions", response_model=SavedOut, status_code=201,
              summary="Save the proposal as a Word file in the org's Doc Vault, as its next version")
 async def save_version(proposal_id: int, pool: PoolDep, principal: Principal, body: VersionIn | None = None) -> SavedOut:
@@ -349,7 +377,7 @@ async def save_version(proposal_id: int, pool: PoolDep, principal: Principal, bo
     else:
         headed = [(s.label, text) for s, text in written]
         data = assemble.docx(row["title"], byline, written)
-    key = f"{row['org']['id']}/proposals/{proposal_id}/v{n}.docx"
+    key = f"{_drafts_folder(row['org']['id'], proposal_id)}v{n}.docx"
     if await storage.upload(storage.ORG_VAULT, key, data, assemble.DOCX_TYPE) is None:
         raise HTTPException(502, "Could not reach document storage. Try again.")
     document_id = await repo.insert_draft(

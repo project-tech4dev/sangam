@@ -215,6 +215,12 @@ export async function rename(id: number, title: string) {
   return saved;
 }
 
+/** Deletes the proposal and its saved Word versions; the files it read from the Doc Vault stay. */
+export async function deleteProposal(id: number) {
+  await call<null>(`/api/proposals/${id}`, "DELETE");
+  void reloadProposals();
+}
+
 export async function advance(id: number, to?: number) {
   const saved = await call<Saved>(`/api/proposals/${id}/advance${to ? `?to=${to}` : ""}`, "POST");
   void reloadProposals();
