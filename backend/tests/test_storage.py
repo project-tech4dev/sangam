@@ -276,6 +276,21 @@ class TestTrash:
         transport(monkeypatch, lambda r: httpx.Response(400, json={"statusCode": "404", "error": "not_found"}))
         assert await storage.trash("org-vault", ["3/a.pdf"]) is True
 
+    async def test_an_older_file_in_the_trash_is_replaced(self, enabled, monkeypatch):
+        answers = iter([
+            httpx.Response(400, json={"statusCode": "409", "error": "Duplicate"}),
+            httpx.Response(200, json=[]),
+            httpx.Response(200, json={"message": "Successfully moved"}),
+        ])
+        seen = transport(monkeypatch, lambda r: next(answers))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is True
+        assert [r.method for r in seen] == ["POST", "DELETE", "POST"]
+        assert json.loads(seen[1].content) == {"prefixes": ["trash/3/a.pdf"]}
+
+    async def test_a_body_that_is_not_an_object_is_a_plain_failure(self, enabled, monkeypatch):
+        transport(monkeypatch, lambda r: httpx.Response(400, json=["not", "an", "object"]))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is False
+
     async def test_a_failure_puts_back_what_already_moved(self, enabled, monkeypatch):
         def answer(request):
             body = json.loads(request.content)
