@@ -184,7 +184,7 @@ async def _remove_vault_file(storage_path: str, org_id: int) -> bool:
     if parts[1].partition("/")[0] != str(org_id):
         logger.warning("not removing %s: not in organisation %s's folder", storage_path, org_id)
         return False
-    return await storage.remove(parts[0], [parts[1]])
+    return await storage.trash(parts[0], [parts[1]])
 
 
 @router.delete("/{document_id}", status_code=204, summary="Delete a Doc Vault upload and its file (staff)",

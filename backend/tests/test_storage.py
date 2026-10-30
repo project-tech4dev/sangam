@@ -262,6 +262,36 @@ class TestRemove:
         assert seen == []
 
 
+class TestTrash:
+    async def test_moves_each_key_under_trash(self, enabled, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"message": "Successfully moved"}))
+        assert await storage.trash("org-vault", ["3/a.pdf", "3/b.pdf"]) is True
+        assert [json.loads(r.content) for r in seen] == [
+            {"bucketId": "org-vault", "sourceKey": "3/a.pdf", "destinationKey": "trash/3/a.pdf"},
+            {"bucketId": "org-vault", "sourceKey": "3/b.pdf", "destinationKey": "trash/3/b.pdf"},
+        ]
+
+    async def test_a_key_already_gone_counts(self, enabled, monkeypatch):
+        """Supabase answers a missing object with a 400 carrying statusCode 404."""
+        transport(monkeypatch, lambda r: httpx.Response(400, json={"statusCode": "404", "error": "not_found"}))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is True
+
+    async def test_a_failure_puts_back_what_already_moved(self, enabled, monkeypatch):
+        def answer(request):
+            body = json.loads(request.content)
+            return httpx.Response(500 if body["sourceKey"] == "3/b.pdf" else 200, json={})
+
+        seen = transport(monkeypatch, answer)
+        assert await storage.trash("org-vault", ["3/a.pdf", "3/b.pdf"]) is False
+        last = json.loads(seen[-1].content)
+        assert (last["sourceKey"], last["destinationKey"]) == ("trash/3/a.pdf", "3/a.pdf")
+
+    async def test_does_nothing_when_disabled(self, off, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is False
+        assert seen == []
+
+
 # --- the documents row, against a real Postgres ----------------------------
 
 @pytest.mark.integration
