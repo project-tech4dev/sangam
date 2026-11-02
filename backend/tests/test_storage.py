@@ -338,6 +338,11 @@ class TestBucketSuffix:
         await storage.trash("org-vault", ["3/a.pdf"])
         assert [json.loads(r.content)["bucketId"] for r in seen] == ["source-archive-local", "org-vault-local"]
 
+    async def test_a_failure_logs_the_bucket_actually_asked(self, suffixed, monkeypatch, caplog):
+        transport(monkeypatch, lambda r: httpx.Response(500))
+        assert await storage.download("org-vault", "3/a.pdf") is None
+        assert "reading org-vault-local/3/a.pdf failed" in caplog.text
+
     @pytest.mark.parametrize("database_url,suffix", [
         ("postgresql://sangam:sangam@localhost:5433/sangam", "-local"),
         ("postgresql://postgres.proj:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres", ""),
