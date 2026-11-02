@@ -240,7 +240,7 @@ async def move(bucket: str, source: str, destination: str) -> bool:
         response.raise_for_status()
     except httpx.HTTPError as exc:
         logger.warning(
-            "moving %s/%s to %s failed (%s: %s)", bucket, source, destination,
+            "moving %s/%s to %s failed (%s: %s)", _bucket(bucket), source, destination,
             type(exc).__name__, exc,
         )
         return False
@@ -256,7 +256,7 @@ async def remove(bucket: str, keys: list[str]) -> bool:
             response = await client.request("DELETE", f"/object/{_bucket(bucket)}", json={"prefixes": keys})
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.warning("removing %s from %s failed (%s: %s)", keys, bucket, type(exc).__name__, exc)
+        logger.warning("removing %s from %s failed (%s: %s)", keys, _bucket(bucket), type(exc).__name__, exc)
         return False
     return True
 
@@ -288,7 +288,7 @@ async def trash(bucket: str, keys: list[str]) -> bool:
                 response.raise_for_status()
                 moved.append(key)
     except httpx.HTTPError as exc:
-        logger.warning("moving %s in %s to the trash failed (%s: %s)", keys, bucket, type(exc).__name__, exc)
+        logger.warning("moving %s in %s to the trash failed (%s: %s)", keys, _bucket(bucket), type(exc).__name__, exc)
         for key in moved:
             await move(bucket, trash_key(key), key)
         return False
@@ -365,7 +365,7 @@ async def upload(
             return key
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.warning("archiving %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        logger.warning("archiving %s/%s failed (%s: %s)", _bucket(bucket), key, type(exc).__name__, exc)
         return None
     return key
 
@@ -384,7 +384,7 @@ async def list_prefix(bucket: str, prefix: str, limit: int = 20) -> list[dict[st
         response.raise_for_status()
         found = response.json()
     except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("listing %s/%s failed (%s: %s)", bucket, prefix, type(exc).__name__, exc)
+        logger.warning("listing %s/%s failed (%s: %s)", _bucket(bucket), prefix, type(exc).__name__, exc)
         return []
     return found if isinstance(found, list) else []
 
@@ -441,7 +441,7 @@ async def list_all(bucket: str, prefix: str = "") -> list[dict[str, Any]]:
                         break
                     offset += LIST_PAGE
     except (httpx.HTTPError, ValueError, KeyError) as exc:
-        logger.warning("listing %s/%s failed (%s: %s)", bucket, prefix, type(exc).__name__, exc)
+        logger.warning("listing %s/%s failed (%s: %s)", _bucket(bucket), prefix, type(exc).__name__, exc)
         return []
     return sorted(files, key=lambda f: f["key"])[:LIST_MAX_FILES]
 
@@ -471,7 +471,7 @@ async def signed_url(bucket: str, key: str, ttl: int = SIGNED_URL_TTL_SECONDS) -
         response.raise_for_status()
         path = response.json().get("signedURL")
     except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("signing %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        logger.warning("signing %s/%s failed (%s: %s)", _bucket(bucket), key, type(exc).__name__, exc)
         return None
     if not path:
         return None
@@ -512,7 +512,7 @@ async def signed_upload_url(bucket: str, key: str) -> str | None:
         response.raise_for_status()
         path = response.json().get("url")
     except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("signing upload %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        logger.warning("signing upload %s/%s failed (%s: %s)", _bucket(bucket), key, type(exc).__name__, exc)
         return None
     if not path:
         return None
@@ -530,10 +530,10 @@ async def download(bucket: str, key: str, max_bytes: int = MAX_ARCHIVE_BYTES) ->
             response = await client.get(f"/object/{_bucket(bucket)}/{key}")
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.warning("reading %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        logger.warning("reading %s/%s failed (%s: %s)", _bucket(bucket), key, type(exc).__name__, exc)
         return None
     if len(response.content) > max_bytes:
-        logger.warning("not reading %s/%s: %d bytes", bucket, key, len(response.content))
+        logger.warning("not reading %s/%s: %d bytes", _bucket(bucket), key, len(response.content))
         return None
     return response.content
 
