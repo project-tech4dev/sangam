@@ -24,5 +24,3 @@ services:
   backend:
     environment:
       DATABASE_URL: ${STAGING_DATABASE_URL:-host=${STAGING_DB_HOST:?set STAGING_DB_HOST in .env (or STAGING_DATABASE_URL)} port=${STAGING_DB_PORT:-5432} user=${STAGING_DB_USER:?set STAGING_DB_USER in .env} password=${STAGING_DB_PASSWORD:?set STAGING_DB_PASSWORD in .env} dbname=${STAGING_DB_NAME:-postgres} sslmode=${STAGING_DB_SSLMODE:-require}}
-      # The staging rows name the deployed buckets, so files go there too.
-      STORAGE_BUCKET_SUFFIX: ""
