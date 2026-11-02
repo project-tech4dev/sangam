@@ -8,7 +8,6 @@ import os
 import time
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any
-from urllib.parse import urlparse
 
 from ag_ui.core.types import RunAgentInput
 from ag_ui.encoder import EventEncoder
@@ -223,14 +222,11 @@ def build_lifespan(settings: Settings | None = None):
 
 def _warn_on_shared_storage(settings: Settings) -> None:
     """Storage is one global project: a backend on another database writes into the deployed buckets."""
-    if not settings.storage_enabled or settings.storage_bucket_suffix:
-        return
-    project = urlparse(settings.supabase_url).hostname or ""
-    ref = project.split(".", 1)[0]
-    if ref and ref not in settings.database_url:
+    if settings.storage_enabled and not settings.bucket_suffix and not settings.database_in_storage_project:
         logger.warning(
             "Storage is Supabase project %s but the database is not, so files land in the deployed buckets "
-            "while rows stay here. Set STORAGE_BUCKET_SUFFIX (e.g. -local) to use separate buckets.", ref,
+            "while rows stay here. Set STORAGE_BUCKET_SUFFIX (e.g. -local) to use separate buckets.",
+            settings.storage_project or settings.supabase_url,
         )
 
 

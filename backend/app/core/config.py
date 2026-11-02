@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Any
+from urllib.parse import urlparse
 
+from psycopg.conninfo import conninfo_to_dict
 from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -72,7 +74,7 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_key: str = ""
     # Appended to every bucket name on the wire (`-local` → org-vault-local), so a local backend's files stay
-    # out of the deployed buckets. Rows keep the plain name; empty when deployed.
+    # out of the deployed buckets. Rows keep the plain name; ignored on the Storage project's own database.
     storage_bucket_suffix: str = ""
 
     # Optional tool integrations — all disabled when empty.
@@ -211,6 +213,29 @@ class Settings(BaseSettings):
     @property
     def storage_enabled(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_key)
+
+    @property
+    def storage_project(self) -> str:
+        """The Supabase project ref Storage lives in; empty when SUPABASE_URL is not a hosted project."""
+        host = urlparse(self.supabase_url).hostname or ""
+        return host.removesuffix(".supabase.co") if host.endswith(".supabase.co") else ""
+
+    @property
+    def database_in_storage_project(self) -> bool:
+        """Whether DATABASE_URL is the Storage project's own database, direct or through its pooler."""
+        ref = self.storage_project
+        if not ref:
+            return False
+        try:
+            info = conninfo_to_dict(self.database_url)
+        except Exception:  # noqa: BLE001 - a malformed DSN is simply not that project
+            return False
+        return info.get("host") == f"db.{ref}.supabase.co" or (info.get("user") or "").endswith(f".{ref}")
+
+    @property
+    def bucket_suffix(self) -> str:
+        """storage_bucket_suffix, except on the Storage project's own database, whose rows name the plain buckets."""
+        return "" if self.database_in_storage_project else self.storage_bucket_suffix
 
     @property
     def origins(self) -> list[str]:

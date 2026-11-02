@@ -145,7 +145,8 @@ machine then writes straight into the database the deployed app serves.
 `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` are not environment-scoped, so `STORAGE_BUCKET_SUFFIX`
 (`-local` in docker-compose and `.env.example`) sends a local backend's files to
 `org-vault-local`, `source-archive-local` and `staff-sources-local`; rows keep the plain
-bucket name. `ENV=staging` clears it, since the staging rows name the deployed buckets.
+bucket name. It is ignored on the Storage project's own database (staging, deployed, and
+`make staff-source`/`client-docs ENV=staging`), since those rows name the plain buckets.
 A backend with no suffix on a database outside the Storage project warns at boot.
 
 **`STAGING_DB_*` are local-tooling variables only.** The backend itself reads

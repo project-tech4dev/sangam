@@ -82,7 +82,7 @@ def _client() -> httpx.AsyncClient:
 
 def _bucket(bucket: str) -> str:
     """The bucket's real name in Storage; rows and callers only ever see the plain one."""
-    return bucket + get_settings().storage_bucket_suffix
+    return bucket + get_settings().bucket_suffix
 
 
 def qualify(bucket: str, key: str) -> str:
