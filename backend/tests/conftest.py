@@ -24,6 +24,12 @@ class _SentinelPool:
         raise AssertionError("unit test used the pool — monkeypatch the repository instead")
 
 
+@pytest.fixture(autouse=True)
+def _plain_buckets(monkeypatch):
+    """A shell's STORAGE_BUCKET_SUFFIX would rename every bucket a test expects."""
+    monkeypatch.delenv("STORAGE_BUCKET_SUFFIX", raising=False)
+
+
 def make_app(*routers) -> FastAPI:
     app = FastAPI()
     for router in routers:

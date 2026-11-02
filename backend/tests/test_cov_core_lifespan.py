@@ -258,14 +258,15 @@ async def test_no_flush_when_no_agent_was_built(boot, monkeypatch):
 
 
 LOCAL_DB = "postgresql://sangam:sangam@localhost:5433/sangam"
-STAGING_DB = "postgresql://postgres.proj:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres"
+POOLER_DB = "postgresql://postgres.proj:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres"
 
 
 @pytest.mark.parametrize("database_url,suffix,warns", [
     (LOCAL_DB, "", True),
     (LOCAL_DB, "-local", False),
-    (STAGING_DB, "", False),
-    ("host=aws-0.pooler.supabase.com user=postgres.proj dbname=postgres", "", False),
+    (POOLER_DB, "", False),
+    ("host=db.proj.supabase.co user=postgres dbname=postgres", "", False),
+    ("postgresql://proj:proj@localhost:5433/proj", "", True),
 ])
 def test_warns_when_a_local_database_shares_the_deployed_buckets(caplog, database_url, suffix, warns):
     settings = Settings(supabase_url="https://proj.supabase.co", supabase_service_key="svc",
@@ -277,5 +278,5 @@ def test_warns_when_a_local_database_shares_the_deployed_buckets(caplog, databas
 
 def test_no_warning_without_storage(caplog):
     with caplog.at_level(logging.WARNING):
-        ls._warn_on_shared_storage(Settings(database_url=LOCAL_DB))
+        ls._warn_on_shared_storage(Settings(database_url=LOCAL_DB, supabase_url="", supabase_service_key=""))
     assert caplog.text == ""

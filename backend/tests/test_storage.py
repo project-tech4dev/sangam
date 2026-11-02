@@ -338,6 +338,17 @@ class TestBucketSuffix:
         await storage.trash("org-vault", ["3/a.pdf"])
         assert [json.loads(r.content)["bucketId"] for r in seen] == ["source-archive-local", "org-vault-local"]
 
+    @pytest.mark.parametrize("database_url,suffix", [
+        ("postgresql://sangam:sangam@localhost:5433/sangam", "-local"),
+        ("postgresql://postgres.proj:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres", ""),
+        ("host=db.proj.supabase.co user=postgres dbname=postgres", ""),
+        ("postgresql://postgres.other:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres", "-local"),
+    ])
+    def test_the_storage_projects_own_database_keeps_the_plain_buckets(self, database_url, suffix):
+        """Staging rows name the plain buckets, so a script on that database ignores a -local from .env."""
+        settings = Settings(**ENABLED, database_url=database_url, storage_bucket_suffix="-local")
+        assert settings.bucket_suffix == suffix
+
     def test_the_row_keeps_the_plain_name(self, suffixed):
         assert storage.qualify("org-vault", "3/a.pdf") == "org-vault/3/a.pdf"
         assert storage.split("org-vault/3/a.pdf") == ("org-vault", "3/a.pdf")
