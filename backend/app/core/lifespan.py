@@ -222,7 +222,7 @@ def build_lifespan(settings: Settings | None = None):
 
 def _warn_on_shared_storage(settings: Settings) -> None:
     """Storage is one global project: a backend on another database writes into the deployed buckets."""
-    if settings.storage_enabled and not settings.bucket_suffix and not settings.database_in_storage_project:
+    if settings.storage_enabled and not settings.storage_bucket_suffix and not settings.database_in_storage_project:
         logger.warning(
             "Storage is Supabase project %s but the database is not, so files land in the deployed buckets "
             "while rows stay here. Set STORAGE_BUCKET_SUFFIX (e.g. -local) to use separate buckets.",
