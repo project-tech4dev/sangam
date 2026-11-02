@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     # access token; empty keeps the single seeded dev user.
     supabase_url: str = ""
     supabase_service_key: str = ""
+    # Appended to every bucket name on the wire (`-local` → org-vault-local), so a local backend's files stay
+    # out of the deployed buckets. Rows keep the plain name; empty when deployed.
+    storage_bucket_suffix: str = ""
 
     # Optional tool integrations — all disabled when empty.
     tavily_api_key: str = ""
