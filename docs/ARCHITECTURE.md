@@ -191,7 +191,7 @@ and [writing a migration](../openwiki/workflows/writing-a-migration.md).
   migrated by hand after a backup.
 - **Provenance on every scraped or extracted table** (`source_url`, `source_name`, `fetched_at`, `content_hash`,
   `extractor_version`): every field traces to a source.
-- **Storage is global, not per environment**: a local backend still writes to the cloud bucket.
+- **Storage is one Supabase project**: a local backend keeps its files apart only through `STORAGE_BUCKET_SUFFIX` (`-local` buckets).
 - `proposals` exists but nothing uses it; proposals live in the browser.
 
 ## 8. Auth, roles and RLS

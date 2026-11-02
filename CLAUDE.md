@@ -141,11 +141,12 @@ and, with `make up ENV=staging`, the local stack itself. The containers stay you
 only the data is shared. Think before using that one: a research run from your
 machine then writes straight into the database the deployed app serves.
 
-**Supabase Storage is global, so the two halves of a document can disagree.**
-`SUPABASE_URL`/`SUPABASE_SERVICE_KEY` are not environment-scoped: with the backend
-on the local Postgres, `fetch_document` still archives the file to the cloud bucket,
-so the `documents` row is local and the object it names is not. Running
-`ENV=staging` puts both in the same place.
+**Supabase Storage is one project, so a local backend gets its own buckets.**
+`SUPABASE_URL`/`SUPABASE_SERVICE_KEY` are not environment-scoped, so `STORAGE_BUCKET_SUFFIX`
+(`-local` in docker-compose and `.env.example`) sends a local backend's files to
+`org-vault-local`, `source-archive-local` and `staff-sources-local`; rows keep the plain
+bucket name. `ENV=staging` clears it, since the staging rows name the deployed buckets.
+A backend with no suffix on a database outside the Storage project warns at boot.
 
 **`STAGING_DB_*` are local-tooling variables only.** The backend itself reads
 `DATABASE_URL` (`backend/app/core/config.py`). Setting `STAGING_DB_*` on a deployed host does
