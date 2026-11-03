@@ -196,6 +196,46 @@ class TestRecordingAnUpload:
         assert response.status_code == 415
         assert removed == [("org-vault", ["3/abc-accounts.pdf"])]
 
+    @pytest.mark.parametrize("head,status", [(b"MZ\x90\x00", 415), (b"%PDF-", 201)])
+    async def test_a_file_just_under_the_buckets_limit_is_still_checked(
+        self, client_for, monkeypatch, storage_on, head, status
+    ):
+        """The bucket takes 50 MB; a file the check would not read could pass as any type."""
+        member(monkeypatch, 3)
+        data = head + b"\0" * (50 * 1024 * 1024 - 1 - len(head))
+        removed, captured = [], {}
+
+        async def download(bucket, key, max_bytes=0):
+            return data if len(data) <= max_bytes else None
+
+        async def fake_insert(pool, **kwargs):
+            captured.update(kwargs)
+            return ROW
+
+        monkeypatch.setattr(f"{ROUTE}.storage.stat", lambda b, k: _async({"name": "x"}))
+        monkeypatch.setattr(f"{ROUTE}.storage.download", download)
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: removed.append((b, k)) or _async(True))
+        monkeypatch.setattr(f"{ROUTE}._extract", lambda d, k: (None, documents_api.storage.content_hash(d)))
+        monkeypatch.setattr(f"{ROUTE}.repo.insert_upload", fake_insert)
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents", json=self.confirm())
+        assert response.status_code == status
+        if status == 415:
+            assert removed == [("org-vault", ["3/abc-accounts.pdf"])]
+        else:
+            assert len(captured["content_hash"]) == 64
+
+    async def test_a_file_that_cannot_be_read_back_is_not_recorded(self, client_for, monkeypatch, storage_on):
+        """An unchecked file gets no row; the object stays so the confirm can be retried."""
+        member(monkeypatch, 3)
+        monkeypatch.setattr(f"{ROUTE}.storage.stat", lambda b, k: _async({"name": "x"}))
+        monkeypatch.setattr(f"{ROUTE}.storage.download", lambda b, k, max_bytes=0: _async(None))
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: pytest.fail("not removed"))
+        monkeypatch.setattr(f"{ROUTE}.repo.insert_upload", lambda pool, **kw: pytest.fail("no row for it"))
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents", json=self.confirm())
+        assert response.status_code == 503
+
     async def test_a_file_already_recorded_is_never_judged_or_removed(self, client_for, monkeypatch, storage_on):
         """Confirming an existing row's path must not let a member delete its file outside the delete route."""
         member(monkeypatch, 3)

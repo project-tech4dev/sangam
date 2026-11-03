@@ -51,7 +51,7 @@ async def list_documents(
 # keeps its three-file set in one place; the org arrives in the body, which is
 # where a create's owner belongs.
 
-EXTRACT_LIMIT_BYTES = 20 * 1024 * 1024
+EXTRACT_LIMIT_BYTES = storage.MAX_ARCHIVE_BYTES  # the bucket's ceiling, so every upload is checked
 
 
 def _require_storage() -> None:
@@ -113,7 +113,9 @@ async def confirm_upload(
     # honest way to fill content_hash: the browser held the bytes, so anything
     # it told us about them would be a claim rather than a measurement.
     data = await storage.download(bucket, key, max_bytes=EXTRACT_LIMIT_BYTES)
-    if data is not None and not _bytes_match(data, key):
+    if data is None:
+        raise HTTPException(503, "the file could not be read back to check it; try again")
+    if not _bytes_match(data, key):
         await storage.remove(bucket, [key])
         raise HTTPException(415, "the file's contents do not match its type")
     content_md, content_hash = _extract(data, key)
@@ -152,13 +154,8 @@ def _bytes_match(data: bytes, key: str) -> bool:
     return data.startswith((b"\xff\xfe", b"\xfe\xff")) or b"\x00" not in data[:8192]
 
 
-def _extract(data: bytes | None, key: str) -> tuple[str | None, str | None]:
-    """(text, sha256) from the uploaded bytes. Both None when it could not be
-    read — the row is still worth having, and status stays 'received'.
-    """
-    if data is None:
-        logger.warning("uploaded object %s could not be read back; stored without text", key)
-        return None, None
+def _extract(data: bytes, key: str) -> tuple[str | None, str]:
+    """(text, sha256) from the uploaded bytes; text is None when it could not be read, and the row is still kept."""
     digest = storage.content_hash(data)
     name = key.lower()
     if name.endswith((".docx", ".xlsx")):
