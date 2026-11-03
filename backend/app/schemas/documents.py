@@ -35,6 +35,7 @@ class UploadUrlOut(BaseModel):
     upload_url: str
     storage_path: str = Field(description="pass this back to POST /api/documents")
     expires_in_seconds: int
+    content_type: str = Field(description="send this as the upload's Content-Type")
 
 
 class UploadConfirmIn(BaseModel):

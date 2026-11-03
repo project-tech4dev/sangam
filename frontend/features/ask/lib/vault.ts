@@ -11,6 +11,11 @@ export type Doc = {
   has_file?: boolean;
 };
 
+// The extensions the backend's storage.VAULT_TYPES takes, for a file picker's accept.
+export const VAULT_ACCEPT = ".pdf,.docx,.xlsx,.csv,.md,.txt,.png,.jpg,.jpeg,.webp";
+
+const detail = (res: Response) => res.json().then((body) => body?.detail, () => null);
+
 /* Upload in three steps, because the file never passes through the backend:
    ask for a signed URL, PUT straight to Supabase Storage, then tell the
    backend it landed. A Vercel Function caps its request body well below the
@@ -23,12 +28,13 @@ export async function uploadToVault(org: string, file: File): Promise<Doc> {
   });
   if (ask.status === 503) throw new Error("Document storage is not configured on this deployment.");
   if (ask.status === 403) throw new Error("You do not have upload access to this organisation.");
+  if (ask.status === 415) throw new Error(`This type of file cannot go in the Doc Vault: ${await detail(ask)}.`);
   if (!ask.ok) throw new Error(`Could not start the upload (${ask.status}).`);
-  const { upload_url, storage_path } = await ask.json();
+  const { upload_url, storage_path, content_type } = await ask.json();
 
   const put = await fetch(upload_url, {
     method: "PUT",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
+    headers: { "Content-Type": content_type },
     body: file,
   });
   if (!put.ok) throw new Error(`The file did not reach storage (${put.status}).`);
@@ -38,6 +44,7 @@ export async function uploadToVault(org: string, file: File): Promise<Doc> {
     headers: { ...(await authHeaders()), "Content-Type": "application/json" },
     body: JSON.stringify({ org, storage_path, title: file.name }),
   });
+  if (confirm.status === 415) throw new Error(`This file was refused: ${await detail(confirm)}.`);
   if (!confirm.ok) throw new Error(`Uploaded, but not recorded (${confirm.status}).`);
   return confirm.json();
 }
