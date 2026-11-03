@@ -104,6 +104,8 @@ async def confirm_upload(
     if key.partition("/")[0] != str(org_id):
         raise HTTPException(403, "storage_path belongs to a different organisation")
     _vault_type(key)
+    if await repo.upload_recorded(pool, storage_path=body.storage_path):
+        raise HTTPException(409, "that file is already recorded")
     if await storage.stat(bucket, key) is None:
         raise HTTPException(404, "no object at that storage_path — did the upload finish?")
 
@@ -147,7 +149,7 @@ def _bytes_match(data: bytes, key: str) -> bool:
         return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
     if ext in _SIGNATURES:
         return data.startswith(_SIGNATURES[ext])
-    return b"\x00" not in data[:8192]
+    return data.startswith((b"\xff\xfe", b"\xfe\xff")) or b"\x00" not in data[:8192]
 
 
 def _extract(data: bytes | None, key: str) -> tuple[str | None, str | None]:
