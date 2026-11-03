@@ -113,6 +113,10 @@ class TestAskingForAnUploadUrl:
 
 
 class TestRecordingAnUpload:
+    @pytest.fixture(autouse=True)
+    def _fresh_upload(self, monkeypatch):
+        monkeypatch.setattr(f"{ROUTE}.repo.upload_recorded", lambda pool, **kw: _async(False))
+
     def confirm(self, **over):
         return {"org": "kabil", "storage_path": "org-vault/3/abc-accounts.pdf", **over}
 
@@ -192,6 +196,16 @@ class TestRecordingAnUpload:
         assert response.status_code == 415
         assert removed == [("org-vault", ["3/abc-accounts.pdf"])]
 
+    async def test_a_file_already_recorded_is_never_judged_or_removed(self, client_for, monkeypatch, storage_on):
+        """Confirming an existing row's path must not let a member delete its file outside the delete route."""
+        member(monkeypatch, 3)
+        monkeypatch.setattr(f"{ROUTE}.repo.upload_recorded", lambda pool, **kw: _async(True))
+        monkeypatch.setattr(f"{ROUTE}.storage.download", lambda b, k, max_bytes=0: pytest.fail("not read"))
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: pytest.fail("not removed"))
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents", json=self.confirm())
+        assert response.status_code == 409
+
     @pytest.mark.parametrize("key,data,ok", [
         ("3/a.pdf", b"%PDF-1.7", True),
         ("3/a.docx", b"PK\x03\x04rest", True),
@@ -202,6 +216,7 @@ class TestRecordingAnUpload:
         ("3/a.webp", b"RIFF\x00\x00\x00\x00WAVE", False),
         ("3/a.csv", b"name,city\nA,Pune\n", True),
         ("3/a.md", b"MZ\x90\x00\x03", False),
+        ("3/a.txt", "name\tcity".encode("utf-16"), True),
     ])
     def test_the_bytes_must_be_the_type_the_name_says(self, key, data, ok):
         assert documents_api._bytes_match(data, key) is ok

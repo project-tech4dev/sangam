@@ -42,7 +42,7 @@ in the PR that ships a change, under its subsystem.
 - 2026-10-28 · #348 · `0051`: `GRANT DELETE ON documents` to `authenticated`, and `documents_delete`: staff only, and only a private, org-owned `vault_upload`.
 - 2026-10-28 · #350 · `0052`: `GRANT DELETE ON proposals`, `proposals_delete` and `documents_delete_draft`: a proposal and its `proposal_draft` rows, for the org's admins and stewards and staff.
 - 2026-10-30 · #353 · `0053`: `deleted_documents` and the `log_document_delete` trigger: every deleted `documents` row is kept, and the vault and proposal deletes move the file to `org-vault/trash/`.
-- 2026-11-02 · (unmerged) · `0054`: `org-vault` takes only PDF, Word, Excel, CSV, Markdown, text and PNG/JPEG/WebP files; the upload routes refuse any other extension (415), and a file whose bytes are not its type is refused at confirm and removed (#307 §4).
+- 2026-11-02 · #358 · `0054`: `org-vault` takes only PDF, Word, Excel, CSV, Markdown, text and PNG/JPEG/WebP files; the upload routes refuse any other extension (415), and a file whose bytes are not its type is refused at confirm and removed (#307 §4).
 
 Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · `0021` #89 · `0022` #74 ·
 `0023`–`0029` #92/#97 · `0030` #98 · `0032` #105 · `0035` #127 · `0036`–`0037` #100 · `0038` #130 ·

@@ -66,7 +66,11 @@ def _safe_name(name: str) -> str:
     # agent can never write outside the downloads folder.
     name = Path(name).name
     name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
-    return name[:120] or "download"
+    if len(name) > 120:
+        _, dot, ext = name.rpartition(".")
+        keep = f".{ext}" if dot and len(ext) <= 10 else ""
+        name = name[: 120 - len(keep)] + keep
+    return name or "download"
 
 
 def _disabled() -> bool:

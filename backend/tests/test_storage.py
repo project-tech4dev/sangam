@@ -125,6 +125,13 @@ def transport(monkeypatch, handler):
     return seen
 
 
+@pytest.mark.parametrize("name,ends", [("a" * 200 + ".pdf", ".pdf"), ("b" * 200 + ".docx", ".docx")])
+def test_a_long_name_is_cut_short_but_keeps_its_extension(name, ends):
+    """The vault reads a file's type from its key, so a 200-character report must still end in .pdf."""
+    key = storage.vault_key(3, name)
+    assert key.endswith(ends) and len(key.rsplit("/", 1)[1]) <= 160
+
+
 class TestArchiveKey:
     def test_two_sources_named_report_pdf_do_not_collide(self):
         """The bug this replaces: _safe_name flattens the URL to its filename,
