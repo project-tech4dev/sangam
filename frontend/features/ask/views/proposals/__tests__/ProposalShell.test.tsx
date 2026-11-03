@@ -15,6 +15,7 @@ const vault = vi.hoisted(() => ({ list: vi.fn(), upload: vi.fn() }));
 vi.mock("@/features/ask/lib/vault", () => ({
   listVault: (...a: unknown[]) => vault.list(...a),
   uploadToVault: (...a: unknown[]) => vault.upload(...a),
+  VAULT_ACCEPT: ".pdf,.docx,.xlsx,.csv,.md,.txt,.png,.jpg,.jpeg,.webp",
 }));
 // The chat is tested on its own; here it only hands the step its send function.
 const chat = vi.hoisted(() => ({ send: vi.fn(), ready: true }));
