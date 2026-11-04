@@ -647,7 +647,7 @@ def deletes(monkeypatch, held):
         return True
 
     monkeypatch.setattr(repo, "delete", delete)
-    monkeypatch.setattr(route.storage, "remove", remove)
+    monkeypatch.setattr(route.storage, "trash", remove)
     return calls
 
 
@@ -676,6 +676,6 @@ async def test_a_draft_path_outside_the_vault_is_never_removed(monkeypatch):
     async def remove(bucket, keys):
         raise AssertionError("must not reach storage")
 
-    monkeypatch.setattr(route.storage, "remove", remove)
+    monkeypatch.setattr(route.storage, "trash", remove)
     assert await route._remove_drafts(["source-archive/7/proposals/11/v1.docx"]) is False
     assert await route._remove_drafts(["org-vault/7/proposals/../12/v1.docx"]) is False
