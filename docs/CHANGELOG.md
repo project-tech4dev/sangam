@@ -105,6 +105,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-14 · `feat/scout-steward-staff-only` · Scout is for staff and stewards only: `require_scout` (403) on `/ingest` and `/api/ingest`; the sidebar link and `/import` are hidden from everyone else.
 - 2026-11-04 · (unmerged) · Promotion merges every identity finding, within a run and across runs: tags, aliases and fields on a second finding or an older run are no longer dropped (#308).
 - 2026-11-04 · (unmerged) · A re-run on the same day reads as unsaved again, so its new findings get their own Review & save; research is "saved" only when the save came after it (#222).
+- 2026-11-04 · (unmerged) · A programme's tags roll up to its funder or org as `secondary`; a described programme with no theme is refused at save unless a gap names it (#241).
 
 ## Funder Match and the taxonomy
 

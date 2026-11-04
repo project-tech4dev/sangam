@@ -967,10 +967,11 @@ async def write_funder_tag(conn: Any, funder_id: int, tag_id: int, *, note: str 
 TAG_TABLES = {"program_id": "program_tags", "org_id": "org_tags", "funder_id": "funder_tags"}
 
 
-async def write_tags(conn: Any, column: str, subject_id: int, rec: Any) -> tuple[int, list[str]]:
+async def write_tags(conn: Any, column: str, subject_id: int, rec: Any,
+                     role: str = "primary") -> tuple[int, list[str]]:
     """The record's taxonomy codes onto program_tags, org_tags or funder_tags. Insert-only, so a tag a person set
     stays; is_inferred, since research chose them. An invented code is dropped, never the save.
-    Returns (rows added, reasons a code was not written)."""
+    `secondary` is a programme's tag rolled up to its owner. Returns (rows added, reasons a code was not written)."""
     gate = GATE.get()
     if gate and gate.plan:
         return 0, []
@@ -989,9 +990,9 @@ async def write_tags(conn: Any, column: str, subject_id: int, rec: Any) -> tuple
                 continue
             cur = await conn.execute(
                 sql.SQL("INSERT INTO {t} ({c}, tag_id, role, is_inferred, tagged_by, note) "
-                        "VALUES (%s, %s, 'primary', true, %s, %s) ON CONFLICT DO NOTHING").format(
+                        "VALUES (%s, %s, %s, true, %s, %s) ON CONFLICT DO NOTHING").format(
                     t=sql.Identifier(TAG_TABLES[column]), c=sql.Identifier(column)),
-                (subject_id, row["id"], EXTRACTOR_TAGGER, rec.tag_note),
+                (subject_id, row["id"], role, EXTRACTOR_TAGGER, rec.tag_note),
             )
             added += cur.rowcount
     return added, reasons

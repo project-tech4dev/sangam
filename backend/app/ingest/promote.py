@@ -826,6 +826,11 @@ async def _write_program(
     )
     _count(report, "programs", status)
     await _write_tags(conn, "program_id", program_id, rec, f"programme {name!r}", report)
+    if program_id not in (None, UNWRITTEN):
+        # The Registry reads only the owner's tags; a code the programme refused is already reported.
+        added, _ = await write_tags(conn, owner.column, owner.id, rec, role="secondary")
+        if added:
+            report["written"].setdefault("tags", collections.Counter())["added"] += added
     return status, program_id
 
 
