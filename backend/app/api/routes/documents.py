@@ -129,9 +129,9 @@ async def confirm_upload(
     return DocumentOut.model_validate(row)
 
 
-_VAULT_NAMES = "PDF, Word (.docx), Excel (.xlsx), CSV, Markdown, text and PNG, JPEG or WebP images"
+_VAULT_NAMES = "PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, Markdown, text and PNG, JPEG or WebP images"
 _SIGNATURES: dict[str, bytes] = {
-    ".pdf": b"%PDF-", ".docx": b"PK\x03\x04", ".xlsx": b"PK\x03\x04",
+    ".pdf": b"%PDF-", ".docx": b"PK\x03\x04", ".xlsx": b"PK\x03\x04", ".pptx": b"PK\x03\x04",
     ".png": b"\x89PNG\r\n\x1a\n", ".jpg": b"\xff\xd8\xff", ".jpeg": b"\xff\xd8\xff",
 }
 
@@ -158,11 +158,16 @@ def _extract(data: bytes, key: str) -> tuple[str | None, str]:
     """(text, sha256) from the uploaded bytes; text is None when it could not be read, and the row is still kept."""
     digest = storage.content_hash(data)
     name = key.lower()
-    if name.endswith((".docx", ".xlsx")):
+    if name.endswith((".docx", ".xlsx", ".pptx")):
         from app.ingest import office
 
         try:
-            text = "\n\n".join(office.docx_paragraphs(data)) if name.endswith(".docx") else office.xlsx_markdown(data)
+            if name.endswith(".docx"):
+                text = "\n\n".join(office.docx_paragraphs(data))
+            elif name.endswith(".pptx"):
+                text = "\n\n".join(f"## Slide {n}\n{s}" for n, s in enumerate(office.pptx_slides(data), 1) if s)
+            else:
+                text = office.xlsx_markdown(data)
         except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
             logger.warning("no text from %s (%s: %s)", key, type(exc).__name__, exc)
             return None, digest

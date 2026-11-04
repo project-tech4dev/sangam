@@ -33,11 +33,12 @@ STAFF_SOURCES = "staff-sources"
 STAFF_SOURCES_MAX_BYTES = 100 * 1024 * 1024
 BUCKETS: tuple[str, ...] = (SOURCE_ARCHIVE, ORG_VAULT, STAFF_SOURCES)
 TRASH = "trash/"
-# What the Doc Vault takes, by extension, and the type it is stored as; 0054 holds org-vault to these.
+# What the Doc Vault takes, by extension, and the type it is stored as; 0055 holds org-vault to these.
 VAULT_TYPES: dict[str, str] = {
     ".pdf": "application/pdf",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ".csv": "text/csv",
     ".md": "text/markdown",
     ".txt": "text/plain",
