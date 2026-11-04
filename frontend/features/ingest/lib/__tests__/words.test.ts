@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kindLabel, pageOutcome, plainReason, profileHref, researchState } from "../words";
+import { kindLabel, pageOutcome, plainReason, profileHref, researchState, savedSinceResearch } from "../words";
 import type { ResearchRecord } from "../types";
 
 const record = (over: Partial<ResearchRecord> = {}): ResearchRecord => ({
@@ -23,6 +23,17 @@ describe("researchState", () => {
     expect(researchState(record({ resolved_org_id: 3 }))).toEqual({ label: "Saved", tag: "tag-accent-2" });
     expect(researchState(record({ saved_at: "2026-10-02" })).label).toBe("Saved");
     expect(researchState(record())).toEqual({ label: "Not saved", tag: "tag-neutral" });
+  });
+});
+
+describe("savedSinceResearch", () => {
+  it("is false once a same-day re-run rewrites the row after its save (#222)", () => {
+    const rerun = record({ researched_at: "2026-10-22T15:00:00Z", saved_at: "2026-10-22T09:00:00Z", resolved_org_id: 3 });
+    expect(savedSinceResearch(rerun)).toBe(false);
+    expect(researchState(rerun)).toEqual({ label: "New research, not saved", tag: "tag-neutral" });
+    expect(savedSinceResearch(record({ researched_at: "2026-10-22T09:00:00Z", saved_at: "2026-10-22T09:05:00Z" })))
+      .toBe(true);
+    expect(savedSinceResearch(record())).toBe(false);
   });
 });
 
