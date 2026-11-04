@@ -18,7 +18,7 @@ afterEach(() => {
 
 describe("uploadToVault", () => {
   it("asks for a signed URL, PUTs the file there, then records it", async () => {
-    reply(200, { upload_url: "https://storage/signed", storage_path: "kabil/accounts.pdf" });
+    reply(200, { upload_url: "https://storage/signed", storage_path: "kabil/accounts.pdf", content_type: "application/pdf" });
     reply(200);
     reply(201, { id: 9, title: "accounts.pdf" });
     await expect(uploadToVault("kabil", file)).resolves.toEqual({ id: 9, title: "accounts.pdf" });
@@ -32,12 +32,23 @@ describe("uploadToVault", () => {
     expect(JSON.parse(confirm![1].body)).toEqual({ org: "kabil", storage_path: "kabil/accounts.pdf", title: "accounts.pdf" });
   });
 
-  it("sends an untyped file as octet-stream", async () => {
-    reply(200, { upload_url: "u", storage_path: "p" });
+  it("uploads with the type the backend names, not the browser's guess", async () => {
+    reply(200, { upload_url: "u", storage_path: "p", content_type: "text/markdown" });
     reply(200);
     reply(200, {});
-    await uploadToVault("kabil", new File(["x"], "notes"));
-    expect(fetchMock.mock.calls[1]![1].headers["Content-Type"]).toBe("application/octet-stream");
+    await uploadToVault("kabil", new File(["# x"], "notes.md"));
+    expect(fetchMock.mock.calls[1]![1].headers["Content-Type"]).toBe("text/markdown");
+  });
+
+  it("says why a file type is refused, before the upload or after it", async () => {
+    reply(415, { detail: "the Doc Vault takes PDF files" });
+    await expect(uploadToVault("kabil", file)).rejects.toThrow(
+      "This type of file cannot go in the Doc Vault: the Doc Vault takes PDF files.");
+    reply(200, { upload_url: "u", storage_path: "p", content_type: "application/pdf" });
+    reply(200);
+    reply(415, { detail: "the file's contents do not match its type" });
+    await expect(uploadToVault("kabil", file)).rejects.toThrow(
+      "This file was refused: the file's contents do not match its type.");
   });
 
   it.each([

@@ -51,7 +51,7 @@ async def list_documents(
 # keeps its three-file set in one place; the org arrives in the body, which is
 # where a create's owner belongs.
 
-EXTRACT_LIMIT_BYTES = 20 * 1024 * 1024
+EXTRACT_LIMIT_BYTES = storage.MAX_ARCHIVE_BYTES  # the bucket's ceiling, so every upload is checked
 
 
 def _require_storage() -> None:
@@ -66,6 +66,7 @@ async def create_upload_url(
     user_id: UUID = Depends(require_user),
 ) -> UploadUrlOut:
     _require_storage()
+    content_type = _vault_type(body.filename)
     org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=False)
     if org_id is None:
         # Deliberately the same answer for "no such org" and "not your org":
@@ -79,6 +80,7 @@ async def create_upload_url(
         upload_url=url,
         storage_path=storage.qualify(storage.ORG_VAULT, key),
         expires_in_seconds=storage.UPLOAD_URL_TTL_SECONDS,
+        content_type=content_type,
     )
 
 
@@ -101,6 +103,9 @@ async def confirm_upload(
     # row is not allowed to claim a file sitting in someone else's folder.
     if key.partition("/")[0] != str(org_id):
         raise HTTPException(403, "storage_path belongs to a different organisation")
+    _vault_type(key)
+    if await repo.upload_recorded(pool, storage_path=body.storage_path):
+        raise HTTPException(409, "that file is already recorded")
     if await storage.stat(bucket, key) is None:
         raise HTTPException(404, "no object at that storage_path — did the upload finish?")
 
@@ -108,6 +113,11 @@ async def confirm_upload(
     # honest way to fill content_hash: the browser held the bytes, so anything
     # it told us about them would be a claim rather than a measurement.
     data = await storage.download(bucket, key, max_bytes=EXTRACT_LIMIT_BYTES)
+    if data is None:
+        raise HTTPException(503, "the file could not be read back to check it; try again")
+    if not _bytes_match(data, key):
+        await storage.remove(bucket, [key])
+        raise HTTPException(415, "the file's contents do not match its type")
     content_md, content_hash = _extract(data, key)
     if content_md:
         content_md = content_md.replace("\x00", "") or None  # some PDFs' text carries NULs, which Postgres refuses
@@ -119,13 +129,33 @@ async def confirm_upload(
     return DocumentOut.model_validate(row)
 
 
-def _extract(data: bytes | None, key: str) -> tuple[str | None, str | None]:
-    """(text, sha256) from the uploaded bytes. Both None when it could not be
-    read — the row is still worth having, and status stays 'received'.
-    """
-    if data is None:
-        logger.warning("uploaded object %s could not be read back; stored without text", key)
-        return None, None
+_VAULT_NAMES = "PDF, Word (.docx), Excel (.xlsx), CSV, Markdown, text and PNG, JPEG or WebP images"
+_SIGNATURES: dict[str, bytes] = {
+    ".pdf": b"%PDF-", ".docx": b"PK\x03\x04", ".xlsx": b"PK\x03\x04",
+    ".png": b"\x89PNG\r\n\x1a\n", ".jpg": b"\xff\xd8\xff", ".jpeg": b"\xff\xd8\xff",
+}
+
+
+def _vault_type(name: str) -> str:
+    """The stored type for a Doc Vault file name; 415 for anything the vault cannot read."""
+    content_type = storage.VAULT_TYPES.get(Path(name).suffix.lower())
+    if content_type is None:
+        raise HTTPException(415, f"the Doc Vault takes {_VAULT_NAMES} files")
+    return content_type
+
+
+def _bytes_match(data: bytes, key: str) -> bool:
+    """Whether the bytes are what the extension says: a renamed .exe is not a PDF."""
+    ext = Path(key).suffix.lower()
+    if ext == ".webp":
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    if ext in _SIGNATURES:
+        return data.startswith(_SIGNATURES[ext])
+    return data.startswith((b"\xff\xfe", b"\xfe\xff")) or b"\x00" not in data[:8192]
+
+
+def _extract(data: bytes, key: str) -> tuple[str | None, str]:
+    """(text, sha256) from the uploaded bytes; text is None when it could not be read, and the row is still kept."""
     digest = storage.content_hash(data)
     name = key.lower()
     if name.endswith((".docx", ".xlsx")):

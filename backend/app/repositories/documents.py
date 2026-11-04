@@ -71,6 +71,15 @@ async def org_id_for_member(
     return row["id"] if row else None
 
 
+async def upload_recorded(pool: AsyncConnectionPool, *, storage_path: str) -> bool:
+    """Whether a documents row already names this file."""
+    async with pool.connection() as conn:
+        row = await (
+            await conn.execute("SELECT 1 FROM documents WHERE storage_path = %(p)s LIMIT 1", {"p": storage_path})
+        ).fetchone()
+    return row is not None
+
+
 async def insert_upload(
     pool: AsyncConnectionPool, *, org_id: int, uploaded_by, title: str | None,
     doc_type: str, storage_path: str, content_hash: str | None, content_md: str | None,
