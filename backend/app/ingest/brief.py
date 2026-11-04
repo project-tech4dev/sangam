@@ -239,9 +239,21 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
         for f in findings:
             mine.setdefault(fact_key(f), []).append(f)
         for key, group in mine.items():
-            if key not in by_key or _strength(group) >= _strength(by_key[key]):
+            if key not in by_key:
                 by_key[key] = group
+                continue
+            win, lose = (group, by_key[key]) if _strength(group) >= _strength(by_key[key]) else (by_key[key], group)
+            # Promotion unions identity lists, so a weaker copy of the page stays while it adds a tag or alias.
+            by_key[key] = win + [f for f in lose if key[0] in _UNIONED_IDENTITY and _adds(f, win)]
     return [f for group in by_key.values() for f in group]
+
+
+_UNIONED_IDENTITY = frozenset({"identity", "org_identity"})
+_UNIONED_FIELDS = ("themes", "populations", "lenses", "aliases")
+
+
+def _adds(f: dict[str, Any], kept: list[dict[str, Any]]) -> bool:
+    return any(all(v not in (g.get(k) or []) for g in kept) for k in _UNIONED_FIELDS for v in f.get(k) or [])
 
 
 # A fact's typed fields ride in an HTML comment the page strips; "--" is escaped so no value can close it.

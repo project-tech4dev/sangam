@@ -119,6 +119,14 @@ class TestEveryRunsIdentityReachesPromotion:
         assert merged == [older, newer]
         assert org_from({**ROW, "slug": "pesch"}, merged).themes == ["education"]
 
+    def test_a_weaker_reread_of_the_same_page_still_brings_its_new_tags(self):
+        older = org("https://pesch.org", "org_document", "evidenced", name="PESCH")
+        newer = org("https://pesch.org", "org_document", "claimed", name="PESCH",
+                    themes=["education"], tag_note="about: 'runs schools'")
+        merged = brief.merge_findings([{"findings": [older]}, {"findings": [newer]}])
+        assert merged == [older, newer]
+        assert org_from({**ROW, "slug": "pesch"}, merged).themes == ["education"]
+
     def test_the_same_page_read_again_is_still_one_fact(self):
         weak = funder(ABOUT, name="New", confidence="low")
         strong = funder(ABOUT, name="Old", confidence="high")

@@ -82,7 +82,8 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
 - **The brief is the record** (`source-archive/entities/<slug>.md`, no table). Every run merges into it by `fact_key`; the
   later run wins unless the earlier source is stronger. Facts no column can hold stay in the brief only. Promotion reads
   the merged brief, not one research row, and every fact ends in a stated outcome — nothing is dropped silently.
-- **Identity is merged, never picked.** An identity fact is keyed by its source page, so every run's survives, and
+- **Identity is merged, never picked.** An identity fact is keyed by its source page, so every run's survives (a weaker re-read of
+  the same page too, while it adds a tag or alias), and
   promotion folds them into one record (`promote.merged_identity`): lists unioned, each other field from the strongest
   source stating it, at most three themes, and every value or theme left out named in `reasons`. An org record takes the
   tier of the weakest source it carries, so a claimed value never rides in on an evidenced one.
