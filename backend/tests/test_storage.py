@@ -307,6 +307,59 @@ class TestTrash:
         assert seen == []
 
 
+class TestBucketSuffix:
+    """A local backend's files go to its own buckets; rows and callers keep the plain name."""
+
+    @pytest.fixture
+    def suffixed(self, monkeypatch):
+        monkeypatch.setattr(storage, "get_settings", lambda: Settings(**ENABLED, storage_bucket_suffix="-local"))
+        monkeypatch.setattr(storage, "_warned", False)
+
+    async def test_every_call_names_the_suffixed_bucket(self, suffixed, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"signedURL": "/s", "url": "/u"}))
+        assert await storage.upload("org-vault", "3/a.pdf", b"x", "application/pdf") == "3/a.pdf"
+        await storage.download("org-vault", "3/a.pdf")
+        await storage.signed_url("org-vault", "3/a.pdf")
+        await storage.signed_upload_url("org-vault", "3/a.pdf")
+        await storage.remove("org-vault", ["3/a.pdf"])
+        await storage.list_prefix("org-vault", "3")
+        assert [r.url.path for r in seen] == [
+            "/storage/v1/object/org-vault-local/3/a.pdf",
+            "/storage/v1/object/org-vault-local/3/a.pdf",
+            "/storage/v1/object/sign/org-vault-local/3/a.pdf",
+            "/storage/v1/object/upload/sign/org-vault-local/3/a.pdf",
+            "/storage/v1/object/org-vault-local",
+            "/storage/v1/object/list/org-vault-local",
+        ]
+
+    async def test_a_move_and_the_trash_name_the_suffixed_bucket(self, suffixed, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={}))
+        await storage.move("source-archive", "a", "b")
+        await storage.trash("org-vault", ["3/a.pdf"])
+        assert [json.loads(r.content)["bucketId"] for r in seen] == ["source-archive-local", "org-vault-local"]
+
+    async def test_a_failure_logs_the_bucket_actually_asked(self, suffixed, monkeypatch, caplog):
+        transport(monkeypatch, lambda r: httpx.Response(500))
+        assert await storage.download("org-vault", "3/a.pdf") is None
+        assert "reading org-vault-local/3/a.pdf failed" in caplog.text
+
+    @pytest.mark.parametrize("database_url,suffix", [
+        ("postgresql://sangam:sangam@localhost:5433/sangam", "-local"),
+        ("postgresql://postgres.proj:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres", ""),
+        ("host=db.proj.supabase.co user=postgres dbname=postgres", ""),
+        ("postgresql://postgres.other:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres", "-local"),
+    ])
+    def test_the_storage_projects_own_database_keeps_the_plain_buckets(self, database_url, suffix):
+        """Staging rows name the plain buckets, so a script on that database ignores a -local from .env."""
+        settings = Settings(**ENABLED, database_url=database_url, storage_bucket_suffix="-local")
+        assert settings.bucket_suffix == suffix
+
+    def test_the_row_keeps_the_plain_name(self, suffixed):
+        assert storage.qualify("org-vault", "3/a.pdf") == "org-vault/3/a.pdf"
+        assert storage.split("org-vault/3/a.pdf") == ("org-vault", "3/a.pdf")
+        assert storage.split("org-vault-local/3/a.pdf") is None
+
+
 # --- the documents row, against a real Postgres ----------------------------
 
 @pytest.mark.integration

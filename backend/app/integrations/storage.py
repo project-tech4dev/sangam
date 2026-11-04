@@ -80,6 +80,11 @@ def _client() -> httpx.AsyncClient:
     )
 
 
+def _bucket(bucket: str) -> str:
+    """The bucket's real name in Storage; rows and callers only ever see the plain one."""
+    return bucket + get_settings().bucket_suffix
+
+
 def qualify(bucket: str, key: str) -> str:
     """What goes in `documents.storage_path`: the bucket and the key together.
 
@@ -230,12 +235,12 @@ async def move(bucket: str, source: str, destination: str) -> bool:
         async with _client() as client:
             response = await client.post(
                 "/object/move",
-                json={"bucketId": bucket, "sourceKey": source, "destinationKey": destination},
+                json={"bucketId": _bucket(bucket), "sourceKey": source, "destinationKey": destination},
             )
         response.raise_for_status()
     except httpx.HTTPError as exc:
         logger.warning(
-            "moving %s/%s to %s failed (%s: %s)", bucket, source, destination,
+            "moving %s/%s to %s failed (%s: %s)", _bucket(bucket), source, destination,
             type(exc).__name__, exc,
         )
         return False
@@ -248,10 +253,10 @@ async def remove(bucket: str, keys: list[str]) -> bool:
         return False
     try:
         async with _client() as client:
-            response = await client.request("DELETE", f"/object/{bucket}", json={"prefixes": keys})
+            response = await client.request("DELETE", f"/object/{_bucket(bucket)}", json={"prefixes": keys})
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.warning("removing %s from %s failed (%s: %s)", keys, bucket, type(exc).__name__, exc)
+        logger.warning("removing %s from %s failed (%s: %s)", keys, _bucket(bucket), type(exc).__name__, exc)
         return False
     return True
 
@@ -272,10 +277,10 @@ async def trash(bucket: str, keys: list[str]) -> bool:
     try:
         async with _client() as client:
             for key in keys:
-                body = {"bucketId": bucket, "sourceKey": key, "destinationKey": trash_key(key)}
+                body = {"bucketId": _bucket(bucket), "sourceKey": key, "destinationKey": trash_key(key)}
                 response = await client.post("/object/move", json=body)
                 if _is_duplicate(response):
-                    (await client.request("DELETE", f"/object/{bucket}", json={"prefixes": [trash_key(key)]})
+                    (await client.request("DELETE", f"/object/{_bucket(bucket)}", json={"prefixes": [trash_key(key)]})
                      ).raise_for_status()
                     response = await client.post("/object/move", json=body)
                 if _is_missing(response):
@@ -283,7 +288,7 @@ async def trash(bucket: str, keys: list[str]) -> bool:
                 response.raise_for_status()
                 moved.append(key)
     except httpx.HTTPError as exc:
-        logger.warning("moving %s in %s to the trash failed (%s: %s)", keys, bucket, type(exc).__name__, exc)
+        logger.warning("moving %s in %s to the trash failed (%s: %s)", keys, _bucket(bucket), type(exc).__name__, exc)
         for key in moved:
             await move(bucket, trash_key(key), key)
         return False
@@ -351,7 +356,7 @@ async def upload(
     try:
         async with _client() as client:
             response = await client.post(
-                f"/object/{bucket}/{key}",
+                f"/object/{_bucket(bucket)}/{key}",
                 content=data,
                 headers={"Content-Type": content_type or "application/octet-stream",
                          "x-upsert": "true" if replace else "false"},
@@ -360,7 +365,7 @@ async def upload(
             return key
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.warning("archiving %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        logger.warning("archiving %s/%s failed (%s: %s)", _bucket(bucket), key, type(exc).__name__, exc)
         return None
     return key
 
@@ -372,14 +377,14 @@ async def list_prefix(bucket: str, prefix: str, limit: int = 20) -> list[dict[st
     try:
         async with _client() as client:
             response = await client.post(
-                f"/object/list/{bucket}",
+                f"/object/list/{_bucket(bucket)}",
                 json={"prefix": prefix, "limit": limit,
                       "sortBy": {"column": "created_at", "order": "desc"}},
             )
         response.raise_for_status()
         found = response.json()
     except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("listing %s/%s failed (%s: %s)", bucket, prefix, type(exc).__name__, exc)
+        logger.warning("listing %s/%s failed (%s: %s)", _bucket(bucket), prefix, type(exc).__name__, exc)
         return []
     return found if isinstance(found, list) else []
 
@@ -416,7 +421,7 @@ async def list_all(bucket: str, prefix: str = "") -> list[dict[str, Any]]:
                 offset = 0
                 while True:
                     response = await client.post(
-                        f"/object/list/{bucket}",
+                        f"/object/list/{_bucket(bucket)}",
                         json={"prefix": folder, "limit": LIST_PAGE, "offset": offset,
                               "sortBy": {"column": "name", "order": "asc"}},
                     )
@@ -436,7 +441,7 @@ async def list_all(bucket: str, prefix: str = "") -> list[dict[str, Any]]:
                         break
                     offset += LIST_PAGE
     except (httpx.HTTPError, ValueError, KeyError) as exc:
-        logger.warning("listing %s/%s failed (%s: %s)", bucket, prefix, type(exc).__name__, exc)
+        logger.warning("listing %s/%s failed (%s: %s)", _bucket(bucket), prefix, type(exc).__name__, exc)
         return []
     return sorted(files, key=lambda f: f["key"])[:LIST_MAX_FILES]
 
@@ -462,11 +467,11 @@ async def signed_url(bucket: str, key: str, ttl: int = SIGNED_URL_TTL_SECONDS) -
         return None
     try:
         async with _client() as client:
-            response = await client.post(f"/object/sign/{bucket}/{key}", json={"expiresIn": ttl})
+            response = await client.post(f"/object/sign/{_bucket(bucket)}/{key}", json={"expiresIn": ttl})
         response.raise_for_status()
         path = response.json().get("signedURL")
     except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("signing %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        logger.warning("signing %s/%s failed (%s: %s)", _bucket(bucket), key, type(exc).__name__, exc)
         return None
     if not path:
         return None
@@ -503,11 +508,11 @@ async def signed_upload_url(bucket: str, key: str) -> str | None:
         return None
     try:
         async with _client() as client:
-            response = await client.post(f"/object/upload/sign/{bucket}/{key}")
+            response = await client.post(f"/object/upload/sign/{_bucket(bucket)}/{key}")
         response.raise_for_status()
         path = response.json().get("url")
     except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("signing upload %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        logger.warning("signing upload %s/%s failed (%s: %s)", _bucket(bucket), key, type(exc).__name__, exc)
         return None
     if not path:
         return None
@@ -522,13 +527,13 @@ async def download(bucket: str, key: str, max_bytes: int = MAX_ARCHIVE_BYTES) ->
         return None
     try:
         async with _client() as client:
-            response = await client.get(f"/object/{bucket}/{key}")
+            response = await client.get(f"/object/{_bucket(bucket)}/{key}")
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        logger.warning("reading %s/%s failed (%s: %s)", bucket, key, type(exc).__name__, exc)
+        logger.warning("reading %s/%s failed (%s: %s)", _bucket(bucket), key, type(exc).__name__, exc)
         return None
     if len(response.content) > max_bytes:
-        logger.warning("not reading %s/%s: %d bytes", bucket, key, len(response.content))
+        logger.warning("not reading %s/%s: %d bytes", _bucket(bucket), key, len(response.content))
         return None
     return response.content
 
@@ -538,7 +543,7 @@ async def read(bucket: str, key: str) -> bytes | None:
     if _disabled():
         return None
     async with _client() as client:
-        response = await client.get(f"/object/{bucket}/{key}")
+        response = await client.get(f"/object/{_bucket(bucket)}/{key}")
     # Storage answers a missing object with 400 and a "not_found" body as well as with 404.
     if response.status_code == 404 or (response.status_code == 400 and "not_found" in response.text):
         return None
