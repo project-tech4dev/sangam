@@ -556,6 +556,17 @@ and `auth-headers.server.ts` (server components). REST routes already run as the
 still use the owner pool. The plan is `features-plans/access/auth-plan.md`; its Phase 2 (email-domain
 matching, join requests) is not built.
 
+## Before opening a pull request
+
+Run all three on the branch's diff before `gh pr create`, fix what they find, and say in the PR body
+that they ran:
+
+1. **Code review**: `/code-review`.
+2. **Security review**: `/security-review`.
+3. **Design system sync**: if the PR touches `frontend/components/`, `globals.css` or a screen the UI kit
+   recreates, update "Sangam Design System v2" in the same PR (`docs/DESIGN_SYSTEM.md`). Otherwise
+   say so in the PR body.
+
 ## Deployment
 
 Docker is local development only. Deployed, the stack splits across three hosts:
