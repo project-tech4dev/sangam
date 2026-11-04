@@ -222,6 +222,17 @@ async def test_ticking_another_orgs_file_is_422(api, held, monkeypatch):
     assert kept.status_code == 200 and kept.json()["work"]["sources"] == [41]
 
 
+async def test_a_ticked_file_deleted_since_drops_out_and_others_still_tick(api, held, monkeypatch):
+    async def org_document_ids(pool, org_id, ids):
+        return {41, 43}
+
+    monkeypatch.setattr(documents_repo, "org_document_ids", org_document_ids)
+    held["row"]["work"]["sources"] = [41, 42]
+    async with api as c:
+        r = await c.patch("/api/proposals/11/work", json={"set": {"sources": [41, 42, 43]}})
+    assert r.status_code == 200 and r.json()["work"]["sources"] == [41, 43]
+
+
 async def test_advance_says_what_is_missing_then_moves_on(api, held):
     async with api as c:
         early = await c.post("/api/proposals/11/advance")

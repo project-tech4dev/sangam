@@ -28,8 +28,8 @@ BUCKETS = ("source-archive", "org-vault")
 
 
 def test_the_vault_bucket_takes_exactly_the_types_the_routes_allow():
-    """0054 and storage.VAULT_TYPES are one list written twice; a type in only one is refused somewhere."""
-    sql = (MIGRATION.parent / "0054_org_vault_mime_types.sql").read_text(encoding="utf-8")
+    """0055 and storage.VAULT_TYPES are one list written twice; a type in only one is refused somewhere."""
+    sql = (MIGRATION.parent / "0055_org_vault_pptx.sql").read_text(encoding="utf-8")
     listed = set(re.findall(r"'([a-z]+/[a-z0-9.+-]+)'", sql))
     assert listed == set(storage.VAULT_TYPES.values())
 
