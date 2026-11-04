@@ -50,6 +50,7 @@ between pages.
 | 4 | Order | Unchanged: CSOs first, then funders, each A→Z. |
 | 5 | Search delay | Ask the server ~250 ms after the last keystroke; a reply for an older search is dropped. |
 | 6 | Paging | Page numbers with Previous / Next buttons, 25 rows per page (one constant). A filter or search change goes back to page 1. |
+| 7 | Paging pattern | Reuse the repo's existing pattern: `PageParams` (`limit` / `offset`, `backend/app/api/deps.py`) in, `Page[T]` (`items`, `total`, `limit`, `offset`, `backend/app/schemas/common.py`) out, as `/api/contacts`, `/api/documents` and `/api/meta` already do. No new paging parameters or response fields. |
 
 
 ---
@@ -61,11 +62,12 @@ Same path, `GET /api/registry`, new query parameters and response. The only call
 
 ### Request
 
-`?type=cso|funder&theme=&population=&sdg=&where=&reg=&ftype=&approach=&q=&page=1&size=25`
+`?type=cso|funder&theme=&population=&sdg=&where=&reg=&ftype=&approach=&q=&limit=25&offset=0`
 
-These are the names `features/registry/filtersUrl.ts` already writes, so the browser's address passes
-straight through. `size` defaults to 25 and is capped at 100; `page` starts at 1. A page below 1 or a bad
-`size` is a 400; a page past the end returns no items.
+- The filter names are the ones `features/registry/filtersUrl.ts` already writes, so they pass straight through.
+- `limit` / `offset` come from the existing `PageParams` (`page: PageParams = Depends()`): `limit` 1–100
+  (default 50, the frontend always sends 25), `offset` ≥ 0. FastAPI's own validation answers 422 for a bad
+  value, as on every other paged route. An offset past the end returns no items.
 
 ### Response (`backend/app/schemas/registry.py`)
 
@@ -74,17 +76,16 @@ class RegistryFacet(ReadModel):
     value: str
     n: int
 
-class RegistryPage(ReadModel):
-    items: list[RegistryRow]                # RegistryRow loses `search`; the browser no longer needs it
-    total: int                              # matches for these filters and search
-    page: int                               # current page, from 1
-    size: int                               # rows per page
-    pages: int                              # total pages, at least 1
+class RegistryPage(Page[RegistryRow]):     # items, total, limit, offset from the shared Page
     counts: dict[str, int]                  # {"all", "org", "funder"}: the bucket cards, every filter but kind
     facets: dict[str, list[RegistryFacet]]  # theme, population, sdg, where, ftype, approach
 ```
 
-The same shape as `fastapi-pagination`'s `Page[...]`, written by hand: the repo has no ORM or paging library.
+- `items`, `total`, `limit` and `offset` are the shared `Page[T]` from `backend/app/schemas/common.py`, the same
+  response every other paged route returns. Only `counts` and `facets` are Registry-specific.
+- `RegistryRow` loses `search`; the browser no longer needs it.
+- Page numbers are worked out from the response, not sent: page = `offset / limit + 1`,
+  pages = `max(1, ceil(total / limit))`.
 
 ### Filtering: port `matches()` to Python
 
@@ -113,13 +114,16 @@ Over the rows `registry_rows` returns:
 
 ### Paging
 
-Sort the matching rows (CSOs first, then funders, each by `lower(name)`, then `id`), then slice:
+Sort the matching rows (CSOs first, then funders, each by `lower(name)`, then `id`), then slice with the
+`PageParams` values:
 
 ```python
-start = (page - 1) * size
-items = matched[start:start + size]
-pages = max(1, ceil(len(matched) / size))
+items = matched[page.offset:page.offset + page.limit]
+total = len(matched)
 ```
+
+When the list later moves to one SQL query (issue step 2), this slice becomes `COUNT(*) OVER () … LIMIT %(limit)s
+OFFSET %(offset)s`, as `repositories/orgs.py` does today, and the request and response stay the same.
 
 ### Research counts, for the visible page only
 
@@ -128,16 +132,24 @@ returns, keeping its existing "a research count is a hint, not the list" try/exc
 
 ### Route (`backend/app/api/routes/registry.py`)
 
-1. Parse `Filters`, `page` and `size`; bad input → 400.
+```python
+@router.get("", response_model=RegistryPage)
+async def registry(pool: PoolDep, owner: OwnerPoolDep, page: PageParams = Depends(),
+                   type: str = "all", theme: str = "all", ..., q: str = "", user_id=...) -> RegistryPage:
+```
+
+1. Build `Filters` from the query parameters; `page` comes from `PageParams`.
 2. `rows = await repo.registry_rows(pool, owner)`, unchanged.
-3. Compute `counts`, `facets`, `total`; filter, sort, slice out `page`.
-4. Add research counts to those rows; drop `search`; return `RegistryPage`.
+3. Compute `counts`, `facets`, `total`; filter, sort, slice with `page.offset` / `page.limit`.
+4. Add research counts to those rows; drop `search`; return
+   `RegistryPage(items=..., total=..., limit=page.limit, offset=page.offset, counts=..., facets=...)`.
 
 ## Step 2 — Frontend
 
-**`frontend/app/registry/page.tsx`** (server): read `searchParams` (filters and `page`), call
-`apiGet<RegistryPage>("/api/registry?" + params)`, and pass the page to `RegistryClient`. The HTML now holds
-25 rows, not the whole Registry.
+**`frontend/app/registry/page.tsx`** (server): read `searchParams` (filters and `page`), turn the page number
+into `limit=25&offset=(page - 1) * 25`, call `apiGet<RegistryPage>("/api/registry?" + params)`, and pass the
+result to `RegistryClient`. The HTML now holds 25 rows, not the whole Registry. The browser's address keeps a
+readable `?page=2`; only the API call uses `limit` / `offset`.
 
 **`frontend/features/registry/RegistryClient.tsx`**:
 - Takes `data: RegistryPage` instead of `rows`.
@@ -157,7 +169,8 @@ first (Step 3), then to `components/ui/`.
 **`frontend/features/registry/rows.ts`**: `kindLine`, `signal` and `NORTH_EAST` stay. `matches` and
 `present` go once nothing imports them; their cases move to the backend tests.
 
-**`frontend/lib/api`**: `RegistryOut` becomes `RegistryPage`; `RegistryRow` drops `search`; add `RegistryFacet`.
+**`frontend/lib/api`**: `RegistryOut` becomes `RegistryPage` (`items`, `total`, `limit`, `offset`, `counts`,
+`facets`); `RegistryRow` drops `search`; add `RegistryFacet`.
 
 ## Step 3 — Design system sync
 
@@ -170,7 +183,7 @@ Same PR, as CLAUDE.md requires: the Registry page in `ui_kits/sangam-web/` and a
 | Tier | What |
 |---|---|
 | Backend, pure | `matches()` for every filter, ported from `frontend/features/registry/__tests__/rows.test.ts`; search finds a middle-of-word match; `skip`; facets (counts, ordering, the selected value kept, funder-only facets); paging (order, slices, `pages`, a page past the end is empty) |
-| Backend, route (`tests/test_registry.py`, `client_for`, repo monkeypatched) | params parse; `page` < 1 and bad `size` → 400; response shape; `search` is not in the response; a research-count failure still returns the page |
+| Backend, route (`tests/test_registry.py`, `client_for`, repo monkeypatched) | params parse; `limit` 0 or over 100 and a negative `offset` → 422; response has `Page`'s `items` / `total` / `limit` / `offset` plus `counts` / `facets`; `search` is not in the response; a research-count failure still returns the page |
 | Frontend (Vitest, `.test.tsx`) | renders the page's items; counts and options come from the response; Next / Previous set `?page=` and are disabled at the ends; a filter change drops `page`; typing waits 250 ms |
 | Manual | `make up`, `make seed`; every filter, search ("dalgu"), Next / Previous, Back from a profile; signed in and signed out |
 
@@ -189,4 +202,6 @@ Coverage gate: 75% of changed lines, backend and frontend (`codecov.yml`).
 - Fix the two slow queries (`entity_tags`, research counts).
 - Precompute the list so a page is one query instead of rebuilding every row (issue step 2).
 - Cache the list for signed-in visitors.
+- Move `/api/orgs` and `/api/funders` from `LegacyPageParams` (plain array, `total` dropped) to `PageParams` +
+  `Page[T]`, updating their two callers (Ask, Settings), so every list API follows the same pattern.
 - `loading.tsx` skeletons; cache the user lookup; drop the per-checkout connection check.
