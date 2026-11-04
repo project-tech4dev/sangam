@@ -121,9 +121,10 @@ async def list_funder_documents() -> str:
 
 @tool
 async def read_org_file(document_id: int, start_page: int = 1, end_page: int | None = None, sheet: str = "",
-                        start_row: int = 1) -> str:
+                        start_row: int = 1) -> str | list[dict]:
     """Read the one file in your task, a range at a time: pages in a PDF, paragraphs in a Word file, lines in a
-    web page Sangam saved as text. An .xlsx workbook without `sheet` lists its sheets; with `sheet` it reads rows.
+    CSV or a web page Sangam saved as text. An .xlsx workbook without `sheet` lists its sheets; with `sheet` it
+    reads rows. An uploaded image comes back as the image itself.
     The read's header says what a fact from it cites: the organisation's own upload, or a public page and its link.
 
     Args:

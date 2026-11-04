@@ -139,7 +139,7 @@ class TestVaultRead:
 
     async def test_refusals(self, download):
         assert "no file on record" in await vault.read({**DOC, "storage_path": None})
-        assert "is not a PDF, Word" in await vault.read({**DOC, "storage_path": "org-vault/3/x.png"})
+        assert "is not a PDF, Word" in await vault.read({**DOC, "storage_path": "org-vault/3/x.pptx"})
         assert "could not be downloaded" in await vault.read(DOC)
 
     async def test_pdf_pages_are_marked_and_cut(self, download, monkeypatch):
@@ -157,6 +157,27 @@ class TestVaultRead:
         assert "#line2]" not in out and len(out) < vault.MAX_CHARS + 500
         cut = out.splitlines()[-1]
         assert cut.startswith("… cut at line ") and cut.endswith(f"start_page={int(cut.split()[4]) + 1}.")
+
+    async def test_a_csv_is_read_by_line_and_a_later_window_names_its_columns(self, download):
+        download["data"] = b"district,households\nPune,1240\nNashik,980\n"
+        first = await vault.read({**DOC, "storage_path": "org-vault/3/survey.CSV"})
+        assert "[vault:12#line2] Pune,1240" in first and "Columns" not in first
+        later = await vault.read({**DOC, "storage_path": "org-vault/3/survey.csv"}, start_page=3)
+        assert "Columns (line 1): district,households" in later and "[vault:12#line3] Nashik,980" in later
+        assert "#line2]" not in later
+
+    @pytest.mark.parametrize("name,mime", [("cert.png", "image/png"), ("cert.JPG", "image/jpeg"),
+                                           ("cert.jpeg", "image/jpeg"), ("cert.webp", "image/webp")])
+    async def test_an_image_comes_back_as_itself_with_its_marker(self, download, name, mime):
+        download["data"] = b"\x89PNG\r\n\x1a\n"
+        out = await vault.read({**DOC, "storage_path": f"org-vault/3/{name}"})
+        assert out[0]["type"] == "text" and "[vault:12#image]" in out[0]["text"]
+        assert out[1] == {"type": "image", "base64": "iVBORw0KGgo=", "mime_type": mime}
+
+    async def test_an_image_too_large_for_the_model_is_refused_in_words(self, download):
+        download["data"] = b"\0" * (vault.IMAGE_MAX_BYTES + 1)
+        out = await vault.read({**DOC, "storage_path": "org-vault/3/scan.png"})
+        assert isinstance(out, str) and "too large to read" in out
 
     async def test_a_scanned_pdf_says_so(self, download, monkeypatch):
         download["data"] = b"%PDF"

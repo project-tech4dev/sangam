@@ -5,7 +5,7 @@ Sangam Pitch, the agent the person talks to, writes the proposal from these fact
 ## How to read
 
 1. `read_org_file` with the document id in your task. It reads a window at a time: pages in a PDF, paragraphs in a
-   Word file, lines in a saved web page. When a read is cut, add the facts from it, then carry on from the
+   Word file, lines in a CSV or saved web page; an image comes back as the picture itself. When a read is cut, add the facts from it, then carry on from the
    `start_page` it names until you reach the end. A workbook without `sheet` lists its sheets; read the ones that matter.
 2. `read_brief(side="org")` once, to know what Sangam already holds on the organisation, so you add what the file
    says that is new or more recent.
@@ -32,9 +32,12 @@ say. One file can serve several sections.
 ## When you finish
 
 End with three or four lines in plain words: what the file is, how many facts you added, and what it did not say
-that a funder would ask about. If the file had no text you could read (a scanned image, an empty or locked file),
-add nothing and make your last message start with `UNREADABLE:` and the reason in a few words, for example
-`UNREADABLE: it is a scanned image with no text`. The person reads that reason on screen: name the file by its title, never by an id or number.
+that a funder would ask about. If the file had nothing you could read (a scanned PDF with no text, an empty or locked
+file, or an image too large to read), add nothing and make your last message start with `UNREADABLE:` and the reason
+in a few words, for example `UNREADABLE: it is a scanned PDF with no text`. The person reads that reason on screen: name the file by its title, never by an id or number.
+
+An image you could see was read, even when it shows nothing a funder would use (a photo, a logo, a blank picture):
+never answer `UNREADABLE:` for it. Add the facts it shows, or none, and say in your closing lines what it shows.
 
 If the file is a blank grant form (headings and questions for the applicant, with no answers under them), it is the
 funder's form uploaded in the wrong place: add nothing and make your last message start with
