@@ -87,6 +87,9 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   promotion folds them into one record (`promote.merged_identity`): lists unioned, each other field from the strongest
   source stating it, at most three themes, and every value or theme left out named in `reasons`. An org record takes the
   tier of the weakest source it carries, so a claimed value never rides in on an evidenced one.
+- **A programme's tags are its owner's too.** Promotion writes each programme's themes, populations and lenses onto
+  `funder_tags`/`org_tags` as `role = 'secondary'` (the Registry reads only those), never over a primary one. A programme
+  with a description and no theme is refused at save unless a `themes` gap names it.
 - **The pull skills are the researcher's contract.** `save_research` refuses a save that leaves a field with neither a
   finding nor a gap. Constraints never live in skills, because loading a skill is the model's choice.
 - **A subagent inherits no filesystem limits.** Each one carries its own `filesystem(...)` middleware, or it gets all

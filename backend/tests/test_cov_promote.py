@@ -402,3 +402,18 @@ async def test_without_a_gate_a_resembling_name_is_not_merged(db):
     name = f"Zqvortex Harmonia Holdings {t}"
     report = await promote(db, await research(db, name, [finding("identity", "https://x.example.org", name=name)]))
     assert report["entity"] is None and any("a person decides" in r for r in report["reasons"])
+
+
+async def test_a_programmes_tags_roll_up_to_its_funder_as_secondary(db):
+    """#241: SBI Foundation's LEAP is a livelihoods programme, so livelihoods is SBI Foundation's theme too."""
+    t = tag()
+    name, site = f"Zz Rollup Foundation {t}", f"https://zz-rollup-{t}.example.org"
+    report = await promote(db, await research(db, name, [
+        finding("identity", f"{site}/about", name=name, funder_type="csr_foundation"),
+        finding("program", f"{site}/leap", name="LEAP", kind="programme", description="Livelihoods flagship.",
+                themes=["livelihood-diversification"], populations=["youth"], tag_note="leap: 'livelihoods'"),
+    ]))
+    held = await rows(db, "SELECT t.slug, ft.role FROM funder_tags ft JOIN tags t ON t.id = ft.tag_id "
+                          "WHERE ft.funder_id = %s ORDER BY 1", report["entity"]["id"])
+    assert [(r["slug"], r["role"]) for r in held] == [
+        ("population-youth", "secondary"), ("sub_theme-livelihood-diversification", "secondary")]

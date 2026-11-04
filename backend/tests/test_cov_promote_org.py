@@ -217,3 +217,20 @@ async def test_org_match_follows_an_earlier_save_and_a_gate_answer(db):
         finding("org_identity", "https://x.example.org", name=near, **DOC)], kind="org"), gate=Gate())
     assert waiting["entity"] is None and waiting["questions"]
     assert any("waiting for a person" in h for h in waiting["held"])
+
+
+async def test_a_programmes_tags_roll_up_to_its_org_as_secondary(db):
+    """#241: the Registry reads org_tags, so a programme's themes and populations are the org's too."""
+    t = tag()
+    name, site = f"Zz Rollup Sanstha {t}", f"https://zz-rollup-{t}.example.org"
+    report = await promote(db, await research(db, name, [
+        finding("org_identity", f"{site}/about", name=name, themes=["skilling"], tag_note="about: 'skills'", **DOC),
+        finding("program", f"{site}/work", name="Forest Livelihoods", kind="programme",
+                description="Livelihood diversification for tribal women.", themes=["skilling",
+                "livelihood-diversification"], populations=["women"], tag_note="work: 'tribal women'", **DOC),
+    ], kind="org"))
+    held = await rows(db, "SELECT t.slug, ot.role FROM org_tags ot JOIN tags t ON t.id = ot.tag_id "
+                          "WHERE ot.org_id = %s ORDER BY 1", report["entity"]["id"])
+    assert [(r["slug"], r["role"]) for r in held] == [
+        ("population-women", "secondary"), ("sub_theme-livelihood-diversification", "secondary"),
+        ("theme-skilling", "primary")]

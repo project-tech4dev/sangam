@@ -43,6 +43,11 @@ def unanswered(research: EntityResearch) -> list[str]:
             for name in fields:
                 if not any(_filled(getattr(f, name, None)) for f in found) and not any(g.field == name for g in gapped):
                     missing.append(f"{concept}.{name}: no value and no gap")
+    themes_gaps = [g.detail.lower() for g in gaps if g.concept == "program" and g.field == "themes"]
+    for f in findings:
+        if f.concept == "program" and f.description and not f.themes \
+                and not any(f.name.lower() in d for d in themes_gaps):
+            missing.append(f"program {f.name!r}: a description and no theme, and no themes gap naming it")
     return missing
 
 
