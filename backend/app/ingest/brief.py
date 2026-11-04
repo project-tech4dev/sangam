@@ -180,7 +180,7 @@ ORDER: dict[str, tuple[str, ...]] = {
 
 # What makes two findings the same fact across runs; a concept not named here keys on its headline.
 _SAME_FACT: dict[str, tuple[str, ...]] = {
-    "identity": (), "org_identity": (),
+    "identity": ("source_url",), "org_identity": ("source_url",),
     "identifier": ("id_type",), "org_identifier": ("id_type",),
     "csr_year": ("fiscal_year",), "org_financials": ("fiscal_year",),
     "program": ("name",),
