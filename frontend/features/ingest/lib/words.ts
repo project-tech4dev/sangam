@@ -12,8 +12,17 @@ type Shelf = { label: string; tag: string };
 export function researchState(r: ResearchRecord): Shelf {
   if (r.status === "not_found") return { label: "Couldn't find it", tag: "tag-outline" };
   if (r.status === "wrong_entity") return { label: "Found a different organisation", tag: "tag-outline" };
+  if (r.saved_at && !savedSinceResearch(r)) return { label: "New research, not saved", tag: "tag-neutral" };
   if (r.saved_at || r.resolved_funder_id || r.resolved_org_id) return { label: "Saved", tag: "tag-accent-2" };
   return { label: "Not saved", tag: "tag-neutral" };
+}
+
+/** Whether the save covers the row's findings: a same-day re-run rewrites the row after it (#222). */
+export function savedSinceResearch(r: ResearchRecord): boolean {
+  if (!r.saved_at) return false;
+  const saved = Date.parse(r.saved_at);
+  const researched = Date.parse(r.researched_at);
+  return Number.isNaN(saved) || Number.isNaN(researched) || saved >= researched;
 }
 
 /** The profile a saved row became, or null when it has none yet. */

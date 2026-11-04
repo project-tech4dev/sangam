@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -263,6 +264,14 @@ class TestSavedState:
         assert not pool.conn.calls
 
 
+class TestRecordSaveAfterARerun:
+    async def test_a_resave_that_writes_nothing_new_still_marks_the_rerun_saved(self, monkeypatch, pool):
+        monkeypatch.setattr(catalog_tools.coverage, "saved_record", lambda prior, report, after: None)
+        await catalog_tools._record_save(pool.conn, {"id": 31, "saved": {"entity": {"id": 4}}}, {"entity": None})
+        [(_sql, params)] = pool.conn.sql("UPDATE entity_research SET saved_at = now()")
+        assert params == (31,)
+
+
 class TestCoverageView:
     @pytest.fixture(autouse=True)
     def view(self, monkeypatch):
@@ -281,6 +290,15 @@ class TestCoverageView:
         out = await catalog_tools.coverage_view("acme", MEMBER)
         assert out["stage"] == "saved" and out["held"] == [] and out["after"] == {"a": 1}
         assert out["report"] == {"skipped": {"x": 1}, "held": []}
+
+    async def test_a_rerun_after_the_save_reads_as_unsaved_again(self, monkeypatch, pool):
+        """#222: a same-day re-run rewrites the saved row; its new findings need their own Review & save."""
+        saved = {"entity": {"id": 4}, "changes": {}, "rows_before": {}, "rows_after": {}}
+        rows(monkeypatch, {"slug": "arpan", "entity_kind": "org", "saved": saved,
+                           "saved_at": datetime(2026, 10, 22, 9, tzinfo=UTC),
+                           "researched_at": datetime(2026, 10, 22, 15, tzinfo=UTC)})
+        out = await catalog_tools.coverage_view("arpan", STAFF)
+        assert out["stage"] == "unsaved"
 
     async def test_an_unsaved_funder_is_a_dry_run(self, monkeypatch, pool):
         rows(monkeypatch, {"slug": "acme", "entity_kind": "funder"})

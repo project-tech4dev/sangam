@@ -6,7 +6,7 @@ import { EntityMark } from "@/components/ui/primitives";
 import { deleteResearch, undoSave } from "../lib/staffActions";
 import { ScreenReview } from "./ScreenReview";
 import type { ResearchRecord } from "../lib/types";
-import { kindLabel, profileHref, researchState } from "../lib/words";
+import { kindLabel, profileHref, researchState, savedSinceResearch } from "../lib/words";
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
@@ -59,7 +59,7 @@ export function ResearchedRecently({
           const name = r.canonical_name ?? r.entity_name;
           const state = researchState(r);
           const href = profileHref(r);
-          const reviewable = !r.saved_at && r.status !== "not_found" && r.status !== "wrong_entity";
+          const reviewable = !savedSinceResearch(r) && r.status !== "not_found" && r.status !== "wrong_entity";
           return (
             <div key={r.id} className="import-shelf-item">
               <div className="import-shelf-row">

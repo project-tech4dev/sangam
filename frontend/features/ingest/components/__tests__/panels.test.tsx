@@ -110,6 +110,11 @@ describe("ResearchedRecently", () => {
     expect(screen.queryByRole("button", { name: /Undo save|Delete/ })).not.toBeInTheDocument();
   });
 
+  it("offers Review & save again for a row re-researched after its save (#222)", () => {
+    render(<ResearchedRecently items={[record({ researched_at: "2026-10-22T15:00:00Z", saved_at: "2026-10-22T09:00:00Z", resolved_org_id: 3 })]} />);
+    expect(screen.getByRole("button", { name: "Review & save" })).toBeInTheDocument();
+  });
+
   it("opens the review inline and reloads once saved", async () => {
     stubFetch({ "/review": review(), "/save": { slug: "kabil", entity: { kind: "funder", id: 1, name: "KABIL", status: null }, promotion_id: 1, written: 1, held: 0, reasons: [] } });
     const onChanged = vi.fn();
