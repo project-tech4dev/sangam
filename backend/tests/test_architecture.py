@@ -29,6 +29,13 @@ SHARED_ACROSS_AGENTS = (
     "app.ingest.middleware.RunSources",
 )
 
+# R4: a file the size cap does not apply to, because it is one entry per table or concept.
+LONG_BY_DESIGN = {
+    "app/agent/tools/sql/catalog.py",  # the SQL catalog: one entry per table
+    "app/ingest/research/finding_types.py",  # one finding model per concept, and FINDING_MODELS joining them
+}
+MAX_LINES = 800
+
 # R2: where an import inside a function is the point, to keep a cold start or a cron job light.
 COLD_START = ("app/api/routes/", "app/core/lifespan.py", "app/db/migrate.py", "app/integrations/", "app/ingest/news/",
               "app/ingest/calls/")
@@ -95,6 +102,12 @@ def test_r3_a_cold_start_does_not_load_the_agent_stack():
     probe = "import sys, app.main; print(sorted(m for m in ('deepagents', 'langchain') if m in sys.modules))"
     out = subprocess.run([sys.executable, "-c", probe], cwd=BACKEND, capture_output=True, text=True, check=True)
     assert out.stdout.strip() == "[]", "app.main imported the agent stack; import it inside the route that needs it"
+
+
+def test_r4_no_file_is_over_the_cap():
+    long = sorted(f"{_rel(p)}: {n} lines" for p in APP.rglob("*.py")
+                  if (n := len(p.read_text().splitlines())) > MAX_LINES and _rel(p) not in LONG_BY_DESIGN)
+    assert not long, f"split at a line the file already draws (R4, {MAX_LINES} lines):\n" + "\n".join(long)
 
 
 def test_r2_an_import_inside_a_function_has_a_reason():

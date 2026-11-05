@@ -16,12 +16,12 @@ import httpx
 import trafilatura
 
 from app.core.egress import EgressRefused, guarded_client
-from app.ingest import writer
 from app.ingest.adapters._http import USER_AGENT
 from app.ingest.calls import extract, find
+from app.ingest.catalog import writer, writer_funder
+from app.ingest.catalog.rows import RfpRecord
 from app.ingest.geography import resolve_location
 from app.ingest.reading.access import canonical_url, check_url
-from app.ingest.records import RfpRecord
 from app.ingest.taxonomy import TAG_SLUGS
 from app.repositories import rfps
 
@@ -142,7 +142,7 @@ async def _write(conn, funder: dict, call: extract.Call, *, page: str, text: str
         else:
             places.append(location_id)
     tags = await _tag_ids(conn, call)
-    status, rfp_id, _ = await writer.write_rfp(
+    status, rfp_id, _ = await writer_funder.write_rfp(
         conn, rec, funder["id"], location_id=places[0] if places else None,
         tag_id=tags[0] if tags else None, document_id=None)
     # write_rfp attaches one place and one theme; a call names more.

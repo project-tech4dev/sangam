@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.ingest.matcher import resolve_funder, resolve_org
+from app.ingest.catalog.matcher import resolve_funder, resolve_org
 from tests.test_cov_promote import funder, org, tag
 
 pytestmark = pytest.mark.integration

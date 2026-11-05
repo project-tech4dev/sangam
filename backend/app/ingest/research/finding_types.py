@@ -20,7 +20,7 @@ from typing import Annotated, Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.ingest.records import (
+from app.ingest.catalog.rows import (
     CIN_FORMAT,
     ClassifiedBy,
     EvidenceTier,

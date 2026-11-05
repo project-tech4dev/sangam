@@ -6,7 +6,8 @@ import json
 
 import pytest
 
-from app.ingest import catalog_save, undo
+from app.ingest.catalog import save as catalog_save
+from app.ingest.catalog import undo
 from app.ingest.tools import catalog_tools
 from app.repositories import ingest as repo
 from tests.cov_ingest_fakes import patch_catalog

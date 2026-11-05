@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.ingest.writer import cited_title
+from app.ingest.catalog.writer import cited_title
 
 
 @pytest.mark.parametrize(("url", "source_name", "title"), [

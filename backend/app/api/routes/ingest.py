@@ -207,7 +207,7 @@ def _public(row: dict) -> dict:
 @router.delete("/research/{slug}", dependencies=STAFF, status_code=204,
                summary="Delete research that was never saved, or whose saves were all undone")
 async def delete_research(slug: str, pool: OwnerPoolDep) -> None:
-    from app.ingest import undo
+    from app.ingest.catalog import undo
 
     async with pool.connection() as conn, conn.transaction():
         deleted = await undo.delete_research(conn, slug)
@@ -220,7 +220,7 @@ async def delete_research(slug: str, pool: OwnerPoolDep) -> None:
 @router.post("/promotions/{promotion_id}/undo", dependencies=STAFF, response_model=UndoOut,
              summary="Undo one save: remove the rows it added and restore the ones it changed")
 async def undo_promotion(promotion_id: int, pool: OwnerPoolDep, user_id: UUID = Depends(require_user)) -> UndoOut:
-    from app.ingest import undo
+    from app.ingest.catalog import undo
 
     try:
         async with pool.connection() as conn, conn.transaction():
@@ -235,7 +235,7 @@ async def undo_promotion(promotion_id: int, pool: OwnerPoolDep, user_id: UUID = 
 @router.post("/research/{slug}/save", response_model=SaveOut,
              summary="Save one researched organisation to Sangam, with the person's answers to its questions")
 async def save_research(slug: str, body: SaveIn, caller: CallerScope = Depends(request_scope)) -> SaveOut:
-    from app.ingest.catalog_save import SaveRefused, save_to_catalog
+    from app.ingest.catalog.save import SaveRefused, save_to_catalog
 
     try:
         reports = await save_to_catalog(slug, caller, body.decisions)
@@ -256,7 +256,7 @@ async def save_research(slug: str, body: SaveIn, caller: CallerScope = Depends(r
 @router.get("/research/{slug}/review", response_model=ReviewOut,
             summary="One organisation's answers, proof and questions, for the review card")
 async def research_review(slug: str, caller: CallerScope = Depends(request_scope)) -> ReviewOut:
-    from app.ingest.catalog_save import review_view
+    from app.ingest.catalog.save import review_view
 
     view = await review_view(slug, caller)
     if view is None:
@@ -290,7 +290,7 @@ async def list_workbooks(bucket: str = "staff-sources", user_id: UUID = Depends(
 @router.get("/research/{slug}/coverage", response_model=CoverageOut,
             summary="What one entity's research found, per topic, and what saving it changed")
 async def research_coverage(slug: str, caller: CallerScope = Depends(request_scope)) -> CoverageOut:
-    from app.ingest.catalog_save import coverage_view
+    from app.ingest.catalog.save import coverage_view
 
     view = await coverage_view(slug, caller)
     if view is None:

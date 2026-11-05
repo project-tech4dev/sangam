@@ -80,7 +80,7 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
 
 - **The person makes every choice.** `choose_sources` comes before any read, and `RunSources` refuses a read outside it;
   `run_import_now` and every catalog-writer `promote_research` pause too.
-- **The supervisor never reads the web or writes catalog rows.** Researchers read; `writer.py` writes, always with fixed
+- **The supervisor never reads the web or writes catalog rows.** Researchers read; `catalog/writer*.py` writes, always with fixed
   SQL. The model never writes SQL here.
 - **The brief is the record** (`source-archive/entities/<slug>.md`, no table). Every run merges into it by `fact_key`; the
   later run wins unless the earlier source is stronger. Facts no column can hold stay in the brief only. Promotion reads
