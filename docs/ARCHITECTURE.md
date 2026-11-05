@@ -92,6 +92,9 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   with a description and no theme is refused at save unless a `themes` gap names it.
 - **The pull skills are the researcher's contract.** `save_research` refuses a save that leaves a field with neither a
   finding nor a gap. Constraints never live in skills, because loading a skill is the model's choice.
+- **A save is repaired only where nothing is lost, and refused once.** A URL split at its colon, the summary's
+  counts and a year on a gap that is not by year are fixed in place; a refusal for the schema also lists what the
+  contract would refuse next (#171).
 - **A subagent inherits no filesystem limits.** Each one carries its own `filesystem(...)` middleware, or it gets all
   eight tools, including writes to real disk. A test walks the compiled subagent graphs.
 - **Geography is a closed list.** The matcher never creates a place; a weak near-match is held, not guessed.

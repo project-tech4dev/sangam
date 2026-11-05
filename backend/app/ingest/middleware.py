@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from importlib.resources import files
 from typing import Any, NotRequired
@@ -23,12 +24,13 @@ from langchain.agents.middleware import (
 from langchain.agents.middleware.types import hook_config
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMessage
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from app.agent.models import resolve_model
 from app.ingest import run_sources
 from app.ingest.caller import caller_note, scope
-from app.ingest.research_records import FINDING_MODELS, EntityResearch, VaultResearch
+from app.ingest.contract import unanswered
+from app.ingest.research_records import FINDING_MODELS, EntityResearch, Finding, Gap, VaultResearch
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +121,8 @@ def save_failed(messages: list[AnyMessage]) -> bool:
 SAVE_SCHEMAS: dict[str, type[BaseModel]] = {SAVE_TOOL: EntityResearch, "save_vault_findings": VaultResearch}
 # ToolNode echoes the whole payload before the error, so a big save's reason was evicted and cut off.
 REFUSAL_LINES = 25
+_FINDINGS: TypeAdapter[list[Any]] = TypeAdapter(list[Finding])
+_GAPS: TypeAdapter[list[Gap]] = TypeAdapter(list[Gap])
 _LABELS = ("partner_name", "program_name", "project_name", "title", "name", "id_type", "state", "fiscal_year")
 
 
@@ -145,8 +149,9 @@ def _problem(error: dict[str, Any], payload: dict[str, Any], schema: type[BaseMo
 
 
 def parse_payload(text: str) -> dict[str, Any] | None:
-    """A payload sent as a JSON string. Only surplus closing brackets after the object are forgiven."""
-    text = text.strip()
+    """A payload sent as a JSON string. Only surplus closers and a URL split at its colon are forgiven."""
+    # "source_url":"https":"//x" is never meant as a key and a value: a quote was dropped mid-URL.
+    text = _SPLIT_URL.sub(r'"\1://', text.strip())
     try:
         value, end = json.JSONDecoder().raw_decode(text)
     except ValueError:
@@ -154,6 +159,9 @@ def parse_payload(text: str) -> dict[str, Any] | None:
     if text[end:].strip(" \t\r\n}]"):
         return None
     return value if isinstance(value, dict) else None
+
+
+_SPLIT_URL = re.compile(r'"(https?)"\s*:\s*"//')
 
 
 def _not_json(name: str, text: str) -> str:
@@ -183,8 +191,23 @@ def refusal_text(name: str, payload: Any) -> str | None:
     lines = [f"- {_problem(e, data, schema)}" for e in errors[:REFUSAL_LINES]]
     if len(errors) > REFUSAL_LINES:
         lines.append(f"- and {len(errors) - REFUSAL_LINES} more of the same kinds")
+    needed = _also_unanswered(data, errors) if name == SAVE_TOOL else []
+    if needed and len(lines) < REFUSAL_LINES:
+        lines += ["Also, a finding or a gap for each of these:"] + [f"- {m}" for m in needed][:REFUSAL_LINES - len(lines)]
     return (f"Error invoking tool '{name}': refused, nothing saved. Fix these {len(errors)} and call {name} "
             "again with the whole payload:\n" + "\n".join(lines))
+
+
+def _also_unanswered(data: dict[str, Any], errors: list[Any]) -> list[str]:
+    """What the contract refuses next, asked only when every finding and gap is valid and a top-level field is not."""
+    if any(e["loc"][:1] in (("findings",), ("gaps",)) for e in errors):
+        return []
+    try:
+        findings = _FINDINGS.validate_python(data.get("findings") or [])
+        gaps = _GAPS.validate_python(data.get("gaps") or [])
+        return unanswered(EntityResearch.model_construct(**{**data, "findings": findings, "gaps": gaps}))
+    except Exception:  # noqa: BLE001 - an unreadable payload keeps the schema's own lines
+        return []
 
 
 class SaveRefusal(AgentMiddleware):
