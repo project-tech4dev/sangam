@@ -10,14 +10,6 @@ import pytest
 from pydantic import ValidationError
 
 from app.ingest.agent import CATALOG_WRITER
-from app.ingest.expectations import (
-    CONCEPT_TABLES,
-    CONCEPT_TITLES,
-    NOT_WRITTEN,
-    concepts_for,
-    expected_fields,
-    recent_fiscal_years,
-)
 from app.ingest.geography import _STATES, canonical_state, district_key
 from app.ingest.matcher import (
     CORE_FLOOR,
@@ -49,22 +41,28 @@ from app.ingest.records import (
     ProgramRecord,
     RfpRecord,
 )
-from app.ingest.research_records import (
+from app.ingest.research.expectations import (
+    CONCEPT_TABLES,
+    CONCEPT_TITLES,
+    NOT_WRITTEN,
+    concepts_for,
+    expected_fields,
+    recent_fiscal_years,
+)
+from app.ingest.research.finding_types import (
     CONCEPTS,
     FINDING_MODELS,
     TYPED_SINCE,
     ContactFinding,
     CsrSpendFinding,
     CsrYearFinding,
-    EntityResearch,
     FootprintFinding,
     MetricFinding,
     Money,
     PartnerFinding,
-    PromotionReport,
-    ResearchSummary,
     to_inr,
 )
+from app.ingest.research.findings import EntityResearch, PromotionReport, ResearchSummary
 from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.taxonomy import clause_for
 from app.ingest.tools.research_tools import save_research
@@ -517,7 +515,7 @@ class TestExpectationsComeFromTheSchema:
         # A priority is not a spend. Collapsing them is the error the whole
         # agent brief is built to prevent.
         assert CONCEPT_TABLES["stated_geography"] == "funder_locations"
-        from app.ingest.expectations import CONCEPTS
+        from app.ingest.research.expectations import CONCEPTS
         assert (CONCEPT_TABLES["footprint"], CONCEPTS["footprint"].row_filter) == (
             "funder_activity", ("kind", "footprint"))
 
@@ -837,7 +835,7 @@ class TestPromotionCoversEveryConceptWithAWriter:
     def test_a_funder_concept_is_never_the_one_left_out(self):
         # The reason above is the whole reason. A funder concept that stopped
         # being promotable would be a regression, not a design decision.
-        from app.ingest.expectations import concepts_for
+        from app.ingest.research.expectations import concepts_for
 
         assert set(concepts_for("funder")) - set(PROMOTABLE) == set()
 
@@ -899,7 +897,7 @@ class TestResearchGoalsAsksTheRightTables:
         ("kind", "fk", "other"), [("funder", "funder_id", "org_id"), ("org", "org_id", "funder_id")]
     )
     async def test_every_query_uses_the_foreign_key_for_its_kind(self, kind, fk, other):
-        from app.ingest.expectations import CONCEPT_TABLES, concepts_for
+        from app.ingest.research.expectations import CONCEPT_TABLES, concepts_for
 
         queries = await self._sql_for(kind)
         assert queries, f"{kind} asked nothing"
@@ -951,7 +949,7 @@ class TestTheWorkingBoardReadsThesePhrases:
     async def test_research_goals_lists_one_concept_per_line(self, kind, monkeypatch):
         import re
 
-        from app.ingest.coverage import concepts_for
+        from app.ingest.research.coverage import concepts_for
         from app.ingest.tools import catalog_tools
 
         class _Conn:
@@ -1358,13 +1356,13 @@ class TestASaveIsCountedPerConcept:
         import re
 
         from app.ingest import promote
-        from app.ingest.coverage import CONCEPT_OF_WRITTEN
+        from app.ingest.research.coverage import CONCEPT_OF_WRITTEN
 
         labels = set(re.findall(r'_count\(report, "([^"]+)"', inspect.getsource(promote)))
         assert labels and labels - set(CONCEPT_OF_WRITTEN) == set()
 
     def test_the_entity_and_its_years_count_alongside_the_tables(self):
-        from app.ingest.coverage import changes_by_concept
+        from app.ingest.research.coverage import changes_by_concept
 
         report = {
             "entity": {"kind": "funder", "status": "added", "id": 7, "name": "X"},
@@ -1380,7 +1378,7 @@ class TestASaveIsCountedPerConcept:
         }
 
     def test_a_second_save_that_writes_nothing_keeps_the_first(self):
-        from app.ingest.coverage import saved_record
+        from app.ingest.research.coverage import saved_record
 
         first = saved_record(None, {"entity": {"kind": "funder", "status": "added", "id": 7},
                                     "written": {"metrics": {"added": 4}}}, {"identity": 1, "metric": 4})
@@ -1389,13 +1387,13 @@ class TestASaveIsCountedPerConcept:
         assert saved_record(first, again, {"identity": 1, "metric": 4}) is None
 
     def test_a_first_save_refused_before_writing_is_not_a_save(self):
-        from app.ingest.coverage import saved_record
+        from app.ingest.research.coverage import saved_record
 
         refused = {"entity": None, "written": {}, "reasons": ["resembles X: not merged"]}
         assert saved_record(None, refused, None) is None
 
     def test_a_later_save_that_writes_more_keeps_the_first_before(self):
-        from app.ingest.coverage import saved_record
+        from app.ingest.research.coverage import saved_record
 
         first = saved_record(None, {"entity": {"kind": "funder", "status": "added", "id": 7},
                                     "written": {"metrics": {"added": 4}}}, {"identity": 1, "metric": 4})

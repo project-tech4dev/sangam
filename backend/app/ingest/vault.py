@@ -15,7 +15,7 @@ from typing import Any
 from app.core import extract
 from app.core.extract import extract_pdf_text
 from app.ingest import staff_sources
-from app.ingest.source_guards import PRIVATE_SOURCE_DOMAIN
+from app.ingest.research.source_guards import PRIVATE_SOURCE_DOMAIN
 from app.ingest.sources import url_host
 from app.integrations import storage
 

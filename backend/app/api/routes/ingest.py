@@ -197,7 +197,7 @@ async def _research(pool, limit: int, caller: CallerScope) -> list[ResearchOut]:
 def _public(row: dict) -> dict:
     """A summary written from private findings is replaced, as the public brief replaces it."""
     from app.ingest.brief import PRIVATE_NOTE
-    from app.ingest.source_guards import is_private_source
+    from app.ingest.research.source_guards import is_private_source
 
     sources = [u for u in row.get("sources_read") or [] if not is_private_source(u)]
     return {**row, "sources_read": sources, "summary": PRIVATE_NOTE if row.get("has_private") else row["summary"],

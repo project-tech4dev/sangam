@@ -16,7 +16,7 @@ section titles — was missing `rfp`, so every RFP finding ever saved was droppe
 from every brief with no error anywhere. `CONCEPTS` is now the single record and
 the rest are derived views that keep their old names, so the invariant tests
 still read as invariants. `FINDING_MODELS` is the one that cannot derive:
-research_records.py imports this module, so this module cannot import it back.
+finding_types.py imports this module, so this module cannot import it back.
 """
 
 from __future__ import annotations

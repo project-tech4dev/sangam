@@ -8,9 +8,9 @@ from urllib.parse import urlparse
 
 from app.agent.tools.sql.catalog import CATALOG
 from app.ingest import vault
-from app.ingest.coverage import CONCEPT_OF_WRITTEN
-from app.ingest.expectations import CONCEPTS
-from app.ingest.research_records import to_inr
+from app.ingest.research.coverage import CONCEPT_OF_WRITTEN
+from app.ingest.research.expectations import CONCEPTS
+from app.ingest.research.finding_types import to_inr
 from app.ingest.staff_sources import SOURCE_URL_PREFIX
 
 # A finding's bookkeeping, as opposed to what it says.

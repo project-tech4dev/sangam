@@ -9,8 +9,14 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.ingest.expectations import CONCEPTS, concepts_for, expected_fields, filled, recent_fiscal_years
-from app.ingest.research_records import YEARLY
+from app.ingest.research.expectations import (
+    CONCEPTS,
+    concepts_for,
+    expected_fields,
+    filled,
+    recent_fiscal_years,
+)
+from app.ingest.research.finding_types import YEARLY
 
 _FY = re.compile(r"FY\d{4}-\d{2}")
 

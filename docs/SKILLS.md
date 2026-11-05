@@ -165,7 +165,7 @@ a gap. `research_goals` still names what the catalog holds; the skill names
 everything the brief shows, including fields with no column yet (`unplaced`).
 Because loading a skill is the model's choice, the prompt's STEP 2 tells the
 researcher to read its kind's file, and `save_research` enforces the result in
-code (`app/ingest/contract.py`): a save with a field that has neither a finding
+code (`app/ingest/research/contract.py`): a save with a field that has neither a finding
 nor a gap is refused, naming it. Example: an Axis save with no `rfp` finding
 and no `rfp` gap comes back "rfp: no finding and no gap".
 `test_only_the_researcher_declares_skills_and_only_the_pull_ones` pins it.

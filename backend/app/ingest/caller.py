@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.security import CallerScope, chat_scope
-from app.ingest.source_guards import is_private_source
+from app.ingest.research.source_guards import is_private_source
 
 
 def scope() -> CallerScope:
