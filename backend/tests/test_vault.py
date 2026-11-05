@@ -576,3 +576,31 @@ async def test_a_commit_that_fails_after_the_file_went_is_reported(caplog):
     with pytest.raises(repo.RowNotRemoved):
         await repo.delete_vault_upload(_FakePool(rowcount=1, commit_fails=True), document_id=7, remove_file=remove_file)
     assert "org-vault/3/abc-accounts.pdf" in caplog.text, "the log names the file that is gone"
+
+
+async def test_list_documents_pages_its_filters_through_fetch_page():
+    from app.repositories.documents import list_documents
+    from tests.test_paging import _Pool
+
+    pool = _Pool([{"id": 5, "total": 96}])
+    rows, total = await list_documents(pool, limit=2, offset=6, org="kabil", doc_type="annual_report", user_id="u-1")
+    assert ([r["id"] for r in rows], total) == ([5], 96)
+    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
+    assert pool.params == {"org": "kabil", "funder": None, "doc_type": "annual_report", "user": "u-1",
+                           "limit": 2, "offset": 6}
+
+
+async def test_the_document_list_answers_with_its_page(client_for, monkeypatch):
+    from app.api.routes import documents as documents_api
+
+    calls = []
+
+    async def fake_list(pool, **kw):
+        calls.append(kw)
+        return [{"id": 1, "title": "AR 2024"}], 9
+
+    monkeypatch.setattr("app.api.routes.documents.repo.list_documents", fake_list)
+    async with client_for(documents_api.router) as client:
+        body = (await client.get("/api/documents?doc_type=annual_report&limit=2&offset=4")).json()
+    assert (body["total"], body["limit"], body["offset"], [d["title"] for d in body["items"]]) == (9, 2, 4, ["AR 2024"])
+    assert calls[0]["doc_type"] == "annual_report" and (calls[0]["limit"], calls[0]["offset"]) == (2, 4)
