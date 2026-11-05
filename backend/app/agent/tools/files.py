@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import httpx
 from langchain_core.tools import tool
-from pypdf import PdfReader
 
 from app.core.config import get_settings
 from app.core.egress import EgressRefused, guarded_client
+from app.core.extract import PDF_TEXT_CHARS, extract_pdf_text
 from app.integrations.storage import _safe_name
 
 MAX_DOWNLOAD_MB = 100
 MAX_DOWNLOAD_BYTES = MAX_DOWNLOAD_MB * 1024 * 1024
-PDF_TEXT_CHARS = 12_000
 DOWNLOAD_TIMEOUT_SECONDS = 60
 USER_AGENT = "Mozilla/5.0 (compatible; DeepAgentApp/0.1)"
 
@@ -24,35 +22,6 @@ def downloads_dir() -> Path:
     directory = Path(get_settings().downloads_dir)
     directory.mkdir(parents=True, exist_ok=True)
     return directory
-
-
-def _normalize_line(line: str) -> str:
-    # Design-heavy PDFs often store text letter-spaced ("A N N U A L  R E P O R T").
-    # Detect lines that are mostly single-character tokens and collapse them:
-    # runs of 2+ spaces separate words, single spaces separate letters.
-    tokens = line.split(" ")
-    if len(tokens) > 4 and sum(len(t) == 1 for t in tokens) / len(tokens) > 0.6:
-        words = re.split(r"\s{2,}", line.strip())
-        return " ".join(word.replace(" ", "") for word in words)
-    return line
-
-
-def extract_pdf_text(source: Path, start_page: int = 1, end_page: int | None = None) -> tuple[str, int]:
-    """Return (extracted_text, total_pages) for a PDF file. Text may be empty
-    if the PDF has no embedded text layer (scanned/image-only documents)."""
-    reader = PdfReader(str(source))
-    total = len(reader.pages)
-    start = max(start_page, 1)
-    end = min(end_page or total, total)
-    parts: list[str] = []
-    for index in range(start - 1, end):
-        page_text = (reader.pages[index].extract_text() or "").strip()
-        if page_text:
-            page_text = "\n".join(_normalize_line(l) for l in page_text.splitlines())
-            parts.append(f"--- page {index + 1} ---\n{page_text}")
-        if sum(len(p) for p in parts) > PDF_TEXT_CHARS * 2:
-            break
-    return "\n\n".join(parts), total
 
 
 @tool

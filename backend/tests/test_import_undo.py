@@ -6,9 +6,10 @@ import json
 
 import pytest
 
-from app.ingest import undo
+from app.ingest import catalog_save, undo
 from app.ingest.tools import catalog_tools
 from app.repositories import ingest as repo
+from tests.cov_ingest_fakes import patch_catalog
 from tests.test_import_roles import running_as
 from tests.test_storage import _PoolOf
 
@@ -39,7 +40,7 @@ async def _research(db) -> int:
 
 
 async def _save(db, monkeypatch, staff) -> dict:
-    monkeypatch.setattr(catalog_tools, "get_pool", lambda: _PoolOf(db))
+    patch_catalog(monkeypatch, "get_pool", lambda: _PoolOf(db))
     with running_as(staff):
         out = await catalog_tools.promote_research.ainvoke({"slug": SLUG})
     assert out.startswith("Promoted"), out
@@ -131,8 +132,8 @@ async def test_a_save_that_wrote_nothing_leaves_no_promotion(db):
 async def test_a_save_from_the_screen_is_logged_and_undone(db, monkeypatch):
     staff = await _staff(db)
     await _research(db)
-    monkeypatch.setattr(catalog_tools, "get_pool", lambda: _PoolOf(db))
-    reports = await catalog_tools.save_to_catalog(SLUG, staff, {})
+    patch_catalog(monkeypatch, "get_pool", lambda: _PoolOf(db))
+    reports = await catalog_save.save_to_catalog(SLUG, staff, {})
     promotion = reports[0]["promotion_id"]
     row = await (await db.execute("SELECT promoted_by FROM promotions WHERE id = %s", (promotion,))).fetchone()
     assert row["promoted_by"] == staff.user_id and await _funders(db) == 1

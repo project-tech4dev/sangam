@@ -15,9 +15,9 @@ from typing import Any
 
 from langchain_core.tools import tool
 
-from app.agent.tools.files import extract_pdf_text
+from app.core import extract
+from app.core.extract import extract_pdf_text
 from app.db.pool import get_pool
-from app.ingest import office
 from app.ingest.matcher import resolve_funder, resolve_org
 from app.ingest.promote import MERGEABLE
 from app.ingest.vault import MAX_BYTES, MAX_CHARS
@@ -77,9 +77,9 @@ def _archived(doc: dict[str, Any], data: bytes, start_page: int, end_page: int |
     path = doc["storage_path"].lower()
     word, plain = path.endswith(".docx"), path.endswith(TEXT)
     if word:
-        unit, (text, total) = "paragraph", office.docx_range(data, start_page, end_page)
+        unit, (text, total) = "paragraph", extract.docx_range(data, start_page, end_page)
     elif plain:
-        unit, (text, total) = "line", office.text_range(data, start_page, end_page)
+        unit, (text, total) = "line", extract.text_range(data, start_page, end_page)
     else:
         with tempfile.NamedTemporaryFile(suffix=".pdf") as handle:
             handle.write(data)

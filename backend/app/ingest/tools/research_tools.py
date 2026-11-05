@@ -18,12 +18,13 @@ import httpx
 import trafilatura
 from langchain_core.tools import tool
 
-from app.agent.tools.files import _safe_name, downloads_dir, extract_pdf_text
+from app.agent.tools.files import _safe_name, downloads_dir
 from app.agent.tools.web import make_web_search
+from app.core import extract
 from app.core.config import get_settings
 from app.core.egress import TRUST
+from app.core.extract import extract_pdf_text
 from app.db.pool import get_pool
-from app.ingest import office
 from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish, rows_for
@@ -291,7 +292,7 @@ def read_document_pages(filename: str, start_page: int = 1, end_page: int | None
         return f"ERROR: {filename} is not in the downloads folder. Available: {available}"
     if destination.suffix.lower() == ".docx":
         try:
-            text, total = office.docx_range(destination.read_bytes(), start_page, end_page)
+            text, total = extract.docx_range(destination.read_bytes(), start_page, end_page)
         except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
             return f"ERROR: {filename} could not be read as a Word file ({type(exc).__name__}: {exc})."
         return f"[{filename}: {total} paragraphs]\n\n{text}" if text.strip() else f"{filename} has no text in that range."

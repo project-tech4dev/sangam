@@ -13,7 +13,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from app.agent.tools.files import extract_pdf_text
+from app.core import extract
+from app.core.extract import extract_pdf_text
 from app.ingest import staff_sources
 from app.ingest.source_guards import PRIVATE_SOURCE_DOMAIN
 from app.ingest.sources import url_host
@@ -126,25 +127,19 @@ def _windowed(doc: dict[str, Any], items: list[str], start: int, unit: str, head
 
 
 def docx_text(doc: dict[str, Any], data: bytes, start: int) -> str:
-    from app.ingest import office
-
-    paras = office.docx_paragraphs(data)
+    paras = extract.docx_paragraphs(data)
     return _windowed(doc, paras, start, "para", f"{len(paras)} paragraphs (start_page counts paragraphs in a Word "
                                                 f"file). Cite a fact by its paragraph marker.")
 
 
 def pptx_text(doc: dict[str, Any], data: bytes, start: int) -> str:
-    from app.ingest import office
-
-    slides = office.pptx_slides(data)
+    slides = extract.pptx_slides(data)
     return _windowed(doc, slides, start, "slide", f"{len(slides)} slides (start_page counts slides in a PowerPoint "
                                                   f"file). Cite a fact by its slide marker.")
 
 
 def plain_text(doc: dict[str, Any], data: bytes, start: int, *, csv: bool = False) -> str:
-    from app.ingest import office
-
-    lines = office.text_lines(data)
+    lines = extract.text_lines(data)
     head = f"{len(lines)} lines (start_page counts lines in a text file). Cite a fact by its line marker."
     if csv and start > 1 and lines:
         head += f"\nColumns (line 1): {lines[0]}" 

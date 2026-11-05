@@ -10,10 +10,11 @@ import pytest
 from psycopg.errors import UniqueViolation
 
 from app.core.security import CallerScope, chat_user_id
+from app.ingest import catalog_save
 from app.ingest.matcher import Match
 from app.ingest.tools import catalog_tools
 from app.ingest.writer import UNWRITTEN
-from tests.cov_ingest_fakes import BrokenPool, ScriptPool, running_as
+from tests.cov_ingest_fakes import BrokenPool, ScriptPool, patch_catalog, running_as
 from tests.test_import_roles import ARPAN_STEWARD, KABIL_STEWARD, MEMBER, STAFF
 
 PUBLIC = "https://example.org/csr"
@@ -24,7 +25,7 @@ VAULT_URL = "https://org-vault.sangam.invalid/12"
 @pytest.fixture
 def pool(monkeypatch):
     p = ScriptPool()
-    monkeypatch.setattr(catalog_tools, "get_pool", lambda: p)
+    patch_catalog(monkeypatch, "get_pool", lambda: p)
     return p
 
 
@@ -69,7 +70,7 @@ class TestDossier:
         assert out.startswith("orgs [org:7] Arpan (arpan)") and "org_identifiers" in out
 
     async def test_a_failure_is_returned(self, monkeypatch):
-        monkeypatch.setattr(catalog_tools, "get_pool", lambda: BrokenPool())
+        patch_catalog(monkeypatch, "get_pool", lambda: BrokenPool())
         assert await catalog_tools.funder_dossier.ainvoke({"name": "Acme"}) == "funder_dossier failed: database down"
 
 
@@ -148,7 +149,7 @@ class TestResearchGoals:
         assert "years FY2023-24 — years covered" in out
 
     async def test_a_failure_is_returned(self, monkeypatch):
-        monkeypatch.setattr(catalog_tools, "get_pool", lambda: BrokenPool())
+        patch_catalog(monkeypatch, "get_pool", lambda: BrokenPool())
         out = await catalog_tools.research_goals.ainvoke({"name": "Acme", "entity_kind": "funder"})
         assert out == "research_goals failed: RuntimeError: database down"
 
@@ -162,8 +163,8 @@ class TestResearchRows:
 
         async def promotable(row, rows):
             return {**row, "history": rows}
-        monkeypatch.setattr(catalog_tools.brief, "rows_for", rows_for)
-        monkeypatch.setattr(catalog_tools.brief, "promotable", promotable)
+        monkeypatch.setattr(catalog_save.brief, "rows_for", rows_for)
+        monkeypatch.setattr(catalog_save.brief, "promotable", promotable)
 
     def row(self):
         return {"slug": "acme", "entity_name": "Acme", "findings": [
@@ -171,14 +172,14 @@ class TestResearchRows:
 
     async def test_a_member_never_sees_staff_or_vault_findings(self, pool):
         pool.conn.on("FROM entity_research", [self.row()])
-        [row] = await catalog_tools._research_rows(pool, "acme", MEMBER)
+        [row] = await catalog_save.research_rows(pool, "acme", MEMBER)
         assert row["findings"] == [{"source_url": PUBLIC}] and row["private_removed"]
         assert row["history"][0]["findings"] == [{"source_url": PUBLIC}]
         assert pool.conn.calls[0][1] == ("acme",)
 
     async def test_staff_see_staff_findings_but_not_vault_ones_in_the_shared_row(self, pool):
         pool.conn.on("FROM entity_research", [self.row()])
-        [row] = await catalog_tools._research_rows(pool, "", STAFF)
+        [row] = await catalog_save.research_rows(pool, "", STAFF)
         assert row["findings"] == [{"source_url": PUBLIC}, {"source_url": STAFF_URL}]
         assert pool.conn.calls[0][1] == ()
 
@@ -189,19 +190,19 @@ class TestResearchRows:
             {"org_id": 9, "findings": [{"source_url": "https://org-vault.sangam.invalid/40"}],
              "documents_read": [40], "titles": None},
         ])
-        [row] = await catalog_tools._research_rows(pool, "acme", MEMBER, vault=True)
+        [row] = await catalog_save.research_rows(pool, "acme", MEMBER, vault=True)
         assert row["findings"][-1] == {"source_url": VAULT_URL}
         assert row["vault"] == [{"org_id": 7, "documents_read": [12], "titles": {"12": "x"}}]
 
     async def test_no_readable_vault_leaves_the_row(self, pool):
         row = {"slug": "acme", "entity_name": "Acme", "findings": []}
-        assert await catalog_tools._with_vault(pool, row, MEMBER) == row
+        assert await catalog_save._with_vault(pool, row, MEMBER) == row
 
 
 def rows(monkeypatch, *found):
     async def research_rows(pool, slug, caller=None, *, vault=False):
         return [dict(r) for r in found]
-    monkeypatch.setattr(catalog_tools, "_research_rows", research_rows)
+    patch_catalog(monkeypatch, "research_rows", research_rows)
 
 
 def plans(monkeypatch, plan):
@@ -212,7 +213,7 @@ def plans(monkeypatch, plan):
         if isinstance(plan, Exception):
             raise plan
         return plan
-    monkeypatch.setattr(catalog_tools, "promote", promote)
+    patch_catalog(monkeypatch, "promote", promote)
     return seen
 
 
@@ -273,44 +274,44 @@ class TestCompareAndCoverage:
 
     async def test_write_preview(self, monkeypatch, pool, cover):
         rows(monkeypatch)
-        assert await catalog_tools.write_preview("acme") == {"questions": [], "planned": [], "coverage": ""}
+        assert await catalog_save.write_preview("acme") == {"questions": [], "planned": [], "coverage": ""}
         rows(monkeypatch, {"slug": "arpan", "entity_kind": "org"})
-        org = await catalog_tools.write_preview("arpan")
+        org = await catalog_save.write_preview("arpan")
         assert org["coverage"] == "head of cov" and "An NGO" in org["planned"][0]
         rows(monkeypatch, {"slug": "acme", "entity_kind": "funder"})
         plans(monkeypatch, PLAN)
-        funder = await catalog_tools.write_preview("acme")
+        funder = await catalog_save.write_preview("acme")
         assert funder["planned"] == ["funder_csr_years: 1 row(s)", "programs: 2 row(s)", "held back: 1"]
         assert funder["questions"] == [{"id": "q1"}]
 
 
 class TestSavedState:
     async def test_rows_now_needs_an_entity(self, pool):
-        assert await catalog_tools._rows_now(pool.conn, "funder", None) is None
-        assert await catalog_tools._rows_now(pool.conn, "funder", UNWRITTEN) is None
-        assert await catalog_tools._rows_now(pool.conn, "unknown", 4) is None
+        assert await catalog_save._rows_now(pool.conn, "funder", None) is None
+        assert await catalog_save._rows_now(pool.conn, "funder", UNWRITTEN) is None
+        assert await catalog_save._rows_now(pool.conn, "unknown", 4) is None
 
     async def test_rows_now_counts_each_concept(self, pool):
         pool.conn.on("count(*)", {"n": 3, "years": ["FY2023-24"]})
-        counts = await catalog_tools._rows_now(pool.conn, "funder", 4)
+        counts = await catalog_save._rows_now(pool.conn, "funder", 4)
         assert counts["identity"] == 1 and counts["csr_year"] == 3
 
     async def test_record_save_stores_what_was_written(self, monkeypatch, pool):
         monkeypatch.setattr(catalog_tools.coverage, "saved_record", lambda prior, report, after: {"after": after})
-        await catalog_tools._record_save(pool.conn, {"id": 31, "saved": None}, {"entity": None})
+        await catalog_save._record_save(pool.conn, {"id": 31, "saved": None}, {"entity": None})
         [(_sql, params)] = pool.conn.sql("UPDATE entity_research SET saved")
         assert json.loads(params[0]) == {"after": None} and params[1] == 31
 
     async def test_record_save_keeps_the_stored_record_when_nothing_changed(self, monkeypatch, pool):
         monkeypatch.setattr(catalog_tools.coverage, "saved_record", lambda prior, report, after: None)
-        await catalog_tools._record_save(pool.conn, {"id": 31}, {"entity": None})
+        await catalog_save._record_save(pool.conn, {"id": 31}, {"entity": None})
         assert not pool.conn.calls
 
 
 class TestRecordSaveAfterARerun:
     async def test_a_resave_that_writes_nothing_new_still_marks_the_rerun_saved(self, monkeypatch, pool):
         monkeypatch.setattr(catalog_tools.coverage, "saved_record", lambda prior, report, after: None)
-        await catalog_tools._record_save(pool.conn, {"id": 31, "saved": {"entity": {"id": 4}}}, {"entity": None})
+        await catalog_save._record_save(pool.conn, {"id": 31, "saved": {"entity": {"id": 4}}}, {"entity": None})
         [(_sql, params)] = pool.conn.sql("UPDATE entity_research SET saved_at = now()")
         assert params == (31,)
 
@@ -324,13 +325,13 @@ class TestCoverageView:
 
     async def test_no_research(self, monkeypatch, pool):
         rows(monkeypatch)
-        assert await catalog_tools.coverage_view("acme") is None
+        assert await catalog_save.coverage_view("acme") is None
 
     async def test_a_saved_row_reads_its_record_without_private_held_lines(self, monkeypatch, pool):
         saved = {"entity": {"id": 4}, "reasons": ["r"], "held": ["Rs 4 lakh from a staff sheet"],
                  "changes": {"a": 1}, "rows_before": {"a": 0}, "rows_after": {"a": 1}, "skipped": {"x": 1}}
         rows(monkeypatch, {"slug": "acme", "entity_kind": "funder", "saved": saved, "private_removed": True})
-        out = await catalog_tools.coverage_view("acme", MEMBER)
+        out = await catalog_save.coverage_view("acme", MEMBER)
         assert out["stage"] == "saved" and out["held"] == [] and out["after"] == {"a": 1}
         assert out["report"] == {"skipped": {"x": 1}, "held": []}
 
@@ -340,7 +341,7 @@ class TestCoverageView:
         rows(monkeypatch, {"slug": "arpan", "entity_kind": "org", "saved": saved,
                            "saved_at": datetime(2026, 10, 22, 9, tzinfo=UTC),
                            "researched_at": datetime(2026, 10, 22, 15, tzinfo=UTC)})
-        out = await catalog_tools.coverage_view("arpan", STAFF)
+        out = await catalog_save.coverage_view("arpan", STAFF)
         assert out["stage"] == "unsaved"
 
     async def test_an_unsaved_funder_is_a_dry_run(self, monkeypatch, pool):
@@ -349,21 +350,21 @@ class TestCoverageView:
 
         async def rows_now(conn, kind, entity_id):
             return None
-        monkeypatch.setattr(catalog_tools, "_rows_now", rows_now)
-        out = await catalog_tools.coverage_view("acme", STAFF)
+        monkeypatch.setattr(catalog_save, "_rows_now", rows_now)
+        out = await catalog_save.coverage_view("acme", STAFF)
         assert out["stage"] == "planned" and out["entity"] == {"id": None, "name": "Acme"}
         assert out["questions"] == 1 and out["before"]["csr_year"] == 0 and out["after"]["csr_year"] == 2
 
     async def test_an_unsaved_ngo_has_no_numbers(self, monkeypatch, pool):
         rows(monkeypatch, {"slug": "arpan", "entity_kind": "org"})
-        out = await catalog_tools.coverage_view("arpan", STAFF)
+        out = await catalog_save.coverage_view("arpan", STAFF)
         assert out["stage"] == "unsaved" and out["before"] is None
 
 
 class TestReviewView:
     @pytest.fixture(autouse=True)
     def review(self, monkeypatch):
-        r = catalog_tools.review
+        r = catalog_save.review
         monkeypatch.setattr(r, "answers", lambda row: ["answer"])
         monkeypatch.setattr(r, "missing", lambda row: ["missing"])
         monkeypatch.setattr(r, "question", lambda q: {"q": q["id"]})
@@ -373,12 +374,12 @@ class TestReviewView:
 
     async def test_none_without_research(self, monkeypatch, pool):
         rows(monkeypatch)
-        assert await catalog_tools.review_view("acme") is None
+        assert await catalog_save.review_view("acme") is None
 
     async def test_a_funder(self, monkeypatch, pool):
         rows(monkeypatch, {"slug": "acme", "entity_kind": "funder", "canonical_name": "Acme Foundation"})
         plans(monkeypatch, PLAN)
-        out = await catalog_tools.review_view("acme", STAFF)
+        out = await catalog_save.review_view("acme", STAFF)
         assert out["name"] == "Acme Foundation" and out["existing"] is True
         assert out["questions"] == [{"q": "q1"}]
         assert out["saves"] == [{"concept": "csr_year", "topic": "topic csr_year", "added": 1, "updated": 0}]
@@ -389,8 +390,8 @@ class TestReviewView:
         async def org_match(conn, row, asking):
             asking.items.append({"outcome": "asked", "id": "same"})
             return Match("close", 7)
-        monkeypatch.setattr(catalog_tools, "org_match", org_match)
-        out = await catalog_tools.review_view("arpan", STAFF)
+        patch_catalog(monkeypatch, "org_match", org_match)
+        out = await catalog_save.review_view("arpan", STAFF)
         assert out["name"] == "arpan" and out["existing"] is False and out["questions"] == [{"q": "same"}]
         assert out["saves"] == []
 
@@ -400,25 +401,25 @@ NGO = {"slug": "arpan", "entity_kind": "org", "entity_name": "Arpan"}
 
 class TestMaySave:
     async def test_a_funder_needs_a_signed_in_user(self, pool):
-        assert await catalog_tools._may_save(pool.conn, MEMBER, {"slug": "acme", "entity_kind": "funder"}) is None
+        assert await catalog_save._may_save(pool.conn, MEMBER, {"slug": "acme", "entity_kind": "funder"}) is None
         nobody = CallerScope(None, False)
-        assert "signed-in" in await catalog_tools._may_save(pool.conn, nobody, {"slug": "acme"})
+        assert "signed-in" in await catalog_save._may_save(pool.conn, nobody, {"slug": "acme"})
 
     async def test_an_ngo_sangam_does_not_hold(self, monkeypatch, pool):
         async def org_match(conn, row, gate):
             return None
-        monkeypatch.setattr(catalog_tools, "org_match", org_match)
-        out = await catalog_tools._may_save(pool.conn, ARPAN_STEWARD, NGO)
+        patch_catalog(monkeypatch, "org_match", org_match)
+        out = await catalog_save._may_save(pool.conn, ARPAN_STEWARD, NGO)
         assert out == "Arpan is not an NGO Sangam holds yet; the Sangam team adds new NGOs."
 
     async def test_a_steward_saves_their_own_ngo(self, monkeypatch, pool):
         async def org_match(conn, row, gate):
             return Match("exact", 7)
-        monkeypatch.setattr(catalog_tools, "org_match", org_match)
-        assert await catalog_tools._may_save(pool.conn, ARPAN_STEWARD, NGO) is None
+        patch_catalog(monkeypatch, "org_match", org_match)
+        assert await catalog_save._may_save(pool.conn, ARPAN_STEWARD, NGO) is None
 
     async def test_a_member_does_not(self, pool):
-        out = await catalog_tools._may_save(pool.conn, MEMBER, {**NGO, "resolved_org_id": 7})
+        out = await catalog_save._may_save(pool.conn, MEMBER, {**NGO, "resolved_org_id": 7})
         assert "only its stewards and the Sangam team" in out
 
 
@@ -444,44 +445,44 @@ class TestSaveToCatalog:
 
         async def publish_states(p, slug, states):
             state.published.append((slug, states))
-        monkeypatch.setattr(catalog_tools.undo, "start", start)
-        monkeypatch.setattr(catalog_tools.undo, "finish", finish)
-        monkeypatch.setattr(catalog_tools, "promote", promote)
-        monkeypatch.setattr(catalog_tools, "_record_save", record_save)
-        monkeypatch.setattr(catalog_tools, "_publish_states", publish_states)
+        monkeypatch.setattr(catalog_save.undo, "start", start)
+        monkeypatch.setattr(catalog_save.undo, "finish", finish)
+        patch_catalog(monkeypatch, "promote", promote)
+        monkeypatch.setattr(catalog_save, "_record_save", record_save)
+        monkeypatch.setattr(catalog_save, "_publish_states", publish_states)
         return state
 
     async def test_only_staff_promote_everything(self, pool):
-        with pytest.raises(catalog_tools.SaveRefused, match="one researched organisation at a time"):
-            await catalog_tools.save_to_catalog("", MEMBER)
+        with pytest.raises(catalog_save.SaveRefused, match="one researched organisation at a time"):
+            await catalog_save.save_to_catalog("", MEMBER)
 
     async def test_no_research_is_a_lookup_error(self, monkeypatch, pool):
         rows(monkeypatch)
         with pytest.raises(LookupError):
-            await catalog_tools.save_to_catalog("acme", STAFF)
+            await catalog_save.save_to_catalog("acme", STAFF)
 
     async def test_a_refused_caller(self, monkeypatch, pool):
         rows(monkeypatch, {**NGO, "resolved_org_id": 7})
-        with pytest.raises(catalog_tools.SaveRefused, match="only its stewards"):
-            await catalog_tools.save_to_catalog("arpan", MEMBER)
+        with pytest.raises(catalog_save.SaveRefused, match="only its stewards"):
+            await catalog_save.save_to_catalog("arpan", MEMBER)
 
     async def test_a_save_is_one_undoable_promotion_and_its_states_are_published(self, monkeypatch, pool, saving):
         rows(monkeypatch, {"slug": "acme", "entity_kind": "funder", "id": 31})
-        [report] = await catalog_tools.save_to_catalog("acme", MEMBER)
+        [report] = await catalog_save.save_to_catalog("acme", MEMBER)
         assert report["promotion_id"] == 88
         assert saving.published == [("acme", {"k": {"state": "written"}})]
 
     async def test_a_race_is_retried_once(self, monkeypatch, pool, saving):
         rows(monkeypatch, {"slug": "acme", "entity_kind": "funder"})
         saving.fail, saving.finished = 1, False
-        [report] = await catalog_tools.save_to_catalog("acme", STAFF)
+        [report] = await catalog_save.save_to_catalog("acme", STAFF)
         assert saving.attempts == 2 and report["promotion_id"] is None
 
     async def test_a_second_race_raises(self, monkeypatch, pool, saving):
         rows(monkeypatch, {"slug": "acme", "entity_kind": "funder"})
         saving.fail = 2
         with pytest.raises(UniqueViolation):
-            await catalog_tools.save_to_catalog("acme", STAFF)
+            await catalog_save.save_to_catalog("acme", STAFF)
 
     async def test_publish_states_writes_back_and_never_raises(self, monkeypatch, pool):
         seen = []
@@ -491,11 +492,11 @@ class TestSaveToCatalog:
 
         async def publish(rws, *, states):
             seen.append((rws, states))
-        monkeypatch.setattr(catalog_tools.brief, "rows_for", rows_for)
-        monkeypatch.setattr(catalog_tools.brief, "publish", publish)
-        await catalog_tools._publish_states(pool, "acme", {"k": 1})
+        monkeypatch.setattr(catalog_save.brief, "rows_for", rows_for)
+        monkeypatch.setattr(catalog_save.brief, "publish", publish)
+        await catalog_save._publish_states(pool, "acme", {"k": 1})
         assert seen == [([{"slug": "acme"}], {"k": 1})]
-        await catalog_tools._publish_states(BrokenPool(), "acme", {})
+        await catalog_save._publish_states(BrokenPool(), "acme", {})
 
 
 class TestPromoteResearch:
@@ -504,14 +505,14 @@ class TestPromoteResearch:
             if isinstance(result, Exception):
                 raise result
             return result
-        monkeypatch.setattr(catalog_tools, "save_to_catalog", save)
+        patch_catalog(monkeypatch, "save_to_catalog", save)
 
     async def promote(self, args=None):
         with running_as(STAFF):
             return await catalog_tools.promote_research.ainvoke({"slug": "acme"} if args is None else args)
 
     async def test_refused_and_missing(self, monkeypatch):
-        self.saves(monkeypatch, catalog_tools.SaveRefused("not yours"))
+        self.saves(monkeypatch, catalog_save.SaveRefused("not yours"))
         assert await self.promote() == "REFUSED: not yours"
         self.saves(monkeypatch, LookupError("acme"))
         assert await self.promote() == "No saved research for 'acme'. Research first."

@@ -13,6 +13,7 @@ from typing import Any, Literal
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from app.core import extract
 from app.integrations import storage
 from app.repositories import proposals as repo
 
@@ -90,9 +91,7 @@ def content(title: str, suffix: str, data: bytes) -> list[dict[str, Any]]:
     if suffix == ".pdf":
         return [intro, {"type": "file", "base64": base64.b64encode(data).decode(), "mime_type": "application/pdf"}]
     if suffix == ".docx":
-        from app.ingest import office
-
-        return [intro, {"type": "text", "text": "\n".join(office.docx_paragraphs(data))}]
+        return [intro, {"type": "text", "text": "\n".join(extract.docx_paragraphs(data))}]
     raise Unreadable("The funder's form must be a PDF or Word file.")
 
 
