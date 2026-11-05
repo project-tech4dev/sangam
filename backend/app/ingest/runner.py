@@ -12,7 +12,7 @@ from typing import Any
 from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.ingest.adapters._http import SourceUnavailable
-from app.ingest.sources import SOURCES, Source, resolve
+from app.ingest.reading.registry import SOURCES, Source, resolve
 
 logger = logging.getLogger(__name__)
 

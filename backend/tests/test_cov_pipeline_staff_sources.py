@@ -7,7 +7,7 @@ import io
 import pytest
 from openpyxl import Workbook
 
-from app.ingest import staff_sources as ss
+from app.ingest.reading import staff_sources as ss
 from app.integrations import storage
 
 

@@ -17,8 +17,8 @@ from pathlib import Path
 
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
-from app.ingest import staff_sources
-from app.ingest.sources import SOURCES
+from app.ingest.reading import staff_sources
+from app.ingest.reading.registry import SOURCES
 from app.integrations import storage
 from app.repositories import documents as documents_repo
 from psycopg.conninfo import conninfo_to_dict

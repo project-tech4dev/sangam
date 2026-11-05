@@ -24,10 +24,10 @@ from urllib.parse import urlsplit
 
 from pydantic import ValidationError
 
-from app.ingest import staff_sources, vault
 from app.ingest.brief import fact_key
 from app.ingest.geography import resolve_location
 from app.ingest.matcher import Match, _is_foundation, name_key, resolve_funder, resolve_org, variants
+from app.ingest.reading import staff_sources, vault
 from app.ingest.records import (
     CIN_FORMAT,
     ContactRecord,

@@ -23,9 +23,9 @@ NOT_TOOLS = "app.agent.tools.sql"
 AGENTS = ("agent", "ingest", "proposals")
 SHARED_ACROSS_AGENTS = (
     "app.agent.tools.sql.catalog",  # the SQL catalog: Ask's allowlist, which Import also reads
-    # Pitch reads with Import's public brief, vault, places, source rules and reading tools.
-    "app.ingest.brief", "app.ingest.vault", "app.ingest.geography", "app.ingest.access", "app.ingest.run_sources",
-    "app.ingest.research.source_guards", "app.ingest.tools.research_tools", "app.ingest.tools.library_tools",
+    # Pitch reads with Import's brief, places, reading rules (reading/), source guards and reading tools.
+    "app.ingest.brief", "app.ingest.geography", "app.ingest.reading.", "app.ingest.research.source_guards",
+    "app.ingest.tools.research_tools", "app.ingest.tools.library_tools",
     "app.ingest.middleware.RunSources",
 )
 
@@ -59,7 +59,7 @@ def _inside_functions(tree: ast.AST) -> set[int]:
 
 
 def _module_of(target: str) -> str:
-    """`app.ingest.vault.read` -> `app.ingest.vault`, the longest prefix that is a module or package."""
+    """`app.ingest.reading.vault.read` -> `app.ingest.reading.vault`, the longest prefix that is a module or package."""
     parts = target.split(".")
     for end in range(len(parts), 1, -1):
         base = BACKEND.joinpath(*parts[:end])

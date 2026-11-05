@@ -14,7 +14,7 @@ from collections.abc import Iterable
 from pathlib import PurePath
 from typing import Any
 
-from app.ingest.sources import SOURCES
+from app.ingest.reading.registry import SOURCES
 from app.integrations import storage
 from app.repositories import documents as documents_repo
 from app.repositories import funders as funders_repo

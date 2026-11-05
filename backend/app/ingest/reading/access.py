@@ -11,7 +11,7 @@ import httpx
 from app.core.egress import guarded_client, private_address_refusal
 from app.db.pool import get_pool
 from app.ingest.adapters._http import HEADERS, USER_AGENT
-from app.ingest.sources import AccessRule, rule_for_url
+from app.ingest.reading.registry import AccessRule, rule_for_url
 
 logger = logging.getLogger(__name__)
 

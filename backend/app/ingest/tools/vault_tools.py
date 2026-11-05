@@ -13,8 +13,8 @@ from typing import Any
 from langchain_core.tools import tool
 
 from app.db.pool import get_pool
-from app.ingest import run_sources, vault
 from app.ingest.caller import scope
+from app.ingest.reading import run_sources, vault
 from app.ingest.research.findings import VaultResearch
 from app.ingest.writer import slugify
 

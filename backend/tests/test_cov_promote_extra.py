@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from app.ingest import promote as promote_mod
-from app.ingest import staff_sources
 from app.ingest.promote import link_partner_lines, promote
+from app.ingest.reading import staff_sources
 from tests.test_cov_promote import finding, funder, money, one, org, research, rows, tag
 
 pytestmark = pytest.mark.integration

@@ -9,7 +9,7 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
-from app.ingest import vault
+from app.ingest.reading import vault
 from app.proposals import reliability, rubric
 
 LIVE = ("proposed", "confirmed")  # corrected and rejected facts fill no gap and reach no text
