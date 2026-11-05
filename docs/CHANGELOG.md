@@ -249,7 +249,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 
 ## Code structure
 
-- 2026-11-06 · (unmerged) · Refactor phase 0, dead code deleted: `mcp.py`, its five settings and `langchain-mcp-adapters` (9 packages out of the bundle); `_http`'s unused polite client; `sql_max_attempts`; 8 more functions and classes nothing called. `_filled` now lives once, as `expectations.filled`. `tests/test_architecture.py` fails on a top-level name with no caller outside tests (R6).
+- 2026-11-06 · #368 · Refactor phase 0, dead code deleted: `mcp.py`, its five settings and `langchain-mcp-adapters` (9 packages out of the bundle); `_http`'s unused polite client; `sql_max_attempts`; 8 more functions and classes nothing called. `_filled` now lives once, as `expectations.filled`. `tests/test_architecture.py` fails on a top-level name with no caller outside tests (R6).
 
 ---
 
