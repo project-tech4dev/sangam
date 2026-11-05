@@ -121,7 +121,8 @@ def save_failed(messages: list[AnyMessage]) -> bool:
 SAVE_SCHEMAS: dict[str, type[BaseModel]] = {SAVE_TOOL: EntityResearch, "save_vault_findings": VaultResearch}
 # ToolNode echoes the whole payload before the error, so a big save's reason was evicted and cut off.
 REFUSAL_LINES = 25
-_FINDING: TypeAdapter[Any] = TypeAdapter(Finding)
+_FINDINGS: TypeAdapter[list[Any]] = TypeAdapter(list[Finding])
+_GAPS: TypeAdapter[list[Gap]] = TypeAdapter(list[Gap])
 _LABELS = ("partner_name", "program_name", "project_name", "title", "name", "id_type", "state", "fiscal_year")
 
 
@@ -148,39 +149,19 @@ def _problem(error: dict[str, Any], payload: dict[str, Any], schema: type[BaseMo
 
 
 def parse_payload(text: str) -> dict[str, Any] | None:
-    """A payload sent as a JSON string. Forgives surplus closers, up to two missing ones, and a URL split at its colon."""
-    text = text.strip()
-    for candidate in dict.fromkeys((text, _SPLIT_URL.sub(r'"\1://', text))):
-        for attempt in dict.fromkeys((candidate, candidate + _missing_closers(candidate))):
-            try:
-                value, end = json.JSONDecoder().raw_decode(attempt)
-            except ValueError:
-                continue
-            if not attempt[end:].strip(" \t\r\n}]") and isinstance(value, dict):
-                return value
-    return None
+    """A payload sent as a JSON string. Only surplus closers and a URL split at its colon are forgiven."""
+    # "source_url":"https":"//x" is never meant as a key and a value: a quote was dropped mid-URL.
+    text = _SPLIT_URL.sub(r'"\1://', text.strip())
+    try:
+        value, end = json.JSONDecoder().raw_decode(text)
+    except ValueError:
+        return None
+    if text[end:].strip(" \t\r\n}]"):
+        return None
+    return value if isinstance(value, dict) else None
 
 
-# "source_url":"https":"//x" is never meant as a key and a value: a quote was dropped mid-URL.
 _SPLIT_URL = re.compile(r'"(https?)"\s*:\s*"//')
-
-
-def _missing_closers(text: str) -> str:
-    """The one or two brackets a payload cut right after a complete object, list or string lacks; else ''."""
-    stack: list[str] = []
-    in_string = escaped = False
-    for ch in text:
-        if in_string:
-            escaped, in_string = (False, True) if escaped else (ch == "\\", ch != '"')
-        elif ch == '"':
-            in_string = True
-        elif ch in "{[":
-            stack.append("}" if ch == "{" else "]")
-        elif ch in "}]" and (not stack or stack.pop() != ch):
-            return ""
-    if in_string or not 0 < len(stack) <= 2 or text[-1:] not in '}]"':
-        return ""
-    return "".join(reversed(stack))
 
 
 def _not_json(name: str, text: str) -> str:
@@ -210,26 +191,21 @@ def refusal_text(name: str, payload: Any) -> str | None:
     lines = [f"- {_problem(e, data, schema)}" for e in errors[:REFUSAL_LINES]]
     if len(errors) > REFUSAL_LINES:
         lines.append(f"- and {len(errors) - REFUSAL_LINES} more of the same kinds")
-    needed = _also_unanswered(data) if name == SAVE_TOOL else []
+    needed = _also_unanswered(data, errors) if name == SAVE_TOOL else []
     if needed and len(lines) < REFUSAL_LINES:
         lines += ["Also, a finding or a gap for each of these:"] + [f"- {m}" for m in needed][:REFUSAL_LINES - len(lines)]
     return (f"Error invoking tool '{name}': refused, nothing saved. Fix these {len(errors)} and call {name} "
             "again with the whole payload:\n" + "\n".join(lines))
 
 
-def _also_unanswered(data: dict[str, Any]) -> list[str]:
-    """What the contract would refuse next, so one retry fixes both; a concept with an invalid item is skipped."""
+def _also_unanswered(data: dict[str, Any], errors: list[Any]) -> list[str]:
+    """What the contract refuses next, asked only when every finding and gap is valid and a top-level field is not."""
+    if any(e["loc"][:1] in (("findings",), ("gaps",)) for e in errors):
+        return []
     try:
-        kept: dict[str, list[Any]] = {"findings": [], "gaps": []}
-        broken: set[str] = set()
-        for key, check in (("findings", _FINDING.validate_python), ("gaps", Gap.model_validate)):
-            for item in data.get(key) or []:
-                try:
-                    kept[key].append(check(item))
-                except ValidationError:
-                    broken.add(str(item.get("concept")) if isinstance(item, dict) else "")
-        research = EntityResearch.model_construct(**{**data, **kept})
-        return [m for m in unanswered(research) if re.match(r"\w+", m).group() not in broken]
+        findings = _FINDINGS.validate_python(data.get("findings") or [])
+        gaps = _GAPS.validate_python(data.get("gaps") or [])
+        return unanswered(EntityResearch.model_construct(**{**data, "findings": findings, "gaps": gaps}))
     except Exception:  # noqa: BLE001 - an unreadable payload keeps the schema's own lines
         return []
 

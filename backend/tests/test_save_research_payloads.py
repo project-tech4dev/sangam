@@ -288,25 +288,6 @@ def gap(**over) -> dict:
     return {"concept": "metric", "reason": "not_stated", "detail": "No reach figures found.", **over}
 
 
-class TestAPayloadMissingItsClosers:
-    @pytest.mark.parametrize("cut", ["}", "]}"])
-    def test_a_payload_missing_its_last_closers_saves(self, cut):
-        # Seen once: a 9.6 KB save ending "basis":"inferred"}] with its final '}' missing.
-        text = json.dumps(research(spend(classification_note="project 'Sports scholarships'")))
-        assert saved(text.removesuffix(cut)).status == "partial"
-
-    def test_a_payload_cut_mid_string_is_refused(self):
-        text = json.dumps(research())
-        assert "not valid JSON" in refused(text[: text.index("Sports scholarships") + 6])
-
-    def test_a_payload_cut_mid_number_is_refused(self):
-        assert parse_payload('{"a": 1') is None
-
-    def test_parse_payload_adds_at_most_two(self):
-        assert parse_payload('{"a": {"b": 1}') == {"a": {"b": 1}}
-        assert parse_payload('{"a": {"b": {"c": {"d": 1}') is None
-
-
 class TestAUrlSplitAtItsColon:
     def test_the_url_is_rejoined_and_saved(self):
         # Seen in two runs in a row (IRCTC, 43 KB): "source_url":"https":"//…".
@@ -353,10 +334,10 @@ class TestOneRefusalForEverything:
         assert "summary: Field required" in msg
         assert "identity: no finding and no gap" in msg and "Also" in msg
 
-    def test_a_concept_with_a_broken_finding_is_not_called_missing(self):
+    def test_a_broken_finding_gets_only_its_own_lines(self):
+        # Which concept a broken item was meant for is a guess, so the contract waits for the next try.
         msg = refused(research(spend(amount=None), status="complete", stopped_reason=None))
-        assert "finding 0 (csr_spend" in msg
-        assert "csr_spend: no finding" not in msg and "csr_spend FY" not in msg
+        assert "finding 0 (csr_spend" in msg and "Also" not in msg
 
     def test_a_save_with_no_kind_keeps_the_schema_lines(self):
         msg = refused(research(entity_kind="donor"))
