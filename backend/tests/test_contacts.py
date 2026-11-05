@@ -56,3 +56,28 @@ async def test_patch_only_sends_set_fields(client_for, monkeypatch):
         response = await client.patch("/api/contacts/7", json={"verified": True})
     assert response.status_code == 200
     assert captured == {"verified": True}  # exclude_unset: nothing else touched
+
+
+async def test_list_contacts_pages_its_filters_through_fetch_page():
+    from app.repositories.contacts import list_contacts
+    from tests.test_paging import _Pool
+
+    pool = _Pool([{"id": 4, "total": 31}])
+    rows, total = await list_contacts(pool, limit=2, offset=6, org="kabil", kind="program", verified=True)
+    assert ([r["id"] for r in rows], total) == ([4], 31)
+    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
+    assert pool.params == {"org": "kabil", "funder": None, "kind": "program", "verified": True, "limit": 2, "offset": 6}
+
+
+async def test_list_route_answers_with_its_page(client_for, monkeypatch):
+    calls = []
+
+    async def fake_list(pool, **kw):
+        calls.append(kw)
+        return [{"id": 1, "name": "Asha"}], 9
+
+    monkeypatch.setattr("app.api.routes.contacts.repo.list_contacts", fake_list)
+    async with client_for(contacts_api.router) as client:
+        body = (await client.get("/api/contacts?org=kabil&limit=2&offset=4")).json()
+    assert (body["total"], body["limit"], body["offset"], [c["name"] for c in body["items"]]) == (9, 2, 4, ["Asha"])
+    assert calls[0]["org"] == "kabil" and (calls[0]["limit"], calls[0]["offset"]) == (2, 4)
