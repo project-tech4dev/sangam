@@ -13,7 +13,7 @@ from uuid import UUID
 import httpx
 import pytest
 
-from app.ingest.matcher import Match
+from app.ingest.catalog.matcher import Match
 from app.ingest.research.expectations import concepts_for
 from app.ingest.tools import research_tools
 from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, running_as

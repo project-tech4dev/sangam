@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.ingest import promote as promote_mod
-from app.ingest.promote import link_partner_lines, promote
+from app.ingest.catalog import promote_documents
+from app.ingest.catalog.promote import link_partner_lines, promote
 from app.ingest.reading import staff_sources
 from tests.test_cov_promote import finding, funder, money, one, org, research, rows, tag
 
@@ -29,9 +29,9 @@ def archive(monkeypatch):
         state["moves"].append((src, dst))
         return state["move_ok"]
 
-    monkeypatch.setattr(promote_mod.storage, "archived_key", archived_key)
-    monkeypatch.setattr(promote_mod.storage, "stat", stat)
-    monkeypatch.setattr(promote_mod.storage, "move", move)
+    monkeypatch.setattr(promote_documents.storage, "archived_key", archived_key)
+    monkeypatch.setattr(promote_documents.storage, "stat", stat)
+    monkeypatch.setattr(promote_documents.storage, "move", move)
     return state
 
 
@@ -61,7 +61,7 @@ async def test_a_name_already_taken_gets_a_suffix_and_a_failed_move_keeps_the_ol
 async def test_a_staff_figure_without_its_cell_marker_is_held(db, monkeypatch):
     async def none(bucket, url):
         return None
-    monkeypatch.setattr(promote_mod.storage, "archived_key", none)
+    monkeypatch.setattr(promote_documents.storage, "archived_key", none)
     url = staff_sources.source_url(f"book-{tag()}.xlsx")
     dataset = await one(db, "INSERT INTO documents (doc_type, source_url, title, is_public) "
                             "VALUES ('source_dataset', %s, 'Staff dataset', false) RETURNING id", url)
@@ -81,7 +81,7 @@ async def test_a_staff_figure_without_its_cell_marker_is_held(db, monkeypatch):
 async def test_an_ngo_metric_from_a_stronger_source_takes_the_row(db, monkeypatch):
     async def none(bucket, url):
         return None
-    monkeypatch.setattr(promote_mod.storage, "archived_key", none)
+    monkeypatch.setattr(promote_documents.storage, "archived_key", none)
     name = f"Zz Metric Org {tag()}"
     oid = await org(db, name)
     await db.execute("INSERT INTO metrics (org_id, name, value, source_type, evidence, source_url) "

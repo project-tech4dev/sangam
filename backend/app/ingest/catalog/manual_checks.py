@@ -9,8 +9,9 @@ from uuid import UUID
 
 from pydantic import ValidationError
 
-from app.ingest.records import IDENTIFIER_STATUSES, NEEDS_A_NUMBER, OrgIdentifierRecord
-from app.ingest.writer import Conflict, write_org_identifier
+from app.ingest.catalog.rows import IDENTIFIER_STATUSES, NEEDS_A_NUMBER, OrgIdentifierRecord
+from app.ingest.catalog.writer import Conflict
+from app.ingest.catalog.writer_org import write_org_identifier
 
 ID_TYPES: tuple[str, ...] = ("pan", "12a", "80g", "fcra", "csr1", "darpan", "cin", "reg_no")
 NOTE_MAX = 500

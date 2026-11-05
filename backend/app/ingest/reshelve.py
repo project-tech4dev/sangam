@@ -23,7 +23,7 @@ import sys
 import psycopg
 from psycopg.rows import dict_row
 
-from app.ingest.promote import _shelve
+from app.ingest.catalog.promote_documents import _shelve
 from app.integrations import storage
 
 SQL = """
