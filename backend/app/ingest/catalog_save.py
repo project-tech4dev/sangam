@@ -15,9 +15,9 @@ from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import CallerScope
 from app.db.pool import get_pool
 from app.ingest import brief, review, undo
-from app.ingest import vault as vault_store
 from app.ingest.caller import scope, without_private
 from app.ingest.promote import MERGEABLE, org_match, promote
+from app.ingest.reading import vault as vault_store
 from app.ingest.research import coverage
 from app.ingest.research.expectations import CONCEPTS, concepts_for
 from app.ingest.writer import UNWRITTEN, Gate, slugify

@@ -14,9 +14,9 @@ from typing import Any
 
 from app.core import extract
 from app.core.extract import extract_pdf_text
-from app.ingest import staff_sources
+from app.ingest.reading import staff_sources
+from app.ingest.reading.registry import url_host
 from app.ingest.research.source_guards import PRIVATE_SOURCE_DOMAIN
-from app.ingest.sources import url_host
 from app.integrations import storage
 
 URL_PREFIX = f"https://org-vault.{PRIVATE_SOURCE_DOMAIN}/"

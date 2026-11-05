@@ -15,14 +15,14 @@ from langchain_core.tools import tool
 from app.agentkit.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
-from app.ingest import staff_sources, vault
 from app.ingest.caller import scope, staff_only
 from app.ingest.calls import pull
 from app.ingest.news import pipeline
 from app.ingest.news.feeds import chosen_feeds
-from app.ingest.run_sources import Sources
+from app.ingest.reading import staff_sources, vault
+from app.ingest.reading.registry import SOURCES, Category, resolve
+from app.ingest.reading.run_sources import Sources
 from app.ingest.runner import PARKED, catalog_baseline, record_item, run_import, runnable_for, summarise
-from app.ingest.sources import SOURCES, Category, resolve
 
 logger = logging.getLogger(__name__)
 

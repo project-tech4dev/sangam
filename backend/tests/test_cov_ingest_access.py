@@ -7,8 +7,8 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from app.ingest import access
-from app.ingest.sources import AccessRule
+from app.ingest.reading import access
+from app.ingest.reading.registry import AccessRule
 from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool
 
 

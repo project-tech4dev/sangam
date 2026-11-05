@@ -5,9 +5,9 @@ from __future__ import annotations
 from contextlib import contextmanager
 from datetime import UTC, datetime
 
-from app.ingest import run_sources, vault
 from app.ingest.matcher import Match
-from app.ingest.run_sources import Sources
+from app.ingest.reading import run_sources, vault
+from app.ingest.reading.run_sources import Sources
 from app.ingest.tools import library_tools, vault_tools
 from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, running_as
 from tests.test_import_roles import MEMBER, STAFF, STEWARD

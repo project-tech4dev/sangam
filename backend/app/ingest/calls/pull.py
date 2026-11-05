@@ -17,10 +17,10 @@ import trafilatura
 
 from app.core.egress import EgressRefused, guarded_client
 from app.ingest import writer
-from app.ingest.access import canonical_url, check_url
 from app.ingest.adapters._http import USER_AGENT
 from app.ingest.calls import extract, find
 from app.ingest.geography import resolve_location
+from app.ingest.reading.access import canonical_url, check_url
 from app.ingest.records import RfpRecord
 from app.ingest.taxonomy import TAG_SLUGS
 from app.repositories import rfps

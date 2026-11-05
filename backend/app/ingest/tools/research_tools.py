@@ -25,15 +25,15 @@ from app.core.config import get_settings
 from app.core.egress import TRUST
 from app.core.extract import extract_pdf_text
 from app.db.pool import get_pool
-from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish, rows_for
 from app.ingest.caller import scope, staff_only
+from app.ingest.reading.access import canonical_url, check_url, source_banner
+from app.ingest.reading.registry import rule_for_url
+from app.ingest.reading.staff_sources import is_staff_source_url
 from app.ingest.research.contract import quoted_only, unanswered
 from app.ingest.research.finding_types import SCHEMA_VERSION
 from app.ingest.research.findings import EntityResearch
-from app.ingest.sources import rule_for_url
-from app.ingest.staff_sources import is_staff_source_url
 from app.ingest.writer import slugify
 from app.integrations import storage
 from app.integrations.storage import _safe_name

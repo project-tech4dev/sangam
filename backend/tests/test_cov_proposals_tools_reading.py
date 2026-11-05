@@ -7,7 +7,7 @@ from uuid import UUID
 import pytest
 
 from app.core.security import CallerScope
-from app.ingest import vault
+from app.ingest.reading import vault
 from app.integrations import storage
 from app.proposals import context
 from app.proposals.tools import reading_tools as rt
