@@ -5,6 +5,7 @@ Runs as the caller, so RLS decides which entities are listed; public rows only (
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any
 
 from app.repositories.news_stories import SOCIAL
@@ -203,3 +204,59 @@ async def research_counts(pool: Any, entities: list[tuple[str, int, str]]) -> di
     async with pool.connection() as conn:
         rows = await (await conn.execute(_RESEARCH, params)).fetchall()
     return {(r["kind"], r["id"]): {"runs": r["runs"], "latest": r["latest"]} for r in rows}
+
+
+# Kept in step with frontend/features/registry/rows.ts, which a test checks.
+NORTH_EAST = ("Arunachal Pradesh", "Assam", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Sikkim", "Tripura")
+
+
+@dataclass(frozen=True)
+class Filters:
+    """The Registry's filters, with the defaults of frontend/features/registry/filtersUrl.ts."""
+
+    kind: str = "all"  # 'all' | 'org' | 'funder'
+    theme: str = "all"
+    population: str = "all"
+    sdg: str = "all"
+    where: str = "any"  # 'any' | 'ne' | 'out' | a state
+    reg: str = "any"
+    ftype: str = "all"
+    approach: str = "any"
+    q: str = ""
+
+
+def _works_in(row: dict, where: str) -> bool:
+    if where == "any":
+        return True
+    if where == "ne":
+        return any(s in NORTH_EAST for s in row["states"])
+    if where == "out":
+        return any(s not in NORTH_EAST for s in row["states"])
+    return where in row["states"]
+
+
+def matches(row: dict, f: Filters) -> bool:
+    """Whether a Registry row passes every filter and the search, as the browser decided it before."""
+    if f.kind != "all" and row["kind"] != f.kind:
+        return False
+    if f.theme != "all" and not any(t["domain"] == f.theme for t in row["themes"]):
+        return False
+    if f.population != "all" and f.population not in row["populations"]:
+        return False
+    if f.sdg != "all" and f.sdg not in row["sdgs"]:
+        return False
+    if not _works_in(row, f.where):
+        return False
+    if f.kind == "org" and f.reg != "any":
+        flag = {"csr1": "csr1", "12a80g": "has_12a_80g", "fcra": "fcra"}.get(f.reg)
+        if flag and not row.get(flag):
+            return False
+    if f.kind == "funder":
+        if f.ftype != "all" and row.get("funder_type") != f.ftype:
+            return False
+        if f.approach == "open" and not row.get("open_call"):
+            return False
+        if f.approach == "invites" and row.get("intake_mode") != "invitation_only":
+            return False
+    q = f.q.strip().lower()
+    return not q or q in row["search"] or q in row["name"].lower()
