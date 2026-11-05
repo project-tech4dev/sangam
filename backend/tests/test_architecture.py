@@ -25,7 +25,7 @@ SHARED_ACROSS_AGENTS = (
     "app.agent.tools.sql.catalog",  # the SQL catalog: Ask's allowlist, which Import also reads
     # Pitch reads with Import's public brief, vault, places, source rules and reading tools.
     "app.ingest.brief", "app.ingest.vault", "app.ingest.geography", "app.ingest.access", "app.ingest.run_sources",
-    "app.ingest.source_guards", "app.ingest.tools.research_tools", "app.ingest.tools.library_tools",
+    "app.ingest.research.source_guards", "app.ingest.tools.research_tools", "app.ingest.tools.library_tools",
     "app.ingest.middleware.RunSources",
 )
 
@@ -34,9 +34,6 @@ COLD_START = ("app/api/routes/", "app/core/lifespan.py", "app/db/migrate.py", "a
               "app/ingest/calls/")
 # The circular imports left. A later PR may shrink this set, never grow it.
 CYCLES = {
-    ("app/ingest/research_records.py", "app.ingest.source_guards"),  # phase 3
-    ("app/ingest/research_records.py", "app.ingest.expectations"),  # phase 3
-    ("app/ingest/source_guards.py", "app.ingest.research_records"),  # phase 3
     ("app/proposals/tools/reading_tools.py", "app.proposals.readers"),  # the subagent built from this module's tools
 }
 

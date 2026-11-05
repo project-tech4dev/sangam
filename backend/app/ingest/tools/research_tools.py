@@ -29,9 +29,10 @@ from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish, rows_for
 from app.ingest.caller import scope, staff_only
-from app.ingest.contract import quoted_only, unanswered
 from app.ingest.promote import MERGEABLE, org_match
-from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
+from app.ingest.research.contract import quoted_only, unanswered
+from app.ingest.research.finding_types import SCHEMA_VERSION
+from app.ingest.research.findings import EntityResearch
 from app.ingest.sources import rule_for_url
 from app.ingest.staff_sources import is_staff_source_url
 from app.ingest.writer import slugify

@@ -5,8 +5,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.ingest.expectations import concepts_for, expected_fields, filled, recent_fiscal_years
-from app.ingest.research_records import YEARLY, EntityResearch
+from app.ingest.research.expectations import concepts_for, expected_fields, filled, recent_fiscal_years
+from app.ingest.research.finding_types import YEARLY
+from app.ingest.research.findings import EntityResearch
 
 # Identity fields every complete save answers; a note or a timestamp is not a field of its own.
 _IDENTITY = {"identity", "org_identity"}

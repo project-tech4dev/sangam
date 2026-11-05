@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.ingest import geography, source_guards, taxonomy
+from app.ingest import geography, taxonomy
+from app.ingest.research import source_guards
 from app.ingest.writer import GATE, Gate
 from tests.cov_ingest_fakes import ScriptConn
 

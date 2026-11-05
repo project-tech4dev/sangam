@@ -8,7 +8,7 @@ from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.ingest.expectations import activity_kind
+from app.ingest.research.expectations import activity_kind
 
 FISCAL_YEAR = re.compile(r"^FY\d{4}-\d{2}$")
 # What an inferred domain and theme rest on (funder_activity.classified_by).

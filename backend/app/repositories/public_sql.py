@@ -4,7 +4,7 @@ Every URL a public query selects goes through public_url, the SQL form of source
 
 from __future__ import annotations
 
-from app.ingest.source_guards import PRIVATE_SOURCE_DOMAIN
+from app.ingest.research.source_guards import PRIVATE_SOURCE_DOMAIN
 
 # The host after an optional scheme and userinfo, lower-cased and without a trailing dot.
 _HOST_RE = r"^(?:[a-zA-Z][a-zA-Z0-9+.-]*:)?(?://)?(?:[^@/?#]*@)?([^/:?#]+)"
