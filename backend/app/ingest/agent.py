@@ -33,7 +33,7 @@ from app.ingest.middleware import (
     save_questions,
     staff_last_lock,
 )
-from app.ingest.research_records import PromotionReport, ResearchSummary, VaultSummary, WorkbookEntities
+from app.ingest.research.findings import PromotionReport, ResearchSummary, VaultSummary, WorkbookEntities
 from app.ingest.tools.catalog_tools import (
     compare_with_catalog,
     coverage_report,

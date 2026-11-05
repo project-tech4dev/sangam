@@ -13,7 +13,6 @@ from urllib.parse import unquote, urlsplit
 
 from psycopg import sql
 
-from app.ingest.expectations import RESERVED_DOC_TYPES
 from app.ingest.matcher import TRIGRAM_FLOOR, Match, close_names, name_key
 from app.ingest.records import (
     FunderCsrYearRecord,
@@ -23,6 +22,7 @@ from app.ingest.records import (
     OrgLocationRecord,
     OrgRecord,
 )
+from app.ingest.research.expectations import RESERVED_DOC_TYPES
 from app.ingest.taxonomy import TAG_KINDS, TAG_SLUGS
 
 

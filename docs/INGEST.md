@@ -339,7 +339,7 @@ it.
 
 Seventeen concepts, every one with a writer — a funder is researched against thirteen of them
 and an NGO against nine, with five shared. The tables below are a copy; the source is
-`CONCEPTS` in `app/ingest/expectations.py`, from which the table map, the brief's section
+`CONCEPTS` in `app/ingest/research/expectations.py`, from which the table map, the brief's section
 titles, the promotable list, the "researched but not written" excuses and `concepts_for(kind)`
 are all derived.
 

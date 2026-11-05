@@ -8,7 +8,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
 from app.db.pool import CallerPool
-from app.ingest.source_guards import is_private_source
+from app.ingest.research.source_guards import is_private_source
 from app.repositories import partner_groups, registry
 from app.repositories import profile_facts as repo
 from app.repositories.public_sql import is_private_url

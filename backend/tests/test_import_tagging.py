@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from app.ingest import taxonomy
 from app.ingest.records import ProgramRecord
-from app.ingest.research_records import OrgIdentityFinding, ProgramFinding
+from app.ingest.research.finding_types import OrgIdentityFinding, ProgramFinding
 from app.ingest.writer import write_tags
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
