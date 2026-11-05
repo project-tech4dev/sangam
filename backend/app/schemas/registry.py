@@ -2,7 +2,7 @@ from datetime import date
 
 from pydantic import Field
 
-from app.schemas.common import ReadModel
+from app.schemas.common import FacetedPage, ReadModel
 
 
 class RegistryTheme(ReadModel):
@@ -41,3 +41,6 @@ class RegistryRow(ReadModel):
 
 class RegistryOut(ReadModel):
     rows: list[RegistryRow]
+
+
+RegistryPage = FacetedPage[RegistryRow]

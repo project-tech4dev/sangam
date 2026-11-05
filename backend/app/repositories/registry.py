@@ -8,7 +8,9 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
+from app.repositories.facets import FacetSpec, count_by, count_facets
 from app.repositories.news_stories import SOCIAL
+from app.repositories.paging import slice_page
 from app.repositories.partner_groups import GROUP_KEY
 from app.repositories.public_sql import (
     ON_FILE,
@@ -260,3 +262,23 @@ def matches(row: dict, f: Filters) -> bool:
             return False
     q = f.q.strip().lower()
     return not q or q in row["search"] or q in row["name"].lower()
+
+
+# The Registry's dropdowns, counted over every row as the browser counted them.
+FACETS = (
+    FacetSpec("theme", lambda r: [t["domain"] for t in r.get("themes") or []]),
+    FacetSpec("population", lambda r: r.get("populations") or []),
+    FacetSpec("sdg", lambda r: r.get("sdgs") or [], numeric=True),
+    FacetSpec("where", lambda r: r.get("states") or []),
+    FacetSpec("ftype", lambda r: [r.get("funder_type")] if r["kind"] == "funder" else []),
+    FacetSpec("approach", lambda r: ["open"] * bool(r.get("open_call"))
+              + ["invites"] * (r.get("intake_mode") == "invitation_only")),
+)
+
+
+def registry_page(rows: list[dict], f: Filters, *, limit: int, offset: int) -> dict:
+    """One page of the rows `f` keeps (CSOs first, then funders, each A→Z), with the cards' counts and the options."""
+    kept = sorted((r for r in rows if matches(r, f)), key=lambda r: (r["kind"] != "org", r["name"].lower(), r["id"]))
+    items, total = slice_page(kept, limit=limit, offset=offset)
+    return {"items": items, "total": total, "limit": limit, "offset": offset,
+            "counts": count_by(rows, "kind"), "facets": count_facets(rows, FACETS)}
