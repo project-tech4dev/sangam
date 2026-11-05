@@ -11,21 +11,21 @@ from deepagents.backends.filesystem import FilesystemBackend
 from deepagents.backends.state import StateBackend
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
-from app.agent.middleware import CompareFitBudget, answer_audit, model_call_cap, sql_retry_limiter
-from app.agent.prompt import render_prompt
-from app.agent.tools.graph_tools import search_graph
-from app.agent.tools.matching_tools import compare_fit
-from app.agent.tools.sql_tools import (
-    db_describe_table,
-    db_list_tables,
-    db_profile_column,
-    db_query,
-)
 from app.agentkit.harness import SKILL_READING_TOOLS
 from app.agentkit.harness import filesystem as filesystem_tools
 from app.agentkit.harness import install as install_harness
 from app.agentkit.middleware import cheap_summarizer, clear_old_tool_results, fallback, tool_errors
 from app.agentkit.models import resolve_model
+from app.ask.middleware import CompareFitBudget, answer_audit, model_call_cap, sql_retry_limiter
+from app.ask.prompt import render_prompt
+from app.ask.tools.graph_tools import search_graph
+from app.ask.tools.matching_tools import compare_fit
+from app.ask.tools.sql_tools import (
+    db_describe_table,
+    db_list_tables,
+    db_profile_column,
+    db_query,
+)
 from app.core.config import Settings
 from app.integrations.tracing import trace_config
 
@@ -42,7 +42,7 @@ TOOLS = [
 ]
 
 # Procedures the supervisor loads on demand; the rules they rely on stay in instructions.md.
-SKILLS_DIR = Path(str(files("app.agent") / "skills"))
+SKILLS_DIR = Path(str(files("app.ask") / "skills"))
 SKILLS_ROUTE = "/skills/"
 
 

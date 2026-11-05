@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from typing import Any
 
-from app.agent.tools.sql.catalog import CATALOG
+from app.ask.tools.sql.catalog import CATALOG
 from app.ingest.taxonomy import VOCABULARY
 
 # Which kind of entity offers a concept. programs, metrics, contacts and documents each carry both an

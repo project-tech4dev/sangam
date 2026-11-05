@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
-from app.agent.tools.sql import render
-from app.agent.tools.sql.catalog import CATALOG, COLUMNS, DEFECTS, TABLE_MAP, TABLE_NAMES
-from app.agent.tools.sql.errors import (
+from app.ask.tools.sql import render
+from app.ask.tools.sql.catalog import CATALOG, COLUMNS, DEFECTS, TABLE_MAP, TABLE_NAMES
+from app.ask.tools.sql.errors import (
     PROFILE_FAILED_PREFIX,
     PROFILE_REJECTED_PREFIX,
     REJECTED_PREFIX,
     explain_db_error,
 )
-from app.agent.tools.sql.executor import PsycopgExecutor
-from app.agent.tools.sql.validator import SqlRejected, ValidatedQuery, validate
+from app.ask.tools.sql.executor import PsycopgExecutor
+from app.ask.tools.sql.validator import SqlRejected, ValidatedQuery, validate
 from app.core.config import get_settings
 from app.db.pool import caveats_given
 

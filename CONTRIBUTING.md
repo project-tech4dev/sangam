@@ -183,8 +183,9 @@ backend/app/
   api/             router.py (one aggregate router) · deps · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
   schemas/         Pydantic, one module per resource
-  agent/           Ask Sangam: build.py · tools/ · skills/ · instructions.md · harness.py
-  ingest/          Sangam Scout (Import): its agent, tools/, skills/, prompts/ and pipeline
+  agentkit/        what every deep agent shares: models · harness · middleware
+  ask/             Ask Sangam: agent.py · tools/ · skills/ · instructions.md
+  ingest/          Sangam Scout (Import): agent.py, tools/, skills/, prompts/, then research/ · reading/ · catalog/
   matching/        Funder Match: rubric · rules · match (pure) · service
   proposals/       Sangam Pitch
   integrations/    graphiti · tracing · storage
@@ -262,7 +263,7 @@ run in `bom1`, beside the database. Two traps:
 | Term | Meaning |
 |---|---|
 | **Deep agent** | A `deepagents` preset over LangGraph: planning middleware and subagents around a tool-calling loop. Not an alternative to LangGraph |
-| **Harness** | `app/agent/harness.py`, which strips the filesystem tools and general-purpose subagent `deepagents` adds, so each agent runs only its declared tools |
+| **Harness** | `app/agentkit/harness.py`, which strips the filesystem tools and general-purpose subagent `deepagents` adds, so each agent runs only its declared tools |
 | **Skill** | A `SKILL.md` procedure an agent reads only when a request needs it; only its name and description sit in the prompt |
 | **Model tier** | Which model a piece of work runs on: `MODEL`, `RESEARCH_MODEL` or `UTILITY_MODEL` |
 | **AG-UI** | The protocol that streams agent events (tool calls, tokens) from the backend to the chat over SSE |

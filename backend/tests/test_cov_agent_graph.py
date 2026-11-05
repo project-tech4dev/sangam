@@ -8,7 +8,7 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
-from app.agent.tools import graph_tools
+from app.ask.tools import graph_tools
 from app.core.config import Settings
 from app.integrations import graphiti
 

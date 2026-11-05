@@ -12,10 +12,6 @@ sources:
     resource: repo://.github/workflows/dependency-review.yml
   - id: openwiki-source-6766b7a0c14857435d2077c9
     resource: repo://.github/workflows/deploy.yml
-  - id: openwiki-source-51c98ae9fd99799b3f67e069
-    resource: repo://backend/app/agent/tools/files.py
-  - id: openwiki-source-3aa6b5f9d31a7d4ba9f5dd99
-    resource: repo://backend/app/agent/tools/web.py
   - id: openwiki-source-ca736c25c2a1bb0e95531706
     resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-6dcfc1451bcbf8009d0484a9
@@ -28,12 +24,16 @@ sources:
     resource: repo://backend/app/core/security.py
   - id: openwiki-source-51ead927cc43f35e220ea627
     resource: repo://backend/app/db/checkpointer.py
-  - id: openwiki-source-170bddac5f057a262a61a895
-    resource: repo://backend/app/ingest/access.py
   - id: openwiki-source-8c4d96626089e75f0817872b
     resource: repo://backend/app/ingest/adapters/tavily_news.py
   - id: openwiki-source-d6ae1b935f35d5f42105acc8
     resource: repo://backend/app/ingest/calls/pull.py
+  - id: openwiki-source-005aaff315c996a45f8735d6
+    resource: repo://backend/app/ingest/calls/run.py
+  - id: openwiki-source-9a78159bc32f1e4e6ca68b3f
+    resource: repo://backend/app/ingest/news/run.py
+  - id: openwiki-source-602238f4e5bb2de7ed53155c
+    resource: repo://backend/app/ingest/reading/access.py
   - id: openwiki-source-51e6adf4243b3601b40e5803
     resource: repo://backend/app/ingest/tools/research_tools.py
   - id: openwiki-source-465a2de3f088ab05c5629202
@@ -44,12 +44,16 @@ sources:
     resource: repo://backend/app/integrations/tracing.py
   - id: openwiki-source-55002f5b1d39cf35fd6d60e2
     resource: repo://backend/app/main.py
+  - id: openwiki-source-45de68599f194f0dd835b3ab
+    resource: repo://backend/app/proposals/brief.py
   - id: openwiki-source-26b852c215c1dc4649cbde36
     resource: repo://backend/vercel.json
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
   - id: openwiki-source-5f7022cb75865b779a5792a0
     resource: repo://codecov.yml
+  - id: openwiki-source-f317ee207e1653d2033c81a4
+    resource: repo://CONTRIBUTING.md
   - id: openwiki-source-e8e61d605125cac4d909755e
     resource: repo://docs/ARCHITECTURE.md
   - id: openwiki-source-88fdf568b0f25b1d21f041da
@@ -60,12 +64,10 @@ sources:
     resource: repo://frontend/package.json
   - id: openwiki-source-a0ebc66d448ae6aa5723800b
     resource: repo://frontend/vercel.json
-  - id: openwiki-source-23775c3de52f3ab95a13cb8b
-    resource: repo://README.md
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-11-05T19:29:31.538Z
 ---
 
 # Deploy and Vendors
@@ -78,9 +80,9 @@ Nothing deploys automatically, and nothing that runs automatically deploys.
 
 | Workflow / service | Trigger | What it does | Deploys? |
 |---|---|---|---|
-| `ci.yml` (**CI**) | every pull request and every push to `master` | lint, tests, frontend build | No |
+| `ci.yml` (**CI**) | every pull request and every push to `master` | lint, tests with coverage, frontend build | No |
 | `dependency-review.yml` (**Dependency review**) | every pull request | fails a PR whose lockfile changes add a package with a high or critical advisory | No |
-| Codecov | uploads from the two backend CI test jobs | merges coverage and sets PR status checks | No |
+| Codecov | uploads from the two backend CI test jobs and the frontend job | merges coverage and sets PR status checks | No |
 | `deploy.yml` (**Deploy**) | `workflow_dispatch` only (Actions → Deploy → Run workflow) | `vercel deploy --prod` per project | Yes, by hand |
 
 Migrations are not part of any of these: they are run by hand with `make migrate`.
@@ -92,7 +94,7 @@ Migrations are not part of any of these: they are run by hand with `make migrate
 - **`backend-lint`**: `uv sync --frozen` on Python 3.12, then `ruff check . --output-format=github` (ruff is pinned to `0.16.8` in `backend/pyproject.toml`).
 - **`backend-unit`**: `pytest -m "not integration" --cov --cov-report=xml`, uploaded to Codecov with flag `backend-unit`.
 - **`backend-integration`**: runs against a `pgvector/pgvector:pg17` service container on port 5433. It applies `db/init/*.sql`, then `app.db.migrate`, `seed.seed` and `seed.taxonomy_seed` (what compose init plus `make migrate` and `make seed` give locally), then `pytest -m integration -rs`, uploaded with flag `backend-integration`. `-rs` lists skips because a test skipping for "Postgres not reachable" would mean a broken job, not a pass. Two tests in `tests/test_migration_integrity.py` (`test_preserved_row_counts`, `test_documents_sequence_advanced`) are deselected: they check a restore of the original dump, which the seeder never creates.
-- **`frontend`**: Node 22, `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run build`.
+- **`frontend`**: Node 22, `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run coverage` (`vitest run --coverage`, `frontend/coverage/lcov.info` uploaded with flag `frontend`), then `npm run build`.
 
 Evals (the `eval` marker, which calls real models) are not run in CI. See [Testing overview](../testing/overview.md) for the tiers.
 
@@ -102,7 +104,7 @@ Evals (the `eval` marker, which calls real models) are not run in CI. See [Testi
 
 ### Codecov
 
-Both coverage uploads authenticate with GitHub OIDC (`id-token: write`, `use_oidc` is off for fork PRs, which fall back to a tokenless upload), so no Codecov token is stored. `codecov.yml` merges the two uploads into one report per commit (flags carry forward), and sets two statuses: **project** coverage may not fall more than 1% below the base commit (`target: auto`, `threshold: 1%`), and **patch** coverage (lines a PR adds or changes) must be at least 70%. A `fixes` rule maps `app/` to `backend/app/`, since `coverage.xml` paths are relative to `backend/`.
+All three coverage uploads (the two backend jobs and the frontend job) authenticate with GitHub OIDC (`id-token: write`; `use_oidc` is off for fork PRs, which fall back to a tokenless upload), so no Codecov token is stored. Backend uploads carry flags `backend` plus `backend-unit` or `backend-integration`; the frontend carries `frontend`. `codecov.yml` merges uploads into one report per commit (flags carry forward) and turns the global project and patch statuses off, gating per component instead so one side's figure cannot sink the other's. Each of the `backend` (`backend/**`) and `frontend` (`frontend/**`) components has three statuses: a `floor-` project status at 75%, a project status that may not fall more than 1% below the base commit (`target: auto`, `threshold: 1%`), and a **patch** status (lines a PR adds or changes) of at least 75%. `fixes` rules map the relative paths in `coverage.xml` and `lcov.info` (`app/`, `lib/`, `features/`, `components/`) back to `backend/` and `frontend/`.
 
 ### Dependabot-driven bumps
 
@@ -152,7 +154,7 @@ If the CopilotKit proxy is ever removed (see [Frontend](../architecture/frontend
 
 ### Keep-warm cron
 
-`backend/vercel.json` defines a cron that calls `GET /health` every five minutes (`*/5 * * * *`). `/health` returns `{"status": "ok"}` and is one of the open paths that skip authentication. A request to a cold instance runs the lifespan (opens the Postgres pool, verifies the SQL catalog, opens the checkpointer and optional graph), so the cron keeps roughly one instance warm. It does nothing for concurrent bursts, which still start new instances. Agents themselves are built lazily on the first request that needs one, so a REST cold start does not pay for the agent stack.
+`backend/vercel.json` defines a cron that calls `GET /health` every five minutes (`*/5 * * * *`). `/health` returns `{"status": "ok"}` plus, once the pool is open, a `pool` block of counts only (`pool_max`, `pool_size`, `pool_available`, `requests_waiting`, `requests_errors`, `connections_errors`) so you can see whether requests are queuing for a connection; it is one of the open paths that skip authentication. A request to a cold instance runs the lifespan (opens the Postgres pool, verifies the SQL catalog, opens the checkpointer and optional graph), so the cron keeps roughly one instance warm. It does nothing for concurrent bursts, which still start new instances. Agents themselves are built lazily on the first request that needs one, so a REST cold start does not pay for the agent stack.
 
 ## Supabase
 
@@ -162,6 +164,7 @@ One Supabase project supplies Postgres, Storage and Auth, in ap-south-1 (Mumbai)
 
 - **Do not use the direct host.** `db.<ref>.supabase.co` resolves to IPv6 only, which Docker containers cannot reach, so connections hang rather than fail. The pooler has IPv4.
 - **Use session mode (5432), not the transaction pooler (6543).** The transaction pooler breaks `pg_restore`. The backend's pool is also built with `prepare_threshold=0`, `autocommit=True`, so it does not depend on server-side prepared statements.
+- **Pool hygiene for frozen instances.** `make_pool` (`db/checkpointer.py`) checks each connection on checkout (`check_connection`, about one round trip) because a thawed Vercel instance may hold sockets the pooler closed; idle connections are dropped after 300 s. A request waits at most `DB_POOL_TIMEOUT_S` (10 s) for a free connection and a new connection must open within `DB_CONNECT_TIMEOUT_S` (5 s), so a stuck database surfaces as a failure rather than a hang. `DB_STATEMENT_TIMEOUT_MS` (15 s) caps each REST query run as the caller.
 - The `STAGING_DB_*` block in `.env` is what `make migrate|seed|psql ENV=staging` uses to reach this database; use `sslmode=require` and percent-encode special characters in a URL password.
 - The database holds application data **and** LangGraph checkpoints, so the role needs `CREATE` on `public`, and the `vector` and `pg_trgm` extensions must be available.
 - **Connection budget.** The project allows 60 connections with 3 reserved. One process opens at most `DB_POOL_MAX_SIZE` (default 10), shared by REST, agent tools and the checkpointer; ten leaves room for about four backend instances plus the dashboard. Concurrency gates derive from it (`max(2, pool - 3)`), and raising `MAX_PARALLEL_RESEARCH` means raising the pool with it. See [Data and Migrations](../architecture/data-and-migrations.md).
@@ -196,13 +199,14 @@ Behaviour worth knowing:
 
 ## Outbound fetch guard (egress)
 
-`backend/app/core/egress.py` holds the address check, `private_address_refusal`, and `guarded_client()`, an `httpx` client whose request hook runs that check on **every hop including redirects**. It refuses non-http(s) URLs, `localhost`, single-label hosts, and any literal or resolved address that is not globally routable. It handles inet_aton forms (`2130706433`, `0x7f.1`), IPv4-mapped, 6to4, Teredo and NAT64 addresses, and resolves DNS before deciding. A check that cannot decide refuses. This matters on Vercel because the function can otherwise be steered at internal endpoints.
+`backend/app/core/egress.py` holds the address check, `private_address_refusal`, and `guarded_client()`, an `httpx` client whose request hook runs that check on **every hop including redirects**. It refuses non-http(s) URLs, `localhost`, single-label hosts, and any literal or resolved address that is not globally routable. It handles inet_aton forms (`2130706433`, `0x7f.1`), IPv4-mapped, 6to4, Teredo and NAT64 addresses, and resolves DNS before deciding. A check that cannot decide refuses. This matters on Vercel because the function can otherwise be steered at internal endpoints. The module also owns `TRUST`, an SSL context of certifi's roots plus bundled intermediates that some government sites fail to send (verification stays on); every outbound reading client uses it.
 
 Where it is applied:
 
-- `guarded_client` is used directly by the `download_file` tool (`agent/tools/files.py`), the robots.txt fetch in `ingest/access.py`, and the grant-calls pull (`ingest/calls/pull.py`). A hop it refuses raises `EgressRefused`, whose `REFUSED: ...` reply is returned to the caller.
-- Import's `read_page` and `search_public_sources` do not use `guarded_client`. They call `check_url` (`ingest/access.py`), which runs `private_address_refusal` and then the source registry and robots.txt rules. `read_page`'s own client re-runs `check_url` on every redirect hop. Search results are labelled `READABLE` or `HELD` by the same check.
-- Ask Sangam has no web tool, so it has no outbound fetch path. `backend/app/agent/tools/web.py` is only a thin Tavily search factory (`make_web_search`) used by Import; it does no URL guarding itself.
+- `guarded_client` is used directly by the robots.txt fetch in `ingest/reading/access.py` and the grant-calls pull's `read_page` in `ingest/calls/pull.py`. A hop it refuses raises `EgressRefused`, whose `REFUSED: ...` reply is returned to the caller.
+- Import's reading tools (`read_page`, `fetch_document`) and `search_public_sources` live in `ingest/tools/research_tools.py` and do not use `guarded_client`. They call `check_url` (`ingest/reading/access.py`), which rejects non-http(s) URLs and URLs carrying credentials, runs `private_address_refusal`, and then applies the source registry and robots.txt rules. Their own client (`_client`) re-runs `check_url` on every redirect hop, and a read that began on a path-scoped source may not be redirected off that source's allowed paths. Search results are labelled `READABLE` or `HELD` by the same check.
+- Ask Sangam has no web tool, so it has no outbound fetch path; `app/ask/tools` holds only SQL, graph and matching tools, and `app/ask/tools/web.py` no longer exists. The Tavily factory `make_web_search` now lives in `ingest/tools/research_tools.py` and does no URL guarding itself.
+- Proposal secondary research (`app/proposals/brief.py`) is the exception that fetches nothing itself: one model call uses Anthropic's server-side `web_search` and `web_fetch` tools (15 searches and 5 fetches at most), which run outside `check_url`; the brief only cites and never reaches the proposal text.
 
 Refusals are final answers to the agent (`REFUSED: ...`), not obstacles to retry around.
 
@@ -210,7 +214,7 @@ Refusals are final answers to the agent (`REFUSED: ...`), not obstacles to retry
 
 `TAVILY_API_KEY` is optional and used in two places:
 
-- Import's `search_public_sources` (via `langchain_tavily`). With no key it returns `SEARCH UNAVAILABLE` and tells the agent to ask the user for a URL. A failed search returns a text error rather than ending the run, and each result is labelled `READABLE` or `HELD` by `check_url`, the same source-access check (see above). The Tavily client itself comes from `make_web_search` in `agent/tools/web.py`.
+- Import's `search_public_sources` (via `langchain_tavily`). With no key it returns `SEARCH UNAVAILABLE` and tells the agent to ask the user for a URL. A failed search returns a text error rather than ending the run, and each result is labelled `READABLE` or `HELD` by `check_url`, the same source-access check (see above). The Tavily client itself comes from `make_web_search` in the same module (`ingest/tools/research_tools.py`).
 - The Media & Signals collector (`adapters/tavily_news.py`) posts to `https://api.tavily.com/search` with `topic: news`, `search_depth: advanced`, up to 20 results, retrying three times 3 s apart. Total failure raises `SearchFailed` so the subject's watermark does not advance; Facebook URLs are dropped. Cost is budgeted per search (`news_search_cost_usd`). See [Media and Signals](../architecture/media-and-signals.md).
 
 ## Langfuse
@@ -219,9 +223,9 @@ Tracing (`backend/app/integrations/tracing.py`) turns on only when both `LANGFUS
 
 - **Deployed traces are labelled automatically.** The environment falls back from `LANGFUSE_TRACING_ENVIRONMENT` to Vercel's `VERCEL_ENV`, and the release from `LANGFUSE_RELEASE` to `VERCEL_GIT_COMMIT_SHA`.
 - **Masking and clipping.** Payloads are clipped to 4000 characters; `LANGFUSE_MASK_TOOL_RESULTS=1` redacts query result rows (SQL and counts stay). The mask must be attached when the first client is built, so `configure_langfuse()` runs before agents are built; if a client already exists without the mask, tracing is refused rather than leaking rows.
-- **Configured on first agent use, not at process boot.** `configure_langfuse()` is called from `_build_agents` in `backend/app/core/lifespan.py`, which runs lazily on the first request that needs an agent (and the news run configures it for itself), so a cold REST-only instance never touches Langfuse. The "Langfuse tracing enabled/disabled/NOT tracing" log lines and the LangSmith status line therefore appear when agents are first built, not in the "Sangam backend ready" line.
+- **Configured on first agent use, not at process boot.** `configure_langfuse()` is called from `_build_agents` in `backend/app/core/lifespan.py`, which runs lazily on the first request that needs an agent (and the news and grant-calls runs configure it for themselves, since a CLI pull has no lifespan), so a cold REST-only instance never touches Langfuse. The "Langfuse tracing enabled/disabled/NOT tracing" log lines and the LangSmith status line therefore appear when agents are first built, not in the "Sangam backend ready" line.
 - **Fails loudly but never fatally.** When it configures, it calls `auth_check()`; wrong keys or host would otherwise be dropped silently with a background 401, so it logs an error and disables tracing. Any other failure continues untraced.
-- **Serverless flush.** A Vercel function freezes after answering, so each agent run and each news run flushes traces in a `finally` (`SessionScopedAGUIAgent.run`, `flush_traces`). On shutdown the lifespan also does a best-effort `shutdown()` of the client, but only if Langfuse is enabled and agents were built.
+- **Serverless flush.** A Vercel function freezes after answering, so each agent run, news run and grant-calls run flushes traces in a `finally` (`SessionScopedAGUIAgent.run`, `flush_traces`). On shutdown the lifespan also does a best-effort `shutdown()` of the client, but only if Langfuse is enabled and agents were built.
 - AG-UI thread ids map to Langfuse sessions so a multi-turn chat is one session. FastAPI's own spans are off.
 - LangSmith is independent and switched on by environment variables alone (`LANGSMITH_TRACING`, `LANGSMITH_API_KEY`); the boot log states which is missing.
 
@@ -231,7 +235,7 @@ The Graphiti knowledge graph is optional. It activates only when `NEO4J_URI` **a
 
 ## Checking a deployment
 
-- `GET /health` on the backend returns 200 and `x-vercel-id` starts `bom1`.
+- `GET /health` on the backend returns 200 with a `pool` block of connection counts, and `x-vercel-id` starts `bom1`.
 - The boot log line ("Sangam backend ready") reports process age, connect time, model, research concurrency, pool size and gate slots. Whether Langfuse/LangSmith are on is logged later, when agents are first built ("Agents built on first use"); the graph's state is logged by `open_graph`.
 - Frontend and backend `maxDuration` are both 1800.
 - Backend env has `DATABASE_URL` (session pooler), `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ALLOWED_ORIGINS`; `DEV_AUTH` is unset.

@@ -1,6 +1,6 @@
 ### 5d. Post-answer audit — built, off by default
 
-`app/agent/audit.py`, wired as `after_agent` middleware. Four checks the guard cannot make
+`app/ask/audit.py`, wired as `after_agent` middleware. Four checks the guard cannot make
 because they are about meaning rather than safety: **grain** (does the SQL count the entity the
 question asked about?), **filters** (is every condition in the question present?), **false zero**
 (could an empty result mean a wrong filter *value*?), **numbers** (do the figures in the prose
@@ -115,12 +115,12 @@ Four rules everything else follows from:
 ### New files
 
 ```
-backend/app/agent/tools/sql/catalog.py     allowlist as data + verify_against_db()
-backend/app/agent/tools/sql/validator.py   sqlglot; pure; returns ValidatedQuery
-backend/app/agent/tools/sql/executor.py    Executor Protocol + PsycopgExecutor
-backend/app/agent/tools/sql/errors.py      psycopg error → model-facing fix instruction
-backend/app/agent/tools/sql/render.py      rows → compact cited string
-backend/app/agent/tools/sql_tools.py       the four @tool functions
+backend/app/ask/tools/sql/catalog.py     allowlist as data + verify_against_db()
+backend/app/ask/tools/sql/validator.py   sqlglot; pure; returns ValidatedQuery
+backend/app/ask/tools/sql/executor.py    Executor Protocol + PsycopgExecutor
+backend/app/ask/tools/sql/errors.py      psycopg error → model-facing fix instruction
+backend/app/ask/tools/sql/render.py      rows → compact cited string
+backend/app/ask/tools/sql_tools.py       the four @tool functions
 backend/tests/test_sql_{validator,errors,render,tools}.py   pure unit
 backend/tests/test_sql_integration.py      @pytest.mark.integration
 backend/tests/evals/                       golden cases (see below)
@@ -339,7 +339,7 @@ columns `authenticated` can SELECT (`org_identifiers.evidence_document_id` left 
 ### 5. The four tools
 
 `db_list_tables()` · `db_describe_table(tables: str)` · `db_profile_column(table, column)` ·
-`db_query(sql: str, purpose: str)`. Registered in `app/agent/agent.py`. The repo's tool
+`db_query(sql: str, purpose: str)`. Registered in `app/ask/agent.py`. The repo's tool
 conventions apply unchanged — never raise, return error strings, cite every row.
 
 **No `check_sql` tool.** Validation is folded into `db_query` so it cannot be skipped, and a

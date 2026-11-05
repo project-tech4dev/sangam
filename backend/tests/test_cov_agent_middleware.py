@@ -8,10 +8,10 @@ import pytest
 from langchain.agents.middleware import ToolCallRequest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from app.agent import middleware as mw
-from app.agent.audit import CAVEAT_PREFIX, Audit
-from app.agent.tools.sql.errors import FAILED_PREFIX, PROFILE_REJECTED_PREFIX
 from app.agentkit import middleware as kit
+from app.ask import middleware as mw
+from app.ask.audit import CAVEAT_PREFIX, Audit
+from app.ask.tools.sql.errors import FAILED_PREFIX, PROFILE_REJECTED_PREFIX
 from app.ingest import middleware as imw
 
 

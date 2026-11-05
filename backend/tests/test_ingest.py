@@ -490,7 +490,7 @@ class TestExpectationsComeFromTheSchema:
     """The research targets are derived from the SQL catalog, not a second list."""
 
     def test_every_concept_maps_to_a_catalogued_table(self):
-        from app.agent.tools.sql.catalog import CATALOG
+        from app.ask.tools.sql.catalog import CATALOG
 
         for concept, table in CONCEPT_TABLES.items():
             assert table in CATALOG, f"{concept} targets {table}, which is not catalogued"
