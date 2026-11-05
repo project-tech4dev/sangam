@@ -3,26 +3,9 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any
 
 from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-# GitHub MCP tools the agent may use when no explicit allowlist is configured.
-# Kept from deep-agent-app: read/inspect + propose-PR only, never merge/delete.
-DEFAULT_GITHUB_TOOL_ALLOWLIST = [
-    "get_me",
-    "search_repositories",
-    "search_code",
-    "search_issues",
-    "get_file_contents",
-    "list_branches",
-    "list_commits",
-    "list_issues",
-    "issue_read",
-    "list_pull_requests",
-    "pull_request_read",
-]
 
 
 class Settings(BaseSettings):
@@ -98,18 +81,11 @@ class Settings(BaseSettings):
     news_verify_page_limit: int = 3
     news_verify_call_limit: int = 8
     news_verify_cost_usd: float = 0.08
-    github_pat: str = ""
-    github_mcp_url: str = "https://api.githubcopilot.com/mcp/"
-    playwright_mcp_url: str = ""
-    # Extra MCP servers as JSON in langchain-mcp-adapters connection format.
-    mcp_servers: dict[str, Any] = {}
-    github_tool_allowlist: str = ""
 
     # Text-to-SQL tool (db_query). See docs/SQL_AGENT.md. sql_reader_role is the NOLOGIN role the query runs
     # as via SET LOCAL ROLE; empty disables that guard and leaves only the validator and the read-only.
     sql_timeout_ms: int = 5_000
     sql_max_rows: int = 50
-    sql_max_attempts: int = 5
     # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). `off` disables it;
     # it is a real extra model call per SQL turn, so it runs on the cheapest tier.
     sql_audit_model: str = "anthropic:claude-haiku-4-5"
@@ -186,12 +162,6 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_dev_auth_is_off(cls, value: object) -> object:
         return False if value == "" else value
-
-    @property
-    def github_allowlist(self) -> list[str]:
-        if self.github_tool_allowlist.strip():
-            return [t.strip() for t in self.github_tool_allowlist.split(",") if t.strip()]
-        return DEFAULT_GITHUB_TOOL_ALLOWLIST
 
     @property
     def auth_enabled(self) -> bool:

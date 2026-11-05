@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Protocol
+from typing import Any
 
 from app.agent.tools.sql.validator import ValidatedQuery
 from app.core.config import get_settings
@@ -20,10 +20,6 @@ logger = logging.getLogger(__name__)
 def max_concurrent_queries() -> int:
     """Tool concurrency, under the pool size so the checkpointer can still write."""
     return get_settings().db_gate_slots
-
-
-class Executor(Protocol):
-    async def run(self, query: ValidatedQuery) -> list[dict[str, Any]]: ...
 
 
 class PsycopgExecutor:

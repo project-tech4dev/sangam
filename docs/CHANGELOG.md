@@ -237,6 +237,12 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-16 · #232 · M3: the RFP Watch screen in Ask (For you · Closing soon · Saved, search, a theme filter, Save, Not for us, Ask about this call); no longer "Coming soon".
 - 2026-10-19 · #246 · M4: Scout runs the pull: a staff-only "Check open calls" task and `run_import_now(sources="funder_calls")` with its own approval card. A re-run reuses only a page the pull itself read, not the report a research call names.
 
+## Code structure
+
+- 2026-11-06 · (unmerged) · Refactor phase 0, dead code deleted: `mcp.py`, its five settings and `langchain-mcp-adapters` (9 packages out of the bundle); `_http`'s unused polite client; `sql_max_attempts`; 8 more functions and classes nothing called. `_filled` now lives once, as `expectations.filled`. `tests/test_architecture.py` fails on a top-level name with no caller outside tests (R6).
+
+---
+
 ## Not finished
 
 Plans that shipped in part, and what is left. Check here before assuming a plan doc describes the code.

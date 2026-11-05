@@ -18,7 +18,7 @@ def test_the_bars_default_to_the_spec():
 
 
 def test_the_licensed_rule_has_a_strictness():
-    from app.ingest.sources import rule_for_host
+    from app.ingest.sources import rule_for_url
 
-    rule, src = rule_for_host("api.tavily.com")
+    rule, src = rule_for_url("https://api.tavily.com/")
     assert rule is AccessRule.LICENSED_API and src.key == "tavily_news"

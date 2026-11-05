@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.ingest.expectations import CONCEPTS, concepts_for, expected_fields, recent_fiscal_years
+from app.ingest.expectations import CONCEPTS, concepts_for, expected_fields, filled, recent_fiscal_years
 from app.ingest.research_records import YEARLY
 
 _FY = re.compile(r"FY\d{4}-\d{2}")
@@ -50,10 +50,6 @@ class Coverage:
     @property
     def cells(self) -> list[Cell]:
         return [c for line in self.lines for c in line.cells]
-
-
-def _filled(value: Any) -> bool:
-    return value not in (None, "", [], {})
 
 
 def _gap_for(gaps: list[dict[str, Any]], concept: str, year: str | None) -> dict[str, Any] | None:
@@ -101,11 +97,11 @@ def compute(row: dict[str, Any], years: list[str] | None = None,
             else:
                 cells.append(Cell(concept, year, "not_attempted"))
         expected = [e.name for e in expected_fields(concept)]
-        filled = sum(1 for name in expected if any(_filled(f.get(name)) for f in mine))
+        n_filled = sum(1 for name in expected if any(filled(f.get(name)) for f in mine))
         extra = sorted({f["fiscal_year"] for f in mine
                         if concept in YEARLY and f.get("fiscal_year") and f["fiscal_year"] not in years})
         untagged = [f.get("name") or "?" for f in mine if concept == "program" and not f.get("themes")]
-        lines.append(ConceptLine(concept, cells, filled, len(expected), _held_count(held, concept), extra,
+        lines.append(ConceptLine(concept, cells, n_filled, len(expected), _held_count(held, concept), extra,
                                  untagged, len(mine) if concept == "program" else 0))
     return Coverage(row.get("canonical_name") or row.get("entity_name") or row.get("slug", "?"),
                     kind, years, lines, report is not None)

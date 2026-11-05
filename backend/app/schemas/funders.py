@@ -21,15 +21,6 @@ class FunderListItem(ReadModel):
     fetched_at: datetime | None = None
 
 
-class GrantSummary(ReadModel):
-    id: int
-    org_name: str
-    title: str
-    status: str
-    start_date: str | None = None
-    end_date: str | None = None
-
-
 class FunderDetail(FunderListItem):
     section_135_bound: bool | None = None
     cin: str | None = None            # corporate funders only (0031)

@@ -229,10 +229,6 @@ def dispatchable() -> list[Source]:
     return [s for s in SOURCES.values() if s.dispatchable]
 
 
-def in_category(category: Category) -> list[Source]:
-    return [s for s in SOURCES.values() if category in s.categories]
-
-
 def sources_on_host(host: str) -> list[Source]:
     """Every registered product on this host, including parent-domain matches."""
     host = normal_host(host)
@@ -240,19 +236,6 @@ def sources_on_host(host: str) -> list[Source]:
         s for s in SOURCES.values()
         if s.host and (host == s.host or host.endswith("." + s.host))
     ]
-
-
-def rule_for_host(host: str) -> tuple[AccessRule, Source] | None:
-    """The STRICTEST rule among the products on this host, and the source stating it.
-
-    mcacdm.nic.in carries three products; csr.gov.in two. Taking the first match
-    would let declaration order decide whether a crawler runs.
-    """
-    found = sources_on_host(host)
-    if not found:
-        return None
-    strictest = max(found, key=lambda s: _STRICTNESS.index(s.access_rule))
-    return strictest.access_rule, strictest
 
 
 def rule_for_url(url: str) -> tuple[AccessRule, Source] | None:
