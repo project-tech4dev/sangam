@@ -50,6 +50,9 @@ Generated map: [platform](../openwiki/architecture/platform.md).
 - **Agents are built on the first chat turn, not at boot.** Most cold starts serve a REST call, and two-thirds of the
   import time was the agent stack. A REST module therefore imports agent code inside the function that uses it, never at
   the top.
+- **Code boundaries are rules with a test**: CLAUDE.md's "Code boundaries" lists them and `tests/test_architecture.py`
+  checks them, one rule per refactor phase (`docs/features/2026-11-05-backend-refactor-plan.md`). R6: nothing in `app/`
+  is defined without a caller outside tests.
 - **Boot raises when the SQL catalog and the live schema disagree**, on purpose: a catalog that is wrong produces
   confidently wrong answers.
 

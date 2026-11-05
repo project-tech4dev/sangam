@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
+from typing import Any
 
 from app.agent.tools.sql.catalog import CATALOG
 from app.ingest.taxonomy import VOCABULARY
@@ -462,3 +463,7 @@ def recent_fiscal_years(today: date | None = None, count: int = 3) -> tuple[str,
     today = today or datetime.now(UTC).date()
     ended = today.year - 1 if today.month >= 4 else today.year - 2
     return tuple(f"FY{y}-{str(y + 1)[2:]}" for y in range(ended, ended - count, -1))
+
+
+def filled(value: Any) -> bool:
+    return value not in (None, "", [], {})

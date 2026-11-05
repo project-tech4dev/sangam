@@ -420,21 +420,6 @@ async def list_prefix(bucket: str, prefix: str, limit: int = 20) -> list[dict[st
     return found if isinstance(found, list) else []
 
 
-async def list_buckets() -> list[dict[str, Any]]:
-    """Every bucket the service key sees, as Storage reports it. Empty on any failure."""
-    if _disabled():
-        return []
-    try:
-        async with _client() as client:
-            response = await client.get("/bucket")
-        response.raise_for_status()
-        found = response.json()
-    except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("listing buckets failed (%s: %s)", type(exc).__name__, exc)
-        return []
-    return found if isinstance(found, list) else []
-
-
 LIST_PAGE = 100
 LIST_MAX_FILES = 1000
 

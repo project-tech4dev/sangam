@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.ingest.expectations import concepts_for, expected_fields, recent_fiscal_years
+from app.ingest.expectations import concepts_for, expected_fields, filled, recent_fiscal_years
 from app.ingest.research_records import YEARLY, EntityResearch
 
 # Identity fields every complete save answers; a note or a timestamp is not a field of its own.
@@ -15,10 +15,6 @@ _NOT_ASKED = {"as_of", "tag_note", "staff_count_note"}
 _NUMBER = re.compile(r"(?<![\w.])\d(?:\d|,(?=\d))*(?:\.\d+)?")
 _FISCAL = re.compile(r"\d{4}\s*[-–]\s*\d{2,4}")
 _SHOWN = 15
-
-
-def _filled(value: Any) -> bool:
-    return value not in (None, "", [], {})
 
 
 def unanswered(research: EntityResearch) -> list[str]:
@@ -41,7 +37,7 @@ def unanswered(research: EntityResearch) -> list[str]:
         if concept in _IDENTITY and found:
             fields = [e.name for e in expected_fields(concept) if e.name not in _NOT_ASKED] + ["themes"]
             for name in fields:
-                if not any(_filled(getattr(f, name, None)) for f in found) and not any(g.field == name for g in gapped):
+                if not any(filled(getattr(f, name, None)) for f in found) and not any(g.field == name for g in gapped):
                     missing.append(f"{concept}.{name}: no value and no gap")
     themes_gaps = [g.detail.lower() for g in gaps if g.concept == "program" and g.field == "themes"]
     for f in findings:
