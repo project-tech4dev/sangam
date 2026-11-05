@@ -1,10 +1,15 @@
-"""Text from Word, Excel and text files, for an upload's content_md and the readers. Pure: bytes in, text out."""
+"""Text from PDF, Word, Excel and text files, for an upload's content_md and every reader. Pure: file in, text out."""
 
 from __future__ import annotations
 
 import io
+import re
+from pathlib import Path
+
+from pypdf import PdfReader
 
 SHEET_ROWS = 200  # an upload's text keeps this many rows a sheet; the vault reader pages the rest
+PDF_TEXT_CHARS = 12_000
 LINE_MAX = 2_000  # a text file's line longer than this is split, so one minified line cannot fill a read
 
 
@@ -79,3 +84,32 @@ def xlsx_markdown(data: bytes) -> str:
     finally:
         wb.close()
     return "\n".join(lines)
+
+
+def _normalize_line(line: str) -> str:
+    # Design-heavy PDFs often store text letter-spaced ("A N N U A L  R E P O R T").
+    # Detect lines that are mostly single-character tokens and collapse them:
+    # runs of 2+ spaces separate words, single spaces separate letters.
+    tokens = line.split(" ")
+    if len(tokens) > 4 and sum(len(t) == 1 for t in tokens) / len(tokens) > 0.6:
+        words = re.split(r"\s{2,}", line.strip())
+        return " ".join(word.replace(" ", "") for word in words)
+    return line
+
+
+def extract_pdf_text(source: Path, start_page: int = 1, end_page: int | None = None) -> tuple[str, int]:
+    """Return (extracted_text, total_pages) for a PDF file. Text may be empty
+    if the PDF has no embedded text layer (scanned/image-only documents)."""
+    reader = PdfReader(str(source))
+    total = len(reader.pages)
+    start = max(start_page, 1)
+    end = min(end_page or total, total)
+    parts: list[str] = []
+    for index in range(start - 1, end):
+        page_text = (reader.pages[index].extract_text() or "").strip()
+        if page_text:
+            page_text = "\n".join(_normalize_line(l) for l in page_text.splitlines())
+            parts.append(f"--- page {index + 1} ---\n{page_text}")
+        if sum(len(p) for p in parts) > PDF_TEXT_CHARS * 2:
+            break
+    return "\n\n".join(parts), total

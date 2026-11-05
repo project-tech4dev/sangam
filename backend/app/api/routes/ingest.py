@@ -235,7 +235,7 @@ async def undo_promotion(promotion_id: int, pool: OwnerPoolDep, user_id: UUID = 
 @router.post("/research/{slug}/save", response_model=SaveOut,
              summary="Save one researched organisation to Sangam, with the person's answers to its questions")
 async def save_research(slug: str, body: SaveIn, caller: CallerScope = Depends(request_scope)) -> SaveOut:
-    from app.ingest.tools.catalog_tools import SaveRefused, save_to_catalog
+    from app.ingest.catalog_save import SaveRefused, save_to_catalog
 
     try:
         reports = await save_to_catalog(slug, caller, body.decisions)
@@ -256,7 +256,7 @@ async def save_research(slug: str, body: SaveIn, caller: CallerScope = Depends(r
 @router.get("/research/{slug}/review", response_model=ReviewOut,
             summary="One organisation's answers, proof and questions, for the review card")
 async def research_review(slug: str, caller: CallerScope = Depends(request_scope)) -> ReviewOut:
-    from app.ingest.tools.catalog_tools import review_view
+    from app.ingest.catalog_save import review_view
 
     view = await review_view(slug, caller)
     if view is None:
@@ -290,7 +290,7 @@ async def list_workbooks(bucket: str = "staff-sources", user_id: UUID = Depends(
 @router.get("/research/{slug}/coverage", response_model=CoverageOut,
             summary="What one entity's research found, per topic, and what saving it changed")
 async def research_coverage(slug: str, caller: CallerScope = Depends(request_scope)) -> CoverageOut:
-    from app.ingest.tools.catalog_tools import coverage_view
+    from app.ingest.catalog_save import coverage_view
 
     view = await coverage_view(slug, caller)
     if view is None:

@@ -1,4 +1,4 @@
-"""read_proposal's views and advance_step's outcomes, plus record_tools' registry and match text."""
+"""read_proposal's views and advance_step's outcomes, plus the registry and match text from records.py."""
 
 from contextlib import asynccontextmanager
 from datetime import date
@@ -8,7 +8,7 @@ from uuid import UUID
 import pytest
 
 from app.core.security import CallerScope
-from app.proposals import context
+from app.proposals import context, records
 from app.proposals.tools import proposal_tools as pt
 from app.proposals.tools import record_tools as rec
 from app.repositories import profile_facts
@@ -206,7 +206,7 @@ def org_facts(**kw):
 
 class TestOrgText:
     def test_every_line_carries_its_marker(self):
-        out = rec.org_text(org_facts())
+        out = records.org_text(org_facts())
         lines = out.splitlines()
         assert lines[0] == "SeSTA [org:7] · Society · Udalguri · Assam"
         assert "Registered 2010-04-01 [org:7]" in lines
@@ -221,12 +221,12 @@ class TestOrgText:
         assert "Programme: Schools.  [org:7]" in lines
         assert "Funded by ABF, FY 2023-24: a grant, ₹30.00 lakh [activity:41]" in lines
         about = next(line for line in lines if line.startswith("About:"))
-        assert "…" in about and len(about) < rec.TEXT + 30
+        assert "…" in about and len(about) < records.TEXT + 30
 
     def test_a_bare_record_is_one_line(self):
         bare = NS(**{**vars(ORG), "legal_form": None, "district": None, "state": None, "registration_date": None,
                      "staff_count": 0, "website": None, "description": None, "identifiers": []})
-        out = rec.org_text(org_facts(org=bare, places=[], financials=[], programs=[], funders=NS(groups=[])))
+        out = records.org_text(org_facts(org=bare, places=[], financials=[], programs=[], funders=NS(groups=[])))
         assert out == "SeSTA [org:7]"
 
 
@@ -239,7 +239,7 @@ MATCH = {"id": 5, "run_at": "2026-10-01T10:00:00", "detail": {
 
 class TestMatch:
     def test_match_text(self):
-        lines = rec.match_text(MATCH).splitlines()
+        lines = records.match_text(MATCH).splitlines()
         assert lines[0] == "Funder Match [score:5], saved 2026-10-01: A good fit."
         assert lines[1] == "- Theme: 25 of 25, met. Water. [org:7]"
         assert lines[2].startswith("- Size: not judged, unknown.")

@@ -240,6 +240,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 ## Code structure
 
 - 2026-11-06 · #368 · Refactor phase 0, dead code deleted: `mcp.py`, its five settings and `langchain-mcp-adapters` (9 packages out of the bundle); `_http`'s unused polite client; `sql_max_attempts`; 8 more functions and classes nothing called. `_filled` now lives once, as `expectations.filled`. `tests/test_architecture.py` fails on a top-level name with no caller outside tests (R6).
+- 2026-11-06 · #369 · Refactor phase 1, tools are tools: the save path a route shares with `promote_research` moved out of `catalog_tools.py` to `ingest/catalog_save.py`; `ingest/office.py` and the PDF reader became `core/extract.py`; the staff-lock and save-question middleware moved from `agent/` to `ingest/middleware.py`; the record text Pitch's tools share moved to `proposals/records.py`. Every other import hidden inside a function went to the top of its module; four circular ones stay listed. `test_architecture.py` checks R1 and R2.
 
 ---
 
