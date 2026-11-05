@@ -18,9 +18,9 @@ import pytest
 
 from app.core.config import Settings
 from app.ingest import brief
+from app.ingest.catalog.writer import ensure_document
 from app.ingest.research.findings import EntityResearch
 from app.ingest.tools import research_tools as research
-from app.ingest.writer import ensure_document
 from app.integrations import storage
 
 MIGRATION = Path(__file__).resolve().parents[2] / "db" / "migrations" / "0020_storage_buckets.sql"

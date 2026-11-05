@@ -64,7 +64,8 @@ backend/app/
     catalog/                NEW  from the brief to Sangam's tables
       save.py                    ← catalog_tools.py: save_to_catalog, review_view, coverage_view, write_preview …
       rows.py ← records.py · matcher.py · undo.py · review.py · manual_checks.py
-      promote.py · promote_funder.py · promote_org.py      ← promote.py, split at its funder/org line
+      promote.py · promote_records.py · promote_documents.py · promote_facts.py
+                                 ← promote.py, split at its records/documents/facts lines (both entities share them)
       writer.py · writer_funder.py · writer_org.py         ← writer.py, split at its funder/org line
     tools/ · news/ · calls/ · adapters/ · prompts/ · skills/     unchanged
 
@@ -119,7 +120,7 @@ Every phase has the same acceptance gate, **G**:
 | 2 | **agentkit/ and one entry-point name** | `models.py`, `harness.py` and the shared middleware → `agentkit/`; `agent/build.py` → `agent/agent.py`; `AgUiState` and `archived` made public | R3 | ~45 import lines | `import app.main` still does not import `deepagents` (add this test) |
 | 3 | **ingest/research/** | `research_records.py` splits into `findings.py` and `finding_types.py`; `contract`, `expectations`, `coverage` and `source_guards` move in | none (G only) | ~40 import lines | the `research_records` ↔ `source_guards` cycle is gone; R2's allowlist shrinks |
 | 4 | **ingest/reading/** | `access`, `sources` → `registry`, `run_sources`, `staff_sources`, `vault` | none | ~45 import lines | one real Import run on the local DB |
-| 5 | **ingest/catalog/** + the two splits | `catalog_save` → `catalog/save.py`; `records` → `rows`; `matcher`, `undo`, `review`, `manual_checks`; `promote` and `writer` each split into shared, funder and org | R4 | ~60 import lines | one funder and one NGO Import, saved on the local DB, with the same catalog rows as before (compare `catalog_writes`) |
+| 5 | **ingest/catalog/** + the two splits | `catalog_save` → `catalog/save.py`; `records` → `rows`; `matcher`, `undo`, `review`, `manual_checks`; `promote` splits into entry, records, documents and facts (its funder and org paths share every step); `writer` into shared, funder and org | R4 | ~60 import lines | one funder and one NGO Import, saved on the local DB, with the same catalog rows as before (compare `catalog_writes`) |
 | 6 | **Rename `agent/` → `ask/`** (decide after phase 5) | the folder; `CLAUDE.md`, `ARCHITECTURE.md` and the nested `CLAUDE.md`; dated plans stay as written | none | 82 files, mechanical | G |
 
 Phases 3 to 5 touch the files that open Import PRs touch (#367 edits `research_records.py` and `middleware.py`).

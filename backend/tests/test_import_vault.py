@@ -15,7 +15,8 @@ from langgraph.types import Command
 
 from app.agentkit.harness import filesystem
 from app.core.security import CallerScope
-from app.ingest import catalog_save, review
+from app.ingest.catalog import review
+from app.ingest.catalog import save as catalog_save
 from app.ingest.middleware import DropFilesOnExit
 from app.ingest.reading import vault
 from app.ingest.research.findings import VaultResearch

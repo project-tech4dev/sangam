@@ -10,7 +10,7 @@ from functools import cache
 from pathlib import Path
 from typing import Literal
 
-from app.ingest.matcher import name_key
+from app.ingest.catalog.matcher import name_key
 
 CSR = ("thecsrjournal.in", "indiacsr.in", "csrbox.org", "idronline.org", "thecsruniverse.com", "csrmandate.org",
        "indiadevelopmentreview.com", "thebetterindia.com", "devdiscourse.com", "ngoconnect.net", "fundsforngos.org",

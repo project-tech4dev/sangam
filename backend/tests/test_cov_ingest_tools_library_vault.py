@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from datetime import UTC, datetime
 
-from app.ingest.matcher import Match
+from app.ingest.catalog.matcher import Match
 from app.ingest.reading import run_sources, vault
 from app.ingest.reading.run_sources import Sources
 from app.ingest.tools import library_tools, vault_tools

@@ -80,7 +80,7 @@ class BrokenPool:
 
 def patch_catalog(monkeypatch, name, value):
     """A name the catalog tools import from catalog_save is looked up in both modules."""
-    from app.ingest import catalog_save
+    from app.ingest.catalog import save as catalog_save
     from app.ingest.tools import catalog_tools
 
     for module in (catalog_tools, catalog_save):

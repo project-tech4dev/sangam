@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from app.ingest import geography, taxonomy
+from app.ingest.catalog.writer import GATE, Gate
 from app.ingest.research import source_guards
-from app.ingest.writer import GATE, Gate
 from tests.cov_ingest_fakes import ScriptConn
 
 PINNED = ("https://raw.githubusercontent.com/project-tech4dev/org-grant-intelligence/"

@@ -10,25 +10,17 @@ import pytest
 from pydantic import ValidationError
 
 from app.ingest.agent import CATALOG_WRITER
-from app.ingest.geography import _STATES, canonical_state, district_key
-from app.ingest.matcher import (
+from app.ingest.catalog.matcher import (
     CORE_FLOOR,
     Match,
     core,
     core_similarity,
     same_but_for_boilerplate,
 )
-from app.ingest.promote import (
-    CONCEPT_RECORDS,
-    MERGEABLE,
-    PROMOTABLE,
-    RENAMED,
-    WRITE_ORDER,
-    _row_identity,
-    promote,
-)
-from app.ingest.reading.registry import SOURCES, AccessRule, Category, dispatchable, resolve
-from app.ingest.records import (
+from app.ingest.catalog.promote import promote
+from app.ingest.catalog.promote_facts import _row_identity
+from app.ingest.catalog.promote_records import CONCEPT_RECORDS, MERGEABLE, RENAMED, WRITE_ORDER
+from app.ingest.catalog.rows import (
     ContactRecord,
     FunderCsrSpendRecord,
     FunderCsrYearRecord,
@@ -42,10 +34,15 @@ from app.ingest.records import (
     ProgramRecord,
     RfpRecord,
 )
+from app.ingest.catalog.writer import diff_row, slugify
+from app.ingest.catalog.writer_funder import CSR_YEAR_UPDATABLE
+from app.ingest.geography import _STATES, canonical_state, district_key
+from app.ingest.reading.registry import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.research.expectations import (
     CONCEPT_TABLES,
     CONCEPT_TITLES,
     NOT_WRITTEN,
+    PROMOTABLE,
     concepts_for,
     expected_fields,
     recent_fiscal_years,
@@ -66,7 +63,6 @@ from app.ingest.research.finding_types import (
 from app.ingest.research.findings import EntityResearch, PromotionReport, ResearchSummary
 from app.ingest.taxonomy import clause_for
 from app.ingest.tools.research_tools import save_research
-from app.ingest.writer import CSR_YEAR_UPDATABLE, _diff, slugify
 from tests.cov_ingest_fakes import patch_catalog
 
 NOW = datetime(2026, 9, 29, tzinfo=UTC)
@@ -224,16 +220,16 @@ class TestMatchingOnTheDistinctivePartOfAName:
 
 class TestWriterDiff:
     def test_a_proposed_null_never_erases_a_stored_value(self):
-        assert _diff({"website": "https://a.org"}, {"website": None}) == {}
+        assert diff_row({"website": "https://a.org"}, {"website": None}) == {}
 
     def test_an_unchanged_value_is_not_an_update(self):
-        assert _diff({"total_spent": 100.0}, {"total_spent": 100.0}) == {}
+        assert diff_row({"total_spent": 100.0}, {"total_spent": 100.0}) == {}
 
     def test_whitespace_is_not_a_change(self):
-        assert _diff({"name": "Axis Bank "}, {"name": "Axis Bank"}) == {}
+        assert diff_row({"name": "Axis Bank "}, {"name": "Axis Bank"}) == {}
 
     def test_a_real_change_records_both_sides(self):
-        assert _diff({"total_spent": 100.0}, {"total_spent": 120.5}) == {
+        assert diff_row({"total_spent": 100.0}, {"total_spent": 120.5}) == {
             "total_spent": {"old": 100.0, "new": 120.5}
         }
 
@@ -566,7 +562,7 @@ class TestPromotionRefusesWhatItCannotWrite:
         table it reaches. The org path never calls a funder writer, so a row
         carrying only funder-shaped findings builds no organisation at all —
         which is the refusal, rather than an NGO landing in `funders`."""
-        from app.ingest.promote import funder_from, org_from
+        from app.ingest.catalog.promote_records import funder_from, org_from
 
         row = {
             "slug": "the-ant", "entity_name": "The ANT", "canonical_name": None,
@@ -849,7 +845,7 @@ class TestPromotionCoversEveryConceptWithAWriter:
         """The two orders are the whole dispatch. A concept with a writer and
         no place in either loop is researched, promotable and never written —
         which is the failure the order was split in two to risk."""
-        from app.ingest.promote import ORG_WRITE_ORDER
+        from app.ingest.catalog.promote_records import ORG_WRITE_ORDER
 
         # Handled outside the fact loops: the entity itself, its documents and
         # its programmes each have their own step.
@@ -857,7 +853,7 @@ class TestPromotionCoversEveryConceptWithAWriter:
         assert set(PROMOTABLE) - apart == set(WRITE_ORDER) | set(ORG_WRITE_ORDER)
 
     def test_the_funder_loop_never_tries_an_org_concept(self):
-        from app.ingest.promote import ORG_WRITE_ORDER
+        from app.ingest.catalog.promote_records import ORG_WRITE_ORDER
 
         # metric and contact sit on tables with both foreign keys, and partner writes the funder's line from
         # either side; nothing else may overlap, or one kind writes the other's table.
@@ -887,7 +883,7 @@ class TestResearchGoalsAsksTheRightTables:
             return TestResearchGoalsAsksTheRightTables._Cursor()
 
     async def _sql_for(self, kind):
-        from app.ingest.catalog_save import held_per_concept
+        from app.ingest.catalog.save import held_per_concept
 
         conn = self._Conn()
         await held_per_concept(conn, 7, kind)
@@ -1194,8 +1190,8 @@ class TestPromotingTwiceChangesNothing:
     def test_the_diff_tolerance_scales_with_the_amount(self):
         # An absolute 1e-9 epsilon is below float precision at crore scale, so
         # every comparison read as a change.
-        assert _diff({"amount": 47_300_000}, {"amount": 47300000.00000001}) == {}
-        assert "amount" in _diff({"amount": 47_300_000}, {"amount": 47_400_000})
+        assert diff_row({"amount": 47_300_000}, {"amount": 47300000.00000001}) == {}
+        assert "amount" in diff_row({"amount": 47_300_000}, {"amount": 47_400_000})
 
     def test_two_findings_on_one_row_are_distinguished(self):
         # Distinct findings can still resolve to one row: two sector wordings
@@ -1222,10 +1218,10 @@ class TestJsonbColumnsCompareByValue:
         # of an RFP look like an edit.
         stored = {"requirements": ["Registered under 80G"]}
         proposed = '{"requirements": ["Registered under 80G"]}'
-        assert _diff({"eligibility": stored}, {"eligibility": proposed}) == {}
+        assert diff_row({"eligibility": stored}, {"eligibility": proposed}) == {}
 
     def test_a_real_jsonb_change_is_still_seen(self):
-        assert "eligibility" in _diff(
+        assert "eligibility" in diff_row(
             {"eligibility": {"requirements": ["80G"]}},
             {"eligibility": '{"requirements": ["12A"]}'},
         )
@@ -1253,21 +1249,21 @@ class TestTheOrgWriter:
             return self.rows.pop(0) if self.rows else []
 
     def rec(self, **kw):
-        from app.ingest.records import OrgRecord
+        from app.ingest.catalog.rows import OrgRecord
 
         return OrgRecord(**{"name": "Goonj", "source_type": "org_document", "evidence_tier": "claimed",
                             **prov(), **kw})
 
     @staticmethod
     def stored(**kw):
-        from app.ingest.writer import ORG_UPDATABLE
+        from app.ingest.catalog.writer_org import ORG_UPDATABLE
 
         return {"name": "Goonj", "aliases": [], "source_type": "org_document",
                 "source_url": "https://goonj.org", **dict.fromkeys(ORG_UPDATABLE), **kw}
 
     async def test_a_new_org_is_inserted_as_a_placeholder(self):
-        from app.ingest.matcher import Match
-        from app.ingest.writer import write_org
+        from app.ingest.catalog.matcher import Match
+        from app.ingest.catalog.writer_org import write_org
 
         conn = self._Conn([None, {"id": 42}])
         status, org_id, _changes, conflicts = await write_org(
@@ -1281,8 +1277,8 @@ class TestTheOrgWriter:
 
     async def test_an_existing_org_is_filled_not_overwritten(self):
         """The whole reason the org rule differs from write_funder's: an equal source fills, never wins."""
-        from app.ingest.matcher import Match
-        from app.ingest.writer import write_org
+        from app.ingest.catalog.matcher import Match
+        from app.ingest.catalog.writer_org import write_org
 
         conn = self._Conn([
             self.stored(org_kind="cso", legal_form="Registered Society (Societies Registration Act)"),
@@ -1298,8 +1294,8 @@ class TestTheOrgWriter:
         assert "legal_form" not in update and "source_type" not in update
 
     async def test_nothing_to_fill_writes_nothing_at_all(self):
-        from app.ingest.matcher import Match
-        from app.ingest.writer import write_org
+        from app.ingest.catalog.matcher import Match
+        from app.ingest.catalog.writer_org import write_org
 
         conn = self._Conn([self.stored(org_kind="cso", legal_form="Trust")])
         status, _, changes, conflicts = await write_org(
@@ -1313,8 +1309,8 @@ class TestTheOrgWriter:
         """orgs.org_kind is NOT NULL DEFAULT 'cso', so it is never a blank to
         fill — a default on the record would only ever read as research
         disagreeing with every intermediary and government row we hold."""
-        from app.ingest.matcher import Match
-        from app.ingest.writer import write_org
+        from app.ingest.catalog.matcher import Match
+        from app.ingest.catalog.writer_org import write_org
 
         conn = self._Conn([self.stored(org_kind="intermediary", legal_form="Trust")])
         status, _id, changes, conflicts = await write_org(
@@ -1325,8 +1321,8 @@ class TestTheOrgWriter:
 
     async def test_write_org_writes_no_identifier(self):
         """Each registration is its own finding with its own source and status (write_org_identifier)."""
-        from app.ingest.matcher import Match
-        from app.ingest.writer import write_org
+        from app.ingest.catalog.matcher import Match
+        from app.ingest.catalog.writer_org import write_org
 
         conn = self._Conn([None, {"id": 42}])
         await write_org(
@@ -1336,14 +1332,15 @@ class TestTheOrgWriter:
         assert not any("org_identifiers" in q for q in conn.sql)
 
     async def test_a_free_slug_steps_aside_for_one_already_taken(self):
-        from app.ingest.writer import _free_slug
+        from app.ingest.catalog.writer import free_slug
 
         conn = self._Conn([{"?": 1}, None])
-        assert await _free_slug(conn, "goonj", "orgs") == "goonj-2"
+        assert await free_slug(conn, "goonj", "orgs") == "goonj-2"
         assert all("FROM orgs" in q for q in conn.sql)
 
     async def test_a_registered_address_only_fills_an_empty_one(self):
-        from app.ingest.writer import Owner, set_registered_location
+        from app.ingest.catalog.writer import Owner
+        from app.ingest.catalog.writer_org import set_registered_location
 
         conn = self._Conn([None])
         assert await set_registered_location(conn, Owner.org(42), 7) is False
@@ -1355,10 +1352,11 @@ class TestASaveIsCountedPerConcept:
         # A label with no concept would drop its rows from Import's Done step without a sound.
         import re
 
-        from app.ingest import promote
+        from app.ingest.catalog import promote, promote_documents, promote_facts, promote_records
         from app.ingest.research.coverage import CONCEPT_OF_WRITTEN
 
-        labels = set(re.findall(r'_count\(report, "([^"]+)"', inspect.getsource(promote)))
+        source = "".join(inspect.getsource(m) for m in (promote, promote_documents, promote_facts, promote_records))
+        labels = set(re.findall(r'count_write\(report, "([^"]+)"', source))
         assert labels and labels - set(CONCEPT_OF_WRITTEN) == set()
 
     def test_the_entity_and_its_years_count_alongside_the_tables(self):
@@ -1481,7 +1479,7 @@ class TestTheReviewCardSpeaksPlainly:
     URL = "https://example.org/about"
 
     def test_a_finding_becomes_facts_with_amounts_in_rupees(self):
-        from app.ingest import review
+        from app.ingest.catalog import review
 
         f = {"concept": "csr_year", "fiscal_year": "FY2023-24", "evidence": "x" * 30, "source_url": self.URL,
              "prescribed_csr": {"value": 4.37, "unit": "crore", "text": "Rs 4.37 crore"},
@@ -1489,7 +1487,7 @@ class TestTheReviewCardSpeaksPlainly:
         assert review.facts(f) == [{"label": "Prescribed CSR", "value": 43700000.0, "money": True}]
 
     def test_codes_become_words(self):
-        from app.ingest import review
+        from app.ingest.catalog import review
 
         assert review.code_words("corporate_csr") == "Corporate CSR"
         assert review.code_words("12a") == "12A"
@@ -1504,18 +1502,18 @@ class TestTheReviewCardSpeaksPlainly:
         ({"source_url": "https://en.wikipedia.org/wiki/X"}, "self_reported"),
     ])
     def test_the_tag_follows_the_source(self, finding, expected):
-        from app.ingest import review
+        from app.ingest.catalog import review
 
         assert review.tag(finding) == expected
 
     def test_identity_first_then_one_per_topic(self):
-        from app.ingest import review
+        from app.ingest.catalog import review
 
         row = {"findings": [{"concept": c, "source_url": self.URL} for c in ("partner", "partner", "footprint", "identity")]}
         assert [a["concept"] for a in review.answers(row)] == ["identity", "partner", "footprint", "partner"]
 
     def test_missing_topics_say_why(self):
-        from app.ingest import review
+        from app.ingest.catalog import review
 
         row = {"findings": [{"concept": "partner"}], "gaps": [
             {"concept": "partner", "reason": "blocked", "detail": "found anyway"},
@@ -1526,7 +1524,7 @@ class TestTheReviewCardSpeaksPlainly:
         assert [(m["concept"], m["tag"]) for m in review.missing(row)] == [("rfp", "couldnt_read")]
 
     def test_a_question_keeps_its_id_and_loses_its_column_names(self):
-        from app.ingest import review
+        from app.ingest.catalog import review
 
         q = review.question({"id": "abc", "case": 3, "table": "funder_csr_years", "label": "FY2023-24",
                              "changes": {"prescribed_csr": {"old": 1, "new": 2}, "funder_type": {"old": "corporate_csr", "new": "x"}},
@@ -1538,7 +1536,7 @@ class TestTheReviewCardSpeaksPlainly:
         assert "_" not in q["topic"]
 
     def test_an_activity_question_is_titled_by_its_kind_and_amounts_are_numbers(self):
-        from app.ingest import review
+        from app.ingest.catalog import review
 
         q = review.question({"id": "p1", "case": 3, "table": "funder_activity", "label": "partner · KABIL",
                              "row_kind": "partner", "changes": {"amount": {"old": "43700000.00", "new": 5}},
@@ -1553,6 +1551,6 @@ class TestTheReviewCardSpeaksPlainly:
         async def none(slug, caller):
             return None
 
-        monkeypatch.setattr("app.ingest.catalog_save.review_view", none)
+        monkeypatch.setattr("app.ingest.catalog.save.review_view", none)
         async with client_for(ingest_api.router) as client:
             assert (await client.get("/api/ingest/research/nobody/review")).status_code == 404

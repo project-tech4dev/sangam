@@ -272,7 +272,7 @@ class TestWrite:
             seen.update(rec=rec, location_id=location_id, tag_id=tag_id)
             return "inserted", 99, {}
         monkeypatch.setattr(pull, "resolve_location", resolve)
-        monkeypatch.setattr(pull.writer, "write_rfp", write_rfp)
+        monkeypatch.setattr(pull.writer_funder, "write_rfp", write_rfp)
         conn = FakeConn({"FROM tags": [{"id": 1}, {"id": 2}]})
         call = extract.Call(title=" Health call ", states=["Assam", "Mars", "Goa"], themes=["skilling"],
                             domains=["health"])
@@ -289,7 +289,7 @@ class TestWrite:
         async def write_rfp(conn, rec, funder_id, *, location_id, tag_id, document_id):
             assert location_id is None and tag_id is None
             return "updated", 1, {}
-        monkeypatch.setattr(pull.writer, "write_rfp", write_rfp)
+        monkeypatch.setattr(pull.writer_funder, "write_rfp", write_rfp)
         assert await pull._write(FakeConn(), FUNDER, extract.Call(title="Call"),
                                   page="https://acme.org/c", text="t") == "updated"
 
