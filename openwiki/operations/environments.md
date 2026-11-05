@@ -6,12 +6,18 @@ tags: [operations, environments, env-vars, docker-compose, makefile, configurati
 sources:
   - id: openwiki-source-5f5b95b3d6a215fa02ceb945
     resource: repo://.env.example
-  - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
-    resource: repo://backend/app/agent/build.py
+  - id: openwiki-source-fe3601d35ecee292c4d2b24d
+    resource: repo://backend/app/agentkit/middleware.py
+  - id: openwiki-source-cca12af1e5c1e67e98d95ef0
+    resource: repo://backend/app/agentkit/models.py
+  - id: openwiki-source-319a08aaeaf88078bae3e2e9
+    resource: repo://backend/app/ask/agent.py
   - id: openwiki-source-6dcfc1451bcbf8009d0484a9
     resource: repo://backend/app/core/config.py
   - id: openwiki-source-b52886aad1fc413e4e030f22
     resource: repo://backend/app/core/security.py
+  - id: openwiki-source-62958d5b14b0717233a7ec0b
+    resource: repo://backend/app/ingest/agent.py
   - id: openwiki-source-77f44179d2b1ede3192f7afe
     resource: repo://backend/app/integrations/tracing.py
   - id: openwiki-source-55002f5b1d39cf35fd6d60e2
@@ -26,10 +32,10 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-41397cbbfbde65db108b394c
     resource: repo://scripts/db-url.sh
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-11-05T19:29:31.538Z
 ---
 
 # Environments and Env Vars
@@ -112,7 +118,11 @@ The Postgres container publishes `5433` on the host (container `5432`), and the 
 
 ### Models
 
-`MODEL` (default `anthropic:claude-opus-5-5`) reasons for Ask Sangam and the Import supervisor. `RESEARCH_MODEL` (`anthropic:claude-sonnet-5-5`) runs the entity-researchers, which consume most of an import's tokens. `UTILITY_MODEL` (`anthropic:claude-haiku-4-5`) handles fixed-shape work. `SQL_AUDIT_MODEL` (Haiku by default) runs a post-answer audit of each SQL answer and costs one extra model call per SQL turn; setting it to `off` (case-insensitive) disables it. Format is `provider:model_name` with `anthropic`, `openai` or `google_genai`.
+The tier fields are declared (with their defaults) in `Settings` in `backend/app/core/config.py`; the spec string is turned into a chat model by `resolve_model` in `backend/app/agentkit/models.py`, which rejects a spec without a `:` or with a provider outside `anthropic`, `openai` and `google_genai`.
+
+`MODEL` (default `anthropic:claude-opus-5-5`) reasons for Ask Sangam and the Import supervisor. `RESEARCH_MODEL` (`anthropic:claude-sonnet-5-5`) runs the entity-researchers (and the vault reader), which consume most of an import's tokens. `UTILITY_MODEL` (`anthropic:claude-haiku-4-5`) handles fixed-shape work: the catalog-writer, the workbook-reader, the research rubric grader and the cheap context summaries on both agents. `SQL_AUDIT_MODEL` (Haiku by default) runs a post-answer audit of each SQL answer and costs one extra model call per SQL turn; setting it to `off` (case-insensitive) disables it. Format is `provider:model_name`.
+
+Tiers also act as a fallback chain through `fallback()` in `backend/app/agentkit/middleware.py`, which picks the first candidate that differs from the primary and retries a failed call on it. Ask's supervisor falls back from `MODEL` to `RESEARCH_MODEL`; on Import the researcher falls back to `MODEL`, the writer and reader fall back to `RESEARCH_MODEL` then `MODEL`. If `RESEARCH_MODEL` differs from `MODEL`, a researcher whose save is refused as malformed escalates to the strong model. Setting all three tiers to the same spec therefore also removes the fallback.
 
 Provider keys: `ANTHROPIC_API_KEY` is the one required key and must match `MODEL`'s provider; `OPENAI_API_KEY` and `GOOGLE_API_KEY` are optional. `OPENAI_API_KEY` is needed separately for the graph because Anthropic has no embedding models.
 
@@ -121,7 +131,8 @@ Provider keys: `ANTHROPIC_API_KEY` is the one required key and must match `MODEL
 - `MAX_PARALLEL_RESEARCH` (default 8): organisations researched at once. It bounds a wave, not the list size; larger lists run in waves.
 - `DB_POOL_MAX_SIZE` (default 10): connections this process may open. Raise it together with `MAX_PARALLEL_RESEARCH`, because each researcher holds a pooled connection while its tools run. The ceiling is the database's (Supabase allows 60 connections, 3 reserved, shared by every deployed instance).
 - `RESEARCH_PAGE_LIMIT`, `RESEARCH_MODEL_CALL_LIMIT`: optional per-researcher hard stops. Blank means no limit.
-- `ASK_MODEL_CALL_LIMIT` (default 25): model calls one Ask question may make before it stops and says so. It is a cap on a runaway turn, applied through `model_call_cap` in `build_agent()`. Compose forwards it, and blank means 25.
+- `ASK_MODEL_CALL_LIMIT` (default 25): model calls one Ask question may make before it stops and says so. It is a cap on a runaway turn, applied through `model_call_cap` in `build_agent()` (`backend/app/ask/agent.py`). Compose forwards it, and blank means 25.
+- `DB_POOL_TIMEOUT_S` (10), `DB_CONNECT_TIMEOUT_S` (5) and `DB_STATEMENT_TIMEOUT_MS` (15000): how long a request waits for a pooled connection, how long a new connection may take to open, and the per-statement timeout for REST queries run as the caller. Compose forwards all three and blank means the default.
 
 `Settings.db_gate_slots` is derived: `max(2, DB_POOL_MAX_SIZE - 3)`. The concurrency gates for SQL execution and ingest sit *under* the pool, because the LangGraph checkpointer writes on every graph step through the same pool and a gate equal to the pool size would starve it.
 
@@ -143,7 +154,7 @@ Provider keys: `ANTHROPIC_API_KEY` is the one required key and must match `MODEL
 
 `SUPABASE_SERVICE_KEY` is the service-role key and bypasses row-level security, so it stays server-side: never `NEXT_PUBLIC_`, never sent to the browser. The browser receives short-lived signed URLs minted by the backend.
 
-Langfuse specifics: `LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, the client falls back to `VERCEL_ENV`, and the release falls back to `VERCEL_GIT_COMMIT_SHA`. The SDK validates credentials at start and `LANGFUSE_MASK_TOOL_RESULTS` redacts query results from the `db_query` span only (a reduction, not a guarantee). LangSmith reads its variables straight from the process environment; no code wires them, which is why they must be forwarded through compose.
+Langfuse specifics: `LANGFUSE_TRACING_ENVIRONMENT` separates local traces from deployed ones; unset, the client falls back to `VERCEL_ENV`, and the release falls back to `VERCEL_GIT_COMMIT_SHA`. The SDK validates credentials at start and `LANGFUSE_MASK_TOOL_RESULTS` redacts query results from the `db_query` span only (a reduction, not a guarantee). `.env.example` also documents `LANGFUSE_BASE_URL` (it wins over `LANGFUSE_HOST` when both are set) but that is read by the Langfuse SDK, not by `Settings`, and compose does not forward it. LangSmith reads its variables straight from the process environment; no code wires them, which is why they must be forwarded through compose.
 
 Neo4j in the compose file is **pinned**: the backend service sets `NEO4J_URI=bolt://neo4j:7687` and the bundled credentials itself, and `EMBEDDING_DIM=768`. Changing the `NEO4J_*` lines in `.env` does not affect the local Docker backend; they matter for deployed hosts (Neo4j Aura).
 
@@ -157,18 +168,18 @@ Neo4j in the compose file is **pinned**: the backend service sets `NEO4J_URI=bol
 
 ### Settings with no `.env.example` entry
 
-`Settings` also carries tunables that compose does not forward: the `NEWS_*` bars and cost figures for Media and Signals, `SQL_TIMEOUT_MS` (5000), `SQL_MAX_ROWS` (50), `SQL_MAX_ATTEMPTS`, `RECURSION_LIMIT` (200), `DOWNLOADS_DIR`, `GITHUB_PAT`, `GITHUB_MCP_URL`, `PLAYWRIGHT_MCP_URL`, `MCP_SERVERS` and `GITHUB_TOOL_ALLOWLIST`. Pydantic matches env names case-insensitively, so each is the upper-cased field name. Inside Docker they stay at their code defaults unless you add them to the compose `environment:` block; on Vercel set them in the dashboard.
+`Settings` also carries tunables that compose does not forward: the `NEWS_*` bars, parallelism, verifier and cost figures for Media and Signals, `SQL_TIMEOUT_MS` (5000), `SQL_MAX_ROWS` (50), `RECURSION_LIMIT` (200, applied to both agents as the graph recursion limit) and `DOWNLOADS_DIR`. The older GitHub/Playwright MCP settings are no longer fields of `Settings`. Pydantic matches env names case-insensitively, so each is the upper-cased field name. Inside Docker they stay at their code defaults unless you add them to the compose `environment:` block; on Vercel set them in the dashboard.
 
 ## How blank values and defaults work
 
 The rule: **`config.py` is the only place defaults are written, and a blank value means "use the default".**
 
 - Compose forwards optional variables as `${NAME:-}`, so an unset variable reaches the container as an empty string, not as a missing variable. A hand-edited `.env` line with nothing after `=` does the same.
-- `Settings._blank_means_default` is a `mode="before"` validator on `model`, `research_model`, `utility_model`, `sql_audit_model`, `max_parallel_research`, `research_page_limit`, `research_model_call_limit`, `ask_model_call_limit` and `db_pool_max_size`. If the value is a blank string it returns the field's declared default. Without it, an empty integer made the container refuse to boot.
+- `Settings._blank_means_default` is a `mode="before"` validator on `model`, `research_model`, `utility_model`, `sql_audit_model`, `max_parallel_research`, `research_page_limit`, `research_model_call_limit`, `ask_model_call_limit`, `db_pool_max_size`, `db_pool_timeout_s`, `db_connect_timeout_s` and `db_statement_timeout_ms`. If the value is a blank string it returns the field's declared default. Without it, an empty integer made the container refuse to boot.
 - For `research_page_limit` and `research_model_call_limit` the declared default is `None`, so blank means no limit.
 - `dev_auth` has its own validator: an empty string means `False`.
 - Other string settings (for example `SUPABASE_URL`, `NEO4J_URI`) default to `""`, which is itself the "disabled" state, so blank and unset are equivalent there too.
-- `SQL_AUDIT_MODEL=off` is converted to the empty string after validation, and `build_agent()` only appends the `answer_audit` middleware when `settings.sql_audit_model` is truthy, so the audit is disabled. Note the order: a *blank* value gets the Haiku default (audit on); only the literal `off` turns it off.
+- `SQL_AUDIT_MODEL=off` is converted to the empty string after validation, and `build_agent()` in `backend/app/ask/agent.py` only appends the `answer_audit` middleware when `settings.sql_audit_model` is truthy, so the audit is disabled. Note the order: a *blank* value gets the Haiku default (audit on); only the literal `off` turns it off.
 - `Settings` reads `.env` (`env_file=".env"`, `extra="ignore"`, so unknown keys are harmless) and `get_settings()` is `lru_cache`d, so values are fixed per process.
 
 Feature switches are derived properties, not separate flags: `auth_enabled` (`SUPABASE_URL`), `graph_enabled` (`NEO4J_URI` and `OPENAI_API_KEY`), `langfuse_enabled` (both Langfuse keys), `storage_enabled` (`SUPABASE_URL` and `SUPABASE_SERVICE_KEY`).

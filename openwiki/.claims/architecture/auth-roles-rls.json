@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:bb8bbe3860f3713bf2a769b633b6c019c64fff4d32ba24dc74540b949403b201",
+  "pageVersion": "sha256:a4c5921d0d6cff54a0f1e9e968e55ba008e6c1b8b0f7d51747515fe9da3a59bb",
   "claims": [
     {
       "id": "claim_ad1457a859a34d0d88ee82f2b89ad7fe",
@@ -11,7 +11,7 @@
           "version": "repo-lines-v1:sha256:e63ac8253daa8fef76c411ddc73da36a51f8df54309f154d9d6a51664a5e567a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZTc5N2EzYjUxMGJjMjU5YmFhOWIzMDlmZDI5ZjBlMThiYjVhYjFhZTk3ODU1YzY4ZTI3OTMyYzgyZmE2YTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkMWE4NWQwMDhmM2Q3OTk1ZDYwOTVmMWNlYTc2YWY5MjAwMzRmNjZhMWQ5MWE5MTZkYWJiMTFhYzZjNThjZTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5NGNhNTgxNDFjYTc0NTE0MDJmM2JhMzI5ZDYzMGE3MTNlYTExMzBlOTg0Yzc4ZTUyMzIwYjA2ODUxN2IxMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViMzE0NWQ2YjczYWRjMjZiNDIwODY3NTkzMDI2OTI0YmQ5Mjg5YTYzNGE5M2UwOTM4ZjE4YmNlNThlYzlmNzYifQ"
         },
         {
-          "resource": "repo://backend/app/main.py#L29-L38",
+          "resource": "repo://backend/app/main.py#L42-L51",
           "version": "repo-lines-v1:sha256:f2f907e6c0004b3a305f6bf944817e23ab89be976dd3016524445d7c0662188d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNjllODFmMzY4OWQzY2IyMTY1ODYyYjEzMmMxZmJmNWVmNTIxMTE2MDlkMmE2OGFlMTkxZThiZDQ2NDYxNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0NGY5MGQ4MGYzNDIzMjQ5ZmQxNWY4ZTZkMjI0YTFmZWYyN2RlOTg4MWM1YTZmMDkwNDBlOTRiMmE3YzRjNTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkNWJhMWQzZmUyN2E4ODdiNGMxNDUyZTU1ZGUwNTJmY2ZkODc1YzUzZGEwMDNhMzFjOTc3OGM2NzkwMzA5ZjMifQ"
         }
       ]
@@ -21,7 +21,7 @@
       "statement": "resolve_principal depends on SUPABASE_URL and DEV_AUTH: with SUPABASE_URL unset every request is the seeded staff DEV_USER (except the local @local.test sign-in); with it set, no Authorization header is ANONYMOUS, 'Bearer dev' is DEV_USER only when DEV_AUTH is on (local only), and any other bearer token is verified as a Supabase access token; malformed or invalid headers are 401.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L44-L45",
+          "resource": "repo://backend/app/core/config.py#L27-L28",
           "version": "repo-lines-v1:sha256:c87958cf54e6a00fb0521648a3699aa9da55a44eb8d5a7ad588d6004c5c629da:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjZlODEyMjM5MzhmMTI1MjUwMDhlZTQxZDdiNmJmZWJlNDQzODdiYmZkMzgxNGFlYWFhYTU4ZWQ3Y2VmMjRkOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTUyODEwYWQ1NWZmMGZlYTFmYjk0ZjAwZDE1NDI1ZTUyZWVhZDUzNmY4NjNhOGYxYjViZGIzMzk2NjY2MzdhNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FjZDY5Y2QwOWFkN2IwMzVmNzBiNzVmZDAzOThjZGFjY2QxZmVlZjQwMTkwNDA5Zjg3ZWEyMDJlNWI1Y2ZlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGM4Y2RkOWU5MzM2MWY1ZmI3MzM1MjNhMGM3OWIzMzFiMWMyNDRlODdmMjg4Y2Y1YjMzN2U3NGJjZThjMjZiOCJ9"
         },
         {
@@ -101,7 +101,7 @@
           "version": "repo-lines-v1:sha256:429504b30235fc11f1dc309d1c84dbc255611af690df328a7c56caabb2cff0fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZDBiNDI0ZjliNWU5ZWU2NGY2OWI5YmFmNTljZjk5MjAyOTVhYzkyMzliMWI0MjQxMTc0M2U5ZGJhNGQ5OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmY2M0NTc4NGY2ZWY5MWVmZmFmNzg2MDYwZWJlNzk2M2IzZDY1ZjU3N2RlZjUzZGM0NTM2OGEyNTM2MDljNDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3YjE4ZjA4MzhhODNhNzY2OWJiNTE4YTdkZjBiOTUyMTUwMjA4NjMwZWExNjI0NGU5OTI2N2UzNTE4OGFhOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0ODFhNTJkZDBhMzVjMzE3NjU5ZTNiNTdmNDI2YmQ4OTg0NzNkMDZlMmMwMGEzZjViNzA3YjA3ZTIwYTA1ZTIifQ"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L284-L327",
+          "resource": "repo://backend/app/core/security.py#L285-L328",
           "version": "repo-lines-v1:sha256:da2944dd2a8a97cbf34ce03c99c0f613daaf354308c8e4d6ee9df480d3557a28:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZGQ5ODNiYjE5YTlhYWUzNDNlZWZmYTQ2YzNlMjA1MjM0Y2I5MGViMzI4MWNjY2M3ZjlkOTY4MmY5YWU5MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MDE0OWUwNjlhZDY3ZWNjZjQ3MzY0NmZmMWM3NTAwNTBkMzI5ZDExMDAxOGRjNTc2Njg3OGVhZmExZDYwN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzOTFlYTE4YjI3MjEwYzA2YzhjOTNlODRhNzYxZDU5ZWU5ZTBhODNmYmVmNzYwMjg3ZjU3YzI1MzczOWI2YjYifQ"
         },
         {
@@ -112,11 +112,11 @@
     },
     {
       "id": "claim_af8b5eade19946dfa31079e28cabdb69",
-      "statement": "CallerPool wraps the shared owner-connected psycopg pool: each connection() opens a transaction and calls set_caller, which sets the Postgres role (anon or authenticated) and request.jwt.claims with transaction-local set_config, so the connection returns to the pool as the owner and the checkpointer and agent tools never inherit a caller. get_caller_pool falls back to anon without middleware state, and PoolDep is what routers take.",
+      "statement": "CallerPool wraps the shared owner-connected psycopg pool: each connection() opens a transaction and sets the Postgres role (anon or authenticated), request.jwt.claims and a statement timeout with transaction-local set_config, so the connection returns to the pool as the owner and the checkpointer and agent tools never inherit a caller. get_caller_pool falls back to anon without middleware state, and PoolDep is what routers take.",
       "evidence": [
         {
-          "resource": "repo://backend/app/db/pool.py#L31-L74",
-          "version": "repo-lines-v1:sha256:dbe083b58267130dea31dde43b0e60dc3aef01a2f8aa371c77af92679c95e493:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiY2RjM2FjODdhNTU5ZTNjODI4NTczMTc2ZjUxODk3Y2VkNjAzZDZhZWI4MDdjMjI0YzcyOTA1NzVmMDNmMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTRlYjFmZGMwMjgxNTdjMmUxNGEwZmNiYThkNTE4Mzk4ZmQyMDMzZjdmYjAzZmViZGE0ODY4ODNmZWZhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1MmRmYTIxZDkwMTBhYzJhMTQwYTQ4NmZjZGUxZmQ1MjM1ZGZlMzRiZTc2YzlhNTNkZWU1ZjUzOTlkZWM2M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/db/pool.py#L33-L80",
+          "version": "repo-lines-v1:sha256:63611f27264d97c9137415989ad3fef6eb4a240a0c26d25f462c5c524a645807:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiY2RjM2FjODdhNTU5ZTNjODI4NTczMTc2ZjUxODk3Y2VkNjAzZDZhZWI4MDdjMjI0YzcyOTA1NzVmMDNmMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTRlYjFmZGMwMjgxNTdjMmUxNGEwZmNiYThkNTE4Mzk4ZmQyMDMzZjdmYjAzZmViZGE0ODY4ODNmZWZhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1MmRmYTIxZDkwMTBhYzJhMTQwYTQ4NmZjZGUxZmQ1MjM1ZGZlMzRiZTc2YzlhNTNkZWU1ZjUzOTlkZWM2M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://backend/tests/test_caller_pool.py#L79-L96",
@@ -143,28 +143,28 @@
       "statement": "The owner pool (OwnerPoolDep and get_pool()) bypasses grants and RLS and is used by identity code (resolve_principal, thread claiming, can_open_thread checks, request_scope), matching tools, all Import tools, the proposal agent's tools and context, Import's owner-side REST handlers, the matching run and the make match CLI, so those paths must check scope themselves.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/tools/matching_tools.py#L147-L155",
-          "version": "repo-lines-v1:sha256:a954e750181a2a9a0afbcefd2a24c0125694a94d08f1a46ed58edfedf701a667:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmE3ZTUyOWFhNDA0MDI0Yjg3MTFmNjIzMmY1OWM4MGFkYmQxZjg3ODA2MmZjNDk3MjQ3ZTlhN2EzNDAxNzNlMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkwOWE1M2E2MThkMDI4ZTFkMzAwMGMwYTdhYmNlZWNiZTVmYjM3ZjRlNTExZWZlNDY2NDNmYWQ2ZTY2ODcyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2MyYzBlMTFmMjdhOTBkMjEzYzZlZjk2ODk0YzcxY2E3ZDg1OGRhN2NhMzgwM2Y2YzI0ZjAwOWQxOGY3M2ZiYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDYwZGU1OGM3YmVlZmYxNjZkYzkzMWY1MTBhZGY1ZmM2MjViYWEzZjgwYTg3NDY4ODgzMDJjMWZhZDU3YzJjZiJ9"
-        },
-        {
-          "resource": "repo://backend/app/api/routes/funder_matches.py#L47-L59",
+          "resource": "repo://backend/app/api/routes/funder_matches.py#L46-L58",
           "version": "repo-lines-v1:sha256:da1148851b360ca033d9c939aa4604fff2f3ed62d19260817ae0eed2217dfc48:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5NWNkOTA2YjM1OTAzNWNlZGU2NThiM2FhMjAxMmYzZGExZTVmMjViNjJlY2U5ZjQ0NDkzZGNkMzIyMTE4ZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2YWU4NmFiNDgwYTFkYjczOTBhYmZiNjRhNTQ2M2E0OGM3YjUwZTQ2Y2M0OWVkOGJmMTM5MzQ5ODk1ZGMyODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZlYTg4ZTQyMDQ3ZTc4MTg2NzU1ZWFlOTFjYTgzODlhYjVkOTA5MDkzNDc2MGI4MmQxY2M0MDlhYjRmZDg1MTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/app/api/routes/ingest.py#L180-L231",
-          "version": "repo-lines-v1:sha256:082484a2cf56f1c5ae5cfb43ad924ff765cbd0b2e785011dc0a8d03fa1c2fdab:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0NThjYWFlY2VmN2IyZmMzYzdlNjViMzFhY2VlYjUxNmUzMTc2YjkxMTUxNDU4MzJhMzcyOGQ3YWM0OTFlOWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0NzM0ZTA3ZWEwZTMzNzExNjAwMWViMjhmODI0NTM2N2I3OGU1MWIyYjU3ZTQzMjUzOWJhMzBiYTVlNDdlNTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhOGUzNzU0NWI2MTBiNzA5NjU1NWE1Nzc5ZjE3OGZjNTE4OTQ5YTdhODEzY2U5NzUyM2U4OGQ5ZjNjYzdhOWMifQ"
+          "resource": "repo://backend/app/api/routes/ingest.py#L181-L231",
+          "version": "repo-lines-v1:sha256:d372fc36c0bf8401aa601468d07af22d77d899e47ff0d054ca8efe3b3020ea50:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmNDYyMDg2ODBkMTYwNmM1OTAzODJjMWVhYjM0NWVkOGRkMWIzYzdkNmVkNDc2Njc4YTFhZDA0YmEzNTI1NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0NThjYWFlY2VmN2IyZmMzYzdlNjViMzFhY2VlYjUxNmUzMTc2YjkxMTUxNDU4MzJhMzcyOGQ3YWM0OTFlOWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhODJlYmU5ZWQ0MDdjM2E2YmE0YjAwMzQyOTJiYWE1MmMxMWNlNWFlMjg2MTA3NDAyZGU0NzkyZWVlY2FjZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhOGUzNzU0NWI2MTBiNzA5NjU1NWE1Nzc5ZjE3OGZjNTE4OTQ5YTdhODEzY2U5NzUyM2U4OGQ5ZjNjYzdhOWMifQ"
         },
         {
-          "resource": "repo://backend/app/api/routes/threads.py#L34-L40",
-          "version": "repo-lines-v1:sha256:7463e185b4ad7315cc6670d8cbe7101326d9b5ab2029fe68f5b52a93c594f407:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjBmMDYwYTk0YTdhNDNlYWJkNGExZGI4NWNiZDJkODVmOGFkM2FiNDQ3ODVhNDVjZGM0ZGY3YzMyMjA4NjUwNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODRmY2I1YzYxZjliMTBjMDFkNWYzMTBkZWRhNTY1NjI4OGJjOTk0ZTA2ZmY0ZTAxNjY2ZDNhMjZhMmI2N2M0OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTViNmEyMThiNGIzNmRmZjc3N2FiYjBhNmZkZGZlZDVlODllMTZjNGFjZGEwYzJmNDFjMWRiMDE3MThhYzgyZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGEyNWI2YTU5NjY2OWMwYjJkMmUxMjkwNDdmMDBkMGYxNjFkYWIyNzkwZTgxN2JjYjUwYmQxOGFmMmY3YzJmZCJ9"
+          "resource": "repo://backend/app/api/routes/threads.py#L27-L40",
+          "version": "repo-lines-v1:sha256:84707d503613c279843c63c25f7b66474e479633e5cc9571818ddd5e2d3bef9f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjYzYwZjA4ZTk3Y2ViZmExZjQwZWE5Zjg1MTEzZTI4YjQ1OGVhYTBkNzVhMjg4OGMzZWE3ODExYWY3NDI4ZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0ZmNiNWM2MWY5YjEwYzAxZDVmMzEwZGVkYTU2NTYyODhiYzk5NGUwNmZmNGUwMTY2NmQzYTI2YTJiNjdjNDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzNTRiMzBkYmMyMmQ0NTNkOWIzYTkzNTVmMWU1NDNkNTdjZDY2NTk3NzYzMjVlNDE5MTcyYWU1MWEzNThlMjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhMjViNmE1OTY2NjljMGIyZDJlMTI5MDQ3ZjAwZDBmMTYxZGFiMjc5MGU4MTdiY2I1MGJkMThhZjJmN2MyZmQifQ"
         },
         {
-          "resource": "repo://backend/app/db/pool.py#L14-L28",
-          "version": "repo-lines-v1:sha256:42ab4d04fd7eba6ad3fa254d18e1d2fa933cc3f5cce5f12808f656304671291a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxOTliZjc5YmVhOTA1YjA3NGMyZTEwZGMzMjgxODkzNmM1Zjk0NWZmMTdhYmZhZWY4ZDY2MDM0YmM3MjVjYjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5NjE5ZTI1YWI2M2ZlN2U5N2E5NDAwMmQ3NmMzMTNkZmNhZmNlY2ExYzY2Y2YzNzExZTg3MzhlODMyY2YwYzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyZmNlNTNlOGNjZWU0NWY1NWY2N2RlYmY2NGEwYmNiYzE3NTEyN2E4M2I3NjUyNzZjMzc0ODBmOTRlNmQzZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0NzhiZTM4ZmQyM2I2NjFjNjIzOTc0NTM1Nzk0NmE3YmNlOTg5NGY0MGVkZmQ0YTA5ZDg0NjY1ODUwMTQwYWMifQ"
+          "resource": "repo://backend/app/ask/tools/matching_tools.py#L146-L155",
+          "version": "repo-lines-v1:sha256:f59f1e13d9c165e86b753542606d94fc3bbc1d1e57c91cf6942401b63611c64b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4MWQ2NzVlMDE5NTcwOTA3ZTI3MjkxYTY0OWRhYmRhM2JkZWU0NzhmN2ZkZTY4OTFhNTYwYjAzMjk5MjRlNjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJiNGI5ZGM0MzY5MmM2MDliNjIxOWExNzZkMGEyOWY0ZDJlZDEyZmMwZjI2NTFjMmM1MjA2OTEzZWRhZDI5MjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2MGRlNThjN2JlZWZmMTY2ZGM5MzFmNTEwYWRmNWZjNjI1YmFhM2Y4MGE4NzQ2ODg4MzAyYzFmYWQ1N2MyY2YifQ"
+        },
+        {
+          "resource": "repo://backend/app/db/pool.py#L16-L30",
+          "version": "repo-lines-v1:sha256:42ab4d04fd7eba6ad3fa254d18e1d2fa933cc3f5cce5f12808f656304671291a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxOTliZjc5YmVhOTA1YjA3NGMyZTEwZGMzMjgxODkzNmM1Zjk0NWZmMTdhYmZhZWY4ZDY2MDM0YmM3MjVjYjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5NjE5ZTI1YWI2M2ZlN2U5N2E5NDAwMmQ3NmMzMTNkZmNhZmNlY2ExYzY2Y2YzNzExZTg3MzhlODMyY2YwYzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4NGE4MDRiNTc4MDc3OGM5ZjkwOTIwYWUzN2YxYjZhZGVkNzhjMzJhNzA0MmU4MGYwOWJkNGRlYzQzMzgxY2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0NzhiZTM4ZmQyM2I2NjFjNjIzOTc0NTM1Nzk0NmE3YmNlOTg5NGY0MGVkZmQ0YTA5ZDg0NjY1ODUwMTQwYWMifQ"
         },
         {
           "resource": "repo://backend/app/ingest/caller.py#L1-L13",
-          "version": "repo-lines-v1:sha256:f2df649df99f9df4dac04d7eef2c53da77e79fefdcb07d498f47e5a725237ad5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmOGRlZWRjNzM5YTMyOTZjMGUzMTRlNzc3MDNmZWNlYWVlMDI4ZDZiY2IzYjM4NWM4ODEwNzc3YmY2ZDU2OWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNmYxZTkzZjQxY2ZjY2RiNDBmNjI3N2M2NzhkMGQ0ODUxNjQxY2U3MDgyMDVjNGQ1NTkwNGI4OTE4YTUzNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4MThiNWUxODE5NWRlMjg4MmE4MDcyNzk4YTFiMzNmNjVhY2Q4Njc5MmVmNzUyOGI1ZTA5YmNmYjRiMmUyNmMifQ"
+          "version": "repo-lines-v1:sha256:3936302fd96b2c0a8700428f3fcd7dd9316625ef6d82a6a270d9ebec3ee4a365:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmOGRlZWRjNzM5YTMyOTZjMGUzMTRlNzc3MDNmZWNlYWVlMDI4ZDZiY2IzYjM4NWM4ODEwNzc3YmY2ZDU2OWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNmYxZTkzZjQxY2ZjY2RiNDBmNjI3N2M2NzhkMGQ0ODUxNjQxY2U3MDgyMDVjNGQ1NTkwNGI4OTE4YTUzNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4MThiNWUxODE5NWRlMjg4MmE4MDcyNzk4YTFiMzNmNjVhY2Q4Njc5MmVmNzUyOGI1ZTA5YmNmYjRiMmUyNmMifQ"
         },
         {
           "resource": "repo://backend/app/matching/run.py#L13-L25",
@@ -175,8 +175,8 @@
           "version": "repo-lines-v1:sha256:e75fdf8e1dbdadd23c4cb1559464941783857d5fb1a31ce8885b039cd638441f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3YTNkNjgzYjYzNTUzY2JiODhlZjI5ZjFjOTNiOGNhY2JlOGI5NmMwZGI4NTVhNDQ1MDJjYWRhYjBjOWZlYTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmY2E0N2I5MGFjZDhjMTBhY2NiYTliMTA0MDFhZmNlNmQwYjBjMmI0ZWQ2ZDEwMzdiNTQ0ZDM3OGVhZGIxYmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE2YmM2NWQ0MGIwOGZjNTMyOTU3OTc5OTc5YmQ5ZDVkYmJlZjQwY2I5YTA4NDM1ODEwYWUyZWZlYzFmMmVjZDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRlNjE3MDlmNTk2YTQ3MTAxNTgwN2IwNWE1YjFmOWQwN2I4YTkzNTA5MTZhYmIwYTM0YmZhOTZlMjU0MGMzYWIifQ"
         },
         {
-          "resource": "repo://backend/app/repositories/proposals.py#L122-L123",
-          "version": "repo-lines-v1:sha256:936995e34ac260391a8ed8e4fd01b243b1f1843c8e63eb86a7795a76e15c2d2b:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmM2MWEzMTgyNTAxODgyYzJjYTAxYWExMmVhMmQ1NGM4YjQyZjMxMDJjMjBhM2IwMjU3YmYzMDkxNDIxZmU5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGU3NWRlZjc5ZGE2MTgzNGJjNGEzZmYwYTExMTZiOGM3Y2QxZDcxMDg4MmYyNjBhODVkM2I2NDM4NjEyNGZjNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjdlZjUxODAwNTc1ZWM5MjE1YTA2OWE1NjdhYTY2NmViZjgxMGU1OWQxOWQ5NDgwODRjNGFhZTY5OWE2MDRlOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDgyNWJkZWRmZmU2Mjk0ZmYzNWMyYjk1MTkzYWY3MDU3ZDBiMDQyMWNjMTQwYjBlYjM3MGU4MGU5YWJkZmE1MCJ9"
+          "resource": "repo://backend/app/repositories/proposals.py#L189-L190",
+          "version": "repo-lines-v1:sha256:936995e34ac260391a8ed8e4fd01b243b1f1843c8e63eb86a7795a76e15c2d2b:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmM2MWEzMTgyNTAxODgyYzJjYTAxYWExMmVhMmQ1NGM4YjQyZjMxMDJjMjBhM2IwMjU3YmYzMDkxNDIxZmU5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGU3NWRlZjc5ZGE2MTgzNGJjNGEzZmYwYTExMTZiOGM3Y2QxZDcxMDg4MmYyNjBhODVkM2I2NDM4NjEyNGZjNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGU3NTc1YzNiNzc3NmNmMmY5YzJiZmJjYTQ0ZjIxNDgxM2E3ODI3ZWFhOWMzODQ1NGM3MDNiNjg5YTc0NDM4NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDgyNWJkZWRmZmU2Mjk0ZmYzNWMyYjk1MTkzYWY3MDU3ZDBiMDQyMWNjMTQwYjBlYjM3MGU4MGU5YWJkZmE1MCJ9"
         }
       ]
     },
@@ -185,8 +185,8 @@
       "statement": "CallerScope carries user_id, is_staff and org_id-to-role maps and implements the Python-side checks used by owner-pool code: can_read_org (staff or any role in the org), can_research_org (staff or steward of the org), can_save_funder, can_edit_proposal (staff, or admin or steward of the org, mirroring the 0048 RLS), and steward_of. It is built by caller_scope, skipping membership lookup for staff and anonymous callers.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/security.py#L226-L268",
-          "version": "repo-lines-v1:sha256:c2a0fee77833443ba572f9e6e3726cee1343591cddb7c8b08c7961d6e358c22a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2OWExMzk3NWMyNTZlYzgzMjBlMjAxNjA4M2M5NmRmNjM3Y2EzZDM1YmViZGUyMzE0YmVlM2E0NzExYjU2Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxZWYxMjQ1MjQ3N2I5NzlhNmQ0ODNlODkyNjdhMTczZmJiOWIwNmU2ZWMyMjM3MTMxNTE4N2IyOThjYTdkNTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyMjQxN2RiNzdlYWZhMjE5NjMxYmM1MmQ4OWNmYjIwNDViNGIxNDJjMDc5YzFkOWE3NmI3MTc1ODIzNzc5MDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyZDdlMmQ4NjczY2JlZGQ2MTNkMTE1OThmNThmNzM0MWZhNmY0YWVkOGZjYzcwNTA3Zjc1ZjE2MjJiYTJiZjEifQ"
+          "resource": "repo://backend/app/core/security.py#L226-L269",
+          "version": "repo-lines-v1:sha256:5fe140dfa11b4099e7c9ec570376bd83a2473bbc728c31c7686dfd993f61cc95:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2OWExMzk3NWMyNTZlYzgzMjBlMjAxNjA4M2M5NmRmNjM3Y2EzZDM1YmViZGUyMzE0YmVlM2E0NzExYjU2Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzZjg1YzU1Mzg1MzM4YzY4NDIwMWUwYmM3YjM3NDM4OThkNGFkY2NkMmZiOGRjY2U0ZjM0YmY4ZDIxMWZjZGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyMjQxN2RiNzdlYWZhMjE5NjMxYmM1MmQ4OWNmYjIwNDViNGIxNDJjMDc5YzFkOWE3NmI3MTc1ODIzNzc5MDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyZDdlMmQ4NjczY2JlZGQ2MTNkMTE1OThmNThmNzM0MWZhNmY0YWVkOGZjYzcwNTA3Zjc1ZjE2MjJiYTJiZjEifQ"
         },
         {
           "resource": "repo://backend/tests/test_access.py#L165-L182",
@@ -199,28 +199,28 @@
       "statement": "Chat runs receive their CallerScope through the chat_scope ContextVar set by chat_access (and by proposal_chat_access, which also sets chat_proposal), and Import tools read it via ingest.caller.scope(); outside a chat request the scope is empty and non-staff, so gated tools refuse. staff_only returns a REFUSED message for non-staff and guards staff-only tools such as plan_import, run_import_now and read_workbook; without_private strips private findings for non-staff.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/security.py#L256-L259",
+          "resource": "repo://backend/app/core/security.py#L257-L260",
           "version": "repo-lines-v1:sha256:9bb34a4423895913f7932b318a50ffc8c4e9449d99122b8cb0e546cfe51581fc:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTBkOTA3ZWFmY2M1YjI0ZjRlYjgxYzkxOTgyMWY0OTQwNThjNjNiZjk4NGU2MWY0Mjc3YzFhNTM3YzEwNWU3OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzNkYWY3MTU0M2FkMTFlODk2ZmE1MzY1M2Q3NzljOGYyZDc2OGY0YzU0Y2EzZTE5ZDE5NTU2ZmUwMTM4NjAxOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTRhN2I1MTk5NzAyZGUyZTU4Mjg2ODI4ZTQyY2MxMzVhY2M1NDdiMWM5YjRmMWJjZDdjMmFjN2JkY2Y4NTU3YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDBmNjZkY2MwZGQ2NWU0MmJkNmJkMTJjZmFkMGRhNDViMzUwOTQ4NDc3YTAwNWI2YjY0ZDAyZmUyMjg1MzcyZiJ9"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L284-L296",
+          "resource": "repo://backend/app/core/security.py#L285-L297",
           "version": "repo-lines-v1:sha256:6ddcf6f22a261817733ee250de55508baa02f7b22aaff326ffad3fb29a9dcbbd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZGQ5ODNiYjE5YTlhYWUzNDNlZWZmYTQ2YzNlMjA1MjM0Y2I5MGViMzI4MWNjY2M3ZjlkOTY4MmY5YWU5MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNTBhMmRiZGM2YTEwNGI5OWNiNTdmZmQ0NjhlMjVmNjc2M2ZiN2ZiYjRiOTM2MmMyZmRmZWMzMDIwMGQ1MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MDE0OWUwNjlhZDY3ZWNjZjQ3MzY0NmZmMWM3NTAwNTBkMzI5ZDExMDAxOGRjNTc2Njg3OGVhZmExZDYwN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzZTk0MDgwMmQyZWU4YTk5ZDI0ZWFmMTkwNmY4NDQ0OGE3MjY1MDMxNTgxZTIyMTJkYTUyNjA3MTQ4MGNiNTMifQ"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L329-L356",
-          "version": "repo-lines-v1:sha256:05e5e43aba5a33448d4d4da5171f8d1d732f6fb074dad7c34007994c0935e3d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYzAwNjM5ZTdjYmQ1MDVkZWRiYTYzZDE3ZWMzOGU1YWFmYzAzYzVjYzU1YTEwYmM4Y2Q4M2RlYzE0M2ExYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMmE1YWFjYjlhY2Y3YTliYTZkNDAxNmQyYTZlMmFjMDExMTVmYmI1ODc3YzYxM2QzZDBlY2Q2YzlmZWQxYmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkZjU3MDMwNGUyY2ZhZmY0YmE3MzQ4ZmJmY2IzY2NmZGQ4ZjcxZDU5ZDZlZmQ1NmY0OWU1MGI5NWUzZTRlNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/core/security.py#L330-L355",
+          "version": "repo-lines-v1:sha256:dcf0d3f6b69813da165aebea4ac366f653107c1ba0094a67ae0869b615a67320:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYzAwNjM5ZTdjYmQ1MDVkZWRiYTYzZDE3ZWMzOGU1YWFmYzAzYzVjYzU1YTEwYmM4Y2Q4M2RlYzE0M2ExYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMmE1YWFjYjlhY2Y3YTliYTZkNDAxNmQyYTZlMmFjMDExMTVmYmI1ODc3YzYxM2QzZDBlY2Q2YzlmZWQxYmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyZTY0MTJjZjZhYjNhNzExN2E2NGViMDE1OTEwZWRjOTJmYWU3YzllNmQxZGM5NDQ0ZjJlM2MzOTM2YzFmMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://backend/app/ingest/caller.py#L11-L31",
-          "version": "repo-lines-v1:sha256:bcbc7e6f31ccca3a72e0e720baee9fc2146a27b017032d15afcd7fec176fe4ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZjMTMxNTcyMzZlMWYxN2UyZTJiNzQwOWFkODE5M2M4ZTkyNjk4YjM3MTk5OWE2ZTRmZWE0NTk3YTRmYjdlOTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0NmYyOGExNzM2Y2RhYmFmMmE4ZDZlYjdjNmE0ZGM2MmJkMzVhZTc4NTk0NmMyNWFmZDJjNzhlODZjZThjNjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI1NjJlZDYxNmI2NzFkZTcxY2E4Mzk5MTRhMWY3Y2Q2Y2IyNWU0NjdhM2Y4YjJlZGRkN2VhMjJkOThlYzc1OTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgzOTZjMmM2NjcwNzNkMTI0MGY4YjBjNGYwZTQ0NWEwMzUxMWQzOWEyZjdjOGMxZmZkYzBkNDg1NWJjMzE0NTAifQ"
+          "version": "repo-lines-v1:sha256:bcbc7e6f31ccca3a72e0e720baee9fc2146a27b017032d15afcd7fec176fe4ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZjMTMxNTcyMzZlMWYxN2UyZTJiNzQwOWFkODE5M2M4ZTkyNjk4YjM3MTk5OWE2ZTRmZWE0NTk3YTRmYjdlOTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0NmYyOGExNzM2Y2RhYmFmMmE4ZDZlYjdjNmE0ZGM2MmJkMzVhZTc4NTk0NmMyNWFmZDJjNzhlODZjZThjNjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlNWY2NGU1Mjg4ZWZmZjUzZDMyYWQyYTBlMThlNTU0YjY0NDQwNWQ0NDc1MmZhYjMwMDIzMGFkNTg2OWRiZmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgzOTZjMmM2NjcwNzNkMTI0MGY4YjBjNGYwZTQ0NWEwMzUxMWQzOWEyZjdjOGMxZmZkYzBkNDg1NWJjMzE0NTAifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L125-L126",
+          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L128-L129",
           "version": "repo-lines-v1:sha256:a273ea14e2d0de5f45f2c88e6466acdd324f73a7ab30d96e85d6840a131bd230:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTNlYTQ5N2JmYWM2YjZkZjcyN2UwNTBiNTU4YzFkNGE0NGZjNThjNjhhNzU1MWRjNzU0MzVlYzMzNTQ5MzYyZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0MzliMTZjNWU1NmI2ZTcwZGY0NmFjZTE5MDdmODE1MWY0YzYyNjMzOWZkMGVmMTU0YWNjOGQ5YzBmOWI2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmRiZjRlNGU5N2IyNmE1NWE2ZjVkZjkwZmUyYTg1ZWU5ZmQ3MDVkNDg0ZDQ5NjY2OGVjN2JkOTdlMmViNjI3NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzMyZmU0ODYwYjAzMTY1ZTZkMzMxM2E0NzJhYTZmZDhlYzQwOWIwNjg0ZDQ2N2QzZmJlOTU2ODgzODZlNTZjNSJ9"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L262-L263",
-          "version": "repo-lines-v1:sha256:d88c38aaa76e3b2f0075d77f83bb09ede14f998b32b59f5100e9974842d1bc01:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzQ4ZjFiNzI2YmM0ODM0YTA5ODdiMzU4NGQ1MDdmZDI4OWNiZjk1Y2FjZWE2YjJmMDMyN2E1MTQyMmI4OTZlZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0MzliMTZjNWU1NmI2ZTcwZGY0NmFjZTE5MDdmODE1MWY0YzYyNjMzOWZkMGVmMTU0YWNjOGQ5YzBmOWI2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDc3YWJkYmZmOTA1YjIxYjFlOWQwNmZkZDhhMjcwYzI5MzYwMTY0ZGUxYzg0Yjg0NGEzOTA5ZjBiNTYxM2Q1NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjUyNmUxZTNiYTMzMDc3ZDJhZDJhOWM4NzlkMWJiMDgwODBlMjE3Y2M5MTdkZmUyZjM2MDNkNTlkNGExZWU4NiJ9"
+          "resource": "repo://backend/app/ingest/tools/pipeline_tools.py#L489-L490",
+          "version": "repo-lines-v1:sha256:65bd90ae84e6f9a76b97798f8f519c96520d1c6614c78b2d3a72a56636b32eaf:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWU4OWQ2NGY5ZDA4Mjc0MWZmNGZlZjMyZTE0MzJhZWZlNmZjZGY5NWRkNGU4YTQ2OWY1MzAxNTdkOWZkYWM0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0MzliMTZjNWU1NmI2ZTcwZGY0NmFjZTE5MDdmODE1MWY0YzYyNjMzOWZkMGVmMTU0YWNjOGQ5YzBmOWI2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjliZTg0ZDk4MzI2YTViNWZmZTkwMGVkYzcxNGJkOWQ3ZTIxNjIzM2QwOGM3MmRjYjNmNjIxNmVhZWIzMzg0YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWFmMzhmMWY4MDIwNWIyOTJmM2Y3NGIzNWRjMDlhMDljMGI2ZWZkYWNhZjNjOTAxZGIwNDkwYWNlNmI0YmI4YSJ9"
         }
       ]
     },
@@ -230,11 +230,11 @@
       "evidence": [
         {
           "resource": "repo://backend/app/api/routes/ingest.py#L181-L204",
-          "version": "repo-lines-v1:sha256:d3c4a5a26733ca0b7b4727ae710dc7275c4b901fe0aa7b94f48010a5d7de9d0b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmNDYyMDg2ODBkMTYwNmM1OTAzODJjMWVhYjM0NWVkOGRkMWIzYzdkNmVkNDc2Njc4YTFhZDA0YmEzNTI1NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiZGQwY2NiMDU2NGU4NTc0NTlhOWQzYmYwNDE1MzljYmFiNzc2NTcxZjExMTM3ZGJjNTg3NGFhNGZkZmNhMzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhODJlYmU5ZWQ0MDdjM2E2YmE0YjAwMzQyOTJiYWE1MmMxMWNlNWFlMjg2MTA3NDAyZGU0NzkyZWVlY2FjZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0YjY1NmIyNWZmNzBjOTZkYjQyNzM1Mzg1ZTAxOGM3YTlkNjE4Mjk5YTkwYTFhNDllMDExYjQzYmE2ZWY5NGYifQ"
+          "version": "repo-lines-v1:sha256:db9715beccbd87226250806c1f653f0cfc4b566c0275e0ae5fd68ad3c7605760:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmNDYyMDg2ODBkMTYwNmM1OTAzODJjMWVhYjM0NWVkOGRkMWIzYzdkNmVkNDc2Njc4YTFhZDA0YmEzNTI1NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiZGQwY2NiMDU2NGU4NTc0NTlhOWQzYmYwNDE1MzljYmFiNzc2NTcxZjExMTM3ZGJjNTg3NGFhNGZkZmNhMzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhODJlYmU5ZWQ0MDdjM2E2YmE0YjAwMzQyOTJiYWE1MmMxMWNlNWFlMjg2MTA3NDAyZGU0NzkyZWVlY2FjZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0YjY1NmIyNWZmNzBjOTZkYjQyNzM1Mzg1ZTAxOGM3YTlkNjE4Mjk5YTkwYTFhNDllMDExYjQzYmE2ZWY5NGYifQ"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L299-L303",
-          "version": "repo-lines-v1:sha256:890210a51ac1cbd3e9f78462b4ad2d276bb5b876ad0ea257e892542ffe109b6c:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQ5MDI3YmM1NjkwMWFlZmU0NjM4YTJkNzlkNDljOGJhZjE4NmU5OTcwNmU0OTc1ZTdjOTgwOTg1ZjJkZTkwMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDBjNzQ4ODVhNTkwMzgwZWIxYjc2NzNjYjA2NTExZjYxMWY1YjQ1NDU4MDAzYmNkZDQ0Y2NmZDUwZTZkMmU5NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWFlYTI3YWY2Yzk3ZTFhZjA4YmQ5MGY5OWI5NGJmZWE5MzBjNzBiMWZkZmQ5NmJmZjllYjhkMzgxMzg1NDkyNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmYxMmY1MGI2NTM5ODI3YzU5MTczOWI5NzZhZjc2ODk0OTNlNWM4MTY3MTI2YTI3MDllMDQ1NDViOTE4ZWE5MiJ9"
+          "resource": "repo://backend/app/core/security.py#L300-L304",
+          "version": "repo-lines-v1:sha256:890210a51ac1cbd3e9f78462b4ad2d276bb5b876ad0ea257e892542ffe109b6c:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQ5MDI3YmM1NjkwMWFlZmU0NjM4YTJkNzlkNDljOGJhZjE4NmU5OTcwNmU0OTc1ZTdjOTgwOTg1ZjJkZTkwMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDBjNzQ4ODVhNTkwMzgwZWIxYjc2NzNjYjA2NTExZjYxMWY1YjQ1NDU4MDAzYmNkZDQ0Y2NmZDUwZTZkMmU5NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWFlYTI3YWY2Yzk3ZTFhZjA4YmQ5MGY5OWI5NGJmZWE5MzBjNzBiMWZkZmQ5NmJmZjllYjhkMzgxMzg1NDkyNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTNjNWIyMGM4OTI5MjEyMDgwNmI1MTc4MWYxOGIxZjE0YTEzNzEwZjJkNTUwNGYyYmI1YTNlNzViYzRhMzYxOSJ9"
         }
       ]
     },
@@ -287,7 +287,7 @@
       "statement": "RLS write policies from 0027 let a member or admin of the row's org (never a steward) write contacts, score adjustments and rfp_matches updates, with staff also allowed, and threads insert only as oneself; 0048 replaced the proposal and document-insert rules.",
       "evidence": [
         {
-          "resource": "repo://backend/tests/test_rls.py#L161-L175",
+          "resource": "repo://backend/tests/test_rls.py#L190-L204",
           "version": "repo-lines-v1:sha256:1e5507885cd7dc39860cc4daea13f47eb31d822d0b6d8c20af324a99fe3f72e8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjljYzc5NjRiMGU4OWY4N2I2N2NhM2VlY2MxNjM3NGQ2NTRkZDRiYmEwNTc3MGZiMjU4NDUzZjdkMDdhZmIxN2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmNmRjNDY0ZGZiMjk0NzJlNDZmZGE4NjJmZjFiNmQ0NDAzMzhhYTVkYzgxNzg3NjhkMTU3MjBjMTIxYzQxNTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4NTBiMzU5NWQyMjg5YTU2ZjRhOGI0M2QwM2FmZGRjMGUzMTM0YmUwYTY1MDI0MjYxMDIwZjlkNGZmNzhmMTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiZTdhOTllMjUzZmI2Mjc1MzBmN2RmM2Q2OWI5ZjIyMmYwZjJiMTk2MjQyNmJhNmRjNjcxYTRkYzAwMDE0MjQifQ"
         },
         {
@@ -305,7 +305,7 @@
       "statement": "Org membership is managed through SECURITY DEFINER functions (add_org_member, set_org_member_role, remove_org_member) that require app.can_manage_org (staff or admin of the org), keep at least one admin, and only add users who have signed in; a unique index allows an admin or member to belong to one org only, while stewards may support several, and the index holds even for the owner.",
       "evidence": [
         {
-          "resource": "repo://backend/tests/test_rls.py#L239-L299",
+          "resource": "repo://backend/tests/test_rls.py#L268-L328",
           "version": "repo-lines-v1:sha256:a1e1afdcbb9dfd138ad351bed32449a8dff977de11fd71b187aefd19a19cfa12:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMzQ1ODNhNTk4NzY3YmY1NmFlZmViNjVlMjAzM2ExNjUxY2M0YzhkN2U2ZjBhZjNlNWNmZDMyOTNmOTMzYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMWI1ZWFmZWEyM2QyNzU0ZjFhNzBkMWFiMGU1MGQ0NGQ0ZWQyNzNkY2FhM2IyNTUxZjc3M2ZmY2RkYjY0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5MmNmNjNjZTg1YjkzMTE5MjM3NTk2N2YxYWUyMTE0NGRkNTRmYTE2ZDUxNmQxNjhkNDFlZDdiNjU4YmIwYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzZjhmOGRmZjk4NmRkODc5YTZmNDU3NzZmNjYzNjMxNTNhMjY0MjYwMDM4OTk3OGU3ZmIxNTViMDQ1OGQxYzAifQ"
         },
         {
@@ -327,7 +327,7 @@
           "version": "repo-lines-v1:sha256:db082ee09a8315118938b8873b97bb0c26f8dd67116db2226ee49c2e1e7ded7a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwY2I3NmM0OGNhZjMxYWRkZjRiOWQ3NGIzM2ZlYzg2OTdmN2E5ODE3OTUxY2FhYmQxMGEzNjRkNTQzNjhiZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4YjIwMjIxZmZhMTA3MGVmMjFlZDVlZDA4ZTk5YmZjZTU4ZTcyZDA3MWY4OWNiOGYyOWJkODZhNmM5NjJjMTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhOWYzNzEwYTM0YjRmZGYxMzU4OWI3ZDllNjg1NWMwYTQxNmM0NjE2MzllNDlkMjliNDFhZTQwNDkxMjU2MDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/tests/test_rls.py#L318-L326",
+          "resource": "repo://backend/tests/test_rls.py#L347-L355",
           "version": "repo-lines-v1:sha256:f56128a3f4827f9c67936b0fafc0243adde766b7d8f28b4271a1fd1a6b7b6fe0:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2IxMTUzMTAzNTBhOWE5MjBkMWRkMmQxNzNjYTJiNGM1MjhmYTdkZmE5OGJiZDI5NzIzMGJjZTcwMGZhNmIwOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjhmNzg5YzgzNmNkMTQ0NzFjNzQwMjRjYTg3NDc3ZDI4MDQyZjE3NGJiMDE2NzE2MjE3YTU2MGU2ZTNmZGRjNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDRmN2ZhNTJmZTYwNDRmMWMzNTI0ODI3NzI0NTRkMTEzYmQ2ZDE4NWQ5ZDRhMDBkODQzMDZiNDBhYjc2MTE5MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjUwYTIyMzQzOTZmNTUwMWM1ZTk4NDM3OTBiNzk0ZGM5OTk1YzZlOTM5YmM1ZWRhMGEzZjNmMDI4N2ZkOWY3NCJ9"
         },
         {
@@ -341,7 +341,7 @@
       "statement": "A table that the caller's Postgres role has no grant on raises InsufficientPrivilege, which create_app maps to a 403 with detail 'Not allowed' instead of a 500.",
       "evidence": [
         {
-          "resource": "repo://backend/app/main.py#L41-L44",
+          "resource": "repo://backend/app/main.py#L54-L57",
           "version": "repo-lines-v1:sha256:1ce01469d6f26a53d18ec7d2d4d909a8573bdbbe1eafc591c0113071f8c4b581:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDc3ZDVjMzEwY2M0YTNmOTRhY2RiN2RiMTI1OTgxNjNiNzEyNzVlYTI3ZjFmZjA1MzFlOTNiMjhkNTg4YmZlMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDFjM2VhOTAyZTEzYTI3YmNlZTlkNWMzMjgyMWNjMzNiZjQ1NzJiYjY1NTU5YzJkZTc2NTE5NjU4ZTQ2Mzg5NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODE5NjNkZjU2ZmU3NjY5MWIyMjQ5MzZjYzFhM2I0NzEyNGZjMWE1Y2I4MWE1OTk1ZTBmYzIzMTJmMDFmZmRkZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGM0MjBmNGQ2Y2E0OGUzY2ViNDJhNDYwOTY3YjczMDg1ODE3NzRhNjY1Y2FjNTA4MWQ3MWNkZmMzODQ3ZGVkMCJ9"
         },
         {
@@ -387,24 +387,28 @@
       "statement": "Ask Sangam's SQL runs as the caller: ask_access claims the thread and stores the caller's (role, claims) in the agent_caller ContextVar, and PsycopgExecutor.run, inside one transaction, applies read-only and timeout hardening then set_caller with that identity, defaulting to anon when unset. The connection still comes from get_pool(), but RLS applies to the query; Import keeps the owner because it writes the catalog.",
       "evidence": [
         {
-          "resource": "repo://backend/app/agent/tools/sql/catalog.py#L130-L133",
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L130-L133",
           "version": "repo-lines-v1:sha256:573f0f45bea135a47721a44c29db0c6219e8012e6ac6ccb35222ca72da99498b:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmI4NDg3MDkyMmE4MTQ3MGVhMTcwYmVjZjgzZDkyYmYwYmJmOTU1NjZmYWE2OTExNTNmNjkyYWZiYzY5NTk3MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjM2Y2Q5NWU5NjRlODNjMmZlNTkxOTAwZWQ5ZjdmMDY0MThlMzcwM2I4M2RkMjY4MTk2NjdiMDkwYThiNTJlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzM1YjI5NmFlYzI0M2U4MmZkYmZjYjVkMDE0NjZkN2U4ODlmNTk3YjIwMjQwZjEyOGUzZGUxYjNiM2VlNmE1YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjEyMTkxMDYzYWY0YzE1YzE4NGFmMGFlZTZhZDZhNzBmMTIzNDJiYzkzMmM1NjA5OWMyNDBhNjc4OGRhODcwZCJ9"
         },
         {
-          "resource": "repo://backend/app/agent/tools/sql/executor.py#L45-L75",
-          "version": "repo-lines-v1:sha256:77f5e7018b3914e410ffd4573c7d40cc079e87e28e192ba8e6d2023c9a25f22d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNmNkOTM4NTIyZmVmOWM0ZDg5OTc3MDgzMmM2NzNiNjYxZmY1OGNmNDA5ZWUxYTdiOTFjZmM4MTdiYjc1ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxMTllMDYwYmY5ZmM4OTU0Yzg2MGFkYjhkN2FkODRhYjlkNmZiZTExNjdjZGVkMTM2MzhiN2Q0YTc2YWNjNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/ask/tools/sql/executor.py#L41-L70",
+          "version": "repo-lines-v1:sha256:ef53075cd843958ff511d24962ff5845b15beee895ea05e7d4e6f967fd711f89:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNmNkOTM4NTIyZmVmOWM0ZDg5OTc3MDgzMmM2NzNiNjYxZmY1OGNmNDA5ZWUxYTdiOTFjZmM4MTdiYjc1ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0NDI5ZTM5OTU3OTQ5MDUzOTJiYmU2NWRkMDQwZThlNjYyZTE5NTgyNWRmNDIzMDNjNWY4ZTBlMzI4MzQ4NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxMTllMDYwYmY5ZmM4OTU0Yzg2MGFkYjhkN2FkODRhYjlkNmZiZTExNjdjZGVkMTM2MzhiN2Q0YTc2YWNjNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIifQ"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L320-L327",
-          "version": "repo-lines-v1:sha256:47ec822c9022b1cd21dbf83549a3e0bab873a259071d145e1fad837b6b217ab8:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGJmYmZlYmZmZDUwMTY2NDdlYWMwMjRkOGUxNzk2ZTRjMDA0MGRhYmZjOWJiM2ViZDZkNWQ4YjAwMzA0YmIwZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhhODYzY2YzMzhlNjliNzcwMzZlZGM3MDAwZDlmNjRhMGY5ZThiNTNkNDc4YjhmNDEyNTk0YzJjMWM5OTY3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTM5MWVhMThiMjcyMTBjMDZjOGM5M2U4NGE3NjFkNTllZTllMGE4M2ZiZWY3NjAyODdmNTdjMjUzNzM5YjZiNiJ9"
+          "resource": "repo://backend/app/core/security.py#L321-L327",
+          "version": "repo-lines-v1:sha256:10e0275f3a74b5e78fdd4f3ab1f601f089c2e6981239f2c7353d7b1c4a22bea2:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGJmYmZlYmZmZDUwMTY2NDdlYWMwMjRkOGUxNzk2ZTRjMDA0MGRhYmZjOWJiM2ViZDZkNWQ4YjAwMzA0YmIwZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2EzMjFhYTFjODU3NWFhOWZmZmM4OTg4MGY5NWNlNjAxOWEyYWY4OTJjNjZiNTIyNTZhODVhMjBjM2JjYWI1ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhhODYzY2YzMzhlNjliNzcwMzZlZGM3MDAwZDlmNjRhMGY5ZThiNTNkNDc4YjhmNDEyNTk0YzJjMWM5OTY3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2VjY2M4ZGM5MzkwNTdhMTZmYWFlNGJkZWY3ZDc4YzU4N2FmYmM1ODU1NWFhZDAwODA3NDgwZDZmYzc0ODUxZSJ9"
         },
         {
-          "resource": "repo://backend/app/db/pool.py#L39-L40",
-          "version": "repo-lines-v1:sha256:9a89676cada8485ed47a9881568af63ad5e460a8fcf1bbaf45d24b69168fdc93:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzc4N2Q4YzkxZGRkZmZlZjc4NGNmMjQzYTc3ZWZiNzFhMmZlNDQxOTY4NzcxZjg4MTU2ZDIwYmQxZWU5ZjU1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTViMDA0NWVjZjc4YjY1YTU3YmY0NGExNzZmNjljNWNhMDdjM2FlZGEyODI2ODkwZmM4Y2EzYTE0MDliMjU0NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmI2YmEzMDVlZjhmODVhMDk4YTdjZDU3YWNkYThlOWVlNDkwNTJkZTc2NjVhYmY1Zjk0ZmI3ZjhmNmZlYmUwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzJjMjZhZDg4ZmY2NjcwMTgxZDcyMWI1M2U3NTMyYjU0ODU4ZTc0Y2QyYzVkYTVlZTE4MzA5OTQwNDBiODhlOSJ9"
+          "resource": "repo://backend/app/db/pool.py#L39-L47",
+          "version": "repo-lines-v1:sha256:eb42b92d8b885cdfb12f3c6f3056e2b4712a88a617dbd03cff94755cb0b513f2:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGUxYjk2MGQzNWJiNDA4M2RhNTEyZGMyYzYwMjgxMGQwMjE4YTJjMzAxYzFmODc3MzczOWUzMmVhNmU3Zjg3MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTA4YmI5YjYzZjk2ZmMwYjFmMGI4M2YxZmQ5MGUzOWRkMTcxNDMzMDllZDM3NTVjM2UyYTc5Zjk0N2QwODRhYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGE4ZWFiN2E5ZjA3ZGI1ZTA2N2M0OTRhZmRhYjg2ZDFjNDVjOTM1NGY4YWY0MjExNzdjZjlkYWEwMmY2MTMyMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzJjMjZhZDg4ZmY2NjcwMTgxZDcyMWI1M2U3NTMyYjU0ODU4ZTc0Y2QyYzVkYTVlZTE4MzA5OTQwNDBiODhlOSJ9"
         },
         {
           "resource": "repo://backend/tests/test_access.py#L149-L162",
           "version": "repo-lines-v1:sha256:2cdf1338c41d1015c67ef8223aea7009688b5142671e53326c877ac2524ddea3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwNjZjZGEwMjUzMGMyYTA2ZjBmYzEzZGE3ZTlhNDc4OTg4NGU4NDE0ZjU4ZWIwZGYwOTQ1ZTk3N2QzNDAzMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1ZWQ2N2UyM2VmOGY4YTQzNDk1NmY1NTRkZDhiNmI5ZTBmMTQ0NzlmN2U1MjUwZjdkNWJhMGRiNGZhMDIwYTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlYzE1YTBmMGFmM2M1MzYxM2EyYTVlMDRlNzY2OTNjZjhkZmI5OWUxYThjZWRhYWQyNjQxYzVmYjRmM2JmNTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2NzAxMGQ0ZmE4Y2E5NTIzNWJkNzAzYjUyYjFjNzBiN2EzNWVjNzBmY2M5YmViMzJkZTc2ZWVjNjc0Y2UyZTgifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_agent_rls.py#L81-L105",
+          "version": "repo-lines-v1:sha256:994a04a1a05e9d73a50ee46b9639ce3a54fa28eb4199a2afdbf58f7761e086b4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkZTljZDUwMTIyOGRjODY4ZGE0OGE3ZGNkZjkzNTcyYjQ4ZjM2NzFlNGZjNTY3YTI5ZDI1MTkwZDE5NGM5ZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2MTVhYzE5NjY0ZTdlYjNhYmM3ZDM0YjgwNDE3M2E5MDYwZDE0ZDMzZTg3N2EwNmNkMGIxNjg4MDkyZGEyYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiMjM2ZmRjYTQxZjQzODgzZmRjMjEwOWZmMDQ1MjQ4NWU1YjczOGZhNjdjNjBkMDUwNjc3YWZiNTY0OWNkZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5MzY2NjBmY2JmNjRjZGFmYTAxYjE1ODc5ZjNmNTAxNTc0NDE5NTU1NGY4NzA3ZTU3ODNkNTQyOWJiNjc2OTEifQ"
         }
       ]
     },
@@ -427,12 +431,12 @@
       "statement": "proposal_chat_access gates the /proposal chat: the thread id must be proposal-<id>-<caller's user id> (otherwise 404), the proposal's org must be readable to the caller (else 404, so strangers learn nothing), a reader who cannot edit (a member) gets 403, and only then is the thread claimed with use_case 'proposal' and chat_user_id, chat_scope and chat_proposal set. Each person therefore has a private chat per proposal.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/security.py#L329-L356",
-          "version": "repo-lines-v1:sha256:05e5e43aba5a33448d4d4da5171f8d1d732f6fb074dad7c34007994c0935e3d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYzAwNjM5ZTdjYmQ1MDVkZWRiYTYzZDE3ZWMzOGU1YWFmYzAzYzVjYzU1YTEwYmM4Y2Q4M2RlYzE0M2ExYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMmE1YWFjYjlhY2Y3YTliYTZkNDAxNmQyYTZlMmFjMDExMTVmYmI1ODc3YzYxM2QzZDBlY2Q2YzlmZWQxYmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkZjU3MDMwNGUyY2ZhZmY0YmE3MzQ4ZmJmY2IzY2NmZGQ4ZjcxZDU5ZDZlZmQ1NmY0OWU1MGI5NWUzZTRlNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/core/security.py#L330-L355",
+          "version": "repo-lines-v1:sha256:dcf0d3f6b69813da165aebea4ac366f653107c1ba0094a67ae0869b615a67320:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyYzAwNjM5ZTdjYmQ1MDVkZWRiYTYzZDE3ZWMzOGU1YWFmYzAzYzVjYzU1YTEwYmM4Y2Q4M2RlYzE0M2ExYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMmE1YWFjYjlhY2Y3YTliYTZkNDAxNmQyYTZlMmFjMDExMTVmYmI1ODc3YzYxM2QzZDBlY2Q2YzlmZWQxYmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyZTY0MTJjZjZhYjNhNzExN2E2NGViMDE1OTEwZWRjOTJmYWU3YzllNmQxZGM5NDQ0ZjJlM2MzOTM2YzFmMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/app/repositories/proposals.py#L122-L139",
-          "version": "repo-lines-v1:sha256:c36aecaf3736d9fa7e11ee4bd9143d84b2a3c9c7507be0b86dd63b0682b589a4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjNjFhMzE4MjUwMTg4MmMyY2EwMWFhMTJlYTJkNTRjOGI0MmYzMTAyYzIwYTNiMDI1N2JmMzA5MTQyMWZlOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0NmFlMmRjMDYzYzc2YjI4MjgxOWFjYTRiMzZjOThjOTczYTllNWM3NWVlNmExMTAzZjI4ODc3OTE0ZGE1MGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3ZWY1MTgwMDU3NWVjOTIxNWEwNjlhNTY3YWE2NjZlYmY4MTBlNTlkMTlkOTQ4MDg0YzRhYWU2OTlhNjA0ZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkM2E3MDVjNjM1YmY2NGQ3MzMwZjZkZjkzM2YyNDA3NTBmZDQ2MDA4NzkxNTZiYmM5Nzc3NTIzMWRlOGVhOGMifQ"
+          "resource": "repo://backend/app/repositories/proposals.py#L189-L206",
+          "version": "repo-lines-v1:sha256:c36aecaf3736d9fa7e11ee4bd9143d84b2a3c9c7507be0b86dd63b0682b589a4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjNjFhMzE4MjUwMTg4MmMyY2EwMWFhMTJlYTJkNTRjOGI0MmYzMTAyYzIwYTNiMDI1N2JmMzA5MTQyMWZlOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0NmFlMmRjMDYzYzc2YjI4MjgxOWFjYTRiMzZjOThjOTczYTllNWM3NWVlNmExMTAzZjI4ODc3OTE0ZGE1MGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRlNzU3NWMzYjc3NzZjZjJmOWMyYmZiY2E0NGYyMTQ4MTNhNzgyN2VhYTljMzg0NTRjNzAzYjY4OWE3NDQzODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkM2E3MDVjNjM1YmY2NGQ3MzMwZjZkZjkzM2YyNDA3NTBmZDQ2MDA4NzkxNTZiYmM5Nzc3NTIzMWRlOGVhOGMifQ"
         },
         {
           "resource": "repo://backend/tests/test_proposal_agent.py#L64-L88",
@@ -445,7 +449,7 @@
       "statement": "Proposal write permission is enforced in three agreeing places: RLS on the caller pool (the proposals router uses PoolDep and computes can_edit in SQL from app.my_match_org_ids and app.is_staff, answering 403 for readers), proposal_chat_access for the chat route, and require_edit in the proposal agent's tools, which run on the owner pool and check scope.can_edit_proposal before any change.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/proposals.py#L61-L72",
+          "resource": "repo://backend/app/api/routes/proposals.py#L75-L86",
           "version": "repo-lines-v1:sha256:935a8f63daee84288fccdf354774ce5f564717aa5484b8d27645a9df7010c5aa:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5YzJjN2Y4MjAyYWNjMzJjYmQzODMxNGE1Mjk5ZDgzYzUwMDAxNjNmMzk3Mjc2YTk1Mzg2NWVhMDdhNzFjNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiNDU0MWI1NTA1NjQwMjZkNTQ1NjNiMGM3YzgzOTdmYWVhNzAzZjdmZmFmZTBkNTY3MjNjMDhmY2Q3MzU4NTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlNjY0MzE4ZTc2NTJmNzIwNDM4MWNkNmViZTBhZDAxYWVmNTdjMjcwMDc4YjU1NmU0MzlmOTkyNmI2MmFlOTUifQ"
         },
         {
@@ -457,7 +461,7 @@
           "version": "repo-lines-v1:sha256:b6378041cfee56f82daf216ee651664cc36d50ebcfbaca9c64408c5ae30f61dc:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmJkZjE5NzJiOGYyYWI1MzUwMjFhNDUzNzNmYjVkZDEyYzkwYTk3MTViN2Q4Y2E2NmRjMGRjYzc0NDg1MTUyMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjc1ZmRhOGIxYTY5ZDkwZjg3NmQ5YTJiYjcxOGIwZmVkN2FiODBkZWM2OTNkYTA1ZGI3NGZjNTA2MGJmOWI4NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTVjMWM0NjJlMmEzOWQ3NDc1OWY1ZTFiMTI2Zjc2ODNhMmI3MzAxMThlMThmNTEyMmIwOGNlZGVlYjY1MGUyMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2NiNzMxMzYzZDdjM2QwOTM3N2MwMDRmOTFjOThlMTM4NjJkMTU5YzAxZTA5NWVmMmIwMGYzZWVhYTFlYzJmNCJ9"
         },
         {
-          "resource": "repo://backend/app/repositories/proposals.py#L15-L22",
+          "resource": "repo://backend/app/repositories/proposals.py#L19-L26",
           "version": "repo-lines-v1:sha256:642bccd6ef6a5122bb2640f26af06f7bf5854ce50b47ba63c2e5e69a38326bf9:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzU2MzBhOWE0NTBjZDg2YmQxNDkyYTA4ZWVmMTVmZDQxODIyZjg5ZTEwZDdiNmY4NDQxNWFiNzgyNDFjYjA3OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzJkNDIyYTgzMzdjZDBiMzM3NmYzYmRmZjRlNDgwNDVkYmRiMmVkMGE2ZWNmYjk3NDQ1MjNmYmZmMTA3YWFjYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWI0YTAzZTAxNTliNDI5MGE5OWU3MjlmOGI1ODNhMWZjNGE2NDQwMTVkNzdiZDIxMmU5ZjJjNmNiOGViOTdmNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzQ5YjAwYWEyOTYwZjlkNzI0YzcwY2I2MTFmYzI4MWJhOWJhOGFlM2JhZWE2N2I0NzE4NjlhMDg0MjhmZDIwNyJ9"
         },
         {
@@ -471,11 +475,11 @@
       "statement": "Creating a proposal requires the caller to read the org and to have may_run on it (admin, steward or staff), otherwise 403; the proposal chat's saved-messages route reads the proposal on the caller pool and opens the caller's own thread through the owner pool.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/proposals.py#L154-L167",
+          "resource": "repo://backend/app/api/routes/proposals.py#L175-L188",
           "version": "repo-lines-v1:sha256:b823c20a39eef63bf8f921398a025c2ade9bc2b7e6aeb2583de6e82b85b7d1b2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0MWU0ZjNlNjg0Mjg4ZjhmMjVmMWRiN2FmNDFiMGFlZjFhYWFkNTI3ODdmMTQ2MjNiNTVkZWU5NGMxMTYyMTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyYWM3ZGExNTczMjQ0MWU1YzZiMGNkMWQ2ZDJiZDk3ZDBhNWRlMWE0OGM2MDJiNTNlMDdiMjUyMTVlYThmNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwNjBjZmExOTMyODZmMTJjNDk2MjE2YjBjNWE2ZjdiZDEzNjA0ZDBkODU4NWRhMWM2YTc2NzJmN2Y1Yjk4NGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjY2E5OGY2NTZmZmIxMmQ1YWE2N2I3YTFjNmRjMjNjZGNkZDY1NGYyM2QzNDU0MzI1ZDg5MDk2MjdjMTM5YTkifQ"
         },
         {
-          "resource": "repo://backend/app/api/routes/proposals.py#L256-L263",
+          "resource": "repo://backend/app/api/routes/proposals.py#L419-L426",
           "version": "repo-lines-v1:sha256:960496e6d2731f71f7403c1edc1cd0e18b089908af69d5d8affc8184aa18bf82:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWEwMGQ0YzBhNTg5Njc2ZGEwMjMxZjQzNjNhMmEzZmRjZDliODZhZjBhMjgyOTNlNTRkYmQwZDQ5YzRhYzNkMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjJkYWM2ZDc1MDY1ZDdmMDg0NjViYzQzMWMyNWNhODYzYzNiNmRmYjM1NjAxNjE0ZWFmMWY3MjcwZjI5OTk4NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODIxOTI0ZDA0Y2FmYWQwNTA0YzhlNTgzYmYyNjAzZjNjNWUyODIzYzlkZjQzOWY3NGQ5MGQ5OTM3YzNhNGE3YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
@@ -493,7 +497,7 @@
           "version": "repo-lines-v1:sha256:1b02502d26a3b82eb9de677c6a6dac45d9a0dccd2e25715e934df9f8933b89f8:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDNhNGVhMzUzZmNhYTk5YjRiYTVhZmI5MzM2MmIyMDQ2MDg0NTUwYmVhMTA2YWMyYmU1ZTVjYzFjOGE2ZjU2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTRlZWExMDg0ZTIxZGIwOGE1MTY5YzljZjMwNmUzYWJlZWE2Nzg3MzQxMDAwMDZmYzIxOWM0NjhmZDJkNWUyZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjJlYzUxYmM0ZmZiM2Y3OTE3OTQ3YmQ4MDI2OGU5M2QwYmNlMTZmN2NiNTc5MTZmODE5NGYzOTE2YjE5NGYxZiJ9"
         },
         {
-          "resource": "repo://backend/app/core/security.py#L299-L310",
+          "resource": "repo://backend/app/core/security.py#L300-L311",
           "version": "repo-lines-v1:sha256:1fd603a65c2b4a5741074c68cb45ca8e8cece6dee7425e59f2b6bc92c63dbdef:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkOTAyN2JjNTY5MDFhZWZlNDYzOGEyZDc5ZDQ5YzhiYWYxODZlOTk3MDZlNDk3NWU3Yzk4MDk4NWYyZGU5MDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlZjcyMjYxN2M5NTY0YmIzN2FhMmI4ZTQwOGI1MGJjYzFjNzE5NDc4ZGU5MmVhOTNlMjM0N2YwNTg3YjljYzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhZWEyN2FmNmM5N2UxYWYwOGJkOTBmOTliOTRiZmVhOTMwYzcwYjFmZGZkOTZiZmY5ZWI4ZDM4MTM4NTQ5MjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmMTJmNTBiNjUzOTgyN2M1OTE3MzliOTc2YWY3Njg5NDkzZTVjODE2NzEyNmEyNzA5ZTA0NTQ1YjkxOGVhOTIifQ"
         },
         {
@@ -533,10 +537,82 @@
           "version": "repo-lines-v1:sha256:190591bef6aee772b704a023509ba7be05ae501425f810722c11d028078c26a2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3MzI0YjE0NzRkMjU1NjdlZDU2YmI0MjUwYTcwMmE2MjQzNjMzNThhNzkzM2ZjM2UzYTFkYzM1NzNjNDZkYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_f385ff83765140ab8381053902c4cea4",
+      "statement": "RLS-backed deletes arrive only in later migrations: 0051 grants DELETE on documents with a policy limited to staff deleting a private org-owned vault_upload, and 0052 grants DELETE on proposals to the org's admins, stewards and staff (app.my_match_org_ids or staff) plus a documents_delete_draft policy for private proposal_draft documents of those orgs. The routes run on PoolDep behind require_staff or _editable, and RLS refuses by removing zero rows.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L190-L204",
+          "version": "repo-lines-v1:sha256:5aa03093ef95362a0f7971eaaf3068753c0d1aef2e3e205880a8c72627ae8e55:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhMDllNDE1NmQwYjNiN2Q5ZGZkNWM0YTNlZDdmNjk2NDg1MTZjOTViNjE2NDZhYTdhODJiMzY3OWEwOTNjZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwNTYwOWJjNzY0ZTljMDU5MjZmOTllNzAyOTk3MDQwZDAyMmQ3YjVhM2FiYWRmYjgwMTI2ZWM1ZmM0OTJjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiZWY1MzJkNGIxMWE0YmQwZTkwMzJiYjc5YTAzZTZiNjY4OGNjMDQ3ZjFjZDJjZTBhZDFjYzRkNGFmZjk4ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/api/routes/proposals.py#L339-L348",
+          "version": "repo-lines-v1:sha256:d3cdf3636cf3196b9ec9d423498bbdd9800c12b2e6e372dec4ca52bcad7e829b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmUxMjEwOGU1Y2MwMmY5ZThmYjUxMDFhOTA1ODJkM2YzYTRlZGM3ZjhjZTA4YzE5NGFmZjA2MGE4YzczMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzOGFmZWY3ODYwYjk2NWM4ZTkxZTI0YTdkMThiNzk1ZTQ4ZDY4MmM0MzZlODEzNTFhMGIwODNkMjIzOWMwZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MGM2Zjc1NDNkZmRmNTE1NGMzMDZmMWZjMTQ3NTQyZTEzNjE4ZDI5MjRlYTlmODEyYmRmY2YyODg5MzRmYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwYjZhYTlmNGQ2Y2I5MzNmMDkxNDFhMmZiNzU1MzI3ZDA4YjdmOTk2ZDBmZWRiYjYyYTJmN2ZkYTYzNTU2NDMifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/proposals.py#L153-L186",
+          "version": "repo-lines-v1:sha256:3ea53bc0f33eec00df65ffd0ae8dd3fbb417f534896d2215d1d7d54074cafcf0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5NjU4YmM0YTY4YjM0YzYwNmM5MjkwYWE5ZWViNWM2MTNlNzJkZWRkNjJiNGQzZTVjMmY3ZTJkYmY2NWE1YTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZTJhNDY1MDA5NWZhOTVkMGUyYmI0MWIyZGIyOTA5NGQzNDA0ZDI4Y2UxMjMzOWVjODhiYjRiNWM1YmU4ZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjNzlhMTkyYzE3ODMxNTExZTQzMzdjOTYwM2Q4MjJjMGUxOTlkNDJkMDg0NjkxYzY0ZGYxMmI2MWU0M2E5MWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1YzkwNzE3ZjUyZmJkMTNiMTVhYjNiZGRiOWU3ODY4YmRmMDAzYjYxYzA3MGQ0ZTVhYWMxMTgzMmM4MzdjNmEifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_rls.py#L148-L156",
+          "version": "repo-lines-v1:sha256:1b6ea22e920c80736ba2d533d78573d4dcb8160121efab28a3d00e11ebdb5cd7:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmU1ZWZmOWE0NmMwNGUwMDk3OTc5YzlhMjYzYTAwNmIxMmVjMWU5ZmEzZWU0OTU5ZGNkMThmYjkxMTBhMDA3MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTEwZGY2MTYyZDYxYWQwODEyZjk3ZWZhMzJiYjhjNDJkMDM3YmQ5Y2M3N2Y3MDNmNGE3NGYwZjA2Y2Y0Njc4YyJ9"
+        },
+        {
+          "resource": "repo://db/migrations/0051_documents_delete.sql#L1-L6",
+          "version": "repo-lines-v1:sha256:8652d2925e4677494bacd98ebe1509770efcdac248ee5cec9a846d9b4dc0c235:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzg4YmE2NGVkOTY2YTY5MDlkZmQ1YzNiZGVlZWEwODQ3NzdmNGNmNWNlMDMxOTVlOTI3YzJjZGE4ZjU2MGQwOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzMwNmVlNGE4Zjk1NGI1OWMwM2Q0ZDI5MzU4Y2NhNTY3MWFlOWQxYTNjYjU1YWZlYThmNjM0NTE4YWNjZWQ4NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://db/migrations/0052_proposals_delete.sql#L1-L11",
+          "version": "repo-lines-v1:sha256:07820a0e2a9037d1764d202128e22dfd6ebe0528b6b9283ee483d871de76bb8e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4Yjg5YzZmZTE3ZGY4NjRlMWZhNjdiOWViYzQ0ZWQ5OGFhYTMxN2Q5YWI0YWVjYjMwZWE5ZWM0NzgxNzVmY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNzlkZjVhNDMyNjY5OWE3OWIyMGMzOTgyZmMyMzE0MzY0NjliNjk4MjkwNGM4MTRmM2NhYjBmMWIzYWJiZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_727816bb3e5f4e66a3e54b517e2899d3",
+      "statement": "The REST statement timeout (Settings.db_statement_timeout_ms, default 15000 ms) is set by CallerPool in the same round trip as role and claims, but not inside set_caller, because Ask's executor calls set_caller after setting its own lower timeout and a shared setting would raise it.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/core/config.py#L120-L120",
+          "version": "repo-lines-v1:sha256:d4dffda7bbaad217f3b68e6821217089c534ddac147d0bc70e3bd5f312d1c211:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDRkZmZkYTdiYmFhZDIxN2YzYjY4ZTY4MjEyMTcwODljNTM0ZGRhYzE0N2QwYmM3MGUzYmQ1ZjMxMmQxYzIxMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDRkZmZkYTdiYmFhZDIxN2YzYjY4ZTY4MjEyMTcwODljNTM0ZGRhYzE0N2QwYmM3MGUzYmQ1ZjMxMmQxYzIxMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTczZmIwMzA4MDM2ZDE0N2NmMTVjZTVlMGM0ZWNiZTJiY2UwMmM0YjA3NDk1MmIyYzc5MDM0YmUwYTFkNTFhZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWY4OTk1M2FkNmRiNDRjYTFiMDAwNDJiMzlhMWI1YjhiYmViNzYxNTAzMTVhMzQzZmJmYjg1NmUyYTMzMjQ3ZSJ9"
+        },
+        {
+          "resource": "repo://backend/app/db/pool.py#L33-L47",
+          "version": "repo-lines-v1:sha256:e804ff68f9166f55afd777e1ead9e212e146c39555aebb313c69fcdbdcf41907:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiY2RjM2FjODdhNTU5ZTNjODI4NTczMTc2ZjUxODk3Y2VkNjAzZDZhZWI4MDdjMjI0YzcyOTA1NzVmMDNmMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwOGJiOWI2M2Y5NmZjMGIxZjBiODNmMWZkOTBlMzlkZDE3MTQzMzA5ZWQzNzU1YzNlMmE3OWY5NDdkMDg0YWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1MmRmYTIxZDkwMTBhYzJhMTQwYTQ4NmZjZGUxZmQ1MjM1ZGZlMzRiZTc2YzlhNTNkZWU1ZjUzOTlkZWM2M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyYzI2YWQ4OGZmNjY3MDE4MWQ3MjFiNTNlNzUzMmI1NDg1OGU3NGNkMmM1ZGE1ZWUxODMwOTk0MDQwYjg4ZTkifQ"
+        },
+        {
+          "resource": "repo://backend/app/db/pool.py#L59-L69",
+          "version": "repo-lines-v1:sha256:c8df78c85f9b170b0c07eab13ad764827561e36330bc05916ff6b2881d21f61c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1MjRhZTEyZDc3Nzg1NDZlYWNkNWYzZDE0ZWI0YjQyY2M4YjBiYzgzMTA2M2I2ZjYzNzNjNjczMTM2ODJkYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiMzQyNzdkYmUxM2JiMmFmMmEzZDVjOTYwMTFmYTM5MTEzNGE5NDQwNWI0NTE3MDk3NWI2MDg3OWI0YjEzZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0MjdkNjg1YzkyYTE2MTE0ZmYwMTM0N2I4NzJmYjE5ODliNTAyY2M3Y2Q0NTgxY2E0MDU4ZTg3NjFlMTI4ZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjczYjUzMzM1NjNkMjYwZTk3N2FkMDRhYzNiMjVmNGM0MWNlZGM4ZmFkOTVhZWQ5YzEzZGJlYTUxM2UzYzRiOTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1532e6045c2948559e42a8af6603b830",
+      "statement": "test_permission_table.py builds the real app and fails if a route (or an AGENT_ACCESS check) uses a gate not named in the 'Who may do what' table of docs/ARCHITECTURE.md, if a route has no gate and is not in the explicit open list (/health, /me and the org and funder news routes), or if the table's columns change, so no route can be left open by accident.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_permission_table.py#L1-L66",
+          "version": "repo-lines-v1:sha256:9e6cfb6ade3b2f9df9e534db3e4aa26e74be16d8c32db66117c5c151e1bb50dc:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0MTVmZTMyY2Q0ZDIzMTIxMmVmYWU2ZjFlMjA1YjU3ZTI1OWZkM2IwNThmZTJjNzM4Y2RjMjAzN2U1Njg4NmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZDI0NDU4MmI2ZmIwM2QyM2I4NDE1YWJlY2QzNDZiMGM5ZjQ2NmI2Zjc1MmIwNjgxODljZTdlOWEyZGMzNTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://docs/ARCHITECTURE.md#L209-L240",
+          "version": "repo-lines-v1:sha256:816b042015bd9fa27006116b3d1d41026d572f7e216ff80b2d9b636b44359f40:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MjBhNGQwY2MwYjJlNzkwNThmMzA5NjUwMDNmMjdhYmM2ZWNiNWQzZGRhNjUwODJkOTVmNzkyZTcxMjU4YWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiNGJmMDNiYmQ0Y2RlMDU3OWExZGYyNTRhNTgyNjBiNzZjMDU2NWI1ODViYTA3ODc4MjlhZTM2NjU4MjY2MjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlNjk2Y2FmODkxZGViNGExMzM5MjIwMTc2OGJmOTJjYjM3ZTNkMTg3NGQ3NmNjZjA1ZTBhMTk0NjgyMTczMjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ZGVkNDJkOGI3YzZhN2FiNTRjMTBjNGJmNjJlMGY3ZDlmZWY2ZWMwZjc1NDVkOWVlYWQ1NjdjNGQ4OGM1Y2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b362006c581643d5ac31df4ac2c265ef",
+      "statement": "POST /proposals/{id}/research checks edit rights on the caller pool via _editable, then builds chat_user_id, chat_scope (through caller_scope on the owner pool) and chat_proposal itself so the background readers' tools see the same caller and proposal a chat turn would.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/proposals.py#L269-L295",
+          "version": "repo-lines-v1:sha256:a419e658cc63f213f36fbef6d5083f896db1e260ba5dbd26ad977031a49bc86c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwNzUwNGZiMWViMmMzMDFkNGM5OWE3ZWViZjBmNjIwZTllZDNiNjBkMDBjOGEzNjdlM2U3ZTIzN2E1MTVmZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzNGUxNGI1YWI3MGM3OTVhZTU4YjIxYjZmNjEwNWIzZjJhNDYyN2YwZmU4YmVhOWZmN2E3OTg0NmIxYzJkY2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1YjYxMzI3MWY4NWUzMTljOTUxNDgzZTZkM2I2NTgxYjg5YjYxOGEwNGQwZTVjMDYzODMyNGU1NThhZDZjMTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwODJmMWIyNzgzNGNiMGFkMzM4NmNjZjg3MGU1NDdkNDk0YjA4YTRkMDc0MGEwOWMzMjRhM2M0ZGI2NWZkNzgifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-10-19T19:22:00.060Z"
+    "at": "2026-11-05T19:29:31.538Z"
   }
 }

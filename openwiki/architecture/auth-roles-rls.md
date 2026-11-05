@@ -5,14 +5,10 @@ description: How Sangam authenticates callers (Supabase JWT or the dev user), ma
 tags: [auth, rls, roles, postgres, security, supabase, caller-pool, owner-pool, proposals]
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T19:22:00.060Z
+    at: 2026-11-05T19:29:31.538Z
 sources:
-  - id: openwiki-source-1f8b3caaa82d707d101e103d
-    resource: repo://backend/app/agent/tools/matching_tools.py
-  - id: openwiki-source-7faba850789bc67a49b79a3f
-    resource: repo://backend/app/agent/tools/sql/catalog.py
-  - id: openwiki-source-01e57798bc5bab328d91b9b3
-    resource: repo://backend/app/agent/tools/sql/executor.py
+  - id: openwiki-source-ca736c25c2a1bb0e95531706
+    resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-3bce7721dfe72764acead2da
     resource: repo://backend/app/api/routes/funder_matches.py
   - id: openwiki-source-11c734346bddf773fd80ed0e
@@ -21,6 +17,12 @@ sources:
     resource: repo://backend/app/api/routes/proposals.py
   - id: openwiki-source-424eb6e9128a678a28e6d5ca
     resource: repo://backend/app/api/routes/threads.py
+  - id: openwiki-source-d55b72c3daac4208de6d9806
+    resource: repo://backend/app/ask/tools/matching_tools.py
+  - id: openwiki-source-f87376c232395da9df1de706
+    resource: repo://backend/app/ask/tools/sql/catalog.py
+  - id: openwiki-source-8022e4b3b752a8ae8a84ccf9
+    resource: repo://backend/app/ask/tools/sql/executor.py
   - id: openwiki-source-6dcfc1451bcbf8009d0484a9
     resource: repo://backend/app/core/config.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
@@ -49,8 +51,12 @@ sources:
     resource: repo://backend/app/repositories/users.py
   - id: openwiki-source-f6a714acb13b13de2a75257a
     resource: repo://backend/tests/test_access.py
+  - id: openwiki-source-bc3c2ebc658cef90ceb7a159
+    resource: repo://backend/tests/test_agent_rls.py
   - id: openwiki-source-0808792899dda5ae43456460
     resource: repo://backend/tests/test_caller_pool.py
+  - id: openwiki-source-3b72455cc5448f365dd202c9
+    resource: repo://backend/tests/test_permission_table.py
   - id: openwiki-source-1a719932f8db409931d9e2ef
     resource: repo://backend/tests/test_proposal_agent.py
   - id: openwiki-source-e3d5b96924a7ab50f4e2652f
@@ -77,6 +83,12 @@ sources:
     resource: repo://db/migrations/0042_funder_matches.sql
   - id: openwiki-source-3d121c1ca466c424ca2b4936
     resource: repo://db/migrations/0048_proposal_work.sql
+  - id: openwiki-source-1b63786a729c5707f451c676
+    resource: repo://db/migrations/0051_documents_delete.sql
+  - id: openwiki-source-81d52d179dc30e354d43cc8c
+    resource: repo://db/migrations/0052_proposals_delete.sql
+  - id: openwiki-source-e8e61d605125cac4d909755e
+    resource: repo://docs/ARCHITECTURE.md
   - id: openwiki-source-2835a53622addef44a80818d
     resource: repo://features-plans/access/auth-plan.md
   - id: openwiki-source-060d794a25568b4384788e86
@@ -89,14 +101,14 @@ sources:
     resource: repo://frontend/lib/supabase/middleware.ts
   - id: openwiki-source-06ab5e05c59e3ddb17628f5f
     resource: repo://frontend/proxy.ts
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
 ---
 
 # Auth, Roles and RLS
 
 Access in Sangam is enforced in two layers. **Python** decides who the caller is and exposes gates such as `require_staff`. **Postgres** then enforces what that caller may see, through the `anon` and `authenticated` roles, table grants, and row-level security (RLS) rules. Which layer does the work depends on which connection pool a piece of code uses. That is the most important thing to understand before changing anything here.
 
-> Where the code lives: authentication is in `backend/app/core/security.py`, not in `backend/app/api/deps.py`. `deps.py` only holds pagination parameter models (`PageParams`, `LegacyPageParams`). The pools are in `backend/app/db/pool.py`. The SQL is in migrations `0023`–`0029`, `0042`, `0044` and `0048` under `db/migrations/`.
+> Where the code lives: authentication is in `backend/app/core/security.py`, not in `backend/app/api/deps.py`. `deps.py` only holds pagination parameter models (`PageParams`, `LegacyPageParams`). The pools are in `backend/app/db/pool.py`. The SQL is in migrations `0023`–`0029`, `0042`, `0044`, `0048`, `0051` and `0052` under `db/migrations/`. The route-by-role summary is the "Who may do what" table in `docs/ARCHITECTURE.md` §8, which a test keeps in step with the code (see [Tests](#tests)).
 
 ## Roles
 
@@ -179,22 +191,22 @@ Caption: REST queries and Ask Sangam's SQL run as the caller and are filtered by
 
 There is one underlying `AsyncConnectionPool`, opened in the app lifespan and also assigned to `db_pool.pool`. It connects with whatever role `DATABASE_URL` names; the code and its comments call that role the owner and rely on it ignoring grants and RLS (the local compose database uses a superuser). The pool runs with `autocommit=True` and is shared by REST, the LangGraph checkpointer and the agent tools. The access paths over it are:
 
-**`CallerPool` (via `PoolDep`).** This is what every router takes. Each `connection()` opens a transaction and first runs `set_config('role', …, true)` and `set_config('request.jwt.claims', …, true)` through `set_caller`. These are transaction-local (`SET LOCAL` semantics), so they end with the transaction even on error. The connection returns to the pool as the owner, so the checkpointer and tools sharing the pool never inherit a caller. `db_role` and `db_claims` come from `_db_identity`:
+**`CallerPool` (via `PoolDep`).** This is what every router takes. Each `connection()` opens a transaction and first runs one statement that sets `role`, `request.jwt.claims` and `statement_timeout` with `set_config(…, true)`. These are transaction-local (`SET LOCAL` semantics), so they end with the transaction even on error. The connection returns to the pool as the owner, so the checkpointer and tools sharing the pool never inherit a caller. The REST statement timeout is `Settings.db_statement_timeout_ms` (15 000 ms by default). It lives in that REST-only statement rather than in `set_caller`, because Ask's executor calls `set_caller` after setting its own, lower timeout and `set_caller` would raise it. `db_role` and `db_claims` come from `_db_identity`:
 
 - anonymous gives role `anon` and empty claims
 - signed in gives role `authenticated` and claims `{"sub": <auth_user_id>, "role": "authenticated", "email": …}`
 
 `get_caller_pool` falls back to `anon` if the middleware left nothing on the request. A new route that takes `pool: PoolDep` runs as its caller without asking.
 
-**Ask Sangam's SQL executor.** Agent tools run outside any request, so they cannot take `PoolDep`. Instead `ask_access` stores the caller's `(role, claims)` pair in the `agent_caller` ContextVar, and `PsycopgExecutor.run` reads it. Inside one transaction (`conn.transaction()`, since the pool is autocommit) it first applies the hardening settings (`SET TRANSACTION READ ONLY`, statement, lock and idle timeouts) and then calls `set_caller`. If `agent_caller` is unset the query runs as `anon`, so the failure mode is seeing less, not more. The executor takes its connection from `get_pool()`, but the query itself is filtered by RLS like a REST route's. Import deliberately keeps the owner because it writes the catalog.
+**Ask Sangam's SQL executor.** Agent tools run outside any request, so they cannot take `PoolDep`. Instead `ask_access` stores the caller's `(role, claims)` pair in the `agent_caller` ContextVar, and `PsycopgExecutor.run` reads it. Inside one transaction (`conn.transaction()`, since the pool is autocommit) it first applies the hardening settings (`SET TRANSACTION READ ONLY`, statement, lock and idle timeouts) and then calls `set_caller`. The read-only setting has to be the first statement of the transaction. If `agent_caller` is unset the query runs as `anon`, so the failure mode is seeing less, not more. The executor takes its connection from `get_pool()`, but the query itself is filtered by RLS like a REST route's. Import deliberately keeps the owner because it writes the catalog.
 
 **Owner pool (`OwnerPoolDep` and `get_pool()`).** The owner ignores grants and RLS. It is used by:
 
 - **Identity code:** `resolve_principal`, `_own_thread`, `request_scope`, the chat-access dependencies, and `threads.can_open`. `saved_messages` calls it because checkpoints are closed to callers, so access is decided before anything is read.
-- **Agent tools that are not Ask Sangam's SQL:** `matching_tools`, all Import tools in `app/ingest/tools/*`, and the proposal agent's tools and context (`app/proposals/*`). They run outside any request and call `get_pool()`.
-- **Import and its REST surface:** `routes/ingest.py` uses `OwnerPoolDep` for research listing, undo and delete. It also pairs it with `request_scope` to filter in Python. Import writes the catalog as the owner.
-- **Matching:** `matching.may_run`, the matching writes in `funder_matches.create_run` (which takes both `PoolDep` and `OwnerPoolDep`), and the `make match` CLI. The CLI uses its own `make_pool` and saves runs with `run_by = NULL`.
-- **Other owner reads or writes:** the news routes that read `ingest_runs` or hide stories, the proposal chat's saved-messages route, and the seeds.
+- **Agent tools that are not Ask Sangam's SQL:** `app/ask/tools/matching_tools.py` (`compare_fit`), all Import tools in `app/ingest/tools/*`, and the proposal agent's tools, readers and context (`app/proposals/*`). They run outside any request and call `get_pool()`.
+- **Import and its REST surface:** the router's staff-only list routes (runs, queue, source proposals) take `PoolDep`, because the Import tables are staff-only under RLS. `routes/ingest.py` uses `OwnerPoolDep` for research listing, undo and delete, for thread messages and `ask-live`, and for the Import overview's research list. It pairs it with `request_scope` to filter in Python. Import writes the catalog as the owner.
+- **Matching:** `matching.may_run`, the matching writes in `funder_matches.create_run` (which takes both `PoolDep` and `OwnerPoolDep`), and the `make match` CLI. The CLI uses its own `make_pool` (from `app/db/checkpointer.py`) and saves runs with `run_by = NULL`.
+- **Other owner reads or writes:** the news routes that read `ingest_runs` or hide stories, the proposal chat's saved-messages route, `POST /proposals/{id}/research` (which checks edit rights on the caller pool, then builds `chat_scope` from the owner pool so the background readers see the same caller a chat turn would), and the seeds.
 
 **Because RLS does not apply on the owner pool, each of these paths has to check scope itself.** The mechanism is `CallerScope`.
 
@@ -236,7 +248,11 @@ Migration 0048 (proposal work) changed the proposals policies. `proposals_insert
 | Member of the org | yes (`proposals_read` is unchanged) | no (insert raises `InsufficientPrivilege`; an update changes no row) |
 | Member or steward of another org, anonymous | no | no |
 
+The project records one known inconsistency in `docs/ARCHITECTURE.md`: writes on `app.my_writable_org_ids()` (contacts, RFP saves, score adjustments: member and admin) exclude stewards, while writes on `app.my_match_org_ids()` (match runs, proposals: admin and steward) exclude members. Changing it is a migration and a product decision.
+
 Before 0048 only members and admins of a writable org could write proposals, stewards could not, and staff had no proposal write rule. The same migration widens `documents_insert` to `app.my_org_ids()`, so every role in the org (members, stewards, admins) and staff can add files to its Doc Vault, because a steward adds the files a proposal draws on. It repeats 0027's guard that fails the migration if a readable table has no read rule. It also adds the `work` and `summary` JSON columns the proposal screen edits.
+
+Deleting a proposal follows the same rule (admin, steward or staff) since 0052, enforced by `proposals_delete` and by `_editable` in the route.
 
 The rule is enforced in three places that must agree:
 
@@ -254,7 +270,7 @@ flowchart TD
     B --> C["0025: revoke all, grant per table"]
     C --> D["0026: dev user auth_user_id"]
     D --> E["0027: RLS on, one policy per table kind"]
-    E --> F["0028-0029, 0042, 0044, 0048: member management, match saves, merged policies, proposal writes"]
+    E --> F["0028-0029, 0042, 0044, 0048, 0051-0052: member management, match saves, merged policies, proposal writes, deletes"]
 ```
 
 Caption: the order in which the Postgres access layer was built.
@@ -267,7 +283,7 @@ Caption: the order in which the Postgres access layer was built.
   - `app.can_open_thread(thread, user)`: the owner, staff, or org roles by thread `visibility` (`team` for member and admin, `team_and_stewards` for all roles).
 
   The first four are executable by `anon` and `authenticated`. `can_open_thread` is deliberately granted to neither, because it takes the user as an argument for the owner-connected backend and answering about arbitrary users is a backend question.
-- **0025** revokes everything on `public` tables and sequences from both roles (and the defaults for future tables). This stops Supabase's `/rest/v1` from exposing tables to every browser. It then grants back per table kind and writes. It raises an error if any table has no access decision, so new tables must be classified. Writes granted to `authenticated` only are contacts (insert and update), documents (insert), score adjustments (insert), `rfp_matches` (update), proposals (insert and update) and threads (insert). There is no DELETE anywhere.
+- **0025** revokes everything on `public` tables and sequences from both roles (and the defaults for future tables). This stops Supabase's `/rest/v1` from exposing tables to every browser. It then grants back per table kind and writes. It raises an error if any table has no access decision, so new tables must be classified. Writes granted to `authenticated` only are contacts (insert and update), documents (insert), score adjustments (insert), `rfp_matches` (update), proposals (insert and update) and threads (insert). 0025 grants no DELETE; the later deletes are granted one table at a time by 0051 and 0052 (below).
 - **0027** enables RLS on every `public` table, closed ones included, so an accidental grant still reads nothing. Rules by kind:
   - **Public:** 23 tables with `USING (true)`.
   - **Follows its parent:** `org_*` and `funder_*` children follow the org or funder, and `chunks` follows its document.
@@ -283,12 +299,18 @@ Caption: the order in which the Postgres access layer was built.
 - **0042** adds `app.my_match_org_ids()` (admin and steward) and the `funder_matches` tables. Insert policies require `run_by = app.user_id()`, and there is no update grant. This is why only staff, stewards and admins can save a match run, and `matching.may_run` mirrors that rule on the owner pool. 0048 reuses the same function for proposals.
 - **0044** folds the admin-visibility policies into single `users_read` and `org_members_read` policies, to avoid two permissive policies evaluated per row.
 - **0048** changes proposal writes and vault uploads as described in [Who can write proposals](#who-can-write-proposals).
+- **0051** and **0052** add the only `DELETE` grants to `authenticated`, each with a policy that holds the same line as the route:
+  - `documents_delete` (0051): staff only, and only a private, org-owned `vault_upload`. `DELETE /documents/{id}` sits behind `require_staff` and runs on `PoolDep`.
+  - `proposals_delete` (0052): the org's admins and stewards (`app.my_match_org_ids()`) and staff, the same people who may edit. `DELETE /proposals/{id}` calls `_editable` first, then deletes the row and its own saved Word versions in one transaction, keeping any draft another row still references.
+  - `documents_delete_draft` (0052): lets those same people delete a private `proposal_draft` document of their org, while vault uploads stay staff-only.
+
+  RLS refuses a delete by removing zero rows, not by raising an error, so the repository functions report "not deleted" and the route answers 404.
 
 `InsufficientPrivilege` from a table a role has no grant on is mapped to a 403 `{"detail": "Not allowed"}` by an exception handler in `create_app`. Without that handler it would be a 500.
 
 ## Frontend edge
 
-`frontend/proxy.ts` runs Supabase's `updateSession` (`lib/supabase/middleware.ts`) on every non-asset path. With no `NEXT_PUBLIC_SUPABASE_URL` or publishable key it passes every request through and gates nothing, so public pages and the `/ask` preview still render but nobody can sign in. Otherwise it refreshes the session cookie with `getClaims()` and redirects signed-out visitors on `/import` and its subpaths to `/auth/login?next=…`. `/ask` stays public: it shows a preview signed out and the workspace signed in.
+`frontend/proxy.ts` runs Supabase's `updateSession` (`lib/supabase/middleware.ts`) on every non-asset path. If `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is missing (a bare local run), `updateSession` returns `NextResponse.next` at once. The proxy passes every request through, redirects nothing and never fails by itself, but nobody can sign in. The failure shows up downstream as "signed out": `/ask` renders its preview, `/import` (no longer guarded by the proxy in this case) fails its `/api/me` call and redirects to `/ask`, and the sign-in dialog says the Supabase keys are not set. See [Frontend](./frontend.md) for the details. With both keys present it refreshes the session cookie with `getClaims()` and redirects signed-out visitors on `/import` and its subpaths to `/auth/login?next=…`. `/ask` stays public: it shows a preview signed out and the workspace signed in.
 
 The browser then sends credentials to the backend, which is where real enforcement happens. Two helpers build the header:
 
@@ -311,6 +333,8 @@ Ask Sangam running as the caller (plan step 8) is now built via `ask_access`, `a
 - `backend/tests/test_security.py` runs `AuthMiddleware` in a small app with a locally generated ES256 key and a patched JWKS. It covers a valid token resolving the user row and role `authenticated`, an expired or malformed token returning 401, no header giving `anon`, auth off giving the dev user, and open paths skipping verification.
 - `backend/tests/test_access.py` covers the route and chat gates with the principal and thread claims faked: signed-out saving is 401, Import routes need staff or steward (`require_scout`), a new thread is claimed and the run knows who asked, `chat_scope` carries the caller's org roles, `ask_access` sets `agent_caller` to `authenticated` while `chat_access` leaves it unset, someone else's thread is 404 even for staff, and `CallerScope` predicates for member, steward, staff and nobody.
 - `backend/tests/test_proposal_agent.py` covers `proposal_chat_access`: admin and steward may run their own chat (the run learns the proposal id), a member gets 403, a stranger 404, malformed or other-proposal thread ids 404, and two editors get separate chats that neither can open from the other. It also checks that proposal tools refuse a reader before touching the database.
+- `backend/tests/test_permission_table.py` builds the real app and fails when a route uses a gate (`get_current_user`, `require_user`, `require_principal`, `require_staff`, `require_scout`, `chat_access`, `ask_access`, `proposal_chat_access`, including those wired through `AGENT_ACCESS`) that the "Who may do what" table in `docs/ARCHITECTURE.md` does not name. It also fails when a route has no gate and is not in the explicit open list (`/health`, `/me`, and the org and funder news routes), and when the table's columns are not `anon`, `member`, `admin`, `steward`, `staff`, `gate`. A new route therefore cannot ship ungated by accident.
+- `backend/tests/test_agent_rls.py` is an integration suite for Ask Sangam's executor against the compose Postgres. With `agent_caller` set to a member of org A, `PsycopgExecutor` returns org A's private document and not org B's, nor a staff-only funder line. A user with no org, or no caller at all (anon), reads no private row. The connection returns to the pool as the owner with no claims. And every column in the SQL `CATALOG` is `SELECT`-able by `authenticated`, because the chat runs as the caller and a blocked column would break `SELECT *`.
 - `backend/tests/test_caller_pool.py` covers `_db_identity` and `get_caller_pool` (unit). The `InsufficientPrivilege` to 403 mapping is also unit-tested. The integration tests prove a `CallerPool` connection runs as `anon` and cannot read `proposals`, that the connection returns as the owner with no claims, and that the access functions recognise the dev user.
 - `backend/tests/test_rls.py` is an integration suite against the compose Postgres on `localhost:5433`, in one rolled-back transaction. It builds orgs A and B, a hidden org, one person per role and private rows. It then asserts per-role visibility for contacts, documents, chunks, proposals, hidden orgs, threads and Import tables. For proposals it checks that members of other orgs and signed-out callers see nothing, that only admins, stewards and staff can insert or update (members are refused), and that every role in the org uploads to its Doc Vault. It also tests steward read-only behaviour elsewhere, member-write isolation, the org-member management functions, the last-admin rule, and match-run saving.
 
@@ -320,6 +344,8 @@ For running these suites, see [Testing overview](../testing/overview.md). For ho
 
 - A new REST route should take `PoolDep` and a gate such as `require_principal` or `require_staff`. Use `OwnerPoolDep` only for identity work, and when you do, filter with `CallerScope`.
 - A new table needs a decision in `0025`'s lists, which fails the migration otherwise, and a read policy, which `0027`'s check requires for any table either role can read. Migrations such as 0041, 0042 and 0048 enable RLS and add or alter policies for their own tables.
-- Changing who may edit a proposal means changing three things together: the RLS policy, `CallerScope.can_edit_proposal`, and the SQL `can_edit` expression in the proposals repository. `proposal_chat_access` and `require_edit` follow from them.
+- Changing who may edit a proposal means changing these together: the RLS policies (`proposals_insert`, `proposals_update`, and `proposals_delete` and `documents_delete_draft` from 0052), `CallerScope.can_edit_proposal`, and the SQL `can_edit` expression in the proposals repository. `proposal_chat_access` and `require_edit` follow from them.
+- A new route needs a row in the "Who may do what" table in `docs/ARCHITECTURE.md`, or `test_permission_table.py` fails.
+- A new Ask catalog column or table must be `SELECT`-able by `authenticated`, which `test_agent_rls.py` checks.
 - A new agent or Import tool that touches private data on the owner pool must check `scope()` (or `chat_scope`) itself. A new agent route needs an entry in `AGENT_ACCESS`.
 - Never set `DEV_AUTH` in a deployed environment.
