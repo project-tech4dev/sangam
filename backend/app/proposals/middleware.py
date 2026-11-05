@@ -15,7 +15,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from app.agentkit.middleware import AgUiState
-from app.ingest.access import canonical_url
+from app.ingest.reading.access import canonical_url
 from app.integrations.storage import _safe_name
 from app.proposals import context
 from app.proposals import facts as fact_rules

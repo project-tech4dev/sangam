@@ -20,7 +20,7 @@ from app.core.extract import extract_pdf_text
 from app.db.pool import get_pool
 from app.ingest.matcher import resolve_funder, resolve_org
 from app.ingest.promote import MERGEABLE
-from app.ingest.vault import MAX_BYTES, MAX_CHARS
+from app.ingest.reading.vault import MAX_BYTES, MAX_CHARS
 from app.integrations import storage
 
 logger = logging.getLogger(__name__)

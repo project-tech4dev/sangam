@@ -123,7 +123,7 @@ Every source carries the rule that governs it and the evidence for that rule —
 | media | 26 | 15 |
 
 It lives inside the package because the Dockerfile copies only `app/`, and it is JSON so it can be
-reviewed by someone who does not write Python. `sources.py` runs a `_self_check()` at **import**
+reviewed by someone who does not write Python. `reading/registry.py` runs a `_self_check()` at **import**
 that raises on a duplicate key, a missing category, an unknown yield kind, or a basis short enough
 to be a verdict rather than evidence. An access rule is a security decision, so it changes in a
 pull request, never at runtime.

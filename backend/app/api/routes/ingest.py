@@ -21,7 +21,7 @@ from app.core.security import (
     require_user,
 )
 from app.db.pool import OwnerPoolDep, PoolDep
-from app.ingest.sources import SOURCES
+from app.ingest.reading.registry import SOURCES
 from app.repositories import documents as documents_repo
 from app.repositories import ingest as repo
 from app.repositories import me as me_repo

@@ -23,9 +23,9 @@ from langchain_core.messages import AIMessage, AnyMessage, BaseMessage, SystemMe
 from pydantic import BaseModel, ValidationError
 
 from app.agentkit.middleware import AgUiState
-from app.ingest import run_sources
 from app.ingest.caller import caller_note, scope
 from app.ingest.catalog_save import write_preview
+from app.ingest.reading import run_sources
 from app.ingest.research.finding_types import FINDING_MODELS
 from app.ingest.research.findings import EntityResearch, VaultResearch
 

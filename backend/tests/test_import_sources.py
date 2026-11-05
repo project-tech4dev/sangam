@@ -7,10 +7,10 @@ from types import SimpleNamespace
 import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 
-from app.ingest import run_sources
 from app.ingest.agent import INTERRUPT_ON
 from app.ingest.middleware import ChosenSources, RunSources
-from app.ingest.run_sources import Sources
+from app.ingest.reading import run_sources
+from app.ingest.reading.run_sources import Sources
 from app.ingest.tools import library_tools, pipeline_tools
 from tests.test_import_roles import MEMBER, STAFF, STEWARD, _Pool, running_as
 

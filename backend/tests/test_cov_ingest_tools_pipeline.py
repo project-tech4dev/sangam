@@ -9,7 +9,7 @@ import pytest
 from app.ingest.calls import pull
 from app.ingest.news import pipeline
 from app.ingest.news.pipeline import Selection
-from app.ingest.sources import SOURCES
+from app.ingest.reading.registry import SOURCES
 from app.ingest.tools import pipeline_tools
 from tests.cov_ingest_fakes import BrokenPool, ScriptPool, running_as
 from tests.test_import_roles import MEMBER, STAFF

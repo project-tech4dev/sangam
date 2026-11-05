@@ -14,8 +14,8 @@ from pydantic import ValidationError
 
 from app.agentkit import middleware as kit
 from app.ingest import middleware as mw
-from app.ingest import run_sources
-from app.ingest.run_sources import Sources
+from app.ingest.reading import run_sources
+from app.ingest.reading.run_sources import Sources
 from tests.cov_ingest_fakes import running_as
 from tests.test_import_roles import MEMBER, STAFF
 
