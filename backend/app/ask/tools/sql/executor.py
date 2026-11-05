@@ -6,7 +6,7 @@ import asyncio
 import logging
 from typing import Any
 
-from app.agent.tools.sql.validator import ValidatedQuery
+from app.ask.tools.sql.validator import ValidatedQuery
 from app.core.config import get_settings
 from app.db.pool import agent_caller, get_pool, set_caller
 from app.integrations.tracing import traced_fetch

@@ -44,8 +44,8 @@ and `read_source_rows`, the researcher's reader for the staff workbooks, and the
 apply. The researcher's own prompt carries the same notes, since those cannot be optional. Neither
 skill names a funder, a CSO or a file.
 
-Ask Sangam has three of its own, under `backend/app/agent/skills/`, with the
-same mechanism (`app/agent/agent.py`): `funder-matching` (how to get from an
+Ask Sangam has three of its own, under `backend/app/ask/skills/`, with the
+same mechanism (`app/ask/agent.py`): `funder-matching` (how to get from an
 organisation to verdicts), `funder-comparison` (named funders) and
 `funder-shortlist-brief` (the write-up). The judging is `compare_fit`'s, in
 code (`app/matching/rules.py`), so none of the three holds a matching rule.

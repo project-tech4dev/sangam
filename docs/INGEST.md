@@ -187,7 +187,7 @@ One main agent and four subagents, built in `app/ingest/agent.py`.
 
 **Every tool lives in `app/ingest/tools/`, and nothing else in `app/ingest/` is a tool** — the
 rest of the folder is the pipeline the tools drive. Three modules, by what the tool touches,
-mirroring `app/agent/tools/` on the Ask Sangam side:
+mirroring `app/ask/tools/` on the Ask Sangam side:
 
 | Module | Tools |
 |---|---|
@@ -245,7 +245,7 @@ have it). It reads the workbooks staff ticked (its `documents` argument, which m
 sheet is laid out, and its unit, is in the researcher's prompt under "The staff sheets". On a sheet
 of side-by-side blocks (a sparse title row over a dense header row), a matched row shows only the
 cells of the block its match sits in, so one CSO's funders never appear on another's line. **Staff
-rows last:** `StaffLastLock` (`app/agent/middleware.py`) refuses `search_public_sources`,
+rows last:** `StaffLastLock` (`app/ingest/middleware.py`) refuses `search_public_sources`,
 `read_page` and `fetch_document` once a run has called `read_source_rows`, so an injected page
 cannot have a staff row carried out in a URL or query. Contact columns are dropped. Promoted facts
 are public (D14); the files and their `documents` rows stay staff-only, and `promote` holds a staff
@@ -301,7 +301,7 @@ an identifier enum with no 12A, no 80G and no FCRA. A wrong *entity* is a STOP; 
 **1. `research_goals(name, entity_kind, years)`** — the first call after that. `entity_kind`
 is required and `'unknown'` is refused: it stays a save-time value for `not_found` and
 `wrong_entity` rows, where it is true, and is never a research target. The tool derives what to
-look for from `app/agent/tools/sql/catalog.py`, the same data the SQL tool allowlists and that
+look for from `app/ask/tools/sql/catalog.py`, the same data the SQL tool allowlists and that
 `verify_against_db()` checks against the live schema at boot. Per concept it returns the fields a
 source could state, their CHECK-constraint values, which of them the row cannot be written
 without, and what the catalog already holds. There is no second list of research targets to keep

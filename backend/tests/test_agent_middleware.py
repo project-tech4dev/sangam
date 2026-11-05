@@ -8,8 +8,8 @@ from langchain.agents.middleware import ClearToolUsesEdit
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 
-from app.agent import middleware
 from app.agentkit import middleware as kit
+from app.ask import middleware
 
 # ~5k tokens a result: a db_query grid near its 6,000-char cap is ~1.5k, so this is a heavy turn.
 RESULT = "row " * 5_000
@@ -96,7 +96,7 @@ class TestEveryFailedSqlAttemptCounts:
         assert middleware.count_failed_sql_attempts(messages) == 3
 
     async def test_its_rejections_carry_its_own_prefix(self):
-        from app.agent.tools.sql_tools import db_profile_column
+        from app.ask.tools.sql_tools import db_profile_column
 
         reply = await db_profile_column.ainvoke({"table": "orgs", "column": "no_such_column"})
         assert reply.startswith("db_profile_column rejected:")

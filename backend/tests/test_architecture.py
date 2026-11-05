@@ -15,14 +15,14 @@ APP = BACKEND / "app"
 CALLERS = [APP, REPO / "seed", REPO / "scripts"]
 
 # R1: the modules that build an agent, and so may import its tools.
-BUILDERS = {"app/agent/agent.py", "app/ingest/agent.py", "app/proposals/agent.py", "app/ingest/news/verify.py"}
-# Ask's SQL engine and the catalog every agent reads live under agent/tools/sql/ but are not tools.
-NOT_TOOLS = "app.agent.tools.sql"
+BUILDERS = {"app/ask/agent.py", "app/ingest/agent.py", "app/proposals/agent.py", "app/ingest/news/verify.py"}
+# Ask's SQL engine and the catalog every agent reads live under ask/tools/sql/ but are not tools.
+NOT_TOOLS = "app.ask.tools.sql"
 
 # R3: the three agents, and what one may import from another. Shared code lives in agentkit/ and core/.
-AGENTS = ("agent", "ingest", "proposals")
+AGENTS = ("ask", "ingest", "proposals")
 SHARED_ACROSS_AGENTS = (
-    "app.agent.tools.sql.catalog",  # the SQL catalog: Ask's allowlist, which Import also reads
+    "app.ask.tools.sql.catalog",  # the SQL catalog: Ask's allowlist, which Import also reads
     # Pitch reads with Import's brief, places, reading rules (reading/), source guards and reading tools.
     "app.ingest.brief", "app.ingest.geography", "app.ingest.reading.", "app.ingest.research.source_guards",
     "app.ingest.tools.research_tools", "app.ingest.tools.library_tools",
@@ -31,7 +31,7 @@ SHARED_ACROSS_AGENTS = (
 
 # R4: a file the size cap does not apply to, because it is one entry per table or concept.
 LONG_BY_DESIGN = {
-    "app/agent/tools/sql/catalog.py",  # the SQL catalog: one entry per table
+    "app/ask/tools/sql/catalog.py",  # the SQL catalog: one entry per table
     "app/ingest/research/finding_types.py",  # one finding model per concept, and FINDING_MODELS joining them
 }
 MAX_LINES = 800

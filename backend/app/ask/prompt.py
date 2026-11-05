@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.agent.tools.sql.catalog import TABLE_MAP
+from app.ask.tools.sql.catalog import TABLE_MAP
 from app.core.config import Settings, get_settings
 
 # Beside this module, not relative to the working directory: `make dev-backend` runs from backend/ while the

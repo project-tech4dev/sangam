@@ -7,8 +7,8 @@ from uuid import UUID, uuid4
 
 import httpx
 
-from app.agent.tools import matching_tools
 from app.api.routes import funder_matches
+from app.ask.tools import matching_tools
 from app.core.security import ANONYMOUS, CurrentUser, chat_user_id, get_principal
 from app.matching import service
 from app.matching.match import match

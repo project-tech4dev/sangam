@@ -5,9 +5,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from app.agent.prompt import SYSTEM_PROMPT
+from app.ask.prompt import SYSTEM_PROMPT
 
-TOOLS_DIR = Path(__file__).resolve().parents[1] / "app" / "agent" / "tools"
+TOOLS_DIR = Path(__file__).resolve().parents[1] / "app" / "ask" / "tools"
 
 # Markers written as literal f-strings, e.g. f"[graph:{edge.uuid[:8]}]".
 _LITERAL = re.compile(r"\[([a-z_]+):\{")
@@ -15,7 +15,7 @@ _LITERAL = re.compile(r"\[([a-z_]+):\{")
 
 def emitted_markers() -> set[str]:
     """Every citation kind a tool can put in front of a row."""
-    from app.agent.tools.sql.catalog import CITE_COLUMNS
+    from app.ask.tools.sql.catalog import CITE_COLUMNS
 
     literal = {
         kind
@@ -34,7 +34,7 @@ def test_tools_emit_the_markers_we_think_they_do():
 def test_prompt_documents_every_marker_the_tools_emit():
     missing = [kind for kind in sorted(emitted_markers()) if f"[{kind}:" not in SYSTEM_PROMPT]
     assert not missing, (
-        f"tools emit {missing} but app/agent/instructions.md never names "
+        f"tools emit {missing} but app/ask/instructions.md never names "
         f"{'them' if len(missing) > 1 else 'it'} — the model will not repeat "
         f"markers it was not told about, so those rows become uncitable"
     )
@@ -50,7 +50,7 @@ def test_prompt_is_loaded_not_empty():
 def test_prompt_names_every_registered_tool():
     """Routing rules reference tools by their exact Python identifier, so a renamed or newly added tool
     leaves the prompt pointing at nothing — or"""
-    from app.agent.agent import TOOLS
+    from app.ask.agent import TOOLS
 
     missing = [t.name for t in TOOLS if t.name not in SYSTEM_PROMPT]
     assert not missing, f"registered but never mentioned in instructions.md: {missing}"
@@ -59,13 +59,13 @@ def test_prompt_names_every_registered_tool():
 def test_retry_budget_in_the_prompt_matches_the_middleware():
     """The prompt asks the model to stop after N attempts and the middleware enforces N. If they drift,
     the model either gives up early or is cut off"""
-    from app.agent.middleware import MAX_SQL_ATTEMPTS
+    from app.ask.middleware import MAX_SQL_ATTEMPTS
 
     assert f"After {MAX_SQL_ATTEMPTS} failed attempts" in SYSTEM_PROMPT
 
 
 def test_the_prompt_lists_every_table():
-    from app.agent.tools.sql.catalog import CATALOG
+    from app.ask.tools.sql.catalog import CATALOG
 
     assert "{{" not in SYSTEM_PROMPT
     missing = [name for name, t in CATALOG.items() if f"  {name} — {t.description}" not in SYSTEM_PROMPT]

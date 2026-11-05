@@ -11,7 +11,7 @@ import { Answer, Missing } from "./ReviewFields";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 const SHOWN = 10;
 
-/** A question as the paused promote_research carries it (backend app/agent/middleware.py). */
+/** A question as the paused promote_research carries it (backend app/ingest/middleware.py). */
 export type PausedQuestion = {
   id: string;
   case: 3 | 4;

@@ -12,7 +12,7 @@ from sqlglot.errors import OptimizeError, ParseError
 from sqlglot.optimizer.qualify import qualify
 from sqlglot.optimizer.scope import build_scope
 
-from app.agent.tools.sql.catalog import (
+from app.ask.tools.sql.catalog import (
     CATALOG,
     CITE_COLUMNS,
     COLUMNS,

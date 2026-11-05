@@ -8,9 +8,9 @@ import psycopg
 import pytest
 from psycopg.rows import dict_row
 
-from app.agent.tools.sql import catalog as cat
-from app.agent.tools.sql.executor import PsycopgExecutor, max_concurrent_queries
-from app.agent.tools.sql.validator import validate
+from app.ask.tools.sql import catalog as cat
+from app.ask.tools.sql.executor import PsycopgExecutor, max_concurrent_queries
+from app.ask.tools.sql.validator import validate
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
 

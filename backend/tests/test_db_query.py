@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from langchain_core.messages import ToolMessage
 
-from app.agent.tools import sql_tools
-from app.agent.tools.sql.catalog import DEFECTS
+from app.ask.tools import sql_tools
+from app.ask.tools.sql.catalog import DEFECTS
 from app.db.pool import caveats_given
 
 TABLE = next(iter(sorted(DEFECTS)))
