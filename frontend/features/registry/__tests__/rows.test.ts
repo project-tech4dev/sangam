@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { RegistryRow } from "@/lib/api";
-import { DEFAULTS, type Filters, kindLine, matches, present, signal } from "@/features/registry/rows";
+import { kindLine, signal } from "@/features/registry/rows";
 
 const row = (over: Partial<RegistryRow> = {}): RegistryRow => ({
   kind: "org", id: 1, slug: "kabil", name: "KABIL Trust", funder_type: null, place: null, states: [],
   themes: [], populations: [], sdgs: [], csr1: false, has_12a_80g: false, fcra: false, intake_mode: null,
   open_call: false, partners: 0, csr_prescribed: null, csr_year: null, press: 0, social: 0, posts_since: null,
-  research_runs: 0, researched_on: null, search: "", ...over,
+  research_runs: 0, researched_on: null, ...over,
 });
-const all: Filters = { kind: "all", ...DEFAULTS };
 
 describe("kindLine", () => {
   it("names a CSO's place and how many more states it reaches", () => {
@@ -54,65 +53,5 @@ describe("signal", () => {
   it("flags a researched org with no stories", () => {
     expect(signal(row({ research_runs: 2 }))).toBe("Researched · no stories yet");
     expect(signal(row({ kind: "funder", partners: 3, research_runs: 1 }))).toBe("3 partners · researched");
-  });
-});
-
-describe("matches", () => {
-  it("passes everything on the defaults", () => {
-    expect(matches(row(), all)).toBe(true);
-  });
-
-  it("filters by kind, theme, population and SDG", () => {
-    const r = row({ themes: [{ label: "Maternal health", domain: "Health" }], populations: ["women"], sdgs: ["3"] });
-    expect(matches(r, { ...all, kind: "funder" })).toBe(false);
-    expect(matches(r, { ...all, kind: "org", theme: "Health", population: "women", sdg: "3" })).toBe(true);
-    expect(matches(r, { ...all, theme: "Education" })).toBe(false);
-    expect(matches(r, { ...all, population: "youth" })).toBe(false);
-    expect(matches(r, { ...all, sdg: "4" })).toBe(false);
-  });
-
-  it("reads where as the north-east, outside it, or one state", () => {
-    const assam = row({ states: ["Assam"] });
-    const goa = row({ states: ["Goa"] });
-    expect(matches(assam, { ...all, where: "ne" })).toBe(true);
-    expect(matches(goa, { ...all, where: "ne" })).toBe(false);
-    expect(matches(goa, { ...all, where: "out" })).toBe(true);
-    expect(matches(assam, { ...all, where: "out" })).toBe(false);
-    expect(matches(goa, { ...all, where: "Goa" })).toBe(true);
-    expect(matches(goa, { ...all, where: "Assam" })).toBe(false);
-  });
-
-  it("applies registrations only to organisations", () => {
-    const org: Filters = { ...all, kind: "org" };
-    expect(matches(row({ csr1: true }), { ...org, reg: "csr1" })).toBe(true);
-    expect(matches(row(), { ...org, reg: "csr1" })).toBe(false);
-    expect(matches(row(), { ...org, reg: "12a80g" })).toBe(false);
-    expect(matches(row({ has_12a_80g: true }), { ...org, reg: "12a80g" })).toBe(true);
-    expect(matches(row(), { ...org, reg: "fcra" })).toBe(false);
-    expect(matches(row(), { ...all, reg: "fcra" })).toBe(true);
-  });
-
-  it("applies funder type and approach only to funders", () => {
-    const funder: Filters = { ...all, kind: "funder" };
-    const f = row({ kind: "funder", funder_type: "government", open_call: true });
-    expect(matches(f, { ...funder, ftype: "government", approach: "open" })).toBe(true);
-    expect(matches(f, { ...funder, ftype: "bilateral" })).toBe(false);
-    expect(matches(f, { ...funder, approach: "invites" })).toBe(false);
-    expect(matches(row({ kind: "funder" }), { ...funder, approach: "open" })).toBe(false);
-  });
-
-  it("searches the search text and the name, ignoring case and spaces", () => {
-    const r = row({ name: "Tata Trusts", search: "mumbai water" });
-    expect(matches(r, { ...all, q: "  TATA " })).toBe(true);
-    expect(matches(r, { ...all, q: "water" })).toBe(true);
-    expect(matches(r, { ...all, q: "goa" })).toBe(false);
-  });
-});
-
-describe("present", () => {
-  it("lists each value once, most common first, ties alphabetical", () => {
-    expect(present(["b", "a", "c", "a", "b", "a"])).toEqual(["a", "b", "c"]);
-    expect(present(["z", "y"])).toEqual(["y", "z"]);
-    expect(present([])).toEqual([]);
   });
 });
