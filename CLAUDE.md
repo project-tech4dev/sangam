@@ -311,9 +311,7 @@ relationships and answered seven. Two paths to the same rows also meant two plac
 correct — a data caveat added to the catalog reached `db_query` and not `search_orgs`. The cost
 is latency: a curated lookup was one tool call, the same question in SQL is three to five.
 
-`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) is complete but imported nowhere, and
-the `Settings` fields that feed it — `github_pat`, `github_mcp_url`, `playwright_mcp_url`,
-`mcp_servers` — therefore do nothing. `web.make_web_search` (Tavily) is not an Ask tool, but Sangam
+`web.make_web_search` (Tavily) is not an Ask tool, but Sangam
 Import's `search_public_sources` and the news pipeline use it, so `tavily_api_key` matters.
 
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
@@ -357,6 +355,15 @@ neither catalogued nor in `KNOWN_EXCLUDED`.
 `import-<uuid>`, and the backend, endpoint and prompts keep "ingest"/"Import". Scout is one chat
 thread like Ask: task cards over the composer, sources ticked in the right rail before the first
 message (they answer `choose_sources`, so no card asks mid-run), then every turn inline.
+
+## Code boundaries
+
+The backend refactor (`docs/features/2026-11-05-backend-refactor-plan.md`) adds one rule per PR, each with a check
+in `tests/test_architecture.py`.
+
+- **No dead code (R6).** A function or class defined at the top of a module in `app/` has a caller in `app/`,
+  `seed/` or `scripts/`; a test is not one. Delete it with its tests rather than keeping it "in case". A decorated
+  definition (a route, a `@tool`) and a script's `main()` are exempt, since something else calls them.
 
 ## Conventions
 

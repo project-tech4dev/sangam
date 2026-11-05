@@ -8,7 +8,6 @@ import httpx
 import pytest
 
 from app.ingest import access
-from app.ingest.adapters import _http
 from app.ingest.sources import AccessRule
 from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool
 
@@ -178,50 +177,3 @@ class TestBanner:
 
     def test_canonical_url_is_httpx_form(self):
         assert access.canonical_url("https://Example.org/a/../b") == "https://example.org/b"
-
-
-class TestPoliteClient:
-    @pytest.fixture(autouse=True)
-    def quick(self, monkeypatch):
-        monkeypatch.setattr(_http, "POLITE_DELAY_SECONDS", 0)
-        monkeypatch.setattr(_http, "BACKOFF_SECONDS", (0.0, 0.0))
-
-    def route(self, monkeypatch, handler):
-        real = httpx.AsyncClient
-        fake = SimpleNamespace(AsyncClient=lambda **kw: real(transport=httpx.MockTransport(handler), **kw),
-                               HTTPError=httpx.HTTPError, URL=httpx.URL)
-        monkeypatch.setattr(_http, "httpx", fake)
-
-    async def test_json_is_returned(self, monkeypatch):
-        self.route(monkeypatch, lambda r: httpx.Response(200, json={"ok": True}))
-        assert await _http.get_json("https://api.example.org/x", {"q": 1}) == {"ok": True}
-
-    async def test_a_rate_limit_backs_off_then_succeeds(self, monkeypatch):
-        answers = iter([httpx.Response(429), httpx.Response(200, json=[1])])
-        self.route(monkeypatch, lambda r: next(answers))
-        assert await _http.get_json("https://api.example.org/x", delay=0) == [1]
-
-    async def test_a_rate_limit_that_never_ends_is_unavailable(self, monkeypatch):
-        self.route(monkeypatch, lambda r: httpx.Response(503))
-        with pytest.raises(_http.SourceUnavailable, match="did not recover after 2 retries"):
-            await _http.get_json("https://api.example.org/x")
-
-    async def test_an_error_status_is_unavailable(self, monkeypatch):
-        self.route(monkeypatch, lambda r: httpx.Response(404))
-        with pytest.raises(_http.SourceUnavailable, match="HTTP 404"):
-            await _http.get_json("https://api.example.org/x")
-
-    async def test_a_non_json_body_is_unavailable(self, monkeypatch):
-        self.route(monkeypatch, lambda r: httpx.Response(200, text="<html>"))
-        with pytest.raises(_http.SourceUnavailable, match="non-JSON"):
-            await _http.get_json("https://api.example.org/x")
-
-    async def test_an_unreachable_host_is_unavailable(self, monkeypatch):
-        def boom(request):
-            raise httpx.ConnectError("refused")
-        self.route(monkeypatch, boom)
-        with pytest.raises(_http.SourceUnavailable, match="could not be reached"):
-            await _http.get_json("https://api.example.org/x")
-
-    def test_content_hash_is_sha256(self):
-        assert _http.content_hash("a") == "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
