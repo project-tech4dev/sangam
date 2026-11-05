@@ -83,11 +83,11 @@ _NOTE_HELP = ("REQUIRED with a theme: the evidence in a few words. Left empty, i
               "classified_by names, and the finding is refused if that field is empty too")
 
 
-def _drop_null_extras(cls: type[BaseModel], data: Any) -> Any:
-    """A null under a key the model lacks says nothing, so it is dropped rather than refused."""
+def _drop_null_extras(cls: type[BaseModel], data: Any, also: frozenset[str] = frozenset()) -> Any:
+    """A null under a key the model lacks says nothing, so it is dropped rather than refused; so is a key in `also`."""
     if not isinstance(data, dict):
         return data
-    return {k: v for k, v in data.items() if v is not None or k in cls.model_fields}
+    return {k: v for k, v in data.items() if k in cls.model_fields or (v is not None and k not in also)}
 
 
 def _code(v: Any) -> Any:
@@ -533,6 +533,11 @@ class MetricFinding(FindingBase, OptionallySourced):
         return self
 
 
+# An office's name ends in one of these, and its mailbox may repeat it: "Company Secretariat", secretariat@.
+OFFICE_WORDS = frozenset({"secretariat", "office", "desk", "cell", "team", "department", "division", "committee",
+                          "foundation", "trust", "helpdesk", "csr"})
+
+
 class ContactFinding(FindingBase, OptionallySourced):
     """Publicly disclosed CSR roles only. No private personal data."""
 
@@ -570,7 +575,7 @@ class ContactFinding(FindingBase, OptionallySourced):
             )
         local = self.email.split("@")[0].lower()
         surname = self.name.split()[-1].lower().strip(".")
-        if len(surname) > 2 and surname in local.replace(".", "").replace("-", ""):
+        if len(surname) > 2 and surname not in OFFICE_WORDS and surname in local.replace(".", "").replace("-", ""):
             raise ValueError(
                 f"{self.email!r} contains {surname!r} from the contact's own name, so it "
                 f"reads as a personal address rather than a shared one."
@@ -842,7 +847,8 @@ class Gap(BaseModel):
     @model_validator(mode="after")
     def _year_only_when_yearly(self) -> Gap:
         if self.fiscal_year and self.concept not in YEARLY:
-            raise ValueError(f"{self.concept!r} is not by year; leave fiscal_year empty")
+            # The year means nothing on this concept, so it is kept as words rather than refused.
+            self.detail, self.fiscal_year = f"{self.detail} ({self.fiscal_year})", None
         if self.fiscal_year and not FISCAL_YEAR.match(self.fiscal_year):
             raise ValueError(f"fiscal_year must look like 'FY2023-24', got {self.fiscal_year!r}")
         return self
@@ -903,7 +909,8 @@ class EntityResearch(BaseModel):
         description="facts a source states that no concept has a field for: never dropped, never forced into one",
     )
 
-    _nulls = model_validator(mode="before")(classmethod(_drop_null_extras))
+    # A save carrying its own summary's counts (fact_count, slug) is still the save; the counts are computed.
+    _nulls = model_validator(mode="before")(classmethod(lambda cls, data: _drop_null_extras(cls, data, SUMMARY_ONLY)))
 
     @field_validator("years")
     @classmethod
@@ -999,6 +1006,9 @@ class ResearchSummary(BaseModel):
     concepts_found: list[str] = Field(default_factory=list)
     not_found: list[str] = Field(default_factory=list)
     saved: bool = Field(default=False, description="true only if save_research returned success")
+
+
+SUMMARY_ONLY = frozenset(ResearchSummary.model_fields) - frozenset(EntityResearch.model_fields)
 
 
 
