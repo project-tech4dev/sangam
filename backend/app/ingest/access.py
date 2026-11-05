@@ -9,6 +9,7 @@ from urllib.robotparser import RobotFileParser
 import httpx
 
 from app.core.egress import guarded_client, private_address_refusal
+from app.db.pool import get_pool
 from app.ingest.adapters._http import HEADERS, USER_AGENT
 from app.ingest.sources import AccessRule, rule_for_url
 
@@ -122,8 +123,6 @@ async def _note_proposal(host: str, url: str, *, robots_result: str) -> None:
     """Best-effort: a proposal is a note, and failing to take it must never
     block a read or raise into the agent."""
     try:
-        from app.db.pool import get_pool
-
         pool = get_pool()
         # Normalised the same way sources_on_host() matches, so promoting this
         # into the JSON with the bare host actually resolves the proposal.

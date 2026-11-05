@@ -129,17 +129,17 @@ def _extract(data: bytes | None, key: str) -> tuple[str | None, str | None]:
     digest = storage.content_hash(data)
     name = key.lower()
     if name.endswith((".docx", ".xlsx")):
-        from app.ingest import office
+        from app.core import extract
 
         try:
-            text = "\n\n".join(office.docx_paragraphs(data)) if name.endswith(".docx") else office.xlsx_markdown(data)
+            text = "\n\n".join(extract.docx_paragraphs(data)) if name.endswith(".docx") else extract.xlsx_markdown(data)
         except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
             logger.warning("no text from %s (%s: %s)", key, type(exc).__name__, exc)
             return None, digest
         return (text or None), digest
     if not name.endswith(".pdf"):
         return None, digest
-    from app.agent.tools.files import extract_pdf_text  # agent-tool module; only an upload needs it
+    from app.core.extract import extract_pdf_text
 
     with tempfile.NamedTemporaryFile(suffix=".pdf") as handle:
         handle.write(data)

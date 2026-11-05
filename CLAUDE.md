@@ -364,6 +364,13 @@ in `tests/test_architecture.py`.
 - **No dead code (R6).** A function or class defined at the top of a module in `app/` has a caller in `app/`,
   `seed/` or `scripts/`; a test is not one. Delete it with its tests rather than keeping it "in case". A decorated
   definition (a route, a `@tool`) and a script's `main()` are exempt, since something else calls them.
+- **Only a builder imports from `tools/` (R1).** `agent/build.py`, `ingest/agent.py`, `proposals/agent.py` and
+  `ingest/news/verify.py` build agents and may import tools; a route, a middleware or another module imports the
+  shared helper from where it lives instead (`ingest/catalog_save.py`, `core/extract.py`, `proposals/records.py`).
+  Ask's SQL engine under `agent/tools/sql/` is not a tool and is exempt.
+- **An import inside a function needs a reason (R2).** Routes, `lifespan`, `migrate`, `integrations/` and the
+  news and calls crons import lazily to keep a cold start light. Anywhere else the import goes at the top; a
+  circular import is fixed, not hidden, and the four left are listed in `CYCLES`, which may only shrink.
 
 ## Conventions
 

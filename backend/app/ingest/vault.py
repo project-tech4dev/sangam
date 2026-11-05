@@ -12,7 +12,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from app.agent.tools.files import extract_pdf_text
+from app.core import extract
+from app.core.extract import extract_pdf_text
 from app.ingest import staff_sources
 from app.ingest.source_guards import PRIVATE_SOURCE_DOMAIN
 from app.ingest.sources import url_host
@@ -122,17 +123,13 @@ def _windowed(doc: dict[str, Any], items: list[str], start: int, unit: str, head
 
 
 def docx_text(doc: dict[str, Any], data: bytes, start: int) -> str:
-    from app.ingest import office
-
-    paras = office.docx_paragraphs(data)
+    paras = extract.docx_paragraphs(data)
     return _windowed(doc, paras, start, "para", f"{len(paras)} paragraphs (start_page counts paragraphs in a Word "
                                                 f"file). Cite a fact by its paragraph marker.")
 
 
 def plain_text(doc: dict[str, Any], data: bytes, start: int) -> str:
-    from app.ingest import office
-
-    lines = office.text_lines(data)
+    lines = extract.text_lines(data)
     return _windowed(doc, lines, start, "line", f"{len(lines)} lines (start_page counts lines in a text file). "
                                                 f"Cite a fact by its line marker.")
 

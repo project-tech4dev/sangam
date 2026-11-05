@@ -69,6 +69,7 @@ from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, reso
 from app.ingest.taxonomy import clause_for
 from app.ingest.tools.research_tools import save_research
 from app.ingest.writer import CSR_YEAR_UPDATABLE, _diff, slugify
+from tests.cov_ingest_fakes import patch_catalog
 
 NOW = datetime(2026, 9, 29, tzinfo=UTC)
 
@@ -888,10 +889,10 @@ class TestResearchGoalsAsksTheRightTables:
             return TestResearchGoalsAsksTheRightTables._Cursor()
 
     async def _sql_for(self, kind):
-        from app.ingest.tools.catalog_tools import _held_per_concept
+        from app.ingest.catalog_save import held_per_concept
 
         conn = self._Conn()
-        await _held_per_concept(conn, 7, kind)
+        await held_per_concept(conn, 7, kind)
         return conn.sql
 
     @pytest.mark.parametrize(
@@ -965,7 +966,7 @@ class TestTheWorkingBoardReadsThesePhrases:
             async def connection(self):
                 yield _Conn()
 
-        monkeypatch.setattr(catalog_tools, "get_pool", lambda: _Pool())
+        patch_catalog(monkeypatch, "get_pool", lambda: _Pool())
         out = await catalog_tools.research_goals.ainvoke({"name": "Arpan", "entity_kind": kind})
         # The board's "4 of 13 found" counts these lines.
         assert len(re.findall(r"^\w+ -> ", out, re.MULTILINE)) == len(concepts_for(kind))
@@ -1554,6 +1555,6 @@ class TestTheReviewCardSpeaksPlainly:
         async def none(slug, caller):
             return None
 
-        monkeypatch.setattr("app.ingest.tools.catalog_tools.review_view", none)
+        monkeypatch.setattr("app.ingest.catalog_save.review_view", none)
         async with client_for(ingest_api.router) as client:
             assert (await client.get("/api/ingest/research/nobody/review")).status_code == 404

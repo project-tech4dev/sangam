@@ -11,6 +11,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from app.agent import middleware as mw
 from app.agent.audit import CAVEAT_PREFIX, Audit
 from app.agent.tools.sql.errors import FAILED_PREFIX, PROFILE_REJECTED_PREFIX
+from app.ingest import middleware as imw
 
 
 def _ai(*calls):
@@ -161,24 +162,24 @@ def test_a_warning_without_a_caveat_adds_nothing(monkeypatch, scores):
 # --- staff-last lock ---------------------------------------------------------
 
 def test_staff_rows_requested_by_call_or_result():
-    assert not mw.staff_rows_requested([HumanMessage("q"), _ai(("read_page", {}, "a"))])
-    assert mw.staff_rows_requested([_ai((mw.STAFF_TOOL, {}, "a"))])
-    assert mw.staff_rows_requested([ToolMessage("rows", tool_call_id="a", name=mw.STAFF_TOOL)])
+    assert not imw.staff_rows_requested([HumanMessage("q"), _ai(("read_page", {}, "a"))])
+    assert imw.staff_rows_requested([_ai((imw.STAFF_TOOL, {}, "a"))])
+    assert imw.staff_rows_requested([ToolMessage("rows", tool_call_id="a", name=imw.STAFF_TOOL)])
 
 
 def test_staff_lock_closes_outbound_tools_after_a_staff_read():
-    lock = mw.staff_last_lock()
-    read = {"messages": [_ai((mw.STAFF_TOOL, {}, "s"))]}
+    lock = imw.staff_last_lock()
+    read = {"messages": [_ai((imw.STAFF_TOOL, {}, "s"))]}
     refused = lock.wrap_tool_call(_req("read_page", state=read), _ok)
-    assert refused.content == mw.STAFF_LOCK_REPLY and refused.status == "error"
+    assert refused.content == imw.STAFF_LOCK_REPLY and refused.status == "error"
     assert lock.wrap_tool_call(_req("save_research", state=read), _ok).content == "ran"
     assert lock.wrap_tool_call(_req("read_page"), _ok).content == "ran"
 
 
 async def test_staff_lock_fails_closed_on_unreadable_state():
-    lock = mw.StaffLastLock()
+    lock = imw.StaffLastLock()
     refused = await lock.awrap_tool_call(_req("read_page", state=SimpleNamespace()), _aok)
-    assert refused.content == mw.STAFF_LOCK_REPLY
+    assert refused.content == imw.STAFF_LOCK_REPLY
     clean = SimpleNamespace(messages=[HumanMessage("q")])
     assert (await lock.awrap_tool_call(_req("read_page", state=clean), _aok)).content == "ran"
 
@@ -186,33 +187,31 @@ async def test_staff_lock_fails_closed_on_unreadable_state():
 # --- save questions ----------------------------------------------------------
 
 def test_describe_names_the_slug_and_questions():
-    sq = mw.save_questions()
+    sq = imw.save_questions()
     assert sq._describe({"id": "x", "args": {}}) == "Approve writing every researched organisation to the catalog"
     sq._previews["x"] = {"questions": [1, 2]}
     assert sq._describe({"id": "x", "args": {"slug": "kabil"}}) == "Approve writing kabil to the catalog (2 question(s))"
 
 
 async def test_after_model_previews_each_save_and_forgets_them(monkeypatch):
-    from app.ingest.tools import catalog_tools
-
     async def preview(slug):
         return {"questions": ["q1"], "planned": ["orgs"], "coverage": "8/10"}
 
-    monkeypatch.setattr(catalog_tools, "write_preview", preview)
-    sq = mw.SaveQuestions()
+    monkeypatch.setattr(imw, "write_preview", preview)
+    sq = imw.SaveQuestions()
     seen = {}
 
     def after_model(state, runtime):
         last = state["messages"][-1]
         for call in last.tool_calls:
-            config = sq.interrupt_on[mw.SAVE_TOOL]
+            config = sq.interrupt_on[imw.PROMOTE_TOOL]
             action, _ = sq._create_action_and_config(call, config, state, runtime)
             seen[call["id"]] = action
         return "paused"
 
     monkeypatch.setattr(sq, "after_model", after_model)
-    state = {"messages": [HumanMessage("go"), _ai((mw.SAVE_TOOL, {"slug": "kabil"}, "s1"),
-                                                  (mw.SAVE_TOOL, {"slug": ""}, "s2"),
+    state = {"messages": [HumanMessage("go"), _ai((imw.PROMOTE_TOOL, {"slug": "kabil"}, "s1"),
+                                                  (imw.PROMOTE_TOOL, {"slug": ""}, "s2"),
                                                   ("read_page", {}, "r"))]}
     assert await sq.aafter_model(state, None) == "paused"
     assert seen["s1"]["questions"] == ["q1"] and seen["s1"]["coverage"] == "8/10"
@@ -222,32 +221,32 @@ async def test_after_model_previews_each_save_and_forgets_them(monkeypatch):
 
 
 async def test_after_model_with_no_ai_message(monkeypatch):
-    sq = mw.SaveQuestions()
+    sq = imw.SaveQuestions()
     monkeypatch.setattr(sq, "after_model", lambda state, runtime: None)
     assert await sq.aafter_model({"messages": [HumanMessage("x")]}, None) is None
 
 
 def test_sync_save_drops_model_written_decisions():
-    sq = mw.SaveQuestions()
-    out = sq.wrap_tool_call(_req(mw.SAVE_TOOL, {"slug": "k", "decisions": {"a": 1}}), lambda r: r.tool_call)
+    sq = imw.SaveQuestions()
+    out = sq.wrap_tool_call(_req(imw.PROMOTE_TOOL, {"slug": "k", "decisions": {"a": 1}}), lambda r: r.tool_call)
     assert out["args"] == {"slug": "k", "decisions": {}}
     assert sq.wrap_tool_call(_req("other"), _ok).content == "ran"
 
 
 async def test_async_save_takes_decisions_only_from_a_persons_edit():
-    sq = mw.SaveQuestions()
+    sq = imw.SaveQuestions()
 
     async def echo(r):
         return r.tool_call
 
-    model_wrote = await sq.awrap_tool_call(_req(mw.SAVE_TOOL, {"slug": "k", "decisions": {"a": 1}}), echo)
+    model_wrote = await sq.awrap_tool_call(_req(imw.PROMOTE_TOOL, {"slug": "k", "decisions": {"a": 1}}), echo)
     assert model_wrote["args"]["decisions"] == {}
 
     edited = {"messages": [], "hitl_edited_tool_calls": {
-        "c1": {"name": mw.SAVE_TOOL, "args": {"decisions": {"q1": "yes"}}}}}
-    person = await sq.awrap_tool_call(_req(mw.SAVE_TOOL, {"slug": "k"}, state=edited), echo)
+        "c1": {"name": imw.PROMOTE_TOOL, "args": {"decisions": {"q1": "yes"}}}}}
+    person = await sq.awrap_tool_call(_req(imw.PROMOTE_TOOL, {"slug": "k"}, state=edited), echo)
     assert person["args"] == {"slug": "k", "decisions": {"q1": "yes"}}
 
-    bad = {"messages": [], "hitl_edited_tool_calls": {"c1": {"name": mw.SAVE_TOOL, "args": {"decisions": "x"}}}}
-    assert (await sq.awrap_tool_call(_req(mw.SAVE_TOOL, {}, state=bad), echo))["args"]["decisions"] == {}
+    bad = {"messages": [], "hitl_edited_tool_calls": {"c1": {"name": imw.PROMOTE_TOOL, "args": {"decisions": "x"}}}}
+    assert (await sq.awrap_tool_call(_req(imw.PROMOTE_TOOL, {}, state=bad), echo))["args"]["decisions"] == {}
     assert (await sq.awrap_tool_call(_req("other"), _aok)).content == "ran"

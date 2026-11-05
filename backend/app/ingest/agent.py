@@ -14,7 +14,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results, save_questions, staff_last_lock, tool_errors
+from app.agent.middleware import clear_old_tool_results, tool_errors
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.middleware import (
@@ -32,6 +32,8 @@ from app.ingest.middleware import (
     fallback,
     research_rubric,
     run_plan,
+    save_questions,
+    staff_last_lock,
 )
 from app.ingest.research_records import PromotionReport, ResearchSummary, VaultSummary, WorkbookEntities
 from app.ingest.tools.catalog_tools import (
