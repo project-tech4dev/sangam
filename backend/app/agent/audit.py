@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
-from app.agent.models import resolve_model
+from app.agentkit.models import resolve_model
 
 logger = logging.getLogger(__name__)
 

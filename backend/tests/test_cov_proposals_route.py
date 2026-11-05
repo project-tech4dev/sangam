@@ -252,7 +252,7 @@ def grader(monkeypatch):
         return grade.Graded(covered=[], missing=["Current figures with source and year"])
 
     monkeypatch.setattr(grade, "grade", fake_grade)
-    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: object())
+    monkeypatch.setattr("app.agentkit.models.resolve_model", lambda spec: object())
     return calls
 
 
@@ -299,7 +299,7 @@ def _written(**extra):
 
 @pytest.fixture
 def smoother(monkeypatch):
-    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: object())
+    monkeypatch.setattr("app.agentkit.models.resolve_model", lambda spec: object())
 
     def use(result):
         async def smooth(written, style, model):
@@ -398,7 +398,7 @@ def former(monkeypatch, vault):
     seen = {"reads": 0, "answers": {}, "fail": None}
     monkeypatch.setattr(route, "get_settings", lambda: SimpleNamespace(
         storage_enabled=True, model="m", research_model="r"))
-    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: spec)
+    monkeypatch.setattr("app.agentkit.models.resolve_model", lambda spec: spec)
 
     async def read(pool, template, org_id, model):
         seen["reads"] += 1
@@ -510,7 +510,7 @@ async def test_messages_are_read_from_the_proposal_graph(api, held, monkeypatch)
 
 @pytest.fixture
 def angler(monkeypatch):
-    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: object())
+    monkeypatch.setattr("app.agentkit.models.resolve_model", lambda spec: object())
 
     def use(result):
         async def angles(work, model, avoid):

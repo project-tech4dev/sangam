@@ -32,9 +32,10 @@ def build_verifier(settings) -> Any:
     from deepagents import create_deep_agent
     from deepagents.backends.state import StateBackend
 
-    from app.agent.harness import REQUIRED_MINIMUM, filesystem, install
-    from app.agent.models import resolve_model
-    from app.ingest.middleware import ReadingLimit, call_limit, fallback
+    from app.agentkit.harness import REQUIRED_MINIMUM, filesystem, install
+    from app.agentkit.middleware import fallback
+    from app.agentkit.models import resolve_model
+    from app.ingest.middleware import ReadingLimit, call_limit
     from app.ingest.tools.research_tools import read_page, search_public_sources
     from app.integrations.tracing import trace_config
 

@@ -175,7 +175,8 @@ backend/app/
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
   schemas/         Pydantic, one module per resource
-  agent/           build.py (builds the deep agent) · models.py · tools/
+  agentkit/        what every deep agent shares: models.py · harness.py · middleware.py
+  agent/           agent.py (builds Ask Sangam) · tools/
                    instructions.md (the system prompt) · prompt.py (loads it)
   ingest/          agent.py (builds Sangam Import) · instructions.md · skills/
                    tools/ every tool it has, and nothing else in ingest/ is one
@@ -226,7 +227,7 @@ outside any request, still call `get_pool()` directly; Ask Sangam's SQL executor
 caller itself (below).
 
 **Only one file is called `graph`**: `app/agent/tools/graph_tools.py`, the `search_graph` agent
-tool. The deep agent is built in `app/agent/build.py`, and the Graphiti/Neo4j client lifecycle
+tool. The deep agent is built in `app/agent/agent.py`, and the Graphiti/Neo4j client lifecycle
 (`open_graph`, `graph_status`, `client`) lives in `app/integrations/graphiti.py`. Both used to
 be called `graph.py` too, which made tracebacks ambiguous.
 
@@ -244,7 +245,7 @@ route that needs a graph calls `get_graph(app, "ask_graph" | "ingest_graph")`; a
 imports agent code at the top undoes this, so `routes/` imports it inside the function that uses it.
 
 **The agent has exactly six tools, and there is ONE open path to the database.**
-`app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
+`app/agent/agent.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
 `db_query`, `search_graph` and `compare_fit`. Nothing else, and no subagent, so there
 is no `task` tool. `compare_fit` is the one exception to "the model writes its own SELECT": funder
 matching is a fixed checklist, so its queries are fixed too (`app/repositories/matching.py`, in a
@@ -275,12 +276,12 @@ insert (`app.my_match_org_ids()`), with `run_by` their own id; members read. No 
 a run. `compare_fit` refuses in chat for anyone else, by the same rule. Design:
 `docs/features/2026-10-10-funder-match-saved-runs.md`.
 
-That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
+That sentence was false for a while and `app/agentkit/harness.py` is what makes it true again.
 `create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`
 and `execute` — and, whenever any subagent is declared, a `general-purpose` subagent carrying
 **the main agent's entire tool list** under deepagents' generic prompt. Ask Sangam was running
 fifteen tools; Sangam Import twenty-one, with a subagent that could call `run_import_now` and
-`promote_research` under none of its instructions. `app/agent/harness.py` removes both, by
+`promote_research` under none of its instructions. `app/agentkit/harness.py` removes both, by
 two different mechanisms, and the difference matters: a `HarnessProfile` is registered per
 **provider**, so it is global to every agent sharing a model — right for the subagent, wrong for
 tools, since both supervisors need `ls` to find a skill and no subagent may hold it. So
@@ -311,8 +312,8 @@ relationships and answered seven. Two paths to the same rows also meant two plac
 correct — a data caveat added to the catalog reached `db_query` and not `search_orgs`. The cost
 is latency: a curated lookup was one tool call, the same question in SQL is three to five.
 
-`web.make_web_search` (Tavily) is not an Ask tool, but Sangam
-Import's `search_public_sources` and the news pipeline use it, so `tavily_api_key` matters.
+Ask has no web tool. Sangam Import's `search_public_sources` (`research_tools.make_web_search`) and the news
+pipeline call Tavily, so `tavily_api_key` matters.
 
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
@@ -364,13 +365,18 @@ in `tests/test_architecture.py`.
 - **No dead code (R6).** A function or class defined at the top of a module in `app/` has a caller in `app/`,
   `seed/` or `scripts/`; a test is not one. Delete it with its tests rather than keeping it "in case". A decorated
   definition (a route, a `@tool`) and a script's `main()` are exempt, since something else calls them.
-- **Only a builder imports from `tools/` (R1).** `agent/build.py`, `ingest/agent.py`, `proposals/agent.py` and
+- **Only a builder imports from `tools/` (R1).** `agent/agent.py`, `ingest/agent.py`, `proposals/agent.py` and
   `ingest/news/verify.py` build agents and may import tools; a route, a middleware or another module imports the
   shared helper from where it lives instead (`ingest/catalog_save.py`, `core/extract.py`, `proposals/records.py`).
   Ask's SQL engine under `agent/tools/sql/` is not a tool and is exempt.
 - **An import inside a function needs a reason (R2).** Routes, `lifespan`, `migrate`, `integrations/` and the
   news and calls crons import lazily to keep a cold start light. Anywhere else the import goes at the top; a
   circular import is fixed, not hidden, and the four left are listed in `CYCLES`, which may only shrink.
+- **The agents share code through `agentkit/` and `core/`, not each other (R3).** `agentkit/` holds model tiers,
+  the harness and the middleware every deep agent uses (`tool_errors`, `fallback`, `cheap_summarizer`, `AgUiState`).
+  Pitch may use Import's public reading pieces (brief, vault, geography, source rules, reading tools); the list is
+  `SHARED_ACROSS_AGENTS`. Each agent's entry point is its `agent.py`, and `import app.main` must not load
+  `deepagents` or `langchain`.
 
 ## Conventions
 
@@ -403,7 +409,7 @@ product depends on and that a new tool silently breaks:
   `db_query` rows out to a URL.
 
 Adding a tool: write the async function in `app/agent/tools/` with both conventions, register it
-in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asserts every
+in `app/agent/agent.py`, describe it in `app/agent/instructions.md` (a test asserts every
 registered tool is named there), and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name).
 For Sangam Import the four places are the same shape but different files:
@@ -454,7 +460,7 @@ that every field traces to a source.
 there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
 `catalog_tools.py` (what Sangam already holds), `research_tools.py` (the open web),
 `library_tools.py` (public documents Sangam archived), `vault_tools.py` (an org's Doc Vault).
-Both agents register their list in one place — `build.py` and `agent.py` respectively — and
+Both agents register their list in one place, their `agent.py` — and
 a test walks the package to prove every tool defined is also registered.
 
 **Sangam Import has one human-in-the-loop step before it reads anything: `choose_sources`.**

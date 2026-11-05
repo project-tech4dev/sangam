@@ -11,8 +11,8 @@ from typing import Any
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
+from app.agent.agent import build_agent
 from app.agent.audit import CAVEAT_PREFIX, executed_sql
-from app.agent.build import build_agent
 from app.core.config import Settings
 from app.core.security import DEV_USER, _db_identity, chat_user_id
 from app.db.pool import agent_caller, caveats_given

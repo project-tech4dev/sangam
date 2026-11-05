@@ -45,7 +45,7 @@ apply. The researcher's own prompt carries the same notes, since those cannot be
 skill names a funder, a CSO or a file.
 
 Ask Sangam has three of its own, under `backend/app/agent/skills/`, with the
-same mechanism (`app/agent/build.py`): `funder-matching` (how to get from an
+same mechanism (`app/agent/agent.py`): `funder-matching` (how to get from an
 organisation to verdicts), `funder-comparison` (named funders) and
 `funder-shortlist-brief` (the write-up). The judging is `compare_fit`'s, in
 code (`app/matching/rules.py`), so none of the three holds a matching rule.
@@ -120,7 +120,7 @@ path `read_file` resolves. `test_the_route_round_trips` holds it.
 
 **Nothing that writes exists on either agent, or on their subagents.**
 `write_file`, `edit_file`, `delete` and `execute` are gone — see
-`app/agent/harness.py` — so an agent cannot rewrite its own instructions
+`app/agentkit/harness.py` — so an agent cannot rewrite its own instructions
 regardless of backend. `read_file` stays because `FilesystemMiddleware`
 refuses to be constructed without it.
 

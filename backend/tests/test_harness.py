@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 from langchain_core.tools import tool
 
-from app.agent.harness import (
+from app.agentkit.harness import (
     FILESYSTEM_TOOLS,
     REQUIRED_MINIMUM,
     SKILL_READING_TOOLS,
@@ -40,7 +40,7 @@ class TestTheProfileIsInstalled:
     def test_it_resolves_for_the_model_we_run(self):
         from deepagents.profiles.harness.harness_profiles import _harness_profile_for_model
 
-        from app.agent.models import resolve_model
+        from app.agentkit.models import resolve_model
         from app.core.config import get_settings
 
         install()
@@ -55,7 +55,7 @@ class TestTheProfileIsInstalled:
         # middleware instead.
         from deepagents.profiles.harness.harness_profiles import _harness_profile_for_model
 
-        from app.agent.models import resolve_model
+        from app.agentkit.models import resolve_model
         from app.core.config import get_settings
 
         install()
@@ -80,7 +80,7 @@ class TestTheFilesystemMiddlewareIsReplaced:
     def test_only_the_named_tools_exist(self):
         from deepagents.backends.state import StateBackend
 
-        from app.agent.harness import filesystem
+        from app.agentkit.harness import filesystem
 
         assert [t.name for t in filesystem(StateBackend()).tools] == ["read_file"]
         kept = {t.name for t in filesystem(StateBackend(), keep=SKILL_READING_TOOLS).tools}
@@ -95,7 +95,7 @@ class TestTheFilesystemMiddlewareIsReplaced:
 
 class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
     def test_ask_sangam_has_no_subagents(self):
-        from app.agent.build import build_agent
+        from app.agent.agent import build_agent
         from app.core.config import get_settings
 
         tools = build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name
@@ -104,7 +104,7 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         assert "task" not in tools
 
     def test_ask_sangam_holds_its_six_tools_and_the_skill_readers(self):
-        from app.agent.build import build_agent
+        from app.agent.agent import build_agent
         from app.core.config import get_settings
 
         tools = set(build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name)
@@ -114,7 +114,7 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         }
 
     def test_neither_agent_can_write_a_file_or_run_a_command(self):
-        from app.agent.build import build_agent
+        from app.agent.agent import build_agent
         from app.core.config import get_settings
         from app.ingest.agent import build_ingest_agent
 

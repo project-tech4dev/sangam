@@ -12,7 +12,7 @@ from app.db.pool import get_pool
 from app.ingest import vault
 from app.ingest.brief import headline, record
 from app.ingest.source_guards import is_private_source
-from app.ingest.tools.library_tools import READABLE, _archived
+from app.ingest.tools.library_tools import READABLE, archived
 from app.ingest.vault import MAX_BYTES
 from app.integrations import storage
 from app.proposals import context, research, steps
@@ -93,7 +93,7 @@ async def _public_file(document_id: int, where: str, args: tuple[Any, ...], star
     data = await storage.download(*parts, max_bytes=MAX_BYTES) if parts else None
     if data is None:
         return f"Document {document_id} could not be downloaded."
-    return await asyncio.to_thread(_archived, dict(doc), data, start_page, end_page)
+    return await asyncio.to_thread(archived, dict(doc), data, start_page, end_page)
 
 
 @tool

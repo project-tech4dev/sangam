@@ -13,7 +13,7 @@ from langgraph.errors import GraphBubbleUp
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
-from app.agent.models import resolve_model
+from app.agentkit.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.ingest import run_sources

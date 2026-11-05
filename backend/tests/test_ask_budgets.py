@@ -49,7 +49,7 @@ class TestModelCallCap:
 def _stack(monkeypatch, **env):
     import deepagents.graph
 
-    from app.agent.build import build_agent
+    from app.agent.agent import build_agent
     from app.core.config import Settings
 
     seen: list = []
