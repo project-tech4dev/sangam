@@ -13,7 +13,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.types import Command
 
-from app.agent.harness import filesystem
+from app.agentkit.harness import filesystem
 from app.core.security import CallerScope
 from app.ingest import catalog_save, review, vault
 from app.ingest.middleware import DropFilesOnExit

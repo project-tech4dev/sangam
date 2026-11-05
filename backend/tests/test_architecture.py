@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import ast
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -13,9 +15,19 @@ APP = BACKEND / "app"
 CALLERS = [APP, REPO / "seed", REPO / "scripts"]
 
 # R1: the modules that build an agent, and so may import its tools.
-BUILDERS = {"app/agent/build.py", "app/ingest/agent.py", "app/proposals/agent.py", "app/ingest/news/verify.py"}
+BUILDERS = {"app/agent/agent.py", "app/ingest/agent.py", "app/proposals/agent.py", "app/ingest/news/verify.py"}
 # Ask's SQL engine and the catalog every agent reads live under agent/tools/sql/ but are not tools.
 NOT_TOOLS = "app.agent.tools.sql"
+
+# R3: the three agents, and what one may import from another. Shared code lives in agentkit/ and core/.
+AGENTS = ("agent", "ingest", "proposals")
+SHARED_ACROSS_AGENTS = (
+    "app.agent.tools.sql.catalog",  # the SQL catalog: Ask's allowlist, which Import also reads
+    # Pitch reads with Import's public brief, vault, places, source rules and reading tools.
+    "app.ingest.brief", "app.ingest.vault", "app.ingest.geography", "app.ingest.access", "app.ingest.run_sources",
+    "app.ingest.source_guards", "app.ingest.tools.research_tools", "app.ingest.tools.library_tools",
+    "app.ingest.middleware.RunSources",
+)
 
 # R2: where an import inside a function is the point, to keep a cold start or a cron job light.
 COLD_START = ("app/api/routes/", "app/core/lifespan.py", "app/db/migrate.py", "app/integrations/", "app/ingest/news/",
@@ -68,6 +80,24 @@ def test_r1_only_a_builder_imports_from_tools():
         if ".tools." in f"{target}." and not target.startswith(NOT_TOOLS)
     )
     assert not wrong, "only an agent's builder imports from tools/ (R1); move the helper out:\n" + "\n".join(wrong)
+
+
+def test_r3_an_agent_imports_another_only_through_its_public_pieces():
+    wrong = []
+    for path in APP.rglob("*.py"):
+        home = _rel(path).split("/")[1]
+        if home not in AGENTS:
+            continue
+        wrong += [f"{_rel(path)}:{node.lineno} {target}" for node, target in _imports(ast.parse(path.read_text()))
+                  if target.split(".")[1] in AGENTS and target.split(".")[1] != home
+                  and not target.startswith(SHARED_ACROSS_AGENTS)]
+    assert not wrong, "move shared code to agentkit/ or core/ (R3):\n" + "\n".join(sorted(wrong))
+
+
+def test_r3_a_cold_start_does_not_load_the_agent_stack():
+    probe = "import sys, app.main; print(sorted(m for m in ('deepagents', 'langchain') if m in sys.modules))"
+    out = subprocess.run([sys.executable, "-c", probe], cwd=BACKEND, capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "[]", "app.main imported the agent stack; import it inside the route that needs it"
 
 
 def test_r2_an_import_inside_a_function_has_a_reason():

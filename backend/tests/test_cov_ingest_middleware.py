@@ -12,6 +12,7 @@ from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from pydantic import ValidationError
 
+from app.agentkit import middleware as kit
 from app.ingest import middleware as mw
 from app.ingest import run_sources
 from app.ingest.run_sources import Sources
@@ -355,9 +356,9 @@ class TestRubric:
 
 class TestBuilders:
     def test_fallback_picks_the_first_different_model(self, monkeypatch):
-        monkeypatch.setattr(mw, "resolve_model", lambda name: FakeListChatModel(responses=[name]))
-        assert mw.fallback("a", "a", "", "b", "c")[0].models[0].responses == ["b"]
-        assert mw.fallback("a", "a", "") == []
+        monkeypatch.setattr(kit, "resolve_model", lambda name: FakeListChatModel(responses=[name]))
+        assert kit.fallback("a", "a", "", "b", "c")[0].models[0].responses == ["b"]
+        assert kit.fallback("a", "a", "") == []
 
     def test_call_limit_plan_and_summarizer(self):
         assert mw.call_limit(5).run_limit == 5

@@ -12,14 +12,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import httpx
 import trafilatura
-from langchain_core.tools import tool
+from langchain_core.tools import BaseTool, tool
+from langchain_tavily import TavilySearch
 
-from app.agent.tools.files import _safe_name, downloads_dir
-from app.agent.tools.web import make_web_search
 from app.core import extract
 from app.core.config import get_settings
 from app.core.egress import TRUST
@@ -36,8 +36,19 @@ from app.ingest.sources import rule_for_url
 from app.ingest.staff_sources import is_staff_source_url
 from app.ingest.writer import slugify
 from app.integrations import storage
+from app.integrations.storage import _safe_name
 
 logger = logging.getLogger(__name__)
+
+
+def downloads_dir() -> Path:
+    directory = Path(get_settings().downloads_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def make_web_search(api_key: str, max_results: int = 5) -> BaseTool:
+    return TavilySearch(max_results=max_results, tavily_api_key=api_key)
 
 MAX_DOWNLOAD_MB = 60
 WORD = "wordprocessingml"  # in a .docx's content type

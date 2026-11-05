@@ -339,7 +339,7 @@ columns `authenticated` can SELECT (`org_identifiers.evidence_document_id` left 
 ### 5. The four tools
 
 `db_list_tables()` · `db_describe_table(tables: str)` · `db_profile_column(table, column)` ·
-`db_query(sql: str, purpose: str)`. Registered in `app/agent/build.py`. The repo's tool
+`db_query(sql: str, purpose: str)`. Registered in `app/agent/agent.py`. The repo's tool
 conventions apply unchanged — never raise, return error strings, cite every row.
 
 **No `check_sql` tool.** Validation is folded into `db_query` so it cannot be skipped, and a

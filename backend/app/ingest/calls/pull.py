@@ -62,7 +62,7 @@ class Deps:
 
     @classmethod
     def from_settings(cls, s) -> Deps:
-        from app.agent.models import resolve_model
+        from app.agentkit.models import resolve_model
 
         return cls(model=resolve_model(s.utility_model), api_key=s.tavily_api_key)
 

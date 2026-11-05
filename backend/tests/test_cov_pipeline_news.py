@@ -437,7 +437,7 @@ class TestStories:
 
 class TestDepsAndHelpers:
     def test_from_settings(self, monkeypatch):
-        from app.agent import models
+        from app.agentkit import models
         monkeypatch.setattr(models, "resolve_model", lambda name: f"m:{name}")
         monkeypatch.setattr(news_verify, "build_verifier", lambda s: "verifier")
         s = pipeline.get_settings().model_copy(update={"news_verify_max": 3, "utility_model": "u",
@@ -467,7 +467,7 @@ class TestVerify:
     def test_build_verifier_is_read_only(self, monkeypatch):
         import deepagents
 
-        from app.agent import models
+        from app.agentkit import models
         seen = {}
 
         class Agent:

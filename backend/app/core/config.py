@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     langfuse_secret_key: str = ""
     langfuse_host: str = "https://cloud.langfuse.com"
 
-    # Where download_file saves what it fetches, and read_pdf reads from.
+    # Where Import's research tools save the files they fetch.
     downloads_dir: str = "/tmp/sangam-downloads"
 
     # Supabase Storage: the provenance archive for fetched documents and the

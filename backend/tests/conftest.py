@@ -82,8 +82,9 @@ def build_import(monkeypatch):
 
     from langchain_core.language_models.fake_chat_models import FakeListChatModel
 
+    from app.agentkit import middleware
     from app.core.config import Settings
-    from app.ingest import agent, middleware
+    from app.ingest import agent
 
     def fake(spec: str) -> FakeListChatModel:
         return FakeListChatModel(responses=["ok"], name=spec)
