@@ -6,17 +6,13 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from importlib.resources import files
-from typing import Any, NotRequired
+from typing import Any
 
-from deepagents.backends.protocol import BackendProtocol
 from deepagents.middleware.rubric import GraderResponse, RubricEvaluation, RubricMiddleware
-from deepagents.middleware.summarization import SummarizationMiddleware, compute_summarization_defaults
 from langchain.agents.middleware import (
     AgentMiddleware,
-    AgentState,
     HumanInTheLoopMiddleware,
     ModelCallLimitMiddleware,
-    ModelFallbackMiddleware,
     ModelRequest,
     ModelResponse,
     TodoListMiddleware,
@@ -26,7 +22,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, BaseMessage, SystemMessage, ToolMessage
 from pydantic import BaseModel, ValidationError
 
-from app.agent.models import resolve_model
+from app.agentkit.middleware import AgUiState
 from app.ingest import run_sources
 from app.ingest.caller import caller_note, scope
 from app.ingest.catalog_save import write_preview
@@ -54,8 +50,6 @@ PLAN_PROMPT = (
 )
 PLAN_TOOL = ("Write or replace the run's plan: every todo, each pending, in_progress or completed. "
              "See `write_todos` in your instructions.")
-# Haiku's window is 200k; the summary prompt and its answer need the rest.
-SUMMARY_INPUT_TOKENS = 150_000
 
 RUBRIC = (files("app.ingest") / "prompts" / "research_rubric.md").read_text(encoding="utf-8")
 
@@ -64,12 +58,6 @@ def append_to_system_message(system: SystemMessage | None, text: str) -> SystemM
     """A text block after the system message's own; ours, since deepagents keeps its copy private."""
     blocks: list[Any] = list(system.content_blocks) if system else []
     return SystemMessage(content_blocks=[*blocks, {"type": "text", "text": f"\n\n{text}" if blocks else text}])
-
-
-def fallback(primary: str, *candidates: str) -> list[ModelFallbackMiddleware]:
-    """The first candidate that differs from `primary`, tried when its call fails; none if all match."""
-    spare = next((c for c in candidates if c and c != primary), None)
-    return [ModelFallbackMiddleware(resolve_model(spare))] if spare else []
 
 
 class ReadingLimit(AgentMiddleware):
@@ -272,14 +260,6 @@ class CallerNote(AgentMiddleware):
 TICKED_SOURCES = "Sources the person ticked for this Import run"
 
 
-class _AgUiState(AgentState):
-    pass
-
-
-# The key ag-ui-langgraph writes the client's context to; LangGraph drops a key no schema declares.
-_AgUiState.__annotations__["ag-ui"] = NotRequired[dict[str, Any]]
-
-
 def _field(item: Any, key: str) -> Any:
     # ag-ui-langgraph stores its pydantic Context objects, not dicts.
     return item.get(key) if isinstance(item, dict) else getattr(item, key, None)
@@ -333,7 +313,7 @@ def _ai_messages(response: Any) -> list[AIMessage]:
 class TickedSources(AgentMiddleware):
     """The person's ticks answer choose_sources: told to the model, and written into its call whatever it passed."""
 
-    state_schema = _AgUiState
+    state_schema = AgUiState
 
     def _with_note(self, request: ModelRequest) -> ModelRequest:
         note = ticked_note(request.state)
@@ -521,19 +501,6 @@ def research_rubric(grader: BaseChatModel) -> ResearchRubric:
 def call_limit(limit: int) -> ModelCallLimitMiddleware:
     """A hard stop on a looping run. Ending leaves no structured summary; the task tool falls back to its text."""
     return ModelCallLimitMiddleware(run_limit=limit, exit_behavior="end")
-
-
-def cheap_summarizer(own: BaseChatModel, summarizer: BaseChatModel, backend: BackendProtocol) -> SummarizationMiddleware:
-    """Replaces the agent's own summarizer by name: same thresholds as `own` gets today, written by `summarizer`."""
-    defaults = compute_summarization_defaults(own)
-    return SummarizationMiddleware(
-        model=summarizer,
-        backend=backend,
-        trigger=defaults["trigger"],
-        keep=defaults["keep"],
-        truncate_args_settings=defaults["truncate_args_settings"],
-        trim_tokens_to_summarize=SUMMARY_INPUT_TOKENS,
-    )
 
 
 def run_plan() -> TodoListMiddleware:

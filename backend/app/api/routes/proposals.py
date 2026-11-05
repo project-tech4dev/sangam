@@ -139,7 +139,7 @@ async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, to:
 async def _grade_done(work: dict, changes: dict[str, Any],
                       rev: dict[str, int]) -> dict[str, list[str] | None]:
     """Each part marked Done, graded on its text; skipped when stale or already graded on that text."""
-    from app.agent.models import resolve_model
+    from app.agentkit.models import resolve_model
     from app.proposals import grade
 
     out: dict[str, list[str] | None] = {}
@@ -228,7 +228,7 @@ def _names(row: dict) -> set[str]:
 @router.post("/{proposal_id}/polish", response_model=SavedOut,
              summary="Smooth the language; refused if any figure, place, name or gap changed")
 async def polish_language(proposal_id: int, pool: PoolDep, principal: Principal) -> SavedOut:
-    from app.agent.models import resolve_model  # the model stack loads only when it is used
+    from app.agentkit.models import resolve_model  # the model stack loads only when it is used
     from app.proposals import polish
 
     row = await _editable(pool, proposal_id)
@@ -253,7 +253,7 @@ async def polish_language(proposal_id: int, pool: PoolDep, principal: Principal)
 @router.get("/{proposal_id}/research/angles", response_model=ResearchAnglesOut,
             summary="What research would look into from the case, for the person to edit before searching")
 async def research_angles(proposal_id: int, pool: PoolDep, principal: Principal) -> ResearchAnglesOut:
-    from app.agent.models import resolve_model  # the model stack loads only when it is used
+    from app.agentkit.models import resolve_model  # the model stack loads only when it is used
 
     row = await _editable(pool, proposal_id)
     if missing := research.not_ready(row["work"]):
@@ -392,7 +392,7 @@ async def save_version(proposal_id: int, pool: PoolDep, principal: Principal, bo
 
 async def _fill_form(pool: PoolDep, proposal_id: int, row: dict, written: list) -> tuple[dict, list[fill.Filled]]:
     """The funder's form, read once and kept, with every heading filled from the written parts or marked."""
-    from app.agent.models import resolve_model  # the model stack loads only when it is used
+    from app.agentkit.models import resolve_model  # the model stack loads only when it is used
 
     work, settings = row["work"], get_settings()
     template = work.get("template")

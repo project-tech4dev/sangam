@@ -9,7 +9,7 @@ from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.tools import tool
 
-from app.agent.harness import install
+from app.agentkit.harness import install
 from tests.evals.import_harness import ToolCalls, call_failures
 
 

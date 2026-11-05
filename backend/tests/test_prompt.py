@@ -50,7 +50,7 @@ def test_prompt_is_loaded_not_empty():
 def test_prompt_names_every_registered_tool():
     """Routing rules reference tools by their exact Python identifier, so a renamed or newly added tool
     leaves the prompt pointing at nothing — or"""
-    from app.agent.build import TOOLS
+    from app.agent.agent import TOOLS
 
     missing = [t.name for t in TOOLS if t.name not in SYSTEM_PROMPT]
     assert not missing, f"registered but never mentioned in instructions.md: {missing}"

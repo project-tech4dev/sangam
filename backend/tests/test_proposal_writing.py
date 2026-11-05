@@ -146,7 +146,7 @@ class TestWritingInPlace:
             return grade.Graded(covered=[], missing=[])
 
         monkeypatch.setattr(grade, "grade", graded)
-        monkeypatch.setattr("app.agent.models.resolve_model", lambda name: None)
+        monkeypatch.setattr("app.agentkit.models.resolve_model", lambda name: None)
         work = {"sections": {"A3": {"text": "held"}, "A4": {"text": "x"}}}
         out = await route._grade_done(work, {"sections.A3.done": True, "sections.A4.done": False,
                                              "sections.A2.done": True}, {"A3": 0, "A4": 0, "A2": 0})

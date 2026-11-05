@@ -198,7 +198,7 @@ class TestOutcome:
         assert pull.match_line({"added": 2, "orgs": 3, "orgs_without_theme": 1}).startswith("-- 2 new matches for 3")
 
     def test_deps_from_settings(self, monkeypatch):
-        from app.agent import models
+        from app.agentkit import models
         monkeypatch.setattr(models, "resolve_model", lambda name: f"model:{name}")
         s = type("S", (), {"utility_model": "haiku", "tavily_api_key": "k"})()
         assert pull.Deps.from_settings(s) == pull.Deps(model="model:haiku", api_key="k")

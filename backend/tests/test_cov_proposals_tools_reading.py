@@ -212,7 +212,7 @@ class TestFunderDocuments:
             return "page text"
 
         monkeypatch.setattr(storage, "download", download)
-        monkeypatch.setattr(rt, "_archived", pdf)
+        monkeypatch.setattr(rt, "archived", pdf)
         out = await rt.read_funder_document.ainvoke({"document_id": 12, "start_page": 3, "end_page": 4})
         assert out == "page text"
         assert seen == {"where": (storage.SOURCE_ARCHIVE, "a/b.pdf"), "pages": (12, b"%PDF", 3, 4)}
