@@ -38,8 +38,7 @@ async def list_documents(
 ) -> Page[DocumentOut]:
     rows, total = await repo.list_documents(pool, limit=page.limit, offset=page.offset,
                                             org=org, funder=funder, doc_type=doc_type, user_id=user_id)
-    return Page(items=[DocumentOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, DocumentOut)
 
 
 # --- the Doc Vault ---------------------------------------------------------

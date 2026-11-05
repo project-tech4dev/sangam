@@ -3,6 +3,8 @@ from __future__ import annotations
 from psycopg.errors import ForeignKeyViolation
 from psycopg_pool import AsyncConnectionPool
 
+from app.repositories.paging import fetch_page
+
 # Whitelist of PATCH-able columns; PATCH builds its SET list only from these.
 UPDATABLE = ("name", "role", "kind", "email", "phone", "verified", "notes")
 
@@ -20,13 +22,9 @@ async def list_contacts(pool: AsyncConnectionPool, *, limit: int, offset: int,
       AND (%(kind)s::text IS NULL OR c.kind = %(kind)s)
       AND (%(verified)s::boolean IS NULL OR c.verified = %(verified)s)
     ORDER BY c.name
-    LIMIT %(limit)s OFFSET %(offset)s
     """
-    params = {"limit": limit, "offset": offset, "org": org, "funder": funder,
-              "kind": kind, "verified": verified}
-    async with pool.connection() as conn:
-        rows = await (await conn.execute(sql, params)).fetchall()
-    return rows, (rows[0]["total"] if rows else 0)
+    params = {"org": org, "funder": funder, "kind": kind, "verified": verified}
+    return await fetch_page(pool, sql, params, limit=limit, offset=offset)
 
 
 async def get_contact(pool: AsyncConnectionPool, contact_id: int) -> dict | None:
