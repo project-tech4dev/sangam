@@ -6,7 +6,7 @@ import difflib
 from collections.abc import Sequence
 from typing import Any
 
-from app.agent.tools.sql.catalog import COLUMNS, TABLE_NAMES
+from app.ask.tools.sql.catalog import COLUMNS, TABLE_NAMES
 
 MAX_MESSAGE_CHARS = 1_500
 _CARET_WINDOW = 40

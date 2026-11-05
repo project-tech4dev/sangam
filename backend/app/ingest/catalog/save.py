@@ -11,7 +11,7 @@ from typing import Any
 
 from psycopg.errors import UniqueViolation
 
-from app.agent.tools.sql.catalog import CATALOG
+from app.ask.tools.sql.catalog import CATALOG
 from app.core.security import CallerScope
 from app.db.pool import get_pool
 from app.ingest import brief

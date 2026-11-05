@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from app.agent import middleware as mw
+from app.ask import middleware as mw
 
 
 def _fit(i: int, org_id: int = 8, funder_ids: list[int] | None = None) -> AIMessage:
@@ -49,7 +49,7 @@ class TestModelCallCap:
 def _stack(monkeypatch, **env):
     import deepagents.graph
 
-    from app.agent.agent import build_agent
+    from app.ask.agent import build_agent
     from app.core.config import Settings
 
     seen: list = []

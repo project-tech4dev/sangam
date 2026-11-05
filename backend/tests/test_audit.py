@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from app.agent import audit as audit_mod
-from app.agent.audit import Audit, audit_turn, collect_turn, executed_sql
+from app.ask import audit as audit_mod
+from app.ask.audit import Audit, audit_turn, collect_turn, executed_sql
 
 MODEL = "anthropic:claude-haiku-4-5"
 
@@ -138,7 +138,7 @@ class TestFailsOpen:
 def test_an_appended_caveat_is_not_mistaken_for_the_answer():
     """The caveat is a second AIMessage. Anything reading 'the last AI message' would audit the caveat
     instead of the answer — and the eval harness would"""
-    from app.agent.audit import CAVEAT_PREFIX
+    from app.ask.audit import CAVEAT_PREFIX
 
     messages = turn() + [AIMessage(content=f"{CAVEAT_PREFIX} the SQL has no state filter")]
     _, _, _, answer = collect_turn(messages)

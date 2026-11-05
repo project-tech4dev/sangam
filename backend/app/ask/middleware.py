@@ -11,8 +11,8 @@ from langchain.agents.middleware import (
 )
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
-from app.agent.audit import CAVEAT_PREFIX, audit_turn
-from app.agent.tools.sql.errors import (
+from app.ask.audit import CAVEAT_PREFIX, audit_turn
+from app.ask.tools.sql.errors import (
     FAILED_PREFIX,
     PROFILE_FAILED_PREFIX,
     PROFILE_REJECTED_PREFIX,

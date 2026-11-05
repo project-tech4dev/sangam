@@ -8,7 +8,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from app.agent.tools.sql.validator import CitationPlan, ProvenancePlan
+from app.ask.tools.sql.validator import CitationPlan, ProvenancePlan
 
 MAX_CELL_CHARS = 200
 MAX_OUTPUT_CHARS = 6_000

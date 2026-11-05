@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.agent.tools import matching_tools
+from app.ask.tools import matching_tools
 from app.matching import rubric
 from app.matching.assessment import Criterion, Match, Reason
 
