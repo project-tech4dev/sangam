@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from psycopg_pool import AsyncConnectionPool
 
+from app.repositories.paging import fetch_page
+
 
 async def list_tags(pool: AsyncConnectionPool, *, limit: int, offset: int,
                     kind: str | None = None, q: str | None = None) -> tuple[list[dict], int]:
@@ -11,12 +13,8 @@ async def list_tags(pool: AsyncConnectionPool, *, limit: int, offset: int,
     WHERE (%(kind)s::text IS NULL OR t.kind = %(kind)s)
       AND (%(q)s::text IS NULL OR t.label ILIKE '%%' || %(q)s || '%%' OR t.slug ILIKE '%%' || %(q)s || '%%')
     ORDER BY t.label
-    LIMIT %(limit)s OFFSET %(offset)s
     """
-    async with pool.connection() as conn:
-        rows = await (await conn.execute(sql, {"limit": limit, "offset": offset,
-                                               "kind": kind, "q": q})).fetchall()
-    return rows, (rows[0]["total"] if rows else 0)
+    return await fetch_page(pool, sql, {"kind": kind, "q": q}, limit=limit, offset=offset)
 
 
 async def list_locations(pool: AsyncConnectionPool, *, limit: int, offset: int,
@@ -28,12 +26,8 @@ async def list_locations(pool: AsyncConnectionPool, *, limit: int, offset: int,
     WHERE (%(kind)s::text IS NULL OR l.kind = %(kind)s)
       AND (%(parent)s::bigint IS NULL OR l.parent_id = %(parent)s)
     ORDER BY l.kind, l.name
-    LIMIT %(limit)s OFFSET %(offset)s
     """
-    async with pool.connection() as conn:
-        rows = await (await conn.execute(sql, {"limit": limit, "offset": offset,
-                                               "kind": kind, "parent": parent})).fetchall()
-    return rows, (rows[0]["total"] if rows else 0)
+    return await fetch_page(pool, sql, {"kind": kind, "parent": parent}, limit=limit, offset=offset)
 
 
 async def stats(pool: AsyncConnectionPool) -> dict:

@@ -25,8 +25,7 @@ async def list_scores(
 ) -> Page[FitScoreOut]:
     rows, total = await repo.list_scores(pool, limit=page.limit, offset=page.offset,
                                          org=org, funder=funder, rubric=rubric)
-    return Page(items=[FitScoreOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, FitScoreOut)
 
 
 @router.get("/{fit_score_id}", response_model=FitScoreDetail,
