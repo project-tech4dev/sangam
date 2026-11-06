@@ -1,8 +1,7 @@
-/* What a Registry row says, and what each filter matches: presentation over GET /api/registry. */
+/* What a Registry row says: presentation over GET /api/registry/page. Filtering happens on the server. */
 
 import type { RegistryRow } from "@/lib/api";
 import { dayMonth, formatInr, funderTypeLabel, MONTHS } from "@/lib/format";
-import type { Filters } from "./filtersUrl";
 
 export { DEFAULTS, type Filters } from "./filtersUrl";
 
@@ -47,38 +46,4 @@ export function signal(r: RegistryRow): string {
   }
   const line = parts.join(" · ");
   return line.charAt(0).toUpperCase() + line.slice(1);
-}
-
-function worksIn(r: RegistryRow, where: string): boolean {
-  if (where === "any") return true;
-  if (where === "ne") return r.states.some((s) => NORTH_EAST.includes(s));
-  if (where === "out") return r.states.some((s) => !NORTH_EAST.includes(s));
-  return r.states.includes(where);
-}
-
-export function matches(r: RegistryRow, f: Filters): boolean {
-  if (f.kind !== "all" && r.kind !== f.kind) return false;
-  if (f.theme !== "all" && !r.themes.some((t) => t.domain === f.theme)) return false;
-  if (f.population !== "all" && !r.populations.includes(f.population)) return false;
-  if (f.sdg !== "all" && !r.sdgs.includes(f.sdg)) return false;
-  if (!worksIn(r, f.where)) return false;
-  if (f.kind === "org" && f.reg !== "any") {
-    if (f.reg === "csr1" && !r.csr1) return false;
-    if (f.reg === "12a80g" && !r.has_12a_80g) return false;
-    if (f.reg === "fcra" && !r.fcra) return false;
-  }
-  if (f.kind === "funder") {
-    if (f.ftype !== "all" && r.funder_type !== f.ftype) return false;
-    if (f.approach === "open" && !r.open_call) return false;
-    if (f.approach === "invites" && r.intake_mode !== "invitation_only") return false;
-  }
-  const q = f.q.trim().toLowerCase();
-  return !q || r.search.includes(q) || r.name.toLowerCase().includes(q);
-}
-
-/* Each value present in the data, most common first. */
-export function present(values: string[]): string[] {
-  const n = new Map<string, number>();
-  for (const v of values) n.set(v, (n.get(v) ?? 0) + 1);
-  return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([v]) => v);
 }

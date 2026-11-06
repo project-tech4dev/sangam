@@ -7,7 +7,7 @@ export const registryRow = (over: Partial<RegistryRow> = {}): RegistryRow => ({
   kind: "org", id: 1, slug: "org-1", name: "Org One", funder_type: null, place: "Assam", states: ["Assam"],
   themes: [], populations: [], sdgs: [], csr1: false, has_12a_80g: false, fcra: false, intake_mode: null,
   open_call: false, partners: 0, csr_prescribed: null, csr_year: null, press: 0, social: 0, posts_since: null,
-  research_runs: 0, researched_on: null, search: "", ...over,
+  research_runs: 0, researched_on: null, ...over,
 });
 
 export const program = (over: Partial<ProgramNode> = {}): ProgramNode => ({

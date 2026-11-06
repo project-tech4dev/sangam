@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { BucketCards, FilterRow, ListMore, SearchBox, useCursorList, useShowMore } from "@/components/ui/ListPage";
+import { BucketCards, FilterRow, ListMore, SearchBox, useCursorList, usePagedList, useShowMore } from "@/components/ui/ListPage";
 
 describe("BucketCards", () => {
   const items = [
@@ -151,5 +151,73 @@ describe("useCursorList", () => {
     expect(result.current.items).toEqual([]);
     await act(async () => resolveA({ items: [{ id: 4 }], next_cursor: null }));
     expect(result.current.items).toEqual([{ id: 4 }]);
+  });
+});
+
+describe("usePagedList", () => {
+  type Page = { items: { id: number }[]; total: number };
+  const ids = (items: { id: number }[]) => items.map((i) => i.id);
+
+  it("loads from offset 0, then the next offset, until the total is shown", async () => {
+    const load = vi.fn(async (offset: number): Promise<Page> =>
+      offset === 0 ? { items: [{ id: 1 }, { id: 2 }], total: 3 } : { items: [{ id: 3 }], total: 3 },
+    );
+    const { result } = renderHook(() => usePagedList<{ id: number }, Page>("k", load, (i) => i.id, { limit: 2 }));
+    expect(result.current.busy).toBe(true);
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    expect(ids(result.current.items)).toEqual([1, 2]);
+    expect(result.current.total).toBe(3);
+    expect(load).toHaveBeenLastCalledWith(0, 2);
+    act(() => result.current.more!());
+    await waitFor(() => expect(ids(result.current.items)).toEqual([1, 2, 3]));
+    expect(load).toHaveBeenLastCalledWith(2, 2);
+    expect(result.current.more).toBeNull();
+  });
+
+  it("uses the server-rendered first page without fetching it again", async () => {
+    const load = vi.fn(async (): Promise<Page> => ({ items: [{ id: 3 }], total: 3 }));
+    const first = { items: [{ id: 1 }, { id: 2 }], total: 3 };
+    const { result } = renderHook(() => usePagedList<{ id: number }, Page>("k", load, (i) => i.id, { limit: 2, first }));
+    expect(result.current.busy).toBe(false);
+    expect(ids(result.current.items)).toEqual([1, 2]);
+    expect(result.current.last).toBe(first);
+    expect(load).not.toHaveBeenCalled();
+    act(() => result.current.more!());
+    await waitFor(() => expect(ids(result.current.items)).toEqual([1, 2, 3]));
+    expect(load).toHaveBeenCalledWith(2, 2);
+  });
+
+  it("starts again from offset 0 when the key changes, dropping the old key's answer", async () => {
+    const pending: Record<string, (p: Page) => void> = {};
+    const load = (key: string) => () => new Promise<Page>((r) => (pending[key] = r));
+    const { result, rerender } = renderHook(
+      ({ k }) => usePagedList<{ id: number }, Page>(k, load(k), (i) => i.id),
+      { initialProps: { k: "a" } },
+    );
+    rerender({ k: "b" });
+    await act(async () => pending.a({ items: [{ id: 9 }], total: 1 }));
+    expect(result.current.items).toEqual([]);
+    await act(async () => pending.b({ items: [{ id: 4 }], total: 1 }));
+    expect(ids(result.current.items)).toEqual([4]);
+  });
+
+  it("does not show a row twice when the list shifted between pages", async () => {
+    const load = vi.fn(async (offset: number): Promise<Page> =>
+      offset === 0 ? { items: [{ id: 1 }, { id: 2 }], total: 4 } : { items: [{ id: 2 }, { id: 3 }], total: 4 },
+    );
+    const { result } = renderHook(() => usePagedList<{ id: number }, Page>("k", load, (i) => i.id, { limit: 2 }));
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    act(() => result.current.more!());
+    await waitFor(() => expect(ids(result.current.items)).toEqual([1, 2, 3]));
+    expect(result.current.more).toBeNull(); // both pages fetched: offset 4 of 4
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the rows and reports the error when a page fails", async () => {
+    const { result } = renderHook(() =>
+      usePagedList<{ id: number }, Page>("k", () => Promise.reject(new Error("boom")), (i) => i.id),
+    );
+    await waitFor(() => expect(result.current.error).toBe("boom"));
+    expect(result.current.items).toEqual([]);
   });
 });
