@@ -36,7 +36,7 @@ async def registry_page(
 ) -> RegistryPage:
     f = repo.Filters(kind={"cso": "org", "funder": "funder"}.get(kind, "all"), theme=theme, population=population,
                      sdg=sdg, where=where, reg=reg, ftype=ftype, approach=approach, q=q)
-    out = repo.registry_page(await repo.registry_rows(pool, owner), f, limit=page.limit, offset=page.offset)
+    out = await repo.registry_page_sql(pool, owner, f, limit=page.limit, offset=page.offset)
     await _add_research(owner, out["items"])  # the page's rows only, not the whole Registry
     return RegistryPage.model_validate(out)
 
