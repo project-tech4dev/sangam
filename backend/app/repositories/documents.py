@@ -6,6 +6,8 @@ from collections.abc import Awaitable, Callable
 from psycopg.errors import ForeignKeyViolation
 from psycopg_pool import AsyncConnectionPool
 
+from app.repositories.paging import fetch_page
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,13 +30,9 @@ async def list_documents(pool: AsyncConnectionPool, *, limit: int, offset: int,
            OR EXISTS (SELECT 1 FROM org_members m WHERE m.org_id = d.org_id AND m.user_id = %(user)s)
            OR EXISTS (SELECT 1 FROM users u WHERE u.id = %(user)s AND u.is_staff))
     ORDER BY d.title NULLS LAST
-    LIMIT %(limit)s OFFSET %(offset)s
     """
-    params = {"limit": limit, "offset": offset, "org": org, "funder": funder, "doc_type": doc_type,
-              "user": user_id}
-    async with pool.connection() as conn:
-        rows = await (await conn.execute(sql, params)).fetchall()
-    return rows, (rows[0]["total"] if rows else 0)
+    params = {"org": org, "funder": funder, "doc_type": doc_type, "user": user_id}
+    return await fetch_page(pool, sql, params, limit=limit, offset=offset)
 
 
 # The Doc Vault. Membership is checked here rather than in the route because

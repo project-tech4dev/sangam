@@ -5,6 +5,7 @@ from collections import defaultdict
 from psycopg_pool import AsyncConnectionPool
 
 from app.repositories.funder_matches import FIRST_ORG
+from app.repositories.paging import fetch_page
 
 BASE = """
 SELECT r.*, f.name AS funder_name, COUNT(*) OVER () AS total
@@ -23,13 +24,9 @@ async def list_rfps(pool: AsyncConnectionPool, *, limit: int, offset: int,
             SELECT 1 FROM rfp_tags rt JOIN tags tg ON tg.id = rt.tag_id
             WHERE rt.rfp_id = r.id AND (tg.slug = %(tag)s OR tg.label ILIKE %(tag)s)))
     ORDER BY r.deadline ASC NULLS LAST, r.id
-    LIMIT %(limit)s OFFSET %(offset)s
     """
-    params = {"limit": limit, "offset": offset, "status": status,
-              "deadline_before": deadline_before, "tag": tag}
-    async with pool.connection() as conn:
-        rows = await (await conn.execute(sql, params)).fetchall()
-    return rows, (rows[0]["total"] if rows else 0)
+    params = {"status": status, "deadline_before": deadline_before, "tag": tag}
+    return await fetch_page(pool, sql, params, limit=limit, offset=offset)
 
 
 async def get_rfp(pool: AsyncConnectionPool, rfp_id: int) -> dict | None:

@@ -29,8 +29,7 @@ async def list_rfps(
         status=status, deadline_before=deadline_before.isoformat() if deadline_before else None,
         tag=tag,
     )
-    return Page(items=[RfpOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, RfpOut)
 
 
 @router.get("/feed", response_model=Feed, summary="An org's open and saved calls")

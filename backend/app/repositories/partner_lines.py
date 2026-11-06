@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.repositories.paging import fetch_page
+
 # fy_is_dated is false when 0034 or the seed fell back to the day the source was read or the row recorded.
 FY_IS_DATED = """(strpos(coalesce(a.notes, ''), 'fiscal_year is the year the source was read') = 0
         AND strpos(coalesce(a.notes, ''), 'fiscal_year is the year the row was recorded') = 0)"""
@@ -29,12 +31,9 @@ async def list_partner_lines(pool: Any, *, limit: int, offset: int, funder: str 
       AND (%(org)s::text IS NULL OR o.slug = %(org)s OR o.id::text = %(org)s)
       AND (%(status)s::text IS NULL OR a.relationship_status = %(status)s)
     ORDER BY a.start_date DESC NULLS LAST, a.fiscal_year DESC, a.id
-    LIMIT %(limit)s OFFSET %(offset)s
     """
-    params = {"limit": limit, "offset": offset, "funder": funder, "org": org, "status": status}
-    async with pool.connection() as conn:
-        rows = await (await conn.execute(sql, params)).fetchall()
-    return rows, (rows[0]["total"] if rows else 0)
+    params = {"funder": funder, "org": org, "status": status}
+    return await fetch_page(pool, sql, params, limit=limit, offset=offset)
 
 
 async def get_partner_line(pool: Any, line_id: int) -> dict | None:
