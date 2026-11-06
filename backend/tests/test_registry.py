@@ -1,6 +1,7 @@
 """The Registry list: one call, every row with what its filters read, research counted on the owner."""
 
 from app.api.routes import registry as registry_api
+from app.repositories.registry import registry_page
 
 ROUTE = "app.api.routes.registry"
 
@@ -24,7 +25,11 @@ def _patch(monkeypatch, rows=ROWS, research=None):
         return research if research is not None else {("org", 4): {"runs": 4, "latest": "2026-10-13"}}
     counts.calls = []
 
+    async def page(pool, owner, f, *, limit, offset):
+        return registry_page([dict(r) for r in rows], f, limit=limit, offset=offset)
+
     monkeypatch.setattr(f"{ROUTE}.repo.registry_rows", entries)
+    monkeypatch.setattr(f"{ROUTE}.repo.registry_page_sql", page)
     monkeypatch.setattr(f"{ROUTE}.repo.research_counts", counts)
     return counts
 
