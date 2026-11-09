@@ -254,3 +254,29 @@ async def test_no_flush_when_no_agent_was_built(boot, monkeypatch):
     async with ls.build_lifespan()(FastAPI()):
         pass
     assert seen["flushed"] == 0 and pool.closed
+
+
+
+LOCAL_DB = "postgresql://sangam:sangam@localhost:5433/sangam"
+POOLER_DB = "postgresql://postgres.proj:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres"
+
+
+@pytest.mark.parametrize("database_url,suffix,warns", [
+    (LOCAL_DB, "", True),
+    (LOCAL_DB, "-local", False),
+    (POOLER_DB, "", False),
+    ("host=db.proj.supabase.co user=postgres dbname=postgres", "", False),
+    ("postgresql://proj:proj@localhost:5433/proj", "", True),
+])
+def test_warns_when_a_local_database_shares_the_deployed_buckets(caplog, database_url, suffix, warns):
+    settings = Settings(supabase_url="https://proj.supabase.co", supabase_service_key="svc",
+                        database_url=database_url, storage_bucket_suffix=suffix)
+    with caplog.at_level(logging.WARNING):
+        ls._warn_on_shared_storage(settings)
+    assert ("STORAGE_BUCKET_SUFFIX" in caplog.text) is warns
+
+
+def test_no_warning_without_storage(caplog):
+    with caplog.at_level(logging.WARNING):
+        ls._warn_on_shared_storage(Settings(database_url=LOCAL_DB, supabase_url="", supabase_service_key=""))
+    assert caplog.text == ""

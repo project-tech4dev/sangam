@@ -10,7 +10,7 @@ import pytest
 from app.core.config import Settings
 from app.integrations import storage
 
-ON = Settings(supabase_url="https://x.supabase.co/", supabase_service_key="svc")
+ON = Settings(supabase_url="https://x.supabase.co/", supabase_service_key="svc", storage_bucket_suffix="")
 OFF = Settings(supabase_url="", supabase_service_key="")
 
 

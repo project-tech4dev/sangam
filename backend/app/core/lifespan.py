@@ -185,6 +185,7 @@ def build_lifespan(settings: Settings | None = None):
             db_pool.pool = pool  # shared by agent tools and REST endpoints
 
             await _verify_sql_catalog(pool)
+            _warn_on_shared_storage(resolved)
             connected = time.perf_counter()
 
             await graphiti.open_graph(resolved)  # no-op (logged) when graph is not configured
@@ -217,6 +218,16 @@ def build_lifespan(settings: Settings | None = None):
             db_pool.pool = None
 
     return lifespan
+
+
+def _warn_on_shared_storage(settings: Settings) -> None:
+    """Storage is one global project: a backend on another database writes into the deployed buckets."""
+    if settings.storage_enabled and not settings.storage_bucket_suffix and not settings.database_in_storage_project:
+        logger.warning(
+            "Storage is Supabase project %s but the database is not, so files land in the deployed buckets "
+            "while rows stay here. Set STORAGE_BUCKET_SUFFIX (e.g. -local) to use separate buckets.",
+            settings.storage_project or settings.supabase_url,
+        )
 
 
 async def _verify_sql_catalog(pool) -> None:
