@@ -610,6 +610,12 @@ async def _rows_now(conn: Any, kind: str | None, entity_id: int | None) -> dict[
     return {c: n for c, (n, _) in (await _held_per_concept(conn, entity_id, kind)).items()}
 
 
+def saved_since_research(row: dict[str, Any]) -> bool:
+    """Whether the row's save covers its findings: a same-day re-run rewrites the row after the save (#222)."""
+    saved_at, researched_at = row.get("saved_at"), row.get("researched_at")
+    return not (saved_at and researched_at and researched_at > saved_at)
+
+
 async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -> None:
     """Keep what this save wrote on the research row. Afterwards a plan reads every row as `same`,
     so this is the only record of what the profile held before."""
@@ -617,6 +623,8 @@ async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -
     after = await _rows_now(conn, entity["kind"], entity["id"]) if entity else None
     saved = coverage.saved_record(row.get("saved"), report, after)
     if saved is None:
+        if row.get("saved"):  # a re-run's save that changed nothing still saves the re-run
+            await conn.execute("UPDATE entity_research SET saved_at = now() WHERE id = %s", (row["id"],))
         return
     await conn.execute(
         "UPDATE entity_research SET saved = %s::jsonb, saved_at = now() WHERE id = %s",
@@ -633,7 +641,7 @@ async def coverage_view(slug: str, caller: CallerScope | None = None) -> dict[st
         return None
     row = rows[0]
     kind = row.get("entity_kind")
-    saved = row.get("saved")
+    saved = row.get("saved") if saved_since_research(row) else None
     if saved and row.get("private_removed"):
         # Held lines quote the values they held, private ones included; the counts stay.
         saved = {**saved, "held": []}

@@ -119,3 +119,28 @@ class TestNumbers:
         out: set[float] = set()
         _numbers({"a": [1, "2,500 kids", {"b": 3.14159}], "flag": True, "none": None}, out)
         assert out == {1.0, 2500.0, 3.14}
+
+
+def programme(name="SBIF LEAP", **over) -> dict:
+    return {"concept": "program", "name": name, "description": "SBI Foundation's livelihoods flagship.",
+            "confidence": "high", "source_url": URL, "evidence": "SBIF LEAP is SBI Foundation's livelihoods flagship.",
+            **over}
+
+
+class TestADescribedProgrammeCarriesATheme:
+    """#241: a programme with a description is tagged, or a gap names it."""
+
+    def test_a_described_programme_with_no_theme_and_no_gap_is_named(self):
+        r = research(findings=[programme()], gaps=every_concept_gapped(skip={"program"}))
+        assert unanswered(r) == ["program 'SBIF LEAP': a description and no theme, and no themes gap naming it"]
+
+    def test_a_themes_gap_naming_the_programme_answers_it(self):
+        named = gap("program", field="themes", detail="SBIF LEAP: the programme page names no area of work")
+        r = research(findings=[programme()], gaps=[*every_concept_gapped(skip={"program"}), named])
+        assert unanswered(r) == []
+
+    def test_a_tagged_programme_or_one_with_no_description_needs_nothing(self):
+        tagged = programme(themes=["livelihoods"], tag_note="'livelihoods flagship'")
+        bare = programme(name="Gram Seva", description=None)
+        r = research(findings=[tagged, bare], gaps=every_concept_gapped(skip={"program"}))
+        assert unanswered(r) == []

@@ -51,10 +51,11 @@ from app.ingest.records import (
     http_url,
     normalise_cin,
 )
-from app.ingest.research_records import FINDING_MODELS, SCHEMA_VERSION, TYPED_SINCE, to_inr
+from app.ingest.research_records import FINDING_MODELS, MAX_THEMES, SCHEMA_VERSION, TYPED_SINCE, to_inr
 from app.ingest.taxonomy import TAG_KINDS, resolve_classification, resolve_csr_sector
 from app.ingest.writer import (
     GATE,
+    SOURCE_PRECEDENCE,
     UNWRITTEN,
     Conflict,
     Gate,
@@ -337,11 +338,56 @@ def _with_scheme(domain: str) -> str:
     return domain if domain.lower().startswith(("http://", "https://")) else f"https://{domain}"
 
 
-def funder_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> FunderRecord | None:
-    """One funder record, from the identity finding and any identifiers saved before 0031."""
-    identity = next((f for f in findings if f["concept"] == "identity"), None)
+# Identity fields that are lists, unioned across findings; the rest take one value, and these say where from.
+_IDENTITY_LISTS = ("aliases", *TAG_KINDS)
+_IDENTITY_META = frozenset({"concept", "evidence", "source_url", "source_name", "confidence", "basis", "page",
+                            "source_type", "evidence_tier", "tag_note"})
+
+
+def _source_rank(f: dict[str, Any]) -> tuple[int, bool]:
+    """An org finding's source as write_org ranks it; a funder's identity has no tier, so all tie and order rules."""
+    return SOURCE_PRECEDENCE.get(f.get("source_type"), 0), f.get("evidence_tier") == "evidenced"
+
+
+def merged_identity(
+    findings: list[dict[str, Any]], concept: str, report: dict[str, Any] | None = None
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    """Every identity finding as one (fields, anchor): lists unioned, each other field from the strongest source
+    stating it. The anchor is the weakest source a field came from, so the record never outranks a value it holds."""
+    ranked = sorted((f for f in findings if f.get("concept") == concept), key=_source_rank, reverse=True)
+    if not ranked:
+        return None
+    reasons = report["reasons"] if report is not None else []
+    fields: dict[str, Any] = {k: [] for k in _IDENTITY_LISTS}
+    used = [ranked[0]]
+    for f in ranked:
+        for k, v in f.items():
+            if k in _IDENTITY_META or v is None or v == "" or v == []:
+                continue
+            if k in _IDENTITY_LISTS:
+                fields[k].extend(x for x in v if x not in fields[k])
+            elif k not in fields:
+                fields[k] = v
+                if f not in used:
+                    used.append(f)
+            elif str(v).strip().lower() != str(fields[k]).strip().lower():
+                if k == "name" and v not in fields["aliases"]:
+                    fields["aliases"].append(v)
+                reasons.append(f"{concept}: {k} {fields[k]!r} kept over {v!r} ({f.get('source_url')})")
+    reasons.extend(f"{concept}: theme {t!r} not tagged (at most {MAX_THEMES})" for t in fields["themes"][MAX_THEMES:])
+    fields["themes"] = fields["themes"][:MAX_THEMES]
+    notes = dict.fromkeys(n.strip() for f in ranked if (n := f.get("tag_note")) and n.strip())
+    fields["tag_note"] = " · ".join(notes) or None
+    return fields, min(used, key=_source_rank)
+
+
+def funder_from(row: dict[str, Any], findings: list[dict[str, Any]],
+                report: dict[str, Any] | None = None) -> FunderRecord | None:
+    """One funder record, from every identity finding and any identifiers saved before 0031."""
+    merged = merged_identity(findings, "identity", report)
+    identity, first = merged if merged else (None, None)
     legacy = [f for f in findings if f["concept"] == "identifier"]
-    anchor = identity or (legacy[0] if legacy else None)
+    anchor = first or (legacy[0] if legacy else None)
     if anchor is None:
         return None
     ident = identity or {}
@@ -397,11 +443,13 @@ def _http_only(url: str | None) -> str | None:
         return None
 
 
-def org_from(row: dict[str, Any], findings: list[dict[str, Any]]) -> OrgRecord | None:
+def org_from(row: dict[str, Any], findings: list[dict[str, Any]],
+             report: dict[str, Any] | None = None) -> OrgRecord | None:
     """One org record, the same shape as funder_from; the anchor finding's tier ranks the write."""
-    identity = next((f for f in findings if f["concept"] == "org_identity"), None)
+    merged = merged_identity(findings, "org_identity", report)
+    identity, first = merged if merged else (None, None)
     identifiers = [f for f in findings if f["concept"] == "org_identifier"]
-    anchor = identity or (identifiers[0] if identifiers else None)
+    anchor = first or (identifiers[0] if identifiers else None)
     if anchor is None:
         return None
     ident = identity or {}
@@ -778,6 +826,11 @@ async def _write_program(
     )
     _count(report, "programs", status)
     await _write_tags(conn, "program_id", program_id, rec, f"programme {name!r}", report)
+    if program_id not in (None, UNWRITTEN):
+        # The Registry reads only the owner's tags; a code the programme refused is already reported.
+        added, _ = await write_tags(conn, owner.column, owner.id, rec, role="secondary")
+        if added:
+            report["written"].setdefault("tags", collections.Counter())["added"] += added
     return status, program_id
 
 
@@ -1405,7 +1458,7 @@ async def _promote_funder(
     conn: Any, row: dict[str, Any], findings: list[dict[str, Any]], report: dict[str, Any],
     asking: Gate | None = None,
 ) -> None:
-    record = funder_from(row, findings)
+    record = funder_from(row, findings, report)
     if record is None:
         report["reasons"].append("no identity finding to build a funder from")
         return
@@ -1456,7 +1509,7 @@ async def _promote_org(
 ) -> None:
     """The NGO path. Same shape as the funder one bar two differences: there is
     no parent link to resolve, and write_org ranks by evidence tier."""
-    record = org_from(row, findings)
+    record = org_from(row, findings, report)
     if record is None:
         report["reasons"].append(
             "no org_identity or org_identifier finding with a source_type and evidence_tier to build an "
