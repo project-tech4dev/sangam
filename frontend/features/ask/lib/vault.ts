@@ -12,7 +12,7 @@ export type Doc = {
 };
 
 // The extensions the backend's storage.VAULT_TYPES takes, for a file picker's accept.
-export const VAULT_ACCEPT = ".pdf,.docx,.xlsx,.csv,.md,.txt,.png,.jpg,.jpeg,.webp";
+export const VAULT_ACCEPT = ".pdf,.docx,.xlsx,.pptx,.csv,.md,.txt,.png,.jpg,.jpeg,.webp";
 
 const detail = (res: Response) => res.json().then((body) => body?.detail, () => null);
 

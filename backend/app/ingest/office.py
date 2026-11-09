@@ -1,11 +1,21 @@
-"""Text from Word, Excel and text files, for an upload's content_md and the readers. Pure: bytes in, text out."""
+"""Text from Word, Excel, PowerPoint and text files, for an upload's content_md and the readers.
+
+Pure: bytes in, text out."""
 
 from __future__ import annotations
 
 import io
+import posixpath
+import zipfile
 
 SHEET_ROWS = 200  # an upload's text keeps this many rows a sheet; the vault reader pages the rest
 LINE_MAX = 2_000  # a text file's line longer than this is split, so one minified line cannot fill a read
+PART_MAX_BYTES = 20 * 1024 * 1024  # one slide's XML, unpacked; a zip can claim far more than it holds
+
+_P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
+_A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+_R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+_REL = "{http://schemas.openxmlformats.org/package/2006/relationships}"
 
 
 def docx_paragraphs(data: bytes) -> list[str]:
@@ -36,6 +46,45 @@ def docx_range(data: bytes, start: int = 1, end: int | None = None) -> tuple[str
     paras = docx_paragraphs(data)
     last = min(end or len(paras), len(paras))
     return "\n".join(f"[para {n}] {paras[n - 1]}" for n in range(max(start, 1), last + 1)), len(paras)
+
+
+def pptx_slides(data: bytes) -> list[str]:
+    """Each slide's text in presentation order, a table row as `a | b | c`; an empty slide keeps its place as ""."""
+    from lxml import etree
+
+    parser = etree.XMLParser(resolve_entities=False, no_network=True)
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        def part(name: str):
+            if z.getinfo(name).file_size > PART_MAX_BYTES:
+                raise ValueError(f"{name} unpacks to more than {PART_MAX_BYTES} bytes")
+            return etree.fromstring(z.read(name), parser)
+
+        links = part("ppt/_rels/presentation.xml.rels").iter(f"{_REL}Relationship")
+        rels = {r.get("Id"): r.get("Target") for r in links}
+        slides = []
+        for sld in part("ppt/presentation.xml").iter(f"{_P}sldId"):
+            target = rels.get(sld.get(f"{_R}id"))
+            if target:
+                absolute = target.startswith("/")
+                name = target.lstrip("/") if absolute else posixpath.normpath(posixpath.join("ppt", target))
+                slides.append(_slide_text(part(name)))
+    return slides
+
+
+def _slide_text(root) -> str:
+    def text(el) -> str:
+        return "".join(t.text or "" for t in el.iter(f"{_A}t")).strip()
+
+    lines = []
+    for el in root.iter(f"{_A}tbl", f"{_A}p"):
+        if el.tag == f"{_A}tbl":
+            for row in el.iter(f"{_A}tr"):
+                cells = [text(c) for c in row.iter(f"{_A}tc")]
+                if any(cells):
+                    lines.append(" | ".join(cells))
+        elif not any(a.tag == f"{_A}tbl" for a in el.iterancestors()) and (line := text(el)):
+            lines.append(line)
+    return "\n".join(lines)
 
 
 def text_lines(data: bytes) -> list[str]:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import zipfile
 from types import SimpleNamespace
 
 import pytest
@@ -40,10 +41,48 @@ def xlsx_bytes(rows, title="Sheet"):
     return buf.getvalue()
 
 
+_PML = "http://schemas.openxmlformats.org/presentationml/2006/main"
+_DML = "http://schemas.openxmlformats.org/drawingml/2006/main"
+_ODR = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+
+def pptx_bytes(slides):
+    """A minimal deck: slide N is stored as slide{N}.xml but listed last-first, so order comes from presentation.xml.
+    A slide is a list of lines, or of rows (a list of lists) for a table."""
+    def body(items):
+        out = []
+        for item in items:
+            if isinstance(item, list):
+                rows = "".join("<a:tr>" + "".join(f"<a:tc><a:txBody><a:p><a:r><a:t>{c}</a:t></a:r></a:p></a:txBody></a:tc>"
+                                                  for c in row) + "</a:tr>" for row in item)
+                out.append(f"<p:graphicFrame><a:graphic><a:graphicData><a:tbl>{rows}</a:tbl></a:graphicData></a:graphic></p:graphicFrame>")
+            else:
+                out.append(f"<p:sp><p:txBody><a:p><a:r><a:t>{item}</a:t></a:r></a:p></p:txBody></p:sp>")
+        return f'<p:sld xmlns:p="{_PML}" xmlns:a="{_DML}"><p:cSld><p:spTree>{"".join(out)}</p:spTree></p:cSld></p:sld>'
+
+    order = list(range(len(slides), 0, -1))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("ppt/presentation.xml", f'<p:presentation xmlns:p="{_PML}" xmlns:r="{_ODR}"><p:sldIdLst>'
+                   + "".join(f'<p:sldId id="{255 + i}" r:id="rId{n}"/>' for i, n in enumerate(order, 1))
+                   + "</p:sldIdLst></p:presentation>")
+        z.writestr("ppt/_rels/presentation.xml.rels",
+                   '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                   + "".join(f'<Relationship Id="rId{n}" Target="slides/slide{n}.xml"/>' for n in order)
+                   + "</Relationships>")
+        for pos, n in enumerate(order):
+            z.writestr(f"ppt/slides/slide{n}.xml", body(slides[pos]))
+    return buf.getvalue()
+
+
 class TestOffice:
     def test_docx_paragraphs_and_tables_in_order(self):
         data = docx_bytes(["Intro", "  ", "After"], table=[["A", "B", "C"], ["", "", ""], ["1", "2", "3"]])
         assert office.docx_paragraphs(data) == ["Intro", "After", "A\nB | C", "1 | 2 | 3"]  # a merged cell once
+
+    def test_pptx_slides_in_presentation_order_with_table_rows(self):
+        data = pptx_bytes([["Our work", "Udalguri"], [], [[["District", "SHGs"], ["Baksa", "27"]]]])
+        assert office.pptx_slides(data) == ["Our work\nUdalguri", "", "District | SHGs\nBaksa | 27"]
 
     def test_docx_range_numbers_paragraphs_like_pages(self):
         data = docx_bytes(["Intro", "Budget", "After"], table=[["Item", "Cost", "x"], ["Books", "500", "y"]])
@@ -139,7 +178,7 @@ class TestVaultRead:
 
     async def test_refusals(self, download):
         assert "no file on record" in await vault.read({**DOC, "storage_path": None})
-        assert "is not a PDF, Word" in await vault.read({**DOC, "storage_path": "org-vault/3/x.pptx"})
+        assert "is not a PDF, Word" in await vault.read({**DOC, "storage_path": "org-vault/3/x.ppt"})
         assert "could not be downloaded" in await vault.read(DOC)
 
     async def test_pdf_pages_are_marked_and_cut(self, download, monkeypatch):
@@ -189,6 +228,13 @@ class TestVaultRead:
         out = await vault.read({**DOC, "storage_path": "org-vault/3/plan.DOCX"}, start_page=3)
         assert out.splitlines()[3] == "" and "[vault:12#para3] Para 2" in out
         assert "… cut at paragraph" in out and "Call again with start_page=" in out
+
+    async def test_pptx_slides_are_cited_and_paged(self, download):
+        download["data"] = pptx_bytes([["Intro"], ["Reach", "1,240 households"], ["Plans"]])
+        out = await vault.read({**DOC, "storage_path": "org-vault/3/deck.PPTX"}, start_page=2)
+        assert "3 slides (start_page counts slides" in out
+        assert "[vault:12#slide2] Reach\n1,240 households" in out and "[vault:12#slide3] Plans" in out
+        assert "#slide1]" not in out
 
     async def test_xlsx_rows_are_cited_and_contacts_dropped(self, download):
         download["data"] = xlsx_bytes([["Grant", "Email"], ["h2", "x"], ["h3", "y"], ["Acme 5 lakh", "a@b.org"]])
