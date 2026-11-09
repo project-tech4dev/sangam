@@ -33,6 +33,19 @@ STAFF_SOURCES = "staff-sources"
 STAFF_SOURCES_MAX_BYTES = 100 * 1024 * 1024
 BUCKETS: tuple[str, ...] = (SOURCE_ARCHIVE, ORG_VAULT, STAFF_SOURCES)
 TRASH = "trash/"
+# What the Doc Vault takes, by extension, and the type it is stored as; 0054 holds org-vault to these.
+VAULT_TYPES: dict[str, str] = {
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".csv": "text/csv",
+    ".md": "text/markdown",
+    ".txt": "text/plain",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+}
 
 # The bucket's own ceiling, from 0020_storage_buckets.sql. Checked before the
 # upload so a 55 MB report fails here with a readable line rather than as an
@@ -53,7 +66,11 @@ def _safe_name(name: str) -> str:
     # agent can never write outside the downloads folder.
     name = Path(name).name
     name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
-    return name[:120] or "download"
+    if len(name) > 120:
+        _, dot, ext = name.rpartition(".")
+        keep = f".{ext}" if dot and len(ext) <= 10 else ""
+        name = name[: 120 - len(keep)] + keep
+    return name or "download"
 
 
 def _disabled() -> bool:

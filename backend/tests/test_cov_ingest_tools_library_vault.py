@@ -240,6 +240,23 @@ class TestReadVault:
             out = await vault_tools.read_vault_document.ainvoke({"document_id": 12, "sheet": "Grants", "start_row": 4})
         assert out == "read 12 'Grants' 4"
 
+    async def test_an_image_reaches_the_model_as_an_image_block(self, monkeypatch):
+        blocks = [{"type": "text", "text": "[vault:12#image]"},
+                  {"type": "image", "base64": "iVBORw0KGgo=", "mime_type": "image/png"}]
+
+        async def doc(pool, doc_id):
+            return {"id": doc_id, "org_id": 7}
+
+        async def read(d, **kw):
+            return blocks
+        monkeypatch.setattr(vault, "document", doc)
+        monkeypatch.setattr(vault, "read", read)
+        monkeypatch.setattr(vault_tools, "get_pool", lambda: None)
+        call = {"name": "read_vault_document", "args": {"document_id": 12}, "id": "c1", "type": "tool_call"}
+        with running_as(MEMBER):
+            message = await vault_tools.read_vault_document.ainvoke(call)
+        assert message.content == blocks
+
     async def test_a_failure_names_only_its_type(self, monkeypatch):
         async def doc(pool, doc_id):
             raise ValueError("cell B7 says Rs 4 lakh")

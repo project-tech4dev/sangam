@@ -27,6 +27,13 @@ MIGRATION = Path(__file__).resolve().parents[2] / "db" / "migrations" / "0020_st
 BUCKETS = ("source-archive", "org-vault")
 
 
+def test_the_vault_bucket_takes_exactly_the_types_the_routes_allow():
+    """0054 and storage.VAULT_TYPES are one list written twice; a type in only one is refused somewhere."""
+    sql = (MIGRATION.parent / "0054_org_vault_mime_types.sql").read_text(encoding="utf-8")
+    listed = set(re.findall(r"'([a-z]+/[a-z0-9.+-]+)'", sql))
+    assert listed == set(storage.VAULT_TYPES.values())
+
+
 class TestStorageIsOptional:
     """Both variables or nothing. A half-configured client would fail at the
     first upload, in the middle of a research run, rather than at boot.
@@ -116,6 +123,13 @@ def transport(monkeypatch, handler):
 
     monkeypatch.setattr(storage, "_client", client)
     return seen
+
+
+@pytest.mark.parametrize("name,ends", [("a" * 200 + ".pdf", ".pdf"), ("b" * 200 + ".docx", ".docx")])
+def test_a_long_name_is_cut_short_but_keeps_its_extension(name, ends):
+    """The vault reads a file's type from its key, so a 200-character report must still end in .pdf."""
+    key = storage.vault_key(3, name)
+    assert key.endswith(ends) and len(key.rsplit("/", 1)[1]) <= 160
 
 
 class TestArchiveKey:

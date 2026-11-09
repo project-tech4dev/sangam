@@ -61,6 +61,30 @@ class TestAskingForAnUploadUrl:
         body = response.json()
         assert body["storage_path"].startswith("org-vault/3/")
         assert "token=t" in body["upload_url"]
+        assert body["content_type"] == "application/pdf"
+
+    @pytest.mark.parametrize("filename", ["setup.exe", "page.html", "logo.svg", "archive.zip", "no-extension"])
+    async def test_a_type_the_vault_cannot_read_is_refused_before_any_url(
+        self, client_for, monkeypatch, storage_on, filename
+    ):
+        member(monkeypatch, 3)
+        monkeypatch.setattr(f"{ROUTE}.storage.signed_upload_url", lambda b, k: pytest.fail("no URL for it"))
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents/uploads", json={"org": "kabil", "filename": filename})
+        assert response.status_code == 415
+
+    @pytest.mark.parametrize("filename,content_type", [
+        ("Accounts.PDF", "application/pdf"), ("notes.md", "text/markdown"), ("list.csv", "text/csv"),
+        ("photo.jpeg", "image/jpeg"),
+    ])
+    async def test_the_type_to_upload_as_comes_from_the_extension(
+        self, client_for, monkeypatch, storage_on, filename, content_type
+    ):
+        member(monkeypatch, 3)
+        monkeypatch.setattr(f"{ROUTE}.storage.signed_upload_url", lambda b, k: _async("https://u"))
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents/uploads", json={"org": "kabil", "filename": filename})
+        assert response.json()["content_type"] == content_type
 
     async def test_a_non_member_is_refused(self, client_for, monkeypatch, storage_on):
         member(monkeypatch, None)
@@ -89,6 +113,10 @@ class TestAskingForAnUploadUrl:
 
 
 class TestRecordingAnUpload:
+    @pytest.fixture(autouse=True)
+    def _fresh_upload(self, monkeypatch):
+        monkeypatch.setattr(f"{ROUTE}.repo.upload_recorded", lambda pool, **kw: _async(False))
+
     def confirm(self, **over):
         return {"org": "kabil", "storage_path": "org-vault/3/abc-accounts.pdf", **over}
 
@@ -146,6 +174,92 @@ class TestRecordingAnUpload:
                 "/api/documents", json=self.confirm(storage_path="source-archive/ab/cd-x.pdf")
             )
         assert response.status_code == 400
+
+    async def test_refuses_a_type_the_vault_cannot_read(self, client_for, monkeypatch, storage_on):
+        member(monkeypatch, 3)
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents", json=self.confirm(storage_path="org-vault/3/abc-x.exe"))
+        assert response.status_code == 415
+
+    async def test_a_file_whose_bytes_are_not_its_type_is_refused_and_removed(
+        self, client_for, monkeypatch, storage_on
+    ):
+        """A program renamed accounts.pdf passes the extension check, not the bytes."""
+        member(monkeypatch, 3)
+        removed = []
+        monkeypatch.setattr(f"{ROUTE}.storage.stat", lambda b, k: _async({"name": "x"}))
+        monkeypatch.setattr(f"{ROUTE}.storage.download", lambda b, k, max_bytes=0: _async(b"MZ\x90\x00"))
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: removed.append((b, k)) or _async(True))
+        monkeypatch.setattr(f"{ROUTE}.repo.insert_upload", lambda pool, **kw: pytest.fail("no row for it"))
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents", json=self.confirm())
+        assert response.status_code == 415
+        assert removed == [("org-vault", ["3/abc-accounts.pdf"])]
+
+    @pytest.mark.parametrize("head,status", [(b"MZ\x90\x00", 415), (b"%PDF-", 201)])
+    async def test_a_file_just_under_the_buckets_limit_is_still_checked(
+        self, client_for, monkeypatch, storage_on, head, status
+    ):
+        """The bucket takes 50 MB; a file the check would not read could pass as any type."""
+        member(monkeypatch, 3)
+        data = head + b"\0" * (50 * 1024 * 1024 - 1 - len(head))
+        removed, captured = [], {}
+
+        async def download(bucket, key, max_bytes=0):
+            return data if len(data) <= max_bytes else None
+
+        async def fake_insert(pool, **kwargs):
+            captured.update(kwargs)
+            return ROW
+
+        monkeypatch.setattr(f"{ROUTE}.storage.stat", lambda b, k: _async({"name": "x"}))
+        monkeypatch.setattr(f"{ROUTE}.storage.download", download)
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: removed.append((b, k)) or _async(True))
+        monkeypatch.setattr(f"{ROUTE}._extract", lambda d, k: (None, documents_api.storage.content_hash(d)))
+        monkeypatch.setattr(f"{ROUTE}.repo.insert_upload", fake_insert)
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents", json=self.confirm())
+        assert response.status_code == status
+        if status == 415:
+            assert removed == [("org-vault", ["3/abc-accounts.pdf"])]
+        else:
+            assert len(captured["content_hash"]) == 64
+
+    async def test_a_file_that_cannot_be_read_back_is_not_recorded(self, client_for, monkeypatch, storage_on):
+        """An unchecked file gets no row; the object stays so the confirm can be retried."""
+        member(monkeypatch, 3)
+        monkeypatch.setattr(f"{ROUTE}.storage.stat", lambda b, k: _async({"name": "x"}))
+        monkeypatch.setattr(f"{ROUTE}.storage.download", lambda b, k, max_bytes=0: _async(None))
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: pytest.fail("not removed"))
+        monkeypatch.setattr(f"{ROUTE}.repo.insert_upload", lambda pool, **kw: pytest.fail("no row for it"))
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents", json=self.confirm())
+        assert response.status_code == 503
+
+    async def test_a_file_already_recorded_is_never_judged_or_removed(self, client_for, monkeypatch, storage_on):
+        """Confirming an existing row's path must not let a member delete its file outside the delete route."""
+        member(monkeypatch, 3)
+        monkeypatch.setattr(f"{ROUTE}.repo.upload_recorded", lambda pool, **kw: _async(True))
+        monkeypatch.setattr(f"{ROUTE}.storage.download", lambda b, k, max_bytes=0: pytest.fail("not read"))
+        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: pytest.fail("not removed"))
+        async with client_for(documents_api.router) as client:
+            response = await client.post("/api/documents", json=self.confirm())
+        assert response.status_code == 409
+
+    @pytest.mark.parametrize("key,data,ok", [
+        ("3/a.pdf", b"%PDF-1.7", True),
+        ("3/a.docx", b"PK\x03\x04rest", True),
+        ("3/a.xlsx", b"%PDF-1.7", False),
+        ("3/a.png", b"\x89PNG\r\n\x1a\n", True),
+        ("3/a.jpg", b"\xff\xd8\xff\xe0", True),
+        ("3/a.webp", b"RIFF\x00\x00\x00\x00WEBPVP8 ", True),
+        ("3/a.webp", b"RIFF\x00\x00\x00\x00WAVE", False),
+        ("3/a.csv", b"name,city\nA,Pune\n", True),
+        ("3/a.md", b"MZ\x90\x00\x03", False),
+        ("3/a.txt", "name\tcity".encode("utf-16"), True),
+    ])
+    def test_the_bytes_must_be_the_type_the_name_says(self, key, data, ok):
+        assert documents_api._bytes_match(data, key) is ok
 
     async def test_refuses_when_nothing_was_actually_uploaded(
         self, client_for, monkeypatch, storage_on

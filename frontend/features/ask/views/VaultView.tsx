@@ -6,7 +6,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { authHeaders } from "@/lib/api/auth-headers";
 import { API } from "../lib/rest";
 import { hostOf } from "../lib/sources";
-import { type Doc, deleteFromVault, uploadToVault } from "../lib/vault";
+import { type Doc, VAULT_ACCEPT, deleteFromVault, uploadToVault } from "../lib/vault";
 
 type Problem = { title: string; body: string };
 
@@ -72,7 +72,7 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
         </div>
         <label className="pill vault-upload" data-busy={busy} data-off={!orgSlug}>
           {busy ? "Uploading…" : "Upload a document"}
-          <input type="file" onChange={onPick} disabled={busy || !orgSlug} hidden />
+          <input type="file" accept={VAULT_ACCEPT} onChange={onPick} disabled={busy || !orgSlug} hidden />
         </label>
       </div>
       {problem ? (
