@@ -101,9 +101,11 @@ async def _save(pool: PoolDep, proposal_id: int, *, advancing: bool = False, to:
     by = await repo.me(pool)
     changes = kwargs.get("changes") or {}
     picked = changes.get("sources")
-    if (isinstance(picked, list) and all(isinstance(d, int) for d in picked)
-            and set(picked) - await documents_repo.org_document_ids(pool, row["org"]["id"], picked)):
-        raise HTTPException(422, "Only this organisation's own files can be ticked.")
+    if isinstance(picked, list) and all(isinstance(d, int) for d in picked):
+        own = await documents_repo.org_document_ids(pool, row["org"]["id"], picked)
+        if set(picked) - set(row["work"].get("sources") or []) - own:
+            raise HTTPException(422, "Only this organisation's own files can be ticked.")
+        changes["sources"] = [d for d in picked if d in own]
     # A corrected fact's fixed sentence and a typed part must still trace, places included.
     tracing = any(path.endswith((".correct", ".text")) for path in changes)
     districts = await records.districts(pool) if tracing else frozenset()

@@ -76,6 +76,7 @@ class TestAskingForAnUploadUrl:
     @pytest.mark.parametrize("filename,content_type", [
         ("Accounts.PDF", "application/pdf"), ("notes.md", "text/markdown"), ("list.csv", "text/csv"),
         ("photo.jpeg", "image/jpeg"),
+        ("Deck 2024.PPTX", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
     ])
     async def test_the_type_to_upload_as_comes_from_the_extension(
         self, client_for, monkeypatch, storage_on, filename, content_type
@@ -250,6 +251,8 @@ class TestRecordingAnUpload:
         ("3/a.pdf", b"%PDF-1.7", True),
         ("3/a.docx", b"PK\x03\x04rest", True),
         ("3/a.xlsx", b"%PDF-1.7", False),
+        ("3/a.pptx", b"PK\x03\x04rest", True),
+        ("3/a.pptx", b"MZ\x90\x00", False),
         ("3/a.png", b"\x89PNG\r\n\x1a\n", True),
         ("3/a.jpg", b"\xff\xd8\xff\xe0", True),
         ("3/a.webp", b"RIFF\x00\x00\x00\x00WEBPVP8 ", True),
