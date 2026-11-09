@@ -32,6 +32,7 @@ ORG_VAULT = "org-vault"
 STAFF_SOURCES = "staff-sources"
 STAFF_SOURCES_MAX_BYTES = 100 * 1024 * 1024
 BUCKETS: tuple[str, ...] = (SOURCE_ARCHIVE, ORG_VAULT, STAFF_SOURCES)
+TRASH = "trash/"
 
 # The bucket's own ceiling, from 0020_storage_buckets.sql. Checked before the
 # upload so a 55 MB report fails here with a readable line rather than as an
@@ -255,6 +256,53 @@ async def remove(bucket: str, keys: list[str]) -> bool:
     return True
 
 
+def trash_key(key: str) -> str:
+    """Where a deleted document's file waits for a restore; no org's folder, so nothing serves it."""
+    return TRASH + key
+
+
+async def trash(bucket: str, keys: list[str]) -> bool:
+    """Move objects under trash/ instead of deleting them. A key already gone counts, as in remove().
+
+    On any other failure the keys already moved go back, and it is False.
+    """
+    if _disabled():
+        return False
+    moved: list[str] = []
+    try:
+        async with _client() as client:
+            for key in keys:
+                body = {"bucketId": bucket, "sourceKey": key, "destinationKey": trash_key(key)}
+                response = await client.post("/object/move", json=body)
+                if _is_duplicate(response):
+                    (await client.request("DELETE", f"/object/{bucket}", json={"prefixes": [trash_key(key)]})
+                     ).raise_for_status()
+                    response = await client.post("/object/move", json=body)
+                if _is_missing(response):
+                    continue
+                response.raise_for_status()
+                moved.append(key)
+    except httpx.HTTPError as exc:
+        logger.warning("moving %s in %s to the trash failed (%s: %s)", keys, bucket, type(exc).__name__, exc)
+        for key in moved:
+            await move(bucket, trash_key(key), key)
+        return False
+    return True
+
+
+def _is_missing(response: httpx.Response) -> bool:
+    """Whether Storage refused because the object is not there; like a duplicate, it may come back as a 400."""
+    if response.status_code not in (400, 404):
+        return False
+    try:
+        body = response.json()
+    except ValueError:
+        return response.status_code == 404
+    if not isinstance(body, dict):
+        return response.status_code == 404
+    return str(body.get("statusCode")) == "404" or body.get("error") in ("not_found", "NoSuchKey")
+
+
 def _is_duplicate(response: httpx.Response) -> bool:
     """Whether a rejected upload was rejected for already being there.
 
@@ -268,6 +316,8 @@ def _is_duplicate(response: httpx.Response) -> bool:
     try:
         body = response.json()
     except ValueError:
+        return response.status_code == 409
+    if not isinstance(body, dict):
         return response.status_code == 409
     return (
         str(body.get("statusCode")) == "409"

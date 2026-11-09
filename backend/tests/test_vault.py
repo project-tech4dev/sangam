@@ -214,7 +214,7 @@ class TestDeletingAnUpload:
                 assert await remove_file("org-vault/3/abc-accounts.pdf", 3)
             return outcome
 
-        monkeypatch.setattr(f"{ROUTE}.storage.remove", fake_remove)
+        monkeypatch.setattr(f"{ROUTE}.storage.trash", fake_remove)
         monkeypatch.setattr(f"{ROUTE}.repo.delete_vault_upload", fake_delete)
         return removed
 
@@ -260,7 +260,7 @@ class TestDeletingAnUpload:
 
     async def test_a_path_outside_the_vault_is_never_removed(self, monkeypatch):
         called = []
-        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: called.append(b) or _async(True))
+        monkeypatch.setattr(f"{ROUTE}.storage.trash", lambda b, k: called.append(b) or _async(True))
         assert await documents_api._remove_vault_file("source-archive/ab/r.pdf", 3) is False
         assert await documents_api._remove_vault_file("org-vault/../x", 3) is False
         assert called == []
@@ -268,7 +268,7 @@ class TestDeletingAnUpload:
     async def test_a_file_in_another_organisations_folder_is_never_removed(self, monkeypatch):
         """#329: a row can point into someone else's folder; deleting it must not take their file."""
         called = []
-        monkeypatch.setattr(f"{ROUTE}.storage.remove", lambda b, k: called.append(k) or _async(True))
+        monkeypatch.setattr(f"{ROUTE}.storage.trash", lambda b, k: called.append(k) or _async(True))
         assert await documents_api._remove_vault_file("org-vault/5/abc-theirs.pdf", 3) is False
         assert await documents_api._remove_vault_file("org-vault/33/abc-theirs.pdf", 3) is False
         assert called == []
@@ -443,7 +443,7 @@ class TestDeleteVaultUpload:
             removed.append(keys)
             return True
 
-        monkeypatch.setattr(f"{ROUTE}.storage.remove", remove)
+        monkeypatch.setattr(f"{ROUTE}.storage.trash", remove)
         with pytest.raises(repo.FileNotRemoved):
             await repo.delete_vault_upload(_PoolOf(db), document_id=row["id"],
                                            remove_file=documents_api._remove_vault_file)
