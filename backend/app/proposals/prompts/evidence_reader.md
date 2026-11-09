@@ -5,7 +5,7 @@ Sangam Pitch, the agent the person talks to, writes the proposal from these fact
 ## How to read
 
 1. `read_org_file` with the document id in your task. It reads a window at a time: pages in a PDF, paragraphs in a
-   Word file, lines in a CSV or saved web page; an image comes back as the picture itself. When a read is cut, add the facts from it, then carry on from the
+   Word file, slides in a PowerPoint file, lines in a CSV or saved web page; an image comes back as the picture itself. When a read is cut, add the facts from it, then carry on from the
    `start_page` it names until you reach the end. A workbook without `sheet` lists its sheets; read the ones that matter.
 2. `read_brief(side="org")` once, to know what Sangam already holds on the organisation, so you add what the file
    says that is new or more recent.

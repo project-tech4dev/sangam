@@ -122,14 +122,14 @@ async def list_funder_documents() -> str:
 @tool
 async def read_org_file(document_id: int, start_page: int = 1, end_page: int | None = None, sheet: str = "",
                         start_row: int = 1) -> str | list[dict]:
-    """Read the one file in your task, a range at a time: pages in a PDF, paragraphs in a Word file, lines in a
-    CSV or a web page Sangam saved as text. An .xlsx workbook without `sheet` lists its sheets; with `sheet` it
-    reads rows. An uploaded image comes back as the image itself.
+    """Read the one file in your task, a range at a time: pages in a PDF, paragraphs in a Word file, slides in a
+    PowerPoint file, lines in a CSV or a web page Sangam saved as text. An .xlsx workbook without `sheet` lists its
+    sheets; with `sheet` it reads rows. An uploaded image comes back as the image itself.
     The read's header says what a fact from it cites: the organisation's own upload, or a public page and its link.
 
     Args:
         document_id: the id in your task.
-        start_page: the first page, paragraph or line, from 1.
+        start_page: the first page, paragraph, slide or line, from 1.
         end_page: the last one; omit to read on until the output is cut.
         sheet: a workbook's sheet name.
         start_row: a workbook's first row to read.

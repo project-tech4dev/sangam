@@ -23,12 +23,12 @@ URL_PREFIX = f"https://org-vault.{PRIVATE_SOURCE_DOMAIN}/"
 MAX_BYTES = 50 * 1024 * 1024
 # Bounded so a read never needs evicting to a file a web-reading agent could open.
 MAX_CHARS = 24_000
-PDF, XLSX, DOCX = ".pdf", ".xlsx", ".docx"
+PDF, XLSX, DOCX, PPTX = ".pdf", ".xlsx", ".docx", ".pptx"
 CSV = ".csv"
 TEXT = (".md", ".txt", CSV)
 IMAGES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
 IMAGE_MAX_BYTES = 5 * 1024 * 1024 * 3 // 4
-UNITS = {"para": "paragraph", "line": "line"}
+UNITS = {"para": "paragraph", "line": "line", "slide": "slide"}
 
 # What a funder's research may save from an org's own files: the funder's general facts. Facts about the
 # org itself (its grants, amounts, contacts, results, the file) are shown on Review and held back.
@@ -133,6 +133,14 @@ def docx_text(doc: dict[str, Any], data: bytes, start: int) -> str:
                                                 f"file). Cite a fact by its paragraph marker.")
 
 
+def pptx_text(doc: dict[str, Any], data: bytes, start: int) -> str:
+    from app.ingest import office
+
+    slides = office.pptx_slides(data)
+    return _windowed(doc, slides, start, "slide", f"{len(slides)} slides (start_page counts slides in a PowerPoint "
+                                                  f"file). Cite a fact by its slide marker.")
+
+
 def plain_text(doc: dict[str, Any], data: bytes, start: int, *, csv: bool = False) -> str:
     from app.ingest import office
 
@@ -165,15 +173,15 @@ def xlsx_text(doc: dict[str, Any], data: bytes, sheet: str, start_row: int, limi
 
 async def read(doc: dict[str, Any], *, start_page: int = 1, end_page: int | None = None,
                sheet: str = "", start_row: int = 1, limit: int = 100) -> str | list[dict[str, Any]]:
-    """One vault file's text, every line cited [vault:<id>#p<page>], #para<n>, #line<n> or #<sheet>!<cell>;
+    """One vault file's text, every line cited [vault:<id>#p<page>], #para<n>, #slide<n>, #line<n> or #<sheet>!<cell>;
     an image comes back as itself, cited #image."""
     parts = storage.split(doc["storage_path"] or "")
     if parts is None:
         return f"document {doc['id']} has no file on record."
     name = parts[1].lower()
-    if not name.endswith((PDF, XLSX, DOCX, *TEXT, *IMAGES)):
-        return (f"document {doc['id']} is not a PDF, Word file, .xlsx workbook, CSV, text file or image, "
-                f"so it cannot be read here.")
+    if not name.endswith((PDF, XLSX, DOCX, PPTX, *TEXT, *IMAGES)):
+        return (f"document {doc['id']} is not a PDF, Word file, .xlsx workbook, PowerPoint, CSV, text file or "
+                f"image, so it cannot be read here.")
     data = await storage.download(*parts, max_bytes=MAX_BYTES)
     if data is None:
         return f"document {doc['id']} could not be downloaded."
@@ -181,6 +189,8 @@ async def read(doc: dict[str, Any], *, start_page: int = 1, end_page: int | None
         return await asyncio.to_thread(pdf_text, doc, data, start_page, end_page)
     if name.endswith(DOCX):
         return await asyncio.to_thread(docx_text, doc, data, start_page)
+    if name.endswith(PPTX):
+        return await asyncio.to_thread(pptx_text, doc, data, start_page)
     if name.endswith(TEXT):
         return await asyncio.to_thread(plain_text, doc, data, start_page, csv=name.endswith(CSV))
     if (mime_type := IMAGES.get(Path(name).suffix)) is not None:
