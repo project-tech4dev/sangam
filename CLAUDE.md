@@ -490,8 +490,8 @@ reasons: Ask Sangam and the Import supervisor, where one wrong join or merge is 
 mistake and the model runs once per turn. `RESEARCH_MODEL` (Sonnet 5.5) runs the
 `entity-researcher`s: they read long pages, up to `MAX_PARALLEL_RESEARCH` at once, so they are
 most of an import's tokens, and judging evidence still needs a capable model. The `vault-reader`, which reads an org's own Doc Vault files with no web tools, runs on it too. `UTILITY_MODEL`
-(Haiku 4.5) does work with a fixed shape — article extraction, the `catalog-writer`, the
-`workbook-reader` — and `SQL_AUDIT_MODEL` (Haiku 4.5) the post-answer audit. A blank or unset
+(Haiku 5.5, at low effort) does work with a fixed shape — article extraction, the `catalog-writer`, the
+`workbook-reader` — and `SQL_AUDIT_MODEL` (Haiku 5.5) the post-answer audit. A blank or unset
 model variable means the default in `config.py`, the only place defaults are written; `SQL_AUDIT_MODEL=off`
 disables the audit. A deployed backend reads these from its
 Vercel env, which beats the code defaults.

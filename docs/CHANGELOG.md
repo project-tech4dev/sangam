@@ -222,6 +222,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-11 · #366 · The ten paged lists read through one `fetch_page` and answer through `PageParams.build_page`. Each sorts on a unique id (eight did not, so tied rows could repeat or vanish between pages), a page past the end reports the list's real total instead of 0, and `fetch_page` refuses SQL that does not end in `ORDER BY … id`.
 - 2026-11-11 · (unmerged) · #341's last items: `research_counts` finds an entity's runs through three equality joins and two new indexes on `entity_research`'s resolved ids (0057) instead of a `CASE … OR` join; the Registry and both profiles show a loading line at once (`loading.tsx`). At 2,050 entities a Registry page's queries take 15–17 ms on local Postgres.
 - 2026-11-11 · (unmerged) · Codecov judges a commit only once all three coverage uploads are in (`after_n_builds: 3`). It used to post the frontend checks before the frontend job uploaded, and `codecov/project/frontend` on #366 stayed in progress.
+- 2026-11-12 · #379 · `UTILITY_MODEL` and `SQL_AUDIT_MODEL` default to Claude Haiku 5.5 at low effort, about a tenth of Haiku 4.5's price; the audit and news headlines read the reply's text, since Haiku 5.5 can start with a thinking block (#378).
 
 ## Tracing and evals
 

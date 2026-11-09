@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Work that needs no reasoning: a fixed record from one article, the catalog-writer (two tools, a
     # report) and the workbook-reader (one tool, a list of names).
-    utility_model: str = "anthropic:claude-haiku-4-5"
+    utility_model: str = "anthropic:claude-haiku-5-5"
 
     # Local only: also accept `Authorization: Bearer dev` as the seeded dev user. Never set when deployed.
     dev_auth: bool = False
@@ -93,7 +93,7 @@ class Settings(BaseSettings):
     sql_max_rows: int = 50
     # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). `off` disables it;
     # it is a real extra model call per SQL turn, so it runs on the cheapest tier.
-    sql_audit_model: str = "anthropic:claude-haiku-4-5"
+    sql_audit_model: str = "anthropic:claude-haiku-5-5"
 
     # Graph steps per turn, not tool calls: every middleware hook is its own node, so one model-then-tool
     # cycle costs several. Bound in build_agent(); LangGraph's own default is 25, which a SQL turn exceeds.

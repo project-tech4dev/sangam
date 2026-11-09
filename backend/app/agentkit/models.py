@@ -6,6 +6,8 @@ from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 
 SUPPORTED_PROVIDERS = {"anthropic", "openai", "google_genai"}
+# Haiku 5.5 thinks at medium effort by default; the utility tier's short, fixed-shape jobs need little or none.
+EFFORT = {"claude-haiku-5-5": "low"}
 
 
 def resolve_model(spec: str) -> BaseChatModel:
@@ -20,4 +22,5 @@ def resolve_model(spec: str) -> BaseChatModel:
         raise ValueError(
             f"Unsupported provider {provider!r}: expected one of {sorted(SUPPORTED_PROVIDERS)}"
         )
-    return init_chat_model(name, model_provider=provider)
+    kwargs = {"output_config": {"effort": EFFORT[name]}} if name in EFFORT else {}
+    return init_chat_model(name, model_provider=provider, **kwargs)

@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from app.ask import audit as audit_mod
 from app.ask.audit import Audit, audit_turn, collect_turn, executed_sql
 
-MODEL = "anthropic:claude-haiku-4-5"
+MODEL = "anthropic:claude-haiku-5-5"
 
 
 def turn(answer="KABIL has the highest score, 93.", *, with_sql=True):
@@ -103,6 +103,12 @@ class TestVerdicts:
     def test_json_wrapped_in_prose_is_still_read(self, fake_model):
         """Small models preface JSON with chatter however firmly you ask."""
         fake_model('Here is my assessment:\n{"verdict":"warn","caveat":"grain mismatch"}\nHope that helps.')
+        assert audit_turn(turn(), MODEL).caveat == "grain mismatch"
+
+    def test_a_reply_that_starts_with_thinking_is_still_read(self, fake_model):
+        """Haiku 5.5 thinks by default, so content is a list with a thinking block first."""
+        fake_model([{"type": "thinking", "thinking": "", "signature": "s"},
+                    {"type": "text", "text": '{"verdict":"warn","caveat":"grain mismatch"}'}])
         assert audit_turn(turn(), MODEL).caveat == "grain mismatch"
 
     def test_warn_without_a_caveat_is_not_actionable(self, fake_model):

@@ -181,6 +181,14 @@ class TestEachTierGetsItsModel:
         assert "opus" in s.model and "sonnet" in s.research_model and "haiku" in s.utility_model
         assert "haiku" in s.sql_audit_model
 
+    def test_haiku_5_5_runs_at_low_effort(self, monkeypatch):
+        """It thinks at medium by default; the utility tier's short jobs need little or none."""
+        from app.agent import models
+
+        monkeypatch.setattr(models, "init_chat_model", lambda name, **kw: kw)
+        assert models.resolve_model("anthropic:claude-haiku-5-5")["output_config"] == {"effort": "low"}
+        assert "output_config" not in models.resolve_model("anthropic:claude-opus-5-5")
+
     def test_the_module_level_specs_are_not_mutated(self, build_import):
         # build_ingest_agent copies each spec before adding a model, so builds cannot leak between them.
         from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, VAULT_READER, WORKBOOK_READER
