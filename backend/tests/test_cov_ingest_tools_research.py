@@ -14,9 +14,10 @@ import httpx
 import pytest
 
 from app.ingest.expectations import concepts_for
+from app.ingest.matcher import Match
 from app.ingest.tools import research_tools
 from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, running_as
-from tests.test_import_roles import MEMBER, STAFF
+from tests.test_import_roles import ARPAN_STEWARD, KABIL_STEWARD, MEMBER, STAFF
 
 URL = "https://example.org/csr"
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -400,6 +401,67 @@ class TestSaveResearch:
                       evidence="[source:12#FY24!B7] Example Foundation 6.74 crore sports.")
         out = await self.save(research(findings=[staff]))
         assert out.startswith("save_research failed: RuntimeError. Report the failure") and "down" not in out
+
+
+def ngo_research(name="Arpan") -> dict:
+    gaps = [{"concept": c, "reason": "not_stated", "detail": "the site does not say"} for c in concepts_for("org")]
+    return research(findings=[], entity_name=name, entity_kind="org", gaps=gaps)
+
+
+class TestSaveNgoResearchScope:
+    """An NGO's research is saved by its stewards or staff: the brief is keyed on the slug alone."""
+
+    @pytest.fixture
+    def saving(self, monkeypatch):
+        conn = ScriptConn([("SELECT fact_count", None), ("INSERT INTO entity_research", {"id": 31})])
+        state = SimpleNamespace(conn=conn, match=Match("exact", 7), matched=[])
+        monkeypatch.setattr(research_tools, "get_pool", lambda: ScriptPool(conn))
+
+        async def rows_for(c, slug):
+            return [{"slug": slug}]
+
+        async def publish(history, unplaced):
+            return True
+
+        async def org_match(c, row, asking=None):
+            state.matched.append(row)
+            return state.match
+        monkeypatch.setattr(research_tools, "rows_for", rows_for)
+        monkeypatch.setattr(research_tools, "publish", publish)
+        monkeypatch.setattr(research_tools, "org_match", org_match)
+        return state
+
+    async def save(self, scope, payload=None):
+        with running_as(scope):
+            return await research_tools.save_research.ainvoke({"findings": payload or ngo_research()})
+
+    async def test_a_steward_saves_their_own_ngo(self, saving):
+        assert (await self.save(ARPAN_STEWARD)).startswith("Saved as entity_research #31 (arpan)")
+        assert saving.matched[0]["slug"] == "arpan" and saving.matched[0]["entity_kind"] == "org"
+
+    async def test_a_steward_of_another_ngo_is_refused_and_nothing_is_written(self, saving):
+        out = await self.save(KABIL_STEWARD)
+        assert out.startswith("REFUSED: researching an NGO is for its stewards")
+        assert not saving.conn.sql("INSERT") and not saving.conn.sql("SELECT fact_count")
+
+    async def test_a_slug_held_by_another_ngo_is_refused(self, saving):
+        saving.match = Match("none")
+        saving.conn.on("FROM orgs WHERE slug", {"id": 7})
+        assert (await self.save(KABIL_STEWARD)).startswith("REFUSED")
+        assert (await self.save(ARPAN_STEWARD)).startswith("Saved as")
+
+    async def test_a_near_name_alone_does_not_count_as_the_stewards_ngo(self, saving):
+        saving.match = Match("trigram", 8)
+        assert (await self.save(KABIL_STEWARD)).startswith("REFUSED")
+
+    async def test_a_new_ngo_is_for_staff(self, saving):
+        saving.match = Match("none")
+        assert (await self.save(ARPAN_STEWARD, ngo_research("Brand New Trust"))).startswith("REFUSED")
+        assert (await self.save(STAFF, ngo_research("Brand New Trust"))).startswith("Saved as")
+        assert len(saving.matched) == 1
+
+    async def test_a_member_is_refused_before_any_read(self, saving):
+        assert (await self.save(MEMBER)).startswith("REFUSED") and not saving.conn.calls
 
 
 class TestPublishBrief:

@@ -64,6 +64,7 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
         else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort, website, "
         "aliases, staff_count, staff_count_note, source_type, evidence"
     )
+    caller = scope()
     try:
         pool = get_pool()
         async with pool.connection() as conn:
@@ -76,6 +77,7 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
                     (f"%{name}%", name, name),
                 )
             ).fetchall()
+            rows = [r for r in rows if _listed(caller, entity_kind, r)]
             # A shared word is not a match: "Infosys Foundation" scored 0.48 against "SBI Foundation".
             match = await (resolve_funder if entity_kind == "funder" else resolve_org)(conn, name)
             top = next((r for r in rows if r["id"] == match.entity_id), None) if match.resolved else None
@@ -83,6 +85,8 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
                 top = await (
                     await conn.execute(f"SELECT {head} FROM {entity_table} WHERE id = %s", (match.entity_id,))
                 ).fetchone()
+            if top is not None and not _listed(caller, entity_kind, top):
+                top = None
             if top is None:
                 close = ", ".join(f"{r['name']} [{entity_kind}:{r['id']}]" for r in rows)
                 return (
@@ -106,7 +110,7 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
                 out.append(f"  other rows with a similar name: {others}")
 
             for label, sql in sections:
-                found = await (await conn.execute(sql, (fid,))).fetchall()
+                found = [r for r in await (await conn.execute(sql, (fid,))).fetchall() if _readable(caller, r)]
                 if not found:
                     out.append(f"\n{label}: NOT RECORDED")
                     continue
@@ -120,7 +124,19 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
 
 
 def _row(r: Any) -> str:
-    return " ".join(f"{k}={v}" for k, v in r.items() if v is not None and k != "id")
+    return " ".join(f"{k}={v}" for k, v in r.items() if v is not None and k != "id" and not k.startswith("_"))
+
+
+def _readable(caller: CallerScope, r: Any) -> bool:
+    """RLS on the owner pool: a private row (`_public` false) is staff's, or its own org's (`_org`)."""
+    return r.get("_public", True) or caller.can_read_org(r.get("_org"))
+
+
+def _listed(caller: CallerScope, kind: str, r: Any) -> bool:
+    """A hidden funder is staff's; a hidden NGO is its own people's too, as funders_read and orgs_read say."""
+    if r.get("registry_status") != "hidden" or caller.is_staff:
+        return True
+    return kind == "org" and caller.can_read_org(r["id"])
 
 
 # Read-only, fixed SQL, one query per concept the research brief targets.
@@ -132,7 +148,8 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         # for "whether anybody qualifies" — nothing here judges an applicant.
         "eligibility (the funder_eligibility document: what it REQUIRES of applicants; not a judgement on any)",
         """
-        SELECT id AS document_id, title, as_of, source_url, left(content_md, 1500) AS text
+        SELECT id AS document_id, title, as_of, source_url, left(content_md, 1500) AS text,
+               is_public AS _public, org_id AS _org
         FROM documents WHERE funder_id = %s AND doc_type = 'funder_eligibility'
         ORDER BY fetched_at DESC NULLS LAST, id DESC LIMIT 1
         """,
@@ -160,7 +177,8 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         "funder_activity kind='spend' (filed lines, INR; domain and theme are INFERRED unless confirmed)",
         """
         SELECT a.fiscal_year, a.project_name, a.amount, a.outlay, a.partner_name, a.implementation_mode,
-               a.designation, d.code AS domain, t.code AS theme, a.classified_by, a.classification_confirmed
+               a.designation, d.code AS domain, t.code AS theme, a.classified_by, a.classification_confirmed,
+               a.is_public AS _public
         FROM funder_activity a
         LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
         WHERE a.funder_id = %s AND a.kind = 'spend' ORDER BY a.fiscal_year, a.id
@@ -169,7 +187,7 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
         "funder_activity kind='footprint' (where the work actually ran)",
         """
-        SELECT a.fiscal_year, a.name_as_printed, s.name AS state, l.name AS location
+        SELECT a.fiscal_year, a.name_as_printed, s.name AS state, l.name AS location, a.is_public AS _public
         FROM funder_activity a
         LEFT JOIN locations s ON s.id = a.state_location_id LEFT JOIN locations l ON l.id = a.location_id
         WHERE a.funder_id = %s AND a.kind = 'footprint' ORDER BY a.fiscal_year, a.id
@@ -187,7 +205,7 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
          "received, and a multi-year grant's whole amount sits on its start year)"),
         """
         SELECT fiscal_year, partner_name, partner_canonical, partner_kind, project_name, outlay, amount,
-               start_date, end_date, relationship_status, partner_org_id
+               start_date, end_date, relationship_status, partner_org_id, is_public AS _public
         FROM funder_activity WHERE funder_id = %s AND kind = 'partner' ORDER BY fiscal_year, id
         """,
     ),
@@ -195,7 +213,7 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         "funder_activity kind='programme' (the funder's OWN programme totals; never add them to spend)",
         """
         SELECT a.fiscal_year, p.name AS programme, a.amount, d.code AS domain, t.code AS theme,
-               a.classification_confirmed
+               a.classification_confirmed, a.is_public AS _public
         FROM funder_activity a JOIN programs p ON p.id = a.program_id
         LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
         WHERE a.funder_id = %s AND a.kind = 'programme' ORDER BY a.fiscal_year, p.name
@@ -218,13 +236,13 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
         "contacts",
         """
-        SELECT name, role, kind, verified FROM contacts WHERE funder_id = %s
+        SELECT name, role, kind, verified, is_public AS _public, org_id AS _org FROM contacts WHERE funder_id = %s
         """,
     ),
     (
         "documents",
         """
-        SELECT title, doc_type, as_of, source_url FROM documents
+        SELECT title, doc_type, as_of, source_url, is_public AS _public, org_id AS _org FROM documents
         WHERE funder_id = %s ORDER BY as_of
         """,
     ),
@@ -238,7 +256,8 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         ("org_identifiers (current = 'registered' or 'provisional' with a number; 'applied' is not a "
          "registration; 'check_blocked' is not 'valid')"),
         """
-        SELECT id_type, id_value, status, valid_until, application_ref, is_current, source_type, evidence
+        SELECT id_type, id_value, status, valid_until, application_ref, is_current, source_type, evidence,
+               is_public AS _public, org_id AS _org
         FROM org_identifiers WHERE org_id = %s ORDER BY id_type, is_current DESC, id
         """,
     ),
@@ -268,7 +287,7 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         "funder_activity kind='partner' naming this organisation (grants received; amount INR)",
         """
         SELECT a.fiscal_year, f.name AS funder, a.project_name, a.amount, a.relationship_status,
-               a.start_date, a.end_date
+               a.start_date, a.end_date, a.is_public AND f.registry_status <> 'hidden' AS _public
         FROM funder_activity a JOIN funders f ON f.id = a.funder_id
         WHERE a.partner_org_id = %s AND a.kind = 'partner' ORDER BY a.fiscal_year, a.id
         """,
@@ -283,13 +302,13 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
         "contacts",
         """
-        SELECT name, role, kind, verified FROM contacts WHERE org_id = %s
+        SELECT name, role, kind, verified, is_public AS _public, org_id AS _org FROM contacts WHERE org_id = %s
         """,
     ),
     (
         "documents",
         """
-        SELECT title, doc_type, as_of, source_url FROM documents
+        SELECT title, doc_type, as_of, source_url, is_public AS _public, org_id AS _org FROM documents
         WHERE org_id = %s ORDER BY as_of
         """,
     ),
