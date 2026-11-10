@@ -11,18 +11,7 @@ from deepagents.backends.filesystem import FilesystemBackend
 from deepagents.backends.state import StateBackend
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
-from app.agent.harness import SKILL_READING_TOOLS
-from app.agent.harness import filesystem as filesystem_tools
-from app.agent.harness import install as install_harness
-from app.agent.middleware import (
-    CompareFitBudget,
-    answer_audit,
-    clear_old_tool_results,
-    model_call_cap,
-    sql_retry_limiter,
-    tool_errors,
-)
-from app.agent.models import resolve_model
+from app.agent.middleware import CompareFitBudget, answer_audit, model_call_cap, sql_retry_limiter
 from app.agent.prompt import render_prompt
 from app.agent.tools.graph_tools import search_graph
 from app.agent.tools.matching_tools import compare_fit
@@ -32,8 +21,12 @@ from app.agent.tools.sql_tools import (
     db_profile_column,
     db_query,
 )
+from app.agentkit.harness import SKILL_READING_TOOLS
+from app.agentkit.harness import filesystem as filesystem_tools
+from app.agentkit.harness import install as install_harness
+from app.agentkit.middleware import cheap_summarizer, clear_old_tool_results, fallback, tool_errors
+from app.agentkit.models import resolve_model
 from app.core.config import Settings
-from app.ingest.middleware import cheap_summarizer, fallback
 from app.integrations.tracing import trace_config
 
 # The agent reaches the database ONE way: it discovers the schema, then writes a SELECT. There used to be

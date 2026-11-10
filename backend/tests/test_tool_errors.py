@@ -9,7 +9,7 @@ from langchain.agents.middleware import ToolErrorMiddleware
 from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphInterrupt
 
-from app.agent.middleware import tool_errors
+from app.agentkit.middleware import tool_errors
 
 
 def _request(name: str = "db_query"):
@@ -58,7 +58,7 @@ def _count(stack: list) -> int:
 
 
 def test_ask_has_the_backstop(stacks):
-    from app.agent.build import build_agent
+    from app.agent.agent import build_agent
     from app.core.config import Settings
 
     build_agent(Settings(_env_file=None), None)

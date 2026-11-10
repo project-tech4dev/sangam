@@ -65,7 +65,7 @@ def _process_age() -> float | None:
 
 def _build_agents(settings: Settings, checkpointer: Any) -> dict[str, Any]:
     """Every agent-stack import lives here: a REST cold start never pays for deepagents, models or tracing."""
-    from app.agent.build import build_agent
+    from app.agent.agent import build_agent
     from app.ingest.agent import build_ingest_agent
     from app.integrations.tracing import (
         SessionScopedAGUIAgent,

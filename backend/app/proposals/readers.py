@@ -20,13 +20,13 @@ from deepagents.backends.state import StateBackend
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables.config import var_child_runnable_config
 
-from app.agent.harness import filesystem as filesystem_tools
-from app.agent.middleware import clear_old_tool_results, tool_errors
-from app.agent.models import resolve_model
+from app.agentkit.harness import filesystem as filesystem_tools
+from app.agentkit.middleware import clear_old_tool_results, fallback, tool_errors
+from app.agentkit.models import resolve_model
 from app.core.config import Settings
 from app.db.pool import get_pool
 from app.ingest import run_sources
-from app.ingest.middleware import RunSources, fallback
+from app.ingest.middleware import RunSources
 from app.integrations.tracing import propagate_caller, trace_config
 from app.proposals import brief, context, research, steps
 from app.proposals import facts as fact_rules

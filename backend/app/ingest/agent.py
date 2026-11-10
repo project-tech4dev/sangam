@@ -11,11 +11,11 @@ from deepagents.backends.filesystem import FilesystemBackend
 from deepagents.backends.state import StateBackend
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
-from app.agent.harness import SKILL_READING_TOOLS
-from app.agent.harness import filesystem as filesystem_tools
-from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results, tool_errors
-from app.agent.models import resolve_model
+from app.agentkit.harness import SKILL_READING_TOOLS
+from app.agentkit.harness import filesystem as filesystem_tools
+from app.agentkit.harness import install as install_harness
+from app.agentkit.middleware import cheap_summarizer, clear_old_tool_results, fallback, tool_errors
+from app.agentkit.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.middleware import (
     CallerNote,
@@ -28,8 +28,6 @@ from app.ingest.middleware import (
     TickedSources,
     ask_for_sources,
     call_limit,
-    cheap_summarizer,
-    fallback,
     research_rubric,
     run_plan,
     save_questions,

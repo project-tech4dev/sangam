@@ -63,7 +63,7 @@ Generated detail (tools, skills, middleware order, prompt rules): [ask-sangam](.
 - **The model writes its own SQL**; there are no curated lookup tools. The four removed ones (`search_orgs`, …) were a
   cached query plan, and a worse one: asked about Assam, `search_orgs` returned ten orgs, the model's own SQL found seven.
 - **The tool list is pinned by tests.** deepagents adds filesystem tools and a general-purpose subagent with every tool;
-  `harness.py` strips both, and the next library upgrade is free to add more.
+  `agentkit/harness.py` strips both, and the next library upgrade is free to add more.
 - **The SQL path has four layers** (`docs/SQL_AGENT.md`): the catalog is the allowlist, the regenerated sqlglot AST is
   what executes (never the model's string), a read-only transaction with a timeout, and cited rendering.
 - **Ask's SQL runs on the owner pool, a superuser**, so the catalog is the only guard. Adding a table to it is a security

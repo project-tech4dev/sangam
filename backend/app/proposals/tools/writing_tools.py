@@ -11,7 +11,7 @@ from langchain_core.tools import tool
 from langgraph.errors import GraphBubbleUp
 from langgraph.types import interrupt
 
-from app.agent.models import resolve_model
+from app.agentkit.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.proposals import assemble, context, grade, records, rubric, steps, trace

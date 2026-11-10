@@ -9,13 +9,14 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 
 from app.agent import middleware
+from app.agentkit import middleware as kit
 
 # ~5k tokens a result: a db_query grid near its 6,000-char cap is ~1.5k, so this is a heavy turn.
 RESULT = "row " * 5_000
 
 
 def _edit() -> ClearToolUsesEdit:
-    return middleware.clear_old_tool_results().edits[0]
+    return kit.clear_old_tool_results().edits[0]
 
 
 def _conversation(calls: int, *, compare_fit_at: int | None = None) -> list:
@@ -53,14 +54,14 @@ def _sent_tokens(calls: int) -> int:
 
 def test_the_cleared_set_moves_once_per_step_as_the_turn_grows():
     # 30 results of ~5k is ~150k tokens: ~90k past the trigger, so at most five 20k steps.
-    over = count_tokens_approximately(_conversation(30)) - middleware.TOOL_RESULT_CLEAR_TRIGGER_TOKENS
-    assert _cache_breaks(_edit(), 30) <= -(-over // middleware.TOOL_RESULTS_CLEAR_STEP)
+    over = count_tokens_approximately(_conversation(30)) - kit.TOOL_RESULT_CLEAR_TRIGGER_TOKENS
+    assert _cache_breaks(_edit(), 30) <= -(-over // kit.TOOL_RESULTS_CLEAR_STEP)
 
 
 def test_what_is_sent_stays_under_the_trigger_however_long_the_turn():
     # A fixed clear_at_least cleared the same four results forever: 60 calls sent ~280k.
     for calls in (13, 17, 30, 60):
-        assert _sent_tokens(calls) <= middleware.TOOL_RESULT_CLEAR_TRIGGER_TOKENS
+        assert _sent_tokens(calls) <= kit.TOOL_RESULT_CLEAR_TRIGGER_TOKENS
 
 
 def test_the_old_setting_broke_the_cache_on_every_call_past_the_trigger():
@@ -79,7 +80,7 @@ def test_past_the_trigger_old_results_are_cleared_but_compare_fit_never_is():
     assert contents[0].startswith("compare_fit 0")
     assert "[cleared]" in contents
     # The latest results, which a follow-up refers back to, stay.
-    assert all(c != "[cleared]" for c in contents[-middleware.TOOL_RESULTS_KEPT:])
+    assert all(c != "[cleared]" for c in contents[-kit.TOOL_RESULTS_KEPT:])
 
 
 class TestEveryFailedSqlAttemptCounts:

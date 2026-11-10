@@ -14,8 +14,8 @@ from langchain.agents.middleware import AgentMiddleware, ModelRequest, before_mo
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
+from app.agentkit.middleware import AgUiState
 from app.ingest.access import canonical_url
-from app.ingest.middleware import _AgUiState
 from app.integrations.storage import _safe_name
 from app.proposals import context
 from app.proposals import facts as fact_rules
@@ -46,7 +46,7 @@ def with_screen(messages: list[Any], line: str) -> list[Any]:
 class ProposalContext(AgentMiddleware):
     """Reads the proposal fresh each call: a save on screen between two calls is seen by the second."""
 
-    state_schema = _AgUiState
+    state_schema = AgUiState
 
     async def awrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Awaitable[Any]]) -> Any:
         p = await context.current()

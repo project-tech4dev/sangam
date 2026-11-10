@@ -11,6 +11,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from app.agent import middleware as mw
 from app.agent.audit import CAVEAT_PREFIX, Audit
 from app.agent.tools.sql.errors import FAILED_PREFIX, PROFILE_REJECTED_PREFIX
+from app.agentkit import middleware as kit
 from app.ingest import middleware as imw
 
 
@@ -110,20 +111,20 @@ async def test_budget_middleware_async_reads_object_state():
 # --- tool errors and clearing ------------------------------------------------
 
 def test_a_raised_tool_reports_only_the_exception_type():
-    out = mw._tool_failed(RuntimeError("password=hunter2"), _req("db_query"))
+    out = kit._tool_failed(RuntimeError("password=hunter2"), _req("db_query"))
     assert out.startswith("db_query failed: RuntimeError.") and "hunter2" not in out
-    assert mw._tool_failed(ValueError(), SimpleNamespace(tool_call={})).startswith("tool failed")
+    assert kit._tool_failed(ValueError(), SimpleNamespace(tool_call={})).startswith("tool failed")
 
 
 def test_stepped_clearing_does_nothing_under_the_trigger():
-    edit = mw.clear_old_tool_results().edits[0]
+    edit = kit.clear_old_tool_results().edits[0]
     msgs = [HumanMessage("hi")]
     edit.apply(msgs, count_tokens=lambda m: 10)
     assert msgs == [HumanMessage("hi")]
 
 
 def test_tool_errors_builds_the_middleware():
-    assert mw.tool_errors() is not None
+    assert kit.tool_errors() is not None
 
 
 # --- answer audit ------------------------------------------------------------
