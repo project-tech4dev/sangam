@@ -11,7 +11,10 @@ vi.mock("@/features/registry/api", () => ({ fetchRegistryPage: fetchPage }));
 
 // setUrlParams writes jsdom's history, which the shared setup does not reset.
 afterEach(() => window.history.replaceState(null, "", "/"));
-beforeEach(() => fetchPage.mockReset());
+beforeEach(() => {
+  fetchPage.mockReset();
+  fetchPage.mockImplementation(async () => page(rows)); // a pick asks the server at once
+});
 
 const rows = [
   registryRow({
@@ -164,6 +167,26 @@ describe("RegistryClient", () => {
     await userEvent.click(screen.getByRole("button", { name: /Clear filters/ }));
     expect(box).toHaveValue("");
     await waitFor(() => expect(names()).toHaveLength(3));
+  });
+
+  it("asks once, with every filter, when a search is cleared with the filters", async () => {
+    navigation.search = new URLSearchParams("theme=Health&q=dhubri");
+    render(<RegistryClient first={page([rows[0]])} />);
+    await userEvent.click(screen.getByRole("button", { name: /Clear filters/ }));
+    await waitFor(() => expect(names()).toHaveLength(3));
+    await new Promise((r) => setTimeout(r, 300)); // past the search delay: no second ask
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    expect(asked()).toEqual({ limit: "25", offset: "0" });
+  });
+
+  it("asks a dropdown pick at once, with the text typed so far", async () => {
+    fetchPage.mockResolvedValue(page([rows[2]]));
+    render(<RegistryClient first={page(rows)} />);
+    await userEvent.type(screen.getByRole("searchbox"), "tata");
+    await userEvent.selectOptions(select("Theme"), "Health");
+    await waitFor(() => expect(asked()).toEqual({ theme: "Health", q: "tata", limit: "25", offset: "0" }));
+    await new Promise((r) => setTimeout(r, 300));
+    expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 
   it("shows the first 25 and asks the server for the next batch", async () => {

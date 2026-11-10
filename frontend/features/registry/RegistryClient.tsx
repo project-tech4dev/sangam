@@ -78,19 +78,23 @@ export function RegistryClient({ first }: { first: RegistryPage }) {
   // Typed text stays local so the caret never waits on the address; the address gets a copy.
   const [q, setQ] = useState(fromUrl.q);
   const f: Filters = { ...fromUrl, q };
-  // A replace: Back leaves the Registry, it does not undo each filter.
+  const [asked, setAsked] = useState<Filters>(fromUrl);
+  // A replace: Back leaves the Registry, it does not undo each filter. A pick or a Clear is asked at once.
   const set = (patch: Partial<Filters>) => {
     if (patch.q !== undefined) setQ(patch.q);
+    setAsked({ ...f, ...patch });
     setUrlParams(filterParams(patch), "replace");
   };
+  const type = (text: string) => {
+    setQ(text);
+    setUrlParams(filterParams({ q: text }), "replace");
+  };
 
-  // The server is asked once typing pauses, not on every key.
-  const [searched, setSearched] = useState(fromUrl.q);
+  // Typing is asked once it pauses, not on every key.
   useEffect(() => {
-    const t = setTimeout(() => setSearched(q), SEARCH_DELAY_MS);
+    const t = setTimeout(() => setAsked((a) => (a.q === q ? a : { ...a, q })), SEARCH_DELAY_MS);
     return () => clearTimeout(t);
   }, [q]);
-  const asked: Filters = { ...fromUrl, q: searched };
   const list = usePagedList<RegistryRow, RegistryPage>(
     registryQuery(asked, 0, PAGE),
     (offset, limit) => fetchRegistryPage(registryQuery(asked, offset, limit)),
@@ -176,7 +180,7 @@ export function RegistryClient({ first }: { first: RegistryPage }) {
         onPick={(kind) => set({ kind, reg: "any", ftype: "all", approach: "any" })}
       />
       <FilterRow filters={filters} />
-      <SearchBox value={f.q} onChange={(q) => set({ q })} placeholder="Search names, districts, programmes and funders…" />
+      <SearchBox value={f.q} onChange={type} placeholder="Search names, districts, programmes and funders…" />
 
       <div className="reg-count">
         <span className="muted">
