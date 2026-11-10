@@ -131,6 +131,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-14 · Each agent route declares its access in `AGENT_ACCESS`; a route with none fails at boot instead of falling back.
 - 2026-10-15 · Only a thread's owner may post a turn in it, staff included, so rows read as one user are never replayed to another.
 - 2026-11-10 · #190 · `/api/copilotkit` serves only the routes the chat client calls (`info`, `agent/run|connect|stop|suggest`); the runtime's `threads/*`, `memories/*` and `inspector/*`, which handed every in-memory run to anyone, are 404 (#189).
+- 2026-11-10 · #395 · `/api/copilotkit`'s `agent/connect` and `agent/stop` replay or stop a run only for the thread's owner, asked of the new `GET /api/threads/{id}/owned` (204 yours or unclaimed, 404 anyone else's, staff included) (#189).
 
 ## Frontend and design system
 

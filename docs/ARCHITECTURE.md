@@ -234,7 +234,9 @@ listed as open.
 | Import pipeline: sources, runs, queue, workbooks, undo, delete research | — | — | — | — | ✓ | `require_scout` + `require_staff` |
 | hide a news story, plan a news run | — | — | — | — | ✓ | `require_staff` |
 
-Someone else's chat is 404 to post in, staff included; staff read it over REST.
+Someone else's chat is 404 to post in, staff included; staff read it over REST. The CopilotKit runtime
+(`/api/copilotkit`) keeps every run in the instance's memory, so it serves only what the chat client calls, and
+`agent/connect` and `agent/stop` ask the backend's `GET /api/threads/{id}/owned` first: same rule, owner only.
 
 **Known inconsistency:** the three writes on `app.my_writable_org_ids()` (`0024`: member and admin) exclude stewards,
 and the two on `app.my_match_org_ids()` (`0042`: admin and steward) exclude members. Example: Ravi, a steward, can

@@ -24,6 +24,15 @@ async def list_threads(
     return [ThreadOut.model_validate(r) for r in rows]
 
 
+@router.get("/{thread_id}/owned", status_code=status.HTTP_204_NO_CONTENT,
+            summary="204 when the caller may post in this chat: theirs, or not yet claimed")
+async def owned(thread_id: str, owner_pool: OwnerPoolDep, user_id: UserDep) -> None:
+    # The post rule, not the read rule: staff and team members are 404 too. The chat runtime gates replay on it.
+    owner = await repo.owner_of(owner_pool, thread_id=thread_id)
+    if owner is not None and owner != user_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
+
+
 @router.get("/{thread_id}/messages", response_model=ThreadMessagesOut, summary="One Ask chat's saved messages")
 async def thread_messages(
     thread_id: str, request: Request, owner_pool: OwnerPoolDep, user_id: UserDep
