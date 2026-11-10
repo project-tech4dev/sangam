@@ -124,6 +124,19 @@ def split(storage_path: str) -> tuple[str, str] | None:
     return bucket, key
 
 
+def owned_split(storage_path: str | None, *, org_id: int | None, is_public: bool) -> tuple[str, str] | None:
+    """`split`, refusing a path the row cannot own: another org's vault folder, or a staff file on an org's row."""
+    parts = split(storage_path or "")
+    if parts is None:
+        return None
+    bucket, key = parts
+    if bucket == ORG_VAULT and (org_id is None or key.partition("/")[0] != str(org_id)):
+        return None
+    if bucket == STAFF_SOURCES and (org_id is not None or is_public):
+        return None
+    return parts
+
+
 def url_prefix(source_url: str) -> str:
     """The folder a source URL's archived versions live under.
 

@@ -201,6 +201,10 @@ Generated detail: [auth-roles-rls](../openwiki/architecture/auth-roles-rls.md).
 - **Two pools.** REST runs as the caller (`CallerPool` sets the role and JWT claims per transaction, so RLS applies).
   Agent tools, Import, the matching reader and seeds run on the **owner** pool, a superuser, and check access themselves.
 - **RLS is on for every table** (`0027`); a new table needs its policies in the same migration.
+- **A `documents.storage_path` is trusted only inside the row's own folder.** The service key can sign any object,
+  so an `org-vault/` key's first segment must be the row's `org_id` and a `staff-sources/` file must sit on a private,
+  org-less row. `documents_insert` refuses any other path (`0056`), and every signer or reader checks it again with
+  `storage.owned_split` for rows the owner pool wrote. Example: org 3's row naming `org-vault/4/report.pdf` is a 404.
 - Not built yet: Phase 2 of `features-plans/access/auth-plan.md` (email-domain matching, join requests).
 
 ### Who may do what
@@ -223,7 +227,7 @@ listed as open.
 | start or edit a proposal | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `app.my_match_org_ids()` (`0048`) |
 | delete a proposal and its saved Word versions | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `proposals_delete`, `documents_delete_draft` (`0052`); only drafts under `<org>/proposals/<id>/` |
 | chat with Sangam Pitch | — | 403 | ✓ own | ✓ own | ✓ own | `proposal_chat_access`, then `CallerScope.can_edit_proposal` |
-| upload to the Doc Vault | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `documents_insert` (`0048`) |
+| upload to the Doc Vault | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `documents_insert` (`0048`); the file only under `org-vault/<org>/` (`0056`) |
 | delete a Doc Vault upload and its file | — | — | — | — | ✓ | `require_staff` + RLS `documents_delete` (`0051`) |
 | add or edit a contact | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |
 | save or dismiss an RFP match | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |

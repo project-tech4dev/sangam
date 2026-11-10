@@ -95,7 +95,7 @@ class TestOffice:
         assert office.xlsx_markdown(data) == "## Grants\na | \n… first 2 rows only"
 
 
-DOC = {"id": 12, "title": "Annual report", "doc_type": "annual_report", "storage_path": "org-vault/3/ar.pdf"}
+DOC = {"id": 12, "org_id": 3, "title": "Annual report", "doc_type": "annual_report", "storage_path": "org-vault/3/ar.pdf"}
 
 
 class TestTextLines:
@@ -180,6 +180,13 @@ class TestVaultRead:
         assert "no file on record" in await vault.read({**DOC, "storage_path": None})
         assert "is not a PDF, Word" in await vault.read({**DOC, "storage_path": "org-vault/3/x.ppt"})
         assert "could not be downloaded" in await vault.read(DOC)
+
+    async def test_a_row_naming_another_orgs_file_is_not_read(self, download):
+        download["data"] = b"secret"
+        assert "no file on record" in await vault.read({**DOC, "storage_path": "org-vault/4/ar.pdf"})
+        assert "no file on record" in await vault.read({**DOC, "storage_path": "org-vault/33/ar.pdf"})
+        assert "no file on record" in await vault.read({**DOC, "org_id": None})
+        assert "no file on record" in await vault.read({**DOC, "storage_path": "source-archive/3/ar.pdf"})
 
     async def test_pdf_pages_are_marked_and_cut(self, download, monkeypatch):
         download["data"] = b"%PDF"
