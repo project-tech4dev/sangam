@@ -1,4 +1,4 @@
-import { call } from "../../lib/rest";
+import { call } from "@/lib/api/rest";
 
 export type FeedCall = {
   rfp_id: number;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { MeOut } from "@/lib/api";
-import { getMe } from "./rest";
+import { getMe } from "@/lib/api/rest";
 
 export type OrgChoice = { slug: string; name: string };
 

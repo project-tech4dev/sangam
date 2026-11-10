@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api/auth-headers", () => ({ authHeaders: async () => ({ Authorization: "Bearer t" }) }));
 
-import { API, ApiError, call, getMe } from "@/features/ask/lib/rest";
+import { API, ApiError, call, getMe } from "@/lib/api/rest";
 import { getDetail, getMatches, runMatch } from "@/features/ask/views/funder-match/api";
 import { getFeed, setStatus } from "@/features/ask/views/rfp-watch/api";
 

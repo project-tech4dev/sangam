@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useInterrupt } from "@copilotkit/react-core/v2";
-import { call } from "@/features/ask/lib/rest";
+import { call } from "@/lib/api/rest";
 import { pausedAction } from "../lib/sourcePick";
 import { PauseSignal } from "./PauseSignal";
 

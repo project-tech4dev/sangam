@@ -2,7 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const getMe = vi.fn();
-vi.mock("@/features/ask/lib/rest", () => ({ getMe: () => getMe() }));
+vi.mock("@/lib/api/rest", () => ({ getMe: () => getMe() }));
 const useAgentChat = vi.fn<(...args: unknown[]) => string>(() => "chat");
 vi.mock("@/lib/useAgentChat", () => ({ useAgentChat: (...args: unknown[]) => useAgentChat(...args) }));
 const fetchThreadMessages = vi.fn<(id: string) => Promise<unknown[]>>(async () => []);

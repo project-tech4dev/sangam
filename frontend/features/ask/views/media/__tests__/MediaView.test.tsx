@@ -5,7 +5,7 @@ import type { MeOut, Story, StoryEntity, StoryPage } from "@/lib/api";
 
 const call = vi.fn();
 const getMe = vi.fn();
-vi.mock("@/features/ask/lib/rest", () => ({ call: (...a: unknown[]) => call(...a), getMe: () => getMe() }));
+vi.mock("@/lib/api/rest", () => ({ call: (...a: unknown[]) => call(...a), getMe: () => getMe() }));
 
 import { MediaView } from "@/features/ask/views/media/MediaView";
 import { StoryCard } from "@/features/ask/views/media/StoryCard";
