@@ -8,7 +8,7 @@ from typing import Any, Protocol
 
 from app.agent.tools.sql.validator import ValidatedQuery
 from app.core.config import get_settings
-from app.db.pool import get_pool
+from app.db.pool import agent_caller, get_pool, set_caller
 from app.integrations.tracing import traced_fetch
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,8 @@ class PsycopgExecutor:
 
     async def run(self, query: ValidatedQuery) -> list[dict[str, Any]]:
         pool = get_pool()
+        # The pool connects as the owner, a superuser; without a caller RLS would not apply at all.
+        role, claims = agent_caller.get() or ("anon", "")
         # conn.transaction() is what emits BEGIN, because the pool runs with autocommit=True. Without it
         # every SET in _harden would be a no-op or, worse, would persist on the connection after it returns.
         async with (
@@ -52,6 +54,7 @@ class PsycopgExecutor:
             conn.transaction(),
         ):
             await self._harden(conn)
+            await set_caller(conn, role, claims)
             return await traced_fetch(
                 conn,
                 query.sql,

@@ -17,14 +17,13 @@ TIERS = ("strong", "medium", "weak", "not_scored")
 
 @router.get("", response_model=MatchListOut, summary="An org's latest run, ranked by score")
 async def list_matches(
-    org: str, pool: PoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
+    pool: PoolDep, principal: Annotated[CurrentUser, Depends(require_principal)], org: str | None = None
 ) -> MatchListOut:
-    found = await repo.find_org(pool, org)
+    """Without `org`, the caller's first organisation by name."""
+    found, run, rows = await repo.read_latest(pool, org)
     # Not a member: 404, so a stranger cannot tell an unrun org from a hidden one.
     if found is None or not found["may_read"]:
-        raise HTTPException(404, f"org {org} not found")
-    run = await repo.latest_run(pool, found["id"])
-    rows = await repo.list_matches(pool, run["run_id"], run["prev_run_id"]) if run else []
+        raise HTTPException(404, f"org {org} not found" if org else "You are not a member of an organisation")
     matches = [{**r, "tier": tier(r["score"]),
                 "funder": {"id": r["funder_id"], "slug": r["funder_slug"], "name": r["funder_name"],
                            "funder_type": r["funder_type"]}} for r in rows]

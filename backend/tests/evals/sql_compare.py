@@ -76,6 +76,13 @@ def answer_contains_value(answer: str, value: Any) -> bool:
     return str(normalized).lower() in text
 
 
+def agent_values(row: dict[str, Any]) -> tuple:
+    """A re-run agent row without the source and id columns the validator added for itself."""
+    from app.agent.tools.sql.validator import CITE_PREFIX, PROVENANCE_PREFIX
+
+    return tuple(v for k, v in row.items() if not k.startswith((PROVENANCE_PREFIX, CITE_PREFIX)))
+
+
 def gold_satisfied(gold_rows: Sequence[Any], agent_rows: Sequence[Any], answer: str) -> bool:
     """Does the agent's result answer what the gold answers?"""
     gold = _rows_as_tuples(gold_rows)

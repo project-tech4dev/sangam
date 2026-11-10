@@ -12,6 +12,8 @@ from app.agent.tools.sql.validator import CitationPlan, ProvenancePlan
 
 MAX_CELL_CHARS = 200
 MAX_OUTPUT_CHARS = 6_000
+# A single row is what the model asked to read in full, like an org's description; one row may run to twice the budget.
+ONE_ROW_CELL_CHARS = 2_000
 
 # Distinct sources named per query. The block is deduped and budgeted separately from the
 # rows, so adding provenance never costs the model a row of data.
@@ -26,7 +28,7 @@ NO_ROWS = (
 )
 
 
-def render_cell(value: Any) -> str:
+def render_cell(value: Any, max_chars: int = MAX_CELL_CHARS) -> str:
     if value is None:
         return "NULL"
     if isinstance(value, (datetime, date)):
@@ -37,8 +39,8 @@ def render_cell(value: Any) -> str:
         text = json.dumps(value, separators=(",", ":"), default=str)
     else:
         text = str(value)
-    if len(text) > MAX_CELL_CHARS:
-        return f"{text[: MAX_CELL_CHARS - 1]}… ({len(text)} chars total)"
+    if len(text) > max_chars:
+        return f"{text[: max_chars - 1]}… ({len(text)} chars total)"
     return text
 
 
@@ -68,14 +70,21 @@ def render_rows(
     elif plans:
         lines.append("columns: (identifiers only)")
 
+    def line_of(row: dict[str, Any], max_chars: int) -> str:
+        markers = dict.fromkeys(
+            f"[{p.kind}:{row[p.output_column]}] " for p in plans if row.get(p.output_column) is not None
+        )
+        body = " | ".join(render_cell(row.get(c), max_chars) for c in body_columns)
+        return f"{''.join(markers)}{body}".rstrip()
+
+    if len(rows) == 1 and len(wide := line_of(rows[0], ONE_ROW_CELL_CHARS)) <= 2 * MAX_OUTPUT_CHARS:
+        lines.append(wide)
+        rows = []
+
     shown = 0
     budget = MAX_OUTPUT_CHARS
     for row in rows:
-        markers = "".join(
-            f"[{p.kind}:{row[p.output_column]}] " for p in plans if row.get(p.output_column) is not None
-        )
-        body = " | ".join(render_cell(row.get(c)) for c in body_columns)
-        line = f"{markers}{body}".rstrip()
+        line = line_of(row, MAX_CELL_CHARS)
         if budget - len(line) < 0:
             break
         budget -= len(line) + 1
@@ -94,9 +103,8 @@ def render_rows(
         )
     if not plans:
         lines.append(
-            "No citable id column was projected, so these rows carry no citation markers. "
-            "Add the table's id column (e.g. orgs.id) to the SELECT list if the answer needs "
-            "to cite specific rows."
+            "These rows carry no citation markers: the query aggregates or combines rows, or reads "
+            "no table with an id to cite. If the answer names specific rows, query them plainly."
         )
     return "\n".join(lines)
 
@@ -106,6 +114,16 @@ def render_caveats(defects: Sequence[str]) -> str:
     if not defects:
         return ""
     return "caveats: " + " ".join(defects)
+
+
+def render_repeat_caveats(tables: Sequence[str]) -> str:
+    """Tables whose caveats an earlier result this turn gave in full; the part that changes an answer stays."""
+    if not tables:
+        return ""
+    return (
+        f"caveats: {', '.join(tables)}: as given earlier this turn. Rows here are only what this user "
+        "can see; 0 rows is not 'none exist'."
+    )
 
 
 def _as_day(value: Any) -> str:

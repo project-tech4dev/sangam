@@ -1,0 +1,47 @@
+# Both backend uploads also carry the `backend` flag, which the README badge reads; the frontend has its own.
+coverage:
+  status:
+    project: off   # gated per component below, so one side's figure cannot sink the other's
+    patch: off
+
+# coverage.xml paths are relative to backend/, lcov.info paths to frontend/.
+fixes:
+  - "app/::backend/app/"
+  - "lib/::frontend/lib/"
+  - "features/::frontend/features/"
+  - "components/::frontend/components/"
+
+flag_management:
+  default_rules:
+    carryforward: true
+
+component_management:
+  individual_components:
+    - component_id: backend
+      name: backend
+      paths: ["backend/**"]
+      statuses:
+        - type: project
+          name_prefix: floor-   # its own check name, apart from the drop rule below
+          target: 75%
+        - type: project
+          target: auto      # the base commit's coverage: a PR may not lower it
+          threshold: 1%
+        - type: patch
+          target: 75%       # lines a PR adds or changes
+    - component_id: frontend
+      name: frontend
+      paths: ["frontend/**"]
+      statuses:
+        - type: project
+          name_prefix: floor-
+          target: 75%
+        - type: project
+          target: auto
+          threshold: 1%
+        - type: patch
+          target: 75%
+
+comment:
+  layout: "condensed_header, diff, flags, components, files"
+  require_changes: false

@@ -1,0 +1,192 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAgentContext } from "@copilotkit/react-core/v2";
+import { useAgentChat } from "@/lib/useAgentChat";
+import { AnswerCard, type SourceWords } from "../../components/AnswerCard";
+import { TraceCard } from "../../components/TraceCard";
+import { fetchProposalMessages, type Proposal } from "./api";
+import { QuestionCard, type Reply } from "./QuestionCard";
+
+// The backend's ProposalContext looks this description up (app/proposals/context.py SCREEN).
+const SCREEN = "What the person is looking at";
+
+// Sources in words: this screen shows no codes.
+const WORDS: SourceWords = {
+  org: "Organisation's record",
+  funder: "Funder's record",
+  activity: "Past grant",
+  grant: "Past grant",
+  score: "Funder Match",
+  news: "News",
+  graph: "Sangam's links",
+};
+
+// A part cites its facts as ⟦k7⟧; the chat has no source list, so the marks are dropped.
+const FACT_MARK = /\s*⟦k\d+⟧/g;
+
+export type Screen = {
+  step: string;
+  tab?: string;
+  part?: string;
+  selection?: string;
+};
+
+/** Your own chat with Sangam Pitch about this proposal, in the side panel; teammates each have theirs. */
+export function TellSangam({
+  proposal,
+  screen,
+  onTurnEnd,
+  onSend,
+  open,
+}: {
+  proposal: Proposal;
+  screen: Screen;
+  open: boolean;
+  onTurnEnd: () => void;
+  /** Lets a button on the step send a fixed message; null while a turn runs or the chat is not ready. */
+  onSend: (send: ((text: string) => void) | null) => void;
+}) {
+  const threadId = proposal.thread_id;
+  const load = useCallback(
+    () => fetchProposalMessages(proposal.id),
+    [proposal.id],
+  );
+  const { agent, turns, send, isRunning, isReady, isLoadingHistory } =
+    useAgentChat(threadId, "sangam_proposal", "proposal-chat", load);
+  const [draft, setDraft] = useState("");
+  const [failed, setFailed] = useState(false);
+  const [answer, setAnswer] = useState<((r: Reply) => void) | null>(null);
+  const onOpen = useCallback(
+    (fn: ((r: Reply) => void) | null) => setAnswer(() => fn),
+    [],
+  );
+  const wasRunning = useRef(false);
+  const scroller = useRef<HTMLDivElement>(null);
+
+  useAgentContext({ description: SCREEN, value: screen });
+
+  // A turn may have saved or moved the step: read the proposal again.
+  useEffect(() => {
+    if (wasRunning.current && !isRunning) onTurnEnd();
+    wasRunning.current = isRunning;
+  }, [isRunning, onTurnEnd]);
+
+  useEffect(() => {
+    if (!agent) return;
+    const sub = agent.subscribe({
+      onRunFailed: () => setFailed(true),
+      onRunStartedEvent: () => setFailed(false),
+    });
+    return () => sub.unsubscribe();
+  }, [agent]);
+
+  const ready = isReady && !isLoadingHistory;
+
+  // The window has a fixed height: show an open question from its top, else the latest turn.
+  useEffect(() => {
+    const box = scroller.current;
+    const card = box?.querySelector<HTMLElement>(".pr-question");
+    box?.scrollTo({ top: card ? card.offsetTop - box.offsetTop : box.scrollHeight });
+  }, [turns, open, answer]);
+
+  useEffect(() => {
+    onSend(ready && !isRunning && !answer ? (text) => void send(text) : null);
+  }, [ready, isRunning, answer, send, onSend]);
+  useEffect(() => () => onSend(null), [onSend]);
+
+  async function submit() {
+    const text = draft.trim();
+    if (!text || isRunning) return;
+    setDraft("");
+    setFailed(false);
+    if (answer) answer({ kind: "text", text });
+    else await send(text);
+  }
+
+  return (
+    <>
+      <section className="card pr-side-card" aria-label="Sangam Pitch">
+        <div className="card-title">Sangam Pitch</div>
+        <div className="pr-chat-scroll" ref={scroller}>
+          <p className="muted pr-chat-note">
+            Only you see this chat. Sangam Pitch sees the step you are on, any
+            text you select, and what your teammates change.
+          </p>
+          {turns.length === 0 ? (
+            <p className="muted">
+              {isLoadingHistory
+                ? "Loading your chat…"
+                : "Ask anything about this step."}
+            </p>
+          ) : (
+            <div className="chat-turns pr-chat-turns">
+              {turns.map((turn) => (
+                <div key={turn.id} className="chat-turn">
+                  <div className="chat-question">
+                    <div aria-hidden className="chat-you">
+                      Q
+                    </div>
+                    <div className="chat-question-text">{turn.question}</div>
+                  </div>
+                  <TraceCard
+                    steps={turn.steps}
+                    streaming={turn.streaming && !turn.answer}
+                  />
+                  {turn.answer && (
+                    <AnswerCard
+                      answer={turn.answer.replace(FACT_MARK, "")}
+                      index={null}
+                      words={WORDS}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {ready && (
+            <QuestionCard
+              agentId={`proposal-chat-${threadId}`}
+              onOpen={onOpen}
+            />
+          )}
+          {failed && (
+            <p className="pr-stop" role="alert">
+              Sangam Pitch could not answer. Try again in a moment.
+            </p>
+          )}
+        </div>
+        <div className="pr-chat-composer">
+          <textarea
+            className="input pr-chat-input"
+            placeholder={
+              answer
+                ? "Your answer, or a question about it"
+                : "For example: what does the funder mean by this requirement?"
+            }
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") void submit();
+            }}
+            aria-label="Ask Sangam Pitch"
+          />
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={() => void submit()}
+            disabled={!ready || isRunning || !draft.trim()}
+          >
+            {isRunning
+              ? "Working…"
+              : !ready
+                ? "Connecting…"
+                : answer
+                  ? "Reply"
+                  : "Ask"}
+          </button>
+        </div>
+      </section>
+    </>
+  );
+}

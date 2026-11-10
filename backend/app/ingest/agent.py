@@ -14,7 +14,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from app.agent.harness import SKILL_READING_TOOLS
 from app.agent.harness import filesystem as filesystem_tools
 from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results, save_questions, staff_last_lock
+from app.agent.middleware import clear_old_tool_results, save_questions, staff_last_lock, tool_errors
 from app.agent.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.middleware import (
@@ -104,6 +104,8 @@ INSTRUCTIONS = _render(_INSTRUCTIONS_MD, get_settings())
 # `COPY app/ app/`, so they deploy with no packaging change.
 SKILLS_DIR = Path(str(files("app.ingest") / "skills"))
 SKILLS_ROUTE = "/skills/"
+# A subfolder holds no SKILL.md itself, so the supervisor's listing of /skills/ skips these two.
+RESEARCH_SKILLS_ROUTE = "/skills/research/"
 
 
 def _backend() -> CompositeBackend:
@@ -182,12 +184,8 @@ ENTITY_RESEARCHER = {
     ),
     "mode": "isolated",
     "tools": RESEARCHER_TOOLS,
-    # No "skills" key, deliberately. It had one, and an isolated subagent
-    # inherits nothing (graph.py:701-703) so it had to be declared here — but
-    # the only skill it could load is an output format, and a researcher
-    # produces a ResearchSummary with no prose. Its targets come from
-    # research_goals, derived from the schema, which cannot go stale the way a
-    # written field list can. Skills are the supervisor's: see docs/SKILLS.md.
+    # The pull skills: the brief's field list it must answer. An isolated subagent inherits no skills.
+    "skills": [RESEARCH_SKILLS_ROUTE],
     # With a response_format the task tool returns the model's JSON instead of
     # its last message, so the parent and the screen both get structure. It is
     # a SUMMARY, not the findings: those reach the database through
@@ -257,6 +255,10 @@ RESEARCHER_EVICT_AT = 8_000
 # Promote, read back, report: a handful of calls, so a dozen is already a loop.
 WRITER_MODEL_CALL_LIMIT = 12
 
+
+def _call_limit(limit: int | None) -> list:
+    return [call_limit(limit)] if limit is not None else []
+
 # A person chooses where the run reads from before anything is read; rejecting means public websites only.
 # Sources ticked before sending are that choice already, so the card shows only when nothing was ticked.
 # run_import_now is the supervisor's one bulk write, so a person approves it as promote_research is approved.
@@ -281,9 +283,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     backend = _backend()
     # An isolated subagent builds its own middleware stack, so the parent's restricted
     # filesystem never reaches it: unset, both run write_file and delete against /skills/.
-    # Neither subagent loads a skill now, so neither gets `ls`. read_file is
-    # the floor FilesystemMiddleware refuses to be constructed below, not a
-    # capability either of them uses.
+    # No subagent gets `ls`: the researcher loads its skill by the path the listing prints, with read_file.
     strong = resolve_model(settings.model)
     research_spec = settings.research_model
     utility_spec = settings.utility_model
@@ -297,13 +297,14 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict_at=RESEARCHER_EVICT_AT),
+            tool_errors(),
             # Inside the eviction, so a refused save stays short enough to read.
             SaveRefusal(),
             # Only what the person chose on the sources card; staff rows last.
             RunSources(),
             staff_last_lock(),
-            ReadingLimit(settings.research_page_limit),
-            call_limit(settings.research_model_call_limit),
+            *([ReadingLimit(settings.research_page_limit)] if settings.research_page_limit is not None else []),
+            *_call_limit(settings.research_model_call_limit),
             *([EscalateAfterFailedSave(strong)] if research_spec != settings.model else []),
             *fallback(research_spec, settings.model),
             research_rubric(utility),
@@ -316,6 +317,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         "model": utility,
         "middleware": [
             filesystem_tools(backend),
+            tool_errors(),
             save_questions(),
             call_limit(WRITER_MODEL_CALL_LIMIT),
             *fallback(utility_spec, research_spec, settings.model),
@@ -324,17 +326,18 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     reader = {
         **WORKBOOK_READER,
         "model": utility,
-        "middleware": [filesystem_tools(backend), RunSources(), *fallback(utility_spec, research_spec, settings.model)],
+        "middleware": [filesystem_tools(backend), tool_errors(), RunSources(), *fallback(utility_spec, research_spec, settings.model)],
     }
     vault_reader = {
         **VAULT_READER,
         "model": research,
         "middleware": [
             filesystem_tools(backend, evict=False),
+            tool_errors(),
             SaveRefusal(),
             RunSources(),
             DropFilesOnExit(),
-            call_limit(settings.research_model_call_limit),
+            *_call_limit(settings.research_model_call_limit),
             *fallback(research_spec, settings.model),
         ],
     }
@@ -346,6 +349,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         skills=[SKILLS_ROUTE],
         middleware=[
             filesystem_tools(backend, keep=SKILL_READING_TOOLS),
+            tool_errors(),
             clear_old_tool_results(),
             *fallback(settings.model, research_spec),
             cheap_summarizer(strong, utility, backend),

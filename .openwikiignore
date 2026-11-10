@@ -1,0 +1,20 @@
+# Secrets and local state
+.env
+.env.*
+!.env.example
+.memory/
+.claude/worktrees/
+.claude/settings.local.json
+
+# Research outputs and data about real organisations: data, not architecture
+docs/entities/
+seed/data/
+
+# Generated and vendored
+**/node_modules/
+**/.next/
+**/.venv/
+*.lock
+frontend/package-lock.json
+db/scripts/*.dump
+backups/

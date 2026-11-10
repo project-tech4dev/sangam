@@ -20,7 +20,7 @@ import {
 const SIGNED_IN_EXTRAS = [
   { title: "Doc vault", body: "Your organisation's documents, ready to draw on when you write a proposal." },
   { title: "Media & signals", body: "News and posts about NGOs and funders, to affirm or push back on." },
-  { title: "RFP watch", body: "Open calls that match your work, gathered every week." },
+  { title: "RFP watch", body: "Open calls that match your work, gathered every week. Coming soon." },
 ];
 
 /**

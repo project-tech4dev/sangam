@@ -1,0 +1,478 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:d605b49a4d43044ba7ee56914d8e8b3e344b206fd20a1aedf86e9c35e83f3a3a",
+  "claims": [
+    {
+      "id": "claim_544ac8ca894544f68a8354ec2736f9ce",
+      "statement": "Unit tests never touch a database: conftest.make_app builds a router-only FastAPI app with no lifespan and overrides get_current_user, get_principal and get_pool, where get_pool returns a _SentinelPool that raises AssertionError on any attribute access, so tests must monkeypatch repository functions.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L97-L103",
+          "version": "repo-lines-v1:sha256:2e8cd58860c303ba9a4b4d42fc00c448054f25c1aaeb1982ae44aca718d824c2:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDVhYzBmNzliYzAzN2FiM2U4YzI3ODNiMWZhZjVkMTk2MjhiZmQzNTU0MmE4NGVhZmNkODQ1OGI5OTZmOWFhNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWQ0YTY2ZWVjNmY0MjJlYmYwOWVjOTRmYzU2YjQzN2MyNmNkMGU5MGFiODhkMmQ5NTg3ODIzYzk4NzRmMWRlOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2MwNDcxY2EyZWEyYjFlMDlhN2VjODdhMDY0MWE1NmIzMGYxMWYxNjAwNTA3ZjE2NTBjMmMwMjQ2ZmI4NWNiNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTZmZTM1NWU5Mzc4NjQ4MDMzZDMwZWNkNWQ0NDk0ZWM0ZmU5OGVkMmZmMDc3ZDFmNjUzMmRiMDVlZDgzZjExOSJ9"
+        },
+        {
+          "resource": "repo://backend/tests/conftest.py#L20-L46",
+          "version": "repo-lines-v1:sha256:aed0ca1136364753ddf62afea367bad7b5313b64d5745e596bf6b4a05261b966:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3OTMwM2ViYzcxMTAzYmJjNWJlMTM5NzQxZTgyOGVjMDExZTA4NWY4ZjEzZDUzODVjNTg0NTQ2M2QyYTA3ODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiODgzMjhlYjRlNDMxNjUwNjliNGJiMWZkNGJiMjA1OTFiMDNkOTU3ZGRhY2YzMWMyNjU2ZTAwOTE3NTQ2NTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5YzAwYWQ2ZTE4ODA2OWYxZjM3OWRhYjE3MDlmZTYxYmY1MGY4MmEyZjM1ODQ0ZTI0OTQ5NTVlMzIwNTdiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNlNjgxNDk4N2M2NTM0MTc2YmMwZTBlNWEwZGIzOWM0ZTRmMDc1ZmYwZTJlZjczNGI0YWRlMWMyMjNkOTQ5MmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_627a7e107c934f13898748af851ebc66",
+      "statement": "Integration tests connect to TEST_DATABASE_URL (default compose Postgres on localhost:5433), skip rather than fail when the database is unreachable, and isolate by rolling back; the integration marker is registered in pyproject and applied per file or per test, and pytest -m \"not integration\" excludes them.",
+      "evidence": [
+        {
+          "resource": "repo://backend/pyproject.toml#L43-L48",
+          "version": "repo-lines-v1:sha256:54d1ee390a40efc6f3918cdef8c6fc469ca4a299929154a08f298eb998a224ce:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODY3NmU2NDE0NjVhNjU1MWU5ZTljZmZkN2ZhYTFlNmE0MmY5YjcyNDgwOTgxM2M5MDNkN2VkY2I1MmYzMDA2ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjk0MTZlMDlmNzhiYTMxNmMwMzI1NjgyMTNiODU1ZWU3NTZlNDE1NjVkOTE4ZjA5NTE5YzgxZmQ2MjBmNDA2MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDdkNGZjZTFkMzU3ZjU3NjQwMTQzYmJjN2Q1ODI1ZDkzZmU5YzQ2OGYwZjMyNmY1NjliMjdjOWQzZTZkNjllMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjgzYmNiNGQzMTU4NGRjNmJhNjZiZjE2NjUzMzA3ZDhiYTI4YWI3N2VlNTcwMDMyYWVlNTU0OGExNjg1NTFlZSJ9"
+        },
+        {
+          "resource": "repo://backend/tests/conftest.py#L51-L69",
+          "version": "repo-lines-v1:sha256:134bfa082634455b3ae619d9cc95413ec1f80637d903f687bfddff5036176419:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwOTc3MGMxOWU4ZGVhMThkODRhNGQ0ZTExZDNmYjA3ZGI1NjYzMjc2ODMyYmIxNGFlYWFjNzg4OTVkN2MzZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjMjU4NzdiMjhlNGM2NjBhNzU4MTQ3ODRkZGRkYjBhZGMyMDliMGIwMTk1M2ViZGMzMWUzZDNlNjQ1MTU4ODAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyODdkYTIwMTBhY2Q4YmVmNDM4MmJhNzZlZDVlYTQwZmZlMjQ5ZjI0MGUzMjcyNTczOWYzNzQ3NTdjMmJhOGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgxYzE0MjZiZWE3ZmFiYTA1YTEyYzFlMWM4NjBkYTY3YzYxNzM4ZmZjY2NjYTRmNjc2ZTRiOTI2ZGVhNjZlMDIifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_migration_integrity.py#L8-L19",
+          "version": "repo-lines-v1:sha256:a141a8432bbbce4bdc57cab4419016894910a711aa75f2c34ea7cedfd5672af1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwOTc3MGMxOWU4ZGVhMThkODRhNGQ0ZTExZDNmYjA3ZGI1NjYzMjc2ODMyYmIxNGFlYWFjNzg4OTVkN2MzZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2NTgxMTM5MzNjNzkzNmMyMTFkYzMxNmY1ZmM5NzkyNWRlMzE1NDRkMjMxNmNlY2MwZjU1MGU2ZjNlNDBiNjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyMDJjMTU4NTNjOTFmNDQ0Nzg0NzQ2MmY1NDU5ZDAyZDU5NGQ5N2U5ZWNlYTc2ZTQ4MTVmMmI3ZDc2NzFlOTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxMWNjNGY3MjdlOThhM2M0OWEzYTQ5OGRhNjMxNzFiOGViNDU5MzNkZGI1YWIxMTk1ZDBlZWMyZTc3ZGY1ZTkifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_rls.py#L16-L28",
+          "version": "repo-lines-v1:sha256:7db7513dca5df420d8bc816a89382b09dd37f985a711bdcf79ae9af48e4482bb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwOTc3MGMxOWU4ZGVhMThkODRhNGQ0ZTExZDNmYjA3ZGI1NjYzMjc2ODMyYmIxNGFlYWFjNzg4OTVkN2MzZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2M2QzYjUzMzFkNDg3MzNhMmU5MmE4YzM1NTFjODQ3ODFiMmU0ZTc0YTlhZWJiMDlhY2NkN2NkYTc1ODMzMjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5NzA2YmZmZTdlMzE1N2U5MDJlYmRhMjg4ZTc1MjQwMDQ4MzE1ODlmZDVmZDY5NTBiMjNhNzIwYmY5NjQ3ZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxNGEzMmNlMWIwYWRiYTA5MDM4ZDI5ZTQyYWM2MTY3NDBlYmExNmU0M2JjYjI0YjU0NmQxYjMzMTU3ZjE3NTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_07e97f8e4fd141b2821450510428833b",
+      "statement": "Evals are gated by a --run-evals conftest flag, not an addopts -m filter: without the flag every test with the eval keyword is skipped, because a command-line -m would replace an addopts -m and could otherwise start billing model calls; evals also skip when the provider API key for the configured model is missing or Postgres is unreachable, and their database connections are read-only so they can safely target staging.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L105-L112",
+          "version": "repo-lines-v1:sha256:3d087af1acb7b03719576e697e10b634f302ad2400cf53095e111df78db4f70a:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODc5ZDFhYWNjYjQ3NGExMmJkMTQ4NzhkYzUyMzY2Y2ZhZTU2NzQ0MGJlYmVjN2FiMWM3NjBlOWQ5MGZhNWE2OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjk0YmUzMGVhMTg5M2RiY2FkMjAxZWE0Mjc1M2Y3OTg2Mzc1YzFjMzliODcyYTlmYzJkZGE5MjJlMjU0NTY0ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2EyODk0ZGUzNTQwZWZkN2IyOGM5MjE4OTcwYzI0MWVjNDhjMmFhZDgyNzlkMmFmYTgzNzZhZTQ3ZmU1MzY2MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWVkNDNkY2UxZWVjMTU5NDQwNzYyOTRjMDkzMzI1YTgwYWYzMTY4ZDNkN2JlZDBmZGM4ZmJkM2QzYmY4MDM2NyJ9"
+        },
+        {
+          "resource": "repo://backend/tests/evals/conftest.py#L16-L75",
+          "version": "repo-lines-v1:sha256:d579080009c08bb0e4b39af27cff9208b244abbc57c4350689c3f522091cf9c8:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3YTRkYzEwNjQ5YmIyYzZhYzY0YjdmY2UxMzQwMTMzMGNjYjgyNDc0OTU2MzNhNWZmYTFiOTlhN2NhNmVmNWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1YjFlYWQ1NWQ1Y2U2MWI5ZmIyOTJiZGRmZDI2OTFkODVjZWY4Y2Y5NmEwOWQ5NzNjZWNlZDBmZGZhZTljN2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhhYjQzY2JhZmY3NDUwZTE1OTE3NzNhNjljNTdjYThiNWQ1ZWU4ZTUzNzZiNjNmN2NmOGY2MDIyYThlZTJmMTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjMzhiYjVjNTczNWI1ODQ2NDBhMmNlZWI4NTZjMjAyODhkMjNhYzAxOGI0NTMyODYwYWEzOTRiYzg0ZDMwM2EifQ"
+        },
+        {
+          "resource": "repo://backend/tests/evals/conftest.py#L99-L124",
+          "version": "repo-lines-v1:sha256:314bf63ef9c2fdac2bc31180dd94babc3297bac6c38ed642ebd8ad3850fa98eb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2M2Y5MzQyMWRkMjgxYTk0MzI5YjBlN2E3YjJiNjg5MDE5NmFmMGM0NDk2ZDExZjllMDE3MGNhYmQ1ZmExNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNjIzY2UyZDdmYjg2N2Y4YmY4MzNmYjkxNGM4NTBjYjI4M2Y2MzNhMDIyNGZkNDE2YzgwNDJjM2Q5MGU4ZWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1Y2E4Nzg4ZmIxZjNkODc4ZmU2YWY3MmRiZDAxZTRhZWEyZWRiMWYzYmVmNmRjOWQ4ZmM1ZGQ4MzVlNjRkYjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d4433697944e4ef5a452caf25ccd968a",
+      "statement": "make evals runs pytest tests/evals --run-evals on the host venv (not in the container, which lacks pytest) after sourcing .env quietly in an @-prefixed recipe, with TEST_DATABASE_URL pointing at localhost:5433 (or the managed database under ENV=staging); TAG maps to --eval-tag and K to -k; it sets Langfuse eval environment and release variables; it costs real money (about 10 cents per case, and about $0.90 for the cost case that a run with no TAG includes).",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L89-L95",
+          "version": "repo-lines-v1:sha256:bb6b2c18f782d6b7c6c3f3d85e7dc9ba9c64ddc993366bd4e684d849d3b801d6:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWRlMmY1MzI4ZWU2ZTgwNTBlOGFhZmQ4ZGM4NjlhMDY5Y2Q5NTg0ZWRhYWY1NGZlNTg5ZDczYzNiN2RjZDc5OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjViYWVhZDE4NTY4N2E2ZTFiZDNkYTk2Mjg2NGMxNTNiMDE1MzY5YjYxMDgxODM4OWE5ZmFmYjQ4YWQwZTAwMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDc5ZmY4NGZiZGQ0NWY1MjQ4ZjI5NGExNmZiOGU5NDhmZDgwZjE5ZjMzNDc3MGI4YTJjYTA1ODFhOWZkYmJmYyJ9"
+        },
+        {
+          "resource": "repo://Makefile#L169-L189",
+          "version": "repo-lines-v1:sha256:df0d5450d2d801f4de8956166d8e8b985316012d14466fa0b6824f1a590dc069:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4NDBlOTg0YTBhMmFlM2NhNjMxNjE3MzlhYWU0NWExZGYzMzk1YmEzYTg5MzYwNzhkNjAyNTQxY2Y3YTVlNDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiYjA2ODNhZDcxYTIwMGIyM2EzOGMyNGM1YWI0ZTAxZDFmYTIzZDJmMzgxMzM2YjhkYTZjYTJlNDFhMDZlNWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjYTVkOGU0MTM0NWRiZjc3YmQ5NGRiNTBjZjIzZjU3ZWY2MjcyYmFhYzk2OTFlZDE2MTNjNTkwYTkwNTBkNWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4NWMxMTM3NWJmZWM2NmZmOTE3MWE5OTRlYmZkYWYyMjE2ODcyZTYzZjBkY2ViNmY0M2E3ZmJkZjYyOTc4MDgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_45e67369b3ec48649f7fa9875d278ffb",
+      "statement": "Ask evals load cases from cases/*.jsonl and run the real agent as the staff dev user with an in-memory checkpointer, a recursion limit of 60 and a 180-second default timeout (a case may override it with timeout_seconds); they extract executed SQL (db_query 'executed:' lines) and [kind:id] citation markers from the final answer, skipping the audit caveat message, and score against gold SQL results, expected values, required/forbidden citations, mention rules, must_decline and per-tool call budgets; cases with expected_failure are strict xfail so a fixed data bug shows as XPASS failure.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/evals/conftest.py#L55-L62",
+          "version": "repo-lines-v1:sha256:4d56142b2778d2258daa13500d6865dea8d61e6a126e803c8947477c0e1eb4a2:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzllOTBjZGE2NGUxY2I2ODZlMjEzNDYzZWUzY2IzMThmOTY2NTQ1OTBiM2MyODQzMWJkZTZiNjVmZWY2NWE5MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjNmODY2ODExMzJmNTEwZjgwZDJjYTU0OWE0MjllZGMzYzEzYTExODVkOGU4ZmI1MjI2N2E4YmFjMjAxNDRmMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTQzZWY1OTUwMjYzYmUyZGNiZmE2ZDdkZjYyOTU3MmRhYThjODdkMGFlZTJlNzBjNTlhMmU4YTg1ZTk3MjljMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzIzNzVmN2NkNWQxYzNhYjVjMWUyMTU3ZWI2MWE2NGEwNGU5NmJkMDVhODU1OGRiZjQxZGZlZTExMThiNzEwNyJ9"
+        },
+        {
+          "resource": "repo://backend/tests/evals/harness.py#L116-L216",
+          "version": "repo-lines-v1:sha256:75ee2003c441f00cd1c700a5e0f5bf0cecd9397e1b17f3c10b6c0e5df8b81991:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyZTllMjMxMGYxYzYxZjRjMWQ5MjkwZGUwZmNjZmYwYjY1ZDI5Njk2OWI3YzE1ZjM1MTIyNDU5NThjNzRhOTkwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmYTExYzA1NjdkMGE1ZjllOWIxMzVmNjVjZDI1MzcyZGZkNjI4Nzc1ZjdjMWVkMjUzZjhiYWQ0MmRkMmQ2NjY5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyZTRkNWE2NjE1ZjM3MzRkYzhiOTk5OTliNzRiNjgyMjJkMWVhODFlMDdhYTE1MTVlZTUzZDhiZTQxMTRiOGEyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1YTMyODZhN2IwZDllMjQ5MmQxNzFiMjQ3Mjk4MzJjNGFmNjg4NGQ2MmI5MjljMTBlZWE3ZmVlMDMwYTFlMGI3In0"
+        },
+        {
+          "resource": "repo://backend/tests/evals/harness.py#L21-L31",
+          "version": "repo-lines-v1:sha256:7c4c7c7d3b3557102bdaafff484ea8dc7332323654728cb615cf86b2b90b6fb2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMjA1YjIxYTZiZWU4MmY4NTI5YjEwZmZlZDVkMDE3NjQ2MzllMjU1NTU4NGVhZjk2MWM0MTg1MDJhM2Y3ZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0YzdhOGEzM2IzOTQwNTFiZTY0Y2EwMjdmMTIwYTE2ZDAzY2VhM2EwODIwMDRlOTY5MDJhMDFjY2IwYzc5YzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkYTBjYjJhNjg4NTI5Zjg0MGMyMTdhM2M3YmU1Mzk0YmE1ZTA2NmIyOWMzNmVhOTVhNDAyZGM0NGE5ZTY2ZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZjMWYwMmZkN2VjMWQ0NjJjMGNiODE4Yjk0OGZmZTRmNzE1YjJjMmM0MzI2MzBjMjMyZGZlMzRkNDI3NDNmYTkifQ"
+        },
+        {
+          "resource": "repo://backend/tests/evals/test_agent_evals.py#L21-L34",
+          "version": "repo-lines-v1:sha256:d689710b60ce7a5e723a629598eba0b28dcdf2600199374b3871af137eb265b3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwNGU0NzVhNTM2N2VmY2U0NDJkNDYzZTY3ZDBiNmRhOTBjZWQxZTVhYzNhNTRhYjlmOTA3NjJiYjFmY2Q4OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4MmZjODlhNmYyODI4YTc3MDQ0ZGM4ZmIzNGNkMjdmYzYzNDY3NTM2NTllMTlkNzExMThiMmFlNjFjN2ZjYTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjZmI3MTYwNjY2NjIyYzkxOGQxNTRiNzc1MzcxYTEzNWYwOTc2YzgzMzY4OGNkNWU5MDVjOGM1NzRlYTgwOTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjODVhNzY1ZDlmNDVjYzNiMDc0MmIyOTAzNDNjZjRhMWUxYWE5Y2NiMzJhNThkNWM3ZGM4ODc4NjcwOTc4ZDMifQ"
+        },
+        {
+          "resource": "repo://backend/tests/evals/test_agent_evals.py#L54-L105",
+          "version": "repo-lines-v1:sha256:e13e08cb77d0486a613af58d79b9fcadb6d0116801662c5ebe9e858bdfcf6f92:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxYWM1YjM1YmE4YTg5YjVkOTM0ZWJjMGM3YTA4NTMzYjkwMmJjMjEzMTE3OWE4YWFlODgzZmYwZGExMDVhNTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiODkyMzk0ZjZiOWUwMmFkOWQzZmY5NGIwY2E2YWQ2OTg1M2I4MGIzNjM5ZDQ3MjFhNGY2MzQwZTU2YTlkOWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjOWMyZjJlOWIwYWY4ZDIyYjhhODIxMzhkMzRkNDJhOWQzZDk3ZGM2MTY4YzI4ZmNlYWQyMzMxNTVjMWM2NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyMzc1ZjdjZDVkMWMzYWI1YzFlMjE1N2ViNjFhNjRhMDRlOTZiZDA1YTg1NThkYmY0MWRmZWUxMTE4YjcxMDcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5aa0aaa9478a4b1794026460cc3c6104",
+      "statement": "Import evals only run when --eval-tag matches a case, so a bare make evals stays the cheap Ask suite; the two canary cases (a funder and an NGO) carry both import and canary tags and need a Tavily key (TAVILY_API_KEY or settings.tavily_api_key). run_import runs the real Import agent as staff with a 900-second timeout, answers the choose_sources pause with web plus library and raises on any other pause, and the test judges the saved entity_research row (kind, findings, expected concepts, gap reasons, tag_note, summary fact_count) plus per-case max_calls tool-call budgets.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L89-L95",
+          "version": "repo-lines-v1:sha256:bb6b2c18f782d6b7c6c3f3d85e7dc9ba9c64ddc993366bd4e684d849d3b801d6:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWRlMmY1MzI4ZWU2ZTgwNTBlOGFhZmQ4ZGM4NjlhMDY5Y2Q5NTg0ZWRhYWY1NGZlNTg5ZDczYzNiN2RjZDc5OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjViYWVhZDE4NTY4N2E2ZTFiZDNkYTk2Mjg2NGMxNTNiMDE1MzY5YjYxMDgxODM4OWE5ZmFmYjQ4YWQwZTAwMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDc5ZmY4NGZiZGQ0NWY1MjQ4ZjI5NGExNmZiOGU5NDhmZDgwZjE5ZjMzNDc3MGI4YTJjYTA1ODFhOWZkYmJmYyJ9"
+        },
+        {
+          "resource": "repo://backend/tests/evals/cases/import/canary.jsonl",
+          "version": "repo-file-v1:sha256:885687ca7f8496e7ad901600934b46779960345bf321235ac39c9fe80549a1a1"
+        },
+        {
+          "resource": "repo://backend/tests/evals/import_harness.py#L17-L74",
+          "version": "repo-lines-v1:sha256:e9d5fdc23cc538e62e934b5434ff40c80031067e5c6f0493328deb72030d3ac0:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2MGQ0YmM0OWRhYjI4NDM3MjJjOGQyMTU0ZDg2NWFjZTRmMDY5YmI2MTM2NmRiZTMwOWYzNmM2ODZhMDQ2MWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1Mjk4ZjkzZDM0MTc5MjQ1ODZkNmMwYmI1ODNkMzY4ODI4ZTY1ZDdkOGQ5MDA2ZWRhZjZjNDQ4YzBjYTdmNWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhMGJlYjJiYmM2NmVjYjZiN2FhYzNkNjU3MjU5ZDk0NDE3N2U1YjI2YTk3ODY0OWYzMzIzNzJjODJmY2MzOWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmMWQ1NDNhZTcyNGI3OWJjM2EzNWE0YWJmMWJkYjA3ZmRiMjEyNDlmNWNjYTMyYzdiM2FmNmFjODhhNDMwOWMifQ"
+        },
+        {
+          "resource": "repo://backend/tests/evals/test_import_evals.py#L24-L94",
+          "version": "repo-lines-v1:sha256:59b17e620fdc2e1d926ebbd6a7ef80b1e5c6a9a88f4d2bcf90ed6c5b5cf90044:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwNGU0NzVhNTM2N2VmY2U0NDJkNDYzZTY3ZDBiNmRhOTBjZWQxZTVhYzNhNTRhYjlmOTA3NjJiYjFmY2Q4OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlYmRmZmRhMDUwNzI4ODBkMTQyOTVkYTM4ODlkZDY5YWFlYTEwYzQxOTRhN2Y1ODcwY2UzMWU5M2UzMzI2ZGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYzMjQzYTRhNzljMTFkMDkwOGUzOWQ2MDY3NDg1MzY2Y2JkYWYwOTU0MGJiNTk0NWQ3NGMzY2VlNWEyYjUzM2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b8f8157af7104acbb0ade8c4ed18b849",
+      "statement": "test_harness.py pins the agent tool surfaces: the deepagents general-purpose subagent is disabled and the profile does not decide tools; the replacement FilesystemMiddleware exposes only read_file (or read_file and ls); Ask Sangam has no task tool and exactly eight tools (db_list_tables, db_describe_table, db_profile_column, db_query, search_graph, compare_fit, read_file, ls) with no fetch_url; neither agent has write_file, edit_file, delete, execute, glob or grep; Import's task description lists entity-researcher and catalog-writer and not general-purpose (the test checks those entries, not an exact set; the exact four compiled subagents are asserted separately).",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_harness.py#L317-L318",
+          "version": "repo-lines-v1:sha256:d4d0cb5bc56863438eba9d160fac23c0d3cef09b57c82219ebf05b9de076541c:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjg2ZjhjMmQxMzJkNWVkMmI4M2E1MzUwYWU0OTFiZTNjNTA2MjJmOWQ4OTc3NWE4MTM1NTExNmRhNTg3ODJhMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTY5MmI3YzI5YzJjMmY1NGExYTA3ZDU0ODEwZDU3ZmFkNGExMThmM2FkZDdhMDZjOTNmYWQzYWI1YjlkZmI2MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWU3Y2YzOGUzYjRlOTNmNTA5YjY3OTU2MDZiMGU1MDY0ZjgxMWZlMDA5ZjJjYmJiNjE0ZTJlMzlhNDNiOTU0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTRkNDM2YTYwNzA1NjkwMmJkOWI1Mzk4NWZlZWJmODFjMmRiZDQyY2NjNzk4NTA1YzBkYmVmODk3ODAxMjIwOCJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_harness.py#L35-L141",
+          "version": "repo-lines-v1:sha256:421a7ab02fb524456e22d1758f8ed3cf46356de0b5e5b61dac1cd37af113adf9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmZjBiYmUzOTNiNDczZGE4ZDZjZjZlNTliNTllODE1Nzc5YzdhNGRhZmQ0OGU1ZGM5NzM0NmQxZjI1ZmY0ZTY4IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5ZjQ3NjlkNDAwMWQyOWNlYjIwNGYwMTdlYmVjN2E2ZGI2ZWJiOWY4ODA1ODg0YTNlNWJmMjYyNjdiYTVlNjA0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxYmQ0ZDU0NWM2MGU2NjEwYzczNjk5YzM0YjdmODk3MjlmYjBkZmFkMjM0NDI4ZTliODYzNzhlYTBhM2M3NzM4IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI3NTYzNzUwM2ExOTljMjBkNzJhOTRiNWVhNmRiNWY2ZGNmOTRmMTZiYTcyNjFjYzM3ZDgxODY4MDEyMDM2MGY3In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_122cece7dbe54023bb574a0b3649e869",
+      "statement": "test_harness.py pins each compiled Import subagent's own tool list by inspecting the task tool's closure: entity-researcher, catalog-writer and vault-reader have fixed sets, none has ls, none can write files or execute, the vault reader has no web tools, and after read_source_rows is used the researcher's read_page is refused (STAFF_LOCK_REPLY).",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_harness.py#L284-L374",
+          "version": "repo-lines-v1:sha256:bdccdb2a5e8d248772581f3a24a0506126eb7d2d3c2dd2ebc225f59950df5b1d:eyJzZWxlY3RlZExpbmVDb3VudCI6OTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyZWIxMTlhMGM4MTEwNThhMWIwYjdkNjM5YmM1NTUxNGU4MjY1NjUyMTIzODBiNjY3ZjY4OGVlZWRmMWNhZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNjAwY2M2NWJlYWVhNzI2ZGVkZmIxNTM2NzhlN2E2ODUyMzYwMGY1NzQ0ZWI4MWFiZDM3NzE3MzJkMTFhZmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmOGNmNmU2MjBjMDg2ZDAzMTIyYzIxNThkMTY2ODZkMmIzYzBkZGE3YjY1ZDdkMjc4YjVkNWFlOGE2MDMxMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a269651fdec24fd1b0ff10bf745672be",
+      "statement": "Import model tiers and skills are pinned: subagents run on strong/mid/cheap tiers with fallback to the next tier, blank model variables take defaults and 'off' disables sql_audit_model, skills live in app/ingest/skills one directory deep with name matching directory and a 'use when' description, and the supervisor and researcher skill names are pinned as literal sets.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_harness.py#L144-L281",
+          "version": "repo-lines-v1:sha256:d0fa4a25b1b72b0c2b23f9fa89c2eb356e5a9832179fdb302e623f75baad65cc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyZTYzNjgzMWRhNGY5YWJjYmFiYWZmNjM1MzdjNGNiYTgxN2FkOTI2NDM1MmU5Y2NmMDBjODk3NDY3MTY2NTM0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJlNmIwNDQ5MTQ2OTcyMmU4MzYzYTk0ZTQwNDQ1MzhlMDEzYTJhMjE3ZTM2YjFlNTY4YmE2MGFjYjdiNGM4ZjJlIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhYWRhODhlZjdkOGYwN2M0NWY0YmMxZGI0N2ZlOGJhMDYzNjY4ZTJjZWRmOTY0MjdjNDk5NGNkZjdmOWNjYTI1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmODUzYTAyZDIyYjVmZjcwNTNhNDk1ZjU2MjNmZTI2MjgzZjk2OGVmZTQxZGJlOGJiYzliZjJkNjVjMWVmMDBlIn0"
+        },
+        {
+          "resource": "repo://backend/tests/test_ingest_middleware.py#L32-L60",
+          "version": "repo-lines-v1:sha256:e6b87b4948dfda36c5956ab623ac964a066066d127d4522a5f7ae9fd12fb4d16:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YWU1MTU4MGZiODljNGM4NTY2YzQzMWJlMTUzMTNjZTg1NzJmOTMwNjUwNGMwY2I2MzU3NzQ2OTQ3ZjdhMDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhODRjZWNmYWNjMDQ4YzIwMGYzOTg5NmY1OGNmYmE5ZDFmMzkxODc2ZWNjOGQ1MjAxNGI3ZWIxMzFmZjlhNzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3ZTA1YWZjZWMxODQ5OThmMjQxYmE2OGYyZWNiY2ExYmJlMTQ4Yjg0NmZjYThkOGJiZjBjMzlhNTljZWIzMzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0MmRiNjhkN2NhZmVhZmIzODRkYjYxNzk5M2EzMDZkYTQyMWQwYTFlZjQ3NTQ5N2Q5ZjUyZDRjNjIyOTE1MGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_da8a67b96e144e0dae9cf061a5f3eda2",
+      "statement": "The SQL catalog is treated as a security control: tests assert withheld tables (checkpoints, users, threads, schema_migrations, graph_ingest_log) and columns (contacts email/phone, chunks embedding) are absent including from SELECT * expansion, citation kinds stay within org/funder/activity/score/news, and the import-time self-check rejects a dangling foreign key.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_sql_catalog.py#L10-L129",
+          "version": "repo-lines-v1:sha256:7ca1d2d7f242b984a9912189b3c507fe9de7bc9c86a9217cd1e65d2a0107e52a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjN2Y0YTI2ODBhN2FmMjMwNzViY2Q0ZWQ1YmI4ZWM0YWZhYTM5ZWQ5OWZlYTNmZDk4ZTdlNDk5NWVjOTgzMGEwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI1OTAyNDRmYTIxODZhYzcxYjljZWNmYWMxOTIyOWQ4YzUyMGY4MjM2NzZkNjQyNjdlY2QzZWViZTgzMjcwZTk2IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmMWY0ZGM1ZTM2OWMxNWNhYjkwMWViZmZhMDMxZGNmOTEzNzk0ZWZkMWUyNTU3MGYwMGI1MDM1Njc5MjY4MmE0IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_f1b533225bfc43f0a43435a4838e0fd9",
+      "statement": "test_sql_validator.py pins what the SQL validator must refuse: non-SELECT statements, writes hidden in CTEs, SELECT INTO, locking clauses, multiple statements, withheld or unknown tables (including in CTEs and union arms), cross-schema references, CTEs shadowing real tables and dangerous functions; it runs without a database.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_sql_validator.py#L22-L120",
+          "version": "repo-lines-v1:sha256:9f3ad9a3bb15fe7db4bf0cb2fb531856525828ff01bca82c9f124ca342479254:eyJzZWxlY3RlZExpbmVDb3VudCI6OTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1NDI3YzY5M2I5OTQxNjNhNDMwNzk0MTBjMGU4NDNhMjIxZjQxYTA5ZmRjZDZmNjY3OGZhNmZlZjYyZDA4M2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzZTk1MWJhZGM2ZmJiNTFhNGRiYzQxZWY1NmFiY2I2MGIyZGY4NTkyYzdhYzJmMzEwYTc0NzY3N2EyYTZiNTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiMTNjOTg5Mzc3NWQxZTYyM2NiMjExZGMyYWEwNTNhNzVjY2ZiNjA2NThjYzk1YmE2ZTJlOWU4OGViYWM3OGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY3ODZhZGM4MGYzY2VmOTRkOTdjYTEwOGY3ODE5MTBkNTFjNzc5MjBlNTM4YTYyMDM0ZTFhNzkyYmIxMmY4YTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_017520bfb13741538668a39de146cf6f",
+      "statement": "The catalog is checked against the live schema: test_no_drift fails if a catalogued table or column is missing from Postgres, and every live base table must be catalogued or in KNOWN_EXCLUDED, so a migration adding a table forces an explicit decision.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_sql_integration.py#L34-L65",
+          "version": "repo-lines-v1:sha256:b0236dfdfff42751356d975dc619b8a08aae7f8cb3642e93b4336f3c7ba56d77:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0NWExYzIzOTU0ZjQxZGUyMmFmMTMyYWU1YjdmYzMwNjY0NTMyNTA2ODAxNmI1YTBiNTRlNWM0Nzc4Y2E4ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhM2NmNTE5MjM1NGY3MTYxNWFjNTEwMzRiM2U5N2MyMGVkYTk5NjQzZmNhZjViYmU2ZDQxYWQ1OWJkMTIxNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiYTc3NTAwYzQwNmYyYzVkZGI2NTZjZGU2YzhjM2Y1ZDU4MDk1MGZhZjcyOWI2YWQyMTU5MmQ5NzhkN2ZhMTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dba62d4ce98342e891414c31fb96b0e5",
+      "statement": "test_sql_integration.py proves server-side guards independent of the validator: read-only transactions refuse writes, statement_timeout cancels runaway queries, neither setting leaks onto the pooled connection shared with the LangGraph checkpointer, prepare=True is required to refuse multi-statement input, and executor concurrency stays below the pool size.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_sql_integration.py#L68-L135",
+          "version": "repo-lines-v1:sha256:d707b749fb53e0853c7d8be2bd5f20f5c4453d8e253f5bd66cda9b699f39858b:eyJzZWxlY3RlZExpbmVDb3VudCI6NjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3NGQyNzg1YmI3OTU4MjdhYmMzNTc4ZmEyM2YwNGVjMDYxYjYwZjZmMWU3NTIzYzY0ZmRjMDBlZjc3Mjk3OTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjMjc3ZWJhYWNkZDQ4M2M0OGQ2ZTFjMTRiYWQzMmIwZjBjZDI3MThkOGNhYWJiOTYyOWY0MDYzNjdhYjJkMmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzZGYyYWNmMDZlOGMzZjAzYzcxMzVjNmU4YWM1YTljYTU0MzJhYmUwNmE3NGFjYTBmZGQ5YTUzYTAwOGY5ODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFhNDMwY2I0Y2QyYmE1NTI0Mzk4MjcyNzlhZmMyNjQ4YTM5NDYwMDg5Mjc0NmQ3M2U2ZDVlZmMxNjQ5MTlkMzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_51538bceaea54a3eb52ca7241cf44283",
+      "statement": "test_prompt.py keeps the system prompt consistent with code: every citation marker kind emitted by tools or CITE_COLUMNS appears in SYSTEM_PROMPT, every registered tool name is mentioned, and the prompt's retry budget equals MAX_SQL_ATTEMPTS.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_prompt.py#L16-L64",
+          "version": "repo-lines-v1:sha256:70a171b4431c8b74d989c009fd72ca0c498502c4eb71e1497fece8d9fb716896:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4NzU0ODU5MTY3ZjIwNDk2ZmJjZTYxZmVlMGU1NDA3MDdlMzRiZTk1MGRmMzk1ZGRiZGM1YTc4OGRiYzE5YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1N2VhNzgxYjhjNTM2M2Y3MDE3NTcxYjMxYWVlMWYwNGQ2MzM2ODBlZGNlYmQxYWNhYjk3NjdiN2JlZjAwMjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxMTcyOTk1ZGQxMjc2YzVmM2NhMzA3NWU2ZTI3NjM5MmQxNWUwZjY3NzA1MmFlMGRhMzMzYmVkY2NiYWQwNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_517473e9ced140faaa2d34b49d792ab9",
+      "statement": "test_rls.py pins row-level security against live Postgres by building orgs, roles and private rows in a rolled-back transaction and querying as each caller via role and request.jwt.claims settings (as CallerPool does): private rows reach only the owning org and staff, hidden orgs only staff, anonymous callers cannot use org-private tables, threads reach only owner and staff, and membership rules (last admin, one org per admin/member) hold.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_rls.py#L149-L175",
+          "version": "repo-lines-v1:sha256:10fc3fec15cc888dea3ddebf629ae28da739b12349321449eafe94fd889b5076:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJhOWQxZmI4MDEzMDMzMGU1YmM1YTIyYTQ3Y2MzYzVlZDRmMjA1NGUwNTE1ZDY4MmVkYThkYjUzNDFlYTc0MDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmNmRjNDY0ZGZiMjk0NzJlNDZmZGE4NjJmZjFiNmQ0NDAzMzhhYTVkYzgxNzg3NjhkMTU3MjBjMTIxYzQxNTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5ZGFhZWY5NDc1NDQzOTJkMTE5OTNhNjA2OTNiOWJiYWY0OTgxOWQ5ZmM3YzZmZDIzNzgxYmQzNjI4ZTYyNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiZTdhOTllMjUzZmI2Mjc1MzBmN2RmM2Q2OWI5ZjIyMmYwZjJiMTk2MjQyNmJhNmRjNjcxYTRkYzAwMDE0MjQifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_rls.py#L253-L283",
+          "version": "repo-lines-v1:sha256:d454191574b7895d7046ed9c045da0ed779e43e743386fda391ee9889e678d11:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlZmRjYzUzOTI5NWY3Nzk5OGUzZDgzOWZmY2E0N2Y4YzJhZjgwZGZhY2E1MzdkNGM1MTY0NTAzZTM1MTRiMTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRlY2YxMWVhMDZhY2Y5ZDVlZWU3MDgwYmM5NjgyZjYzY2FjNDM2NDAxNzA1MDJkOTZjOTM1NjY1NTA5NzEyYzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4OTJhMGI0OThjOTAxNDJiOTY2ZWYzZTU1ZWJlODU4NTE4OWY3OWE1Y2U2NTk0YjNmYzA3YTg0Y2U1NDI3MzUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_rls.py#L31-L87",
+          "version": "repo-lines-v1:sha256:8f6c4ed7df64dc666b2780ae0cd22ac701af6ddb56789e34262687fae35f5dfb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzMmU2NDFlMzc2NjExNDMwNmY5OTU2NTA4NTE3MDA2ZGM2YTk5YjY2YWE5M2VmNGFlMzg2ZWY4MDljZTk0ZmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4NmZjMzhkMmQ5OGRjOTkwNGRmMjRlNzkxMjcxMmUzMDFhNjI2YjZkNDY5M2RiYWNlMzc4NWUwNWNhOTVkMDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzZmY3ZTI5OGQ2ZGI1MGNjOTViNTMwMDFmOWJmYmZlMGJhYzA3ZTE4MmI2YjkzMGM1OTQzYWMwZGFjYWE2MDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU2ODBiMGYyOTI4YWMwZGJmM2RkNGEzMWQ1YzE2ZTkxOThhMjlhNjA4NmQzOWNmYjU3YzIwZjYwYmUzM2E2NWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0db49d5a41b74c3286422390acfb5e39",
+      "statement": "test_caller_pool.py pins that requests run as anon or authenticated with the token subject claim, that connections return to the pool as the owner with claims cleared, and that InsufficientPrivilege maps to a 403 with detail 'Not allowed'.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_caller_pool.py#L26-L96",
+          "version": "repo-lines-v1:sha256:e586daad47906c36e30e136c2034ef9caaefdc90d213bec1b61271e8c78d7a5d:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyZDk2ZTMyMTEzYjZmODJhZTlmNzM5MzU3OGEyODNlM2M1NDk2YjRiZDIwZGEwNDlmMjhlMjYwOTM0MjQzMzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxZWJhNWYwMDM2YjZmMTc3MWM5YzhiZTY2YWVlNjFlNmIwNjI2NmEyMjg2OGY2MGU2NTJhYzUyZGY0NWZiMzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f55ac25fdc5147bf87d10c084ef1bdaa",
+      "statement": "Migration and seed integrity is tested by test_migration_integrity.py against the live database (preserved documents and graph_ingest_log counts, stable seed-order ids, advanced documents sequence, v2 content), and make up migrates before starting the backend because _verify_sql_catalog raises when a catalogued table is missing.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L65-L88",
+          "version": "repo-lines-v1:sha256:7625ce09977d02ca4ec52d87af3824ab1c6de6713aa1363332766d449b9791fb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NGM4M2E2N2VjMzI4MjVjNTQ3ZmIwZDgzNTM3MGZiMTc2YTM0YjE1MjJlMTFkN2UzMmZhYmJiYWEyOTRmZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlY2IzODFhYjc5MmQ4MjNmMDEzZjgyYzcwNjdmY2YwNjE0NTZjY2I2ODU2ZTJmYTNkMzZkNDA2ODZiZjhlYjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkNjk2MzJmNDZkZDI0NjJhZDc1MGEzNjA0MTVjYTE1YjRkZjk1MjdhMTE1NWQxZmRlMjlhODBiNTFmOGM3ZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhMDE4ZmNhY2QxMjk2ODQwNWY3ODk2ZmZkNWJkOWIxOGM3MDZhZWZjNWY4OWI0OTg3MWMzMmE1NmRlZDk1NmQifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_migration_integrity.py#L22-L61",
+          "version": "repo-lines-v1:sha256:6ef9386db97f93c9a299cbf8b9f43ed2b78d6435e85e002769137dc92dca6ff0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1OTNmYjc3ZDYwNzExZmY4OTZkZTk3YjM0NDA5Y2NiYWQ4ZmJiOTdjYzk5MDc1YjdhNTE4Mzk4NjUwMmEyYzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0MDU4MmU3YTU2YjcyYzYxZDI3NGJhMTE2NTg3YTAzMWJmNDc1ZTQzMDM5NTY0YWFjN2Y1ZDMwZDQxM2VlZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc1ZTIwZTBiY2RiN2Q0ZTQ4NzFmNGMyZjUzYjU4Y2ZmZGE3YTEyOTlmMDU3MDNmMGY2MzViM2ViNzdhNWNlNzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2f71e6ff3bfc4efb8ac4393e17ab72f2",
+      "statement": "Proposal editing is enforced in the database as well as in Python: test_rls.py shows a proposal reaches only its org and staff, only admins, stewards and staff can insert or update one (a blocked INSERT raises InsufficientPrivilege, a blocked UPDATE silently changes no row), and every role in the org plus staff may upload to the org's document vault.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_rls.py#L102-L146",
+          "version": "repo-lines-v1:sha256:a441424dd018a2799e52ca857d6987a2a7eeedd728783248ab6460962bc9cb35:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMzQ1ODNhNTk4NzY3YmY1NmFlZmViNjVlMjAzM2ExNjUxY2M0YzhkN2U2ZjBhZjNlNWNmZDMyOTNmOTMzYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkN2I4YzM1ZTJjMGZhYjAyMDdmOTVjYjA0MWQ0MTNmMTNmYjIyZjgyODkyNTVkY2Y0NGQ4NjkxZjc5MmNhOTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3OTExYzNkODIwYTQxMTM3ZWFhN2M2YzBiNTMzMjU2NDhhZWI1ZTNlODA2OWJmN2Q2NmQyMDI5NjI1ZDc2OTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1YWJkNmJiZmM4OGFkOTRiYTAzZjMwZWI2ZGYzZTIyMzI1NGY4NWI5ODdkM2Q4OWYyZmM5NDMwNGMyNzZjMjYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6f780df47d8a4085a9db7536967920bf",
+      "statement": "test_agent_rls.py proves the Ask agent's validated SQL runs as the caller through agent_caller and PsycopgExecutor: a member sees its own org's private document but not another org's or a staff-only funder_activity row, a user with no organisation or no caller reads as anon with no private rows, the connection returns to the pool as owner with claims cleared, and every catalogued column is SELECT-able by authenticated. Unlike test_rls.py it commits marker-tagged rows and deletes them in a finally block.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_agent_rls.py#L24-L118",
+          "version": "repo-lines-v1:sha256:7b1f336df8741846e1f82cbb824217b1ad53ca0e843eae1d161f87cb95f70049:eyJzZWxlY3RlZExpbmVDb3VudCI6OTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzZjM2NmI5YmQ5YThkMGYzNDBhMmJjMGJlMWUyMmVlYTIwNTY4ZGQ3OGE0NTI4MWI3MjFiMzBmMjJkMDg3ZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlZmQxMjUwMThjMzNhYmJlZDdiODhkMWViNTZjZWEyODI2OGNiNTViZDZlZDIyOGI1OWYxZjM4ZjY1NDNmMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3OTZmYTc5NDNhZTM4YWVjOTNiYzczMGUwNGMxMTFjNzcyZWQ5MDQ3YjdhNDU2YjY5ZTZjNTExN2E0MjQ1NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5aac95dc2cac4eba81349279f2c1893d",
+      "statement": "test_proposals_work.py pins work.apply as the single proposal write path: paths outside the allowed shapes raise BadChange, a batch is atomic, section changes need the rev they were read at and a stale one raises StaleSection naming the current text and who changed it, rev rises once per save per section, every change is logged with who/via/run_id/path/from/to/facts/reason, stage moves back by patch and forward only with advance, and the summary is recomputed.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_proposals_work.py#L28-L110",
+          "version": "repo-lines-v1:sha256:97c58c5fea4d8e2f860ecbd46b319867191fef3c375b7c3c1d4ec34acff09a2c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmMTE2Zjg5MDFjNjg4Y2FkYWVlMjFmNWVjZjU3MGIzNzQ2ZmIzYjgyMmMzYmYzMjU0ZDIyYTQyYzAzZDRiZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmZTlhZTZiNzlkYzcwOTkxZmM2YWZiMGQ2OTRlYjIyNmRkZGM1MTRjOWU4ZDk4ODhjMTkzYTM2NGY0NmE2NzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_05bc8e38a28845c29ea67ea04364d093",
+      "statement": "test_proposal_agent.py unit-tests (with no database) who may run the proposal chat via proposal_chat_access (admins and stewards get their own thread proposal-<id>-<user>; members get 403; strangers and foreign or malformed threads get 404; two editors never share a chat), that advance_step refuses a reader before repo.save is reached, what the stable and live context blocks contain, that only Anthropic gets the cache breakpoint, and that the built agent exposes exactly ten tools including read_file and no other filesystem tool.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_proposal_agent.py#L64-L175",
+          "version": "repo-lines-v1:sha256:97c586595722a9f9c5681de9e4306abb22092565d45e5d269e70da7e6c55f3c4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhYzViODkzNzIxYTBlYjY5MWIxNjc3ZDk1Y2Q5YTRiZGM5NmJmZGI1NmVmNzVjZjI4ZDg4OWVmYzNlYWQxNDlmIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5MmE4M2U4YjVkMmI3NzcxYTJmZThjMjFjMjc5MTZhODk0Mjk1MzY0NThkZjc3NGYyOWEyMWRmZmZkM2ZmNmVkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0MTNlMzFhMDhkNzg1OGM0YWI2Zjc1Zjg5MjRhYWEwZjgzYTFmNjllNDBiMjRlYWE3NjMyOGRiMjVkNzkwNmNiIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJkZjRmNGM4MGQ5ZWMzNDRmZDNlZGUzNDg4ZjE0MDEwNTEwN2Q4OGYzMDdiMTVlZDE1YjE0NDYxMzM2MjE2MWJiIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_20b5b7a7b4074c3ca1f1f13f640319f4",
+      "statement": "The remaining proposal tests are DB-free rule tests that pin code-enforced safeguards: trace check, fact origin and question rules, suggest_edit outcomes, polish refusing any changed figure/year/place/name/gap, reader tool sets and per-file isolation with a busy lock and stale limit, and correction propagation; they monkeypatch repository functions and context rather than touching a pool.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_proposal_finish.py#L22-L49",
+          "version": "repo-lines-v1:sha256:7f050be3f2f7211f2804a2b06f1a8da5f84b0d8e04f0788c90a9ef6e3974a2b1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwZGY0NDYxNGJjNDUzMmIyOGY1NzJhMGEwNzY1MWNhODE1ZTFhZDg0ZWM2Nzg5NTIzZDUzMWIwNDdmMDhkNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzMThhMWJmYzZkOTBjM2MyYjEyNWNlY2U5NjkwNjNmMjNlMWUwMGQ2MmI0YTBmMzFhMzllNzI5YTA0NTdjYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiMmMwOWU0ZjdhZTRmNDRkNjU1OGNkYzUyNjFjNzMxOGFkMWNjYWUxNjk3ODhjNjRkY2I1MmFlMTQyNTNlMzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_proposal_readers.py#L143-L213",
+          "version": "repo-lines-v1:sha256:a20f623c13b4742d544a0d1c88dc57fa50a091968397495bc7b18675abd8f884:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzOTIwZTdkODhkYmNkOTIxODA2M2JjOWRjMjU3Y2JiNDIxOGJhMWIyNTI1NDg5NDJkN2M1ZDZjNDgwZDRkNjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkY2RjZGVkYjRhZTc2MGI3Mjk1Mzk2ODFlYThhOGM4YWZkOWQ2MDczOTk2YTU2YmZmMDA0NzM3YjNlZTVhNTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1MDIzYzgyMDljOTAwYWZhZjA0ZjFjOTYyODliNGE3ZWRlNDY2NjcyOGEyYjAzYzc5NTBjOGRhN2M1YWM1ODAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_proposal_suggest.py#L74-L145",
+          "version": "repo-lines-v1:sha256:92a1c9fb73c53857ba0f6dc2da6c37189bd9d7b52bea880c51a5350b389b87ac:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmZTA5MzQ3NWU2OWQ3MzRkY2MzNDIyNDY0NjI0MmMyODdmOTQ4NGYwZjg1NTZiMmJiOGRjMWIzNDMwNjU5YzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiNmM1OWI5MDAyY2FlN2I5ZjQyNTA5ZDg0ZjE1N2FiNDhkMzJhZGI3ODBmZmJjNDc0YWUxMjBkNmQyNDBkZjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3ZWI3ZDk2MmUxNzNhNjA3YWY0ZGM4YTgyMDgyMjY0NzY4Y2M3NDE1NzE4ODJhNDk1YmUzNjhhZjI0N2U3YzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU4NTUzZGI2NWExYWVhMzllYjBmNjBjN2VkOTJkNDE1NGRiYTM4OGM3NTIxNTM4MTIzMzBjMjI4OTE4YmI2NDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_942438573f5f439091efd2e1b91ebbd3",
+      "statement": "ci.yml runs on every pull request and every push to master with read-only permissions and four jobs: backend-lint (ruff check), backend-unit (pytest -m \"not integration\" with coverage), backend-integration (a pgvector pg17 service on port 5433 that is baselined from db/init, migrated and seeded before pytest -m integration, with skips listed via -rs and two dump-restore tests deselected) and frontend (lint, tsc --noEmit, build). It deploys nothing.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L1-L126",
+          "version": "repo-lines-v1:sha256:fb16049419edccdd58ee472e8d4955859fd147e3025060e868dfb29077470a78:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhYzU5NjQ3MGU3YjhjNzZkZmI5NDU0MGM2Njg3NmVjMWE2ZDdkNTQ1NzhjYWY0Yzc0NzM2ZjI3ZDRhODAyMjc1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmZmM0ZTU1ZWJhMGU3Mzg0MWM2OTQzZGE5MGRjNjY4MjY4NDEyMjIzYWEyMDVhZmQ3MDQxMTExYTkwMmU3NzFmIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_051900c6ab4c429592cd9ad5274aa159",
+      "statement": "Nothing deploys automatically: deploy.yml is triggered only by workflow_dispatch (run by hand) and is the only workflow that deploys, with Git-integration deploys turned off; CI and dependency review never deploy.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L1-L1",
+          "version": "repo-lines-v1:sha256:ac596470e7b8c76dfb94540c66876ec1a6d7d54578caf4c74736f27d4a802275:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWM1OTY0NzBlN2I4Yzc2ZGZiOTQ1NDBjNjY4NzZlYzFhNmQ3ZDU0NTc4Y2FmNGM3NDczNmYyN2Q0YTgwMjI3NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWM1OTY0NzBlN2I4Yzc2ZGZiOTQ1NDBjNjY4NzZlYzFhNmQ3ZDU0NTc4Y2FmNGM3NDczNmYyN2Q0YTgwMjI3NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzdjNmE3NGEzODU1YzE1MzgxZTQxMDcwYTRmNjllODFkNzU5MjUwOGQ2YjgxNmVjMDIzYmNhYmZkNzY4YTMzZiJ9"
+        },
+        {
+          "resource": "repo://.github/workflows/deploy.yml#L1-L13",
+          "version": "repo-lines-v1:sha256:865c6731e04469745fbd45ce0351016de9dc7975f81c36c8f55f4c9d22794979:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5ZTBkZDQxZDkzNzYwMWZiYjNiMGViMmM2NDFjNzZmYzFkZjU4ZTEyMjM0MTY1ZmQzNzI0NDYyNjljMTRmMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4OGNkYWQwZWZiNTIxMTJhODg3ODc0ZGE4NTZjZjgwZjBiMGUzNzk0ZjZmNzhjODhiNDg4MWFlYTQ4ZGU1YjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ3NmM4NzEyMThlMjExMGNjMzk3YmJkNDY5YmFmYjM5MDBhN2VjM2RmZjc1MTFiMjQxNTg2MGY4MzM0NmU1NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d6197fcfc7f24363aa95fc9ca232593f",
+      "statement": "dependency-review.yml runs on pull requests with actions/dependency-review-action, failing a PR whose lockfile changes add a package with a high or critical advisory and commenting in the PR only on failure; it checks only what the PR changes.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/dependency-review.yml#L1-L20",
+          "version": "repo-lines-v1:sha256:4ee4e7a3566ce28deab90145df173bef7e6c2fa5c6b650c8f4dbdfb5ac6df7b2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkN2E2MmJhM2Y1ODBiOGM1NzllOGM5YTdjYmYwMzc2ZTM5ODFmNjk1ZWQzM2ExNmIzZTQ4ODIxM2UyZjc3ODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmOGQ0M2I4ZWJlZTVjZjljNjcxMDliNDY5NDdmNTc2YzlkMjZhZDY2ZjU1MWVlNGM4ODVkY2I0MjAyNWUyMWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8adcc9e9ff8247d9a6ad8903738d5b12",
+      "statement": "CI uploads coverage.xml from the unit and integration jobs to Codecov under separate flags using OIDC (tokenless for forks); codecov.yml merges them into one report per commit, fails a PR whose project coverage drops more than 1% from the base commit or whose patch coverage is under 70%, remaps app/ paths to backend/app/, and carries flags forward. Coverage measurement is configured in backend/pyproject.toml (source app, branch coverage, relative files).",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L48-L55",
+          "version": "repo-lines-v1:sha256:2cfdbf3045006948181be9308a058669d2a9e4abac24a7d210a90b99824a5e3a:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjIxMTA5OWE2MGZmNTk0NmUyZGJlN2JjYWFkMTk1MTRjNGJiZjEyMTdiNWI1NDJjYjYyNzZmMjU5MTQzMjQxMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTJjZGNkMjhmOWI3ODM1MTYzMGIyYWIxYTg4NTM4MTI4ZTJhNTAxMTNhOGVmOWJmMzhmMDUwNzEzOTI0NjdhNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWNkZTlmYjVlYWZlMjRkY2Q0YzczNjM5OWJlNTlhYjkxMTViOTkwYjE1N2E0ZDUwZTBkNGQ3ZmNkMTZiMzA2YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGEyZDVmMDgzZmY3ZTBiZmFkNGQ0ODBhMjdmMDkyMjVlOTZmM2U5OTY2Y2RlNGUzOTFmYWY1YWU2YjFhMDM1NiJ9"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L97-L108",
+          "version": "repo-lines-v1:sha256:17f1adad767471a7b1f9048be64ce252f6d39488b8228824efa2b287fd7b2b33:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3MDhhZDZmYjQyMmYyZmQzZmNkOTc0OTFkNTA3MjQ4OTBjZmVhZTBlZDk4ZDhjNWY3OWQ1ODM4MjY2MjBjMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyY2RjZDI4ZjliNzgzNTE2MzBiMmFiMWE4ODUzODEyOGUyYTUwMTEzYThlZjliZjM4ZjA1MDcxMzkyNDY3YTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3YjI4Zjc5NDY0OWUxNTYzZjU0YjcwNmIzMmQ0NGM0ZmIyN2M2NDlkMjVmMzVhYWZhN2FmYWI0MGRhZGEyYzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyYTkyODkyNjdiMTc4Y2ViZjZiOWNmNjc5M2Y3ZWY3YWI5NmY3YmEyYTNjOGZhMzk1Njg2ODhkODY1N2VjZjUifQ"
+        },
+        {
+          "resource": "repo://backend/pyproject.toml#L58-L61",
+          "version": "repo-lines-v1:sha256:13c2c53c2d96b2a6b5ca15131eca97d7f798a4d3dbf0eea2b943a3adcadc0626:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGZmODc4ODc3M2UzMWM3YTkzOTM2YzllYWUxZWIxNTMxMTY3Yzg5NTc3ZmYzM2I3ZjY1Y2Q4ZWMwOGEyYzgwYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWQ4NTBmZWQxNjE5YTJkOWEwODQyM2I0MGYzYjhkYjczMTdhMDljODk1MTNhNmE3ZDg2M2FiOTRjMDU2OWEzYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmQ1Njc0MzE1MmMzZTYxZmJmYzQ0OWZiY2Y1ZWRjNTg5Y2MwYTFlZGM3NjVjZDFkODFmMzIzYmY3Yzk4MDYzZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjkwNWJkZWQwNjQ0MDE5ODI4NDkwYjFkNTZjOTA2YTQ4YTk4YzIwM2JlMTY5MDNiNGZmNTIwMmI5NTRmYjZhZSJ9"
+        },
+        {
+          "resource": "repo://codecov.yml#L1-L22",
+          "version": "repo-lines-v1:sha256:0e465e058cafd71d5d6fa97828502024e4a3e41d1da32b23b14f03dd887cf86c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0ODFiNWRjNzc0YmU5NzY2MjJlYTZhYjk5ZTQxMWQ0MmQ0YjNiNTY0N2NlOGUyOTIzMGZiNDE5ZGNmNTFlN2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxMzllYWE3ZDVmNWJiZmE3Nzk4YzIxNDM1YTJlZmZhZmRjYWIzNzJmYzIwNGQ1ODZlNDU2NmY3YzVhZjQ1MDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3e7f2dc3ccd44210b4981db88be3f500",
+      "statement": "With Langfuse keys set, the selected Ask eval cases run once as a dataset experiment on ask-golden named branch-sha under the eval environment, with golden.jsonl as source of truth and the dataset a copy upserted by case id; cases run one at a time because the agent's tools share one module-level pool; run stats (tool calls, tokens, large-result reads) are counted from messages, call and large-read budgets fail a case, while seconds and token counts are only reported; without keys the cases run as an untraced loop.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L114-L117",
+          "version": "repo-lines-v1:sha256:8bca03f15e81763510520b96b85b84a4674808f59396c55af8c25c8ca7c66c4e:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjQ5YWRkM2Q5MTRlMGIzYzQ3MjBjNDQ4NmFmMWVhZDE2NWUxYTAwZjJiNjhlNjMwNWIzM2I1NzJlYTk2MjNjNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTNiMDQ5YjE5NDY5NGNhZWM3ZjlhNjRlMDM2MWM3NmY3NGY3NGQ2ZWViYWUxYjdkZmJlYTllOTk3YTdkOTEzZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzk0NzdiNzU4NmFjYzRlNDhkMjZmNWM0Zjg1NGJhZGJhZjE0NDQ0ODhjYTg4YzMzYWZkMWQ1OWE2YTE0YTEzNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGY5NGQzN2EzODUwMzM4ODU5NmI1MzhiODE0MDAyNzAzMDc2ODdmODFmNzkwOTliMWViYjFmOWFlMDEzZDFiYyJ9"
+        },
+        {
+          "resource": "repo://backend/tests/evals/experiment.py#L10-L113",
+          "version": "repo-lines-v1:sha256:8a83b232d90673fb04d594ec6a7e065d8fa2b0d5e0b6e631d99ce325dc767d8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJkNDc1MTY4NjFkYmNlY2IzMDk2NzJlNDM0OGIyN2VhNGUyODIxMjcyZGQ2NjY2YjkyMzhjYmU2ZTk5ZmY1MDI1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIyYmM0MDM3ZGZiNzhjZTY3ODBiY2E4MWM0ZGY1YjY0ZTY5MDJlNWY5MjllNzYyZjc4MDJhMjYzN2MyZDIxZjhmIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkMGI1ZWNlZjNmOWE0Y2Q1YmUyMTljOGI1ZTQzOTMyMDY5MjYwNzMwYWIxZjY5YTI3YjhhNTk5MTE3MjM3ZGZmIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://backend/tests/evals/harness.py#L202-L216",
+          "version": "repo-lines-v1:sha256:d8185d8df1b04443d1c76b0fb8ca6af7df70f5162ba8628997eaac87c1862aa3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiOGI3NDhiZTU1MmYxNDZkMzQ5Y2ExNDM4OWU5NGE1NjhmMGEyYWRiNjJhMWRiMzJmOTMyOGVmNDcyOWUxZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhMTFjMDU2N2QwYTVmOWU5YjEzNWY2NWNkMjUzNzJkZmQ2Mjg3NzVmN2MxZWQyNTNmOGJhZDQyZGQyZDY2NjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwNjVjNjljNGFhMjVkMDFlM2UwMGQ4N2U5Yjg5YTg4ODZjY2U3M2U5ZjRlNzhiZmJhYTIwMWFlMjE5NDRkYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhMzI4NmE3YjBkOWUyNDkyZDE3MWIyNDcyOTgzMmM0YWY2ODg0ZDYyYjkyOWMxMGVlYTdmZWUwMzBhMWUwYjcifQ"
+        },
+        {
+          "resource": "repo://backend/tests/evals/harness.py#L34-L74",
+          "version": "repo-lines-v1:sha256:fbece0cd4564cba599dd0457c73bf341eefacb257ab97b2bdea6d5de814cb16f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2ZmJhZTBiOTFkNDRmYzBkNDlmNWRlNjkxZGE2ZmM0MzFmMjYwMTM0YmY3MzFlMGUyMWY3NjQ4MDk0MzM0Y2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ5YjZjOTQ0MzJjNTU5ODllZTgzOGM0YTEyYzAxNTdiYzdlZjFmYTQ0YmI0NDc2MTY5MGJhMWNlZGEwZmZhNWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyNzI4ZjQ4YmRkNGQ5ZjczZDEwZTNlOTZkYTNiMWI4ODg2ZmU3ZTZjODgxM2E2NjJjNjZmMzNiODU0ZTliOWEifQ"
+        },
+        {
+          "resource": "repo://backend/tests/evals/test_run_stats.py#L37-L81",
+          "version": "repo-lines-v1:sha256:e11322b31f1794903e02541b64d4dd4d99f1a5d31bd0115c153c4b9dc7367f3b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MTE4ODZmODU5MjE0OTYxOWQ1ZWVlNTdiYTMzZmFkMDQxOTVjNDAxNzEwMzdlNDk4YWNkN2ZjZTlmODY5ZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzZWFhMjc4NTFhZDY5ZDk0MGFiNzY4YTVhOGY4MjUyODkxM2FlOGNmYmQyNDRiMzRlMjVhNDkyNzJkNTRmYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzZDE3MWRlNzU0MzFhMDIxYTBkOTRmYTc2ZmFiZjBkNzEzOWM4OThjMWEwYjQ0YjQzY2E2MDkwM2ZhMWI4NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyODMzYjkyMDkyNjJkMWMwY2QwNTY0ZTQ1NmY1YjFkZTliZWU3M2I2YzE4Yzg5MTIyYmUzOGE0Y2ZiOTYyNzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_226219247f2d46078085578cb25c9c6d",
+      "statement": "test_import_calls.py is a DB-free, model-free unit test of the Import eval's tool-call accounting: a scripted supervisor and researcher show ToolCalls counts a subagent's call under both the bare tool name and agent.tool, and call_failures fails only calls over their max_calls budget (0 forbids a tool, no budget never fails).",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/evals/import_harness.py#L27-L50",
+          "version": "repo-lines-v1:sha256:5d7b600a987ed82b223af95a33fad330ee294abc0f88c04918ab2205dff5a8de:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyMWQ1YjE3YzNhNmFiYWQyZDMwMzEwNTc3NWI3YmMzZTZiOTFiNGQ0MTY0MjRkZTIxYzQxMGUzYzBkNjc0ODYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiZTYyOWNkYmZjZTZmN2NhYjIwNTA2YjQ1YWQyYWQ4Mzc4YzI1YTVlYTUzZGI2ZWQyMWM5YWYyNGQ2NTA2MzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkNDdjNzVjMzBkMmEyMzA5Y2Y3NDEzYTMwNTQ1ZTU2NTJiMjFjOTg5MjQ5YWVkMTg5OGY3Mjc2YzZkM2U5NzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMyMWYzYzM3ZTQ2OTMyN2NjNGU0MWI5Yjc2YzlkNTMwMGI4MjQ4ODU3MzhlZDcxMGQ3NDNiZWIyYTczMDAwNzYifQ"
+        },
+        {
+          "resource": "repo://backend/tests/evals/test_import_calls.py#L31-L57",
+          "version": "repo-lines-v1:sha256:815249d3afda38c057e6328354d3205f3ea33975dfd7cf556879863d29ea4003:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MGE1YzViODgzMjE4MzkzMmVmOWZiYjg5MjU2NDUxYWEyY2RmNTcyNDZlMjQ4YTkwZWZiMDQ2NmIxY2RjOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxZDJkNzY4YWZmMzI2NDhhYWYyYWMzOTA5YmYzMmUxZTI3MmQ5NjYzNDIzNDA3ZTQxNjUyZWFlNjdiYzNlZWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyMTU2NzY4MDNlNzkwZGU5NDRiNTAwMjE1YzEwYjVjYjEwYmE1OGUwODUwYTNiNzkzZTExNmJkYmY1YTRkMGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_60c92531738f4b84ac67477ea1a18e9f",
+      "statement": "test_agent_middleware.py pins that clearing old tool results keeps the prompt prefix cache-stable: nothing is cleared below the trigger, the cleared set moves at most once per clear step, what is sent stays under the trigger however long the turn, the latest results and compare_fit results are kept, and failed db_profile_column calls count toward the SQL retry budget like db_query ones.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/middleware.py#L43-L46",
+          "version": "repo-lines-v1:sha256:744333680d479433313fa0f4ae5727cafe485e1604e7b1e20ca33b0ba8f1eb9f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTJjZGE0ZGUzNWZkMDk2MjdhZjE4YjkwMDc4ZmFjODQ1ZmRlYzA0YjFmZTMwMWMyOTJjMWZlZWZlYjJkMmE3NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOThmNDNkOTlhMjUwYmNjOTAzZDBiMzNhYmExZGI5MjFjZWM5ZjUyYTRjZDM5ZGU4MDEzZTE4NDEwMWRlNmUxNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTJhODlmODRhYWI0Y2YxZDU4ZjllYmZkN2M5YWFjODQyMWMyNWNkNjI1NjFkMzliMDBjNWMyYWNjMjhjOTM3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmE1ZjM4YTk2NjUyOWM0NDI3NzdkYTEyMmU0MzQ2OTY0NTYwNmJkYzJlNDM0YjU5MWVlOWRkY2ZlMjMxMTNlMCJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_agent_middleware.py#L54-L105",
+          "version": "repo-lines-v1:sha256:4103a66381c96b1864564fee5eef85ab60ea7bda4ce33f3c204f087a71dc10a3:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0MzU1ZmE1NjZjNTk5MjM3YzhlOTUwZTg5OTY0YTQ4ZDM5NTU3ZTQ3ZTJiYTYwODY0OTI3ZGZmNzdkMjMzMjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxNTkwOWQzZjc2ZDRjNmY3ZDZiZTBkNzU2YzQ5MmRmZmRlZjZhN2UxYmQ2MjNhNTE1MzAxMmJmZDUzZjk1NjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmMTM2NzRiNTBlZjQxYmU2NDAxMTRmZjBjMTk4OTIxMjUyODVkOGNhMTdkYTI2NTFjNTM0MGU4ZTNkY2FlMGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4edabdad5d484c309900116b25af9a32",
+      "statement": "test_ask_budgets.py pins Ask's code-level limits: compare_fit refuses repeated arguments and a fourth call per question (a new question resets), model_call_cap ends the turn with a capped message, and the built Ask stack has a model fallback on the research tier (omitted when tiers are one model), summarisation on the utility tier, and a CompareFitBudget, with the cap's exit still reaching an after_agent hook or end.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_ask_budgets.py#L15-L93",
+          "version": "repo-lines-v1:sha256:f51edd510c08d86aad0677b03ef37de080c3d634aeefa45de17d34a3f7108424:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmMDM5ZGJkMDU5ZDU1NDYwZDk4MzhjN2NhNzI2ZTVjNTNiMjYyNWI2M2Y1NzY5ZDMyYzg4NDQwODg1YmNkZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4NjZjZmIxYTczYzU4MGMwMjQwZGY3YTVlNzhmODJlY2RhNmQzYjljNjIxMWU5NjBlNjVjNWY4MGY5ZjI3MmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5MTU5NzA2YTQxMmM2M2FiYWUyYWJlNDczMGFmYjAxYTkxODE4YzU0ODNjNmE2ODI5ZDA0MjgzZDg0NGRhY2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b929df95794e4604ba8d48b427407abe",
+      "statement": "test_tool_errors.py pins that a raising tool answers the model with an error ToolMessage carrying only the tool name and exception type (no message text, so secrets do not leak) while GraphInterrupt still pauses, and that exactly one ToolErrorMiddleware is present on Ask, on Import and each of its four subagents, and on the Pitch agent and its two readers.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/agent/middleware.py#L181-L181",
+          "version": "repo-lines-v1:sha256:589da5539df1150ac2fd4beaa75711d9fddb22da63d023c621a856d3241249a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTg5ZGE1NTM5ZGYxMTUwYWMyZmQ0YmVhYTc1NzExZDlmZGRiMjJkYTYzZDAyM2M2MjFhODU2ZDMyNDEyNDlhMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTg5ZGE1NTM5ZGYxMTUwYWMyZmQ0YmVhYTc1NzExZDlmZGRiMjJkYTYzZDAyM2M2MjFhODU2ZDMyNDEyNDlhMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGVlZTFjNzYyYjk1MDQ5OTk2Zjk0MjJkNTFiNDM2MzdlZGQ1NzU0ZDM2ZGE0ZWI1NTM0YmQxMDlhNmFkMmM5ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDUyOGIzNTEzODBjYTEwNmQ4ZTFiYzQ3YTllOGU0NWFiMWEwOTdlMGIyMDcyYzZlNjViNjY5NWE3NmM4N2E5MSJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_tool_errors.py#L19-L84",
+          "version": "repo-lines-v1:sha256:6d37535a136cdca6d0e40fc6521654d78c9dc1c5abcf0bf1e7b7832dd7e99358:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxZGM3YmE0ZWRkYjUxNjRkODJkZjI3NGEwOWRkMTQzZWVkNzM3NTYzMGU2NWJhNmM0ZjQwNjg2MWE1YWUwZGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4M2UyYjgyN2NiYjg5OWJjMWY0NWUzMDFlZjQ0ZmM2OWMwYjlmZjJkMjdiMWE4ZmZjNDhiNjIwMTdlNzk0ZGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmZWNmY2IyNTczYWMyY2M1YzJiNTdkZjYyNjAwYWQwODcxNDRhODE2ZWQ5MmYzODdmNTkwY2Q3OWQ4MGFlY2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2d7d309182e64fa989be7bb4fda71b01",
+      "statement": "The eval harness runs the Ask agent as the staff dev user and also resets caveats_given and sets chat_user_id to the dev user, because compare_fit refuses an unset chat user as someone who may not run a match.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/evals/harness.py#L116-L133",
+          "version": "repo-lines-v1:sha256:f3b960b43242c14f2716da76b33d7884aed249e2832fdd0b13e48a2527894abb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOWUyMzEwZjFjNjFmNGMxZDkyOTBkZTBmY2NmZjBiNjVkMjk2OTY5YjdjMTVmMzUxMjI0NTk1OGM3NGE5OTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlNGQ1YTY2MTVmMzczNGRjOGI5OTk5OWI3NGI2ODIyMmQxZWE4MWUwN2FhMTUxNWVlNTNkOGJlNDExNGI4YTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjNmYxMmI2MjNmMjhjMTliMDZiMDliNWUzYTE4MTJhMWYyOGFiNmZlNDY1YzkxOWE3MmE5MzJhNDNkOGJjMWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_698c66be3a564c7bb7c1e73acf28cc60",
+      "statement": "test_audit.py pins the post-answer SQL audit: it audits only the current turn (a new human message resets it), reads SQL from the db_query artifact or the 'executed:' text line, makes no model call when disabled, when no SQL ran, or when no answer exists, accepts ok/warn verdicts (JSON wrapped in prose is read; warn without a caveat becomes ok), and fails open (returns None) on model errors, unresolvable models, unparseable replies or malformed JSON; an appended CAVEAT_PREFIX message is not mistaken for the answer.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_audit.py#L45-L145",
+          "version": "repo-lines-v1:sha256:21d7fef43a3d42041c34d459da13de32447b5dd7d1b34ec6db127d5828c5fb02:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjZWQ3YTAyNzNiZGFmOGFlYjExYjJkZTYzZGIzMzgwMjU5NDcxZDdmODViOTk3YzRjOGJlNDhlMWQ5NjNiYzIxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIzZjZjYjljYWY0NzNiMDhiMjBkZDAwM2E0ZGZlOTQ1Y2Y0NzkxYjQzYWFhMjQ5ZDI5NTk3MjU1MDBhMzkyZDk0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkMjEyMTFjMWM0MDE0ZWFiZjg5YTUzOWU2NDY3MTlhZTRiZDQxNGMxNTY0YjhhMWE3Y2RlZTc0NDc0NmQ0MThjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_2ae82b92ad574493bb70843925fbb390",
+      "statement": "test_proposal_agent.py pins the Pitch agent's nothing_to_answer guard: a run whose history ends on an assistant reply ends without calling the model, a new human message is answered, a pending tool call is not an answer, and the guard is in the Pitch agent's main middleware stack.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_proposal_agent.py#L191-L244",
+          "version": "repo-lines-v1:sha256:5637cb97a18e3c43917cb4d24b3e1209a47e1d82810cbe9a5ce4bb6a0a6f93ce:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMDBmNjRlODg4YmIyZDA0MjRiMzQxMzhkM2YxZmM1NmRlZjU5MDQ5MWNmNjljMGEzOThhNjNhOGY4ZWExMGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmYWJkNzg3YWIyNGY3NzQ5ZmFmY2EyZDFmZTJlOWMwMzA0MzRkZjc2Nzc1ZWI5ZDEwODk0ZmE0YjAzYTI3MGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM2OWEzOWNhZjNmNTI3OTQxNWM5MzJiNjlmODgwMjAyZjM0ZjBlNTgyNTk0YzA5N2VkNDNkZTA5NDVlY2RmNzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-19T19:22:00.060Z"
+  }
+}

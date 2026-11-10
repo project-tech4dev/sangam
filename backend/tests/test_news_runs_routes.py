@@ -1,6 +1,6 @@
 """The news plan route: staff only, writes nothing, and says which names it found (spec 2b, Scout's approval card)."""
 
-from datetime import date
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import httpx
@@ -12,8 +12,8 @@ from app.ingest.news.pipeline import Selection
 from tests.conftest import make_app
 
 MEMBER = CurrentUser(id=uuid4(), is_staff=False, auth_user_id=uuid4())
-TWO = [Subject("org", 1, "a", "Org A"), Subject("org", 2, "b", "Org B", searched_through=date.today()),
-       Subject("feed", None, "fcra", "FCRA", searched_through=date.today())]
+TWO = [Subject("org", 1, "a", "Org A"), Subject("org", 2, "b", "Org B", searched_through=datetime.now(UTC).date()),
+       Subject("feed", None, "fcra", "FCRA", searched_through=datetime.now(UTC).date())]
 
 
 def _client(app):

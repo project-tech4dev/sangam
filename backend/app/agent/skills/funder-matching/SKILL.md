@@ -17,15 +17,21 @@ organisation could be meant, ask which before going on.
 ## 2. Call compare_fit once
 
 `compare_fit(org_id)`, with no funder_ids. It checks every funder in the
-catalog:
+catalog and replies in text:
 
 | in the reply | meaning |
 |---|---|
-| `funders_checked` | every funder in the catalog |
-| `matches` | shares a place or a theme: scored out of 100 and ranked, highest first |
-| `matches[].tier` | strong (75 or more), medium (55–74), weak (under 55) |
-| `not_scored.nothing_in_common_recorded` | places or themes recorded on both sides, none shared |
-| `not_scored.funder_has_nothing_recorded` | the funder has no places and no themes recorded: unknown, not a poor fit |
+| `N funders checked` | every funder in the catalog |
+| `scored N: …` | how many share a place or a theme, per tier: strong (75 or more), medium (55–74), weak (under 55) |
+| `unknown across the N scored: …` | each criterion, and how many scored funders it was unknown for |
+| numbered entries | the top strong and medium fits (up to 10), in full, ranked highest first |
+| `- …` one-line entries | every other scored funder: score, tier and its first gap |
+| `not scored, nothing in common recorded` | places or themes recorded on both sides, none shared |
+| `not scored, the funder has nothing recorded` | no places and no themes recorded: unknown, not a poor fit |
+
+The reply is complete for the write-up. Call compare_fit again only when the
+user asks about one of the one-line funders in detail: then
+`compare_fit(org_id, [its id])`, never the whole catalog again.
 
 Each match carries seven criteria — theme 25, geography 15, population 15,
 eligibility 20, relationship 10, funding size 10, capacity 5 — each met,

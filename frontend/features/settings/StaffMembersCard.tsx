@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { OrgMembersList } from "./OrgMembersCard";
 import { membersRequest, selectClass, type OrgMember } from "./members-api";
 
@@ -10,14 +10,18 @@ export function StaffMembersCard({ orgs, meId }: { orgs: OrgOption[]; meId: stri
   const [org, setOrg] = useState<OrgOption | null>(null);
   const [members, setMembers] = useState<OrgMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const picked = useRef<number | null>(null);
 
   async function pick(id: string) {
     const next = orgs.find((o) => String(o.id) === id) ?? null;
     setOrg(next);
     setMembers(null);
     setError(null);
+    picked.current = next?.id ?? null;
     if (!next) return;
     const result = await membersRequest(next.id);
+    // A slow answer for an organisation no longer picked must not land on the current one.
+    if (picked.current !== next.id) return;
     if ("error" in result) setError(result.error);
     else setMembers(result.members);
   }

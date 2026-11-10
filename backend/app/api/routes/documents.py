@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import PageParams
 from app.core.config import get_settings
-from app.core.security import get_current_user, require_user
+from app.core.security import get_current_user, require_staff, require_user
 from app.db.pool import PoolDep
 from app.integrations import storage
 from app.repositories import documents as repo
@@ -51,7 +51,7 @@ async def list_documents(
 # keeps its three-file set in one place; the org arrives in the body, which is
 # where a create's owner belongs.
 
-EXTRACT_LIMIT_BYTES = 20 * 1024 * 1024
+EXTRACT_LIMIT_BYTES = storage.MAX_ARCHIVE_BYTES  # the bucket's ceiling, so every upload is checked
 
 
 def _require_storage() -> None:
@@ -66,11 +66,12 @@ async def create_upload_url(
     user_id: UUID = Depends(require_user),
 ) -> UploadUrlOut:
     _require_storage()
-    org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=True)
+    content_type = _vault_type(body.filename)
+    org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=False)
     if org_id is None:
         # Deliberately the same answer for "no such org" and "not your org":
         # which organisations exist is not something an outsider learns here.
-        raise HTTPException(403, f"no write access to org {body.org!r}")
+        raise HTTPException(403, f"not a member of org {body.org!r}")
     key = storage.vault_key(org_id, body.filename)
     url = await storage.signed_upload_url(storage.ORG_VAULT, key)
     if url is None:
@@ -79,6 +80,7 @@ async def create_upload_url(
         upload_url=url,
         storage_path=storage.qualify(storage.ORG_VAULT, key),
         expires_in_seconds=storage.UPLOAD_URL_TTL_SECONDS,
+        content_type=content_type,
     )
 
 
@@ -89,9 +91,9 @@ async def confirm_upload(
     user_id: UUID = Depends(require_user),
 ) -> DocumentOut:
     _require_storage()
-    org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=True)
+    org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=False)
     if org_id is None:
-        raise HTTPException(403, f"no write access to org {body.org!r}")
+        raise HTTPException(403, f"not a member of org {body.org!r}")
 
     parts = storage.split(body.storage_path)
     if parts is None or parts[0] != storage.ORG_VAULT:
@@ -101,6 +103,9 @@ async def confirm_upload(
     # row is not allowed to claim a file sitting in someone else's folder.
     if key.partition("/")[0] != str(org_id):
         raise HTTPException(403, "storage_path belongs to a different organisation")
+    _vault_type(key)
+    if await repo.upload_recorded(pool, storage_path=body.storage_path):
+        raise HTTPException(409, "that file is already recorded")
     if await storage.stat(bucket, key) is None:
         raise HTTPException(404, "no object at that storage_path — did the upload finish?")
 
@@ -108,7 +113,14 @@ async def confirm_upload(
     # honest way to fill content_hash: the browser held the bytes, so anything
     # it told us about them would be a claim rather than a measurement.
     data = await storage.download(bucket, key, max_bytes=EXTRACT_LIMIT_BYTES)
+    if data is None:
+        raise HTTPException(503, "the file could not be read back to check it; try again")
+    if not _bytes_match(data, key):
+        await storage.remove(bucket, [key])
+        raise HTTPException(415, "the file's contents do not match its type")
     content_md, content_hash = _extract(data, key)
+    if content_md:
+        content_md = content_md.replace("\x00", "") or None  # some PDFs' text carries NULs, which Postgres refuses
 
     row = await repo.insert_upload(
         pool, org_id=org_id, uploaded_by=user_id, title=body.title, doc_type=body.doc_type,
@@ -117,15 +129,50 @@ async def confirm_upload(
     return DocumentOut.model_validate(row)
 
 
-def _extract(data: bytes | None, key: str) -> tuple[str | None, str | None]:
-    """(text, sha256) from the uploaded bytes. Both None when it could not be
-    read — the row is still worth having, and status stays 'received'.
-    """
-    if data is None:
-        logger.warning("uploaded object %s could not be read back; stored without text", key)
-        return None, None
+_VAULT_NAMES = "PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, Markdown, text and PNG, JPEG or WebP images"
+_SIGNATURES: dict[str, bytes] = {
+    ".pdf": b"%PDF-", ".docx": b"PK\x03\x04", ".xlsx": b"PK\x03\x04", ".pptx": b"PK\x03\x04",
+    ".png": b"\x89PNG\r\n\x1a\n", ".jpg": b"\xff\xd8\xff", ".jpeg": b"\xff\xd8\xff",
+}
+
+
+def _vault_type(name: str) -> str:
+    """The stored type for a Doc Vault file name; 415 for anything the vault cannot read."""
+    content_type = storage.VAULT_TYPES.get(Path(name).suffix.lower())
+    if content_type is None:
+        raise HTTPException(415, f"the Doc Vault takes {_VAULT_NAMES} files")
+    return content_type
+
+
+def _bytes_match(data: bytes, key: str) -> bool:
+    """Whether the bytes are what the extension says: a renamed .exe is not a PDF."""
+    ext = Path(key).suffix.lower()
+    if ext == ".webp":
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    if ext in _SIGNATURES:
+        return data.startswith(_SIGNATURES[ext])
+    return data.startswith((b"\xff\xfe", b"\xfe\xff")) or b"\x00" not in data[:8192]
+
+
+def _extract(data: bytes, key: str) -> tuple[str | None, str]:
+    """(text, sha256) from the uploaded bytes; text is None when it could not be read, and the row is still kept."""
     digest = storage.content_hash(data)
-    if not key.lower().endswith(".pdf"):
+    name = key.lower()
+    if name.endswith((".docx", ".xlsx", ".pptx")):
+        from app.ingest import office
+
+        try:
+            if name.endswith(".docx"):
+                text = "\n\n".join(office.docx_paragraphs(data))
+            elif name.endswith(".pptx"):
+                text = "\n\n".join(f"## Slide {n}\n{s}" for n, s in enumerate(office.pptx_slides(data), 1) if s)
+            else:
+                text = office.xlsx_markdown(data)
+        except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
+            logger.warning("no text from %s (%s: %s)", key, type(exc).__name__, exc)
+            return None, digest
+        return (text or None), digest
+    if not name.endswith(".pdf"):
         return None, digest
     from app.agent.tools.files import extract_pdf_text  # agent-tool module; only an upload needs it
 
@@ -162,3 +209,31 @@ async def document_file(
     if url is None:
         raise HTTPException(502, "could not reach document storage")
     return FileLinkOut(url=url, expires_in_seconds=storage.SIGNED_URL_TTL_SECONDS)
+
+
+async def _remove_vault_file(storage_path: str, org_id: int) -> bool:
+    parts = storage.split(storage_path)
+    if parts is None or parts[0] != storage.ORG_VAULT:
+        logger.warning("not removing %s: not a vault key", storage_path)
+        return False
+    if parts[1].partition("/")[0] != str(org_id):
+        logger.warning("not removing %s: not in organisation %s's folder", storage_path, org_id)
+        return False
+    return await storage.trash(parts[0], [parts[1]])
+
+
+@router.delete("/{document_id}", status_code=204, summary="Delete a Doc Vault upload and its file (staff)",
+               dependencies=[Depends(require_staff)])
+async def delete_document(document_id: int, pool: PoolDep) -> None:
+    _require_storage()
+    try:
+        deleted = await repo.delete_vault_upload(pool, document_id=document_id, remove_file=_remove_vault_file)
+    except repo.DocumentInUse:
+        raise HTTPException(409, f"document {document_id} is still referenced; unlink it first") from None
+    except repo.FileNotRemoved:
+        raise HTTPException(502, f"could not delete the file for document {document_id}; the row is kept") from None
+    except repo.RowNotRemoved:
+        raise HTTPException(500, f"the file for document {document_id} was deleted but its row was not; "
+                                 "delete it again to finish") from None
+    if not deleted:
+        raise HTTPException(404, f"no Doc Vault upload {document_id}")

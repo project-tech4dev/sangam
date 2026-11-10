@@ -60,7 +60,7 @@ async def download_file(url: str, filename: str | None = None) -> str:
     """Download a file from a URL (PDF, CSV, image, report, etc.) and save it to
     the local downloads folder.
 
-    Use this for documents and binary files that fetch_url cannot read, or when
+    Use this for documents and binary files a page reader cannot read, or when
     the user asks to save something locally. Returns the saved path. For PDFs,
     call read_pdf with the saved filename afterwards to extract the text.
     """

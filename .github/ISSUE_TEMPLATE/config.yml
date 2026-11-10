@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/project-tech4dev/sangam/security/advisories/new
+    about: Report it privately, never in a public issue.
+  - name: Contributing guide
+    url: https://github.com/project-tech4dev/sangam/blob/master/CONTRIBUTING.md
+    about: How to set up the stack and open a pull request.

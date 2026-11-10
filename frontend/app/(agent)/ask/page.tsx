@@ -3,6 +3,7 @@ import { apiGet } from "@/lib/api";
 import { titleCase } from "@/lib/format";
 import type {
   FunderListItem,
+  MeOut,
   OrgListItem,
   PageOf,
   PartnerLineRow,
@@ -10,7 +11,10 @@ import type {
 } from "@/lib/api";
 import type { IndexPayload } from "@/features/ask/AskWorkspace";
 import { AskPreview } from "@/features/ask/preview/AskPreview";
+import { canUseScout } from "@/features/ingest/lib/access";
 import { WorkspaceLoader } from "@/features/ask/WorkspaceLoader";
+import { cookies } from "next/headers";
+import { DEV_COOKIE, DEV_LOGIN } from "@/lib/devAuth";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Ask Sangam" };
@@ -18,6 +22,7 @@ export const metadata = { title: "Ask Sangam" };
 export const dynamic = "force-dynamic";
 
 async function isSignedIn(): Promise<boolean> {
+  if (DEV_LOGIN) return Boolean((await cookies()).get(DEV_COOKIE)?.value);
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getClaims();
@@ -37,12 +42,13 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
   if (params.view === "import") redirect("/import");
   if (!(await isSignedIn())) return <AskPreview initialQuestion={q} />;
 
-  const [orgs, funders, scores, lines, stats] = await Promise.all([
+  const [orgs, funders, scores, lines, stats, me] = await Promise.all([
     apiGet<OrgListItem[]>("/api/orgs"),
     apiGet<FunderListItem[]>("/api/funders"),
     apiGet<PageOf<ScoreRow>>("/api/scores?limit=100").then((p) => p.items),
     apiGet<PageOf<PartnerLineRow>>("/api/partner-lines?limit=100").then((p) => p.items),
     apiGet<Record<string, number>>("/api/meta/stats"),
+    apiGet<MeOut>("/api/me").catch(() => null),
   ]);
 
   const funderSlugById = new Map(funders.map((f) => [f.id, f.slug]));
@@ -83,6 +89,8 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
       fetchedAt: l.fetched_at,
     })),
     stats,
+    canScout: me ? canUseScout(me) : false,
+    me,
   };
 
   // The workspace fills the viewport below the sticky navbar; the footer sits below the fold.

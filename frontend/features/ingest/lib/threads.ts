@@ -7,6 +7,7 @@ import { authHeaders } from "@/lib/api/auth-headers";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
 
 export const newImportId = () => `import-${crypto.randomUUID()}`;
+export const isImportId = (id: string) => /^import-[0-9a-f-]{36}$/.test(id);
 
 type ThreadRow = { thread_id: string; title: string | null; created_at: string };
 

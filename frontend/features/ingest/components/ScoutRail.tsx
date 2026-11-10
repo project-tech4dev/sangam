@@ -1,7 +1,7 @@
 "use client";
 
 import type { ImportAccess, VaultFile } from "../lib/access";
-import type { ImportTask } from "../lib/composePrompt";
+import { isPull, type ImportTask } from "../lib/composePrompt";
 import type { SourcesChoice } from "../lib/sourcePick";
 import type { ImportRun, ImportSource, QueueItem, SourceProposal } from "../lib/types";
 import { SourcePicker } from "./SourcePicker";
@@ -31,7 +31,7 @@ export function ScoutRail({
 }) {
   return (
     <aside className="scout-rail" aria-label="Scout's sources">
-      {!started && task !== null && task !== "news" && (
+      {!started && task !== null && !isPull(task) && (
         <section className="card scout-rail-section">
           <span className="card-kicker">Before Scout starts</span>
           <strong className="card-title">Where should Scout read from?</strong>

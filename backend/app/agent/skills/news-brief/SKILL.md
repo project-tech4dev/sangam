@@ -1,6 +1,6 @@
 ---
 name: news-brief
-description: Use when the user asks what has changed, or what is in the news, for one organisation or funder — "what's new with KABIL?", "any news on SBI Foundation this month?", "has anything happened to Goonj lately?". Reads Sangam's Media & Signals stories for that record and writes a short brief, each line cited [news:N], naming the primary source behind any negative or regulatory story. Not for funder fit (funder-matching) or for news about a whole topic with no organisation named.
+description: Use when the user asks what has changed, or what is in the news, for one organisation or funder — "what's new with KABIL?", "any news on SBI Foundation this month?", "has anything happened to Goonj lately?". Reads Sangam's Media & Signals stories for that record and writes a short brief, each line cited [news:N], with the link behind any negative or regulatory story. Not for funder fit (funder-matching) or for news about a whole topic with no organisation named.
 ---
 
 # What changed for one organisation or funder
@@ -31,14 +31,12 @@ Zero stories means nothing in Sangam's pulls, not that nothing happened. Get
 the latest `max(fetched_at)` from `news_links` and say: "Nothing on <name> in
 Sangam's news since <date>." Never say "no news".
 
-## 4. Find the primary source, sparingly
+## 4. Give the primary source's link
 
 For a story with `stance = 'negative'`, or `topic` of `fcra` or `governance`,
-`fetch_url` its main link once (`news_links.url` where `id = main_link_id`)
-to see what the article rests on: an MHA order, a court ruling, an MCA
-filing, a company's own statement. Name it in words beside the line ("the
-article cites an MHA order of 3 October"). At most two fetches per brief.
-Web text carries no marker, so never present it as a database fact.
+give its main link as it is (`news_links.url` where `id = main_link_id`) beside
+the line, so the reader can check what the article rests on. Ask cannot read
+the page, so never say what the article cites.
 
 ## 5. Write the brief
 
@@ -53,5 +51,5 @@ Web text carries no marker, so never present it as a database fact.
 Example:
 
 - MHA cancelled the FCRA licence on 3 Oct (The Sentinel, 5 Oct) [news:41]
-  [news:44]. The article cites the MHA order itself.
+  [news:44]. Source: https://www.sentinelassam.com/north-east-india-news/fcra-order
 - Ran a learning camp with 400 children in Kamrup (EastMojo, 28 Sep) [news:39].

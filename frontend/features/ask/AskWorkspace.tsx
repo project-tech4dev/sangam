@@ -1,20 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import type { MeOut } from "@/lib/api";
+import { idParam, setUrlParams } from "@/lib/url";
+import { useUrlThread } from "@/lib/useUrlThread";
 import type { RegistryIndex } from "./lib/citations";
 import { takePendingQuestion } from "./lib/pendingQuestion";
 import { fetchThreads, loadThreads, type ThreadMeta } from "./lib/threads";
 import type { Turn } from "./lib/useSangamChat";
 import { ChatPane } from "./components/ChatPane";
 import { EvidenceRail } from "./components/EvidenceRail";
-import { Sidebar, type WorkspaceView } from "./components/Sidebar";
+import { Sidebar } from "./components/Sidebar";
+import { isAskThreadId, viewFrom, viewParams } from "./lib/workspaceUrl";
 import { VaultView } from "./views/VaultView";
 import { MediaView } from "./views/media/MediaView";
 import { RfpWatchView } from "./views/RfpWatchView";
+import { ComingSoonView } from "./views/ComingSoonView";
+import { COMING_SOON } from "./lib/comingSoon";
 import { FunderMatchView } from "./views/FunderMatchView";
 import { type ProposalTarget, ProposalsView } from "./views/ProposalsView";
-import { useProposals } from "./views/proposals/store";
+import { useProposals } from "./views/proposals/api";
 import { ChatsView } from "./views/ChatsView";
+
+const newThreadId = () => crypto.randomUUID();
 
 type Sourced = { sourceUrl: string | null; sourceName: string | null; fetchedAt: string | null };
 
@@ -24,6 +33,10 @@ export type IndexPayload = {
   scores: { id: number; funderSlug: string; orgName: string; funderName: string; rubricVersion: string | null }[];
   activities: ({ id: number; href: string; title: string } & Sourced)[];
   stats: Record<string, number>;
+  /** Staff or a steward: the sidebar offers Sangam Scout. */
+  canScout: boolean;
+  /** The page's /api/me, so a screen need not ask again; null when that call failed. */
+  me: MeOut | null;
 };
 
 export function AskWorkspace({
@@ -34,14 +47,15 @@ export function AskWorkspace({
   initialQuestion?: string | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [view, setView] = useState<WorkspaceView>("ask");
-  const [threadId, setThreadId] = useState(() => crypto.randomUUID());
-  // A chat picked from the list loads its saved messages; a new one has none.
-  const [resume, setResume] = useState(false);
+  const params = useSearchParams();
+  const view = viewFrom(params.get("view"));
+  const proposal = idParam(params.get("proposal"));
+  const proposalFunder = idParam(params.get("funder"));
+  const { threadId, resume, renew, markSent } = useUrlThread(newThreadId, { valid: isAskThreadId, active: view === "ask" });
   const [threads, setThreads] = useState<ThreadMeta[]>([]);
-  const [latestTurn, setLatestTurn] = useState<Turn | null>(null);
-  const [seed, setSeed] = useState<string | null>(null);
-  const [proposalTarget, setProposalTarget] = useState<{ key: number; target: ProposalTarget }>({ key: 0, target: null });
+  // Both belong to one chat; Back to another must not show this one's evidence or prefill.
+  const [latest, setLatest] = useState<{ thread: string; turn: Turn | null }>({ thread: "", turn: null });
+  const [seed, setSeed] = useState<{ thread: string; text: string } | null>(null);
   const proposalCount = useProposals().length;
 
   useEffect(() => {
@@ -50,11 +64,10 @@ export function AskWorkspace({
     if (window.matchMedia("(max-width: 768px)").matches) setCollapsed(true);
     // A question asked on the signed-out preview, or passed in ?q=: prefill it in a
     // fresh chat, unsent. The preview's question wins; it is the one the user typed.
+    // ?q= is consumed here; dropping it means a reload does not prefill it again.
     const pending = takePendingQuestion() ?? initialQuestion;
-    if (pending) {
-      setThreadId(crypto.randomUUID());
-      setSeed(pending);
-    }
+    if (pending) setSeed({ thread: renew(), text: pending });
+    setUrlParams({ q: null, ...(pending ? { thread: null } : {}) }, "replace");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
   }, []);
 
@@ -68,13 +81,6 @@ export function AskWorkspace({
     [payload],
   );
 
-  // ?q= is consumed once on mount; drop it so a reload does not prefill it again.
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("q");
-    window.history.replaceState(null, "", url);
-  }, []);
-
   // The server's list once it answers; this browser's until then, or when it cannot.
   const refreshThreads = useCallback(() => {
     fetchThreads(threadId).then(setThreads, () => setThreads(loadThreads()));
@@ -85,26 +91,25 @@ export function AskWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
   }, []);
 
-  // A new key remounts Proposals on that proposal or that funder's list.
+  // Stable: ChatPane reports from an effect that lists it.
+  const onLatestTurn = useCallback((turn: Turn | null) => setLatest({ thread: threadId, turn }), [threadId]);
+
   function openProposals(target: ProposalTarget) {
-    setProposalTarget((t) => ({ key: t.key + 1, target }));
-    setView("proposals");
+    setUrlParams({
+      view: "proposals",
+      proposal: target && "id" in target ? String(target.id) : null,
+      funder: target && "funderId" in target ? String(target.funderId) : null,
+    });
   }
 
   function pickThread(id: string) {
-    setThreadId(id);
-    setResume(true);
-    setSeed(null);
-    setLatestTurn(null);
-    setView("ask");
+    setUrlParams({ ...viewParams("ask"), thread: id });
   }
 
   function newChat(seedText: string | null = null) {
-    setThreadId(crypto.randomUUID());
-    setResume(false);
-    setSeed(seedText);
-    setLatestTurn(null);
-    setView("ask");
+    const id = renew();
+    setSeed(seedText ? { thread: id, text: seedText } : null);
+    setUrlParams({ ...viewParams("ask"), thread: null });
   }
 
   return (
@@ -122,12 +127,14 @@ export function AskWorkspace({
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
         view={view}
-        onView={(v) => (v === "proposals" ? openProposals(null) : setView(v))}
+        // The screen you are on stays as it is; only Proposals, inside one proposal, goes back to the list.
+        onView={(v) => (v !== view || proposal) && setUrlParams(viewParams(v))}
         threads={threads}
         activeThread={threadId}
         onPickThread={pickThread}
         onNewChat={() => newChat()}
         counts={{ proposals: proposalCount }}
+        canScout={payload.canScout}
       />
 
       <div className="ask-main" style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", gap: 24 }}>
@@ -137,33 +144,52 @@ export function AskWorkspace({
               key={threadId}
               threadId={threadId}
               resume={resume}
-              seed={seed}
-              onFirstSend={refreshThreads}
+              seed={seed?.thread === threadId ? seed.text : null}
+              onFirstSend={() => {
+                if (!resume) markSent();
+                refreshThreads();
+              }}
               index={index}
-              onLatestTurn={setLatestTurn}
+              onLatestTurn={onLatestTurn}
             />
             <div className="evidence-rail-slot">
-              <EvidenceRail latest={latestTurn} stats={payload.stats} index={index} />
+              <EvidenceRail latest={latest.thread === threadId ? latest.turn : null} stats={payload.stats} index={index} />
             </div>
           </>
         )}
-        {view === "vault" && <VaultView orgs={payload.orgs} />}
-        {view === "media" && <MediaView orgs={payload.orgs} />}
+        {view === "vault" && <VaultView orgs={payload.orgs} isStaff={payload.me?.is_staff ?? false} />}
+        {view === "media" && <MediaView orgs={payload.orgs} me={payload.me} />}
         {view === "chats" && <ChatsView threads={threads} onPick={pickThread} />}
         {view === "funder-match" && (
           <FunderMatchView
             orgs={payload.orgs}
+            me={payload.me}
             nav={{ open: (id) => openProposals({ id }), list: (funderId) => openProposals({ funderId }) }}
           />
         )}
-        {view === "proposals" && (
-          <ProposalsView
-            key={proposalTarget.key}
-            target={proposalTarget.target}
-            onFunderMatch={() => setView("funder-match")}
+        {view === "proposals" && COMING_SOON.has("proposals") && (
+          <ComingSoonView
+            title="Proposals"
+            body="Draft a proposal to a matched funder, checked section by section against what the funder asks for and grounded in your own documents."
           />
         )}
-        {view === "rfpwatch" && <RfpWatchView />}
+        {view === "proposals" && !COMING_SOON.has("proposals") && (
+          <ProposalsView
+            open={proposal}
+            funder={proposalFunder}
+            onOpen={(id) => setUrlParams({ proposal: id === null ? null : String(id) })}
+            onFunderMatch={() => setUrlParams(viewParams("funder-match"))}
+          />
+        )}
+        {view === "rfpwatch" &&
+          (COMING_SOON.has("rfpwatch") ? (
+            <ComingSoonView
+              title="RFP Watch"
+              body="Open calls and RFPs gathered every week, each shown with the organisations it plausibly fits."
+            />
+          ) : (
+            <RfpWatchView orgs={payload.orgs} me={payload.me} onAsk={(q) => newChat(q)} onFunderMatch={() => setUrlParams(viewParams("funder-match"))} />
+          ))}
       </div>
     </div>
   );

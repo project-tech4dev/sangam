@@ -27,6 +27,13 @@ MIGRATION = Path(__file__).resolve().parents[2] / "db" / "migrations" / "0020_st
 BUCKETS = ("source-archive", "org-vault")
 
 
+def test_the_vault_bucket_takes_exactly_the_types_the_routes_allow():
+    """0055 and storage.VAULT_TYPES are one list written twice; a type in only one is refused somewhere."""
+    sql = (MIGRATION.parent / "0055_org_vault_pptx.sql").read_text(encoding="utf-8")
+    listed = set(re.findall(r"'([a-z]+/[a-z0-9.+-]+)'", sql))
+    assert listed == set(storage.VAULT_TYPES.values())
+
+
 class TestStorageIsOptional:
     """Both variables or nothing. A half-configured client would fail at the
     first upload, in the middle of a research run, rather than at boot.
@@ -116,6 +123,13 @@ def transport(monkeypatch, handler):
 
     monkeypatch.setattr(storage, "_client", client)
     return seen
+
+
+@pytest.mark.parametrize("name,ends", [("a" * 200 + ".pdf", ".pdf"), ("b" * 200 + ".docx", ".docx")])
+def test_a_long_name_is_cut_short_but_keeps_its_extension(name, ends):
+    """The vault reads a file's type from its key, so a 200-character report must still end in .pdf."""
+    key = storage.vault_key(3, name)
+    assert key.endswith(ends) and len(key.rsplit("/", 1)[1]) <= 160
 
 
 class TestArchiveKey:
@@ -237,6 +251,127 @@ class TestSignedUrl:
     async def test_is_None_when_disabled(self, off, monkeypatch):
         transport(monkeypatch, lambda r: httpx.Response(200))
         assert await storage.signed_url("b", "k") is None
+
+
+class TestRemove:
+    async def test_deletes_the_keys_from_the_bucket(self, enabled, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json=[{"name": "3/a.pdf"}]))
+        assert await storage.remove("org-vault", ["3/a.pdf"]) is True
+        assert seen[0].method == "DELETE"
+        assert seen[0].url.path == "/storage/v1/object/org-vault"
+        assert json.loads(seen[0].content) == {"prefixes": ["3/a.pdf"]}
+
+    async def test_a_key_already_gone_counts_as_removed(self, enabled, monkeypatch):
+        """Storage answers 200 with an empty list; deleting a vault upload again depends on this being True."""
+        transport(monkeypatch, lambda r: httpx.Response(200, json=[]))
+        assert await storage.remove("org-vault", ["3/a.pdf"]) is True
+
+    async def test_a_failure_is_False_not_an_exception(self, enabled, monkeypatch):
+        transport(monkeypatch, lambda r: httpx.Response(500, text="boom"))
+        assert await storage.remove("org-vault", ["3/a.pdf"]) is False
+
+    async def test_does_nothing_when_disabled(self, off, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200))
+        assert await storage.remove("org-vault", ["3/a.pdf"]) is False
+        assert seen == []
+
+
+class TestTrash:
+    async def test_moves_each_key_under_trash(self, enabled, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"message": "Successfully moved"}))
+        assert await storage.trash("org-vault", ["3/a.pdf", "3/b.pdf"]) is True
+        assert [json.loads(r.content) for r in seen] == [
+            {"bucketId": "org-vault", "sourceKey": "3/a.pdf", "destinationKey": "trash/3/a.pdf"},
+            {"bucketId": "org-vault", "sourceKey": "3/b.pdf", "destinationKey": "trash/3/b.pdf"},
+        ]
+
+    async def test_a_key_already_gone_counts(self, enabled, monkeypatch):
+        """Supabase answers a missing object with a 400 carrying statusCode 404."""
+        transport(monkeypatch, lambda r: httpx.Response(400, json={"statusCode": "404", "error": "not_found"}))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is True
+
+    async def test_an_older_file_in_the_trash_is_replaced(self, enabled, monkeypatch):
+        answers = iter([
+            httpx.Response(400, json={"statusCode": "409", "error": "Duplicate"}),
+            httpx.Response(200, json=[]),
+            httpx.Response(200, json={"message": "Successfully moved"}),
+        ])
+        seen = transport(monkeypatch, lambda r: next(answers))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is True
+        assert [r.method for r in seen] == ["POST", "DELETE", "POST"]
+        assert json.loads(seen[1].content) == {"prefixes": ["trash/3/a.pdf"]}
+
+    async def test_a_body_that_is_not_an_object_is_a_plain_failure(self, enabled, monkeypatch):
+        transport(monkeypatch, lambda r: httpx.Response(400, json=["not", "an", "object"]))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is False
+
+    async def test_a_failure_puts_back_what_already_moved(self, enabled, monkeypatch):
+        def answer(request):
+            body = json.loads(request.content)
+            return httpx.Response(500 if body["sourceKey"] == "3/b.pdf" else 200, json={})
+
+        seen = transport(monkeypatch, answer)
+        assert await storage.trash("org-vault", ["3/a.pdf", "3/b.pdf"]) is False
+        last = json.loads(seen[-1].content)
+        assert (last["sourceKey"], last["destinationKey"]) == ("trash/3/a.pdf", "3/a.pdf")
+
+    async def test_does_nothing_when_disabled(self, off, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is False
+        assert seen == []
+
+
+class TestBucketSuffix:
+    """A local backend's files go to its own buckets; rows and callers keep the plain name."""
+
+    @pytest.fixture
+    def suffixed(self, monkeypatch):
+        monkeypatch.setattr(storage, "get_settings", lambda: Settings(**ENABLED, storage_bucket_suffix="-local"))
+        monkeypatch.setattr(storage, "_warned", False)
+
+    async def test_every_call_names_the_suffixed_bucket(self, suffixed, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"signedURL": "/s", "url": "/u"}))
+        assert await storage.upload("org-vault", "3/a.pdf", b"x", "application/pdf") == "3/a.pdf"
+        await storage.download("org-vault", "3/a.pdf")
+        await storage.signed_url("org-vault", "3/a.pdf")
+        await storage.signed_upload_url("org-vault", "3/a.pdf")
+        await storage.remove("org-vault", ["3/a.pdf"])
+        await storage.list_prefix("org-vault", "3")
+        assert [r.url.path for r in seen] == [
+            "/storage/v1/object/org-vault-local/3/a.pdf",
+            "/storage/v1/object/org-vault-local/3/a.pdf",
+            "/storage/v1/object/sign/org-vault-local/3/a.pdf",
+            "/storage/v1/object/upload/sign/org-vault-local/3/a.pdf",
+            "/storage/v1/object/org-vault-local",
+            "/storage/v1/object/list/org-vault-local",
+        ]
+
+    async def test_a_move_and_the_trash_name_the_suffixed_bucket(self, suffixed, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={}))
+        await storage.move("source-archive", "a", "b")
+        await storage.trash("org-vault", ["3/a.pdf"])
+        assert [json.loads(r.content)["bucketId"] for r in seen] == ["source-archive-local", "org-vault-local"]
+
+    async def test_a_failure_logs_the_bucket_actually_asked(self, suffixed, monkeypatch, caplog):
+        transport(monkeypatch, lambda r: httpx.Response(500))
+        assert await storage.download("org-vault", "3/a.pdf") is None
+        assert "reading org-vault-local/3/a.pdf failed" in caplog.text
+
+    @pytest.mark.parametrize("database_url,suffix", [
+        ("postgresql://sangam:sangam@localhost:5433/sangam", "-local"),
+        ("postgresql://postgres.proj:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres", ""),
+        ("host=db.proj.supabase.co user=postgres dbname=postgres", ""),
+        ("postgresql://postgres.other:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres", "-local"),
+    ])
+    def test_the_storage_projects_own_database_keeps_the_plain_buckets(self, database_url, suffix):
+        """Staging rows name the plain buckets, so a script on that database ignores a -local from .env."""
+        settings = Settings(**ENABLED, database_url=database_url, storage_bucket_suffix="-local")
+        assert settings.bucket_suffix == suffix
+
+    def test_the_row_keeps_the_plain_name(self, suffixed):
+        assert storage.qualify("org-vault", "3/a.pdf") == "org-vault/3/a.pdf"
+        assert storage.split("org-vault/3/a.pdf") == ("org-vault", "3/a.pdf")
+        assert storage.split("org-vault-local/3/a.pdf") is None
 
 
 # --- the documents row, against a real Postgres ----------------------------

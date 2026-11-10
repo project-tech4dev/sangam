@@ -3,22 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { titleFrom, type ThreadMeta } from "@/features/ask/lib/threads";
 import { AgentProviders } from "@/lib/AgentProviders";
+import { setUrlParams } from "@/lib/url";
+import { useUrlThread } from "@/lib/useUrlThread";
 import { ImportThreads } from "./components/ImportThreads";
 import { ImportView } from "./ImportView";
-import { fetchImportThreads, newImportId } from "./lib/threads";
+import { fetchImportThreads, isImportId, newImportId } from "./lib/threads";
 
-/** Puts the open thread in the address, so a reload or a shared link reopens it. */
-function showInUrl(threadId: string | null) {
-  const url = new URL(window.location.href);
-  if (threadId) url.searchParams.set("thread", threadId);
-  else url.searchParams.delete("thread");
-  window.history.replaceState(null, "", url);
-}
-
-function ImportShell({ initialThread }: { initialThread: string | null }) {
-  const [threadId, setThreadId] = useState(() => initialThread ?? newImportId());
-  // A thread from the address or the list loads its saved messages; a new one has none.
-  const [resume, setResume] = useState(Boolean(initialThread));
+function ImportShell() {
+  const { threadId, resume, renew, markSent } = useUrlThread(newImportId, { valid: isImportId });
   const [threads, setThreads] = useState<ThreadMeta[] | null>(null);
   const [error, setError] = useState(false);
   // Phones start with the list closed; it opens over the page. Safe here: this renders only in the browser.
@@ -43,15 +35,15 @@ function ImportShell({ initialThread }: { initialThread: string | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
   }, []);
 
+  // Each pick is a Back step; a new import is the bare /import.
   function open(id: string | null) {
-    setThreadId(id ?? newImportId());
-    setResume(id !== null);
-    showInUrl(id);
+    if (id === null) renew();
+    setUrlParams({ thread: id });
     if (window.matchMedia("(max-width: 768px)").matches) setCollapsed(true);
   }
 
   function firstSend(text: string) {
-    showInUrl(threadId);
+    if (!resume) markSent();
     setThreads((prev) => [{ id: threadId, title: titleFrom(text), createdAt: Date.now() }, ...(prev ?? [])]);
   }
 
@@ -82,10 +74,10 @@ function ImportShell({ initialThread }: { initialThread: string | null }) {
   );
 }
 
-export function ImportPage({ initialThread }: { initialThread: string | null }) {
+export function ImportPage() {
   return (
     <AgentProviders>
-      <ImportShell initialThread={initialThread} />
+      <ImportShell />
     </AgentProviders>
   );
 }

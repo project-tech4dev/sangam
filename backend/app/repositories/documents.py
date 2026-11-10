@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import logging
+from collections.abc import Awaitable, Callable
+
+from psycopg.errors import ForeignKeyViolation
 from psycopg_pool import AsyncConnectionPool
+
+logger = logging.getLogger(__name__)
 
 
 async def list_documents(pool: AsyncConnectionPool, *, limit: int, offset: int,
@@ -10,6 +16,7 @@ async def list_documents(pool: AsyncConnectionPool, *, limit: int, offset: int,
     sql = """
     SELECT d.id, d.org_id, d.funder_id, d.title, d.doc_type,
            d.source_name, d.source_url, d.fetched_at, d.is_public,
+           COALESCE(d.storage_path, '') <> '' AS has_file,
            COUNT(*) OVER () AS total
     FROM documents d
     LEFT JOIN orgs o ON o.id = d.org_id
@@ -54,14 +61,23 @@ async def org_id_for_member(
 ) -> int | None:
     """The org's id if this user may act on it, else None.
 
-    `write=True` excludes stewards: 0004 defines a steward as someone who reads
-    an org's private data and cannot write. Staff pass either way.
+    `write=True` excludes stewards. Doc Vault uploads pass `write=False`: a steward adds the files a
+    proposal draws on (0048). Staff pass either way.
     """
     async with pool.connection() as conn:
         row = await (
             await conn.execute(_MEMBER_SQL, {"org": org, "user": user_id, "write": write})
         ).fetchone()
     return row["id"] if row else None
+
+
+async def upload_recorded(pool: AsyncConnectionPool, *, storage_path: str) -> bool:
+    """Whether a documents row already names this file."""
+    async with pool.connection() as conn:
+        row = await (
+            await conn.execute("SELECT 1 FROM documents WHERE storage_path = %(p)s LIMIT 1", {"p": storage_path})
+        ).fetchone()
+    return row is not None
 
 
 async def insert_upload(
@@ -76,7 +92,8 @@ async def insert_upload(
     VALUES (%(org_id)s, %(title)s, %(doc_type)s, 'vault upload', %(storage_path)s,
             %(content_hash)s, %(content_md)s, %(uploaded_by)s, now(),
             false, 'received')
-    RETURNING id, org_id, funder_id, title, doc_type, source_name, source_url, fetched_at
+    RETURNING id, org_id, funder_id, title, doc_type, source_name, source_url, fetched_at,
+              storage_path <> '' AS has_file
     """
     async with pool.connection() as conn:
         row = await (await conn.execute(sql, {
@@ -148,3 +165,72 @@ async def list_source_datasets(pool: AsyncConnectionPool, ids: list[int] | None 
     """
     async with pool.connection() as conn:
         return await (await conn.execute(sql, {"ids": ids})).fetchall()
+
+
+async def org_document_ids(pool: AsyncConnectionPool, org_id: int, ids: list[int]) -> set[int]:
+    """Which of `ids` are this org's own documents."""
+    if not ids:
+        return set()
+    async with pool.connection() as conn:
+        rows = await (await conn.execute(
+            "SELECT id FROM documents WHERE id = ANY(%s) AND org_id = %s", (ids, org_id))).fetchall()
+    return {r["id"] for r in rows}
+
+
+class DocumentInUse(Exception):
+    """Something still references the document, so deleting it would break or silently take that too."""
+
+
+class FileNotRemoved(Exception):
+    """Storage did not delete the file, so the row was kept."""
+
+
+class RowNotRemoved(Exception):
+    """The file is gone but the row could not be deleted; deleting again finishes it."""
+
+
+
+_CASCADING_SQL = """
+SELECT EXISTS (SELECT 1 FROM chunks WHERE document_id = %(id)s)
+    OR EXISTS (SELECT 1 FROM extraction_log WHERE document_id = %(id)s)
+    OR EXISTS (SELECT 1 FROM document_links WHERE document_id = %(id)s)
+    OR EXISTS (SELECT 1 FROM proposals WHERE draft_document_id = %(id)s) AS used
+"""
+
+
+async def delete_vault_upload(
+    pool: AsyncConnectionPool, *, document_id: int, remove_file: Callable[[str, int], Awaitable[bool]],
+) -> bool:
+    """Delete a vault upload's row, then its file, in one transaction. False when there is no such vault upload.
+
+    The row's DELETE runs first so every foreign key is checked before the file goes; it commits only after the
+    file is gone, and a failed file delete rolls the row back.
+    """
+    file_removed = False
+    try:
+        async with pool.connection() as conn, conn.transaction():
+            row = await (await conn.execute(
+                """SELECT storage_path, org_id FROM documents
+                   WHERE id = %(id)s AND doc_type = 'vault_upload' AND NOT is_public AND org_id IS NOT NULL""",
+                {"id": document_id},
+            )).fetchone()
+            if row is None:
+                return False
+            if (await (await conn.execute(_CASCADING_SQL, {"id": document_id})).fetchone())["used"]:
+                raise DocumentInUse(document_id)
+            try:
+                deleted = await conn.execute("DELETE FROM documents WHERE id = %(id)s", {"id": document_id})
+            except ForeignKeyViolation as exc:
+                raise DocumentInUse(document_id) from exc
+            if deleted.rowcount != 1:
+                return False
+            if row["storage_path"] and not await remove_file(row["storage_path"], row["org_id"]):
+                raise FileNotRemoved(document_id)
+            file_removed = True
+    except Exception as exc:
+        if not file_removed:
+            raise
+        logger.error("document %s: file %s removed but the row was not (%s: %s)",
+                     document_id, row["storage_path"], type(exc).__name__, exc)
+        raise RowNotRemoved(document_id) from exc
+    return True

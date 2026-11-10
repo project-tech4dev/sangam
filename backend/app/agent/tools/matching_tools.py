@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import json
+from collections import Counter
 
 from langchain_core.tools import tool
 
@@ -33,6 +33,70 @@ def _entry(m: Match) -> dict:
         "not_judged": m.not_judged,
         "improve": m.improve,
     }
+
+
+# deepagents moves any tool reply over 20k tokens to a file; the shortlist must stay well under it.
+FULL_DETAIL_MAX = 10
+
+
+def _gap(entry: dict) -> str:
+    """The first ! card line, else the first line: what a one-line entry says about the funder."""
+    card = entry["card"]
+    return next((line for line in card if line.startswith("!")), card[0] if card else "")
+
+
+def _headline(entry: dict) -> str:
+    score = f"{entry['score']}/100 · {entry['tier']}" if entry["score"] is not None else entry["tier"]
+    kind = f" · {entry['funder_type']}" if entry["funder_type"] else ""
+    return f"{entry['funder']}{kind} · {score}"
+
+
+def _full(n: int, entry: dict, *, summary: bool) -> list[str]:
+    judged = f" · judged on {entry['judged']}" if entry["judged"] else ""
+    lines = [f"{n}. {_headline(entry)}{judged}", *(f"   {line}" for line in entry["card"])]
+    if summary and entry["summary"]:
+        lines.append(f"   summary: {entry['summary']}")
+    for c in entry["criteria"]:
+        cites = f" {' '.join(c['cites'])}" if c["cites"] else ""
+        judged = c["status"] if c["status"] == "unknown" else f"{c['points']} {c['status']}"
+        lines.append(f"   - {c['criterion']} {judged}: {c['note']}{cites}")
+    if entry["not_judged"]:
+        lines.append(f"   not judged: {'; '.join(entry['not_judged'])}")
+    lines += [f"   to raise the score: {action}" for action in entry["improve"]]
+    return lines
+
+
+def render(result: dict, *, shortlist: bool) -> str:
+    """compare()'s result as text, one fact per line, so an oversized reply still pages."""
+    matches = result["matches"]
+    # Named funders with nothing shared stay in matches with a null score; the header counts them as not scored.
+    scored = [m for m in matches if m["score"] is not None]
+    tiers = Counter(m["tier"] for m in scored)
+    not_scored = result["not_scored"]
+    unscored = len(matches) - len(scored) + sum(len(v) for v in not_scored.values())
+    by_tier = " · ".join(f"{tiers[t]} {t}" for t in ("strong", "medium", "weak") if tiers[t])
+    lines = [
+        f"compare_fit · {result['org']} · rubric {result['rubric']} · {result['funders_checked']} funders checked",
+        f"scored {len(scored)}" + (f": {by_tier}" if by_tier else "") + f" · not scored {unscored}",
+    ]
+    unknown = Counter(c["criterion"] for m in scored for c in m["criteria"] if c["status"] == "unknown")
+    if unknown:
+        lines.append(f"unknown across the {len(scored)} scored: "
+                     + ", ".join(f"{label} {n}" for label, n in unknown.most_common()))
+
+    full = [m for m in matches if not shortlist or m["tier"] in ("strong", "medium")][:FULL_DETAIL_MAX if shortlist else None]
+    short = [m for m in matches if m not in full]
+    for n, entry in enumerate(full, 1):
+        lines += ["", *_full(n, entry, summary=not shortlist)]
+    if short:
+        lines += ["", "one line each; compare_fit(org_id, funder_ids) gives any of them in full:"]
+        lines += [f"- {_headline(e)} · {_gap(e)}" for e in short]
+    if not_scored["nothing_in_common_recorded"]:
+        lines += ["", "not scored, nothing in common recorded: " + ", ".join(not_scored["nothing_in_common_recorded"])]
+    if not_scored["funder_has_nothing_recorded"]:
+        lines += ["", "not scored, the funder has nothing recorded (unknown, not a poor fit): "
+                  + ", ".join(not_scored["funder_has_nothing_recorded"])]
+    return "\n".join(lines)
 
 
 def compare(org: OrgProfile, funders: list[FunderProfile], places: Places, *, shortlist: bool) -> dict:
@@ -66,12 +130,17 @@ async def compare_fit(org_id: int, funder_ids: list[int] | None = None) -> str:
         funder_ids: the funders to score. Omit it to check every funder: those sharing a place or
             a theme are scored, the rest are listed under not_scored.
 
-    Returns JSON: `matches`, ranked by score (out of 100, highest first; null last), each with its
-    tier (strong >= 75, medium 55-74, weak < 55, not_scored), card lines (✓ fit, ! gap), summary,
-    the seven criteria (theme 25, geography 15, population 15, eligibility 20, relationship 10,
-    funding size 10, capacity 5) with points, status, note and cites, `not_judged` and `improve`.
-    An unknown criterion is left out of the score, never counted as zero. `not_scored` names the
-    funders with nothing in common recorded and those with nothing recorded at all. Every figure is
+    Returns text, ranked by score (out of 100, highest first). A header gives the funders checked,
+    the count per tier (strong >= 75, medium 55-74, weak < 55) and which criteria were unknown how
+    often. Then each funder in full: score, tier, "judged on N of M points", card lines (✓ fit,
+    ! gap), the seven criteria (theme 25, geography 15, population 15, eligibility 20,
+    relationship 10, funding size 10, capacity 5) as "- label points status: note cites",
+    "not judged" and "to raise the score" lines. With funder_ids every funder named is in full,
+    with its summary. Without, the top strong and medium fits (up to 10) are in full and every
+    other scored funder is one line: score, tier and its first gap; call
+    compare_fit(org_id, [their ids]) once for any you need in full. Last come the funders not
+    scored: nothing in common recorded, and nothing recorded at all (unknown, never a poor fit).
+    An unknown criterion is left out of the score, never counted as zero. Every figure is
     computed in code from recorded rows: repeat it, never recompute or re-judge it.
 
     Only Sangam staff and the organisation's stewards and admins may run it. For anyone else it
@@ -88,6 +157,7 @@ async def compare_fit(org_id: int, funder_ids: list[int] | None = None) -> str:
             return f"compare_fit failed: no organisation with id {org_id}"
         if funder_ids and (missing := sorted(set(funder_ids) - {f.id for f in funders})):
             return f"compare_fit failed: no funder with id {', '.join(map(str, missing))}"
-        return json.dumps(compare(org, funders, places, shortlist=funder_ids is None), default=str, ensure_ascii=False)
+        shortlist = funder_ids is None
+        return render(compare(org, funders, places, shortlist=shortlist), shortlist=shortlist)
     except Exception as exc:  # noqa: BLE001 - errors are return values: a raise aborts the run
         return f"compare_fit failed: {exc}"

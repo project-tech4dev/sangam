@@ -84,6 +84,20 @@
       ],
       "basis": "Same host rule as the due-diligence guidelines: robots.txt allows this path. Read to learn how a funder rates a partner.",
       "robots_checked_at": "2026-09-28"
+    },
+    {
+      "key": "undp_procurement_notices",
+      "name": "UNDP procurement notices (RSS, India)",
+      "host": "procurement-notices.undp.org",
+      "access_rule": "crawl_only_with_permission",
+      "categories": [
+        "rfp"
+      ],
+      "yields": [
+        "rfp"
+      ],
+      "basis": "robots.txt disallows / for every user agent, the RSS feed included. Its India items on 2026-10-15 were procurement LTAs, not grant calls. Ask UNDP India for a grants feed or permission before reading it.",
+      "robots_checked_at": "2026-10-15"
     }
   ]
 }

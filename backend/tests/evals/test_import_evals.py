@@ -13,7 +13,7 @@ from psycopg.rows import dict_row
 
 import app.db.pool as db_pool
 from tests.evals.conftest import DSN
-from tests.evals.import_harness import IMPORT_CASE_TIMEOUT_SECONDS, run_import
+from tests.evals.import_harness import IMPORT_CASE_TIMEOUT_SECONDS, call_failures, run_import
 
 pytestmark = pytest.mark.eval
 
@@ -54,7 +54,7 @@ async def test_import_case(import_case, eval_settings, db, import_pool):
     case = import_case
     started = datetime.now(UTC)
     try:
-        summaries = await run_import(case["request"], eval_settings)
+        run = await run_import(case["request"], eval_settings)
     except TimeoutError:
         pytest.fail(f"[{case['id']}] timed out after {IMPORT_CASE_TIMEOUT_SECONDS}s", pytrace=False)
 
@@ -63,7 +63,7 @@ async def test_import_case(import_case, eval_settings, db, import_pool):
         "ORDER BY researched_at DESC LIMIT 1",
         (started, f"%{case['entity_name']}%", f"%{case['entity_name']}%"),
     ).fetchone()
-    failures = []
+    failures = call_failures(case, run.calls)
     if row is None:
         pytest.fail(f"[{case['id']}] no entity_research row was saved for {case['entity_name']}", pytrace=False)
 
@@ -82,12 +82,13 @@ async def test_import_case(import_case, eval_settings, db, import_pool):
         if f.get("concept") in TAGGED and (f.get("themes") or f.get("populations") or f.get("lenses")) \
                 and not (f.get("tag_note") or "").strip():
             failures.append(f"a tagged {f['concept']} finding with no tag_note")
-    summary = next((s for s in summaries if s.get("slug") == row["slug"]), None)
+    summary = next((s for s in run.summaries if s.get("slug") == row["slug"]), None)
     if summary is None:
         failures.append(f"no researcher summary for {row['slug']}")
     elif summary["fact_count"] != len(findings):
         failures.append(f"the summary says {summary['fact_count']} facts, the row holds {len(findings)}")
 
     if failures:
-        report = [f"[{case['id']}] {case['request']}", f"  row: {row['slug']} {row['status']} {len(findings)} facts"]
+        report = [f"[{case['id']}] {case['request']}", f"  row: {row['slug']} {row['status']} {len(findings)} facts",
+                  f"  calls: {dict(sorted(run.calls.items()))}"]
         pytest.fail("\n".join(report + [f"  FAIL: {f}" for f in failures]), pytrace=False)

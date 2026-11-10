@@ -14,16 +14,18 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ThreadMeta } from "../lib/threads";
+import { COMING_SOON } from "../lib/comingSoon";
+import type { WorkspaceView } from "../lib/workspaceUrl";
 
-export type WorkspaceView = "ask" | "chats" | "funder-match" | "proposals" | "rfpwatch" | "vault" | "media";
+export type { WorkspaceView };
 
 type Item = { id: WorkspaceView; label: string; soon?: boolean; count?: number };
 type SectionId = "recent" | "usecases" | "context" | "tools";
 
 const USE_CASES: Item[] = [
   { id: "funder-match", label: "Funder Match" },
-  { id: "proposals", label: "Proposals" },
-  { id: "rfpwatch", label: "RFP Watch" },
+  { id: "proposals", label: "Proposals", soon: COMING_SOON.has("proposals") },
+  { id: "rfpwatch", label: "RFP Watch", soon: COMING_SOON.has("rfpwatch") },
   { id: "media", label: "Media & Signals" },
 ];
 
@@ -76,6 +78,7 @@ export function Sidebar({
   onPickThread,
   onNewChat,
   counts = {},
+  canScout = false,
 }: {
   collapsed: boolean;
   onToggle: () => void;
@@ -86,6 +89,7 @@ export function Sidebar({
   onPickThread: (id: string) => void;
   onNewChat: () => void;
   counts?: Partial<Record<WorkspaceView, number>>;
+  canScout?: boolean;
 }) {
   // Held here rather than in each section, so the collapsed rail can open the sidebar at one.
   const [open, setOpen] = useState<Record<SectionId, boolean>>({
@@ -123,9 +127,11 @@ export function Sidebar({
             </button>
           );
         })}
-        <button type="button" className="rail-mini rail-mini-foot" onClick={() => jump("tools")} title="Tools" aria-label="Tools">
-          <Wrench className="icon" aria-hidden />
-        </button>
+        {canScout && (
+          <button type="button" className="rail-mini rail-mini-foot" onClick={() => jump("tools")} title="Tools" aria-label="Tools">
+            <Wrench className="icon" aria-hidden />
+          </button>
+        )}
       </div>
     );
   }
@@ -190,12 +196,14 @@ export function Sidebar({
       </div>
 
       {/* Tools that change the data, kept apart from conversations at the foot of the rail.
-          Shown to everyone signed in: Scout offers each person the tasks their role allows. */}
-      <Section label="Tools" open={open.tools} onToggle={() => toggle("tools")} className="rail-foot">
-        <Link href="/import" className="rail-item">
-          Sangam Scout
-        </Link>
-      </Section>
+          Scout is for staff and stewards, so only they see it. */}
+      {canScout && (
+        <Section label="Tools" open={open.tools} onToggle={() => toggle("tools")} className="rail-foot">
+          <Link href="/import" className="rail-item">
+            Sangam Scout
+          </Link>
+        </Section>
+      )}
     </div>
   );
 }

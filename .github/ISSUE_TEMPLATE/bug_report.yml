@@ -1,0 +1,38 @@
+name: Bug report
+description: Something in Sangam is broken or wrong.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open /ask signed in as …
+        2. Ask "…"
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Registry, Ask Sangam, Funder Match, Sangam Pitch, Sangam Scout (Import), Media & Signals, RFP Watch, Setup / local stack, Other]
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options: [Deployed app, Local stack (make up), Both]
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, screenshots or a trace link
+      description: Remove keys, tokens and any private organisation data first.

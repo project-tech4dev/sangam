@@ -30,8 +30,8 @@ type Panels = {
   research: ResearchRecord[];
 };
 
-// Until the overview answers, the one task open to everyone.
-const FUNDERS_ONLY: ImportAccess = { staff: false, stewardOf: [], orgs: [] };
+// Until the overview answers, no task: what a person may run comes from their role.
+const NO_ACCESS: ImportAccess = { staff: false, stewardOf: [], orgs: [] };
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API}${path}`, { headers: await authHeaders(), cache: "no-store" });
@@ -115,7 +115,7 @@ export function ImportView({
       onStartOver={onStartOver}
       onFirstSend={onFirstSend}
       below={below}
-      access={panels?.access ?? FUNDERS_ONLY}
+      access={panels?.access ?? NO_ACCESS}
       vaultFiles={panels?.vaultFiles}
       staff={panels?.access.staff ? panels : null}
     />

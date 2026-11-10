@@ -43,7 +43,7 @@ The safety bar is set by what's actually in this database, verified live today:
   1,348 rows of serialized conversation history. One `SELECT` reaches all of it.
 - As superuser, `SELECT pg_read_file('/etc/passwd')` is a valid single-statement `SELECT`
   that succeeds even inside a `READ ONLY` transaction.
-- Per `docs/DEPLOY.md:100-113`, the deployed backend has **no authentication**.
+- When this was designed, the deployed backend had **no authentication** (Supabase auth arrived in #74/#92).
 
 So the design is not "validate the SQL." It is: validate the SQL, *and* make the database
 refuse anything the validator missed.
@@ -155,8 +155,8 @@ class Table:
 Derived once at import: `TABLE_NAMES`, `COLUMNS`, `SQLGLOT_SCHEMA` (what `qualify()` wants),
 `STAR_COLUMNS` (non-heavy only), `CITE_COLUMNS`, `DEFECTS`.
 
-**In (36 tables after the v3 migrations, `tag_links`, `0031`'s funder consolidation, `0033`'s and `0034`'s drops, and `0044`'s news tables in place of `news_mentions`; 28 when this was written):** orgs, funders, programs, rfps, rfp_matches, fit_scores,
-fit_score_items, rubrics, rubric_criteria, score_adjustments, contacts, documents, chunks,
+**In (37 tables after the v3 migrations, `tag_links`, `0031`'s funder consolidation, `0033`'s and `0034`'s drops, and `0044`'s news tables in place of `news_mentions`, and `0047`'s `document_links`; 28 when this was written):** orgs, funders, programs, rfps, rfp_matches, fit_scores,
+fit_score_items, rubrics, rubric_criteria, score_adjustments, contacts, documents, document_links, chunks,
 news_stories, news_links, news_story_entities, news_story_locations, news_story_tags, tags, tag_links, locations, extraction_log, `org_identifiers`, `funder_activity`, and all seven
 `*_tags` / `*_locations` join tables.
 
@@ -326,6 +326,16 @@ the checkpoint tables and file-reading functions out of reach. Worth revisiting 
 somewhere the blast radius is larger, or alongside Supabase Auth — the honest framing has always
 been that the unauthenticated backend is the bigger exposure.
 
+**Superseded by the caller's role (#114).** Supabase Auth landed, and every query `db_query` runs
+now does `set_config('role', …)` / `set_config('request.jwt.claims', …)` as the signed-in caller
+(`anon` when there is none), after `SET TRANSACTION READ ONLY`, exactly as REST's `CallerPool`
+does. That is the second line of defence this section said was missing, without the deploy step
+that sank `sangam_reader`: `anon` and `authenticated` already exist on Supabase. RLS hides other
+organisations' private documents and staff-only `funder_activity` lines, and the server refuses
+`checkpoints` and `pg_read_file`. `RESET ROLE` and `set_config` stay out of reach: the first is not
+a SELECT, the second is not in the function allowlist. The catalog may therefore list only
+columns `authenticated` can SELECT (`org_identifiers.evidence_document_id` left it for that).
+
 ### 5. The four tools
 
 `db_list_tables()` · `db_describe_table(tables: str)` · `db_profile_column(table, column)` ·
@@ -390,10 +400,10 @@ Next: fix the column name and call db_query again.
 failure** (otherwise the model diffs against text that never ran), and **never surface
 `psycopg.OperationalError` text**, which can contain the DSN host and user.
 
-### 5b. Tool return shape — plain strings, and why not `content_and_artifact`
+### 5b. Tool return shape — the text is for the model; only the SQL is an artifact
 
-**The plan called for LangChain's two-channel tool return. Measured in M4: it cannot
-work over this transport.** The AG-UI wire `ToolMessage`
+**The plan called for LangChain's two-channel tool return. Measured in M4: an artifact
+never reaches the browser over this transport.** The AG-UI wire `ToolMessage`
 (`ag_ui.core.types.ToolMessage`) has fields `id / role / content / tool_call_id /
 subagent_run_id / error / encrypted_value / metadata` — no `artifact` — and
 `ag_ui_langgraph/agent.py:4510` constructs it from the first four. An artifact
@@ -403,8 +413,11 @@ Dalgo can use the pattern because their transport is their own WebSocket consume
 which reads `ToolMessage.artifact` server-side before emitting its own event shape
 (`messages/artifacts.py`). Ours is AG-UI, which we do not control.
 
-So the tools return plain strings, and the string carries everything: markers,
-caveats, the executed SQL, and the rendered rows. The two budgets in `render.py`
+So the tools return the string the model reads: markers, caveats and the rendered rows.
+Since Ask efficiency M3, `db_query` does use `content_and_artifact` for one thing the model
+need not reread: the SQL that ran. The audit and the evals read it there; a failure still
+echoes it in the text, and the evidence rail, which never receives the artifact, shows the
+model's own SELECT (`executed:` in older chats). The two budgets in `render.py`
 matter more because of this — with no side channel, every byte the UI shows is a byte
 the model paid for.
 
@@ -456,18 +469,18 @@ fail-loud for deliverables** — applies: if the audit call fails, the turn cont
 through their `org_id` / `funder_id` **with no frontend change**. After `qualify`, every
 projection is a resolved `exp.Column`, so the output-column → kind map is exact.
 
-**We do not auto-inject the id column** — injecting `orgs.id` breaks any `GROUP BY`/`DISTINCT`
-query with a `42803` the model never wrote, which is exactly the non-convergent loop this
-design exists to avoid. Instead the result header says:
-`no citable id column projected — add orgs.id to the SELECT list so these rows can be cited.`
+**The id column is added for plain SELECTs only** (Ask efficiency M3). For each table alias with no
+citing column selected, `_add_cite_ids` appends its own id, or else one citing foreign key per kind,
+as `__cite__<alias>__<column>`: `org_locations` filtered to one org cites `[org:8]` without a second
+query. Grouped, `DISTINCT` and `UNION` queries are left alone: an injected id there breaks the
+`GROUP BY` with a `42803` the model never wrote.
 
 **Genuinely uncitable results — `count(*)`, anything grouped by `tags.label`, rows from
 `locations` or `rubrics` — get no marker, and the result says so in words:**
 
 ```
-No citable id column was projected, so these rows carry no citation markers. Add the
-table's id column (e.g. orgs.id) to the SELECT list if the answer needs to cite
-specific rows.
+These rows carry no citation markers: the query aggregates or combines rows, or reads
+no table with an id to cite. If the answer names specific rows, query them plainly.
 ```
 
 *The plan proposed a synthetic `[sql:<sha8>]` header marker here, mirroring `[graph:<uuid8>]`.

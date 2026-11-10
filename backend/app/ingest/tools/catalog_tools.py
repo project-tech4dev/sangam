@@ -16,7 +16,7 @@ from psycopg.errors import UniqueViolation
 from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import CallerScope, chat_user_id
 from app.db.pool import get_pool
-from app.ingest import coverage, manual_checks, review, undo
+from app.ingest import brief, coverage, manual_checks, review, undo
 from app.ingest import vault as vault_store
 from app.ingest.caller import scope, staff_only, without_private
 from app.ingest.expectations import (
@@ -401,7 +401,8 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
         out.append(
             "\nFields nothing can fill are as useful as fields you fill: say which you looked "
             "for and did not get, and pass each to save_research as a gap: blocked if the source "
-            "could not be read, not_stated if it was read and does not say."
+            "could not be read, not_stated if it was read and does not say, not_reached if the run "
+            "stopped first. Every field gets a finding or a gap, or the save is refused."
         )
         return "\n".join(out)
     except Exception as exc:
@@ -452,7 +453,7 @@ async def _held_per_concept(
 async def _research_rows(
     pool: Any, slug: str, caller: CallerScope | None = None, *, vault: bool = False
 ) -> list[dict[str, Any]]:
-    """The newest row per entity; for a caller who is not staff, without its private findings.
+    """The newest row per entity, its findings read from the brief; for a caller who is not staff, without private ones.
 
     `vault` adds Doc Vault findings: only for a writer or a person, never a context that briefs researchers."""
     caller = caller or scope()
@@ -468,7 +469,17 @@ async def _research_rows(
     # Vault findings live in vault_research alone: one in the shared row was never checked against a vault.
     out = [{**r, "findings": [f for f in r.get("findings") or [] if not vault_store.is_vault_url(f.get("source_url"))]}
            for r in (dict(r) if caller.is_staff else without_private(dict(r)) for r in rows)]
+    # The brief is the record: promotion, its plan and coverage all read its facts, not one run's.
+    async with pool.connection() as conn:
+        out = [await brief.promotable(r, [_public_row(x, caller) for x in await brief.rows_for(conn, r["slug"])])
+               for r in out]
     return [await _with_vault(pool, r, caller) for r in out] if vault else out
+
+
+def _public_row(row: dict[str, Any], caller: CallerScope) -> dict[str, Any]:
+    """An earlier run, without its Doc Vault findings and, for a caller who is not staff, its private ones."""
+    row = dict(row) if caller.is_staff else without_private(dict(row))
+    return {**row, "findings": [f for f in row.get("findings") or [] if not vault_store.is_vault_url(f.get("source_url"))]}
 
 
 async def _with_vault(pool: Any, row: dict[str, Any], caller: CallerScope) -> dict[str, Any]:
@@ -599,6 +610,12 @@ async def _rows_now(conn: Any, kind: str | None, entity_id: int | None) -> dict[
     return {c: n for c, (n, _) in (await _held_per_concept(conn, entity_id, kind)).items()}
 
 
+def saved_since_research(row: dict[str, Any]) -> bool:
+    """Whether the row's save covers its findings: a same-day re-run rewrites the row after the save (#222)."""
+    saved_at, researched_at = row.get("saved_at"), row.get("researched_at")
+    return not (saved_at and researched_at and researched_at > saved_at)
+
+
 async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -> None:
     """Keep what this save wrote on the research row. Afterwards a plan reads every row as `same`,
     so this is the only record of what the profile held before."""
@@ -606,6 +623,8 @@ async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -
     after = await _rows_now(conn, entity["kind"], entity["id"]) if entity else None
     saved = coverage.saved_record(row.get("saved"), report, after)
     if saved is None:
+        if row.get("saved"):  # a re-run's save that changed nothing still saves the re-run
+            await conn.execute("UPDATE entity_research SET saved_at = now() WHERE id = %s", (row["id"],))
         return
     await conn.execute(
         "UPDATE entity_research SET saved = %s::jsonb, saved_at = now() WHERE id = %s",
@@ -622,7 +641,7 @@ async def coverage_view(slug: str, caller: CallerScope | None = None) -> dict[st
         return None
     row = rows[0]
     kind = row.get("entity_kind")
-    saved = row.get("saved")
+    saved = row.get("saved") if saved_since_research(row) else None
     if saved and row.get("private_removed"):
         # Held lines quote the values they held, private ones included; the counts stay.
         saved = {**saved, "held": []}
@@ -737,7 +756,19 @@ async def save_to_catalog(slug: str, caller: CallerScope, decisions: dict[str, s
                 if attempt:
                     raise
         reports.append(report)
+        await _publish_states(pool, row["slug"], report.get("facts") or {})
     return reports
+
+
+async def _publish_states(pool: Any, slug: str, states: dict[str, dict[str, Any]]) -> None:
+    """Write what the save did with each fact into the brief. The catalog is already committed, so a failure is logged."""
+    try:
+        async with pool.connection() as conn:
+            rows = await brief.rows_for(conn, slug)
+        if rows:
+            await brief.publish(rows, states=states)
+    except Exception:
+        logger.exception("brief for %s: the save's states were not written back", slug)
 
 
 @tool

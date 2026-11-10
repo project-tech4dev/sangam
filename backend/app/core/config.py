@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Any
+from urllib.parse import urlparse
 
+from psycopg.conninfo import conninfo_to_dict
 from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -71,6 +73,9 @@ class Settings(BaseSettings):
     # access token; empty keeps the single seeded dev user.
     supabase_url: str = ""
     supabase_service_key: str = ""
+    # Appended to every bucket name on the wire (`-local` → org-vault-local), so a local backend's files stay
+    # out of the deployed buckets. Rows keep the plain name; ignored on the Storage project's own database.
+    storage_bucket_suffix: str = ""
 
     # Optional tool integrations — all disabled when empty.
     tavily_api_key: str = ""
@@ -119,21 +124,29 @@ class Settings(BaseSettings):
     # Each subagent gets its OWN budget of this many steps — the counter is per graph invocation, not
     # shared with the parent, so launching more researchers does not eat the supervisor's steps.
     recursion_limit: int = 200
+    # Model calls one Ask question may make before it stops and says so. Trace 5bfdbc85 made 21; the target
+    # is under 8. A cap, not a target: it ends a runaway turn long before recursion_limit does.
+    ask_model_call_limit: int = 25
 
     # How many organisations Sangam Import researches at once. It is not a ceiling on how many you can
     # ASK for: above this the agent works in waves until the list is done. Raise it and raise
     # db_pool_max_size with it — each researcher holds a pooled connection while its tools run.
     # A test pins this number against the one written into app/ingest/instructions.md.
     max_parallel_research: int = 8
-    # Hard stops per researcher run. The prompt asks for about fourteen reads; past this many pages the reading
-    # tools refuse and it saves what it has. The model-call cap ends a run that loops.
-    research_page_limit: int = 20
-    research_model_call_limit: int = 60
+    # Optional hard stops per researcher run; None means no limit. Set, the reading tools refuse past this many
+    # pages and it saves what it has, and the model-call cap ends a run that loops.
+    research_page_limit: int | None = None
+    research_model_call_limit: int | None = None
     # Connections this process may open. The ceiling is the database's, not ours: the Supabase project
     # allows 60 with 3 reserved, and a deployed backend runs several instances, so 10 leaves room for
     # roughly four of them plus the dashboard. The checkpointer writes on every graph step and shares
     # this pool, which is why the concurrency gates below sit under it rather than at it.
     db_pool_max_size: int = 10
+    # Seconds a request waits for a free connection, and for a new one to open, before it fails.
+    db_pool_timeout_s: float = 10
+    db_connect_timeout_s: int = 5
+    # Per statement, for every REST query run as the caller. Ask's executor and the matching reader set lower ones.
+    db_statement_timeout_ms: int = 15000
     allowed_origins: str = "http://localhost:3000"
     # Vercel gives every preview deployment a fresh hostname, so an exact-match list cannot cover them. Set
     # a regex to admit them, e.g. ^https://sangam-[a-z0-9-]+\.vercel\.app$ Anchor it: an unanchored pattern.
@@ -144,7 +157,9 @@ class Settings(BaseSettings):
         "research_model",
         "utility_model",
         "sql_audit_model",
-        "max_parallel_research", "research_page_limit", "research_model_call_limit", "db_pool_max_size", mode="before"
+        "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
+        "db_pool_max_size", "db_pool_timeout_s", "db_connect_timeout_s", "db_statement_timeout_ms",
+        mode="before",
     )
     @classmethod
     def _blank_means_default(cls, v: object, info: ValidationInfo) -> object:
@@ -198,6 +213,29 @@ class Settings(BaseSettings):
     @property
     def storage_enabled(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_key)
+
+    @property
+    def storage_project(self) -> str:
+        """The Supabase project ref Storage lives in; empty when SUPABASE_URL is not a hosted project."""
+        host = urlparse(self.supabase_url).hostname or ""
+        return host.removesuffix(".supabase.co") if host.endswith(".supabase.co") else ""
+
+    @property
+    def database_in_storage_project(self) -> bool:
+        """Whether DATABASE_URL is the Storage project's own database, direct or through its pooler."""
+        ref = self.storage_project
+        if not ref:
+            return False
+        try:
+            info = conninfo_to_dict(self.database_url)
+        except Exception:  # noqa: BLE001 - a malformed DSN is simply not that project
+            return False
+        return info.get("host") == f"db.{ref}.supabase.co" or (info.get("user") or "").endswith(f".{ref}")
+
+    @property
+    def bucket_suffix(self) -> str:
+        """storage_bucket_suffix, except on the Storage project's own database, whose rows name the plain buckets."""
+        return "" if self.database_in_storage_project else self.storage_bucket_suffix
 
     @property
     def origins(self) -> list[str]:

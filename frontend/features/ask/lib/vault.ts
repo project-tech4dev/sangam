@@ -8,7 +8,13 @@ export type Doc = {
   source_name: string | null;
   source_url: string | null;
   fetched_at: string | null;
+  has_file?: boolean;
 };
+
+// The extensions the backend's storage.VAULT_TYPES takes, for a file picker's accept.
+export const VAULT_ACCEPT = ".pdf,.docx,.xlsx,.pptx,.csv,.md,.txt,.png,.jpg,.jpeg,.webp";
+
+const detail = (res: Response) => res.json().then((body) => body?.detail, () => null);
 
 /* Upload in three steps, because the file never passes through the backend:
    ask for a signed URL, PUT straight to Supabase Storage, then tell the
@@ -22,12 +28,13 @@ export async function uploadToVault(org: string, file: File): Promise<Doc> {
   });
   if (ask.status === 503) throw new Error("Document storage is not configured on this deployment.");
   if (ask.status === 403) throw new Error("You do not have upload access to this organisation.");
+  if (ask.status === 415) throw new Error(`This type of file cannot go in the Doc Vault: ${await detail(ask)}.`);
   if (!ask.ok) throw new Error(`Could not start the upload (${ask.status}).`);
-  const { upload_url, storage_path } = await ask.json();
+  const { upload_url, storage_path, content_type } = await ask.json();
 
   const put = await fetch(upload_url, {
     method: "PUT",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
+    headers: { "Content-Type": content_type },
     body: file,
   });
   if (!put.ok) throw new Error(`The file did not reach storage (${put.status}).`);
@@ -37,8 +44,24 @@ export async function uploadToVault(org: string, file: File): Promise<Doc> {
     headers: { ...(await authHeaders()), "Content-Type": "application/json" },
     body: JSON.stringify({ org, storage_path, title: file.name }),
   });
+  if (confirm.status === 415) throw new Error(`This file was refused: ${await detail(confirm)}.`);
   if (!confirm.ok) throw new Error(`Uploaded, but not recorded (${confirm.status}).`);
   return confirm.json();
+}
+
+const DELETE_REFUSED: Record<number, string> = {
+  403: "You do not have permission to delete this document.",
+  404: "This document is not a Doc Vault upload, or it is already gone.",
+  409: "This document is still being used and cannot be deleted.",
+};
+
+export async function deleteFromVault(id: number): Promise<void> {
+  const res = await fetch(`${API}/api/documents/${id}`, { method: "DELETE", headers: await authHeaders() });
+  if (res.ok) return;
+  const friendly = DELETE_REFUSED[res.status];
+  if (friendly) throw new Error(friendly);
+  const detail = await res.json().then((body) => body?.detail, () => null);
+  throw new Error(typeof detail === "string" && detail ? detail : "The document could not be deleted. Please try again.");
 }
 
 export async function listVault(org: string): Promise<Doc[]> {

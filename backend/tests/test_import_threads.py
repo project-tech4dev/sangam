@@ -8,7 +8,7 @@ from app.api.routes import ingest
 from app.core.security import ANONYMOUS, get_current_user, get_principal, require_staff
 from app.repositories import threads as threads_repo
 from tests.conftest import TEST_USER, make_app
-from tests.test_access import MEMBER, client
+from tests.test_access import MEMBER, client, memberships
 
 
 def app_with(graph=None):
@@ -98,7 +98,7 @@ def _staff_only(route) -> bool:
     return any(d.dependency is require_staff for d in route.dependencies)
 
 
-def test_only_research_and_threads_are_open_to_members():
+def test_only_research_and_threads_are_open_to_stewards():
     assert {r.path for r in ingest.router.routes if not _staff_only(r)} == OPEN_ROUTES
 
 
@@ -112,7 +112,8 @@ def _route_urls():
 
 
 @pytest.mark.parametrize(("method", "path"), sorted(_route_urls()))
-async def test_every_other_import_route_is_staff_only(method, path):
+async def test_every_other_import_route_is_staff_only(method, path, monkeypatch):
+    memberships(monkeypatch, "steward")
     app = app_with(_Graph())
     app.dependency_overrides[get_principal] = lambda: MEMBER
     app.dependency_overrides[get_current_user] = lambda: MEMBER.id

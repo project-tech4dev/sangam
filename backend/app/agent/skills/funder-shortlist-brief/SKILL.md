@@ -12,18 +12,21 @@ at the top.
 
 ## Order
 
-1. **One line up front:** `funders_checked`, how many were scored, and how
-   many were not, from the two `not_scored` lists.
+1. **One line up front:** the funders checked, how many were scored, and how
+   many were not, from the reply's first two lines.
 2. **Strong fits** (tier strong), then **Medium fits** (tier medium), in the
-   order of `matches`. Never re-order by your own reading.
-3. **Weak fits** (tier weak): one line each, the score and its first `!` card line.
+   reply's order. Never re-order by your own reading. Past the first ten,
+   strong and medium fits come as one-line entries: write those as one line too.
+3. **Weak fits** (tier weak): one line each, the score and its first `!` card
+   line, as the reply's one-line entries give them.
 4. **Not scored:** "nothing in common recorded" as a count, naming them when
    short; then the funders with nothing recorded, said as unknown, never as a
    poor fit.
-5. **Not judged:** the criteria that were unknown across most funders, once,
-   e.g. "funding size: none of these funders publishes a grant range".
-6. **What would raise the scores:** the `improve` actions that recur across
-   the strong and medium fits, most points first.
+5. **Not judged:** the criteria on the `unknown across` line that were unknown
+   for most funders, once, e.g. "funding size: none of these funders publishes
+   a grant range".
+6. **What would raise the scores:** the `to raise the score:` actions that
+   recur across the strong and medium fits, most points first.
 
 ## One entry (strong and medium)
 
@@ -32,7 +35,7 @@ at the top.
 - Its card lines as given: ✓ for a fit, ! for a gap.
 - The criteria that earned or lost the most, each with its points and cites,
   e.g. "Geography 12/15 — Assam is one of its states [org:9] [funder:7]".
-- Its first `improve` action.
+- Its first `to raise the score:` action.
 
 Keep an entry to five lines.
 

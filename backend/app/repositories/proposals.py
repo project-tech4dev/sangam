@@ -1,0 +1,227 @@
+"""Proposals, run as the caller: RLS decides who reads (the org's people, staff) and who writes (admins,
+stewards, staff). Every change to `work` goes through `save`, which locks the row and calls work.apply.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import re
+import weakref
+from collections.abc import Awaitable, Callable
+from typing import Any
+
+from psycopg import errors
+from psycopg.types.json import Jsonb
+
+from app.proposals.work import Applied
+
+_COLUMNS = """
+  p.id, p.title, p.created_at, p.updated_at, p.summary, p.thread_id,
+  p.work -> 'match' ->> 'score' AS fit_score,
+  json_build_object('id', o.id, 'slug', o.slug, 'name', o.name) AS org,
+  json_build_object('id', f.id, 'slug', f.slug, 'name', f.name) AS funder,
+  (p.org_id IN (SELECT app.my_match_org_ids()) OR app.is_staff()) AS can_edit
+"""
+_FROM = "FROM proposals p JOIN orgs o ON o.id = p.org_id JOIN funders f ON f.id = p.funder_id"
+
+logger = logging.getLogger(__name__)
+
+
+async def list_proposals(pool: Any, *, org_id: int | None, funder_id: int | None) -> list[dict]:
+    """Every proposal the caller may read, newest first; the list never reads `work`."""
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            f"""SELECT {_COLUMNS} {_FROM}
+                WHERE (%(org)s::bigint IS NULL OR p.org_id = %(org)s)
+                  AND (%(funder)s::bigint IS NULL OR p.funder_id = %(funder)s)
+                ORDER BY p.updated_at DESC, p.id DESC""",
+            {"org": org_id, "funder": funder_id},
+        )).fetchall()
+
+
+async def get(pool: Any, proposal_id: int) -> dict | None:
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            f"SELECT {_COLUMNS}, p.work {_FROM} WHERE p.id = %s", (proposal_id,)
+        )).fetchone()
+
+
+async def match_for(pool: Any, org_id: int, funder_id: int) -> dict | None:
+    """This funder's row in the org's latest saved run, with the funder and its full reasoning."""
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            """WITH latest AS (
+                 SELECT run_id FROM funder_matches WHERE org_id = %(org)s ORDER BY run_at DESC LIMIT 1
+               )
+               SELECT m.id, m.score, m.run_at, d.detail,
+                      f.id AS funder_id, f.name AS funder_name, f.funder_type, f.section_135_bound
+               FROM funder_matches m
+               JOIN latest l ON l.run_id = m.run_id
+               JOIN funder_match_details d ON d.match_id = m.id
+               JOIN funders f ON f.id = m.funder_id
+               WHERE m.funder_id = %(funder)s""",
+            {"org": org_id, "funder": funder_id},
+        )).fetchone()
+
+
+async def funder_form(pool: Any, funder_id: int) -> dict | None:
+    """The newest proposal form Sangam holds for this funder."""
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            """SELECT id, source_url, fetched_at FROM documents
+               WHERE funder_id = %s AND doc_type = 'proposal_template'
+               ORDER BY fetched_at DESC NULLS LAST, id DESC LIMIT 1""",
+            (funder_id,),
+        )).fetchone()
+
+
+async def form_file(pool: Any, document_id: int, org_id: int) -> dict | None:
+    """The form chosen in step 2: this org's own upload, or a public document Sangam archived."""
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            """SELECT id, title, storage_path FROM documents
+               WHERE id = %s AND storage_path IS NOT NULL AND (is_public OR org_id = %s)""",
+            (document_id, org_id),
+        )).fetchone()
+
+
+async def me(pool: Any) -> dict:
+    """The caller as a log entry names them."""
+    async with pool.connection() as conn:
+        row = await (await conn.execute(
+            "SELECT id, coalesce(display_name, split_part(email, '@', 1)) AS name FROM users WHERE id = app.user_id()"
+        )).fetchone()
+    return {"id": str(row["id"]), "name": row["name"]} if row else {"id": None, "name": "Someone"}
+
+
+async def create(pool: Any, *, org_id: int, funder_id: int, title: str, work: dict, summary: dict,
+                 created_by: Any) -> int:
+    async with pool.connection() as conn:
+        return (await (await conn.execute(
+            """INSERT INTO proposals (org_id, funder_id, title, work, summary, created_by)
+               VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
+            (org_id, funder_id, title, Jsonb(work), Jsonb(summary), created_by),
+        )).fetchone())["id"]
+
+
+_SAVING: weakref.WeakValueDictionary[int, asyncio.Lock] = weakref.WeakValueDictionary()
+
+
+async def save(pool: Any, proposal_id: int, change: Callable[[dict, str], Applied]) -> Applied | None:
+    """Lock the row, apply `change` to its work, write it back. None when the caller may not write it."""
+    # Queue here first: ten researchers waiting on FOR UPDATE held all ten pooled connections and stalled the app.
+    lock = _SAVING.setdefault(proposal_id, asyncio.Lock())
+    async with lock:
+        return await _save(pool, proposal_id, change)
+
+
+async def _save(pool: Any, proposal_id: int, change: Callable[[dict, str], Applied]) -> Applied | None:
+    # One transaction: the pool autocommits, which would release FOR UPDATE before the write.
+    async with pool.connection() as conn, conn.transaction():
+        row = await (await conn.execute(
+            "SELECT work, title FROM proposals WHERE id = %s FOR UPDATE", (proposal_id,)
+        )).fetchone()
+        if row is None:
+            return None
+        applied = change(row["work"], row["title"])
+        await conn.execute(
+            """UPDATE proposals SET work = %s, summary = %s, title = coalesce(%s, title), updated_at = now()
+               WHERE id = %s""",
+            (Jsonb(applied.work), Jsonb(applied.summary), applied.title, proposal_id),
+        )
+    return applied
+
+
+async def insert_draft(pool: Any, *, org_id: int, title: str, storage_path: str, content_hash: str,
+                       content_md: str, uploaded_by: Any) -> int:
+    """A saved version's Word file in the org's Doc Vault: private, and marked as written with AI."""
+    async with pool.connection() as conn:
+        return (await (await conn.execute(
+            """INSERT INTO documents (org_id, title, doc_type, source_name, storage_path, content_hash, content_md,
+                                      uploaded_by, fetched_at, is_public, is_ai_generated, status)
+               VALUES (%s, %s, 'proposal_draft', 'Sangam Pitch', %s, %s, %s, %s, now(), false, true, 'received')
+               RETURNING id""",
+            (org_id, title, storage_path, content_hash, content_md, uploaded_by),
+        )).fetchone())["id"]
+
+
+class FileNotRemoved(Exception):
+    """Storage did not delete a saved version's file, so the proposal and its rows were kept."""
+
+
+async def delete(pool: Any, proposal_id: int, *, folder: str,
+                 remove_files: Callable[[list[str]], Awaitable[bool]]) -> bool:
+    """Delete a proposal and its saved versions, rows then files, in one transaction. False when RLS refuses.
+
+    Only a proposal_draft stored under `folder`, this proposal's own, goes; one another row still uses stays.
+    """
+    async with pool.connection() as conn, conn.transaction():
+        row = await (await conn.execute(
+            "DELETE FROM proposals WHERE id = %s RETURNING org_id, draft_document_id, work", (proposal_id,),
+        )).fetchone()
+        if row is None:
+            return False
+        ids = {v["document_id"] for v in (row["work"] or {}).get("versions") or [] if v.get("document_id")}
+        if row["draft_document_id"]:
+            ids.add(row["draft_document_id"])
+        drafts = await (await conn.execute(
+            """SELECT id, storage_path FROM documents
+               WHERE id = ANY(%s) AND org_id = %s AND doc_type = 'proposal_draft' AND NOT is_public
+                 AND starts_with(storage_path, %s)""",
+            (sorted(ids), row["org_id"], folder),
+        )).fetchall()
+        paths = []
+        for draft in drafts:
+            try:
+                async with conn.transaction():
+                    gone = await conn.execute("DELETE FROM documents WHERE id = %s", (draft["id"],))
+            except errors.ForeignKeyViolation:
+                logger.info("proposal %s: keeping draft %s, another row still uses it", proposal_id, draft["id"])
+                continue
+            if gone.rowcount == 1:
+                paths.append(draft["storage_path"])
+        if paths and not await remove_files(paths):
+            raise FileNotRemoved(proposal_id)
+    return True
+
+
+# The agent's side, on the owner pool: chat access and require_edit decide who gets here, not RLS.
+_CHAT = re.compile(r"^proposal-(\d+)-([0-9a-f-]{36})$")
+
+
+def chat_thread(proposal_id: int, user_id: Any) -> str:
+    """Each person's own chat about a proposal; teammates never share one."""
+    return f"proposal-{proposal_id}-{user_id}"
+
+
+def parse_chat_thread(thread_id: str) -> tuple[int, str] | None:
+    m = _CHAT.match(thread_id or "")
+    return (int(m.group(1)), m.group(2)) if m else None
+
+
+async def org_of(pool: Any, proposal_id: int) -> int | None:
+    async with pool.connection() as conn:
+        row = await (await conn.execute("SELECT org_id FROM proposals WHERE id = %s", (proposal_id,))).fetchone()
+    return row["org_id"] if row else None
+
+
+async def load(pool: Any, proposal_id: int) -> dict | None:
+    """The proposal with its org's and funder's names, for the agent's context."""
+    async with pool.connection() as conn:
+        return await (await conn.execute(
+            """SELECT p.id, p.title, p.org_id, p.funder_id, p.thread_id, p.work,
+                      o.name AS org_name, f.name AS funder_name
+               FROM proposals p JOIN orgs o ON o.id = p.org_id JOIN funders f ON f.id = p.funder_id
+               WHERE p.id = %s""",
+            (proposal_id,),
+        )).fetchone()
+
+
+async def user_name(pool: Any, user_id: Any) -> dict:
+    async with pool.connection() as conn:
+        row = await (await conn.execute(
+            "SELECT id, coalesce(display_name, split_part(email, '@', 1)) AS name FROM users WHERE id = %s",
+            (user_id,),
+        )).fetchone()
+    return {"id": str(row["id"]), "name": row["name"]} if row else {"id": None, "name": "Someone"}

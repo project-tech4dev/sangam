@@ -11,7 +11,8 @@ from langchain_core.messages import BaseMessage, ToolMessage
 CHOOSE = "choose_sources"
 WEB_TOOLS = frozenset({"search_public_sources", "read_page", "fetch_document"})
 STAFF_TOOLS = frozenset({"read_source_rows", "read_workbook"})
-VAULT_TOOLS = frozenset({"list_vault_documents", "read_vault_document"})
+READ_ONE = frozenset({"read_vault_document", "read_org_file"})  # each opens one document by id
+VAULT_TOOLS = frozenset({"list_vault_documents"}) | READ_ONE
 LIBRARY_TOOLS = frozenset({"list_library_documents", "read_library_document"})
 PULLING = WEB_TOOLS | STAFF_TOOLS | VAULT_TOOLS | LIBRARY_TOOLS
 
@@ -80,6 +81,6 @@ def refusal(sources: Sources | None, name: str, args: dict[str, Any]) -> str | N
             return (f"REFUSED: pass documents= with the picked spreadsheets only: {sorted(sources.staff_docs)}.")
     if name == "list_vault_documents" and not sources.vault_docs:
         return "REFUSED: no Doc Vault files were picked for this run."
-    if name == "read_vault_document" and int(args.get("document_id") or 0) not in sources.vault_docs:
+    if name in READ_ONE and int(args.get("document_id") or 0) not in sources.vault_docs:
         return f"REFUSED: only the picked Doc Vault files may be read: {sorted(sources.vault_docs)}."
     return None

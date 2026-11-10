@@ -7,6 +7,7 @@ from decimal import Decimal
 import pytest
 
 from tests.evals.sql_compare import (
+    agent_values,
     answer_contains_value,
     cells_equal,
     gold_satisfied,
@@ -170,3 +171,8 @@ class TestDeclineDetection:
         from tests.evals.harness import _declines
 
         assert not _declines(answer.lower())
+
+
+def test_the_validator_columns_are_not_compared():
+    row = {"name": "BLF", "__prov__o__url": "https://x", "__cite__ol__org_id": 8, "role": "operates"}
+    assert agent_values(row) == ("BLF", "operates")

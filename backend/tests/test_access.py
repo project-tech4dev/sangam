@@ -11,11 +11,13 @@ from app.core.security import (
     ANONYMOUS,
     DEV_USER,
     CurrentUser,
+    ask_access,
     chat_access,
     chat_user_id,
     get_current_user,
     get_principal,
 )
+from app.db.pool import agent_caller
 from tests.conftest import make_app
 
 MEMBER = CurrentUser(id=UUID("11111111-2222-3333-4444-555555555555"), is_staff=False)
@@ -40,12 +42,45 @@ async def test_saving_signed_out_is_401():
     assert response.json()["detail"] == "Sign in required"
 
 
+def memberships(monkeypatch, *roles):
+    rows = [{"org_id": i, "role": role, "org_name": f"Org {i}"} for i, role in enumerate(roles, 1)]
+
+    async def fake(pool, user_id):
+        return rows
+
+    monkeypatch.setattr(security.me_repo, "list_memberships", fake)
+
+
 @pytest.mark.parametrize(("principal", "status"), [(ANONYMOUS, 401), (MEMBER, 403)])
-async def test_import_routes_need_staff(principal, status):
+async def test_import_routes_need_staff(principal, status, monkeypatch):
+    memberships(monkeypatch, "steward")
     app = as_caller(make_app(ingest.router), principal)
     async with client(app) as c:
         response = await c.get("/api/ingest/sources")
     assert response.status_code == status
+
+
+@pytest.mark.parametrize("roles", [(), ("member",), ("admin",), ("member", "admin")],
+                         ids=["no org", "member", "admin", "member and admin"])
+async def test_scout_refuses_anyone_not_a_steward_or_staff(roles, monkeypatch):
+    memberships(monkeypatch, *roles)
+    app = as_caller(make_app(ingest.router), MEMBER)
+    async with client(app) as c:
+        response = await c.get("/api/ingest/research")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Scout is for stewards and Sangam staff"
+
+
+@pytest.mark.parametrize(("roles", "status"), [(("member",), 403), (("member", "steward"), 422)])
+async def test_the_scout_agent_route_lets_in_only_stewards_and_staff(roles, status, monkeypatch):
+    from app.core.lifespan import _add_agent_route
+
+    memberships(monkeypatch, *roles)
+    app = as_caller(make_app(), MEMBER)
+    _add_agent_route(app, "/ingest")
+    async with client(app) as c:
+        response = await c.post("/ingest", json={})
+    assert response.status_code == status  # a steward gets past the gate, to the body's own 422
 
 
 async def test_import_routes_open_to_staff():
@@ -111,6 +146,22 @@ async def test_the_run_knows_what_the_caller_may_reach(owners):
     assert response.text == "False {7: 'member'}"
 
 
+@pytest.mark.parametrize(("access", "expected"), [(ask_access, "authenticated"), (chat_access, "None")])
+async def test_ask_sangam_queries_as_the_caller_and_import_keeps_the_owner(owners, access, expected):
+    app = make_app()
+
+    @app.post("/agent", dependencies=[Depends(access)])
+    async def agent():
+        async def stream():
+            caller = agent_caller.get()
+            yield caller[0] if caller else "None"
+
+        return StreamingResponse(stream())
+
+    response = await run(as_caller(app, MEMBER), "new")
+    assert response.text == expected
+
+
 class TestCallerScope:
     member = security.CallerScope(UUID(int=2), False, {7: "member"})
     steward = security.CallerScope(UUID(int=3), False, {7: "steward", 8: "steward"})
@@ -136,9 +187,9 @@ async def test_someone_elses_thread_is_404(owners):
     assert response.status_code == 404
 
 
-async def test_staff_may_open_any_thread(owners):
+async def test_staff_may_not_post_in_someone_elses_thread(owners):
     response = await run(chat_app(DEV_USER), "theirs")
-    assert response.status_code == 200
+    assert response.status_code == 404
 
 
 async def test_chat_signed_out_is_401(owners):

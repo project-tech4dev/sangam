@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from app.ingest.records import normalise_cin
 
-Method = Literal["identifier", "exact", "alias", "boilerplate", "trigram", "none"]
+Method = Literal["identifier", "exact", "alias", "boilerplate", "website", "trigram", "none"]
 
 # A wide net in SQL, then a strict re-rank on the distinctive part of the name.
 TRIGRAM_FLOOR = 0.35
@@ -53,11 +53,61 @@ def same_but_for_boilerplate(a: str, b: str) -> bool:
     return tokens_a == tokens_b and len(tokens_a) >= 2
 
 
+def close_names(a: str, b: str) -> bool:
+    """Worth asking a person: the distinctive part is close and every number agrees.
+    "Keystone Foundation" is not close to "Anudip Foundation"; "Mission 2 Million" is not "Mission 1 Million"."""
+    return re.findall(r"\d+", a) == re.findall(r"\d+", b) and core_similarity(a, b) >= CORE_FLOOR
+
+
 def name_key(name: str) -> str:
     """One spelling per CSO name, for comparison only: folds North East/North-East/Northeast, drops 'The' and
     punctuation, keeps bracket content ('Example Trust (North)' and '(South)' are two chapters)."""
     folded = re.sub(r"north[\s\-]*east", "northeast", name.lower())
     return " ".join(t for t in re.findall(r"[a-z0-9]+", folded) if t != "the")
+
+
+_PAREN = re.compile(r"^(.*\S)\s*\(([^)]*)\)\s*$")
+
+
+def variants(name: str) -> list[str]:
+    """Other spellings a name carries: without its parenthetical, and the parenthetical when it is a name.
+    "Knowledge and Advocacy for Better Livelihoods (KABIL)" -> the long name, and "KABIL"."""
+    m = _PAREN.match(name)
+    if not m:
+        return []
+    inner = m[2].strip()
+    return [m[1].strip(), *([inner] if re.search(r"[A-Za-z]{2}", inner) else [])]
+
+
+def domain(url: str | None) -> str | None:
+    m = re.match(r"^(?:[a-z]+://)?(?:www\.)?([^/:?#]+)", (url or "").strip().lower())
+    return m[1] if m and "." in m[1] else None
+
+
+_DOMAIN_SQL = r"lower(substring(website from '^(?:[A-Za-z]+://)?(?:www\.)?([^/:?#]+)'))"
+
+
+async def _one(conn: Any, table: str, spelling: str) -> int | None:
+    """The one row whose name or alias is this spelling; None for none or two."""
+    rows = await (
+        await conn.execute(
+            f"SELECT id FROM {table} WHERE lower(name) = lower(%s) OR EXISTS "
+            "(SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = lower(%s)) ORDER BY id LIMIT 2",
+            (spelling, spelling),
+        )
+    ).fetchall()
+    return rows[0]["id"] if len(rows) == 1 else None
+
+
+async def _by_website(conn: Any, table: str, website: str | None) -> list[dict[str, Any]]:
+    host = domain(website)
+    if not host:
+        return []
+    return await (
+        await conn.execute(
+            f"SELECT id, name, aliases FROM {table} WHERE {_DOMAIN_SQL} = %s ORDER BY id LIMIT 2", (host,)
+        )
+    ).fetchall()
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,8 +151,8 @@ def _same_organisation(name: str, held: str, aliases: list[str]) -> bool:
     return any(same(n) for n in (held, *aliases))
 
 
-async def resolve_funder(conn: Any, name: str, cin: str | None = None) -> Match:
-    """Four steps in order: CIN, exact name, alias, trigram.
+async def resolve_funder(conn: Any, name: str, cin: str | None = None, website: str | None = None) -> Match:
+    """In order: CIN, exact name, alias, the name's variants, website domain, boilerplate, trigram.
 
     A CIN hit must also look like the same organisation: filings attach to the parent (D7), so a
     foundation's research often carries its parent's CIN. Such a hit falls through to the name steps.
@@ -132,6 +182,13 @@ async def resolve_funder(conn: Any, name: str, cin: str | None = None) -> Match:
     ).fetchall()
     if len(rows) == 1:
         return Match("alias", rows[0]["id"])
+    for spelling in variants(name):
+        if (found := await _one(conn, "funders", spelling)) is not None:
+            return Match("alias", found)
+    # A company and its foundation can share a site, so the domain must also name the same organisation.
+    hits = await _by_website(conn, "funders", website)
+    if len(hits) == 1 and _same_organisation(name, hits[0]["name"], hits[0]["aliases"] or []):
+        return Match("website", hits[0]["id"])
 
     # Same name plus "Limited" or "Trust" is the same funder, so it resolves
     # rather than waiting for a person. Only names that genuinely differ queue.
@@ -171,8 +228,11 @@ async def resolve_funder(conn: Any, name: str, cin: str | None = None) -> Match:
     return Match("none")
 
 
-async def resolve_org(conn: Any, name: str, identifiers: dict[str, str] | None = None) -> Match:
-    """Identifier, exact name, alias, normalised name or alias, boilerplate, then trigram.
+async def resolve_org(
+    conn: Any, name: str, identifiers: dict[str, str] | None = None, website: str | None = None
+) -> Match:
+    """Identifier, exact name, alias, the name's variants, website domain, normalised name or alias, boilerplate,
+    then trigram.
     A spelling two organisations share resolves neither and falls through to trigram, which only proposes."""
     for id_type, id_value in (identifiers or {}).items():
         if id_type in UNMATCHABLE_ID_TYPES:
@@ -201,6 +261,12 @@ async def resolve_org(conn: Any, name: str, identifiers: dict[str, str] | None =
     ).fetchall()
     if len(rows) == 1:
         return Match("alias", rows[0]["id"])
+    for spelling in variants(name):
+        if (found := await _one(conn, "orgs", spelling)) is not None:
+            return Match("alias", found)
+    hits = await _by_website(conn, "orgs", website)
+    if len(hits) == 1:
+        return Match("website", hits[0]["id"])
 
     rows = await (
         await conn.execute(

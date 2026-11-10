@@ -7,6 +7,7 @@ vault_research, one row per org, never in the shared entity_research row.
 from __future__ import annotations
 
 import asyncio
+import base64
 import re
 import tempfile
 from pathlib import Path
@@ -22,7 +23,12 @@ URL_PREFIX = f"https://org-vault.{PRIVATE_SOURCE_DOMAIN}/"
 MAX_BYTES = 50 * 1024 * 1024
 # Bounded so a read never needs evicting to a file a web-reading agent could open.
 MAX_CHARS = 24_000
-PDF, XLSX = ".pdf", ".xlsx"
+PDF, XLSX, DOCX, PPTX = ".pdf", ".xlsx", ".docx", ".pptx"
+CSV = ".csv"
+TEXT = (".md", ".txt", CSV)
+IMAGES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+IMAGE_MAX_BYTES = 5 * 1024 * 1024 * 3 // 4
+UNITS = {"para": "paragraph", "line": "line", "slide": "slide"}
 
 # What a funder's research may save from an org's own files: the funder's general facts. Facts about the
 # org itself (its grants, amounts, contacts, results, the file) are shown on Review and held back.
@@ -104,6 +110,57 @@ def pdf_text(doc: dict[str, Any], data: bytes, start_page: int, end_page: int | 
     return "\n".join([*_head(doc), f"{total} pages. Cite a fact by the page marker before it.", "", text])
 
 
+def _windowed(doc: dict[str, Any], items: list[str], start: int, unit: str, head: str) -> str:
+    """Items from `start`, each led by its marker, cut at MAX_CHARS with where to carry on."""
+    lines, size = [], 0
+    for n in range(max(start, 1), len(items) + 1):
+        if not items[n - 1].strip():
+            continue
+        line = f"[vault:{doc['id']}#{unit}{n}] {items[n - 1]}"
+        if size + len(line) > MAX_CHARS and lines:
+            lines.append(f"… cut at {UNITS[unit]} {n - 1} of {len(items)}. Call again with start_page={n}.")
+            break
+        lines.append(line)
+        size += len(line) + 1
+    return "\n".join([*_head(doc), head, "", *lines])
+
+
+def docx_text(doc: dict[str, Any], data: bytes, start: int) -> str:
+    from app.ingest import office
+
+    paras = office.docx_paragraphs(data)
+    return _windowed(doc, paras, start, "para", f"{len(paras)} paragraphs (start_page counts paragraphs in a Word "
+                                                f"file). Cite a fact by its paragraph marker.")
+
+
+def pptx_text(doc: dict[str, Any], data: bytes, start: int) -> str:
+    from app.ingest import office
+
+    slides = office.pptx_slides(data)
+    return _windowed(doc, slides, start, "slide", f"{len(slides)} slides (start_page counts slides in a PowerPoint "
+                                                  f"file). Cite a fact by its slide marker.")
+
+
+def plain_text(doc: dict[str, Any], data: bytes, start: int, *, csv: bool = False) -> str:
+    from app.ingest import office
+
+    lines = office.text_lines(data)
+    head = f"{len(lines)} lines (start_page counts lines in a text file). Cite a fact by its line marker."
+    if csv and start > 1 and lines:
+        head += f"\nColumns (line 1): {lines[0]}" 
+    return _windowed(doc, lines, start, "line", head)
+
+
+def image_blocks(doc: dict[str, Any], data: bytes, mime_type: str) -> str | list[dict[str, Any]]:
+    """The image itself for the model to look at, led by the one marker that cites it."""
+    if len(data) > IMAGE_MAX_BYTES:
+        too_large = f"An image of {len(data) // 1024 // 1024} MB, too large to read. Say so; do not guess at it."
+        return "\n".join([*_head(doc), too_large])
+    text = "\n".join([*_head(doc), f"An image. Cite a fact you can see in it by [vault:{doc['id']}#image]."])
+    return [{"type": "text", "text": text},
+            {"type": "image", "base64": base64.b64encode(data).decode(), "mime_type": mime_type}]
+
+
 def xlsx_text(doc: dict[str, Any], data: bytes, sheet: str, start_row: int, limit: int) -> str:
     sheets, notes = staff_sources._browse(data, sheet, start_row, limit)
     body = staff_sources.render({"id": doc["id"], "source_name": doc.get("title") or "workbook",
@@ -115,19 +172,29 @@ def xlsx_text(doc: dict[str, Any], data: bytes, sheet: str, start_row: int, limi
 
 
 async def read(doc: dict[str, Any], *, start_page: int = 1, end_page: int | None = None,
-               sheet: str = "", start_row: int = 1, limit: int = 100) -> str:
-    """One vault file's text, every line cited [vault:<id>#p<page>] or [vault:<id>#<sheet>!<cell>]."""
+               sheet: str = "", start_row: int = 1, limit: int = 100) -> str | list[dict[str, Any]]:
+    """One vault file's text, every line cited [vault:<id>#p<page>], #para<n>, #slide<n>, #line<n> or #<sheet>!<cell>;
+    an image comes back as itself, cited #image."""
     parts = storage.split(doc["storage_path"] or "")
     if parts is None:
         return f"document {doc['id']} has no file on record."
     name = parts[1].lower()
-    if not name.endswith((PDF, XLSX)):
-        return f"document {doc['id']} is neither a PDF nor an .xlsx workbook, so it cannot be read here."
+    if not name.endswith((PDF, XLSX, DOCX, PPTX, *TEXT, *IMAGES)):
+        return (f"document {doc['id']} is not a PDF, Word file, .xlsx workbook, PowerPoint, CSV, text file or "
+                f"image, so it cannot be read here.")
     data = await storage.download(*parts, max_bytes=MAX_BYTES)
     if data is None:
         return f"document {doc['id']} could not be downloaded."
     if name.endswith(PDF):
         return await asyncio.to_thread(pdf_text, doc, data, start_page, end_page)
+    if name.endswith(DOCX):
+        return await asyncio.to_thread(docx_text, doc, data, start_page)
+    if name.endswith(PPTX):
+        return await asyncio.to_thread(pptx_text, doc, data, start_page)
+    if name.endswith(TEXT):
+        return await asyncio.to_thread(plain_text, doc, data, start_page, csv=name.endswith(CSV))
+    if (mime_type := IMAGES.get(Path(name).suffix)) is not None:
+        return image_blocks(doc, data, mime_type)
     return await asyncio.to_thread(xlsx_text, doc, data, sheet, start_row, min(limit, staff_sources.BROWSE_MAX_ROWS))
 
 

@@ -8,12 +8,13 @@ from psycopg_pool import AsyncConnectionPool
 from app.db.pool import CallerPool
 
 
-async def claim_thread(pool: AsyncConnectionPool, *, thread_id: str, user_id: UUID, title: str | None = None) -> UUID:
+async def claim_thread(pool: AsyncConnectionPool, *, thread_id: str, user_id: UUID, title: str | None = None,
+                       use_case: str = "ask", org_id: int | None = None) -> UUID:
     """The thread's owner, making it `user_id` when the thread is new. An owner's turn bumps updated_at."""
     sql = """
     WITH claimed AS (
-      INSERT INTO threads (thread_id, user_id, title, updated_by)
-      VALUES (%(thread_id)s, %(user_id)s, %(title)s, %(user_id)s)
+      INSERT INTO threads (thread_id, user_id, title, updated_by, use_case, org_id)
+      VALUES (%(thread_id)s, %(user_id)s, %(title)s, %(user_id)s, %(use_case)s, %(org_id)s)
       ON CONFLICT (thread_id) DO UPDATE SET
         updated_at = now(),
         updated_by = EXCLUDED.user_id,
@@ -26,7 +27,7 @@ async def claim_thread(pool: AsyncConnectionPool, *, thread_id: str, user_id: UU
     SELECT user_id FROM threads WHERE thread_id = %(thread_id)s
     LIMIT 1
     """
-    params = {"thread_id": thread_id, "user_id": user_id, "title": title}
+    params = {"thread_id": thread_id, "user_id": user_id, "title": title, "use_case": use_case, "org_id": org_id}
     async with pool.connection() as conn:
         row = await (await conn.execute(sql, params)).fetchone()
     return row["user_id"]

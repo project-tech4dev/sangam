@@ -75,17 +75,20 @@ async def list_vault_documents(org: str = "") -> str:
 @tool
 async def read_vault_document(
     document_id: int, start_page: int = 1, end_page: int | None = None, sheet: str = "", start_row: int = 1
-) -> str:
+) -> str | list[dict]:
     """Read one Doc Vault file. Every line carries its citation marker.
 
     A PDF reads a page range at a time, each page headed [vault:<id>#p<page>]; omit end_page to read
     on until the output is cut, then continue from a later start_page. An .xlsx workbook without
     `sheet` lists its sheets; with `sheet` it reads rows from start_row, each cited
-    [vault:<id>#<sheet>!<cell>].
+    [vault:<id>#<sheet>!<cell>]. A PowerPoint file reads by slide from start_page, each
+    [vault:<id>#slide<n>]. A CSV, Markdown or text file reads by line from start_page, each line
+    [vault:<id>#line<n>]; a later window of a CSV repeats its column names. An image comes back as the
+    image itself: cite what you see in it [vault:<id>#image].
 
     Args:
         document_id: the id from list_vault_documents.
-        start_page: a PDF's first page to read, from 1.
+        start_page: a PDF's first page to read, from 1; a PowerPoint file's first slide; a text or CSV file's first line.
         end_page: a PDF's last page to read.
         sheet: a workbook's sheet name.
         start_row: a workbook's first row to read.

@@ -203,7 +203,7 @@ async def plan_for(pool, *, org_ids: list[int] | None, funder_ids: list[int] | N
                    feeds: list[str]) -> windows.NewsPlan:
     """What a pull of these subjects would search and cost: one plan for the card, Scout and the CLI."""
     subjects = await plan_subjects(pool, org_ids=org_ids, funder_ids=funder_ids, feeds=feeds)
-    return windows.plan(subjects, today=date.today(), settings=get_settings())
+    return windows.plan(subjects, today=datetime.now(UTC).date(), settings=get_settings())
 
 
 async def run_summary(pool, run_id: int) -> dict:
@@ -249,7 +249,7 @@ async def _finish(pool, run_id: int, status: str, note: str | None) -> None:
 
 async def execute_run(pool, run_id: int, deps: Deps, *, today: date | None = None) -> dict:
     """Run a created run to the end. A run that already ran is not run again; its summary comes back."""
-    today = today or date.today()
+    today = today or datetime.now(UTC).date()
     async with pool.connection() as conn:
         run = await (await conn.execute(
             "SELECT status, subjects, requested_sources, claimed_at FROM ingest_runs WHERE id = %s",
@@ -272,8 +272,9 @@ async def execute_run(pool, run_id: int, deps: Deps, *, today: date | None = Non
             subjects = await store.load_subjects(conn, org_ids=org_ids, funder_ids=funder_ids, feeds=feeds)
             names = await store.registry_names(conn) if feeds else {}
         failed: set[str] = set()  # a subject with any failure keeps its watermark, so the next run retries it
-        hits = await _search_all(pool, run_id, subjects, deps, today, failed)
-        if subjects and {_key(s) for s in subjects} <= failed:
+        searched: set[str] = set()
+        hits = await _search_all(pool, run_id, subjects, deps, today, failed, searched)
+        if subjects and not searched:
             # No key, a bad key or Tavily down: nothing was read, so this must not read as the last pull.
             await _finish(pool, run_id, "failed", "every search failed")
             return await run_summary(pool, run_id)
@@ -292,7 +293,7 @@ async def execute_run(pool, run_id: int, deps: Deps, *, today: date | None = Non
 
 
 async def _search_all(pool, run_id: int, subjects: list[Subject], deps: Deps, today: date,
-                      failed: set[str]) -> dict[str, list[Hit]]:
+                      failed: set[str], searched: set[str]) -> dict[str, list[Hit]]:
     """Every query × scope per subject, each over the subject's own window; a newcomer also gets stored links."""
     gate = asyncio.Semaphore(deps.parallel_searches)
     out: dict[str, list[Hit]] = {_key(s): [] for s in subjects}
@@ -314,6 +315,7 @@ async def _search_all(pool, run_id: int, subjects: list[Subject], deps: Deps, to
                 failed.add(_key(s))
                 await runner.record_item(conn, run_id, SOURCE, "news_search", "failed", subject=s.name, reason=str(res))
             else:
+                searched.add(_key(s))
                 out[_key(s)] += res
         for s in subjects:
             if s.kind != "feed" and s.searched_through is None:

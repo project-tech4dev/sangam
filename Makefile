@@ -1,4 +1,4 @@
-.PHONY: help up down logs seed locations-seed taxonomy-seed graph-seed match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -134,6 +134,12 @@ graph-seed:  ## Build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
 match:  ## Save a Funder Match run for every org, or ORG=<slug>
 	$(COMPOSE) run --rm --no-deps backend python -m app.matching.run $(if $(ORG),--org $(ORG))
 
+calls-pull:  ## Read FUNDER=<slug>'s calls page, or every funder's with CONFIRM=1, and write the open calls
+	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.calls.run $(if $(FUNDER),--funder $(FUNDER)) $(if $(CONFIRM),--yes)
+
+calls-match:  ## Match every open call to the orgs with members that share its domain (no model, no cost)
+	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.calls.run --match
+
 news-pull:  ## Pull news for ORG=<slug> / FUNDER=<slug>, or everyone with CONFIRM=1 (prints the plan first)
 	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.news.run $(if $(ORG),--org $(ORG)) $(if $(FUNDER),--funder $(FUNDER)) $(if $(CONFIRM),--yes)
 
@@ -160,18 +166,52 @@ migrate-status:  ## Show which migrations would run
 smoke:  ## End-to-end check of backend, frontend and the chat wire
 	bash scripts/smoke.sh
 
-# Golden-question evals through the real agent. Real model calls: ~10c/case.
+# Golden-question evals through the real agent. Real model calls: ~10c/case, except
+# the `cost` cases (~$0.90), which a run with no TAG includes.
 #   make evals             every case
 #   make evals TAG=canary  the cheap subset
+#   make evals TAG=cost    the cost cases (Better Life Foundation: ~$0.90 a run)
+#   make evals K=org-count one case, by pytest -k
+#
+# With LANGFUSE_* keys set, each run is a Langfuse dataset experiment on `ask-golden`,
+# named branch-sha and filed under the `eval` environment, so runs compare side by side
+# and never mix with real traffic. Without keys the same cases run untraced.
 #
 # Runs on the HOST venv, not in the container: the image installs only the
 # runtime dependencies from pyproject.toml, so it has no pytest. The recipe is
 # @-prefixed and sources .env quietly — it carries the provider API key, and an
 # echoed recipe line would put it in the terminal scrollback.
+# ENV=staging runs them against the managed database's rows, on read-only connections.
 evals:  ## Golden-question evals through the real agent (COSTS MONEY)
 	@set -a; [ -f .env ] && . ./.env; set +a; \
-	cd backend && TEST_DATABASE_URL="postgresql://sangam:sangam@localhost:5433/sangam" \
-	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) -q
+	cd backend && TEST_DATABASE_URL="$(if $(filter staging,$(ENV)),$(DB_URL),postgresql://sangam:sangam@localhost:5433/sangam)" \
+	LANGFUSE_TRACING_ENVIRONMENT=eval LANGFUSE_RELEASE="$$(git rev-parse --short HEAD)" \
+	.venv/bin/python -m pytest tests/evals --run-evals $(if $(TAG),--eval-tag $(TAG),) $(if $(K),-k $(K),) -q
+
+##@ Wiki
+# openwiki/ is a generated code wiki (OpenWiki): every claim is pinned to the source lines it came from,
+# and --update rewrites only pages whose evidence changed. Edit openwiki/INSTRUCTIONS.md, never a page.
+# Provider is set explicitly: with it unset, OpenWiki picks OPENAI_API_KEY (the graph's key) first.
+OPENWIKI = OPENWIKI_PROVIDER=anthropic OPENWIKI_MODEL_ID=claude-sonnet-5-5 OPENWIKI_TELEMETRY_DISABLED=1 \
+	OPENWIKI_PAGE_CONCURRENCY=2 npx -y openwiki@0.7.2 code
+
+wiki:  ## Generate openwiki/ from scratch (COSTS MONEY; Sonnet reads the repo)
+	@set -a; [ -f .env ] && . ./.env; set +a; $(OPENWIKI) --init --print; rm -f openwiki/.run.json
+
+wiki-update:  ## Refresh openwiki/ pages whose source changed (no model call when nothing did)
+	@set -a; [ -f .env ] && . ./.env; set +a; $(OPENWIKI) --update --print; rm -f openwiki/.run.json
+
+# --update reacts to code changes only; an INSTRUCTIONS.md edit alone rewrites nothing. A wrong page
+# is fixed by asking OpenWiki's agent, so the page and its claims are edited by the same tool.
+wiki-fix:  ## Ask OpenWiki to correct pages: make wiki-fix MSG="what is wrong, and where"
+	@test -n "$(MSG)" || { echo 'usage: make wiki-fix MSG="..."'; exit 2; }
+	@set -a; [ -f .env ] && . ./.env; set +a; $(OPENWIKI) --print "$(MSG)"; rm -f openwiki/.run.json
+
+# The site is OpenWiki's static graph and reader; the directory name becomes the Vercel project name.
+wiki-deploy:  ## Publish openwiki/ to the Vercel project sangam-wiki (needs `npx vercel login` once)
+	@D="$$(mktemp -d)/sangam-wiki"; \
+	OPENWIKI_TELEMETRY_DISABLED=1 npx -y openwiki@0.7.2 visualize openwiki --export "$$D" && \
+	npx -y vercel@latest deploy "$$D" --prod --yes --scope team-t4d-projects
 
 ##@ Generated docs
 # Render docs/entities and the generated blocks of docs/clients from the
@@ -300,7 +340,7 @@ db-upgrade: db-backup  ## Volume-level schema rebuild; superseded by make migrat
 ##@ Run outside Docker
 dev-backend:  ## Run uvicorn on the host against the compose Postgres
 	cd backend && DATABASE_URL="host=localhost port=5433 user=sangam password=sangam dbname=sangam" \
-		uvicorn app.main:app --reload
+		STORAGE_BUCKET_SUFFIX="$${STORAGE_BUCKET_SUFFIX--local}" uvicorn app.main:app --reload
 
 dev-frontend:  ## Run next dev on the host against a host backend
 	cd frontend && set -a && source <(grep -E '^NEXT_PUBLIC_SUPABASE_' ../.env) && set +a && \

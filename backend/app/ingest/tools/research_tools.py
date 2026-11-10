@@ -9,6 +9,7 @@ rows.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -20,11 +21,14 @@ from langchain_core.tools import tool
 from app.agent.tools.files import _safe_name, downloads_dir, extract_pdf_text
 from app.agent.tools.web import make_web_search
 from app.core.config import get_settings
+from app.core.egress import TRUST
 from app.db.pool import get_pool
+from app.ingest import office
 from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
-from app.ingest.brief import publish
+from app.ingest.brief import publish, rows_for
 from app.ingest.caller import scope, staff_only
+from app.ingest.contract import quoted_only, unanswered
 from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
 from app.ingest.sources import rule_for_url
 from app.ingest.staff_sources import is_staff_source_url
@@ -33,9 +37,8 @@ from app.integrations import storage
 
 logger = logging.getLogger(__name__)
 
-MAX_CONTENT_CHARS = 8_000
 MAX_DOWNLOAD_MB = 60
-PDF_TEXT_CHARS = 12_000
+WORD = "wordprocessingml"  # in a .docx's content type
 PAGE_HEADERS = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,*/*",
                 "Accept-Encoding": "gzip, deflate"}
 
@@ -66,7 +69,7 @@ def _client(original: str, **kwargs: Any) -> httpx.AsyncClient:
         if refusal:
             raise _Stop(f"REFUSED: {original} led to {target}, which was not requested. {refusal}")
 
-    return httpx.AsyncClient(follow_redirects=True, event_hooks={"request": [guard]}, **kwargs)
+    return httpx.AsyncClient(follow_redirects=True, event_hooks={"request": [guard]}, verify=TRUST, **kwargs)
 
 
 def _compact_json(text: str) -> str:
@@ -123,9 +126,11 @@ async def search_public_sources(query: str, max_results: int = 6) -> str:
         if not results:
             return f"No results for {query!r}. Try the funder's own domain, or different wording."
         lines = [f"{len(results)} results for {query!r}:"]
-        for r in results[:max_results]:
+        shown = results[:max_results]
+        # At once: each check is DNS and robots.txt, and in turn ten of them took ~30 s against Tavily's ~3 s.
+        refusals = await asyncio.gather(*(check_url(r.get("url", "")) for r in shown))
+        for r, refusal in zip(shown, refusals, strict=True):
             url = r.get("url", "")
-            refusal = await check_url(url)
             mark = "READABLE" if refusal is None else "HELD"
             lines.append(f"\n[{mark}] {r.get('title', '(no title)')}\n  {url}")
             if refusal:
@@ -173,9 +178,9 @@ async def _read_page(url: str) -> str:
         return f"ERROR: fetching {url} failed ({type(exc).__name__}: {exc})."
 
     content_type = response.headers.get("content-type", "").lower()
-    if "pdf" in content_type or url.lower().endswith(".pdf"):
+    if kind := _document_kind(content_type, url):
         return (
-            f"{url} is a PDF ({len(response.content):,} bytes). Use fetch_document to save it, "
+            f"{url} is a {kind} ({len(response.content):,} bytes). Use fetch_document to save it, "
             f"then read_document_pages to read it."
         )
     # trafilatura finds nothing in JSON (GuideStar's search, GitHub listings) or raw markdown (a dossier).
@@ -187,14 +192,34 @@ async def _read_page(url: str) -> str:
         text = trafilatura.extract(response.text, url=url) or ""
     if not text.strip():
         return f"No readable text could be extracted from {url}."
-    if len(text) > MAX_CONTENT_CHARS:
-        text = text[:MAX_CONTENT_CHARS] + f"\n\n[truncated at {MAX_CONTENT_CHARS} characters]"
+    # Kept as read, so a fact outlives a page that changes; silent like fetch_document's archive.
+    data = text.encode()
+    await storage.upload(storage.SOURCE_ARCHIVE, storage.archive_key(url, data, page_name(url)), data,
+                         "text/markdown; charset=utf-8")
+    # Uncut: a long page is evicted to a file the researcher pages back with read_file.
     return source_banner(str(response.url)) + text
+
+
+def _document_kind(content_type: str, url: str) -> str | None:
+    path = url.lower().split("?")[0]
+    if "pdf" in content_type or path.endswith(".pdf"):
+        return "PDF"
+    if WORD in content_type or path.endswith(".docx"):
+        return "Word file"
+    return None
+
+
+def page_name(url: str) -> str:
+    """A readable file name for an archived page: axisbankfoundation.org-what-we-do.md."""
+    rest = url.split("://", 1)[-1].split("?")[0].split("#")[0].strip("/")
+    host, _, path = rest.partition("/")
+    stem = "-".join(p for p in [host.removeprefix("www."), *path.split("/")] if p)
+    return _safe_name(stem.removesuffix(".html").removesuffix(".htm"))[:100] + ".md"
 
 
 @tool
 async def fetch_document(url: str, filename: str | None = None) -> str:
-    """Download a PDF or other document, if Sangam is allowed to read it.
+    """Download a PDF, Word file or other document, if Sangam is allowed to read it.
 
     CSR impact reports, BRSR filings and annual reports are PDFs — this is how
     the figures in them are reached. Saves the file and returns its name; read it
@@ -230,6 +255,10 @@ async def _fetch_document(url: str, filename: str | None) -> str:
                         return f"ERROR: {url} is larger than the {MAX_DOWNLOAD_MB} MB limit."
                     fh.write(chunk)
             content_type = response.headers.get("content-type", "application/octet-stream")
+        # A Word file served from a link without its extension is still paged by paragraph.
+        if WORD in content_type.lower() and not name.lower().endswith(".docx"):
+            destination = destination.rename(destination.with_name(f"{name}.docx"))
+            name = destination.name
     except _Stop as stop:
         return stop.reply
     except httpx.HTTPError as exc:
@@ -249,16 +278,22 @@ async def _fetch_document(url: str, filename: str | None) -> str:
 
 @tool
 def read_document_pages(filename: str, start_page: int = 1, end_page: int | None = None) -> str:
-    """Read text from a downloaded PDF, a page range at a time.
+    """Read text from a downloaded PDF, a page range at a time, or a Word (.docx) file by paragraphs.
 
-    Pages are 1-indexed; omit end_page to read to the end. A long report is
-    truncated — call again with a later start_page to continue. A scanned PDF has
+    Pages are 1-indexed, and in a Word file start_page and end_page count paragraphs; omit end_page to read to the end. A long result is saved
+    to a file you page through with read_file. A scanned PDF has
     no text layer and returns nothing: say so rather than guessing at its contents.
     """
     destination = downloads_dir() / _safe_name(filename)
     if not destination.exists():
         available = ", ".join(sorted(p.name for p in downloads_dir().iterdir())) or "(none)"
         return f"ERROR: {filename} is not in the downloads folder. Available: {available}"
+    if destination.suffix.lower() == ".docx":
+        try:
+            text, total = office.docx_range(destination.read_bytes(), start_page, end_page)
+        except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
+            return f"ERROR: {filename} could not be read as a Word file ({type(exc).__name__}: {exc})."
+        return f"[{filename}: {total} paragraphs]\n\n{text}" if text.strip() else f"{filename} has no text in that range."
     try:
         text, total_pages = extract_pdf_text(destination, start_page, end_page)
     except Exception as exc:  # noqa: BLE001 - pypdf raises many types on malformed files
@@ -267,10 +302,6 @@ def read_document_pages(filename: str, start_page: int = 1, end_page: int | None
         return (
             f"{filename} has {total_pages} pages but no extractable text in that range — it is "
             f"most likely scanned. Report that honestly; do not guess at the contents."
-        )
-    if len(text) > PDF_TEXT_CHARS:
-        text = text[:PDF_TEXT_CHARS] + (
-            f"\n\n[truncated — {total_pages} pages in total; call again with a later start_page]"
         )
     return f"[{filename}: {total_pages} pages]\n\n{text}"
 
@@ -302,6 +333,13 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
     if findings.entity_kind == "org" and not (caller.is_staff or caller.steward_of):
         return ("REFUSED: researching an NGO is for its stewards and the Sangam team. Report what you "
                 "found in your summary instead.")
+    if missing := unanswered(findings):
+        return (
+            f"REFUSED: a save answers every field with a finding or a gap, and {len(missing)} have "
+            f"neither: {'; '.join(missing[:40])}. For each, add the finding, or a gap "
+            f"{{concept, field, fiscal_year, reason, detail}}: not_stated or blocked naming the source, or "
+            f"not_reached naming what was left unread when the run stopped. Then save again."
+        )
     try:
         slug = slugify(findings.canonical_name or findings.entity_name)
         pool = get_pool()
@@ -366,11 +404,17 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     ),
                 )
             ).fetchone()
+            history = await rows_for(conn, slug)
         # Publish the brief with the same call that saves it: waiting for a
         # person to run `make client-docs` left the funder page's link dead in
         # between. Silent on failure, like archiving — the model cannot act on
         # it and the findings are saved either way.
-        published = await publish(dict(row))
+        try:
+            unplaced = [] if findings.status == "wrong_entity" else [u.model_dump(mode="json") for u in findings.unplaced]
+            published = await publish(history, unplaced)
+        except Exception:  # noqa: BLE001 - the brief could not be read, so it is left as it was
+            logger.warning("brief for %s not merged: Storage could not be read", slug)
+            published = None
 
         found = ", ".join(findings.concepts_found()) or "nothing"
         replaced = (
@@ -385,11 +429,17 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
             if published
             else f"It appears in docs/entities/{slug}.md on the next `make client-docs`. "
         )
+        quoted = quoted_only(findings)
+        unextracted = (
+            f" These numbers are only inside quotes: {' | '.join(quoted)}. If any is a reach figure, a "
+            f"count of places or an amount, add it as a finding and save again."
+            if quoted else ""
+        )
         return (
             f"Saved as entity_research #{row['id']} ({slug}): {len(findings.findings)} findings "
             f"across {found}; status {findings.status}. Report back with slug={slug!r} and "
             f"saved=true. {where}"
-            f"promote_research moves what has a writer into the catalog.{replaced}"
+            f"promote_research moves what has a writer into the catalog.{replaced}{unextracted}"
         )
     except Exception as exc:
         if staff_save:
@@ -417,22 +467,31 @@ async def publish_brief(slug: str = "") -> str:
         async with pool.connection() as conn:
             rows = await (
                 await conn.execute(
-                    "SELECT DISTINCT ON (slug) * FROM entity_research "
+                    "SELECT * FROM entity_research "
                     + ("WHERE slug = %s " if slug else "")
-                    + "ORDER BY slug, researched_at DESC",
+                    + "ORDER BY slug, researched_on, researched_at",
                     (slug,) if slug else (),
                 )
             ).fetchall()
         if not rows:
             return f"No saved research{f' for {slug!r}' if slug else ''}. Research first."
 
-        done = [r["slug"] for r in rows if await publish(dict(r))]
+        by_slug: dict[str, list[dict]] = {}
+        for r in rows:
+            by_slug.setdefault(r["slug"], []).append(dict(r))
+        done = []
+        for s, history in by_slug.items():
+            try:
+                if await publish(history):
+                    done.append(s)
+            except Exception:  # noqa: BLE001 - one unreadable brief is left as it was; the rest still publish
+                logger.warning("brief for %s not merged: Storage could not be read", s)
         if not done:
             return (
-                f"Published nothing of {len(rows)}. Storage is not configured, so a brief "
+                f"Published nothing of {len(by_slug)}. Storage is not configured, so a brief "
                 f"exists only as docs/entities/<slug>.md after `make client-docs` on the host."
             )
-        missed = [r["slug"] for r in rows if r["slug"] not in done]
+        missed = [s for s in by_slug if s not in done]
         return (
             f"Published {len(done)} brief(s): {', '.join(done)}."
             + (f" Failed: {', '.join(missed)}." if missed else "")

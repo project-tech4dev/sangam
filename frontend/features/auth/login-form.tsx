@@ -48,7 +48,7 @@ export function LoginForm({
   onBeforeRedirect?: () => void
 }) {
   const router = useRouter()
-  const handleOpenChange = onOpenChange ?? ((o: boolean) => !o && router.push('/'))
+  const handleOpenChange = onOpenChange ?? ((o: boolean) => !o && router.replace('/'))
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 

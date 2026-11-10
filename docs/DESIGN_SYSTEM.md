@@ -27,9 +27,12 @@ is a copy of values.
 | `tokens/colors.css` | `:root` colour ramps, semantic aliases and the shadcn variables in `frontend/app/globals.css` |
 | `tokens/typography.css` | `--fs-*`, `--font-*` in `globals.css`; the font itself is loaded by `next/font` in `frontend/app/layout.tsx` |
 | `tokens/spacing.css` | `--radius`, `--radius-pill/surface/row`, `--shadow-*`, `--page-max`, `--page-pad`, `--nav-h` in `globals.css` |
-| `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link` |
+| `tokens/base.css` | The hand-written classes in `globals.css`: `.btn`, `.card`, `.tag`, `.pill`, `.seg`, `.input`, `.dialog`, `.toast`, `.eyebrow`, `.page`, `.measure`, `.reading`, `.nav-link`, plus the list-page classes every list page shares (`.bucket-card`, `.filter-row`, `.filter`, `.search-box`, `.list-*`) |
 | `tokens/scout.css` | Sangam Scout's classes in `globals.css`, from "Import workspace" through "Import: the Review step", imported by `styles.css` after `base.css` |
-| `tokens/registry.css` | The Registry list's `.reg-*`, the funder profile's `.profile-*` and the research brief's `.brief-*` classes in `globals.css`, plus `.btn-ondark`; imported by `styles.css` after `scout.css` |
+| `tokens/registry.css` | The Registry list's `.reg-*`, the CSO and funder profiles' `.profile-*` (hero, board tabs, SDG tiles, cards, tables) and the research brief's `.brief-*` classes in `globals.css`, plus `.pill-tabs` and `.btn-ondark`; imported by `styles.css` after `scout.css` |
+| `tokens/registry-row.css` | The Registry row's population chips (`.reg-tag[data-tone="population"]`), `.reg-row-line`, `.reg-row-label`, `.reg-more` and the filtered tag's edge (`.reg-tag[data-active]`) in `globals.css`; imported by `styles.css` after `registry.css` |
+| `tokens/site.css` | The Nav's `.nav-links` and phone menu (`.nav-menu-button`, `.nav-menu`, `.nav-menu-link`) and Home's `.home-step*` classes in `globals.css`; imported by `styles.css` after `registry.css` |
+| `tokens/workspace.css` | The Ask workspace's use-case screens in `globals.css`: Funder Match's `.fm-*`, RFP Watch's `.rfp-*`, Sangam Pitch's `.pr-*` and Media & Signals' `.story-*` (the story card a Registry profile's "In the news" also uses); imported by `styles.css` last |
 | `guidelines/*.html` | Nothing; they are the specimen pages to check the repo against |
 
 The design system also carries tokens the repo does not use yet (`--surface-*`, `--text-*`,
@@ -48,13 +51,12 @@ and Tailwind. A component change means making both look and behave the same.
 | `components/core/Avatar` | `frontend/components/ui/avatar.tsx` |
 | `components/forms/{Input, Checkbox}` | `frontend/components/ui/{input,checkbox}.tsx` and `.input` |
 | `components/forms/{SegmentedControl, Pill, PillTabs}` | `.seg`, `.pill`, `frontend/components/ui/PillTabs.tsx` |
-| `components/surfaces/{Card, CardBody, Hero, Dialog}` | `frontend/components/ui/{card,Hero,dialog}.tsx` and `.card`, `.dialog` |
+| `components/surfaces/{Card, CardBody, Hero, Dialog, Toast}` | `frontend/components/ui/{card,Hero,dialog,Toast}.tsx` and `.card`, `.dialog`, `.toast`; `HeroFacets` = `features/registry/profile/ProfileHero.tsx` |
 | `components/surfaces/DropdownMenu` | `frontend/components/ui/dropdown-menu.tsx` |
 | `components/layout/{Nav, Footer}` | `frontend/components/layout/{Nav,NavBar,Footer}.tsx` |
 | `components/layout/UserMenu` | `frontend/features/auth/sign-in-button.tsx` (`UserMenu`) |
 | `components/layout/SectionIndex` | `frontend/components/ui/SectionIndex.tsx` |
 | `components/agent/{QuestionRow, AnswerCard, TraceCard, CitationChip, ComposerNotice}` | `frontend/features/ask/components/` |
-| `components/agent/ScoreCard` | `frontend/features/registry/ScoreCard.tsx` |
 
 **The UI kit recreates screens.** `ui_kits/sangam-web/` is a click-through of the app built
 from the components above, with sample data.
@@ -63,8 +65,8 @@ from the components above, with sample data.
 |---|---|
 | `Home.jsx` | `features/home/HomePage.tsx`, `HeroSlides.tsx` |
 | `Registry.jsx` | `features/registry/RegistryClient.tsx` |
-| `Profile.jsx` | `app/registry/[slug]/page.tsx`, `features/registry/ProfileTabs.tsx` |
-| `AskWorkspace.jsx` | `features/ask/preview/AskPreview.tsx`, `features/ask/components/*`, `features/ask/views/*` |
+| `Profile.jsx` | `app/registry/[slug]/page.tsx`, `app/registry/funders/[slug]/page.tsx`, `features/registry/profile/*` (CSO and funder) |
+| `AskWorkspace.jsx` | `features/ask/preview/AskPreview.tsx`, `features/ask/components/*`, `features/ask/views/*`: the chat, Funder Match, Proposals (Sangam Pitch), RFP Watch, Media & Signals, Doc Vault and All Chats |
 | `Import.jsx`, `importData.js`, `import.html` | Sangam Scout at `/import`: `features/ingest/ImportPage.tsx`, `ScoutChat.tsx`, `components/*` (thread, run strip, rail and step bar use the `.scout-*` and `.import-*` classes; the Review and Done cards are still recreated inline) |
 | `index.html`, `import.html` | the routing and navbar behaviour in `app/` and `components/layout/` |
 

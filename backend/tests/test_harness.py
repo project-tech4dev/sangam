@@ -103,14 +103,14 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         # because a general-purpose subagent was inserted carrying db_query.
         assert "task" not in tools
 
-    def test_ask_sangam_holds_its_seven_tools_and_the_skill_readers(self):
+    def test_ask_sangam_holds_its_six_tools_and_the_skill_readers(self):
         from app.agent.build import build_agent
         from app.core.config import get_settings
 
         tools = set(build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name)
         assert tools == {
             "db_list_tables", "db_describe_table", "db_profile_column", "db_query",
-            "search_graph", "fetch_url", "compare_fit", "read_file", "ls",
+            "search_graph", "compare_fit", "read_file", "ls",
         }
 
     def test_neither_agent_can_write_a_file_or_run_a_command(self):
@@ -209,7 +209,7 @@ class TestTheSkillIsFoundAndIsProgressive:
         # Discovery is exactly one level: ls the source, then look for
         # <dir>/SKILL.md. A nested one is never found, and neither is a
         # SKILL.md at the root.
-        found = list(SKILLS_DIR.glob("*/SKILL.md"))
+        found = [*SKILLS_DIR.glob("*/SKILL.md"), *SKILLS_DIR.glob("research/*/SKILL.md")]
         assert found, "no skills discovered where the middleware will look"
         for path in found:
             head = path.read_text(encoding="utf-8").split("---")[1]
@@ -241,19 +241,18 @@ class TestTheSkillIsFoundAndIsProgressive:
         text = content if isinstance(content, str) else content.decode("utf-8")
         assert "name:" in text
 
-    def test_no_subagent_declares_any(self):
-        """Skills are output procedures, and a subagent has no output to shape.
+    def test_only_the_researcher_declares_skills_and_only_the_pull_ones(self):
+        """The pull skills are the researcher's contract; an isolated subagent inherits none, so it declares them."""
+        from app.ingest.agent import (
+            CATALOG_WRITER,
+            ENTITY_RESEARCHER,
+            RESEARCH_SKILLS_ROUTE,
+            VAULT_READER,
+            WORKBOOK_READER,
+        )
 
-        The researcher used to declare the route — an isolated subagent
-        inherits nothing, so it had to be declared or not held at all. But its
-        targets come from research_goals, derived from the schema, and the one
-        thing a skill could add is a brief format it cannot produce: it returns
-        a ResearchSummary with no prose. The supervisor writes the brief, so
-        the supervisor holds the skills.
-        """
-        from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, VAULT_READER, WORKBOOK_READER
-
-        for spec in (ENTITY_RESEARCHER, CATALOG_WRITER, WORKBOOK_READER, VAULT_READER):
+        assert ENTITY_RESEARCHER["skills"] == [RESEARCH_SKILLS_ROUTE]
+        for spec in (CATALOG_WRITER, WORKBOOK_READER, VAULT_READER):
             assert "skills" not in spec, spec["name"]
 
     def test_every_skill_is_advertised_to_the_supervisor(self):
@@ -267,10 +266,10 @@ class TestTheSkillIsFoundAndIsProgressive:
         from app.ingest.agent import SKILLS_DIR
 
         names = {d.name for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()}
+        # What to pull, per kind, is the researcher's: one level down, so the supervisor's listing skips it.
+        pulled = {d.name for d in (SKILLS_DIR / "research").iterdir() if (d / "SKILL.md").exists()}
+        assert pulled == {"funder-intake-research", "ngo-credential-research"}
         assert names == {
-            # what to pull, per kind
-            "funder-intake-research",
-            "ngo-credential-research",
             # the record for one organisation, either kind
             "entity-record",
             # onto the catalog, and back out again

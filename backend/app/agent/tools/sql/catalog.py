@@ -111,7 +111,7 @@ _TABLES: tuple[Table, ...] = (
             Column("org_id", "bigint", cites="org"),
             Column("funder_id", "bigint", cites="funder"),
             Column("title", "text"),
-            Column("doc_type", "text", note="free text, except three values written by their own path: 'funder_eligibility' (a funder's standing eligibility, verbatim in content_md), 'proposal_template' (a funder's application form), 'source_dataset' (a staff-only file with no content_md). A CSO's own: trust_deed, registration_certificate, exemption_order (12AB/80G: Forms 10AC/10AD), exemption_application (a Form 10AB acknowledgement), csr1_approval, fcra_certificate, fcra_return, audit_report, annual_report, policy, manual_check_evidence (a screenshot or archive of a registry check)"),
+            Column("doc_type", "text", note="Import's research writes one of: annual_report, csr_annexure, brsr, csr_policy, csr_impact_report, impact_assessment, programme_report, audit_report, financial_statements, fcra_return, registration_certificate, trust_deed, exemption_order, exemption_application, csr1_approval, fcra_certificate, policy, press_release, news_article, grant_list, registry_record, research, web_page (a page read and archived as text), other. Rows written before 0047 and Doc Vault uploads may carry other free text. Three values are written by their own path written by their own path: 'funder_eligibility' (a funder's standing eligibility, verbatim in content_md), 'proposal_template' (a funder's application form), 'source_dataset' (a staff-only file with no content_md). A CSO's own: trust_deed, registration_certificate, exemption_order (12AB/80G: Forms 10AC/10AD), exemption_application (a Form 10AB acknowledgement), csr1_approval, fcra_certificate, fcra_return, audit_report, annual_report, policy, manual_check_evidence (a screenshot or archive of a registry check)"),
             Column("content_md", "text", heavy=True),
             Column("source_url", "text"),
             Column("source_name", "text"),
@@ -129,11 +129,30 @@ _TABLES: tuple[Table, ...] = (
         ),
         defects=(
             "53 of 96 rows have neither org_id nor funder_id set, so ownership filters silently under-count. There is no CHECK enforcing exactly-one-owner on this table.",
-            "Rows with is_public = false are private Doc Vault uploads belonging to one organisation, or the eligibility document (doc_type 'funder_eligibility') of a hidden funder, which is staff only. This tool applies no per-caller filter: their content_md and storage_path are readable by every user. Deliberate and temporary - it ends when queries run as the caller (docs/DATA_PLATFORM.md, 'Authorization: run every query as the caller'). Until then, do not quote a private upload to anyone outside the organisation that owns it, nor a hidden funder's eligibility document to anyone but staff.",
+            "Row security filters this table to the caller: a row with is_public = false (a private Doc Vault upload, a hidden funder's eligibility document, a staff dataset) is returned only to staff or to members of the organisation that owns it. So a count or an empty result covers only the documents this caller may read - say 'none you can see', never 'none exist'.",
             "doc_type 'source_dataset' rows are staff-only workbooks with no content_md; their contents are read only by Sangam Import. Facts promoted from them cite a non-resolving https://staff-sources.sangam.invalid/ URL by design - never present that URL as a link.",
             "doc_type 'funder_eligibility' is sparse: filled from promoted research one funder at a time, so no eligibility document means nobody has read that funder's policy - never that it sets no conditions.",
             "doc_type 'funder_eligibility' is a funder's STANDING policy only. A requirement printed in one open call lives in rfps.eligibility, and the same sentence can legitimately appear in both. Counting across the two double-counts.",
             "doc_type 'funder_eligibility' states a bar; it does not apply it: these are the funder's published conditions, and nothing here judges whether any organisation meets them.",
+        ),
+    ),
+    Table(
+        name="document_links",
+        description="What a document backs: one row per document, owner, programme and fiscal year, with the pages facts were read from. Written by Import's promotion.",
+        primary_key=('id',),
+        foreign_keys=(ForeignKey("document_id", "documents.id"), ForeignKey("org_id", "orgs.id"), ForeignKey("funder_id", "funders.id"), ForeignKey("program_id", "programs.id")),
+        columns=(
+            Column("id", "bigint"),
+            Column("document_id", "bigint"),
+            Column("org_id", "bigint", cites="org", note="exactly one of org_id / funder_id is set"),
+            Column("funder_id", "bigint", cites="funder", note="exactly one of org_id / funder_id is set"),
+            Column("program_id", "bigint", note="NULL when the facts it backs name no programme"),
+            Column("fiscal_year", "text", note="'FYyyyy-yy'; NULL when the facts it backs name no year"),
+            Column("pages", "text[]", note="where in the document facts were read from, as each cites it: 'p.33', 'Annexure 4'; empty when none was recorded"),
+            Column("created_at", "timestamp with time zone"),
+        ),
+        defects=(
+            "Sparse: links exist only for documents behind facts Import promoted since 0047. No link means not recorded, never that the document covers nothing.",
         ),
     ),
     Table(
@@ -265,6 +284,8 @@ _TABLES: tuple[Table, ...] = (
             Column("as_of", "text", note="the period the source describes, e.g. 'FY2023-24' - NOT when it was fetched"),
             Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
             Column("archive_url", "text"),
+            Column(_TIER[0].name, "text", note="kind 'partner' only: " + _TIER[0].note, values=_SOURCE_TYPES),
+            Column(_TIER[1].name, "text", note="kind 'partner' only: " + _TIER[1].note, values=('evidenced', 'claimed')),
         ),
         defects=(
             "Sparse: lines arrive one funder at a time from promoted research, so a missing year or kind means 'not recorded', never 'spent nothing' or 'no partners'.",
@@ -274,9 +295,9 @@ _TABLES: tuple[Table, ...] = (
             "A 'partner' line is a named relationship. Only when its amount is set does it say money changed hands: the amount (INR) is what the source, usually the recipient's own record, says the partner received from this funder - in that fiscal_year, or, when start_date and end_date span more than one fiscal year, over the whole grant. A partner line with no amount is not evidence of a grant.",
             "A multi-year grant is ONE partner line: the whole grant amount sits on the fiscal_year it started, with start_date and end_date set. Never read it as that year's spend and never divide it across years yourself; say it is a multi-year total.",
             "There is no grants table: grants moved here in 0034 as 'partner' lines with partner_org_id set. Their notes end 'Moved from grants #N by 0034.', which is how a citation of an old grant number is traced.",
-            "Partner lines carry no evidence tier column: a line an organisation's own research added says its source type and tier in notes ('From the organisation's research: <source_type>, <tier>.'); a funder's own filing or report says nothing there.",
+            "Only partner lines carry source_type and evidence, and only those written since 0046; older lines an organisation's research added say their tier in notes ('From the organisation's research: <source_type>, <tier>.'). The tier is the strongest source that has written the line, not of every column on it; a 'claimed' partner line is never presented as a confirmed grant.",
             "A partner line whose notes say 'fiscal_year is the year the source was read' (or 'the year the row was recorded') had no stated date: it is NOT dated to that fiscal year, so never count it as that year's grant.",
-            "Rows with is_public = false are internal: this tool runs as the owner, so row security does not hide them here. Add WHERE is_public to any answer that may be shown publicly, and when an internal row is shown, say it is internal and must not be shown publicly.",
+            "Row security filters this table to the caller: lines with is_public = false are internal and are returned to staff only, so a non-staff total silently excludes them. When an internal line appears in an answer, say it is internal and must not be shown publicly; do not filter it out.",
         ),
     ),
     Table(
@@ -320,6 +341,7 @@ _TABLES: tuple[Table, ...] = (
         name="funders",
         description="Funders: corporate CSR arms, private foundations, family trusts.",
         primary_key=('id',),
+        foreign_keys=(ForeignKey("registered_location_id", "locations.id"),),
         columns=(
             Column("id", "bigint", cites="funder"),
             Column("slug", "text"),
@@ -344,6 +366,10 @@ _TABLES: tuple[Table, ...] = (
             Column("grant_size_max", "numeric", note="the top of the stated grant band, INR"),
             Column("cin", "text", note="Corporate Identity Number of a company funder, 21 characters; a trust or society has none. One CIN, one row"),
             Column("aliases", "text[]", note="other names the funder files or is reported under; match names against these too"),
+            Column("legal_form", "text", note="FREE TEXT as printed, e.g. 'Section 8 Company', 'Public Charitable Trust'. Profile it before filtering"),
+            Column("founded_year", "integer", note="the year the funder says it was founded or incorporated"),
+            Column("registered_address", "text", note="the registered office as printed"),
+            Column("registered_location_id", "bigint", note="-> locations.id of the registered office, usually a district"),
         ),
     ),
     Table(
@@ -545,7 +571,7 @@ _TABLES: tuple[Table, ...] = (
         name="org_identifiers",
         description="Statutory registrations of an org (PAN, 12A, 80G, FCRA, Darpan...), one row each, with a status. A row may have no number yet (an application).",
         primary_key=('id',),
-        foreign_keys=(ForeignKey("org_id", "orgs.id"), ForeignKey("evidence_document_id", "documents.id")),
+        foreign_keys=(ForeignKey("org_id", "orgs.id"),),
         columns=(
             Column("id", "bigint"),
             Column("org_id", "bigint", cites="org"),
@@ -567,7 +593,6 @@ _TABLES: tuple[Table, ...] = (
             Column("valid_until", "date", note="an FCRA or 12AB/80G approval's end date, when stated"),
             Column("checked_at", "timestamp with time zone", note="when a person or a registry read last confirmed the status"),
             Column("check_method", "text", note="manual_check = a staff member checked by hand; checked_at is when, and it may sit on a registry-tier row", values=('document', 'registry', 'manual_check', 'aggregator')),
-            Column("evidence_document_id", "bigint", note="the documents row holding the certificate, order or check evidence"),
             Column("application_ref", "text", note="e.g. a Form 10AB acknowledgement number"),
         ),
         defects=(
@@ -585,11 +610,12 @@ _TABLES: tuple[Table, ...] = (
         name="org_locations",
         description="Where an org is registered or operates. Join table.",
         primary_key=('org_id', 'location_id'),
-        foreign_keys=(ForeignKey("location_id", "locations.id"), ForeignKey("org_id", "orgs.id")),
+        foreign_keys=(ForeignKey("location_id", "locations.id"), ForeignKey("org_id", "orgs.id"), ForeignKey("program_id", "programs.id")),
         columns=(
             Column("org_id", "bigint", cites="org"),
             Column("location_id", "bigint"),
             Column("role", "text", values=('registered', 'operates', 'funds')),
+            Column("program_id", "bigint", note="the org's programme that runs in this place, when a source says so; NULL means not stated"),
             Column("valid_from", "date"),
             Column("valid_to", "date"),
             Column("note", "text"),
@@ -624,7 +650,7 @@ _TABLES: tuple[Table, ...] = (
         name="orgs",
         description="CSOs/NGOs in the FFRH cohort. One row per organisation.",
         primary_key=('id',),
-        foreign_keys=(ForeignKey("registered_location_id", "locations.id"),),
+        foreign_keys=(ForeignKey("registered_location_id", "locations.id"), ForeignKey("parent_id", "orgs.id")),
         columns=(
             Column("id", "bigint", cites="org"),
             Column("slug", "text", note="stable url key, lower-case, e.g. 'kabil'"),
@@ -650,6 +676,8 @@ _TABLES: tuple[Table, ...] = (
             Column("aliases", "text[]", note="every other spelling a source used: short names, filings, directories. Match names against these too"),
             Column("staff_count", "integer", note="people employed, as the source states; staff_count_note says what was counted and where"),
             Column("staff_count_note", "text", note="e.g. '20+ full-time professionals (team page)'. Differing counts across sources are reported as conflicts, not averaged"),
+            Column("registered_address", "text", note="the registered office as printed"),
+            Column("parent_id", "bigint", cites="org", note="the organisation this one belongs to or was spun out of, when a source says so and Sangam holds it"),
             *_TIER,
         ),
         defects=(
@@ -706,7 +734,7 @@ _TABLES: tuple[Table, ...] = (
             Column("document_id", "bigint", note="the documents row this fact was read from, when there is one"),
             Column("archive_url", "text"),
             Column("parent_id", "bigint", note="hierarchy within one owner"),
-            Column("kind", "text", note="a funder's own rows run theme > programme > phase, linked by parent_id", values=('theme', 'programme', 'phase', 'project')),
+            Column("kind", "text", note="a funder's own rows run theme > programme > component or phase, linked by parent_id; a component is a part of a programme the funder reports spend on", values=('theme', 'programme', 'component', 'phase', 'project')),
             Column("is_enabler", "boolean"),
             *_TIER,
         ),
@@ -760,12 +788,12 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows) because rfps is empty.",
+            "Filled only with rfps, by make calls-pull and Import. Few funders run open calls, so no row means none was found, not that none exists.",
         ),
     ),
     Table(
         name="rfp_matches",
-        description="Which orgs were flagged as a fit for an RFP. Join table with a score.",
+        description="Which orgs were flagged as a fit for an RFP, and what each org chose. Join table.",
         primary_key=('rfp_id', 'org_id'),
         foreign_keys=(ForeignKey("org_id", "orgs.id"), ForeignKey("rfp_id", "rfps.id")),
         columns=(
@@ -773,13 +801,13 @@ _TABLES: tuple[Table, ...] = (
             Column("org_id", "bigint", cites="org"),
             Column("match_score", "numeric"),
             Column("match_notes", "text"),
-            Column("status", "text", values=('flagged', 'reviewed', 'dismissed')),
+            Column("status", "text", values=('flagged', 'saved', 'reviewed', 'dismissed')),
             Column("matched_by", "text"),
             Column("matched_at", "timestamp with time zone"),
             Column("week_of", "date"),
         ),
         defects=(
-            "Table is empty (0 rows) because rfps is empty; no org has been matched to a call for proposals yet.",
+            "Rows are written by make calls-pull and calls-match for orgs with members that share a domain with the call (matched_by 'rules:domain' until the org acts, then the user's id; match_score is empty). status is the org's own choice (saved, or dismissed for 'not for us'), never a judgement of fit; no row means the call was not matched, not that it does not fit.",
         ),
     ),
     Table(
@@ -796,7 +824,7 @@ _TABLES: tuple[Table, ...] = (
             Column("note", "text"),
         ),
         defects=(
-            "Table is empty (0 rows) because rfps is empty.",
+            "Filled only with rfps, by make calls-pull and Import. Few funders run open calls, so no row means none was found, not that none exists.",
         ),
     ),
     Table(
@@ -827,7 +855,7 @@ _TABLES: tuple[Table, ...] = (
             Column("archive_url", "text"),
         ),
         defects=(
-            "Table is empty (0 rows): the RFP subsystem is built but no calls for proposals have been loaded. A zero result says nothing about whether such RFPs exist.",
+            "Filled by make calls-pull (a one-time pull of known funders' call pages) and by Import. Few Indian funders publish open calls, so few rows exist: zero rows means none was found, not that none exists. status 'open' with a past deadline means the pull has not run since.",
         ),
     ),
     Table(
@@ -933,6 +961,9 @@ CITE_COLUMNS: Mapping[tuple[str, str], str] = MappingProxyType(
     {(name, c.name): c.cites for name, t in CATALOG.items() for c in t.columns if c.cites}
 )
 
+# One line per table, sorted: what db_list_tables prints and the prompt's {{TABLE_MAP}} holds.
+TABLE_MAP: str = "\n".join(f"  {name} — {t.description}" for name, t in sorted(CATALOG.items()))
+
 DEFECTS: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {name: t.defects for name, t in CATALOG.items() if t.defects}
 )
@@ -981,6 +1012,8 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         # Import's save log: who saved what, and each catalog row's before and after, for undo.
         "promotions",
         "catalog_writes",
+        # Every deleted document row, private uploads included, kept for a staff restore.
+        "deleted_documents",
         # Serialized conversation history — every user's full chat, in this same
         # database. The single most sensitive thing here.
         "checkpoints",
@@ -1065,6 +1098,26 @@ async def verify_against_db(conn: Any) -> list[str]:
         missing = sorted({c.name for c in table.columns} - live[name])
         if missing:
             problems.append(f"{name}: catalog lists columns the database does not have: {', '.join(missing)}")
+
+    # The chat runs as the caller, so a column `authenticated` cannot SELECT fails 42501 for everyone.
+    # anon may be shut out of a whole table (rfp_matches), but a table it reads in part breaks `SELECT *`.
+    pairs = [(t, c.name) for t, table in CATALOG.items() for c in table.columns if c.name in live[t]]
+    denied = await (
+        await conn.execute(
+            "WITH p AS (SELECT t, c, has_column_privilege('authenticated', t, c, 'SELECT') AS auth, "
+            "has_column_privilege('anon', t, c, 'SELECT') AS anon "
+            "FROM unnest(%s::text[], %s::text[]) AS p(t, c)) "
+            "SELECT 'authenticated' AS role, t, string_agg(c, ', ' ORDER BY c) AS cols FROM p "
+            "WHERE NOT auth GROUP BY t "
+            "UNION ALL "
+            "SELECT 'anon', t, string_agg(c, ', ' ORDER BY c) FILTER (WHERE NOT anon) FROM p "
+            "GROUP BY t HAVING bool_or(anon) AND NOT bool_and(anon) "
+            "ORDER BY role, t",
+            ([t for t, _ in pairs], [c for _, c in pairs]),
+        )
+    ).fetchall()
+    for row in denied:
+        problems.append(f"{row['t']}: role {row['role']} cannot SELECT catalog column(s): {row['cols']}")
     return problems
 
 

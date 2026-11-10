@@ -1,0 +1,20 @@
+# Fails a PR whose lockfile changes add a package with a known high or critical advisory.
+# Checks only what the PR changes; already-open alerts stay in Security → Dependabot.
+name: Dependency review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

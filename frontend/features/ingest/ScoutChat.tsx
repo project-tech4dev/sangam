@@ -14,7 +14,7 @@ import { SourcePicker } from "./components/SourcePicker";
 import { SourcesCard } from "./components/SourcesCard";
 import { WorkingBoard } from "./components/WorkingBoard";
 import { tasksFor, type ImportAccess, type VaultFile } from "./lib/access";
-import { leadIn, type ImportTask } from "./lib/composePrompt";
+import { isPull, leadIn, type ImportTask } from "./lib/composePrompt";
 import { boardOf } from "./lib/board";
 import { slugsOf } from "./lib/done";
 import { failuresOf } from "./lib/failures";
@@ -49,6 +49,11 @@ const TASKS: { id: ImportTask; title: string; desc: string }[] = [
     id: "news",
     title: "Get the latest news",
     desc: "News about the organisations and funders in Sangam, FCRA, and the CSR sector in the North East.",
+  },
+  {
+    id: "calls",
+    title: "Check open calls",
+    desc: "Read funders' own pages for open calls for proposals, and add them to RFP Watch.",
   },
 ];
 
@@ -122,7 +127,7 @@ export function ScoutChat({
 
   const atStart = turns.length === 0 && !isLoadingHistory;
   const stuck = !isRunning && !paused && waitingOn !== null;
-  const needsSources = atStart && task !== null && task !== "news";
+  const needsSources = atStart && task !== null && !isPull(task);
   const lastSteps = turns[turns.length - 1]?.steps ?? [];
 
   useEffect(() => {

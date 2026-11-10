@@ -53,12 +53,14 @@ person entered has no tier and is never overwritten.
 | whether any of the above is applied for, registered, expired, cancelled, suspended, or could not be checked | `org_identifiers.status` on the identifier's own row — `applied` (a Form 10AB acknowledgement, `application_ref`), `registered`, `expired`, `cancelled`, `suspended`, `not_found`, `check_blocked` (never means valid), with `valid_until` when stated |
 | three years of audited accounts | `org_financials.is_audited` per year, plus a `documents` row each |
 | registration type and date | `orgs.legal_form` (free text), `orgs.registration_date` |
+| registered office | `orgs.registered_address`, and `orgs.registered_location_id` from the `registered` place |
+| the body it belongs to or was spun out of | `orgs.parent_id`, only when Sangam holds that organisation |
 | the deed, MoA or bye-laws themselves | `documents` |
 | three-year revenue | `org_financials.total_income` per year |
 | foreign contribution unspent at year end | `org_financials.foreign_unspent` |
 | website, description, other spellings of the name | `orgs.website`, `orgs.description`, `orgs.aliases` (a spelling another organisation answers to is held) |
 | programme and non-programme spend, foreign contribution | `org_financials` |
-| where it works | `org_locations` with `role`, plus `locations` |
+| where it works, and which programme runs there | `org_locations` with `role` and `program_id`, plus `locations` |
 | programmes, reach, people | `programs`, `metrics`, `contacts` |
 | what a programme works on, for whom | `program_tags` (themes, populations, lenses from the taxonomy) |
 | the focus it states for itself | `org_tags` |
@@ -74,10 +76,11 @@ person entered has no tier and is never overwritten.
 | Pulled | Lands in |
 |---|---|
 | receiving legal entity, and its parent | `funders.name`, `funders.parent_id` |
+| legal form, year founded, registered office | `funders.legal_form`, `founded_year`, `registered_address`, and `registered_location_id` from the `registered` place |
 | district-level geography | `funder_locations` with `role`, plus `locations` |
 | CSR position by year | `funder_csr_years` |
 | project and sector spend | `funder_activity`, `kind='spend'`, with `domain_tag_id` / `theme_tag_id` inferred and `classified_by`, `classification_note` saying from what |
-| implementing partners, and what each received in a year when stated | `funder_activity`, `kind='partner'`, with `amount` (INR) |
+| implementing partners, and what each received in a year when stated | `funder_activity`, `kind='partner'`, with `amount` (INR) and the source's `source_type`, `evidence` |
 | the funder's own programme split | `funder_activity`, `kind='programme'` — never summed with spend lines |
 | the funder's standing eligibility — statutory restatement, its own bar, disqualifiers | one `documents` row, `doc_type='funder_eligibility'`, the text verbatim under three headings, per page |
 | CIN and other names it files under | `funders.cin`, `funders.aliases` |

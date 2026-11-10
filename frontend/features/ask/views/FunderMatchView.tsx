@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { BucketCards, FilterRow, SearchBox } from "@/components/ui";
-import type { MatchList, MatchRow } from "@/lib/api";
+import type { MatchList, MatchRow, MeOut } from "@/lib/api";
 import { useOrgChoices } from "../lib/useOrgChoices";
 import { getMatches, runMatch } from "./funder-match/api";
 import { funderTypeGroup, funderTypeLabel } from "./funder-match/funderType";
 import { shortDate } from "@/lib/format";
+import { setUrlParams } from "@/lib/url";
 import { MatchCard, type ProposalNav } from "./funder-match/MatchCard";
-import { useProposals } from "./proposals/store";
+import { useProposals } from "./proposals/api";
+import { COMING_SOON } from "../lib/comingSoon";
 
 type Bucket = "all" | "strong" | "medium";
 
@@ -18,8 +21,17 @@ const haystack = (m: MatchRow) =>
   [m.funder.name, funderTypeLabel(m.funder.funder_type), ...m.card.reasons.map((r) => r.text)].join(" ").toLowerCase();
 
 /* Every funder ranked for one organisation from its latest saved run; staff, stewards and admins can rerun it. */
-export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: string; name: string }[]; nav: ProposalNav }) {
-  const [orgSlug, setOrgSlug] = useState("");
+export function FunderMatchView({
+  orgs,
+  nav,
+  me: seed = null,
+}: {
+  orgs: { id: number; slug: string; name: string }[];
+  nav: ProposalNav;
+  me?: MeOut | null;
+}) {
+  // In the address, so Back from a proposal opened here returns to the same organisation.
+  const orgParam = useSearchParams().get("org") ?? "";
   const [list, setList] = useState<MatchList | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [bucket, setBucket] = useState<Bucket>("all");
@@ -30,9 +42,10 @@ export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: strin
   const [saved, setSaved] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
 
-  const { me, choices, problem: meProblem } = useOrgChoices(orgs);
+  const { me, choices, problem: meProblem } = useOrgChoices(orgs, seed);
 
-  // The first organisation until one is picked.
+  // The first organisation until one is picked; a slug from the address counts only if it is one of yours.
+  const orgSlug = choices.some((c) => c.slug === orgParam) ? orgParam : "";
   const active = orgSlug || choices[0]?.slug || "";
 
   useEffect(() => {
@@ -53,7 +66,7 @@ export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: strin
     setType("all");
     setProposal("any");
     setQuery("");
-    setOrgSlug(slug);
+    setUrlParams({ org: slug }, "replace");
   }
 
   async function rerun() {
@@ -182,18 +195,22 @@ export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: strin
                 options: [["all", "All funder types"], ...types.map((t): [string, string] => [t, t])],
                 onChange: setType,
               },
-              {
-                key: "proposal",
-                label: "Proposal",
-                value: proposal,
-                defaultValue: "any",
-                options: [
-                  ["any", "Any proposal status"],
-                  ["has", "Has a proposal"],
-                  ["none", "No proposal yet"],
-                ],
-                onChange: setProposal,
-              },
+              ...(COMING_SOON.has("proposals")
+                ? []
+                : [
+                    {
+                      key: "proposal",
+                      label: "Proposal",
+                      value: proposal,
+                      defaultValue: "any",
+                      options: [
+                        ["any", "Any proposal status"],
+                        ["has", "Has a proposal"],
+                        ["none", "No proposal yet"],
+                      ] as [string, string][],
+                      onChange: setProposal,
+                    },
+                  ]),
             ]}
           />
           <SearchBox value={query} onChange={setQuery} placeholder="Search funders and reasons…" />
@@ -204,7 +221,7 @@ export function FunderMatchView({ orgs, nav }: { orgs: { id: number; slug: strin
           {shown.length === 0 ? (
             <div className="muted">No funders match these filters for {list.org.name}.</div>
           ) : (
-            shown.map((m) => <MatchCard key={m.id} match={m} rank={ranked.indexOf(m) + 1} org={list.org} nav={nav} />)
+            shown.map((m) => <MatchCard key={m.id} match={m} rank={ranked.indexOf(m) + 1} org={list.org} nav={nav} mayStart={list.may_run} />)
           )}
 
           {atDefault && folded.length > 0 && (

@@ -70,7 +70,10 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
   },
   run_import_now: {
     label: "Importing",
-    detail: (a) => [a?.funders, a?.years].filter(Boolean).join(" · ") || a?.goal || "",
+    detail: (a) =>
+      String(a?.sources ?? "").includes("funder_calls")
+        ? `Open calls · ${a?.funders || "every funder"}`
+        : [a?.funders, a?.years].filter(Boolean).join(" · ") || a?.goal || "",
   },
   import_run_summary: {
     label: "Reading a run report",

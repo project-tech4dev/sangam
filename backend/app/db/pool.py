@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from typing import Annotated
 
 from fastapi import Depends, Request
 from psycopg import AsyncConnection
 from psycopg_pool import AsyncConnectionPool
+
+from app.core.config import get_settings
 
 # Set once by the lifespan. Agent tools read it through get_pool() because they
 # run outside any request; routers should take PoolDep instead.
@@ -27,6 +30,23 @@ def get_pool() -> AsyncConnectionPool:
 OwnerPoolDep = Annotated[AsyncConnectionPool, Depends(get_pool)]
 
 
+_SET_CALLER = "SELECT set_config('role', %s, true), set_config('request.jwt.claims', %s, true)"
+# REST's caller plus its statement timeout, in the same round trip. Not in set_caller: Ask's executor calls
+# that after setting its own, lower timeout, and this would raise it.
+_SET_REST_CALLER = _SET_CALLER + ", set_config('statement_timeout', %s, true)"
+
+
+async def set_caller(conn: AsyncConnection, role: str, claims: str) -> None:
+    """Run the rest of this transaction as the caller, so RLS applies. SET LOCAL: it ends with the transaction."""
+    await conn.execute(_SET_CALLER, (role, claims))
+
+
+# The (role, claims) an Ask Sangam run queries as, set per /agent request. Unset, its SQL runs as anon.
+agent_caller: ContextVar[tuple[str, str] | None] = ContextVar("agent_caller", default=None)
+# Tables whose caveats Ask's SQL tools have given in full this turn; a fresh set per /agent request. Unset, every result gives them.
+caveats_given: ContextVar[set[str] | None] = ContextVar("caveats_given", default=None)
+
+
 class CallerPool:
     """The shared pool, with every connection running as the caller rather than the owner.
 
@@ -36,18 +56,16 @@ class CallerPool:
     and the agent tools, which share it, never inherit a caller.
     """
 
-    def __init__(self, pool: AsyncConnectionPool, *, role: str, claims: str):
+    def __init__(self, pool: AsyncConnectionPool, *, role: str, claims: str, timeout_ms: int | None = None):
         self._pool = pool
         self._role = role
         self._claims = claims
+        self._timeout_ms = timeout_ms if timeout_ms is not None else get_settings().db_statement_timeout_ms
 
     @asynccontextmanager
     async def connection(self) -> AsyncIterator[AsyncConnection]:
         async with self._pool.connection() as conn, conn.transaction():
-            await conn.execute(
-                "SELECT set_config('role', %s, true), set_config('request.jwt.claims', %s, true)",
-                (self._role, self._claims),
-            )
+            await conn.execute(_SET_REST_CALLER, (self._role, self._claims, str(self._timeout_ms)))
             yield conn
 
 
@@ -57,6 +75,6 @@ def get_caller_pool(request: Request, owner: OwnerPoolDep) -> CallerPool:
     return CallerPool(owner, role=getattr(state, "db_role", "anon"), claims=getattr(state, "db_claims", ""))
 
 
-# What every router takes. A route runs as its caller without asking; agent tools, which run outside any
-# request, keep the owner through get_pool() until Ask Sangam runs as the caller too (step 8).
+# What every router takes. A route runs as its caller without asking; Ask Sangam's SQL tools, which run
+# outside any request, take the caller from agent_caller instead.
 PoolDep = Annotated[CallerPool, Depends(get_caller_pool)]

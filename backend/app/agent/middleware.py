@@ -3,34 +3,49 @@
 from __future__ import annotations
 
 import logging
+import math
+from dataclasses import dataclass, replace
 
 from langchain.agents.middleware import (
     AgentMiddleware,
     ClearToolUsesEdit,
     ContextEditingMiddleware,
     HumanInTheLoopMiddleware,
+    ToolErrorMiddleware,
     after_agent,
     before_model,
 )
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
 from app.agent.audit import CAVEAT_PREFIX, audit_turn
-from app.agent.tools.sql.errors import FAILED_PREFIX, REJECTED_PREFIX
+from app.agent.tools.sql.errors import (
+    FAILED_PREFIX,
+    PROFILE_FAILED_PREFIX,
+    PROFILE_REJECTED_PREFIX,
+    REJECTED_PREFIX,
+)
 from app.integrations.tracing import score_answer
 
 logger = logging.getLogger(__name__)
 
-# Failed db_query attempts allowed per user question. The system prompt is told the same number so the model
-# stops gracefully first; this is the deterministic backstop for when it does not.  Only db_query counts.
+# Failed SQL attempts allowed per user question. The system prompt is told the same number so the model
+# stops gracefully first; this is the deterministic backstop for when it does not.
 MAX_SQL_ATTEMPTS = 5
 
-COUNTED_TOOL = "db_query"
-_FAILURE_PREFIXES = (FAILED_PREFIX, REJECTED_PREFIX)
+# A wrong column in db_profile_column is the same failed attempt as in db_query, so both count.
+COUNTED = {
+    "db_query": (FAILED_PREFIX, REJECTED_PREFIX),
+    "db_profile_column": (PROFILE_FAILED_PREFIX, PROFILE_REJECTED_PREFIX),
+}
 
 # Bulky old result grids are dead weight once the model has read them, but the
 # most recent few are what a follow-up question refers back to.
-TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 40_000
+TOOL_RESULT_CLEAR_TRIGGER_TOKENS = 60_000
 TOOL_RESULTS_KEPT = 5
+# Clearing grows in steps of this size, so the cleared set (and the cached prefix) moves once per step.
+TOOL_RESULTS_CLEAR_STEP = 20_000
+# compare_fit is bounded and is what the write-up reads; clearing it made the model call it again.
+NEVER_CLEARED = ("compare_fit",)
 
 _GIVE_UP = (
     "I tried a few ways to query this but couldn't get a working result. Could you "
@@ -40,16 +55,16 @@ _GIVE_UP = (
 
 
 def count_failed_sql_attempts(messages: list[BaseMessage]) -> int:
-    """Failed db_query calls since the user's most recent message."""
+    """Failed db_query and db_profile_column calls since the user's most recent message."""
     failures = 0
     for message in reversed(messages):
         if isinstance(message, HumanMessage):
             break
         if (
             isinstance(message, ToolMessage)
-            and message.name == COUNTED_TOOL
+            and message.name in COUNTED
             and isinstance(message.content, str)
-            and message.content.startswith(_FAILURE_PREFIXES)
+            and message.content.startswith(COUNTED[message.name])
         ):
             failures += 1
     return failures
@@ -65,13 +80,117 @@ def sql_retry_limiter(state, runtime):
     return {"messages": [AIMessage(content=_GIVE_UP)], "jump_to": "end"}
 
 
+_CAPPED = (
+    "I've spent the steps I allow myself on one question without finishing it. Could you ask a narrower "
+    "question, or one part of it at a time?"
+)
+
+
+def _this_turn(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """The messages since the user's most recent one."""
+    for i in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[i], HumanMessage):
+            return messages[i + 1:]
+    return messages
+
+
+def model_call_cap(limit: int):
+    """End a turn that has made `limit` model calls: a runaway question stops here, not at recursion_limit."""
+
+    @before_model(can_jump_to=["end"], name="ModelCallCap")
+    def _cap(state, runtime):
+        calls = sum(isinstance(m, AIMessage) for m in _this_turn(state["messages"]))
+        if calls < limit:
+            return None
+        logger.info("model call cap reached after %d calls", calls)
+        return {"messages": [AIMessage(content=_CAPPED)], "jump_to": "end"}
+
+    return _cap
+
+
+# compare_fit's own description allows a second call, for weak funders in full; four calls is the trace 5bfdbc85 loop.
+MAX_COMPARE_FIT_CALLS = 3
+COMPARE_FIT = "compare_fit"
+
+
+def _fit_key(args: dict) -> tuple:
+    ids = args.get("funder_ids")
+    return args.get("org_id"), tuple(sorted(ids)) if isinstance(ids, list) else ids
+
+
+def compare_fit_refusal(messages: list[BaseMessage], call: dict) -> str | None:
+    """Why this compare_fit call is refused: the same arguments again this turn, or one call too many."""
+    seen: list[tuple] = []
+    for message in _this_turn(messages):
+        for tc in getattr(message, "tool_calls", None) or []:
+            if tc["name"] != COMPARE_FIT:
+                continue
+            if tc["id"] == call.get("id"):
+                if _fit_key(tc["args"]) in seen:
+                    return ("compare_fit refused a repeat: it already ran with these arguments this turn. "
+                            "Answer from that result; it has not changed.")
+                if len(seen) >= MAX_COMPARE_FIT_CALLS:
+                    return (f"compare_fit refused: {MAX_COMPARE_FIT_CALLS} calls is the most for one question. "
+                            "Answer from the results you have.")
+                return None
+            seen.append(_fit_key(tc["args"]))
+    return None
+
+
+class CompareFitBudget(AgentMiddleware):
+    """Refuses a repeated or surplus compare_fit in code, where rule 14 only asks."""
+
+    def _refusal(self, request) -> ToolMessage | None:
+        call = request.tool_call
+        if call.get("name") != COMPARE_FIT:
+            return None
+        state = request.state
+        messages = state["messages"] if isinstance(state, dict) else state.messages
+        why = compare_fit_refusal(messages, call)
+        return ToolMessage(content=why, tool_call_id=call.get("id") or "", name=COMPARE_FIT, status="error") \
+            if why else None
+
+    def wrap_tool_call(self, request, handler):
+        return self._refusal(request) or handler(request)
+
+    async def awrap_tool_call(self, request, handler):
+        return self._refusal(request) or await handler(request)
+
+
+@dataclass(slots=True)
+class SteppedClearToolUsesEdit(ClearToolUsesEdit):
+    """Past the trigger, reclaim whole steps: a fixed clear_at_least clears the same few results forever."""
+
+    step: int = TOOL_RESULTS_CLEAR_STEP
+
+    def apply(self, messages, *, count_tokens) -> None:
+        over = count_tokens(messages) - self.trigger
+        if over <= 0:
+            return
+        reclaim = math.ceil(over / self.step) * self.step
+        ClearToolUsesEdit.apply(replace(self, clear_at_least=reclaim), messages, count_tokens=count_tokens)
+
+
+def _tool_failed(exc: Exception, request) -> str:
+    name = request.tool_call.get("name") or "tool"
+    logger.warning("%s raised past its own try/except", name, exc_info=exc)
+    # The type only: a raw message can carry SQL, paths or keys.
+    return f"{name} failed: {type(exc).__name__}. Try another way, or tell the person what could not be done."
+
+
+def tool_errors() -> ToolErrorMiddleware:
+    """Backstop for the tools' try/except convention: a tool that raises answers the model instead of ending the run."""
+    return ToolErrorMiddleware(_tool_failed)
+
+
 def clear_old_tool_results() -> ContextEditingMiddleware:
     """Drop bulky old tool output from the request once context grows large."""
     return ContextEditingMiddleware(
         edits=[
-            ClearToolUsesEdit(
+            SteppedClearToolUsesEdit(
                 trigger=TOOL_RESULT_CLEAR_TRIGGER_TOKENS,
                 keep=TOOL_RESULTS_KEPT,
+                exclude_tools=NEVER_CLEARED,
             )
         ]
     )

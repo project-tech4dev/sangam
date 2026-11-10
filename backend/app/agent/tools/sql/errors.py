@@ -15,6 +15,8 @@ _CARET_WINDOW = 40
 # with these, so they are a wire format, not just wording.
 REJECTED_PREFIX = "db_query rejected:"
 FAILED_PREFIX = "db_query failed:"
+PROFILE_REJECTED_PREFIX = "db_profile_column rejected:"
+PROFILE_FAILED_PREFIX = "db_profile_column failed:"
 
 
 def _columns_of(table: str) -> str:

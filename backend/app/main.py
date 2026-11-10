@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,6 +14,17 @@ from app.core.config import Settings, get_settings
 from app.core.lifespan import build_lifespan
 from app.core.logging import configure_logging
 from app.core.security import AuthMiddleware
+from app.db import pool as db_pool
+
+# Counts only, so an open path may show them: whether requests are queuing for a connection.
+_POOL_STATS = ("pool_max", "pool_size", "pool_available", "requests_waiting", "requests_errors", "connections_errors")
+
+
+def _pool_stats() -> dict[str, Any]:
+    if db_pool.pool is None:
+        return {}
+    stats = db_pool.pool.get_stats()
+    return {"pool": {key: stats.get(key, 0) for key in _POOL_STATS}}
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -44,8 +57,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return JSONResponse({"detail": "Not allowed"}, status_code=403)
 
     @app.get("/health")
-    async def health() -> dict[str, str]:
-        return {"status": "ok"}
+    async def health() -> dict[str, Any]:
+        return {"status": "ok", **_pool_stats()}
 
     return app
 
