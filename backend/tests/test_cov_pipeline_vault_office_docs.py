@@ -11,7 +11,8 @@ import pytest
 from docx import Document
 from openpyxl import Workbook
 
-from app.ingest import office, render_docs, vault
+from app.core import extract
+from app.ingest import render_docs, vault
 from app.integrations import storage
 
 
@@ -78,21 +79,21 @@ def pptx_bytes(slides):
 class TestOffice:
     def test_docx_paragraphs_and_tables_in_order(self):
         data = docx_bytes(["Intro", "  ", "After"], table=[["A", "B", "C"], ["", "", ""], ["1", "2", "3"]])
-        assert office.docx_paragraphs(data) == ["Intro", "After", "A\nB | C", "1 | 2 | 3"]  # a merged cell once
+        assert extract.docx_paragraphs(data) == ["Intro", "After", "A\nB | C", "1 | 2 | 3"]  # a merged cell once
 
     def test_pptx_slides_in_presentation_order_with_table_rows(self):
         data = pptx_bytes([["Our work", "Udalguri"], [], [[["District", "SHGs"], ["Baksa", "27"]]]])
-        assert office.pptx_slides(data) == ["Our work\nUdalguri", "", "District | SHGs\nBaksa | 27"]
+        assert extract.pptx_slides(data) == ["Our work\nUdalguri", "", "District | SHGs\nBaksa | 27"]
 
     def test_docx_range_numbers_paragraphs_like_pages(self):
         data = docx_bytes(["Intro", "Budget", "After"], table=[["Item", "Cost", "x"], ["Books", "500", "y"]])
-        assert office.docx_range(data, 2, 4) == ("[para 2] Budget\n[para 3] After\n[para 4] Item\nCost | x", 5)
-        assert office.docx_range(data, 9) == ("", 5)
+        assert extract.docx_range(data, 2, 4) == ("[para 2] Budget\n[para 3] After\n[para 4] Item\nCost | x", 5)
+        assert extract.docx_range(data, 9) == ("", 5)
 
     def test_xlsx_markdown_caps_rows(self, monkeypatch):
-        monkeypatch.setattr(office, "SHEET_ROWS", 2)
+        monkeypatch.setattr(extract, "SHEET_ROWS", 2)
         data = xlsx_bytes([["a", None], [None, None], ["b", 2], ["c", 3]], title="Grants")
-        assert office.xlsx_markdown(data) == "## Grants\na | \n… first 2 rows only"
+        assert extract.xlsx_markdown(data) == "## Grants\na | \n… first 2 rows only"
 
 
 DOC = {"id": 12, "org_id": 3, "title": "Annual report", "doc_type": "annual_report", "storage_path": "org-vault/3/ar.pdf"}
@@ -100,18 +101,18 @@ DOC = {"id": 12, "org_id": 3, "title": "Annual report", "doc_type": "annual_repo
 
 class TestTextLines:
     def test_a_long_line_is_split_at_a_space(self):
-        lines = office.text_lines(("word " * 1000).encode())
-        assert len(lines) == 3 and all(len(line) <= office.LINE_MAX for line in lines)
+        lines = extract.text_lines(("word " * 1000).encode())
+        assert len(lines) == 3 and all(len(line) <= extract.LINE_MAX for line in lines)
 
     def test_a_line_with_no_space_is_split_hard(self):
-        assert [len(line) for line in office.text_lines(b"x" * 4500)] == [2000, 2000, 500]
+        assert [len(line) for line in extract.text_lines(b"x" * 4500)] == [2000, 2000, 500]
 
     def test_a_range_numbers_lines_and_skips_blank_ones(self):
-        text, total = office.text_range(b"one\n\nthree\nfour", 2, 3)
+        text, total = extract.text_range(b"one\n\nthree\nfour", 2, 3)
         assert (text, total) == ("[line 3] three", 4)
 
     def test_bad_bytes_do_not_raise(self):
-        assert office.text_range(b"caf\xe9", 1)[0] == "[line 1] caf\ufffd"
+        assert extract.text_range(b"caf\xe9", 1)[0] == "[line 1] caf\ufffd"
 
 
 class TestVaultUrls:

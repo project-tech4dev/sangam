@@ -9,6 +9,7 @@ import pytest
 from pypdf import PdfWriter
 
 from app.agent.tools import files
+from app.core import extract
 from app.core.egress import EgressRefused
 
 
@@ -35,7 +36,7 @@ def test_downloads_dir_is_created(tmp_downloads):
     ("an ordinary line of text", "an ordinary line of text"),
 ])
 def test_letter_spaced_lines_are_collapsed(line, expected):
-    assert files._normalize_line(line) == expected
+    assert extract._normalize_line(line) == expected
 
 
 async def test_download_saves_the_file_and_hints_read_pdf(monkeypatch, tmp_downloads):
@@ -112,26 +113,26 @@ class _Page:
 
 
 def _fake_reader(monkeypatch, pages):
-    monkeypatch.setattr(files, "PdfReader", lambda path: SimpleNamespace(pages=[_Page(t) for t in pages]))
+    monkeypatch.setattr(extract, "PdfReader", lambda path: SimpleNamespace(pages=[_Page(t) for t in pages]))
 
 
 def test_extract_reads_the_range_and_normalises(monkeypatch, tmp_path):
     _fake_reader(monkeypatch, ["one", None, "H E L L O  T H E R E", "four"])
-    text, total = files.extract_pdf_text(tmp_path / "x.pdf", 0, 3)
+    text, total = extract.extract_pdf_text(tmp_path / "x.pdf", 0, 3)
     assert total == 4
     assert text == "--- page 1 ---\none\n\n--- page 3 ---\nHELLO THERE"
 
 
 def test_extract_stops_early_on_a_long_document(monkeypatch, tmp_path):
-    _fake_reader(monkeypatch, ["x" * (files.PDF_TEXT_CHARS * 3), "never read"])
-    text, _ = files.extract_pdf_text(tmp_path / "x.pdf")
+    _fake_reader(monkeypatch, ["x" * (extract.PDF_TEXT_CHARS * 3), "never read"])
+    text, _ = extract.extract_pdf_text(tmp_path / "x.pdf")
     assert "never read" not in text
 
 
 def test_read_pdf_truncates_long_text(monkeypatch, tmp_downloads):
     files.downloads_dir()
     (tmp_downloads / "long.pdf").write_bytes(b"")
-    _fake_reader(monkeypatch, ["y" * (files.PDF_TEXT_CHARS + 10)])
+    _fake_reader(monkeypatch, ["y" * (extract.PDF_TEXT_CHARS + 10)])
     out = files.read_pdf.invoke({"filename": "long.pdf"})
     assert out.startswith("[long.pdf: 1 pages]") and "[truncated — 1 pages total" in out
 

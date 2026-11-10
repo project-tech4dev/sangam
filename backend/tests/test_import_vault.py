@@ -15,10 +15,10 @@ from langgraph.types import Command
 
 from app.agent.harness import filesystem
 from app.core.security import CallerScope
-from app.ingest import review, vault
+from app.ingest import catalog_save, review, vault
 from app.ingest.middleware import DropFilesOnExit
 from app.ingest.research_records import VaultResearch
-from app.ingest.tools import catalog_tools, vault_tools
+from app.ingest.tools import vault_tools
 from tests.test_import_roles import MEMBER, STAFF, STEWARD, _Conn, _Pool, running_as
 
 DOC = vault.url(12)
@@ -170,7 +170,7 @@ VAULTS = [{"org_id": 7, "findings": [finding("rfp")], "documents_read": [12], "t
 class TestTheVaultJoinsTheResearch:
     async def _rows(self, scope, vault_on=True):
         pool = _RoutedPool([dict(RESEARCH)], VAULTS)
-        return (await catalog_tools._research_rows(pool, "acme-foundation", scope, vault=vault_on))[0]
+        return (await catalog_save.research_rows(pool, "acme-foundation", scope, vault=vault_on))[0]
 
     async def test_a_member_gets_its_own_orgs_findings_only(self):
         row = await self._rows(MEMBER)
@@ -261,7 +261,7 @@ class TestTheVaultTable:
 
         pool = _PoolOf(db)
         row = {"slug": "no-such-funder", "entity_name": "No Such Funder", "findings": []}
-        assert await catalog_tools._with_vault(pool, row, STAFF) == row
+        assert await catalog_save._with_vault(pool, row, STAFF) == row
         assert await vault.in_vault(pool, 1, {1}) <= {1}
         assert isinstance(await vault.documents(pool, 1), list)
 
@@ -284,6 +284,6 @@ class TestTheVaultTable:
                 "SELECT count(*) AS n FROM vault_research WHERE slug = 'zz-vault-test-funder'")).fetchone()
             assert (n["n"] if isinstance(n, dict) else n[0]) == 1
             row = {"slug": "zz-vault-test-funder", "entity_name": "Zz Vault Test Funder", "findings": []}
-            assert (await catalog_tools._with_vault(_PoolOf(db), row, STAFF))["vault"][0]["org_id"] == org_id
+            assert (await catalog_save._with_vault(_PoolOf(db), row, STAFF))["vault"][0]["org_id"] == org_id
         finally:
             await db.execute("DELETE FROM vault_research WHERE slug = 'zz-vault-test-funder'")

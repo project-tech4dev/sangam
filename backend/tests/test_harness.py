@@ -339,9 +339,9 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         from langchain_core.messages import AIMessage, ToolMessage
         from langgraph.prebuilt.tool_node import ToolCallRequest
 
-        from app.agent.middleware import STAFF_LOCK_REPLY
         from app.core.config import get_settings
         from app.ingest.agent import build_ingest_agent
+        from app.ingest.middleware import STAFF_LOCK_REPLY
 
         task = build_ingest_agent(get_settings(), None).nodes["tools"].bound.tools_by_name["task"]
         graphs = next(c.cell_contents for c in (task.func or task.coroutine).__closure__

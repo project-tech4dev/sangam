@@ -143,19 +143,17 @@ class TestRobots:
 
 class TestNoteProposal:
     async def test_the_host_is_normalised_and_upserted(self, monkeypatch):
-        import app.db.pool as pool_module
         monkeypatch.undo()  # the autouse fixture stubbed _note_proposal itself
         pool = ScriptPool(ScriptConn())
-        monkeypatch.setattr(pool_module, "get_pool", lambda: pool)
+        monkeypatch.setattr(access, "get_pool", lambda: pool)
         await access._note_proposal("WWW.Example.org", "https://www.example.org/a", robots_result="allowed")
         [(_sql, params)] = pool.conn.sql("INSERT INTO ingest_source_proposals")
         assert params == ("example.org", "https://www.example.org/a", "allowed")
         assert pool.conn.sql("lock_timeout")
 
     async def test_a_failure_is_swallowed(self, monkeypatch):
-        import app.db.pool as pool_module
         monkeypatch.undo()
-        monkeypatch.setattr(pool_module, "get_pool", lambda: BrokenPool())
+        monkeypatch.setattr(access, "get_pool", lambda: BrokenPool())
         assert await access._note_proposal("a.org", "https://a.org", robots_result="allowed") is None
 
 

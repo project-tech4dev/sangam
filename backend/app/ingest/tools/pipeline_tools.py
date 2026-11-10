@@ -17,6 +17,9 @@ from app.core.config import get_settings
 from app.db.pool import get_pool
 from app.ingest import staff_sources, vault
 from app.ingest.caller import scope, staff_only
+from app.ingest.calls import pull
+from app.ingest.news import pipeline
+from app.ingest.news.feeds import chosen_feeds
 from app.ingest.run_sources import Sources
 from app.ingest.runner import PARKED, catalog_baseline, record_item, run_import, runnable_for, summarise
 from app.ingest.sources import SOURCES, Category, resolve
@@ -177,9 +180,6 @@ async def plan_import(funders: str = "", years: str = "", sources: str = "", lim
 
 async def _news_plan_line(names: list[str] | None, feeds: str = "") -> str:
     """What a news pull would search and cost, in the plan's own words."""
-    from app.ingest.news import pipeline
-    from app.ingest.news.feeds import chosen_feeds
-
     chosen = await pipeline.select(get_pool(), names, chosen_feeds(feeds))
     if names and not chosen.matched:
         return "tavily_news: none of those names is in the Registry; nothing would be pulled."
@@ -191,8 +191,6 @@ async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: 
                      feeds: list[str] | None = None) -> str:
     """A news pull for named Registry records, or everyone; Scout's approval card was the person's check.
     Other sources named in the same call are refused out loud."""
-    from app.ingest.news import pipeline
-
     pool, settings = get_pool(), get_settings()
     chosen = await pipeline.select(pool, names, feeds)
     if names and not chosen.matched:
@@ -210,8 +208,6 @@ async def _news_pull(names: list[str] | None, *, goal: str, started_by, others: 
 
 async def _calls_pull(names: list[str] | None, *, others: list[str]) -> str:
     """The open-calls pull (`make calls-pull`) for named funders, or every funder; the approval card was the check."""
-    from app.ingest.calls import pull
-
     pool, lines = get_pool(), []
     slugs = None
     if names:
@@ -268,8 +264,6 @@ async def run_import_now(
             return "run_import_now needs a goal: one sentence on what this run is for."
         names = [n.strip() for n in funders.split(",") if n.strip()] or None
         if keys and "tavily_news" in keys:
-            from app.ingest.news.feeds import chosen_feeds
-
             caller = scope()
             return await _news_pull(names, feeds=chosen_feeds(feeds), goal=goal.strip(), started_by=caller.user_id,
                                     others=[k for k in keys if k != "tavily_news"])

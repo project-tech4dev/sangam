@@ -32,7 +32,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.core.config import get_settings
 from app.db.pool import OwnerPoolDep, agent_caller, caveats_given, get_pool
 from app.repositories import me as me_repo
-from app.repositories import threads
+from app.repositories import proposals, threads
 from app.repositories import users as repo
 
 logger = logging.getLogger(__name__)
@@ -331,8 +331,6 @@ async def proposal_chat_access(
     request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
 ) -> None:
     """Your own chat about a proposal you may change: someone else's thread or org is 404, a member is 403."""
-    from app.repositories import proposals
-
     try:
         run = RunAgentInput.model_validate(await request.json())
     except (ValueError, ValidationError):
