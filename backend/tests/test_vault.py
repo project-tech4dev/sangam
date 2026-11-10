@@ -302,6 +302,25 @@ class TestDownloading:
             response = await client.get("/api/documents/7/file")
         assert response.status_code == 404
 
+    @pytest.mark.parametrize("path, org_id, public", [
+        ("org-vault/4/abc-x.pdf", 3, False),
+        ("org-vault/33/abc-x.pdf", 3, False),
+        ("org-vault/3/abc-x.pdf", None, True),
+        ("staff-sources/kabil/x.xlsx", 3, False),
+    ])
+    async def test_a_row_naming_a_file_outside_its_org_is_a_404(
+        self, client_for, monkeypatch, storage_on, path, org_id, public
+    ):
+        """A member could write such a row; it must not buy a signed link to another org's file."""
+        async def fake_row(pool, *, document_id, user_id):
+            return {"id": 7, "title": "x", "storage_path": path, "is_public": public, "org_id": org_id}
+
+        monkeypatch.setattr(f"{ROUTE}.repo.readable_document", fake_row)
+        monkeypatch.setattr(f"{ROUTE}.storage.signed_url", lambda b, k: pytest.fail("signed another org's file"))
+        async with client_for(documents_api.router) as client:
+            response = await client.get("/api/documents/7/file")
+        assert response.status_code == 404
+
     async def test_a_document_with_no_file_is_a_404(self, client_for, monkeypatch, storage_on):
         async def fake_row(pool, *, document_id, user_id):
             return {"id": 7, "title": "x", "storage_path": None, "is_public": True, "org_id": None}

@@ -253,6 +253,10 @@ class TestReadingTheForm:
 
     @pytest.mark.parametrize("doc, data, outline, said", [
         (None, b"", [], "no copy"),
+        ({"title": "rf.pdf", "storage_path": "org-vault/9/rf.pdf", "org_id": 7, "is_public": False}, _pdf(1), [],
+         "no copy"),
+        ({"title": "rf.xlsx", "storage_path": "staff-sources/rf.pdf", "org_id": 7, "is_public": False}, _pdf(1), [],
+         "no copy"),
         ({"title": "rf.pdf", "storage_path": "sangam-library/rf.pdf"}, None, [], "could not be downloaded"),
         ({"title": "rf.pdf", "storage_path": "sangam-library/rf.pdf"}, _pdf(1), [heading(label="PAN", kind="field")],
          "no questions to answer in writing"),

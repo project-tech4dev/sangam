@@ -197,13 +197,11 @@ async def document_file(
     row = await repo.readable_document(pool, document_id=document_id, user_id=user_id)
     # One 404 for "no such document" and "not yours": whether a private
     # document exists is itself private.
-    if row is None or not row["storage_path"]:
+    if row is None:
         raise HTTPException(404, f"document {document_id} has no readable file")
-    parts = storage.split(row["storage_path"])
+    # The row is readable, but its path is only trusted inside the row's own org folder.
+    parts = storage.owned_split(row["storage_path"], org_id=row["org_id"], is_public=row["is_public"])
     if parts is None:
-        raise HTTPException(404, f"document {document_id} has no readable file")
-    # Only the upload script writes staff-sources paths, always on a private, org-less row.
-    if parts[0] == storage.STAFF_SOURCES and (row["is_public"] or row["org_id"] is not None):
         raise HTTPException(404, f"document {document_id} has no readable file")
     url = await storage.signed_url(*parts)
     if url is None:
