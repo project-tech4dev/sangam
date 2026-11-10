@@ -130,6 +130,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-12 · #181 · One read policy each on `users` and `org_members`, three FK indexes.
 - 2026-10-14 · Each agent route declares its access in `AGENT_ACCESS`; a route with none fails at boot instead of falling back.
 - 2026-10-15 · Only a thread's owner may post a turn in it, staff included, so rows read as one user are never replayed to another.
+- 2026-11-10 · (unmerged) · Scout's `save_research` saves an NGO's research only for staff or a steward of the NGO it writes to (by match or slug), and `funder_dossier` applies RLS on the owner pool: private contacts, documents and registrations to staff and their own org, private `funder_activity` lines and hidden funders to staff (#328).
 
 ## Frontend and design system
 

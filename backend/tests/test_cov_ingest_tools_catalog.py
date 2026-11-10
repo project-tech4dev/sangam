@@ -14,7 +14,7 @@ from app.ingest.matcher import Match
 from app.ingest.tools import catalog_tools
 from app.ingest.writer import UNWRITTEN
 from tests.cov_ingest_fakes import BrokenPool, ScriptPool, running_as
-from tests.test_import_roles import ARPAN_STEWARD, MEMBER, STAFF
+from tests.test_import_roles import ARPAN_STEWARD, KABIL_STEWARD, MEMBER, STAFF
 
 PUBLIC = "https://example.org/csr"
 STAFF_URL = "https://staff-sources.sangam.invalid/12"
@@ -71,6 +71,49 @@ class TestDossier:
     async def test_a_failure_is_returned(self, monkeypatch):
         monkeypatch.setattr(catalog_tools, "get_pool", lambda: BrokenPool())
         assert await catalog_tools.funder_dossier.ainvoke({"name": "Acme"}) == "funder_dossier failed: database down"
+
+
+class TestDossierScope:
+    """Scout reads on the owner pool, so the dossier applies RLS itself: two stewards of different NGOs."""
+
+    ARPAN = {**ACME, "id": 7, "name": "Arpan", "slug": "arpan"}
+
+    async def dossier(self, scope, name="Arpan", kind="org"):
+        with running_as(scope):
+            return await catalog_tools.funder_dossier.ainvoke({"name": name, "entity_kind": kind})
+
+    @pytest.mark.parametrize(("scope", "shown"), [(ARPAN_STEWARD, True), (KABIL_STEWARD, False), (STAFF, True)])
+    async def test_an_ngos_private_contact_is_its_own_people_and_staffs(self, monkeypatch, pool, scope, shown):
+        pool.conn.on("FROM orgs", [self.ARPAN])
+        pool.conn.on("FROM contacts", [{"name": "Asha", "role": "director", "_public": False, "_org": 7},
+                                       {"name": "Ravi", "role": "president", "_public": True, "_org": 7}])
+        resolves(monkeypatch, Match("exact", 7))
+        out = await self.dossier(scope)
+        assert "name=Ravi role=president" in out and ("Asha" in out) is shown
+        assert "_public" not in out and "_org" not in out
+
+    @pytest.mark.parametrize(("scope", "shown"), [(ARPAN_STEWARD, False), (KABIL_STEWARD, False), (STAFF, True)])
+    async def test_a_private_partner_line_is_staffs_only(self, monkeypatch, pool, scope, shown):
+        pool.conn.on("FROM funders", [ACME])
+        pool.conn.on("kind = 'partner'", [{"partner_name": "Arpan", "partner_org_id": 7, "_public": False}])
+        resolves(monkeypatch, Match("exact", 4))
+        out = await self.dossier(scope, "Acme", "funder")
+        assert ("partner_name=Arpan" in out) is shown
+        assert shown or "kind='partner' (named partners" in out and "NOT RECORDED" in out
+
+    @pytest.mark.parametrize(("scope", "shown"), [(ARPAN_STEWARD, False), (STAFF, True)])
+    async def test_a_hidden_funder_is_not_found_but_by_staff(self, monkeypatch, pool, scope, shown):
+        pool.conn.on("FROM funders", [{**ACME, "registry_status": "hidden"}])
+        resolves(monkeypatch, Match("exact", 4))
+        out = await self.dossier(scope, "Acme", "funder")
+        assert out.startswith("funders [funder:4]") is shown
+        assert shown or out.startswith("No funder in the catalog matches 'Acme'") and "Acme Foundation" not in out
+
+    @pytest.mark.parametrize(("scope", "shown"), [(ARPAN_STEWARD, True), (KABIL_STEWARD, False), (STAFF, True)])
+    async def test_a_hidden_ngo_is_its_own_peoples(self, monkeypatch, pool, scope, shown):
+        pool.conn.on("FROM orgs", [{**self.ARPAN, "registry_status": "hidden"}])
+        resolves(monkeypatch, Match("identifier", 7))
+        assert (await self.dossier(scope)).startswith("orgs [org:7] Arpan") is shown
 
 
 class TestResearchGoals:
