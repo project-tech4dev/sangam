@@ -369,9 +369,8 @@ def _where(f: Filters, reg_ids: list[int] | None) -> tuple[str, dict]:
 
 
 async def registry_page_sql(pool: Any, owner: Any, f: Filters, *, limit: int, offset: int) -> dict:
-    """One page of what `f` keeps (CSOs first, then funders, each A→Z), with the cards' counts and the dropdowns.
-
-    Filtered, sorted, counted and cut in Postgres; details are read for that page only."""
+    """One page of what `f` keeps (CSOs first, then funders, each A→Z), its total, and on the first page only the
+    cards' counts and the dropdowns, which change with the filters and not with scrolling."""
     reg_ids = await _registered(owner, _REG_NEEDS[f.reg]) if f.kind == "org" and f.reg in _REG_NEEDS else None
     where, params = _where(f, reg_ids)
     sql = f"""
@@ -382,18 +381,25 @@ page AS (
          kind <> 'org' AS k1, lower(name) COLLATE "C" AS k2
   FROM kept ORDER BY k1, k2, id LIMIT %(limit)s OFFSET %(offset)s
 ),
-facets AS ({_FACETS})
+facets AS (SELECT * FROM ({_FACETS}) f WHERE %(with_facets)s)
 SELECT (SELECT count(*) FROM kept) AS total,
        (SELECT coalesce(json_agg(page ORDER BY k1, k2, id), '[]') FROM page) AS page,
        (SELECT coalesce(json_agg(facets), '[]') FROM facets) AS facets"""
+    query = {**params, "limit": limit, "offset": offset, "with_facets": offset == 0}
     async with pool.connection() as conn:
-        res = await (await conn.execute(sql, {**params, "limit": limit, "offset": offset})).fetchone()
+        res = await (await conn.execute(sql, query)).fetchone()
         page = res["page"]
         items = await _rows(conn, [e for e in page if e["kind"] == "org"], [e for e in page if e["kind"] == "funder"])
-    items = await _add_registrations(owner, items)  
+    items = await _add_registrations(owner, items)
+    return {"items": items, "total": res["total"], "limit": limit, "offset": offset, **_facets(res["facets"])}
+
+
+def _facets(rows: list[dict]) -> dict:
+    """The cards' counts and the dropdowns from _FACETS' rows; a later page has none."""
+    if not rows:
+        return {"counts": {}, "facets": {}}
     counts: dict[str, Counter] = defaultdict(Counter)
-    for r in res["facets"]:
+    for r in rows:
         counts[r["facet"]][r["value"]] = r["n"]
-    return {"items": items, "total": res["total"], "limit": limit, "offset": offset,
-            "counts": {"all": sum(counts["kind"].values()), **counts["kind"]},
+    return {"counts": {"all": sum(counts["kind"].values()), **counts["kind"]},
             "facets": {name: ordered(counts[name], name in _NUMERIC) for name in _FACET_NAMES}}

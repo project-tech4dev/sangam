@@ -189,6 +189,19 @@ describe("RegistryClient", () => {
     expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the cards and dropdowns from the first page when a later page carries none", async () => {
+    const many = Array.from({ length: 30 }, (_, i) => registryRow({ id: i + 10, slug: `o${i}`, name: `Org${i}` }));
+    fetchPage.mockResolvedValue(page(many.slice(25), { total: 30, offset: 25, counts: {}, facets: {} }));
+    render(<RegistryClient first={page(many.slice(0, 25), { total: 30 })} />);
+    await userEvent.click(screen.getByRole("button", { name: "Show 5 more · 5 left" }));
+    await waitFor(() => expect(names()).toHaveLength(30));
+    expect(screen.getByRole("button", { name: /3\s*All/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /1\s*Funders/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Health" })).toBeInTheDocument();
+    expect(screen.getByText("30 of 30 shown")).toBeInTheDocument();
+    expect(screen.getByText("End of the list")).toBeInTheDocument();
+  });
+
   it("shows the first 25 and asks the server for the next batch", async () => {
     const many = Array.from({ length: 30 }, (_, i) => registryRow({ id: i + 10, slug: `o${i}`, name: `Org${i}` }));
     fetchPage.mockResolvedValue(page(many.slice(25), { total: 30, offset: 25 }));

@@ -180,3 +180,30 @@ async def test_a_registrations_filter_asks_only_for_the_orgs_it_keeps(world, db)
     (filter_sql, filter_params), (badge_sql, _) = owner.ran
     assert "HAVING" in filter_sql and filter_params == {"needs": ["12a", "80g"]}
     assert "org_id = ANY(%(ids)s)" in badge_sql
+
+
+async def test_only_the_first_page_counts_the_cards_and_dropdowns(world, db):
+    t, pool = world["t"], world["pool"]
+    first = await registry_page_sql(pool, pool, Filters(q=t), limit=2, offset=0)
+    assert first["counts"]["all"] >= 5
+    assert set(first["facets"]) == {"theme", "population", "sdg", "where", "ftype", "approach"}
+
+    ran: list[tuple[str, dict]] = []
+
+    class _Noting:
+        async def execute(self, sql, params=None):
+            ran.append((sql, params))
+            return await db.execute(sql, params)
+
+        def __getattr__(self, name):
+            return getattr(db, name)
+
+    later_pool = _PoolOf(db)
+    later_pool._conn = _Noting()
+    later = await registry_page_sql(later_pool, pool, Filters(q=t), limit=2, offset=2)
+    assert [r["slug"][:2] for r in later["items"]] == ["c-", "f-"] and later["total"] == 5
+    assert (later["counts"], later["facets"]) == ({}, {})
+    # What Postgres runs for that page: the facet counting is cut from the plan, not computed and thrown away.
+    sql, params = ran[0]
+    plan = "\n".join(r["QUERY PLAN"] for r in await (await db.execute("EXPLAIN " + sql, params)).fetchall())
+    assert "One-Time Filter: false" in plan and "unnest" not in plan
