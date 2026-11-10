@@ -175,8 +175,8 @@ async def read(doc: dict[str, Any], *, start_page: int = 1, end_page: int | None
                sheet: str = "", start_row: int = 1, limit: int = 100) -> str | list[dict[str, Any]]:
     """One vault file's text, every line cited [vault:<id>#p<page>], #para<n>, #slide<n>, #line<n> or #<sheet>!<cell>;
     an image comes back as itself, cited #image."""
-    parts = storage.split(doc["storage_path"] or "")
-    if parts is None:
+    parts = storage.owned_split(doc["storage_path"], org_id=doc.get("org_id"), is_public=False)
+    if parts is None or parts[0] != storage.ORG_VAULT:
         return f"document {doc['id']} has no file on record."
     name = parts[1].lower()
     if not name.endswith((PDF, XLSX, DOCX, PPTX, *TEXT, *IMAGES)):

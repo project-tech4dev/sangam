@@ -146,6 +146,22 @@ def test_every_role_in_the_org_uploads_to_its_doc_vault(db, name, allowed):
             conn.execute(sql, (world["a"],))
 
 
+@pytest.mark.parametrize("name", ["member_a", "staff"])
+def test_an_upload_names_a_file_only_in_its_own_orgs_folder(db, name):
+    conn, world = db
+    a, b = world["a"], world["b"]
+    sql = "INSERT INTO documents (org_id, title, is_public, storage_path) VALUES (%s, 'u', false, %s) RETURNING id"
+    for path in [None, f"org-vault/{a}/x.pdf", f"org-vault/{a}/proposals/1/v1.docx"]:
+        with conn.transaction(force_rollback=True):
+            _as(conn, world["people"][name])
+            assert conn.execute(sql, (a, path)).fetchone() is not None
+    for path in [f"org-vault/{b}/x.pdf", f"org-vault/{a}0/x.pdf", f"source-archive/{a}/x.pdf",
+                 "staff-sources/kabil/x.xlsx", f"org-vault/x/{a}/x.pdf"]:
+        with pytest.raises(InsufficientPrivilege), conn.transaction(force_rollback=True):
+            _as(conn, world["people"][name])
+            conn.execute(sql, (a, path))
+
+
 def _deletes(conn, who, doc_type="vault_upload", *, public=False, org=True, world) -> int:
     """How many rows this caller's DELETE of one fresh document removes. RLS refuses with 0, not an error."""
     with conn.transaction(force_rollback=True):

@@ -80,7 +80,7 @@ async def form_file(pool: Any, document_id: int, org_id: int) -> dict | None:
     """The form chosen in step 2: this org's own upload, or a public document Sangam archived."""
     async with pool.connection() as conn:
         return await (await conn.execute(
-            """SELECT id, title, storage_path FROM documents
+            """SELECT id, title, storage_path, org_id, is_public FROM documents
                WHERE id = %s AND storage_path IS NOT NULL AND (is_public OR org_id = %s)""",
             (document_id, org_id),
         )).fetchone()
