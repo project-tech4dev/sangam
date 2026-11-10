@@ -3,9 +3,6 @@ type: architecture subsystem
 title: Proposal Copilot (Sangam Pitch)
 description: The third Sangam agent, on /proposal. Code owns the five steps, exit checks, fact list, question rules, trace check, readiness, secondary research, polish check, and the .docx and funder-form versions, all stored server-side in proposals.work. The model only proposes; code checks every write.
 tags: [proposals, proposal-copilot, sangam-pitch, agent, deepagents, work-jsonb, trace-check, human-in-the-loop, rls, public-research, form-fill]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
 sources:
   - id: openwiki-source-fe3601d35ecee292c4d2b24d
     resource: repo://backend/app/agentkit/middleware.py
@@ -97,7 +94,10 @@ sources:
     resource: repo://frontend/features/ask/views/proposals/FactList.tsx
   - id: openwiki-source-d953d84f5b5f8a6eb807001c
     resource: repo://frontend/features/ask/views/proposals/steps.ts
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Proposal Copilot (Sangam Pitch)
@@ -178,6 +178,8 @@ Main keys: `stage`, `requirements`, `gates`, `template` (with `outline` once the
 | `facts.kN` set to null, `readers.public`, `research_asks` | Only `via="reset"`, which is the one change that removes keys, and only for public-research facts. |
 
 REST typing is more lenient than the agent. A person's own edit to a part's text is not blocked by the trace check. Code stores any figure, place or name no cited fact holds in the part's `untraced` list, and the last step shows it under Fix first. A person's edit also recomputes which facts each part uses, clears `done`, and, when the text changed, clears `needs_rewrite`, `score` and `missing` (they described other text). The save route grades the text once when a part is marked Done (`_grade_done`), skipping a stale `rev` or a text already graded.
+
+Before `apply`, the route's `_save` also checks the files a person ticks: a `sources` change may name only documents of the proposal's own organisation (or ones already ticked), otherwise it is a 422 ("Only this organisation's own files can be ticked"), and the saved list keeps only those. For a typed part or a correction it loads the district names, so `untraced` and the correction's rewrite check include places, and it passes the partner and person names from live `name` facts (the org and funder are free to name).
 
 ### Delete
 
@@ -285,7 +287,7 @@ The results are amber web facts; the person confirms or drops them like any othe
 `write_section(code, text, rev)` goes in this order:
 
 1. `require_edit`, `too_early`, text length (at most 12,000 characters), the section exists, and `may_write` (dependency order).
-2. **Trace check** (`trace.check`, pure, shared with polish, suggest and form fill). Per paragraph, every number, rupee amount (lakh and crore are compared as rupees), place (a state or known district, from `locations`) and partner or person name must appear in a live fact that the same paragraph cites as `⟦kN⟧`. Years, FY ranges and Schedule VII clauses need no fact. A gap written `[Add: what is missing]` is not a claim. Citing a fact that does not exist, or was corrected or set aside, is refused. A refusal names each untraced claim, and the model fixes it or makes it a gap.
+2. **Trace check** (`trace.check`, pure, shared with polish, suggest and form fill). Per paragraph, every number, rupee amount (lakh and crore are compared as rupees), place (a state or known district, from `locations`) and partner or person name must appear in a live fact that the same paragraph cites as `⟦kN⟧`. Years, FY ranges and Schedule VII clauses need no fact. Figures are matched against both a fact's value and its quoted evidence, and a rupee amount matches within 0.5% of the printed figure. A gap written `[Add: what is missing]` is not a claim. Citing a fact that does not exist, or was corrected or set aside, is refused. A refusal names each untraced claim, and the model fixes it or makes it a gap.
 3. **Grade** (`grade.grade`, one utility-model call): which of the section's strong elements are missing. None missing scores 2, one scores 1, more scores 0. A grader failure never blocks the save. The text is saved unscored.
 4. **Save** through `work.apply` at the `rev` the model read, with each cited fact's `used_in` updated. A teammate's save in between is refused by name.
 

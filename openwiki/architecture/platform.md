@@ -3,9 +3,6 @@ type: architecture overview
 title: Platform
 description: How the Sangam FastAPI backend is assembled, checked and run after the agentkit/ask split. Covers the app factory and routers, Settings and the model tiers, the shared pool and checkpointer, the lifespan with lazy agent loading, Langfuse tracing, the egress guard, the Vercel deploy topology, CI and Codecov, Makefile targets, the performance work behind it (including Ask's tool-result clearing and compare_fit sizing), and known regressions.
 tags: [platform, fastapi, settings, model-tiers, lifespan, db-pool, checkpointer, langfuse, tracing, egress, vercel, performance, ci, codecov, makefile, middleware, agentkit]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
 sources:
   - id: openwiki-source-164e2da859b5277df81c7d94
     resource: repo://.github/workflows/ci.yml
@@ -37,6 +34,8 @@ sources:
     resource: repo://backend/app/ask/tools/matching_tools.py
   - id: openwiki-source-ac33fbd2932416f95f8dbbd6
     resource: repo://backend/app/ask/tools/sql/validator.py
+  - id: openwiki-source-7f553ad78903f3c0ba31ef82
+    resource: repo://backend/app/core/certs/intermediates.pem
   - id: openwiki-source-df5be7b214c1649f540daf09
     resource: repo://backend/app/core/CLAUDE.md
   - id: openwiki-source-6dcfc1451bcbf8009d0484a9
@@ -75,6 +74,8 @@ sources:
     resource: repo://backend/app/proposals/readers.py
   - id: openwiki-source-070c6307b3860e1806baf566
     resource: repo://backend/pyproject.toml
+  - id: openwiki-source-8df3702e94f4cc1a8901f88c
+    resource: repo://backend/tests/test_cov_core_lifespan.py
   - id: openwiki-source-8515286617ae84b7b71f0cb9
     resource: repo://backend/tests/test_egress_trust.py
   - id: openwiki-source-8aa878aa91baef3db9c28dbe
@@ -99,7 +100,10 @@ sources:
     resource: repo://frontend/vercel.json
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Platform
@@ -182,11 +186,13 @@ Details that matter when changing these:
 
 ## Egress guard
 
-`core/egress.py` keeps outbound fetches off the internal network. `private_address_refusal(url)` returns a reason (or `None` and never raises) when the URL is not http(s), names `localhost`, is a single-label host, does not resolve, names an address that is not public (loopback, private, link-local, internal, multicast), or when the check itself cannot decide. It also catches numeric host forms such as `2130706433` or `0x7f.1`, and judges IPv6 addresses that embed an IPv4 one (mapped, 6to4, Teredo, NAT64) by the inner address.
+`core/egress.py` keeps outbound fetches off the internal network. `private_address_refusal(url)` is async and returns a reason (or `None` and never raises) when the URL is not http(s), names `localhost`, is a single-label host, does not resolve, names an address that is not public (loopback, private, link-local, internal, multicast), or when the check itself cannot decide. It also catches numeric host forms such as `2130706433` or `0x7f.1`, and judges IPv6 addresses that embed an IPv4 one (mapped, 6to4, Teredo, NAT64) by the inner address.
 
 `guarded_client()` is an httpx client that runs that check on every request, including each redirect hop, before it is sent, and raises `EgressRefused`. It is used by the robots.txt fetch in `ingest/reading/access.py` and by the RFP call pull (`ingest/calls/pull.py`). The research reader's page and document fetches use their own `_client` in `ingest/tools/research_tools.py`: its request hook runs `check_url` on every hop, which includes `private_address_refusal` plus the registry's access rules and robots.txt, and keeps a read that starts on a path-scoped source on that source's allowed paths. Ask has no fetch tool at all, because `fetch_url` was removed (M4, #247).
 
-**TLS trust.** Both clients verify against `TRUST`, certifi's roots plus `core/certs/intermediates.pem` (intermediates some government sites fail to send). Verification stays on. `tests/test_egress_trust.py` checks that each extra certificate is an intermediate whose root is already trusted and that it stays in date for another year.
+**TLS trust.** Both clients verify against `TRUST`, an `ssl` context built once at import from certifi's roots plus any certificates in `core/certs/intermediates.pem` (intermediates some government sites fail to send). Verification and hostname checking stay on. `trust()` loads the extra file only when it contains a `BEGIN CERTIFICATE` block, because `ssl` raises on a PEM with none.
+
+The bundle is **currently empty**, comments only: certifi 2026.10.18 dropped the emSign roots (compromised intermediate keys), so the one government site that relied on them, `censusindia.gov.in`, is refused rather than trusted. Adding a site means appending one PEM block whose root certifi already holds. `tests/test_egress_trust.py` pins the rules for any block that is added: it must be an intermediate (a CA whose issuer differs from its subject), stay in date for another year, chain to a root already in certifi, and not be an emSign certificate. It also checks that an empty bundle loads, that a bundle block really becomes trusted, that `TRUST` keeps `CERT_REQUIRED` with hostname checking, and that both `guarded_client()` and the research reader's `_client` use that same `TRUST` context.
 
 ## Lifespan and lazy agent loading
 
@@ -196,10 +202,11 @@ Details that matter when changing these:
 
 1. Create the shared psycopg pool (`make_pool`), open it, and publish it as `app.db.pool.pool` for REST endpoints and agent tools.
 2. Run `_verify_sql_catalog`. If the SQL tool's catalog (`ask/tools/sql/catalog.py`) disagrees with the database, it logs each `SQL catalog drift:` problem and raises `RuntimeError`, so **the app refuses to boot on catalog drift**. Tables that exist but are in neither the catalog nor `KNOWN_EXCLUDED` are only logged at info level. They stay invisible to the agent until someone decides.
-3. Open the Graphiti graph, which logs and does nothing when the graph is not configured.
-4. Open the Postgres checkpointer (a version check, see above).
-5. Set `app.state.settings`, `checkpointer`, `agents = None` and an `agents_lock`, then register a route for every path in `AGENT_NAMES`: `/agent`, `/ingest` and `/proposal`.
-6. Log boot timings: process age from `/proc`, connect plus catalog time, total boot, the model, the research concurrency, the pool size and the gate.
+3. Run `_warn_on_shared_storage`, a log-only check. When Storage is enabled, `STORAGE_BUCKET_SUFFIX` is empty and `DATABASE_URL` is not the Storage project's own database, it warns that files will land in the deployed buckets while rows stay local, and suggests a suffix such as `-local`. It never blocks boot.
+4. Open the Graphiti graph, which logs and does nothing when the graph is not configured.
+5. Open the Postgres checkpointer (a version check, see above).
+6. Set `app.state.settings`, `checkpointer`, `agents = None` and an `agents_lock`, then register a route for every path in `AGENT_NAMES`: `/agent`, `/ingest` and `/proposal`.
+7. Log boot timings: process age from `/proc`, connect plus catalog time, total boot, the model, the research concurrency, the pool size and the gate.
 
 On shutdown the lifespan flushes and shuts down Langfuse, but only if tracing is enabled and the agents were actually built. It then clears `db_pool.pool`.
 

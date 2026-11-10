@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:569575218f9c39b20848a5d2cb3e7892e0144caf36455f8115d1aea4eb9049d1",
+  "pageVersion": "sha256:4dde52e2768f054df25799cd1ae6b77943650461985d2a2384b61731c1b27465",
   "claims": [
     {
       "id": "claim_6e780f0bc0e24d0c8f01570655142673",
@@ -67,34 +67,34 @@
       "statement": "Web reads by the researcher are checked with check_url before the fetch and again on every redirect hop; a REFUSED reply is final, search results are marked READABLE or HELD, and read_page and fetch_document archive what they read to the source-archive bucket.",
       "evidence": [
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L177-L213",
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L179-L215",
           "version": "repo-lines-v1:sha256:a72d8498d5f150e132fff6b4ec425ccc29ab7df64b51e8948b1894a7a5f61fbe:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMDZhNTU5ZDQwOTVhZTgzZDJjYjExNTdlZTU5NjYxZGZmMjc1ZjkxM2EwMjFmNTdjNmI1MWM1NTYwOGYwOWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjNjU4ZTJjOTY4NmY1ZWJhMmVmMDYwZmVjMDllMzdkMzI2NTk3ZDdkNTljNTI0ZmU4NGQ5N2E5MDRiYThmNmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzNjA1M2Y4N2M5MTNkZjdlYjI5Mjc0N2Q4YjA4NWUwYWI3M2EyNzY1Y2UyYjUwNDI0ZDc2ZTYwYzFjNGU4ZTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzZTVhYTdmOTUyNTBkZTVhMWU5OGRiNmI4MjY5MTU3ZmFjNWIzNGUxMDNmYmIwOGExZmM3NWQyMGVhYTQyNmIifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L247-L289",
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L249-L291",
           "version": "repo-lines-v1:sha256:7ba2755d9cc9a33e8ea8033c6a55879322aed1fd72ef2e0d1df8d094e5eb6b34:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzZDEyOTlhMTczNmViMDE0MzdkZWY5N2VhZTU5NGQ0ZThiMTc3N2M2YTE2NTk2ZDE0NzAwZGJlMjBlYjY3NTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlMjI5NTAwMmQ0MWYyMDgzYWI3OWExYTI3ZjEwMjBjMDI2ZmMzMTYxMjU1YjA4Y2JhNWI3NDYyMDg3NTc3YjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0YWVlOTE1MjAyZDMyZTJmNjBjMGEwOGU3NzIzMTdkMmJmOTgzOWQ0ZGQ1OTg1ODZkODllYzJiMjk5ZGNhMTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkZmMxYmFmNzhlNTg3NzlhZTExNjllNTYwZWJkOWJjYzgzOTAxNzA3NDEzNTI2OWIxNjFmYTVjZjFkMTIyZWQifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L67-L85",
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L69-L87",
           "version": "repo-lines-v1:sha256:adc352ee4800c7413dd79a335b8e1d83f0ea3e76d95d6c3f2c84198e417d0ff8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGM3YWIxNGMzZmI4OGQ2YmUwZDU4ZjJhNTNhY2YxNjUxNTllNzhmZDIzOTJiYmU3MTEwNGJkZGVlMTk4YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMGJlODFiNWEyNzU2N2NiYmQyN2FiZDM4YjU2OTk0MmRhNWMxMzU2OTJkZDExOGExZjI0MzQ0MTg0MGM0MjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxZjg2ODhiMzgyMzJhMjlmY2Y3ZjdmZDYxMzc1YWFiYzU4MzY4NTcxNTg4YmI1YmNjNGU4MTM2Nzg1ZjAxNzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2NzIyNDc0ZmI5NTNlYmNlY2NlYjdjNjNkZjZkN2IwZGRmODAyOGMzYWMwOTJmODE0NDE3ZWNhMzQwYjkyNDgifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L99-L153",
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L101-L155",
           "version": "repo-lines-v1:sha256:311e98b79fa62bdfda95a62d90eafc348377fc11717eeef837ac26038f8a8354:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzNGU1OWQ3ZWFkY2E4YTkyOWEyNWZhNjBiYjU0ZmY2YjhhZmIwZmFkOTQwOTljZDFjODg5OGRjZDViZTk2OGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkYTIwOTg1M2Y2ODc4NGFkNGQxNTAxNjc1MzZmZWJkZjc4Yjk0MzIzNjk1ZDMxOThkYjY0YWE1YmVlYTU5MGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyYjUyN2NkZTI1NTQ1ZWU5YTc3ODEwMDYzOWQ4ZWY2ZjI2NWNhZWQxYWYyYTMzNGUyY2IyMTIyMzI0M2VkNDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkZmMxYmFmNzhlNTg3NzlhZTExNjllNTYwZWJkOWJjYzgzOTAxNzA3NDEzNTI2OWIxNjFmYTVjZjFkMTIyZWQifQ"
         }
       ]
     },
     {
       "id": "claim_1b2c70bdf2624d99abee48daa8f17956",
-      "statement": "save_research refuses (returns REFUSED text) in four cases: an NGO saved by a caller who is neither staff nor steward; fields with neither a finding nor a gap per research/contract.unanswered; a non-staff overwrite of another person's same-day row; and a save with fewer findings than the stored same-day row without replace=true.",
+      "statement": "save_research refuses (returns REFUSED text) in four cases, in order: an NGO saved by a caller who is neither staff nor a steward (and, for a non-staff steward, an NGO not already held or not researchable by the caller via _may_research); fields with neither a finding nor a gap per research/contract.unanswered; a non-staff overwrite of another person's same-day row; and a save with fewer findings than the stored same-day row without replace=true.",
       "evidence": [
         {
           "resource": "repo://backend/app/ingest/research/contract.py#L21-L48",
           "version": "repo-lines-v1:sha256:bb43d07392361c72c95e0fc0c57e557a48494173e39902514ad33a7563d29396:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkYTM3NTU4OWY5MzI3MmQwYWI5NDQ2ODIyNDJmZGU3ZDg2NTc2YTgxODkzZWQ0MmE4ZGQzMzViOGRjYjk2NzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmODhhZTA5MmU4MWZkZDY5M2MyZGNhNWVjYWU2YjdkMjA3OWE3ODNmNDlhOTViOWY4YmYyZmViZTQ5ZGJjMzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlZGU3MmUxYTA0M2RiY2U4MWY0OTBmMGNjZTc5NTgzNjYwZjFmNGYzY2EwOWE2MjMyOTNhNWZjZjdiYjQ2MjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxMDA5NWFmMjhkMDA1OWE4ZDQyYWQ3OTEwMGJiOTg3MzQyY2Y5YTM4NmQxYmYzM2RlMTZkYmI1NjI4NDM0ODIifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L322-L377",
-          "version": "repo-lines-v1:sha256:6e11c52fcf1fa6ae3d846204e07786afa2f7eae5fbedbba9c4880eacd32cb9c0:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzNGU1OWQ3ZWFkY2E4YTkyOWEyNWZhNjBiYjU0ZmY2YjhhZmIwZmFkOTQwOTljZDFjODg5OGRjZDViZTk2OGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxNThkMTc3MjFmYTNlZmE4NWJlMmI1NDRkYjQzY2Q0OGQxMWRlNGMyNDM1OGVjYzgwMzkwZTg5MzhkNmQ4YmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2MThmOTg2ZDc1YzhjNTY0OTVkYmM5MDA1Njk3YmY2OWMyZGViMDM0YjRhYjdiNjAzNDI4ZGQwNzc3MDE1ZWIifQ"
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L324-L396",
+          "version": "repo-lines-v1:sha256:11dbaffc59ae25f8b019c8ca3da3e2ab1deebeb608714b3da9c1c16be443f96f:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4ODg0ZGE5ZGMxZWVjNjM4NDIzOTYwMzRiNzFhNjlmMTkyZGFkYzIwYjMyNWNkOTI0NjdlZTg1NmVmY2IwMGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxNThkMTc3MjFmYTNlZmE4NWJlMmI1NDRkYjQzY2Q0OGQxMWRlNGMyNDM1OGVjYzgwMzkwZTg5MzhkNmQ4YmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2MThmOTg2ZDc1YzhjNTY0OTVkYmM5MDA1Njk3YmY2OWMyZGViMDM0YjRhYjdiNjAzNDI4ZGQwNzc3MDE1ZWIifQ"
         }
       ]
     },
@@ -103,7 +103,7 @@
       "statement": "A successful save_research upserts entity_research keyed on (slug, researched_on) in one transaction, then immediately publishes the brief; a staff-source save reports only the exception type on failure.",
       "evidence": [
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L378-L462",
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L397-L481",
           "version": "repo-lines-v1:sha256:1940a4688dbe2c9ff3330c18116a0d33a0f1fe9fd76e90e43e86749d3437b4c8:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4YTYzYTM5YzU0MjY1NGViYzg4YWRhODlkZWQ4Y2M3YzcyZTYxMjk3OWU1Y2JjY2Q2OTcxNDZhMDA4MzJmOWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4YmQwMTNkZDM0ZWY0OGVhNjU5ZDVjOTdiMWQwN2MzZWIzYTYxMzJkYzA3Y2Y3ZDMwYzI3ZjdhZWIwMjQ3ZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkNTIxNTQ1YzMwZjIwN2IyNTIzYzk2NmMxNGQyNjhmZDQzZTkxY2Q3ODkxZTkwNzlhODA4YTJiMmY2ZjVkOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkZmMxYmFmNzhlNTg3NzlhZTExNjllNTYwZWJkOWJjYzgzOTAxNzA3NDEzNTI2OWIxNjFmYTVjZjFkMTIyZWQifQ"
         }
       ]
@@ -131,11 +131,11 @@
           "version": "repo-lines-v1:sha256:981cfeaf924099cc6241ec0a3ee6d59f1029cffef4458f34bc203f137711b78a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyYWUxYzA4NGYwYTkwOTgzYzA3ZmFkYzY0MDBlNzkzNGQ0YzA1NTQ4YTRiNWY4OGU1NTMxNjdmNjM5NjI0MmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU0YWE1ZmRhMzBiMjM1MWRjNTQzNDNlYzc1MmQzZGU2Njg3MDhiNWZjY2I0N2FlYTk5YzlkNzg0ZDI1M2Q0OGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkZWY4NWZkZTFlOGUwMjg4OWQ1MWFlMGMwOTBhY2I5NGQ0YTBjM2EzNzM2N2ZjNzBmMDZjYzM5MzBjZmY4NTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4Zjg4MTE1YjZkNmJmYjRiMTE3MmFmNWIyNmNmMzIyM2YyODQ3YjQyMjhiOGZhMWYwZjYxNzU2YWEwMDEzMDUifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/research_tools.py#L421-L456",
+          "resource": "repo://backend/app/ingest/tools/research_tools.py#L440-L475",
           "version": "repo-lines-v1:sha256:20b7e5db7c130424bf367ead615926db1cad4560d59c2301bb93f733348186b3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExYmIyMzdlZDkyOWU0OWMzYmJmZDhjMTUwYmRlNzliMWY1NjgzM2NkNTUxYzg3ODkwMDNjYzUzMDAxMmNlYTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0NjBiOGU2OTQ0MzllZWJlYTc5MjgzNzZkNWVjZTZlZGUyNDcyYTU1ZWIzOTE4OTNlMmQ2YzE2YTVlY2UxNTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5Njc5ODM2MDUzMDk1YTE2NDdmMThiZGMzY2U3NjkyNGYxNTJlZTU5ZGJlNTZlZTBiZWU2NmRiZmQ3ZWQ4NTIifQ"
         },
         {
-          "resource": "repo://backend/tests/test_storage.py#L614-L614",
+          "resource": "repo://backend/tests/test_storage.py#L742-L742",
           "version": "repo-lines-v1:sha256:8910034f3cb532678d1df0ceaa76673713298c0536d672fba00bb2bfeb8cdb5f:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODkxMDAzNGYzY2I1MzI2NzhkMWRmMGNlYWE3NjY3MzcxMzI5OGMwNTM2ZDY3MmZiYTAwYmIyYmZlYjhjZGI1ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODkxMDAzNGYzY2I1MzI2NzhkMWRmMGNlYWE3NjY3MzcxMzI5OGMwNTM2ZDY3MmZiYTAwYmIyYmZlYjhjZGI1ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDllYjQ0ODY3MDc5OThjZmUzYWRkYWE4NWEwMDBiN2RiZDZiNmQ2OTljMjI1ZDhkY2JkNDlhNjljNDllMWE2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODcyNjkzMGU4YWEyNThhODQwZTI4ZDI1YjQxNDQ0ZjJmYjYwNzI2NjkyNmI4NjU2MTZjM2ZkMmQzMWM2YTIyNyJ9"
         }
       ]
@@ -167,7 +167,7 @@
           "version": "repo-lines-v1:sha256:c298913b7515328486f8c4a5207c92df9787e895af54a04ed7578fc65957e404:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyODYxZTMxYzIxMTk2YzdmNDU4ZTIxMzllNzM2NzI0NTIyYmZhM2Y2ZjRhMjZlN2E0MmM5NDJkYmZjYWZjZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiNjRmZTE4ZWM4ZTViMzBjYjVjMTFmNTAzZmJlODUzMjkzYmYzZGI5Zjc1ZjZiNzU0ODU2MDQ4NjM2ZDhkMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhYzdiMzQyMWM5YWYzZTA4YzE4OTk2MDNmMWQ2NmIyYjQ2NGNiOTYxODAwZTg0Y2E0ODJlMzQ4MTM0ZWQ3ZGMifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/catalog_tools.py#L493-L529",
+          "resource": "repo://backend/app/ingest/tools/catalog_tools.py#L512-L548",
           "version": "repo-lines-v1:sha256:c3c59a0351cabf53361b9d23a6e771e9caeaa0a2dd04d93c1c8a17d63ec67b05:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0OGVhOTgyNTE0NzJkZjVkNzUwOTI0YjQwZTZlZTliN2M1YjNjM2RlM2IxYzA0YjkyM2I0ODIxMGQ4Y2RjMGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ODgzMzJkNzlkMjA5YzA2ZTY0NTU2OGYyNTE1NGJjNjIxZTMxOTQyY2YxYmJlOTdmZTJkODFkZGE1ZmYxMjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkZmMxYmFmNzhlNTg3NzlhZTExNjllNTYwZWJkOWJjYzgzOTAxNzA3NDEzNTI2OWIxNjFmYTVjZjFkMTIyZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2Yzg4ZWQ0OTBlMmFjYWM5YmY2NTA3MzUwNDQ2ZDljMzFhOGM0YjE3MGFkM2RhZGNmOTEyNTkzZjNiMjllZjgifQ"
         }
       ]
@@ -385,40 +385,44 @@
           "version": "repo-lines-v1:sha256:2999aa2736dbc2531f4942343c387c9b11c65ae47605a4d1eac7fcd57cf65eba:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkYTgwMjQ4NjA2ZmU1NzVkNmQ5YmFlZWIzNzgyMjdkZjE0NmI0ZWE4Y2Y1OGFjNjZhNTdhMDhjYWFhY2YxZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5ZjkzMDgzYzE5NzEyMWI5ODI3MDBiYThhZmFiZDE3MjJjZjFkM2U3NDA0NTA5ZTgwZWZhMjcyNDdmNjJmMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhYzQ3ZjNiYTc0ZTJhODgwNmY4OGJiMzI0YzE1MWYwMjM2NjE1MzE1MzYxNDEzNmNjODI4MTliYzlkZTc0ODEifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/reading/vault.py#L1-L87",
-          "version": "repo-lines-v1:sha256:5b82465d40b6849f7a208571b7bd4d52017ecda61ff8ed9e270327c32bbc249c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5OWZlOGM4Njg0ZTRhODcxZTQ0MjdiOGQ4ZjNhMjNlYWZjMzA2OGUwZjJhZDI1Mzc5Mzg1Y2UxNDMyNjE4MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlNjhhYmI2NTIyZmY0NjU5ODgwMWJlODkzMDRhMTljOTEyNDUzNmMyNWI3MjU4ZmUwMTIyZDA3ZWVmZTU0N2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1MjJkMjk5OWNhMDNiNjk3MjI1MDUxM2FjYmNkNjkyMzU0MjVhZGM4MDc2NmJhNTRlZWYwYTM2NjZlYzQ3NDIifQ"
+          "resource": "repo://backend/app/ingest/reading/vault.py#L1-L91",
+          "version": "repo-lines-v1:sha256:2ee228a26d15ed16f44bbc4b2bc796ed6bf038f9be73020dd7fc7b841f11e0d1:eyJzZWxlY3RlZExpbmVDb3VudCI6OTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5OWZlOGM4Njg0ZTRhODcxZTQ0MjdiOGQ4ZjNhMjNlYWZjMzA2OGUwZjJhZDI1Mzc5Mzg1Y2UxNDMyNjE4MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlNjhhYmI2NTIyZmY0NjU5ODgwMWJlODkzMDRhMTljOTEyNDUzNmMyNWI3MjU4ZmUwMTIyZDA3ZWVmZTU0N2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1MjJkMjk5OWNhMDNiNjk3MjI1MDUxM2FjYmNkNjkyMzU0MjVhZGM4MDc2NmJhNTRlZWYwYTM2NjZlYzQ3NDIifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/vault_tools.py#L1-L100",
-          "version": "repo-lines-v1:sha256:8130c1b6330bbd1922ae7be8d9380cf63d13508c330f0673d2623c498dd4ef6b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlOThkNDU2MTg3NGE5NDg1ODVmN2MyNWMzMDk4ZmIzOTBhYTU3MWU2ZjZiNWJkNDcxZjMxNmYzNzE0YTViMzYzIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwN2RhM2JjYTQyYmIyMmJhNDQ5YTAyOWM4ZWNjMzhlYjBiMzkzNzkwOTU2M2QyMzdlOGFkOTE3NmZkYzVmMWY3IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1ZGZjMWJhZjc4ZTU4Nzc5YWUxMTY5ZTU2MGViZDliY2M4MzkwMTcwNzQxMzUyNjliMTYxZmE1Y2YxZDEyMmVkIn0"
+          "resource": "repo://backend/app/ingest/tools/vault_tools.py#L1-L103",
+          "version": "repo-lines-v1:sha256:26d20468a30673096161118cb859fce4ce286b0a87801d16adb196a48e94ec4f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlOThkNDU2MTg3NGE5NDg1ODVmN2MyNWMzMDk4ZmIzOTBhYTU3MWU2ZjZiNWJkNDcxZjMxNmYzNzE0YTViMzYzIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwN2RhM2JjYTQyYmIyMmJhNDQ5YTAyOWM4ZWNjMzhlYjBiMzkzNzkwOTU2M2QyMzdlOGFkOTE3NmZkYzVmMWY3IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1ZGZjMWJhZjc4ZTU4Nzc5YWUxMTY5ZTU2MGViZDliY2M4MzkwMTcwNzQxMzUyNjliMTYxZmE1Y2YxZDEyMmVkIn0"
         }
       ]
     },
     {
       "id": "claim_9b2ee0cc84a94224923cb08661f92861",
-      "statement": "vault.read downloads up to 50 MB and reads PDF, DOCX, XLSX and plain .md/.txt files, capping each read at 24,000 characters and citing every line with [vault:<id>#p<page>], #para<n>, #line<n> or #<sheet>!<cell> markers; a scanned PDF is reported as having no text rather than guessed.",
+      "statement": "vault.read downloads up to 50 MB and reads PDF, DOCX, PPTX, XLSX, .md/.txt/.csv text files and png/jpg/jpeg/webp images (an image returned as itself, too-large ones reported). Text reads are capped at 24,000 characters, and every line is cited with [vault:<id>#p<page>], #para<n>, #slide<n>, #line<n>, #<sheet>!<cell> or #image markers; a scanned PDF is reported as having no text rather than guessed.",
       "evidence": [
         {
-          "resource": "repo://backend/app/ingest/reading/vault.py#L95-L166",
-          "version": "repo-lines-v1:sha256:f9796f91e2121285d4875977782c0d382dc9d3162e8d75aad9aca74e6566a84e:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlMDEzODJhNDkxMDRkYjhmNTY0YzM4N2FlNjI5ZWQwNzE2MDM1N2M1Y2M5OGYzMDAzMjYwOGIwZmJlMDBmMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyNTVlMDU4YzEyYjZjZWY4NzA1NDJhYTE3NGQyYzU3ZGVhOThmZDdmM2ViYmNjZTAzODNlMDc5NTg0ZDE2Y2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyMjE0Mzg0MTAxNzM2NTY4MmU1YzkwYWIyMmYxY2VmNGQwNzM5ZjA3MGY1OGZmMTNiZmVhYWExMWZiYzFiMzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY5MGZlMzMyMTQzYTNlZjJlNWZmNzhjY2NlNmNjNmEyNDkyNWQ5Zjc5ZGVkMTEwNjY2Y2MyZGRlOTQ3ODVkNzcifQ"
+          "resource": "repo://backend/app/ingest/reading/vault.py#L23-L32",
+          "version": "repo-lines-v1:sha256:7a838a03a2ccf547bfd9e9ec1e38d05ce365b4cea0efa6915ccc6ea9baf58f47:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxNDQ5ZGYwMDliNjI5OGI5YmI3OGUxMGZkZmYyNTNiYzBmYjBkZjljMTNiNTU1N2VlZDBmNjJjYWMzMzYzZWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhMjE4OGUwMjVhMWQzZTVjMzc4OGJlMDJlZDAyZjg5OGY5YTViYWQ1MWZjMDg4MmYxMzIzY2VjMGNlYzY5YjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzNTg4NzFkMjJhNmMxZjk1NTY1Y2MxYWVmZTJjMTNhYmU3NDI4NjFkZWY1YTBhZjg2ZDZlZmQwZGE2MTE4NTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkZDA4OGRiOTcxZWQ0ODQwZTc3MTU2YjgwY2ZiMTc4YmI4MTVmZDljYjM1ZjI0ZjAzNjFmMzJiNGY4NGNlNDMifQ"
+        },
+        {
+          "resource": "repo://backend/app/ingest/reading/vault.py#L94-L193",
+          "version": "repo-lines-v1:sha256:70cc17679a35e75c81844ed3cdc94afce5674b803dadb118b261a4d22a6d64a4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyMDNmOTdmYjI2ZjRlMGYzYjc2MWYxODlhNTA5OWIzYmQ4N2M2ZDQxYjk4ZjRiZTYzY2E4YmU3NTRkMmExYmY3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5MjU1ZTA1OGMxMmI2Y2VmODcwNTQyYWExNzRkMmM1N2RlYTk4ZmQ3ZjNlYmJjY2UwMzgzZTA3OTU4NGQxNmNhIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmMmE4ODEwZjI5ZjEyNjhiNzgwYzcwNWQ1NGZjMjgxNzQwMzgyZjY5YjMyYjkzYWI0NTMxNjA3YjI0MDE5MTY3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmOTBmZTMzMjE0M2EzZWYyZTVmZjc4Y2NjZTZjYzZhMjQ5MjVkOWY3OWRlZDExMDY2NmNjMmRkZTk0Nzg1ZDc3In0"
         }
       ]
     },
     {
       "id": "claim_0a4687fed7df46eba24bba4236f3fd30",
-      "statement": "app/core/extract.py (which replaced ingest/office.py) is a pure bytes-to-text helper: docx_paragraphs returns paragraphs and table rows (a | b | c, merged cells once) in order, and xlsx_markdown renders each sheet's first 200 rows. It is used both for an upload's content_md (a damaged file leaves text None but keeps the hash) and by the vault reader for .docx files.",
+      "statement": "app/core/extract.py (which replaced ingest/office.py) is a pure bytes-to-text helper: docx_paragraphs returns paragraphs and table rows (a | b | c, merged cells once) in order, pptx_slides returns slide text, text_lines splits overlong lines, and xlsx_markdown renders each sheet's first 200 rows. It is used both for an upload's content_md (docx, pptx, xlsx, pdf; a damaged file leaves text None but keeps the hash) and by the vault reader for .docx, .pptx and text files.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/documents.py#L122-L139",
-          "version": "repo-lines-v1:sha256:fcd7e453f03a7080c30e2eebe090431ebe1ec35e46ec03519f72c0abadf13ff6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5N2UwNWJkMjA3OGJkZGEyYWE2MzViN2ZkNGMzMGJkNGE0ZDY0NWM1N2JlNmI4NWQ2ZjY1ODU5NThjYzEwYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkZjM2N2NiYjg4OTIyZTBiMjUwNWRhNzc4MDRkMDc3ZGMwYWFhN2NiNTEwNzM4ZjZmYWQyZjI5OWNkOTg5ZjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjNjY5OTJmNmY3NWZjMTVkMzRlZGZlZWUyYThlYjllMWVjYjllNmI3Njc4ODYzNmZjODcyMzc1NDljNWNhNTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzZDU3YjBjNTQ1MzFmNGJjMTNiNmNjZDY5ZDJhODkyYzFmNDNiZWQxMDU0NjgzNDY4MzIyYWYyYjFhMmJlNjkifQ"
+          "resource": "repo://backend/app/api/routes/documents.py#L157-L187",
+          "version": "repo-lines-v1:sha256:c3137d21086f45c67430ed45497d4dd2d9b2ebf2e109fadf41010646183967ba:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5MjhhMjEwM2NmMDIzNzQyZTA3ZmEwN2IxYzQxZmZmMGIxMWNmZGIyMTUwNzg0ZDEzNWM4NmUzOWMzMDY4ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmOWM5NTMxZmJjNWM3MDkyY2I1MTMzYTdjYWRlNmIwNDQ2MzIyMmE5ODVjZDllZTE5ZDVhZmU5YWY0MWYyNjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkZjJmNzI5ODk0ZWZjMmFhY2FhMzZlNDc0OTMzMzY1ZDEyN2E0NjIzYTg1NTBiMmRhZTFlYjU0NmQzZjM2M2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNjdkYTVhMDM1NmEwNzRkZDgzOWQ2OGFhMmNjNTg3MWU0NGUyZjJjMTgzMjU4NmJiNDVkZTNkN2M2MmYzNzUifQ"
         },
         {
-          "resource": "repo://backend/app/core/extract.py#L11-L86",
-          "version": "repo-lines-v1:sha256:84fba95b1470edfb584e08d5db8a192aa7e120460a12449b45c7358849f971ef:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlNGMzMDBkMjJkNmQ4ZjBiZDU4YTI0MmE1OGY4NjQ5OGY3YmFiNWUzNzMzZTZkMjY4MTM4OWI4ODllODFhNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZTdiYjMxNTZkZjFmNzcyOGY0NTMxOTM0NDlhYTc0NmQ3MWE1NDEzYTQ0M2FjZGVkMTZkYzcwNTI2Nzg0ODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3NzRkNjdhNmE1Y2Y3YWE5Y2MxZWI4ZmVkNGRiN2I2MjE3ZmU5ZTQ1MGVmNmEzNWU1ZjcwNGM4NDZjZGJkNzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljNTA3MDExOTQ5OTQ5NDdkMzhiNGI2MjFkZGVkMjg3YTZiNDcwZjg3MTIyODBiMmY1MWJmM2I0NmVmMjg4MWUifQ"
+          "resource": "repo://backend/app/core/extract.py#L15-L135",
+          "version": "repo-lines-v1:sha256:5860f7b9f652a6fcc24afb4282afefddbdc9e0ee5b2934f9289143add2460db5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwZTRjMzAwZDIyZDZkOGYwYmQ1OGEyNDJhNThmODY0OThmN2JhYjVlMzczM2U2ZDI2ODEzODliODg5ZTgxYTU2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIxM2U3YmIzMTU2ZGYxZjc3MjhmNDUzMTkzNDQ5YWE3NDZkNzFhNTQxM2E0NDNhY2RlZDE2ZGM3MDUyNjc4NDgxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNzc0ZDY3YTZhNWNmN2FhOWNjMWViOGZlZDRkYjdiNjIxN2ZlOWU0NTBlZjZhMzVlNWY3MDRjODQ2Y2RiZDc5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5YzUwNzAxMTk0OTk0OTQ3ZDM4YjRiNjIxZGRlZDI4N2E2YjQ3MGY4NzEyMjgwYjJmNTFiZjNiNDZlZjI4ODFlIn0"
         },
         {
-          "resource": "repo://backend/app/ingest/reading/vault.py#L125-L128",
-          "version": "repo-lines-v1:sha256:33a5ebc3e8f8382129101a7c5a676626cc11122f6fe62e5844f42289a3334593:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzNmYThjNTJmMWY0MzdmMzZkOTY3NGViNzlmZGQzNmRmMzBjMzQ2MmUwN2FjZTMzZDg5YjU1MjcwOWZhNGYyZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTJmYWNlOGNjYjEyYjlmZDE5N2JiNmYyYjFjMjdkOWM4NjI1MzhiZjk5ODFkM2Y4ODZmYzdlZjFjY2Q1YzAzNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODEyZTkwZjM2YWU4YTliNTlhNmU0Yjg0MTEyNjE1OGRhNWYzNWNmNDc5N2I2MjNhOWU4Y2NhY2I3MGJiMGM1MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmI4MGUxMDYxZGYwNWM3NDc1YWNiNjI1NDE3MjcyYmJmNzJhMzRhZmYxZDcxNzYwNmFkZmUzOWEwYTllN2MwOSJ9"
+          "resource": "repo://backend/app/ingest/reading/vault.py#L129-L146",
+          "version": "repo-lines-v1:sha256:84fee91ec2571b819ce38d6f7e42292b5dfb49e113fe365dcaf63fa7503206e9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzZmE4YzUyZjFmNDM3ZjM2ZDk2NzRlYjc5ZmRkMzZkZjMwYzM0NjJlMDdhY2UzM2Q4OWI1NTI3MDlmYTRmMmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5OWQ4ZDEyY2ZhMjk3MzZhNDZlNmI1ZWU1MGU5MGQ0NmEyODA0NzM3ZTcyNWYwMWY3M2Y5NzU4ZGVlZDU2NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgxMmU5MGYzNmFlOGE5YjU5YTZlNGI4NDExMjYxNThkYTVmMzVjZjQ3OTdiNjIzYTllOGNjYWNiNzBiYjBjNTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMDI3ZTU4OGQyNzFmMDg2YTUzN2RjM2JiNTYxZGNmZDllYTI0NjUzMmVmNjZmYjFkYTRkNzE4YzJhY2IzMzIifQ"
         }
       ]
     },
@@ -427,11 +431,11 @@
       "statement": "save_vault_findings refuses the whole save, writing nothing, unless every finding has a vault source_url, cites a document in that org's vault and quotes its [vault:<id>#…] marker; NGO research also requires can_research_org. Findings go to vault_research (one row per slug, day and org), never into entity_research.",
       "evidence": [
         {
-          "resource": "repo://backend/app/ingest/reading/vault.py#L169-L181",
+          "resource": "repo://backend/app/ingest/reading/vault.py#L196-L208",
           "version": "repo-lines-v1:sha256:bc0c4b2fcdd3a78c1c5fbb5eb0d92721ebd7eae015e0ce3c40a6a85014b8a644:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1ODg4OWZiZDI4ZjJlMDVkYzI3NTc3ODMzZjc3ZWY1M2E5OTEzODRiOTlhMDRkNWYxY2VkYzY4NWQ2MzE5OTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyMzRiMTc2NjE2MmIxYzk4YTYyNjkxNWVhODZiZTU4ZWQ5MmRmOWM5NmY1ZDU4OTA5NWQ5NjIwYjc1MTk2NmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1MThmYjgwMDVmZTY3YmRmNmY0NjU0ZTY2YmVkYjY1ZWEyZjZiMWJlYTVhNDY1OWExODU0NjlkZmEyYTQ0YWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBkNGJlMjA5MDRjMmY5NDA2YjQ4ZTYzZDc1YzE0NzllNzUwYzM2ZmM3NDE0ZjEyOTVlNjc2YWIyYTQzNjdlMDIifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/tools/vault_tools.py#L103-L153",
+          "resource": "repo://backend/app/ingest/tools/vault_tools.py#L106-L156",
           "version": "repo-lines-v1:sha256:90d1da688578249fa0a132fb84e34f3f418bd766c78b85442ba8ee9539f228a6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzNGU1OWQ3ZWFkY2E4YTkyOWEyNWZhNjBiYjU0ZmY2YjhhZmIwZmFkOTQwOTljZDFjODg5OGRjZDViZTk2OGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxMzdkMWQ2YmQ0OTVmNWM1M2Y3ZmUwMWNjNmM1MGZmN2YyZmU1MGIyOTRkY2FhYmZmYzYzYzU4NTBjN2FlNTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0Zjg5MDI1ZDk1NGIwODljODU2YWVjZWZmMmViMzE0ZmE2ZmY3MjJjZmJmYzcyYTEwM2NjOWZkMTQxODE0MzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
@@ -449,26 +453,22 @@
           "version": "repo-lines-v1:sha256:d0d0c0b056c630eba4b0096ce266be7ae0b628d6617922760730da4a29374454:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyYjYxMDhkNWQ2OGU4MTNiOGZkODg1OWRlM2ZiNWYwZTEyZDRhMDYwNzc3ZTU2ODc1YzU4MjU1OGM2MWZjM2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNWIzODRmOTM4OTU0MTZmNTQzYzgyODA5ZTc5MmM3YTIxZjA0NjdkN2Y5NjYxMTAwMzNhYTMxNGVlNDZmNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiNDY4YWQwYWJkNWRmODYyMGJiOTRiZGZmZTg1ZjQyMTEwZWNkYThhZjc2NGE0ZDVjM2JhMDZiYWE1Zjc3M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxNDI0NGMyZjgxN2VhZmFjZmQ3NjE2OTAwYTA2Nzk2ZGYwMmUzYzRjZTFiM2Q2YmRlMTNiNjhiYjA0NGI1NmUifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/reading/vault.py#L184-L202",
+          "resource": "repo://backend/app/ingest/reading/vault.py#L211-L229",
           "version": "repo-lines-v1:sha256:e8598a1a4d45370577db43514a0beadfbfa871bb42f8cf18a239e2dc444a515c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzYTFhOWY5NGVkY2ZiNDI0MjM4M2JkMDAxMmYwYmZjNjk3MTRkYmRkMjUwODJmYzQ1NmE0OWZlMmFhYTZmMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzU1MTJhMDJjY2QxZGZlZDE1NGIyMTdlNGIyMzc1ODU0MmE2OTM2OGVmZGZhN2M1YzA1ZDkxMTc5NzhmMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyOGE4ZDlkODJmZmM4MmYyZTUyNzBkZTlhMGIxMmE4NTI5ZDNhZTRkZGYxZDNlZjczOWJjZWVhOWJmMGNlOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ2MDgzNGEwOGZmOTA4ZDE4ZGE1ODBmZDc3ZWY5ZDBiYWY0MTMwOGViYzk1NjZjMjhkNDY0MjZhOTc3ZjQwOTQifQ"
         },
         {
-          "resource": "repo://backend/app/ingest/reading/vault.py#L30-L32",
+          "resource": "repo://backend/app/ingest/reading/vault.py#L34-L36",
           "version": "repo-lines-v1:sha256:537db2e64abf61e142b740786c49a5f6fe72a81c4b2fdc02a7a8dd0399797af5:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTBlMjkxMWIyNjU1MzM1ZDA5ZWRmYmFiMDk2ZmU2OTdlMDljMzNhMGY5ZjAyMzQ3MzdjOWNhODUyZjBlNjc2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzNhMjA3MDRkOTA5MmRkZTJjOGIwNGVkYjVkZDRhODIzNDQzYWFlYmJjNzY0ZjkwOWJmNzZkZTkxOGIxZGM2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODAzOGE5ZDU4MmUwOGQwMGFjM2JjZGUxMWI2MDkxOTAzOTQyY2Y5ZGViNjg3ZjYyZTc0YWRjYmYwODFlZTVlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDgxZjBlOTEzYzQ3M2ZkMDkxOGI5YWNiMTE0NDg1NGU1MWU2OTg3OGFjMWNkOWQ4Y2UxZTg3NDJlOTY4NzczYyJ9"
         }
       ]
     },
     {
       "id": "claim_a685fb55995044f3bd3a301ee03f0a89",
-      "statement": "Per docs/CHANGELOG.md 'Not finished', researcher-contract M5 (backfill KABIL and Axis on staging) is not done while M1-M4 (#194-#197) shipped; programme-themes step 5 write_funder_tags_from_programs (PR #172) is unmerged and no backend code defines it; the import-guided review follow-ups remain open; and the fix that moves Ask's SQL off the owner pool is on an unmerged branch.",
+      "statement": "Per docs/CHANGELOG.md 'Not finished', researcher-contract M5 (backfill KABIL and Axis on staging) is not done while M1-M4 (#194-#197) shipped; programme-themes step 5 write_funder_tags_from_programs (PR #172) is unmerged and no backend code defines it; the import-guided review follow-ups remain open; and Ask's SQL and Import still run on the owner pool, with the Ask fix on an unmerged branch.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L256-L265",
-          "version": "repo-lines-v1:sha256:6821a6e39cff4aecffd4b1f326b35a7836fca86e4de66c26031c169bae8b2024:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhNTMxM2U0OTY5NGVjODM0YzQ3ZTk4YWIwNDg4MmI3ZTY0ZDg2Nzk1MjllMTM1YTEyZTUzNDJmODFmMGU2Y2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0OTBhMDcxMGU0MjExNDJiNzFmMzlkYzcwOGFkZDA0YWEzNThkNTdhNjFiMmQzZmE4ODkyNzhjMGU4YTkyNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAzZTE0YzE0ODJjNjJkNzU4YjBjNTdhZDQyOTdjYWYyYTBmMzliMzM4NjVkYjIwMjJjZWJhY2I0YmY0NzAzNTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjNWExYWU4MDYxODU3OGJjNWVlZTU5NmQwYzdhNWNhMDI3OGM1NjBmNmNhMTE5NGI2ZTlkNjAzZWY4ZTc5NzIifQ"
-        },
-        {
-          "resource": "repo://docs/CHANGELOG.md#L273-L275",
-          "version": "repo-lines-v1:sha256:9f53c498d396618abfab52e0bc84c4008dc29948f67db0a7f4109fc9c197c59c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODIzMzM3MTlkMzBjZTU1MDQ2NmU4NTdiYTQwOWFkNGZiZTdlOWZlYTZlOWE3NThiMTM4ODVjOWY4NjllMWE2OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkwMjA1ZTRlM2E1MzUzZDJjYjQ2YjZlMjNmYzhiODUxOWViYTUyNjczMWM5YWRiYzQ0ZGMxNzZhNmQ1NmRmNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDNmOWFlMzhjYzU1OWRjNzU0N2M3NGVmMTIwZDUzOTU3YTg4Mjg4OTZiMDhiMmU1YWYzNzVjYjlkNWEwZGJhMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDAxNWE3MjU0OTBiOTc3ODEzZjA0OGUwMTVhMGMyM2ExOGU2MzYzYWQwMDM4MTBkY2E0OTQzZjAyNjYwMDU2MyJ9"
+          "resource": "repo://docs/CHANGELOG.md#L262-L275",
+          "version": "repo-lines-v1:sha256:c7c10e3602c6d6793323c5f6e07736efd5d05431c7f8e1a83bdf988c8debf6a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0OTBhMDcxMGU0MjExNDJiNzFmMzlkYzcwOGFkZDA0YWEzNThkNTdhNjFiMmQzZmE4ODkyNzhjMGU4YTkyNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjNWExYWU4MDYxODU3OGJjNWVlZTU5NmQwYzdhNWNhMDI3OGM1NjBmNmNhMTE5NGI2ZTlkNjAzZWY4ZTc5NzIifQ"
         }
       ]
     },
@@ -585,6 +585,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-05T19:29:31.538Z"
+    "at": "2026-11-10T13:16:49.280Z"
   }
 }

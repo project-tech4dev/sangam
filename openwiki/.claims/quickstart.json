@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:87b1f999c6bed28d4ce451ee9876d1c7b12d0e16a98bf9d599cf32088f6fed0e",
+  "pageVersion": "sha256:b7ef2e46d01f9451a9276ecef4ebd188d3533d714d76b6ee30ffb97066873f7f",
   "claims": [
     {
       "id": "claim_80d2fb637e374fd1b2373e7269787859",
@@ -46,15 +46,19 @@
     },
     {
       "id": "claim_38c493daf5fb4d14add2047decddaa0b",
-      "statement": "backend/app/ask/tools/sql/catalog.py is the allowlist (37 tables, plus 22 in KNOWN_EXCLUDED) of tables and columns Ask's SQL tool may read; at boot `_verify_sql_catalog` raises RuntimeError if the catalog drifts from the database (e.g. a catalogued table missing), while undeclared database tables are only logged and stay invisible to the agent until catalogued or excluded.",
+      "statement": "backend/app/ask/tools/sql/catalog.py is the allowlist of tables and columns Ask's SQL tool may read: 37 tables in the catalog, plus 23 names in KNOWN_EXCLUDED (including proposals, users, the four checkpoint tables and deleted_documents). At boot `_verify_sql_catalog` raises RuntimeError if the catalog drifts from the database (a catalogued table or column missing, or a catalogued column the authenticated role cannot SELECT), while undeclared database tables are only logged at info level and stay invisible to the agent until catalogued or excluded.",
       "evidence": [
         {
-          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1005-L1045",
-          "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1005-L1047",
+          "version": "repo-lines-v1:sha256:657451b2862f3c4bff38c6bff92eecd8eed9e64ad0d4c60f800a444502acb663:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
         },
         {
-          "resource": "repo://backend/app/core/lifespan.py#L222-L247",
-          "version": "repo-lines-v1:sha256:cf3b236c246d19b0f524d3cdd1f31896b3c85cc22de5c4eb74c8b857c061cfbb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmYzlmYjNkMDcwNGQxYzMzZTI3YzZjZjdmMjM0YjNkNGM4N2UyZGMxOWZjM2EzZWEzZWY2YzQwNGNhNjJkNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NjRmYjUzYjI3MjE2MzZkNDg0NjljZTdjNDNkOWU5YjJlODQ2NWQzNmNhZTI0ZjMwN2MzZWY0M2I3MDNjYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1080-L1126",
+          "version": "repo-lines-v1:sha256:ad0b56a446927d6382872a548a7246393d4e32eec72a605c1e506b1ae75d4cc2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3YTMyOGIzYmNmNTEyNWMxZmRkNzg5MDRiZTI4MTliNzI0MjRmYjE0MmM0MjE4OGE3NmQwY2I1YmVhMjNiMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MWI0ZjAzNDJmMDc3ZDhjZDA3Y2ZkMDJlYzAwNDBiZTkxYzkxYTc1NWM5NTM5NmUxNTQ3Y2Q2MzA5YmEzMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4N2IzMGM1YWM0NTA0YzdiNWRhMjEyZjYxN2JmNzA1MzAyYTIxYzhhOTNiZGU3YmRlYWJkYzc3ODI0ZTFmM2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/lifespan.py#L233-L258",
+          "version": "repo-lines-v1:sha256:cf3b236c246d19b0f524d3cdd1f31896b3c85cc22de5c4eb74c8b857c061cfbb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmYzlmYjNkMDcwNGQxYzMzZTI3YzZjZjdmMjM0YjNkNGM4N2UyZGMxOWZjM2EzZWEzZWY2YzQwNGNhNjJkNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzZGYyYWNmMDZlOGMzZjAzYzcxMzVjNmU4YWM1YTljYTU0MzJhYmUwNmE3NGFjYTBmZGQ5YTUzYTAwOGY5ODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -63,7 +67,7 @@
       "statement": "Postgres is the system of record; the Neo4j graph is derived from it by `make graph-seed` (which needs OPENAI_API_KEY) and is rebuildable, so nothing should live only in the graph.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L202-L210",
+          "resource": "repo://CLAUDE.md#L204-L212",
           "version": "repo-lines-v1:sha256:50f4fbf55b1cd8f466689fe208a4b6d7a31fd9fb2b8f5147e7aa0ac5cde9e901:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTVmMjI2Y2Q4MWQxZGNhMzc3ZDRmNDQ4ZjMyMWIzODQzNWNmOTg1MzQyYzI5ZDZmNGEzZjIzM2VmYzNkNGU1NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmEwZjIxMDI3MGM1MzVhYjk4ZmE4MjAwMGQ0N2U5NTIwYWU0MDAxMGIwZDMzNDRmMGUzZjg4MmU4YTc3NmI1MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjRlNTlkZWYzNTc2NWI5OTJhZTM4MmY4YzI3ZDE1ODVjOGJmZmQ3ODFjODk4Y2ExNzBhNDliNzg3NTFlMzY2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDIwYzA4MDU2ZDVjMjE3MTM3Y2FjN2Y4MDZlNDUzYmExZWFkZWRjOTM0YTA2ZjE3Y2E3ZTFmM2I4YzA1MDZiYSJ9"
         },
         {
@@ -74,29 +78,37 @@
     },
     {
       "id": "claim_f558e41b9cea4028b625581f14ca7a06",
-      "statement": "`make up` runs with the bundled Postgres only when COMPOSE_PROFILES includes localdb; the stack publishes frontend on 3000, backend on 8010 (container 8000), Postgres on 5433 and Neo4j on 7474/7687, and the frontend depends on the backend healthcheck.",
+      "statement": "`make up` runs with the bundled Postgres only when COMPOSE_PROFILES includes localdb; the stack publishes frontend on 3000, backend on 8010 (container 8000), Postgres on 5433 and Neo4j on 7474/7687. The backend depends on Neo4j's healthcheck and on Postgres's only when that service is enabled (required: false); the frontend depends on the backend healthcheck.",
       "evidence": [
         {
           "resource": "repo://.env.example#L27-L29",
           "version": "repo-lines-v1:sha256:a0448e9aec098d75c81ca35c9ed8da5404d86015895ff4aa83d1f7467014e6d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjY3NDQ5ZjVhNDI4YTk1NDcxZjkzYjMzYWMxZTRiM2Y1OWFhZGQ3MzUwNjFhYjUxYWViZDgyODdiZTdkNmI0MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjhmYTBkY2YzOWJiOThmMmFlNzBlMmY4ODNkMjhkNmQ5NjFiYTYzZGUyZDEyNGU0OWFiZjU4ZTgwYjIzMDRkZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGQ4NWJhZWRiOGM2MTUyOTdiMjIzMTUyOTkwMzEzYjZjNDAyOThiNjUwNDI2NmVjNzQzNTAwZDdlNWMzNDU1MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTg3YThlMDk3YmI5NjNkNjgxYmZiZDZiMmQxMGQ0NmNkMzEwYTRjNzgzMjE0NDMxZTNmMThmNGI4NGY1YmI1MiJ9"
         },
         {
-          "resource": "repo://docker-compose.yml#L1-L161",
-          "version": "repo-lines-v1:sha256:5bd8d42b0fdc45337f12233631947e8a76981039b9439dd861a13c0dd924f3f6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmYTczZmNjZGM5OWVhODM1OTY3YzdkZWU3ZWZiZWQxZjNjYTg3MjYwZDkyOTMxODUwZmRkNjZkYThjYjEyZjFkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5MTA0NDEzYjUzYTcxNTA1YmZlYzVjNjcwMTVkOTc0N2Y3YTQxNzhkMzUyY2Y1M2ZmN2ZiZDcyMDkzNDUyNDI3IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+          "resource": "repo://docker-compose.yml#L1-L12",
+          "version": "repo-lines-v1:sha256:baae00159db9edda7196d689668939d05ee8f2abf718b0bcaac84aaaa682d7f2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhNzNmY2NkYzk5ZWE4MzU5NjdjN2RlZTdlZmJlZDFmM2NhODcyNjBkOTI5MzE4NTBmZGQ2NmRhOGNiMTJmMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMTZlZDIzOWEzNjUxYjUwNzljMGU0ZTdmMDc4NDRlYTMyOWM4NzYyOGJmOWZjYzQ2MzY3NzMzZjVlMWU5M2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMxYjM0ODA2Nzk0YzY1NzM5Mzk0YzZiZTNlYmNlZjc0ZjVmNWI2OTIzYjA4ZjI4YTM3ODRmNDJhY2MwM2QyYTgifQ"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L103-L117",
+          "version": "repo-lines-v1:sha256:79449362f31bb89aff7c64913117b6af5f138ab966d7350184588ca1fe6c3109:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMTZlZDIzOWEzNjUxYjUwNzljMGU0ZTdmMDc4NDRlYTMyOWM4NzYyOGJmOWZjYzQ2MzY3NzMzZjVlMWU5M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMmVhNmJhNWE0NzNjOGIyNjA2NzE1ZDU1Mjk0ZmU0M2M1ZTc1M2U0MTlmMTI0MDk3YTQ4ZDZhMzQ2NTMzMzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiYjA0YzhjMjZkYWE2ZDE1MzE0Y2Q5ZTA1OTZlZGI5YTY4ZjZlYmZjNmQwYmVmNzgwYTNkOGI1MWUyZDY1YjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzMGM5NDNjZGI1N2I0NTU0NGVlOTg3MWU1Zjc0YzFhZTI3YWU2NzhlZTU0NjhlZWYxMWMzMmZlZWEzZDBkZDkifQ"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L136-L141",
+          "version": "repo-lines-v1:sha256:2942810663cbc64dec94c46a8d4171ebe0210fa149143471b519076046e51611:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmMxNmVkMjM5YTM2NTFiNTA3OWMwZTRlN2YwNzg0NGVhMzI5Yzg3NjI4YmY5ZmNjNDYzNjc3MzNmNWUxZTkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzJmYzNhMGIzOWUwYmE3Y2M0ZDhkY2Y5NzFjY2IxMTU2ZjI5ZTEzOGE2YzAzMWIzZDYxY2Y2MmU5NGQ3OTY0ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDIzYjg1NDYxNjM4ZGI0YWU3NDdlNmZhZDVlMmMxZTgzZmNkZjMzY2E0MzRjNzM0MzIwMDU0MGRkOWVhMWU5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDk0Y2Q2MjYzZWU1NDI1YmUyY2Q4NGYyYzRiMTNiOWMxYTc1ZGY1NjMxNzMwYTNjZmY4NTYwMzkxYzRhZTBlMSJ9"
         }
       ]
     },
     {
       "id": "claim_829dda1126d7485c954db54928324634",
-      "statement": "Agents are built lazily: lifespan opens the pool, verifies the SQL catalog, opens the checkpointer and registers the /agent, /ingest and /proposal routes at boot (each guarded by an AGENT_ACCESS entry), while load_agents builds all three agents together once under a lock on the first post to any of those routes (or the first REST route calling get_graph); backend/app/ask/agent.py gives Ask exactly six tools (db_list_tables, db_describe_table, db_profile_column, db_query, search_graph, compare_fit) plus read_file and ls, with compare_fit the only one using fixed rather than model-written SQL.",
+      "statement": "Agents are built lazily: lifespan opens the pool, verifies the SQL catalog, warns on shared storage, opens the optional graph and the checkpointer, sets app.state.agents to None and registers the /agent, /ingest and /proposal routes at boot (each guarded by an AGENT_ACCESS entry), while load_agents builds all three agents together once under agents_lock on the first post to any of those routes (or the first REST route calling get_graph); backend/app/ask/agent.py gives Ask exactly six tools (db_list_tables, db_describe_table, db_profile_column, db_query, search_graph, compare_fit) plus read_file and ls, with compare_fit the only one using fixed rather than model-written SQL.",
       "evidence": [
         {
           "resource": "repo://backend/app/ask/agent.py#L32-L69",
           "version": "repo-lines-v1:sha256:84c48f7e5e6039ba6826d82e9e91930ef317bcb6c42f0385ab3dd6a1ee85f086:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyZDgxNDdjYjUxOTg4ZGQxNDg0ZjU2MTc1YjE5NDI2NzI1MTc5MWJhMjA0ZTdhYTVmZmIzMzYwOTJjMDk3ZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MDM5ZWM5YjQ0ZjQyMTJmZmZlZTYwNDgzMmQxYzI3NTAxOTk0ZjAyNjFkMWUwMzgwZmUzNDk2YzZmMGVhNWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE3N2FiY2ExY2Y5YzE1NWE2YTA5ZDQwZWFiY2NlZDEyZDFhYTE3YjY2ODFjMzg4YWMyNzVhMDNkZTc2YTVlNDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlYTMwZWUzN2YwOGVmMmQyYWNhM2RlMjZjNGM2NjdhNjc0OGMyZGFhMDM3MmMxYTcwNDE0MDk5OTA5MTJmZGMifQ"
         },
         {
-          "resource": "repo://backend/app/core/lifespan.py#L174-L198",
-          "version": "repo-lines-v1:sha256:7fd306a24cb480a75c1d5fdf62e95a1dccfe035b44b66f180acf93100ad83ca8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxNzE0MWQwNWY0ZDg1NjExYTQ3ODU2NjAxYWU0ZTIyMTU4YzZiODk5YmZiNjYxNmFkM2RhODI4ZjcwZDRmNGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4ZDU0ZjNhYzBkYWE4YjYyMWM4ODI4NDEwYjA5MzliMDViYWU4ZGYxNDk3OGIwNTUxY2JjOGJjNGM1ZDE4NTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5ZmNjYzYxYmM4NzYxY2E3Mzc4MzJmYmZiODAwNDc3YjZjOWViZmIxZWViOTJhOTE2NjNjMGJiYzEzOTFlNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlNTA3YWFjOGQ0YmRmMWE3M2NkZDhiNDA4MTlmY2ZiMTZlNzY1MDdjYTc3MDY0MzM5MTc0MTdjMmI2ZWY4MzgifQ"
+          "resource": "repo://backend/app/core/lifespan.py#L174-L220",
+          "version": "repo-lines-v1:sha256:8d6ce71184050a2339af85942468144e030b308c409925dc1408458b6f987ce5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxNzE0MWQwNWY0ZDg1NjExYTQ3ODU2NjAxYWU0ZTIyMTU4YzZiODk5YmZiNjYxNmFkM2RhODI4ZjcwZDRmNGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlMmRjZmE3NzE2MGE4MzExZTYwYWExYjhiMjU3NjA3N2Y5MWU4NWU3NjYxZTg3ZDBjYzE2YmYwZDE0YmUxNDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5ZmNjYzYxYmM4NzYxY2E3Mzc4MzJmYmZiODAwNDc3YjZjOWViZmIxZWViOTJhOTE2NjNjMGJiYzEzOTFlNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNhZjY2OWI1M2QzYTIwYTI0N2U1NGZmNDc4MTQ5MmVjYWU4ZjQ4MTJjZmU0MTY4ZWRjZjQ5NDg3NzFhOTc1NjcifQ"
         },
         {
           "resource": "repo://backend/app/core/lifespan.py#L26-L43",
@@ -138,15 +150,19 @@
     },
     {
       "id": "claim_094536fa9652487fa28e6c08dac3e940",
-      "statement": "The ENV variable (local default, staging) selects the database for DB-touching make targets and is honoured by up, down, logs, seed, migrate, psql, client-docs and remote targets but not by the local-only db-clean/db-reset/db-backup/db-upgrade group; STAGING_DB_* are local-tooling variables, as the backend reads DATABASE_URL.",
+      "statement": "The ENV variable (local default, staging; any other value is a make error) selects the database for DB-touching make targets and is honoured by up, down, logs, seed, migrate, psql, client-docs and remote targets but not by the local-only db-clean/db-reset/db-backup/db-upgrade group, which refuses to run on staging; STAGING_DB_* are local-tooling variables, as the backend reads DATABASE_URL.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L132-L152",
-          "version": "repo-lines-v1:sha256:6e5e16fe7189be98109c9902d02eb0e1f6f45c52e5b84f0e3ebc4f14ee8cb3c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0N2Q5NGU0NzNkYzQ4MWJiMTVlZWQ0MTU3NjA3NDVlZDQ0MmQwYzA3MjI2YzU3M2FhNmRlODdmZmMzZjdjMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhZjY1MzZmNzBmNjcyZDFkNGU0YTdkMmI2ODMyZTY0NWE5NjU1NTAzYjAwZWIwMThiZjRiZjI2YzdmZGY4NGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1M2NiNDY1YTZhNzg0M2FhNzA1ZjBmMTMxNDFlODAwNGYzYmM5NDFiMjM5YjcyN2E4NTE1MTYzZTdlOTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3YTc1Nzk5NzNmYjA2ZGRhM2Y3MGMyMjM4YzQyMWExZTAwZGYxNjIxMGRlMzI2N2RiYWE4MmQ0YWU2ZjYyZGEifQ"
+          "resource": "repo://CLAUDE.md#L132-L154",
+          "version": "repo-lines-v1:sha256:8b6e1abb50a1f0c0c28b7c8324dca4405713405e00109a953859f290389df805:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0N2Q5NGU0NzNkYzQ4MWJiMTVlZWQ0MTU3NjA3NDVlZDQ0MmQwYzA3MjI2YzU3M2FhNmRlODdmZmMzZjdjMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhZjY1MzZmNzBmNjcyZDFkNGU0YTdkMmI2ODMyZTY0NWE5NjU1NTAzYjAwZWIwMThiZjRiZjI2YzdmZGY4NGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUxYmE4NGM5M2E3ZTA0ZTAyZDJkYzQ4NzljYjE5ZjdlN2I5M2Q1OTI5MGRiZTBhM2ZmZDE2ZTViNTljMzNiZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3YTc1Nzk5NzNmYjA2ZGRhM2Y3MGMyMjM4YzQyMWExZTAwZGYxNjIxMGRlMzI2N2RiYWE4MmQ0YWU2ZjYyZGEifQ"
         },
         {
           "resource": "repo://Makefile#L12-L58",
           "version": "repo-lines-v1:sha256:5ace881186679d7c9dc95239f2e05d2ae403fc1549803319eb1f125128dd8774:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjMjVkMjBhYTg4ZTZhZjgxMjdhNGE3NWVmZDgyZTdjOWQ4M2I4OTE3MGNhNTQ1M2E3YmY5YTllNGI4NjMyYzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3YzRiYzRiZmYxNzczNTZhYzA1MzcyNmRkMWQwOWE0N2Y4M2U3ZDFlYzBkNzQ1OTIyYWE5ZWFhM2RjMGI0MmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmMTIwN2FmYTU0MTQ3MzhlOTRjNDcyZDE3YTE3MDE3MWE5YTY5MjIxZjJmYjc2NjQ5NDM3NTM5MTAxNjcyMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0YzkyMmMyMzI3NjI5OGRiZWI1MjU0ODJiZTI4MDk5OTAzNDIzOTI2OTYzY2ZhYjA2ZTQ5ZWNhM2NlNzNkZWYifQ"
+        },
+        {
+          "resource": "repo://Makefile#L284-L338",
+          "version": "repo-lines-v1:sha256:69e9f6fca482deb544ecac3abd01388aa2d92b090db7bf71d5104b0ddcb85d1d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyODFhYmRlNGJhMzk0YmJkZWI1MjE2NTE2Y2NiMTRkODc2MmYyYjg2MzkwNzQzZWVhZWJlYzBlYjJmMzg3MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjNTRhOGQ2OTVmNWE4YmUzNmFjNDNkZWM3MzkwMDlhMWQ1MTM0ZmQ2NDNlM2QzNjgyMDZlMDYxMTZhMGRlMjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyN2Q3OTZiY2M4YzE2MjY5YTEyMTdlMGYwY2Y0MjQwZTgxNzJjNzkyMDE1YzkzODA1ZTRjMDBkMzE3MjcyZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkYzYwOTY3ZThkYjE3MDlkZmZjNTllYzU4ZTRiOWM3NDllNzYzMDg3NTY3MGI0MGJiY2RiNDgxODk4MzA2YjUifQ"
         }
       ]
     },
@@ -193,7 +209,7 @@
       "statement": "The backend runs three agents, each on its own AG-UI route registered in lifespan: Ask on /agent, Import (Scout) on /ingest and Proposal Copilot (Sangam Pitch) on /proposal. AGENT_ACCESS declares who may post to each (ask_access; require_scout plus chat_access; proposal_chat_access), and a path with no entry fails at boot.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L355-L361",
+          "resource": "repo://CLAUDE.md#L357-L363",
           "version": "repo-lines-v1:sha256:bd211dd764acf0cfdc4ee774ccce77167a409e1e41b93cc1d5b0a488b6353a63:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzg2YzJhODFiMzAzNWNjN2Y0YzEwODFjZTIyNzYxNzhmMTE5MDFhZDI0NWExMTY1MzU4MjM2YWJiNjNlODU5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDJiNGY4ZWEwZTc3OGUxYTE3ZTUxMDUzOTM0NWIwMDk0MGZkZGNmMWNjZTlhNThhYzA0M2QwZjc2YjE2ZmJjYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2QxYjU1ZmU2MTU4MWM0MjY0ZTQ2NmI4MTM4MWQ0ZTFmMDNkOTAyYmRlZmE3M2RiNmVhNDRiYzc5MDc3Y2Q0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTdmYzQ1Mjg3ZjcwYmI1NWNkNTA0ZjUxYWE1ODIxOGVhNTBjNzkwZGU4NmFjNGEzZmE3MDlhN2QzODg3YmZmZCJ9"
         },
         {
@@ -278,7 +294,7 @@
     },
     {
       "id": "claim_1cd4b00359424c6888ee909fa28496fe",
-      "statement": "Migration 0049_rfp_match_saved.sql widens the rfp_matches status check to allow 'saved' alongside 'flagged', 'reviewed' and 'dismissed', so an org can save an RFP Watch call; the latest migration is 0052_proposals_delete.sql (after 0050 shifted proposal stages and 0051 added the documents delete policy), which lets an org's admins, stewards and staff delete a proposal and its saved draft documents.",
+      "statement": "Migration 0049_rfp_match_saved.sql widens the rfp_matches status check to allow 'saved' alongside 'flagged', 'reviewed' and 'dismissed', so an org can save an RFP Watch call; 0050 shifted proposal stages, 0051 and 0052 added the documents and proposals delete policies, 0053 added the deleted_documents log (an AFTER DELETE trigger on documents), 0054 and 0055 set the org-vault bucket's allowed file types, and the latest migration, 0056_documents_path_in_org.sql, restricts a signed-in caller's documents insert to files in its own org's vault folder.",
       "evidence": [
         {
           "resource": "repo://db/migrations/0049_rfp_match_saved.sql#L1-L3",
@@ -295,6 +311,22 @@
         {
           "resource": "repo://db/migrations/0052_proposals_delete.sql",
           "version": "repo-file-v1:sha256:07820a0e2a9037d1764d202128e22dfd6ebe0528b6b9283ee483d871de76bb8e"
+        },
+        {
+          "resource": "repo://db/migrations/0053_deleted_documents.sql",
+          "version": "repo-file-v1:sha256:af9cbd7b641322404660b108382ca3537b1dc2cecfeb598c7ef25ce9ddba04fc"
+        },
+        {
+          "resource": "repo://db/migrations/0054_org_vault_mime_types.sql",
+          "version": "repo-file-v1:sha256:843b5be4a5a4a9d5e7f59229c53161816c83d566894df7ea4006fe2f96b89af8"
+        },
+        {
+          "resource": "repo://db/migrations/0055_org_vault_pptx.sql",
+          "version": "repo-file-v1:sha256:761327f4e6cf5a7531dd165e0d467e928ac8a5bbf772328991ac70c0fd003da4"
+        },
+        {
+          "resource": "repo://db/migrations/0056_documents_path_in_org.sql",
+          "version": "repo-file-v1:sha256:d28853222c37b0dc9cceef4d84aa36325518d54231d6483dc405450851014ddb"
         }
       ]
     },
@@ -315,10 +347,32 @@
           "version": "repo-lines-v1:sha256:03fa062223d69f99839130a0ba5a9f437138ec38622776f0ac696dfe0f07019a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3MDQ5Yjg4NTJmYWQzZDdiYzIzNzRmMjExMTE5MTY4MjI3NDRmNDU3ZmJlMTY1ZjIxZDRjNjhiYzRkODdhZWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmNjc3OTE2MjFjOGFhNDY3Mjk1ZTU1YzNhYzUwNTAxMTRkYTc3OTEwMzQ2MzhmZWNmNzJhZTQ5ZTkyZmNiNzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwMDk2NzkxZDAyMGUyMjM4YmNmZWJkNGRjMzk1NWFlNTliN2NmY2FlZTU0ZjE3MWZmMjhiZDI3N2NhMTM0MDMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_5c36a9e60b3041f0b7d97223c9955b0d",
+      "statement": "Compose defaults STORAGE_BUCKET_SUFFIX to -local (and make dev-backend does the same), so a local backend's Supabase Storage files go to separate -local buckets; the backend logs a warning at boot when storage is enabled with no suffix on a database outside the Storage project.",
+      "evidence": [
+        {
+          "resource": "repo://CLAUDE.md#L144-L150",
+          "version": "repo-lines-v1:sha256:ca5ecdf98ef68f6b5c842d8dd0848ada6d0a0d9ef5c6382e16289c8f77850dee:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc1YWI5NmVhMzBiOGJhYmMxN2Q2ODkzMzc2NWU3YTYzNWU3MGI2MDQ1MGMxY2FjN2U3NTlmNTZmNzBkNmM2NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTMwZGUxNDA4MGM4YTBiZWI3YmU5OGVkYzFmMWYzYjEwYjlmNmM5YjQyMjA1ZjdjODVmMThhNGU0ZmYzZTVhOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTg0ZTcyNjU2ZDk2NjkzMzk1OGJkMGZiOTEzZjYwMTg2NzNkMjIxOTEyNDhjZTBjNTM1OGI3ZDY0OWIzZWI5NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWY0ZGYxNmQ4MWRjYWUzMDRmYzBiMTIwODI1ODYyZDdiM2QyZGE2MzlkZDQ0MDRlNTcwZTk5YTc3OGNjMjBiYyJ9"
+        },
+        {
+          "resource": "repo://Makefile#L340-L343",
+          "version": "repo-lines-v1:sha256:dd299cd2cf64dc02eafa60ed6fab9ef592e051c548024a0077e2a7e7e1fd840f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODBiYzc4NTY0OGMwNzk2ZTMxNjc5MjlkNmMxOGFmY2M3YmU5OTlkODMwMDI4OTA1NWZmNmI2MDE3OTlkNzE0ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2NhYWNlZjk1NjJjZDRiZmI5MDViY2E4NjA3YjE5M2I5MGIyMDNmOGM2ZjVkZTcwNGE3YzA2NWJjMWZkYTYxZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzE5ZDdmMDA1ODE1ZWY3MjJkNDVjOTkxNmY2Mjk5OGUzMTI5MjE1ZDZiYTJiMjJkN2M3NjdjOTM5YzcyMDE0YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODgxOTFmZjUwOTZlYWFjMDcyNzBkZWU5YjIxODNhNTM4NGNhMTdhZTFiYzQ3NjAwNDc3NmNjNWM2YTJkMzcxNCJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/lifespan.py#L223-L230",
+          "version": "repo-lines-v1:sha256:48acc09d14775a840c698e44565de544ed697967636c73a13063f368f0127ccc:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY1ZDcxZjE4MzI3NDZiNDlhNGJhMzY4MjZhODNmYWQ2ZGZkMWVkMTc3OTk3ZmM5MmNmOGZhM2RlNDc4OWQ4ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkwOWE1M2E2MThkMDI4ZTFkMzAwMGMwYTdhYmNlZWNiZTVmYjM3ZjRlNTExZWZlNDY2NDNmYWQ2ZTY2ODcyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTk2NGZiNTNiMjcyMTYzNmQ0ODQ2OWNlN2M0M2Q5ZTliMmU4NDY1ZDM2Y2FlMjRmMzA3YzNlZjQzYjcwM2NhNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmU0MDFhMGI5NTA5ZDg1MDMxYWQzOTIxNzQwYTIyMDlkNDE3NjI0M2ZjMzc0ZDcxOGRkNGZiYzU2NGM5YzA1ZSJ9"
+        },
+        {
+          "resource": "repo://docker-compose.yml#L75-L81",
+          "version": "repo-lines-v1:sha256:4cf384181e06c837554432f239674ec37d06d0a1c4ec45fd0d893df7b6a49dcd:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWI2YmI1YTRjYTk2MDUxZTM4YmY3YjYzMWM4YmU5NjlmYzIzYWU0NGE2YWRhZGU5MjFmZTYxNTQxMjVhNTM1ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2M0ZjQwNjk3NjdkODM5NmEzMjViOWZlOGNiNDc5ZDQwYzNlZWE5MDY3NDEwODY1NmY2M2Q1MjE4NzBiODU5ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTgxMjU2NGQ5YzI2NDliZDE1MmY5Njg5YmUyZGU5M2NkZTZkNmU0NjEzZmJiNTc4MWI1MzVkMTkyMmYwMmZkZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzIxNzkyZGQwZjE4NWM2NGMzNWFiNDBmY2RmMjcwMTdhMDc3NGM2YzczNjczNTNmZDk4ZmEzZTE5NmZlODA5ZCJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-05T19:29:31.538Z"
+    "at": "2026-11-10T13:16:49.280Z"
   }
 }

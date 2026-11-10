@@ -3,9 +3,6 @@ type: architecture
 title: Sangam Import (Scout)
 description: How the Import agent (Scout on screen) is built after the ingest package split. A supervisor and four isolated subagents research funders and NGOs. Findings merge into one published brief per organisation, and catalog/promote moves the brief into the catalog through fixed-SQL writers with undo and human-in-the-loop pauses.
 tags: [import, scout, ingest, deep-agent, brief, promote, writer, matcher, geography, undo, hitl, access]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
 sources:
   - id: openwiki-source-510f72ba91d3915e3fb10b24
     resource: repo://backend/app/agentkit/harness.py
@@ -91,7 +88,10 @@ sources:
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-a44fe58bbddbee96fe925ba2
     resource: repo://docs/INGEST.md
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Sangam Import (Scout)
@@ -217,9 +217,9 @@ Ordering rules that hold across a turn:
 
 - `choose_sources` comes first and alone, except for a news pull or a `publish_brief` republish. The answer lives only in the checkpoint, as the tool message's artifact (`run_sources.chosen`).
 - When the Doc Vault was picked, a `vault-reader` runs before the researcher. It hands back only concept names and ids, never file text, and the researcher is told which concepts are still missing.
-  - `app/ingest/reading/vault.py` reads four file types from an organisation's private `org-vault` uploads: PDF, Word (`.docx`), `.xlsx` and plain text (`.md`, `.txt`). Each line is cited by a marker: `[vault:<id>#p<page>]` for a PDF page, `[vault:<id>#para<n>]` for a Word paragraph, `[vault:<id>#line<n>]` for a text line and `[vault:<id>#<sheet>!<cell>]` for a workbook cell. Any other file type returns a "cannot be read here" message.
-  - A read is capped at 24,000 characters (`MAX_CHARS`), so the text never needs evicting to a file. Continuation uses `start_page`, which counts paragraphs in a Word file and lines in a text file. A PDF with no extractable text is reported as probably scanned, never guessed at.
-  - `save_vault_findings` refuses the whole save unless every finding cites a document in that organisation's vault, by `https://org-vault.sangam.invalid/<id>` URL and its `[vault:<id>#…]` marker. Findings go to `vault_research`, one row per org per day, never to `entity_research`.
+  - `app/ingest/reading/vault.py` reads an organisation's private `org-vault` uploads of several types: PDF, Word (`.docx`), PowerPoint (`.pptx`), `.xlsx`, CSV, Markdown/text (`.md`, `.txt`) and PNG, JPEG or WebP images. Each line is cited by a marker: `[vault:<id>#p<page>]` for a PDF page, `[vault:<id>#para<n>]` for a Word paragraph, `[vault:<id>#slide<n>]` for a slide, `[vault:<id>#line<n>]` for a text or CSV line, `[vault:<id>#<sheet>!<cell>]` for a workbook cell and `[vault:<id>#image]` for an image. Any other file type returns a "cannot be read here" message.
+  - A text read is capped at 24,000 characters (`MAX_CHARS`), so the text never needs evicting to a file. Continuation uses `start_page`, which counts paragraphs in a Word file, slides in a PowerPoint file and lines in a text or CSV file (a later CSV window repeats the column names). A PDF with no extractable text is reported as probably scanned, never guessed at. An image comes back to the model as the picture itself (a base64 image block, capped at about 3.75 MB), not as text.
+  - `save_vault_findings` refuses the whole save unless every finding cites a document in that organisation's vault, by `https://org-vault.sangam.invalid/<id>` URL and its `[vault:<id>#…]` marker. Findings go to `vault_research`, one row per slug, org and day (`ON CONFLICT (slug, researched_on, org_id)`), never to `entity_research`. An NGO save also needs `can_research_org`.
 - When the request is about everyone in a staff file, a `workbook-reader` returns the names, and one researcher per name follows.
 
 ## The research contract
@@ -239,7 +239,9 @@ flowchart TD
     K -- yes --> X2["REFUSED: NGO research"]
     K -- no --> U{"contract.unanswered is empty"}
     U -- no --> X3["REFUSED: finding or gap missing"]
-    U -- yes --> D{"same slug already saved today by someone else"}
+    U -- yes --> M{"NGO and non-staff caller does not steward the matched NGO"}
+    M -- yes --> X2
+    M -- no --> D{"same slug already saved today by someone else"}
     D -- "yes and not staff" --> X4["REFUSED: today's research is on file"]
     D -- no --> S{"fewer findings than stored and replace not set"}
     S -- yes --> X5["REFUSED: would shrink the result"]
@@ -247,7 +249,7 @@ flowchart TD
     O --> P["brief.publish merges every run into the brief"]
 ```
 
-Caption: the checks a save passes before it lands. The tool then reports numbers found only inside quotes, so the researcher can add them as findings.
+Caption: the checks a save passes before it lands. The NGO check runs twice: first on the caller's roles alone (staff or a steward of some organisation), then, once the database is open, against the specific NGO the save resolves to (`_may_research`, which needs `can_research_org` for every organisation row it matches). When a save carries staff-spreadsheet findings, a failure returns only the exception type. The tool then reports numbers found only inside quotes, so the researcher can add them as findings.
 
 A save upserts `entity_research` on `(slug, researched_on)`. The one row per entity per day is shared, so only staff replace what someone else saved today. The number of findings may not shrink without `replace=true`. That rule exists because a short re-run once silently overwrote a long one.
 
@@ -374,10 +376,11 @@ Import is for Sangam staff and for stewards of an organisation. Within that grou
 
 ## Office text extraction
 
-`app/ingest/office.py` no longer exists. The Word and Excel helpers now live in `app/core/extract.py` (pure bytes to text) and are shared by two callers:
+`app/ingest/office.py` no longer exists. The text helpers now live in `app/core/extract.py` (pure bytes to text: PDF, Word, Excel, PowerPoint and text files) and are shared by several callers:
 
-- **Document upload.** `_extract` in `app/api/routes/documents.py` uses `extract.docx_paragraphs` (paragraphs, with each table row as `a | b | c`, in document order) or `extract.xlsx_markdown` (each sheet as a heading plus its first `SHEET_ROWS` = 200 rows) to fill `content_md` for a new upload. A damaged file leaves the text empty and the upload is still stored with its hash.
-- **Vault reading.** `vault.docx_text` numbers `docx_paragraphs` for citation, and `vault.plain_text` numbers a text file's lines. Workbooks go through `staff_sources` rendering with a `vault` marker, so the vault-reader can page past the 200 rows an upload keeps. The same module's `docx_range` and `extract_pdf_text` serve the researcher's `read_document_pages`.
+- **Document upload.** `_extract` in `app/api/routes/documents.py` uses `extract.docx_paragraphs` (paragraphs, with each table row as `a | b | c`, in document order), `extract.pptx_slides` (each slide under a `## Slide n` heading), `extract.xlsx_markdown` (each sheet as a heading plus its first `SHEET_ROWS` = 200 rows) or `extract_pdf_text` to fill `content_md` for a new upload. CSV, text and image uploads get no `content_md`. A damaged file leaves the text empty and the upload is still stored with its hash. Before extracting, the route checks that the file's leading bytes match its extension (`_bytes_match`) and refuses a mismatch with 415.
+- **Vault reading.** `vault.docx_text` and `vault.pptx_text` number `docx_paragraphs` and `pptx_slides` for citation, and `vault.plain_text` numbers a text or CSV file's lines (`extract.text_lines` splits any line over 2,000 characters). Workbooks go through `staff_sources` rendering with a `vault` marker, so the vault-reader can page past the 200 rows an upload keeps. `vault.pdf_text` uses `extract_pdf_text`.
+- **Researcher downloads.** `read_document_pages` uses `extract.docx_range` for a downloaded Word file and `extract_pdf_text` for a PDF.
 
 ## Skills
 

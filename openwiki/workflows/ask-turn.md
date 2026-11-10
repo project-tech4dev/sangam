@@ -3,9 +3,6 @@ type: workflow
 title: One Ask Turn, End to End
 description: Traces one Ask Sangam question from the browser through the Next.js chat proxy, backend auth and thread ownership, the AG-UI /agent endpoint, the deep-agent loop (backend/app/ask plus the shared backend/app/agentkit), the four SQL layers (run as the caller under RLS), citation markers, the post-answer audit, tracing and checkpointing, with each failure path (retry budget, validator rejection, 5 s timeout, 50-row cap, non-blocking audit caveat).
 tags: [ask, workflow, ag-ui, text-to-sql, citations, answer-audit, tracing, checkpointing, failure-handling]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
 sources:
   - id: openwiki-source-510f72ba91d3915e3fb10b24
     resource: repo://backend/app/agentkit/harness.py
@@ -47,6 +44,8 @@ sources:
     resource: repo://backend/app/db/pool.py
   - id: openwiki-source-62958d5b14b0717233a7ec0b
     resource: repo://backend/app/ingest/agent.py
+  - id: openwiki-source-465a2de3f088ab05c5629202
+    resource: repo://backend/app/integrations/graphiti.py
   - id: openwiki-source-77f44179d2b1ede3192f7afe
     resource: repo://backend/app/integrations/tracing.py
   - id: openwiki-source-0c2810df96342c5efec98a57
@@ -83,11 +82,18 @@ sources:
     resource: repo://frontend/features/ask/lib/threads.ts
   - id: openwiki-source-0253ddf7b06c66385c0ba7fd
     resource: repo://frontend/features/ask/lib/useSangamChat.ts
+  - id: openwiki-source-03d33fb20823ee4186633581
+    resource: repo://frontend/lib/__tests__/copilotkit-access.test.ts
   - id: openwiki-source-29a6b6ddc50c3eb6e06ad5c0
     resource: repo://frontend/lib/AgentProviders.tsx
+  - id: openwiki-source-4c6b88fce133b6d2e3039743
+    resource: repo://frontend/lib/copilotkit-access.ts
   - id: openwiki-source-bd8e22234eeb56b120efd22c
     resource: repo://frontend/lib/useAgentChat.ts
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # One Ask Turn, End to End
@@ -146,6 +152,8 @@ Caption: the main hops of one Ask turn. The loop repeats per tool call, and the 
 
 `frontend/app/api/copilotkit/[[...slug]]/route.ts` is a thin CopilotKit runtime. It maps `sangam_agent` to an `HttpAgent` on `AGENT_URL` (default `http://localhost:8000/agent`; in compose it is `http://backend:8000/agent`), `sangam_ingest` to the sibling `/ingest` URL and `sangam_proposal` to `/proposal` (see [Proposal Lifecycle](proposal-lifecycle.md)), all derived from the one env var. It uses an `InMemoryAgentRunner` and sets `maxDuration = 1800`, which is sized for Import turns of 15 to 20 minutes and must match `backend/vercel.json`. The proxy contains no auth or SQL logic: authentication and thread ownership are decided by the backend.
 
+The one thing the proxy does decide is which CopilotKit routes it serves. The handler's `onBeforeHandler` hook calls `allowRoute` (`frontend/lib/copilotkit-access.ts`), which lets through only `info`, `agent/run`, `agent/connect`, `agent/stop` and `agent/suggest` and throws a 404 `Response` for everything else (`threads/*`, `memories/*`, `inspector/*`, `transcribe`, `annotate`, `cpk-debug-events`). The runtime's in-memory store of every thread would otherwise be readable by any caller; chat history comes from the backend's `/api/threads` instead. `frontend/lib/__tests__/copilotkit-access.test.ts` pins both lists.
+
 ## 3. Backend: auth, thread ownership, route
 
 Three things happen before the agent sees the request.
@@ -154,7 +162,7 @@ Three things happen before the agent sees the request.
 2. **`ask_access`**, the dependency registered for `/agent` in `AGENT_ACCESS` (`/ingest` uses `require_scout` and `chat_access`, `/proposal` uses `proposal_chat_access`; a path missing from the table fails at boot), requires a signed-in principal (anonymous gets 401). It calls `_own_thread`, which runs `threads.claim_thread`. A new thread id is claimed by the caller, and an existing owner's turn bumps `updated_at`. A thread owned by someone else returns **404** (not 403), and staff are not exempt: a turn checkpoints rows read as its caller, which the owner's next turn would replay. It then sets the `chat_user_id` and `chat_scope` context variables, which tools and tracing read because they see the run but not the request. Finally `ask_access` (unlike `chat_access`) sets `agent_caller` to the caller's database role and claims, so Ask Sangam's SQL runs as that caller, and resets `caveats_given` to an empty set, the per-turn memory of which tables' data caveats the model has already been given (section 5).
 3. **`run_agent`** in `backend/app/core/lifespan.py` calls `load_agents`, which builds the agent graphs lazily, on first use, under an `asyncio.Lock`. The first post to an agent route does this, as does the first REST route that calls `get_graph`. A REST cold start on a route that does not need a graph never pays for deepagents imports. It clones the `SessionScopedAGUIAgent` per request, because `LangGraphAgent` keeps per-run state on the instance. It streams `agent.run(input_data)` through an AG-UI `EventEncoder` as a `StreamingResponse`.
 
-At boot the lifespan opens the shared psycopg pool, runs `_verify_sql_catalog` (the process refuses to start if the SQL allowlist drifts from the database schema; an undeclared new table is only logged and stays invisible to the agent), opens the checkpointer and registers `/agent`, `/ingest` and `/proposal`. `open_checkpointer` (`backend/app/db/checkpointer.py`) runs no DDL: it compares the database's checkpoint migration version with the one this langgraph expects and refuses to start with "run make migrate" on a mismatch, so concurrent cold starts cannot race to create tables.
+At boot the lifespan (`build_lifespan` in `backend/app/core/lifespan.py`) opens the shared psycopg pool, runs `_verify_sql_catalog` (the process refuses to start if the SQL allowlist drifts from the database schema; an undeclared new table is only logged and stays invisible to the agent) and logs a warning from `_warn_on_shared_storage` when file storage would land in the deployed buckets. It then opens the optional Graphiti knowledge-graph client (`graphiti.open_graph`, a logged no-op when `NEO4J_URI` or `OPENAI_API_KEY` is missing), opens the checkpointer and registers `/agent`, `/ingest` and `/proposal`, each with a `/health` route. The agent graphs themselves are not built at boot. On shutdown it flushes Langfuse (only when enabled and the agents were built), clears the shared pool reference and closes the pool and graph client through the exit stack. `open_checkpointer` (`backend/app/db/checkpointer.py`) runs no DDL: it compares the database's checkpoint migration version with the one this langgraph expects and refuses to start with "run make migrate" on a mismatch, so concurrent cold starts cannot race to create tables.
 
 ## 4. The agent loop
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a4c5921d0d6cff54a0f1e9e968e55ba008e6c1b8b0f7d51747515fe9da3a59bb",
+  "pageVersion": "sha256:a4651e951644f98358a957aa94d299880ab3287f8973a468c1d4a48f1623e375",
   "claims": [
     {
       "id": "claim_ad1457a859a34d0d88ee82f2b89ad7fe",
@@ -21,7 +21,7 @@
       "statement": "resolve_principal depends on SUPABASE_URL and DEV_AUTH: with SUPABASE_URL unset every request is the seeded staff DEV_USER (except the local @local.test sign-in); with it set, no Authorization header is ANONYMOUS, 'Bearer dev' is DEV_USER only when DEV_AUTH is on (local only), and any other bearer token is verified as a Supabase access token; malformed or invalid headers are 401.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L27-L28",
+          "resource": "repo://backend/app/core/config.py#L29-L30",
           "version": "repo-lines-v1:sha256:c87958cf54e6a00fb0521648a3699aa9da55a44eb8d5a7ad588d6004c5c629da:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjZlODEyMjM5MzhmMTI1MjUwMDhlZTQxZDdiNmJmZWJlNDQzODdiYmZkMzgxNGFlYWFhYTU4ZWQ3Y2VmMjRkOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTUyODEwYWQ1NWZmMGZlYTFmYjk0ZjAwZDE1NDI1ZTUyZWVhZDUzNmY4NjNhOGYxYjViZGIzMzk2NjY2MzdhNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FjZDY5Y2QwOWFkN2IwMzVmNzBiNzVmZDAzOThjZGFjY2QxZmVlZjQwMTkwNDA5Zjg3ZWEyMDJlNWI1Y2ZlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGM4Y2RkOWU5MzM2MWY1ZmI3MzM1MjNhMGM3OWIzMzFiMWMyNDRlODdmMjg4Y2Y1YjMzN2U3NGJjZThjMjZiOCJ9"
         },
         {
@@ -287,7 +287,7 @@
       "statement": "RLS write policies from 0027 let a member or admin of the row's org (never a steward) write contacts, score adjustments and rfp_matches updates, with staff also allowed, and threads insert only as oneself; 0048 replaced the proposal and document-insert rules.",
       "evidence": [
         {
-          "resource": "repo://backend/tests/test_rls.py#L190-L204",
+          "resource": "repo://backend/tests/test_rls.py#L206-L220",
           "version": "repo-lines-v1:sha256:1e5507885cd7dc39860cc4daea13f47eb31d822d0b6d8c20af324a99fe3f72e8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjljYzc5NjRiMGU4OWY4N2I2N2NhM2VlY2MxNjM3NGQ2NTRkZDRiYmEwNTc3MGZiMjU4NDUzZjdkMDdhZmIxN2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmNmRjNDY0ZGZiMjk0NzJlNDZmZGE4NjJmZjFiNmQ0NDAzMzhhYTVkYzgxNzg3NjhkMTU3MjBjMTIxYzQxNTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4NTBiMzU5NWQyMjg5YTU2ZjRhOGI0M2QwM2FmZGRjMGUzMTM0YmUwYTY1MDI0MjYxMDIwZjlkNGZmNzhmMTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiZTdhOTllMjUzZmI2Mjc1MzBmN2RmM2Q2OWI5ZjIyMmYwZjJiMTk2MjQyNmJhNmRjNjcxYTRkYzAwMDE0MjQifQ"
         },
         {
@@ -305,7 +305,7 @@
       "statement": "Org membership is managed through SECURITY DEFINER functions (add_org_member, set_org_member_role, remove_org_member) that require app.can_manage_org (staff or admin of the org), keep at least one admin, and only add users who have signed in; a unique index allows an admin or member to belong to one org only, while stewards may support several, and the index holds even for the owner.",
       "evidence": [
         {
-          "resource": "repo://backend/tests/test_rls.py#L268-L328",
+          "resource": "repo://backend/tests/test_rls.py#L284-L344",
           "version": "repo-lines-v1:sha256:a1e1afdcbb9dfd138ad351bed32449a8dff977de11fd71b187aefd19a19cfa12:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMzQ1ODNhNTk4NzY3YmY1NmFlZmViNjVlMjAzM2ExNjUxY2M0YzhkN2U2ZjBhZjNlNWNmZDMyOTNmOTMzYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMWI1ZWFmZWEyM2QyNzU0ZjFhNzBkMWFiMGU1MGQ0NGQ0ZWQyNzNkY2FhM2IyNTUxZjc3M2ZmY2RkYjY0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5MmNmNjNjZTg1YjkzMTE5MjM3NTk2N2YxYWUyMTE0NGRkNTRmYTE2ZDUxNmQxNjhkNDFlZDdiNjU4YmIwYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzZjhmOGRmZjk4NmRkODc5YTZmNDU3NzZmNjYzNjMxNTNhMjY0MjYwMDM4OTk3OGU3ZmIxNTViMDQ1OGQxYzAifQ"
         },
         {
@@ -327,7 +327,7 @@
           "version": "repo-lines-v1:sha256:db082ee09a8315118938b8873b97bb0c26f8dd67116db2226ee49c2e1e7ded7a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwY2I3NmM0OGNhZjMxYWRkZjRiOWQ3NGIzM2ZlYzg2OTdmN2E5ODE3OTUxY2FhYmQxMGEzNjRkNTQzNjhiZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4YjIwMjIxZmZhMTA3MGVmMjFlZDVlZDA4ZTk5YmZjZTU4ZTcyZDA3MWY4OWNiOGYyOWJkODZhNmM5NjJjMTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhOWYzNzEwYTM0YjRmZGYxMzU4OWI3ZDllNjg1NWMwYTQxNmM0NjE2MzllNDlkMjliNDFhZTQwNDkxMjU2MDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/tests/test_rls.py#L347-L355",
+          "resource": "repo://backend/tests/test_rls.py#L363-L371",
           "version": "repo-lines-v1:sha256:f56128a3f4827f9c67936b0fafc0243adde766b7d8f28b4271a1fd1a6b7b6fe0:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2IxMTUzMTAzNTBhOWE5MjBkMWRkMmQxNzNjYTJiNGM1MjhmYTdkZmE5OGJiZDI5NzIzMGJjZTcwMGZhNmIwOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjhmNzg5YzgzNmNkMTQ0NzFjNzQwMjRjYTg3NDc3ZDI4MDQyZjE3NGJiMDE2NzE2MjE3YTU2MGU2ZTNmZGRjNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDRmN2ZhNTJmZTYwNDRmMWMzNTI0ODI3NzI0NTRkMTEzYmQ2ZDE4NWQ5ZDRhMDBkODQzMDZiNDBhYjc2MTE5MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjUwYTIyMzQzOTZmNTUwMWM1ZTk4NDM3OTBiNzk0ZGM5OTk1YzZlOTM5YmM1ZWRhMGEzZjNmMDI4N2ZkOWY3NCJ9"
         },
         {
@@ -475,11 +475,11 @@
       "statement": "Creating a proposal requires the caller to read the org and to have may_run on it (admin, steward or staff), otherwise 403; the proposal chat's saved-messages route reads the proposal on the caller pool and opens the caller's own thread through the owner pool.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/proposals.py#L175-L188",
+          "resource": "repo://backend/app/api/routes/proposals.py#L177-L190",
           "version": "repo-lines-v1:sha256:b823c20a39eef63bf8f921398a025c2ade9bc2b7e6aeb2583de6e82b85b7d1b2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0MWU0ZjNlNjg0Mjg4ZjhmMjVmMWRiN2FmNDFiMGFlZjFhYWFkNTI3ODdmMTQ2MjNiNTVkZWU5NGMxMTYyMTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyYWM3ZGExNTczMjQ0MWU1YzZiMGNkMWQ2ZDJiZDk3ZDBhNWRlMWE0OGM2MDJiNTNlMDdiMjUyMTVlYThmNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwNjBjZmExOTMyODZmMTJjNDk2MjE2YjBjNWE2ZjdiZDEzNjA0ZDBkODU4NWRhMWM2YTc2NzJmN2Y1Yjk4NGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjY2E5OGY2NTZmZmIxMmQ1YWE2N2I3YTFjNmRjMjNjZGNkZDY1NGYyM2QzNDU0MzI1ZDg5MDk2MjdjMTM5YTkifQ"
         },
         {
-          "resource": "repo://backend/app/api/routes/proposals.py#L419-L426",
+          "resource": "repo://backend/app/api/routes/proposals.py#L421-L428",
           "version": "repo-lines-v1:sha256:960496e6d2731f71f7403c1edc1cd0e18b089908af69d5d8affc8184aa18bf82:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWEwMGQ0YzBhNTg5Njc2ZGEwMjMxZjQzNjNhMmEzZmRjZDliODZhZjBhMjgyOTNlNTRkYmQwZDQ5YzRhYzNkMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjJkYWM2ZDc1MDY1ZDdmMDg0NjViYzQzMWMyNWNhODYzYzNiNmRmYjM1NjAxNjE0ZWFmMWY3MjcwZjI5OTk4NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODIxOTI0ZDA0Y2FmYWQwNTA0YzhlNTgzYmYyNjAzZjNjNWUyODIzYzlkZjQzOWY3NGQ5MGQ5OTM3YzNhNGE3YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
@@ -543,11 +543,11 @@
       "statement": "RLS-backed deletes arrive only in later migrations: 0051 grants DELETE on documents with a policy limited to staff deleting a private org-owned vault_upload, and 0052 grants DELETE on proposals to the org's admins, stewards and staff (app.my_match_org_ids or staff) plus a documents_delete_draft policy for private proposal_draft documents of those orgs. The routes run on PoolDep behind require_staff or _editable, and RLS refuses by removing zero rows.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/documents.py#L190-L204",
+          "resource": "repo://backend/app/api/routes/documents.py#L223-L237",
           "version": "repo-lines-v1:sha256:5aa03093ef95362a0f7971eaaf3068753c0d1aef2e3e205880a8c72627ae8e55:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhMDllNDE1NmQwYjNiN2Q5ZGZkNWM0YTNlZDdmNjk2NDg1MTZjOTViNjE2NDZhYTdhODJiMzY3OWEwOTNjZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwNTYwOWJjNzY0ZTljMDU5MjZmOTllNzAyOTk3MDQwZDAyMmQ3YjVhM2FiYWRmYjgwMTI2ZWM1ZmM0OTJjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiZWY1MzJkNGIxMWE0YmQwZTkwMzJiYjc5YTAzZTZiNjY4OGNjMDQ3ZjFjZDJjZTBhZDFjYzRkNGFmZjk4ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://backend/app/api/routes/proposals.py#L339-L348",
+          "resource": "repo://backend/app/api/routes/proposals.py#L341-L350",
           "version": "repo-lines-v1:sha256:d3cdf3636cf3196b9ec9d423498bbdd9800c12b2e6e372dec4ca52bcad7e829b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmUxMjEwOGU1Y2MwMmY5ZThmYjUxMDFhOTA1ODJkM2YzYTRlZGM3ZjhjZTA4YzE5NGFmZjA2MGE4YzczMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzOGFmZWY3ODYwYjk2NWM4ZTkxZTI0YTdkMThiNzk1ZTQ4ZDY4MmM0MzZlODEzNTFhMGIwODNkMjIzOWMwZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MGM2Zjc1NDNkZmRmNTE1NGMzMDZmMWZjMTQ3NTQyZTEzNjE4ZDI5MjRlYTlmODEyYmRmY2YyODg5MzRmYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwYjZhYTlmNGQ2Y2I5MzNmMDkxNDFhMmZiNzU1MzI3ZDA4YjdmOTk2ZDBmZWRiYjYyYTJmN2ZkYTYzNTU2NDMifQ"
         },
         {
@@ -555,7 +555,7 @@
           "version": "repo-lines-v1:sha256:3ea53bc0f33eec00df65ffd0ae8dd3fbb417f534896d2215d1d7d54074cafcf0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5NjU4YmM0YTY4YjM0YzYwNmM5MjkwYWE5ZWViNWM2MTNlNzJkZWRkNjJiNGQzZTVjMmY3ZTJkYmY2NWE1YTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZTJhNDY1MDA5NWZhOTVkMGUyYmI0MWIyZGIyOTA5NGQzNDA0ZDI4Y2UxMjMzOWVjODhiYjRiNWM1YmU4ZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjNzlhMTkyYzE3ODMxNTExZTQzMzdjOTYwM2Q4MjJjMGUxOTlkNDJkMDg0NjkxYzY0ZGYxMmI2MWU0M2E5MWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1YzkwNzE3ZjUyZmJkMTNiMTVhYjNiZGRiOWU3ODY4YmRmMDAzYjYxYzA3MGQ0ZTVhYWMxMTgzMmM4MzdjNmEifQ"
         },
         {
-          "resource": "repo://backend/tests/test_rls.py#L148-L156",
+          "resource": "repo://backend/tests/test_rls.py#L164-L172",
           "version": "repo-lines-v1:sha256:1b6ea22e920c80736ba2d533d78573d4dcb8160121efab28a3d00e11ebdb5cd7:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmU1ZWZmOWE0NmMwNGUwMDk3OTc5YzlhMjYzYTAwNmIxMmVjMWU5ZmEzZWU0OTU5ZGNkMThmYjkxMTBhMDA3MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTEwZGY2MTYyZDYxYWQwODEyZjk3ZWZhMzJiYjhjNDJkMDM3YmQ5Y2M3N2Y3MDNmNGE3NGYwZjA2Y2Y0Njc4YyJ9"
         },
         {
@@ -573,7 +573,7 @@
       "statement": "The REST statement timeout (Settings.db_statement_timeout_ms, default 15000 ms) is set by CallerPool in the same round trip as role and claims, but not inside set_caller, because Ask's executor calls set_caller after setting its own lower timeout and a shared setting would raise it.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L120-L120",
+          "resource": "repo://backend/app/core/config.py#L125-L125",
           "version": "repo-lines-v1:sha256:d4dffda7bbaad217f3b68e6821217089c534ddac147d0bc70e3bd5f312d1c211:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDRkZmZkYTdiYmFhZDIxN2YzYjY4ZTY4MjEyMTcwODljNTM0ZGRhYzE0N2QwYmM3MGUzYmQ1ZjMxMmQxYzIxMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDRkZmZkYTdiYmFhZDIxN2YzYjY4ZTY4MjEyMTcwODljNTM0ZGRhYzE0N2QwYmM3MGUzYmQ1ZjMxMmQxYzIxMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTczZmIwMzA4MDM2ZDE0N2NmMTVjZTVlMGM0ZWNiZTJiY2UwMmM0YjA3NDk1MmIyYzc5MDM0YmUwYTFkNTFhZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWY4OTk1M2FkNmRiNDRjYTFiMDAwNDJiMzlhMWI1YjhiYmViNzYxNTAzMTVhMzQzZmJmYjg1NmUyYTMzMjQ3ZSJ9"
         },
         {
@@ -595,8 +595,8 @@
           "version": "repo-lines-v1:sha256:9e6cfb6ade3b2f9df9e534db3e4aa26e74be16d8c32db66117c5c151e1bb50dc:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0MTVmZTMyY2Q0ZDIzMTIxMmVmYWU2ZjFlMjA1YjU3ZTI1OWZkM2IwNThmZTJjNzM4Y2RjMjAzN2U1Njg4NmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZDI0NDU4MmI2ZmIwM2QyM2I4NDE1YWJlY2QzNDZiMGM5ZjQ2NmI2Zjc1MmIwNjgxODljZTdlOWEyZGMzNTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L209-L240",
-          "version": "repo-lines-v1:sha256:816b042015bd9fa27006116b3d1d41026d572f7e216ff80b2d9b636b44359f40:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MjBhNGQwY2MwYjJlNzkwNThmMzA5NjUwMDNmMjdhYmM2ZWNiNWQzZGRhNjUwODJkOTVmNzkyZTcxMjU4YWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiNGJmMDNiYmQ0Y2RlMDU3OWExZGYyNTRhNTgyNjBiNzZjMDU2NWI1ODViYTA3ODc4MjlhZTM2NjU4MjY2MjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlNjk2Y2FmODkxZGViNGExMzM5MjIwMTc2OGJmOTJjYjM3ZTNkMTg3NGQ3NmNjZjA1ZTBhMTk0NjgyMTczMjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ZGVkNDJkOGI3YzZhN2FiNTRjMTBjNGJmNjJlMGY3ZDlmZWY2ZWMwZjc1NDVkOWVlYWQ1NjdjNGQ4OGM1Y2QifQ"
+          "resource": "repo://docs/ARCHITECTURE.md#L213-L244",
+          "version": "repo-lines-v1:sha256:cfe617b690f9621a91b3875c98b5114f09e0a662237a1dd1295d2b4d2c778208:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MjBhNGQwY2MwYjJlNzkwNThmMzA5NjUwMDNmMjdhYmM2ZWNiNWQzZGRhNjUwODJkOTVmNzkyZTcxMjU4YWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiNGJmMDNiYmQ0Y2RlMDU3OWExZGYyNTRhNTgyNjBiNzZjMDU2NWI1ODViYTA3ODc4MjlhZTM2NjU4MjY2MjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0OTZhZmMxN2UzZGRhOGI3YzM2ZGFkMTI3MzAxMDgwOWM5NzQ3NWUyZDE5NTIzMGFhOTkzYjFhNTUzMDA4MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ZGVkNDJkOGI3YzZhN2FiNTRjMTBjNGJmNjJlMGY3ZDlmZWY2ZWMwZjc1NDVkOWVlYWQ1NjdjNGQ4OGM1Y2QifQ"
         }
       ]
     },
@@ -605,14 +605,94 @@
       "statement": "POST /proposals/{id}/research checks edit rights on the caller pool via _editable, then builds chat_user_id, chat_scope (through caller_scope on the owner pool) and chat_proposal itself so the background readers' tools see the same caller and proposal a chat turn would.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/proposals.py#L269-L295",
+          "resource": "repo://backend/app/api/routes/proposals.py#L271-L297",
           "version": "repo-lines-v1:sha256:a419e658cc63f213f36fbef6d5083f896db1e260ba5dbd26ad977031a49bc86c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwNzUwNGZiMWViMmMzMDFkNGM5OWE3ZWViZjBmNjIwZTllZDNiNjBkMDBjOGEzNjdlM2U3ZTIzN2E1MTVmZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzNGUxNGI1YWI3MGM3OTVhZTU4YjIxYjZmNjEwNWIzZjJhNDYyN2YwZmU4YmVhOWZmN2E3OTg0NmIxYzJkY2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1YjYxMzI3MWY4NWUzMTljOTUxNDgzZTZkM2I2NTgxYjg5YjYxOGEwNGQwZTVjMDYzODMyNGU1NThhZDZjMTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwODJmMWIyNzgzNGNiMGFkMzM4NmNjZjg3MGU1NDdkNDk0YjA4YTRkMDc0MGEwOWMzMjRhM2M0ZGI2NWZkNzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_304e9fb17a3d49f08a812e22be63b864",
+      "statement": "Migration 0053 creates deleted_documents and an AFTER DELETE row trigger on documents (app.log_document_delete, SECURITY DEFINER) that copies the whole old row, org_id and deleted_by into it, so every delete path is logged and a refused or rolled-back delete logs nothing; the table has RLS with a staff-only SELECT policy and no grant to authenticated, so it is read through the owner pool.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_deleted_documents.py#L36-L51",
+          "version": "repo-lines-v1:sha256:2c47165ac813fc986e45a443e1fdc337e68314fbae8dc7247407df57c0febd3d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1MzBjYmM4NTU1NzgxYzQ0OGNkMjZjZTFmNDg3OGIyNWJmM2Q0NzUwYTk0YmZjOWVkNDQ5NGE2MDMyM2QwMGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyODQwNzk4MDdiZWIzNThkN2VjOWVhODdhOTIzNDIzZmRlY2VjNDIzNGE2NjBmZTM2YjVmNDRiNjY2ZjI0NjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2OWJkZDkzZmMwYjk4Y2Q1OTliNmY0YWRlMjEwZmZkZTA0MTM0NTc1ZDE1ZjAxYzc4OWNjY2Y1MzM0NDFjZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0053_deleted_documents.sql#L1-L30",
+          "version": "repo-lines-v1:sha256:af9cbd7b641322404660b108382ca3537b1dc2cecfeb598c7ef25ce9ddba04fc:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3NzFmZjIzYTAzZTM0Y2M1NDJkNjIzODgyM2ZhNjk3MGQ4ZDVjYTRhZDJjNjU1Mjk3ZWYzOTY2ODM4ZWY5YzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4NTU5M2ViM2U3NTQxNWZmN2FlM2FmN2IxODcwMzZhNmZiMmI0Njk1NWNkYTBjZjAwYzVhNmNmMmY0MmMwMDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b23822d3fd3f4c9abd1c7542b710ad77",
+      "statement": "Ask Sangam's SQL catalog deliberately excludes deleted_documents (KNOWN_EXCLUDED) because it holds every deleted document row, private uploads included.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1005-L1016",
+          "version": "repo-lines-v1:sha256:1b21d14e249f9a2af31a9aaf4fe8d8e7740c1b95f7e8ed857bac028c27ee1660:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5ZDBlNzgxYzAzNjVjNmMyNGJiZjg1NzNlNzExNjI4NGZlNTZhNTZiOTA1NGVhNzM4MmRhYmMyNTkxZGRkMzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhZTA4OGY5ZDEzN2Q1ZDIxODRhNjg3NWE5NWMxMDU0NWZhNjI1M2ZlMGE1YWFiOTQ2NjNkZmNiYTVkYzk4ZjIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_383fb487181742b18adae31ea22504bd",
+      "statement": "delete_vault_upload runs on the caller pool in one transaction: it only matches a private, org-owned vault_upload, refuses with DocumentInUse when chunks, extraction_log, document_links or a proposal draft reference it, deletes the row first, then moves the file to trash via storage; a failed file removal rolls the row back (FileNotRemoved) and a failed commit after the file is gone raises RowNotRemoved so re-deleting finishes it.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L212-L237",
+          "version": "repo-lines-v1:sha256:14acc41c82137dbd18f8be299365c9dba10f0d19207d94e7aac41962d1ad8a95:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4NzRlNzc4OGRhMjYwZDk1YmUyOGE4MTIyZGRkZDBjMjk2ZmEyYjU5MTJlYWQwM2Q0NmJlODQwNTM1YmQ3MzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwNTYwOWJjNzY0ZTljMDU5MjZmOTllNzAyOTk3MDQwZDAyMmQ3YjVhM2FiYWRmYjgwMTI2ZWM1ZmM0OTJjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIxN2M0ZjNiOTkxODRiYTVjNjYyOGQ4MWJlNDM3YmIyN2VlNWZlZmJjYTFkMzhhODdkYjhmZTdiYzdlZjM1MzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/documents.py#L180-L236",
+          "version": "repo-lines-v1:sha256:a450f2203ae3da88d11815a515c026fee43746fc97d78143fef70e0ab19def73:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhYzIzMzAyYWEwNmY0NjQ1MTNiMmExMjc0MGEwNzYwNTk2N2EyYmEzN2I3YzkyMzQxMjI2NWFkMjI5NzM0YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZTJhNDY1MDA5NWZhOTVkMGUyYmI0MWIyZGIyOTA5NGQzNDA0ZDI4Y2UxMjMzOWVjODhiYjRiNWM1YmU4ZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyYTg4MTBmMjlmMTI2OGI3ODBjNzA1ZDU0ZmMyODE3NDAzODJmNjliMzJiOTNhYjQ1MzE2MDdiMjQwMTkxNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c18e404c539e44c6ab6f803a1849fc76",
+      "statement": "Migration 0056 alters documents_insert so a caller-inserted row's non-null storage_path must start with org-vault/<org_id>/ in addition to the org-membership-or-staff check; rows written on the owner pool bypass RLS, so file signers and readers re-check the path with storage.owned_split.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L190-L209",
+          "version": "repo-lines-v1:sha256:f800989436289739182be0e1c93b795d5b0c15c7b5d6f03578af959173882ca3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3NjM2OWZlN2UzNmMwNWU2MWY3OTE5N2VkZTFiMjQ4MjQzODg5YTYzNmQwYzlhNTU3NDkxYjhlMDg3N2U4MDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5NjdlNzU5Yzg3ZTg0YWUzMDMzN2ZlOGQ1ZDIyOGViNTA1YmJhNjlkMTFlOTk1MjQ0NTAwNTMxZWQ0MDljNmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxMTIwMmYyYjdiMzMxM2ZjZTYxZTgzOWMwNmIwZmQ5Yzg3NDI1MjQzNjFmZjMxMDUwOThjYTZlNzE3YjI0YTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUwZmQ4NDRiYmRmZGY5MjE5MzM3MTQ1ODUyNzliMzkxOWExZTBhZTdkN2Q0ZDczZDlmYWMyZDdiNzJhMzc1OTEifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_rls.py#L149-L162",
+          "version": "repo-lines-v1:sha256:86a4f3e0289a7ff7e7a73710f2711f60b180d7b860b9dd825a53e33fd0652058:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViOGY3MzJlNDFmYzRlZjQwZjU2YzQ5YjM2MmVmZjI5YzEwYzllODg0MGE1ZGI3YjE4YmQ1ZTEzZWJkODQ3MGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU0MDZjOWFmN2MxMTQ3M2U4MWUzODhkYWE2ZjI3MjU2ZTgyM2EwMjY4NDVjZGRmODg4MDcxZWVlOTRmNDgyNTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5ZGFhZWY5NDc1NDQzOTJkMTE5OTNhNjA2OTNiOWJiYWY0OTgxOWQ5ZmM3YzZmZDIzNzgxYmQzNjI4ZTYyNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyZThkNGI5MWVhNTkxNGUxMjZmM2Y5NTQzODM3NTBmYTA0MzUwZGMwZTA2NjQ3NzMyZjMwY2Y2MmIwOWYxMDcifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0056_documents_path_in_org.sql#L1-L9",
+          "version": "repo-lines-v1:sha256:d28853222c37b0dc9cceef4d84aa36325518d54231d6483dc405450851014ddb:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjJiMGVhZTM3YTNmZjg0YTkxZDk2ZTc0YWQzMGRjZmQ3MTVjNjhiODQ1YWIyMTY2MzQxYThiNGZhM2JiYzRjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTVlZjAxYmMwOGRiYzNiNjNlNGU3NWVhM2QyNmE1Yjk0MTg5MTg3N2UyN2FkODkxMzI5Yzg0MTFkN2Q4ZGM0ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_91ec380b28694b1ebf338fd3b9f390b8",
+      "statement": "test_rls.py asserts that only staff may delete a vault upload, that even staff delete nothing except a private org-owned vault_upload (RLS yields zero rows rather than an error), and that a signed-out delete raises InsufficientPrivilege.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_rls.py#L165-L192",
+          "version": "repo-lines-v1:sha256:7d0b817b98b7b3a42d1283c0facec6769392cffa3683a56bdae7886989d860c5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3NTM3MGYzZDNhYmVkZTljZDI3NzFmYmZkMTFkYjRlZTlhNDViOWU2M2JlODBiYTcyMWQ3MWVhZmNlOWI0MzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1MTRhY2JlYjk5OTE4ZmM0ZWEwOGYxNGI2MTI3ODQzYjk1ZjgwNTFlZjcyMjMzZDk2MTlkNjBmOGU4NWVmNTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzNDE4NTk2ODVhZDlhNWMyMjNlMDFmNjcwYjBkZTViMDdjMmVkNTU1NDkwNTBhNWY4YzUyNTU1NDE2ZWJjZmQifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0051_documents_delete.sql#L1-L6",
+          "version": "repo-lines-v1:sha256:8652d2925e4677494bacd98ebe1509770efcdac248ee5cec9a846d9b4dc0c235:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzg4YmE2NGVkOTY2YTY5MDlkZmQ1YzNiZGVlZWEwODQ3NzdmNGNmNWNlMDMxOTVlOTI3YzJjZGE4ZjU2MGQwOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzMwNmVlNGE4Zjk1NGI1OWMwM2Q0ZDI5MzU4Y2NhNTY3MWFlOWQxYTNjYjU1YWZlYThmNjM0NTE4YWNjZWQ4NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0feb0b28dcb94372bab19d302efbadfe",
+      "statement": "test_import_roles.py checks on CallerScope that the staff-only Import tools return REFUSED for a member, a steward and a run with no caller before touching the database, and that a member cannot save NGO research or overwrite another user's research.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_import_roles.py#L69-L120",
+          "version": "repo-lines-v1:sha256:4d12306e8ce1dcbd56caacc077f527aee3c2865c953feb2f0e7a506b7247ea72:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2OGQ3ZTZlMTBiN2MyZmJmN2JjNWE1YzY2NjA0ZmY5ODYzYWYwZDU3ZmU0OWNkMDljMmQ4ZDRkYTcxZDhmZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxNTIyZDYwYmRmYWRkN2Y0NjRhNGVmMTAwZmQyZTM0NjU4MzMwMjVlMzJjNDQyYzFiZGNmYjY1YzJjMDNhNmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4MzU0YWMwZjMxNmJiN2FhNWRhMGE0MWZlOGRiNzFjN2E1YTE3ODljYzZhZmNhMjcxZTFkYzAzZDIxMTAxOWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2ZTVlMmFiYzg5OTcwMTU0NGJjNjQ0ODIxYWNiMzgyZjg0YWRjNjg0OGM4NmY3YWNlYWRiMjI0MzE5OGQ0NjgifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-05T19:29:31.538Z"
+    "at": "2026-11-10T13:16:49.280Z"
   }
 }

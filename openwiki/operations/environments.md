@@ -14,6 +14,8 @@ sources:
     resource: repo://backend/app/ask/agent.py
   - id: openwiki-source-6dcfc1451bcbf8009d0484a9
     resource: repo://backend/app/core/config.py
+  - id: openwiki-source-e136029ec7d24feaceb8ce72
+    resource: repo://backend/app/core/lifespan.py
   - id: openwiki-source-b52886aad1fc413e4e030f22
     resource: repo://backend/app/core/security.py
   - id: openwiki-source-62958d5b14b0717233a7ec0b
@@ -32,10 +34,10 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-41397cbbfbde65db108b394c
     resource: repo://scripts/db-url.sh
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Environments and Env Vars
@@ -96,9 +98,16 @@ Migrations are not automatic, and the backend refuses to boot against an unmigra
 
 For writing the migrations themselves see [Writing a Migration](../workflows/writing-a-migration.md); for first-run steps see [Quickstart](../quickstart.md).
 
-## Storage is global, not per-environment
+## Storage is one project, so a local backend gets its own buckets
 
-`SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are not environment-scoped. With the backend on the local Postgres, `fetch_document` still archives the file into the cloud `source-archive` bucket, so the `documents` row is local while the object it names is not. Running `ENV=staging` puts both halves in the same place. This is why `staff-source` is staging-only and why local development without those two variables simply skips archiving (see Optional integrations below).
+`SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are not environment-scoped: there is a single Supabase Storage project. What keeps a local backend's files apart from the deployed ones is `STORAGE_BUCKET_SUFFIX`:
+
+- The suffix is appended to every bucket name on the wire, so `-local` sends files to `org-vault-local`, `source-archive-local` and `staff-sources-local`. `documents` rows keep the plain bucket name. The `-local` buckets must exist in the Supabase project, private, with the same size limits as the plain ones.
+- `docker-compose.yml` and `make dev-backend` both default it to `-local` using the `${NAME--local}` form (no colon): an *unset* variable becomes `-local`, but a variable set to an empty string means no suffix.
+- `Settings.bucket_suffix` ignores the suffix when `DATABASE_URL` is the Storage project's own database (direct host `db.<ref>.supabase.co` or a pooler user ending `.<ref>`). So under `ENV=staging`, and on deployed hosts, rows and objects both name the plain buckets.
+- A backend with Storage on, no suffix, and a database outside the Storage project logs a boot warning (`_warn_on_shared_storage`) that files will land in the deployed buckets while rows stay local. It never blocks boot.
+
+This is also why `staff-source` is staging-only: a local row would name a cloud object. Local development without `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` simply skips archiving (see Optional integrations below).
 
 ## Env var reference
 
@@ -146,7 +155,7 @@ Provider keys: `ANTHROPIC_API_KEY` is the one required key and must match `MODEL
 
 | Feature | Variables | When unset |
 |---|---|---|
-| Supabase Storage (document archive, org Doc Vault) | `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` | Archiving is skipped and upload routes return 503; research and promotion run unchanged |
+| Supabase Storage (document archive, org Doc Vault) | `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` (plus `STORAGE_BUCKET_SUFFIX`, `-local` in compose) | Archiving is skipped and upload routes return 503; research and promotion run unchanged |
 | Knowledge graph | `NEO4J_URI` + `OPENAI_API_KEY` (and `NEO4J_USER`, `NEO4J_PASSWORD`) | `graph_enabled` is false; `search_graph` tells the agent to use the DB tools |
 | Web search | `TAVILY_API_KEY` | The agent's web-search tool is off |
 | Langfuse tracing | `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`, `LANGFUSE_TRACING_ENVIRONMENT`, `LANGFUSE_RELEASE`, `LANGFUSE_MASK_TOOL_RESULTS` | Tracing is off unless **both** keys are set |
@@ -197,7 +206,7 @@ A variable absent from the compose `backend.environment` block never reaches the
 | Postgres (container `5432`) | `5433` |
 | Neo4j | `7474` (browser), `7687` (bolt) |
 
-`make dev-backend` runs `uvicorn` on the host against `localhost:5433` with inline credentials and serves on `8000`; that is why `make dev-frontend` targets `8000` while `make smoke` defaults to `8010`. The migration runner needs `MIGRATIONS_DIR` outside Docker, since it defaults to the container path `/srv/db/migrations`. `make evals` sources `.env` quietly on the host venv and points `TEST_DATABASE_URL` at the local Postgres on `5433`.
+`make dev-backend` runs `uvicorn` on the host against `localhost:5433` with inline credentials (and `STORAGE_BUCKET_SUFFIX` defaulting to `-local`, like compose) and serves on `8000`; that is why `make dev-frontend` targets `8000` while `make smoke` defaults to `8010`. The migration runner needs `MIGRATIONS_DIR` outside Docker, since it defaults to the container path `/srv/db/migrations`. `make evals` sources `.env` quietly on the host venv and points `TEST_DATABASE_URL` at the local Postgres on `5433`.
 
 ## Safe-change checklist
 

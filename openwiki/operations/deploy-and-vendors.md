@@ -46,6 +46,8 @@ sources:
     resource: repo://backend/app/main.py
   - id: openwiki-source-45de68599f194f0dd835b3ab
     resource: repo://backend/app/proposals/brief.py
+  - id: openwiki-source-070c6307b3860e1806baf566
+    resource: repo://backend/pyproject.toml
   - id: openwiki-source-26b852c215c1dc4649cbde36
     resource: repo://backend/vercel.json
   - id: openwiki-source-a2371d6362e5db4bc834ad03
@@ -64,10 +66,10 @@ sources:
     resource: repo://frontend/package.json
   - id: openwiki-source-a0ebc66d448ae6aa5723800b
     resource: repo://frontend/vercel.json
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Deploy and Vendors
@@ -108,7 +110,7 @@ All three coverage uploads (the two backend jobs and the frontend job) authentic
 
 ### Dependabot-driven bumps
 
-`docs/CHANGELOG.md` records version bumps made in response to Dependabot alerts (2026-10-16): `next` 16.3.8, CopilotKit `~1.75.2`, `undici` and `katex` forced through npm `overrides` in `frontend/package.json`, and PyJWT 2.15.1. Those bumps land as ordinary pull requests, so they pass through CI and Dependency review like any other change, and are deployed only when someone runs Deploy. There is no `.github/dependabot.yml` in the repository (the plan in `docs/features/2026-10-16-ci.md` proposes one), so scheduling and grouping of Dependabot PRs is configured outside the repo, if at all. See [Platform](../architecture/platform.md) for the plan-versus-code discussion.
+`docs/CHANGELOG.md` records version bumps made in response to Dependabot alerts (2026-10-16): `next` 16.3.8, CopilotKit `~1.75.2`, `undici` and `katex` forced through npm `overrides` in `frontend/package.json`, and PyJWT 2.15.1. Later work has moved on from some of those figures: `frontend/package.json` now asks for `next` `^16.4.6`, still pins CopilotKit at `~1.75.2` (with `@ag-ui/client` at exactly `0.0.59`), and its `overrides` also carry `@hono/node-server`, `graphql-scalars` and a `minimatch` pin under `@typescript-eslint/typescript-estree`, alongside `undici` and `katex`. The backend declares PyJWT only as the floor `pyjwt[crypto]>=2.9` in `backend/pyproject.toml`; the exact version is whatever the lockfile resolves. Those bumps land as ordinary pull requests, so they pass through CI and Dependency review like any other change, and are deployed only when someone runs Deploy. There is no `.github/dependabot.yml` in the repository (the plan in `docs/features/2026-10-16-ci.md` proposes one), so scheduling and grouping of Dependabot PRs is configured outside the repo, if at all. See [Platform](../architecture/platform.md) for the plan-versus-code discussion.
 
 ```mermaid
 flowchart LR
@@ -188,12 +190,15 @@ Buckets (private, created by `db/migrations/0020_storage_buckets.sql`; the staff
 | `org-vault` | what an organisation uploads about itself | `<org_id>/<uuid4>-<name>`; the leading `org_id` is what the RLS policy reads |
 | `staff-sources` | staff-only workbooks, up to 100 MB | uploaded by script or dashboard |
 
+Rows store `documents.storage_path` as `<bucket>/<key>` (`qualify`), using the plain bucket names. When `STORAGE_BUCKET_SUFFIX` is set (for example `-local`), the suffix is appended only when talking to Storage, so a backend on a different database can use separate buckets; it is ignored when `DATABASE_URL` is the Storage project's own database. If Storage is on, no suffix is set and the database is a different project, the lifespan logs a warning that files will land in the deployed buckets while rows stay local. `owned_split` additionally refuses a vault path whose leading folder is not the row's org id, and a staff-sources path on an org's or public row.
+
 Behaviour worth knowing:
 
 - **Optional by design.** With `SUPABASE_URL` or `SUPABASE_SERVICE_KEY` unset, every call is a no-op that logs once; archived documents get a null `storage_path`, and the document upload routes answer 503. Nothing in research, promotion or the rest of the API changes.
-- **Storage never raises into a run.** Failures log a warning and return `None`/empty; a Storage outage must not abort research or promotion. A duplicate upload counts as success because keys are content-addressed. Supabase reports a duplicate as HTTP 400 with `statusCode: "409"` in the body, so the code inspects the body, not only the status. Likewise a missing object can be 404 or 400 `not_found`.
+- **Storage does not raise into a run.** Failures log a warning and return `None`/empty/`False`; a Storage outage must not abort research or promotion. The one exception is `read`, used where an object is a record (reading back a prior rendered brief): it returns `None` only when the object is missing and raises when Storage itself failed. A duplicate upload counts as success because keys are content-addressed. Supabase reports a duplicate as HTTP 400 with `statusCode: "409"` in the body, so the code inspects the body, not only the status. Likewise a missing object can be 404 or 400 `not_found`.
 - **Size and time limits.** Archive uploads over 50 MB are refused before sending; requests time out at 120 s. Signed download URLs last 10 minutes by default (briefs 1 hour); signed upload URLs are fixed by Supabase at 2 hours.
 - **Why signed upload URLs.** Vercel Functions cap request bodies at a few MB, and annual reports are larger, so the backend authorises the caller and mints a URL; the browser sends the bytes directly to Storage. Because the backend never sees the bytes at that moment, vault keys use a uuid, not a content hash; `content_hash` is computed afterwards from bytes read back. `stat` confirms an upload landed before a `documents` row claims it did.
+- **Trash instead of delete.** Deleting a vault document moves its object under `trash/` (`trash`), which no org's folder covers so nothing serves it; a key already gone counts, and on any other failure the keys already moved are moved back. `remove` is the hard delete.
 - **Path safety.** `split` returns `None` for any path not in a known bucket or containing empty/`.`/`..` segments, so only objects the app wrote can be turned into URLs.
 - `docs/features/2026-09-30-supabase-storage.md` still says "planned, nothing built"; it is a design record. The code and migrations exist.
 
@@ -203,7 +208,7 @@ Behaviour worth knowing:
 
 Where it is applied:
 
-- `guarded_client` is used directly by the robots.txt fetch in `ingest/reading/access.py` and the grant-calls pull's `read_page` in `ingest/calls/pull.py`. A hop it refuses raises `EgressRefused`, whose `REFUSED: ...` reply is returned to the caller.
+- `guarded_client` is used directly by the robots.txt fetch in `ingest/reading/access.py` and the grant-calls pull's `read_page` in `ingest/calls/pull.py` (which first calls `check_url` on the canonical URL, then fetches through `guarded_client`). A hop it refuses raises `EgressRefused`, whose `REFUSED: ...` reply is returned to the caller.
 - Import's reading tools (`read_page`, `fetch_document`) and `search_public_sources` live in `ingest/tools/research_tools.py` and do not use `guarded_client`. They call `check_url` (`ingest/reading/access.py`), which rejects non-http(s) URLs and URLs carrying credentials, runs `private_address_refusal`, and then applies the source registry and robots.txt rules. Their own client (`_client`) re-runs `check_url` on every redirect hop, and a read that began on a path-scoped source may not be redirected off that source's allowed paths. Search results are labelled `READABLE` or `HELD` by the same check.
 - Ask Sangam has no web tool, so it has no outbound fetch path; `app/ask/tools` holds only SQL, graph and matching tools, and `app/ask/tools/web.py` no longer exists. The Tavily factory `make_web_search` now lives in `ingest/tools/research_tools.py` and does no URL guarding itself.
 - Proposal secondary research (`app/proposals/brief.py`) is the exception that fetches nothing itself: one model call uses Anthropic's server-side `web_search` and `web_fetch` tools (15 searches and 5 fetches at most), which run outside `check_url`; the brief only cites and never reaches the proposal text.

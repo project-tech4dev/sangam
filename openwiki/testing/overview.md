@@ -54,6 +54,8 @@ sources:
     resource: repo://backend/tests/test_cov_core_lifespan.py
   - id: openwiki-source-804c17c1cdc7ceed1bf73c82
     resource: repo://backend/tests/test_cov_repositories.py
+  - id: openwiki-source-3fc2c8bed6b7ee0888a6c3eb
+    resource: repo://backend/tests/test_deleted_documents.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
     resource: repo://backend/tests/test_harness.py
   - id: openwiki-source-1f8a01f7f723a9c4852239b4
@@ -64,10 +66,16 @@ sources:
     resource: repo://backend/tests/test_prompt.py
   - id: openwiki-source-1a719932f8db409931d9e2ef
     resource: repo://backend/tests/test_proposal_agent.py
+  - id: openwiki-source-3171911a670810234e4cc17c
+    resource: repo://backend/tests/test_proposal_facts.py
   - id: openwiki-source-ab7099b7aa694a12e8caad1a
     resource: repo://backend/tests/test_proposal_finish.py
+  - id: openwiki-source-f3633e1748b944ae1929d8a8
+    resource: repo://backend/tests/test_proposal_form.py
   - id: openwiki-source-899c8be49aae16febe309b1e
     resource: repo://backend/tests/test_proposal_readers.py
+  - id: openwiki-source-fd3f67613e110e15f2ff255f
+    resource: repo://backend/tests/test_proposal_regex_linear.py
   - id: openwiki-source-339d8fb79805ceb04a42a9e6
     resource: repo://backend/tests/test_proposal_suggest.py
   - id: openwiki-source-0607cb79e3440fdec4d15b13
@@ -80,22 +88,34 @@ sources:
     resource: repo://backend/tests/test_sql_integration.py
   - id: openwiki-source-3e07dc90801342267034699a
     resource: repo://backend/tests/test_sql_validator.py
+  - id: openwiki-source-77a336ada304965e7aa89c22
+    resource: repo://backend/tests/test_storage.py
   - id: openwiki-source-15fedc74dfcdfee2ad718523
     resource: repo://backend/tests/test_tool_errors.py
+  - id: openwiki-source-c9ec0e3b8ff5c20601084273
+    resource: repo://backend/tests/test_vault.py
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
   - id: openwiki-source-5f7022cb75865b779a5792a0
     resource: repo://codecov.yml
+  - id: openwiki-source-c1c958c5ad68d020fdee6247
+    resource: repo://db/migrations/0053_deleted_documents.sql
+  - id: openwiki-source-e2b923750735c644bf0f22f5
+    resource: repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts
+  - id: openwiki-source-a8bd24489ee5c096845541ba
+    resource: repo://frontend/lib/__tests__/copilotkit-route.test.ts
+  - id: openwiki-source-4c6b88fce133b6d2e3039743
+    resource: repo://frontend/lib/copilotkit-access.ts
   - id: openwiki-source-aa45754762425e69546840b0
     resource: repo://frontend/tests/setup.ts
   - id: openwiki-source-1d581b0a43d33a40ea0876c7
     resource: repo://frontend/vitest.config.mts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Testing
@@ -197,6 +217,8 @@ A test that renders a component must therefore be `.tsx`. `tests/setup.ts` loads
 
 Tests sit beside the code in `__tests__/` folders under `lib/`, `components/` and `features/` (ask, auth, home, ingest, registry, resources, settings, taxonomy, terms). The ones that guard shared contracts are the URL-state tests (`lib/__tests__/url-hooks.test.tsx`, `back-navigation.test.ts`, `safe-next-path.test.ts`), the auth and API-client tests (`lib/__tests__/auth.test.tsx`, `api-client.test.ts`, `server-auth.test.ts`, `supabase.test.ts`, plus `features/auth/__tests__`, which includes a login form with no Supabase keys), the Ask workspace and its views (`features/ask/__tests__/AskWorkspace.test.tsx`, funder match, RFP watch, proposals), and the Import screens (`features/ingest/__tests__` and its `components` and `lib` folders). See [Frontend](../architecture/frontend.md).
 
+`lib/__tests__/copilotkit-route.test.ts` is a security test of the CopilotKit proxy route (`app/api/copilotkit/[[...slug]]/route.ts`). It imports the real `GET` and `POST` handlers, built exactly as the route builds the runtime, and calls them with no cookie or `Authorization`. `/info` must answer 200, while the runtime's in-memory thread store (`GET /threads`, `/threads/<id>/events`, `/threads/<id>/messages`, `POST /threads/clear`) must answer 404. The route's `onBeforeHandler` hook calls `allowRoute` in `lib/copilotkit-access.ts`, which serves only `info` and the `agent/*` methods the chat client uses (`run`, `connect`, `stop`, `suggest`) and throws a 404 `Response` for everything else, because chat history is read from the backend's `/api/threads` (under RLS), not from the runtime. If an upgrade adds a route to the runtime, this test fails until it is allowed or blocked deliberately.
+
 Coverage uses the `v8` provider with `text-summary` and `lcov` reporters. Its `include` list is `lib/**`, `features/**` and `components/**` (`.ts` and `.tsx`), so **every source file counts whether or not a test imports it** and the figure is honest; test files, `__tests__` folders and `*.d.ts` are excluded. CI runs `npm run coverage` and uploads the `lcov.info`; the thresholds that fail a PR live in `codecov.yml` (75% floor, 1% drop, 75% patch for the `frontend` component), not in the Vitest config, so a local `npm run coverage` only reports a figure.
 
 ## Tier 1: unit tests (no database)
@@ -209,7 +231,21 @@ Coverage uses the `v8` provider with `text-summary` and `lcov` reporters. Its `i
 
 Because routers resolve the pool through `Depends(get_pool)`, that single override covers every router. A unit test that reaches the database fails loudly, so the rule is: monkeypatch the `repositories/` function rather than the pool. The `client_for` fixture wraps `make_app` in an `httpx.AsyncClient` over `ASGITransport`.
 
+An autouse fixture, `_plain_buckets`, deletes `STORAGE_BUCKET_SUFFIX` from the environment before every test, so a developer's shell (for example a `-local` suffix from `.env`) cannot rename the buckets the storage and vault tests expect. A test that wants a suffix sets it explicitly through `Settings(storage_bucket_suffix=...)`.
+
 The `build_import` fixture builds the Import agent with `resolve_model` replaced by `FakeListChatModel` instances named after their model spec and `create_deep_agent` replaced by a capture function. Tests can then assert which model, subagents and middleware the builder handed over without calling any model. Other unit tests use `httpx.MockTransport` (Supabase Storage in `test_storage.py`) or a generated ES256 key and patched JWKS client (`test_security.py`) to exercise auth without a network.
+
+### Storage and the Doc Vault (`test_storage.py`, `test_vault.py`)
+
+These two files mix DB-free tests with `integration`-marked classes (check the decorators). The DB-free parts pin the trust boundary around uploaded files:
+
+- **Storage client** (`test_storage.py`, against `httpx.MockTransport`): storage is enabled only when both `supabase_url` and `supabase_service_key` are set; a disabled client makes no request at all; failures are return values (`None` or `False`), never exceptions. `storage.owned_split` trusts a path only inside the row's own folder (`org-vault/<org_id>/...` only for that exact org id, so `org-vault/33/` does not match org 3; `staff-sources/` only for a non-public row with no org; `source-archive/` for the archive), so a row cannot claim another org's file. `vault_key` cuts long names but keeps the extension, because the vault reads a file's type from its key.
+- **Bucket migration and suffix**: file-level checks on `db/migrations/0020_storage_buckets.sql` (both buckets created, both private, guarded by a `pg_namespace` check for plain Postgres, idempotent via `ON CONFLICT`), and a check that the vault bucket's allowed MIME types in migration 0055 equal `storage.VAULT_TYPES`. With `storage_bucket_suffix="-local"` every call (upload, download, sign, remove, list, move, trash) names the suffixed bucket while rows and callers keep the plain name; the suffix is dropped automatically when `database_url` points at the same Supabase project as the storage URL, so staging data keeps the plain buckets.
+- **Vault routes** (`test_vault.py`, via `client_for`): a member gets a signed upload URL whose key leads with the org id (the RLS predicate); a type the vault cannot read is 415 before any URL is minted; a non-member and an unknown org both get 403 (existence is not leaked); unconfigured storage is 503. Confirming an upload refuses a key in another org's folder (403) or the archive bucket (400), a missing object (404), an already-recorded path (409, never read or removed), and a file whose bytes do not match its extension (`_bytes_match`; the object is removed and the response is 415), including a file just under the 50 MB limit. A file that cannot be read back gets 503 with no row and the object kept so the confirm can be retried; NUL bytes are stripped from extracted text. Downloads return a signed link, and another org's private document or a row pointing outside its org's folder is a 404, not a 403. Delete is staff-only and maps `DocumentInUse` to 409, `FileNotRemoved` to 502 and `RowNotRemoved` to 500; `_remove_vault_file` never removes a path outside the caller's own vault folder.
+
+The `integration`-marked classes prove the SQL these tests otherwise monkeypatch: `TestWhoMayTouchAnOrgsVault` (a member reads and writes, a steward reads but cannot write, an outsider gets nothing, staff write without membership) and `TestDeleteVaultUpload` (row and file go together; a document with chunks, or used by a proposal as its draft, template or budget, is refused before the file is touched; only a private `vault_upload` is deleted). They use `_PoolOf` from `test_storage.py`, which dresses the fixture's connection as a pool so the repository runs inside the rolled-back transaction.
+
+`test_deleted_documents.py` (`pytestmark = pytest.mark.integration`) pins the audit trigger from migration `0053_deleted_documents.sql`: every `DELETE FROM documents` writes the whole old row, as `to_jsonb`, into `deleted_documents` whoever deletes it and however, and a delete the repository refuses (`FileNotRemoved`) logs nothing.
 
 ### Coverage tests (`test_cov_*.py`)
 
@@ -231,7 +267,9 @@ The Sangam Pitch agent's safeguards are pinned by a family of unit tests, none m
 
 - **`test_proposals_work.py`** pins `work.apply`, the one way a proposal changes. Paths outside the allowed shapes (`summary`, `log`, `work`, unknown gates, unknown sections or fact ids, `stage` jumps, `sources`, a blank `title`) raise `BadChange`. A batch is atomic: if one change of several is refused, nothing is applied or logged. A section change must carry the `rev` it was read at, and a stale one raises `StaleSection` naming the current text and who changed it. A section's `rev` goes up once per save, and different sections do not clash. Every change is logged with who, `via`, `run_id`, path, `from`, `to`, facts and reason, with long values cut in the log but kept whole in the section. A step goes back by patch and forward only with `advance=True`, one step at a time. The summary is recomputed from the new work.
 - **`test_proposal_agent.py`** covers `proposal_chat_access` through a small app built with `make_app`: admins and stewards run their own chat on a proposal, a member gets 403, a stranger gets 404 (so existence is not leaked), a thread that is not `proposal-<id>-<user id>` for that proposal is 404, and two editors get two chats that neither can open. It also checks that `advance_step` refuses a reader before `repo.save` is reached and otherwise names what is missing (`NOT YET: ...`), and what the model is told: the stable context block is deterministic and holds no written text, the live block carries the screen and the reader's read-only status, teammates' changes appear but not the caller's own, and only Anthropic gets the `cache_control` breakpoint. `test_the_agent_has_its_nine_tools_and_read_file_only` builds the real agent with an `InMemorySaver` and asserts the tools node holds exactly `add_facts`, `advance_step`, `ask_user`, `read_file`, `read_files`, `read_match`, `read_org_record`, `read_proposal`, `suggest_edit` and `write_section` (its name says nine and the list has ten because `read_file` is counted apart). It also covers the `nothing_to_answer` guard (a run whose history ends on an assistant reply ends without calling the model, a new human message is answered, a pending tool call is not treated as an answer, and an empty history jumps to the end), and `test_pitch_runs_the_guard` spies on `create_agent` to assert the guard sits in the Pitch agent's main middleware stack. The file ends with a security check that a local `dev:` test sign-in is refused with 401 once Supabase is configured.
-- **Companion files** cover the rule modules: `test_proposal_facts.py` (source colours, when `ask_user` may ask, fact checks per origin and de-duplication), `test_proposal_writing.py` (trace check per paragraph, section order, grade-to-score mapping, `missing` and `untraced` never set from outside), `test_proposal_suggest.py` (the passage must appear exactly once; untraced wording is refused before the person sees it; `KEPT`, `SAVED` and `FEEDBACK` outcomes; a teammate's newer save refuses "use"), `test_proposal_finish.py` (the polish check refuses any changed figure, year, place, name or gap, and `polished` and `versions` are writable only by their own routes), `test_proposal_readers.py` (the compiled reader tool sets: file reader, funder reader and, when a Tavily key is set, a public researcher that reads the web and no file; none asks, writes or launches; the public researcher is never built without a search key; a `PublicGuard` refuses searches naming the organisation and keeps each page read for the quote check; one file per file reader, the busy lock, the 30-minute stale limit, and step 2's exit check) and `test_proposal_review.py` (how a corrected or set-aside fact propagates to the parts citing it and what stops `ready`).
+- **`test_proposal_form.py`** pins filling a funder's own form: `form.check` keeps the form's order, numbers and groups, gives codes `T1`, `T2`, ..., merges a label-less heading into the one before and caps long text; a PDF reaches Anthropic as a `document` block and a Word form as text, and any other type raises `form.Unreadable`. The fill check (`fill.check`) refuses an added or changed figure (`added 2500`) or an answer over the form's character or word limit, but allows a cut, a figure from another part and a new `[Add: ...]` gap. `fill.resolve` gives every heading an outcome (`answered`, `add` or `you_fill`): a refused answer becomes a plain `[Add: ...]` mark and is logged, tables and annexes are always left for the person, `skip` headings and second-phase questions on a first-phase proposal are dropped, and an over-limit answer is trimmed at sentence (or semicolon, never comma) boundaries or refused. `form.read` runs against a `FakeModel` and patched storage: only the first 100 pages (`MAX_PAGES`) of a PDF are sent, and a form with no usable copy, an undownloadable file or no written questions says why. The fill call is one model call and returns nothing when the model fails. The generated Word file carries the form's headings and highlights what is left.
+- **`test_proposal_regex_linear.py`** is a performance guard for the proposal regexes CodeQL flagged as polynomial: each (`trace.GAP`, `readiness._GAP`, `fill._GAP`, `fill._YOU`, `assemble._LEFT`, `trace.extract`, `trace.drop_cites`, the lakh/crore amount parsers) must finish on a 50,000-character hostile string in under a second, and the rewritten functions are compared with the old regex on realistic input so behaviour did not change.
+- **Companion files** cover the rule modules: `test_proposal_facts.py` (source colours: registry and vault green, web and derived amber, `you_said` said, an unknown origin raises; when `ask_user` may ask (a missing element, a disagreement between equally strong sources, only the organisation's call on an amount) and the ask gate that refuses a gap open with a teammate; fact checks per origin and de-duplication), `test_proposal_writing.py` (trace check per paragraph, section order, grade-to-score mapping, `missing` and `untraced` never set from outside), `test_proposal_suggest.py` (the passage must appear exactly once; untraced wording is refused before the person sees it; `KEPT`, `SAVED` and `FEEDBACK` outcomes; a teammate's newer save refuses "use"), `test_proposal_finish.py` (the polish check refuses any changed figure, year, place, name or gap, and `polished` and `versions` are writable only by their own routes), `test_proposal_readers.py` (the compiled reader tool sets: file reader, funder reader and, when a Tavily key is set, a public researcher that reads the web and no file; none asks, writes or launches; the public researcher is never built without a search key; a `PublicGuard` refuses searches naming the organisation and keeps each page read for the quote check; one file per file reader, the busy lock, the 30-minute stale limit, and step 2's exit check) and `test_proposal_review.py` (how a corrected or set-aside fact propagates to the parts citing it and what stops `ready`).
 
 ## Tier 2: integration tests (database)
 
@@ -239,7 +277,7 @@ Integration tests connect to `TEST_DATABASE_URL`, defaulting to `postgresql://sa
 
 Isolation is by rollback. The shared `db` fixture in `conftest.py` opens a non-autocommit connection and rolls back afterwards; `test_rls.py` runs each test inside `connection.transaction(force_rollback=True)`. Test rows never persist. The exception is `test_agent_rls.py`, which needs a real pool (the agent's SQL executor reads `app.db.pool.pool`), so it commits rows tagged with a per-run `MARKER` and deletes them in a `finally` block.
 
-The marker is applied either per file with `pytestmark = pytest.mark.integration` (`test_rls.py`, `test_agent_rls.py`, `test_sql_integration.py`, `test_migration_integrity.py`, `test_import_undo.py`, `test_news_rls.py`, `test_news_store.py`, `test_news_stories_sql.py`, `test_profile_facts_sql.py`) or per test (`test_caller_pool.py`, `test_news_pipeline.py`, `test_storage.py`, `test_locations_seed.py`, `test_taxonomy_seed.py`, `test_vault.py` and a few import tests). Files with per-test marks mix DB-free and DB-backed cases, so check the decorator rather than assuming a whole file needs Postgres. Applying the marker consistently matters: `-m "not integration"` only excludes what is marked.
+The marker is applied either per file with `pytestmark = pytest.mark.integration` (`test_rls.py`, `test_agent_rls.py`, `test_sql_integration.py`, `test_migration_integrity.py`, `test_deleted_documents.py`, `test_import_undo.py`, `test_news_rls.py`, `test_news_store.py`, `test_news_stories_sql.py`, `test_profile_facts_sql.py`) or per test (`test_caller_pool.py`, `test_news_pipeline.py`, `test_storage.py`, `test_locations_seed.py`, `test_taxonomy_seed.py`, `test_vault.py` and a few import tests). Files with per-test marks mix DB-free and DB-backed cases, so check the decorator rather than assuming a whole file needs Postgres. Applying the marker consistently matters: `-m "not integration"` only excludes what is marked.
 
 The data under test must already be loaded: run `make up` (which migrates) and `make seed` first. CI builds the same state without Docker (baseline SQL, migrations, `seed.seed`, `seed.taxonomy_seed`) and lists skips with `-rs`; `test_locations_seed.py` and `test_taxonomy_seed.py` mix DB-free file checks (for example 36 states and 784 districts in the LGD files) with `integration`-marked seed tests that run in a rolled-back transaction. `test_migration_integrity.py` asserts seeded facts, for example at least 96 `documents` rows (a floor, because the importer adds more), exactly 29 `graph_ingest_log` rows, stable seed-order ids (`kabil` = 9, `bdf` = 10, `axis-bank-foundation` = 1, `tata-trusts` = 4) and that the `documents` id sequence has advanced past the restored rows. It fails if migrations and seeds drifted apart. See [Data and Migrations](../architecture/data-and-migrations.md).
 

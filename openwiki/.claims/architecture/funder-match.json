@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3fdf339bbbd081ce43ad5de3e0dd22dd1087edf96035cf3932c5d9a65181364c",
+  "pageVersion": "sha256:00e1ed6b2e004fe2f79a9b3b8e7fec74cdbcdcb030f63055abd2410f28b81d5b",
   "claims": [
     {
       "id": "claim_8d5cf8f2478345fc8f2c86fc0e3f5809",
@@ -261,7 +261,7 @@
       "statement": "match-v2 (2026-10-11) changed only the theme criterion and the rubric version: theme now compares the taxonomy tree rather than Darpan sector tags, Others never counts as a shared area, and older saved runs keep their stored rubric_version.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L118-L118",
+          "resource": "repo://docs/CHANGELOG.md#L121-L121",
           "version": "repo-lines-v1:sha256:b019a839953c26531b6559ad273557ce1e2a73ffa2599b867db1649dc58cffa6:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjAxOWE4Mzk5NTNjMjY1MzFiNjU1OWFkMjczNTU3Y2UxZTJhNzNmZmEyNTk5Yjg2N2RiMTY0OWRjNThjZmZhNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWY0NDIxYTY4NjcwNDI5MmM4NjJkYWQxMDQwYTczNTI2ZTVkODQyZmNiNGE3NmQ2YTdjMDE2Nzc0ODYxNmIwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWQ0MzU3MjY3YTM5NDcyNjVkN2RiODJhNWIxYjg2MmVjYzcyNmZjMjBhNGE2Mjg1ZmRiN2U3ZjczMzIxOTZkMSJ9"
         },
         {
@@ -297,7 +297,7 @@
       "statement": "POST /proposals gates creation: 404 when the caller cannot read the org, 403 when they can read but not run (admins, stewards, staff), and 409 'Run Funder Match first' when the funder is absent from the org's latest saved run. match_for reads only the latest run's row with its full detail, so a proposal always rests on a stored match judgement.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/proposals.py#L175-L188",
+          "resource": "repo://backend/app/api/routes/proposals.py#L177-L190",
           "version": "repo-lines-v1:sha256:b823c20a39eef63bf8f921398a025c2ade9bc2b7e6aeb2583de6e82b85b7d1b2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0MWU0ZjNlNjg0Mjg4ZjhmMjVmMWRiN2FmNDFiMGFlZjFhYWFkNTI3ODdmMTQ2MjNiNTVkZWU5NGMxMTYyMTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyYWM3ZGExNTczMjQ0MWU1YzZiMGNkMWQ2ZDJiZDk3ZDBhNWRlMWE0OGM2MDJiNTNlMDdiMjUyMTVlYThmNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwNjBjZmExOTMyODZmMTJjNDk2MjE2YjBjNWE2ZjdiZDEzNjA0ZDBkODU4NWRhMWM2YTc2NzJmN2Y1Yjk4NGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjY2E5OGY2NTZmZmIxMmQ1YWE2N2I3YTFjNmRjMjNjZGNkZDY1NGYyM2QzNDU0MzI1ZDg5MDk2MjdjMTM5YTkifQ"
         },
         {
@@ -326,10 +326,10 @@
     },
     {
       "id": "claim_b340191a8b014fea89e59ecf29459a18",
-      "statement": "new_work (in api/routes/proposals.py) stores in a new proposal at stage 1 the requirements and their cites, an empty gates map, earlier_phase, the match id/score/run_at, the funder's newest proposal_template document if any, and a default style; create inserts it with an initial readiness summary. The proposal keeps this snapshot, so a later Funder Match rerun does not change it, and the list's fit_score reads the stored match score.",
+      "statement": "new_work (in api/routes/proposals.py) stores in a new proposal at stage 1 the requirements and their cites, an empty gates map, earlier_phase, the match id/score/run_at, the funder's newest proposal_template document if any (found by repositories/proposals.funder_form), and a default style; create_proposal inserts it through repositories/proposals.create with an initial readiness summary. The proposal keeps this snapshot, so a later Funder Match rerun does not change it, and the list's fit_score reads the stored match score from work.match.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/proposals.py#L175-L188",
+          "resource": "repo://backend/app/api/routes/proposals.py#L177-L190",
           "version": "repo-lines-v1:sha256:b823c20a39eef63bf8f921398a025c2ade9bc2b7e6aeb2583de6e82b85b7d1b2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0MWU0ZjNlNjg0Mjg4ZjhmMjVmMWRiN2FmNDFiMGFlZjFhYWFkNTI3ODdmMTQ2MjNiNTVkZWU5NGMxMTYyMTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyYWM3ZGExNTczMjQ0MWU1YzZiMGNkMWQ2ZDJiZDk3ZDBhNWRlMWE0OGM2MDJiNTNlMDdiMjUyMTVlYThmNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwNjBjZmExOTMyODZmMTJjNDk2MjE2YjBjNWE2ZjdiZDEzNjA0ZDBkODU4NWRhMWM2YTc2NzJmN2Y1Yjk4NGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjY2E5OGY2NTZmZmIxMmQ1YWE2N2I3YTFjNmRjMjNjZGNkZDY1NGYyM2QzNDU0MzI1ZDg5MDk2MjdjMTM5YTkifQ"
         },
         {
@@ -341,8 +341,12 @@
           "version": "repo-lines-v1:sha256:e2e55001a2df60c8b4bb864d13271c37dcbdaa66f3e305bacea9d4a2165dc10a:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzU2MzBhOWE0NTBjZDg2YmQxNDkyYTA4ZWVmMTVmZDQxODIyZjg5ZTEwZDdiNmY4NDQxNWFiNzgyNDFjYjA3OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTMwM2VjZGQ0YTRkMTBmMTljNzNmZDQyZmQxMjQzN2ZkMzM1NGE4MjY4MTYwNWRhNTI1NWE5N2EzOTA2OGRiYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWI0YTAzZTAxNTliNDI5MGE5OWU3MjlmOGI1ODNhMWZjNGE2NDQwMTVkNzdiZDIxMmU5ZjJjNmNiOGViOTdmNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjI4MmZmZWUwZDdkYWJlMDY1MDRlZjg4MTRkYTM2OWU2YWZiNTBjODY4YTBhZDNmODJmYzk4YTJlMWI5OTUwMiJ9"
         },
         {
-          "resource": "repo://backend/app/repositories/proposals.py#L68-L105",
-          "version": "repo-lines-v1:sha256:e347ffcbb0c5d72d7b7b0f3e446eb91e5670ab44d8a350ac101e1c5c2cf0e476:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5MmRhYTk0MDNjMWVmZjY2YTljM2VkYmRjMDNiZmZmODFhOWZmMzc5ZmQ4MmJiOTA5NzZiZjRjNjI4Mzg3MmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlM2Y5YjhlMzExNjgzZDM4ZWExZjcwMmM1OWFmNDQxYWU4NjdiM2Y1NTE1ZjI0MDE3MGNmZjMyNDRmZGQzYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5MGQ2NjIwMDRkZjJmOTc0NGQ3ODA0NTliMjY2OWEzNGNkNTA2ODJmNTA5N2NlNjM2ZjRhZGM2NTQ5MTU4OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhZGIzZGZhZDBhNjk0YjcxNmRiZDVmOGIyNmRkN2I4YjUwYmUxODYxZTFkOTE2NGMyYjFlM2RhNDFjMDMxZmQifQ"
+          "resource": "repo://backend/app/repositories/proposals.py#L68-L76",
+          "version": "repo-lines-v1:sha256:f1651f6fb5fcefebe10fbbd2fb4606a47141991056f72d741486111ece75a86d:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkyZGFhOTQwM2MxZWZmNjZhOWMzZWRiZGMwM2JmZmY4MWE5ZmYzNzlmZDgyYmI5MDk3NmJmNGM2MjgzODcyYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTU3M2IzMGViOWZmNDU4YWE3YzMxZTQ4OWI3NTRhNjkyODA4YjhjNDU4MzE0Yjg2NjY0OWVjN2ViZDUxMWMzMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDkwZDY2MjAwNGRmMmY5NzQ0ZDc4MDQ1OWIyNjY5YTM0Y2Q1MDY4MmY1MDk3Y2U2MzZmNGFkYzY1NDkxNTg5NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWRhYTY0ODM4ZGJiODI2YmJjZmMwNDgyMDRjZDIwNzljODUzNWMyZThkMzljNzc3MTdmY2E5NzZhZDhlM2FkMiJ9"
+        },
+        {
+          "resource": "repo://backend/app/repositories/proposals.py#L98-L105",
+          "version": "repo-lines-v1:sha256:cd567d289f65b3095bf1b1eb043632a14901cc945d6bff3aaeb011fde090d6d3:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2NkNTQ3MDQ0NTNkODM1Y2Q0NmY5ZDNjZDdlODRkODc0ODBiYTNiMzI3Y2MyNzU2NTIxOTlhODg5NTQwYTY0OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2UzZjliOGUzMTE2ODNkMzhlYTFmNzAyYzU5YWY0NDFhZTg2N2IzZjU1MTVmMjQwMTcwY2ZmMzI0NGZkZDNhNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTM2ZTQ3MTQxZTFjNmQyZjk0MTQ0YzQ2MDM2ZDllMmRkY2E3MWQ5ODgxZTAyMzM5OGM1OWMwYzcyN2JkNTc5MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGFkYjNkZmFkMGE2OTRiNzE2ZGJkNWY4YjI2ZGQ3YjhiNTBiZTE4NjFlMWQ5MTY0YzJiMWUzZGE0MWMwMzFmZCJ9"
         }
       ]
     },
@@ -399,6 +403,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-05T19:29:31.538Z"
+    "at": "2026-11-10T13:16:49.280Z"
   }
 }

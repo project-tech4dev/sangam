@@ -64,10 +64,10 @@ sources:
     resource: repo://frontend/features/ingest/lib/staffActions.ts
   - id: openwiki-source-9e86dbac2cec46334e85282e
     resource: repo://frontend/features/ingest/ScoutChat.tsx
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # One Import Turn: choose_sources to Undo
@@ -153,9 +153,9 @@ The supervisor plans (`write_todos`), reads `funder_dossier` to see what the cat
 An organisation's private files can enter a run only if the person picked them in `choose_sources`. They are read by the `vault-reader`, never the researcher, so vault text never shares a context with web tools (`backend/app/ingest/reading/vault.py`, whose module docstring states that vault text only sits in the vault-reader, which has no web tools, and that findings go to `vault_research` rather than the shared `entity_research` row).
 
 - **Which files count.** A Vault document is a `documents` row with `NOT is_public` and a `storage_path` under the `org-vault` bucket. `vault.in_vault` (`reading/vault.py`) checks picked ids against that org. `list_vault_documents` and `read_vault_document` (`tools/vault_tools.py`) use the owner pool, so each checks `can_read_org` itself. A file the caller may not read and one that does not exist get the same answer. A run's picked org is the only vault it may list.
-- **What can be read.** `vault.read` downloads at most 50 MB and handles `.pdf`, `.docx`, `.xlsx` and plain `.md`/`.txt` files. Anything else, or a document with no stored file, returns a plain explanation. Each read is capped at `MAX_CHARS` (24,000), with a note on how to continue (a later `start_page`, which counts paragraphs in a Word file and lines in a text file).
-- **Citation markers.** Every line is cited as `[vault:<id>#p<page>]`, `[vault:<id>#para<n>]`, `[vault:<id>#line<n>]` or `[vault:<id>#<sheet>!<cell>]`. A scanned PDF with no text range is reported as such rather than guessed at.
-- **Office extraction.** The text helpers are in `app/core/extract.py` and are pure (bytes in, text out); the old `ingest/office.py` no longer exists. `docx_paragraphs` returns paragraphs and table rows as `a | b | c` in document order, keeping a merged cell once. `xlsx_markdown` renders each sheet as a heading plus its first `SHEET_ROWS` (200) rows. The same helpers produce `content_md` when a document is uploaded (`documents._extract`, which stores `None` text but still a hash if a file is damaged). The vault reader pages `.docx` by paragraph through `docx_paragraphs` and `.md`/`.txt` by line through `text_lines`, while `.xlsx` goes through `staff_sources`. The researcher's `read_document_pages` reuses the same module for downloaded Word files.
+- **What can be read.** `vault.read` downloads at most 50 MB and handles `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.md`, `.txt`, `.csv` and the images `.png`, `.jpg`, `.jpeg` and `.webp`. Anything else, or a document with no stored file, returns a plain explanation. Text reads are capped at `MAX_CHARS` (24,000), with a note on how to continue (a later `start_page`, which counts paragraphs in a Word file, slides in a PowerPoint file and lines in a text or CSV file; a later CSV window repeats the column names). An image comes back as the image itself for the model to look at, unless it is over about 3.75 MB, which is reported as too large.
+- **Citation markers.** Every line is cited as `[vault:<id>#p<page>]`, `[vault:<id>#para<n>]`, `[vault:<id>#slide<n>]`, `[vault:<id>#line<n>]` or `[vault:<id>#<sheet>!<cell>]`, and an image as `[vault:<id>#image]`. A scanned PDF with no text range is reported as such rather than guessed at.
+- **Office extraction.** The text helpers are in `app/core/extract.py` and are pure (bytes in, text out); the old `ingest/office.py` no longer exists. `docx_paragraphs` returns paragraphs and table rows as `a | b | c` in document order, keeping a merged cell once. `pptx_slides` returns each slide's text in presentation order, and `text_lines` splits a very long text line so one line cannot fill a read. `xlsx_markdown` renders each sheet as a heading plus its first `SHEET_ROWS` (200) rows. The same helpers produce `content_md` when a document is uploaded (`documents._extract` handles `.docx`, `.pptx`, `.xlsx` and `.pdf`; a damaged file gives `None` text but still a hash, and the row is kept). The vault reader pages `.docx` by paragraph through `docx_paragraphs`, `.pptx` by slide, and `.md`/`.txt`/`.csv` by line through `text_lines`, while `.xlsx` goes through `staff_sources`. The researcher's `read_document_pages` reuses the same module for downloaded Word files.
 - **Saving.** `save_vault_findings` refuses the whole save, writing nothing, unless every finding has a vault `source_url` (`https://org-vault.<private domain>/<id>`), names a document in that org's vault, and quotes that document's `[vault:<id>#…]` marker (`vault.check_findings`). It also requires `can_read_org`, and NGO research needs `can_research_org`. Findings go to `vault_research`, one row per `(slug, researched_on, org_id)`, never into the shared `entity_research` row.
 - **Promotion holds.** `research_rows` (`catalog/save.py`) strips vault URLs from `entity_research` findings. It adds an org's `vault_research` findings only for a writer or person (`vault=True`), and only for orgs the caller can read. At promote, `vault.hold_at_promote` keeps only the funder's general facts (`PROMOTABLE`: identity, CSR year, stated geography, eligibility guideline, RFP, programme). The org's own facts are shown on Review but held back, and an NGO's vault findings are never promoted.
 
@@ -163,7 +163,7 @@ An organisation's private files can enter a run only if the person picked them i
 
 `save_research` is the only tool on this path that writes, and it writes findings, not catalog rows. It should be called once, last. It returns `REFUSED:` text, rather than raising, in these cases, in this order:
 
-1. **NGO by a non-steward.** `entity_kind == "org"` and the caller is neither staff nor a steward. The researcher is told to report in its summary instead.
+1. **NGO by a non-steward.** `entity_kind == "org"` and the caller is neither staff nor a steward of any org. For a non-staff caller who does steward something, a second check inside the save (`_may_research`) requires that the NGO already be held, by slug or a mergeable name match, and that the caller can research every such org. Either way the researcher is told to report in its summary instead.
 2. **Unanswered fields.** `unanswered()` in `research/contract.py` finds a field of the kind's contract with neither a finding nor a gap. Yearly concepts need one answer per asked fiscal year (default: the recent years), and identity concepts also need `themes`. Statuses other than `complete` and `partial`, and kind `unknown`, are exempt. A gap must be `not_stated`, `blocked` or `not_reached`, with a reason.
 3. **Another person's row.** A non-staff caller would overwrite a same-day row saved by someone else. The reply tells the researcher to report `saved=true` with the existing slug.
 4. **A shorter save.** The stored row for that slug and day has more findings than the offer, and `replace=true` was not passed.
@@ -276,7 +276,7 @@ Rejecting any `run_import_now` card writes nothing. The per-funder pipeline, the
   - programme themes step 5, `write_funder_tags_from_programs` (PR #172), is unmerged, and no backend code defines it;
   - the "review follow-ups" of `2026-10-09-import-guided.md` are still open;
   - RFP Watch M1 to M4 have shipped, with only the staging exit gates left;
-  - the fix that moves Ask's SQL off the owner pool is on an unmerged branch.
+  - Ask's SQL and Import still run on the owner pool; the fix for Ask (branch `fix/ask-sql-runs-as-caller`) is unmerged.
 - `docs/INGEST.md` predates the brief-as-record work. Where it disagrees with `docs/ARCHITECTURE.md` section 4, section 4 is right.
 
 ## Where to change things

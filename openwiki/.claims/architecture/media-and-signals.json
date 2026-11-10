@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9782466dadf30a7d27fd3d9d8021d13141460158887298f8ea5a2b520c83363e",
+  "pageVersion": "sha256:afad1fec49541b073b6be4726e54d0f5a51d0782b8264a3f86cd14c756cc83c4",
   "claims": [
     {
       "id": "claim_01345909426749c9a9ea637374f7feca",
@@ -103,11 +103,11 @@
       "statement": "Classification is one structured model call per (link, subject) at PROMPT_VERSION signals-v2, run on the utility (Haiku) model; pairs already scored at that version, duplicate URLs, profile/directory/job pages and items dated before the floor are skipped. A per-run cap (news_max_classify, 2000) refuses the overflow and holds those watermarks, and each verdict is saved as it lands so a killed run keeps its work.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L11-L28",
+          "resource": "repo://backend/app/core/config.py#L13-L30",
           "version": "repo-lines-v1:sha256:b9f7913581ea69725719b4937c18e0b4340e05d0d188ecab8204e8e5fd295635:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZjODYzMzFjOTBiNzhjZGI5MTdmZDViZDY5ZmMwNzE0ZDVhNWZlODQ2MGQ4NzYyNzllMTVmZjQyZmZjNzIzNWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1MjgxMGFkNTVmZjBmZWExZmI5NGYwMGQxNTQyNWU1MmVlYWQ1MzZmODYzYThmMWI1YmRiMzM5NjY2NjM3YTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzZDE3MWRlNzU0MzFhMDIxYTBkOTRmYTc2ZmFiZjBkNzEzOWM4OThjMWEwYjQ0YjQzY2E2MDkwM2ZhMWI4NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjOGNkZDllOTMzNjFmNWZiNzMzNTIzYTBjNzliMzMxYjFjMjQ0ZTg3ZjI4OGNmNWIzMzdlNzRiY2U4YzI2YjgifQ"
         },
         {
-          "resource": "repo://backend/app/core/config.py#L61-L83",
+          "resource": "repo://backend/app/core/config.py#L66-L88",
           "version": "repo-lines-v1:sha256:4ddcdc12bdd36f1ec5ac80d87f579420aafcc4b09292b90cca4ed124db3e5868:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlNDg4MTdhZjQ3ZGI3YjUzNzJkNDkzZTRjOGMwMDQzMjQyNWI3ZTQzYjk3Y2I1NmE1ODBhZTQyNTkwNzlhZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmYTZiNmY3YWFiYTgxNjU3Y2QwYjFjZWJkZTgyMmFmZWRhZWU4MzcxOTNiYzg4MjBmODQxOTljYTM3ZjJkZTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxNmEzZjkyNGJmZGQ4NDc1MjAzZmI2MTVjNmI2MmJiYWNjZGJkOGNjYjA1YmEwYzY2OWIxNDFmYWUxYmIyZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlMWNlNzE2NWRjYmZkZWMxMDZjY2Q4YzFiYjIzY2Q2MzliMTdiOWY2ODBmMDNiY2UwYTYxZWVjNmEyMjVlYzIifQ"
         },
         {
@@ -125,7 +125,7 @@
       "statement": "Model tiers by stage: Scout supervisor and Ask use MODEL (Opus), per-link entity/topic classification and headline writing use UTILITY_MODEL (Haiku), story grouping uses RESEARCH_MODEL (Sonnet) with json_schema structured output because forced tool calls are unsupported on that tier, and the verifier agent uses RESEARCH_MODEL with a fallback to MODEL.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L14-L25",
+          "resource": "repo://backend/app/core/config.py#L16-L27",
           "version": "repo-lines-v1:sha256:a4f5276ff7bd0153ef8b85f7046cebc9adc767017cfecd96f17021dc044d1e9a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxMDNhNmU4NWQwMTNjNzg1MjNkZTMxMDZlZGU5MDgyODM1NjNlMDAwMmVmNmU4ZmU2YWU0YzQyOTAyZjIxMTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhODYwZWVmN2IxN2QxYWJiNDUyZGZkMWZiODU5MDk3NTM1M2JjNjgxNGMzYzVhZDdlN2QyNGYxMzkxYmQ1NzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk2ZTJiMGJiZWNjNzE3NTBlMzcwN2VlM2JmMDFlMGEzN2FjMzFlYzVmNGMyMzhiNThkZTM3ZDE1ODhkYjQ4ZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjZjRjNTRjNWNiNDVlNDg4NTkzOTRmMmJkOTRjNzMzMGZjZmZkZDQxMjhlYmUwZjU1NDZiNjZhNDc1MGQ5NjkifQ"
         },
         {
@@ -147,7 +147,7 @@
       "statement": "The verifier is off while NEWS_VERIFY_MAX=0 (the default): Deps.from_settings only builds it when news_verify_max > 0, and _Checks.settle returns the first read unchanged when no verifier exists. The plan line shows 'up to N checks' and their cost only when checks are non-zero.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L77-L83",
+          "resource": "repo://backend/app/core/config.py#L82-L88",
           "version": "repo-lines-v1:sha256:d593a38c266ba344522dc4c758f8f8b1364527343111407deff1770e38e39233:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODRhMGFhZTc1NmE5ZjBiYzE2MTI0NDBmNDBlYjc5YWRjN2Q0ZTUwN2NkZTQ5Y2JmYzI3N2U3ZWU0OWM0YTFlMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmZhNmI2ZjdhYWJhODE2NTdjZDBiMWNlYmRlODIyYWZlZGFlZTgzNzE5M2JjODgyMGY4NDE5OWNhMzdmMmRlNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTliY2RjNGJmMTE2MmQxYTA4NGNlY2ZmYzU3MWQ1MWFhZmEzNWUwYTNhYjFiZmE5OTczMzZjM2E1ZjJkZjQ2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjQ5OWQyNmI2NjhiNWMzZDgwNzk3NDIyZjAzZmE5MDNjMTRkZGU5ODE1NGM5NGZlOTg0Y2MyZjA2MzBiNzg3OCJ9"
         },
         {
@@ -191,7 +191,7 @@
       "statement": "The verifier is a read-only deep agent (read_page, search_public_sources, read_file floor; no subagents, no checkpointer) limited by ReadingLimit (3 page reads) and call_limit (8 calls), returning a slim Check merged onto the first read with verified=True. A check may raise match, confidence or flip on_target only if read_page actually returned the page named in evidence_url; otherwise the first read's values stand and the evidence is annotated, so injected page text cannot lift a score unread.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L81-L82",
+          "resource": "repo://backend/app/core/config.py#L86-L87",
           "version": "repo-lines-v1:sha256:ee0c3e6c3ba9b3a2c4b9187a3d1bd79c334cdc3416e39c9fc551d4d61fdca820:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGU1MzBmMzBhMjIxMzliZjEyMmNmOTZlNmQxMmVmZGI5ZDIyNTNkYjkwN2NkNWE0ZWY3MTJhY2NjMjFmMjExYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTIxMTNhNTMwOGQzNzljZjc1Njk4MTljNTQxYjI5Y2UxOTM3ZTRkMDgwMDc4NDViMzNhYTVkNDI5ZjUxYTgwNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWQ0OTAzYzk1NjU5ODI2MzExZGY3YzIyNDIyNWY1ZDZlZWJmMDYyOTZmNGI0NDMyYTgxODNkOTFkOWIxYTIxOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmJhOGYyZTYwY2ExODc1NWUwMjE5NWFiZDVmNWM0NGE4YjViMWE5OTM0YTdjODNkZGExZDIxNmJkMDI4MjkyNiJ9"
         },
         {
@@ -227,7 +227,7 @@
       "statement": "Visibility bars are applied in code from Settings: an entity link is public at match>=0.7 and confidence>=0.9 (0.9/0.95 for negative stance) when the story is news, listed at 0.6/0.8, otherwise hidden; an undated non-news item is hidden. A topic story is listed only if match>=news_topic_match (0.75), news, dated and not international, and stays listed once listed. upsert_entity_link only overwrites when the new (match, confidence) is at least the old one and keeps staff-hidden links hidden; recompute_visibility (make news-visibility) rewrites visibility from stored scores but leaves staff-hidden rows.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L63-L69",
+          "resource": "repo://backend/app/core/config.py#L68-L74",
           "version": "repo-lines-v1:sha256:0a645e00f250468dde2afb5180f1a2f792cd943c83797c232075d7ed40b1b3e6:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTcxZmU5ZGQ0MDgzMmY1NDg3ZGY5OThhZDJiNjcxODkzMDM2MDYxZDg1MzRhNDhmM2UzYTgxN2ViM2UzNzEwMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzJiMTVhNTEzMGRkMDFiMzJlNWFjMzE2OGU1YWFhOTYxYTdhOTA4Y2NjOTcwZTYwZjJiOGQ3Y2E1NTcwMmJjMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2MxM2Q3ZWIzZjNhZmVmZWQ2MDRiMTgzY2UzNTQ5MDNkY2I1NzU0OWU4NTAyZDQxNzhlODg1ZGRhNjQ2N2FhZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzEwMGFjMDEzMWQ1NDI4MTAyYzU3NzY5M2E3OTZlOGY5NmFkMWIwNGYzZTQ5ODNmMDlhZGVjZjA1NWI5YWE2MCJ9"
         },
         {
@@ -260,11 +260,11 @@
     },
     {
       "id": "claim_5e30a0e74b514045aee5e07ddc87fc85",
-      "statement": "Ask's SQL catalog (backend/app/ask/tools/sql/catalog.py) exposes news_stories, news_links, news_story_entities, news_story_locations and news_story_tags (news ids cite [news:N]) while news_link_scores, news_watch, ingest_runs and ingest_run_items are in KNOWN_EXCLUDED, so verifier evidence and watermarks are not queryable from Ask.",
+      "statement": "Ask's SQL catalog (backend/app/ask/tools/sql/catalog.py) exposes news_stories, news_links, news_story_entities, news_story_locations and news_story_tags (news ids cite [news:N]) while news_link_scores, news_watch, ingest_runs and ingest_run_items are in KNOWN_EXCLUDED, so verifier evidence and watermarks are not queryable from Ask; tests pin the five catalogued tables, the news cite and the news_link_scores/news_watch exclusion.",
       "evidence": [
         {
-          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1005-L1045",
-          "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1005-L1047",
+          "version": "repo-lines-v1:sha256:657451b2862f3c4bff38c6bff92eecd8eed9e64ad0d4c60f800a444502acb663:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
         },
         {
           "resource": "repo://backend/app/ask/tools/sql/catalog.py#L452-L540",
@@ -399,6 +399,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-05T19:29:31.538Z"
+    "at": "2026-11-10T13:16:49.280Z"
   }
 }

@@ -3,9 +3,6 @@ type: workflow
 title: One proposal, end to end
 description: Trace of one grant proposal in Sangam Pitch, enabled for everyone alongside RFP Watch (the Coming soon set is empty), from "Start a proposal" on a Funder Match card through the five steps (migration 0050 added Make a case as step 3), file readers, secondary research, questions, section writing, the readiness review, checked language smoothing, the Word download with versions, and deletion. It covers PATCH /work with section rev, per-editor chat threads, and what code refuses at each step.
 tags: [proposals, proposal-copilot, workflow, stages, gates, trace-check, polish, docx, versions, rev, optimistic-concurrency, readers, secondary-research, migration-0050]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
 sources:
   - id: openwiki-source-e0103e1ba2cbec5a0f421c56
     resource: repo://backend/app/api/routes/proposals.py
@@ -96,6 +93,9 @@ sources:
   - id: openwiki-source-d9a884d0a22ed50f19bac516
     resource: repo://frontend/features/ask/views/RfpWatchView.tsx
 generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # One proposal, end to end

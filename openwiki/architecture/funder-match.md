@@ -71,7 +71,7 @@ sources:
 generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Funder Match

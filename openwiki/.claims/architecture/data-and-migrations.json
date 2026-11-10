@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:edde50cea86f3c2616c5c03fb4f57ff1165a8aa7b4a769f72134a0d88c1f0fdf",
+  "pageVersion": "sha256:207b2c9c95a574bf430a26941c00d43c7c84e1234e321fc6c1b83d8d18616a18",
   "claims": [
     {
       "id": "claim_5caf0ebc9bd74ac5a84991a404f0fb63",
@@ -75,7 +75,7 @@
       "statement": "At boot the lifespan runs _verify_sql_catalog: verify_against_db raises RuntimeError and aborts startup when the SQL catalog lists a table or column missing from the live database, or a catalogued column that authenticated cannot SELECT (or a table anon reads only in part); extra live tables or columns do not fail boot, and live tables in neither CATALOG nor KNOWN_EXCLUDED are only logged at INFO and stay invisible to the SQL tool.",
       "evidence": [
         {
-          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1078-L1124",
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1080-L1126",
           "version": "repo-lines-v1:sha256:ad0b56a446927d6382872a548a7246393d4e32eec72a605c1e506b1ae75d4cc2:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3YTMyOGIzYmNmNTEyNWMxZmRkNzg5MDRiZTI4MTliNzI0MjRmYjE0MmM0MjE4OGE3NmQwY2I1YmVhMjNiMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MWI0ZjAzNDJmMDc3ZDhjZDA3Y2ZkMDJlYzAwNDBiZTkxYzkxYTc1NWM5NTM5NmUxNTQ3Y2Q2MzA5YmEzMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4N2IzMGM1YWM0NTA0YzdiNWRhMjEyZjYxN2JmNzA1MzAyYTIxYzhhOTNiZGU3YmRlYWJkYzc3ODI0ZTFmM2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -83,18 +83,18 @@
           "version": "repo-lines-v1:sha256:e5d9a0b639f880da79cdd5f58d1493321339358fc922fce8e39809aaf6bd7727:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTVkOWEwYjYzOWY4ODBkYTc5Y2RkNWY1OGQxNDkzMzIxMzM5MzU4ZmM5MjJmY2U4ZTM5ODA5YWFmNmJkNzcyNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTVkOWEwYjYzOWY4ODBkYTc5Y2RkNWY1OGQxNDkzMzIxMzM5MzU4ZmM5MjJmY2U4ZTM5ODA5YWFmNmJkNzcyNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDRhMDNiODczMzA4YjM1NDZmMTEzMjNiMzZiNzhiZTM3MzQwYzg1OTg0ODUwOWQ5NzhjZDU3NTliNTRhYThmNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWNiMWYzZjBkOWE0ODM1Njg4YmRmMjc2NWY4ZTc1MGExNTVjYjAxMWI4YWJkOWYyMDFmNTE0Zjc0ZDVkYjYxMiJ9"
         },
         {
-          "resource": "repo://backend/app/core/lifespan.py#L222-L247",
+          "resource": "repo://backend/app/core/lifespan.py#L233-L258",
           "version": "repo-lines-v1:sha256:cf3b236c246d19b0f524d3cdd1f31896b3c85cc22de5c4eb74c8b857c061cfbb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmYzlmYjNkMDcwNGQxYzMzZTI3YzZjZjdmMjM0YjNkNGM4N2UyZGMxOWZjM2EzZWEzZWY2YzQwNGNhNjJkNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NjRmYjUzYjI3MjE2MzZkNDg0NjljZTdjNDNkOWU5YjJlODQ2NWQzNmNhZTI0ZjMwN2MzZWY0M2I3MDNjYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
       "id": "claim_7b0e6352649d4bdf8b6690abcd195623",
-      "statement": "KNOWN_EXCLUDED in the SQL catalog deliberately withholds sensitive or bookkeeping tables (LangGraph checkpoints, users, threads, org_members, proposals, Import bookkeeping, vault_research, funder_matches, schema_migrations, graph_ingest_log), and tests assert these are not readable and that withheld columns such as contacts.email are absent even from the star expansion.",
+      "statement": "KNOWN_EXCLUDED in the SQL catalog deliberately withholds sensitive or bookkeeping tables (LangGraph checkpoints, users, threads, org_members, proposals, Import run/review bookkeeping, vault_research, funder_matches, deleted_documents, schema_migrations, graph_ingest_log), and tests assert the most sensitive are not readable and that withheld columns such as contacts.email are absent even from the star expansion.",
       "evidence": [
         {
-          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1005-L1045",
-          "version": "repo-lines-v1:sha256:d42153d2631967d5f541b71055f393d5ace9794a498d18671720e9ce072ede62:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1005-L1047",
+          "version": "repo-lines-v1:sha256:657451b2862f3c4bff38c6bff92eecd8eed9e64ad0d4c60f800a444502acb663:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlNDIzZTczMTUzNWQxNmY4Y2E2OWRlNDg4NjQ5ZDU5NjM4N2JiZTY1NGE4ZDg3NDZjN2Q4ZjM1YjgwNDM1MDEifQ"
         },
         {
           "resource": "repo://backend/tests/test_sql_catalog.py#L10-L47",
@@ -157,8 +157,8 @@
       "statement": "Three private Supabase Storage buckets exist: source-archive and org-vault (50 MB, created by 0020) and staff-sources (100 MB, created by 0032 with a staff-only read policy); the bucket migrations are guarded to no-op when there is no storage schema, as in the local container.",
       "evidence": [
         {
-          "resource": "repo://backend/app/integrations/storage.py#L29-L45",
-          "version": "repo-lines-v1:sha256:1df7a86dc44f46361c25ec4d35ce59af2cb684f8d3ee5f8281759527e3eafc6d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5YjY4MTgyYWFkNTc4MzUwNzMyZDQ1YWNmOTIxMDgzMzE2YmU3YzBlMWU5ZGMwZTMyNWY5ODFiNzUyMzViMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5ZjE1MGFkZjE0ZGVhMDQyNWE3YjUxMWJkYTBhMDAzZTBmNjA3ZjdmNGI0ODM0ZjY5ODUyM2U2YjU0ZTI5YmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1YzFjNDYyZTJhMzlkNzQ3NTlmNWUxYjEyNmY3NjgzYTJiNzMwMTE4ZTE4ZjUxMjJiMDhjZWRlZWI2NTBlMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2ZGJjNTllNGU1YWY5NGRlOTI1NzY0NzZmYzg4YjZkMmU2YTI0NGJmZTlhNWE2NWEwNGM1OWM5NjBkMzU4NTkifQ"
+          "resource": "repo://backend/app/integrations/storage.py#L29-L60",
+          "version": "repo-lines-v1:sha256:1ec2481113f99553de3f2e137fbe5beceacbb117c812b885c2ad9b9fbc0de868:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5YjY4MTgyYWFkNTc4MzUwNzMyZDQ1YWNmOTIxMDgzMzE2YmU3YzBlMWU5ZGMwZTMyNWY5ODFiNzUyMzViMjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5ZjE1MGFkZjE0ZGVhMDQyNWE3YjUxMWJkYTBhMDAzZTBmNjA3ZjdmNGI0ODM0ZjY5ODUyM2U2YjU0ZTI5YmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1YzFjNDYyZTJhMzlkNzQ3NTlmNWUxYjEyNmY3NjgzYTJiNzMwMTE4ZTE4ZjUxMjJiMDhjZWRlZWI2NTBlMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2ZGJjNTllNGU1YWY5NGRlOTI1NzY0NzZmYzg4YjZkMmU2YTI0NGJmZTlhNWE2NWEwNGM1OWM5NjBkMzU4NTkifQ"
         },
         {
           "resource": "repo://db/migrations/0020_storage_buckets.sql#L37-L59",
@@ -172,15 +172,27 @@
     },
     {
       "id": "claim_b96d0e1d64ac47368194bf798569a611",
-      "statement": "Storage buckets are global rather than per environment: a local backend configured with Supabase credentials writes to the same cloud buckets as other environments.",
+      "statement": "Supabase Storage is one project, so a local backend is kept out of the deployed buckets only by STORAGE_BUCKET_SUFFIX (for example -local), which is appended to every bucket name on the wire while documents.storage_path keeps the plain name; Settings.bucket_suffix ignores it when DATABASE_URL is the Storage project's own database, and boot warns when Storage is enabled with no suffix and a database outside the Storage project.",
       "evidence": [
         {
-          "resource": "repo://backend/app/integrations/storage.py#L58-L79",
-          "version": "repo-lines-v1:sha256:f15659f35e8051d8f05ee4c274a07e8f396082f105b8aabc1e7e6dd669a6a530:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2NmYyNzY0MDdhYjE5ZmE4ZmNjNWUyYzg1OTg4Njc1YjBhNGYxZmU1YWUxYTcxOTNjOTlkMWRjNTA5NDk3YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZjNDNhYmU3ZTkyZWMxOTg0MTVhYTQwZWU4NmNjMGQxNjk0MjMyYWU2YjhkMjE4NTVlOWMzNzJlYTQ5OWVhMjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhOWJjNWMwYTlhOWY1NWQ5MGEwMzMyYjljMDBkMGMxYmViNmQyNGFiMzk3NGQzMGFiMjgwZTAzYzk5MzZlNDQifQ"
+          "resource": "repo://backend/app/core/config.py#L193-L208",
+          "version": "repo-lines-v1:sha256:5ef9ff773a1a4b81473ef7fb04d9d67cdebe2bb7fec029903b8143b9ab3debe9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzZDAwY2YyNzA5NjRkNDRhMTNkZmFjODc1MmIwOWZjYzQzNWIwZjE5YjMxNmFiY2Y4MWE3YWE2NGJiMTIyZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3Y2VhMDdhMmExMGE1YzkxOThkYWI1YzQ1YjRhNzYxZjgyMWViYTBiZDg4M2U1YWZhMjgzZTk0OGI2NjEyODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc1MmIzMWRiNDYyNGI3NGRmNTllOTQwYTgzYjIzZGQ4ODAyZmMxMzg1YmVlMjFhYTNlYmUyOWNmZmVlYzE2NDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5NzBkZWFkNWY0YTU4ZDhhZDYxZGMxMDM1ZGVkN2Q3MzEwY2JkZGJmZTkyOGEwMGU1YzIwY2VlOGZjNTk2NWMifQ"
+        },
+        {
+          "resource": "repo://backend/app/core/config.py#L57-L61",
+          "version": "repo-lines-v1:sha256:df823fb6a545c4cb4250115e1e60b4c6c22ecf4a8b73c3692d5f4bda85ca3663:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWY2MmIyMzRhMTRiYzgxNDQ3ZDQ3ZTU5NWYzNzJhZjljNTIwMmY0MTJmMjczZTViMWI5ZDM4NGM1ZjZiOWE5NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODYxZTg4MjUwZmJlYmRmMzMzYTNjMTc4NTEyOTgxOTNlNTYyZmRjNjkwNDA1ZTJhMDdmMTQ2NDI0OGU3ZjE5MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmU4YjRjMTY5ZTVlOTU2MDQ2MGNmZTg1MjM5ZjQxNDc0OTRhNDZlODYyM2UxYTYwMzIzYzg1ZWIzZDQzM2I5MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTJkYWE3NDAzMGQzOWE0OTMzODI4Nzc2YjY2N2JmMzY1ZWI3ZGNkZmEyZDI2NjZmNDNlZjljZGEyY2ZhMDIyYyJ9"
+        },
+        {
+          "resource": "repo://backend/app/core/lifespan.py#L223-L230",
+          "version": "repo-lines-v1:sha256:48acc09d14775a840c698e44565de544ed697967636c73a13063f368f0127ccc:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY1ZDcxZjE4MzI3NDZiNDlhNGJhMzY4MjZhODNmYWQ2ZGZkMWVkMTc3OTk3ZmM5MmNmOGZhM2RlNDc4OWQ4ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkwOWE1M2E2MThkMDI4ZTFkMzAwMGMwYTdhYmNlZWNiZTVmYjM3ZjRlNTExZWZlNDY2NDNmYWQ2ZTY2ODcyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTk2NGZiNTNiMjcyMTYzNmQ0ODQ2OWNlN2M0M2Q5ZTliMmU4NDY1ZDM2Y2FlMjRmMzA3YzNlZjQzYjcwM2NhNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmU0MDFhMGI5NTA5ZDg1MDMxYWQzOTIxNzQwYTIyMDlkNDE3NjI0M2ZjMzc0ZDcxOGRkNGZiYzU2NGM5YzA1ZSJ9"
+        },
+        {
+          "resource": "repo://backend/app/integrations/storage.py#L101-L103",
+          "version": "repo-lines-v1:sha256:b20d2ea72919858f98dfc2ced08d141cc691f2aef007dbbb1826ea34a49e2d34:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmJhNmMwNjg2ZTM2ZTY3ZWNiY2I3NGU1MmU2ZjJlMjViNzMzNzFiNzYxZDhjNzdkN2U3YWUwMDAwY2M5OGMyYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWM1M2UzMDg5NDY3MjM3MDIyMmM1OGY3OWFlMzRjYzVjOTFmODQ4M2M4ZDQ3ZTdiNTNiZThhZWYxYTA1NmE5NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGNjNGE3ZDFjYzc5NmFiYTNlNDY3MjMzMjdmNTE3ZTlmODExOTgyZDI1MGYwNzAyOTg2ZTRiNTc2NGFkOTU4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2E5YmM1YzBhOWE5ZjU1ZDkwYTAzMzJiOWMwMGQwYzFiZWI2ZDI0YWIzOTc0ZDMwYWIyODBlMDNjOTkzNmU0NCJ9"
         },
         {
           "resource": "repo://docs/ARCHITECTURE.md#L197-L197",
-          "version": "repo-lines-v1:sha256:5537be4a6562f257216689054413092ed90580005a3ce1185e7bb24e8ce7a8ce:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUzN2JlNGE2NTYyZjI1NzIxNjY4OTA1NDQxMzA5MmVkOTA1ODAwMDVhM2NlMTE4NWU3YmIyNGU4Y2U3YThjZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUzN2JlNGE2NTYyZjI1NzIxNjY4OTA1NDQxMzA5MmVkOTA1ODAwMDVhM2NlMTE4NWU3YmIyNGU4Y2U3YThjZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTUwNDIxNWJhMDAxYjRiOGY1YzlkYzZiNDdhOTA2N2M4MTI2ZGQyODQ5YjU1ZGNkYjM4MTYzMGM0MWY5ZTA1ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTBjOWVjYWQ1MDc5Y2EyZDRhNzI3MGU2MTIxZjM4ZjlmYjM1OTcwNjc3Mjg0NDQ4YmY5NmQ4YzMwNGY0Yzc1ZCJ9"
+          "version": "repo-lines-v1:sha256:1929c9e3126a49e7db71ddb5253e17bf3d55385a2121bac45dc1ab218972b19b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTkyOWM5ZTMxMjZhNDllN2RiNzFkZGI1MjUzZTE3YmYzZDU1Mzg1YTIxMjFiYWM0NWRjMWFiMjE4OTcyYjE5YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTkyOWM5ZTMxMjZhNDllN2RiNzFkZGI1MjUzZTE3YmYzZDU1Mzg1YTIxMjFiYWM0NWRjMWFiMjE4OTcyYjE5YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTUwNDIxNWJhMDAxYjRiOGY1YzlkYzZiNDdhOTA2N2M4MTI2ZGQyODQ5YjU1ZGNkYjM4MTYzMGM0MWY5ZTA1ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTBjOWVjYWQ1MDc5Y2EyZDRhNzI3MGU2MTIxZjM4ZjlmYjM1OTcwNjc3Mjg0NDQ4YmY5NmQ4YzMwNGY0Yzc1ZCJ9"
         }
       ]
     },
@@ -189,12 +201,12 @@
       "statement": "documents.storage_path is stored as bucket/key; archived source documents get a fetch-time key from the URL hash and content SHA-256 and are renamed at promotion to a per-entity year-based key, so objects left under hash folders were fetched but never cited, while vault keys lead with org_id and are not content-addressed because uploads go browser-to-Storage via signed URLs.",
       "evidence": [
         {
-          "resource": "repo://backend/app/integrations/storage.py#L411-L449",
-          "version": "repo-lines-v1:sha256:e200dd5b82310b08d06652f1da0cd039ca9d8259a3d48f0a066a51fdcfbd07e0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1Yjk0ZGY1NmJhMTE4OTUyNDJhOGY5N2U1OTA0ZjJiMDFmNDBiNDkyNTEzOTJiNzAwNDY1NzQ4ZGEyNTdkMjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhZDIyNzg1NWQzMGJlYzNhNDYxMmM0NDUyNGIwZWNhMTE2YzkyNzM1MmNjNDYyNTczZGNmNzVkZTI4ZWNjMjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxZTZlMzZiMmM1NDFkMDNmZmUwMjlmNmY4NWI5ODFiZWQ5ZGQwYTE2MzViMTVlYzU3MTdlZWM5YWNjZDI1YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1MTRmYWMzYzRhOTQwNDMwNTAzZDg2YjkwNjNkNjk3MzZiNDdjOGZlMTJjODc2NzlhMmY3YjQyNTAyNzkyY2QifQ"
+          "resource": "repo://backend/app/integrations/storage.py#L497-L535",
+          "version": "repo-lines-v1:sha256:b92fd1f6bf73af96571c16b71f99334c4dbfef1b1afd669a6e95c7ebf810feb2:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1Yjk0ZGY1NmJhMTE4OTUyNDJhOGY5N2U1OTA0ZjJiMDFmNDBiNDkyNTEzOTJiNzAwNDY1NzQ4ZGEyNTdkMjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhZDIyNzg1NWQzMGJlYzNhNDYxMmM0NDUyNGIwZWNhMTE2YzkyNzM1MmNjNDYyNTczZGNmNzVkZTI4ZWNjMjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxZTZlMzZiMmM1NDFkMDNmZmUwMjlmNmY4NWI5ODFiZWQ5ZGQwYTE2MzViMTVlYzU3MTdlZWM5YWNjZDI1YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1MTRmYWMzYzRhOTQwNDMwNTAzZDg2YjkwNjNkNjk3MzZiNDdjOGZlMTJjODc2NzlhMmY3YjQyNTAyNzkyY2QifQ"
         },
         {
-          "resource": "repo://backend/app/integrations/storage.py#L82-L200",
-          "version": "repo-lines-v1:sha256:fd271442737bb5a808e6fe33b91d294eb2b4566f91cbce35daa4abbcf82e30ee:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE5LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2OGI5Y2E0MDQ5MzJlMmU4NGQyODMzN2EyYWI5NTBhODllNmZkZWU1YzUyOTA4YmMwZjBlNmQ5ODFlYTk1MmM1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI2NmI0MjUxNWY5ODA4Yjk3ZGFiNTg5ZmU2YTVlMDc1YTM4ZjE4Y2YzYzkwNGNiMTFmZTJhZmM3MjM3YWJjNWNiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4Y2M0YTdkMWNjNzk2YWJhM2U0NjcyMzMyN2Y1MTdlOWY4MTE5ODJkMjUwZjA3MDI5ODZlNGI1NzY0YWQ5NTg5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI3Y2JmMjVjYTg2Y2NmNzQzNGUwYmE2ZWNhZjlmNTk5NjNjMTk3ODAzOWQyN2E3MzBiNGY4NjQwNmY0YWFhZjIzIn0"
+          "resource": "repo://backend/app/integrations/storage.py#L101-L254",
+          "version": "repo-lines-v1:sha256:350d9559e9f541082fe0a06b5d334c7b4355c7cf7dfad22aec8ae2dcc5fa7ae9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTU0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJiYmE2YzA2ODZlMzZlNjdlY2JjYjc0ZTUyZTZmMmUyNWI3MzM3MWI3NjFkOGM3N2Q3ZTdhZTAwMDBjYzk4YzJjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhYmIyMzA2ODM2ODYwYjIyNWRhZTFiOWQ3MjkyYzhiMDVlMmM1NWFmMGMyY2UxMDE4OWMyNWY3N2UxZTU5YTgwIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4Y2M0YTdkMWNjNzk2YWJhM2U0NjcyMzMyN2Y1MTdlOWY4MTE5ODJkMjUwZjA3MDI5ODZlNGI1NzY0YWQ5NTg5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI3Y2JmMjVjYTg2Y2NmNzQzNGUwYmE2ZWNhZjlmNTk5NjNjMTk3ODAzOWQyN2E3MzBiNGY4NjQwNmY0YWFhZjIzIn0"
         },
         {
           "resource": "repo://docs/DATA_PLATFORM.md#L60-L95",
@@ -211,12 +223,16 @@
           "version": "repo-lines-v1:sha256:a487051135af289c66cab198c885fb6f38fbac6870de8dfa2632c72790271e69:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2MzVjNjEwZGQ1MjhmNzE5MzUxNWZkOTFjM2VkYzFmYjhjYzhmZDc1ZTFlMTllZTFmOTQ4ZGNjZWI2ZjIwYzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3NGZkMjJkNmU3YzU3NzlmODc2MTdlZWZhODlhZTk2ZDdkYWIwNzBlODBiNDllYWQ5MDg5ZGEwNzA4ZDA5NzEifQ"
         },
         {
-          "resource": "repo://backend/app/integrations/storage.py#L471-L481",
-          "version": "repo-lines-v1:sha256:53ca09a6b2f4fe6bcd6fe9ab0c48ca5cbdfb241552535343370e92a2371c4569:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMjFiZDI2NWY0ZDU0OGRkMjM1ZmYxMTVkNTc3NDgxYjJmZGY1ODRhOGRhMzVmMTc4YTZlNGU2ZTcxN2UwYjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMGM4NDIwYjhhNTQ5N2VhZmQzMjU1NWE3MTg4NThkYjE4NjYwOWNmMjVlYjVlNTI4Njg0NDE2N2EzZTlmYjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiZThiYWVkMmRhNDk0Mjg3N2VlYzJhZmM1NDhhOTZjZGMwOWQ0ZGM2OGYxNmI5OGM1MDk0YTc2YzJiNTYwM2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlNzMwNDYwYzM5YTQ3MmQ0ZGE3ZTc5MTRhMDFlZDMwN2MxMzVlNzZjN2MzOTEzZDFkNDdmMWRmYTc5OGY0MTEifQ"
+          "resource": "repo://backend/app/integrations/storage.py#L116-L124",
+          "version": "repo-lines-v1:sha256:950c3d72f92523d99090cbdeac3c4169e1c7c55d4de7a825c38f5be9424ee3a5:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWU5MjkxMTUwNTBlNTFlMjY5ZjA1NWEzYTk0MDAzZWM2MDEwZDk3M2QxMzM1MDNiOTZlOWIxYzU2NzU2Y2ZkZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDVlN2JkOGNlNDYwNTJmZTNlODBiNjc5OGE5ZGE4YWE5MzMwYTk3OTZkOGVhZTA3Nzg5ZDY0M2UwMTkzOGU3ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjY5YWM0OGJmYjg3Mjk2OGQ4ZmM0Yzg5ZmNmZGY2NjM0ZmViNjVkNTNiZjFkMDlhNWEzOWQ3NGRhZjNhZWQxOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDg3OGM2ZjBiN2RkMmNiYmJkN2QzYThkZmRjYzM0Y2E0MWVmMTU4YzUwMzU2ZmM2NjVmZDZlNzg0OTdhZWYzNiJ9"
         },
         {
-          "resource": "repo://backend/app/integrations/storage.py#L58-L100",
-          "version": "repo-lines-v1:sha256:ff7b72f3dff19c1d61f34f74616ac1d2d8c9631578f9c3008b0ab9c6bac64d01:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2NmYyNzY0MDdhYjE5ZmE4ZmNjNWUyYzg1OTg4Njc1YjBhNGYxZmU1YWUxYTcxOTNjOTlkMWRjNTA5NDk3YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZTdiZDhjZTQ2MDUyZmUzZTgwYjY3OThhOWRhOGFhOTMzMGE5Nzk2ZDhlYWUwNzc4OWQ2NDNlMDE5MzhlN2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZjNDNhYmU3ZTkyZWMxOTg0MTVhYTQwZWU4NmNjMGQxNjk0MjMyYWU2YjhkMjE4NTVlOWMzNzJlYTQ5OWVhMjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2OGZhMDMxZDFiNThlNjdkMjRiYTZkYTU2ZjRjZmE0NTgyYzJjMDkwMjQyYjk2MWY3ZDU3NDYxOWFkNGU3YjgifQ"
+          "resource": "repo://backend/app/integrations/storage.py#L557-L567",
+          "version": "repo-lines-v1:sha256:8ecd5fbc6433acb01c2a9584938966c14f030cf564f2a9fea29723ebcddd80eb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMjFiZDI2NWY0ZDU0OGRkMjM1ZmYxMTVkNTc3NDgxYjJmZGY1ODRhOGRhMzVmMTc4YTZlNGU2ZTcxN2UwYjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlMGM4NDIwYjhhNTQ5N2VhZmQzMjU1NWE3MTg4NThkYjE4NjYwOWNmMjVlYjVlNTI4Njg0NDE2N2EzZTlmYjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdiZThiYWVkMmRhNDk0Mjg3N2VlYzJhZmM1NDhhOTZjZGMwOWQ0ZGM2OGYxNmI5OGM1MDk0YTc2YzJiNTYwM2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlNzMwNDYwYzM5YTQ3MmQ0ZGE3ZTc5MTRhMDFlZDMwN2MxMzVlNzZjN2MzOTEzZDFkNDdmMWRmYTc5OGY0MTEifQ"
+        },
+        {
+          "resource": "repo://backend/app/integrations/storage.py#L77-L88",
+          "version": "repo-lines-v1:sha256:0b5a04284941b4c2c3242346288f9300f3922e32df049c5afe8e2d3743e8018e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2NmYyNzY0MDdhYjE5ZmE4ZmNjNWUyYzg1OTg4Njc1YjBhNGYxZmU1YWUxYTcxOTNjOTlkMWRjNTA5NDk3YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZTJhNDY1MDA5NWZhOTVkMGUyYmI0MWIyZGIyOTA5NGQzNDA0ZDI4Y2UxMjMzOWVjODhiYjRiNWM1YmU4ZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkZDQ4OThhZWIyNDk2OWIyNjA1NDk1ZDRlNGFmYjhjNjhlMjUyODAyNWE1YjdiNzhiZGRhYjg5ZGRhYzViOGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3MzY2ZDI2YjkwZjE1N2NlOTRmMjhiN2U2MGE4OTEzZTlhNDMxNDE2ZGQzZWEwNzNmOTI5NTlmZmU3ZDYzNWUifQ"
         }
       ]
     },
@@ -315,7 +331,7 @@
       "statement": "The proposals table (created in 0009) is a live server-side store: 0048_proposal_work adds NOT NULL jsonb columns work (everything the proposal screen and agent edit) and summary (list view, recomputed from work on every save); the repository runs as the caller, list_proposals never reads work, and save queues on a per-proposal asyncio lock, then locks the row with FOR UPDATE, applies a change function and writes work, summary, title and updated_at back in one transaction; proposals stays in the SQL catalog's KNOWN_EXCLUDED.",
       "evidence": [
         {
-          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1026-L1028",
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1028-L1030",
           "version": "repo-lines-v1:sha256:91c220abcd87fbcc882a22ec81254920da286dba4d984d39be123bc83d2c673f:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmRmMjg4ZTc5ZWY1ZWNkMGUwMDA2MjQ1NWIyODJmZmE5ZDUwZGE2YWFlYWViMGJiZTJkNTY3MDMzMGUwYjYwYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmM3YTViN2QyOTdmZmYxNGQzOGUzZGQ2ZjUwODNmNWRkYmZkNTQ1Y2VlZmU3YThlMjgzNzBiOWY4YmM5NWI1YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDIzZTgwZmIzYWNhNmUxODg1ODQ0YmJjOThiMDk0ZjFlMGIyNDk5ZTE2ZDEwNDY0ODBiNmQzNDEwMWEwYjQ0YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWM5NGI0M2NlYzIwZWU3OTZkZDhhZjdmMzAxZjU3ZjIyZjdiOWI2Y2NiYTJkODAwODVjMTFiMDY0ODlmZTZjMCJ9"
         },
         {
@@ -337,8 +353,8 @@
       "statement": "0048 changes write access: proposals_insert and proposals_update now allow org_id in app.my_match_org_ids() (org admins and stewards) or staff, so plain members read but no longer write proposals; documents_insert is widened to app.my_org_ids() or staff so any org role can upload to the Doc Vault, which org_id_for_member(write=False) mirrors in the upload routes; and the migration re-runs the guard that fails if a readable public table lacks a read policy.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/documents.py#L69-L92",
-          "version": "repo-lines-v1:sha256:d5c9f918cfa6d23a1a7de9bf1f26d948ea7e77b996b5a8b5b334919193852a85:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViNjY1ZWNkY2Y0NGI1OWIyZWE2NTUxZTA0MjJhZTZhZTZlZDQzMGM0YTk2YzE4ZDY5YWI4NzU1MDE5YzkzYjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViNjY1ZWNkY2Y0NGI1OWIyZWE2NTUxZTA0MjJhZTZhZTZlZDQzMGM0YTk2YzE4ZDY5YWI4NzU1MDE5YzkzYjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjYWI2YTUwZjAwNWE0ODJlYTQyZmJlZDM3M2I1Y2Y5NjZiZGVkYWYwMDczYjJmY2M1NGViMzBhODlhYTg4MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3MGI3N2FjMjlmNDBmMDUwMDg2M2MwODNhNWQ2MmNjZTIyNzYyZjdjZmMzODljYzI0ZTAyMTBlYzQyYTQ0MDEifQ"
+          "resource": "repo://backend/app/api/routes/documents.py#L69-L94",
+          "version": "repo-lines-v1:sha256:c0ca3ea6d2d82dd47dc2dfdbb37e9ccacc8800060e685309d8b5708eaa8f1db1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwNDA2YzgxZTFmMjI4NzNiNzJjZDc4ZjJkYzViOTc5NzY1ZDJmOGE4NjlkMzA3NzZiMDhhMDg4ZTdmZmYyMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViNjY1ZWNkY2Y0NGI1OWIyZWE2NTUxZTA0MjJhZTZhZTZlZDQzMGM0YTk2YzE4ZDY5YWI4NzU1MDE5YzkzYjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjYWI2YTUwZjAwNWE0ODJlYTQyZmJlZDM3M2I1Y2Y5NjZiZGVkYWYwMDczYjJmY2M1NGViMzBhODlhYTg4MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3MGI3N2FjMjlmNDBmMDUwMDg2M2MwODNhNWQ2MmNjZTIyNzYyZjdjZmMzODljYzI0ZTAyMTBlYzQyYTQ0MDEifQ"
         },
         {
           "resource": "repo://backend/app/repositories/documents.py#L59-L71",
@@ -378,11 +394,11 @@
     },
     {
       "id": "claim_a8ef6a8b34d240cfaf48c389c3c35d04",
-      "statement": "The SQL catalog allowlists 37 tables and KNOWN_EXCLUDED names 22 deliberately withheld tables, including news_link_scores, news_watch, promotions, catalog_writes and funder_match_details alongside the sensitive ones; the catalog also self-checks at import (columns, primary keys, foreign keys target catalogued tables).",
+      "statement": "The SQL catalog allowlists 37 tables and KNOWN_EXCLUDED names 23 deliberately withheld tables, including news_link_scores, news_watch, promotions, catalog_writes, deleted_documents and funder_match_details alongside the sensitive ones; the catalog also self-checks at import (columns, primary keys, foreign keys target catalogued tables).",
       "evidence": [
         {
-          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1005-L1075",
-          "version": "repo-lines-v1:sha256:84ec6768ed039ab49f09b31b5126a6d24c0a5edaab36191c18dff0788b881e8b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MDAzZTMxOTA0ZmY1Y2ZlOWJjMjdlYzcwYTZhMDFhZGZlOWU0MWJiYjJlMWVhNDI3YmFjM2ZkMmJiNzgyOTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjYjllNWJjYjFjMjlmZWU0OTM1NjAyNWEyMGI0YmFmMGNjMWM0NDQ1ZjVhMTg0NjBmMzkxMjkyZjU3NWRkNTQifQ"
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1005-L1077",
+          "version": "repo-lines-v1:sha256:2ab5c777e58142a71a10fbafc1c5e634c8120024d4c45397ab566fbdb3ba0b9c:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRkNjRkZmVkZjFlNTExMGY0NTkzZTIzZDczMmNmMGZlZmZjZDlhZjliZmQ5MDNiOWM5OGMyMjc5MmJmZjZjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5MDAzZTMxOTA0ZmY1Y2ZlOWJjMjdlYzcwYTZhMDFhZGZlOWU0MWJiYjJlMWVhNDI3YmFjM2ZkMmJiNzgyOTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllOGVjMGI1NDVlM2E1ZDUwZWY5MDNkNGMwN2NiNjc4Nzk3YjNhYjg1MGI0ZjUzOTdhZWQzM2RkOGZiZDI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjYjllNWJjYjFjMjlmZWU0OTM1NjAyNWEyMGI0YmFmMGNjMWM0NDQ1ZjVhMTg0NjBmMzkxMjkyZjU3NWRkNTQifQ"
         }
       ]
     },
@@ -398,7 +414,7 @@
     },
     {
       "id": "claim_1510599fa8644bc09a29f4378a678bc1",
-      "statement": "Migration 0049_rfp_match_saved.sql is the latest migration (the directory holds 50 files); it only drops and re-adds rfp_matches_status_check so status may be flagged, saved, reviewed or dismissed (the baseline allowed only flagged, reviewed, dismissed), and needs no new policy or grant because the existing 0027 update policy already covers the column.",
+      "statement": "Migration 0049_rfp_match_saved.sql only drops and re-adds rfp_matches_status_check so status may be flagged, saved, reviewed or dismissed (the baseline allowed only flagged, reviewed, dismissed), and needs no new policy or grant because the existing 0027 update policy already covers the column.",
       "evidence": [
         {
           "resource": "repo://db/init/02_schema.sql#L196-L207",
@@ -551,11 +567,11 @@
       "statement": "make_pool builds the owner AsyncConnectionPool with min_size=1, autocommit, prepare_threshold=0, dict rows, an acquisition timeout (DB_POOL_TIMEOUT_S), a connect timeout, max_idle=300 and a check_connection health check on checkout; the server opens one in the lifespan sized by DB_POOL_MAX_SIZE, while standalone batch jobs (calls, news, matching runners) build their own small pools with explicit max_size and the same limits; concurrency gates (db_gate_slots) sit under the pool size so the checkpointer can still write.",
       "evidence": [
         {
-          "resource": "repo://backend/app/core/config.py#L111-L121",
+          "resource": "repo://backend/app/core/config.py#L116-L126",
           "version": "repo-lines-v1:sha256:fa20288b2c8ef0bb55f0ce18198fd13a13508bbd596c99c36153c2d67ed45d59:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxOWE4ZGQwYTA3YTI5ZjNiZDYzOGM0YWVhZTQzYzJjNmNjYTM2MzY3NTk2NDhmNzEyZDkyMTk5MTEwN2M1YmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkMGE5YTgyMDNmODM0NjY3N2E0MDUzNTkyMDk3NWI4NjBjYjM4Mzg0MWI5NjQxYjY5N2U5MzcxNjA1YjA1ZmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgxZjVkMjJiNDgyZWFiYzJkNjA5ZGE5NDZjM2QxYzcxNTcwZDkyZTllZGZmNDkwZmE4NmMwMTJkMTg1YzI4NTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5MTlkNmI4MWI0YzNkYjczMzZmZmU3YTlkOTE3MTIxZTg2MDA4OTQwN2Y0OGU4ZDNiNzhkNzRmZDdlMjliODYifQ"
         },
         {
-          "resource": "repo://backend/app/core/config.py#L152-L159",
+          "resource": "repo://backend/app/core/config.py#L157-L164",
           "version": "repo-lines-v1:sha256:352b7e07b6f02380978d18558c5a50c4d238635b0b6b92f6ced9bd75cef16b5d:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjNkMDBjZjI3MDk2NGQ0NGExM2RmYWM4NzUyYjA5ZmNjNDM1YjBmMTliMzE2YWJjZjgxYTdhYTY0YmIxMjJkNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmRiZTY2YWNhM2E3YzZkMWY3YzUyOGM0MzQ2MWUzZjRiMmFhZmExZmU3Zjg4MmE4ZWM3ZTY1NTU1ZThjODQ2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjBkMDliZDg1MTdhZmEzMjhlNzIwMTUzNTRlOTY0MzNhOGZkMTFlY2Q0N2NlZTAyMGVhNDM2YmExYjY4YzU2NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2I4Njk5YjEyYmRjOTk2YzM1ZGM2YzY0YTRjMDk0NWM2MjhlMmEwOTQ1ZjgzMzBkOTcyNjhkYjIxZGI3YTIwNCJ9"
         },
         {
@@ -604,10 +620,14 @@
     },
     {
       "id": "claim_99a4b36f5bff464eb2432e2615a2248a",
-      "statement": "0051 and 0052 add DELETE grants and policies for callers: documents_delete lets staff delete only a private, org-owned vault_upload (DELETE /api/documents/{id}); proposals_delete lets org admins, stewards and staff delete proposals and documents_delete_draft lets them delete a private proposal_draft; repositories delete the row first and roll back if Storage cannot remove the file, and delete_vault_upload refuses a document still referenced by chunks, extraction_log, document_links or a proposal draft.",
+      "statement": "0051 and 0052 add DELETE grants and policies for callers: documents_delete lets staff delete only a private, org-owned vault_upload (DELETE /api/documents/{id}); proposals_delete lets org admins, stewards and staff delete proposals and documents_delete_draft lets them delete a private proposal_draft; repositories delete the row first and roll back if Storage cannot move the file to the trash, and delete_vault_upload refuses a document still referenced by chunks, extraction_log, document_links or a proposal draft.",
       "evidence": [
         {
-          "resource": "repo://backend/app/repositories/documents.py#L171-L227",
+          "resource": "repo://backend/app/api/routes/documents.py#L212-L237",
+          "version": "repo-lines-v1:sha256:14acc41c82137dbd18f8be299365c9dba10f0d19207d94e7aac41962d1ad8a95:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4NzRlNzc4OGRhMjYwZDk1YmUyOGE4MTIyZGRkZDBjMjk2ZmEyYjU5MTJlYWQwM2Q0NmJlODQwNTM1YmQ3MzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwNTYwOWJjNzY0ZTljMDU5MjZmOTllNzAyOTk3MDQwZDAyMmQ3YjVhM2FiYWRmYjgwMTI2ZWM1ZmM0OTJjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIxN2M0ZjNiOTkxODRiYTVjNjYyOGQ4MWJlNDM3YmIyN2VlNWZlZmJjYTFkMzhhODdkYjhmZTdiYzdlZjM1MzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/documents.py#L180-L236",
           "version": "repo-lines-v1:sha256:a450f2203ae3da88d11815a515c026fee43746fc97d78143fef70e0ab19def73:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhYzIzMzAyYWEwNmY0NjQ1MTNiMmExMjc0MGEwNzYwNTk2N2EyYmEzN2I3YzkyMzQxMjI2NWFkMjI5NzM0YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZTJhNDY1MDA5NWZhOTVkMGUyYmI0MWIyZGIyOTA5NGQzNDA0ZDI4Y2UxMjMzOWVjODhiYjRiNWM1YmU4ZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyYTg4MTBmMjlmMTI2OGI3ODBjNzA1ZDU0ZmMyODE3NDAzODJmNjliMzJiOTNhYjQ1MzE2MDdiMjQwMTkxNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -633,10 +653,104 @@
           "version": "repo-lines-v1:sha256:b26f4e3e0498d6a11af0cd1666ee6cb7f04a6cc0cfd6aab9fea38f9e01bee2be:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzNmZWMwNTJiN2FkZWFiYzVhY2Q5NzRlOTQ4NjVkYmVlNmIyMGZiZDZjMTFhNjY1M2I4OGE3ZTdjNmNlZGFkNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2U2OTczY2Q5MzE5NTdiNDdhOGFmMTdlZWIwNzVkMGI1YTU1MzRmOGVkY2U2MTJiNjNlOWYyMWQ3M2EyNWQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_27c20efb65d24d8aa3361868b394ca75",
+      "statement": "0053 adds deleted_documents and an AFTER DELETE trigger log_document_delete on documents (SECURITY DEFINER function app.log_document_delete, revoked from PUBLIC) that records the whole old row as jsonb, org_id and deleted_by for every delete path; the table has RLS with a staff-only SELECT policy, no grant to authenticated, nullable restored_by/restored_at columns, and is in the SQL catalog's KNOWN_EXCLUDED; a refused or rolled-back delete logs nothing.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/ask/tools/sql/catalog.py#L1015-L1016",
+          "version": "repo-lines-v1:sha256:9d6991ccd76a6ec2eac7a9f4cd94a5986a56e6417864874ba471eb3ac236aac7:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjBjN2Y2YmM1N2ZlNGExZjc5ZTRhZDE5ZjcwMGU0YmI0MWViN2EyZmQzNTgzYjgyYTU4N2ViZjQzNzc0NGNkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjlkMGU3ODFjMDM2NWM2YzI0YmJmODU3M2U3MTE2Mjg0ZmU1NmE1NmI5MDU0ZWE3MzgyZGFiYzI1OTFkZGQzOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzY4YjRmY2Q5ZGYwOTYxNTE4ZDVjMGIzZTgxYjRjMTcwMmU4ZmIxMTA3ZGE4ZDQzMGVkODdjNzAwNjg5NmI2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGFlMDg4ZjlkMTM3ZDVkMjE4NGE2ODc1YTk1YzEwNTQ1ZmE2MjUzZmUwYTVhYWI5NDY2M2RmY2JhNWRjOThmMiJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_deleted_documents.py#L36-L51",
+          "version": "repo-lines-v1:sha256:2c47165ac813fc986e45a443e1fdc337e68314fbae8dc7247407df57c0febd3d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1MzBjYmM4NTU1NzgxYzQ0OGNkMjZjZTFmNDg3OGIyNWJmM2Q0NzUwYTk0YmZjOWVkNDQ5NGE2MDMyM2QwMGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyODQwNzk4MDdiZWIzNThkN2VjOWVhODdhOTIzNDIzZmRlY2VjNDIzNGE2NjBmZTM2YjVmNDRiNjY2ZjI0NjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2OWJkZDkzZmMwYjk4Y2Q1OTliNmY0YWRlMjEwZmZkZTA0MTM0NTc1ZDE1ZjAxYzc4OWNjY2Y1MzM0NDFjZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0053_deleted_documents.sql#L1-L30",
+          "version": "repo-lines-v1:sha256:af9cbd7b641322404660b108382ca3537b1dc2cecfeb598c7ef25ce9ddba04fc:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3NzFmZjIzYTAzZTM0Y2M1NDJkNjIzODgyM2ZhNjk3MGQ4ZDVjYTRhZDJjNjU1Mjk3ZWYzOTY2ODM4ZWY5YzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4NTU5M2ViM2U3NTQxNWZmN2FlM2FmN2IxODcwMzZhNmZiMmI0Njk1NWNkYTBjZjAwYzVhNmNmMmY0MmMwMDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9b0ca940e9d140be876f52e2d62fb9ca",
+      "statement": "Vault and proposal deletes are soft at the file level: storage.trash moves objects to trash/<key> inside the same bucket (restoring moved keys if a later move fails, and treating an already-missing key as success), and both DELETE /api/documents/{id} and DELETE /api/proposals/{id} use it instead of storage.remove, answering 502 and keeping the row when the move fails; storage.remove remains a hard delete used to discard an upload whose bytes do not match its extension.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L112-L120",
+          "version": "repo-lines-v1:sha256:91ee7d2934299461df0ac6d41bb8765cc481f277d90b2ecffac33053dafa8f58:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2ViYzNhMzc5NmI4MTZjOTE5MmJjZjRhZTc1N2QzYTg4Y2NiZDJjN2ZhZTViMzY5NjZhY2FkOTcxNTkxYTFiZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTg5NTJmOGIyODUyYzI3MjYzMjJhZjZiZWE1YTUxZmE5ODFjNjM4MDI3ZjhkZWY5NGE5YmI4OWE1NzRiMTM1YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2YxZTM5NjJjYWIyYmY5ZWQxOTM1NjJmODNjMTdjYjNmMDVkMDA0MzhiYmQzZThiYzQyYTNkYzJjNDkyZjZhNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzk2MjY0NGM1OTE2ZDdiNzcyN2FiYjVmNjc0YmU1NDg5N2EzZDU1ZGI1ZjE0NDA4MGUwYWJkMjNmM2Q2Y2EwZCJ9"
+        },
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L212-L237",
+          "version": "repo-lines-v1:sha256:14acc41c82137dbd18f8be299365c9dba10f0d19207d94e7aac41962d1ad8a95:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4NzRlNzc4OGRhMjYwZDk1YmUyOGE4MTIyZGRkZDBjMjk2ZmEyYjU5MTJlYWQwM2Q0NmJlODQwNTM1YmQ3MzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwNTYwOWJjNzY0ZTljMDU5MjZmOTllNzAyOTk3MDQwZDAyMmQ3YjVhM2FiYWRmYjgwMTI2ZWM1ZmM0OTJjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIxN2M0ZjNiOTkxODRiYTVjNjYyOGQ4MWJlNDM3YmIyN2VlNWZlZmJjYTFkMzhhODdkYjhmZTdiYzdlZjM1MzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/api/routes/proposals.py#L325-L350",
+          "version": "repo-lines-v1:sha256:3d505cb0761735afc1dea9758af0e37ac786a8dd100fec79bc994b80a7a081f1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5NmRkMDAwMTYwMjI1OTY4NzQ3M2JmYWNlMDdjNDY5OTRhYWM3NjRhZjJmY2UyNTBhNjZlODIxODUyM2EwMjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzOGFmZWY3ODYwYjk2NWM4ZTkxZTI0YTdkMThiNzk1ZTQ4ZDY4MmM0MzZlODEzNTFhMGIwODNkMjIzOWMwZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEyYTUyMDAzOTRiN2QzZmU0NDI4MGE3Yjk5ZWJiZDRkMTc1MGIxNWMyNzcxMTgxN2I3ZTk0Y2RlNjZhNDUyZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwYjZhYTlmNGQ2Y2I5MzNmMDkxNDFhMmZiNzU1MzI3ZDA4YjdmOTk2ZDBmZWRiYjYyYTJmN2ZkYTYzNTU2NDMifQ"
+        },
+        {
+          "resource": "repo://backend/app/integrations/storage.py#L257-L326",
+          "version": "repo-lines-v1:sha256:8489ef69be2dc7b955eedd36c065632308e807fdafcaa6122f567f7d935cc047:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4MDA4OTkzMDA0ZGM2NzNlZjQ0NmYzZGM3NWY4NGFmYzFhYTBlZGUzZDlkMmRlY2RhZTAzOWQ0NDgzYmFlODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZTJhNDY1MDA5NWZhOTVkMGUyYmI0MWIyZGIyOTA5NGQzNDA0ZDI4Y2UxMjMzOWVjODhiYjRiNWM1YmU4ZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3YjJmZDJhMDZjYWJlOWNjMzZhODBhNmEyY2ZkOGM1NmE4ZjM5Y2JjOGMyZWQxNTAyNjRjMDdmZWQ3ZjY3NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljMzcxOTkxN2ZlMWQ4YzFkYzM1MDRmYzYzMDc0ZWRkYWViZGIyNTQwYTVmMzdmOGQ3MDBjMjg4MDY2NTg2NGUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_storage.py#L298-L336",
+          "version": "repo-lines-v1:sha256:ac142255cb72019b9bf70a722f13fd73a469bd279cab774836f99be009de3cc1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3YjUxZDU2MjdiNWRlNTAwYmI5MDBlYzQ1YjVlOGYzYjQ2Yzk4ZDEyYWI5N2ZjMDkyMWJlMmQxMGE2MDEwNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjMWE4NGE0ZGQwNjE3YTM1OWE2N2VhMTlkYTQ2MzIxMDRmMGQwZjE3MDliNzBmODBiNTE5NmJmMDA2ZmJmYzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllZDVkZmUwNjBmMjY2NThlMjk0NGVjYzA3MGRmMWRlMDg5YzRiZjc4MTQzYTdjZTZlZDJmNTA3YzI0ZWY2MGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxOWI2Y2YwMzYzNmY1NDAwYzEzY2ExMjE2MzRlMGMxYTM0YzhhZTBkYjhjODk5ZmJmM2MxZjI1MDM3M2E3ZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_000bc43fffdf4a428df88db6c9d0ece2",
+      "statement": "The org-vault bucket's allowed_mime_types is set by 0054 and re-issued in full by 0055 (adding PowerPoint) to PDF, docx, xlsx, pptx, CSV, Markdown, plain text and PNG/JPEG/WebP, for both org-vault and org-vault-local; both migrations no-op without a storage schema, the same list lives in code as storage.VAULT_TYPES, and test_storage asserts the two match.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/integrations/storage.py#L36-L49",
+          "version": "repo-lines-v1:sha256:93e048f816a9d41ee1a24d9e75c333fa38ae450ecfebaf26f52728b816a5f55c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YWE0ODFiODZkMmNmY2Y5N2IyOTI0Zjg0NTFkMWVmZTlkZWExNWVkOGEyM2M3YmRiNmU1YjEyNTk0MTBiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxMmIzOWIwMTE4NTlkOTMwZDkyNmJjNGE0ZWIxOGU3MWE3MjRjMzA4NjgxODU2ZjllOTVhOGU0YTY1YzAyNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU5YWQ0ZTFhMmY0OTA0NGRjYTNkZTZmMjQ1ZWFhMGMwZjU1Njg3NThmN2Y1YzJjOTczMDVmYjRiNzJjN2QxZDgifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_storage.py#L30-L34",
+          "version": "repo-lines-v1:sha256:e4815460da722427d308ce959e6c55b9f72166c4a7e21d1bf1d8463837b69f06:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDExZDZlYjRmMmJlMWI2NWIwZTJhNGNjMGYwZmRjMmJlYWJhMTQ0ZmEzNzliZWM1ZTY4MTQ2ZTMyYTMwN2VhYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Y5Yjg3Y2Q5Y2VlZWU5YTE5YWFjYmQ3OTBkMTIxMTRlMTY5NzczMjcwMGMyYjJlN2NmZjU3ZDY3MGE3NzhhMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjA0OGMyMGQ1MmNkNGVjZDM2MWVlYmE0ZWI4NzdiMzMzNTRkNDU4MDU0MzBlZWYzOGQwMzQ0Zjk0OTMwNjlmZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTNlZDZkY2ZlMTJmZjZlMDg1MmUzMWNkMTNhMzc4NWQ2MmEzMjFjYWYxOWRmYzNmZGE5MmFlZDk2MjE4OWExZiJ9"
+        },
+        {
+          "resource": "repo://db/migrations/0054_org_vault_mime_types.sql#L1-L28",
+          "version": "repo-lines-v1:sha256:843b5be4a5a4a9d5e7f59229c53161816c83d566894df7ea4006fe2f96b89af8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxNzU2MTYwNWUyNDg0ZDZkNmVlMmY5YTVmOWE2NDRkM2ZhZWI4NGNhMjllODlkODAxMmFjMzE3OTczMzg5YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlMzQ2YjNlYzhlNDY1Zjc5MTMzZTQxYjU0NzdhNzRkZGNmNTc3YzE1YjNmNWUzZDczOTRhOTEyZDE5Zjc0ZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0055_org_vault_pptx.sql#L1-L28",
+          "version": "repo-lines-v1:sha256:761327f4e6cf5a7531dd165e0d467e928ac8a5bbf772328991ac70c0fd003da4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwYjdmZjBjNzRjNDQyY2MzODkxYjkxYjFhNmRhMGYxMWVhYTZhNjlmYTFmMzg5ZWQ5YWZhMThlYWMyZjQ3MzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlMzQ2YjNlYzhlNDY1Zjc5MTMzZTQxYjU0NzdhNzRkZGNmNTc3YzE1YjNmNWUzZDczOTRhOTEyZDE5Zjc0ZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_54647f9e9c004be6b8eb1ba9820575fb",
+      "statement": "The Doc Vault upload routes validate types in code as well as in the bucket: the extension must be in storage.VAULT_TYPES (415) when a signed upload URL is requested and at confirm, and at confirm the bytes are read back and matched to a file signature (a mismatch removes the object and answers 415) before text is extracted and the documents row inserted; the stored content_hash is measured server-side from those bytes.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L62-L187",
+          "version": "repo-lines-v1:sha256:3c01c2bf7816dd5da7135ad4b756f4959aad0059e06b3ec7748b873c4fd2088d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0OTFiODQxY2E1YWViMjg2OWFlYzM0Mzc1NzBkNmU0MzE3ZGZjNWM0N2VmNDI5YmMwMmRiMWE2YTc3ZmEwNzYzIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIzZjljOTUzMWZiYzVjNzA5MmNiNTEzM2E3Y2FkZTZiMDQ0NjMyMjJhOTg1Y2Q5ZWUxOWQ1YWZlOWFmNDFmMjY0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJjMGQ3YWIzODE2Y2YxOTliYzM4YmE1OGIwZjkwZWY1ODM5NGMyMGE4YjExZTJhNmFmOGY5ZDI0M2NiNDU2YzhiIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJkZjY3ZGE1YTAzNTZhMDc0ZGQ4MzlkNjhhYTJjYzU4NzFlNDRlMmYyYzE4MzI1ODZiYjQ1ZGUzZDdjNjJmMzc1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_45e5f85c5a5143649edf239152eb6278",
+      "statement": "0056 tightens documents_insert with ALTER POLICY so a signed-in caller's row must have a null storage_path or one starting with org-vault/<org_id>/ in addition to the org-or-staff test, preventing a row from naming another org's vault file; owner-pool writes (library, staff datasets, seeds) are unaffected, and storage.owned_split and the confirm route enforce the same ownership rule in code.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L98-L106",
+          "version": "repo-lines-v1:sha256:2bb5d2a37712e7ff4c68a164ec2128f31dda3f6ff4aa96fcead8a4c1ac783764:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzM2MjE0ZjY4OTYwYjgwNjZkNWUyNDhiMmU0ZWU3ZDk0NmE2MDRiMjliMDI4NTljNmY1NWM2NGNkZmI3OGQzNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTVjMmVjNDcxNTQ5MjZkYjlmYTYwNThmMTdlMTYwZmNmYTRhODBlZWJmY2M1OGIzZDU4ZDFiOTU0OWJkMTMwZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTcwYjc3YWMyOWY0MGYwNTAwODYzYzA4M2E1ZDYyY2NlMjI3NjJmN2NmYzM4OWNjMjRlMDIxMGVjNDJhNDQwMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWE5MGZjNTgwYzM2ZTk5Yjk4MGJmMGUyNzdiZDdjODBjOGM3ZDNkMTAyZTQ0MGMxMGVkNGE4ZDdhODEwZTg2OSJ9"
+        },
+        {
+          "resource": "repo://backend/app/integrations/storage.py#L127-L137",
+          "version": "repo-lines-v1:sha256:1f95e78cb38d0e3422596a2a7c3fc562ec569d020d329bdcab14fe13f76d167e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkMDk4ZjlmYTE4YjU4MzIxZDUxMDNmOTgzZjk4ZWYzODY5MDRhODVmYjNlNjk5YjgwMmRiNzllZjRlMDFiOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMGM2ZjI5NTIxY2VmMDQxY2UwNzk3YjFjNGI0ZDI1NGZiYjIwYjUyNTEzYWExYmYxMDgwNDBhZWMzMTU0NzgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzZjFhYmIyODM3ZTQ0OGZiNjQwODJkOTFkOGI0YTQxYzhjZGJhMzNiNjE5ZGY4YmM3YzMwYmRmODJkMzM0MDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2OGZhMDMxZDFiNThlNjdkMjRiYTZkYTU2ZjRjZmE0NTgyYzJjMDkwMjQyYjk2MWY3ZDU3NDYxOWFkNGU3YjgifQ"
+        },
+        {
+          "resource": "repo://db/migrations/0056_documents_path_in_org.sql#L1-L9",
+          "version": "repo-lines-v1:sha256:d28853222c37b0dc9cceef4d84aa36325518d54231d6483dc405450851014ddb:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjJiMGVhZTM3YTNmZjg0YTkxZDk2ZTc0YWQzMGRjZmQ3MTVjNjhiODQ1YWIyMTY2MzQxYThiNGZhM2JiYzRjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTVlZjAxYmMwOGRiYzNiNjNlNGU3NWVhM2QyNmE1Yjk0MTg5MTg3N2UyN2FkODkxMzI5Yzg0MTFkN2Q4ZGM0ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-05T19:29:31.538Z"
+    "at": "2026-11-10T13:16:49.280Z"
   }
 }

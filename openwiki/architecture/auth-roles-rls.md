@@ -3,9 +3,6 @@ type: architecture
 title: Auth, Roles and RLS
 description: How Sangam authenticates callers (Supabase JWT or the dev user), maps them to roles (staff, org admin, member, steward), and enforces access with Postgres roles and RLS. Explains the caller pool versus the owner pool, which code runs on which, and who may write proposals.
 tags: [auth, rls, roles, postgres, security, supabase, caller-pool, owner-pool, proposals]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
 sources:
   - id: openwiki-source-ca736c25c2a1bb0e95531706
     resource: repo://backend/app/api/routes/documents.py
@@ -43,6 +40,8 @@ sources:
     resource: repo://backend/app/proposals/context.py
   - id: openwiki-source-b53e96f0d702a7ca3bf4c37b
     resource: repo://backend/app/proposals/tools/proposal_tools.py
+  - id: openwiki-source-697868bd3a418ce8115944eb
+    resource: repo://backend/app/repositories/documents.py
   - id: openwiki-source-3abf34cc8ec9bdd9fd5c27d3
     resource: repo://backend/app/repositories/matching.py
   - id: openwiki-source-1157f5d2ae5aa2bccc1057d0
@@ -55,6 +54,10 @@ sources:
     resource: repo://backend/tests/test_agent_rls.py
   - id: openwiki-source-0808792899dda5ae43456460
     resource: repo://backend/tests/test_caller_pool.py
+  - id: openwiki-source-3fc2c8bed6b7ee0888a6c3eb
+    resource: repo://backend/tests/test_deleted_documents.py
+  - id: openwiki-source-dce9d73152cc1ea85026ea1e
+    resource: repo://backend/tests/test_import_roles.py
   - id: openwiki-source-3b72455cc5448f365dd202c9
     resource: repo://backend/tests/test_permission_table.py
   - id: openwiki-source-1a719932f8db409931d9e2ef
@@ -87,6 +90,10 @@ sources:
     resource: repo://db/migrations/0051_documents_delete.sql
   - id: openwiki-source-81d52d179dc30e354d43cc8c
     resource: repo://db/migrations/0052_proposals_delete.sql
+  - id: openwiki-source-c1c958c5ad68d020fdee6247
+    resource: repo://db/migrations/0053_deleted_documents.sql
+  - id: openwiki-source-f7343e7810aa811970783067
+    resource: repo://db/migrations/0056_documents_path_in_org.sql
   - id: openwiki-source-e8e61d605125cac4d909755e
     resource: repo://docs/ARCHITECTURE.md
   - id: openwiki-source-2835a53622addef44a80818d
@@ -101,14 +108,17 @@ sources:
     resource: repo://frontend/lib/supabase/middleware.ts
   - id: openwiki-source-06ab5e05c59e3ddb17628f5f
     resource: repo://frontend/proxy.ts
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Auth, Roles and RLS
 
 Access in Sangam is enforced in two layers. **Python** decides who the caller is and exposes gates such as `require_staff`. **Postgres** then enforces what that caller may see, through the `anon` and `authenticated` roles, table grants, and row-level security (RLS) rules. Which layer does the work depends on which connection pool a piece of code uses. That is the most important thing to understand before changing anything here.
 
-> Where the code lives: authentication is in `backend/app/core/security.py`, not in `backend/app/api/deps.py`. `deps.py` only holds pagination parameter models (`PageParams`, `LegacyPageParams`). The pools are in `backend/app/db/pool.py`. The SQL is in migrations `0023`–`0029`, `0042`, `0044`, `0048`, `0051` and `0052` under `db/migrations/`. The route-by-role summary is the "Who may do what" table in `docs/ARCHITECTURE.md` §8, which a test keeps in step with the code (see [Tests](#tests)).
+> Where the code lives: authentication is in `backend/app/core/security.py`, not in `backend/app/api/deps.py`. `deps.py` only holds pagination parameter models (`PageParams`, `LegacyPageParams`). The pools are in `backend/app/db/pool.py`. The SQL is in migrations `0023`–`0029`, `0042`, `0044`, `0048` and `0051`–`0053` and `0056` under `db/migrations/`. The route-by-role summary is the "Who may do what" table in `docs/ARCHITECTURE.md` §8, which a test keeps in step with the code (see [Tests](#tests)).
 
 ## Roles
 
@@ -250,7 +260,7 @@ Migration 0048 (proposal work) changed the proposals policies. `proposals_insert
 
 The project records one known inconsistency in `docs/ARCHITECTURE.md`: writes on `app.my_writable_org_ids()` (contacts, RFP saves, score adjustments: member and admin) exclude stewards, while writes on `app.my_match_org_ids()` (match runs, proposals: admin and steward) exclude members. Changing it is a migration and a product decision.
 
-Before 0048 only members and admins of a writable org could write proposals, stewards could not, and staff had no proposal write rule. The same migration widens `documents_insert` to `app.my_org_ids()`, so every role in the org (members, stewards, admins) and staff can add files to its Doc Vault, because a steward adds the files a proposal draws on. It repeats 0027's guard that fails the migration if a readable table has no read rule. It also adds the `work` and `summary` JSON columns the proposal screen edits.
+Before 0048 only members and admins of a writable org could write proposals, stewards could not, and staff had no proposal write rule. The same migration widens `documents_insert` to `app.my_org_ids()`, so every role in the org (members, stewards, admins) and staff can add files to its Doc Vault, because a steward adds the files a proposal draws on (migration 0056 later added a storage-path check to that policy, see [Database side](#database-side)). It repeats 0027's guard that fails the migration if a readable table has no read rule. It also adds the `work` and `summary` JSON columns the proposal screen edits.
 
 Deleting a proposal follows the same rule (admin, steward or staff) since 0052, enforced by `proposals_delete` and by `_editable` in the route.
 
@@ -270,7 +280,7 @@ flowchart TD
     B --> C["0025: revoke all, grant per table"]
     C --> D["0026: dev user auth_user_id"]
     D --> E["0027: RLS on, one policy per table kind"]
-    E --> F["0028-0029, 0042, 0044, 0048, 0051-0052: member management, match saves, merged policies, proposal writes, deletes"]
+    E --> F["0028-0029, 0042, 0044, 0048, 0051-0053, 0056: member management, match saves, merged policies, proposal writes, deletes, delete log, vault path check"]
 ```
 
 Caption: the order in which the Postgres access layer was built.
@@ -306,6 +316,10 @@ Caption: the order in which the Postgres access layer was built.
 
   RLS refuses a delete by removing zero rows, not by raising an error, so the repository functions report "not deleted" and the route answers 404.
 
+  `delete_vault_upload` (`app/repositories/documents.py`) runs on the caller pool in one transaction. It selects the private, org-owned `vault_upload` row, refuses with `DocumentInUse` (409) if chunks, extraction-log rows, document links or a proposal draft still reference it, deletes the row first so every foreign key is checked, and only then asks storage to move the file. If the file move fails the transaction rolls back (`FileNotRemoved`, 502). If the file is gone but the commit fails it raises `RowNotRemoved` (500) so a second delete finishes the job. `_remove_vault_file` in the route also refuses a path that is not in `org-vault/<org_id>/`.
+- **0053** adds the `deleted_documents` log. An `AFTER DELETE ... FOR EACH ROW` trigger on `documents` (`app.log_document_delete`) copies the whole old row as `old_row` jsonb, with the `org_id`, `deleted_by = app.user_id()` and nullable `restored_by`/`restored_at` columns for a staff restore. The function is `SECURITY DEFINER` because the delete runs as the caller, who has no grant on the log, and it is revoked from `PUBLIC`. Because it is a trigger, it covers every delete path (vault delete, proposal delete, owner-pool code) and is rolled back with a refused delete, so a refused delete logs nothing. The table has RLS on and one `deleted_documents_staff` SELECT policy for staff, but no grant to `authenticated`: it is read through the owner pool. Ask Sangam's SQL catalog lists it in `KNOWN_EXCLUDED`, because private uploads would otherwise be queryable. The route and proposal delete move files to `trash/` in the bucket (`storage.trash`) rather than removing them, so a restore has something to restore.
+- **0056** tightens `documents_insert` (a `WITH CHECK` alteration, not a new policy). On top of 0048's "org in `my_org_ids()` or staff", a non-null `storage_path` must start with `org-vault/<org_id>/`. A caller therefore cannot create a row for their own org that names another org's file, `staff-sources/` or `source-archive/` objects, because the service key that signs URLs can reach any object. The check is insert-only: `authenticated` has no UPDATE on `documents`. Rows written on the owner pool (library, staff datasets, seeds) are not reached by RLS, so signers and readers re-check with `storage.owned_split` (used by `GET /documents/{id}/file`, the vault reader and the proposal form code).
+
 `InsufficientPrivilege` from a table a role has no grant on is mapped to a 403 `{"detail": "Not allowed"}` by an exception handler in `create_app`. Without that handler it would be a 500.
 
 ## Frontend edge
@@ -336,7 +350,9 @@ Ask Sangam running as the caller (plan step 8) is now built via `ask_access`, `a
 - `backend/tests/test_permission_table.py` builds the real app and fails when a route uses a gate (`get_current_user`, `require_user`, `require_principal`, `require_staff`, `require_scout`, `chat_access`, `ask_access`, `proposal_chat_access`, including those wired through `AGENT_ACCESS`) that the "Who may do what" table in `docs/ARCHITECTURE.md` does not name. It also fails when a route has no gate and is not in the explicit open list (`/health`, `/me`, and the org and funder news routes), and when the table's columns are not `anon`, `member`, `admin`, `steward`, `staff`, `gate`. A new route therefore cannot ship ungated by accident.
 - `backend/tests/test_agent_rls.py` is an integration suite for Ask Sangam's executor against the compose Postgres. With `agent_caller` set to a member of org A, `PsycopgExecutor` returns org A's private document and not org B's, nor a staff-only funder line. A user with no org, or no caller at all (anon), reads no private row. The connection returns to the pool as the owner with no claims. And every column in the SQL `CATALOG` is `SELECT`-able by `authenticated`, because the chat runs as the caller and a blocked column would break `SELECT *`.
 - `backend/tests/test_caller_pool.py` covers `_db_identity` and `get_caller_pool` (unit). The `InsufficientPrivilege` to 403 mapping is also unit-tested. The integration tests prove a `CallerPool` connection runs as `anon` and cannot read `proposals`, that the connection returns as the owner with no claims, and that the access functions recognise the dev user.
-- `backend/tests/test_rls.py` is an integration suite against the compose Postgres on `localhost:5433`, in one rolled-back transaction. It builds orgs A and B, a hidden org, one person per role and private rows. It then asserts per-role visibility for contacts, documents, chunks, proposals, hidden orgs, threads and Import tables. For proposals it checks that members of other orgs and signed-out callers see nothing, that only admins, stewards and staff can insert or update (members are refused), and that every role in the org uploads to its Doc Vault. It also tests steward read-only behaviour elsewhere, member-write isolation, the org-member management functions, the last-admin rule, and match-run saving.
+- `backend/tests/test_deleted_documents.py` (integration) proves every delete of a `documents` row is logged with the whole row in `deleted_documents`, and that a vault delete whose file removal is refused (`FileNotRemoved`) logs nothing.
+- `backend/tests/test_import_roles.py` covers Import by role on `CallerScope` with no database: the staff-only tools (`plan_import`, `run_import_now`, `import_run_summary`, `pending_resolutions`, `read_source_rows`, `read_workbook`, `record_registry_check`, `publish_brief`) return `REFUSED` for a member, a steward and a run with no caller before reaching the database, and a member cannot save NGO research or overwrite someone else's research.
+- `backend/tests/test_rls.py` is an integration suite against the compose Postgres on `localhost:5433`, in one rolled-back transaction. It builds orgs A and B, a hidden org, one person per role and private rows. It then asserts per-role visibility for contacts, documents, chunks, proposals, hidden orgs, threads and Import tables. For proposals it checks that members of other orgs and signed-out callers see nothing, that only admins, stewards and staff can insert or update (members are refused), and that every role in the org uploads to its Doc Vault. For uploads it also checks that a member or staff user can name a file only under `org-vault/<own org id>/` (other orgs' folders, a prefix lookalike such as `<id>0`, `source-archive/` and `staff-sources/` raise `InsufficientPrivilege`). For deletes it checks that only staff remove a vault upload, that even staff remove nothing but a private org-owned `vault_upload` (zero rows otherwise), and that a signed-out delete raises. It also tests steward read-only behaviour elsewhere, member-write isolation, the org-member management functions, the last-admin rule, and match-run saving.
 
 For running these suites, see [Testing overview](../testing/overview.md). For how migrations are applied, see [Data and Migrations](./data-and-migrations.md).
 
@@ -346,6 +362,8 @@ For running these suites, see [Testing overview](../testing/overview.md). For ho
 - A new table needs a decision in `0025`'s lists, which fails the migration otherwise, and a read policy, which `0027`'s check requires for any table either role can read. Migrations such as 0041, 0042 and 0048 enable RLS and add or alter policies for their own tables.
 - Changing who may edit a proposal means changing these together: the RLS policies (`proposals_insert`, `proposals_update`, and `proposals_delete` and `documents_delete_draft` from 0052), `CallerScope.can_edit_proposal`, and the SQL `can_edit` expression in the proposals repository. `proposal_chat_access` and `require_edit` follow from them.
 - A new route needs a row in the "Who may do what" table in `docs/ARCHITECTURE.md`, or `test_permission_table.py` fails.
+- A new path that deletes `documents` rows is already logged by the 0053 trigger, but it must also hold its own RLS line: `documents_delete` and `documents_delete_draft` are the only DELETE policies. A new table that stores deleted or private data should stay out of Ask's catalog (`KNOWN_EXCLUDED`) unless it is safe for every caller to query.
+- A new place that writes a `documents.storage_path` on the owner pool must keep the path inside the row's own folder, since RLS (0056) only checks caller inserts; signers use `storage.owned_split`.
 - A new Ask catalog column or table must be `SELECT`-able by `authenticated`, which `test_agent_rls.py` checks.
 - A new agent or Import tool that touches private data on the owner pool must check `scope()` (or `chat_scope`) itself. A new agent route needs an entry in `AGENT_ACCESS`.
 - Never set `DEV_AUTH` in a deployed environment.

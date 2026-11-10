@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e651be35c5fe76ef8225c9263e76c7875a9dfad5b4ca71e692c4115f788e41bb",
+  "pageVersion": "sha256:f142dcf6f5ceb1c887f928fbd4705dcb2b2a1e18193876d8d438f9846fbbe5e6",
   "claims": [
     {
       "id": "claim_c4947d35c7ba4e6884cb28e5433237e6",
       "statement": "The chat wire is still CopilotKit: the drop-CopilotKit plan's M3/M4 are not started (CHANGELOG), package.json still depends on @copilotkit/react-core and @copilotkit/runtime (~1.75.2) alongside @ag-ui/client 0.0.59, AgentProviders still mounts CopilotKitProvider at /api/copilotkit, and app/api/copilotkit/[[...slug]]/route.ts still exists.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L259-L259",
+          "resource": "repo://docs/CHANGELOG.md#L269-L269",
           "version": "repo-lines-v1:sha256:ce918338140671c522aea2286534a41bd9c886bc48f49408f3f880f954b45251:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODAyNjZmYzM0ZTM1MDgxMjlkZDZmY2I0YjY5NTBiMWQ0MjM2NDA3MjFjMjM2MGJlZjU2YWJiMjRiMDI1MGNiNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWYwMDNmMjEwYzJkNzY3ZTIyNTEzMTdhODViMjkzN2ZhYzBmNmM3OTZlNjUzZTU5NDczMTUzZGZjOTY1Zjc2MyJ9"
         },
         {
-          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L1-L34",
-          "version": "repo-lines-v1:sha256:72d56e179b0754a6cc95a2429a94d6acd7fbf8311f1c0f07ad7c8080059c505a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4MjAwOTY0YTk3ODYzNTUyMmIyYWIwOTBjNjUwNjVkOGVmOGU4NWM0NzMwYmIyZWIwNDYwZDM0YzY3N2RkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlOTk5MTliNDhiNWVkMDUzYjBhYWQ3YjUxZGU5MmNmM2ZmODM1ODVlMDgzYzljMjJjOTZiNmM0MmIwYmVlMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L1-L39",
+          "version": "repo-lines-v1:sha256:368ed8cb836eb70655af3623e47b44d778e028945678b0894d22009e2deb6965:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4MjAwOTY0YTk3ODYzNTUyMmIyYWIwOTBjNjUwNjVkOGVmOGU4NWM0NzMwYmIyZWIwNDYwZDM0YzY3N2RkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlOTk5MTliNDhiNWVkMDUzYjBhYWQ3YjUxZGU5MmNmM2ZmODM1ODVlMDgzYzljMjJjOTZiNmM0MmIwYmVlMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://frontend/lib/AgentProviders.tsx#L1-L35",
@@ -44,11 +44,11 @@
     },
     {
       "id": "claim_abd426ca3d1045268d91e314191c9aea",
-      "statement": "Chat does not call the backend from the browser: AgentProviders points CopilotKitProvider at /api/copilotkit, whose CopilotRuntime registers three HttpAgents (sangam_agent at AGENT_URL, sangam_ingest at AGENT_URL with /agent replaced by /ingest, sangam_proposal with /proposal) behind a handler with maxDuration 1800 to match the backend.",
+      "statement": "Chat does not call the backend from the browser: AgentProviders points CopilotKitProvider at /api/copilotkit, whose CopilotRuntime registers three HttpAgents (sangam_agent at AGENT_URL, sangam_ingest at AGENT_URL with /agent replaced by /ingest, sangam_proposal with /proposal) behind one createCopilotRuntimeHandler at basePath /api/copilotkit (GET/POST/PATCH/DELETE) with an InMemoryAgentRunner and maxDuration 1800 to match the backend.",
       "evidence": [
         {
-          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L1-L34",
-          "version": "repo-lines-v1:sha256:72d56e179b0754a6cc95a2429a94d6acd7fbf8311f1c0f07ad7c8080059c505a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4MjAwOTY0YTk3ODYzNTUyMmIyYWIwOTBjNjUwNjVkOGVmOGU4NWM0NzMwYmIyZWIwNDYwZDM0YzY3N2RkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlOTk5MTliNDhiNWVkMDUzYjBhYWQ3YjUxZGU5MmNmM2ZmODM1ODVlMDgzYzljMjJjOTZiNmM0MmIwYmVlMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L1-L39",
+          "version": "repo-lines-v1:sha256:368ed8cb836eb70655af3623e47b44d778e028945678b0894d22009e2deb6965:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4MjAwOTY0YTk3ODYzNTUyMmIyYWIwOTBjNjUwNjVkOGVmOGU4NWM0NzMwYmIyZWIwNDYwZDM0YzY3N2RkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlOTk5MTliNDhiNWVkMDUzYjBhYWQ3YjUxZGU5MmNmM2ZmODM1ODVlMDgzYzljMjJjOTZiNmM0MmIwYmVlMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://frontend/lib/AgentProviders.tsx#L8-L35",
@@ -61,7 +61,7 @@
       "statement": "AGENT_URL must end in /agent (used verbatim for Ask, suffix swapped for Import, stripped for REST) while NEXT_PUBLIC_API_URL has no suffix and is the browser-side REST base; docker compose sets AGENT_URL to the internal backend:8000/agent and NEXT_PUBLIC_API_URL to localhost:8010.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L212-L216",
+          "resource": "repo://CLAUDE.md#L214-L218",
           "version": "repo-lines-v1:sha256:e0f3b7068d04786ed6eb6c760693e61dea6694abaaa03e8326ba0271fdd5ca01:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODYwZWJiM2ZiY2JiMzk0YTNjZmVhZjYxM2U2MjNhMzVlNWEwZGY1MTNlMmZhZWRkYTY5MmRmOTkzMjEyOTcwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTRlZThjNjM3OTk3NTk0MDE0ZDNjMGEyZWZhZDE5MTQ4Yzg5OThjNDQ2OWE4NDcyODExZGExMTYwNDAwYmM3NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDRmZWRhYjZjN2U5ODU2ZGM0ZjcxNzMyOTEyZTA1ZWIyOGI0NzkzOTIzNjE5YzQzOWY5NTFmNWI1OGE5Y2MzOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjU2ZWJiMjRkNTg2NzNjOWYxM2JlZmI5OGQzMzEzYmNlYjkxNTEyNTgyMzlkNzhlY2E1OTM5OGZiZWQwZTI4NyJ9"
         },
         {
@@ -69,7 +69,7 @@
           "version": "repo-lines-v1:sha256:10edb845739bd8342fa78afb0adff30a556bc1c1d7d7c843ec0ef4eec31d6e3b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBlZGI4NDU3MzliZDgzNDJmYTc4YWZiMGFkZmYzMGE1NTZiYzFjMWQ3ZDdjODQzZWMwZWY0ZWVjMzFkNmUzYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODgxOTFmZjUwOTZlYWFjMDcyNzBkZWU5YjIxODNhNTM4NGNhMTdhZTFiYzQ3NjAwNDc3NmNjNWM2YTJkMzcxNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
-          "resource": "repo://docker-compose.yml#L130-L131",
+          "resource": "repo://docker-compose.yml#L131-L132",
           "version": "repo-lines-v1:sha256:bd01af747145791d8dd46ac48efbfbbafc496da96b3d160622843dabcf762313:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzY4N2JjZWI2OGM5YTQyMzk4NjgxZGIwOWI4MGMxZjNmNWM3ZThlNmMzMmJhNzU5ZTI2ZDg3OGQ1NmU3ZTBkNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmE5YTQ0MWQ1MDE0MDg5MGNiMzk0N2I1YjIyNWJlZjkwYzFhZWQ1ODhmNjg3YzZlOGVmZTkyYjIxOWQwNjVhOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzJjZmU0OGU0NDcwNTgyMTEwMjhhNmU1ODdlNGI3YTdhM2Y1YWY1MDA1ZWM5NTRkODRkZDM4OTlmZDcyZjIyMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDIzYjg1NDYxNjM4ZGI0YWU3NDdlNmZhZDVlMmMxZTgzZmNkZjMzY2E0MzRjNzM0MzIwMDU0MGRkOWVhMWU5ZiJ9"
         },
         {
@@ -355,12 +355,8 @@
       "statement": "Frontend code is organised as routes-only app/ (everything else goes in features/), one features/ folder per screen, components/ui and components/layout, and lib/; list pages share the BucketCards/FilterRow/SearchBox/ListMore pattern in components/ui/ListPage.tsx, with useShowMore for client-side paging and useCursorList for server cursor paging, and new list pages must reuse it.",
       "evidence": [
         {
-          "resource": "repo://CLAUDE.md#L452-L455",
-          "version": "repo-lines-v1:sha256:da49d982fa4f6e65b3561a5dceddda7b12545f8220ffcdb3936f78ea7e67bf9f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTFjMDgwOTdlM2UyZTZkMGVkMTk3MDMxOGJjNTc0MDY1YWI3N2ExYmE2ODFjNjk2M2NmNzBkMTc2YWZkYzI1MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODhhNmEwMzg3MGU5OTEwMTg1NThhZmFhN2JhYzE0NjM1YTY3ZDZkZWJhMTY3OWEwYzc1ZjA2ZWE0NDhkZDgxMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2FmMDE2YzMzYjliZGQxYWNkODc4N2Y2YTc3ZTdjNTExODhiMTg0ZjNiOTkyYzNlMDUxNzA2ODU3NjNjZmMwMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2QzYmI0ODhiOTcxNjAyYWQ3MjA5ZjFjN2U4ZmRlMjY1OGNhYTk2ODU4MTQ0N2MxOWRhMDE4ZDZkYzYyY2JkYyJ9"
-        },
-        {
-          "resource": "repo://docs/ARCHITECTURE.md#L209-L259",
-          "version": "repo-lines-v1:sha256:1954ce87a5089f2b450d395f50682cb122ca0a094ec9eadf805ec7059ef0aead:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MjBhNGQwY2MwYjJlNzkwNThmMzA5NjUwMDNmMjdhYmM2ZWNiNWQzZGRhNjUwODJkOTVmNzkyZTcxMjU4YWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MzdhMzlhMGRkOTgxMmIxOGIxNWNjZGIxMzEyMjk5NzIzNDQ1NjRiYzBkNmU2ZWMxNmIyNTVhNTFlMzYyOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlNjk2Y2FmODkxZGViNGExMzM5MjIwMTc2OGJmOTJjYjM3ZTNkMTg3NGQ3NmNjZjA1ZTBhMTk0NjgyMTczMjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NzEyMTEyMzQwMWZhNDQ1OGI4ZGZhN2E3NjNmMjFmOTFiMGJhZjA4ZWRkNWEyNzc0MzQyNjllYWViZmIzOTkifQ"
+          "resource": "repo://docs/ARCHITECTURE.md#L251-L263",
+          "version": "repo-lines-v1:sha256:7f06f26182074d55a8b6f7079424920e19643835c92a9cce1b6c636760a0a852:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMmZmNGU1M2MwYmNiNGViOTUzZDNhZDQxNzM5NzY1MzA1M2I3ZDE2ODE1YWUzZGIyOGU2ZmZlNDA2M2ZiMjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MzdhMzlhMGRkOTgxMmIxOGIxNWNjZGIxMzEyMjk5NzIzNDQ1NjRiYzBkNmU2ZWMxNmIyNTVhNTFlMzYyOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5OGQxMDIxNzVkZWZhODkzOTQ4YjU3OThhYTJmZDVjMTI4N2I0MmI1N2E2OWFiMzIxY2VlNTc1MDA0NjFhMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NzEyMTEyMzQwMWZhNDQ1OGI4ZGZhN2E3NjNmMjFmOTFiMGJhZjA4ZWRkNWEyNzc0MzQyNjllYWViZmIzOTkifQ"
         },
         {
           "resource": "repo://frontend/components/ui/ListPage.tsx#L9-L151",
@@ -449,7 +445,7 @@
       "statement": "The proposal chat (TellSangam, Sangam Pitch) uses useAgentChat against the sangam_proposal agent with the per-user proposal.thread_id (proposal-<id>-<user id>), loads history from /api/proposals/{id}/messages, sends the current step, selection and open part as AG-UI context under the exact description 'What the person is looking at', and answers proposal_question and proposal_suggestion interrupts through useInterrupt in QuestionCard.",
       "evidence": [
         {
-          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L14-L22",
+          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L15-L23",
           "version": "repo-lines-v1:sha256:7963776e4d82562310d470685f47ea0ee8785e59abb8f2ca38a484fd4cb0728d:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzVjM2I3ZDYxNWRiNzMwYzViNzBlMDU2OGQ0ZWJlMDVmZjM0ZTE4ZjAxZDA5Y2M5YzQ4ZDU0YTg5NTkxZDhjMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTg5MDg1Zjg2ZWE3ZjkzODgwNDVkOWNiYzJlZWEwYTIzZDEwNjljNzVjZjM0YjlhZjczZTgwOGRhYjIwMzMzZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDQ4MzhhMmJkYTEwNzZlMDY5ZTRhYzQyZThjMGIyZmZhODM4MTkzODc5MTVjMjExODBkZjk4NWJkYTdhNTI3NSJ9"
         },
         {
@@ -975,7 +971,7 @@
       "statement": "Screens live in the address using native history calls rather than router.push (because /ask is force-dynamic and a router navigation would refetch it): lib/url.ts provides withParams (null, undefined or empty drops a param), setUrlParams (push by default so Back undoes a screen change, replace for filters and fill-ins, no write when the address is unchanged), idParam and oneOf; useUrlTab reads ?tab= with the first tab as the bare URL. Ask's view, proposal and thread are pushes while Registry filters and Funder Match's org are replaces.",
       "evidence": [
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L252-L255",
+          "resource": "repo://docs/ARCHITECTURE.md#L256-L259",
           "version": "repo-lines-v1:sha256:a87140901466bc5ef9c7d07aecc7b236d47d8a3fd43209a9830a7801ca0b2a2a:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGMyZTZjNTg5YTBmNDMwYzdhNjZjNWEwNDRmNDAyYjYyYTNiZmYzMDBhYWM4OTQ3OThhNDM2MDk0ZGY4YTIyNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWFhYTkxOTIxOWZlZTE5Y2IyNTI2Yzk5MTc0YTgwMTJkMDM4MTIzZDk5N2M5MGEyMjhhMjgzOWE0ZDJlODI3NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmJiYzZkYzc0OTE0ZTkxZjdmYWMwMzA4OGYyYjdhZWFlNTc2Y2UwYzdiY2ZmZDVkMmNjYjEzYjg3ZTM5ZTVkZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDZhZGRhY2QwYzZiNjJmYmY1ODQ5MjA0ZWNlZmI3NzFiZDQzMWNlNDdiYjk1MWU3MmNhODJkNTEzZWNjYjI1NCJ9"
         },
         {
@@ -1107,10 +1103,88 @@
           "version": "repo-lines-v1:sha256:f0f3d86e030508fb3ea367168749dbf3048eb507082707f2b1f307a31a6c3d2c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwYWNiYWZiNzg3NGMzNDllMTRlYzg2NDk3YjIzZDJmOTU3ZTNlZDYxZmMzNWQ0ZDZmYWExNzM5MzAxYWQyYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_8d8a0b2388d44f6d9b5991876868ed0e",
+      "statement": "The CopilotKit proxy route serves only the routes the chat client calls: the handler's onBeforeHandler hook runs allowRoute, an allow-list of info, agent/run, agent/connect, agent/stop and agent/suggest; every other runtime route (threads/*, memories/*, inspector/*, transcribe, annotate, cpk-debug-events) throws a 404 Response, because the runtime's in-memory store would otherwise hand out other users' runs. Chat history comes from the backend's /api/threads instead, and a unit test pins both lists.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts#L27-L31",
+          "version": "repo-lines-v1:sha256:738856bdde8804e6ee39f657ca4d2e9a6ff8d94a989d8f7264712dfdf9127a05:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQ5NTU1Y2Y2NDYwNjZhZWFmODAxMmFjZWU0ZDI5NmZlOGYxZDgzOTE0ZDRmNmQ4ZTUzNDE3MDRjMGQ2NmRhZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjZmNWI0MGIxNTg0NTdkMTc4NjRmMjE3OTA3ODZkZDVhMmVjZGI2NGI2NmE2NTFmNzg4ZDRlMjVjZDMzMDNkMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDQ4MzhhMmJkYTEwNzZlMDY5ZTRhYzQyZThjMGIyZmZhODM4MTkzODc5MTVjMjExODBkZjk4NWJkYTdhNTI3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWFlYzAyNjc4NWIwM2E0ZjdjMGQ5NzcxZWMxMTAwZTM3M2ZkYjZmNDlkNGY2YTE2M2Y5ZmUyNTY1OTc0MjJjNyJ9"
+        },
+        {
+          "resource": "repo://frontend/lib/__tests__/copilotkit-access.test.ts#L14-L44",
+          "version": "repo-lines-v1:sha256:ec23232cb8959cc358162d9caf706821826f8593b4039ed0cd56e15760f1e04f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiZTg3YjEwMTUyZmUxMTViOWUzMzAxOGY0ZDdmZjg5M2NiN2ZkOWNhYmUyZDI1NmZhOGZlYTJmOTMyYjYxMDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/lib/copilotkit-access.ts#L1-L10",
+          "version": "repo-lines-v1:sha256:9671e7734219c14750ca3b65e189a7b4d667964641db40e2259e3ba0c61c2852:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViNTZmMDMzNjUyOTEzYjFmMGVlMGE0MTgwNWJiZDg5OTZmMDQ1MjY0MmRiYzc0ZDFiYjZjNmE1ZGQyNWU3OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_af5468e88ad148598f5f86fb4cf55ae1",
+      "statement": "Doc Vault uploads never pass through the backend: uploadToVault POSTs /api/documents/uploads for a signed URL, PUTs the file straight to Supabase Storage, then POSTs /api/documents to record it (a Vercel Function body cap is below the size of large PDFs), mapping 503, 403 and 415 to specific messages. The same lib/vault.ts helpers are used by VaultView and by step 2 of the proposal shell.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/lib/vault.ts#L14-L71",
+          "version": "repo-lines-v1:sha256:e8eb8a3b113b5650038efddcbdf4a11f105b28c795f467e0ba618c0f14a4ae70:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzNDcwNzk0NWRlMjJkZDQ5NWJjYWIwYjc3OTMwNWQ5ZTViZWE0YTM3NTc1ZjRkODEwNDcyYWVmOGUwODZkZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgwMzZkYzFhNjk4NGVlNjU3OTM5YWM5ZmUyYzkwZDNlMDEyOWQwNGUwODRkYmE0OTBkYWIzNmIyOGFkMzcxZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/VaultView.tsx#L33-L48",
+          "version": "repo-lines-v1:sha256:e8d659a2c85e8f2c73dd1b779947f4296c3ff5a09b69b715620045b814097af3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4NGYzYjM5OGVkNzk3ZThhNTU0MzQ3YWNjNDM5NzRiOTI2ODFhYTIyOGRjNjAwNDM2MzdkMjNiYTIxZWY1ZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwMWQ1NzI2ZDc2NDQyZmM3MDczNTA1ZWNiZDM4MzdjMzk2YTU1OGUyMzgzODg2ZGM2YmM0MGFmNzZjMGI3ODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhZWNhMjAwMTJmMTFhZDFkNTYxOTE4YjhlMzhlYzYwYjg3ZTEwNTU1MjM4ZGE3NzUxNDA0ODA0MTdlNzgxMmYifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/proposals/ProposalShell.tsx#L314-L339",
+          "version": "repo-lines-v1:sha256:88ff1eb46d0b17e7db0929a32d6803d0f393050437ac1ab5e061d8db71a0ba52:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5NjZmYmZhODg5OThkYTc0NjU2YzUwMTk0OTU2YzI1ZjA4NDk0NTc2NjBjMDA5ZmU2M2QxZTlmYTlkYzkzMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyNzc1MWNhMDc2ZTkxZTYxZjk5YTZjYTIzODRlYmQ3NTBjZGQ2MDkyYmUyYzNjMjllOWY4MjcxZWE2MGZkZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3ZDJmZDcyOWNkNDBlMmMzZWYxNzczNGMwYWY1MWY3ZmMwYjdiOWUyZDFjZWI3YzY2ZGEwZjc1ZGNkZjJjMjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_caf017f228c3456aa552ab2dc07f6ed4",
+      "statement": "VaultView shows a Delete button (behind a confirm dialog) only to staff and only for rows with doc_type vault_upload; AskWorkspace passes isStaff from payload.me, and deleteFromVault maps 403, 404 and 409 to friendly messages. The backend still enforces the staff-only rule.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L160-L160",
+          "version": "repo-lines-v1:sha256:65adb2f33c1199c95618a13430be9c75e993b401cb8f45fedac10c38cfe9d67e:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjVhZGIyZjMzYzExOTljOTU2MThhMTM0MzBiZTljNzVlOTkzYjQwMWNiOGY0NWZlZGFjMTBjMzhjZmU5ZDY3ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjVhZGIyZjMzYzExOTljOTU2MThhMTM0MzBiZTljNzVlOTkzYjQwMWNiOGY0NWZlZGFjMTBjMzhjZmU5ZDY3ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDNjN2EzYTU5YzJlZTBhZWRlOTI5MDU4NTgwMjFhYzY3NDMzYmY0MjcwMDY3MmJjNGM5ZWI1MGVmNjdmM2FiMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWIzNDQyNTdlOTkzMTU4N2Y0ODE3YjgwYWZhNDRmMDJjYjViNjNkMTBhYWUxMjgyMjRlODFiYjBlMjcxMGE2MiJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/lib/vault.ts#L52-L65",
+          "version": "repo-lines-v1:sha256:ed3cf04af216b7ff399be87df2b1c4e0f52edf46b259a53965ac8074635ca17a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliZTE5YTczMTczOWMzZTY0NDJlMjQ0NDAzYmIxYmY3ZTc4MTA1ZWE1NTEyYWY1NWZhOWZiMjVjZTEwYmNiZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4MjI2MDFjNzM5NGQ4ZDAxNTg1ODlkOGNhYmY2YTBlODhjODc0ZDEzYTdkNzEyZTA3NWNiZWZmMmJlNjAwM2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNjZjZjAwMGQzN2JlYzdkNzc1ZjVmMDgwMDUzOTUyOTdhZWVjMmU0MDViOTllNmYzZGY0OTFhZGYxYmY0YjYifQ"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/VaultView.tsx#L115-L145",
+          "version": "repo-lines-v1:sha256:35408472b5bc2894fa3b39ad8807f6f7bf875e1693b137ada4c37b42267b97ef:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE5Y2IwYjU1MzEyNTc2ZDhjOWIzMDI4ZGU3NDA4ZjYxMTRhMzY1MTQzY2UyMDE0N2ZhZjczM2M2YWYzYjA5Y2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjZTAxNDBiMzA1MDliNGQwYjJkYjgwZTQ2MWQzYzlhNDQxZGIxZmZiYWQ3MmJjYWUwYTcxNjI3NmM4MWFlM2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0ZDVjM2NhZDcyYzQ5NjI0OTRmNzdkZDZmMDk5Yzk2NmU1N2RlMjU5ZDVjYThhN2FlNzQzNmEzNTQyYmJkN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgwODY3YTYzODc0ZDM0YTJhMDAyNGMzYWRjYzdjNzExMmM2NjUyMzNiNzZhODQ1YTYxNmNmYjNmZmQzNDQ1OTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f829dca67ec44566ba571f5b21459eca",
+      "statement": "The research-brief pages fetch a signed-URL BriefLink with apiGet, fetch the markdown fresh (no-store, throwing on failure) and render it via parseBrief, a line parser coupled to the backend's brief.py entity_markdown format: it strips HTML comments robustly, reads the special sections and findings, folds findings that quote the same sentence from the same source and year, and stops at a --- line.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app/registry/%5Bslug%5D/brief/page.tsx#L7-L25",
+          "version": "repo-lines-v1:sha256:c2c8f46fcd7e075018631526f085ced62b4e7564f1d0f8cc0a504bc4e0657e85:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2YTAxMDI5ZjFjOGM4NTNmYTRkN2ZlMGJiOTZkY2Q3ODUzY2UwNGE1MjNkOGUzMTYwNDJhMTIyODU5ZDFlYTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkMzgxNTViNjk3NWJmNzg3ZGE0ZGQ0MDZiNGFhN2FjMzIwMDA3NzljNjdjOTQwOWRkMjU5ZWU2YTg2NmU4ZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/registry/brief/parseBrief.ts#L1-L163",
+          "version": "repo-lines-v1:sha256:84fddd41cc5ac9dd351e634d3d5199f1ad4645bce076fb5e3de0fef15ab5abe7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJiZTEzZGJjYTRlNTk2NWU0MWEzMTQ1YWExYmVjZWU3NzQxNWE0MDAyNDM0M2JiMzdhODc0MDI3MjEwMGYzOWVhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_608f0bacdafb45acbd01e1ea43201bfa",
+      "statement": "Scout review rows (ReviewFields.tsx) label each finding Confirmed or Self-reported with a proof disclosure, render staff-workbook findings (made-up host staff-sources.sangam.invalid) as 'Your team's spreadsheet' and private findings as the person's own document (tagged not saved when held), and only link http(s) source URLs, re-checking them client-side.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/ingest/components/ReviewFields.tsx#L7-L99",
+          "version": "repo-lines-v1:sha256:1d6cfead63ad264c21c3f73627d8738b2e6908f8ff3089f00b110d26ee1440de:eyJzZWxlY3RlZExpbmVDb3VudCI6OTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxMzNlOWQzODIzZDAyNDNmY2NkM2M2MTk1NWM4N2FhMGQyNjg5NGQyYTFiOGVmMjBkMDcwOGRmM2JmODRiYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI4ODIxZTc2NzgyZjgxNDQxNmUxOTVhMGIyMzAzZWQwZmM3ZGYyZmUzYWZmY2RiYjA4MjZiYjc4MzdmYjU4YTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-05T19:29:31.538Z"
+    "at": "2026-11-10T13:16:49.280Z"
   }
 }

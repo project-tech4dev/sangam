@@ -74,10 +74,10 @@ sources:
     resource: repo://frontend/features/registry/profile/OrgProfileTabs.tsx
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Media & Signals
@@ -217,7 +217,7 @@ Row-level security makes each reader see only what the bars allow. Signed-out re
 
 ## Exposure to Ask Sangam
 
-`backend/app/ask/tools/sql/catalog.py` is the allowlist for Ask's `db_query`. It catalogues `news_stories`, `news_links`, `news_story_entities`, `news_story_locations` and `news_story_tags`, with `news_stories.id` and `story_id` columns citing `[news:N]`. `news_link_scores` and `news_watch` are in `KNOWN_EXCLUDED` as pipeline state, and so are `ingest_runs` and `ingest_run_items`. Verifier evidence in the score `jsonb` is therefore not reachable from Ask. `tests/test_sql_catalog.py` pins both sets.
+`backend/app/ask/tools/sql/catalog.py` is the allowlist for Ask's `db_query`. It catalogues `news_stories`, `news_links`, `news_story_entities`, `news_story_locations` and `news_story_tags`, with `news_stories.id` and `story_id` columns citing `[news:N]`. `news_link_scores` and `news_watch` are in `KNOWN_EXCLUDED` as pipeline state, and so are `ingest_runs` and `ingest_run_items`. Verifier evidence in the score `jsonb` is therefore not reachable from Ask. `tests/test_sql_catalog.py` pins the five catalogued news tables, the `[news:N]` cite on `news_story_entities.story_id`, and the exclusion of `news_link_scores` and `news_watch`. The `ingest_runs` and `ingest_run_items` exclusions are declared in `KNOWN_EXCLUDED` but not pinned by name there. The catalog also attaches defect notes: a topic story names no organisation, so zero stories for an org does not mean nothing was said, and `visibility = 'hidden'` rows should be left out.
 
 The `news-brief` skill (`backend/app/ask/skills/news-brief/SKILL.md`, loaded via rule 13 of `ask/instructions.md`) reads `news_story_entities` joined to `news_stories`. It uses only `visibility = 'public'`, `is_news` stories from the last 30 days by default. It reports zero results as "Nothing on <name> in Sangam's news since <date>", where the date is the latest `news_links.fetched_at`, and never says "no news". For a story with a negative stance, or a topic of `fcra` or `governance`, it gives the story's main link (`news_links.url` where `id = main_link_id`) as it is beside the line, so the reader can check the article. Ask cannot read the page, so the skill never says what the article cites. It writes three to five lines, each ending in `[news:N]`. It states match and confidence as High, Medium or Low, never as numbers.
 
