@@ -18,7 +18,7 @@ import pytest
 
 from app.core.config import Settings
 from app.ingest import brief
-from app.ingest.research_records import EntityResearch
+from app.ingest.research.findings import EntityResearch
 from app.ingest.tools import research_tools as research
 from app.ingest.writer import ensure_document
 from app.integrations import storage
@@ -670,7 +670,7 @@ class TestABriefShowsPublicSourcesOnly:
         assert "private accounts" in text and brief.PRIVATE_NOTE not in text
 
     def test_the_private_domain_is_matched_by_host_not_by_substring(self):
-        from app.ingest.source_guards import is_private_source
+        from app.ingest.research.source_guards import is_private_source
 
         assert is_private_source(self.VAULT) and is_private_source(self.STAFF)
         assert not is_private_source("https://example.org/sangam.invalid/page")

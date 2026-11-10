@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any, Literal
 from urllib.parse import unquote, urlsplit
 
+from app.ingest.research.finding_types import FINDING_MODELS
 from app.ingest.sources import SOURCES, AccessRule, normal_path, rule_for_url, sources_on_host, url_host
 
 TIER_FIELDS: frozenset[str] = frozenset({"source_type", "evidence_tier"})
@@ -92,8 +93,6 @@ def hold_at_promote(
     findings: list[dict[str, Any]], entity_kind: str | None
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """(findings that may be promoted, a held reason for each that may not)."""
-    from app.ingest.research_records import FINDING_MODELS  # research_records imports this module
-
     kept: list[dict[str, Any]] = []
     held: list[str] = []
     for f in findings:

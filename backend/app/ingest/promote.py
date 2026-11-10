@@ -5,7 +5,7 @@ with the sentence that says it; a catalog row is a fact the product answers
 questions from. This is the deliberate step between them, and it only moves
 what there is somewhere to move — the rest is reported, not silently dropped.
 
-Findings arrive typed (app/ingest/research_records.py), so this file maps
+Findings arrive typed (app/ingest/research/finding_types.py), so this file maps
 fields to columns. It does not parse. The version before it read free text with
 regular expressions and refused a real figure because it could not tell crore
 from rupees, which was the good half of that failure mode.
@@ -24,9 +24,8 @@ from urllib.parse import urlsplit
 
 from pydantic import ValidationError
 
-from app.ingest import source_guards, staff_sources, vault
+from app.ingest import staff_sources, vault
 from app.ingest.brief import fact_key
-from app.ingest.expectations import PROMOTABLE, activity_kind
 from app.ingest.geography import resolve_location
 from app.ingest.matcher import Match, _is_foundation, name_key, resolve_funder, resolve_org, variants
 from app.ingest.records import (
@@ -51,7 +50,9 @@ from app.ingest.records import (
     http_url,
     normalise_cin,
 )
-from app.ingest.research_records import FINDING_MODELS, MAX_THEMES, SCHEMA_VERSION, TYPED_SINCE, to_inr
+from app.ingest.research import source_guards
+from app.ingest.research.expectations import PROMOTABLE, activity_kind
+from app.ingest.research.finding_types import FINDING_MODELS, MAX_THEMES, SCHEMA_VERSION, TYPED_SINCE, to_inr
 from app.ingest.taxonomy import TAG_KINDS, resolve_classification, resolve_csr_sector
 from app.ingest.writer import (
     GATE,

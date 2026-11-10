@@ -92,7 +92,7 @@ class TestStaffToolsRefuseEveryoneElse:
 
 
 class TestSavingResearch:
-    from app.ingest.research_records import EntityResearch
+    from app.ingest.research.findings import EntityResearch
 
     FUNDER = EntityResearch(entity_name="Acme Foundation", entity_kind="funder", status="not_found",
                             summary="Nothing public about this one, in any source read.")

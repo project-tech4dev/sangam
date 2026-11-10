@@ -520,7 +520,7 @@ with it** (`catalog-mapping` before a write, `catalog-write-report` after). The 
 groups split by entity kind because the kinds genuinely differ; the record, the mapping and the report do not. **The pull pair is the researcher's contract**: they live under
 `skills/research/`, which `entity-researcher` declares and the supervisor's listing skips (that folder holds no
 `SKILL.md` itself). It reads the one for its kind with `read_file`, and `save_research` refuses a save that
-leaves a field with neither a finding nor a gap (`app/ingest/contract.py`). The other five are the supervisor's. Constraints never live there: progressive disclosure
+leaves a field with neither a finding nor a gap (`app/ingest/research/contract.py`). The other five are the supervisor's. Constraints never live there: progressive disclosure
 means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and
 the access rules cannot be optional. `docs/SKILLS.md` has the mechanism, the discovery rules and
 the honest cost.

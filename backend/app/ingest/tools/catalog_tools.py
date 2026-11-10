@@ -14,18 +14,19 @@ from langchain_core.tools import tool
 
 from app.core.security import CallerScope, chat_user_id
 from app.db.pool import get_pool
-from app.ingest import coverage, manual_checks
+from app.ingest import manual_checks
 from app.ingest.caller import scope, staff_only
 from app.ingest.catalog_save import ENTITY_KEYS, SaveRefused, held_per_concept, research_rows, save_to_catalog
-from app.ingest.expectations import (
+from app.ingest.matcher import resolve_funder, resolve_org
+from app.ingest.promote import promote
+from app.ingest.research import coverage
+from app.ingest.research.expectations import (
     CONCEPTS,
     concepts_for,
     expected_fields,
     recent_fiscal_years,
 )
-from app.ingest.matcher import resolve_funder, resolve_org
-from app.ingest.promote import promote
-from app.ingest.research_records import FINDING_MODELS
+from app.ingest.research.finding_types import FINDING_MODELS
 from app.ingest.writer import Gate
 
 logger = logging.getLogger(__name__)
