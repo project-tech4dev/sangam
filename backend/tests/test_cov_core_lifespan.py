@@ -108,7 +108,7 @@ def test_process_age_reads_proc_and_is_none_without_it(monkeypatch):
 
 @pytest.fixture
 def builders(monkeypatch):
-    import app.agent.agent as ask_build
+    import app.ask.agent as ask_build
     import app.ingest.agent as ingest_agent
     import app.proposals.agent as proposal_agent
     from app.integrations import tracing

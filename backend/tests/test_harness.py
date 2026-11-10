@@ -95,7 +95,7 @@ class TestTheFilesystemMiddlewareIsReplaced:
 
 class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
     def test_ask_sangam_has_no_subagents(self):
-        from app.agent.agent import build_agent
+        from app.ask.agent import build_agent
         from app.core.config import get_settings
 
         tools = build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name
@@ -104,7 +104,7 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         assert "task" not in tools
 
     def test_ask_sangam_holds_its_six_tools_and_the_skill_readers(self):
-        from app.agent.agent import build_agent
+        from app.ask.agent import build_agent
         from app.core.config import get_settings
 
         tools = set(build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name)
@@ -114,7 +114,7 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         }
 
     def test_neither_agent_can_write_a_file_or_run_a_command(self):
-        from app.agent.agent import build_agent
+        from app.ask.agent import build_agent
         from app.core.config import get_settings
         from app.ingest.agent import build_ingest_agent
 

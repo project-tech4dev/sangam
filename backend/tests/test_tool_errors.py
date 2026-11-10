@@ -58,7 +58,7 @@ def _count(stack: list) -> int:
 
 
 def test_ask_has_the_backstop(stacks):
-    from app.agent.agent import build_agent
+    from app.ask.agent import build_agent
     from app.core.config import Settings
 
     build_agent(Settings(_env_file=None), None)

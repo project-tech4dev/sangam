@@ -158,8 +158,8 @@ Start phase 3 after those merge. Phases 0, 1 and 2 can go now.
 
 ## 8. Open questions
 
-1. **Rename `agent/` → `ask/` in phase 6?** I recommend yes. 82 files, mechanical, and it is the only way the folder
+1. ~~Rename `agent/` → `ask/` in phase 6?~~ Done in phase 6 (2026-11-06), as recommended. 82 files, mechanical, and it is the only way the folder
    names alone say which agent is which.
 2. ~~`agent/tools/mcp.py`~~: deleted in phase 0 (2026-11-06).
-3. **The name `agentkit/`.** I recommend it over `deep/` or `agents_common/`: short, and it says it is a kit, not an
+3. ~~The name `agentkit/`~~: used, as recommended. I recommend it over `deep/` or `agents_common/`: short, and it says it is a kit, not an
    agent.

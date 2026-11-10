@@ -1,19 +1,25 @@
 ---
 type: architecture concept
 title: Data and Migrations
-description: How Sangam's Postgres schema is organised by table group (including RFP Watch's rfps tables, server-side proposals and document links), why a baseline plus forward-only migrations (latest 0049) define it, how the SQL catalog drift check gates backend boot, how shared public SQL fragments hide private sources, where documents live in storage buckets, and how provenance columns keep the optional Neo4j graph rebuildable.
+description: How Sangam's Postgres schema is organised by table group (including RFP Watch's rfps tables, server-side proposals, document links and the deleted_documents log), why a baseline plus forward-only migrations (latest 0056) define it, how `make migrate` also brings LangGraph's checkpoint tables to the expected version, how the SQL catalog drift check and the checkpointer version check gate backend boot, how shared public SQL fragments hide private sources, where documents live in storage buckets (including the org-vault type list and soft-delete trash), and how provenance columns keep the optional Neo4j graph rebuildable.
 tags: [database, postgres, migrations, provenance, storage, neo4j, schema]
 sources:
-  - id: openwiki-source-ecac68c83347b18f912f2a53
-    resource: repo://backend/app/agent/tools/sql_tools.py
-  - id: openwiki-source-7faba850789bc67a49b79a3f
-    resource: repo://backend/app/agent/tools/sql/catalog.py
   - id: openwiki-source-ca736c25c2a1bb0e95531706
     resource: repo://backend/app/api/routes/documents.py
+  - id: openwiki-source-e0103e1ba2cbec5a0f421c56
+    resource: repo://backend/app/api/routes/proposals.py
   - id: openwiki-source-e962a60de608d42004eac41b
     resource: repo://backend/app/api/routes/registry.py
   - id: openwiki-source-bb520e58d272c5fe6ee64d79
     resource: repo://backend/app/api/routes/rfps.py
+  - id: openwiki-source-ae97ea8be42d4cb7691d779d
+    resource: repo://backend/app/ask/tools/sql_tools.py
+  - id: openwiki-source-f87376c232395da9df1de706
+    resource: repo://backend/app/ask/tools/sql/catalog.py
+  - id: openwiki-source-8022e4b3b752a8ae8a84ccf9
+    resource: repo://backend/app/ask/tools/sql/executor.py
+  - id: openwiki-source-6dcfc1451bcbf8009d0484a9
+    resource: repo://backend/app/core/config.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
     resource: repo://backend/app/core/lifespan.py
   - id: openwiki-source-b52886aad1fc413e4e030f22
@@ -28,12 +34,12 @@ sources:
     resource: repo://backend/app/db/replicate.py
   - id: openwiki-source-005aaff315c996a45f8735d6
     resource: repo://backend/app/ingest/calls/run.py
-  - id: openwiki-source-bb6ad31efddf76d28f69f61e
-    resource: repo://backend/app/ingest/expectations.py
   - id: openwiki-source-9a78159bc32f1e4e6ca68b3f
     resource: repo://backend/app/ingest/news/run.py
-  - id: openwiki-source-f5f9bed243c70c8c32486478
-    resource: repo://backend/app/ingest/source_guards.py
+  - id: openwiki-source-c009f6ca7dc356309d11555d
+    resource: repo://backend/app/ingest/research/expectations.py
+  - id: openwiki-source-7c81dc34ef98ea2bb422d08d
+    resource: repo://backend/app/ingest/research/source_guards.py
   - id: openwiki-source-465a2de3f088ab05c5629202
     resource: repo://backend/app/integrations/graphiti.py
   - id: openwiki-source-bbb88a9dc2dd928de209ddbb
@@ -52,10 +58,18 @@ sources:
     resource: repo://backend/app/repositories/rfps.py
   - id: openwiki-source-8b5590d38dd10784b7da1f6d
     resource: repo://backend/app/schemas/rfps.py
+  - id: openwiki-source-e5554658094627ddf1bb9942
+    resource: repo://backend/tests/test_cov_db_migrate.py
+  - id: openwiki-source-3fc2c8bed6b7ee0888a6c3eb
+    resource: repo://backend/tests/test_deleted_documents.py
   - id: openwiki-source-c19bf12e33dd13dd52164b8e
     resource: repo://backend/tests/test_migration_integrity.py
+  - id: openwiki-source-f44878a3e6212fc5978caacf
+    resource: repo://backend/tests/test_pool_limits.py
   - id: openwiki-source-b9b33576e920a6ec443c1309
     resource: repo://backend/tests/test_sql_catalog.py
+  - id: openwiki-source-77a336ada304965e7aa89c22
+    resource: repo://backend/tests/test_storage.py
   - id: openwiki-source-5871ea1c2ab913bbd11be84f
     resource: repo://db/CLAUDE.md
   - id: openwiki-source-ae9507c4a442eab54c70e7da
@@ -92,6 +106,20 @@ sources:
     resource: repo://db/migrations/0048_proposal_work.sql
   - id: openwiki-source-d2d39b77b74bd31e2a50555d
     resource: repo://db/migrations/0049_rfp_match_saved.sql
+  - id: openwiki-source-2e81fea55b6132d8610d3e6a
+    resource: repo://db/migrations/0050_proposal_stage_shift.sql
+  - id: openwiki-source-1b63786a729c5707f451c676
+    resource: repo://db/migrations/0051_documents_delete.sql
+  - id: openwiki-source-81d52d179dc30e354d43cc8c
+    resource: repo://db/migrations/0052_proposals_delete.sql
+  - id: openwiki-source-c1c958c5ad68d020fdee6247
+    resource: repo://db/migrations/0053_deleted_documents.sql
+  - id: openwiki-source-8f575ff676890e4ced99399f
+    resource: repo://db/migrations/0054_org_vault_mime_types.sql
+  - id: openwiki-source-4a2873ef1ff538439f9b05f6
+    resource: repo://db/migrations/0055_org_vault_pptx.sql
+  - id: openwiki-source-f7343e7810aa811970783067
+    resource: repo://db/migrations/0056_documents_path_in_org.sql
   - id: openwiki-source-82b4a7ca109f9768db60ccbf
     resource: repo://db/migrations/README.md
   - id: openwiki-source-093cd3e20819d97ab4faddda
@@ -106,10 +134,10 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-60b751726aee2d4aae078a12
     resource: repo://seed/graph_seed.py
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T19:22:00.060Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Data and Migrations
@@ -129,7 +157,7 @@ There are two places SQL lives, and they have different jobs.
 
 The baseline is deliberately not rewritten as a "migration 0000", so a fresh install is one fast `CREATE TABLE` pass instead of a replay of history ([migrations README](../../db/migrations/README.md)). `02_schema.sql` still describes the v2 world (for example `grants`, `funder_identifiers`, `news_mentions`); the current table set exists only after the migrations are applied. The planning history of that decision, including why additive migrations were chosen over a wipe-and-reseed, is in `docs/DATA_PLATFORM.md`.
 
-**Rule: schema changes go only in a new `db/migrations/*.sql` file** (`db/CLAUDE.md`). A new table also needs RLS policies, and reaching Ask needs an entry in `backend/app/agent/tools/sql/catalog.py`, which is a security decision, not a convenience.
+**Rule: schema changes go only in a new `db/migrations/*.sql` file** (`db/CLAUDE.md`). A new table also needs RLS policies, and reaching Ask needs an entry in `backend/app/ask/tools/sql/catalog.py`, which is a security decision, not a convenience.
 
 ### The runner
 
@@ -140,20 +168,21 @@ The baseline is deliberately not rewritten as a "migration 0000", so a fresh ins
 - Each pending file runs in **its own transaction** together with its ledger insert. On any error the file is rolled back, the failure is printed to stderr, and the run stops: nothing later is attempted.
 - If a recorded version's checksum differs from the file on disk, the runner prints `DRIFT: file changed after it was applied` but continues and does not fail. The convention is therefore: never edit an applied file, write a new one.
 - `--status` lists applied, drifted and pending files without writing anything.
+- **LangGraph's own tables come second.** When the SQL files finish without a failure, `main()` calls `migrate_checkpointer`, which runs `PostgresSaver.setup()` so the `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` and `checkpoint_migrations` tables reach `CHECKPOINT_VERSION` (the last entry of `AsyncPostgresSaver.MIGRATIONS`, defined in `backend/app/db/checkpointer.py`). It runs even when no SQL file was pending, so a langgraph upgrade migrates once and on purpose. With `--status` it only prints `checkpointer vN of vM (up to date | pending)`. A failed SQL file returns before this step. These tables are not in `db/migrations/` and not in the ledger.
 
 ### Migrations are not automatic
 
-Nothing applies migrations behind your back, with one local exception. `make up` runs `make migrate ENV=local` first, but only when `ENV=local` and the bundled `postgres` service exists, because the backend cannot boot against an unmigrated database (see the boot check below). `make seed` likewise depends on `migrate` locally. Against a managed database (`ENV=staging`) migrating is an explicit, separate decision, normally after a backup; `make up ENV=staging` only prints a reminder.
+Nothing applies migrations behind your back, with one local exception. `make up` runs `make migrate ENV=local` first, but only when `ENV=local` and the bundled `postgres` service exists, because the backend cannot boot against an unmigrated database (see the boot checks below: the SQL catalog and the checkpointer version). `make seed` likewise depends on `migrate` locally. Against a managed database (`ENV=staging`) migrating is an explicit, separate decision, normally after a backup; `make up ENV=staging` only prints a reminder.
 
 ### Two files numbered `0044`
 
-The directory holds 50 `.sql` files (the latest is `0049_rfp_match_saved.sql`) and **two are numbered `0044`**: `0044_news.sql` (the Media & Signals tables) and `0044_one_read_policy_and_fk_indexes.sql` (folds duplicate `users`/`org_members` read policies and adds three FK indexes). Both landed in parallel branches; staging had already applied `0044_news`, and because the runner keys on the full file name (not the number), both were kept rather than renumbered. Order between them is alphabetical (`0044_news` before `0044_one_read…`). Do not "fix" this by renaming either file, as that would make the runner treat the renamed file as new and re-run it. `0045_drop_news_mentions.sql`, `0046_import_columns.sql`, `0047_document_links.sql`, `0048_proposal_work.sql` and `0049_rfp_match_saved.sql` follow.
+The directory holds 57 `.sql` files (the latest is `0056_documents_path_in_org.sql`) and **two are numbered `0044`**: `0044_news.sql` (the Media & Signals tables) and `0044_one_read_policy_and_fk_indexes.sql` (folds duplicate `users`/`org_members` read policies and adds three FK indexes). Both landed in parallel branches; staging had already applied `0044_news`, and because the runner keys on the full file name (not the number), both were kept rather than renumbered. Order between them is alphabetical (`0044_news` before `0044_one_read…`). Do not "fix" this by renaming either file, as that would make the runner treat the renamed file as new and re-run it. `0045_drop_news_mentions.sql`, `0046_import_columns.sql`, `0047_document_links.sql`, `0048_proposal_work.sql`, `0049_rfp_match_saved.sql`, `0050_proposal_stage_shift.sql` (a data migration: proposals at step 3 or later move up one in `work` and `summary`, because "Make a case" became the new step 3), `0051_documents_delete.sql` and `0052_proposals_delete.sql` (both add DELETE policies, described below) follow, then `0053_deleted_documents.sql` (the delete log), `0054_org_vault_mime_types.sql` and `0055_org_vault_pptx.sql` (the `org-vault` bucket's type list, see Storage buckets) and `0056_documents_path_in_org.sql` (a tighter `documents_insert`).
 
 ### Conventions worth knowing
 
 - One logical change per file; additive by default. A destructive change (`DROP`, type narrowing, new `NOT NULL`) should carry a comment explaining why the data makes it safe. Migrations that did drop tables copied rows first: `0031` consolidated nine funder tables into five (into `funders`, `funder_activity`, `documents`), `0033` folded `credential_events` into `org_identifiers.status`, and `0034` retired `grants` into `funder_activity` partner lines.
 - `org_identifiers` is granted **by column** (`0033`), so a new column there needs an explicit `GRANT SELECT (col) … TO anon, authenticated` to be readable.
-- Storage-related migrations are guarded: `0020` and `0032` skip bucket creation when there is no `storage` schema (the local Postgres container is not Supabase), recording themselves as applied so the ledgers still match.
+- Storage-related migrations are guarded: `0020`, `0032`, `0054` and `0055` skip their bucket work when there is no `storage` schema (the local Postgres container is not Supabase), recording themselves as applied so the ledgers still match.
 - A migration that adds a table also needs it listed in `docs/CHANGELOG.md` and `docs/ARCHITECTURE.md` §7 in the same PR.
 - `make db-clean` (`db/scripts/truncate_all.sql`) truncates every public table with `RESTART IDENTITY CASCADE` but keeps `schema_migrations` (dropping it would make `make migrate` replay everything), then re-inserts the local dev user and marks it staff, because every local request resolves to it; `app.db.replicate` copies one database's rows into another with an **identical** schema (see below).
 
@@ -187,7 +216,7 @@ Caption: a simplified slice of the entity relationships; every fact table also c
 | CSOs | `orgs`, `org_identifiers` (carries a status, validity dates and an evidence tier), `org_locations`, `org_tags`, `org_financials`, `metrics`, `programs`, `program_tags`, `contacts` |
 | Funders | `funders`, `funder_activity` (one row per filing line, `kind` = spend / footprint / partner / programme; a grant is a partner line), `funder_csr_years`, `funder_locations`, `funder_tags` |
 | Taxonomy and geography | `tags` (every vocabulary by `kind`), `tag_links`, `locations` (LGD codes), `location_designations` |
-| Documents | `documents` (`doc_type` is free text, with reserved and proposal-related values described below), `chunks` (pgvector embeddings plus a generated `tsvector`), `document_links`, `extraction_log` |
+| Documents | `documents` (`doc_type` is free text, with reserved and proposal-related values described below), `chunks` (pgvector embeddings plus a generated `tsvector`), `document_links`, `extraction_log`, `deleted_documents` (`0053`, the log of every deleted `documents` row; staff read it, see below) |
 | Import | `entity_research`, `vault_research`, `ingest_runs`, `ingest_run_items`, `resolution_queue`, `ingest_source_proposals`, `promotions`, `catalog_writes` |
 | Scores | `rubrics`, `rubric_criteria`, `fit_scores`, `fit_score_items`, `score_adjustments`, `reference_figures` |
 | RFPs | `rfps` (a funder's call, with `status` open / closed / removed, `deadline`, amount range and provenance), `rfp_tags` and `rfp_locations` (link tables), and `rfp_matches` (one row per org and call; `status` is `flagged`, `saved`, `reviewed` or `dismissed`, widened to include `saved` by `0049`) |
@@ -202,24 +231,30 @@ A few notes on specific groups:
 - **RFPs and `rfp_matches` (`0049`).** The `rfps` tables belong to [RFP Watch](rfp-watch.md). `rfps` rows are written by `make calls-pull` and Import, never by a caller, and are unique on `(funder_id, title, deadline)` (`0019`). `rfp_matches` is org-private: `0027` gives it a read policy for the org's people and staff and an update policy for `app.my_writable_org_ids()` (members and admins, never stewards) or staff, and `0025` grants `authenticated` only `UPDATE`, no insert and no delete. `0049_rfp_match_saved.sql` is a one-statement migration: it drops `rfp_matches_status_check` and re-adds it with `saved` in the allowed set (the baseline allowed only `flagged`, `reviewed` and `dismissed`). It is the whole schema change behind the Save button, and needs no new policy or grant because the existing update policy already covers the column. Rows must exist before anyone acts, since callers can only update: `repositories/rfps.py` `flag_matches` inserts one row per org with members and per open, unexpired call sharing a domain, with `matched_by = 'rules:domain'` and `week_of`, using `ON CONFLICT DO NOTHING` so a re-run never overwrites an org's choice. `update_match` (behind `PATCH /api/rfps/{id}/matches/{org_id}`) then sets `status` and stamps `matched_by` with the user's id. The `RfpMatchUpdate` schema's `Literal["flagged", "saved", "reviewed", "dismissed"]` mirrors the CHECK constraint, so a new status needs both a migration and a schema edit (and the SQL catalog's `status` `values` for `rfp_matches`). The feed query shows an org its `saved` calls whatever became of the call, and its non-dismissed calls only while the call is open and not past its deadline (computed in `Asia/Kolkata`). Both `rfps` and `rfp_matches` are in the SQL catalog.
 - **Import bookkeeping.** `promotions` and `catalog_writes` (`0041`) are the undo log for saving Import research into the catalog. A trigger `app.log_catalog_write()` records old and new row JSON for a fixed list of catalog tables, but only while a save has set `sangam.promotion_id`; nothing else is logged. A newly added table that Import saves into must be given the same trigger, as `0047` does for `document_links`. See [Sangam Import / Scout](sangam-import-scout.md).
 - **`resolution_queue`.** Names that identifiers, exact match and trigram similarity could not resolve wait here for a reviewer; a new name is never auto-merged into a registry org without an identifier or exact match.
-- **Checkpoint tables** are not in any migration. `open_checkpointer` (`backend/app/db/checkpointer.py`) calls LangGraph's `AsyncPostgresSaver.setup()` on every boot, which issues idempotent DDL. They hold every user's serialized conversation history and are deliberately kept away from the SQL tool and from `app.db.replicate`.
-- **`proposals` is a live, server-side table.** `0009_proposals` created it (with `status`, `requested_amount`, `thread_id`, document pointers and so on), and `0048_proposal_work` made it the store for the [Proposal Copilot](proposal-copilot.md): `work jsonb NOT NULL DEFAULT '{}'` holds everything the proposal screen and its agent edit, and `summary jsonb` is what the list shows, recomputed from `work` on every save. `backend/app/repositories/proposals.py` runs as the caller (RLS decides access): `list_proposals` never reads `work`, and every change to `work` goes through `save`, which takes `SELECT … FOR UPDATE` on the row, applies a change function (`app.proposals.work`) and writes `work`, `summary`, title and `updated_at` back in one transaction. The agent side (`org_of`, `load`) uses the owner pool, since chat access and `require_edit` decide who gets there. Each person's chat is a per-user thread `proposal-<id>-<user_id>`. `proposals` is still in the SQL catalog's `KNOWN_EXCLUDED`, because it holds every org's private drafts. Older `0009` columns such as `status`, `template_id` (now a foreign key to `documents`) and `awarded_activity_id` (replacing `grant_id`, `0034`) remain in the schema.
-- **Who may write proposals.** `0048` rewrites the `proposals_insert` and `proposals_update` policies to `app.my_match_org_ids()` (the org's admins and stewards, the same set that may save a Funder Match run) or staff; ordinary members still read through the unchanged `proposals_read` and no longer write. The same migration widens `documents_insert` to `app.my_org_ids()` or staff, so a Doc Vault upload is open to every role in the org, and re-runs `0027`'s guard that fails the migration if any readable public table has no read policy. In code, `org_id_for_member(..., write=False)` in `backend/app/repositories/documents.py` is what the vault upload routes pass so stewards are admitted. See [Auth, roles and RLS](auth-roles-rls.md).
-- **Proposal-related document types.** `documents.doc_type` is free text, not a CHECK enum. `proposal_template` (a funder's application form, one of `RESERVED_DOC_TYPES` in `backend/app/ingest/expectations.py` that Import research may not write; `funder_form` picks the newest by `fetched_at`) and `proposal_draft` are the two proposal types. `insert_draft` stores a saved proposal version's Word file as a private (`is_public = false`) `proposal_draft` document in the org's Doc Vault, with `is_ai_generated = true`, `source_name = 'Sangam Pitch'` and status `received`. The other reserved values are `funder_eligibility` and `source_dataset`.
+- **Checkpoint tables** are not in any SQL migration; `make migrate` creates them through LangGraph's own `setup()` (see the runner above). Boot does **no DDL**: `open_checkpointer` (`backend/app/db/checkpointer.py`) reads `checkpoint_migrations` and raises `RuntimeError` ("no checkpoint tables" or "checkpoint schema vN, this langgraph expects vM: run make migrate") if the database is not at `CHECKPOINT_VERSION`, because concurrent cold starts running DDL would race. They hold every user's serialized conversation history and are deliberately kept away from the SQL tool and from `app.db.replicate`.
+- **`proposals` is a live, server-side table.** `0009_proposals` created it (with `status`, `requested_amount`, `thread_id`, document pointers and so on), and `0048_proposal_work` made it the store for the [Proposal Copilot](proposal-copilot.md): `work jsonb NOT NULL DEFAULT '{}'` holds everything the proposal screen and its agent edit, and `summary jsonb` is what the list shows, recomputed from `work` on every save. `backend/app/repositories/proposals.py` runs as the caller (RLS decides access): `list_proposals` never reads `work`, and every change to `work` goes through `save`, which takes `SELECT … FOR UPDATE` on the row, applies a change function (`app.proposals.work`) and writes `work`, `summary`, title and `updated_at` back in one transaction. The agent side (`org_of`, `load`) uses the owner pool, since chat access and `require_edit` decide who gets there. Each person's chat is a per-user thread `proposal-<id>-<user_id>`. `proposals` is still in the SQL catalog's `KNOWN_EXCLUDED`, because it holds every org's private drafts. Older `0009` columns such as `status`, `template_id` (now a foreign key to `documents`) and `awarded_activity_id` (replacing `grant_id`, `0034`) remain in the schema. `save` first queues on a per-proposal in-process `asyncio.Lock`, so many waiting writers do not each hold a pooled connection while blocked on `FOR UPDATE`. `repositories.proposals.delete` (behind `DELETE /api/proposals/{id}`) removes the proposal row, then each saved version's `proposal_draft` document found under that proposal's own vault folder (`<org_id>/proposals/<id>/`) and then moves the files to the bucket's `trash/` prefix (`storage.trash`), in one transaction. A draft another row still references is kept (foreign-key violation), and if Storage fails to move the files the transaction rolls back and the route answers 502.
+- **Who may write proposals.** `0048` rewrites the `proposals_insert` and `proposals_update` policies to `app.my_match_org_ids()` (the org's admins and stewards, the same set that may save a Funder Match run) or staff; ordinary members still read through the unchanged `proposals_read` and no longer write. The same migration widens `documents_insert` to `app.my_org_ids()` or staff, so a Doc Vault upload is open to every role in the org, and re-runs `0027`'s guard that fails the migration if any readable public table has no read policy. In code, `org_id_for_member(..., write=False)` in `backend/app/repositories/documents.py` is what the vault upload routes pass so stewards are admitted. `0056_documents_path_in_org.sql` then tightens `documents_insert` with `ALTER POLICY`: besides the org-or-staff test, a row's `storage_path` must be null or start with `org-vault/<org_id>/`, so a signed-in caller cannot record a file from another org's vault folder. Library, staff-dataset and seed rows are written on the owner pool, which RLS does not reach; `authenticated` has no `UPDATE` on `documents`, so there is no update policy to tighten. The upload route enforces the same rule in code, and `storage.owned_split` applies it again when a file link is minted. See [Auth, roles and RLS](auth-roles-rls.md).
+- **Who may delete (`0051`, `0052`).** `0052` grants `DELETE` on `proposals` to `authenticated` with a `proposals_delete` policy for `app.my_match_org_ids()` or staff (the same people who edit), plus a `documents_delete_draft` policy that lets those people delete a private, org-owned `proposal_draft` row. `0051` grants `DELETE` on `documents` with `documents_delete`, staff only and only for a private, org-owned `vault_upload`; it backs `DELETE /api/documents/{id}`. `repositories/documents.delete_vault_upload` deletes the row first (so every foreign key is checked before the file goes), refuses with `DocumentInUse` if `chunks`, `extraction_log`, `document_links` or a proposal's `draft_document_id` still point at it, and rolls the row back if Storage cannot move the file to the trash (`FileNotRemoved`); if the file is gone but the row cannot be committed it raises `RowNotRemoved` and a repeat delete finishes the job.
+- **Soft delete (`0053`).** `deleted_documents` keeps every deleted `documents` row so a mistake can be undone without a hand-made backup: `document_id`, `org_id`, the whole old row as `old_row` jsonb, `deleted_by` (`app.user_id()`) and `deleted_at`, plus nullable `restored_by`/`restored_at` for a restore. An `AFTER DELETE ... FOR EACH ROW` trigger `log_document_delete` on `documents` writes it through `app.log_document_delete()`, which is `SECURITY DEFINER` (the delete runs as the caller, who has no grant on the log) and revoked from `PUBLIC`. Being a trigger, it covers every delete path, and it rolls back with a refused delete, so a refused delete logs nothing. The table has RLS on and one staff-only `SELECT` policy, with no grant to `authenticated`; it is read through the owner pool, and the SQL catalog lists it in `KNOWN_EXCLUDED` because it holds private uploads. The files follow the rows: the vault and proposal deletes call `storage.trash`, which moves the object to `trash/<key>` inside the same bucket, outside every org's folder so nothing serves it. This page found no restore code in the backend; the restore columns are there for a staff-run restore. `backend/tests/test_deleted_documents.py` checks the log.
+- **Proposal-related document types.** `documents.doc_type` is free text, not a CHECK enum. `proposal_template` (a funder's application form, one of `RESERVED_DOC_TYPES` in `backend/app/ingest/research/expectations.py` that Import research may not write; `funder_form` picks the newest by `fetched_at`) and `proposal_draft` are the two proposal types. `insert_draft` stores a saved proposal version's Word file as a private (`is_public = false`) `proposal_draft` document in the org's Doc Vault, with `is_ai_generated = true`, `source_name = 'Sangam Pitch'` and status `received`. The other reserved values are `funder_eligibility` and `source_dataset`.
 - **RLS everywhere.** `0027` enables row-level security on every public table, and later migrations add their tables' policies; the grants and policies are covered in [Auth, roles and RLS](auth-roles-rls.md).
 
 ## Connection pools and the runtime view of the schema
 
-`make_pool` (`backend/app/db/checkpointer.py`) builds the single `AsyncConnectionPool` shared by REST, agent tools and the checkpointer; it is opened in the FastAPI lifespan, set as `app.db.pool.pool`, and sized by `DB_POOL_MAX_SIZE` (default 10). It connects as the owner with `min_size=1`, `autocommit=True`, `prepare_threshold=0` and dict rows. The standalone batch jobs (`app/ingest/calls/run.py`, `app/ingest/news/run.py`, `app/matching/run.py`) call `make_pool` themselves with a small explicit `max_size`, so they never touch the server's pool. `backend/app/db/pool.py` exposes the server's pool in three ways, plus a per-turn companion variable:
+`make_pool` (`backend/app/db/checkpointer.py`) builds the single `AsyncConnectionPool` shared by REST, agent tools and the checkpointer; it is opened in the FastAPI lifespan, set as `app.db.pool.pool`, and sized by `DB_POOL_MAX_SIZE` (default 10). It connects as the owner with `min_size=1`, `autocommit=True`, `prepare_threshold=0` and dict rows, and states its limits instead of hanging: a request waits at most `DB_POOL_TIMEOUT_S` (10 s) for a connection, a new connection gets `DB_CONNECT_TIMEOUT_S` (5 s), idle connections are retired after 300 s and every checkout is health-checked with `check_connection` (a thawed serverless instance may hold sockets the pooler closed). The checkpointer writes on every graph step through this same pool, so concurrency gates (`Settings.db_gate_slots`, `max(2, pool size - 3)`, used by Ask's SQL executor and the Import runner) deliberately sit under the pool size. The standalone batch jobs (`app/ingest/calls/run.py`, `app/ingest/news/run.py`, `app/matching/run.py`) call `make_pool` themselves with a small explicit `max_size` (1 to 4) and the same limits, so they never touch the server's pool. `backend/app/db/pool.py` exposes the server's pool in three ways, plus a per-turn companion variable:
 
 - `get_pool()` / `OwnerPoolDep` return the raw owner pool. Only identity code (which decides who the caller is and writes `users` and `threads` rows no caller may write), Import, seeds and the proposal agent's `org_of`/`load` helpers take it; unit tests override `get_pool` to keep a real database.
-- `CallerPool` (`PoolDep`, built by `get_caller_pool` from the role and claims `AuthMiddleware` put on the request; anon without them) wraps the pool so each connection is one transaction that first runs `set_caller`, a `set_config(..., true)` (`SET LOCAL`) of the Postgres role and `request.jwt.claims`. Both end with the transaction, error included, so the connection returns to the pool as the owner. Routers and repositories such as `proposals.py` take this, so RLS applies without each route asking.
+- `CallerPool` (`PoolDep`, built by `get_caller_pool` from the role and claims `AuthMiddleware` put on the request; anon without them) wraps the pool so each connection is one transaction that first runs a single `set_config(..., true)` (`SET LOCAL`) statement for the Postgres role, `request.jwt.claims` and a per-statement `statement_timeout` (`DB_STATEMENT_TIMEOUT_MS`, default 15 s). All three end with the transaction, error included, so the connection returns to the pool as the owner. `set_caller` (role and claims only, no timeout) is what Ask's executor uses after setting its own lower timeout, so REST's value never raises it. Routers and repositories such as `proposals.py` take this, so RLS applies without each route asking.
 - `agent_caller`, a `ContextVar` holding `(role, claims)` set per `/agent` request, is how Ask Sangam's SQL tools, which run outside any request, query as the caller; unset, their SQL runs as `anon`. `ask_access` (`backend/app/core/security.py`) sets it after the thread-ownership check; Import's agent keeps the owner pool because it writes the catalog.
 - `caveats_given`, a second `ContextVar` (a fresh `set()` per `/agent` request, also set by `ask_access`), records which tables' data caveats the SQL tools have already spelled out this turn, so `sql_tools._caveats_for` gives them in full once and then a one-line pointer. Unset, every result gives them in full.
 
-## SQL catalog drift check at boot
+## Boot checks: SQL catalog and checkpointer version
 
-Ask Sangam's SQL tool can only read what `backend/app/agent/tools/sql/catalog.py` lists: a hand-curated allowlist of tables and columns. Because that catalog is a security control, the backend compares it with the live database before serving anything.
+The lifespan (`backend/app/core/lifespan.py`) opens the pool, runs the catalog check below, opens the optional graph, and only then calls `open_checkpointer`, which refuses to start when the LangGraph tables are not at the expected version (see the checkpoint bullet above). Both failures mean "run `make migrate`". The agents themselves are built lazily on the first request that needs one.
+
+### SQL catalog drift check
+
+Ask Sangam's SQL tool can only read what `backend/app/ask/tools/sql/catalog.py` lists: a hand-curated allowlist of tables and columns. Because that catalog is a security control, the backend compares it with the live database before serving anything.
 
 ```mermaid
 flowchart TD
@@ -240,9 +275,9 @@ Semantics, which matter when you write a migration:
 - **Fails boot** when the catalog lists a table that does not exist, or a column the table lacks. So a migration that drops or renames a catalogued table or column must update `catalog.py` in the same change, and an unmigrated database fails fast (this is why `make up` migrates first).
 - **Also fails boot on privileges.** Chat queries run as the caller, so `verify_against_db` additionally checks `has_column_privilege`: any catalogued column that `authenticated` cannot `SELECT` is a problem, as is a table `anon` reads only in part (a whole table closed to `anon` is allowed), because that would break `SELECT *`. A migration that narrows grants, such as the column-level grant on `org_identifiers`, can therefore break boot until the catalog matches.
 - **Does not fail** for extra live tables or extra live columns. New tables are logged at INFO as "not readable by the SQL tool and not declared as excluded" until someone either adds them to the catalog or to `KNOWN_EXCLUDED`. That means a migration can ship without making the agent see the table; exposing it is a deliberate, separate step.
-- The catalog allowlists 37 tables. `KNOWN_EXCLUDED` names the 22 tables deliberately withheld (the four checkpoint tables, `users`, `threads`, `org_members`, `proposals`, Import bookkeeping, `vault_research`, `funder_matches` and `funder_match_details`, the Media pipeline state `news_link_scores` and `news_watch`, `promotions` and `catalog_writes`, `schema_migrations`, `graph_ingest_log`). `backend/tests/test_sql_catalog.py` asserts that the most sensitive of these are not in `TABLE_NAMES` and are declared excluded, and that withheld columns such as `contacts.email` are absent even from the `*` expansion.
+- The catalog allowlists 37 tables. `KNOWN_EXCLUDED` names the 23 tables deliberately withheld (the four checkpoint tables, `users`, `threads`, `org_members`, `proposals`, the Import run and review tables `ingest_runs`, `ingest_run_items`, `ingest_source_proposals`, `entity_research` and `resolution_queue`, `vault_research`, `funder_matches` and `funder_match_details`, the Media pipeline state `news_link_scores` and `news_watch`, `promotions` and `catalog_writes`, `deleted_documents`, `schema_migrations`, `graph_ingest_log`). `backend/tests/test_sql_catalog.py` asserts that the most sensitive of these are not in `TABLE_NAMES` and are declared excluded, and that withheld columns such as `contacts.email` are absent even from the `*` expansion.
 - The catalog also validates itself at import (`_self_check`): every table needs columns and a primary key, and foreign keys must target catalogued tables and columns.
-- `backend/app/ingest/expectations.py` derives Import's researchable fields from the same catalog, so it stays in sync with the schema without a second list.
+- `backend/app/ingest/research/expectations.py` derives Import's researchable fields from the same catalog (`CONCEPTS` maps each research concept to a catalogued table, optionally restricted by a `row_filter` such as `funder_activity.kind`), so it stays in sync with the schema without a second list.
 
 ## Provenance columns
 
@@ -251,30 +286,34 @@ Every table that holds a scraped or extracted fact carries the same provenance b
 - `source_url` is always set, even for pages never stored; `document_id` is set only when the content is in `documents`, which turns "show me the source" into a join. `as_of` is separate from `fetched_at` because one PDF can be the source for several fiscal years of facts.
 - `documents` is the join target; `document_links` (`0047`) records what each document backs (owner, programme, fiscal year, cited pages) and is written by Import's promotion. It is as private as its document via an RLS policy that reads `documents`.
 - Tag and location link tables use `is_inferred`, `tagged_by`, `note` and validity dates to separate what a source states from what a person or model inferred.
-- Import fills provenance itself from a finding's evidence; researchers are never asked for it (`PROVENANCE` and `TIER` in `expectations.py`). The evidence tier (`source_type`, `evidence`) is paired by a CHECK constraint, and `aggregator` or `prior_research` sources may only be `claimed` (`0046`).
+- Import fills provenance itself from a finding's evidence; researchers are never asked for it (`PROVENANCE` and `TIER` in `ingest/research/expectations.py`). The evidence tier (`source_type`, `evidence`) is paired by a CHECK constraint, and `aggregator` or `prior_research` sources may only be `claimed` (`0046`).
 - The SQL tools derive which catalogued tables expose citations from the presence of `source_url`/`source_name`/`fetched_at` (`PROVENANCE_COLUMNS`), so a table that follows the convention gets its sources surfaced without another edit.
 
 ### Public read SQL and private sources
 
 Not every reader of these columns is the SQL tool. The public Registry list and profile pages share one set of SQL fragments in `backend/app/repositories/public_sql.py`, used by `registry.py`, `profile_facts.py`, `partner_groups.py` and `news_stories.py`, so the list and the profile say the same thing by construction.
 
-- **Private sources are hidden in SQL.** Staff datasets and the Doc Vault cite a synthetic URL on the reserved domain `sangam.invalid` (`PRIVATE_SOURCE_DOMAIN` in `backend/app/ingest/source_guards.py`). `public_sql.is_private_url` is the SQL twin of Python's `is_private_source`: it extracts the host with a regex and tests it against that domain or a subdomain. `public_url` and `public_name` return `NULL` for such a row (a sheet's title names the sheet), and `public_text` drops a note or quote whole if it mentions the domain. Every URL a public query selects goes through these. The SQL form is deliberately a little stricter than the Python check for a scheme-less `x.sangam.invalid`.
+- **Private sources are hidden in SQL.** Staff datasets and the Doc Vault cite a synthetic URL on the reserved domain `sangam.invalid` (`PRIVATE_SOURCE_DOMAIN` in `backend/app/ingest/research/source_guards.py`). `public_sql.is_private_url` is the SQL twin of Python's `is_private_source`: it extracts the host with a regex and tests it against that domain or a subdomain. `public_url` and `public_name` return `NULL` for such a row (a sheet's title names the sheet), and `public_text` drops a note or quote whole if it mentions the domain. Every URL a public query selects goes through these. The SQL form is deliberately a little stricter than the Python check for a scheme-less `x.sangam.invalid`.
 - **Shared predicates.** `OPEN_CALL` (`status = 'open'` and no deadline or one not yet past, using `current_date`), `PUBLIC_STORY` (`visibility = 'public'` and `is_news`), `STORY_CHANNEL` (social versus press by source type) and `story_counts`, `entity_tags` and `entity_sdgs` keep the Registry's filters and counts consistent. The `Asia/Kolkata` date in the RFP feed is a separate computation in `repositories/rfps.py`.
 - **Caller pool versus owner pool.** `registry_rows(pool, owner)` reads orgs, funders, places, tags, programmes, partner counts, open calls, CSR years and story counts on the caller pool, so RLS and the `is_public`/`visibility` filters decide which entities appear. Two reads go through the owner pool so the list reads the same for every viewer: which registration types an org has on file (`ON_FILE`: current, registered or provisional, public or not) and `entity_research` counts (staff-only; `GET /api/registry` shows only a run count and latest date and treats a failure there as a hint to drop, not an error). The shared `IDENTIFIERS` query is likewise written for the owner pool: a non-public registration is listed as on file with its number and detail nulled and `number_withheld` set.
 
 ## Storage buckets
 
-Documents' bytes live in Supabase Storage, not Postgres; `documents.storage_path` is `<bucket>/<key>` (`storage.qualify`/`split`). `backend/app/integrations/storage.py` is the only module that talks to Storage and uses the service-role key, which bypasses RLS and so stays server-side; the browser only receives short-lived signed URLs.
+Documents' bytes live in Supabase Storage, not Postgres; `documents.storage_path` is `<bucket>/<key>` (`storage.qualify`/`split`). `backend/app/integrations/storage.py` is the only module that talks to Storage and uses the service-role key, which bypasses RLS and so stays server-side; the browser only receives short-lived signed URLs (download links last 10 minutes, `SIGNED_URL_TTL_SECONDS`). Deleting a vault file or a proposal's saved versions goes through `storage.trash`, which moves objects under `trash/` (see Soft delete above); `storage.remove` is a hard delete that is now used only to discard an upload whose bytes do not match its extension. The route-level helpers refuse any key outside the `org-vault` bucket (and, for a vault upload, outside that org's own folder) before calling either.
 
 | Bucket | Created by | Holds | Key shape |
 |---|---|---|---|
 | `source-archive` | `0020` | Documents Import fetched, plus rendered briefs at `entities/<slug>.md`; 50 MB limit | at fetch `<sha256(url)[:12]>/<sha256(bytes)>-<name>`, after promotion `funders/<slug>/<year>-<name>` |
-| `org-vault` | `0020` | What an organisation uploads to its Doc Vault, private by default; 50 MB limit | `<org_id>/<uuid4>-<name>` (the leading `org_id` is what the storage RLS policy reads) |
+| `org-vault` | `0020`, type list from `0054`/`0055` | What an organisation uploads to its Doc Vault, private by default; 50 MB limit; only the types below | `<org_id>/<uuid4>-<name>` (the leading `org_id` is what the storage RLS policy reads); deleted files wait at `trash/<org_id>/...` |
 | `staff-sources` | `0032` | Staff-uploaded workbooks, readable only by staff; 100 MB limit | `<registry key>/<sha256(file name)[:12]>.xlsx` |
+
+### The org-vault type list
+
+`0020` left `allowed_mime_types` null on purpose (servers send `application/octet-stream` for good PDFs). `0054` then restricted `org-vault` (and `org-vault-local`, when it exists) to the types the Doc Vault can read, and `0055` re-issued the whole list with PowerPoint added so earlier slide decks can be imported: PDF, `.docx`, `.xlsx`, `.pptx`, CSV, Markdown, plain text, and PNG, JPEG and WebP images. Each migration restates the complete array rather than appending, so the latest one is the truth. The same list lives in code as `storage.VAULT_TYPES` (extension to type), and `backend/tests/test_storage.py` holds migration and constant together, because a type in only one is refused somewhere. The upload routes in `backend/app/api/routes/documents.py` check three times: the extension against `VAULT_TYPES` (415 otherwise) when a signed upload URL is requested, and again at confirm; and at confirm the bytes are read back and matched to a signature (`%PDF-`, `PK\x03\x04` for the Office formats, the PNG, JPEG and `RIFF…WEBP` headers, or no NUL bytes for text), and a mismatch removes the object and answers 415. The browser is handed the type the backend names, so the type list does not depend on its own guess. Text is extracted at confirm for PDF, Word, Excel and PowerPoint (slides become `## Slide n` sections); an unreadable file keeps its row with no `content_md`.
 
 Behaviour to rely on:
 
-- **Buckets are global, not per environment.** A local backend with Supabase keys writes into the same cloud buckets as staging or production. Local databases and cloud buckets can therefore disagree about which objects a row refers to.
+- **Buckets are one Supabase project; a suffix keeps a local backend apart.** `STORAGE_BUCKET_SUFFIX` (for example `-local`) is appended to every bucket name on the wire (`org-vault-local`, `source-archive-local`, `staff-sources-local`), while `documents.storage_path` rows keep the plain name. `Settings.bucket_suffix` ignores the suffix when `DATABASE_URL` is the Storage project's own database (staging and deployed rows name the plain buckets). With Storage on, no suffix and a database outside the Storage project, boot logs a warning (`_warn_on_shared_storage`) that files will land in the deployed buckets while the rows stay local. Local databases and cloud buckets can still disagree about which objects a row refers to.
 - **Two keys for the archive.** At fetch time no funder id exists, so the key is derived from the URL and content hash (a republished PDF adds a version rather than overwriting what a finding was read from). At promotion the object is moved to a readable per-entity key (`move`/`catalog_key`); an object still under a hash folder was downloaded but never cited. `app/ingest/reshelve.py` re-runs the rename if the scheme changes.
 - **Storage is optional and non-fatal.** With `SUPABASE_URL` or `SUPABASE_SERVICE_KEY` unset every call is a no-op that logs once; helpers return `None`/`False`/empty on any HTTP failure instead of raising, so an outage never aborts research or promotion and callers store a null `storage_path`. The exception is `read`, which raises on Storage errors and returns `None` only for a missing object.
 - Uploads are checked against the bucket ceiling before the bytes go out; a duplicate key counts as success (Supabase reports it as HTTP 400 with a 409 body); `split` rejects empty, `.` or `..` path segments and unknown buckets so a stored path cannot be turned into a cross-bucket URL.
@@ -294,4 +333,6 @@ Postgres is authoritative; Neo4j (via Graphiti, `backend/app/integrations/graphi
 
 - `backend/tests/test_migration_integrity.py` (marked `integration`, skips when the compose Postgres on port 5433 is unreachable) checks that restored research data survived: at least 96 `documents`, 29 `graph_ingest_log` rows, stable seed-order ids for the first orgs and funders, an advanced `documents` identity sequence, and seeded v2 content. It is a guard on preserved data rather than a schema check.
 - `backend/tests/test_sql_catalog.py` guards what the catalog must not expose.
+- `backend/tests/test_cov_db_migrate.py` pins the runner's behaviour with a fake connection (ordered apply, drift reported but not fatal, `--status` writes nothing, a failing file stops the run and skips the checkpointer step). `backend/tests/test_pool_limits.py` pins the pool's timeouts and health check, REST's single role-claims-timeout statement, that `set_caller` does not raise Ask's lower timeout, and that boot refuses a checkpointer schema `make migrate` has not set while issuing no DDL itself.
+- `backend/tests/test_storage.py` pins the storage helpers (trash moves and rollback, the bucket suffix, `split`/`owned_split`) and that `storage.VAULT_TYPES` equals the types in `0055`; `backend/tests/test_deleted_documents.py` (integration) proves every `documents` delete is logged with the whole row and a refused vault delete logs nothing.
 - `backend/tests/test_rls.py` and `test_caller_pool.py` exercise policies and the caller pool against a real database; see [Auth, roles and RLS](auth-roles-rls.md).

@@ -12,10 +12,12 @@ sources:
     resource: repo://.github/workflows/deploy.yml
   - id: openwiki-source-8037e2358a2c4f9b2c722a11
     resource: repo://AGENTS.md
-  - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
-    resource: repo://backend/app/agent/build.py
-  - id: openwiki-source-7faba850789bc67a49b79a3f
-    resource: repo://backend/app/agent/tools/sql/catalog.py
+  - id: openwiki-source-510f72ba91d3915e3fb10b24
+    resource: repo://backend/app/agentkit/harness.py
+  - id: openwiki-source-319a08aaeaf88078bae3e2e9
+    resource: repo://backend/app/ask/agent.py
+  - id: openwiki-source-f87376c232395da9df1de706
+    resource: repo://backend/app/ask/tools/sql/catalog.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
     resource: repo://backend/app/core/lifespan.py
   - id: openwiki-source-b52886aad1fc413e4e030f22
@@ -34,14 +36,28 @@ sources:
     resource: repo://db/migrations/0048_proposal_work.sql
   - id: openwiki-source-d2d39b77b74bd31e2a50555d
     resource: repo://db/migrations/0049_rfp_match_saved.sql
+  - id: openwiki-source-2e81fea55b6132d8610d3e6a
+    resource: repo://db/migrations/0050_proposal_stage_shift.sql
+  - id: openwiki-source-1b63786a729c5707f451c676
+    resource: repo://db/migrations/0051_documents_delete.sql
+  - id: openwiki-source-81d52d179dc30e354d43cc8c
+    resource: repo://db/migrations/0052_proposals_delete.sql
+  - id: openwiki-source-c1c958c5ad68d020fdee6247
+    resource: repo://db/migrations/0053_deleted_documents.sql
+  - id: openwiki-source-8f575ff676890e4ced99399f
+    resource: repo://db/migrations/0054_org_vault_mime_types.sql
+  - id: openwiki-source-4a2873ef1ff538439f9b05f6
+    resource: repo://db/migrations/0055_org_vault_pptx.sql
+  - id: openwiki-source-f7343e7810aa811970783067
+    resource: repo://db/migrations/0056_documents_path_in_org.sql
   - id: openwiki-source-b79fbbd921df689b4bbdc82f
     resource: repo://docker-compose.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T19:22:00.060Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Quickstart
@@ -65,7 +81,7 @@ These four hold across the repo. Break one and something fails in a non-obvious 
 1. **Migrations are not automatic.** `db/init/` is only the baseline for a new database. Every later change is a plain SQL file in `db/migrations/`, applied by `make migrate`. Locally, `make up` and `make seed` run it for you. Against a managed database you run `make migrate ENV=staging` yourself, after a backup. The backend refuses to boot against an unmigrated database (see ground rule 4).
 2. **Nothing deploys automatically.** Deploying is a manual run of the Deploy workflow (Actions, Deploy, Run workflow, `workflow_dispatch` only). A merge or push builds nothing, and Vercel's Git integration is disabled. The separate CI workflow runs on every PR and push to `master`, but it only checks (lint, tests, frontend build) and deploys nothing. `ENV=staging` does not deploy anything either. It points your local tooling, and with `make up ENV=staging` your local containers, at the shared managed database. See [Deploying by Hand](workflows/deploying-by-hand.md).
 3. **Postgres is the system of record.** The Neo4j graph is derived from Postgres (`make graph-seed`) and can be wiped and rebuilt. Nothing should live only in the graph. If the two disagree, Postgres wins.
-4. **`catalog.py` is a security allowlist.** `backend/app/agent/tools/sql/catalog.py` lists the tables and columns Ask's model-written SQL may read. It allowlists 37 tables, and `KNOWN_EXCLUDED` names 22 more that are deliberately kept out (for example `proposals`, `users` and the checkpoint tables). A table missing from the catalog is invisible to Ask. At boot, `_verify_sql_catalog` in `core/lifespan.py` raises if the catalog and the database disagree, for example when a catalogued table is missing because migrations were not applied. A table that is merely undeclared is only logged, so it stays invisible until someone catalogues it or marks it excluded.
+4. **`catalog.py` is a security allowlist.** `backend/app/ask/tools/sql/catalog.py` lists the tables and columns Ask's model-written SQL may read. It allowlists 37 tables, and `KNOWN_EXCLUDED` names 23 more that are deliberately kept out (for example `proposals`, `users`, the four checkpoint tables and `deleted_documents`, the log migration 0053 added). Re-count both when you edit the file: `catalog.py` is the source, and older notes that say 22 excluded predate `deleted_documents`. A table missing from the catalog is invisible to Ask. At boot, `_verify_sql_catalog` in `core/lifespan.py` raises `RuntimeError` if the catalog and the database disagree: a catalogued table or column the database lacks (for example because migrations were not applied), or a catalogued column that the `authenticated` role cannot `SELECT`. A table that is merely undeclared is only logged at info level, so it stays invisible until someone catalogues it or marks it excluded.
 
 ## First run
 
@@ -93,7 +109,9 @@ Once the stack is up:
 | http://localhost:8010/docs | FastAPI OpenAPI |
 | http://localhost:7474 | Neo4j browser |
 
-Ports are fixed in `docker-compose.yml`: frontend 3000, backend 8010 (published from container port 8000), Postgres 5433 (from 5432), and Neo4j 7474/7687. Outside Docker, `make dev-backend` serves uvicorn on 8000 directly, which is why `dev-frontend` points at 8000.
+Ports are fixed in `docker-compose.yml`: frontend 3000, backend 8010 (published from container port 8000), Postgres 5433 (from 5432), and Neo4j 7474/7687. The backend waits for Neo4j's healthcheck and, only when the bundled Postgres is enabled, for Postgres (`required: false`); the frontend waits for the backend's `/health` healthcheck. Outside Docker, `make dev-backend` serves uvicorn on 8000 directly, which is why `dev-frontend` points at 8000.
+
+Compose also sets `STORAGE_BUCKET_SUFFIX` to `-local` by default, so a local backend's Supabase Storage files go to separate `*-local` buckets instead of the deployed ones. A backend with no suffix, on a database outside the Storage project, logs a warning at boot.
 
 ## Make targets that matter
 
@@ -138,11 +156,11 @@ The page text is generated, so do not hand-edit it. Steer generation through `op
 
 The wiki is optional, just-in-time context rather than startup reading. Agents should not preload or search it at task start. They use `openwiki_search` and `openwiki_read` only when an unfamiliar area materially affects the task, and fall back to this page and its links only when those retrieval tools are unavailable. Source code and tests stay authoritative over the wiki, and over `docs/`.
 
-By `CLAUDE.md` convention, a PR that changes a tool, table, route or flow runs `make wiki-update`, one that changes a rule edits `docs/ARCHITECTURE.md`, and one that ships adds a `docs/CHANGELOG.md` line. Nested `CLAUDE.md` files in `backend/app/agent/`, `backend/app/ingest/`, `backend/app/matching/`, `backend/app/core/`, `db/` and `frontend/` load on their own and point at the matching wiki pages. `docs/README.md` indexes the deeper design docs (`SQL_AGENT.md`, `INGEST.md`, `SKILLS.md`, `DATA_PLATFORM.md`, `DESIGN_SYSTEM.md`).
+By `CLAUDE.md` convention, a PR that changes a tool, table, route or flow runs `make wiki-update`, one that changes a rule edits `docs/ARCHITECTURE.md`, and one that ships adds a `docs/CHANGELOG.md` line. Nested `CLAUDE.md` files in `backend/app/ask/`, `backend/app/ingest/`, `backend/app/matching/`, `backend/app/core/`, `db/` and `frontend/` load on their own and point at the matching wiki pages. `docs/README.md` indexes the deeper design docs (`SQL_AGENT.md`, `INGEST.md`, `SKILLS.md`, `DATA_PLATFORM.md`, `DESIGN_SYSTEM.md`).
 
 ### Choosing a database with `ENV`
 
-`ENV=local` (the default) uses the bundled Postgres. `ENV=staging` uses the `STAGING_DB_*` block through `docker-compose.staging.yml`. `ENV` is honoured by `up`, `down`, `logs`, `seed`, `migrate`, `psql`, `client-docs` and the remote targets. It is not honoured by the local-only maintenance group. `STAGING_DB_*` exist only for local tooling. A deployed backend reads `DATABASE_URL`. Details are in [Environments and Env Vars](operations/environments.md).
+`ENV=local` (the default) uses the bundled Postgres. `ENV=staging` uses the `STAGING_DB_*` block through `docker-compose.staging.yml`, and any other value stops `make` with an error. `ENV` is honoured by `up`, `down`, `logs`, `seed`, `migrate`, `psql`, `client-docs` and the remote targets (`db-init-remote`, `db-push-remote`). It is not honoured by the local-only maintenance group (`db-clean`, `db-reset`, `db-backup`, `db-upgrade`), which refuses to run with `ENV=staging`. `make up ENV=staging` runs your containers against the shared data, so a research run from your machine writes into the database the deployed app serves. `STAGING_DB_*` exist only for local tooling: the deployed backend reads `DATABASE_URL`, and setting them on a deployed host does nothing. Details are in [Environments and Env Vars](operations/environments.md).
 
 ## Repo map
 
@@ -154,8 +172,10 @@ backend/app/
   api/            one aggregate router plus routes/<resource>.py
   repositories/   hand-written SQL, one module per resource (no ORM)
   schemas/        Pydantic, one module per resource
-  agent/          Ask Sangam: build.py, tools/ (incl. tools/sql/catalog.py), instructions.md
-  ingest/         Sangam Import: agent, tools, skills/, pipeline, news/
+  agentkit/       what every deep agent shares: models (tiers), harness, middleware
+  ask/            Ask Sangam: agent.py, prompt.py, instructions.md, skills/, audit, tools/ (incl. tools/sql/catalog.py)
+  ingest/         Sangam Import: agent, tools/, research/, reading/, catalog/ (save, promote, writer, undo),
+                  plus runner, brief, news/, calls/, adapters/
   proposals/      Sangam Pitch: agent, steps, gates, work, facts, trace, readers, tools/
   matching/       Funder Match: rubric, rules, match, service, run
   integrations/   Graphiti/Neo4j lifecycle, tracing, Supabase Storage
@@ -165,7 +185,7 @@ frontend/
   features/       one folder per screen (the Ask workspace holds the Funder Match and Proposals views)
   components/ lib/  UI primitives, API client, auth headers, chat wiring
 db/init/          baseline schema (runs once on a new database)
-db/migrations/    every change after the baseline (0048 added proposals.work, 0049 let an org save an RFP Watch call)
+db/migrations/    every change after the baseline (0048 added proposals.work, 0049 let an org save an RFP Watch call, 0050 shifted proposal stages up one, 0051 and 0052 added the delete policies, 0053 the deleted_documents log, 0054 and 0055 the org-vault file types, 0056 the vault-path check on documents inserts; 0056 is the latest)
 seed/             idempotent loaders and their vendored data
 scripts/          smoke.sh and the db-url resolver
 docs/             longer human-written design docs
@@ -173,7 +193,7 @@ docs/             longer human-written design docs
 
 Two structural rules: nothing that is not a route goes under `frontend/app/`, and no new module goes flat at the top of `backend/app/`. A REST resource is always a route, a repository and a schema file, plus one line in `api/router.py`.
 
-Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and opens the checkpointer at boot, and registers `/agent`, `/ingest` and `/proposal` as routes of our own. All three agents are built together by `load_agents`, once and under a lock, on the first post to any of those routes, or on the first REST route that calls `get_graph`. Each route declares who may post to it in `AGENT_ACCESS`, and a path with no entry fails at boot. Ask has exactly six tools (`db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query`, `search_graph` and `compare_fit`) plus the read-only `read_file` and `ls` that loading a skill needs, and `compare_fit` is the only one whose SQL is fixed rather than model-written. Proposal Copilot has nine tools of its own plus `read_file` and no SQL tool: code in `backend/app/proposals/` owns the steps and checks, the agent only proposes, and `proposals.work` (migration 0048) is only changed through one write path, whether the change comes from REST or the agent: `work.apply` inside `repositories.proposals.save`, which locks the row with `SELECT ... FOR UPDATE`. See [Proposal Copilot](architecture/proposal-copilot.md) and [One proposal, end to end](workflows/proposal-lifecycle.md).
+Agents are built lazily, on first use. At boot `lifespan.py` opens the pool, runs `_verify_sql_catalog`, warns if storage is shared with the deployed buckets, opens the optional graph, opens the checkpointer, leaves `app.state.agents` empty and registers `/agent`, `/ingest` and `/proposal` as routes of our own (plus a `/health` per path). No model, deepagents or tracing import happens yet, so a REST cold start stays cheap. All three agents are built together by `load_agents`, once and under `agents_lock`, on the first post to any of those routes, or on the first REST route that calls `get_graph`. Each route declares who may post to it in `AGENT_ACCESS`, and a path with no entry fails at boot. `backend/app/ask/agent.py` builds Ask with exactly six tools (`db_list_tables`, `db_describe_table`, `db_profile_column`, `db_query`, `search_graph` and `compare_fit`) plus the read-only `read_file` and `ls` that loading a skill needs, and `compare_fit` is the only one whose SQL is fixed rather than model-written. All three builders call `agentkit/harness.py`, which switches off deepagents' `general-purpose` subagent for every agent and, per agent, replaces the preset's eight filesystem tools with just the ones that agent keeps (nothing that writes), so a new agent starts from `agentkit/` and not from another agent. Proposal Copilot has nine tools of its own plus `read_file` and no SQL tool: code in `backend/app/proposals/` owns the steps and checks, the agent only proposes, and `proposals.work` (migration 0048) is only changed through one write path, whether the change comes from REST or the agent: `work.apply` inside `repositories.proposals.save`, which locks the row with `SELECT ... FOR UPDATE`. See [Proposal Copilot](architecture/proposal-copilot.md) and [One proposal, end to end](workflows/proposal-lifecycle.md).
 
 ## Task routing
 
@@ -184,15 +204,15 @@ Agents are built lazily. `lifespan.py` opens the pool, checks the catalog and op
 | Change Import (Scout): subagents, research, brief, promote, undo | [Sangam Import / Scout](architecture/sangam-import-scout.md) |
 | Change the proposal agent, its steps and gates, the fact list, the trace check, polish or the Word file | [Proposal Copilot (Sangam Pitch)](architecture/proposal-copilot.md) |
 | Follow one proposal from a Funder Match card to a Word download | [One proposal, end to end](workflows/proposal-lifecycle.md) |
-| Add a table to the SQL catalog, or understand the schema | [Data and Migrations](architecture/data-and-migrations.md) |
-| Understand roles, RLS, or which database pool code uses | [Auth, Roles and RLS](architecture/auth-roles-rls.md) |
+| Add a table to the SQL catalog, or understand the schema, storage buckets, the Doc Vault file types or document soft delete | [Data and Migrations](architecture/data-and-migrations.md) |
+| Understand roles, RLS (including the vault and `deleted_documents` rules), or which database pool code uses | [Auth, Roles and RLS](architecture/auth-roles-rls.md) |
 | Change the fit rubric or saved match runs | [Funder Match](architecture/funder-match.md) |
 | Work on the news pipeline or story visibility | [Media & Signals](architecture/media-and-signals.md) |
 | Change how open calls are found, extracted, matched to orgs or shown in RFP Watch (`make calls-pull`, `/rfps`) | [RFP Watch](architecture/rfp-watch.md) |
 | Change a screen, the chat proxy or the API client | [Frontend](architecture/frontend.md) |
 | Trace a question through the whole system | [One Ask Turn, End to End](workflows/ask-turn.md) |
 | Trace an import from source choice to undo | [One Import Turn](workflows/import-turn.md) |
-| Add a schema change (the latest is `0049_rfp_match_saved.sql`) | [Writing and Applying a Migration](workflows/writing-a-migration.md) |
+| Add a schema change (the latest is `0056_documents_path_in_org.sql`; 0053-0056 are worked examples) | [Writing and Applying a Migration](workflows/writing-a-migration.md) |
 | Ship to Vercel | [Deploying by Hand](workflows/deploying-by-hand.md) |
 | Find an env var, or understand `ENV=local\|staging` | [Environments and Env Vars](operations/environments.md) |
 | Work on Vercel, Supabase pooler, Tavily, Langfuse or Aura specifics | [Vercel and Supabase Specifics](operations/deploy-and-vendors.md) |
@@ -204,4 +224,4 @@ The folders are `architecture/` (how each subsystem is built), `workflows/` (end
 
 Backend tests have three tiers. Unit tests never touch a database: they build a router-only app with a sentinel pool that raises on any use, so monkeypatch the `repositories/` function instead. Integration tests carry the `integration` mark and need the compose Postgres on 5433. Evals carry the `eval` mark, run only with `--run-evals` (a conftest flag, so `pytest -m integration` can never start billing model calls), and make real model calls (about 10 cents a case; the `cost` cases about $0.90). Locally, `cd backend && pytest -m "not integration"` is the quick loop and `ruff check .` the lint (line length 110).
 
-CI (`.github/workflows/ci.yml`) runs on every PR and push to `master` with four jobs: `ruff check`, the unit tier with coverage, the integration tier against a fresh pgvector Postgres (baseline, `migrate`, then the seeders, with two preserved-dump tests deselected), and the frontend (`npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run build`). The two coverage reports go to Codecov, and `codecov.yml` fails a PR that lowers total coverage by more than 1% or covers under 70% of the lines it changes. Evals are not in CI. The proposal rules are pure functions over a `work` dict, so their tests (`test_proposals_work.py`, `test_proposal_agent.py` and the `test_proposal_*` companions) need no database either. Before pushing frontend changes, run `npm run build`, because type errors surface there and never in `next dev`. See [Testing](testing/overview.md).
+CI (`.github/workflows/ci.yml`) runs on every PR and push to `master` with four jobs: `ruff check`, the unit tier with coverage, the integration tier against a fresh pgvector Postgres (baseline, `migrate`, then the seeders, with two preserved-dump tests deselected), and the frontend (`npm ci`, `npm run lint`, `npx tsc --noEmit`, the Vitest suite through `npm run coverage`, then `npm run build`). All three coverage reports go to Codecov. `codecov.yml` gates `backend` and `frontend` separately: on either side a PR fails if it takes coverage below 75%, lowers it by more than 1% against the base commit, or covers under 75% of the lines it changes. Evals are not in CI. Frontend tests run with `npm test`: `*.test.ts` in node, `*.test.tsx` in jsdom. The proposal rules are pure functions over a `work` dict, so their tests (`test_proposals_work.py`, `test_proposal_agent.py` and the `test_proposal_*` companions) need no database either. Before pushing frontend changes, run `npm run build`, because type errors surface there and never in `next dev`. See [Testing](testing/overview.md).

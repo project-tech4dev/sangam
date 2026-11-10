@@ -14,7 +14,7 @@ from ag_ui.encoder import EventEncoder
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import StreamingResponse
 
-from app.agent.tools.sql import catalog as sql_catalog
+from app.ask.tools.sql import catalog as sql_catalog
 from app.core.config import Settings, get_settings
 from app.core.security import ask_access, chat_access, proposal_chat_access, require_scout
 from app.db import pool as db_pool
@@ -65,7 +65,7 @@ def _process_age() -> float | None:
 
 def _build_agents(settings: Settings, checkpointer: Any) -> dict[str, Any]:
     """Every agent-stack import lives here: a REST cold start never pays for deepagents, models or tracing."""
-    from app.agent.agent import build_agent
+    from app.ask.agent import build_agent
     from app.ingest.agent import build_ingest_agent
     from app.integrations.tracing import (
         SessionScopedAGUIAgent,

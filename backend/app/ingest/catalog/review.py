@@ -6,7 +6,7 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
-from app.agent.tools.sql.catalog import CATALOG
+from app.ask.tools.sql.catalog import CATALOG
 from app.ingest.reading import vault
 from app.ingest.reading.staff_sources import SOURCE_URL_PREFIX
 from app.ingest.research.coverage import CONCEPT_OF_WRITTEN

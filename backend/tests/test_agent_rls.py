@@ -6,8 +6,8 @@ import pytest
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
-from app.agent.tools.sql.executor import PsycopgExecutor
-from app.agent.tools.sql.validator import validate
+from app.ask.tools.sql.executor import PsycopgExecutor
+from app.ask.tools.sql.validator import validate
 from app.db import pool as db_pool
 from app.db.pool import agent_caller
 from tests.conftest import DSN
@@ -106,7 +106,7 @@ async def test_the_connection_returns_to_the_pool_as_the_owner(planted, owner_po
 
 
 async def test_every_catalog_column_is_readable_by_a_signed_in_caller(owner_pool):
-    from app.agent.tools.sql.catalog import CATALOG
+    from app.ask.tools.sql.catalog import CATALOG
 
     pairs = [(t, c.name) for t, table in CATALOG.items() for c in table.columns]
     async with owner_pool.connection() as conn:

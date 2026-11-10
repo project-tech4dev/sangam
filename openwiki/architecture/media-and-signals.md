@@ -4,18 +4,18 @@ title: Media & Signals
 description: How Sangam pulls news with Tavily, classifies each link per organisation, groups links into stories, applies visibility bars, optionally re-checks borderline matches with a verifier agent, stores the result, and serves it through REST routes, the Media & Signals view, Registry profiles and the Ask news-brief skill.
 tags: [news, media-signals, ingest, tavily, verifier, visibility, rls]
 sources:
-  - id: openwiki-source-9861d76bc6d4956d245dc5b9
-    resource: repo://backend/app/agent/instructions.md
-  - id: openwiki-source-712de428a387a07399345d95
-    resource: repo://backend/app/agent/skills/news-brief/SKILL.md
-  - id: openwiki-source-7faba850789bc67a49b79a3f
-    resource: repo://backend/app/agent/tools/sql/catalog.py
   - id: openwiki-source-91785d98839df33f9eae6ec6
     resource: repo://backend/app/api/routes/news_runs.py
   - id: openwiki-source-74ad089b5ef170229a50f82f
     resource: repo://backend/app/api/routes/news_stories.py
   - id: openwiki-source-2dc2262235c0fa8bd81f1205
     resource: repo://backend/app/api/routes/profiles.py
+  - id: openwiki-source-370cd3ccfbb7741962accf45
+    resource: repo://backend/app/ask/instructions.md
+  - id: openwiki-source-e6d2faea886f355881a71d71
+    resource: repo://backend/app/ask/skills/news-brief/SKILL.md
+  - id: openwiki-source-f87376c232395da9df1de706
+    resource: repo://backend/app/ask/tools/sql/catalog.py
   - id: openwiki-source-6dcfc1451bcbf8009d0484a9
     resource: repo://backend/app/core/config.py
   - id: openwiki-source-8c4d96626089e75f0817872b
@@ -74,10 +74,10 @@ sources:
     resource: repo://frontend/features/registry/profile/OrgProfileTabs.tsx
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Media & Signals
@@ -135,7 +135,7 @@ One news pull from run row to watermark. The diamond is the optional verifier ho
 
 `tavily_news.search` calls Tavily's `/search` with `topic=news` and `search_depth=advanced`. It retries three times, drops Facebook URLs, and keeps a snippet of at most 1000 characters. Article text up to 8000 characters is used for classification and is not stored.
 
-`windows.window_days` gives a newcomer (no `news_watch` row) 90 days. Otherwise it gives the days since `searched_through`, plus one. `stale_floor` is the date before which an item is old news for that subject. Items before it are kept as scored links but never become stories.
+`windows.window_days` gives a newcomer (no `news_watch` row) 90 days. Otherwise it gives the days since `searched_through`, plus one. `stale_floor` is the date before which an item is old news for that subject: 90 days back for a newcomer, else 30 days (`INDEX_GRACE_DAYS`, for late-indexed items) before `searched_through`. Items before it are kept as scored links but never become stories.
 
 A subject whose search fails is added to a `failed` set. `SearchFailed` after retries and any classification or story failure both do this. Its watermark is not advanced, so the next run retries it. If every subject's search failed, the run finishes as `failed` with "every search failed" rather than reading as a last pull. A newcomer also gets `store.lookback` links already stored that name it.
 
@@ -217,9 +217,9 @@ Row-level security makes each reader see only what the bars allow. Signed-out re
 
 ## Exposure to Ask Sangam
 
-`backend/app/agent/tools/sql/catalog.py` is the allowlist for Ask's `db_query`. It catalogues `news_stories`, `news_links`, `news_story_entities`, `news_story_locations` and `news_story_tags`, with `news_stories.id` and `story_id` columns citing `[news:N]`. `news_link_scores` and `news_watch` are in `KNOWN_EXCLUDED` as pipeline state, and so are `ingest_runs` and `ingest_run_items`. Verifier evidence in the score `jsonb` is therefore not reachable from Ask. `tests/test_sql_catalog.py` pins both sets.
+`backend/app/ask/tools/sql/catalog.py` is the allowlist for Ask's `db_query`. It catalogues `news_stories`, `news_links`, `news_story_entities`, `news_story_locations` and `news_story_tags`, with `news_stories.id` and `story_id` columns citing `[news:N]`. `news_link_scores` and `news_watch` are in `KNOWN_EXCLUDED` as pipeline state, and so are `ingest_runs` and `ingest_run_items`. Verifier evidence in the score `jsonb` is therefore not reachable from Ask. `tests/test_sql_catalog.py` pins the five catalogued news tables, the `[news:N]` cite on `news_story_entities.story_id`, and the exclusion of `news_link_scores` and `news_watch`. The `ingest_runs` and `ingest_run_items` exclusions are declared in `KNOWN_EXCLUDED` but not pinned by name there. The catalog also attaches defect notes: a topic story names no organisation, so zero stories for an org does not mean nothing was said, and `visibility = 'hidden'` rows should be left out.
 
-The `news-brief` skill (`backend/app/agent/skills/news-brief/SKILL.md`, loaded via rule 13 of `agent/instructions.md`) reads `news_story_entities` joined to `news_stories`. It uses only `visibility = 'public'`, `is_news` stories from the last 30 days by default. It reports zero results as "Nothing on <name> in Sangam's news since <date>", where the date is the latest `news_links.fetched_at`, and never says "no news". For a story with a negative stance, or a topic of `fcra` or `governance`, it gives the story's main link (`news_links.url` where `id = main_link_id`) as it is beside the line, so the reader can check the article. Ask cannot read the page, so the skill never says what the article cites. It writes three to five lines, each ending in `[news:N]`. It states match and confidence as High, Medium or Low, never as numbers.
+The `news-brief` skill (`backend/app/ask/skills/news-brief/SKILL.md`, loaded via rule 13 of `ask/instructions.md`) reads `news_story_entities` joined to `news_stories`. It uses only `visibility = 'public'`, `is_news` stories from the last 30 days by default. It reports zero results as "Nothing on <name> in Sangam's news since <date>", where the date is the latest `news_links.fetched_at`, and never says "no news". For a story with a negative stance, or a topic of `fcra` or `governance`, it gives the story's main link (`news_links.url` where `id = main_link_id`) as it is beside the line, so the reader can check the article. Ask cannot read the page, so the skill never says what the article cites. It writes three to five lines, each ending in `[news:N]`. It states match and confidence as High, Medium or Low, never as numbers.
 
 ## REST routes
 

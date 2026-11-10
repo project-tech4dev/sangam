@@ -55,7 +55,7 @@ REQUIRED_MINIMUM: tuple[str, ...] = ("read_file",)
 # the parent, or on a subagent, whose spec has to ask for this separately.
 SKILL_READING_TOOLS: tuple[str, ...] = ("read_file", "ls")
 
-# Every provider app/agent/models.py can resolve. An exact `provider:model`
+# Every provider app/ask/models.py can resolve. An exact `provider:model`
 # key would only cover the model configured today.
 PROVIDERS: tuple[str, ...] = ("anthropic", "openai", "google", "google_genai")
 

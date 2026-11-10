@@ -249,7 +249,7 @@ def test_recursion_limit_reaches_the_graph():
     silently used its default of 25. Nothing caught it while"""
     from langgraph.checkpoint.memory import InMemorySaver
 
-    from app.agent.agent import build_agent
+    from app.ask.agent import build_agent
 
     settings = Settings(recursion_limit=137)
     graph = build_agent(settings, InMemorySaver())
@@ -299,7 +299,7 @@ def test_the_agui_agent_carries_the_limit_into_every_request():
     """
     from langgraph.checkpoint.memory import InMemorySaver
 
-    from app.agent.agent import build_agent
+    from app.ask.agent import build_agent
     from app.integrations.tracing import SessionScopedAGUIAgent
 
     settings = Settings(recursion_limit=137)
@@ -316,7 +316,7 @@ def test_import_steps_stay_attributed_after_the_per_request_clone():
     """The endpoint clones the agent per request; a flag lost there reverts the board to unattributed steps."""
     from langgraph.checkpoint.memory import InMemorySaver
 
-    from app.agent.agent import build_agent
+    from app.ask.agent import build_agent
     from app.integrations.tracing import SessionScopedAGUIAgent
 
     graph = build_agent(Settings(), InMemorySaver())

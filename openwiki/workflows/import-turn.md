@@ -4,30 +4,36 @@ title: "One Import Turn: choose_sources to Undo"
 description: End-to-end trace of a Sangam Import (Scout) turn. It runs from the choose_sources pause through research, save_research refusals, brief publish, the Review save transaction and promote, to staff undo. It lists the refusal points, the pauses, the fact end-states and the unfinished work.
 tags: [import, scout, ingest, workflow, brief, promote, undo, human-in-the-loop, doc-vault]
 sources:
-  - id: openwiki-source-813dbe9c3eeb378112388ccd
-    resource: repo://backend/app/agent/middleware.py
   - id: openwiki-source-ca736c25c2a1bb0e95531706
     resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-11c734346bddf773fd80ed0e
     resource: repo://backend/app/api/routes/ingest.py
+  - id: openwiki-source-70be5aeaef490fac42ba29bb
+    resource: repo://backend/app/core/extract.py
   - id: openwiki-source-62958d5b14b0717233a7ec0b
     resource: repo://backend/app/ingest/agent.py
   - id: openwiki-source-7808196f4aecdc53b9018ae9
     resource: repo://backend/app/ingest/brief.py
   - id: openwiki-source-23397c01122692b0ff662a58
     resource: repo://backend/app/ingest/caller.py
-  - id: openwiki-source-979b9329025accfea8018c8b
-    resource: repo://backend/app/ingest/contract.py
+  - id: openwiki-source-9a6e6a4e4a7cd8031491ea8d
+    resource: repo://backend/app/ingest/catalog/promote_records.py
+  - id: openwiki-source-da7e5350451b140c7b43eda3
+    resource: repo://backend/app/ingest/catalog/promote.py
+  - id: openwiki-source-538e8da8e6d92b2f24b1a6fa
+    resource: repo://backend/app/ingest/catalog/save.py
+  - id: openwiki-source-37b999e1f6fb5c4cc27629cd
+    resource: repo://backend/app/ingest/catalog/undo.py
   - id: openwiki-source-d96fe024756d0266f03328b8
     resource: repo://backend/app/ingest/instructions.md
   - id: openwiki-source-7d480e75db10aae51a0f227b
     resource: repo://backend/app/ingest/middleware.py
-  - id: openwiki-source-ad46879e0b8b0bcc9e65aaee
-    resource: repo://backend/app/ingest/office.py
-  - id: openwiki-source-b16585eb308b018d24ffae26
-    resource: repo://backend/app/ingest/promote.py
-  - id: openwiki-source-3dbb7a958f50a2650e081c34
-    resource: repo://backend/app/ingest/run_sources.py
+  - id: openwiki-source-275d63cdc3d02cb975946728
+    resource: repo://backend/app/ingest/reading/run_sources.py
+  - id: openwiki-source-1de5a3e7ed2a11b942a4a84a
+    resource: repo://backend/app/ingest/reading/vault.py
+  - id: openwiki-source-ae8240491438531c1c77eff2
+    resource: repo://backend/app/ingest/research/contract.py
   - id: openwiki-source-5ca431fb0f110b9a36d2d445
     resource: repo://backend/app/ingest/tools/catalog_tools.py
   - id: openwiki-source-2df755596e53353deddeb8d3
@@ -36,10 +42,6 @@ sources:
     resource: repo://backend/app/ingest/tools/research_tools.py
   - id: openwiki-source-01018d1868720c2e42fdafe4
     resource: repo://backend/app/ingest/tools/vault_tools.py
-  - id: openwiki-source-98ca8658ce31f093cdacdd76
-    resource: repo://backend/app/ingest/undo.py
-  - id: openwiki-source-f7dba013696636c8f50fd1cc
-    resource: repo://backend/app/ingest/vault.py
   - id: openwiki-source-5ff63cf3bcc0508701587aa2
     resource: repo://backend/tests/test_import_undo.py
   - id: openwiki-source-77a336ada304965e7aa89c22
@@ -62,10 +64,10 @@ sources:
     resource: repo://frontend/features/ingest/lib/staffActions.ts
   - id: openwiki-source-9e86dbac2cec46334e85282e
     resource: repo://frontend/features/ingest/ScoutChat.tsx
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # One Import Turn: choose_sources to Undo
@@ -120,20 +122,20 @@ Before any turn, `ImportView` loads its panels with a single `GET /api/ingest/ov
 
 ## 1. choose_sources: the first pause
 
-- The supervisor must call `choose_sources` first and alone (`pipeline_tools.choose_sources`). It takes `web`, `library`, `vault_org`, `vault_docs` and `staff_paths`. The result is an artifact that `run_sources.Sources` turns into the run's allowed sources. The person's answer replaces the model's proposal.
-- **When it pauses.** `INTERRUPT_ON["choose_sources"]` has a `when=ask_for_sources` condition. The sources ticked in the right rail go out as AG-UI context (`TICKED_SOURCES`). If any were ticked, `TickedSources` appends a note and rewrites the model's `choose_sources` arguments to exactly the ticks, so **no card shows**. With nothing ticked, the run pauses on `SourcesCard`, and the person can approve, edit or reject.
+- The supervisor must call `choose_sources` first and alone (`tools/pipeline_tools.py`). It takes `web`, `library`, `vault_org`, `vault_docs` and `staff_paths`. The result is an artifact that `Sources` (in `reading/run_sources.py`) turns into the run's allowed sources. The person's answer replaces the model's proposal.
+- **When it pauses.** `INTERRUPT_ON["choose_sources"]` has a `when=ask_for_sources` condition. The sources ticked in the right rail go out as AG-UI context (`ScoutChat` sends it under the description "Sources the person ticked for this Import run", which `middleware.TICKED_SOURCES` matches). If any of web, library, vault documents or staff paths were ticked, `TickedSources` appends a note and rewrites the model's `choose_sources` arguments to exactly the ticks, so **no card shows**. With nothing ticked, the run pauses on `SourcesCard`, and the person can approve, edit or reject.
 - **Refusals inside the tool:**
   - staff spreadsheets requested by a non-staff caller;
   - Doc Vault files the caller cannot read, or that are not in that org's vault;
   - nothing chosen at all.
   
   Each returns `REFUSED:` with no artifact, so the choice stays unanswered. Staff paths are validated and registered as `documents` rows.
-- **Reject means web only.** `run_sources.chosen()` reads the latest `choose_sources` ToolMessage. An artifact gives that `Sources`. An error status (the person rejected the card) gives `WEB_ONLY`. No answer yet gives `None`. The answer exists only in the checkpoint's messages.
-- **Enforcement is two-sided.** `ChosenSources` on the supervisor refuses every `task` call until the choice is answered, failing closed on unreadable state. It also sets the `CURRENT` context variable around each subagent. `RunSources` is in the middleware stack of the entity-researcher, workbook-reader and vault-reader (`build_ingest_agent`); the catalog-writer has none, because it holds no pulling tool. Each refuses any pulling tool outside the choice:
+- **Reject means web only.** `chosen()` in `reading/run_sources.py` reads the latest `choose_sources` ToolMessage. An artifact gives that `Sources`. An error status (the person rejected the card) gives `WEB_ONLY`. No answer yet gives `None`. The answer exists only in the checkpoint's messages.
+- **Enforcement is two-sided.** `ChosenSources` (`ingest/middleware.py`) on the supervisor refuses every `task` call until the choice is answered, failing closed on unreadable state. It also sets the `CURRENT` context variable around each subagent. `RunSources` is in the middleware stack of the entity-researcher, workbook-reader and vault-reader (`build_ingest_agent`); the catalog-writer has none, because it holds no pulling tool. Each refuses any pulling tool outside the choice:
   - web tools when web is off;
   - library tools when library is off;
   - `read_source_rows` and `read_workbook` unless `documents=` is a subset of the picked spreadsheets;
-  - vault tools outside the picked files.
+  - vault tools outside the picked files (`list_vault_documents` with none picked, `read_vault_document` or `read_org_file` for any other id).
   
   Only `PULLING` tools are ever refused. A subagent outside a `task` has `CURRENT = None` and reads nothing.
 
@@ -144,25 +146,25 @@ The supervisor plans (`write_todos`), reads `funder_dossier` to see what the cat
 - The researcher's tools are `research_goals`, `funder_dossier`, library, workbook-row, web and PDF readers, and `save_research` (`RESEARCHER_TOOLS`). It has no catalog-write tool.
 - Every web read passes `check_url` (source registry plus robots) before the fetch and again on every redirect (`_client` hook). A `REFUSED:` there is final. `search_public_sources` marks hits `READABLE` or `HELD`, and a held hit is a dead end.
 - `read_page` and `fetch_document` archive what they read to the `source-archive` bucket. Later, `promote()` turns each cited source into a `documents` row from that archive.
-- The researcher's middleware stack adds `SaveRefusal`, `RunSources`, the staff-last lock (`StaffLastLock`), an optional `ReadingLimit` (researcher only) and model-call limit, model fallback, an escalation to the strong model after a malformed save, and a rubric grader that allows one revision. Page and call limits are unset by default.
+- The researcher's middleware stack (`build_ingest_agent`, classes in `ingest/middleware.py`) adds `SaveRefusal` (a refused save comes back as a short list of fixes, and a payload sent as a JSON string is parsed), `RunSources`, the staff-last lock (`StaffLastLock`: once `read_source_rows` has run, only an allowlist of non-outbound tools stays open, so an injected instruction cannot carry a staff row out in a URL), an optional `ReadingLimit` (researcher only) and model-call limit, model fallback, an escalation to the strong model after a malformed save, and a rubric grader that allows one revision. `research_page_limit` and `research_model_call_limit` are unset by default.
 
 ### Doc Vault files and Word/Excel text
 
-An organisation's private files can enter a run only if the person picked them in `choose_sources`. They are read by the `vault-reader`, never the researcher, so vault text never shares a context with web tools (`backend/app/ingest/vault.py`).
+An organisation's private files can enter a run only if the person picked them in `choose_sources`. They are read by the `vault-reader`, never the researcher, so vault text never shares a context with web tools (`backend/app/ingest/reading/vault.py`, whose module docstring states that vault text only sits in the vault-reader, which has no web tools, and that findings go to `vault_research` rather than the shared `entity_research` row).
 
-- **Which files count.** A Vault document is a `documents` row with `NOT is_public` and a `storage_path` under the `org-vault` bucket. `vault.in_vault` checks picked ids against that org. `list_vault_documents` and `read_vault_document` use the owner pool, so each checks `can_read_org` itself. A file the caller may not read and one that does not exist get the same answer. A run's picked org is the only vault it may list.
-- **What can be read.** `vault.read` downloads at most 50 MB and handles `.pdf`, `.docx` and `.xlsx`. Anything else, or a document with no stored file, returns a plain explanation. Each read is capped at `MAX_CHARS` (24,000), with a note on how to continue.
-- **Citation markers.** Every line is cited as `[vault:<id>#p<page>]`, `[vault:<id>#para<n>]` or `[vault:<id>#<sheet>!<cell>]`. A scanned PDF with no text range is reported as such rather than guessed at.
-- **Office extraction.** `office.py` is pure (bytes in, text out). `docx_paragraphs` returns paragraphs and table rows as `a | b | c` in document order, keeping a merged cell once. `xlsx_markdown` renders each sheet as a heading plus its first `SHEET_ROWS` (200) rows. The same helpers produce `content_md` when a document is uploaded (`documents._extract`, which stores `None` text but still a hash if a file is damaged), and the vault reader's `.docx` pages by paragraph while `.xlsx` goes through `staff_sources`.
-- **Saving.** `save_vault_findings` refuses the whole save, writing nothing, unless every finding has a vault `source_url` (`https://org-vault.<private domain>/<id>`), names a document in that org's vault, and quotes that document's `[vault:<id>#…]` marker. NGO research needs `can_research_org`. Findings go to `vault_research`, one row per `(slug, researched_on, org_id)`, never into the shared `entity_research` row.
-- **Promotion holds.** `_research_rows` strips vault URLs from `entity_research` findings. It adds an org's `vault_research` findings only for a writer or person, and only for orgs the caller can read. At promote, `vault.hold_at_promote` keeps only the funder's general facts (`PROMOTABLE`: identity, CSR year, stated geography, eligibility guideline, RFP, programme). The org's own facts are shown on Review but held back, and an NGO's vault findings are never promoted.
+- **Which files count.** A Vault document is a `documents` row with `NOT is_public` and a `storage_path` under the `org-vault` bucket. `vault.in_vault` (`reading/vault.py`) checks picked ids against that org. `list_vault_documents` and `read_vault_document` (`tools/vault_tools.py`) use the owner pool, so each checks `can_read_org` itself. A file the caller may not read and one that does not exist get the same answer. A run's picked org is the only vault it may list.
+- **What can be read.** `vault.read` downloads at most 50 MB and handles `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.md`, `.txt`, `.csv` and the images `.png`, `.jpg`, `.jpeg` and `.webp`. Anything else, or a document with no stored file, returns a plain explanation. Text reads are capped at `MAX_CHARS` (24,000), with a note on how to continue (a later `start_page`, which counts paragraphs in a Word file, slides in a PowerPoint file and lines in a text or CSV file; a later CSV window repeats the column names). An image comes back as the image itself for the model to look at, unless it is over about 3.75 MB, which is reported as too large.
+- **Citation markers.** Every line is cited as `[vault:<id>#p<page>]`, `[vault:<id>#para<n>]`, `[vault:<id>#slide<n>]`, `[vault:<id>#line<n>]` or `[vault:<id>#<sheet>!<cell>]`, and an image as `[vault:<id>#image]`. A scanned PDF with no text range is reported as such rather than guessed at.
+- **Office extraction.** The text helpers are in `app/core/extract.py` and are pure (bytes in, text out); the old `ingest/office.py` no longer exists. `docx_paragraphs` returns paragraphs and table rows as `a | b | c` in document order, keeping a merged cell once. `pptx_slides` returns each slide's text in presentation order, and `text_lines` splits a very long text line so one line cannot fill a read. `xlsx_markdown` renders each sheet as a heading plus its first `SHEET_ROWS` (200) rows. The same helpers produce `content_md` when a document is uploaded (`documents._extract` handles `.docx`, `.pptx`, `.xlsx` and `.pdf`; a damaged file gives `None` text but still a hash, and the row is kept). The vault reader pages `.docx` by paragraph through `docx_paragraphs`, `.pptx` by slide, and `.md`/`.txt`/`.csv` by line through `text_lines`, while `.xlsx` goes through `staff_sources`. The researcher's `read_document_pages` reuses the same module for downloaded Word files.
+- **Saving.** `save_vault_findings` refuses the whole save, writing nothing, unless every finding has a vault `source_url` (`https://org-vault.<private domain>/<id>`), names a document in that org's vault, and quotes that document's `[vault:<id>#…]` marker (`vault.check_findings`). It also requires `can_read_org`, and NGO research needs `can_research_org`. Findings go to `vault_research`, one row per `(slug, researched_on, org_id)`, never into the shared `entity_research` row.
+- **Promotion holds.** `research_rows` (`catalog/save.py`) strips vault URLs from `entity_research` findings. It adds an org's `vault_research` findings only for a writer or person (`vault=True`), and only for orgs the caller can read. At promote, `vault.hold_at_promote` keeps only the funder's general facts (`PROMOTABLE`: identity, CSR year, stated geography, eligibility guideline, RFP, programme). The org's own facts are shown on Review but held back, and an NGO's vault findings are never promoted.
 
 ## 3. save_research: where saves are refused
 
 `save_research` is the only tool on this path that writes, and it writes findings, not catalog rows. It should be called once, last. It returns `REFUSED:` text, rather than raising, in these cases, in this order:
 
-1. **NGO by a non-steward.** `entity_kind == "org"` and the caller is neither staff nor a steward. The researcher is told to report in its summary instead.
-2. **Unanswered fields.** `contract.unanswered()` finds a field of the kind's contract with neither a finding nor a gap. Yearly concepts need one answer per asked fiscal year (default: the recent years), and identity concepts also need `themes`. Statuses other than `complete` and `partial`, and kind `unknown`, are exempt. A gap must be `not_stated`, `blocked` or `not_reached`, with a reason.
+1. **NGO by a non-steward.** `entity_kind == "org"` and the caller is neither staff nor a steward of any org. For a non-staff caller who does steward something, a second check inside the save (`_may_research`) requires that the NGO already be held, by slug or a mergeable name match, and that the caller can research every such org. Either way the researcher is told to report in its summary instead.
+2. **Unanswered fields.** `unanswered()` in `research/contract.py` finds a field of the kind's contract with neither a finding nor a gap. Yearly concepts need one answer per asked fiscal year (default: the recent years), and identity concepts also need `themes`. Statuses other than `complete` and `partial`, and kind `unknown`, are exempt. A gap must be `not_stated`, `blocked` or `not_reached`, with a reason.
 3. **Another person's row.** A non-staff caller would overwrite a same-day row saved by someone else. The reply tells the researcher to report `saved=true` with the existing slug.
 4. **A shorter save.** The stored row for that slug and day has more findings than the offer, and `replace=true` was not passed.
 
@@ -172,7 +174,7 @@ On success, one transaction upserts `entity_research` keyed on `(slug, researche
 
 Right after the upsert, `save_research` calls `brief.publish()`. It does not wait for `make client-docs`.
 
-- **The brief is the record.** It is a markdown file at `source-archive/entities/<slug>.md`. There is no brief table. Each fact line carries its typed finding in a hidden `<!-- fact {json} -->` block, and facts no column can hold go in `<!-- unplaced {json} -->` blocks. Both are read back by `brief.record()`.
+- **The brief is the record.** It is a markdown file at `source-archive/entities/<slug>.md`. There is no brief table. Each fact line carries its typed finding in a hidden `<!-- fact {json} -->` block, and facts no column can hold go in `<!-- unplaced {json} -->` blocks (`save_research` passes the research's own `unplaced` list, empty for a `wrong_entity` save). Both are read back by `brief.record()`.
 - **Merge rule.** `build()` reads the published brief and merges every `entity_research` row for the slug into it (`rows_for`). Findings are keyed by `fact_key`, which uses per-concept identity fields from `_SAME_FACT`. A later run replaces an earlier one unless the earlier source is stronger, compared by evidence tier and then confidence. `wrong_entity` rows add nothing. A fact the latest run did not find is not dropped. Private (staff and vault) findings never enter the public brief, and a summary written from them is replaced by `PRIVATE_NOTE`.
 - **Fail-safe.** If Storage cannot be read, `build()` raises, `save_research` logs a warning, and the brief is left as it was. The findings are saved either way. With Storage unconfigured, the upload is a no-op and the reply says the brief appears in `docs/entities/<slug>.md` after `make client-docs`. The text `brief is published` appears only when it actually was, and the Import UI's milestone strip matches that phrase (`test_storage.py` pins it).
 - **Re-publish.** `publish_brief` (staff only, on the supervisor) re-renders one slug or all of them, for research saved before publishing existed or after a renderer change.
@@ -183,28 +185,28 @@ Right after the upsert, `save_research` calls `brief.publish()`. It does not wai
 Saving happens two ways. Both call the same function, so the same guards and the same undo apply:
 
 - **Review screen:** `POST /api/ingest/research/{slug}/save`. `ScreenReview` posts the person's `decisions`, and `GET /api/ingest/research/{slug}/review` fills the card.
-- **Chat:** the `catalog-writer` subagent (tools `promote_research` and `funder_dossier`, utility model, capped at `WRITER_MODEL_CALL_LIMIT` = 12 model calls) calls `promote_research`. `SaveQuestions` in its middleware pauses every call with the planned rows, coverage line and the funder's open questions. Only the person's `edit` can set `decisions`, and anything the model writes there is dropped. An empty slug is still approved, but its questions are held, not asked.
+- **Chat:** the `catalog-writer` subagent (tools `promote_research` and `funder_dossier`, utility model, capped at `WRITER_MODEL_CALL_LIMIT` = 12 model calls) calls `promote_research`. `SaveQuestions` (`ingest/middleware.py`, a `HumanInTheLoopMiddleware`) in its middleware pauses every call with the planned rows, coverage line and the funder's open questions, which it builds with `write_preview` from `catalog/save.py`. Only the person's `edit` can set `decisions`, and anything the model writes there is dropped. An empty slug is still approved, but its questions are held, not asked.
 
-`save_to_catalog(slug, caller, decisions)` does the following:
+`save_to_catalog(slug, caller, decisions)` (`catalog/save.py`; `promote_research` in `tools/catalog_tools.py` is a thin wrapper that turns its errors into `REFUSED:` or "No saved research" text) does the following:
 
 1. **Role gate.** A non-staff caller must pass one slug. For a funder, `can_save_funder()` is required. For an NGO, the org must already be held (resolved, or matched by a mergeable method), and the caller must be able to research it. Otherwise it raises `SaveRefused`. That is HTTP 403, or a `REFUSED:` reply in chat. No research rows raises `LookupError`, which is 404.
-2. **Read the record.** `_research_rows` takes the newest row per entity and swaps in the brief's facts via `brief.promotable()`. Non-staff callers do not get private findings, and vault findings are added only for a writer or person.
+2. **Read the record.** `research_rows` takes the newest row per entity and swaps in the brief's facts via `brief.promotable()`. Non-staff callers do not get private findings, and vault findings are added only for a writer or person.
 3. **One transaction per organisation**, with one retry if a concurrent save raises `UniqueViolation`:
-   1. `undo.start` inserts a `promotions` row (research id, slug, `promoted_by`) and sets `sangam.promotion_id` locally, which turns on the write log for the rest of the transaction.
+   1. `undo.start` (`catalog/undo.py`) inserts a `promotions` row (research id, slug, `promoted_by`) and sets `sangam.promotion_id` locally, which turns on the write log for the rest of the transaction.
    2. `promote()` writes the catalog.
    3. `_record_save` stores what the save wrote on the research row (`saved`, `saved_at`) with before/after counts. Afterwards a plan reads every row as `same`, so this is the only record of what the profile held before.
    4. `undo.finish` clears the setting. If `catalog_writes` has no entry for the promotion, the promotion row is deleted and `promotion_id` is `None`. The route returns `promotion_id` to staff only.
-4. After commit, `_publish_states` writes each fact's end-state back into the brief. A failure there is only logged, because the catalog is already committed.
+4. After each organisation's commit, `_publish_states` writes each fact's end-state back into the brief. A failure there is only logged, because the catalog is already committed.
 
 ### What promote() does
 
-`promote()` runs the kind's branch (`_promote_funder` or `_promote_org`). The model never writes SQL. Fixed-SQL writers in `writer.py` do. A funder's `Gate` sorts each fact into five cases: same value, newer source (update), older or undated source (ask), close name (ask update, new or skip), and new (insert). An NGO fills blanks and reports conflicts, and asks only about a trigram-close name. `Gate(plan=True)` writes nothing, and that is what `compare_with_catalog`, coverage and the Review card use.
+`promote()` lives in `catalog/promote.py` and runs the kind's branch (`_promote_funder` or `_promote_org`). The record builders, write orders and fact-state helpers are in `catalog/promote_records.py`, document and programme writers in `catalog/promote_documents.py`, and the per-concept fact writers in `catalog/promote_facts.py`. The model never writes SQL. Fixed-SQL writers in `catalog/writer.py` (with `writer_funder.py` and `writer_org.py`) do. A funder's `Gate` sorts each fact into five cases: same value, newer source (update), older or undated source (ask), close name (ask update, new or skip), and new (insert). An NGO fills blanks and reports conflicts, and asks only about a trigram-close name. `Gate(plan=True)` writes nothing, and that is what `compare_with_catalog`, coverage and the Review card use.
 
 Before the branch, the guards hold findings:
 
 - research saved under a pre-typed shape is turned away with "re-run the research";
 - unmarked or cell-mismatched staff figures are held;
-- vault findings and private sources are held at promotion.
+- vault findings (`vault.hold_at_promote`) and private sources (`source_guards.hold_at_promote`) are held at promotion.
 
 For a funder the order is:
 
@@ -220,7 +222,7 @@ Step 1 also resolves the parent company (`_parent`) before the funder is written
 
 ### Fact end-states
 
-Every fact ends in exactly one state. `_unsettled` guarantees this: a fact no writer reached becomes `held` with the reason, or `no column` when Sangam has no table for its concept.
+Every fact ends in exactly one state. `unsettled` in `promote_records.py` guarantees this: a fact no writer reached becomes `held` with the reason, or `no column` when Sangam has no table for its concept.
 
 | State | Meaning in the brief |
 |---|---|
@@ -237,7 +239,7 @@ Every fact ends in exactly one state. `_unsettled` guarantees this: a fact no wr
 
 ## 6. Undo (staff)
 
-- `POST /api/ingest/promotions/{id}/undo` (staff only) calls `undo.undo()`. It locks the promotion and refuses if it is already undone. It then replays `catalog_writes` newest-first in one transaction, deleting what the save inserted and restoring `old_row` for what it updated. Table names are checked against `LOGGED`, which holds 19 tables.
+- `POST /api/ingest/promotions/{id}/undo` (staff only) calls `undo.undo()` from `catalog/undo.py`. It locks the promotion and refuses if it is already undone. It then replays `catalog_writes` newest-first in one transaction, deleting what the save inserted and restoring `old_row` for what it updated. Table names are checked against `LOGGED`, which holds 19 tables.
 - **All or nothing.** Each reversal requires that the row still equals the logged `new_row`. Otherwise `UndoRefused` rolls everything back ("a row has changed since this save"), and a row now referenced elsewhere is refused too. The route maps this to 409. `test_a_row_changed_since_refuses_the_whole_undo` pins it.
 - After success, the promotion is stamped `undone_at`/`undone_by`. A reversed funder or org insert first unlinks `resolved_funder_id`/`resolved_org_id` on the research. The research reads as unsaved again (`saved = NULL`) once no live save of it remains.
 - `DELETE /api/ingest/research/{slug}` (`undo.delete_research`) removes research that was never saved, or whose saves were all undone. It returns 409 while any save stands. The UI offers undo and delete in `ResearchedRecently`.
@@ -274,12 +276,12 @@ Rejecting any `run_import_now` card writes nothing. The per-funder pipeline, the
   - programme themes step 5, `write_funder_tags_from_programs` (PR #172), is unmerged, and no backend code defines it;
   - the "review follow-ups" of `2026-10-09-import-guided.md` are still open;
   - RFP Watch M1 to M4 have shipped, with only the staging exit gates left;
-  - the fix that moves Ask's SQL off the owner pool is on an unmerged branch.
+  - Ask's SQL and Import still run on the owner pool; the fix for Ask (branch `fix/ask-sql-runs-as-caller`) is unmerged.
 - `docs/INGEST.md` predates the brief-as-record work. Where it disagrees with `docs/ARCHITECTURE.md` section 4, section 4 is right.
 
 ## Where to change things
 
-- The sources contract lives in `run_sources.py`. A new pulling tool must be added to one of its `*_TOOLS` sets, or it is never refused.
-- A new fact concept needs entries in the finding model, `brief.headline`, `_SAME_FACT` and `ORDER`, and a writer branch in `promote.py`. Without a writer branch it is reported as `no column`.
-- A new catalog table that `promote()` writes must be logged by a trigger and added to `undo.LOGGED`, or undo refuses it as "not a catalog table".
-- Tests to read: `test_import_sources.py` (pauses and source enforcement), `test_import_undo.py` (start, finish and undo, including no-op saves and the screen path), `test_import_roles.py` (role gates on save), and `test_storage.py` (the published-brief message).
+- The sources contract lives in `reading/run_sources.py`. A new pulling tool must be added to one of its `*_TOOLS` sets (feeding `PULLING`), or it is never refused.
+- A new fact concept needs entries in the finding model (`research/finding_types.py`), `brief.headline`, `_SAME_FACT` and `ORDER`, and a writer branch under `catalog/` (`promote_facts.py` and the record maps in `promote_records.py`). Without a writer branch it is reported as `no column`.
+- A new catalog table that `promote()` writes must be logged by a trigger and added to `LOGGED` in `catalog/undo.py`, or undo refuses it as "not a catalog table".
+- Tests to read: `test_import_sources.py` (pauses and source enforcement), `test_import_undo.py` (start, finish and undo, including no-op saves and the screen path), `test_import_roles.py` (role gates on save), `test_import_vault.py` (Doc Vault reading and saving), `test_cov_pipeline_vault_office_docs.py` (docx extraction and vault paging), and `test_storage.py` (the published-brief message).

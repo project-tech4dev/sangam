@@ -4,20 +4,26 @@ title: Writing and Applying a Migration
 description: Step-by-step for adding a schema change in db/migrations/ - file naming, transaction and checksum rules, RLS and grants for new tables, the separate SQL-catalog decision, and applying locally and then to staging after a backup.
 tags: [migrations, database, rls, sql-catalog, workflow, staging]
 sources:
-  - id: openwiki-source-7faba850789bc67a49b79a3f
-    resource: repo://backend/app/agent/tools/sql/catalog.py
-  - id: openwiki-source-01e57798bc5bab328d91b9b3
-    resource: repo://backend/app/agent/tools/sql/executor.py
+  - id: openwiki-source-f87376c232395da9df1de706
+    resource: repo://backend/app/ask/tools/sql/catalog.py
+  - id: openwiki-source-8022e4b3b752a8ae8a84ccf9
+    resource: repo://backend/app/ask/tools/sql/executor.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
     resource: repo://backend/app/core/lifespan.py
   - id: openwiki-source-b52886aad1fc413e4e030f22
     resource: repo://backend/app/core/security.py
+  - id: openwiki-source-51ead927cc43f35e220ea627
+    resource: repo://backend/app/db/checkpointer.py
   - id: openwiki-source-48da13ff10650a1cb4ac7718
     resource: repo://backend/app/db/migrate.py
   - id: openwiki-source-10e08c1deca7d7728d8240c4
     resource: repo://backend/app/db/pool.py
+  - id: openwiki-source-bbb88a9dc2dd928de209ddbb
+    resource: repo://backend/app/integrations/storage.py
   - id: openwiki-source-c19bf12e33dd13dd52164b8e
     resource: repo://backend/tests/test_migration_integrity.py
+  - id: openwiki-source-77a336ada304965e7aa89c22
+    resource: repo://backend/tests/test_storage.py
   - id: openwiki-source-5871ea1c2ab913bbd11be84f
     resource: repo://db/CLAUDE.md
   - id: openwiki-source-a63cf999b1937db913f804d5
@@ -30,6 +36,20 @@ sources:
     resource: repo://db/migrations/0048_proposal_work.sql
   - id: openwiki-source-d2d39b77b74bd31e2a50555d
     resource: repo://db/migrations/0049_rfp_match_saved.sql
+  - id: openwiki-source-2e81fea55b6132d8610d3e6a
+    resource: repo://db/migrations/0050_proposal_stage_shift.sql
+  - id: openwiki-source-1b63786a729c5707f451c676
+    resource: repo://db/migrations/0051_documents_delete.sql
+  - id: openwiki-source-81d52d179dc30e354d43cc8c
+    resource: repo://db/migrations/0052_proposals_delete.sql
+  - id: openwiki-source-c1c958c5ad68d020fdee6247
+    resource: repo://db/migrations/0053_deleted_documents.sql
+  - id: openwiki-source-8f575ff676890e4ced99399f
+    resource: repo://db/migrations/0054_org_vault_mime_types.sql
+  - id: openwiki-source-4a2873ef1ff538439f9b05f6
+    resource: repo://db/migrations/0055_org_vault_pptx.sql
+  - id: openwiki-source-f7343e7810aa811970783067
+    resource: repo://db/migrations/0056_documents_path_in_org.sql
   - id: openwiki-source-82b4a7ca109f9768db60ccbf
     resource: repo://db/migrations/README.md
   - id: openwiki-source-093cd3e20819d97ab4faddda
@@ -38,10 +58,10 @@ sources:
     resource: repo://docker-compose.yml
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T19:22:00.060Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T19:22:00.060Z
+    at: 2026-11-10T13:16:49.280Z
 ---
 
 # Writing and Applying a Migration
@@ -57,7 +77,7 @@ Every schema change after the baseline is a new forward-only SQL file in `db/mig
 
 ## 1. Create the file
 
-Name it `NNNN_short_name.sql`, taking the next number after the highest in `db/migrations/` (currently `0049_rfp_match_saved.sql`, so the next file is `0050_…`; re-list the directory before you pick, since another branch may have taken it). Order is plain filename order, because the runner sorts `*.sql` by name. The runner records the *full stem* as the version, so two files may share a prefix without a primary-key clash: `0044_news.sql` and `0044_one_read_policy_and_fk_indexes.sql` both exist. Still, pick the next free number rather than relying on that.
+Name it `NNNN_short_name.sql`, taking the next number after the highest in `db/migrations/` (currently `0056_documents_path_in_org.sql`, so the next file is `0057_…`; re-list the directory before you pick, since another branch may have taken it). Order is plain filename order, because the runner sorts `*.sql` by name. The runner records the *full stem* as the version, so two files may share a prefix without a primary-key clash: `0044_news.sql` and `0044_one_read_policy_and_fk_indexes.sql` both exist. Still, pick the next free number rather than relying on that.
 
 Conventions from the migrations README:
 
@@ -77,7 +97,18 @@ Two layers decide whether a role can read a table, and a new table must satisfy 
 
 `0048_proposal_work.sql` is the recent example for changing an *existing* table. It adds two `NOT NULL DEFAULT '{}'::jsonb` columns (`work`, `summary`) to `proposals`, so existing rows backfill without a rewrite step; it tightens who may write with `ALTER POLICY` on `proposals_insert`, `proposals_update` and `documents_insert` rather than dropping and recreating them; and it ends with a `DO $$` guard, repeating `0027`'s, that raises an exception if any table readable by `anon` or `authenticated` has no read policy. Because the whole file is one transaction, that guard aborts and rolls back the entire migration if a policy is missing. Note that `proposals` is in the catalog's `KNOWN_EXCLUDED` list, so adding columns to it needed no `catalog.py` change.
 
-`0049_rfp_match_saved.sql` is the smallest kind of change, and the latest: an RFP Watch org may now *save* a call, so it widens the `status` CHECK on `rfp_matches` to `('flagged', 'saved', 'reviewed', 'dismissed')`. A CHECK cannot be altered in place, so one `ALTER TABLE` drops `rfp_matches_status_check` and adds it back with the new list. It needed no grant or policy work because the table already has `GRANT UPDATE … TO authenticated` (0025) and the `rfp_matches_update` policy (0027), which the PATCH `/api/rfps/{id}/matches/{org_id}` route uses; the catalog's `status` column lists the same four values in `values=(…)`, so a value-list change like this is also a `catalog.py` edit.
+`0049_rfp_match_saved.sql` is the smallest kind of change: an RFP Watch org may now *save* a call, so it widens the `status` CHECK on `rfp_matches` to `('flagged', 'saved', 'reviewed', 'dismissed')`. A CHECK cannot be altered in place, so one `ALTER TABLE` drops `rfp_matches_status_check` and adds it back with the new list. It needed no grant or policy work because the table already has `GRANT UPDATE … TO authenticated` (0025) and the `rfp_matches_update` policy (0027), which the PATCH `/api/rfps/{id}/matches/{org_id}` route uses; the catalog's `status` column lists the same four values in `values=(…)`, so a value-list change like this is also a `catalog.py` edit.
+
+The migrations from 0050 onward show the other common shapes:
+
+- `0050_proposal_stage_shift.sql` is a pure data migration: one `UPDATE` on `proposals` that shifts the stored `work.stage` (and the copy in `summary`) up by one for stages 3 and above, because a new step was inserted. It leans on "each file runs once" for correctness, which is exactly why an applied file must never be re-edited and re-run.
+- `0051_documents_delete.sql` and `0052_proposals_delete.sql` add *delete* access for routes that now run as the caller. Each pairs an explicit `GRANT DELETE … TO authenticated` with a `CREATE POLICY … FOR DELETE` that repeats the route's own authorization in the database (staff only for vault uploads; org admins/stewards or staff for proposals and their `proposal_draft` documents via `documents_delete_draft`). A caller-run write route needs both halves, since the grant alone leaves RLS denying every row.
+
+The four newest migrations (0053-0056) are all part of the Doc Vault delete-and-upload hardening and cover three more shapes:
+
+- **A logging table plus a `SECURITY DEFINER` trigger (`0053_deleted_documents.sql`).** It creates `deleted_documents` (the old row as `jsonb`, who deleted it, and nullable `restored_by`/`restored_at`) and an `AFTER DELETE` trigger on `documents` that writes to it, so no delete path can skip the log. The deletes run as the caller, who has no grant on the log table, so the function `app.log_document_delete()` is `SECURITY DEFINER` with `SET search_path = public` and `REVOKE ALL … FROM PUBLIC`. The table is staff-only: RLS is enabled, there is one `FOR SELECT USING ((SELECT app.is_staff()))` policy, and no grant to `authenticated`. It is also listed in the catalog's `KNOWN_EXCLUDED` ("private uploads included"), so the catalog decision was to keep it out of the agent's reach.
+- **Guarded storage-bucket updates (`0054_org_vault_mime_types.sql`, `0055_org_vault_pptx.sql`).** Both `UPDATE storage.buckets SET allowed_mime_types` for `org-vault` and `org-vault-local`, inside a `DO $$` block that first checks `pg_namespace` for a `storage` schema and, if absent, raises a NOTICE and returns. The bundled local Postgres has no `storage` schema, so without the guard the migration would fail there (the same guard as `0020`). `0055` repeats the whole list with the `.pptx` type added, because an `UPDATE` replaces the array rather than appending. That list is duplicated in `storage.VAULT_TYPES` in `backend/app/integrations/storage.py`, and `test_the_vault_bucket_takes_exactly_the_types_the_routes_allow` in `backend/tests/test_storage.py` compares the two. The test reads `0055` by name, so a later migration that changes the list must update the test too.
+- **Tightening a policy with `ALTER POLICY` (`0056_documents_path_in_org.sql`).** It adds a `starts_with(storage_path, 'org-vault/' || org_id::text || '/')` condition to the `documents_insert` `WITH CHECK`, so a signed-in caller's row can only name a file in its own org's vault folder. Rows written on the owner pool (library, staff dataset, seeds) are not subject to RLS. Its comment notes there is no update policy to tighten because `authenticated` has no `UPDATE` on `documents`.
 
 Choose the policy by the kind of table: public rows, a child that follows its org or funder, signed-in-only, or staff-only. The existing rules in `0027` are the patterns to copy.
 
@@ -85,7 +116,7 @@ Choose the policy by the kind of table: public rows, a child that follows its or
 
 The migration runner and the shared pool connect as the database owner (a superuser), which bypasses RLS and grants. Whether your policy is ever exercised depends on how the code reads the table (`backend/app/db/pool.py`):
 
-- **`PoolDep` (routers) is a `CallerPool`.** Each connection is one transaction that first runs `set_config('role', …, true)` and `set_config('request.jwt.claims', …, true)`, so the rest of the transaction runs as `anon` or `authenticated` with the token's claims (`anon` and empty claims when the request has no user). Both settings are `SET LOCAL`, so they end with the transaction, and the connection returns to the pool as the owner. A route that reads or writes your new table therefore needs the grant *and* the policy, or it fails or returns no rows.
+- **`PoolDep` (routers) is a `CallerPool`.** Each connection is one transaction that first runs `set_config('role', …, true)` and `set_config('request.jwt.claims', …, true)` (plus the REST statement timeout, in the same round trip), so the rest of the transaction runs as `anon` or `authenticated` with the token's claims (`anon` and empty claims when the request has no user). Both settings are `SET LOCAL`, so they end with the transaction, and the connection returns to the pool as the owner. A route that reads or writes your new table therefore needs the grant *and* the policy, or it fails or returns no rows.
 - **`OwnerPoolDep` is the owner pool.** Identity code (who the caller is, `users` and `threads` rows) and a few staff or Import routes take it. It ignores RLS, so a missing policy will not show up there.
 - **Ask Sangam's SQL tool also runs as the caller.** `ask_access` sets the `agent_caller` context variable per `/agent` request, and the executor calls `set_caller` inside a read-only transaction; with no caller set it runs as `anon`. Import keeps the owner, since it writes the catalog.
 
@@ -93,12 +124,12 @@ This is why the policy matters even for a table you only plan to read from the a
 
 ## 3. Decide separately about the SQL catalog
 
-`backend/app/agent/tools/sql/catalog.py` is the allowlist of tables and columns the agent's SQL tool may read. **Adding a table or column there is a security decision, not a mechanical follow-up to the migration.** The tool queries as the caller, so grants and RLS apply, but the catalog also decides what the model is told exists and how it is cited. Tables holding private per-org data (`proposals`, `funder_matches`, `vault_research`) stay in `KNOWN_EXCLUDED` regardless. A new table:
+`backend/app/ask/tools/sql/catalog.py` is the allowlist of tables and columns the agent's SQL tool may read. **Adding a table or column there is a security decision, not a mechanical follow-up to the migration.** The tool queries as the caller, so grants and RLS apply, but the catalog also decides what the model is told exists and how it is cited. Tables holding private or sensitive data stay in `KNOWN_EXCLUDED` regardless of grants. Today that set covers chat history (`checkpoints*`, `threads`), accounts and membership (`users`, `org_members`), private per-org data (`proposals`, `funder_matches`, `funder_match_details`, `vault_research`), the delete log (`deleted_documents`), Import's save log and bookkeeping (`promotions`, `catalog_writes`, `ingest_*`, `entity_research`, `resolution_queue`), news pipeline state (`news_link_scores`, `news_watch`) and infrastructure (`schema_migrations`, `graph_ingest_log`). A new table:
 
 - stays invisible to the agent by default;
-- is only logged at INFO at boot as "not readable by the SQL tool and not declared as excluded" until someone either adds it to `_TABLES` or lists it in `KNOWN_EXCLUDED` (where private, per-org, chat-history and infrastructure tables live, each with a reason).
+- is only logged at INFO at boot as "not readable by the SQL tool and not declared as excluded" until someone either adds it to `_TABLES` or lists it in `KNOWN_EXCLUDED`, with a comment giving the reason. Declare the exclusion in the same change as the migration, as `0053` did for `deleted_documents`, so the INFO line does not become noise that hides a real undecided table.
 
-If you do add it, supply a `Table` with a one-line description, primary key, columns, foreign keys and `defects` describing known data problems. `_self_check()` runs at import and rejects a catalogued table with no columns or primary key, or foreign keys pointing at tables or columns not in the catalog.
+If you do add it, supply a `Table` with a one-line description, primary key, columns, foreign keys and `defects` describing known data problems. `_self_check()` runs at import and rejects a catalogued table with no columns or primary key, a primary or foreign key column that is not listed, foreign keys pointing at tables or columns not in the catalog, and a column whose `cites` kind is not one of `org`, `funder`, `activity`, `score` or `news`. A catalog mistake therefore fails the import of the module, not just a test.
 
 ### Drift fails the boot
 
@@ -115,6 +146,7 @@ Consequences for ordering: a migration that adds a table does not break the runn
 
 ## 4. Tests and docs to update
 
+- If the migration changes the `org-vault` bucket's allowed types, change `storage.VAULT_TYPES` with it and update `backend/tests/test_storage.py`, which pins that list to a specific migration file.
 - `backend/tests/test_sql_catalog.py` checks catalog contents (readability of excluded tables and withheld columns, `SELECT *` expansion, citation kinds, defect wording). If you changed `catalog.py`, update or extend it, and run it.
 - `backend/tests/test_migration_integrity.py` is an integration test against the live compose Postgres (`localhost:5433`, or `TEST_DATABASE_URL`); it is skipped when the database is unreachable. It asserts preserved row counts and seeded content (documents, `graph_ingest_log`, specific org/funder ids, funder activity, contacts). If a migration legitimately changes such data it will need adjusting; it is not a general schema test and does not verify RLS or grants.
 - Check any code that selects the changed columns (repositories, routes, seeds). Seeds that write new columns depend on the migration (`seed.taxonomy_seed` needs `0002_taxonomy.sql`), which is why local `make seed` runs `migrate` first.
@@ -134,6 +166,7 @@ Both targets run `python -m app.db.migrate` in a one-off backend container (`doc
 3. For each file already recorded, compares a SHA-256 checksum prefix. A mismatch prints `! <version> - DRIFT: file changed after it was applied`. This is a warning, not a failure, and the file is skipped.
 4. Runs each pending file in its own transaction together with the `INSERT INTO schema_migrations`. On any error it rolls back that file, prints `x <version> FAILED`, and stops: later files are not attempted. Earlier files stay applied.
 5. `--status` (via `make migrate-status`) only reports; it never writes migrations, though it does create the ledger table if absent.
+6. When the SQL step succeeds (exit code 0), `main()` then runs `migrate_checkpointer`, which has LangGraph's `PostgresSaver` set up its own checkpoint tables (or, with `--status`, report `checkpointer vN of vM`). It is done here rather than at boot so a langgraph upgrade migrates once, on purpose; `app/db/checkpointer.py` raises "run make migrate" at startup if the version does not match. A failed SQL migration skips this step.
 
 Fix a failed migration by correcting the file (it was never recorded, so editing it is safe) and re-running. If you see DRIFT, someone edited an applied file: restore it and put the change in a new migration.
 
