@@ -14,7 +14,8 @@ from app.proposals import facts as fact_rules
 CITE = re.compile(r"⟦(k\d+)⟧")
 GAP = re.compile(r"\[Add:[^\[\]]*\]")  # no "[" inside, so a run of "[Add:" stays linear
 _UNITS = {"lakh": 1e5, "lakhs": 1e5, "lac": 1e5, "crore": 1e7, "crores": 1e7, "cr": 1e7}
-_AMOUNT = re.compile(r"(?<!\d)(\d+(?:\.\d+)?)\s*(lakhs?|lac|crores?|cr)\b")
+# The unit is optional so every digit run matches whole and the scan stays linear; _amounts keeps those with one.
+_AMOUNT = re.compile(r"(\d+(?:\.\d+)?)(?:\s*(lakhs?|lac|crores?|cr)\b)?")
 # Years, financial-year ranges and Schedule VII clauses are dates and labels, not claims.
 _SKIP = re.compile(
     r"\bfy\s*\d{2,4}(?:\s*[-–/]\s*\d{2,4})?"
@@ -33,6 +34,14 @@ def paragraphs(text: str) -> list[str]:
     return [p for p in re.split(r"\n\s*\n", text or "") if p.strip()]
 
 
+def _amounts(text: str) -> list[tuple[str, str]]:
+    return [(n, u) for n, u in _AMOUNT.findall(text) if u]
+
+
+def _no_amounts(text: str) -> str:
+    return _AMOUNT.sub(lambda m: " " if m[2] else m[0], text)
+
+
 def drop_cites(text: str, space: str | None = " \t") -> str:
     """Each ⟦kN⟧ removed with the `space` before it: a split, as a whitespace prefix in the regex is quadratic."""
     pieces = re.split(r"⟦k\d+⟧", text)
@@ -46,8 +55,8 @@ def cited(text: str) -> list[str]:
 def _claims(text: str) -> tuple[list[float], list[float]]:
     """The paragraph's plain numbers, and its amounts in rupees; markers, gaps, years and clauses dropped."""
     body = _SKIP.sub(" ", fact_rules.norm(GAP.sub(" ", CITE.sub(" ", text))))
-    amounts = [float(n) * _UNITS[u] for n, u in _AMOUNT.findall(body)]
-    return [float(n) for n in _NUMBER.findall(_AMOUNT.sub(" ", body))], amounts
+    amounts = [float(n) * _UNITS[u] for n, u in _amounts(body)]
+    return [float(n) for n in _NUMBER.findall(_no_amounts(body))], amounts
 
 
 def _values(facts: list[dict[str, Any]]) -> tuple[list[float], list[float]]:
@@ -57,7 +66,7 @@ def _values(facts: list[dict[str, Any]]) -> tuple[list[float], list[float]]:
     for f in facts:
         text = fact_rules.norm(f"{f.get('value')} {f.get('evidence') or ''}")
         numbers += [float(n) for n in _NUMBER.findall(text)]
-        amounts += [float(n) * _UNITS[u] for n, u in _AMOUNT.findall(text)]
+        amounts += [float(n) * _UNITS[u] for n, u in _amounts(text)]
     return numbers, amounts
 
 
@@ -140,8 +149,8 @@ def extract(text: str, *, districts: set[str] = frozenset(), names: set[str] = f
     """Every figure, place, name and gap the text states, years included, as (what it is, as written)."""
     body = fact_rules.norm(GAP.sub(" ", CITE.sub(" ", text)))
     # "₹2.4 crore" and "₹2,40,00,000" are one figure; "₹42 lakh" is another.
-    out = [(f"{float(n) * _UNITS[u]:.2f}", f"{n} {u}") for n, u in _AMOUNT.findall(body)]
-    out += [(f"{float(n):.2f}", n) for n in _NUMBER.findall(_AMOUNT.sub(" ", body))]
+    out = [(f"{float(n) * _UNITS[u]:.2f}", f"{n} {u}") for n, u in _amounts(body)]
+    out += [(f"{float(n):.2f}", n) for n in _NUMBER.findall(_no_amounts(body))]
     words = _words(GAP.sub(" ", text))
     out += [(f"place {p}", p.title()) for p in _places(text, districts)]
     out += [(f"name {n}", n.title()) for n in sorted(names) if f" {n} " in words]

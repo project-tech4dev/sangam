@@ -13,6 +13,12 @@ describe("stripComments", () => {
     expect(stripComments(input)).not.toContain("<!--");
   });
 
+  it("strips a long run of unclosed markers quickly", () => {
+    const started = Date.now();
+    expect(stripComments("<!--".repeat(50_000) + "kept")).toBe("kept");
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
   it("leaves text with no comment as it is", () => {
     expect(stripComments("a -> b, <! c")).toBe("a -> b, <! c");
   });

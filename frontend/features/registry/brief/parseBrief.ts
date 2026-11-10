@@ -24,15 +24,15 @@ export type Brief = {
   sources: string[];
 };
 
-// Until nothing changes, as one pass can rejoin "<!<!-- x -->-- y -->" into a fresh comment; an unclosed "<!--" goes last.
+// Earliest "<!--" to its "-->", repeated, so a removal that rejoins "<!<!-- x -->--" is caught; an unclosed one is dropped.
 export function stripComments(markdown: string): string {
-  let prev: string;
   let out = markdown;
-  do {
-    prev = out;
-    out = out.replace(/<!--[\s\S]*?-->/g, "");
-    if (out === prev) out = out.replace(/<!--/g, "");
-  } while (out !== prev);
+  let closes = true; // once one is unclosed, none after it closes: stop looking, so the strip stays linear
+  for (let at = out.indexOf("<!--"); at !== -1; at = out.indexOf("<!--", Math.max(0, at - 3))) {
+    const end: number = closes ? out.indexOf("-->", at + 4) : -1;
+    closes = end !== -1;
+    out = out.slice(0, at) + (closes ? out.slice(end + 3) : out.slice(at + 4));
+  }
   return out;
 }
 
