@@ -7,7 +7,7 @@ to pick a column. That is how a figure becomes wrong by a factor of ten
 million, which this codebase has shipped twice.
 
 So the shape is fixed at the source instead. One model per concept, its fields
-taken from the target table's columns (app/ingest/expectations.py derives that
+taken from the target table's columns (app/ingest/research/expectations.py derives that
 list from the SQL catalog, and a test holds the two together). The writer then
 maps rather than parses.
 """

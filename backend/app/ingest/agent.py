@@ -278,7 +278,7 @@ INTERRUPT_ON = {
 def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     # Before create_deep_agent: the profile is read while the graph is built.
     install_harness()
-    # No SQL tools by design: this agent proposes typed records, and app/ingest/writer.py
+    # No SQL tools by design: this agent proposes typed records, and app/ingest/catalog/writer.py
     # is the only thing that writes. Ask Sangam reads; this one imports.
     backend = _backend()
     # An isolated subagent builds its own middleware stack, so the parent's restricted
