@@ -8,9 +8,8 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-from app.repositories.facets import FacetSpec, count_by, count_facets, ordered
+from app.repositories.facets import ordered
 from app.repositories.news_stories import SOCIAL
-from app.repositories.paging import slice_page
 from app.repositories.partner_groups import GROUP_KEY
 from app.repositories.public_sql import (
     ON_FILE,
@@ -242,61 +241,9 @@ class Filters:
     q: str = ""
 
 
-def _works_in(row: dict, where: str) -> bool:
-    if where == "any":
-        return True
-    if where == "ne":
-        return any(s in NORTH_EAST for s in row["states"])
-    if where == "out":
-        return any(s not in NORTH_EAST for s in row["states"])
-    return where in row["states"]
-
-
-def matches(row: dict, f: Filters) -> bool:
-    """Whether a Registry row passes every filter and the search, as the browser decided it before."""
-    if f.kind != "all" and row["kind"] != f.kind:
-        return False
-    if f.theme != "all" and not any(t["domain"] == f.theme for t in row["themes"]):
-        return False
-    if f.population != "all" and f.population not in row["populations"]:
-        return False
-    if f.sdg != "all" and f.sdg not in row["sdgs"]:
-        return False
-    if not _works_in(row, f.where):
-        return False
-    if f.kind == "org" and f.reg != "any":
-        flag = {"csr1": "csr1", "12a80g": "has_12a_80g", "fcra": "fcra"}.get(f.reg)
-        if flag and not row.get(flag):
-            return False
-    if f.kind == "funder":
-        if f.ftype != "all" and row.get("funder_type") != f.ftype:
-            return False
-        if f.approach == "open" and not row.get("open_call"):
-            return False
-        if f.approach == "invites" and row.get("intake_mode") != "invitation_only":
-            return False
-    q = f.q.strip().lower()
-    return not q or q in row["search"] or q in row["name"].lower()
-
-
-# The Registry's dropdowns, counted over every row as the browser counted them.
-FACETS = (
-    FacetSpec("theme", lambda r: [t["domain"] for t in r.get("themes") or []]),
-    FacetSpec("population", lambda r: r.get("populations") or []),
-    FacetSpec("sdg", lambda r: r.get("sdgs") or [], numeric=True),
-    FacetSpec("where", lambda r: r.get("states") or []),
-    FacetSpec("ftype", lambda r: [r.get("funder_type")] if r["kind"] == "funder" else []),
-    FacetSpec("approach", lambda r: ["open"] * bool(r.get("open_call"))
-              + ["invites"] * (r.get("intake_mode") == "invitation_only")),
-)
-
-
-def registry_page(rows: list[dict], f: Filters, *, limit: int, offset: int) -> dict:
-    """One page of the rows `f` keeps (CSOs first, then funders, each A→Z), with the cards' counts and the options."""
-    kept = sorted((r for r in rows if matches(r, f)), key=lambda r: (r["kind"] != "org", r["name"].lower(), r["id"]))
-    items, total = slice_page(kept, limit=limit, offset=offset)
-    return {"items": items, "total": total, "limit": limit, "offset": offset,
-            "counts": count_by(rows, "kind"), "facets": count_facets(rows, FACETS)}
+# The dropdowns, as _FACETS names them; SDGs go in number order.
+_FACET_NAMES = ("theme", "population", "sdg", "where", "ftype", "approach")
+_NUMERIC = {"sdg"}
 
 
 def _over_all(sql: str, table: str) -> str:
@@ -386,7 +333,7 @@ _REG_FLAG = {"csr1": lambda t: "csr1" in t, "12a80g": lambda t: {"12a", "80g"} <
 
 
 def _where(f: Filters, on_file: dict[int, set[str]]) -> tuple[str, dict]:
-    """matches(), as a WHERE clause over idx."""
+    """The filters and the search, as a WHERE clause over idx."""
     conds = ["true"]
     q = f.q.strip().lower()
     params = {"kind": f.kind, "theme": f.theme, "population": f.population, "sdg": f.sdg, "where": f.where,
@@ -421,7 +368,9 @@ def _where(f: Filters, on_file: dict[int, set[str]]) -> tuple[str, dict]:
 
 
 async def registry_page_sql(pool: Any, owner: Any, f: Filters, *, limit: int, offset: int) -> dict:
-    """registry_page, with the filtering, sort, count and cut done in Postgres: details are read for one page."""
+    """One page of what `f` keeps (CSOs first, then funders, each A→Z), with the cards' counts and the dropdowns.
+
+    Filtered, sorted, counted and cut in Postgres; details are read for that page only."""
     on_file = await _on_file(owner)
     where, params = _where(f, on_file)
     sql = f"""
@@ -444,7 +393,6 @@ SELECT (SELECT count(*) FROM kept) AS total,
     counts: dict[str, Counter] = defaultdict(Counter)
     for r in res["facets"]:
         counts[r["facet"]][r["value"]] = r["n"]
-    numeric = {spec.name: spec.numeric for spec in FACETS}
     return {"items": items, "total": res["total"], "limit": limit, "offset": offset,
             "counts": {"all": sum(counts["kind"].values()), **counts["kind"]},
-            "facets": {name: ordered(counts[name], numeric[name]) for name in numeric}}
+            "facets": {name: ordered(counts[name], name in _NUMERIC) for name in _FACET_NAMES}}
