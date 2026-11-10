@@ -1,8 +1,15 @@
 import { expect, it } from "vitest";
-import { DEFAULTS, filterParams, filtersFrom, registryQuery } from "@/features/registry/filtersUrl";
+import { DEFAULTS, filterParams, filtersFrom, firstParams, registryQuery } from "@/features/registry/filtersUrl";
 
 it("reads an empty address as every default", () => {
   expect(filtersFrom(new URLSearchParams())).toEqual({ kind: "all", ...DEFAULTS });
+});
+
+it("reads a repeated param's first value, as the client's useSearchParams does", () => {
+  const raw = { type: ["cso", "funder"], theme: "Health", q: undefined };
+  const server = filtersFrom(firstParams(raw));
+  expect(server).toEqual(filtersFrom(new URLSearchParams("type=cso&type=funder&theme=Health")));
+  expect(server).toMatchObject({ kind: "org", theme: "Health", q: "" });
 });
 
 it("writes only the params that changed, and clears the bucket for all", () => {

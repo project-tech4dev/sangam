@@ -22,6 +22,13 @@ export function filtersFrom(params: { get(name: string): string | null }): Filte
   return f;
 }
 
+export type RawParams = Record<string, string | string[] | undefined>;
+
+
+export function firstParams(raw: RawParams): { get(name: string): string | null } {
+  return { get: (name) => (Array.isArray(raw[name]) ? raw[name][0] : raw[name]) ?? null };
+}
+
 /** The params a filter change writes; a default value drops its param. */
 export function filterParams(patch: Partial<Filters>): Record<string, string | null> {
   const out: Record<string, string | null> = {};
