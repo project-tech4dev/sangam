@@ -4,6 +4,7 @@ import {
   InMemoryAgentRunner,
 } from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
+import { allowRoute } from "@/lib/copilotkit-access";
 
 // The backend's AG-UI endpoint (FastAPI + LangGraphAGUIAgent).
 // In docker compose this is http://backend:8000/agent.
@@ -23,18 +24,10 @@ const runtime = new CopilotRuntime({
   runner: new InMemoryAgentRunner(),
 });
 
-// The runtime also serves its in-memory store of every thread (threads/*, memories/*, inspector/*) to any
-// caller. Sangam reads history from the backend's /api/threads, so only what the chat client calls is served.
-const SERVED = new Set(["info", "agent/run", "agent/connect", "agent/stop", "agent/suggest"]);
-
 const handler = createCopilotRuntimeHandler({
   runtime,
   basePath: "/api/copilotkit",
-  hooks: {
-    onBeforeHandler: ({ route }) => {
-      if (!SERVED.has(route.method)) throw new Response("Not found", { status: 404 });
-    },
-  },
+  hooks: { onBeforeHandler: ({ route }) => allowRoute(route) },
 });
 
 // An Import turn streams for 15–20 minutes; must match backend/vercel.json (Pro's extended-duration beta).

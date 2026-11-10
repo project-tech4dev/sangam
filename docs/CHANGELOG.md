@@ -130,6 +130,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-12 · #181 · One read policy each on `users` and `org_members`, three FK indexes.
 - 2026-10-14 · Each agent route declares its access in `AGENT_ACCESS`; a route with none fails at boot instead of falling back.
 - 2026-10-15 · Only a thread's owner may post a turn in it, staff included, so rows read as one user are never replayed to another.
+- 2026-11-10 · #190 · `/api/copilotkit` serves only the routes the chat client calls (`info`, `agent/run|connect|stop|suggest`); the runtime's `threads/*`, `memories/*` and `inspector/*`, which handed every in-memory run to anyone, are 404 (#189).
 
 ## Frontend and design system
 
@@ -262,7 +263,7 @@ Plan docs whose status line is out of date (the work did ship): `2026-09-30-supa
 Superseded: `2026-10-04-funder-eligibility.md` (table dropped by `0031`), `2026-10-08-import-storage-picker.md`
 (replaced by `choose_sources`), `2026-10-07-funder-matching-in-code.md` (replaced by match-v1).
 
-Unmerged branches with real work: `fix/ask-sql-runs-as-caller`, `fix/copilotkit-runtime-routes`,
+Unmerged branches with real work: `fix/ask-sql-runs-as-caller`,
 `feat/access-check`, `fix/funder-tags-from-programmes` (#172), `docs/proposals-spec`, `docs/funder-match-spec`,
 `docs/import-comprehensive-data`, and the graph branches `graphiti`, `graphiti-supabase`, `supabase-graphiti`,
 `add-episode-ui`.
