@@ -12,9 +12,9 @@ from app.ingest.geography import canonical_state
 from app.proposals import facts as fact_rules
 
 CITE = re.compile(r"⟦(k\d+)⟧")
-GAP = re.compile(r"\[Add:[^\]]*\]")
+GAP = re.compile(r"\[Add:[^\[\]]*\]")  # no "[" inside, so a run of "[Add:" stays linear
 _UNITS = {"lakh": 1e5, "lakhs": 1e5, "lac": 1e5, "crore": 1e7, "crores": 1e7, "cr": 1e7}
-_AMOUNT = re.compile(r"(\d+(?:\.\d+)?)\s*(lakhs?|lac|crores?|cr)\b")
+_AMOUNT = re.compile(r"(?<!\d)(\d+(?:\.\d+)?)\s*(lakhs?|lac|crores?|cr)\b")
 # Years, financial-year ranges and Schedule VII clauses are dates and labels, not claims.
 _SKIP = re.compile(
     r"\bfy\s*\d{2,4}(?:\s*[-–/]\s*\d{2,4})?"
@@ -31,6 +31,12 @@ TOLERANCE = 0.005  # "₹2.4 crore" against "₹2,40,00,000": equal within round
 
 def paragraphs(text: str) -> list[str]:
     return [p for p in re.split(r"\n\s*\n", text or "") if p.strip()]
+
+
+def drop_cites(text: str, space: str | None = " \t") -> str:
+    """Each ⟦kN⟧ removed with the `space` before it: a split, as a whitespace prefix in the regex is quadratic."""
+    pieces = re.split(r"⟦k\d+⟧", text)
+    return "".join(p.rstrip(space) for p in pieces[:-1]) + pieces[-1]
 
 
 def cited(text: str) -> list[str]:

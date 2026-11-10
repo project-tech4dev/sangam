@@ -212,6 +212,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
   - one who-may-do-what table in ARCHITECTURE §8.
 - 2026-10-22 · `search_public_sources` checks its hits at once, not in turn (a Pitch search took 10–34 s against Tavily's 2–7 s); Pitch and Import both use it.
 - 2026-10-30 · #356 · `STORAGE_BUCKET_SUFFIX`: a local backend writes to `-local` buckets, so its files and proposal drafts never land in, or overwrite, the deployed ones (#307 §3); a backend sharing the deployed buckets from another database warns at boot.
+- 2026-11-10 · (unmerged) · CodeQL alerts fixed: Pitch's gap, citation and amount regexes run in linear time, its Wikipedia check matches the host rather than a suffix, and the Registry brief strips HTML comments until none is left.
 
 ## Tracing and evals
 

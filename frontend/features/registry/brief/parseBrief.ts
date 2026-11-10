@@ -24,6 +24,18 @@ export type Brief = {
   sources: string[];
 };
 
+// Until nothing changes, as one pass can rejoin "<!<!-- x -->-- y -->" into a fresh comment; an unclosed "<!--" goes last.
+export function stripComments(markdown: string): string {
+  let prev: string;
+  let out = markdown;
+  do {
+    prev = out;
+    out = out.replace(/<!--[\s\S]*?-->/g, "");
+    if (out === prev) out = out.replace(/<!--/g, "");
+  } while (out !== prev);
+  return out;
+}
+
 const GOALS = "What it set out to find";
 const NOT_FOUND = "Looked for, not found";
 const SOURCES = "Sources read";
@@ -89,7 +101,7 @@ export function parseBrief(markdown: string): Brief {
     raw = [];
   };
 
-  for (const line of markdown.replace(/<!--[\s\S]*?-->/g, "").split("\n")) {
+  for (const line of stripComments(markdown).split("\n")) {
     if (line.trim() === "---") break; // the closing note is fixed copy, written by the page instead
     if (line.startsWith("# ") && !brief.name) {
       brief.name = line.slice(2).trim();

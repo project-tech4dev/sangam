@@ -9,13 +9,12 @@ from typing import Any
 from app.proposals import rubric, trace
 
 DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-_MARK = re.compile(r"[ \t]*⟦k\d+⟧")
 _BULLET = re.compile(r"^\s*[-•*]\s+")
-_LEFT = re.compile(r"(\[(?:Add|You fill):[^\]]*\])")  # what the person still has to write, highlighted
+_LEFT = re.compile(r"(\[(?:Add|You fill):[^\[\]]*\])")  # what the person still has to write, highlighted
 
 
 def plain(text: str | None) -> str:
-    return _MARK.sub("", (text or "").replace("**", "")).strip()
+    return trace.drop_cites((text or "").replace("**", "")).strip()
 
 
 def parts(work: dict[str, Any]) -> list[tuple[rubric.Section, str]]:

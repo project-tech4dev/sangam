@@ -11,7 +11,7 @@ from typing import Any
 from app.proposals import rubric
 
 ANSWERS = ("yes", "will_have", "no")
-_GAP = re.compile(r"\[Add:[^\]]*\]")
+_GAP = re.compile(r"\[Add:[^\[\]]*\]")
 
 
 def _plural(n: int, one: str, many: str) -> str:
