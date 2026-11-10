@@ -34,6 +34,22 @@ def test_the_vault_bucket_takes_exactly_the_types_the_routes_allow():
     assert listed == set(storage.VAULT_TYPES.values())
 
 
+@pytest.mark.parametrize("path, org_id, public, expected", [
+    ("org-vault/3/a.pdf", 3, False, ("org-vault", "3/a.pdf")),
+    ("org-vault/4/a.pdf", 3, False, None),
+    ("org-vault/33/a.pdf", 3, False, None),
+    ("org-vault/3/a.pdf", None, False, None),
+    ("staff-sources/kabil/x.xlsx", None, False, ("staff-sources", "kabil/x.xlsx")),
+    ("staff-sources/kabil/x.xlsx", 3, False, None),
+    ("staff-sources/kabil/x.xlsx", None, True, None),
+    ("source-archive/orgs/kabil/ar.pdf", 3, True, ("source-archive", "orgs/kabil/ar.pdf")),
+    ("elsewhere/3/a.pdf", 3, False, None),
+    (None, 3, False, None),
+])
+def test_a_path_is_trusted_only_inside_the_rows_own_folder(path, org_id, public, expected):
+    assert storage.owned_split(path, org_id=org_id, is_public=public) == expected
+
+
 class TestStorageIsOptional:
     """Both variables or nothing. A half-configured client would fail at the
     first upload, in the middle of a research run, rather than at boot.

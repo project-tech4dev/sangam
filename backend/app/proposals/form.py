@@ -99,7 +99,8 @@ def content(title: str, suffix: str, data: bytes) -> list[dict[str, Any]]:
 async def read(pool: Any, template: dict[str, Any], org_id: int, model: Any) -> dict[str, Any]:
     """The form's outline as `work.template.outline` keeps it. Raises Unreadable; a model failure propagates."""
     doc = await repo.form_file(pool, template["document_id"], org_id)
-    parts = storage.split((doc or {}).get("storage_path") or "")
+    doc = doc or {}
+    parts = storage.owned_split(doc.get("storage_path"), org_id=doc.get("org_id"), is_public=bool(doc.get("is_public")))
     if parts is None:
         raise Unreadable("Sangam has no copy of the funder's form. Upload it again in step 2.")
     suffix = Path(parts[1]).suffix.lower()
