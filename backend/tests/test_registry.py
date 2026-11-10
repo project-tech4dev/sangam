@@ -1,4 +1,4 @@
-"""The Registry list: one call, every row with what its filters read, research counted on the owner."""
+"""GET /api/registry: one page of the Registry, its filters from the address, research counted on the owner."""
 
 from app.api.routes import registry as registry_api
 from app.repositories.registry import Filters
@@ -17,9 +17,6 @@ ROWS = [
 
 
 def _patch(monkeypatch, rows=ROWS, research=None):
-    async def entries(pool, owner):
-        return [dict(r) for r in rows]
-
     async def counts(pool, entities):
         counts.calls.append(entities)
         return research if research is not None else {("org", 4): {"runs": 4, "latest": "2026-10-13"}}
@@ -33,37 +30,9 @@ def _patch(monkeypatch, rows=ROWS, research=None):
     page.calls = []
     counts.page = page
 
-    monkeypatch.setattr(f"{ROUTE}.repo.registry_rows", entries)
     monkeypatch.setattr(f"{ROUTE}.repo.registry_page_sql", page)
     monkeypatch.setattr(f"{ROUTE}.repo.research_counts", counts)
     return counts
-
-
-async def test_registry_serves_every_row_with_its_research(client_for, monkeypatch):
-    counts = _patch(monkeypatch)
-    async with client_for(registry_api.router) as client:
-        response = await client.get("/api/registry")
-    assert response.status_code == 200
-    rows = {r["slug"]: r for r in response.json()["rows"]}
-    assert rows["kabil"]["research_runs"] == 4 and rows["kabil"]["researched_on"] == "2026-10-13"
-    assert rows["axis-bank-foundation"]["research_runs"] == 0
-    assert rows["kabil"]["themes"][0]["domain"] == "Livelihoods"
-    assert (rows["kabil"]["press"], rows["kabil"]["social"]) == (0, 6)
-    assert rows["axis-bank-foundation"]["csr_year"] == "FY2024-25"
-    assert counts.calls == [[("org", 4, "kabil"), ("funder", 29, "axis-bank-foundation")]]
-
-
-async def test_research_failure_leaves_the_list_up(client_for, monkeypatch):
-    _patch(monkeypatch)
-
-    async def broken(pool, entities):
-        raise RuntimeError("owner pool down")
-
-    monkeypatch.setattr(f"{ROUTE}.repo.research_counts", broken)
-    async with client_for(registry_api.router) as client:
-        response = await client.get("/api/registry")
-    assert response.status_code == 200
-    assert all(r["research_runs"] == 0 for r in response.json()["rows"])
 
 
 def test_a_row_leads_with_the_tags_most_of_its_programmes_carry_and_leaves_lenses_out():
@@ -84,15 +53,21 @@ def test_a_row_leads_with_the_tags_most_of_its_programmes_carry_and_leaves_lense
 async def _page(client_for, monkeypatch, query, rows=ROWS):
     counts = _patch(monkeypatch, rows=rows)
     async with client_for(registry_api.router) as client:
-        return await client.get(f"/api/registry/page{query}"), counts
+        return await client.get(f"/api/registry{query}"), counts
 
 
 async def test_a_page_serves_the_repository_page_without_the_search_text(client_for, monkeypatch):
     response, counts = await _page(client_for, monkeypatch, "")
     body = response.json()
     assert response.status_code == 200
-    assert [r["slug"] for r in body["items"]] == ["kabil", "axis-bank-foundation"]
+    rows = {r["slug"]: r for r in body["items"]}
+    assert list(rows) == ["kabil", "axis-bank-foundation"]
     assert all("search" not in r for r in body["items"])
+    assert rows["kabil"]["research_runs"] == 4 and rows["kabil"]["researched_on"] == "2026-10-13"
+    assert rows["axis-bank-foundation"]["research_runs"] == 0
+    assert rows["kabil"]["themes"][0]["domain"] == "Livelihoods"
+    assert (rows["kabil"]["press"], rows["kabil"]["social"]) == (0, 6)
+    assert rows["axis-bank-foundation"]["csr_year"] == "FY2024-25"
     assert body["counts"] == {"all": 2, "org": 1, "funder": 1} and body["facets"]["where"][0]["value"] == "Assam"
     assert counts.page.calls == [(Filters(), 50, 0)]
 
@@ -134,5 +109,5 @@ async def test_a_research_failure_leaves_the_page_up(client_for, monkeypatch):
 
     monkeypatch.setattr(f"{ROUTE}.repo.research_counts", broken)
     async with client_for(registry_api.router) as client:
-        response = await client.get("/api/registry/page?limit=2")
+        response = await client.get("/api/registry?limit=2")
     assert response.status_code == 200 and len(response.json()["items"]) == 2

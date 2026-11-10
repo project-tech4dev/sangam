@@ -1,4 +1,4 @@
-/* What a Registry row says: presentation over GET /api/registry/page. Filtering happens on the server. */
+/* What a Registry row says: presentation over GET /api/registry. Filtering happens on the server. */
 
 import type { RegistryRow } from "@/lib/api";
 import { dayMonth, formatInr, funderTypeLabel, MONTHS } from "@/lib/format";

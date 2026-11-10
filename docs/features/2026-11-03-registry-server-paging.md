@@ -7,7 +7,8 @@ This covers the issue's step 3 only. The query fixes, precomputing the list and 
 > path below (`matches()`, `FacetSpec`/`count_facets`/`count_by`, `slice_page`) was deleted rather than
 > kept beside it: a filter added there passed every test while production ignored it. The SQL is tested
 > against Postgres (`tests/test_registry_sql.py`); `facets.py` keeps only `ordered`. `fetch_page` moved
-> to #366, its first user.
+> to #366, its first user. The page is served at `GET /api/registry` as planned; the old every-row route,
+> `RegistryOut` and `registry_rows` are gone, and no `/api/registry/page` path remains.
 
 ## The problem
 

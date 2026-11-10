@@ -39,8 +39,4 @@ class RegistryRow(ReadModel):
     search: str = ""                  # aliases, districts, programmes and partner names, lower-cased
 
 
-class RegistryOut(ReadModel):
-    rows: list[RegistryRow]
-
-
 RegistryPage = FacetedPage[RegistryRow]

@@ -263,7 +263,7 @@ export type Facet = { value: string; count: number };
 /** A page for a list screen with bucket cards and dropdowns. */
 export type FacetedPage<T> = Page<T> & { counts: Record<string, number>; facets: Record<string, Facet[]> };
 
-/** GET /api/registry/page — one org or funder as the Registry list shows it. */
+/** GET /api/registry — one org or funder as the Registry list shows it. */
 export type RegistryRow = {
   kind: "org" | "funder"; id: number; slug: string; name: string; funder_type: string | null;
   place: string | null; states: string[]; themes: { label: string; domain: string | null }[];

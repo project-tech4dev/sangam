@@ -1,4 +1,4 @@
-"""registry_page_sql, the query /api/registry/page runs, against Postgres: every filter, the sort, the cut, the counts."""
+"""registry_page_sql, the query GET /api/registry runs, against Postgres: every filter, the sort, the cut, the counts."""
 
 from __future__ import annotations
 

@@ -10,22 +10,14 @@ from app.api.deps import PageParams
 from app.core.security import get_current_user
 from app.db.pool import OwnerPoolDep, PoolDep
 from app.repositories import registry as repo
-from app.schemas.registry import RegistryOut, RegistryPage, RegistryRow
+from app.schemas.registry import RegistryPage
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/registry", tags=["registry"])
 
 
-@router.get("", response_model=RegistryOut, summary="Every org and funder the Registry lists, in one call")
-async def registry(pool: PoolDep, owner: OwnerPoolDep,
-                   user_id: Annotated[UUID, Depends(get_current_user)]) -> RegistryOut:
-    rows = await repo.registry_rows(pool, owner)
-    await _add_research(owner, rows)
-    return RegistryOut(rows=[RegistryRow.model_validate(r) for r in rows])
-
-
-@router.get("/page", response_model=RegistryPage, response_model_exclude={"items": {"__all__": {"search"}}},
+@router.get("", response_model=RegistryPage, response_model_exclude={"items": {"__all__": {"search"}}},
             summary="One page of the Registry, filtered and searched, with the cards' counts and the dropdowns")
 async def registry_page(
     pool: PoolDep, owner: OwnerPoolDep, user_id: Annotated[UUID, Depends(get_current_user)],

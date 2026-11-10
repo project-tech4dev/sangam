@@ -3,4 +3,4 @@
 import type { RegistryPage } from "@/lib/api";
 import { call } from "@/features/ask/lib/rest";
 
-export const fetchRegistryPage = (query: string) => call<RegistryPage>(`/api/registry/page?${query}`);
+export const fetchRegistryPage = (query: string) => call<RegistryPage>(`/api/registry?${query}`);

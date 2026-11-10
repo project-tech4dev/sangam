@@ -21,16 +21,6 @@ from app.repositories.public_sql import (
     story_counts,
 )
 
-_ORGS = """
-SELECT o.id, o.slug, o.name, o.aliases, dl.name AS district, sl.name AS state
-FROM orgs o
-LEFT JOIN locations dl ON dl.id = o.registered_location_id
-LEFT JOIN locations sl ON sl.id = dl.parent_id
-ORDER BY o.name
-"""
-
-_FUNDERS = "SELECT id, slug, name, aliases, funder_type, intake_mode FROM funders ORDER BY name"
-
 # Each place as (district or NULL, state); a state row has no district.
 _ORG_PLACES = f"""
 SELECT ol.org_id AS id, ol.role, CASE WHEN l.kind = 'district' THEN l.name END AS district, {STATE_OF} AS state
@@ -148,15 +138,6 @@ def _search(*parts) -> str:
     return " ".join(str(p) for p in parts if p).lower()
 
 
-async def registry_rows(pool: Any, owner: Any) -> list[dict]:
-    """Entities as the caller may see them (RLS); registrations on the owner, the same for everyone."""
-    async with pool.connection() as conn:
-        orgs = await (await conn.execute(_ORGS)).fetchall()
-        funders = await (await conn.execute(_FUNDERS)).fetchall()
-        rows = await _rows(conn, orgs, funders)
-    return await _add_registrations(owner, rows)
-
-
 async def _add_registrations(owner: Any, rows: list[dict]) -> list[dict]:
     """Each org row's registration flags, read for those orgs only; after the caller's connection is returned,
     since both come from one pool and holding two at once could wait on itself."""
@@ -271,7 +252,7 @@ def _over_all(sql: str, table: str) -> str:
 
 
 # One lean row per entity with only what the filters, the sort and the search read: the same pieces as
-# registry_rows, so the two cannot disagree on what a row is.
+# _rows, so a row cannot say something its filters do not read.
 _INDEX = f"""
 places AS MATERIALIZED (
   SELECT 'org' AS kind, p.id, p.role, p.district, p.state FROM ({_over_all(_ORG_PLACES, "orgs")}) p
