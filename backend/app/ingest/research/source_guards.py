@@ -6,8 +6,15 @@ from __future__ import annotations
 from typing import Any, Literal
 from urllib.parse import unquote, urlsplit
 
+from app.ingest.reading.registry import (
+    SOURCES,
+    AccessRule,
+    normal_path,
+    rule_for_url,
+    sources_on_host,
+    url_host,
+)
 from app.ingest.research.finding_types import FINDING_MODELS
-from app.ingest.sources import SOURCES, AccessRule, normal_path, rule_for_url, sources_on_host, url_host
 
 TIER_FIELDS: frozenset[str] = frozenset({"source_type", "evidence_tier"})
 # The org concepts whose tables carry source_type and evidence (0033); anything else cannot be marked claimed.

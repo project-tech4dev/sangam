@@ -27,6 +27,7 @@ from app.ingest.promote import (
     _row_identity,
     promote,
 )
+from app.ingest.reading.registry import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.records import (
     ContactRecord,
     FunderCsrSpendRecord,
@@ -63,7 +64,6 @@ from app.ingest.research.finding_types import (
     to_inr,
 )
 from app.ingest.research.findings import EntityResearch, PromotionReport, ResearchSummary
-from app.ingest.sources import SOURCES, AccessRule, Category, dispatchable, resolve
 from app.ingest.taxonomy import clause_for
 from app.ingest.tools.research_tools import save_research
 from app.ingest.writer import CSR_YEAR_UPDATABLE, _diff, slugify
@@ -99,7 +99,7 @@ class TestSourcesGateOnAccessRules:
     def test_the_strictest_rule_on_a_host_wins(self):
         """mcacdm.nic.in carries four products. First-match-wins would let
         declaration order decide whether a crawler runs."""
-        from app.ingest.sources import rule_for_url, sources_on_host
+        from app.ingest.reading.registry import rule_for_url, sources_on_host
 
         assert len(sources_on_host("mcacdm.nic.in")) > 1
         rule, _ = rule_for_url("https://mcacdm.nic.in/")
@@ -114,7 +114,7 @@ class TestSourcesGateOnAccessRules:
     def test_the_registry_self_checks_at_import(self):
         """The JSON is loaded, so a malformed entry must fail loudly rather than
         producing a registry that is quietly wrong."""
-        from app.ingest import sources as module
+        from app.ingest.reading import registry as module
 
         assert module._self_check() is None
 
@@ -1469,7 +1469,7 @@ class TestListingWorkbooksForTheSpreadsheetsCard:
 
 class TestOnlyTheStaffBucketHoldsStaffData:
     def test_a_vault_workbook_cannot_be_picked(self):
-        from app.ingest.staff_sources import check_pick
+        from app.ingest.reading.staff_sources import check_pick
 
         assert isinstance(check_pick("org-vault/12/abc-accounts.xlsx"), str)
         assert check_pick("staff-sources/mca_csr/abc.xlsx") == ("staff-sources", "mca_csr/abc.xlsx", "mca_csr")

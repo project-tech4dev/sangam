@@ -10,9 +10,9 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 
 from app.ingest import runner
-from app.ingest import sources as src
 from app.ingest.adapters._http import SourceUnavailable
-from app.ingest.sources import AccessRule
+from app.ingest.reading import registry as src
+from app.ingest.reading.registry import AccessRule
 
 
 class Cursor:

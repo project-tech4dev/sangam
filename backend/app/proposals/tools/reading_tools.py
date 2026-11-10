@@ -9,11 +9,11 @@ from typing import Any
 from langchain_core.tools import tool
 
 from app.db.pool import get_pool
-from app.ingest import vault
 from app.ingest.brief import headline, record
+from app.ingest.reading import vault
+from app.ingest.reading.vault import MAX_BYTES
 from app.ingest.research.source_guards import is_private_source
 from app.ingest.tools.library_tools import READABLE, archived
-from app.ingest.vault import MAX_BYTES
 from app.integrations import storage
 from app.proposals import context, research, steps
 from app.proposals import facts as fact_rules

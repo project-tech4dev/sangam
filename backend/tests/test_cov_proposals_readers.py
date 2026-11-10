@@ -10,7 +10,7 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from app.core.security import CallerScope
-from app.ingest import run_sources
+from app.ingest.reading import run_sources
 from app.proposals import context, readers
 from app.proposals.middleware import PUBLIC_RUN
 from app.repositories import profile_facts

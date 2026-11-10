@@ -12,7 +12,8 @@ from docx import Document
 from openpyxl import Workbook
 
 from app.core import extract
-from app.ingest import render_docs, vault
+from app.ingest import render_docs
+from app.ingest.reading import vault
 from app.integrations import storage
 
 

@@ -1,7 +1,7 @@
 """The tavily_news source is registered and runnable; the bars are settings, not screen values."""
 
 from app.core.config import Settings
-from app.ingest.sources import DISPATCHABLE, SOURCES, AccessRule
+from app.ingest.reading.registry import DISPATCHABLE, SOURCES, AccessRule
 
 
 def test_tavily_news_is_a_dispatchable_media_source():
@@ -18,7 +18,7 @@ def test_the_bars_default_to_the_spec():
 
 
 def test_the_licensed_rule_has_a_strictness():
-    from app.ingest.sources import rule_for_url
+    from app.ingest.reading.registry import rule_for_url
 
     rule, src = rule_for_url("https://api.tavily.com/")
     assert rule is AccessRule.LICENSED_API and src.key == "tavily_news"

@@ -352,7 +352,7 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         call = {"name": "read_page", "args": {"url": "https://example.org"}, "id": "2", "type": "tool_call"}
         request = ToolCallRequest(tool_call=call, tool=node.tools_by_name["read_page"],
                                   state={"messages": staff}, runtime=None)
-        from app.ingest import run_sources
+        from app.ingest.reading import run_sources
 
         # With no sources chosen nothing is read; with the web chosen, staff rows still close it.
         assert node._wrap_tool_call(request, lambda r: None).content.startswith("REFUSED: no sources")
