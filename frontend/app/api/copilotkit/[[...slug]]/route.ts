@@ -4,6 +4,7 @@ import {
   InMemoryAgentRunner,
 } from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
+import { allowRoute } from "@/lib/copilotkit-access";
 
 // The backend's AG-UI endpoint (FastAPI + LangGraphAGUIAgent).
 // In docker compose this is http://backend:8000/agent.
@@ -23,7 +24,11 @@ const runtime = new CopilotRuntime({
   runner: new InMemoryAgentRunner(),
 });
 
-const handler = createCopilotRuntimeHandler({ runtime, basePath: "/api/copilotkit" });
+const handler = createCopilotRuntimeHandler({
+  runtime,
+  basePath: "/api/copilotkit",
+  hooks: { onBeforeHandler: ({ route }) => allowRoute(route) },
+});
 
 // An Import turn streams for 15–20 minutes; must match backend/vercel.json (Pro's extended-duration beta).
 export const maxDuration = 1800;
