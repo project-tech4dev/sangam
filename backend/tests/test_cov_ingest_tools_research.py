@@ -7,6 +7,7 @@ import json
 import time
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
@@ -22,6 +23,10 @@ URL = "https://example.org/csr"
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 SUMMARY = "Example Foundation funds sports and water projects in Assam."
 REAL_CLIENT = research_tools._client
+
+
+def host(url: str) -> str | None:
+    return urlparse(url).hostname
 
 
 @pytest.fixture(autouse=True)
@@ -98,7 +103,7 @@ class TestSearch:
         search({"results": [{"url": "https://ok.org/a", "title": "OK"}, {"url": "https://held.org/b"}]}, seen)
 
         async def check(url):
-            return None if "ok.org" in url else "held.org forbids it " * 20
+            return None if host(url) == "ok.org" else "held.org forbids it " * 20
         monkeypatch.setattr(research_tools, "check_url", check)
         out = await research_tools.search_public_sources.ainvoke({"query": "x", "max_results": 50})
         assert seen == [10]
@@ -109,8 +114,8 @@ class TestSearch:
         search({"results": [{"url": f"https://site{i}.org", "title": f"T{i}"} for i in range(10)]})
 
         async def check(url):
-            await asyncio.sleep(0.2 if url.endswith("0.org") else 0.1)  # the first finishes last
-            return "held" if url.endswith("3.org") else None
+            await asyncio.sleep(0.2 if host(url) == "site0.org" else 0.1)  # the first finishes last
+            return "held" if host(url) == "site3.org" else None
         monkeypatch.setattr(research_tools, "check_url", check)
         started = time.monotonic()
         out = await research_tools.search_public_sources.ainvoke({"query": "x", "max_results": 10})
@@ -179,7 +184,7 @@ class TestReadPage:
 
     async def test_a_redirect_to_a_held_url_is_refused(self, monkeypatch):
         async def check(url):
-            return "held.org is held" if "held.org" in url else None
+            return "held.org is held" if host(url) == "held.org" else None
         monkeypatch.setattr(research_tools, "check_url", check)
 
         def handler(r):
@@ -249,7 +254,7 @@ class TestFetchDocument:
 
     async def test_a_redirect_refusal(self, monkeypatch):
         async def check(url):
-            return "held" if "held.org" in url else None
+            return "held" if host(url) == "held.org" else None
         monkeypatch.setattr(research_tools, "check_url", check)
         web(monkeypatch, lambda r: httpx.Response(302, headers={"location": "https://held.org/x"}))
         assert (await research_tools.fetch_document.ainvoke({"url": URL})).startswith("REFUSED:")

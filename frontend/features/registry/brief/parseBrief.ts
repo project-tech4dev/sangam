@@ -24,6 +24,18 @@ export type Brief = {
   sources: string[];
 };
 
+// Earliest "<!--" to its "-->", repeated, so a removal that rejoins "<!<!-- x -->--" is caught; an unclosed one is dropped.
+export function stripComments(markdown: string): string {
+  let out = markdown;
+  let closes = true; // once one is unclosed, none after it closes: stop looking, so the strip stays linear
+  for (let at = out.indexOf("<!--"); at !== -1; at = out.indexOf("<!--", Math.max(0, at - 3))) {
+    const end: number = closes ? out.indexOf("-->", at + 4) : -1;
+    closes = end !== -1;
+    out = out.slice(0, at) + (closes ? out.slice(end + 3) : out.slice(at + 4));
+  }
+  return out;
+}
+
 const GOALS = "What it set out to find";
 const NOT_FOUND = "Looked for, not found";
 const SOURCES = "Sources read";
@@ -89,7 +101,7 @@ export function parseBrief(markdown: string): Brief {
     raw = [];
   };
 
-  for (const line of markdown.replace(/<!--[\s\S]*?-->/g, "").split("\n")) {
+  for (const line of stripComments(markdown).split("\n")) {
     if (line.trim() === "---") break; // the closing note is fixed copy, written by the page instead
     if (line.startsWith("# ") && !brief.name) {
       brief.name = line.slice(2).trim();

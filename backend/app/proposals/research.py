@@ -94,7 +94,6 @@ def reset(work: dict[str, Any]) -> dict[str, Any]:
 
 DEEPER_FROM = ("A1", "A2", "A3")  # the case: what "Research deeper" reads
 DEEPER_NEEDS = ("A2", "A3")  # marked done first; the Summary waits for the plan, so it is read but not needed
-_CITE = re.compile(r"\s*⟦k\d+⟧")
 
 ANGLES_PROMPT = """You turn the case an Indian NGO wrote for a grant proposal into search angles for public research:
 government data, research and evaluations on the problem and the place. Give up to eight angles, each a few words
@@ -120,7 +119,7 @@ def case_text(work: dict[str, Any]) -> str:
     """The case's written parts, citations taken out: the angles come from what it says, not its fact ids."""
     held = work.get("sections") or {}
     labels = {s.code: s.label for s in rubric.CORE}
-    parts = [(labels[c], _CITE.sub("", (held.get(c) or {}).get("text") or "").strip()) for c in DEEPER_FROM]
+    parts = [(labels[c], trace.drop_cites((held.get(c) or {}).get("text") or "", None).strip()) for c in DEEPER_FROM]
     return "\n\n".join(f"## {label}\n{text}" for label, text in parts if text)
 
 

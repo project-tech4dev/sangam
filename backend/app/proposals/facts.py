@@ -129,7 +129,8 @@ def off_page(fact: dict[str, Any], page: str | None) -> str | None:
         return f"{subject}: give its topic, one of {', '.join(PUBLIC_TOPICS)}"
     if not _YEAR.search(str(fact.get("as_of") or "")):
         return f"{subject}: give the year the figure is for, such as 2011 or 2019-21"
-    if (urlparse(str(url or "")).hostname or "").endswith("wikipedia.org"):
+    host = urlparse(str(url or "")).hostname or ""
+    if host == "wikipedia.org" or host.endswith(".wikipedia.org"):
         return f"{subject}: Wikipedia is not a source; cite the dataset or report it draws on"
     if page is None:
         return f"{subject}: {url} was not read in this run; read it with read_page before citing it"
