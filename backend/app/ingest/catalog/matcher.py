@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Any, Literal
 
-from app.ingest.records import normalise_cin
+from app.ingest.catalog.rows import normalise_cin
 
 Method = Literal["identifier", "exact", "alias", "boilerplate", "website", "trigram", "none"]
 

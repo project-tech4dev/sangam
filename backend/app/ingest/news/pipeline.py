@@ -16,7 +16,7 @@ from app.core.config import get_settings
 from app.ingest import runner
 from app.ingest.adapters import tavily_news
 from app.ingest.adapters.tavily_news import Hit, SearchFailed
-from app.ingest.matcher import name_key
+from app.ingest.catalog.matcher import name_key
 from app.ingest.news import store, windows
 from app.ingest.news.bars import Bars, needs_check, topic_visibility, visibility
 from app.ingest.news.classify import (

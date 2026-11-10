@@ -10,10 +10,10 @@ import pytest
 from psycopg.errors import UniqueViolation
 
 from app.core.security import CallerScope, chat_user_id
-from app.ingest import catalog_save
-from app.ingest.matcher import Match
+from app.ingest.catalog import save as catalog_save
+from app.ingest.catalog.matcher import Match
+from app.ingest.catalog.writer import UNWRITTEN
 from app.ingest.tools import catalog_tools
-from app.ingest.writer import UNWRITTEN
 from tests.cov_ingest_fakes import BrokenPool, ScriptPool, patch_catalog, running_as
 from tests.test_import_roles import ARPAN_STEWARD, KABIL_STEWARD, MEMBER, STAFF
 

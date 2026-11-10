@@ -11,9 +11,11 @@ from langchain_core.messages import SystemMessage
 
 from app.core import security
 from app.core.security import CallerScope, chat_scope
-from app.ingest import caller, catalog_save, promote
+from app.ingest import caller
+from app.ingest.catalog import promote
+from app.ingest.catalog import save as catalog_save
+from app.ingest.catalog.writer import Gate
 from app.ingest.tools import catalog_tools, pipeline_tools, research_tools
-from app.ingest.writer import Gate
 from tests.cov_ingest_fakes import patch_catalog
 
 ME = UUID(int=2)
@@ -152,7 +154,7 @@ class TestPromotingResearch:
         assert (await catalog_save._may_save(_Conn([]), scope, row) is None) is allowed
 
     async def test_a_new_ngo_is_the_teams_to_add(self, monkeypatch):
-        from app.ingest.matcher import Match
+        from app.ingest.catalog.matcher import Match
 
         async def no_match(conn, name, identifiers=None, website=None):
             return Match(method="none")
@@ -163,7 +165,7 @@ class TestPromotingResearch:
 
     @pytest.mark.parametrize(("choice", "allowed"), [("update", True), ("new", False), (None, False)])
     async def test_a_steward_who_says_a_close_name_is_theirs_may_save(self, monkeypatch, choice, allowed):
-        from app.ingest.matcher import Match
+        from app.ingest.catalog.matcher import Match
 
         kabil = {"id": 8, "name": "Kabil Trust", "score": 0.7}
 
@@ -298,7 +300,7 @@ class TestStaffUndoAndDelete:
     def app_as(self, monkeypatch):
         from app.api.routes import ingest as ingest_api
         from app.db.pool import get_pool
-        from app.ingest import undo
+        from app.ingest.catalog import undo
         from tests.conftest import make_app
         from tests.test_access import as_caller
 
@@ -408,7 +410,7 @@ class TestACloseNameIsAsked:
     CLOSE = {"id": 12, "name": "Peoples Resource Development Association", "score": 0.6}
 
     def _answer(self, choice):
-        from app.ingest.matcher import Match
+        from app.ingest.catalog.matcher import Match
 
         asked = Gate(plan=True)
         asked.on_entity("orgs", "PRDA", self.CLOSE)

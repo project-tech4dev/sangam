@@ -14,9 +14,9 @@ from langchain_core.tools import tool
 
 from app.db.pool import get_pool
 from app.ingest.caller import scope
+from app.ingest.catalog.writer import slugify
 from app.ingest.reading import run_sources, vault
 from app.ingest.research.findings import VaultResearch
-from app.ingest.writer import slugify
 
 logger = logging.getLogger(__name__)
 

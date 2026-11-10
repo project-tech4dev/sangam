@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.ingest.adapters.tavily_news import Hit, SearchFailed
-from app.ingest.matcher import name_key
+from app.ingest.catalog.matcher import name_key
 from app.ingest.news import pipeline
 from app.ingest.news import run as news_run
 from app.ingest.news import verify as news_verify

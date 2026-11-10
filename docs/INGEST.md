@@ -31,7 +31,7 @@ Ask Sangam reads the catalog. This one builds it.
 **The model never writes SQL.** Ask Sangam's safety story is that model-authored SQL is read-only
 and regenerated from an AST; an importer that emitted `INSERT`s would reverse it. Here the model's
 only write-shaped output is a **typed record** — a pydantic object with named fields — and
-`app/ingest/writer.py` performs the upsert with fixed SQL. The model decides what a source says
+`app/ingest/catalog/writer*.py` perform the upsert with fixed SQL. The model decides what a source says
 and how it maps; it cannot decide which table or which row.
 
 ## Who can use it
@@ -199,7 +199,7 @@ mirroring `app/agent/tools/` on the Ask Sangam side:
 
 **Sangam Import** (main) holds eleven: six pipeline tools (not the two readers), `funder_dossier`,
 `compare_with_catalog`, `coverage_report`, `record_registry_check` and `publish_brief`. It supervises. It cannot open a web page, and the
-only catalog row it writes is a staff member's own registry check (`app/ingest/manual_checks.py`:
+only catalog row it writes is a staff member's own registry check (`app/ingest/catalog/manual_checks.py`:
 checker from the chat's user, ranked as `manual_check`, evidenced only with a document of that
 organisation). Research and promotion go through a subagent, so there is one path to a source
 and one path from research to the catalog, each under the prompt written for it. The parent held all of them until 2026-10-03, and a
@@ -460,7 +460,7 @@ Every save, from the screen or from `promote_research`, opens a `promotions` row
 `catalog_writes`, with the row before and after as jsonb. Nothing else is logged; a save that wrote
 nothing leaves no promotion.
 
-Staff undo a save with `POST /api/ingest/promotions/{id}/undo` (`app/ingest/undo.py`): the writes
+Staff undo a save with `POST /api/ingest/promotions/{id}/undo` (`app/ingest/catalog/undo.py`): the writes
 replay newest first in one transaction, an insert becoming a delete and an update restoring the
 old row. Each row must still match what the save left, so a row edited since, or one something else
 now points at, refuses the whole undo and changes nothing. `DELETE /api/ingest/research/{slug}`
@@ -509,7 +509,7 @@ so keying off it made every unfinished researcher read as "done" the moment a ru
   taxonomy is seeded to normalise against, so a funder's own wording for a theme stays in `notes`
   rather than being invented into a tag.
 - **`archive_url` is written by nothing in the ingest path**, against the provenance convention
-  in CLAUDE.md. `content_hash` and `extractor_version` are written (`promote.py`); the hash is
+  in CLAUDE.md. `content_hash` and `extractor_version` are written (`catalog/promote_records.py`); the hash is
   over the sentence and the URL, so re-reading the same claim is recognisably the same fact.
 - **Batch durability** — per-organisation timeouts, resumability and per-organisation status are
   designed and not built.

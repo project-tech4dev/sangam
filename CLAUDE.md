@@ -182,7 +182,10 @@ backend/app/
                    instructions.md (the system prompt) · prompt.py (loads it)
   ingest/          agent.py (builds Sangam Import) · instructions.md · skills/
                    tools/ every tool it has, and nothing else in ingest/ is one
-                   the rest is the pipeline: runner · writer · promote · matcher
+                   research/ what a researcher must find and the shape it saves (findings, contract)
+                   reading/ where a run may read (access, registry, run and staff sources, vault)
+                   catalog/ from the brief to Sangam's tables (save, promote*, writer*, matcher, undo)
+                   runner · brief · news/ · calls/ · adapters/ stay at the top
   matching/        Funder Match: rubric · rules · match (pure) · service (a saved run) · run (make match)
   integrations/    graphiti.py (Neo4j client lifecycle) · tracing.py (Langfuse) · storage.py (Supabase Storage)
 
@@ -369,7 +372,7 @@ in `tests/test_architecture.py`.
   definition (a route, a `@tool`) and a script's `main()` are exempt, since something else calls them.
 - **Only a builder imports from `tools/` (R1).** `agent/agent.py`, `ingest/agent.py`, `proposals/agent.py` and
   `ingest/news/verify.py` build agents and may import tools; a route, a middleware or another module imports the
-  shared helper from where it lives instead (`ingest/catalog_save.py`, `core/extract.py`, `proposals/records.py`).
+  shared helper from where it lives instead (`ingest/catalog/save.py`, `core/extract.py`, `proposals/records.py`).
   Ask's SQL engine under `agent/tools/sql/` is not a tool and is exempt.
 - **An import inside a function needs a reason (R2).** Routes, `lifespan`, `migrate`, `integrations/` and the
   news and calls crons import lazily to keep a cold start light. Anywhere else the import goes at the top; a
@@ -379,6 +382,11 @@ in `tests/test_architecture.py`.
   Pitch may use Import's public reading pieces (brief, vault, geography, source rules, reading tools); the list is
   `SHARED_ACROSS_AGENTS`. Each agent's entry point is its `agent.py`, and `import app.main` must not load
   `deepagents` or `langchain`.
+- **No file over 800 lines (R4).** Split at a line the file already draws (funder/org, records/facts), never into
+  layers; aim for 300–500. `LONG_BY_DESIGN` exempts the two files that are one entry per table or concept. A
+  name a sibling module imports is public: no leading underscore.
+- **A move is its own PR (R5).** `git mv` and import edits only, no behaviour change and no re-export shim, then
+  `make wiki-update`.
 
 ## Conventions
 

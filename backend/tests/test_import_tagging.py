@@ -12,9 +12,9 @@ from psycopg.rows import dict_row
 from pydantic import ValidationError
 
 from app.ingest import taxonomy
-from app.ingest.records import ProgramRecord
+from app.ingest.catalog.rows import ProgramRecord
+from app.ingest.catalog.writer import write_tags
 from app.ingest.research.finding_types import OrgIdentityFinding, ProgramFinding
-from app.ingest.writer import write_tags
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
 SEED = next((p / "seed" / "data" / "taxonomy" for p in pathlib.Path(__file__).resolve().parents
