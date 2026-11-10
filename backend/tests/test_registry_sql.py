@@ -207,3 +207,56 @@ async def test_only_the_first_page_counts_the_cards_and_dropdowns(world, db):
     sql, params = ran[0]
     plan = "\n".join(r["QUERY PLAN"] for r in await (await db.execute("EXPLAIN " + sql, params)).fetchall())
     assert "One-Time Filter: false" in plan and "unnest" not in plan
+
+
+_RECURSIVE_TAGS = """
+WITH RECURSIVE up AS (
+  SELECT id AS start, id, parent_id, label, kind FROM tags
+  UNION ALL
+  SELECT up.start, t.id, t.parent_id, t.label, t.kind FROM tags t JOIN up ON t.id = up.parent_id
+),
+root AS (SELECT start, label FROM up WHERE parent_id IS NULL AND kind = 'domain')
+SELECT x.org_id AS id, tg.slug, tg.label, tg.kind, x.role, par.label AS parent_label, root.label AS domain,
+       (SELECT count(*) FROM programs p JOIN program_tags pt ON pt.program_id = p.id
+        WHERE p.org_id = x.org_id AND pt.tag_id = x.tag_id) AS progs
+FROM org_tags x JOIN tags tg ON tg.id = x.tag_id
+LEFT JOIN tags par ON par.id = tg.parent_id LEFT JOIN root ON root.start = tg.id
+WHERE x.org_id = ANY(%(ids)s)
+ORDER BY x.role, tg.label
+"""
+
+
+async def test_the_tag_domain_joins_match_the_recursive_walk(db):
+    from app.repositories.public_sql import entity_tag_domains, entity_tags
+
+    t = uuid4().hex[:8]
+
+    async def tag(kind, label, parent=None, domain=None):
+        return await _id(db, "INSERT INTO tags (slug, label, kind, parent_id, domain) VALUES (%s, %s, %s, %s, %s)",
+                         (f"{kind}-{label}-{t}", f"{label} {t}", kind, parent, domain))
+
+    dom = await tag("domain", "Health", domain=f"Health {t}")
+    theme = await tag("theme", "Clinics", dom)
+    sub = await tag("sub_theme", "Primary care", theme)
+    lonely = await tag("theme", "Unfiled")              # a theme with no domain above it
+    sector = await tag("sector", "Old sector")          # a root that is not a domain
+    under = await tag("theme", "Under sector", sector)  # so its root gives no domain
+    women = await tag("population", "Women")
+    org = await _id(db, "INSERT INTO orgs (slug, name) VALUES (%s, %s)", (f"tags-{t}", f"Tags {t}"))
+    for tag_id, role in [(dom, "primary"), (theme, "primary"), (sub, "secondary"), (lonely, "primary"),
+                         (under, "secondary"), (women, "primary")]:
+        await db.execute("INSERT INTO org_tags (org_id, tag_id, role) VALUES (%s, %s, %s)", (org, tag_id, role))
+    for name, tags in [("A", [sub, theme]), ("B", [sub]), ("C", [])]:
+        prog = await _id(db, "INSERT INTO programs (org_id, name, kind) VALUES (%s, %s, 'programme')", (org, name))
+        for tag_id in tags:
+            await db.execute("INSERT INTO program_tags (program_id, tag_id) VALUES (%s, %s)", (prog, tag_id))
+
+    ids = {"ids": [org]}
+    want = await (await db.execute(_RECURSIVE_TAGS, ids)).fetchall()
+    got = await (await db.execute(entity_tags("org_id", "org_tags"), ids)).fetchall()
+    assert [{k: r[k] for k in want[0]} for r in got] == want
+    assert {r["label"]: (r["domain"], r["progs"]) for r in got} == {
+        f"Health {t}": (f"Health {t}", 0), f"Clinics {t}": (f"Health {t}", 1), f"Primary care {t}": (f"Health {t}", 2),
+        f"Unfiled {t}": (None, 0), f"Under sector {t}": (None, 0), f"Women {t}": (None, 0)}
+    lean = await (await db.execute(entity_tag_domains("org_id", "org_tags"), ids)).fetchall()
+    assert sorted((r["label"], r["domain"]) for r in lean) == sorted((r["label"], r["domain"]) for r in want)

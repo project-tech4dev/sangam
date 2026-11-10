@@ -16,6 +16,7 @@ from app.repositories.public_sql import (
     OPEN_CALL,
     STATE_OF,
     entity_sdgs,
+    entity_tag_domains,
     entity_tags,
     research_match,
     story_counts,
@@ -275,10 +276,10 @@ tg AS (
   SELECT kind, id, array_agg(domain) FILTER (WHERE tkind IN ('theme', 'sub_theme')) AS domains,
          array_agg(label) FILTER (WHERE tkind = 'population') AS populations
   FROM (SELECT 'org' AS kind, t.id, t.kind AS tkind, t.label, t.domain
-        FROM ({_over_all(entity_tags("org_id", "org_tags"), "orgs")}) t
+        FROM ({_over_all(entity_tag_domains("org_id", "org_tags"), "orgs")}) t
         UNION ALL
         SELECT 'funder', t.id, t.kind, t.label, t.domain
-        FROM ({_over_all(entity_tags("funder_id", "funder_tags"), "funders")}) t) x
+        FROM ({_over_all(entity_tag_domains("funder_id", "funder_tags"), "funders")}) t) x
   GROUP BY 1, 2
 ),
 sd AS (
