@@ -20,6 +20,7 @@ MEMBER = CallerScope(ME, False, {7: "member"}, {7: "Arpan"})
 STEWARD = CallerScope(UUID(int=3), False, {7: "steward", 8: "steward"}, {7: "Arpan", 8: "Kabil"})
 STAFF = CallerScope(UUID(int=1), True)
 ARPAN_STEWARD = CallerScope(UUID(int=4), False, {7: "steward"}, {7: "Arpan"})
+KABIL_STEWARD = CallerScope(UUID(int=5), False, {8: "steward"}, {8: "Kabil"})
 
 STAFF_URL = "https://staff-sources.sangam.invalid/12"
 PUBLIC_URL = "https://example.org/csr"
