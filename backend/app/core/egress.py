@@ -19,10 +19,11 @@ _NAT64 = ipaddress.ip_network("64:ff9b::/96")
 INTERMEDIATES = Path(__file__).parent / "certs" / "intermediates.pem"
 
 
-def trust() -> ssl.SSLContext:
+def trust(extra: Path = INTERMEDIATES) -> ssl.SSLContext:
     """certifi's roots plus intermediates some government sites fail to send; verification stays on."""
     context = ssl.create_default_context(cafile=certifi.where())
-    context.load_verify_locations(cafile=INTERMEDIATES)
+    if b"-----BEGIN CERTIFICATE-----" in extra.read_bytes():  # ssl raises on a PEM holding no certificate
+        context.load_verify_locations(cafile=extra)
     return context
 
 
