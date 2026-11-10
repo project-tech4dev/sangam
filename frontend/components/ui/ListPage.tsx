@@ -148,7 +148,7 @@ export function useCursorList<T, P extends { items: T[]; next_cursor: string | n
 }
 
 /* A list paged by the server's limit and offset; the offset twin of useCursorList. `first` is a page the server
-   already rendered for the opening `resetKey`, so it is not fetched again. */
+   already rendered for the opening `resetKey`. `ListMore` counts `fetched`, not `items`, so a dropped duplicate can't strand it. */
 export function usePagedList<T, P extends { items: T[]; total: number }>(
   resetKey: string,
   load: (offset: number, limit: number) => Promise<P>,
@@ -193,6 +193,7 @@ export function usePagedList<T, P extends { items: T[]; total: number }>(
   return {
     items: fresh ? state.items : [],
     total: fresh ? state.total : 0,
+    fetched: fresh ? Math.min(state.next, state.total) : 0,
     busy: !fresh || state.busy,
     error: fresh ? state.error : null,
     last: fresh ? state.last : null,

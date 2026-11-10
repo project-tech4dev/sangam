@@ -191,7 +191,7 @@ export function RegistryClient({ first }: { first: RegistryPage }) {
         {list.items.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} f={f} />)}
         {!list.busy && list.total === 0 && <div className="muted reg-none">No entries match these filters.</div>}
         {list.error && <div className="muted reg-none" role="alert">{list.error}</div>}
-        <ListMore shown={list.items.length} total={list.total} onMore={() => list.more?.()} page={PAGE} busy={list.busy} />
+        <ListMore shown={list.fetched} total={list.total} onMore={() => list.more?.()} page={PAGE} busy={list.busy} />
         {list.items.length > 0 && (
           <div className="muted reg-shown" aria-live="polite">{list.items.length} of {list.total} shown</div>
         )}

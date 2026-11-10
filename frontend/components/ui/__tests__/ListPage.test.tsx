@@ -210,6 +210,7 @@ describe("usePagedList", () => {
     act(() => result.current.more!());
     await waitFor(() => expect(ids(result.current.items)).toEqual([1, 2, 3]));
     expect(result.current.more).toBeNull(); // both pages fetched: offset 4 of 4
+    expect(result.current.fetched).toBe(4); // so ListMore says "End of the list", not "1 left"
     expect(load).toHaveBeenCalledTimes(2);
   });
 
