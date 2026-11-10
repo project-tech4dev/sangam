@@ -55,11 +55,17 @@ LEFT JOIN locations s ON s.id = a.state_location_id
 WHERE a.funder_id = ANY(%(ids)s) AND a.kind = 'footprint' AND a.is_public
 """
 
-# On the owner pool, so a list filter reads the same for every viewer.
+# On the owner pool, so a badge and a filter read the same for every viewer; only for the orgs asked about.
 _ON_FILE = f"""
 SELECT org_id AS id, array_agg(DISTINCT id_type) AS types
-FROM org_identifiers WHERE {ON_FILE}
+FROM org_identifiers WHERE org_id = ANY(%(ids)s) AND {ON_FILE}
 GROUP BY org_id
+"""
+
+# The orgs with every registration in %(needs)s on file: what the Registrations filter keeps.
+_REGISTERED = f"""
+SELECT org_id AS id FROM org_identifiers WHERE id_type = ANY(%(needs)s) AND {ON_FILE}
+GROUP BY org_id HAVING count(DISTINCT id_type) = cardinality(%(needs)s::text[])
 """
 
 _PROGRAMS = """
@@ -144,20 +150,35 @@ def _search(*parts) -> str:
 
 async def registry_rows(pool: Any, owner: Any) -> list[dict]:
     """Entities as the caller may see them (RLS); registrations on the owner, the same for everyone."""
-    on_file = await _on_file(owner)
     async with pool.connection() as conn:
         orgs = await (await conn.execute(_ORGS)).fetchall()
         funders = await (await conn.execute(_FUNDERS)).fetchall()
-        return await _rows(conn, orgs, funders, on_file)
+        rows = await _rows(conn, orgs, funders)
+    return await _add_registrations(owner, rows)
 
 
-async def _on_file(owner: Any) -> dict[int, set[str]]:
+async def _add_registrations(owner: Any, rows: list[dict]) -> list[dict]:
+    """Each org row's registration flags, read for those orgs only; after the caller's connection is returned,
+    since both come from one pool and holding two at once could wait on itself."""
+    ids = [r["id"] for r in rows if r["kind"] == "org"]
+    if ids:
+        async with owner.connection() as conn:
+            found = await (await conn.execute(_ON_FILE, {"ids": ids})).fetchall()
+        on_file = {r["id"]: set(r["types"]) for r in found}
+        for r in rows:
+            if r["kind"] == "org":
+                types = on_file.get(r["id"], set())
+                r.update(csr1="csr1" in types, has_12a_80g={"12a", "80g"} <= types, fcra="fcra" in types)
+    return rows
+
+
+async def _registered(owner: Any, needs: list[str]) -> list[int]:
     async with owner.connection() as conn:
-        return {r["id"]: set(r["types"]) for r in await (await conn.execute(_ON_FILE)).fetchall()}
+        return [r["id"] for r in await (await conn.execute(_REGISTERED, {"needs": needs})).fetchall()]
 
 
-async def _rows(conn, orgs: list[dict], funders: list[dict], on_file: dict[int, set[str]]) -> list[dict]:
-    """The Registry rows of these orgs and funders, in the order given."""
+async def _rows(conn, orgs: list[dict], funders: list[dict]) -> list[dict]:
+    """The Registry rows of these orgs and funders, in the order given; registrations come from _add_registrations."""
     rows: list[dict] = []
     # A kind with no entities on this page sends none of its queries.
     oids = {"ids": [o["id"] for o in orgs], "social": SOCIAL}
@@ -175,14 +196,12 @@ async def _rows(conn, orgs: list[dict], funders: list[dict], on_file: dict[int, 
         if not place and o["district"]:
             place = ", ".join(x for x in (o["district"].title(), o["state"]) if x)
         themes, populations = _themes(o_tags[i])
-        types = on_file.get(i, set())
         funded = o_funders[i][0] if o_funders[i] else {"n": 0, "names": ""}
         news = o_news[i][0] if o_news[i] else _NO_STORIES
         rows.append({
             "kind": "org", "id": i, "slug": o["slug"], "name": o["name"], "place": place, "states": states,
             "themes": themes, "populations": populations, "sdgs": [s["code"] for s in o_sdgs[i]],
-            "csr1": "csr1" in types, "has_12a_80g": {"12a", "80g"} <= types, "fcra": "fcra" in types,
-            "partners": funded["n"], "press": news["press"], "social": news["social"], "posts_since": news["posts_since"],
+            "csr1": False, "has_12a_80g": False, "fcra": False, "partners": funded["n"], "press": news["press"], "social": news["social"], "posts_since": news["posts_since"],
             "search": _search(o["name"], *(o["aliases"] or []), *districts, *states,
                               o_progs[i][0]["names"] if o_progs[i] else "", funded["names"]),
         })
@@ -329,10 +348,11 @@ UNION ALL SELECT 'approach', 'open', count(*) FROM idx WHERE open_call HAVING co
 UNION ALL SELECT 'approach', 'invites', count(*) FROM idx WHERE intake_mode = 'invitation_only' HAVING count(*) > 0
 """
 
-_REG_FLAG = {"csr1": lambda t: "csr1" in t, "12a80g": lambda t: {"12a", "80g"} <= t, "fcra": lambda t: "fcra" in t}
+# The registrations each Registrations option needs on file.
+_REG_NEEDS = {"csr1": ["csr1"], "12a80g": ["12a", "80g"], "fcra": ["fcra"]}
 
 
-def _where(f: Filters, on_file: dict[int, set[str]]) -> tuple[str, dict]:
+def _where(f: Filters, reg_ids: list[int] | None) -> tuple[str, dict]:
     """The filters and the search, as a WHERE clause over idx."""
     conds = ["true"]
     q = f.q.strip().lower()
@@ -352,9 +372,9 @@ def _where(f: Filters, on_file: dict[int, set[str]]) -> tuple[str, dict]:
         conds.append("EXISTS (SELECT 1 FROM unnest(states) s WHERE s <> ALL(%(ne)s::text[]))")
     elif f.where != "any":
         conds.append("%(where)s = ANY(states)")
-    if f.kind == "org" and f.reg in _REG_FLAG:
+    if reg_ids is not None:
         conds.append("id = ANY(%(reg_ids)s::bigint[])")
-        params["reg_ids"] = [i for i, t in on_file.items() if _REG_FLAG[f.reg](t)]
+        params["reg_ids"] = reg_ids
     if f.kind == "funder":
         if f.ftype != "all":
             conds.append("funder_type = %(ftype)s")
@@ -371,8 +391,8 @@ async def registry_page_sql(pool: Any, owner: Any, f: Filters, *, limit: int, of
     """One page of what `f` keeps (CSOs first, then funders, each A→Z), with the cards' counts and the dropdowns.
 
     Filtered, sorted, counted and cut in Postgres; details are read for that page only."""
-    on_file = await _on_file(owner)
-    where, params = _where(f, on_file)
+    reg_ids = await _registered(owner, _REG_NEEDS[f.reg]) if f.kind == "org" and f.reg in _REG_NEEDS else None
+    where, params = _where(f, reg_ids)
     sql = f"""
 WITH {_INDEX.lstrip()},
 kept AS (SELECT * FROM idx WHERE {where}),
@@ -388,8 +408,8 @@ SELECT (SELECT count(*) FROM kept) AS total,
     async with pool.connection() as conn:
         res = await (await conn.execute(sql, {**params, "limit": limit, "offset": offset})).fetchone()
         page = res["page"]
-        items = await _rows(conn, [e for e in page if e["kind"] == "org"],
-                            [e for e in page if e["kind"] == "funder"], on_file)
+        items = await _rows(conn, [e for e in page if e["kind"] == "org"], [e for e in page if e["kind"] == "funder"])
+    items = await _add_registrations(owner, items)  
     counts: dict[str, Counter] = defaultdict(Counter)
     for r in res["facets"]:
         counts[r["facet"]][r["value"]] = r["n"]

@@ -139,3 +139,44 @@ async def test_a_page_row_carries_what_its_card_shows(world):
     assert alpha["themes"] == [{"label": "Creches", "domain": f"Dom {t}"}]
     assert alpha["populations"] == [f"Pop {t}"] and alpha["sdgs"] == [world["sdg"]]
     assert alpha["states"] == ["Assam"] and alpha["csr1"] and alpha["fcra"] and not alpha["has_12a_80g"]
+
+
+class _Recording(_PoolOf):
+    """The test's connection as the owner pool, noting each query's text and parameters."""
+
+    def __init__(self, conn):
+        super().__init__(conn)
+        self.ran: list[tuple[str, dict]] = []
+        recording = self
+
+        class _Conn:
+            async def execute(self, sql, params=None):
+                recording.ran.append((sql, params or {}))
+                return await conn.execute(sql, params)
+
+        self._conn = _Conn()
+
+
+async def test_registrations_are_read_for_the_page_orgs_only_and_not_before_the_query(world, db):
+    owner = _Recording(db)
+    page = await registry_page_sql(world["pool"], owner, Filters(q=world["t"]), limit=2, offset=0)
+    assert [r["name"].split()[0] for r in page["items"]] == ["Alpha", "beta"]
+    assert len(owner.ran) == 1  # no read of the whole table first
+    sql, params = owner.ran[0]
+    assert "org_id = ANY(%(ids)s)" in sql and params["ids"] == [r["id"] for r in page["items"]]
+
+
+async def test_a_page_of_funders_reads_no_registrations(world, db):
+    owner = _Recording(db)
+    await registry_page_sql(world["pool"], owner, Filters(kind="funder", q=world["t"]), limit=25, offset=0)
+    assert owner.ran == []
+
+
+async def test_a_registrations_filter_asks_only_for_the_orgs_it_keeps(world, db):
+    owner = _Recording(db)
+    page = await registry_page_sql(world["pool"], owner, Filters(kind="org", reg="12a80g", q=world["t"]),
+                                   limit=25, offset=0)
+    assert [r["name"].split()[0] for r in page["items"]] == ["beta"] and page["items"][0]["has_12a_80g"]
+    (filter_sql, filter_params), (badge_sql, _) = owner.ran
+    assert "HAVING" in filter_sql and filter_params == {"needs": ["12a", "80g"]}
+    assert "org_id = ANY(%(ids)s)" in badge_sql
