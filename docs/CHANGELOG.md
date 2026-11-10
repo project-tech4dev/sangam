@@ -130,6 +130,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-12 · #181 · One read policy each on `users` and `org_members`, three FK indexes.
 - 2026-10-14 · Each agent route declares its access in `AGENT_ACCESS`; a route with none fails at boot instead of falling back.
 - 2026-10-15 · Only a thread's owner may post a turn in it, staff included, so rows read as one user are never replayed to another.
+- 2026-11-10 · #190 · `/api/copilotkit` serves only the routes the chat client calls (`info`, `agent/run|connect|stop|suggest`); the runtime's `threads/*`, `memories/*` and `inspector/*`, which handed every in-memory run to anyone, are 404 (#189).
 
 ## Frontend and design system
 
@@ -200,6 +201,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-16 · CI on every PR: ruff, unit and integration tests (pgvector, migrate, seed), coverage on Codecov (no drop over 1%, 70% of changed lines), and the frontend's lint, types and build.
 - 2026-10-19 · langchain 1.4.6, deepagents 0.7.28; `ToolErrorMiddleware` on every agent and subagent, so a tool that raises answers the model with its error type instead of ending the run (#252, #253).
 - 2026-10-21 · (unmerged) · Outbound fetches trust certifi plus `app/core/certs/intermediates.pem`, so censusindia.gov.in (which omits emSign SSL CA - G1) can be read; verification stays on, and a test fails a year before an intermediate expires.
+- 2026-11-10 · (unmerged) · certifi 2026.10.18 (supersedes #383), which drops the emSign roots over compromised intermediate keys; `intermediates.pem` loses emSign SSL CA - G1 and is loaded only when it holds a certificate, so censusindia.gov.in is refused again, like nrlm.gov.in.
 - 2026-10-21 · MIT license. The frontend gets Vitest and its own Codecov flag; backend and frontend coverage are gated and badged separately in the README.
 - 2026-10-21 · The README is rewritten for newcomers (127 lines from 449: features, how it works, quickstart); setup and conventions move to `CONTRIBUTING.md`, beside `SECURITY.md`, a code of conduct and issue and PR templates.
 - 2026-10-21 · README screenshots in `docs/assets/readme/`: Ask with citations as the hero, then Registry, Funder Match and Scout.
@@ -212,6 +214,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
   - one who-may-do-what table in ARCHITECTURE §8.
 - 2026-10-22 · `search_public_sources` checks its hits at once, not in turn (a Pitch search took 10–34 s against Tavily's 2–7 s); Pitch and Import both use it.
 - 2026-10-30 · #356 · `STORAGE_BUCKET_SUFFIX`: a local backend writes to `-local` buckets, so its files and proposal drafts never land in, or overwrite, the deployed ones (#307 §3); a backend sharing the deployed buckets from another database warns at boot.
+- 2026-11-10 · Dependabot alerts with no PR of their own: `next` 16.4.6 (RCEs in `use cache` and SVG image optimisation), aiohttp 3.14.5, langgraph-checkpoint-postgres 3.2.0, and `@hono/node-server` 2, `graphql-scalars` 2 and typescript-estree's `minimatch` 11 as overrides past CopilotKit's and typescript-eslint's ranges.
 - 2026-11-10 · (unmerged) · CodeQL alerts fixed: Pitch's gap, citation and amount regexes run in linear time, its Wikipedia check matches the host rather than a suffix, and the Registry brief strips HTML comments until none is left.
 
 ## Tracing and evals
@@ -263,7 +266,7 @@ Plan docs whose status line is out of date (the work did ship): `2026-09-30-supa
 Superseded: `2026-10-04-funder-eligibility.md` (table dropped by `0031`), `2026-10-08-import-storage-picker.md`
 (replaced by `choose_sources`), `2026-10-07-funder-matching-in-code.md` (replaced by match-v1).
 
-Unmerged branches with real work: `fix/ask-sql-runs-as-caller`, `fix/copilotkit-runtime-routes`,
+Unmerged branches with real work: `fix/ask-sql-runs-as-caller`,
 `feat/access-check`, `fix/funder-tags-from-programmes` (#172), `docs/proposals-spec`, `docs/funder-match-spec`,
 `docs/import-comprehensive-data`, and the graph branches `graphiti`, `graphiti-supabase`, `supabase-graphiti`,
 `add-episode-ui`.
