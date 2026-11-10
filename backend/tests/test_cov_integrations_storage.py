@@ -59,7 +59,6 @@ def test_qualify_and_split_round_trip():
 
 async def test_every_call_is_a_no_op_when_off(off):
     assert await storage.move("b", "a", "c") is False
-    assert await storage.list_buckets() == []
     assert await storage.list_all("b") == []
     assert await storage.signed_url("b", "k") is None
     assert await storage.signed_upload_url("b", "k") is None
@@ -119,15 +118,6 @@ async def test_list_prefix_ignores_a_non_list_and_errors(serve):
     assert await storage.list_prefix("b", "p") == []
     serve(lambda r: httpx.Response(200, content=b"not json"))
     assert await storage.list_prefix("b", "p") == []
-
-
-async def test_list_buckets(serve):
-    serve(lambda r: httpx.Response(200, json=[{"id": "org-vault"}]))
-    assert await storage.list_buckets() == [{"id": "org-vault"}]
-    serve(lambda r: httpx.Response(200, json={"x": 1}))
-    assert await storage.list_buckets() == []
-    serve(lambda r: httpx.Response(503))
-    assert await storage.list_buckets() == []
 
 
 async def test_list_all_walks_folders_and_pages(serve, monkeypatch):

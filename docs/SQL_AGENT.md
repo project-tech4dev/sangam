@@ -744,7 +744,7 @@ The server-side boundary, complete and proven, still unreachable by the agent.
 - `executor.py` — the `Executor` Protocol and `PsycopgExecutor`: read-only transaction,
   `SET LOCAL statement_timeout`, the `Semaphore(2)`, routed through
   `traced_fetch`.
-- `Settings.sql_timeout_ms / sql_max_rows / sql_max_attempts`.
+- `Settings.sql_timeout_ms / sql_max_rows`.
 - `test_sql_integration.py` — the tests that prove the tiers are independent, especially
   `test_nothing_leaks_onto_the_pooled_connection` (this pool also serves the checkpointer) and
   `test_reader_role_cannot_read_checkpoints`.

@@ -6,7 +6,6 @@ import asyncio
 import collections
 import json
 import logging
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -22,14 +21,6 @@ logger = logging.getLogger(__name__)
 # pool size rather than restating a number that would go stale beside it.
 def max_concurrent_sources() -> int:
     return get_settings().db_gate_slots
-
-
-@dataclass(slots=True)
-class SourceOutcome:
-    key: str
-    status: str
-    reason: str | None = None
-    counts: dict[str, int] | None = None
 
 
 async def catalog_baseline() -> dict[str, int]:

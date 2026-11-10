@@ -100,12 +100,12 @@ class TestSourcesGateOnAccessRules:
     def test_the_strictest_rule_on_a_host_wins(self):
         """mcacdm.nic.in carries four products. First-match-wins would let
         declaration order decide whether a crawler runs."""
-        from app.ingest.sources import rule_for_host, sources_on_host
+        from app.ingest.sources import rule_for_url, sources_on_host
 
         assert len(sources_on_host("mcacdm.nic.in")) > 1
-        rule, _ = rule_for_host("mcacdm.nic.in")
+        rule, _ = rule_for_url("https://mcacdm.nic.in/")
         assert rule == AccessRule.NO_SCRAPING
-        assert rule_for_host("example.invalid") is None
+        assert rule_for_url("https://example.invalid/") is None
 
     def test_every_source_belongs_to_a_category(self):
         for source in SOURCES.values():

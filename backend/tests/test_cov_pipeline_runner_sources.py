@@ -12,7 +12,7 @@ import pytest
 from app.ingest import runner
 from app.ingest import sources as src
 from app.ingest.adapters._http import SourceUnavailable
-from app.ingest.sources import AccessRule, Category
+from app.ingest.sources import AccessRule
 
 
 class Cursor:
@@ -202,9 +202,8 @@ class TestRegistry:
         assert src.normal_path("/a\\b")[1] is not None
         assert src.url_host("https://WWW.Give.do./x") == "give.do"
         assert src.url_host("http://a\x00b/") == "a\x00b"  # httpx refuses it; urlsplit's host stands in
-        assert all(Category.MEDIA in s.categories for s in src.in_category(Category.MEDIA))
-        assert src.rule_for_host("unknown.example") is None
-        assert src.rule_for_host("www.give.do")[1].key == "give"  # the strictest product on the host wins
+        assert src.rule_for_url("https://unknown.example/") is None
+        assert src.rule_for_url("https://www.give.do/")[1].key == "give"  # the strictest product on the host wins
         assert src.resolve(None)[0] == list(src.SOURCES.values())
         assert src.resolve(["give_do", "zz"]) == ([GIVE], ["zz"])
 

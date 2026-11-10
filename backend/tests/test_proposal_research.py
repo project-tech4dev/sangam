@@ -59,13 +59,6 @@ class TestSteps:
         assert questions.may_ask({"stage": 5}, q, me="u", on_screen="A3")[0] is None
 
 
-class TestTopics:
-    def test_a_fact_without_a_topic_falls_back_to_its_section(self):
-        assert research.topic_of({"section": "A2"}) == "place"
-        assert research.topic_of({"section": "F1", "subject": "SDG 4.1"}) == "sdg"
-        assert research.topic_of({"section": "F1", "subject": "Samagra Shiksha"}) == "government"
-        assert research.topic_of({"section": "B9"}) == "problem"
-
 class TestAsks:
     ASK = {"kind": "chat", "ask": "SHG credit", "focus": ["SHG credit linkage"], "sites": [], "sections": [],
            "status": "running", "at": NOW}
