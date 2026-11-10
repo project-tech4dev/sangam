@@ -123,7 +123,11 @@ export function useCursorList<T, P extends { items: T[]; next_cursor: string | n
         setState({ key, items, next: page.next_cursor, busy: false, error: null, last: page });
       },
       (error: Error) =>
-        key === current.current && setState((s) => ({ ...s, key, items: before, next: cursor, busy: false, error: error.message })),
+        key === current.current &&
+        setState((s) => ({
+          ...s, key, items: before, next: cursor, busy: false, error: error.message,
+          last: key === s.key ? s.last : null,
+        })),
     );
 
   useEffect(() => {
@@ -180,7 +184,11 @@ export function usePagedList<T, P extends { items: T[]; total: number }>(
         setState({ key, items, next: offset + page.items.length, total: page.total, busy: false, error: null, last: page });
       },
       (error: Error) =>
-        key === current.current && setState((s) => ({ ...s, key, items: before, next: offset, busy: false, error: error.message })),
+        key === current.current &&
+        setState((s) => ({
+          ...s, key, items: before, next: offset, busy: false, error: error.message,
+          ...(key === s.key ? {} : { total: 0, last: null }), 
+        })),
     );
 
   useEffect(() => {

@@ -136,6 +136,18 @@ describe("useCursorList", () => {
     expect(result.current.items).toEqual([]);
   });
 
+  it("does not keep the last key's page when the first page of a new key fails", async () => {
+    const { result, rerender } = renderHook(
+      ({ k }) => useCursorList<{ id: number }, Page>(k, (): Promise<Page> =>
+        k === "a" ? Promise.resolve({ items: [{ id: 1 }], next_cursor: "c" }) : Promise.reject(new Error("boom")), (i) => i.id),
+      { initialProps: { k: "a" } },
+    );
+    await waitFor(() => expect(result.current.last).not.toBeNull());
+    rerender({ k: "b" });
+    await waitFor(() => expect(result.current.error).toBe("boom"));
+    expect(result.current.last).toBeNull();
+  });
+
   it("drops an answer for a key that is no longer current", async () => {
     let resolveA: (p: Page) => void = () => {};
     const load = vi.fn((cursor: string | null) => {
@@ -212,6 +224,20 @@ describe("usePagedList", () => {
     expect(result.current.more).toBeNull(); // both pages fetched: offset 4 of 4
     expect(result.current.fetched).toBe(4); // so ListMore says "End of the list", not "1 left"
     expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not keep the last key's total when the first page of a new key fails", async () => {
+    const { result, rerender } = renderHook(
+      ({ k }) => usePagedList<{ id: number }, Page>(k, (): Promise<Page> =>
+        k === "all" ? Promise.resolve({ items: [{ id: 1 }], total: 120 }) : Promise.reject(new Error("boom")), (i) => i.id),
+      { initialProps: { k: "all" } },
+    );
+    await waitFor(() => expect(result.current.total).toBe(120));
+    rerender({ k: "health" });
+    await waitFor(() => expect(result.current.error).toBe("boom"));
+    expect(result.current.total).toBe(0);
+    expect(result.current.last).toBeNull();
+    expect(result.current.more).toBeNull();
   });
 
   it("keeps the rows and reports the error when a page fails", async () => {
