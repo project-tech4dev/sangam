@@ -44,7 +44,7 @@ def make_app(*routers) -> FastAPI:
 
 
 class RecordingPool:
-    """A pool whose connection records every query and answers each with the next of `results`."""
+    """A pool whose connection records every query and answers each with the next of `results`; one more fails."""
 
     def __init__(self, *results: list[dict]):
         self.results, self.calls = list(results), []
@@ -64,7 +64,8 @@ class RecordingPool:
         class _Conn:
             async def execute(self, sql, params):
                 pool.calls.append((sql, params))
-                rows = pool.results.pop(0) if pool.results else []
+                assert pool.results, f"unexpected query #{len(pool.calls)}: {sql[:80]!r}"
+                rows = pool.results.pop(0)
 
                 class _Cur:
                     async def fetchall(self):

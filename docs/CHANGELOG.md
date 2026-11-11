@@ -267,6 +267,7 @@ Plans that shipped in part, and what is left. Check here before assuming a plan 
 
 | Plan | Shipped | Left |
 |---|---|---|
+| `2026-11-03-registry-server-paging.md` | #360, #366 | Every paged list counts all its matching rows on each request (`COUNT(*) OVER ()`), which for funders builds every row's arrays first. A Registry page builds an index of every entity and then queries the page's details again, and the place and theme rules are written twice, in SQL and Python: fold the details into the index's one query. |
 | `2026-10-15-rfp-watch.md` | M1 (#228), M2 (#231), M3 (#232), M4 (#246) | The staging exit gates; the design-system sync of the Ask page. |
 | `2026-10-11-drop-copilotkit.md` | M1 (#168), M2 (#169) | **#178 removed `emit_raw_events=False`, so raw events stream again** (`core/lifespan.py`). M3 (drop CopilotKit from the frontend) and M4 (from `pyproject.toml`) not started. |
 | `2026-10-13-import-researcher-contract.md` | M1–M4 (#194–#197) | M5: backfill KABIL and Axis on staging. |
