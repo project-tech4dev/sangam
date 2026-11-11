@@ -29,7 +29,7 @@ async def list_documents(pool: AsyncConnectionPool, *, limit: int, offset: int,
       AND (d.is_public
            OR EXISTS (SELECT 1 FROM org_members m WHERE m.org_id = d.org_id AND m.user_id = %(user)s)
            OR EXISTS (SELECT 1 FROM users u WHERE u.id = %(user)s AND u.is_staff))
-    ORDER BY d.title NULLS LAST
+    ORDER BY d.title NULLS LAST, d.id
     """
     params = {"org": org, "funder": funder, "doc_type": doc_type, "user": user_id}
     return await fetch_page(pool, sql, params, limit=limit, offset=offset)

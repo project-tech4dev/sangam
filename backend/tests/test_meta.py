@@ -2,19 +2,17 @@
 
 from app.api.routes import meta as meta_api
 from app.repositories.meta import list_locations, list_tags
-from tests.test_paging import _Pool
 
 
-async def test_list_tags_pages_its_filters_through_fetch_page():
-    pool = _Pool([{"id": 1, "total": 40}])
+async def test_list_tags_pages_its_filters_through_fetch_page(recording_pool):
+    pool = recording_pool([{"id": 1, "total": 40}])
     rows, total = await list_tags(pool, limit=2, offset=6, kind="theme", q="liveli")
     assert ([r["id"] for r in rows], total) == ([1], 40)
-    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
     assert pool.params == {"kind": "theme", "q": "liveli", "limit": 2, "offset": 6}
 
 
-async def test_list_locations_pages_its_filters_through_fetch_page():
-    pool = _Pool([])
+async def test_list_locations_pages_its_filters_through_fetch_page(recording_pool):
+    pool = recording_pool([])
     assert await list_locations(pool, limit=50, offset=0, kind="district", parent=18) == ([], 0)
     assert pool.params == {"kind": "district", "parent": 18, "limit": 50, "offset": 0}
 

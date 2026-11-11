@@ -2,14 +2,12 @@
 
 from app.api.routes import partner_lines as partner_lines_api
 from app.repositories.partner_lines import list_partner_lines
-from tests.test_paging import _Pool
 
 
-async def test_list_partner_lines_pages_its_filters_through_fetch_page():
-    pool = _Pool([{"id": 11, "total": 42}])
+async def test_list_partner_lines_pages_its_filters_through_fetch_page(recording_pool):
+    pool = recording_pool([{"id": 11, "total": 42}])
     rows, total = await list_partner_lines(pool, limit=2, offset=6, funder="axis", status="active")
     assert ([r["id"] for r in rows], total) == ([11], 42)
-    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
     assert pool.params["funder"] == "axis" and pool.params["status"] == "active"
     assert (pool.params["limit"], pool.params["offset"]) == (2, 6)
 

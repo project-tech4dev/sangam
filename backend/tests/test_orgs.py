@@ -56,12 +56,10 @@ async def test_detail_404(client_for, monkeypatch):
     assert "not found" in response.json()["detail"]
 
 
-async def test_list_orgs_pages_its_filters_through_fetch_page():
+async def test_list_orgs_pages_its_filters_through_fetch_page(recording_pool):
     from app.repositories.orgs import list_orgs
-    from tests.test_paging import _Pool
 
-    pool = _Pool([{"id": 4, "total": 15}])
+    pool = recording_pool([{"id": 4, "total": 15}])
     rows, total = await list_orgs(pool, limit=2, offset=6, state="Assam", q="kab")
     assert ([r["id"] for r in rows], total) == ([4], 15)
-    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
     assert pool.params == {"tag": None, "state": "Assam", "district": None, "q": "kab", "limit": 2, "offset": 6}

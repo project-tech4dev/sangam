@@ -41,7 +41,7 @@ WHERE (%(tag)s::text IS NULL OR EXISTS (
         SELECT 1 FROM funder_tags ft2 JOIN tags tg2 ON tg2.id = ft2.tag_id
         WHERE ft2.funder_id = f.id AND (tg2.slug = %(tag)s OR tg2.label ILIKE %(tag)s)))
   AND (%(section_135)s::boolean IS NULL OR f.section_135_bound IS NOT DISTINCT FROM %(section_135)s)
-ORDER BY f.name
+ORDER BY f.name, f.id
 """
 
 

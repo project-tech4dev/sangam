@@ -12,7 +12,7 @@ async def list_tags(pool: AsyncConnectionPool, *, limit: int, offset: int,
     FROM tags t
     WHERE (%(kind)s::text IS NULL OR t.kind = %(kind)s)
       AND (%(q)s::text IS NULL OR t.label ILIKE '%%' || %(q)s || '%%' OR t.slug ILIKE '%%' || %(q)s || '%%')
-    ORDER BY t.label
+    ORDER BY t.label, t.id
     """
     return await fetch_page(pool, sql, {"kind": kind, "q": q}, limit=limit, offset=offset)
 
@@ -25,7 +25,7 @@ async def list_locations(pool: AsyncConnectionPool, *, limit: int, offset: int,
     LEFT JOIN locations p ON p.id = l.parent_id
     WHERE (%(kind)s::text IS NULL OR l.kind = %(kind)s)
       AND (%(parent)s::bigint IS NULL OR l.parent_id = %(parent)s)
-    ORDER BY l.kind, l.name
+    ORDER BY l.kind, l.name, l.id
     """
     return await fetch_page(pool, sql, {"kind": kind, "parent": parent}, limit=limit, offset=offset)
 

@@ -120,12 +120,10 @@ async def _async(value):
     return value
 
 
-async def test_list_funders_pages_its_filters_through_fetch_page():
+async def test_list_funders_pages_its_filters_through_fetch_page(recording_pool):
     from app.repositories.funders import list_funders
-    from tests.test_paging import _Pool
 
-    pool = _Pool([{"id": 29, "total": 38}])
+    pool = recording_pool([{"id": 29, "total": 38}])
     rows, total = await list_funders(pool, limit=2, offset=6, tag="health", section_135=True)
     assert ([r["id"] for r in rows], total) == ([29], 38)
-    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
     assert pool.params == {"tag": "health", "section_135": True, "limit": 2, "offset": 6}

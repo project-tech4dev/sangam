@@ -31,7 +31,7 @@ WHERE (%(q)s::text IS NULL OR o.name ILIKE '%%' || %(q)s || '%%' OR similarity(o
   AND (%(tag)s::text IS NULL OR EXISTS (
         SELECT 1 FROM org_tags ot2 JOIN tags tg2 ON tg2.id = ot2.tag_id
         WHERE ot2.org_id = o.id AND (tg2.slug = %(tag)s OR tg2.label ILIKE %(tag)s)))
-ORDER BY o.name
+ORDER BY o.name, o.id
 """
 
 

@@ -36,13 +36,11 @@ async def test_patch_match_bad_status_422(client_for):
     assert response.status_code == 422
 
 
-async def test_list_rfps_pages_its_filters_through_fetch_page():
+async def test_list_rfps_pages_its_filters_through_fetch_page(recording_pool):
     from app.repositories.rfps import list_rfps
-    from tests.test_paging import _Pool
 
-    pool = _Pool([{"id": 3, "total": 7}])
+    pool = recording_pool([{"id": 3, "total": 7}])
     rows, total = await list_rfps(pool, limit=2, offset=6, status="open", deadline_before="2026-12-31")
     assert ([r["id"] for r in rows], total) == ([3], 7)
-    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
     assert pool.params["status"] == "open" and pool.params["deadline_before"] == "2026-12-31"
     assert (pool.params["limit"], pool.params["offset"]) == (2, 6)

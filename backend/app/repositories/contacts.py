@@ -21,7 +21,7 @@ async def list_contacts(pool: AsyncConnectionPool, *, limit: int, offset: int,
       AND (%(funder)s::text IS NULL OR f.slug = %(funder)s OR f.id::text = %(funder)s)
       AND (%(kind)s::text IS NULL OR c.kind = %(kind)s)
       AND (%(verified)s::boolean IS NULL OR c.verified = %(verified)s)
-    ORDER BY c.name
+    ORDER BY c.name, c.id
     """
     params = {"org": org, "funder": funder, "kind": kind, "verified": verified}
     return await fetch_page(pool, sql, params, limit=limit, offset=offset)

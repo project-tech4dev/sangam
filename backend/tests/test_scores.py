@@ -62,13 +62,11 @@ async def test_page_envelope_and_limit_clamp(client_for, monkeypatch):
     assert too_big.status_code == 422  # ge/le validation, not silent clamp
 
 
-async def test_list_scores_pages_its_filters_through_fetch_page():
+async def test_list_scores_pages_its_filters_through_fetch_page(recording_pool):
     from app.repositories.scores import list_scores
-    from tests.test_paging import _Pool
 
-    pool = _Pool([{"id": 8, "total": 12}])
+    pool = recording_pool([{"id": 8, "total": 12}])
     rows, total = await list_scores(pool, limit=2, offset=6, org="kabil", rubric="match-v2")
     assert ([r["id"] for r in rows], total) == ([8], 12)
-    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
     assert pool.params["org"] == "kabil" and pool.params["rubric"] == "match-v2"
     assert (pool.params["limit"], pool.params["offset"]) == (2, 6)

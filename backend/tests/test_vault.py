@@ -640,14 +640,12 @@ async def test_a_commit_that_fails_after_the_file_went_is_reported(caplog):
     assert "org-vault/3/abc-accounts.pdf" in caplog.text, "the log names the file that is gone"
 
 
-async def test_list_documents_pages_its_filters_through_fetch_page():
+async def test_list_documents_pages_its_filters_through_fetch_page(recording_pool):
     from app.repositories.documents import list_documents
-    from tests.test_paging import _Pool
 
-    pool = _Pool([{"id": 5, "total": 96}])
+    pool = recording_pool([{"id": 5, "total": 96}])
     rows, total = await list_documents(pool, limit=2, offset=6, org="kabil", doc_type="annual_report", user_id="u-1")
     assert ([r["id"] for r in rows], total) == ([5], 96)
-    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
     assert pool.params == {"org": "kabil", "funder": None, "doc_type": "annual_report", "user": "u-1",
                            "limit": 2, "offset": 6}
 

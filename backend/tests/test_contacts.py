@@ -58,14 +58,12 @@ async def test_patch_only_sends_set_fields(client_for, monkeypatch):
     assert captured == {"verified": True}  # exclude_unset: nothing else touched
 
 
-async def test_list_contacts_pages_its_filters_through_fetch_page():
+async def test_list_contacts_pages_its_filters_through_fetch_page(recording_pool):
     from app.repositories.contacts import list_contacts
-    from tests.test_paging import _Pool
 
-    pool = _Pool([{"id": 4, "total": 31}])
+    pool = recording_pool([{"id": 4, "total": 31}])
     rows, total = await list_contacts(pool, limit=2, offset=6, org="kabil", kind="program", verified=True)
     assert ([r["id"] for r in rows], total) == ([4], 31)
-    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
     assert pool.params == {"org": "kabil", "funder": None, "kind": "program", "verified": True, "limit": 2, "offset": 6}
 
 

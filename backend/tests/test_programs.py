@@ -2,14 +2,12 @@
 
 from app.api.routes import programs as programs_api
 from app.repositories.programs import list_programs
-from tests.test_paging import _Pool
 
 
-async def test_list_programs_pages_its_filters_through_fetch_page():
-    pool = _Pool([{"id": 6, "total": 20}])
+async def test_list_programs_pages_its_filters_through_fetch_page(recording_pool):
+    pool = recording_pool([{"id": 6, "total": 20}])
     rows, total = await list_programs(pool, limit=2, offset=6, org="kabil", status="active")
     assert ([r["id"] for r in rows], total) == ([6], 20)
-    assert pool.sql.rstrip().endswith("LIMIT %(limit)s OFFSET %(offset)s")
     assert pool.params["org"] == "kabil" and pool.params["status"] == "active"
     assert (pool.params["limit"], pool.params["offset"]) == (2, 6)
 

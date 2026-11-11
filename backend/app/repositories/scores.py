@@ -23,7 +23,7 @@ async def list_scores(pool: AsyncConnectionPool, *, limit: int, offset: int,
     WHERE (%(org)s::text IS NULL OR o.slug = %(org)s OR o.id::text = %(org)s)
       AND (%(funder)s::text IS NULL OR f.slug = %(funder)s OR f.id::text = %(funder)s)
       AND (%(rubric)s::text IS NULL OR r.version = %(rubric)s)
-    ORDER BY r.version, fs.total_score DESC
+    ORDER BY r.version, fs.total_score DESC, fs.id
     """
     params = {"org": org, "funder": funder, "rubric": rubric}
     return await fetch_page(pool, sql, params, limit=limit, offset=offset)

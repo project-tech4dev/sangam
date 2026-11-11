@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 import httpx
@@ -40,6 +41,42 @@ def make_app(*routers) -> FastAPI:
     # every router — no per-module list to keep in sync when a resource is added.
     app.dependency_overrides[get_pool] = _SentinelPool
     return app
+
+
+class RecordingPool:
+    """A pool whose connection records every query and answers each with the next of `results`."""
+
+    def __init__(self, *results: list[dict]):
+        self.results, self.calls = list(results), []
+
+    @property
+    def sql(self) -> str:
+        return self.calls[0][0]
+
+    @property
+    def params(self) -> dict:
+        return self.calls[0][1]
+
+    @asynccontextmanager
+    async def connection(self):
+        pool = self
+
+        class _Conn:
+            async def execute(self, sql, params):
+                pool.calls.append((sql, params))
+                rows = pool.results.pop(0) if pool.results else []
+
+                class _Cur:
+                    async def fetchall(self):
+                        return rows
+                return _Cur()
+
+        yield _Conn()
+
+
+@pytest.fixture
+def recording_pool():
+    return RecordingPool
 
 
 @pytest.fixture
