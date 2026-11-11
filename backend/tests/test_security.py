@@ -53,6 +53,7 @@ def auth(monkeypatch):
 
     monkeypatch.setattr(security.repo, "resolve_auth_user", fake_resolve)
     monkeypatch.setattr(security, "get_pool", _SentinelPool)
+    monkeypatch.setattr(security, "_users", {})
     return SimpleNamespace(use=use, calls=calls)
 
 
@@ -71,6 +72,17 @@ async def call(authorization: str | None = None, path: str = "/whoami") -> httpx
     headers = {"Authorization": authorization} if authorization else {}
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
         return await c.get(path, headers=headers)
+
+
+async def test_the_users_row_is_read_once_a_minute_per_user(auth, monkeypatch):
+    clock = [1000.0]
+    monkeypatch.setattr(security.time, "monotonic", lambda: clock[0])
+    for _ in range(3):
+        assert (await call(f"Bearer {token()}")).status_code == 200
+    assert len(auth.calls) == 1
+    clock[0] += security.USER_TTL
+    assert (await call(f"Bearer {token()}")).status_code == 200
+    assert len(auth.calls) == 2
 
 
 async def test_valid_token_resolves_the_users_row(auth):

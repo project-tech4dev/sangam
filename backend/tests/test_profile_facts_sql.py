@@ -161,6 +161,29 @@ async def test_research_is_counted_without_content(pool):
     assert counts[("org", w["org"])]["runs"] == 2 and rows[f"o-{w['t']}"]["slug"] == f"o-{w['t']}"
 
 
+async def test_research_counts_runs_resolved_to_an_entity_and_still_under_its_slug(pool):
+    w = await _world(pool)
+    other = await _world(pool)
+    runs = [  # (kind, slug, status, resolved org, resolved funder, day)
+        ("funder", f"f-{w['t']}", "complete", None, w["funder"], "2026-10-01"),
+        ("unknown", f"f-{w['t']}", "partial", None, None, "2026-10-03"),
+        ("funder", f"f-{w['t']}", "wrong_entity", None, w["funder"], "2026-10-09"),
+        ("funder", f"f-{w['t']}", "complete", None, other["funder"], "2026-10-07"),  # same slug, someone else
+        ("org", f"o-{w['t']}", "partial", None, None, "2026-10-02"),
+        ("funder", f"o-{w['t']}", "partial", None, None, "2026-10-04"),  # the org's slug, another kind
+    ]
+    async with pool.connection() as c:
+        for kind, slug, status, org, funder, day in runs:
+            await c.execute(
+                "INSERT INTO entity_research (entity_name, entity_kind, slug, status, summary, resolved_org_id, "
+                "resolved_funder_id, researched_on) VALUES ('x', %s, %s, %s, 's', %s, %s, %s)",
+                (kind, slug, status, org, funder, day))
+    counts = await registry.research_counts(
+        pool, [("funder", w["funder"], f"f-{w['t']}"), ("org", w["org"], f"o-{w['t']}")])
+    assert {k: (v["runs"], str(v["latest"])) for k, v in counts.items()} == {
+        ("funder", w["funder"]): (2, "2026-10-03"), ("org", w["org"]): (1, "2026-10-02")}
+
+
 async def test_a_registry_row_reads_what_the_list_filters_on(pool):
     w = await _world(pool)
     async with pool.connection() as c:

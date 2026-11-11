@@ -18,7 +18,6 @@ from app.repositories.public_sql import (
     entity_sdgs,
     entity_tag_domains,
     entity_tags,
-    research_match,
     story_counts,
 )
 
@@ -207,11 +206,21 @@ async def _rows(conn, orgs: list[dict], funders: list[dict]) -> list[dict]:
 
 
 # On the owner pool: entity_research is staff-only, and the list shows only a count and a date.
-_RESEARCH = f"""
-WITH e AS (SELECT * FROM unnest(%(kinds)s::text[], %(ids)s::bigint[], %(slugs)s::text[]) AS e(kind, id, slug))
-SELECT e.kind, e.id, count(*) AS runs, max(r.researched_on) AS latest
-FROM e JOIN entity_research r ON {research_match("e.kind", "e.id", "e.slug")}
-GROUP BY 1, 2
+# public_sql.research_match as three equality joins, so each finds its rows through an index.
+_RESEARCH = """
+WITH e AS (SELECT * FROM unnest(%(kinds)s::text[], %(ids)s::bigint[], %(slugs)s::text[]) AS e(kind, id, slug)),
+hit AS (
+  SELECT e.kind, e.id, r.researched_on, r.status
+  FROM e JOIN entity_research r ON r.resolved_org_id = e.id AND e.kind = 'org'
+  UNION ALL
+  SELECT e.kind, e.id, r.researched_on, r.status
+  FROM e JOIN entity_research r ON r.resolved_funder_id = e.id AND e.kind = 'funder'
+  UNION ALL
+  SELECT e.kind, e.id, r.researched_on, r.status
+  FROM e JOIN entity_research r ON r.slug = e.slug AND r.entity_kind IN (e.kind, 'unknown')
+  WHERE (CASE e.kind WHEN 'org' THEN r.resolved_org_id ELSE r.resolved_funder_id END) IS NULL
+)
+SELECT kind, id, count(*) AS runs, max(researched_on) AS latest FROM hit WHERE status <> 'wrong_entity' GROUP BY 1, 2
 """
 
 
